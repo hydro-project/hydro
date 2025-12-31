@@ -38,11 +38,14 @@ pub trait DecoupleClusterStream<'a, T, C1, B, Order: Ordering> {
         other: &Cluster<'a, C2>,
     ) -> Stream<T, Cluster<'a, C2>, Unbounded, Order>
     where
-        T: Clone + Serialize + DeserializeOwned;
+        T: Clone + Serialize + DeserializeOwned,
+        C1: 'a;
 }
 
 impl<'a, T, C1, B: Boundedness, Order: Ordering> DecoupleClusterStream<'a, T, C1, B, Order>
     for Stream<T, Cluster<'a, C1>, B, Order>
+where
+    C1: 'a,
 {
     fn decouple_cluster<C2: 'a>(
         self,
@@ -50,10 +53,11 @@ impl<'a, T, C1, B: Boundedness, Order: Ordering> DecoupleClusterStream<'a, T, C1
     ) -> Stream<T, Cluster<'a, C2>, Unbounded, Order>
     where
         T: Clone + Serialize + DeserializeOwned,
+        C1: 'a,
     {
         let sent = self
             .map(q!(move |b| (
-                MemberId::from_raw(CLUSTER_SELF_ID.raw_id),
+                MemberId::from_tagless(CLUSTER_SELF_ID.clone().into_tagless()), // this is a seemingly round about way to convert from one member id tag to another.
                 b.clone()
             )))
             .demux_bincode(other)

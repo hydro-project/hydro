@@ -48,6 +48,7 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
                    context,
                    df_ident,
                    op_span,
+                   work_fn_async,
                    ident,
                    inputs,
                    is_pull,
@@ -95,12 +96,12 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
 
                 let #ident = {
                     #[inline(always)]
-                    fn check_iter<K, V>(iter: impl Iterator<Item = #root::util::PersistenceKeyed::<K, V>>) -> impl Iterator<Item = #root::util::PersistenceKeyed::<K, V>> {
-                        iter
+                    fn check_stream<K, V>(st: impl #root::futures::stream::Stream<Item = #root::util::PersistenceKeyed::<K, V>>) -> impl #root::futures::stream::Stream<Item = #root::util::PersistenceKeyed::<K, V>> {
+                        st
                     }
 
-                    if context.is_first_run_this_tick() {
-                        for item in check_iter(#input) {
+                    let iter = if context.is_first_run_this_tick() {
+                        let fut = #root::compiled::pull::ForEach::new(check_stream(#input), |item| {
                             match item {
                                 #root::util::PersistenceKeyed::Persist(k, v) => {
                                     #vec_ident.entry(k).or_default().push(v);
@@ -109,7 +110,8 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
                                     #vec_ident.remove(&k);
                                 }
                             }
-                        }
+                        });
+                        let () = #work_fn_async(fut).await;
 
                         #[allow(clippy::clone_on_copy)]
                         Some(#vec_ident.iter()
@@ -118,7 +120,8 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
                         .flatten()
                     } else {
                         None.into_iter().flatten()
-                    }
+                    };
+                    #root::futures::stream::iter(iter)
                 };
             }
         };

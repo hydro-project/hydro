@@ -152,7 +152,7 @@ fn benchmark_hydroflow_scheduled(c: &mut Criterion) {
                 "distinct",
                 var_expr!(distinct_in),
                 var_expr!(distinct_out),
-                move |context, var_args!(recv), var_args!(send)| {
+                async move |context, var_args!(recv), var_args!(send)| {
                     let mut seen_state = unsafe {
                         // SAFETY: handle from `df.add_state(..)`.
                         context.state_ref_unchecked(seen_handle)
@@ -163,7 +163,6 @@ fn benchmark_hydroflow_scheduled(c: &mut Criterion) {
                         .into_iter()
                         .filter(|v| seen_state.insert(*v));
                     send.give(Iter(iter));
-                    std::future::ready(())
                 },
             );
 
@@ -218,10 +217,9 @@ fn benchmark_hydroflow_scheduled(c: &mut Criterion) {
 }
 
 fn benchmark_hydroflow(c: &mut Criterion) {
-    use dfir_rs::pusherator::for_each::ForEach;
-    use dfir_rs::pusherator::{IteratorToPusherator, PusheratorBuild};
     use dfir_rs::scheduled::graph::Dfir;
     use dfir_rs::scheduled::handoff::VecHandoff;
+    use dfir_rs::sinktools::{SinkBuild, ToSinkBuild, for_each};
     use dfir_rs::{var_args, var_expr};
 
     let edges = &*EDGES;
@@ -248,13 +246,17 @@ fn benchmark_hydroflow(c: &mut Criterion) {
 
             let seen_handle = df.add_state::<RefCell<HashSet<usize>>>(Default::default());
 
+            #[expect(
+                clippy::await_holding_refcell_ref,
+                reason = "only one borrower of `seen_handle` RefCell."
+            )]
             df.add_subgraph(
                 "main",
                 var_expr!(origins_in, possible_reach_in),
                 var_expr!(did_reach_out, output_out),
-                move |context,
-                      var_args!(origins, did_reach_recv),
-                      var_args!(did_reach_send, output)| {
+                async move |context,
+                            var_args!(origins, did_reach_recv),
+                            var_args!(did_reach_send, output)| {
                     let origins = origins.take_inner().into_iter();
                     let possible_reach = did_reach_recv
                         .take_inner()
@@ -272,17 +274,16 @@ fn benchmark_hydroflow(c: &mut Criterion) {
                         .chain(possible_reach)
                         .filter(|v| seen_state.insert(*v));
 
-                    let pivot = pull
-                        .pull_to_push()
-                        .tee(ForEach::new(|v| {
+                    let pivot = pull.iter_to_sink_build().fanout(
+                        for_each(|v| {
                             did_reach_send.give(Some(v));
-                        }))
-                        .for_each(|v| {
+                        }),
+                        for_each(|v| {
                             output.give(Some(v));
-                        });
+                        }),
+                    );
 
-                    pivot.run();
-                    std::future::ready(())
+                    pivot.await.unwrap();
                 },
             );
 

@@ -4,8 +4,7 @@ use clap::Parser;
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
-use hydro_lang::graph::config::GraphConfig;
-use tokio::sync::RwLock;
+use hydro_lang::viz::config::GraphConfig;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
@@ -25,7 +24,7 @@ async fn main() {
     let mut deployment = Deployment::new();
 
     let create_host: HostCreator = if let Some(project) = args.gcp {
-        let network = Arc::new(RwLock::new(GcpNetwork::new(&project, None)));
+        let network = GcpNetwork::new(&project, None);
 
         Box::new(move |deployment| -> Arc<dyn Host> {
             deployment
@@ -67,6 +66,11 @@ async fn main() {
     // Generate graph visualizations based on command line arguments
     if let Err(e) = built.generate_graph_with_config(&args.graph, None) {
         eprintln!("Error generating graph: {}", e);
+    }
+
+    // If we're just generating a graph file, exit early
+    if args.graph.should_exit_after_graph_generation() {
+        return;
     }
 
     // Optimize the flow before deployment to remove marker nodes

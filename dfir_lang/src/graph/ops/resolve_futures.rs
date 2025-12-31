@@ -25,30 +25,27 @@ pub const RESOLVE_FUTURES: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: move |wc, _| {
-        resolve_futures_writer(
-            Ident::new("FuturesUnordered", wc.op_span),
-            Ident::new("push", wc.op_span),
-            wc,
-        )
+        resolve_futures_writer(Ident::new("FuturesUnordered", wc.op_span), false, wc)
     },
 };
 
 pub fn resolve_futures_writer(
     future_type: Ident,
-    push_fn: Ident,
+    blocking: bool,
     wc @ &WriteContextArgs {
         root,
         context,
         op_span,
+        work_fn_async,
         ident,
         inputs,
         outputs,
         is_pull,
-        work_fn,
         ..
     }: &WriteContextArgs,
 ) -> Result<OperatorWriteOutput, ()> {
     let futures_ident = wc.make_ident("futures");
+    let queue_ident = wc.make_ident("queue");
 
     let write_prologue = quote_spanned! {op_span=>
         let #futures_ident = df.add_state(
@@ -58,71 +55,72 @@ pub fn resolve_futures_writer(
         );
     };
 
-    let write_iterator = if is_pull {
+    let opt_waker = if blocking {
+        quote_spanned! {op_span=> None }
+    } else {
+        quote_spanned! {op_span=> Some(#context.waker()) }
+    };
+
+    let stream_or_sink = if is_pull {
         let input = &inputs[0];
+
+        let task_cx = if blocking {
+            quote_spanned! {op_span=> _cx }
+        } else {
+            quote_spanned! {op_span=> &mut ::std::task::Context::from_waker(&#context.waker()) }
+        };
+
+        let if_pending = if blocking {
+            // Wait for all items.
+            quote_spanned! {op_span=> ::std::task::Poll::Pending }
+        } else {
+            // EOS immediately, futures items will be in future ticks.
+            quote_spanned! {op_span=> ::std::task::Poll::Ready(::std::option::Option::None) }
+        };
+
         quote_spanned! {op_span=>
-            let #ident = {
-                let mut out = ::std::vec::Vec::new();
+            {
+                let first_item_opt = #work_fn_async(async {
+                    // Accumulate all futures.
+                    let () = #root::compiled::pull::ForEach::new(#input, |f| {
+                        ::std::iter::Extend::extend(&mut *#queue_ident, ::std::iter::once(f));
+                    }).await;
 
-                let mut state = unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    #context.state_ref_unchecked(#futures_ident)
-                        .borrow_mut()
-                };
+                    // Ensure the queue starts, by polling it.
+                    // This unfortunately means we also need to store the result of the first poll in `first_item_opt`.
+                    #root::futures::future::poll_fn(|_cx| {
+                        let opt = if let ::std::task::Poll::Ready(opt) = #root::futures::stream::Stream::poll_next(::std::pin::Pin::new(&mut *#queue_ident), #task_cx) {
+                            opt
+                        } else {
+                            ::std::option::Option::None
+                        };
+                        ::std::task::Poll::Ready(opt) // Always resolve immediately.
+                    }).await
+                }).await;
 
-                #work_fn(|| {
-                    #input
-                        .for_each(|fut| {
-                            let mut fut = ::std::boxed::Box::pin(fut);
-                            if let #root::futures::task::Poll::Ready(val) = #root::futures::Future::poll(::std::pin::Pin::as_mut(&mut fut), &mut ::std::task::Context::from_waker(&#context.waker())) {
-                                out.push(val);
-                            } else {
-                                state.#push_fn(fut);
-                            }
-                        });
-
-                    while let #root::futures::task::Poll::Ready(Some(val)) =
-                        #root::futures::Stream::poll_next(::std::pin::Pin::new(&mut *state), &mut ::std::task::Context::from_waker(&#context.waker()))
-                    {
-                        out.push(val);
-                    }
-                });
-
-                ::std::iter::IntoIterator::into_iter(out)
-            };
+                #root::futures::stream::StreamExt::chain(
+                    #root::futures::stream::iter(first_item_opt),
+                    #root::futures::stream::poll_fn(|_cx| {
+                        match #root::futures::Stream::poll_next(::std::pin::Pin::new(&mut *#queue_ident), #task_cx) {
+                            ::std::task::Poll::Ready(opt) => ::std::task::Poll::Ready(opt),
+                            ::std::task::Poll::Pending => #if_pending,
+                        }
+                    }),
+                )
+            }
         }
     } else {
         let output = &outputs[0];
         quote_spanned! {op_span=>
-            let #ident = {
-                let mut out = #output;
-                let mut state = unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    #context.state_ref_unchecked(#futures_ident).borrow_mut()
-                };
-
-                #work_fn(|| {
-                    while let #root::futures::task::Poll::Ready(Some(val)) =
-                        #root::futures::Stream::poll_next(::std::pin::Pin::new(&mut *state), &mut ::std::task::Context::from_waker(&#context.waker()))
-                    {
-                        #root::pusherator::Pusherator::give(&mut out, val)
-                    }
-                });
-
-                let consumer = #root::pusherator::for_each::ForEach::new(|fut| {
-                    #work_fn(|| {
-                        let fut = ::std::boxed::Box::pin(fut);
-                        unsafe {
-                            // SAFETY: handle from `#df_ident.add_state(..)`.
-                            #context.state_ref_unchecked(#futures_ident).borrow_mut()
-                        }.#push_fn(fut);
-                    });
-                    #context.schedule_subgraph(#context.current_subgraph(), true);
-                });
-
-                consumer
-            };
+            #root::compiled::push::ResolveFutures::new(&mut *#queue_ident, #opt_waker, #output)
         }
+    };
+    let write_iterator = quote_spanned! {op_span=>
+        let mut #queue_ident = unsafe {
+            // SAFETY: handle from `#df_ident.add_state(..)`.
+            #context.state_ref_unchecked(#futures_ident).borrow_mut()
+        };
+        let #ident = #stream_or_sink;
     };
 
     Ok(OperatorWriteOutput {

@@ -1,7 +1,7 @@
 [package]
 name = "hydro_lang"
 publish = true
-version = "0.14.0"
+version = "0.15.0"
 documentation = "https://docs.rs/hydro_lang/"
 description = "A Rust framework for correct and performant distributed systems"
 edition = { workspace = true }
@@ -18,23 +18,51 @@ viz = [
     "dep:auto_impl",
     "dep:clap",
     "dep:itertools",
-    "dep:webbrowser", 
+    "dep:webbrowser",
     "dep:data-encoding",
     "dep:serde_json",
+    "dep:flate2",
+    "dep:urlencoding",
 ]
 deploy = [
-    "build",
+    "trybuild",
     "deploy_integration",
     "dep:hydro_deploy",
-    "dep:prettyplease",
-    "dep:trybuild-internals-api",
-    "dep:toml",
-    "dep:sha2",
-    "dep:stageleft_tool",
     "dep:nameof",
 ]
+sim = [
+    "trybuild",
+    "deploy_integration",
+    "dep:bolero",
+    "dep:cargo_metadata",
+    "dep:dfir_rs",
+    "dep:indenter",
+    "dep:libloading",
+    "dep:pin-project-lite",
+    "dep:tempfile",
+    "dep:serde_json",
+    "dfir_rs/meta", # affects layout of DFIR, thus the ABI
+]
+
+# Dependencies needed to build the code that can deploy a hydro program with docker
+docker_deploy = [
+    "trybuild",
+    "docker_runtime",
+    "dep:bollard",
+    "dep:anyhow",
+    "dep:tar",
+    "dep:nanoid",
+    "dep:http-body-util",
+]
+
+# Dependencies needed to compile docker-deployed binaries with trybuild
+docker_runtime = [
+    "dep:bollard",
+]
+
 deploy_integration = ["dep:hydro_deploy_integration"]
 build = ["dep:dfir_lang", "dep:backtrace", "dep:ctor"]
+trybuild = ["build", "dep:toml", "dep:prettyplease", "dep:stageleft_tool", "dep:trybuild-internals-api", "dep:sha2"]
 runtime_measure = ["dep:chrono", "dep:procfs"]
 runtime_support = ["dep:dfir_rs", "dfir_rs/deploy_integration"]
 dfir_context = ["dep:dfir_rs"]
@@ -47,10 +75,13 @@ backtrace = { version = "0.3", optional = true }
 bytes = { version = "1.1.0", features = ["serde"] }
 bincode = "1.3.1"
 clap = { version = "4.0", features = ["derive"], optional = true }
-hydro_deploy = { path = "../hydro_deploy/core", version = "^0.14.0", optional = true }
-hydro_deploy_integration = { path = "../hydro_deploy/hydro_deploy_integration", version = "^0.14.0", optional = true }
-dfir_rs = { path = "../dfir_rs", version = "^0.14.0", default-features = false, optional = true }
-dfir_lang = { path = "../dfir_lang", version = "^0.14.0", optional = true }
+colored = { version = "3" }
+hydro_deploy = { path = "../hydro_deploy/core", version = "^0.15.0", optional = true }
+hydro_deploy_integration = { path = "../hydro_deploy/hydro_deploy_integration", version = "^0.15.0", optional = true }
+chrono = "0.4.42"
+copy_span = { path = "../copy_span", version = "^0.1.0" }
+dfir_rs = { path = "../dfir_rs", version = "^0.15.0", default-features = false, optional = true }
+dfir_lang = { path = "../dfir_lang", version = "^0.15.0", optional = true }
 futures = "0.3.0"
 match_box = "0.0.2"
 nameof = { version = "1.0.0", optional = true }
@@ -60,6 +91,7 @@ proc-macro2 = "1.0.95"
 quote = "1.0.35"
 sealed = "0.6.0"
 serde = { version = "1.0.197", features = ["derive"] }
+sinktools = { path = "../sinktools", version = "^0.0.1" }
 sha2 = { version = "0.10.0", optional = true }
 stageleft.workspace = true
 stageleft_tool = { workspace = true, optional = true }
@@ -75,6 +107,8 @@ tokio-stream = { version = "0.1.3", default-features = false, features = [
     "time",
 ] }
 toml = { version = "0.8.0", optional = true }
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 trybuild-internals-api = { version = "1.0.99", optional = true }
 ctor = { version = "0.2", optional = true }
 
@@ -84,11 +118,28 @@ itertools = { version = "0.13.0", optional = true }
 webbrowser = { version = "1.0.2", optional = true }
 data-encoding = { version = "2.6.0", optional = true }
 serde_json = { version = "1.0.132", optional = true }
+flate2 = { version = "1.0", optional = true }
+urlencoding = { version = "2.1", optional = true }
+
+# For docker deployments
+anyhow = { version = "1.0.100", optional = true }
+bollard = { version = "0.19.4", default-features = false, features = ["pipe"], optional = true }
+http-body-util = { version = "0.1", optional = true }
+nanoid = { version = "0.4.0", optional = true }
+tar = { version = "0.4", optional = true }
+
+# For the simulator
+bolero = { package = "bolero-hydro", version = "0.13.5", optional = true }
+cargo_metadata = { version = "0.18.0", optional = true }
+indenter = { version = "0.3", optional = true }
+libloading = { version = "0.8", optional = true }
+pin-project-lite = { version = "0.2", optional = true }
+tempfile = { version = "3", optional = true }
 
 # coax cargo-smart-release into publishing this crate.
 # https://github.com/hydro-project/hydro/blob/main/RELEASING.md#addendum-adding-new-crates
 # https://github.com/GitoxideLabs/cargo-smart-release/issues/36
-hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1", optional = true }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 chrono = { version = "0.4.39", optional = true }
@@ -96,11 +147,11 @@ procfs = { version = "0.17.0", optional = true }
 
 [build-dependencies]
 stageleft_tool.workspace = true
-hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1" }
 
 [dev-dependencies]
-hydro_deploy = { path = "../hydro_deploy/core", version = "^0.14.0" }
 ctor = "0.2"
-hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1" }
 tokio-test = "0.4.4"
 trybuild = "1"
+tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }

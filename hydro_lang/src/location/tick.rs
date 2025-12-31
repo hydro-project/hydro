@@ -127,15 +127,55 @@ where
         out.batch(self, nondet!(/** at runtime, `spin` produces a single value per tick, so each batch is guaranteed to be the same size. */))
     }
 
-    pub fn singleton<T>(&self, e: impl QuotedWithContext<'a, T, L>) -> Singleton<T, Self, Bounded>
+    pub fn singleton<T>(
+        &self,
+        e: impl QuotedWithContext<'a, T, Tick<L>>,
+    ) -> Singleton<T, Self, Bounded>
     where
         T: Clone,
-        L: NoTick,
     {
-        self.outer().singleton(e).snapshot(
-            self,
-            nondet!(/** a top-level singleton produces the same value each tick */),
+        let e = e.splice_untyped_ctx(self);
+
+        Singleton::new(
+            self.clone(),
+            HydroNode::SingletonSource {
+                value: e.into(),
+                metadata: self.new_node_metadata(Singleton::<T, Self, Bounded>::collection_kind()),
+            },
         )
+    }
+
+    /// Creates an [`Optional`] which has a null value on every tick.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let optional = tick.none::<i32>();
+    /// optional.unwrap_or(tick.singleton(q!(123)))
+    /// # .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 123
+    /// # assert_eq!(stream.next().await.unwrap(), 123);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn none<T>(&self) -> Optional<T, Self, Bounded> {
+        let e = q!([]);
+        let e = QuotedWithContext::<'a, [(); 0], Self>::splice_typed_ctx(e, self);
+
+        let unit_optional: Optional<(), Self, Bounded> = Optional::new(
+            self.clone(),
+            HydroNode::Source {
+                source: HydroSource::Iter(e.into()),
+                metadata: self.new_node_metadata(Optional::<(), Self, Bounded>::collection_kind()),
+            },
+        );
+
+        unit_optional.map(q!(|_| unreachable!())) // always empty
     }
 
     /// Creates an [`Optional`] which will have the provided static value on the first tick, and be
@@ -145,6 +185,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -160,6 +201,7 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), 123);
     /// # assert_eq!(stream.next().await.unwrap(), 123);
     /// # }));
+    /// # }
     /// ```
     pub fn optional_first_tick<T: Clone>(
         &self,
@@ -235,7 +277,6 @@ where
     pub fn cycle_with_initial<S>(&self, initial: S) -> (TickCycleHandle<'a, S>, S)
     where
         S: CycleCollectionWithInitial<'a, TickCycle, Location = Self>,
-        L: NoTick,
     {
         let next_id = self.flow_state().borrow_mut().next_cycle_id();
         let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
@@ -250,5 +291,104 @@ where
             // no need to defer_tick, create_source_with_initial does it for us
             S::create_source_with_initial(ident, initial, self.clone()),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(feature = "sim")]
+    use stageleft::q;
+
+    #[cfg(feature = "sim")]
+    use crate::live_collections::sliced::sliced;
+    #[cfg(feature = "sim")]
+    use crate::location::Location;
+    #[cfg(feature = "sim")]
+    use crate::nondet::nondet;
+    #[cfg(feature = "sim")]
+    use crate::prelude::FlowBuilder;
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_atomic_stream() {
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (write_send, write_req) = node.sim_input();
+        let (read_send, read_req) = node.sim_input::<(), _, _>();
+
+        let tick = node.tick();
+        let atomic_write = write_req.atomic(&tick);
+        let current_state = atomic_write.clone().fold(
+            q!(|| 0),
+            q!(|state: &mut i32, v: i32| {
+                *state += v;
+            }),
+        );
+
+        let write_ack_recv = atomic_write.end_atomic().sim_output();
+        let read_response_recv = sliced! {
+            let batch_of_req = use(read_req, nondet!(/** test */));
+            let latest_singleton = use::atomic(current_state, nondet!(/** test */));
+            batch_of_req.cross_singleton(latest_singleton)
+        }
+        .sim_output();
+
+        let sim_compiled = flow.sim().compiled();
+        let instances = sim_compiled.exhaustive(async || {
+            write_send.send(1);
+            write_ack_recv.assert_yields([1]).await;
+            read_send.send(());
+            assert!(read_response_recv.next().await.is_some_and(|(_, v)| v >= 1));
+        });
+
+        assert_eq!(instances, 1);
+
+        let instances_read_before_write = sim_compiled.exhaustive(async || {
+            write_send.send(1);
+            read_send.send(());
+            write_ack_recv.assert_yields([1]).await;
+            let _ = read_response_recv.next().await;
+        });
+
+        assert_eq!(instances_read_before_write, 3); // read before write, write before read, both in same tick
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    #[should_panic]
+    fn sim_non_atomic_stream() {
+        // shows that atomic is necessary
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (write_send, write_req) = node.sim_input();
+        let (read_send, read_req) = node.sim_input::<(), _, _>();
+
+        let current_state = write_req.clone().fold(
+            q!(|| 0),
+            q!(|state: &mut i32, v: i32| {
+                *state += v;
+            }),
+        );
+
+        let write_ack_recv = write_req.sim_output();
+
+        let read_response_recv = sliced! {
+            let batch_of_req = use(read_req, nondet!(/** test */));
+            let latest_singleton = use(current_state, nondet!(/** test */));
+            batch_of_req.cross_singleton(latest_singleton)
+        }
+        .sim_output();
+
+        flow.sim().exhaustive(async || {
+            write_send.send(1);
+            write_ack_recv.assert_yields([1]).await;
+            read_send.send(());
+
+            if let Some((_, v)) = read_response_recv.next().await {
+                assert_eq!(v, 1);
+            }
+        });
     }
 }

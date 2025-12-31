@@ -1,7 +1,7 @@
 [package]
 name = "hydro_deploy"
 publish = true
-version = "0.14.0"
+version = "0.15.0"
 documentation = "https://docs.rs/hydro_deploy/"
 description = "Hydro Deploy"
 edition = { workspace = true }
@@ -13,7 +13,8 @@ workspace = true
 
 [dependencies]
 anyhow = { version = "1.0.82", features = ["backtrace"] }
-async-ssh2-russh = { version = "0.1.0", features = [ "sftp" ] }
+append-only-vec = "0.1.8"
+async-ssh2-russh = { version = "0.2.0", features = [ "sftp" ] }
 async-process = "2.0.0"
 async-recursion = "1.0.0"
 async-trait = "0.1.54"
@@ -24,7 +25,7 @@ cargo_metadata = "0.18.0"
 dunce = "1.0.0"
 dyn-clone = "1.0.0"
 futures = "0.3.0"
-hydro_deploy_integration = { path = "../hydro_deploy_integration", version = "^0.14.0" }
+hydro_deploy_integration = { path = "../hydro_deploy_integration", version = "^0.15.0" }
 indicatif = "0.17.0"
 inferno = "0.11.0"
 itertools = "0.13.0"
@@ -40,4 +41,6 @@ tempfile = "3.0.0"
 tokio = { version = "1.29.0", features = ["full"] }
 tokio-stream = { version = "0.1.3", default-features = false, features = ["io-util"] }
 tokio-util = { version = "0.7.5", features = ["compat", "io-util"] }
+
+[target.'cfg(any(target_os = "macos", target_family = "windows"))'.dependencies]
 wholesym = "0.8.1"

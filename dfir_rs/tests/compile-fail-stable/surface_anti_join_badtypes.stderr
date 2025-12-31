@@ -1,11 +1,15 @@
-error[E0271]: type mismatch resolving `<ForEach<{closure@surface_anti_join_badtypes.rs:4:18}, {integer}> as Pusherator>::Item == &str`
+error[E0277]: the trait bound `&str: Borrow<{integer}>` is not satisfied
  --> tests/compile-fail-stable/surface_anti_join_badtypes.rs:5:13
   |
 5 |         j = anti_join() -> for_each(std::mem::drop);
-  |             ^^^^^^^^^ expected `&str`, found integer
+  |             ^^^^^^^^^ the trait `Borrow<{integer}>` is not implemented for `&str`
   |
-note: required by a bound in `pivot_run_sg_2v1`
- --> tests/compile-fail-stable/surface_anti_join_badtypes.rs:5:13
+  = help: the trait `Borrow<str>` is implemented for `std::string::String`
+note: required by a bound in `HashSet::<T, S>::contains`
+ --> $RUST/std/src/collections/hash/set.rs
   |
-5 |         j = anti_join() -> for_each(std::mem::drop);
-  |             ^^^^^^^^^ required by this bound in `pivot_run_sg_2v1`
+  |     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
+  |            -------- required by a bound in this associated function
+  |     where
+  |         T: Borrow<Q>,
+  |            ^^^^^^^^^ required by this bound in `HashSet::<T, S>::contains`

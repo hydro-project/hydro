@@ -11,6 +11,9 @@ use super::deploy::{DeployFlow, DeployResult};
 use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
 use super::ir::HydroRoot;
 use crate::location::{Cluster, External, Process};
+#[cfg(feature = "sim")]
+#[cfg(stageleft_runtime)]
+use crate::sim::flow::SimFlow;
 use crate::staging_util::Invariant;
 
 pub(crate) type FlowState = Rc<RefCell<FlowStateInner>>;
@@ -330,19 +333,23 @@ impl<'a> FlowBuilder<'a> {
         self.with_default_optimize().with_remaining_clusters(spec)
     }
 
-    pub fn compile<D: Deploy<'a>>(self, env: &D::CompileEnv) -> CompiledFlow<'a, D::GraphId> {
-        self.with_default_optimize::<D>().compile(env)
+    pub fn compile<D: Deploy<'a>>(self) -> CompiledFlow<'a, D::GraphId> {
+        self.with_default_optimize::<D>().compile()
     }
 
     pub fn compile_no_network<D: Deploy<'a>>(self) -> CompiledFlow<'a, D::GraphId> {
         self.with_default_optimize::<D>().compile_no_network()
     }
 
-    pub fn deploy<D: Deploy<'a, CompileEnv = ()>>(
-        self,
-        env: &mut D::InstantiateEnv,
-    ) -> DeployResult<'a, D> {
+    pub fn deploy<D: Deploy<'a>>(self, env: &mut D::InstantiateEnv) -> DeployResult<'a, D> {
         self.with_default_optimize().deploy(env)
+    }
+
+    #[cfg(feature = "sim")]
+    /// Creates a simulation for this builder, which can be used to run deterministic simulations
+    /// of the Hydro program.
+    pub fn sim(self) -> SimFlow<'a> {
+        self.finalize().sim()
     }
 }
 

@@ -1,4 +1,4 @@
-use variadics::*;
+use variadics::{Variadic, var_expr, var_type};
 
 pub trait Boxed: Variadic {
     type Boxed;

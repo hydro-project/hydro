@@ -1,11 +1,11 @@
 use proc_macro2::Ident;
-use quote::{quote, quote_spanned, ToTokens};
+use quote::{ToTokens, quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::{PathArguments, PathSegment, Token, Type, TypePath};
 
 use super::{
-    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
-    OperatorWriteOutput, PortIndexValue, PortListSpec, WriteContextArgs, RANGE_0, RANGE_1,
+    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
+    PortIndexValue, PortListSpec, RANGE_0, RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
 use crate::graph::change_spans;
@@ -56,7 +56,7 @@ pub const DEMUX_ENUM: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: Some(|| PortListSpec::Variadic),
     input_delaytype_fn: |_| None,
-    write_fn: |&WriteContextArgs {
+    write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
                    ident,
@@ -134,12 +134,12 @@ pub const DEMUX_ENUM: OperatorConstraints = OperatorConstraints {
             if is_pull {
                 let input = &inputs[0];
                 quote_spanned! {op_span=>
-                    let #ident = #input.map(#map_fn);
+                    let #ident = #root::futures::stream::StreamExt::map(#input, #map_fn);
                 }
             } else {
                 let output = &outputs[0];
                 quote_spanned! {op_span=>
-                    let #ident = #root::pusherator::map::Map::new(#map_fn, #output);
+                    let #ident = #root::sinktools::map(#map_fn, #output);
                 }
             }
         } else {
@@ -149,16 +149,22 @@ pub const DEMUX_ENUM: OperatorConstraints = OperatorConstraints {
             sort_permute.sort_by_key(|&i| &port_idents[i]);
 
             let sorted_outputs = sort_permute.iter().map(|&i| &outputs[i]);
+            let outputs_ident = wc.make_ident("outputs");
 
             quote_spanned! {op_span=>
+                let #outputs_ident = (
+                    #(
+                        ::std::pin::pin!( #sorted_outputs ),
+                    )*
+                );
                 let #ident = {
-                    let mut __outputs = ( #( #sorted_outputs, )* );
-                    #root::pusherator::for_each::ForEach::new(move |__item: #enum_type| {
-                        #root::util::demux_enum::DemuxEnum::demux_enum(
-                            __item,
-                            &mut __outputs,
-                        );
-                    })
+                    fn demux_enum_guard<Item, Outputs>(outputs: Outputs) -> impl #root::futures::sink::Sink<Item, Error = #root::Never>
+                    where
+                        Item: #root::util::demux_enum::DemuxEnumSink<Outputs, Error = #root::Never>,
+                    {
+                        #root::compiled::push::DemuxEnum::new::<Item>(outputs)
+                    }
+                    demux_enum_guard::<#enum_type, _>(#outputs_ident)
                 };
             }
         };

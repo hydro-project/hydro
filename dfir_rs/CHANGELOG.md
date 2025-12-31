@@ -5,6 +5,204 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.15.0 (2025-11-25)
+
+<csr-id-d22507cf6064e4b9f6a02404d58f644cde3dcf0b/>
+<csr-id-623ed9ea41a04b442a44f85208ca51e22fb743b6/>
+<csr-id-bcef0557add258930a76900d6f2ce641c7f9b148/>
+<csr-id-e5d90803ae16993ac3db24a7795d0864abc4ac52/>
+<csr-id-97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71/>
+<csr-id-806a6239a649e24fe10c3c90dd30bd18debd41d2/>
+<csr-id-f4a26b3268a3fa4a6e907d33a3e5ac7529188f20/>
+<csr-id-356292ed01d8ffa07838687f2e1e8e2b682cbc26/>
+<csr-id-562d1081abef29175a8dc0bb7c3934114f6939e1/>
+<csr-id-9d943ac294a8735452f8535ad13767c60ce46ec7/>
+<csr-id-8535940a34dba130156eb3605ae56483586bb62a/>
+<csr-id-29027701471205a7c43e26ef2f8cee98663c578e/>
+
+### Chore
+
+ - <csr-id-d22507cf6064e4b9f6a02404d58f644cde3dcf0b/> update to rust 1.91.1
+ - <csr-id-623ed9ea41a04b442a44f85208ca51e22fb743b6/> update back to Rust 1.90.0
+ - <csr-id-bcef0557add258930a76900d6f2ce641c7f9b148/> pin Rust to 1.89
+   GitHub Actions is going to be flip/flopping between 1.89 and 1.90, and
+   we have users who need support on 1.89.
+   
+   Also updates precheck.bash to use nextest for _speed_.
+ - <csr-id-e5d90803ae16993ac3db24a7795d0864abc4ac52/> update wasm
+ - <csr-id-97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71/> update pinned nightly to 2025-08-20, fix lints
+
+### Documentation
+
+ - <csr-id-2d0968777563a0129db07ca9068a1d6fecbacacb/> consistently refer to Hydro as a framework
+ - <csr-id-273bc1e40e925343b8deed5e40a1879915a9e61b/> fix "DFIR Playground" link
+
+### New Features
+
+ - <csr-id-f7ecb53e1941f67e59bde32e94e9f320f4bf5410/> add `resolve_futures_blocking` for resolving async calls by blocking the subgraph
+ - <csr-id-335ded3fc72c6525b3210f2750ea11a63d60117e/> `DemuxMap`, use in `hydro_deploy_integration`
+ - <csr-id-7efe1dc660ab6c0c68762f71d4359f347cfe73b6/> `sinktools` crate
+   this also converts `variadic` to use `#[no_std]`, and adds
+   `feature="std"`, and fixes an issue causing trybuild tests to not run
+   
+   will replace `pusherator` in upcoming PR
+
+### Bug Fixes
+
+<csr-id-c40876ec4bd3b31254d683e479b9a235f3d11f67/>
+<csr-id-669aefa679df02369ac51b2aa753a5908a76897b/>
+<csr-id-bdc54eba06f75c29f9393c69da6c07db0d602976/>
+<csr-id-d0570728bbdeae63571936d00d087673924842c3/>
+
+ - <csr-id-dd62edfed25e52669d0f9169cfcefbe278cbaf65/> fix code generation for `scan` as a push-operator
+ - <csr-id-1b818e321805f3134b66359fc0a6c70599a71422/> update backtrace snapshots for Rust 1.90 and remove unused types
+   The line number of `core::ops::function::FnOnce::call_once` in the
+   standard library changed.
+ - <csr-id-09c07701f03862f3a755420c202cacd5218cd114/> remove python udf support
+ - <csr-id-4e84a3fc03af1eacf8af467e52407121f3b6ec9e/> [ci-full] fix ci issues
+   - run docs/website on pr
+- use bash by default on windows
+- build website with nightly
+- increase test timeout to 45m
+- run docs with nightly
+- make rustfmt use native line endings instead of unix
+- fix compile-fail nightly stderr outputs
+- add the ability to include [ci-full] into the body/title of a PR to
+   get it to run the full stable/nightly linux/windows test matrix.
+
+### Other
+
+ - <csr-id-806a6239a649e24fe10c3c90dd30bd18debd41d2/> ensure `hydro_build_utils` is published in the correct order
+
+### Refactor
+
+ - <csr-id-f4a26b3268a3fa4a6e907d33a3e5ac7529188f20/> Make `join_fused` use new `Accumulator` trait
+   To make the codegen less magical.
+   
+   ---------
+
+### Test
+
+ - <csr-id-356292ed01d8ffa07838687f2e1e8e2b682cbc26/> rearrange `sort` and `anti_join` tests out of `surface_codegen`
+   does not change any code, just moves it to new files
+ - <csr-id-562d1081abef29175a8dc0bb7c3934114f6939e1/> ensure `surface_demux_enum` actually assert results
+
+### Refactor (BREAKING)
+
+ - <csr-id-9d943ac294a8735452f8535ad13767c60ce46ec7/> Make DFIR use `sinktools` for pushing to outputs [ci-bench]
+   This allows DFIR to handle `dest_sink` directly instead of having to
+   offload to a separate task, which causes latency and unwanted batching
+   (on single threaded runtimes)
+   
+   `pusherator` crate is no longer depended upon and is on a path to removal as it has been
+   replaced with `Sink`s
+   
+   Fixes some spanning bugs in codegen that using `Sink`s revealed
+ - <csr-id-8535940a34dba130156eb3605ae56483586bb62a/> remove `demux` operator, replace usage with `demux_enum`
+   This is in preparation of making DFIR support async `Sink`s. The
+   overpowered demux API is incompatible with the more constrained
+   mechanics of `Sink`s.
+   
+   ## Pull Request Overview
+   
+   This PR refactors the `dfir_rs` library by removing the `demux` operator
+   and replacing its usage with the `demux_enum` operator, which provides
+   better type safety and ergonomics.
+   
+   - Removes the `demux` operator implementation and related code
+   - Updates examples to use `demux_enum` with enums for message handling
+   - Removes all compile-fail tests specific to the `demux` operator
+ - <csr-id-29027701471205a7c43e26ef2f8cee98663c578e/> superficially make subgraphs/operators asynchronous
+   Subgraphs now are async (create a future when running) which must be
+   awaited. However this PR does not actually change any
+   subgraphs/operators, so all subgraphs/operators return `Poll::Ready(())`
+   immediately
+
+## Pull Request Overview
+   
+   This PR refactors the `dfir_rs` library by removing the `demux` operator
+   and replacing its usage with the `demux_enum` operator, which provides
+   better type safety and ergonomics.
+   
+   - Removes the `demux` operator implementation and related code
+   - Updates examples to use `demux_enum` with enums for message handling
+   - Removes all compile-fail tests specific to the `demux` operator
+ - <csr-id-29027701471205a7c43e26ef2f8cee98663c578e/> superficially make subgraphs/operators asynchronous
+   Subgraphs now are async (create a future when running) which must be
+   awaited. However this PR does not actually change any
+   subgraphs/operators, so all subgraphs/operators return `Poll::Ready(())`
+   immediately
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 26 commits contributed to the release.
+ - 25 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 24 unique issues were worked on: [#1997](https://github.com/hydro-project/hydro/issues/1997), [#2010](https://github.com/hydro-project/hydro/issues/2010), [#2020](https://github.com/hydro-project/hydro/issues/2020), [#2021](https://github.com/hydro-project/hydro/issues/2021), [#2022](https://github.com/hydro-project/hydro/issues/2022), [#2024](https://github.com/hydro-project/hydro/issues/2024), [#2028](https://github.com/hydro-project/hydro/issues/2028), [#2029](https://github.com/hydro-project/hydro/issues/2029), [#2038](https://github.com/hydro-project/hydro/issues/2038), [#2087](https://github.com/hydro-project/hydro/issues/2087), [#2091](https://github.com/hydro-project/hydro/issues/2091), [#2119](https://github.com/hydro-project/hydro/issues/2119), [#2122](https://github.com/hydro-project/hydro/issues/2122), [#2132](https://github.com/hydro-project/hydro/issues/2132), [#2134](https://github.com/hydro-project/hydro/issues/2134), [#2137](https://github.com/hydro-project/hydro/issues/2137), [#2147](https://github.com/hydro-project/hydro/issues/2147), [#2157](https://github.com/hydro-project/hydro/issues/2157), [#2163](https://github.com/hydro-project/hydro/issues/2163), [#2170](https://github.com/hydro-project/hydro/issues/2170), [#2281](https://github.com/hydro-project/hydro/issues/2281), [#2295](https://github.com/hydro-project/hydro/issues/2295), [#2309](https://github.com/hydro-project/hydro/issues/2309), [#2318](https://github.com/hydro-project/hydro/issues/2318)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1997](https://github.com/hydro-project/hydro/issues/1997)**
+    - Fix "DFIR Playground" link ([`273bc1e`](https://github.com/hydro-project/hydro/commit/273bc1e40e925343b8deed5e40a1879915a9e61b))
+ * **[#2010](https://github.com/hydro-project/hydro/issues/2010)**
+    - Check dfir warnings in tests on non-nightly ([`d057072`](https://github.com/hydro-project/hydro/commit/d0570728bbdeae63571936d00d087673924842c3))
+ * **[#2020](https://github.com/hydro-project/hydro/issues/2020)**
+    - Consistently refer to Hydro as a framework ([`2d09687`](https://github.com/hydro-project/hydro/commit/2d0968777563a0129db07ca9068a1d6fecbacacb))
+ * **[#2021](https://github.com/hydro-project/hydro/issues/2021)**
+    - Snapshot tests don't depend on the parent crate name ([`bdc54eb`](https://github.com/hydro-project/hydro/commit/bdc54eba06f75c29f9393c69da6c07db0d602976))
+ * **[#2022](https://github.com/hydro-project/hydro/issues/2022)**
+    - Add trybuild stable tests ([`669aefa`](https://github.com/hydro-project/hydro/commit/669aefa679df02369ac51b2aa753a5908a76897b))
+ * **[#2024](https://github.com/hydro-project/hydro/issues/2024)**
+    - Update pinned nightly to 2025-08-20, fix lints ([`97426b8`](https://github.com/hydro-project/hydro/commit/97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71))
+ * **[#2028](https://github.com/hydro-project/hydro/issues/2028)**
+    - Refactor github actions workflows, make stable the default toolchain ([`c40876e`](https://github.com/hydro-project/hydro/commit/c40876ec4bd3b31254d683e479b9a235f3d11f67))
+ * **[#2029](https://github.com/hydro-project/hydro/issues/2029)**
+    - [ci-full] fix ci issues ([`4e84a3f`](https://github.com/hydro-project/hydro/commit/4e84a3fc03af1eacf8af467e52407121f3b6ec9e))
+ * **[#2038](https://github.com/hydro-project/hydro/issues/2038)**
+    - Remove python udf support ([`09c0770`](https://github.com/hydro-project/hydro/commit/09c07701f03862f3a755420c202cacd5218cd114))
+ * **[#2087](https://github.com/hydro-project/hydro/issues/2087)**
+    - Update wasm ([`e5d9080`](https://github.com/hydro-project/hydro/commit/e5d90803ae16993ac3db24a7795d0864abc4ac52))
+ * **[#2091](https://github.com/hydro-project/hydro/issues/2091)**
+    - Superficially make subgraphs/operators asynchronous ([`2902770`](https://github.com/hydro-project/hydro/commit/29027701471205a7c43e26ef2f8cee98663c578e))
+ * **[#2119](https://github.com/hydro-project/hydro/issues/2119)**
+    - Remove `demux` operator, replace usage with `demux_enum` ([`8535940`](https://github.com/hydro-project/hydro/commit/8535940a34dba130156eb3605ae56483586bb62a))
+ * **[#2122](https://github.com/hydro-project/hydro/issues/2122)**
+    - Update backtrace snapshots for Rust 1.90 and remove unused types ([`1b818e3`](https://github.com/hydro-project/hydro/commit/1b818e321805f3134b66359fc0a6c70599a71422))
+ * **[#2132](https://github.com/hydro-project/hydro/issues/2132)**
+    - Ensure `surface_demux_enum` actually assert results ([`562d108`](https://github.com/hydro-project/hydro/commit/562d1081abef29175a8dc0bb7c3934114f6939e1))
+ * **[#2134](https://github.com/hydro-project/hydro/issues/2134)**
+    - Make DFIR use `sinktools` for pushing to outputs [ci-bench] ([`9d943ac`](https://github.com/hydro-project/hydro/commit/9d943ac294a8735452f8535ad13767c60ce46ec7))
+ * **[#2137](https://github.com/hydro-project/hydro/issues/2137)**
+    - Pin Rust to 1.89 ([`bcef055`](https://github.com/hydro-project/hydro/commit/bcef0557add258930a76900d6f2ce641c7f9b148))
+ * **[#2147](https://github.com/hydro-project/hydro/issues/2147)**
+    - Fix code generation for `scan` as a push-operator ([`dd62edf`](https://github.com/hydro-project/hydro/commit/dd62edfed25e52669d0f9169cfcefbe278cbaf65))
+ * **[#2157](https://github.com/hydro-project/hydro/issues/2157)**
+    - `sinktools` crate ([`7efe1dc`](https://github.com/hydro-project/hydro/commit/7efe1dc660ab6c0c68762f71d4359f347cfe73b6))
+ * **[#2163](https://github.com/hydro-project/hydro/issues/2163)**
+    - `DemuxMap`, use in `hydro_deploy_integration` ([`335ded3`](https://github.com/hydro-project/hydro/commit/335ded3fc72c6525b3210f2750ea11a63d60117e))
+ * **[#2170](https://github.com/hydro-project/hydro/issues/2170)**
+    - Update back to Rust 1.90.0 ([`623ed9e`](https://github.com/hydro-project/hydro/commit/623ed9ea41a04b442a44f85208ca51e22fb743b6))
+ * **[#2281](https://github.com/hydro-project/hydro/issues/2281)**
+    - Add `resolve_futures_blocking` for resolving async calls by blocking the subgraph ([`f7ecb53`](https://github.com/hydro-project/hydro/commit/f7ecb53e1941f67e59bde32e94e9f320f4bf5410))
+ * **[#2295](https://github.com/hydro-project/hydro/issues/2295)**
+    - Update to rust 1.91.1 ([`d22507c`](https://github.com/hydro-project/hydro/commit/d22507cf6064e4b9f6a02404d58f644cde3dcf0b))
+ * **[#2309](https://github.com/hydro-project/hydro/issues/2309)**
+    - Rearrange `sort` and `anti_join` tests out of `surface_codegen` ([`356292e`](https://github.com/hydro-project/hydro/commit/356292ed01d8ffa07838687f2e1e8e2b682cbc26))
+ * **[#2318](https://github.com/hydro-project/hydro/issues/2318)**
+    - Make `join_fused` use new `Accumulator` trait ([`f4a26b3`](https://github.com/hydro-project/hydro/commit/f4a26b3268a3fa4a6e907d33a3e5ac7529188f20))
+ * **Uncategorized**
+    - Release hydro_build_utils v0.0.1, dfir_lang v0.15.0, dfir_macro v0.15.0, variadics v0.0.10, sinktools v0.0.1, hydro_deploy_integration v0.15.0, lattices_macro v0.5.11, variadics_macro v0.6.2, lattices v0.6.2, multiplatform_test v0.6.0, dfir_rs v0.15.0, copy_span v0.1.0, hydro_deploy v0.15.0, hydro_lang v0.15.0, hydro_std v0.15.0, safety bump 5 crates ([`092de25`](https://github.com/hydro-project/hydro/commit/092de252238dfb9fa6b01e777c6dd8bf9db93398))
+    - Ensure `hydro_build_utils` is published in the correct order ([`806a623`](https://github.com/hydro-project/hydro/commit/806a6239a649e24fe10c3c90dd30bd18debd41d2))
+</details>
+
+<csr-unknown>
+ refactor github actions workflows, make stable the default toolchain add trybuild stable tests snapshot tests don’t depend on the parent crate name check dfir warnings in tests on non-nightly<csr-unknown/>
+
 ## 0.14.0 (2025-07-31)
 
 <csr-id-59041df58be2de0717b851cc1c3355479cd722f2/>
@@ -93,7 +291,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 15 commits contributed to the release over the course of 93 calendar days.
+ - 16 commits contributed to the release.
+ - 110 days passed between releases.
  - 14 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 13 unique issues were worked on: [#1825](https://github.com/hydro-project/hydro/issues/1825), [#1837](https://github.com/hydro-project/hydro/issues/1837), [#1847](https://github.com/hydro-project/hydro/issues/1847), [#1848](https://github.com/hydro-project/hydro/issues/1848), [#1851](https://github.com/hydro-project/hydro/issues/1851), [#1858](https://github.com/hydro-project/hydro/issues/1858), [#1859](https://github.com/hydro-project/hydro/issues/1859), [#1860](https://github.com/hydro-project/hydro/issues/1860), [#1911](https://github.com/hydro-project/hydro/issues/1911), [#1912](https://github.com/hydro-project/hydro/issues/1912), [#1929](https://github.com/hydro-project/hydro/issues/1929), [#1938](https://github.com/hydro-project/hydro/issues/1938), [#1939](https://github.com/hydro-project/hydro/issues/1939)
 
@@ -130,6 +329,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#1939](https://github.com/hydro-project/hydro/issues/1939)**
     - Minimize Tokio feature flags ([`59041df`](https://github.com/hydro-project/hydro/commit/59041df58be2de0717b851cc1c3355479cd722f2))
  * **Uncategorized**
+    - Release example_test v0.0.0, dfir_rs v0.14.0, hydro_deploy v0.14.0, hydro_lang v0.14.0, hydro_optimize v0.13.0, hydro_std v0.14.0 ([`5f69ee0`](https://github.com/hydro-project/hydro/commit/5f69ee080a9e257bc07cdc4deda90ce5525a3d0e))
     - Workaround to publish `example_test` ([`96ec97a`](https://github.com/hydro-project/hydro/commit/96ec97a324254929b4677e9e769dbccab917d767))
     - Release dfir_lang v0.14.0, dfir_macro v0.14.0, hydro_deploy_integration v0.14.0, lattices_macro v0.5.10, variadics_macro v0.6.1, dfir_rs v0.14.0, hydro_deploy v0.14.0, hydro_lang v0.14.0, hydro_optimize v0.13.0, hydro_std v0.14.0, safety bump 6 crates ([`0683595`](https://github.com/hydro-project/hydro/commit/06835950c12884d661100c13f73ad23a98bfad9f))
 </details>

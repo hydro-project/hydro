@@ -1,5 +1,5 @@
 error: `var_args!` can only have the `...` spread syntax on the last field.
- --> tests/compile-fail/var_args_spread_middle.rs:4:9
+ --> tests/compile-fail-nightly/var_args_spread_middle.rs:4:9
   |
 4 |     let var_args!(a, ...b, c) = var_expr!(1, 2.0, "three", false);
   |         ^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ error: `var_args!` can only have the `...` spread syntax on the last field.
   = note: this error originates in the macro `$crate::var_args` which comes from the expansion of the macro `var_args` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: unused variable: `a`
- --> tests/compile-fail/var_args_spread_middle.rs:4:19
+ --> tests/compile-fail-nightly/var_args_spread_middle.rs:4:19
   |
 4 |     let var_args!(a, ...b, c) = var_expr!(1, 2.0, "three", false);
   |                   ^ help: if this is intentional, prefix it with an underscore: `_a`

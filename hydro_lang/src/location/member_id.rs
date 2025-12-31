@@ -4,75 +4,199 @@ use std::marker::PhantomData;
 
 use serde::{Deserialize, Serialize};
 
+#[derive(Clone, Deserialize, Serialize, Debug)]
+pub enum TaglessMemberId {
+    Legacy { raw_id: u32 },
+    Docker { container_name: String },
+}
+
+impl TaglessMemberId {
+    pub fn from_raw_id(raw_id: u32) -> Self {
+        Self::Legacy { raw_id }
+    }
+
+    pub fn from_container_name(container_name: impl ToString) -> Self {
+        Self::Docker {
+            container_name: container_name.to_string(),
+        }
+    }
+
+    pub fn get_raw_id(&self) -> u32 {
+        match self {
+            TaglessMemberId::Legacy { raw_id } => *raw_id,
+            _ => panic!(),
+        }
+    }
+
+    pub fn get_container_name(&self) -> String {
+        match &self {
+            TaglessMemberId::Docker { container_name } => container_name.clone(),
+            _ => panic!(),
+        }
+    }
+}
+
+impl Hash for TaglessMemberId {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            TaglessMemberId::Legacy { raw_id } => raw_id.hash(state),
+            TaglessMemberId::Docker { container_name } => container_name.hash(state),
+        }
+    }
+}
+
+impl PartialEq for TaglessMemberId {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                TaglessMemberId::Legacy { raw_id },
+                TaglessMemberId::Legacy {
+                    raw_id: other_raw_id,
+                },
+            ) => raw_id == other_raw_id,
+            (
+                TaglessMemberId::Docker { container_name },
+                TaglessMemberId::Docker {
+                    container_name: other_container_name,
+                },
+            ) => container_name == other_container_name,
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl Eq for TaglessMemberId {}
+
+impl PartialOrd for TaglessMemberId {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for TaglessMemberId {
+    // Comparing tags of different deployment origins means something has gone very wrong and the best thing to do is just crash immediately.
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match (self, other) {
+            (
+                TaglessMemberId::Legacy { raw_id },
+                TaglessMemberId::Legacy {
+                    raw_id: other_raw_id,
+                },
+            ) => raw_id.cmp(other_raw_id),
+            (
+                TaglessMemberId::Docker { container_name },
+                TaglessMemberId::Docker {
+                    container_name: other_container_name,
+                },
+            ) => container_name.cmp(other_container_name),
+            _ => unreachable!(),
+        }
+    }
+}
+
 #[repr(transparent)]
 pub struct MemberId<Tag> {
-    pub raw_id: u32,
-    pub(crate) _phantom: PhantomData<Tag>,
+    inner: TaglessMemberId,
+    _phantom: PhantomData<Tag>,
 }
 
 impl<Tag> MemberId<Tag> {
-    pub fn from_raw(id: u32) -> Self {
-        MemberId {
-            raw_id: id,
-            _phantom: PhantomData,
+    pub fn into_tagless(self) -> TaglessMemberId {
+        self.inner
+    }
+
+    pub fn from_tagless(inner: TaglessMemberId) -> Self {
+        Self {
+            inner,
+            _phantom: Default::default(),
         }
+    }
+
+    pub fn from_raw_id(raw_id: u32) -> Self {
+        Self {
+            inner: TaglessMemberId::from_raw_id(raw_id),
+            _phantom: Default::default(),
+        }
+    }
+
+    pub fn get_raw_id(&self) -> u32 {
+        self.inner.get_raw_id()
     }
 }
 
 impl<Tag> Debug for MemberId<Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "MemberId::<{}>({})",
-            std::any::type_name::<Tag>(),
-            self.raw_id
-        )
+        Display::fmt(self, f)
     }
 }
 
 impl<Tag> Display for MemberId<Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "MemberId::<{}>({})",
-            std::any::type_name::<Tag>(),
-            self.raw_id
-        )
+        match &self.inner {
+            TaglessMemberId::Legacy { raw_id, .. } => {
+                write!(
+                    f,
+                    "MemberId::<{}>({})",
+                    std::any::type_name::<Tag>(),
+                    raw_id
+                )
+            }
+            TaglessMemberId::Docker { container_name, .. } => {
+                write!(
+                    f,
+                    "MemberId::<{}>(\"{}\")",
+                    std::any::type_name::<Tag>(),
+                    container_name
+                )
+            }
+        }
     }
 }
 
 impl<Tag> Clone for MemberId<Tag> {
     fn clone(&self) -> Self {
-        *self
+        Self {
+            inner: self.inner.clone(),
+            _phantom: Default::default(),
+        }
     }
 }
-
-impl<Tag> Copy for MemberId<Tag> {}
 
 impl<Tag> Serialize for MemberId<Tag> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        S: serde::ser::Serializer,
+        S: serde::Serializer,
     {
-        self.raw_id.serialize(serializer)
+        self.inner.serialize(serializer)
     }
 }
 
-impl<'de, Tag> Deserialize<'de> for MemberId<Tag> {
+impl<'a, Tag> Deserialize<'a> for MemberId<Tag> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::de::Deserializer<'de>,
+        D: serde::Deserializer<'a>,
     {
-        u32::deserialize(deserializer).map(|id| MemberId {
-            raw_id: id,
-            _phantom: PhantomData,
-        })
+        Ok(Self::from_tagless(TaglessMemberId::deserialize(
+            deserializer,
+        )?))
+    }
+}
+
+impl<Tag> PartialOrd for MemberId<Tag> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<Tag> Ord for MemberId<Tag> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.inner.cmp(&other.inner)
     }
 }
 
 impl<Tag> PartialEq for MemberId<Tag> {
     fn eq(&self, other: &Self) -> bool {
-        self.raw_id == other.raw_id
+        self.inner == other.inner
     }
 }
 
@@ -80,6 +204,7 @@ impl<Tag> Eq for MemberId<Tag> {}
 
 impl<Tag> Hash for MemberId<Tag> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.raw_id.hash(state)
+        self.inner.hash(state);
+        std::any::type_name::<Tag>().hash(state); // This seems like the a good thing to do. This will ensure that two member ids that come from different clusters but the same underlying host receive different hashes.
     }
 }

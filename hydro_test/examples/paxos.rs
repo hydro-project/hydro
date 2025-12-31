@@ -15,9 +15,8 @@ struct Args {
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
-use hydro_lang::graph::config::GraphConfig;
+use hydro_lang::viz::config::GraphConfig;
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
-use tokio::sync::RwLock;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
@@ -27,7 +26,7 @@ async fn main() {
     let mut deployment = Deployment::new();
 
     let create_host: HostCreator = if let Some(project) = &args.gcp {
-        let network = Arc::new(RwLock::new(GcpNetwork::new(project, None)));
+        let network = GcpNetwork::new(project, None);
         let project = project.clone();
 
         Box::new(move |deployment| -> Arc<dyn Host> {
@@ -86,6 +85,11 @@ async fn main() {
 
     // Generate graphs if requested
     let _ = built.generate_graph_with_config(&args.graph, None);
+
+    // If we're just generating a graph file, exit early
+    if args.graph.should_exit_after_graph_generation() {
+        return;
+    }
 
     let optimized = built.with_default_optimize();
 

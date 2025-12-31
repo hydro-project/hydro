@@ -1,0 +1,57 @@
+---
+sidebar_position: 1
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import firstTenExampleSrc from '!!raw-loader!../../../../../template/hydro/examples/echo_gcp.rs';
+import perfComputePiSrc from '!!raw-loader!../../../../../hydro_test/examples/perf_compute_pi.rs';
+import { getLines } from '../../../../src/util';
+
+# Hydro Deploy
+
+Hydro comes equipped with a Rust-native built-in deployment system, **Hydro Deploy**, which allows you to deploy your
+Hydro app to a variety of platforms. With Hydro Deploy, you can spin up complex services with just a few lines of Rust!
+{/* TODO(mingwei): This guide will walk you through the process of deploying your Hydro app in a variety of scenarios. */}
+
+We have actually already been using Hydro Deploy in all of the examples so far, but without any special
+configuration:
+
+<CodeBlock language="rust" title="examples/first_ten.rs">{firstTenExampleSrc}</CodeBlock>
+
+TODO(mingwei): Explain the details/nuances of the example and simple configurations.
+
+## `TrybuildHost`
+
+`TrybuildHost` provides additional options for compiling your Hydro app, such as setting [`rustflags`](https://doc.rust-lang.org/cargo/reference/config.html#buildrustflags),
+enabling [features](https://doc.rust-lang.org/cargo/reference/features.html), or setting up [performance profiling](#performance-profiling).
+
+<CodeBlock language="rust" title="hydro_test/examples/perf_compute_pi.rs">{getLines(perfComputePiSrc, "trybuildhost")}</CodeBlock>
+
+TODO(mingwei)
+
+## Performance Profiling
+
+Hydro Deploy also supports performance profiling with flamegraphs, which can be used to visualize which parts of your
+code are taking the most time to execute.
+
+`TrybuildHost` provides a `tracing` method that will automatically generate a flamegraph after your app has run:
+
+<CodeBlock language="rust" title="hydro_test/examples/perf_compute_pi.rs">{getLines(perfComputePiSrc, "tracing")}</CodeBlock>
+
+The `TracingOptions` builder has several options, such as sampling frequency, output file names, tracing options, and
+optionally a setup command to run before the profiling starts. The `setup_command` can be used to install the profiling,
+in this case we use the provided `DEBIAN_PERF_SETUP_COMMAND` which installs `perf` and sets some kernel parameters to
+enable tracing.
+
+You may need to use `TrybuildHost` to set the following `rustflags` to enable detailed performance profiling:
+<CodeBlock language="rust" title="hydro_test/examples/perf_compute_pi.rs">{getLines(perfComputePiSrc, "rustflags")}</CodeBlock>
+
+Different platforms require particular configuration to enable CPU profiling. Each platform uses a different tool to collect
+CPU profiling data, but Hydro Deploy will automatically process the resulting traces and download the resulting flamegraph:
+
+* Linux: `perf` for CPU profiling
+* macOS: `samply` for CPU profiling
+* Windows: `samply` for CPU profiling
+
+For example, on GCP Linux machines, you may need to include additional `rustflags`:
+<CodeBlock language="rust" title="hydro_test/examples/perf_compute_pi.rs">{getLines(perfComputePiSrc, "rustflags_gcp")}</CodeBlock>

@@ -1,8 +1,11 @@
-use crate::graph::PortIndexValue;
+use quote::quote_spanned;
 
-use super::{
-    DelayType, OperatorCategory, OperatorConstraints, RANGE_0, RANGE_1
+use crate::graph::{
+    PortIndexValue,
+    ops::{OperatorWriteOutput, WriteContextArgs},
 };
+
+use super::{DelayType, OperatorCategory, OperatorConstraints, RANGE_0, RANGE_1};
 
 /// > 2 input streams of the same type, 1 output stream of the same type
 ///
@@ -24,8 +27,8 @@ pub const CHAIN_FIRST_N: OperatorConstraints = OperatorConstraints {
     categories: &[OperatorCategory::MultiIn],
     persistence_args: RANGE_0,
     type_args: RANGE_0,
-    hard_range_inn: &(2..=2),
-    soft_range_inn: &(2..=2),
+    hard_range_inn: &(2..),
+    soft_range_inn: &(2..),
     hard_range_out: RANGE_1,
     soft_range_out: RANGE_1,
     num_args: 1,
@@ -41,5 +44,36 @@ pub const CHAIN_FIRST_N: OperatorConstraints = OperatorConstraints {
         }
         _else => None,
     },
-    write_fn: super::union::UNION.write_fn,
+    write_fn: |wc @ &WriteContextArgs {
+                   root,
+                   op_span,
+                   ident,
+                   is_pull,
+                   arguments,
+                   ..
+               },
+               diagnostics| {
+        assert!(is_pull);
+
+        let OperatorWriteOutput {
+            write_prologue,
+            write_prologue_after,
+            write_iterator,
+            write_iterator_after,
+        } = (super::union::UNION.write_fn)(wc, diagnostics)?;
+
+        let arg_n = &arguments[0];
+
+        let write_iterator = quote_spanned! {op_span=>
+            #write_iterator
+            let #ident = #root::futures::stream::StreamExt::take(#ident, #arg_n);
+        };
+
+        Ok(OperatorWriteOutput {
+            write_prologue,
+            write_prologue_after,
+            write_iterator,
+            write_iterator_after,
+        })
+    },
 };

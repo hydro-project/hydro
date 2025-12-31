@@ -11,11 +11,9 @@ use syn::parse_quote;
 use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::singleton::Singleton;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
-use crate::compile::ir::{
-    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource, TeeNode,
-};
+use crate::compile::ir::{CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 #[cfg(stageleft_runtime)]
-use crate::forward_handle::{CycleCollection, ReceiverComplete};
+use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
@@ -66,6 +64,29 @@ where
                 metadata: location.new_node_metadata(Self::collection_kind()),
             },
         )
+    }
+}
+
+impl<'a, T, L> CycleCollectionWithInitial<'a, TickCycle> for Optional<T, Tick<L>, Bounded>
+where
+    L: Location<'a>,
+{
+    type Location = Tick<L>;
+
+    fn create_source_with_initial(ident: syn::Ident, initial: Self, location: Tick<L>) -> Self {
+        let from_previous_tick: Optional<T, Tick<L>, Bounded> = Optional::new(
+            location.clone(),
+            HydroNode::DeferTick {
+                input: Box::new(HydroNode::CycleSource {
+                    ident,
+                    metadata: location.new_node_metadata(Self::collection_kind()),
+                }),
+                metadata: location
+                    .new_node_metadata(Optional::<T, Tick<L>, Bounded>::collection_kind()),
+            },
+        );
+
+        from_previous_tick.or(initial.filter_if_some(location.optional_first_tick(q!(()))))
     }
 }
 
@@ -276,9 +297,14 @@ where
 
     pub(crate) fn collection_kind() -> CollectionKind {
         CollectionKind::Optional {
-            bound: B::bound_kind(),
+            bound: B::BOUND_KIND,
             element_type: stageleft::quote_type::<T>().into(),
         }
+    }
+
+    /// Returns the [`Location`] where this optional is being materialized.
+    pub fn location(&self) -> &L {
+        &self.location
     }
 
     /// Transforms the optional value by applying a function `f` to it,
@@ -288,6 +314,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -298,6 +325,7 @@ where
     /// // 2
     /// # assert_eq!(stream.next().await.unwrap(), 2);
     /// # }));
+    /// # }
     /// ```
     pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<U, L, B>
     where
@@ -329,6 +357,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -341,6 +370,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn flat_map_ordered<U, I, F>(
         self,
@@ -372,6 +402,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
@@ -389,6 +420,7 @@ where
     /// # results.sort();
     /// # assert_eq!(results, vec![1, 2, 3]);
     /// # }));
+    /// # }
     /// ```
     pub fn flat_map_unordered<U, I, F>(
         self,
@@ -423,6 +455,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -435,6 +468,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn flatten_ordered<U>(self) -> Stream<U, L, B, TotalOrder, ExactlyOnce>
     where
@@ -452,6 +486,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
@@ -469,6 +504,7 @@ where
     /// # results.sort();
     /// # assert_eq!(results, vec![1, 2, 3]);
     /// # }));
+    /// # }
     /// ```
     pub fn flatten_unordered<U>(self) -> Stream<U, L, B, NoOrder, ExactlyOnce>
     where
@@ -489,6 +525,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -499,6 +536,7 @@ where
     /// // 5
     /// # assert_eq!(stream.next().await.unwrap(), 5);
     /// # }));
+    /// # }
     /// ```
     pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<T, L, B>
     where
@@ -524,6 +562,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -536,6 +575,7 @@ where
     /// // 42
     /// # assert_eq!(stream.next().await.unwrap(), 42);
     /// # }));
+    /// # }
     /// ```
     pub fn filter_map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<U, L, B>
     where
@@ -561,6 +601,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -577,6 +618,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn zip<O>(self, other: impl Into<Optional<O, L, B>>) -> Optional<(T, O), L, B>
     where
@@ -611,6 +653,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -627,6 +670,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn or(self, other: Optional<T, L, B>) -> Optional<T, L, B> {
         check_matching_location(&self.location, &other.location);
@@ -663,6 +707,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -680,6 +725,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn unwrap_or(self, other: Singleton<T, L, B>) -> Singleton<T, L, B> {
         let res_option = self.or(other.into());
@@ -702,6 +748,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -717,32 +764,23 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn into_singleton(self) -> Singleton<Option<T>, L, B>
     where
         T: Clone,
     {
-        let none: syn::Expr = parse_quote!([::std::option::Option::None]);
-        let core_ir = HydroNode::Source {
-            source: HydroSource::Iter(none.into()),
-            metadata: self
-                .location
-                .new_node_metadata(Singleton::<Option<T>, L, B>::collection_kind()),
-        };
+        let none: syn::Expr = parse_quote!(::std::option::Option::None);
 
-        let none_singleton = if L::is_top_level() {
-            Singleton::new(
-                self.location.clone(),
-                HydroNode::Persist {
-                    inner: Box::new(core_ir),
-                    metadata: self
-                        .location
-                        .new_node_metadata(Singleton::<Option<T>, L, B>::collection_kind()),
-                },
-            )
-        } else {
-            Singleton::new(self.location.clone(), core_ir)
-        };
+        let none_singleton = Singleton::new(
+            self.location.clone(),
+            HydroNode::SingletonSource {
+                value: none.into(),
+                metadata: self
+                    .location
+                    .new_node_metadata(Singleton::<Option<T>, L, B>::collection_kind()),
+            },
+        );
 
         self.map(q!(|v| Some(v))).unwrap_or(none_singleton)
     }
@@ -771,6 +809,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -796,6 +835,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn filter_if_some<U>(self, signal: Optional<U, L, Bounded>) -> Optional<T, L, Bounded> {
         self.zip(signal.map(q!(|_u| ()))).map(q!(|(d, _signal)| d))
@@ -809,6 +849,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -834,6 +875,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn filter_if_none<U>(self, other: Optional<U, L, Bounded>) -> Optional<T, L, Bounded> {
         self.filter_if_some(
@@ -851,6 +893,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -869,6 +912,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn if_some_then<U>(self, value: Singleton<U, L, Bounded>) -> Optional<U, L, Bounded> {
         value.filter_if_some(self)
@@ -896,6 +940,7 @@ where
                 inner: Box::new(self.ir_node.into_inner()),
                 metadata: self
                     .location
+                    .tick
                     .new_node_metadata(Optional::<T, Tick<L>, Bounded>::collection_kind()),
             },
         )
@@ -1021,6 +1066,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1044,6 +1090,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn all_ticks(self) -> Stream<T, L, Unbounded, TotalOrder, ExactlyOnce> {
         self.into_stream().all_ticks()
@@ -1069,6 +1116,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1094,6 +1142,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn latest(self) -> Optional<T, L, Unbounded> {
         Optional::new(
@@ -1139,6 +1188,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1165,6 +1215,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn defer_tick(self) -> Optional<T, Tick<L>, Bounded> {
         Optional::new(
@@ -1176,20 +1227,12 @@ where
         )
     }
 
-    #[deprecated(note = "use .into_stream().persist()")]
-    #[expect(missing_docs, reason = "deprecated")]
-    pub fn persist(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce>
-    where
-        T: Clone,
-    {
-        self.into_stream().persist()
-    }
-
     /// Converts this optional into a [`Stream`] containing a single element, the value, if it is
     /// non-null. Otherwise, the stream is empty.
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1216,6 +1259,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn into_stream(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
         Stream::new(
@@ -1234,6 +1278,7 @@ where
     }
 }
 
+#[cfg(feature = "deploy")]
 #[cfg(test)]
 mod tests {
     use futures::StreamExt;
@@ -1243,6 +1288,7 @@ mod tests {
     use super::Optional;
     use crate::compile::builder::FlowBuilder;
     use crate::location::Location;
+    use crate::nondet::nondet;
 
     #[tokio::test]
     async fn optional_or_cardinality() {
@@ -1270,10 +1316,49 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut external_out = nodes.connect_source_bincode(counts).await;
+        let mut external_out = nodes.connect(counts).await;
 
         deployment.start().await.unwrap();
 
+        assert_eq!(external_out.next().await.unwrap(), 1);
+    }
+
+    #[tokio::test]
+    async fn into_singleton_top_level_none_cardinality() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let node_tick = node.tick();
+        let top_level_none = node.singleton(q!(123)).filter(q!(|_| false));
+        let into_singleton = top_level_none.into_singleton();
+
+        let tick_driver = node.spin();
+
+        let counts = into_singleton
+            .snapshot(&node_tick, nondet!(/** test */))
+            .into_stream()
+            .count()
+            .zip(tick_driver.batch(&node_tick, nondet!(/** test */)).count())
+            .map(q!(|(c, _)| c))
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_out = nodes.connect(counts).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(external_out.next().await.unwrap(), 1);
+        assert_eq!(external_out.next().await.unwrap(), 1);
         assert_eq!(external_out.next().await.unwrap(), 1);
     }
 }

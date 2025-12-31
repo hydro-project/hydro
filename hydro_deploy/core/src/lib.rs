@@ -5,6 +5,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use anyhow::Result;
+use append_only_vec::AppendOnlyVec;
 use async_trait::async_trait;
 use hydro_deploy_integration::ServerBindConfig;
 use rust_crate::build::BuildOutput;
@@ -74,7 +75,7 @@ pub struct ResourceResult {
     _last_result: Option<Arc<ResourceResult>>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TracingResults {
     pub folded_data: Vec<u8>,
 }
@@ -99,9 +100,9 @@ pub trait LaunchedBinary: Send + Sync {
     fn exit_code(&self) -> Option<i32>;
 
     /// Wait for the process to stop on its own. Returns the exit code.
-    async fn wait(&mut self) -> Result<i32>;
+    async fn wait(&self) -> Result<i32>;
     /// If the process is still running, force stop it. Then run post-run tasks.
-    async fn stop(&mut self) -> Result<()>;
+    async fn stop(&self) -> Result<()>;
 }
 
 #[async_trait]
@@ -116,22 +117,18 @@ pub trait LaunchedHost: Send + Sync {
             ServerStrategy::Many(b) => {
                 ServerBindConfig::MultiConnection(Box::new(self.base_server_config(b)))
             }
-            ServerStrategy::Demux(demux) => {
-                let mut config_map = HashMap::new();
-                for (key, underlying) in demux {
-                    config_map.insert(*key, self.server_config(underlying));
-                }
-
-                ServerBindConfig::Demux(config_map)
-            }
-            ServerStrategy::Merge(merge) => {
-                let mut configs = vec![];
-                for underlying in merge {
-                    configs.push(self.server_config(underlying));
-                }
-
-                ServerBindConfig::Merge(configs)
-            }
+            ServerStrategy::Demux(demux) => ServerBindConfig::Demux(
+                demux
+                    .iter()
+                    .map(|(key, underlying)| (*key, self.server_config(underlying)))
+                    .collect::<HashMap<_, _>>(),
+            ),
+            ServerStrategy::Merge(merge) => ServerBindConfig::Merge(
+                merge
+                    .iter()
+                    .map(|underlying| self.server_config(underlying))
+                    .collect(),
+            ),
             ServerStrategy::Tagged(underlying, id) => {
                 ServerBindConfig::Tagged(Box::new(self.server_config(underlying)), *id)
             }
@@ -166,7 +163,8 @@ pub enum ServerStrategy {
     Direct(BaseServerStrategy),
     Many(BaseServerStrategy),
     Demux(HashMap<u32, ServerStrategy>),
-    Merge(Vec<ServerStrategy>),
+    /// AppendOnlyVec has a quite large inline array, so we box it.
+    Merge(Box<AppendOnlyVec<ServerStrategy>>),
     Tagged(Box<ServerStrategy>, u32),
     Null,
 }
@@ -190,7 +188,13 @@ pub enum ClientStrategy<'a> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum HostTargetType {
     Local,
-    Linux,
+    Linux(LinuxCompileType),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LinuxCompileType {
+    Glibc,
+    Musl,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -216,7 +220,7 @@ pub trait Host: Any + Send + Sync + Debug {
                 }
             }
             ServerStrategy::Merge(merge) => {
-                for bind_type in merge {
+                for bind_type in merge.iter() {
                     self.request_port(bind_type);
                 }
             }
@@ -268,27 +272,27 @@ pub trait Service: Send + Sync {
     fn collect_resources(&self, resource_batch: &mut ResourceBatch);
 
     /// Connects to the acquired resources and prepares the service to be launched.
-    async fn deploy(&mut self, resource_result: &Arc<ResourceResult>) -> Result<()>;
+    async fn deploy(&self, resource_result: &Arc<ResourceResult>) -> Result<()>;
 
     /// Launches the service, which should start listening for incoming network
     /// connections. The service should not start computing at this point.
-    async fn ready(&mut self) -> Result<()>;
+    async fn ready(&self) -> Result<()>;
 
     /// Starts the service by having it connect to other services and start computations.
-    async fn start(&mut self) -> Result<()>;
+    async fn start(&self) -> Result<()>;
 
     /// Stops the service by having it disconnect from other services and stop computations.
-    async fn stop(&mut self) -> Result<()>;
+    async fn stop(&self) -> Result<()>;
 }
 
 pub trait ServiceBuilder {
     type Service: Service + 'static;
-    fn build(self, id: usize) -> Self::Service;
+    fn build(self, id: usize, on: Arc<dyn Host>) -> Self::Service;
 }
 
-impl<S: Service + 'static, T: FnOnce(usize) -> S> ServiceBuilder for T {
+impl<S: Service + 'static, This: FnOnce(usize, Arc<dyn Host>) -> S> ServiceBuilder for This {
     type Service = S;
-    fn build(self, id: usize) -> Self::Service {
-        self(id)
+    fn build(self, id: usize, on: Arc<dyn Host>) -> Self::Service {
+        (self)(id, on)
     }
 }

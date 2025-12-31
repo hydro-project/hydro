@@ -59,9 +59,8 @@ macro_rules! subgraph_ext {
                 name,
                 crate::var_expr!($($recv_param),*),
                 crate::var_expr!($($send_param),*),
-                move |ctx, crate::var_args!($($recv_param),*), crate::var_args!($($send_param),*)| {
+                async move |ctx, crate::var_args!($($recv_param),*), crate::var_args!($($send_param),*)| {
                     (subgraph)(ctx, $($recv_param,)* $($send_param),*);
-                    ::std::future::ready(())
                 }
             )
         }

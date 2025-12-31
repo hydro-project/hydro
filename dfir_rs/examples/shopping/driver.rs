@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 
 use dfir_rs::util::ipv4_resolve;
+use web_time::Duration;
 
 use crate::Opts;
 use crate::flows::bp_flow::bp_flow;
@@ -127,7 +128,7 @@ pub(crate) async fn run_driver(opts: Opts) {
             // This means that the spawned thread would be waiting for a message that it has already missed and which won't get re-sent.
             // There's a timeout at the bottom of this function that was presumably added to fix the issue of this test hanging.
             // This sleep makes it much more likely that the thread has set up everything needed by the tiem we finish this sleep.
-            std::thread::sleep(std::time::Duration::from_secs(1));
+            std::thread::sleep(Duration::from_secs(1));
 
             // Run client proxy in this thread
             match opt {
@@ -212,7 +213,7 @@ pub(crate) async fn run_driver(opts: Opts) {
             // This means that the spawned thread would be waiting for a message that it has already missed and which won't get re-sent.
             // There's a timeout at the bottom of this function that was presumably added to fix the issue of this test hanging.
             // This sleep makes it much more likely that the thread has set up everything needed by the tiem we finish this sleep.
-            std::thread::sleep(std::time::Duration::from_secs(1));
+            std::thread::sleep(Duration::from_secs(1));
 
             // Run client proxy in this thread
             rep_server_flow(
@@ -239,7 +240,7 @@ pub(crate) async fn run_driver(opts: Opts) {
     }
 
     // Run the client for 1 second; should be long enough to get all the results
-    let _timeout = tokio::time::timeout(std::time::Duration::from_secs(1), hf.run())
+    let _timeout = tokio::time::timeout(Duration::from_secs(1), hf.run())
         .await
         .unwrap_err();
 }

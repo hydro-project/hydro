@@ -66,6 +66,10 @@ const config = {
           editUrl: "https://github.com/hydro-project/hydro/tree/main/docs/",
           remarkPlugins: [remarkMath],
           rehypePlugins: [rehypeKatex],
+          admonitions: {
+            keywords: ["learn"],
+            extendDefaults: true,
+          }
         },
         // blog: {
         //   showReadingTime: true,
@@ -93,6 +97,26 @@ const config = {
       },
     ],
     require.resolve("./wasm-plugin.js"),
+    function (context, options) {
+      return {
+        name: 'webpack-process-polyfill',
+        configureWebpack(config, isServer, utils) {
+          const webpack = require('webpack');
+          return {
+            resolve: {
+              fallback: {
+                process: require.resolve('process/browser.js'),
+              },
+            },
+            plugins: [
+              new webpack.ProvidePlugin({
+                process: 'process/browser.js',
+              }),
+            ],
+          };
+        },
+      };
+    },
   ],
 
   themeConfig:
@@ -103,6 +127,11 @@ const config = {
       colorMode: {
         respectPrefersColorScheme: true,
       },
+      docs: {
+        sidebar: {
+          autoCollapseCategories: true,
+        },
+      },
       navbar: {
         title: "Hydro",
         logo: {
@@ -111,12 +140,18 @@ const config = {
         },
         items: [
           {
+            to: "docs/hydro/learn/quickstart",
+            activeBasePath: "docs/hydro/learn",
+            position: "left",
+            label: "Learn",
+          },
+          {
             type: "dropdown",
-            label: "Docs",
+            label: "Reference",
             items: [
               {
-                type: "docSidebar",
-                sidebarId: "hydroSidebar",
+                to: "docs/hydro/reference",
+                activeBasePath: "docs/hydro/reference",
                 label: "Hydro",
               },
               {
@@ -145,7 +180,7 @@ const config = {
             href: "https://github.com/hydro-project/hydro",
             position: "right",
             className: "header-github-link",
-            "aria-label": "GitHub Repository"
+            "aria-label": "GitHub Repository",
           },
           {
             href: "https://discord.gg/QXKwMNA6RS",
@@ -153,22 +188,17 @@ const config = {
             className: "header-discord-link",
             "aria-label": "Discord server",
           },
-          {
-            href: "/askai",
-            label: "AI Assistant",
-            position: "right",
-          },
         ],
       },
       footer: {
         style: "dark",
         links: [
           {
-            title: "Docs",
+            title: "Reference",
             items: [
               {
                 label: "Hydro",
-                to: "/docs/hydro/",
+                to: "/docs/hydro/reference/",
               },
               {
                 label: "DFIR",

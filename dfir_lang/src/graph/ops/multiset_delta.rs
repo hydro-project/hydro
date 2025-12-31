@@ -116,12 +116,12 @@ pub const MULTISET_DELTA: OperatorConstraints = OperatorConstraints {
         let write_iterator = if is_pull {
             quote_spanned! {op_span=>
                 #work_fn(|| #tick_swap);
-                let #ident = #input.filter(#filter_fn);
+                let #ident = #root::tokio_stream::StreamExt::filter(#input, #filter_fn);
             }
         } else {
             quote_spanned! {op_span=>
                 #work_fn(|| #tick_swap);
-                let #ident = #root::pusherator::filter::Filter::new(#filter_fn, #output);
+                let #ident = #root::sinktools::filter(#filter_fn, #output);
             }
         };
 

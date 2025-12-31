@@ -4,24 +4,34 @@
 )]
 
 use std::collections::HashMap;
+use std::marker::PhantomData;
+use std::pin::Pin;
 
+use bytes::{Bytes, BytesMut};
+use futures::sink::Buffer;
+use futures::{Sink, SinkExt, StreamExt};
 use hydro_deploy_integration::{
     ConnectedDemux, ConnectedDirect, ConnectedSink, ConnectedSource, ConnectedTagged, DeployPorts,
 };
 use serde::{Deserialize, Serialize};
 use stageleft::{QuotedWithContext, RuntimeData, q};
 
+use crate::location::cluster::ClusterIds;
+use crate::location::dynamic::LocationId;
+use crate::location::member_id::TaglessMemberId;
+use crate::location::{MemberId, MembershipEvent};
+
 #[derive(Default, Serialize, Deserialize)]
 pub(super) struct HydroMeta {
-    pub clusters: HashMap<usize, Vec<u32>>,
-    pub cluster_id: Option<u32>,
+    pub clusters: HashMap<usize, Vec<TaglessMemberId>>,
+    pub cluster_id: Option<TaglessMemberId>,
     pub subgraph_id: usize,
 }
 
-pub fn cluster_members(
+pub(super) fn cluster_members(
     cli: RuntimeData<&DeployPorts<HydroMeta>>,
     of_cluster: usize,
-) -> impl QuotedWithContext<'_, &[u32], ()> + Copy {
+) -> impl QuotedWithContext<'_, &[TaglessMemberId], ()> + Clone {
     q!(cli
         .meta
         .clusters
@@ -30,16 +40,40 @@ pub fn cluster_members(
         .unwrap_or(&[])) // we default to empty slice because this is the scenario where the cluster is unused in the graph
 }
 
-pub fn cluster_self_id(
+pub(super) fn cluster_self_id(
     cli: RuntimeData<&DeployPorts<HydroMeta>>,
-) -> impl QuotedWithContext<'_, u32, ()> + Copy {
+) -> impl QuotedWithContext<'_, TaglessMemberId, ()> + Clone {
     q!(cli
         .meta
         .cluster_id
+        .clone()
         .expect("Tried to read Cluster Self ID on a non-cluster node"))
 }
 
-pub fn deploy_o2o(
+pub fn cluster_membership_stream<'a>(
+    location_id: &LocationId,
+) -> impl QuotedWithContext<
+    'a,
+    Box<dyn futures::Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>,
+    (),
+> {
+    let cluster_ids = ClusterIds {
+        id: location_id.raw_id(),
+        _phantom: Default::default(),
+    };
+
+    q!(Box::new(futures::stream::iter(
+        cluster_ids
+            .iter()
+            .cloned()
+            .map(|member_id| (member_id, MembershipEvent::Joined))
+    ))
+        as Box<
+            dyn futures::Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin,
+        >)
+}
+
+pub(super) fn deploy_o2o(
     env: RuntimeData<&DeployPorts<HydroMeta>>,
     p1_port: &str,
     p2_port: &str,
@@ -52,18 +86,19 @@ pub fn deploy_o2o(
     )
 }
 
-pub fn deploy_o2m(
+pub(super) fn deploy_o2m(
     env: RuntimeData<&DeployPorts<HydroMeta>>,
     p1_port: &str,
     c2_port: &str,
 ) -> (syn::Expr, syn::Expr) {
     (
         {
-            q!({
+            q!(sinktools::map(
+                |(k, v): (TaglessMemberId, Bytes)| { (k.get_raw_id(), v) },
                 env.port(p1_port)
                     .connect::<ConnectedDemux<ConnectedDirect>>()
                     .into_sink()
-            })
+            ))
             .splice_untyped_ctx(&())
         },
         {
@@ -72,7 +107,7 @@ pub fn deploy_o2m(
     )
 }
 
-pub fn deploy_m2o(
+pub(super) fn deploy_m2o(
     env: RuntimeData<&DeployPorts<HydroMeta>>,
     c1_port: &str,
     p2_port: &str,
@@ -84,24 +119,26 @@ pub fn deploy_m2o(
                 env.port(p2_port)
                     .connect::<ConnectedTagged<ConnectedDirect>>()
                     .into_source()
+                    .map(|v| v.map(|(k, v)| (TaglessMemberId::from_raw_id(k), v)))
             })
             .splice_untyped_ctx(&())
         },
     )
 }
 
-pub fn deploy_m2m(
+pub(super) fn deploy_m2m(
     env: RuntimeData<&DeployPorts<HydroMeta>>,
     c1_port: &str,
     c2_port: &str,
 ) -> (syn::Expr, syn::Expr) {
     (
         {
-            q!({
+            q!(sinktools::map(
+                |(k, v): (TaglessMemberId, Bytes)| { (k.get_raw_id(), v) },
                 env.port(c1_port)
                     .connect::<ConnectedDemux<ConnectedDirect>>()
                     .into_sink()
-            })
+            ))
             .splice_untyped_ctx(&())
         },
         {
@@ -109,13 +146,14 @@ pub fn deploy_m2m(
                 env.port(c2_port)
                     .connect::<ConnectedTagged<ConnectedDirect>>()
                     .into_source()
+                    .map(|v| v.map(|(k, v)| (TaglessMemberId::from_raw_id(k), v)))
             })
             .splice_untyped_ctx(&())
         },
     )
 }
 
-pub fn deploy_e2o(
+pub(super) fn deploy_e2o(
     env: RuntimeData<&DeployPorts<HydroMeta>>,
     _e1_port: &str,
     p2_port: &str,
@@ -123,7 +161,7 @@ pub fn deploy_e2o(
     q!(env.port(p2_port).connect::<ConnectedDirect>().into_source()).splice_untyped_ctx(&())
 }
 
-pub fn deploy_o2e(
+pub(super) fn deploy_o2e(
     env: RuntimeData<&DeployPorts<HydroMeta>>,
     p1_port: &str,
     _e2_port: &str,

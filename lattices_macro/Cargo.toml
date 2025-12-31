@@ -1,7 +1,7 @@
 [package]
 name = "lattices_macro"
 publish = true
-version = "0.5.10"
+version = "0.5.11"
 documentation = "https://docs.rs/lattices/"
 description = "Procedural macros for the `lattices` crate."
 edition = { workspace = true }
@@ -20,9 +20,14 @@ proc-macro-crate = "3.3"
 quote = "1.0.35"
 syn = { version = "2.0.46", features = [ "full", "parsing", "visit-mut" ] }
 
+# coax cargo-smart-release into publishing this crate.
+# https://github.com/hydro-project/hydro/blob/main/RELEASING.md#addendum-adding-new-crates
+# https://github.com/GitoxideLabs/cargo-smart-release/issues/36
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1", optional = true }
+
 [dev-dependencies]
 prettyplease = { version = "0.2.0", features = [ "verbatim" ] }
-hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1" }
 
 [build-dependencies]
-hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1" }

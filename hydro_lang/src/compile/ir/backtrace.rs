@@ -17,8 +17,24 @@ pub struct Backtrace;
 #[derive(Clone)]
 pub struct Backtrace {
     skip_count: usize,
+    col_offset: usize, // whether this is from `sliced!` which requires an offset
     inner: RefCell<backtrace::Backtrace>,
     resolved: RefCell<Option<Vec<BacktraceElement>>>,
+}
+
+#[cfg(stageleft_runtime)]
+#[cfg(feature = "build")]
+#[doc(hidden)]
+pub fn __macro_get_backtrace(col_offset: usize) -> Backtrace {
+    let mut out = Backtrace::get_backtrace(1);
+    out.col_offset = col_offset;
+    out
+}
+
+#[cfg(not(feature = "build"))]
+#[doc(hidden)]
+pub fn __macro_get_backtrace(_col_offset: usize) -> Backtrace {
+    panic!();
 }
 
 impl Backtrace {
@@ -28,6 +44,7 @@ impl Backtrace {
         let backtrace = backtrace::Backtrace::new_unresolved();
         Backtrace {
             skip_count,
+            col_offset: 0,
             inner: RefCell::new(backtrace),
             resolved: RefCell::new(None),
         }
@@ -38,23 +55,23 @@ impl Backtrace {
         panic!();
     }
 
-    #[cfg(feature = "build")]
     /// Gets the elements of the backtrace including inlined frames.
     ///
     /// Excludes all backtrace elements up to the original `get_backtrace` call as
     /// well as additional skipped frames from that call. Also drops the suffix
     /// of frames from `__rust_begin_short_backtrace` onwards.
+    #[cfg(feature = "build")]
     pub fn elements(&self) -> Vec<BacktraceElement> {
         self.resolved
             .borrow_mut()
             .get_or_insert_with(|| {
                 let mut inner_borrow = self.inner.borrow_mut();
                 inner_borrow.resolve();
-                inner_borrow
+                let mut collected: Vec<_> = inner_borrow
                     .frames()
                     .iter()
                     .skip_while(|f| {
-                        !(f.symbol_address() as usize == Backtrace::get_backtrace as usize
+                        !(std::ptr::eq(f.symbol_address(), Backtrace::get_backtrace as _)
                             || f.symbols()
                                 .first()
                                 .and_then(|s| s.name())
@@ -84,7 +101,17 @@ impl Backtrace {
                             addr: symbol.addr().map(|a| a as usize),
                         }
                     })
-                    .collect()
+                    .collect();
+
+                if self.col_offset > 0
+                    && let Some(first) = collected.first_mut()
+                {
+                    first.colno = first
+                        .colno
+                        .map(|c| c.saturating_sub(self.col_offset as u32));
+                }
+
+                collected
             })
             .clone()
     }
@@ -120,12 +147,17 @@ impl Debug for BacktraceElement {
 
 #[cfg(test)]
 mod tests {
-    #[cfg(unix)]
+    #[cfg(feature = "build")]
     use super::*;
 
-    #[cfg(unix)]
+    #[cfg(feature = "build")]
     #[test]
     fn test_backtrace() {
+        if cfg!(not(target_os = "linux")) && std::env::var_os("GITHUB_ACTIONS").is_some() {
+            eprintln!("Backtrace tests fail on non-linux Github Actions runners, skipping.");
+            return;
+        }
+
         let backtrace = Backtrace::get_backtrace(0);
         let elements = backtrace.elements();
 

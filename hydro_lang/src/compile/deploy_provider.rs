@@ -8,11 +8,12 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use stageleft::QuotedWithContext;
 
-use crate::location::NetworkHint;
+use crate::location::dynamic::LocationId;
+use crate::location::member_id::TaglessMemberId;
+use crate::location::{MembershipEvent, NetworkHint};
 
 pub trait Deploy<'a> {
     type InstantiateEnv;
-    type CompileEnv;
 
     type Process: Node<Meta = Self::Meta, InstantiateEnv = Self::InstantiateEnv> + Clone;
     type Cluster: Node<Meta = Self::Meta, InstantiateEnv = Self::InstantiateEnv> + Clone;
@@ -46,7 +47,6 @@ pub trait Deploy<'a> {
     fn allocate_external_port(external: &Self::External) -> Self::Port;
 
     fn o2o_sink_source(
-        compile_env: &Self::CompileEnv,
         p1: &Self::Process,
         p1_port: &Self::Port,
         p2: &Self::Process,
@@ -60,7 +60,6 @@ pub trait Deploy<'a> {
     ) -> Box<dyn FnOnce()>;
 
     fn o2m_sink_source(
-        compile_env: &Self::CompileEnv,
         p1: &Self::Process,
         p1_port: &Self::Port,
         c2: &Self::Cluster,
@@ -74,7 +73,6 @@ pub trait Deploy<'a> {
     ) -> Box<dyn FnOnce()>;
 
     fn m2o_sink_source(
-        compile_env: &Self::CompileEnv,
         c1: &Self::Cluster,
         c1_port: &Self::Port,
         p2: &Self::Process,
@@ -88,7 +86,6 @@ pub trait Deploy<'a> {
     ) -> Box<dyn FnOnce()>;
 
     fn m2m_sink_source(
-        compile_env: &Self::CompileEnv,
         c1: &Self::Cluster,
         c1_port: &Self::Port,
         c2: &Self::Cluster,
@@ -102,7 +99,6 @@ pub trait Deploy<'a> {
     ) -> Box<dyn FnOnce()>;
 
     fn e2o_many_source(
-        compile_env: &Self::CompileEnv,
         extra_stmts: &mut Vec<syn::Stmt>,
         p2: &Self::Process,
         p2_port: &Self::Port,
@@ -112,11 +108,13 @@ pub trait Deploy<'a> {
     fn e2o_many_sink(shared_handle: String) -> syn::Expr;
 
     fn e2o_source(
-        compile_env: &Self::CompileEnv,
+        extra_stmts: &mut Vec<syn::Stmt>,
         p1: &Self::External,
         p1_port: &Self::Port,
         p2: &Self::Process,
         p2_port: &Self::Port,
+        codec_type: &syn::Type,
+        shared_handle: String,
     ) -> syn::Expr;
     fn e2o_connect(
         p1: &Self::External,
@@ -128,24 +126,22 @@ pub trait Deploy<'a> {
     ) -> Box<dyn FnOnce()>;
 
     fn o2e_sink(
-        compile_env: &Self::CompileEnv,
         p1: &Self::Process,
         p1_port: &Self::Port,
         p2: &Self::External,
         p2_port: &Self::Port,
+        shared_handle: String,
     ) -> syn::Expr;
-    fn o2e_connect(
-        p1: &Self::Process,
-        p1_port: &Self::Port,
-        p2: &Self::External,
-        p2_port: &Self::Port,
-    ) -> Box<dyn FnOnce()>;
 
     fn cluster_ids(
-        env: &Self::CompileEnv,
         of_cluster: usize,
-    ) -> impl QuotedWithContext<'a, &'a [u32], ()> + Copy + 'a;
-    fn cluster_self_id(env: &Self::CompileEnv) -> impl QuotedWithContext<'a, u32, ()> + Copy + 'a;
+    ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a;
+
+    fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a;
+
+    fn cluster_membership_stream(
+        location_id: &LocationId,
+    ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>;
 }
 
 pub trait ProcessSpec<'a, D>
@@ -195,7 +191,7 @@ pub trait Node {
 
     fn next_port(&self) -> Self::Port;
 
-    fn update_meta(&mut self, meta: &Self::Meta);
+    fn update_meta(&self, meta: &Self::Meta);
 
     fn instantiate(
         &self,
@@ -206,7 +202,7 @@ pub trait Node {
     );
 }
 
-type DynSourceSink<Out, In, InErr> = (
+pub type DynSourceSink<Out, In, InErr> = (
     Pin<Box<dyn Stream<Item = Out>>>,
     Pin<Box<dyn Sink<In, Error = InErr>>>,
 );

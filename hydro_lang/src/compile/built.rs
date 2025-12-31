@@ -8,10 +8,13 @@ use super::compiled::CompiledFlow;
 use super::deploy::{DeployFlow, DeployResult};
 use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
 use super::ir::{HydroRoot, emit};
-#[cfg(feature = "viz")]
-use crate::graph::api::GraphApi;
 use crate::location::{Cluster, External, Process};
+#[cfg(feature = "sim")]
+#[cfg(stageleft_runtime)]
+use crate::sim::{flow::SimFlow, graph::SimNode};
 use crate::staging_util::Invariant;
+#[cfg(feature = "viz")]
+use crate::viz::api::GraphApi;
 
 pub struct BuiltFlow<'a> {
     pub(super) ir: Vec<HydroRoot>,
@@ -22,8 +25,10 @@ pub struct BuiltFlow<'a> {
     pub(super) _phantom: Invariant<'a>,
 }
 
-pub(crate) fn build_inner(ir: &mut Vec<HydroRoot>) -> BTreeMap<usize, DfirGraph> {
-    emit(ir)
+pub(crate) fn build_inner<'a, D: Deploy<'a>>(
+    ir: &mut Vec<HydroRoot>,
+) -> BTreeMap<usize, DfirGraph> {
+    emit::<D>(ir)
         .into_iter()
         .map(|(k, v)| {
             let (mut flat_graph, _, _) = v.build();
@@ -87,14 +92,14 @@ impl<'a> BuiltFlow<'a> {
     }
 
     #[cfg(feature = "viz")]
-    pub fn reactflow_string(
+    pub fn hydroscope_string(
         &self,
         show_metadata: bool,
         show_location_groups: bool,
         use_short_labels: bool,
     ) -> String {
         self.graph_api()
-            .reactflow_to_string(show_metadata, show_location_groups, use_short_labels)
+            .hydroscope_to_string(show_metadata, show_location_groups, use_short_labels)
     }
 
     // File generation methods
@@ -131,14 +136,14 @@ impl<'a> BuiltFlow<'a> {
     }
 
     #[cfg(feature = "viz")]
-    pub fn reactflow_to_file(
+    pub fn hydroscope_to_file(
         &self,
         filename: &str,
         show_metadata: bool,
         show_location_groups: bool,
         use_short_labels: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().reactflow_to_file(
+        self.graph_api().hydroscope_to_file(
             filename,
             show_metadata,
             show_location_groups,
@@ -180,14 +185,14 @@ impl<'a> BuiltFlow<'a> {
     }
 
     #[cfg(feature = "viz")]
-    pub fn reactflow_to_browser(
+    pub fn hydroscope_to_browser(
         &self,
         show_metadata: bool,
         show_location_groups: bool,
         use_short_labels: bool,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().reactflow_to_browser(
+        self.graph_api().hydroscope_to_browser(
             show_metadata,
             show_location_groups,
             use_short_labels,
@@ -208,6 +213,74 @@ impl<'a> BuiltFlow<'a> {
 
     pub fn with_default_optimize<D: Deploy<'a>>(self) -> DeployFlow<'a, D> {
         self.into_deploy()
+    }
+
+    #[cfg(feature = "sim")]
+    /// Creates a simulation for this builder, which can be used to run deterministic simulations
+    /// of the Hydro program.
+    pub fn sim(mut self) -> SimFlow<'a> {
+        use std::cell::{Cell, RefCell};
+        use std::rc::Rc;
+
+        use crate::sim::graph::SimExternal;
+
+        let external_ports = Rc::new(RefCell::new((vec![], 0)));
+
+        let global_port_counter = Rc::new(Cell::new(0));
+        let processes = self
+            .process_id_name
+            .iter()
+            .map(|id| {
+                (
+                    id.0,
+                    SimNode {
+                        port_counter: global_port_counter.clone(),
+                    },
+                )
+            })
+            .collect();
+
+        let clusters = self
+            .cluster_id_name
+            .iter()
+            .map(|id| {
+                (
+                    id.0,
+                    SimNode {
+                        port_counter: global_port_counter.clone(),
+                    },
+                )
+            })
+            .collect();
+
+        let all_external_registered = Rc::new(RefCell::new(HashMap::new()));
+        let externals = self
+            .external_id_name
+            .iter()
+            .map(|id| {
+                (
+                    id.0,
+                    SimExternal {
+                        external_ports: external_ports.clone(),
+                        registered: all_external_registered.clone(),
+                    },
+                )
+            })
+            .collect();
+
+        SimFlow {
+            ir: std::mem::take(&mut self.ir),
+            external_ports,
+            processes,
+            clusters,
+            cluster_max_sizes: HashMap::new(),
+            externals,
+            external_registered: all_external_registered.clone(),
+            _process_id_name: std::mem::take(&mut self.process_id_name),
+            _external_id_name: std::mem::take(&mut self.external_id_name),
+            _cluster_id_name: std::mem::take(&mut self.cluster_id_name),
+            _phantom: PhantomData,
+        }
     }
 
     pub fn into_deploy<D: Deploy<'a>>(mut self) -> DeployFlow<'a, D> {
@@ -295,18 +368,15 @@ impl<'a> BuiltFlow<'a> {
         self.into_deploy().with_remaining_clusters(spec)
     }
 
-    pub fn compile<D: Deploy<'a>>(self, env: &D::CompileEnv) -> CompiledFlow<'a, D::GraphId> {
-        self.into_deploy::<D>().compile(env)
+    pub fn compile<D: Deploy<'a>>(self) -> CompiledFlow<'a, D::GraphId> {
+        self.into_deploy::<D>().compile()
     }
 
     pub fn compile_no_network<D: Deploy<'a>>(self) -> CompiledFlow<'a, D::GraphId> {
         self.into_deploy::<D>().compile_no_network()
     }
 
-    pub fn deploy<D: Deploy<'a, CompileEnv = ()>>(
-        self,
-        env: &mut D::InstantiateEnv,
-    ) -> DeployResult<'a, D> {
+    pub fn deploy<D: Deploy<'a>>(self, env: &mut D::InstantiateEnv) -> DeployResult<'a, D> {
         self.into_deploy::<D>().deploy(env)
     }
 
@@ -329,7 +399,7 @@ impl<'a> BuiltFlow<'a> {
     #[cfg(feature = "viz")]
     pub fn generate_graph_with_config(
         &self,
-        config: &crate::graph::config::GraphConfig,
+        config: &crate::viz::config::GraphConfig,
         message_handler: Option<&dyn Fn(&str)>,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.graph_api()
@@ -339,7 +409,7 @@ impl<'a> BuiltFlow<'a> {
     #[cfg(feature = "viz")]
     pub fn generate_all_files_with_config(
         &self,
-        config: &crate::graph::config::GraphConfig,
+        config: &crate::viz::config::GraphConfig,
         prefix: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         self.graph_api()

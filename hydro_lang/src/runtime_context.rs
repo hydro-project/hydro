@@ -38,7 +38,7 @@ mod tests {
     use stageleft::q;
 
     use super::RUNTIME_CONTEXT;
-    use crate::builder::FlowBuilder;
+    use crate::compile::builder::FlowBuilder;
     use crate::location::Location;
 
     struct P1 {}
@@ -63,7 +63,7 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut external_out = nodes.connect_source_bincode(out_port).await;
+        let mut external_out = nodes.connect(out_port).await;
 
         deployment.start().await.unwrap();
 

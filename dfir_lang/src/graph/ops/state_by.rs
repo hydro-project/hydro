@@ -122,26 +122,29 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
             let input = &inputs[0];
             quote_spanned! {op_span=>
                 let #ident = {
-                    fn check_input<'a, Item, MappingFn, MappedItem, Iter, Lat>(
-                        iter: Iter,
+                    fn check_input<'a, Item, MappingFn, MappedItem, St, Lat>(
+                        stream: St,
                         mapfn: MappingFn,
                         state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<Lat>>,
                         context: &'a #root::scheduled::context::Context,
-                    ) -> impl 'a + ::std::iter::Iterator<Item = Item>
+                    ) -> impl 'a + #root::futures::stream::Stream<Item = Item>
                     where
                         Item: ::std::clone::Clone,
                         MappingFn: 'a + Fn(Item) -> MappedItem,
-                        Iter: 'a + ::std::iter::Iterator<Item = Item>,
+                        St: 'a + #root::futures::stream::Stream<Item = Item>,
                         Lat: 'static + #root::lattices::Merge<MappedItem>,
                     {
-                        iter.filter(move |item| {
+                        #root::tokio_stream::StreamExt::filter(
+                            stream,
+                            move |item| {
                                 let state = unsafe {
                                     // SAFETY: handle from `#df_ident.add_state(..)`.
                                     context.state_ref_unchecked(state_handle)
                                 };
                                 let mut state = state.borrow_mut();
                                 #root::lattices::Merge::merge(&mut *state, (mapfn)(::std::clone::Clone::clone(item)))
-                            })
+                            },
+                        )
                     }
                     check_input::<_, _, _, _, #lattice_type>(#input, #by_fn, #state_ident, #context)
                 };
@@ -154,14 +157,14 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         mapfn: MappingFn,
                         state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<Lat>>,
                         context: &'a #root::scheduled::context::Context,
-                    ) -> impl 'a + #root::pusherator::Pusherator<Item = Item>
+                    ) -> impl 'a + #root::futures::sink::Sink<Item, Error = Push::Error>
                     where
                         Item: 'a + ::std::clone::Clone,
                         MappingFn: 'a + Fn(Item) -> MappedItem,
-                        Push: 'a + #root::pusherator::Pusherator<Item = Item>,
+                        Push: 'a + #root::futures::sink::Sink<Item>,
                         Lat: 'static + #root::lattices::Merge<MappedItem>,
                     {
-                        #root::pusherator::filter::Filter::new(move |item| {
+                        #root::sinktools::filter(move |item| {
                             let state = unsafe {
                                 // SAFETY: handle from `#df_ident.add_state(..)`.
                                 context.state_ref_unchecked(state_handle)
@@ -180,14 +183,14 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<Lat>>,
                         mapfn: MappingFn,
                         context: &'a #root::scheduled::context::Context,
-                    ) -> impl 'a + #root::pusherator::Pusherator<Item = Item>
+                    ) -> impl 'a + #root::futures::sink::Sink<Item, Error = #root::Never>
                     where
                         Item: 'a,
                         MappedItem: 'a,
                         MappingFn: 'a + Fn(Item) -> MappedItem,
                         Lat: 'static + #root::lattices::Merge<MappedItem>,
                     {
-                        #root::pusherator::for_each::ForEach::new(move |item| {
+                        #root::sinktools::for_each::ForEach::new(move |item| {
                             let state = unsafe {
                                 // SAFETY: handle from `#df_ident.add_state(..)`.
                                 context.state_ref_unchecked(state_handle)

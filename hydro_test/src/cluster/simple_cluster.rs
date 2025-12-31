@@ -11,15 +11,12 @@ pub fn partition<'a, F: Fn((MemberId<()>, String)) -> (MemberId<()>, String) + '
 ) -> (Cluster<'a, ()>, Cluster<'a, ()>) {
     cluster1
         .source_iter(q!(vec!(CLUSTER_SELF_ID)))
-        .map(q!(move |id| (
-            MemberId::<()>::from_raw(id.raw_id),
-            format!("Hello from {}", id.raw_id)
-        )))
+        .map(q!(move |id| (id.clone(), format!("Hello from {}", id))))
         .send_partitioned(&cluster2, dist_policy)
         .assume_ordering(nondet!(/** testing, order does not matter */))
         .for_each(q!(move |message| println!(
             "My self id is {}, my message is {:?}",
-            CLUSTER_SELF_ID.raw_id, message
+            CLUSTER_SELF_ID, message
         )));
     (cluster1, cluster2)
 }
@@ -28,7 +25,7 @@ pub fn decouple_cluster<'a>(flow: &FlowBuilder<'a>) -> (Cluster<'a, ()>, Cluster
     let cluster1 = flow.cluster();
     let cluster2 = flow.cluster();
     cluster1
-        .source_iter(q!(vec!(CLUSTER_SELF_ID)))
+        .source_iter(q!(vec!(CLUSTER_SELF_ID.clone())))
         // .for_each(q!(|message| println!("hey, {}", message)))
         .inspect(q!(|message| println!("Cluster1 node sending message: {}", message)))
         .decouple_cluster(&cluster2)
@@ -63,7 +60,7 @@ pub fn simple_cluster<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, ()>, Cluster<'
         }));
 
     ids.cross_product(numbers)
-        .map(q!(|(id, n)| (id, (id, n))))
+        .map(q!(|(id, n)| (id.clone(), (id, n))))
         .demux_bincode(&cluster)
         .inspect(q!(move |n| println!(
             "cluster received: {:?} (self cluster id: {})",
@@ -108,15 +105,13 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut node_stdout = nodes.get_process(&node).stdout().await;
-        let cluster_stdouts = futures::future::join_all(
-            nodes
-                .get_cluster(&cluster)
-                .members()
-                .iter()
-                .map(|node| node.stdout()),
-        )
-        .await;
+        let mut node_stdout = nodes.get_process(&node).stdout();
+        let cluster_stdouts = nodes
+            .get_cluster(&cluster)
+            .members()
+            .iter()
+            .map(|node| node.stdout())
+            .collect::<Vec<_>>();
 
         deployment.start().await.unwrap();
 
@@ -165,7 +160,7 @@ mod tests {
             .deploy(&mut deployment);
 
         deployment.deploy().await.unwrap();
-        let mut process2_stdout = nodes.get_process(&process2).stdout().await;
+        let mut process2_stdout = nodes.get_process(&process2).stdout();
         deployment.start().await.unwrap();
         for i in 0..3 {
             let expected_message = format!("I received message is {}", i);
@@ -188,14 +183,12 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let cluster2_stdouts = futures::future::join_all(
-            nodes
-                .get_cluster(&cluster2)
-                .members()
-                .iter()
-                .map(|node| node.stdout()),
-        )
-        .await;
+        let cluster2_stdouts = nodes
+            .get_cluster(&cluster2)
+            .members()
+            .iter()
+            .map(|node| node.stdout())
+            .collect::<Vec<_>>();
 
         deployment.start().await.unwrap();
 
@@ -221,7 +214,7 @@ mod tests {
             builder.cluster::<()>(),
             builder.cluster::<()>(),
             q!(move |(id, msg)| (
-                MemberId::<()>::from_raw(id.raw_id * num_partitions as u32),
+                MemberId::<()>::from_raw_id(id.get_raw_id() * num_partitions as u32),
                 msg
             )),
         );
@@ -237,21 +230,19 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let cluster2_stdouts = futures::future::join_all(
-            nodes
-                .get_cluster(&cluster2)
-                .members()
-                .iter()
-                .map(|node| node.stdout()),
-        )
-        .await;
+        let cluster2_stdouts = nodes
+            .get_cluster(&cluster2)
+            .members()
+            .iter()
+            .map(|node| node.stdout())
+            .collect::<Vec<_>>();
 
         deployment.start().await.unwrap();
 
         for (cluster2_id, mut stdout) in cluster2_stdouts.into_iter().enumerate() {
             if cluster2_id % num_partitions == 0 {
                 let expected_message = format!(
-                    r#"My self id is {}, my message is "Hello from {}""#,
+                    r#"My self id is MemberId::<()>({}), my message is "Hello from MemberId::<()>({})""#,
                     cluster2_id,
                     cluster2_id / num_partitions
                 );

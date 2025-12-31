@@ -21,6 +21,7 @@ pub mod semiring_application;
 pub mod set_union;
 pub mod set_union_with_tombstones;
 pub mod test;
+pub mod tombstone;
 pub mod union_find;
 mod unit;
 mod vec_union;

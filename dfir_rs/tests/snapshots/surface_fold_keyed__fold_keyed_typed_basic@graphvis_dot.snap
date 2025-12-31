@@ -1,0 +1,33 @@
+---
+source: dfir_rs/tests/surface_fold_keyed.rs
+expression: df.meta_graph().unwrap().to_dot(cfg)
+---
+digraph {
+    node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
+    edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
+    n1v1 [label="(n1v1) source_iter([\l    SubordResponse {\l        xid: \"123\",\l        mtype: 33,\l    },\l    SubordResponse {\l        xid: \"123\",\l        mtype: 52,\l    },\l    SubordResponse {\l        xid: \"123\",\l        mtype: 72,\l    },\l    SubordResponse {\l        xid: \"123\",\l        mtype: 83,\l    },\l    SubordResponse {\l        xid: \"123\",\l        mtype: 78,\l    },\l])\l", shape=invhouse, fillcolor="#88aaff"]
+    n2v1 [label="(n2v1) map(|m: SubordResponse| (m.xid, m.mtype))", shape=invhouse, fillcolor="#88aaff"]
+    n3v1 [label="(n3v1) fold_keyed::<'static, &'static str, u32>(|| 0, |old: &mut u32, val: u32| *old += val)", shape=invhouse, fillcolor="#88aaff"]
+    n4v1 [label="(n4v1) for_each(|kv| result_send.send(kv).unwrap())", shape=house, fillcolor="#ffff88"]
+    n5v1 [label="(n5v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
+    n3v1 -> n4v1
+    n2v1 -> n5v1
+    n1v1 -> n2v1
+    n5v1 -> n3v1 [color=red]
+    subgraph sg_1v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_1v1\nstratum 0"
+        n1v1
+        n2v1
+    }
+    subgraph sg_2v1 {
+        cluster=true
+        fillcolor="#dddddd"
+        style=filled
+        label = "sg_2v1\nstratum 1"
+        n3v1
+        n4v1
+    }
+}

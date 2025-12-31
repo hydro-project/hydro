@@ -1,23 +1,27 @@
 ---
 sidebar_position: 2
 ---
-import CodeBlock from '@theme/CodeBlock';
-import example1Code from '!!raw-loader!../../../../dfir_rs/examples/example_surface_flows_1_basic.rs';
-import example2Code from '!!raw-loader!../../../../dfir_rs/examples/example_surface_flows_2_varname.rs';
-import example3Code from '!!raw-loader!../../../../dfir_rs/examples/example_surface_flows_3_ports.rs';
-import example3Out from '!!raw-loader!../../../../dfir_rs/tests/snapshots/surface_examples__example_surface_flows_3_ports.snap';
-import example4Code from '!!raw-loader!../../../../dfir_rs/examples/example_surface_flows_4_context.rs';
-import example4Out from '!!raw-loader!../../../../dfir_rs/tests/snapshots/surface_examples__example_surface_flows_4_context.snap';
-import { getLines, extractMermaid, extractOutput } from '../../../src/util';
+
+import CodeBlock from "@theme/CodeBlock";
+import example1Code from "!!raw-loader!../../../../dfir_rs/examples/example_surface_flows_1_basic.rs";
+import example2Code from "!!raw-loader!../../../../dfir_rs/examples/example_surface_flows_2_varname.rs";
+import example3Code from "!!raw-loader!../../../../dfir_rs/examples/example_surface_flows_3_ports.rs";
+import example3Out from "!!raw-loader!../../../../dfir_rs/tests/snapshots/surface_examples__example_surface_flows_3_ports.snap";
+import example4Code from "!!raw-loader!../../../../dfir_rs/examples/example_surface_flows_4_context.rs";
+import example4Out from "!!raw-loader!../../../../dfir_rs/tests/snapshots/surface_examples__example_surface_flows_4_context.snap";
+import { getLines, extractMermaid, extractOutput } from "../../../src/util";
 
 # Flow Syntax
+
 Flows consist of named _operators_ that are connected via flow _edges_ denoted by `->`. The example below
 uses the [`source_iter`](./surface_ops_gen.md#source_iter) operator to generate two strings from a Rust `vec`, the
 [`map`](./surface_ops_gen.md#map) operator to apply some Rust code to uppercase each string, and the [`for_each`](./surface_ops_gen.md#for_each)
 operator to print each string to stdout.
+
 <CodeBlock language="rust">{getLines(example1Code, 5, 6)}</CodeBlock>
 
 Flows can be assigned to variable names for convenience. E.g, the above can be rewritten as follows:
+
 <CodeBlock language="rust">{getLines(example2Code, 5, 6)}</CodeBlock>
 
 Note that the order of the statements (lines) doesn't matter. In this example, `upper_print` is
@@ -25,35 +29,41 @@ referenced before it is assigned, and that is completely OK and better matches t
 data, making the program more understandable.
 
 ## Operators with Multiple Ports
+
 Some operators have more than one input _port_ that can be referenced by `->`. For example [`union`](./surface_ops_gen.md#union)
-unions the contents of many flows, so it can have an abitrary number of input ports. Some operators have multiple outputs; [`tee`](./surface_ops_gen.md#tee) and [`demux`](./surface_ops_gen.md#demux)
+unions the contents of many flows, so it can have an abitrary number of input ports. Some operators have multiple outputs; [`tee`](./surface_ops_gen.md#tee) and [`demux_enum`](./surface_ops_gen.md#demux_enum)
 have an arbitrary number of outputs.
 
 In the syntax, we optionally distinguish input ports via an _indexing prefix_ string
-in square brackets before the name (e.g. `[0]my_union` and `[1]my_union`). Most operators with a fixed number of input ports\ require specific indexing prefixes to 
+in square brackets before the name (e.g. `[0]my_union` and `[1]my_union`). Most operators with a fixed number of input ports\ require specific indexing prefixes to
 distinguish the inputs. For example, the inputs to [`join`](./surface_ops_gen.md#join) must be `[0]` and `[1]`; the inputs to [`difference`](./surface_ops_gen.md#difference) must be `[pos]` and `[neg]`.
-Operators with an arbitrary number of inputs ([`union`](./surface_ops_gen.md#union)) and outputs 
-([`demux`](./surface_ops_gen.md#demux), [`tee`](./surface_ops_gen.md#tee)) 
+Operators with an arbitrary number of inputs ([`union`](./surface_ops_gen.md#union)) and outputs
+([`demux_enum`](./surface_ops_gen.md#demux_enum), [`tee`](./surface_ops_gen.md#tee))
 allow you to choose arbitrary strings, which help you make your code and dataflow graphs more readable and understandable
 (e.g. `my_tee[print]` and `my_tee[continue]`).
 
 Here is an example that tees one flow into two, handles each separately, and then unions them to print out the contents in both lowercase and uppercase:
+
 <CodeBlock language="rust">{getLines(example3Code, 5, 8)}</CodeBlock>
 
-Here is a visualization of the flow that was generated. Note that the outbound labels to `my_tee` 
+Here is a visualization of the flow that was generated. Note that the outbound labels to `my_tee`
 were auto-generated, but the inbound labels to `my_union` were specified by the code above:
+
 <mermaid value={extractMermaid(example3Out)}></mermaid>
 
 DFIR compiled this flow into two subgraphs called _compiled components_, connected by _handoffs_. You can ignore
 these details unless you are interested in low-level performance tuning; they are explained in the discussion
 of [in-out trees](../architecture/in-out_trees.md).
+
 ## The `context` object
 
 Closures inside surface syntax operators have access to a special `context` object which provides
 access to scheduling, timing, and state APIs. The object is accessible as a shared reference
 (`&Context`) via the special name `context`.
 [Here is the full API documentation for `Context`](https://hydro.run/rustdoc/dfir_rs/scheduled/context/struct.Context.html).
+
 <CodeBlock language="rust">{getLines(example4Code, 5, 6)}</CodeBlock>
 
 Output:
+
 <CodeBlock language="console">{extractOutput(example4Out, true)}</CodeBlock>

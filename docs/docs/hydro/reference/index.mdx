@@ -1,0 +1,36 @@
+---
+sidebar_position: 0
+---
+
+# Introduction
+Hydro is a high-level distributed programming framework for Rust. Hydro can help you quickly write scalable distributed services that are correct by construction. Much like Rust helps with memory safety, Hydro helps with [**distributed safety**](./correctness.md). Hydro also makes it easy to get started by running your distributed programs in either testing or deployment modes.
+
+Hydro is a distributed dataflow language, powered by the high-performance single-threaded [DFIR runtime](../../dfir/index.mdx). Unlike traditional architectures such as actors or RPCs, Hydro offers _location-oriented programming_, where expressions and functions can describe computation that takes place across many machines. It also integrates with [Hydro Deploy](./deploy/index.mdx) to make it easy to deploy and run distributed Hydro programs either locally or in the cloud.
+
+Hydro uses a two-stage compilation approach. Hydro programs are standard Rust programs, which first run on the developer's laptop to generate a _deployment plan_. This plan is then compiled to DFIR to generate individual binaries for each machine in the distributed system (enabling zero-overhead abstractions), which are then deployed to the cloud using the generated plan along with specifications of cloud resources.
+
+Hydro has been used to write a variety of high-performance distributed systems, including implementations of classic distributed protocols such as two-phase commit and Paxos. Work is ongoing to develop a distributed systems standard library that will offer these protocols and more as reusable components.
+
+<iframe
+style={{
+    display: "block",
+    marginLeft: "auto",
+    marginRight: "auto",
+    marginBottom: "15px",
+    width: "100%",
+    maxWidth: "560px",
+    aspectRatio: "16 / 9"
+}}
+src="https://www.youtube.com/embed/LdZ94m7anTw?si=5duyR1MjSRRdPJId"
+title="YouTube video player"
+frameBorder="0"
+allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+referrerPolicy="strict-origin-when-cross-origin"
+allowFullScreen
+></iframe>
+
+:::caution
+
+The docs for Hydro are still a work in progress. If you have any questions or run into bugs, please file an issue on the [Hydro GitHub repository](https://github.com/hydro-project/hydro).
+
+:::

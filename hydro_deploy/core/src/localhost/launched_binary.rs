@@ -1,7 +1,7 @@
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
 use std::process::{ExitStatus, Stdio};
-use std::sync::Mutex;
+use std::sync::OnceLock;
 
 use anyhow::{Result, bail};
 use async_process::Command;
@@ -9,7 +9,6 @@ use async_trait::async_trait;
 use futures::io::BufReader as FuturesBufReader;
 use futures::{AsyncBufReadExt as _, AsyncWriteExt as _};
 use inferno::collapse::Collapse;
-use inferno::collapse::dtrace::Folder as DtraceFolder;
 use inferno::collapse::perf::Folder as PerfFolder;
 use tempfile::NamedTempFile;
 use tokio::io::{AsyncBufReadExt as _, BufReader as TokioBufReader};
@@ -17,6 +16,7 @@ use tokio::sync::{mpsc, oneshot};
 use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::SyncIoBridge;
 
+#[cfg(any(target_os = "macos", target_family = "windows"))]
 use super::samply::{FxProfile, samply_to_folded};
 use crate::progress::ProgressTracker;
 use crate::rust_crate::flamegraph::handle_fold_data;
@@ -29,10 +29,11 @@ pub(super) struct TracingDataLocal {
 }
 
 pub struct LaunchedLocalhostBinary {
-    child: Mutex<async_process::Child>,
+    /// Must use async mutex -- we will .await methods within the child (while holding lock).
+    child: tokio::sync::Mutex<async_process::Child>,
     tracing_config: Option<TracingOptions>,
-    tracing_data_local: Option<TracingDataLocal>,
-    tracing_results: Option<TracingResults>,
+    tracing_data_local: std::sync::Mutex<Option<TracingDataLocal>>,
+    tracing_results: OnceLock<TracingResults>,
     stdin_sender: mpsc::UnboundedSender<String>,
     stdout_broadcast: PriorityBroadcast,
     stderr_broadcast: PriorityBroadcast,
@@ -41,7 +42,7 @@ pub struct LaunchedLocalhostBinary {
 #[cfg(unix)]
 impl Drop for LaunchedLocalhostBinary {
     fn drop(&mut self) {
-        let mut child = self.child.lock().unwrap();
+        let child = self.child.get_mut();
 
         if let Ok(Some(_)) = child.try_status() {
             return;
@@ -87,10 +88,10 @@ impl LaunchedLocalhostBinary {
         );
 
         Self {
-            child: Mutex::new(child),
+            child: tokio::sync::Mutex::new(child),
             tracing_config,
-            tracing_data_local,
-            tracing_results: None,
+            tracing_data_local: std::sync::Mutex::new(tracing_data_local),
+            tracing_results: OnceLock::new(),
             stdin_sender,
             stdout_broadcast,
             stderr_broadcast,
@@ -125,37 +126,43 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
     }
 
     fn tracing_results(&self) -> Option<&TracingResults> {
-        self.tracing_results.as_ref()
+        self.tracing_results.get()
     }
 
     fn exit_code(&self) -> Option<i32> {
         self.child
-            .lock()
-            .unwrap()
-            .try_status()
+            .try_lock()
             .ok()
+            .and_then(|mut child| child.try_status().ok())
             .flatten()
             .map(exit_code)
     }
 
-    async fn wait(&mut self) -> Result<i32> {
-        Ok(exit_code(self.child.get_mut().unwrap().status().await?))
+    async fn wait(&self) -> Result<i32> {
+        Ok(exit_code(self.child.lock().await.status().await?))
     }
 
-    async fn stop(&mut self) -> Result<()> {
-        if let Err(err) = self.child.get_mut().unwrap().kill()
+    async fn stop(&self) -> Result<()> {
+        if let Err(err) = { self.child.lock().await.kill() }
             && !matches!(err.kind(), std::io::ErrorKind::InvalidInput)
         {
             Err(err)?;
         }
 
         // Run perf post-processing and download perf output.
-        if let Some(tracing_config) = self.tracing_config.as_ref()
-            && self.tracing_results.is_none()
-        {
-            let tracing_data = self.tracing_data_local.take().unwrap();
+        if let Some(tracing_config) = self.tracing_config.as_ref() {
+            assert!(
+                self.tracing_results.get().is_none(),
+                "`tracing_results` already set! Was `stop()` called twice? This is a bug."
+            );
+            let tracing_data =
+                {
+                    self.tracing_data_local.lock().unwrap().take().expect(
+                        "`tracing_data_local` empty, was `stop()` called twice? This is a bug.",
+                    )
+                };
 
-            if cfg!(target_os = "macos") || cfg!(target_family = "windows") {
+            if cfg!(any(target_os = "macos", target_family = "windows")) {
                 if let Some(samply_outfile) = tracing_config.samply_outfile.as_ref() {
                     std::fs::copy(&tracing_data.outfile, samply_outfile)?;
                 }
@@ -165,31 +172,23 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                 std::fs::copy(&tracing_data.outfile, perf_outfile)?;
             }
 
-            let fold_data = if cfg!(target_os = "macos") {
-                let deserializer = &mut serde_json::Deserializer::from_reader(std::fs::File::open(
-                    tracing_data.outfile.path(),
-                )?);
-                let loaded = serde_path_to_error::deserialize::<_, FxProfile>(deserializer)?;
+            let fold_data = if cfg!(any(target_os = "macos", target_family = "windows")) {
+                #[cfg(any(target_os = "macos", target_family = "windows"))]
+                {
+                    let deserializer = &mut serde_json::Deserializer::from_reader(
+                        std::fs::File::open(tracing_data.outfile.path())?,
+                    );
+                    let loaded = serde_path_to_error::deserialize::<_, FxProfile>(deserializer)?;
 
-                ProgressTracker::leaf("processing samply", samply_to_folded(loaded))
-                    .await
-                    .into()
-            } else if cfg!(target_family = "windows") {
-                let mut fold_er = DtraceFolder::from(
-                    tracing_config
-                        .fold_dtrace_options
-                        .clone()
-                        .unwrap_or_default(),
-                );
+                    ProgressTracker::leaf("processing samply", samply_to_folded(loaded))
+                        .await
+                        .into()
+                }
 
-                let fold_data =
-                    ProgressTracker::leaf("fold dtrace output".to_owned(), async move {
-                        let mut fold_data = Vec::new();
-                        fold_er.collapse_file(Some(tracing_data.outfile), &mut fold_data)?;
-                        Result::<_>::Ok(fold_data)
-                    })
-                    .await?;
-                fold_data
+                #[cfg(not(any(target_os = "macos", target_family = "windows")))]
+                {
+                    unreachable!()
+                }
             } else if cfg!(target_family = "unix") {
                 // Run perf script.
                 let mut perf_script = Command::new("perf")
@@ -236,16 +235,18 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                 fold_data
             } else {
                 bail!(
-                    "Unknown OS for perf/dtrace tracing: {}",
+                    "Unknown OS for samply/perf tracing: {}",
                     std::env::consts::OS
                 );
             };
 
             handle_fold_data(tracing_config, fold_data.clone()).await?;
 
-            self.tracing_results = Some(TracingResults {
-                folded_data: fold_data,
-            });
+            self.tracing_results
+                .set(TracingResults {
+                    folded_data: fold_data,
+                })
+                .expect("`tracing_results` already set! This is a bug.");
         };
 
         Ok(())

@@ -5,9 +5,10 @@ use nameof::name_of;
 use tracing_options::TracingOptions;
 
 use super::Host;
-use crate::ServiceBuilder;
+use crate::rust_crate::build::BuildParams;
+use crate::{HostTargetType, ServiceBuilder};
 
-pub(crate) mod build;
+pub mod build;
 pub mod ports;
 
 pub mod service;
@@ -25,39 +26,41 @@ pub enum CrateTarget {
 
 /// Specifies a crate that uses `hydro_deploy_integration` to be
 /// deployed as a service.
+///
+/// A [crate](https://doc.rust-lang.org/cargo/appendix/glossary.html#crate) is a particular
+/// [target](https://doc.rust-lang.org/cargo/appendix/glossary.html#target) within a
+/// [package](https://doc.rust-lang.org/cargo/appendix/glossary.html#package).
 #[derive(Clone)]
 pub struct RustCrate {
     src: PathBuf,
     target: CrateTarget,
-    on: Arc<dyn Host>,
     profile: Option<String>,
     rustflags: Option<String>,
     target_dir: Option<PathBuf>,
     build_env: Vec<(String, String)>,
     no_default_features: bool,
     features: Option<Vec<String>>,
-    config: Option<String>,
+    config: Vec<String>,
     tracing: Option<TracingOptions>,
     args: Vec<String>,
     display_name: Option<String>,
 }
 
 impl RustCrate {
-    /// Creates a new `RustCrate` that will be deployed on the given host.
-    /// The `src` argument is the path to the crate's directory, and the `on`
-    /// argument is the host that the crate will be deployed on.
-    pub fn new(src: impl Into<PathBuf>, on: Arc<dyn Host>) -> Self {
+    /// Creates a new `RustCrate`.
+    ///
+    /// The `src` argument is the path to the package's directory.
+    pub fn new(src: impl Into<PathBuf>) -> Self {
         Self {
             src: src.into(),
             target: CrateTarget::Default,
-            on,
             profile: None,
             rustflags: None,
             target_dir: None,
             build_env: vec![],
             no_default_features: false,
             features: None,
-            config: None,
+            config: vec![],
             tracing: None,
             args: vec![],
             display_name: None,
@@ -139,11 +142,7 @@ impl RustCrate {
     }
 
     pub fn config(mut self, config: impl Into<String>) -> Self {
-        if self.config.is_some() {
-            panic!("{} already set", name_of!(config in Self));
-        }
-
-        self.config = Some(config.into());
+        self.config.push(config.into());
         self
     }
 
@@ -171,31 +170,40 @@ impl RustCrate {
         self.display_name = Some(display_name.into());
         self
     }
+
+    pub fn get_build_params(&self, target: HostTargetType) -> BuildParams {
+        let (bin, example) = match &self.target {
+            CrateTarget::Default => (None, None),
+            CrateTarget::Bin(bin) => (Some(bin.clone()), None),
+            CrateTarget::Example(example) => (None, Some(example.clone())),
+        };
+
+        BuildParams::new(
+            self.src.clone(),
+            bin,
+            example,
+            self.profile.clone(),
+            self.rustflags.clone(),
+            self.target_dir.clone(),
+            self.build_env.clone(),
+            self.no_default_features,
+            target,
+            self.features.clone(),
+            self.config.clone(),
+        )
+    }
 }
 
 impl ServiceBuilder for RustCrate {
     type Service = RustCrateService;
-    fn build(self, id: usize) -> Self::Service {
-        let (bin, example) = match self.target {
-            CrateTarget::Default => (None, None),
-            CrateTarget::Bin(bin) => (Some(bin), None),
-            CrateTarget::Example(example) => (None, Some(example)),
-        };
+    fn build(self, id: usize, on: Arc<dyn Host>) -> Self::Service {
+        let build_params = self.get_build_params(on.target_type());
 
         RustCrateService::new(
             id,
-            self.src,
-            self.on,
-            bin,
-            example,
-            self.profile,
-            self.rustflags,
-            self.target_dir,
-            self.build_env,
-            self.no_default_features,
+            on,
+            build_params,
             self.tracing,
-            self.features,
-            self.config,
             Some(self.args),
             self.display_name,
             vec![],
@@ -213,14 +221,15 @@ mod tests {
         let mut deployment = deployment::Deployment::new();
 
         let service = deployment.add_service(
-            RustCrate::new("../hydro_deploy_examples", deployment.Localhost())
+            RustCrate::new("../hydro_deploy_examples")
                 .example("panic_program")
                 .profile("dev"),
+            deployment.Localhost(),
         );
 
         deployment.deploy().await.unwrap();
 
-        let mut stdout = service.try_read().unwrap().stdout();
+        let mut stdout = service.stdout();
 
         deployment.start().await.unwrap();
 

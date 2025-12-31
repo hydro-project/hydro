@@ -1,4 +1,6 @@
 //! Module containing the [`SetUnionWithTombstones`] lattice and aliases for different datastructures.
+//!
+//! See [`crate::tombstone`] for documentation on choosing a tombstone implementation.
 
 use std::cmp::Ordering::{self, *};
 use std::collections::{BTreeSet, HashSet};
@@ -7,6 +9,7 @@ use cc_traits::{Collection, Get, Remove};
 
 use crate::cc_traits::{Iter, Len, Set};
 use crate::collections::{ArraySet, EmptySet, OptionSet, SingletonSet};
+use crate::tombstone::{FstTombstoneSet, RoaringTombstoneSet, TombstoneSet};
 use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 
 /// Set-union lattice with tombstones.
@@ -17,10 +20,10 @@ use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 /// Merging set-union lattices is done by unioning the keys of both the (set and tombstone) sets,
 /// and then performing `set` = `set` - `tombstones`, to preserve the above invariant.
 ///
-/// TODO: I think there is even one more layer of abstraction that can be made here.
-/// this 'SetUnionWithTombstones' can be turned into a kind of interface, because there are multiple underlying implementations.
-/// This implementation is two separate sets. Another implementation could be MapUnion<Key, WithTop<()>>, this would be less hash lookups, but maybe gives you less options for cool storage tricks.
-/// This implementation with two separate sets means that the actual set implementation can be decided for both the regular set and the tombstone set. Lots of opportunities there for cool storage tricks.
+/// This implementation with two separate sets means that the actual set implementation can be decided
+/// for both the regular set and the tombstone set. This enables efficient storage strategies like using
+/// [`crate::tombstone::RoaringTombstoneSet`] for tombstones (see [`SetUnionWithTombstonesRoaring`]), which provides space-efficient
+/// bitmap compression for the tombstone set while keeping the main set flexible.
 #[derive(Default, Clone, Debug)]
 pub struct SetUnionWithTombstones<Set, TombstoneSet> {
     set: Set,
@@ -54,13 +57,14 @@ impl<Set, TombstoneSet> SetUnionWithTombstones<Set, TombstoneSet> {
     }
 }
 
+// Merge implementation using TombstoneSet trait for optimized union operations
 impl<Item, SetSelf, TombstoneSetSelf, SetOther, TombstoneSetOther>
     Merge<SetUnionWithTombstones<SetOther, TombstoneSetOther>>
     for SetUnionWithTombstones<SetSelf, TombstoneSetSelf>
 where
     SetSelf: Extend<Item> + Len + for<'a> Remove<&'a Item>,
     SetOther: IntoIterator<Item = Item>,
-    TombstoneSetSelf: Extend<Item> + Len + for<'a> Get<&'a Item>,
+    TombstoneSetSelf: TombstoneSet<Item>,
     TombstoneSetOther: IntoIterator<Item = Item>,
 {
     fn merge(&mut self, other: SetUnionWithTombstones<SetOther, TombstoneSetOther>) -> bool {
@@ -269,6 +273,15 @@ pub type SetUnionWithTombstonesOptionSet<Item> =
 pub type SetUnionWithTombstonesTombstoneOnlySet<Item> =
     SetUnionWithTombstones<EmptySet<Item>, SingletonSet<Item>>;
 
+/// [`crate::tombstone::RoaringTombstoneSet`]-backed tombstone set with [`std::collections::HashSet`] for the main set.
+/// Provides space-efficient tombstone storage for u64 integer keys.
+pub type SetUnionWithTombstonesRoaring = SetUnionWithTombstones<HashSet<u64>, RoaringTombstoneSet>;
+
+/// FST-backed tombstone set with [`std::collections::HashSet`] for the main set.
+/// Provides space-efficient, collision-free tombstone storage for String keys.
+pub type SetUnionWithTombstonesFstString =
+    SetUnionWithTombstones<HashSet<String>, FstTombstoneSet<String>>;
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -326,5 +339,190 @@ mod test {
             SetUnionWithTombstonesHashSet::new_from([0], [1]),
             SetUnionWithTombstonesHashSet::new_from([1], [0]),
         ]);
+    }
+
+    #[test]
+    fn roaring_basic() {
+        let mut x = SetUnionWithTombstonesRoaring::new_from(
+            HashSet::from([1, 2, 3]),
+            RoaringTombstoneSet::new(),
+        );
+        let mut y = SetUnionWithTombstonesRoaring::new_from(
+            HashSet::from([2, 3, 4]),
+            RoaringTombstoneSet::new(),
+        );
+
+        // Add tombstone for 2
+        y.as_reveal_mut().1.insert(2);
+
+        x.merge(y);
+
+        // Should have 1, 3, 4 (2 is tombstoned)
+        assert!(!x.as_reveal_ref().0.contains(&2));
+        assert!(x.as_reveal_ref().0.contains(&1));
+        assert!(x.as_reveal_ref().0.contains(&3));
+        assert!(x.as_reveal_ref().0.contains(&4));
+        assert!(x.as_reveal_ref().1.contains(&2));
+    }
+
+    #[test]
+    fn roaring_merge_efficiency() {
+        // Test that merging roaring bitmaps works correctly
+        let mut x = SetUnionWithTombstonesRoaring::new_from(
+            HashSet::from([1, 2, 3, 4, 5]),
+            RoaringTombstoneSet::new(),
+        );
+        x.as_reveal_mut().1.insert(10);
+        x.as_reveal_mut().1.insert(20);
+
+        let mut y = SetUnionWithTombstonesRoaring::new_from(
+            HashSet::from([6, 7, 8]),
+            RoaringTombstoneSet::new(),
+        );
+        y.as_reveal_mut().1.insert(30);
+        y.as_reveal_mut().1.insert(2); // Tombstone for 2
+
+        x.merge(y);
+
+        // Should have all tombstones
+        assert!(x.as_reveal_ref().1.contains(&10));
+        assert!(x.as_reveal_ref().1.contains(&20));
+        assert!(x.as_reveal_ref().1.contains(&30));
+        assert!(x.as_reveal_ref().1.contains(&2));
+
+        // Should not have 2 in the set
+        assert!(!x.as_reveal_ref().0.contains(&2));
+
+        // Should have all other items
+        assert!(x.as_reveal_ref().0.contains(&1));
+        assert!(x.as_reveal_ref().0.contains(&3));
+        assert!(x.as_reveal_ref().0.contains(&6));
+        assert!(x.as_reveal_ref().0.contains(&7));
+    }
+
+    #[test]
+    fn fst_string_basic() {
+        let mut x = SetUnionWithTombstonesFstString::new_from(
+            HashSet::from([
+                "apple".to_string(),
+                "banana".to_string(),
+                "cherry".to_string(),
+            ]),
+            FstTombstoneSet::new(),
+        );
+        let mut y = SetUnionWithTombstonesFstString::new_from(
+            HashSet::from(["banana".to_string(), "date".to_string()]),
+            FstTombstoneSet::new(),
+        );
+
+        // Add tombstone for "banana"
+        y.as_reveal_mut().1.extend(vec!["banana".to_string()]);
+
+        x.merge(y);
+
+        // Should have apple, cherry, date (banana is tombstoned)
+        assert!(!x.as_reveal_ref().0.contains("banana"));
+        assert!(x.as_reveal_ref().0.contains("apple"));
+        assert!(x.as_reveal_ref().0.contains("cherry"));
+        assert!(x.as_reveal_ref().0.contains("date"));
+        assert!(x.as_reveal_ref().1.contains(b"banana"));
+    }
+
+    #[test]
+    fn fst_merge_efficiency() {
+        // Test that FST union works correctly with multiple tombstones
+        let mut x = SetUnionWithTombstonesFstString::new_from(
+            HashSet::from([
+                "a".to_string(),
+                "b".to_string(),
+                "c".to_string(),
+                "d".to_string(),
+            ]),
+            FstTombstoneSet::from_iter(vec!["x".to_string(), "y".to_string()]),
+        );
+
+        let y = SetUnionWithTombstonesFstString::new_from(
+            HashSet::from(["e".to_string(), "f".to_string()]),
+            FstTombstoneSet::from_iter(vec!["z".to_string(), "b".to_string()]),
+        );
+
+        x.merge(y);
+
+        // Should have all tombstones
+        assert!(x.as_reveal_ref().1.contains(b"x"));
+        assert!(x.as_reveal_ref().1.contains(b"y"));
+        assert!(x.as_reveal_ref().1.contains(b"z"));
+        assert!(x.as_reveal_ref().1.contains(b"b"));
+
+        // Should not have "b" in the set
+        assert!(!x.as_reveal_ref().0.contains("b"));
+
+        // Should have all other items
+        assert!(x.as_reveal_ref().0.contains("a"));
+        assert!(x.as_reveal_ref().0.contains("c"));
+        assert!(x.as_reveal_ref().0.contains("d"));
+        assert!(x.as_reveal_ref().0.contains("e"));
+        assert!(x.as_reveal_ref().0.contains("f"));
+    }
+
+    #[test]
+    fn roaring_empty_merge() {
+        // Test merging empty sets
+        let mut x =
+            SetUnionWithTombstonesRoaring::new_from(HashSet::new(), RoaringTombstoneSet::new());
+        let y = SetUnionWithTombstonesRoaring::new_from(HashSet::new(), RoaringTombstoneSet::new());
+
+        assert!(!x.merge(y)); // Should return false (no change)
+        assert!(x.as_reveal_ref().0.is_empty());
+        assert_eq!(x.as_reveal_ref().1.len(), 0);
+    }
+
+    #[test]
+    fn roaring_idempotency() {
+        // Test that merging the same data twice doesn't change the result
+        let mut x = SetUnionWithTombstonesRoaring::new_from(
+            HashSet::from([1u64, 2, 3]),
+            RoaringTombstoneSet::new(),
+        );
+        let y = SetUnionWithTombstonesRoaring::new_from(
+            HashSet::from([2u64, 3, 4]),
+            RoaringTombstoneSet::from_iter(vec![2u64]),
+        );
+        let z = y.clone();
+
+        x.merge(y);
+        let first_result = x.clone();
+
+        x.merge(z);
+
+        // Should be identical after second merge
+        assert_eq!(x.as_reveal_ref().0, first_result.as_reveal_ref().0);
+        assert_eq!(
+            x.as_reveal_ref().1.len(),
+            first_result.as_reveal_ref().1.len()
+        );
+    }
+
+    #[test]
+    fn fst_commutativity() {
+        // Test that merge order doesn't matter
+        let a = SetUnionWithTombstonesFstString::new_from(
+            HashSet::from(["a".to_string(), "b".to_string()]),
+            FstTombstoneSet::from_iter(vec!["x".to_string()]),
+        );
+        let b = SetUnionWithTombstonesFstString::new_from(
+            HashSet::from(["c".to_string(), "d".to_string()]),
+            FstTombstoneSet::from_iter(vec!["y".to_string()]),
+        );
+
+        let mut x1 = a.clone();
+        let mut x2 = b.clone();
+
+        x1.merge(b.clone());
+        x2.merge(a.clone());
+
+        // Results should be the same regardless of merge order
+        assert_eq!(x1.as_reveal_ref().0, x2.as_reveal_ref().0);
+        assert_eq!(x1.as_reveal_ref().1.len(), x2.as_reveal_ref().1.len());
     }
 }

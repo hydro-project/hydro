@@ -5,7 +5,129 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.15.0 (2025-11-25)
+
+### Chore
+
+ - <csr-id-97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71/> update pinned nightly to 2025-08-20, fix lints
+
+### New Features
+
+ - <csr-id-f7ecb53e1941f67e59bde32e94e9f320f4bf5410/> add `resolve_futures_blocking` for resolving async calls by blocking the subgraph
+
+### Bug Fixes
+
+ - <csr-id-dd62edfed25e52669d0f9169cfcefbe278cbaf65/> fix code generation for `scan` as a push-operator
+ - <csr-id-09c07701f03862f3a755420c202cacd5218cd114/> remove python udf support
+ - <csr-id-c40876ec4bd3b31254d683e479b9a235f3d11f67/> refactor github actions workflows, make stable the default toolchain
+ - <csr-id-5ec8b3b9b10b30f3c1b7bd8949874f0b4b7da7e9/> hardcoded crate name issues
+
+### Other
+
+ - <csr-id-806a6239a649e24fe10c3c90dd30bd18debd41d2/> ensure `hydro_build_utils` is published in the correct order
+
+### Refactor
+
+ - <csr-id-f4a26b3268a3fa4a6e907d33a3e5ac7529188f20/> Make `join_fused` use new `Accumulator` trait
+   To make the codegen less magical.
+   
+   ---------
+ - <csr-id-1c135152168c95199f887a8e6d619b12efbcf067/> replace `internal_constants` with configurable parameters
+   Instead of hardcoding certain prefixes for logging elements, we now
+   allow them to be configured via DFIR parameters (for `_counter`) or
+   build-time environment variables (for CPU information).
+
+### Bug Fixes (BREAKING)
+
+ - <csr-id-21ce30cdd04a25bf4a67e00ec16e592183748bf4/> fix cardinality for `Optional::or`
+   Using `HydroNode::Chain` is very dangerous for singletons / optionals,
+   because it can lead to cardinality > 1 within a single batch, which
+   breaks a fundamental invariant.
+   
+   This introduces a new `HydroNode::ChainFirst` operator that only emits
+   the first value from the chain. This is paired with a new DFIR operator
+   `chain_first` for this behavior.
+   
+   We also rewrite some `Singleton` logic to use `Optional` under the hood,
+   which reduces the places where we deal with chaining in the IR,
+   hopefully avoiding future incidents.
+
+### Refactor (BREAKING)
+
+ - <csr-id-9d943ac294a8735452f8535ad13767c60ce46ec7/> Make DFIR use `sinktools` for pushing to outputs [ci-bench]
+   This allows DFIR to handle `dest_sink` directly instead of having to
+   offload to a separate task, which causes latency and unwanted batching
+   (on single threaded runtimes)
+   
+   `pusherator` crate is no longer depended upon and is on a path to removal as it has been
+   replaced with `Sink`s
+   
+   Fixes some spanning bugs in codegen that using `Sink`s revealed
+ - <csr-id-8535940a34dba130156eb3605ae56483586bb62a/> remove `demux` operator, replace usage with `demux_enum`
+   This is in preparation of making DFIR support async `Sink`s. The
+   overpowered demux API is incompatible with the more constrained
+   mechanics of `Sink`s.
+   
+   ## Pull Request Overview
+   
+   This PR refactors the `dfir_rs` library by removing the `demux` operator
+   and replacing its usage with the `demux_enum` operator, which provides
+   better type safety and ergonomics.
+   
+   - Removes the `demux` operator implementation and related code
+   - Updates examples to use `demux_enum` with enums for message handling
+   - Removes all compile-fail tests specific to the `demux` operator
+ - <csr-id-29027701471205a7c43e26ef2f8cee98663c578e/> superficially make subgraphs/operators asynchronous
+   Subgraphs now are async (create a future when running) which must be
+   awaited. However this PR does not actually change any
+   subgraphs/operators, so all subgraphs/operators return `Poll::Ready(())`
+   immediately
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 13 commits contributed to the release.
+ - 13 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 12 unique issues were worked on: [#1977](https://github.com/hydro-project/hydro/issues/1977), [#2024](https://github.com/hydro-project/hydro/issues/2024), [#2028](https://github.com/hydro-project/hydro/issues/2028), [#2038](https://github.com/hydro-project/hydro/issues/2038), [#2079](https://github.com/hydro-project/hydro/issues/2079), [#2091](https://github.com/hydro-project/hydro/issues/2091), [#2108](https://github.com/hydro-project/hydro/issues/2108), [#2119](https://github.com/hydro-project/hydro/issues/2119), [#2134](https://github.com/hydro-project/hydro/issues/2134), [#2147](https://github.com/hydro-project/hydro/issues/2147), [#2281](https://github.com/hydro-project/hydro/issues/2281), [#2318](https://github.com/hydro-project/hydro/issues/2318)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1977](https://github.com/hydro-project/hydro/issues/1977)**
+    - Hardcoded crate name issues ([`5ec8b3b`](https://github.com/hydro-project/hydro/commit/5ec8b3b9b10b30f3c1b7bd8949874f0b4b7da7e9))
+ * **[#2024](https://github.com/hydro-project/hydro/issues/2024)**
+    - Update pinned nightly to 2025-08-20, fix lints ([`97426b8`](https://github.com/hydro-project/hydro/commit/97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71))
+ * **[#2028](https://github.com/hydro-project/hydro/issues/2028)**
+    - Refactor github actions workflows, make stable the default toolchain ([`c40876e`](https://github.com/hydro-project/hydro/commit/c40876ec4bd3b31254d683e479b9a235f3d11f67))
+ * **[#2038](https://github.com/hydro-project/hydro/issues/2038)**
+    - Remove python udf support ([`09c0770`](https://github.com/hydro-project/hydro/commit/09c07701f03862f3a755420c202cacd5218cd114))
+ * **[#2079](https://github.com/hydro-project/hydro/issues/2079)**
+    - Replace `internal_constants` with configurable parameters ([`1c13515`](https://github.com/hydro-project/hydro/commit/1c135152168c95199f887a8e6d619b12efbcf067))
+ * **[#2091](https://github.com/hydro-project/hydro/issues/2091)**
+    - Superficially make subgraphs/operators asynchronous ([`2902770`](https://github.com/hydro-project/hydro/commit/29027701471205a7c43e26ef2f8cee98663c578e))
+ * **[#2108](https://github.com/hydro-project/hydro/issues/2108)**
+    - Fix cardinality for `Optional::or` ([`21ce30c`](https://github.com/hydro-project/hydro/commit/21ce30cdd04a25bf4a67e00ec16e592183748bf4))
+ * **[#2119](https://github.com/hydro-project/hydro/issues/2119)**
+    - Remove `demux` operator, replace usage with `demux_enum` ([`8535940`](https://github.com/hydro-project/hydro/commit/8535940a34dba130156eb3605ae56483586bb62a))
+ * **[#2134](https://github.com/hydro-project/hydro/issues/2134)**
+    - Make DFIR use `sinktools` for pushing to outputs [ci-bench] ([`9d943ac`](https://github.com/hydro-project/hydro/commit/9d943ac294a8735452f8535ad13767c60ce46ec7))
+ * **[#2147](https://github.com/hydro-project/hydro/issues/2147)**
+    - Fix code generation for `scan` as a push-operator ([`dd62edf`](https://github.com/hydro-project/hydro/commit/dd62edfed25e52669d0f9169cfcefbe278cbaf65))
+ * **[#2281](https://github.com/hydro-project/hydro/issues/2281)**
+    - Add `resolve_futures_blocking` for resolving async calls by blocking the subgraph ([`f7ecb53`](https://github.com/hydro-project/hydro/commit/f7ecb53e1941f67e59bde32e94e9f320f4bf5410))
+ * **[#2318](https://github.com/hydro-project/hydro/issues/2318)**
+    - Make `join_fused` use new `Accumulator` trait ([`f4a26b3`](https://github.com/hydro-project/hydro/commit/f4a26b3268a3fa4a6e907d33a3e5ac7529188f20))
+ * **Uncategorized**
+    - Ensure `hydro_build_utils` is published in the correct order ([`806a623`](https://github.com/hydro-project/hydro/commit/806a6239a649e24fe10c3c90dd30bd18debd41d2))
+</details>
+
 ## 0.14.0 (2025-07-30)
+
+<csr-id-98baec71a6f1d01d55a3c983fdbb7824c45305cd/>
 
 ### Chore
 
@@ -48,7 +170,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 6 commits contributed to the release over the course of 92 calendar days.
+ - 7 commits contributed to the release.
+ - 109 days passed between releases.
  - 6 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 6 unique issues were worked on: [#1843](https://github.com/hydro-project/hydro/issues/1843), [#1851](https://github.com/hydro-project/hydro/issues/1851), [#1858](https://github.com/hydro-project/hydro/issues/1858), [#1860](https://github.com/hydro-project/hydro/issues/1860), [#1911](https://github.com/hydro-project/hydro/issues/1911), [#1929](https://github.com/hydro-project/hydro/issues/1929)
 
@@ -70,6 +193,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Re-add loop lifetimes for anti_join_multiset, tests, remove MonotonicMap, fix #1830, fix #1823 ([`d6ae619`](https://github.com/hydro-project/hydro/commit/d6ae619060339eb3dac5bec17d384430e3588093))
  * **[#1929](https://github.com/hydro-project/hydro/issues/1929)**
     - Add `scan` operator ([`b58dfc8`](https://github.com/hydro-project/hydro/commit/b58dfc899c67ee17a1818c484fa6cba7db3dd240))
+ * **Uncategorized**
+    - Release dfir_lang v0.14.0, dfir_macro v0.14.0, hydro_deploy_integration v0.14.0, lattices_macro v0.5.10, variadics_macro v0.6.1, dfir_rs v0.14.0, hydro_deploy v0.14.0, hydro_lang v0.14.0, hydro_optimize v0.13.0, hydro_std v0.14.0, safety bump 6 crates ([`0683595`](https://github.com/hydro-project/hydro/commit/06835950c12884d661100c13f73ad23a98bfad9f))
 </details>
 
 ## 0.13.0 (2025-04-11)
@@ -93,9 +218,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    samply by updating tracing filenames and refactoring related error and
    type handling. Key changes include:
    - Better error messages when `dtrace` or `samply` are not instaled.
-- Fix integer rollover in `_counter()` by using `u64` instead of
-   inferred `i32`.
-- Refactor samply profile conversion for asynchronous frame lookup.
 
 ### Other
 
@@ -161,10 +283,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 </details>
 
 <csr-unknown>
-<details>
-<summary>Show a summary per file</summary>
-FileDescriptionhydro_lang/src/rewrites/analyze_counter.rsAdds custom panic withmeasurement details if regex matching fails. (Used to diagnose_counter() i32 rollover)hydro_deploy/core/src/localhost/samply.rsUpdates type foraddresses/resources, refactors frame lookup to use asynchronousjoin_all, and adjusts string output for missing symbols.hydro_deploy/core/src/localhost/mod.rsImproves error handlingduring command spawning with conditional context messages for whensamply or dtrace executables are not found.hydro_deploy/core/src/localhost/launched_binary.rsUsesserde_path_to_error for improved deserialization error context.dfir_lang/src/graph/ops/dest_sink.rsStandardizes error messages byremoving extraneous punctuation.dfir_lang/src/graph/ops/_counter.rsAdds explicit type annotationfor a cell initialization to prevent i32 rollover.</details>
-<csr-unknown/>
+Fix integer rollover in _counter() by using u64 instead ofinferred i32.Refactor samply profile conversion for asynchronous frame lookup.<csr-unknown/>
 
 ## 0.12.1 (2025-03-15)
 

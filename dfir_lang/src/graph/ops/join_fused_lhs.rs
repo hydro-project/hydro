@@ -1,8 +1,7 @@
 use quote::{ToTokens, quote_spanned};
 use syn::parse_quote;
-use syn::spanned::Spanned;
 
-use super::join_fused::{JoinOptions, make_joindata, parse_argument};
+use super::join_fused::make_joindata;
 use super::{
     DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence,
     PortIndexValue, RANGE_0, RANGE_1, WriteContextArgs,
@@ -16,9 +15,11 @@ use super::{
 ///
 /// For example:
 /// ```dfir
+/// use dfir_rs::util::accumulator::Reduce;
+///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> [0]my_join;
 /// source_iter(vec![("key", 2), ("key", 3)]) -> [1]my_join;
-/// my_join = join_fused_lhs(Reduce(|x, y| *x += y))
+/// my_join = join_fused_lhs(Reduce::new(|x, y| *x += y))
 ///     -> assert_eq([("key", (3, 2)), ("key", (3, 3))]);
 /// ```
 pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
@@ -43,9 +44,11 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
         _ => None,
     },
     write_fn: |wc @ &WriteContextArgs {
+                   root,
                    context,
                    df_ident,
                    op_span,
+                   work_fn_async,
                    ident,
                    inputs,
                    is_pull,
@@ -55,16 +58,10 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                diagnostics| {
         assert!(is_pull);
 
-        let arg0_span = arguments[0].span();
-
         let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
 
-        let lhs_join_options =
-            parse_argument(&arguments[0]).map_err(|err| diagnostics.push(err))?;
-
         let (lhs_prologue, lhs_prologue_after, lhs_pre_write_iter, lhs_borrow) =
-            make_joindata(wc, persistences[0], &lhs_join_options, "lhs")
-                .map_err(|err| diagnostics.push(err))?;
+            make_joindata(wc, persistences[0], "lhs").map_err(|err| diagnostics.push(err))?;
 
         let rhs_joindata_ident = wc.make_ident("rhs_joindata");
         let rhs_borrow_ident = wc.make_ident("rhs_joindata_borrow_ident");
@@ -82,27 +79,19 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
 
-        let lhs_fold_or_reduce_into_from = match lhs_join_options {
-            JoinOptions::FoldFrom(lhs_from, lhs_fold) => quote_spanned! {arg0_span=>
-                #lhs_borrow.fold_into(#lhs, #lhs_fold, #lhs_from);
-            },
-            JoinOptions::Fold(lhs_default, lhs_fold) => quote_spanned! {arg0_span=>
-                #lhs_borrow.fold_into(#lhs, #lhs_fold, #lhs_default);
-            },
-            JoinOptions::Reduce(lhs_reduce) => quote_spanned! {arg0_span=>
-                #lhs_borrow.reduce_into(#lhs, #lhs_reduce);
-            },
-        };
+        let lhs_accum = &arguments[0];
 
         let write_iterator = match persistences[1] {
             Persistence::None | Persistence::Loop | Persistence::Tick => quote_spanned! {op_span=>
                 #lhs_pre_write_iter
 
                 let #ident = {
-                    #lhs_fold_or_reduce_into_from
+                    let () = #work_fn_async(
+                        #root::compiled::pull::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs),
+                    ).await;
 
                     #[allow(clippy::clone_on_copy)]
-                    #rhs.filter_map(|(k, v2)| #lhs_borrow.table.get(&k).map(|v1| (k, (v1.clone(), v2.clone()))))
+                    #root::tokio_stream::StreamExt::filter_map(#rhs, |(k, v2)| #lhs_borrow.get(&k).map(|v1| (k, (v1.clone(), v2.clone()))))
                 };
             },
             Persistence::Static => quote_spanned! {op_span=>
@@ -113,19 +102,32 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                 }.borrow_mut();
 
                 let #ident = {
-                    #lhs_fold_or_reduce_into_from
+                    // Accumulate LHS.
+                    let () = #work_fn_async(
+                        #root::compiled::pull::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs),
+                    ).await;
+
+                    // RHS replay index.
+                    let replay_idx = if #context.is_first_run_this_tick() {
+                        0
+                    } else {
+                        #rhs_borrow_ident.len()
+                    };
+
+                    // Accumulate RHS.
+                    let () = #work_fn_async(
+                        #root::compiled::pull::ForEach::new(#rhs, |kv| {
+                            #rhs_borrow_ident.push(kv);
+                        }),
+                    ).await;
+
 
                     #[allow(clippy::clone_on_copy)]
                     #[allow(suspicious_double_ref_op)]
-                    if #context.is_first_run_this_tick() {
-                        #rhs_borrow_ident.extend(#rhs);
-                        #rhs_borrow_ident.iter()
-                    } else {
-                        let len = #rhs_borrow_ident.len();
-                        #rhs_borrow_ident.extend(#rhs);
-                        #rhs_borrow_ident[len..].iter()
-                    }
-                    .filter_map(|(k, v2)| #lhs_borrow.table.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))))
+                    let iter = #rhs_borrow_ident[replay_idx..]
+                        .iter()
+                        .filter_map(|(k, v2)| #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))));
+                    #root::futures::stream::iter(iter)
                 };
             },
             Persistence::Mutable => unreachable!(),

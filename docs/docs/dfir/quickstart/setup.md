@@ -37,7 +37,7 @@ Here are some good resources:
   is a good way to learn Rust's ownership system and its
   implications.
 
-In this book we will be using the DFIR template generator, which we recommend
+In this documentation we will be using the DFIR template generator, which we recommend
 as a starting point for your DFIR projects. For this purpose you
 will need to install the `cargo-generate` tool:
 ```bash
@@ -112,7 +112,7 @@ Hello!
 
 ## Alternative: Checking out the Hydro Repository
 
-This book will assume you are using the template project, but some
+This documentation will assume you are using the template project, but some
 Rust experts may want to get started with DFIR by cloning and working in the
 repository directly.
 You should fork the repository if you want to push your

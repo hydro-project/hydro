@@ -3,7 +3,6 @@ use hydro_lang::nondet::NonDet;
 use hydro_lang::prelude::*;
 
 pub fn chat_app<'a>(
-    process: &Process<'a>,
     users_stream: Stream<u32, Process<'a>, Unbounded>,
     messages: Stream<String, Process<'a>, Unbounded>,
     replay_messages: bool,
@@ -14,15 +13,14 @@ pub fn chat_app<'a>(
     if replay_messages {
         users_stream.cross_product(messages)
     } else {
-        let tick = process.tick();
+        let current_users = users_stream.collect_vec();
 
-        let users = users_stream
-            .batch(&tick, nondet_user_arrival_broadcast)
-            .persist();
+        sliced! {
+            let users = use(current_users, nondet_user_arrival_broadcast);
+            let messages = use(messages, nondet_user_arrival_broadcast);
 
-        let messages = messages.batch(&tick, nondet_user_arrival_broadcast);
-
-        users.cross_product(messages).all_ticks()
+            users.flatten_ordered().cross_product(messages)
+        }
     }
 }
 
@@ -55,7 +53,7 @@ mod tests {
 
         let (users_send, users) = p1.source_external_bincode(&external);
         let (messages_send, messages) = p1.source_external_bincode(&external);
-        let out = super::chat_app(&p1, users, messages, false, nondet!(/** test */));
+        let out = super::chat_app(users, messages, false, nondet!(/** test */));
         let out_recv = out.send_bincode_external(&external);
 
         let built = builder.with_default_optimize();
@@ -74,9 +72,9 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut users_send = nodes.connect_sink_bincode(users_send).await;
-        let mut messages_send = nodes.connect_sink_bincode(messages_send).await;
-        let mut out_recv = nodes.connect_source_bincode(out_recv).await;
+        let mut users_send = nodes.connect(users_send).await;
+        let mut messages_send = nodes.connect(messages_send).await;
+        let mut out_recv = nodes.connect(out_recv).await;
 
         deployment.start().await.unwrap();
 
@@ -120,7 +118,7 @@ mod tests {
 
         let (users_send, users) = p1.source_external_bincode(&external);
         let (messages_send, messages) = p1.source_external_bincode(&external);
-        let out = super::chat_app(&p1, users, messages, true, nondet!(/** test */));
+        let out = super::chat_app(users, messages, true, nondet!(/** test */));
         let out_recv = out.send_bincode_external(&external);
 
         let built = builder.with_default_optimize();
@@ -139,9 +137,9 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut users_send = nodes.connect_sink_bincode(users_send).await;
-        let mut messages_send = nodes.connect_sink_bincode(messages_send).await;
-        let mut out_recv = nodes.connect_source_bincode(out_recv).await;
+        let mut users_send = nodes.connect(users_send).await;
+        let mut messages_send = nodes.connect(messages_send).await;
+        let mut out_recv = nodes.connect(out_recv).await;
 
         deployment.start().await.unwrap();
 

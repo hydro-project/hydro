@@ -34,7 +34,7 @@ pub struct BuildParams {
     /// `--features` flags, will be comma-delimited.
     features: Option<Vec<String>>,
     /// `--config` flag
-    config: Option<String>,
+    config: Vec<String>,
 }
 impl BuildParams {
     /// Creates a new `BuildParams` and canonicalizes the `src` path.
@@ -50,7 +50,7 @@ impl BuildParams {
         no_default_features: bool,
         target_type: HostTargetType,
         features: Option<Vec<String>>,
-        config: Option<String>,
+        config: Vec<String>,
     ) -> Self {
         // `fs::canonicalize` prepends windows paths with the `r"\\?\"`
         // https://stackoverflow.com/questions/21194530/what-does-mean-when-prepended-to-a-file-path
@@ -76,12 +76,14 @@ impl BuildParams {
     }
 }
 
-/// Information about a built crate. See [`build_crate`].
+/// Information about a built crate. See [`build_crate_memoized`].
 pub struct BuildOutput {
     /// The binary contents as a byte array.
     pub bin_data: Vec<u8>,
     /// The path to the binary file. [`Self::bin_data`] has a copy of the content.
     pub bin_path: PathBuf,
+    /// Shared library path, containing any necessary dylibs.
+    pub shared_library_path: Option<PathBuf>,
 }
 impl BuildOutput {
     /// A unique ID for the binary, based its contents.
@@ -101,7 +103,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
             ProgressTracker::rich_leaf("build", move |set_msg| async move {
                 tokio::task::spawn_blocking(move || {
                     let mut command = Command::new("cargo");
-                    command.args(["build"]);
+                    command.args(["build", "--locked"]);
 
                     if let Some(profile) = params.profile.as_ref() {
                         command.args(["--profile", profile]);
@@ -117,7 +119,10 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
 
                     match params.target_type {
                         HostTargetType::Local => {}
-                        HostTargetType::Linux => {
+                        HostTargetType::Linux(crate::LinuxCompileType::Glibc) => {
+                            command.args(["--target", "x86_64-unknown-linux-gnu"]);
+                        }
+                        HostTargetType::Linux(crate::LinuxCompileType::Musl) => {
                             command.args(["--target", "x86_64-unknown-linux-musl"]);
                         }
                     }
@@ -130,7 +135,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                         command.args(["--features", &features.join(",")]);
                     }
 
-                    if let Some(config) = params.config.as_ref() {
+                    for config in &params.config {
                         command.args(["--config", config]);
                     }
 
@@ -140,9 +145,22 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                         command.args(["--target-dir", target_dir.to_str().unwrap()]);
                     }
 
-                    if let Some(rustflags) = params.rustflags.as_ref() {
+                    let is_dylib = if let Some(rustflags) = params.rustflags.as_ref() {
                         command.env("RUSTFLAGS", rustflags);
-                    }
+                        false
+                    } else if params.target_type == HostTargetType::Local
+                        && !cfg!(target_os = "windows")
+                    {
+                        // When compiling for local, prefer dynamic linking to reduce binary size
+                        // Windows is currently not supported due to https://github.com/bevyengine/bevy/pull/2016
+                        command.env(
+                            "RUSTFLAGS",
+                            std::env::var("RUSTFLAGS").unwrap_or_default() + " -C prefer-dynamic",
+                        );
+                        true
+                    } else {
+                        false
+                    };
 
                     for (k, v) in params.build_env {
                         command.env(k, v);
@@ -191,21 +209,41 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                     return Ok(BuildOutput {
                                         bin_data: data,
                                         bin_path: path_buf,
+                                        shared_library_path: if is_dylib {
+                                            Some(
+                                                params
+                                                    .target_dir
+                                                    .as_ref()
+                                                    .unwrap_or(&params.src.join("target"))
+                                                    .join("debug")
+                                                    .join("deps"),
+                                            )
+                                        } else {
+                                            None
+                                        },
                                     });
                                 }
                             }
                             cargo_metadata::Message::CompilerMessage(mut msg) => {
                                 // Update the path displayed to enable clicking in IDE.
-                                {
-                                    let full_path = format!(
-                                        "(full path) {}",
-                                        params.src.join("src/bin").display()
-                                    );
-                                    if let Some(rendered) = msg.message.rendered.as_mut() {
-                                        *rendered = rendered.replace("src/bin", &full_path);
+                                // TODO(mingwei): deduplicate code with hydro_lang sim/graph.rs
+                                if let Some(rendered) = msg.message.rendered.as_mut() {
+                                    let file_names = msg
+                                        .message
+                                        .spans
+                                        .iter()
+                                        .map(|s| &s.file_name)
+                                        .collect::<std::collections::BTreeSet<_>>();
+                                    for file_name in file_names {
+                                        *rendered = rendered.replace(
+                                            file_name,
+                                            &format!(
+                                                "(full path) {}/{file_name}",
+                                                params.src.display(),
+                                            ),
+                                        )
                                     }
                                 }
-
                                 ProgressTracker::println(msg.message.to_string());
                                 diagnostics.push(msg.message);
                             }

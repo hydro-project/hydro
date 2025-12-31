@@ -1,7 +1,7 @@
 [package]
 name = "variadics"
 publish = true
-version = "0.0.9"
+version = "0.0.10"
 documentation = "https://docs.rs/variadics/"
 description = "Variadic generics on stable Rust using tuple lists"
 edition = { workspace = true }
@@ -11,12 +11,24 @@ license = { workspace = true }
 [lints]
 workspace = true
 
+[package.metadata.docs.rs]
+all-features = true
+
+[features]
+default = ["std"]
+std = []
+
 [dependencies]
-sealed = "0.5.0"
+sealed = "0.6.0"
 hashbrown = "0.14.0"
+
+# coax cargo-smart-release into publishing this crate.
+# https://github.com/hydro-project/hydro/blob/main/RELEASING.md#addendum-adding-new-crates
+# https://github.com/GitoxideLabs/cargo-smart-release/issues/36
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1", optional = true }
 
 [dev-dependencies]
 trybuild = "1.0"
 
 [build-dependencies]
-hydro_build_utils = { path = "../hydro_build_utils", version = "0.0.1" }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1" }

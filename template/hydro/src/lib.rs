@@ -1,13 +1,33 @@
-stageleft::stageleft_no_entry_crate!();
+#[cfg(stageleft_runtime)]
+hydro_lang::setup!();
 
-pub mod first_ten;
-pub mod first_ten_cluster;
-pub mod first_ten_distributed;
+use hydro_lang::prelude::*;
+
+pub struct EchoServer;
+pub fn echo_capitalize<'a>(
+    input: Stream<String, Process<'a, EchoServer>>,
+) -> Stream<String, Process<'a, EchoServer>> {
+    input.map(q!(|s| s.to_uppercase()))
+}
 
 #[cfg(test)]
-mod test_init {
-    #[ctor::ctor]
-    fn init() {
-        hydro_lang::deploy::init_test();
+mod tests {
+    use hydro_lang::prelude::*;
+
+    #[test]
+    fn test_echo_capitalize() {
+        let flow = FlowBuilder::new();
+        let process = flow.process();
+
+        let (in_port, requests) = process.sim_input();
+        let responses = super::echo_capitalize(requests);
+        let out_port = responses.sim_output();
+
+        flow.sim().exhaustive(async || {
+            in_port.send("hello".to_string());
+            in_port.send("world".to_string());
+
+            out_port.assert_yields_only(["HELLO", "WORLD"]).await;
+        });
     }
 }

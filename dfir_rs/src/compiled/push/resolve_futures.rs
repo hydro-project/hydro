@@ -1,0 +1,118 @@
+use std::pin::Pin;
+use std::task::{Context, Poll, Waker, ready};
+
+use futures::sink::Sink;
+use futures::stream::{FusedStream, Stream};
+use pin_project_lite::pin_project;
+
+pin_project! {
+    /// Special sink for the `resolve_futures[_blocking][_ordered]` operators.
+    ///
+    /// `Queue` may be either [`futures::stream::FuturesOrdered`] or [`futures::stream::FuturesUnordered`].
+    #[must_use = "sinks do nothing unless polled"]
+    pub struct ResolveFutures<'ctx, Si, Queue> {
+        #[pin]
+        sink: Si,
+        queue: &'ctx mut Queue,
+        // If `Some`, this waker will schedule future ticks, so all futures should be driven
+        // by it. If `None`, the subgraph execution should block until all futures are resolved.
+        subgraph_waker: Option<Waker>,
+    }
+}
+
+impl<'ctx, Si, Queue> ResolveFutures<'ctx, Si, Queue> {
+    /// Create with the given queue and following sink.
+    pub fn new(queue: &'ctx mut Queue, subgraph_waker: Option<Waker>, sink: Si) -> Self {
+        Self {
+            sink,
+            queue,
+            subgraph_waker,
+        }
+    }
+
+    /// Empties any ready items from the queue into the following sink.
+    fn empty_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Si::Error>>
+    where
+        Si: Sink<Queue::Item>,
+        Queue: FusedStream + Unpin,
+    {
+        let mut this = self.project();
+
+        loop {
+            // Ensure the following sink is ready.
+            ready!(this.sink.as_mut().poll_ready(cx))?;
+
+            let poll_result = if let Some(w) = this.subgraph_waker.as_ref() {
+                Stream::poll_next(
+                    Pin::new(&mut **this.queue),
+                    &mut Context::<'_>::from_waker(w),
+                )
+            } else {
+                Stream::poll_next(Pin::new(&mut **this.queue), cx)
+            };
+
+            match poll_result {
+                Poll::Ready(Some(out)) => {
+                    this.sink.as_mut().start_send(out)?;
+                }
+                Poll::Ready(None) => {
+                    return Poll::Ready(Ok(()));
+                }
+                Poll::Pending => {
+                    if this.subgraph_waker.is_some() {
+                        return Poll::Ready(Ok(())); // we will be re-woken on a future tick
+                    } else {
+                        return Poll::Pending;
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<'ctx, Si, Queue, Fut> Sink<Fut> for ResolveFutures<'ctx, Si, Queue>
+where
+    Si: Sink<Fut::Output>,
+    Queue: Extend<Fut> + FusedStream<Item = Fut::Output> + Unpin,
+    Fut: Future,
+{
+    type Error = Si::Error;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.empty_ready(cx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: Fut) -> Result<(), Self::Error> {
+        let mut this = self.project();
+
+        this.queue.extend(std::iter::once(item));
+
+        if let Some(waker) = this.subgraph_waker.as_ref() {
+            // We MUST poll the queue stream to ensure that the futures begin.
+            // We use `this.subgraph_waker` to poll the queue stream, which means the futures are driven
+            // by the subgraph's own waker. This allows the subgraph execution to continue without waiting
+            // for the queued futures to complete; the subgraph does not block ("yield") on their readiness.
+            // If we instead used `cx.waker()`, the subgraph execution would yield ("block") until all queued
+            // futures are ready, effectively pausing subgraph progress until completion of those futures.
+            // Choose the waker based on whether you want subgraph execution to proceed independently of
+            // the queued futures, or to wait for them to complete before continuing.
+            if let Poll::Ready(Some(out)) =
+                Stream::poll_next(Pin::new(&mut **this.queue), &mut Context::from_waker(waker))
+            {
+                this.sink.as_mut().start_send(out)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        ready!(self.as_mut().empty_ready(cx))?;
+        self.project().sink.poll_flush(cx)
+    }
+
+    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        ready!(self.as_mut().empty_ready(cx))?;
+        self.project().sink.poll_close(cx)
+    }
+}

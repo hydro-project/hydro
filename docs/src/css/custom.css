@@ -4,36 +4,85 @@
  * work well for content-centric websites.
  */
 
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400..1000;1,200..1000&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap");
 
 body {
-  font-family: 'Open Sans', sans-serif;
+  font-family: 'Nunito', sans-serif;
+  font-size: 18px;
+  line-height: 150%;
+}
+
+@media (max-width: 1000px) {
+  body {
+    font-size: 17px;
+  }
+}
+
+a {
+  font-weight: 600;
+}
+
+a code {
+  font-weight: 600 !important;
+}
+
+a strong {
+  font-weight: 800;
+}
+
+strong code {
+  font-weight: 800 !important;
 }
 
 /* You can override the default Infima variables here. */
 :root {
-  --ifm-color-primary: #0096ff;
-  --ifm-color-primary-dark: #0087e6;
-  --ifm-color-primary-darker: #007fd9;
-  --ifm-color-primary-darkest: #0069b3;
-  --ifm-color-primary-light: #1aa0ff;
-  --ifm-color-primary-lighter: #26a6ff;
-  --ifm-color-primary-lightest: #4db5ff;
-  --ifm-code-font-size: 95%;
+  --ifm-color-primary: #18abc9;
+  --ifm-color-primary-dark: #169ab5;
+  --ifm-color-primary-darker: #1491ab;
+  --ifm-color-primary-darkest: #11788d;
+  --ifm-color-primary-light: #1abcdd;
+  --ifm-color-primary-lighter: #1fc3e4;
+  --ifm-color-primary-lightest: #3dcbe8;
+
+  --ifm-code-font-size: 0.82em;
+  --ifm-font-family-monospace: "JetBrains Mono", monospace;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
 [data-theme='dark'] {
-  --ifm-color-primary: #47b3ff;
-  --ifm-color-primary-dark: #26a6ff;
-  --ifm-color-primary-darker: #169fff;
-  --ifm-color-primary-darkest: #0086e4;
-  --ifm-color-primary-light: #68c0ff;
-  --ifm-color-primary-lighter: #78c7ff;
-  --ifm-color-primary-lightest: #a9dbff;
+  --ifm-color-primary: #19b5db;
+  --ifm-color-primary-dark: #0dbce7;
+  --ifm-color-primary-darker: #0cb3db;
+  --ifm-color-primary-darkest: #0ba0c4;
+  --ifm-color-primary-light: #1ac8f2;
+  --ifm-color-primary-lighter: #26caf3;
+  --ifm-color-primary-lightest: #48d3f5;
+  --ifm-background-color: #232425 !important;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+p code {
+  font-weight: 400;
+  vertical-align: inherit;
+}
+
+pre {
+  font-size: 0.85em;
+}
+
+.theme-admonition {
+  font-size: 0.9em;
+  line-height: 150%;
+}
+
+.theme-admonition p {
+  margin-bottom: 10px;
+}
+
+.theme-admonition pre {
+  font-size: 0.9em;
 }
 
 [data-theme="dark"] .logo-light {
@@ -56,8 +105,130 @@ body {
   height: 2.9rem;
 }
 
-.navbar__link {
-  font-size: 1.1em;
+.navbar__items > .navbar__link {
+  border-radius: 15px;
+  padding-left: 10px;
+  padding-right: 10px;
+  box-sizing: border-box;
+  margin-left: 5px;
+  font-weight: 500;
+
+  transition: all 0.2s ease-in-out;
+}
+
+.navbar__items > .navbar__link:hover {
+  background: #ededed;
+  color: var(--ifm-navbar-link-color);
+}
+
+[data-theme="dark"] .navbar__items > .navbar__link:hover {
+  background: #333333;
+}
+
+.navbar__items > .navbar__link:hover::before {
+  background-color: var(--ifm-navbar-link-color) !important;
+}
+
+.navbar__items > .navbar__link--active {
+  background: #d9f6fc;
+  color: #05778d;
+}
+
+[data-theme="dark"] .navbar__items > .navbar__link--active {
+  background: rgb(43, 56, 58);
+  color: rgb(115, 212, 232);
+}
+
+.navbar__items > .navbar__link--active:hover {
+  background: #d9f6fc;
+  color: #05778d;
+}
+
+[data-theme="dark"] .navbar__items > .navbar__link--active:hover {
+  background: rgb(43, 56, 58);
+  color: rgb(115, 212, 232);
+}
+
+.navbar__items > .dropdown {
+  border-radius: 15px;
+  padding-left: 10px;
+  padding-right: 10px;
+  box-sizing: border-box;
+  margin-left: 5px;
+  font-weight: 500;
+
+  transition: all 0.2s ease-in-out;
+}
+
+.navbar__items > .dropdown:hover {
+  background: #ededed;
+}
+
+[data-theme="dark"] .navbar__items > .dropdown:hover {
+  background: #333333;
+}
+
+.navbar__items > .dropdown:hover > .navbar__link {
+  color: var(--ifm-navbar-link-color);
+}
+
+.navbar__items > .dropdown:has(.dropdown__link--active) {
+  background: #d9f6fc;
+}
+
+[data-theme="dark"] .navbar__items > .dropdown:has(.dropdown__link--active) {
+  background: rgb(43, 56, 58);
+}
+
+.navbar__items > .dropdown:has(.dropdown__link--active) > .navbar__link {
+  color: #05778d;
+}
+
+[data-theme="dark"] .navbar__items > .dropdown:has(.dropdown__link--active) > .navbar__link {
+  color: #5cd5ed;
+}
+
+.theme-doc-sidebar-item-link-level-1 > h1 {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 900;
+  color: #525252;
+  margin-bottom: 0;
+}
+
+[data-theme="dark"] .theme-doc-sidebar-item-link-level-1 > h1 {
+  color: rgb(222, 222, 222);
+}
+
+.theme-doc-sidebar-item-link-level-1 > h1.with-border {
+  padding-top: 15px;
+  border-top: 2px solid rgb(207, 207, 207);
+}
+
+h1.with-border a {
+  font-weight: inherit;
+  color: inherit;
+}
+
+h1.with-border a:hover {
+  text-decoration: none;
+}
+
+.menu__link {
+  font-size: 0.9em;
+}
+
+.menu__link--active {
+  font-weight: 700;
+}
+
+.breadcrumbs__link {
+  font-weight: 700;
+}
+
+.table-of-contents {
+  line-height: 150%;
+  font-size: 80%;
 }
 
 .crate-title {
@@ -95,6 +266,15 @@ body {
 
 .header-discord-link:hover::before {
   background-color: var(--ifm-navbar-link-hover-color);
+}
+
+.DocSearch-Button {
+  border-radius: 15px !important;
+}
+
+.DocSearch-Modal {
+  border-radius: 15px !important;
+  overflow: hidden;
 }
 
 .token.nondet {

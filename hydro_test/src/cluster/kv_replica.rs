@@ -2,10 +2,12 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
 
-use hydro_lang::live_collections::stream::{NoOrder, TotalOrder};
+use hydro_lang::live_collections::stream::NoOrder;
 use hydro_lang::prelude::*;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+
+mod sequence_payloads;
 
 pub struct Replica {}
 
@@ -59,72 +61,37 @@ pub fn kv_replica<'a, K: KvKey, V: KvValue>(
 
     let replica_tick = replicas.tick();
 
-    let (r_buffered_payloads_complete_cycle, r_buffered_payloads) =
-        replica_tick
-            .cycle::<Stream<SequencedKv<K, V>, Tick<Cluster<'a, Replica>>, Bounded, TotalOrder>>();
-    // p_to_replicas.inspect(q!(|payload: ReplicaPayload| println!("Replica received payload: {:?}", payload)));
-    let r_sorted_payloads = p_to_replicas.batch(&replica_tick, nondet!(
-            /// because we fill slots one-by-one, we can safely batch
-            /// because non-determinism is resolved when we sort by slots
-        ))
-        .chain(r_buffered_payloads) // Combine with all payloads that we've received and not processed yet
-        .sort();
-    // Create a cycle since we'll use this seq before we define it
-    let (r_next_slot_complete_cycle, r_next_slot) =
-        replica_tick.cycle_with_initial(replica_tick.singleton(q!(0)));
-    // Find highest the sequence number of any payload that can be processed in this tick. This is the payload right before a hole.
-    let r_next_slot_after_processing_payloads = r_sorted_payloads
-        .clone()
-        .cross_singleton(r_next_slot.clone())
-        .fold(
-            q!(|| 0),
-            q!(|new_next_slot, (sorted_payload, next_slot)| {
-                if sorted_payload.seq == std::cmp::max(*new_next_slot, next_slot) {
-                    *new_next_slot = sorted_payload.seq + 1;
-                }
-            }),
-        );
-    // Find all payloads that can and cannot be processed in this tick.
-    let r_processable_payloads = r_sorted_payloads
-        .clone()
-        .cross_singleton(r_next_slot_after_processing_payloads.clone())
-        .filter(q!(
-            |(sorted_payload, highest_seq)| sorted_payload.seq < *highest_seq
-        ))
-        .map(q!(|(sorted_payload, _)| { sorted_payload }));
-    let r_new_non_processable_payloads = r_sorted_payloads
-        .clone()
-        .cross_singleton(r_next_slot_after_processing_payloads.clone())
-        .filter(q!(
-            |(sorted_payload, highest_seq)| sorted_payload.seq > *highest_seq
-        ))
-        .map(q!(|(sorted_payload, _)| { sorted_payload }));
-    // Save these, we can process them once the hole has been filled
-    r_buffered_payloads_complete_cycle.complete_next_tick(r_new_non_processable_payloads);
+    let (r_processable_payloads, r_next_slot_complete_cycle) =
+        sequence_payloads::sequence_payloads(&replica_tick, p_to_replicas);
 
-    let r_kv_store = r_processable_payloads
-        .clone()
-        .persist() // Optimization: all_ticks() + fold() = fold<static>, where the state of the previous fold is saved and persisted values are deleted.
-        .fold(q!(|| (HashMap::new(), 0)), q!(|(kv_store, next_slot), payload| {
-            if let Some(kv) = payload.kv {
-                kv_store.insert(kv.key, kv.value);
-            }
-            *next_slot = payload.seq + 1;
-        }));
+    let r_kv_store = r_processable_payloads.clone().across_ticks(|s| {
+        s.fold(
+            q!(|| (HashMap::new(), 0)),
+            q!(|(kv_store, next_slot), payload| {
+                if let Some(kv) = payload.kv {
+                    kv_store.insert(kv.key, kv.value);
+                }
+                *next_slot = payload.seq + 1;
+            }),
+        )
+    });
     // Update the highest seq for the next tick
-    r_next_slot_complete_cycle
-        .complete_next_tick(r_kv_store.map(q!(|(_kv_store, next_slot)| next_slot)));
+    let r_next_slot = r_kv_store.map(q!(|(_kv_store, next_slot)| next_slot));
+    r_next_slot_complete_cycle.complete_next_tick(r_next_slot.clone());
 
     // Send checkpoints to the acceptors when we've processed enough payloads
     let (r_checkpointed_seqs_complete_cycle, r_checkpointed_seqs) =
         replica_tick.cycle::<Optional<usize, _, _>>();
     let r_max_checkpointed_seq = r_checkpointed_seqs
         .into_stream()
-        .persist()
-        .max()
+        .across_ticks(|s| s.max())
         .into_singleton();
     let r_checkpoint_seq_new = r_max_checkpointed_seq
-        .zip(r_next_slot)
+        .zip(
+            Optional::from(r_next_slot)
+                .defer_tick()
+                .unwrap_or(replica_tick.singleton(q!(0))),
+        )
         .filter_map(q!(
             move |(max_checkpointed_seq, next_slot)| if max_checkpointed_seq
                 .map(|m| next_slot - m >= checkpoint_frequency)

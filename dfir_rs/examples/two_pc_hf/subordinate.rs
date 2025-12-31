@@ -14,8 +14,8 @@ pub(crate) async fn run_subordinate(outbound: UdpSink, inbound: UdpStream, opts:
     let path = opts.path();
     let mut df: Dfir = dfir_syntax! {
         // Outbound address
-        server_addr = source_json(path)
-            -> map(|json: Addresses| json.coordinator)
+        server_addr = source_json::<Addresses>(path)
+            -> map(|json| json.coordinator)
             -> map(|s| s.parse::<SocketAddr>().unwrap())
             -> inspect(|coordinator| println!("Coordinator: {}", coordinator));
         server_addr_join = cross_join::<'tick, 'static>();

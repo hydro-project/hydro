@@ -1,7 +1,7 @@
 error[E0599]: no variant named `Square` found for enum `Shape`
   --> tests/compile-fail-stable/surface_demuxenum_port_extra_zero.rs:11:18
    |
-6  |     enum Shape {
+ 6 |     enum Shape {
    |     ---------- variant `Square` not found here
 ...
 11 |         my_demux[Square] -> for_each(std::mem::drop);
@@ -11,8 +11,13 @@ error[E0277]: the trait bound `Shape: SingleVariant` is not satisfied
   --> tests/compile-fail-stable/surface_demuxenum_port_extra_zero.rs:10:52
    |
 10 |         my_demux = source_iter([]) -> demux_enum::<Shape>();
-   |                                                    ^^^^^ the trait `SingleVariant` is not implemented for `Shape`
+   |                                                    ^^^^^ unsatisfied trait bound
    |
+help: the trait `SingleVariant` is not implemented for `Shape`
+  --> tests/compile-fail-stable/surface_demuxenum_port_extra_zero.rs:6:5
+   |
+ 6 |     enum Shape {
+   |     ^^^^^^^^^^
    = note: requires that the enum have only one variant.
    = note: ensure there are no missing outputs; there must be exactly one output for each enum variant.
 
@@ -20,8 +25,13 @@ error[E0277]: the trait bound `Shape: SingleVariant` is not satisfied
   --> tests/compile-fail-stable/surface_demuxenum_port_extra_zero.rs:10:39
    |
 10 |         my_demux = source_iter([]) -> demux_enum::<Shape>();
-   |                                       ^^^^^^^^^^ the trait `SingleVariant` is not implemented for `Shape`
+   |                                       ^^^^^^^^^^ unsatisfied trait bound
    |
+help: the trait `SingleVariant` is not implemented for `Shape`
+  --> tests/compile-fail-stable/surface_demuxenum_port_extra_zero.rs:6:5
+   |
+ 6 |     enum Shape {
+   |     ^^^^^^^^^^
    = note: requires that the enum have only one variant.
    = note: ensure there are no missing outputs; there must be exactly one output for each enum variant.
 
@@ -29,7 +39,12 @@ error[E0277]: the trait bound `Shape: SingleVariant` is not satisfied
   --> tests/compile-fail-stable/surface_demuxenum_port_extra_zero.rs:11:29
    |
 11 |         my_demux[Square] -> for_each(std::mem::drop);
-   |                             ^^^^^^^^ the trait `SingleVariant` is not implemented for `Shape`
+   |                             ^^^^^^^^ unsatisfied trait bound
    |
+help: the trait `SingleVariant` is not implemented for `Shape`
+  --> tests/compile-fail-stable/surface_demuxenum_port_extra_zero.rs:6:5
+   |
+ 6 |     enum Shape {
+   |     ^^^^^^^^^^
    = note: requires that the enum have only one variant.
    = note: ensure there are no missing outputs; there must be exactly one output for each enum variant.

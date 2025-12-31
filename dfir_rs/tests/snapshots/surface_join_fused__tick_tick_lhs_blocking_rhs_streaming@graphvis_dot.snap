@@ -14,7 +14,7 @@ digraph {
     n7v1 [label="(n7v1) defer_tick()", shape=invhouse, fillcolor="#88aaff"]
     n8v1 [label="(n8v1) defer_tick()", shape=invhouse, fillcolor="#88aaff"]
     n9v1 [label="(n9v1) union()", shape=invhouse, fillcolor="#88aaff"]
-    n10v1 [label="(n10v1) join_fused_lhs(Fold(SetUnionHashSet::default, Merge::merge))", shape=invhouse, fillcolor="#88aaff"]
+    n10v1 [label="(n10v1) join_fused_lhs(\l    Fold::new(\l        SetUnionHashSet::default,\l        |state, delta| {\l            Merge::merge(state, delta);\l        },\l    ),\l)\l", shape=invhouse, fillcolor="#88aaff"]
     n11v1 [label="(n11v1) for_each(|x| {\l    results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x)\l})\l", shape=house, fillcolor="#ffff88"]
     n12v1 [label="(n12v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n13v1 [label="(n13v1) handoff", shape=parallelogram, fillcolor="#ddddff"]

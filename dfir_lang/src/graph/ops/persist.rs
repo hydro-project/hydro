@@ -2,7 +2,7 @@ use quote::quote_spanned;
 
 use super::{
     OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
-    Persistence, RANGE_0, RANGE_1, WriteContextArgs,
+    Persistence, RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
 
@@ -44,7 +44,7 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
     soft_range_out: RANGE_1,
     num_args: 0,
     persistence_args: RANGE_1,
-    type_args: RANGE_0,
+    type_args: &(0..=1),
     is_external_input: false,
     has_singleton_output: true,
     flo_type: None,
@@ -62,12 +62,14 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                    outputs,
                    singleton_output_ident,
                    op_name,
-                   work_fn,
+                   work_fn_async,
                    op_inst:
                        OperatorInstance {
                            generics:
                                OpInstGenerics {
-                                   persistence_args, ..
+                                   persistence_args,
+                                   type_args,
+                                   ..
                                },
                            ..
                        },
@@ -81,12 +83,16 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                 format!("{} only supports `'static`.", op_name),
             ));
         }
+        let generic_type = type_args
+            .first()
+            .map(quote::ToTokens::to_token_stream)
+            .unwrap_or(quote_spanned!(op_span=> _));
 
         let persistdata_ident = singleton_output_ident;
         let vec_ident = wc.make_ident("persistvec");
         let write_prologue = quote_spanned! {op_span=>
             let #persistdata_ident = #df_ident.add_state(::std::cell::RefCell::new(
-                ::std::vec::Vec::new(),
+                ::std::vec::Vec::<#generic_type>::new(),
             ));
         };
 
@@ -99,14 +105,19 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                 }.borrow_mut();
 
                 let #ident = {
-                    if #context.is_first_run_this_tick() {
-                        #work_fn(|| #vec_ident.extend(#input));
-                        #vec_ident.iter().cloned()
+                    let replay_idx = if #context.is_first_run_this_tick() {
+                        0
                     } else {
-                        let len = #vec_ident.len();
-                        #work_fn(|| #vec_ident.extend(#input));
-                        #vec_ident[len..].iter().cloned()
-                    }
+                        #vec_ident.len()
+                    };
+
+                    let fut = #root::compiled::pull::ForEach::new(#input, |item| {
+                        #vec_ident.push(item);
+                    });
+                    let () = #work_fn_async(fut).await;
+
+                    let iter = #vec_ident[replay_idx..].iter().cloned();
+                    #root::futures::stream::iter(iter)
                 };
             }
         } else {
@@ -118,20 +129,17 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                 }.borrow_mut();
 
                 let #ident = {
-                    fn constrain_types<'ctx, Push, Item>(vec: &'ctx mut Vec<Item>, mut output: Push, is_new_tick: bool) -> impl 'ctx + #root::pusherator::Pusherator<Item = Item>
+                    fn constrain_types<'ctx, Push, Item>(vec: &'ctx mut Vec<Item>, output: Push, is_new_tick: bool) -> impl 'ctx + #root::futures::sink::Sink<Item, Error = #root::Never>
                     where
-                        Push: 'ctx + #root::pusherator::Pusherator<Item = Item>,
+                        Push: 'ctx + #root::futures::sink::Sink<Item, Error = #root::Never>,
                         Item: ::std::clone::Clone,
                     {
-                        if is_new_tick {
-                            #work_fn(|| vec.iter().cloned().for_each(|item| {
-                                #root::pusherator::Pusherator::give(&mut output, item);
-                            }));
-                        }
-                        #root::pusherator::map::Map::new(|item| {
-                            vec.push(item);
-                            vec.last().unwrap().clone()
-                        }, output)
+                        let replay_idx = if is_new_tick {
+                            0
+                        } else {
+                            vec.len()
+                        };
+                        #root::compiled::push::Persist::new(vec, replay_idx, output)
                     }
                     constrain_types(&mut *#vec_ident, #output, #context.is_first_run_this_tick())
                 };

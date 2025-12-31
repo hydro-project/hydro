@@ -30,34 +30,26 @@ fn hash_to_color<T: Hash>(input: T) -> Color {
 // when the output is a terminal, to avoid issues with terminals that do
 // not support color.
 pub fn chat_server<'a, P>(
-    process: &Process<'a, P>,
     in_stream: KeyedStream<u64, String, Process<'a, P>, Unbounded>,
     membership: KeyedStream<u64, MembershipEvent, Process<'a, P>, Unbounded>,
     nondet_user_arrival_broadcast: NonDet,
 ) -> KeyedStream<u64, String, Process<'a, P>, Unbounded, NoOrder> {
-    let current_members = track_membership(membership);
+    sliced! {
+        let msg_batch = use(in_stream, nondet_user_arrival_broadcast);
+        let members = use(track_membership(membership), nondet_user_arrival_broadcast);
 
-    let tick = process.tick();
-
-    current_members
-        .snapshot(&tick, nondet_user_arrival_broadcast)
-        .keys()
-        .cross_product(
-            in_stream
-                .entries()
-                .batch(&tick, nondet_user_arrival_broadcast),
-        )
-        .into_keyed()
-        .all_ticks()
-        .filter_map_with_key(q!(|(recipient_id, (sender_id, line))| {
-            if sender_id != recipient_id {
-                Some(format!(
-                    "From {}: {:}",
-                    sender_id,
-                    line.color(self::hash_to_color(sender_id + 10))
-                ))
-            } else {
-                None
-            }
-        }))
+        let current_members = members.filter(q!(|b| *b)).keys();
+        current_members.cross_product(msg_batch.entries()).into_keyed()
+    }
+    .filter_map_with_key(q!(|(recipient_id, (sender_id, line))| {
+        if sender_id != recipient_id {
+            Some(format!(
+                "From {}: {:}",
+                sender_id,
+                line.color(self::hash_to_color(sender_id + 10))
+            ))
+        } else {
+            None
+        }
+    }))
 }

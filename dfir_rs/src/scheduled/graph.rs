@@ -6,6 +6,7 @@ use std::cell::Cell;
 use std::cmp::Ordering;
 use std::future::Future;
 use std::marker::PhantomData;
+use std::rc::Rc;
 
 #[cfg(feature = "meta")]
 use dfir_lang::diagnostic::{Diagnostic, SerdeSpan};
@@ -13,18 +14,20 @@ use dfir_lang::diagnostic::{Diagnostic, SerdeSpan};
 use dfir_lang::graph::DfirGraph;
 use ref_cast::RefCast;
 use smallvec::SmallVec;
+use tracing::Instrument;
 use web_time::SystemTime;
 
 use super::context::Context;
 use super::handoff::handoff_list::PortList;
 use super::handoff::{Handoff, HandoffMeta, TeeingHandoff};
+use super::metrics::{DfirMetrics, DfirMetricsState, InstrumentSubgraph};
 use super::port::{RECV, RecvCtx, RecvPort, SEND, SendCtx, SendPort};
 use super::reactor::Reactor;
 use super::state::StateHandle;
 use super::subgraph::Subgraph;
+use super::ticks::{TickDuration, TickInstant};
 use super::{HandoffId, HandoffTag, LoopId, LoopTag, SubgraphId, SubgraphTag};
 use crate::Never;
-use crate::scheduled::ticks::{TickDuration, TickInstant};
 use crate::util::slot_vec::{SecondarySlotVec, SlotVec};
 
 /// A DFIR graph. Owns, schedules, and runs the compiled subgraphs.
@@ -36,7 +39,9 @@ pub struct Dfir<'a> {
 
     pub(super) context: Context,
 
-    handoffs: SlotVec<HandoffTag, HandoffData>,
+    pub(super) handoffs: SlotVec<HandoffTag, HandoffData>,
+
+    metrics: Rc<DfirMetricsState>,
 
     #[cfg(feature = "meta")]
     /// See [`Self::meta_graph()`].
@@ -92,6 +97,11 @@ impl Dfir<'_> {
             self.subgraphs[pred_sg_id].succs.push(new_hoff_id);
         }
 
+        // Initialize handoff metrics struct.
+        Rc::make_mut(&mut self.metrics)
+            .handoff_metrics
+            .insert(new_hoff_id, Default::default());
+
         let output_port = RecvPort {
             handoff_id: new_hoff_id,
             _marker: PhantomData,
@@ -136,7 +146,7 @@ impl<'a> Dfir<'a> {
         Default::default()
     }
 
-    /// Assign the meta graph via JSON string. Used internally by the [`dfir_syntax`] and other macros.
+    /// Assign the meta graph via JSON string. Used internally by the [`crate::dfir_syntax`] and other macros.
     #[doc(hidden)]
     pub fn __assign_meta_graph(&mut self, _meta_graph_json: &str) {
         #[cfg(feature = "meta")]
@@ -219,6 +229,19 @@ impl<'a> Dfir<'a> {
         work_done
     }
 
+    /// [`Self::run_tick`] but panics if a subgraph yields asynchronously.
+    #[tracing::instrument(level = "trace", skip(self), ret)]
+    pub fn run_tick_sync(&mut self) -> bool {
+        let mut work_done = false;
+        // While work is immediately available *on the current tick*.
+        while self.next_stratum(true) {
+            work_done = true;
+            // Do any work.
+            run_sync(self.run_stratum());
+        }
+        work_done
+    }
+
     /// Runs the dataflow until no more (externally-triggered) work is immediately available.
     /// Runs at least one tick of dataflow, even if no external events have been received.
     /// If the dataflow contains loops this method may run forever.
@@ -242,6 +265,19 @@ impl<'a> Dfir<'a> {
         work_done
     }
 
+    /// [`Self::run_available`] but panics if a subgraph yields asynchronously.
+    #[tracing::instrument(level = "trace", skip(self), ret)]
+    pub fn run_available_sync(&mut self) -> bool {
+        let mut work_done = false;
+        // While work is immediately available.
+        while self.next_stratum(false) {
+            work_done = true;
+            // Do any work.
+            run_sync(self.run_stratum());
+        }
+        work_done
+    }
+
     /// Runs the current stratum of the dataflow until no more local work is available (does not receive events).
     ///
     /// Returns `true` if any work was done.
@@ -256,12 +292,32 @@ impl<'a> Dfir<'a> {
         'pop: while let Some(sg_id) =
             self.context.stratum_queues[self.context.current_stratum].pop_front()
         {
+            let sg_data = &mut self.subgraphs[sg_id];
+
+            // Update handoff metrics.
+            // NOTE(mingwei):
+            // We measure handoff metrics at `recv`, not `send`.
+            // This is done because we (a) know that all `recv`
+            // will be consumed(*) by the subgraph when it is run, and in contrast (b) do not know
+            // that all `send` will be consumed after a run. I.e. this subgraph may run multiple
+            // times before the next subgraph consumes the output; don't double count those.
+            // (*) - usually... always true for Hydro-generated DFIR at least.
+            for &handoff_id in sg_data.preds.iter() {
+                let handoff_metrics = &self.metrics.handoff_metrics[handoff_id];
+                let handoff_data = &mut self.handoffs[handoff_id];
+                let handoff_len = handoff_data.handoff.len();
+                handoff_metrics
+                    .total_items_count
+                    .update(|x| x + handoff_len);
+                handoff_metrics.curr_items_count.set(handoff_len);
+            }
+
+            // Run the subgraph (and do bookkeeping).
             {
-                let sg_data = &mut self.subgraphs[sg_id];
                 // This must be true for the subgraph to be enqueued.
                 assert!(sg_data.is_scheduled.take());
 
-                let _enter = tracing::info_span!(
+                let run_subgraph_span_guard = tracing::info_span!(
                     "run-subgraph",
                     sg_id = sg_id.to_string(),
                     sg_name = &*sg_data.name,
@@ -356,14 +412,26 @@ impl<'a> Dfir<'a> {
 
                 tracing::info!("Running subgraph.");
                 sg_data.last_tick_run_in = Some(self.context.current_tick);
-                Box::into_pin(sg_data.subgraph.run(&mut self.context, &mut self.handoffs)).await;
+
+                let sg_metrics = &self.metrics.subgraph_metrics[sg_id];
+                let sg_fut =
+                    Box::into_pin(sg_data.subgraph.run(&mut self.context, &mut self.handoffs));
+                // Update subgraph metrics.
+                let sg_fut = InstrumentSubgraph::new(sg_fut, sg_metrics);
+                // Pass along `run_subgraph_span` to the run subgraph future.
+                let sg_fut = sg_fut.instrument(run_subgraph_span_guard.exit());
+                let () = sg_fut.await;
+
+                sg_metrics.total_run_count.update(|x| x + 1);
             };
 
+            // Schedule the following subgraphs if data was pushed to the corresponding handoff.
             let sg_data = &self.subgraphs[sg_id];
             for &handoff_id in sg_data.succs.iter() {
-                let handoff = &self.handoffs[handoff_id];
-                if !handoff.handoff.is_bottom() {
-                    for &succ_id in handoff.succs.iter() {
+                let handoff_data = &self.handoffs[handoff_id];
+                let handoff_len = handoff_data.handoff.len();
+                if 0 < handoff_len {
+                    for &succ_id in handoff_data.succs.iter() {
                         let succ_sg_data = &self.subgraphs[succ_id];
                         // If we have sent data to the next tick, then we can start the next tick.
                         if succ_sg_data.stratum < self.context.current_stratum && !sg_data.is_lazy {
@@ -382,6 +450,8 @@ impl<'a> Dfir<'a> {
                         }
                     }
                 }
+                let handoff_metrics = &self.metrics.handoff_metrics[handoff_id];
+                handoff_metrics.curr_items_count.set(handoff_len);
             }
 
             let reschedule = self.context.reschedule_loop_block.take();
@@ -556,6 +626,17 @@ impl<'a> Dfir<'a> {
         }
     }
 
+    /// [`Self::run`] but panics if a subgraph yields asynchronously.
+    #[tracing::instrument(level = "trace", skip(self), ret)]
+    pub fn run_sync(&mut self) -> Option<Never> {
+        loop {
+            // Run any work which is immediately available.
+            self.run_available_sync();
+            // When no work is available block until more events occur.
+            self.recv_events();
+        }
+    }
+
     /// Enqueues subgraphs triggered by events without blocking.
     ///
     /// Returns the number of subgraphs enqueued, and if any were external.
@@ -693,7 +774,7 @@ impl<'a> Dfir<'a> {
     }
 
     /// Adds a new compiled subgraph with the specified inputs and outputs in stratum 0.
-    pub fn add_subgraph<Name, R, W, Func, Fut>(
+    pub fn add_subgraph<Name, R, W, Func>(
         &mut self,
         name: Name,
         recv_ports: R,
@@ -704,8 +785,7 @@ impl<'a> Dfir<'a> {
         Name: Into<Cow<'static, str>>,
         R: 'static + PortList<RECV>,
         W: 'static + PortList<SEND>,
-        Func: 'a + for<'ctx> FnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>) -> Fut,
-        Fut: 'a + Future<Output = ()>,
+        Func: 'a + for<'ctx> AsyncFnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>),
     {
         self.add_subgraph_stratified(name, 0, recv_ports, send_ports, false, subgraph)
     }
@@ -713,7 +793,7 @@ impl<'a> Dfir<'a> {
     /// Adds a new compiled subgraph with the specified inputs, outputs, and stratum number.
     ///
     /// TODO(mingwei): add example in doc.
-    pub fn add_subgraph_stratified<Name, R, W, Func, Fut>(
+    pub fn add_subgraph_stratified<Name, R, W, Func>(
         &mut self,
         name: Name,
         stratum: usize,
@@ -726,8 +806,7 @@ impl<'a> Dfir<'a> {
         Name: Into<Cow<'static, str>>,
         R: 'static + PortList<RECV>,
         W: 'static + PortList<SEND>,
-        Func: 'a + for<'ctx> FnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>) -> Fut,
-        Fut: 'a + Future<Output = ()>,
+        Func: 'a + for<'ctx> AsyncFnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>),
     {
         self.add_subgraph_full(
             name, stratum, recv_ports, send_ports, laziness, None, subgraph,
@@ -736,7 +815,7 @@ impl<'a> Dfir<'a> {
 
     /// Adds a new compiled subgraph with all options.
     #[expect(clippy::too_many_arguments, reason = "Mainly for internal use.")]
-    pub fn add_subgraph_full<Name, R, W, Func, Fut>(
+    pub fn add_subgraph_full<Name, R, W, Func>(
         &mut self,
         name: Name,
         stratum: usize,
@@ -750,8 +829,7 @@ impl<'a> Dfir<'a> {
         Name: Into<Cow<'static, str>>,
         R: 'static + PortList<RECV>,
         W: 'static + PortList<SEND>,
-        Func: 'a + for<'ctx> FnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>) -> Fut,
-        Fut: 'a + Future<Output = ()>,
+        Func: 'a + for<'ctx> AsyncFnMut(&'ctx mut Context, R::Ctx<'ctx>, W::Ctx<'ctx>),
     {
         // SAFETY: Check that the send and recv ports are from `self.handoffs`.
         recv_ports.assert_is_from(&self.handoffs);
@@ -768,7 +846,8 @@ impl<'a> Dfir<'a> {
             send_ports.set_graph_meta(&mut self.handoffs, &mut subgraph_succs, sg_id, false);
 
             let subgraph =
-                move |context: &mut Context, handoffs: &mut SlotVec<HandoffTag, HandoffData>| {
+                async move |context: &mut Context,
+                            handoffs: &mut SlotVec<HandoffTag, HandoffData>| {
                     let (recv, send) = unsafe {
                         // SAFETY:
                         // 1. We checked `assert_is_from` at assembly time, above.
@@ -778,7 +857,7 @@ impl<'a> Dfir<'a> {
                             send_ports.make_ctx(&*handoffs),
                         )
                     };
-                    (subgraph)(context, recv, send)
+                    (subgraph)(context, recv, send).await;
                 };
             SubgraphData::new(
                 name.into(),
@@ -795,11 +874,16 @@ impl<'a> Dfir<'a> {
         self.context.init_stratum(stratum);
         self.context.stratum_queues[stratum].push_back(sg_id);
 
+        // Initialize subgraph metrics struct.
+        Rc::make_mut(&mut self.metrics)
+            .subgraph_metrics
+            .insert(sg_id, Default::default());
+
         sg_id
     }
 
     /// Adds a new compiled subgraph with a variable number of inputs and outputs of the same respective handoff types.
-    pub fn add_subgraph_n_m<Name, R, W, Func, Fut>(
+    pub fn add_subgraph_n_m<Name, R, W, Func>(
         &mut self,
         name: Name,
         recv_ports: Vec<RecvPort<R>>,
@@ -811,18 +895,17 @@ impl<'a> Dfir<'a> {
         R: 'static + Handoff,
         W: 'static + Handoff,
         Func: 'a
-            + for<'ctx> FnMut(
+            + for<'ctx> AsyncFnMut(
                 &'ctx mut Context,
                 &'ctx [&'ctx RecvCtx<R>],
                 &'ctx [&'ctx SendCtx<W>],
-            ) -> Fut,
-        Fut: 'a + Future<Output = ()>,
+            ),
     {
         self.add_subgraph_stratified_n_m(name, 0, recv_ports, send_ports, subgraph)
     }
 
     /// Adds a new compiled subgraph with a variable number of inputs and outputs of the same respective handoff types.
-    pub fn add_subgraph_stratified_n_m<Name, R, W, Func, Fut>(
+    pub fn add_subgraph_stratified_n_m<Name, R, W, Func>(
         &mut self,
         name: Name,
         stratum: usize,
@@ -835,12 +918,11 @@ impl<'a> Dfir<'a> {
         R: 'static + Handoff,
         W: 'static + Handoff,
         Func: 'a
-            + for<'ctx> FnMut(
+            + for<'ctx> AsyncFnMut(
                 &'ctx mut Context,
                 &'ctx [&'ctx RecvCtx<R>],
                 &'ctx [&'ctx SendCtx<W>],
-            ) -> Fut,
-        Fut: 'a + Future<Output = ()>,
+            ),
     {
         let sg_id = self.subgraphs.insert_with_key(|sg_id| {
             let subgraph_preds = recv_ports.iter().map(|port| port.handoff_id).collect();
@@ -854,7 +936,8 @@ impl<'a> Dfir<'a> {
             }
 
             let subgraph =
-                move |context: &mut Context, handoffs: &mut SlotVec<HandoffTag, HandoffData>| {
+                async move |context: &mut Context,
+                            handoffs: &mut SlotVec<HandoffTag, HandoffData>| {
                     let recvs: Vec<&RecvCtx<R>> = recv_ports
                         .iter()
                         .map(|hid| hid.handoff_id)
@@ -877,7 +960,7 @@ impl<'a> Dfir<'a> {
                         .map(RefCast::ref_cast)
                         .collect();
 
-                    (subgraph)(context, &recvs, &sends)
+                    (subgraph)(context, &recvs, &sends).await;
                 };
             SubgraphData::new(
                 name.into(),
@@ -891,9 +974,13 @@ impl<'a> Dfir<'a> {
                 0,
             )
         });
-
         self.context.init_stratum(stratum);
         self.context.stratum_queues[stratum].push_back(sg_id);
+
+        // Initialize subgraph metrics struct.
+        Rc::make_mut(&mut self.metrics)
+            .subgraph_metrics
+            .insert(sg_id, Default::default());
 
         sg_id
     }
@@ -909,6 +996,11 @@ impl<'a> Dfir<'a> {
         let handoff_id = self
             .handoffs
             .insert_with_key(|hoff_id| HandoffData::new(name.into(), handoff, hoff_id));
+
+        // Initialize handoff metrics struct.
+        Rc::make_mut(&mut self.metrics)
+            .handoff_metrics
+            .insert(handoff_id, Default::default());
 
         // Make ports.
         let input_port = SendPort {
@@ -970,6 +1062,14 @@ impl<'a> Dfir<'a> {
         );
         loop_id
     }
+
+    /// Returns DFIR runtime metrics accumulated since runtime creation.
+    pub fn metrics(&self) -> DfirMetrics {
+        DfirMetrics {
+            curr: Rc::clone(&self.metrics),
+            prev: None,
+        }
+    }
 }
 
 impl Dfir<'_> {
@@ -992,55 +1092,16 @@ impl Dfir<'_> {
     }
 }
 
-macro_rules! make_sync {
-    ($synch:ident, $asynch:ident, $ret:ty) => {
-        #[doc = concat!("A synchronous wrapper around [`Self::", stringify!($asynch), "`].")]
-        ///
-        /// This method will panic if the graph contains any async subgraph which returns `Poll::Pending`.
-        pub fn $synch(&mut self) -> $ret {
-            use std::sync::Arc;
-
-            #[derive(Default)]
-            struct BoolWaker {
-                woke: std::sync::atomic::AtomicBool,
-            }
-            impl BoolWaker {
-                fn new() -> Arc<Self> {
-                    Arc::new(Self::default())
-                }
-
-                fn woke(&self) -> bool {
-                    self.woke.load(std::sync::atomic::Ordering::Relaxed)
-                }
-            }
-            impl futures::task::ArcWake for BoolWaker {
-                fn wake_by_ref(arc_self: &Arc<Self>) {
-                    arc_self.woke.store(true, std::sync::atomic::Ordering::Relaxed);
-                }
-            }
-
-            let mut fut = std::pin::pin!(self.$asynch());
-            loop {
-                let bool_waker = BoolWaker::new();
-                let waker = futures::task::waker(Arc::clone(&bool_waker));
-                let mut ctx = std::task::Context::from_waker(&waker);
-                if let std::task::Poll::Ready(out) = fut.as_mut().poll(&mut ctx) {
-                    return out;
-                }
-                // Spin until waker stops being woken.
-                if !bool_waker.woke() {
-                    panic!(
-                        "Future has pending work: DFIR graph has an async subgraph which failed to run synchronously."
-                    )
-                }
-            }
-        }
-    };
-}
-impl Dfir<'_> {
-    make_sync!(run_available_sync, run_available, bool);
-    make_sync!(run_tick_sync, run_tick, bool);
-    make_sync!(run_sync, run, Option<Never>);
+fn run_sync<Fut>(fut: Fut) -> Fut::Output
+where
+    Fut: Future,
+{
+    let mut fut = std::pin::pin!(fut);
+    let mut ctx = std::task::Context::from_waker(std::task::Waker::noop());
+    match fut.as_mut().poll(&mut ctx) {
+        std::task::Poll::Ready(out) => out,
+        std::task::Poll::Pending => panic!("Future did not resolve immediately."),
+    }
 }
 
 impl Drop for Dfir<'_> {
@@ -1078,6 +1139,7 @@ pub struct HandoffData {
     /// This field is only used in initialization.
     pub(super) succ_handoffs: Vec<HandoffId>,
 }
+
 impl std::fmt::Debug for HandoffData {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         f.debug_struct("HandoffData")
@@ -1086,6 +1148,7 @@ impl std::fmt::Debug for HandoffData {
             .finish_non_exhaustive()
     }
 }
+
 impl HandoffData {
     /// New with `pred_handoffs` and `succ_handoffs` set to its own [`HandoffId`]: `vec![hoff_id]`.
     pub fn new(
@@ -1117,9 +1180,8 @@ pub(super) struct SubgraphData<'a> {
     /// Within loop blocks, corresponds to the topological sort of the DAG created when `next_loop()/next_tick()` are removed.
     pub(super) stratum: usize,
     /// The actual execution code of the subgraph.
-    subgraph: Box<dyn 'a + Subgraph<'a>>,
+    subgraph: Box<dyn 'a + Subgraph>,
 
-    #[expect(dead_code, reason = "may be useful in the future")]
     preds: Vec<HandoffId>,
     succs: Vec<HandoffId>,
 
@@ -1143,12 +1205,13 @@ pub(super) struct SubgraphData<'a> {
     /// The loop depth of the subgraph.
     loop_depth: usize,
 }
+
 impl<'a> SubgraphData<'a> {
     #[expect(clippy::too_many_arguments, reason = "internal use")]
     pub(crate) fn new(
         name: Cow<'static, str>,
         stratum: usize,
-        subgraph: impl 'a + Subgraph<'a>,
+        subgraph: impl 'a + Subgraph,
         preds: Vec<HandoffId>,
         succs: Vec<HandoffId>,
         is_scheduled: bool,
@@ -1182,7 +1245,7 @@ pub(crate) struct LoopData {
 /// Defines when state should be reset.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum StateLifespan {
-    /// Always reset, a ssociated with the subgraph.
+    /// Always reset, associated with the subgraph.
     Subgraph(SubgraphId),
     /// Reset between loop executions.
     Loop(LoopId),

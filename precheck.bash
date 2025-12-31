@@ -53,6 +53,7 @@ if [ "$TEST_DFIR" = true ]; then
 fi
 if [ "$TEST_HYDRO" = true ]; then
     TARGETS="$TARGETS -p hydro_lang -p hydro_std -p hydro_test -p hydro_deploy -p hydro_deploy_integration"
+    FEATURES="$FEATURES --features deploy,sim"
 fi
 if [ "$TEST_WEBSITE" = true ]; then
     TARGETS="$TARGETS -p website_playground"

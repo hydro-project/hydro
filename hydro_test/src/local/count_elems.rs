@@ -1,18 +1,12 @@
 use hydro_lang::prelude::*;
 
 pub fn count_elems<'a, T: 'a>(
-    process: &Process<'a>,
     input_stream: Stream<T, Process<'a>, Unbounded>,
 ) -> Stream<u32, Process<'a>, Unbounded> {
-    let tick = process.tick();
-
-    let count = input_stream
-        .map(q!(|_| 1))
-        .batch(&tick, nondet!(/** test */))
-        .fold(q!(|| 0), q!(|a, b| *a += b))
-        .all_ticks();
-
-    count
+    sliced! {
+        let batch = use(input_stream.map(q!(|_| 1)), nondet!(/** test */));
+        batch.fold(q!(|| 0), q!(|a, b| *a += b)).into_stream()
+    }
 }
 
 #[cfg(test)]
@@ -30,7 +24,7 @@ mod tests {
         let p1 = builder.process();
 
         let (input_send, input) = p1.source_external_bincode(&external);
-        let out = super::count_elems(&p1, input);
+        let out = super::count_elems(input);
         let out_recv = out.send_bincode_external(&external);
 
         let built = builder.with_default_optimize();
@@ -41,8 +35,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut input_send = nodes.connect_sink_bincode(input_send).await;
-        let mut out_recv = nodes.connect_source_bincode(out_recv).await;
+        let mut input_send = nodes.connect(input_send).await;
+        let mut out_recv = nodes.connect(out_recv).await;
 
         // send before starting so everything shows up in single tick
         input_send.send(1).await.unwrap();
@@ -51,7 +45,6 @@ mod tests {
 
         deployment.start().await.unwrap();
 
-        assert_eq!(out_recv.next().await.unwrap(), 0); // first tick (no data yet)
-        assert_eq!(out_recv.next().await.unwrap(), 3); // second tick
+        assert_eq!(out_recv.next().await.unwrap(), 3);
     }
 }

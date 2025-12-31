@@ -4,6 +4,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::compile::builder::FlowState;
+use crate::live_collections::stream::{ExactlyOnce, Ordering, Retries, TotalOrder};
 use crate::staging_util::Invariant;
 
 pub enum NotMany {}
@@ -25,16 +26,20 @@ impl Clone for ExternalBytesPort<Many> {
     }
 }
 
-pub struct ExternalBincodeSink<Type, Many = NotMany>
-where
+pub struct ExternalBincodeSink<
+    Type,
+    Many = NotMany,
+    O: Ordering = TotalOrder,
+    R: Retries = ExactlyOnce,
+> where
     Type: Serialize,
 {
     pub(crate) process_id: usize,
     pub(crate) port_id: usize,
-    pub(crate) _phantom: PhantomData<(Type, Many)>,
+    pub(crate) _phantom: PhantomData<(Type, Many, O, R)>,
 }
 
-impl<T: Serialize> Clone for ExternalBincodeSink<T, Many> {
+impl<T: Serialize, O: Ordering, R: Retries> Clone for ExternalBincodeSink<T, Many, O, R> {
     fn clone(&self) -> Self {
         Self {
             process_id: self.process_id,
@@ -60,7 +65,7 @@ impl<InT, OutT> Clone for ExternalBincodeBidi<InT, OutT, Many> {
     }
 }
 
-pub struct ExternalBincodeStream<Type>
+pub struct ExternalBincodeStream<Type, O: Ordering = TotalOrder, R: Retries = ExactlyOnce>
 where
     Type: DeserializeOwned,
 {
@@ -74,7 +79,7 @@ where
         expect(unused, reason = "unused without feature")
     )]
     pub(crate) port_id: usize,
-    pub(crate) _phantom: PhantomData<Type>,
+    pub(crate) _phantom: PhantomData<(Type, O, R)>,
 }
 
 pub struct External<'a, Tag> {

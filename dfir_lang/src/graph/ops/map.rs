@@ -52,12 +52,12 @@ pub const MAP: OperatorConstraints = OperatorConstraints {
             let input = &inputs[0];
             quote_spanned! {op_span=>
                 #[allow(clippy::map_clone, reason = "dfir has no explicit `cloned`/`copied` operator")]
-                let #ident = #input.map(#func);
+                let #ident = #root::futures::stream::StreamExt::map(#input, #func);
             }
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::pusherator::map::Map::new(#func, #output);
+                let #ident = #root::sinktools::map(#func, #output);
             }
         };
         Ok(OperatorWriteOutput {

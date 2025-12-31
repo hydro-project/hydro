@@ -3,6 +3,7 @@
 # See "Adding new crates" and "Moving crates" addendum sections in `RELEASING.md`
 members = [
     "benches",
+    "copy_span",
     "dfir_lang",
     "dfir_macro",
     "dfir_rs",
@@ -13,11 +14,12 @@ members = [
     "hydro_lang",
     "hydro_std",
     "hydro_test",
+    "hydro_test_template",
     "include_mdtests",
     "lattices_macro",
     "lattices",
     "multiplatform_test",
-    "pusherator",
+    "sinktools",
     "variadics_macro",
     "variadics",
     "website_playground",
@@ -38,6 +40,7 @@ strip = true      # Strip symbols from the binary
 # performance.
 opt-level = 3
 lto = "fat"
+codegen-units = 1
 
 [profile.profile]
 inherits = "release"
@@ -66,5 +69,5 @@ uninlined_format_args = "allow"
 upper_case_acronyms = "warn"
 
 [workspace.dependencies]
-stageleft = "0.9.8"
-stageleft_tool = "0.9.8"
+stageleft = "0.10.3"
+stageleft_tool = "0.10.3"

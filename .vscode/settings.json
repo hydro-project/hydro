@@ -8,6 +8,10 @@
     "rust-analyzer.runnables.extraTestBinaryArgs": [
         "--nocapture"
     ],
+    "rust-analyzer.rustfmt.extraArgs": [
+        "+nightly"
+    ],
+    "rust-analyzer.cargo.features": "all",
     "editor.semanticTokenColorCustomizations": {
         "enabled": true,
         "rules": {
@@ -20,8 +24,8 @@
     "highlight.regexes": {
         "(nondet!)": [
             {
-              "color": "#ff0000",
-              "fontWeight": "bold"
+                "color": "#ff0000",
+                "fontWeight": "bold"
             }
         ],
         "(_?nondet[a-zA-Z_]*)": {

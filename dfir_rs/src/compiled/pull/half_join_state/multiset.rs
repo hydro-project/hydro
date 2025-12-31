@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::collections::hash_map::Entry;
 
@@ -7,6 +8,8 @@ use crate::util::clear::Clear;
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
 use smallvec::{SmallVec, smallvec};
+
+/// [`HalfJoinState`] with multiset semantics.
 #[derive(Debug)]
 pub struct HalfMultisetJoinState<Key, ValBuild, ValProbe> {
     // Here a smallvec with inline storage of 1 is chosen.
@@ -43,18 +46,18 @@ where
     ValBuild: Clone,
     ValProbe: Clone,
 {
-    fn build(&mut self, k: Key, v: &ValBuild) -> bool {
+    fn build(&mut self, k: Key, v: Cow<'_, ValBuild>) -> bool {
         let entry = self.table.entry(k);
 
         match entry {
             Entry::Occupied(mut e) => {
                 let vec = e.get_mut();
 
-                vec.push(v.clone());
+                vec.push(v.into_owned());
                 self.len += 1;
             }
             Entry::Vacant(e) => {
-                e.insert(smallvec![v.clone()]);
+                e.insert(smallvec![v.into_owned()]);
                 self.len += 1;
             }
         };

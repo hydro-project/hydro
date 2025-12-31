@@ -1,0 +1,80 @@
+---
+source: hydro_test/src/local/chat_app.rs
+expression: "built.preview_compile().dfir_for(&p1).to_mermaid(&Default::default())"
+---
+%%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
+flowchart TD
+classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
+classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
+classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
+linkStyle default stroke:#aaa
+1v1[\"(1v1) <code>map(|b| hydro_lang::runtime_support::bincode::serialize(&amp;b).unwrap().into())</code>"/]:::pullClass
+2v1[/"(2v1) <code>dest_sink(DUMMY_SINK)</code>"\]:::pushClass
+3v1[\"<div style=text-align:center>(3v1)</div> <code>source_iter(<br>    stageleft::runtime_support::type_hint::&lt;<br>        [(); 0],<br>    &gt;({<br>        use hydro_lang::__staged::__deps::*;<br>        use hydro_lang::__staged::location::*;<br>        []<br>    }),<br>)</code>"/]:::pullClass
+4v1[\"(4v1) <code>identity::&lt;()&gt;()</code>"/]:::pullClass
+5v1[\"(5v1) <code>map(|b| hydro_lang::runtime_support::bincode::serialize(&amp;b).unwrap().into())</code>"/]:::pullClass
+6v1[/"(6v1) <code>dest_sink(DUMMY_SINK)</code>"\]:::pushClass
+7v1[\"<div style=text-align:center>(7v1)</div> <code>source_iter(<br>    stageleft::runtime_support::type_hint::&lt;<br>        [(); 0],<br>    &gt;({<br>        use hydro_lang::__staged::__deps::*;<br>        use hydro_lang::__staged::location::*;<br>        []<br>    }),<br>)</code>"/]:::pullClass
+8v1[\"(8v1) <code>identity::&lt;()&gt;()</code>"/]:::pullClass
+9v1[\"(9v1) <code>source_stream(DUMMY_SOURCE)</code>"/]:::pullClass
+10v1[\"<div style=text-align:center>(10v1)</div> <code>map(|res| {<br>    let b = res.unwrap();<br>    hydro_lang::runtime_support::bincode::deserialize::&lt;u32&gt;(&amp;b).unwrap()<br>})</code>"/]:::pullClass
+11v1[\"(11v1) <code>source_stream(DUMMY_SOURCE)</code>"/]:::pullClass
+12v1[\"<div style=text-align:center>(12v1)</div> <code>map(|res| {<br>    let b = res.unwrap();<br>    hydro_lang::runtime_support::bincode::deserialize::&lt;std::string::String&gt;(&amp;b)<br>        .unwrap()<br>})</code>"/]:::pullClass
+13v1[\"<div style=text-align:center>(13v1)</div> <code>map({<br>    use crate::__staged::__deps::*;<br>    use crate::__staged::local::chat_app::*;<br>    |s| s.to_uppercase()<br>})</code>"/]:::pullClass
+14v1[\"(14v1) <code>cross_join_multiset::&lt;'static, 'static&gt;()</code>"/]:::pullClass
+15v1[\"(15v1) <code>multiset_delta()</code>"/]:::pullClass
+16v1[\"<div style=text-align:center>(16v1)</div> <code>map(|data| {<br>    hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into()<br>})</code>"/]:::pullClass
+17v1[/"(17v1) <code>dest_sink(DUMMY_SINK)</code>"\]:::pushClass
+1v1-->2v1
+4v1-->1v1
+3v1-->4v1
+5v1-->6v1
+8v1-->5v1
+7v1-->8v1
+9v1-->10v1
+11v1-->12v1
+12v1-->13v1
+14v1-->15v1
+10v1-->|0|14v1
+13v1-->|1|14v1
+16v1-->17v1
+15v1-->16v1
+subgraph sg_1v1 ["sg_1v1 stratum 0"]
+    1v1
+    2v1
+    subgraph sg_1v1_var_cycle_0 ["var <tt>cycle_0</tt>"]
+        4v1
+    end
+    subgraph sg_1v1_var_stream_2 ["var <tt>stream_2</tt>"]
+        3v1
+    end
+end
+subgraph sg_2v1 ["sg_2v1 stratum 0"]
+    5v1
+    6v1
+    subgraph sg_2v1_var_cycle_1 ["var <tt>cycle_1</tt>"]
+        8v1
+    end
+    subgraph sg_2v1_var_stream_5 ["var <tt>stream_5</tt>"]
+        7v1
+    end
+end
+subgraph sg_3v1 ["sg_3v1 stratum 0"]
+    16v1
+    17v1
+    subgraph sg_3v1_var_stream_6 ["var <tt>stream_6</tt>"]
+        9v1
+        10v1
+    end
+    subgraph sg_3v1_var_stream_7 ["var <tt>stream_7</tt>"]
+        11v1
+        12v1
+    end
+    subgraph sg_3v1_var_stream_8 ["var <tt>stream_8</tt>"]
+        13v1
+    end
+    subgraph sg_3v1_var_stream_9 ["var <tt>stream_9</tt>"]
+        14v1
+        15v1
+    end
+end

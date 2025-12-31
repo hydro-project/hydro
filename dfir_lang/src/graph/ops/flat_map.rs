@@ -47,18 +47,18 @@ pub const FLAT_MAP: OperatorConstraints = OperatorConstraints {
                    ..
                },
                _| {
+        let func = &arguments[0];
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let #ident = #input.flat_map(#arguments);
+                let #ident = #root::compiled::pull::Flatten::new(
+                    #root::futures::stream::StreamExt::map(#input, #func),
+                );
             }
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::pusherator::map::Map::new(
-                    #arguments,
-                    #root::pusherator::flatten::Flatten::new(#output)
-                );
+                let #ident = #root::sinktools::flat_map(#func, #output);
             }
         };
         Ok(OperatorWriteOutput {

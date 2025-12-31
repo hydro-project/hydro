@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use dfir_rs::util::{collect_ready, iter_batches_stream};
 use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use multiplatform_test::multiplatform_test;
@@ -51,7 +53,7 @@ pub fn test_flo_syntax() {
     df.run_available_sync();
 
     assert_eq!(
-        &[
+        BTreeSet::from_iter([
             (0, ("alice", 0)),
             (0, ("alice", 1)),
             (0, ("alice", 2)),
@@ -76,8 +78,8 @@ pub fn test_flo_syntax() {
             (3, ("bob", 9)),
             (3, ("bob", 10)),
             (3, ("bob", 11)),
-        ],
-        &*collect_ready::<Vec<_>, _>(&mut result_recv)
+        ]),
+        collect_ready(&mut result_recv)
     );
 }
 
@@ -104,7 +106,7 @@ pub fn test_flo_nested() {
     df.run_available_sync();
 
     assert_eq!(
-        &[
+        BTreeSet::from_iter([
             (0, ("alice", 0)),
             (0, ("alice", 1)),
             (0, ("alice", 2)),
@@ -129,8 +131,8 @@ pub fn test_flo_nested() {
             (3, ("bob", 9)),
             (3, ("bob", 10)),
             (3, ("bob", 11)),
-        ],
-        &*collect_ready::<Vec<_>, _>(&mut result_recv)
+        ]),
+        collect_ready(&mut result_recv)
     );
 }
 
@@ -156,7 +158,7 @@ pub fn test_flo_repeat_n() {
     df.run_available_sync();
 
     assert_eq!(
-        &[
+        BTreeSet::from_iter([
             ("alice", 0),
             ("alice", 1),
             ("alice", 2),
@@ -193,8 +195,8 @@ pub fn test_flo_repeat_n() {
             ("bob", 6),
             ("bob", 7),
             ("bob", 8),
-        ],
-        &*collect_ready::<Vec<_>, _>(&mut result_recv)
+        ]),
+        collect_ready(&mut result_recv)
     );
 }
 
@@ -466,6 +468,7 @@ pub fn test_enumerate_loop() {
     );
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 #[multiplatform_test(test, env_tracing)]
 pub fn test_write() {
     use dfir_lang::graph::WriteConfig;

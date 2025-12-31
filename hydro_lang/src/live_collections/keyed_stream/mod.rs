@@ -51,7 +51,7 @@ pub struct KeyedStream<
     K,
     V,
     Loc,
-    Bound: Boundedness,
+    Bound: Boundedness = Unbounded,
     Order: Ordering = TotalOrder,
     Retry: Retries = ExactlyOnce,
 > {
@@ -215,9 +215,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// Returns the [`CollectionKind`] corresponding to this type.
     pub fn collection_kind() -> CollectionKind {
         CollectionKind::KeyedStream {
-            bound: B::bound_kind(),
-            value_order: O::ordering_kind(),
-            value_retry: R::retries_kind(),
+            bound: B::BOUND_KIND,
+            value_order: O::ORDERING_KIND,
+            value_retry: R::RETRIES_KIND,
             key_type: stageleft::quote_type::<K>().into(),
             value_type: stageleft::quote_type::<V>().into(),
         }
@@ -237,9 +237,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_ordering<O2: Ordering>(self, _nondet: NonDet) -> KeyedStream<K, V, L, B, O2, R> {
-        if O::ordering_kind() == O2::ordering_kind() {
+        if O::ORDERING_KIND == O2::ORDERING_KIND {
             KeyedStream::new(self.location, self.ir_node.into_inner())
-        } else if O2::ordering_kind() == StreamOrder::NoOrder {
+        } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
             // We can always weaken the ordering guarantee
             KeyedStream::new(
                 self.location.clone(),
@@ -255,6 +255,38 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 self.location.clone(),
                 HydroNode::ObserveNonDet {
                     inner: Box::new(self.ir_node.into_inner()),
+                    trusted: false,
+                    metadata: self
+                        .location
+                        .new_node_metadata(KeyedStream::<K, V, L, B, O2, R>::collection_kind()),
+                },
+            )
+        }
+    }
+
+    fn assume_ordering_trusted<O2: Ordering>(
+        self,
+        _nondet: NonDet,
+    ) -> KeyedStream<K, V, L, B, O2, R> {
+        if O::ORDERING_KIND == O2::ORDERING_KIND {
+            KeyedStream::new(self.location, self.ir_node.into_inner())
+        } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
+            // We can always weaken the ordering guarantee
+            KeyedStream::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    metadata: self
+                        .location
+                        .new_node_metadata(KeyedStream::<K, V, L, B, O2, R>::collection_kind()),
+                },
+            )
+        } else {
+            KeyedStream::new(
+                self.location.clone(),
+                HydroNode::ObserveNonDet {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    trusted: true,
                     metadata: self
                         .location
                         .new_node_metadata(KeyedStream::<K, V, L, B, O2, R>::collection_kind()),
@@ -279,9 +311,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
     pub fn assume_retries<R2: Retries>(self, _nondet: NonDet) -> KeyedStream<K, V, L, B, O, R2> {
-        if R::retries_kind() == R2::retries_kind() {
+        if R::RETRIES_KIND == R2::RETRIES_KIND {
             KeyedStream::new(self.location, self.ir_node.into_inner())
-        } else if R2::retries_kind() == StreamRetry::AtLeastOnce {
+        } else if R2::RETRIES_KIND == StreamRetry::AtLeastOnce {
             // We can always weaken the retries guarantee
             KeyedStream::new(
                 self.location.clone(),
@@ -297,6 +329,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 self.location.clone(),
                 HydroNode::ObserveNonDet {
                     inner: Box::new(self.ir_node.into_inner()),
+                    trusted: false,
                     metadata: self
                         .location
                         .new_node_metadata(KeyedStream::<K, V, L, B, O, R2>::collection_kind()),
@@ -309,6 +342,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -322,6 +356,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn entries(self) -> Stream<(K, V), L, B, NoOrder, R> {
         Stream::new(
@@ -339,6 +374,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -352,6 +388,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn values(self) -> Stream<V, L, B, NoOrder, R> {
         self.entries().map(q!(|(_, v)| v))
@@ -365,6 +402,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -379,6 +417,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedStream<K, U, L, B, O, R>
     where
@@ -412,6 +451,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -426,6 +466,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn map_with_key<U, F>(
         self,
@@ -458,6 +499,59 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         )
     }
 
+    /// Prepends a new value to the key of each element in the stream, producing a new
+    /// keyed stream with compound keys. Because the original key is preserved, no re-grouping
+    /// occurs and the elements in each group preserve their original order.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, 2), (1, 3), (2, 4)]))
+    ///     .into_keyed()
+    ///     .prefix_key(q!(|&(k, _)| k % 2))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { (1, 1): [2, 3], (0, 2): [4] }
+    /// # for w in vec![((1, 1), 2), ((1, 1), 3), ((0, 2), 4)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn prefix_key<K2, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> KeyedStream<(K2, K), V, L, B, O, R>
+    where
+        F: Fn(&(K, V)) -> K2 + 'a,
+    {
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn1_borrow_ctx(ctx));
+        let map_f = q!({
+            let orig = f;
+            move |kv| {
+                let out = orig(&kv);
+                ((out, kv.0), kv.1)
+            }
+        })
+        .splice_fn1_ctx::<(K, V), ((K2, K), V)>(&self.location)
+        .into();
+
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::Map {
+                f: map_f,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self
+                    .location
+                    .new_node_metadata(KeyedStream::<(K2, K), V, L, B, O, R>::collection_kind()),
+            },
+        )
+    }
+
     /// Creates a stream containing only the elements of each group stream that satisfy a predicate
     /// `f`, preserving the order of the elements within the group.
     ///
@@ -467,6 +561,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -481,6 +576,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedStream<K, V, L, B, O, R>
     where
@@ -513,6 +609,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -527,6 +624,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn filter_with_key<F>(
         self,
@@ -555,6 +653,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -569,6 +668,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn filter_map<U, F>(
         self,
@@ -603,6 +703,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -617,6 +718,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn filter_map_with_key<U, F>(
         self,
@@ -649,6 +751,55 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         )
     }
 
+    /// Generates a keyed stream that maps each value `v` to a tuple `(v, x)`,
+    /// where `v` is the value of `other`, a bounded [`super::singleton::Singleton`] or
+    /// [`Optional`]. If `other` is an empty [`Optional`], no values will be produced.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let batch = process
+    ///   .source_iter(q!(vec![(1, 123), (1, 456), (2, 123)]))
+    ///   .into_keyed()
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let count = batch.clone().entries().count(); // `count()` returns a singleton
+    /// batch.cross_singleton(count).all_ticks().entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [(123, 3), (456, 3)], 2: [(123, 3)] }
+    /// # for w in vec![(1, (123, 3)), (1, (456, 3)), (2, (123, 3))] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn cross_singleton<O2>(
+        self,
+        other: impl Into<Optional<O2, L, Bounded>>,
+    ) -> KeyedStream<K, (V, O2), L, B, O, R>
+    where
+        O2: Clone,
+    {
+        let other: Optional<O2, L, Bounded> = other.into();
+        check_matching_location(&self.location, &other.location);
+
+        Stream::new(
+            self.location.clone(),
+            HydroNode::CrossSingleton {
+                left: Box::new(self.ir_node.into_inner()),
+                right: Box::new(other.ir_node.into_inner()),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<((K, V), O2), L, B, O, R>::collection_kind()),
+            },
+        )
+        .map(q!(|((k, v), o2)| (k, (v, o2))))
+        .into_keyed()
+    }
+
     /// For each value `v` in each group, transform `v` using `f` and then treat the
     /// result as an [`Iterator`] to produce values one by one within the same group.
     /// The implementation for [`Iterator`] for the output type `I` must produce items
@@ -659,6 +810,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -673,6 +825,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn flat_map_ordered<U, I, F>(
         self,
@@ -708,6 +861,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
@@ -728,6 +882,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # results.sort();
     /// # assert_eq!(results, vec![(1, 2), (1, 3), (2, 4), (2, 5)]);
     /// # }));
+    /// # }
     /// ```
     pub fn flat_map_unordered<U, I, F>(
         self,
@@ -767,6 +922,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -781,6 +937,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn flatten_ordered<U>(self) -> KeyedStream<K, U, L, B, O, R>
     where
@@ -795,6 +952,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
@@ -815,6 +973,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # results.sort();
     /// # assert_eq!(results, vec![(1, 2), (1, 3), (2, 4), (2, 5)]);
     /// # }));
+    /// # }
     /// ```
     pub fn flatten_unordered<U>(self) -> KeyedStream<K, U, L, B, NoOrder, R>
     where
@@ -830,6 +989,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -843,6 +1003,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> Self
     where
@@ -872,6 +1033,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -885,6 +1047,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn inspect_with_key<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Self
     where
@@ -914,6 +1077,41 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     }
 }
 
+impl<'a, K1, K2, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    KeyedStream<(K1, K2), V, L, B, O, R>
+{
+    /// Produces a new keyed stream by dropping the first element of the compound key.
+    ///
+    /// Because multiple keys may share the same suffix, this operation results in re-grouping
+    /// of the values under the new keys. The values across groups with the same new key
+    /// will be interleaved, so the resulting stream has [`NoOrder`] within each group.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![((1, 10), 2), ((1, 10), 3), ((2, 20), 4)]))
+    ///     .into_keyed()
+    ///     .drop_key_prefix()
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 10: [2, 3], 20: [4] }
+    /// # for w in vec![(10, 2), (10, 3), (20, 4)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn drop_key_prefix(self) -> KeyedStream<K2, V, L, B, NoOrder, R> {
+        self.entries()
+            .map(q!(|((_k1, k2), v)| (k2, v)))
+            .into_keyed()
+    }
+}
+
 impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries>
     KeyedStream<K, V, L, Unbounded, O, R>
 {
@@ -926,6 +1124,7 @@ impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries>
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -939,6 +1138,7 @@ impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries>
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn interleave<O2: Ordering, R2: Retries>(
         self,
@@ -976,7 +1176,6 @@ pub enum Generate<T> {
 
 impl<'a, K, V, L, B: Boundedness> KeyedStream<K, V, L, B, TotalOrder, ExactlyOnce>
 where
-    K: Eq + Hash,
     L: Location<'a>,
 {
     /// A special case of [`Stream::scan`] for keyed streams. For each key group the values are transformed via the `f` combinator.
@@ -991,6 +1190,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1011,6 +1211,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn scan<A, U, I, F>(
         self,
@@ -1018,7 +1219,7 @@ where
         f: impl IntoQuotedMut<'a, F, L> + Copy,
     ) -> KeyedStream<K, U, L, B, TotalOrder, ExactlyOnce>
     where
-        K: Clone,
+        K: Clone + Eq + Hash,
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) -> Option<U> + 'a,
     {
@@ -1050,6 +1251,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1080,6 +1282,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn generator<A, U, I, F>(
         self,
@@ -1087,7 +1290,7 @@ where
         f: impl IntoQuotedMut<'a, F, L> + Copy,
     ) -> KeyedStream<K, U, L, B, TotalOrder, ExactlyOnce>
     where
-        K: Clone,
+        K: Clone + Eq + Hash,
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) -> Generate<U> + 'a,
     {
@@ -1160,6 +1363,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1180,6 +1384,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn fold_early_stop<A, I, F>(
         self,
@@ -1187,7 +1392,7 @@ where
         f: impl IntoQuotedMut<'a, F, L> + Copy,
     ) -> KeyedSingleton<K, A, L, B::WhenValueBounded>
     where
-        K: Clone,
+        K: Clone + Eq + Hash,
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) -> bool + 'a,
     {
@@ -1227,6 +1432,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1241,10 +1447,11 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn first(self) -> KeyedSingleton<K, V, L, B::WhenValueBounded>
     where
-        K: Clone,
+        K: Clone + Eq + Hash,
     {
         self.fold_early_stop(
             q!(|| None),
@@ -1266,6 +1473,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1283,12 +1491,16 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
     /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
     /// # }));
+    /// # }
     /// ```
     pub fn fold<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded> {
+    ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded>
+    where
+        K: Eq + Hash,
+    {
         let init = init.splice_fn0_ctx(&self.location).into();
         let comb = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
@@ -1317,6 +1529,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1331,11 +1544,15 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
     /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
     /// # }));
+    /// # }
     /// ```
     pub fn reduce<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded> {
+    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
+    where
+        K: Eq + Hash,
+    {
         let f = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
 
         KeyedSingleton::new(
@@ -1360,6 +1577,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1377,6 +1595,7 @@ where
     /// // (2, 204)
     /// # assert_eq!(stream.next().await.unwrap(), (2, 204));
     /// # }));
+    /// # }
     /// ```
     pub fn reduce_watermark<O, F>(
         self,
@@ -1384,6 +1603,7 @@ where
         comb: impl IntoQuotedMut<'a, F, L>,
     ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
     where
+        K: Eq + Hash,
         O: Clone,
         F: Fn(&mut V, V) + 'a,
     {
@@ -1410,7 +1630,6 @@ where
 
 impl<'a, K, V, L, B: Boundedness, O: Ordering> KeyedStream<K, V, L, B, O, ExactlyOnce>
 where
-    K: Eq + Hash,
     L: Location<'a>,
 {
     /// Like [`Stream::fold_commutative`], aggregates the values in each group via the `comb` closure.
@@ -1422,6 +1641,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1439,12 +1659,16 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
     /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
     /// # }));
+    /// # }
     /// ```
     pub fn fold_commutative<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded> {
+    ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded>
+    where
+        K: Eq + Hash,
+    {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .fold(init, comb)
     }
@@ -1457,6 +1681,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1474,11 +1699,15 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
     /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
     /// # }));
+    /// # }
     /// ```
     pub fn reduce_commutative<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded> {
+    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
+    where
+        K: Eq + Hash,
+    {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .reduce(comb)
     }
@@ -1489,6 +1718,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1506,6 +1736,7 @@ where
     /// // (2, 204)
     /// # assert_eq!(stream.next().await.unwrap(), (2, 204));
     /// # }));
+    /// # }
     /// ```
     pub fn reduce_watermark_commutative<O2, F>(
         self,
@@ -1513,17 +1744,51 @@ where
         comb: impl IntoQuotedMut<'a, F, L>,
     ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
     where
+        K: Eq + Hash,
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
     {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .reduce_watermark(other, comb)
     }
+
+    /// Counts the number of elements in each group, producing a [`KeyedSingleton`] with the counts.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process
+    ///     .source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4), (1, 5)]))
+    ///     .into_keyed();
+    /// let batch = numbers.batch(&tick, nondet!(/** test */));
+    /// batch
+    ///     .value_counts()
+    ///     .entries()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // (1, 3), (2, 2)
+    /// # assert_eq!(stream.next().await.unwrap(), (1, 3));
+    /// # assert_eq!(stream.next().await.unwrap(), (2, 2));
+    /// # }));
+    /// # }
+    /// ```
+    pub fn value_counts(self) -> KeyedSingleton<K, usize, L, B::WhenValueUnbounded>
+    where
+        K: Eq + Hash,
+    {
+        self.assume_ordering_trusted(
+            nondet!(/** ordering within each group affects neither result nor intermediates */),
+        )
+        .fold(q!(|| 0), q!(|acc, _| *acc += 1))
+    }
 }
 
 impl<'a, K, V, L, B: Boundedness, R: Retries> KeyedStream<K, V, L, B, TotalOrder, R>
 where
-    K: Eq + Hash,
     L: Location<'a>,
 {
     /// Like [`Stream::fold_idempotent`], aggregates the values in each group via the `comb` closure.
@@ -1535,6 +1800,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1552,12 +1818,16 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), (1, false));
     /// # assert_eq!(stream.next().await.unwrap(), (2, true));
     /// # }));
+    /// # }
     /// ```
     pub fn fold_idempotent<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded> {
+    ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded>
+    where
+        K: Eq + Hash,
+    {
         self.assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .fold(init, comb)
     }
@@ -1570,6 +1840,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1587,11 +1858,15 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), (1, false));
     /// # assert_eq!(stream.next().await.unwrap(), (2, true));
     /// # }));
+    /// # }
     /// ```
     pub fn reduce_idempotent<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded> {
+    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
+    where
+        K: Eq + Hash,
+    {
         self.assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .reduce(comb)
     }
@@ -1602,6 +1877,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1619,6 +1895,7 @@ where
     /// // (2, true)
     /// # assert_eq!(stream.next().await.unwrap(), (2, true));
     /// # }));
+    /// # }
     /// ```
     pub fn reduce_watermark_idempotent<O2, F>(
         self,
@@ -1626,6 +1903,7 @@ where
         comb: impl IntoQuotedMut<'a, F, L>,
     ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
     where
+        K: Eq + Hash,
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
     {
@@ -1636,7 +1914,6 @@ where
 
 impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, L, B, O, R>
 where
-    K: Eq + Hash,
     L: Location<'a>,
 {
     /// Like [`Stream::fold_commutative_idempotent`], aggregates the values in each group via the `comb` closure.
@@ -1649,6 +1926,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1666,12 +1944,16 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), (1, false));
     /// # assert_eq!(stream.next().await.unwrap(), (2, true));
     /// # }));
+    /// # }
     /// ```
     pub fn fold_commutative_idempotent<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded> {
+    ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded>
+    where
+        K: Eq + Hash,
+    {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .fold(init, comb)
@@ -1686,6 +1968,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1703,11 +1986,15 @@ where
     /// # assert_eq!(stream.next().await.unwrap(), (1, false));
     /// # assert_eq!(stream.next().await.unwrap(), (2, true));
     /// # }));
+    /// # }
     /// ```
     pub fn reduce_commutative_idempotent<F: Fn(&mut V, V) + 'a>(
         self,
         comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded> {
+    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
+    where
+        K: Eq + Hash,
+    {
         self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
             .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
             .reduce(comb)
@@ -1720,6 +2007,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1737,6 +2025,7 @@ where
     /// // (2, true)
     /// # assert_eq!(stream.next().await.unwrap(), (2, true));
     /// # }));
+    /// # }
     /// ```
     pub fn reduce_watermark_commutative_idempotent<O2, F>(
         self,
@@ -1744,6 +2033,7 @@ where
         comb: impl IntoQuotedMut<'a, F, L>,
     ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
     where
+        K: Eq + Hash,
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
     {
@@ -1757,6 +2047,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1776,11 +2067,15 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn filter_key_not_in<O2: Ordering, R2: Retries>(
         self,
         other: Stream<K, L, Bounded, O2, R2>,
-    ) -> Self {
+    ) -> Self
+    where
+        K: Eq + Hash,
+    {
         check_matching_location(&self.location, &other.location);
 
         KeyedStream::new(
@@ -1905,6 +2200,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -1919,6 +2215,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn chain<O2: Ordering, R2: Retries>(
         self,
@@ -2011,6 +2308,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -2038,6 +2336,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn defer_tick(self) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
         KeyedStream::new(
@@ -2059,14 +2358,25 @@ where
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "deploy")]
     use futures::{SinkExt, StreamExt};
+    #[cfg(feature = "deploy")]
     use hydro_deploy::Deployment;
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use stageleft::q;
 
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::compile::builder::FlowBuilder;
+    #[cfg(feature = "deploy")]
+    use crate::live_collections::stream::ExactlyOnce;
+    #[cfg(feature = "sim")]
+    use crate::live_collections::stream::{NoOrder, TotalOrder};
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::location::Location;
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::nondet::nondet;
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn reduce_watermark_filter() {
         let mut deployment = Deployment::new();
@@ -2099,13 +2409,14 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut out = nodes.connect_source_bincode(sum).await;
+        let mut out = nodes.connect(sum).await;
 
         deployment.start().await.unwrap();
 
         assert_eq!(out.next().await.unwrap(), (2, 204));
     }
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn reduce_watermark_garbage_collect() {
         let mut deployment = Deployment::new();
@@ -2113,7 +2424,8 @@ mod tests {
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
         let external = flow.external::<()>();
-        let (tick_send, tick_trigger) = node.source_external_bincode(&external);
+        let (tick_send, tick_trigger) =
+            node.source_external_bincode::<_, _, _, ExactlyOnce>(&external);
 
         let node_tick = node.tick();
         let (watermark_complete_cycle, watermark) =
@@ -2155,8 +2467,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut tick_send = nodes.connect_sink_bincode(tick_send).await;
-        let mut out_recv = nodes.connect_source_bincode(sum).await;
+        let mut tick_send = nodes.connect(tick_send).await;
+        let mut out_recv = nodes.connect(sum).await;
 
         deployment.start().await.unwrap();
 
@@ -2165,5 +2477,145 @@ mod tests {
         tick_send.send(()).await.unwrap();
 
         assert_eq!(out_recv.next().await.unwrap(), (3, 103));
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    #[should_panic]
+    fn sim_batch_nondet_size() {
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let input = node.source_iter(q!([(1, 1), (1, 2), (2, 3)])).into_keyed();
+
+        let tick = node.tick();
+        let out_recv = input
+            .batch(&tick, nondet!(/** test */))
+            .fold(q!(|| vec![]), q!(|acc, v| acc.push(v)))
+            .entries()
+            .all_ticks()
+            .sim_output();
+
+        flow.sim().exhaustive(async || {
+            out_recv
+                .assert_yields_only_unordered([(1, vec![1, 2])])
+                .await;
+        });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_batch_preserves_group_order() {
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let input = node.source_iter(q!([(1, 1), (1, 2), (2, 3)])).into_keyed();
+
+        let tick = node.tick();
+        let out_recv = input
+            .batch(&tick, nondet!(/** test */))
+            .all_ticks()
+            .fold_early_stop(
+                q!(|| 0),
+                q!(|acc, v| {
+                    *acc = std::cmp::max(v, *acc);
+                    *acc >= 2
+                }),
+            )
+            .entries()
+            .sim_output();
+
+        let instances = flow.sim().exhaustive(async || {
+            out_recv
+                .assert_yields_only_unordered([(1, 2), (2, 3)])
+                .await;
+        });
+
+        assert_eq!(instances, 8);
+        // - three cases: all three in a separate tick (pick where (2, 3) is)
+        // - two cases: (1, 1) and (1, 2) together, (2, 3) before or after
+        // - two cases: (1, 1) and (1, 2) separate, (2, 3) grouped with one of them
+        // - one case: all three together
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_batch_unordered_shuffles() {
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let input = node
+            .source_iter(q!([(1, 1), (1, 2), (2, 3)]))
+            .into_keyed()
+            .weakest_ordering();
+
+        let tick = node.tick();
+        let out_recv = input
+            .batch(&tick, nondet!(/** test */))
+            .all_ticks()
+            .entries()
+            .sim_output();
+
+        let instances = flow.sim().exhaustive(async || {
+            out_recv
+                .assert_yields_only_unordered([(1, 1), (1, 2), (2, 3)])
+                .await;
+        });
+
+        assert_eq!(instances, 13);
+        // - 6 (3 * 2) cases: all three in a separate tick (pick where (2, 3) is), and order of (1, 1), (1, 2)
+        // - two cases: (1, 1) and (1, 2) together, (2, 3) before or after (order of (1, 1), (1, 2) doesn't matter because batched is still unordered)
+        // - 4 (2 * 2) cases: (1, 1) and (1, 2) separate, (2, 3) grouped with one of them, and order of (1, 1), (1, 2)
+        // - one case: all three together (order of (1, 1), (1, 2) doesn't matter because batched is still unordered)
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    #[should_panic]
+    fn sim_observe_order_batched() {
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (port, input) = node.sim_input::<_, NoOrder, _>();
+
+        let tick = node.tick();
+        let batch = input.into_keyed().batch(&tick, nondet!(/** test */));
+        let out_recv = batch
+            .assume_ordering::<TotalOrder>(nondet!(/** test */))
+            .all_ticks()
+            .first()
+            .entries()
+            .sim_output();
+
+        flow.sim().exhaustive(async || {
+            port.send_many_unordered([(1, 1), (1, 2), (2, 1), (2, 2)]);
+            out_recv
+                .assert_yields_only_unordered([(1, 1), (2, 1)])
+                .await; // fails with assume_ordering
+        });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_observe_order_batched_count() {
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (port, input) = node.sim_input::<_, NoOrder, _>();
+
+        let tick = node.tick();
+        let batch = input.into_keyed().batch(&tick, nondet!(/** test */));
+        let out_recv = batch
+            .assume_ordering::<TotalOrder>(nondet!(/** test */))
+            .all_ticks()
+            .entries()
+            .sim_output();
+
+        let instance_count = flow.sim().exhaustive(async || {
+            port.send_many_unordered([(1, 1), (1, 2), (2, 1), (2, 2)]);
+            let _ = out_recv.collect_sorted::<Vec<_>>().await;
+        });
+
+        assert_eq!(instance_count, 104); // too complicated to enumerate here, but less than stream equivalent
     }
 }

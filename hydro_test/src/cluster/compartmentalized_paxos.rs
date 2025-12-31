@@ -249,7 +249,6 @@ fn sequence_payload<'a, P: PaxosPayload>(
         recommit_after_leader_election(p_relevant_p1bs, p_ballot.clone(), config.paxos_config.f);
 
     let p_indexed_payloads = index_payloads(
-        proposer_tick,
         p_max_slot,
         c_to_proposers
             .batch(
@@ -270,11 +269,11 @@ fn sequence_payload<'a, P: PaxosPayload>(
     let p_to_proxy_leaders_p2a = p_indexed_payloads
         .cross_singleton(p_ballot.clone())
         .map(q!(move |((slot, payload), ballot)| (
-            MemberId::<ProxyLeader>::from_raw((slot % num_proxy_leaders) as u32),
+            MemberId::<ProxyLeader>::from_raw_id((slot % num_proxy_leaders) as u32),
             ((slot, ballot), Some(payload))
         )))
         .chain(p_log_to_recommit.map(q!(move |((slot, ballot), payload)| (
-            MemberId::<ProxyLeader>::from_raw((slot % num_proxy_leaders) as u32),
+            MemberId::<ProxyLeader>::from_raw_id((slot % num_proxy_leaders) as u32),
             ((slot, ballot), payload)
         ))))
         .all_ticks()
@@ -292,13 +291,13 @@ fn sequence_payload<'a, P: PaxosPayload>(
             let mut p2as = Vec::new();
             for i in 0..num_acceptor_cols {
                 p2as.push((
-                    MemberId::<Acceptor>::from_raw((row * num_acceptor_cols + i) as u32),
+                    MemberId::<Acceptor>::from_raw_id((row * num_acceptor_cols + i) as u32),
                     P2a {
-                        sender: MemberId::<ProxyLeader>::from_raw(
+                        sender: MemberId::<ProxyLeader>::from_raw_id(
                             (slot % num_proxy_leaders) as u32,
                         ),
                         slot,
-                        ballot,
+                        ballot: ballot.clone(),
                         value: payload.clone(),
                     },
                 ));
@@ -335,7 +334,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
     );
 
     let pl_failed_p2b_to_proposer = fails
-        .map(q!(|(_, ballot)| (ballot.proposer_id, ballot)))
+        .map(q!(|(_, ballot)| (ballot.proposer_id.clone(), ballot)))
         .inspect(q!(|(_, ballot)| println!("Failed P2b: {:?}", ballot)))
         .demux_bincode(proposers)
         .values();

@@ -9,6 +9,7 @@ use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
 use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::optional::Optional;
+use super::sliced::sliced;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::ir::{CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 #[cfg(stageleft_runtime)]
@@ -219,7 +220,7 @@ where
             left: Box::new(me.ir_node.into_inner()),
             right: Box::new(Singleton::<T, Tick<L>, B>::other_ir_node(other)),
             metadata: me.location.new_node_metadata(CollectionKind::Singleton {
-                bound: B::bound_kind(),
+                bound: B::BOUND_KIND,
                 element_type: stageleft::quote_type::<
                     <Singleton<T, Tick<L>, B> as ZipResult<'a, O>>::ElementType,
                 >()
@@ -245,9 +246,14 @@ where
 
     pub(crate) fn collection_kind() -> CollectionKind {
         CollectionKind::Singleton {
-            bound: B::bound_kind(),
+            bound: B::BOUND_KIND,
             element_type: stageleft::quote_type::<T>().into(),
         }
+    }
+
+    /// Returns the [`Location`] where this singleton is being materialized.
+    pub fn location(&self) -> &L {
+        &self.location
     }
 
     /// Transforms the singleton value by applying a function `f` to it,
@@ -255,6 +261,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -265,6 +272,7 @@ where
     /// // 10
     /// # assert_eq!(stream.next().await.unwrap(), 10);
     /// # }));
+    /// # }
     /// ```
     pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Singleton<U, L, B>
     where
@@ -295,6 +303,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -307,6 +316,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn flat_map_ordered<U, I, F>(
         self,
@@ -337,6 +347,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
@@ -354,6 +365,7 @@ where
     /// # results.sort();
     /// # assert_eq!(results, vec![1, 2, 3]);
     /// # }));
+    /// # }
     /// ```
     pub fn flat_map_unordered<U, I, F>(
         self,
@@ -387,6 +399,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -399,6 +412,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn flatten_ordered<U>(self) -> Stream<U, L, B, TotalOrder, ExactlyOnce>
     where
@@ -415,6 +429,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
@@ -432,6 +447,7 @@ where
     /// # results.sort();
     /// # assert_eq!(results, vec![1, 2, 3]);
     /// # }));
+    /// # }
     /// ```
     pub fn flatten_unordered<U>(self) -> Stream<U, L, B, NoOrder, ExactlyOnce>
     where
@@ -451,6 +467,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -461,6 +478,7 @@ where
     /// // 5
     /// # assert_eq!(stream.next().await.unwrap(), 5);
     /// # }));
+    /// # }
     /// ```
     pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<T, L, B>
     where
@@ -487,6 +505,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -499,6 +518,7 @@ where
     /// // 42
     /// # assert_eq!(stream.next().await.unwrap(), 42);
     /// # }));
+    /// # }
     /// ```
     pub fn filter_map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<U, L, B>
     where
@@ -525,6 +545,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -541,6 +562,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn zip<O>(self, other: O) -> <Self as ZipResult<'a, O>>::Out
     where
@@ -569,7 +591,7 @@ where
                     left: Box::new(self.ir_node.into_inner()),
                     right: Box::new(Self::other_ir_node(other)),
                     metadata: self.location.new_node_metadata(CollectionKind::Optional {
-                        bound: B::bound_kind(),
+                        bound: B::BOUND_KIND,
                         element_type: stageleft::quote_type::<
                             <Self as ZipResult<'a, O>>::ElementType,
                         >()
@@ -588,6 +610,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -612,6 +635,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn filter_if_some<U>(self, signal: Optional<U, L, B>) -> Optional<T, L, B> {
         self.zip::<Optional<(), L, B>>(signal.map(q!(|_u| ())))
@@ -626,6 +650,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -650,6 +675,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn filter_if_none<U>(self, other: Optional<U, L, B>) -> Optional<T, L, B> {
         self.filter_if_some(
@@ -774,8 +800,11 @@ where
     where
         L: NoTick,
     {
-        let tick = self.location.tick();
-        self.snapshot(&tick, nondet).all_ticks().weakest_retries()
+        sliced! {
+            let snapshot = use(self, nondet);
+            snapshot.into_stream()
+        }
+        .weakest_retries()
     }
 
     /// Given a time interval, returns a stream corresponding to snapshots of the singleton
@@ -796,12 +825,13 @@ where
         L: NoTick + NoAtomic,
     {
         let samples = self.location.source_interval(interval, nondet);
-        let tick = self.location.tick();
+        sliced! {
+            let snapshot = use(self, nondet);
+            let sample_batch = use(samples, nondet);
 
-        self.snapshot(&tick, nondet)
-            .filter_if_some(samples.batch(&tick, nondet).first())
-            .all_ticks()
-            .weakest_retries()
+            snapshot.filter_if_some(sample_batch.first()).into_stream()
+        }
+        .weakest_retries()
     }
 }
 
@@ -818,6 +848,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -841,6 +872,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn all_ticks(self) -> Stream<T, L, Unbounded, TotalOrder, ExactlyOnce> {
         self.into_stream().all_ticks()
@@ -865,6 +897,7 @@ where
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -889,6 +922,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn latest(self) -> Singleton<T, L, Unbounded> {
         Singleton::new(
@@ -923,28 +957,11 @@ where
         )
     }
 
-    #[deprecated(note = "use .into_stream().persist()")]
-    #[expect(missing_docs, reason = "deprecated")]
-    pub fn persist(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
-        Stream::new(
-            self.location.clone(),
-            HydroNode::Persist {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata(Stream::<
-                    T,
-                    Tick<L>,
-                    Bounded,
-                    TotalOrder,
-                    ExactlyOnce,
-                >::collection_kind()),
-            },
-        )
-    }
-
     /// Converts this singleton into a [`Stream`] containing a single element, the value.
     ///
     /// # Example
     /// ```rust
+    /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
@@ -961,6 +978,7 @@ where
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
+    /// # }
     /// ```
     pub fn into_stream(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
         Stream::new(
@@ -1058,14 +1076,23 @@ where
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "deploy")]
     use futures::{SinkExt, StreamExt};
+    #[cfg(feature = "deploy")]
     use hydro_deploy::Deployment;
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use stageleft::q;
 
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::compile::builder::FlowBuilder;
+    #[cfg(feature = "deploy")]
+    use crate::live_collections::stream::ExactlyOnce;
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::location::Location;
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::nondet::nondet;
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn tick_cycle_cardinality() {
         let mut deployment = Deployment::new();
@@ -1074,7 +1101,7 @@ mod tests {
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
-        let (input_send, input) = node.source_external_bincode(&external);
+        let (input_send, input) = node.source_external_bincode::<_, _, _, ExactlyOnce>(&external);
 
         let node_tick = node.tick();
         let (complete_cycle, singleton) = node_tick.cycle_with_initial(node_tick.singleton(q!(0)));
@@ -1094,8 +1121,8 @@ mod tests {
 
         deployment.deploy().await.unwrap();
 
-        let mut tick_trigger = nodes.connect_sink_bincode(input_send).await;
-        let mut external_out = nodes.connect_source_bincode(counts).await;
+        let mut tick_trigger = nodes.connect(input_send).await;
+        let mut external_out = nodes.connect(counts).await;
 
         deployment.start().await.unwrap();
 
@@ -1106,5 +1133,171 @@ mod tests {
         tick_trigger.send(()).await.unwrap();
 
         assert_eq!(external_out.next().await.unwrap(), 1);
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    #[should_panic]
+    fn sim_fold_intermediate_states() {
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
+        let folded = source_iter.fold(q!(|| 0), q!(|a, b| *a += b));
+
+        let tick = node.tick();
+        let batch = folded.snapshot(&tick, nondet!(/** test */));
+        let out_recv = batch.all_ticks().sim_output();
+
+        flow.sim().exhaustive(async || {
+            assert_eq!(out_recv.next().await.unwrap(), 10);
+        });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_fold_intermediate_state_count() {
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
+        let folded = source_iter.fold(q!(|| 0), q!(|a, b| *a += b));
+
+        let tick = node.tick();
+        let batch = folded.snapshot(&tick, nondet!(/** test */));
+        let out_recv = batch.all_ticks().sim_output();
+
+        let instance_count = flow.sim().exhaustive(async || {
+            let out = out_recv.collect::<Vec<_>>().await;
+            assert_eq!(out.last(), Some(&10));
+        });
+
+        assert_eq!(
+            instance_count,
+            16 // 2^4 possible subsets of intermediates (including initial state)
+        )
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_fold_no_repeat_initial() {
+        // check that we don't repeat the initial state of the fold in autonomous decisions
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_port, input) = node.sim_input();
+        let folded = input.fold(q!(|| 0), q!(|a, b| *a += b));
+
+        let tick = node.tick();
+        let batch = folded.snapshot(&tick, nondet!(/** test */));
+        let out_recv = batch.all_ticks().sim_output();
+
+        flow.sim().exhaustive(async || {
+            assert_eq!(out_recv.next().await.unwrap(), 0);
+
+            in_port.send(123);
+
+            assert_eq!(out_recv.next().await.unwrap(), 123);
+        });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    #[should_panic]
+    fn sim_fold_repeats_snapshots() {
+        // when the tick is driven by a snapshot AND something else, the snapshot can
+        // "stutter" and repeat the same state multiple times
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
+        let folded = source_iter.clone().fold(q!(|| 0), q!(|a, b| *a += b));
+
+        let tick = node.tick();
+        let batch = source_iter
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(folded.snapshot(&tick, nondet!(/** test */)));
+        let out_recv = batch.all_ticks().sim_output();
+
+        flow.sim().exhaustive(async || {
+            if out_recv.next().await.unwrap() == (1, 3) && out_recv.next().await.unwrap() == (2, 3)
+            {
+                panic!("repeated snapshot");
+            }
+        });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_fold_repeats_snapshots_count() {
+        // check the number of instances
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let source_iter = node.source_iter(q!(vec![1, 2]));
+        let folded = source_iter.clone().fold(q!(|| 0), q!(|a, b| *a += b));
+
+        let tick = node.tick();
+        let batch = source_iter
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(folded.snapshot(&tick, nondet!(/** test */)));
+        let out_recv = batch.all_ticks().sim_output();
+
+        let count = flow.sim().exhaustive(async || {
+            let _ = out_recv.collect::<Vec<_>>().await;
+        });
+
+        assert_eq!(count, 52);
+        // don't have a combinatorial explanation for this number yet, but checked via logs
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_singleton_exhaustive() {
+        // ensures that top-level singletons have only one snapshot
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let singleton = node.singleton(q!(1));
+        let tick = node.tick();
+        let batch = singleton.snapshot(&tick, nondet!(/** test */));
+        let out_recv = batch.all_ticks().sim_output();
+
+        let count = flow.sim().exhaustive(async || {
+            let _ = out_recv.collect::<Vec<_>>().await;
+        });
+
+        assert_eq!(count, 1);
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_singleton_join_count() {
+        // if a tick consumes a static snapshot and a stream batch, only the batch require space
+        // exploration
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
+        let tick = node.tick();
+        let batch = source_iter
+            .batch(&tick, nondet!(/** test */))
+            .cross_singleton(
+                node.singleton(q!(123))
+                    .snapshot(&tick, nondet!(/** test */)),
+            );
+        let out_recv = batch.all_ticks().sim_output();
+
+        let instance_count = flow.sim().exhaustive(async || {
+            let _ = out_recv.collect::<Vec<_>>().await;
+        });
+
+        assert_eq!(
+            instance_count,
+            16 // 2^4 ways to split up (including a possibly empty first batch)
+        )
     }
 }

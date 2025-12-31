@@ -5,7 +5,104 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.15.0 (2025-11-25)
+
+<csr-id-97b879db93081b9dda3eecc834d06b55e5636030/>
+
+### New Features
+
+ - <csr-id-4a4359495fff0b3cb63ec7909271f7fce443589b/> add `Location::bind_single_client` for bidi single client
+ - <csr-id-335ded3fc72c6525b3210f2750ea11a63d60117e/> `DemuxMap`, use in `hydro_deploy_integration`
+
+### Bug Fixes
+
+<csr-id-92adacc1aa147a0cb6b78ae750b2254dfc7738a0/>
+<csr-id-6b3788896630ab8d70d54c6e144d251860f170c4/>
+
+ - <csr-id-e5f200472d9effe591d55dd82b4c37b0aff55d21/> compilation on non-Unix [ci-full]
+ - <csr-id-4e84a3fc03af1eacf8af467e52407121f3b6ec9e/> [ci-full] fix ci issues
+   - run docs/website on pr
+- use bash by default on windows
+- build website with nightly
+- increase test timeout to 45m
+- run docs with nightly
+- make rustfmt use native line endings instead of unix
+- fix compile-fail nightly stderr outputs
+- add the ability to include [ci-full] into the body/title of a PR to
+   get it to run the full stable/nightly linux/windows test matrix.
+
+### New Features (BREAKING)
+
+ - <csr-id-f9f5317b151bae78a0afdc5440c182f4dd091c67/> start adding APIs for various forms of keyed streams "joins", add KVS counter server
+   Also fixes incorrect output metadata for `KeyedStream::fold`, and
+   removes `KeyedSingleton::all_ticks` for now until we a) actually need it
+   and b) can think carefully about its semantics.
+ - <csr-id-1bb22625bf51c08620304624e0195ecbfbcb1371/> expose a stream of membership events for bidi externals
+ - <csr-id-5d40134fbd4a82a2ee8b24b02b52abd506880435/> introduce support for dynamic external clients
+   So far, Hydro has only supported deployments where there is a statically
+   known number of single-connection external clients for sending /
+   receiving data. This is not practical in production applications where
+   external users will dynamically connect to the Hydro service.
+   
+   This takes the first step towards addressing this, by setting up the
+   networking mechanism for handling dynamically connected clients and
+   adding an API for sending/receiving data.
+   
+   This also changes the `source_external_bytes` APIs to return the raw
+   `BytesMut` sent over the network, rather than adding a freezing step.
+   
+   Finally, we show an end-to-end example using this interface to write a
+   simple HTTP server.
+
+### Refactor (BREAKING)
+
+ - <csr-id-97b879db93081b9dda3eecc834d06b55e5636030/> remove unnecessary `ConnectedSourceSink` trait
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 11 commits contributed to the release.
+ - 10 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 10 unique issues were worked on: [#1966](https://github.com/hydro-project/hydro/issues/1966), [#1978](https://github.com/hydro-project/hydro/issues/1978), [#1980](https://github.com/hydro-project/hydro/issues/1980), [#1981](https://github.com/hydro-project/hydro/issues/1981), [#1996](https://github.com/hydro-project/hydro/issues/1996), [#2029](https://github.com/hydro-project/hydro/issues/2029), [#2031](https://github.com/hydro-project/hydro/issues/2031), [#2163](https://github.com/hydro-project/hydro/issues/2163), [#2246](https://github.com/hydro-project/hydro/issues/2246), [#2267](https://github.com/hydro-project/hydro/issues/2267)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#1966](https://github.com/hydro-project/hydro/issues/1966)**
+    - Introduce support for dynamic external clients ([`5d40134`](https://github.com/hydro-project/hydro/commit/5d40134fbd4a82a2ee8b24b02b52abd506880435))
+ * **[#1978](https://github.com/hydro-project/hydro/issues/1978)**
+    - Remove unnecessary `ConnectedSourceSink` trait ([`97b879d`](https://github.com/hydro-project/hydro/commit/97b879db93081b9dda3eecc834d06b55e5636030))
+ * **[#1980](https://github.com/hydro-project/hydro/issues/1980)**
+    - Make polling fair with round-robin ([`6b37888`](https://github.com/hydro-project/hydro/commit/6b3788896630ab8d70d54c6e144d251860f170c4))
+ * **[#1981](https://github.com/hydro-project/hydro/issues/1981)**
+    - Expose a stream of membership events for bidi externals ([`1bb2262`](https://github.com/hydro-project/hydro/commit/1bb22625bf51c08620304624e0195ecbfbcb1371))
+ * **[#1996](https://github.com/hydro-project/hydro/issues/1996)**
+    - Start adding APIs for various forms of keyed streams "joins", add KVS counter server ([`f9f5317`](https://github.com/hydro-project/hydro/commit/f9f5317b151bae78a0afdc5440c182f4dd091c67))
+ * **[#2029](https://github.com/hydro-project/hydro/issues/2029)**
+    - [ci-full] fix ci issues ([`4e84a3f`](https://github.com/hydro-project/hydro/commit/4e84a3fc03af1eacf8af467e52407121f3b6ec9e))
+ * **[#2031](https://github.com/hydro-project/hydro/issues/2031)**
+    - Use round-robin polling for `MergeSource` to ensure fairness ([`92adacc`](https://github.com/hydro-project/hydro/commit/92adacc1aa147a0cb6b78ae750b2254dfc7738a0))
+ * **[#2163](https://github.com/hydro-project/hydro/issues/2163)**
+    - `DemuxMap`, use in `hydro_deploy_integration` ([`335ded3`](https://github.com/hydro-project/hydro/commit/335ded3fc72c6525b3210f2750ea11a63d60117e))
+ * **[#2246](https://github.com/hydro-project/hydro/issues/2246)**
+    - Add `Location::bind_single_client` for bidi single client ([`4a43594`](https://github.com/hydro-project/hydro/commit/4a4359495fff0b3cb63ec7909271f7fce443589b))
+ * **[#2267](https://github.com/hydro-project/hydro/issues/2267)**
+    - Compilation on non-Unix [ci-full] ([`e5f2004`](https://github.com/hydro-project/hydro/commit/e5f200472d9effe591d55dd82b4c37b0aff55d21))
+ * **Uncategorized**
+    - Release hydro_build_utils v0.0.1, dfir_lang v0.15.0, dfir_macro v0.15.0, variadics v0.0.10, sinktools v0.0.1, hydro_deploy_integration v0.15.0, lattices_macro v0.5.11, variadics_macro v0.6.2, lattices v0.6.2, multiplatform_test v0.6.0, dfir_rs v0.15.0, copy_span v0.1.0, hydro_deploy v0.15.0, hydro_lang v0.15.0, hydro_std v0.15.0, safety bump 5 crates ([`092de25`](https://github.com/hydro-project/hydro/commit/092de252238dfb9fa6b01e777c6dd8bf9db93398))
+</details>
+
+<csr-unknown>
+ use round-robin polling for MergeSource to ensure fairness make polling fair with round-robin<csr-unknown/>
+
 ## 0.14.0 (2025-07-30)
+
+<csr-id-59041df58be2de0717b851cc1c3355479cd722f2/>
+<csr-id-903fbdada5f3d729f6564915d77c4e15812aa1be/>
 
 ### New Features
 
@@ -34,7 +131,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 4 commits contributed to the release over the course of 8 calendar days.
+ - 5 commits contributed to the release.
+ - 109 days passed between releases.
  - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 4 unique issues were worked on: [#1933](https://github.com/hydro-project/hydro/issues/1933), [#1938](https://github.com/hydro-project/hydro/issues/1938), [#1939](https://github.com/hydro-project/hydro/issues/1939), [#1963](https://github.com/hydro-project/hydro/issues/1963)
 
@@ -52,6 +150,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Minimize Tokio feature flags ([`59041df`](https://github.com/hydro-project/hydro/commit/59041df58be2de0717b851cc1c3355479cd722f2))
  * **[#1963](https://github.com/hydro-project/hydro/issues/1963)**
     - Leftover logging when setting up Unix sockets ([`ca704e5`](https://github.com/hydro-project/hydro/commit/ca704e500245ee4ac0a528e2cf78e0dd2944f3a1))
+ * **Uncategorized**
+    - Release dfir_lang v0.14.0, dfir_macro v0.14.0, hydro_deploy_integration v0.14.0, lattices_macro v0.5.10, variadics_macro v0.6.1, dfir_rs v0.14.0, hydro_deploy v0.14.0, hydro_lang v0.14.0, hydro_optimize v0.13.0, hydro_std v0.14.0, safety bump 6 crates ([`0683595`](https://github.com/hydro-project/hydro/commit/06835950c12884d661100c13f73ad23a98bfad9f))
 </details>
 
 ## 0.13.0 (2025-04-11)

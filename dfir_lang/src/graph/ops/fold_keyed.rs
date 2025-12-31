@@ -85,11 +85,11 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                    df_ident,
                    context,
                    op_span,
+                   work_fn_async,
                    ident,
                    inputs,
                    singleton_output_ident,
                    is_pull,
-                   work_fn,
                    root,
                    op_name,
                    op_inst:
@@ -152,41 +152,42 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
             quote_spanned! {op_span=>
                 #assign_hashtable_ident
 
-                #work_fn(|| {
+                {
                     #[inline(always)]
-                    fn check_input<Iter, K, V>(iter: Iter) -> impl ::std::iter::Iterator<Item = #root::util::PersistenceKeyed::<K, V>>
+                    fn check_input<St, K, V>(st: St) -> impl #root::futures::stream::Stream<Item = #root::util::PersistenceKeyed::<K, V>>
                     where
-                        Iter: ::std::iter::Iterator<Item = #root::util::PersistenceKeyed::<K, V>>,
+                        St: #root::futures::stream::Stream<Item = #root::util::PersistenceKeyed::<K, V>>,
                         K: ::std::clone::Clone,
                         V: ::std::clone::Clone,
                     {
-                        iter
+                        st
                     }
 
                     /// A: accumulator type
                     /// T: iterator item type
-                    /// O: output type
                     #[inline(always)]
-                    fn call_comb_type<A, T, O>(a: &mut A, t: T, f: impl Fn(&mut A, T) -> O) -> O {
-                        (f)(a, t)
+                    fn call_comb_type<A, T>(a: &mut A, t: T, f: impl Fn(&mut A, T)) {
+                        let () = (f)(a, t);
                     }
 
-                    for item in check_input(#input) {
+                    let fut = #root::compiled::pull::ForEach::new(check_input(#input), |item| {
                         match item {
-                            Persist(k, v) => {
+                            #root::util::PersistenceKeyed::Persist(k, v) => {
                                 let entry = #hashtable_ident.entry(k).or_insert_with(#initfn);
                                 call_comb_type(entry, v, #aggfn);
                             },
-                            Delete(k) => {
+                            #root::util::PersistenceKeyed::Delete(k) => {
                                 #hashtable_ident.remove(&k);
                             },
                         }
-                    }
-                });
+                    });
+                    let () = #work_fn_async(fut).await;
+                }
 
                 let #ident = #hashtable_ident
                     .iter()
                     .map(#[allow(suspicious_double_ref_op, clippy::clone_on_copy)] |(k, v)| (k.clone(), v.clone()));
+                let #ident = #root::futures::stream::iter(#ident);
             }
         } else {
             let iter_expr = match persistence {
@@ -224,34 +225,36 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
             quote_spanned! {op_span=>
                 #assign_hashtable_ident
 
-                #work_fn(|| {
+                {
                     #[inline(always)]
-                    fn check_input<Iter, K, V>(iter: Iter) -> impl ::std::iter::Iterator<Item = (K, V)>
+                    fn check_input<St, K, V>(st: St) -> impl #root::futures::stream::Stream<Item = (K, V)>
                     where
-                        Iter: std::iter::Iterator<Item = (K, V)>,
+                        St: #root::futures::stream::Stream<Item = (K, V)>,
                         K: ::std::clone::Clone,
                         V: ::std::clone::Clone
                     {
-                        iter
+                        st
                     }
 
                     /// A: accumulator type
                     /// T: iterator item type
-                    /// O: output type
                     #[inline(always)]
-                    fn call_comb_type<A, T, O>(a: &mut A, t: T, f: impl Fn(&mut A, T) -> O) -> O {
-                        (f)(a, t)
+                    fn call_comb_type<A, T>(a: &mut A, t: T, f: impl Fn(&mut A, T)) {
+                        let () = (f)(a, t);
                     }
 
-                    for kv in check_input(#input) {
+
+                    let fut = #root::compiled::pull::ForEach::new(check_input(#input), |kv| {
                         // TODO(mingwei): remove `unknown_lints` when `clippy::unwrap_or_default` is stabilized.
                         #[allow(unknown_lints, clippy::unwrap_or_default)]
                         let entry = #hashtable_ident.entry(kv.0).or_insert_with(#initfn);
                         call_comb_type(entry, kv.1, #aggfn);
-                    }
-                });
+                    });
+                    let () = #work_fn_async(fut).await;
+                }
 
                 let #ident = #iter_expr;
+                let #ident = #root::futures::stream::iter(#ident);
             }
         };
 

@@ -18,8 +18,15 @@ stageleft::stageleft_no_entry_crate!();
 #[cfg_attr(docsrs, doc(cfg(feature = "runtime_support")))]
 #[doc(hidden)]
 pub mod runtime_support {
+    #[cfg(feature = "sim")]
+    pub use colored;
     pub use {bincode, dfir_rs, stageleft, tokio};
     pub mod resource_measurement;
+}
+
+#[doc(hidden)]
+pub mod macro_support {
+    pub use copy_span;
 }
 
 pub mod prelude {
@@ -42,9 +49,26 @@ pub mod prelude {
     pub use crate::live_collections::keyed_stream::KeyedStream;
     pub use crate::live_collections::optional::Optional;
     pub use crate::live_collections::singleton::Singleton;
+    pub use crate::live_collections::sliced::sliced;
     pub use crate::live_collections::stream::Stream;
     pub use crate::location::{Cluster, External, Location as _, Process, Tick};
     pub use crate::nondet::{NonDet, nondet};
+
+    /// A macro to set up a Hydro crate.
+    #[macro_export]
+    macro_rules! setup {
+        () => {
+            stageleft::stageleft_no_entry_crate!();
+
+            #[cfg(test)]
+            mod test_init {
+                #[ctor::ctor]
+                fn init() {
+                    $crate::compile::init_test();
+                }
+            }
+        };
+    }
 }
 
 #[cfg(feature = "dfir_context")]
@@ -57,12 +81,20 @@ pub mod live_collections;
 
 pub mod location;
 
+pub mod telemetry;
+
+pub mod tests;
+
 #[cfg(any(
     feature = "deploy",
     feature = "deploy_integration" // hidden internal feature enabled in the trybuild
 ))]
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 pub mod deploy;
+
+#[cfg(feature = "sim")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sim")))]
+pub mod sim;
 
 pub mod forward_handle;
 
@@ -73,7 +105,7 @@ mod manual_expr;
 #[cfg(feature = "viz")]
 #[cfg_attr(docsrs, doc(cfg(feature = "viz")))]
 #[expect(missing_docs, reason = "TODO")]
-pub mod graph;
+pub mod viz;
 
 mod staging_util;
 
@@ -90,10 +122,10 @@ fn init_rewrites() {
     );
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "trybuild"))]
 mod test_init {
     #[ctor::ctor]
     fn init() {
-        crate::deploy::init_test();
+        crate::compile::init_test();
     }
 }

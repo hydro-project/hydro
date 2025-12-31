@@ -9,7 +9,6 @@ use std::sync::{Arc, Weak};
 
 use anyhow::Result;
 use futures::{FutureExt, StreamExt, TryStreamExt};
-use tokio::sync::RwLock;
 
 use super::aws::AwsNetwork;
 use super::gcp::GcpNetwork;
@@ -17,11 +16,11 @@ use super::{
     CustomService, GcpComputeEngineHost, Host, LocalhostHost, ResourcePool, ResourceResult,
     Service, progress,
 };
-use crate::{AwsEc2Host, AzureHost, ServiceBuilder};
+use crate::{AwsEc2Host, AzureHost, HostTargetType, ServiceBuilder};
 
 pub struct Deployment {
     pub hosts: Vec<Weak<dyn Host>>,
-    pub services: Vec<Weak<RwLock<dyn Service>>>,
+    pub services: Vec<Weak<dyn Service>>,
     pub resource_pool: ResourcePool,
     localhost_host: Option<Arc<LocalhostHost>>,
     last_resource_result: Option<Arc<ResourceResult>>,
@@ -61,8 +60,8 @@ impl Deployment {
         &mut self,
         on: Arc<dyn Host>,
         external_ports: Vec<u16>,
-    ) -> Arc<RwLock<CustomService>> {
-        self.add_service(|id| CustomService::new(id, on, external_ports))
+    ) -> Arc<CustomService> {
+        self.add_service(|id, on| CustomService::new(id, on, external_ports), on)
     }
 
     /// Runs `deploy()`, and `start()`, waits for the trigger future, then runs `stop()`.
@@ -105,7 +104,7 @@ impl Deployment {
             let mut resource_batch = super::ResourceBatch::new();
 
             for service in self.services.iter().filter_map(Weak::upgrade) {
-                service.read().await.collect_resources(&mut resource_batch);
+                service.collect_resources(&mut resource_batch);
             }
 
             for host in self.hosts.iter().filter_map(Weak::upgrade) {
@@ -135,9 +134,9 @@ impl Deployment {
             progress::ProgressTracker::with_group("prepare", Some(upgraded_services.len()), || {
                 let services_future = upgraded_services
                     .iter()
-                    .map(|service: &Arc<RwLock<dyn Service>>| {
+                    .map(|service: &Arc<dyn Service>| {
                         let resource_result = &resource_result;
-                        async move { service.write().await.deploy(resource_result).await }
+                        async move { service.deploy(resource_result).await }
                     })
                     .collect::<Vec<_>>();
 
@@ -151,8 +150,8 @@ impl Deployment {
                 let all_services_ready =
                     upgraded_services
                         .iter()
-                        .map(|service: &Arc<RwLock<dyn Service>>| async move {
-                            service.write().await.ready().await?;
+                        .map(|service: &Arc<dyn Service>| async move {
+                            service.ready().await?;
                             Ok(()) as Result<()>
                         });
 
@@ -170,8 +169,8 @@ impl Deployment {
 
         progress::ProgressTracker::with_group("start", None, || {
             let all_services_start = self.services.iter().filter_map(Weak::upgrade).map(
-                |service: Arc<RwLock<dyn Service>>| async move {
-                    service.write().await.start().await?;
+                |service: Arc<dyn Service>| async move {
+                    service.start().await?;
                     Ok(()) as Result<()>
                 },
             );
@@ -187,8 +186,8 @@ impl Deployment {
 
         progress::ProgressTracker::with_group("stop", None, || {
             let all_services_stop = self.services.iter().filter_map(Weak::upgrade).map(
-                |service: Arc<RwLock<dyn Service>>| async move {
-                    service.write().await.stop().await?;
+                |service: Arc<dyn Service>| async move {
+                    service.stop().await?;
                     Ok(()) as Result<()>
                 },
             );
@@ -212,12 +211,13 @@ impl Deployment {
     pub fn add_service<T: Service + 'static>(
         &mut self,
         service: impl ServiceBuilder<Service = T>,
-    ) -> Arc<RwLock<T>> {
-        let arc = Arc::new(RwLock::new(service.build(self.next_service_id)));
+        on: Arc<dyn Host>,
+    ) -> Arc<T> {
+        let arc = Arc::new(service.build(self.next_service_id, on));
         self.next_service_id += 1;
 
         self.services
-            .push(Arc::downgrade(&arc) as Weak<RwLock<dyn Service>>);
+            .push(Arc::downgrade(&arc) as Weak<dyn Service>);
         arc
     }
 }
@@ -231,8 +231,9 @@ impl Deployment {
         project: String,
         machine_type: String,
         image: String,
+        target_type: Option<HostTargetType>,
         region: String,
-        network: Arc<RwLock<GcpNetwork>>,
+        network: Arc<GcpNetwork>,
         user: Option<String>,
         display_name: Option<String>,
     ) -> Arc<GcpComputeEngineHost> {
@@ -242,6 +243,7 @@ impl Deployment {
                 project,
                 machine_type,
                 image,
+                target_type.unwrap_or(HostTargetType::Linux(crate::LinuxCompileType::Musl)),
                 region,
                 network,
                 user,
@@ -257,10 +259,22 @@ impl Deployment {
         os_type: String, // linux or windows
         machine_size: String,
         image: Option<HashMap<String, String>>,
+        target_type: Option<HostTargetType>,
         region: String,
         user: Option<String>,
     ) -> Arc<AzureHost> {
-        self.add_host(|id| AzureHost::new(id, project, os_type, machine_size, image, region, user))
+        self.add_host(|id| {
+            AzureHost::new(
+                id,
+                project,
+                os_type,
+                machine_size,
+                image,
+                target_type.unwrap_or(HostTargetType::Linux(crate::LinuxCompileType::Musl)),
+                region,
+                user,
+            )
+        })
     }
 
     #[builder(entry = "AwsEc2Host", exit = "add")]
@@ -268,13 +282,23 @@ impl Deployment {
         &mut self,
         region: String,
         instance_type: String,
+        target_type: Option<HostTargetType>,
         ami: String,
-        network: Arc<RwLock<AwsNetwork>>,
+        network: Arc<AwsNetwork>,
         user: Option<String>,
         display_name: Option<String>,
     ) -> Arc<AwsEc2Host> {
         self.add_host(|id| {
-            AwsEc2Host::new(id, region, instance_type, ami, network, user, display_name)
+            AwsEc2Host::new(
+                id,
+                region,
+                instance_type,
+                target_type.unwrap_or(HostTargetType::Linux(crate::LinuxCompileType::Musl)),
+                ami,
+                network,
+                user,
+                display_name,
+            )
         })
     }
 }

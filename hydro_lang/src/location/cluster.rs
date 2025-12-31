@@ -9,6 +9,7 @@ use stageleft::{QuotedWithContext, quote_type};
 use super::dynamic::LocationId;
 use super::{Location, MemberId};
 use crate::compile::builder::FlowState;
+use crate::location::member_id::TaglessMemberId;
 use crate::staging_util::{Invariant, get_this_crate};
 
 pub struct Cluster<'a, ClusterTag> {
@@ -62,21 +63,22 @@ impl<'a, C> Location<'a> for Cluster<'a, C> {
     }
 }
 
-pub struct ClusterIds<'a, C> {
-    pub(crate) id: usize,
-    pub(crate) _phantom: Invariant<'a, C>,
+pub struct ClusterIds<'a> {
+    pub id: usize,
+    pub _phantom: PhantomData<&'a ()>,
 }
 
-impl<C> Clone for ClusterIds<'_, C> {
+impl<'a> Clone for ClusterIds<'a> {
     fn clone(&self) -> Self {
-        *self
+        Self {
+            id: self.id,
+            _phantom: Default::default(),
+        }
     }
 }
 
-impl<C> Copy for ClusterIds<'_, C> {}
-
-impl<'a, C: 'a, Ctx> FreeVariableWithContext<Ctx> for ClusterIds<'a, C> {
-    type O = &'a Vec<MemberId<C>>;
+impl<'a, Ctx> FreeVariableWithContext<Ctx> for ClusterIds<'a> {
+    type O = &'a [TaglessMemberId];
 
     fn to_tokens(self, _ctx: &Ctx) -> QuoteTokens
     where
@@ -86,19 +88,15 @@ impl<'a, C: 'a, Ctx> FreeVariableWithContext<Ctx> for ClusterIds<'a, C> {
             &format!("__hydro_lang_cluster_ids_{}", self.id),
             Span::call_site(),
         );
-        let root = get_this_crate();
-        let c_type = quote_type::<C>();
 
         QuoteTokens {
             prelude: None,
-            expr: Some(
-                quote! { unsafe { ::std::mem::transmute::<_, &[#root::location::MemberId<#c_type>]>(#ident) } },
-            ),
+            expr: Some(quote! { #ident }),
         }
     }
 }
 
-impl<'a, C, Ctx> QuotedWithContext<'a, &'a Vec<MemberId<C>>, Ctx> for ClusterIds<'a, C> {}
+impl<'a, Ctx> QuotedWithContext<'a, &'a [TaglessMemberId], Ctx> for ClusterIds<'a> {}
 
 pub trait IsCluster {
     type Tag;
@@ -143,7 +141,9 @@ where
 
         QuoteTokens {
             prelude: None,
-            expr: Some(quote! { #root::location::MemberId::<#c_type>::from_raw(#ident) }),
+            expr: Some(
+                quote! { #root::location::MemberId::<#c_type>::from_tagless((#ident).clone()) },
+            ),
         }
     }
 }
@@ -154,4 +154,118 @@ where
     L: Location<'a>,
     <L as Location<'a>>::Root: IsCluster,
 {
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(feature = "sim")]
+    use stageleft::q;
+
+    #[cfg(feature = "sim")]
+    use super::CLUSTER_SELF_ID;
+    #[cfg(feature = "sim")]
+    use crate::location::{Location, MemberId, MembershipEvent};
+    #[cfg(feature = "sim")]
+    use crate::nondet::nondet;
+    #[cfg(feature = "sim")]
+    use crate::prelude::FlowBuilder;
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_cluster_self_id() {
+        let flow = FlowBuilder::new();
+        let cluster1 = flow.cluster::<()>();
+        let cluster2 = flow.cluster::<()>();
+
+        let node = flow.process::<()>();
+
+        let out_recv = cluster1
+            .source_iter(q!(vec![CLUSTER_SELF_ID]))
+            .send_bincode(&node)
+            .values()
+            .interleave(
+                cluster2
+                    .source_iter(q!(vec![CLUSTER_SELF_ID]))
+                    .send_bincode(&node)
+                    .values(),
+            )
+            .sim_output();
+
+        flow.sim()
+            .with_cluster_size(&cluster1, 3)
+            .with_cluster_size(&cluster2, 4)
+            .exhaustive(async || {
+                out_recv
+                    .assert_yields_only_unordered([0, 1, 2, 0, 1, 2, 3].map(MemberId::from_raw_id))
+                    .await
+            });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_cluster_with_tick() {
+        use std::collections::HashMap;
+
+        let flow = FlowBuilder::new();
+        let cluster = flow.cluster::<()>();
+        let node = flow.process::<()>();
+
+        let out_recv = cluster
+            .source_iter(q!(vec![1, 2, 3]))
+            .batch(&cluster.tick(), nondet!(/** test */))
+            .count()
+            .all_ticks()
+            .send_bincode(&node)
+            .entries()
+            .map(q!(|(id, v)| (id, v)))
+            .sim_output();
+
+        let count = flow
+            .sim()
+            .with_cluster_size(&cluster, 2)
+            .exhaustive(async || {
+                let grouped = out_recv.collect_sorted::<Vec<_>>().await.into_iter().fold(
+                    HashMap::new(),
+                    |mut acc: HashMap<MemberId<()>, usize>, (id, v)| {
+                        *acc.entry(id).or_default() += v;
+                        acc
+                    },
+                );
+
+                assert!(grouped.len() == 2);
+                for (_id, v) in grouped {
+                    assert!(v == 3);
+                }
+            });
+
+        assert_eq!(count, 106);
+        // not a square because we simulate all interleavings of ticks across 2 cluster members
+        // eventually, we should be able to identify that the members are independent (because
+        // there are no dataflow cycles) and avoid simulating redundant interleavings
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_cluster_membership() {
+        let flow = FlowBuilder::new();
+        let cluster = flow.cluster::<()>();
+        let node = flow.process::<()>();
+
+        let out_recv = node
+            .source_cluster_members(&cluster)
+            .entries()
+            .map(q!(|(id, v)| (id, v)))
+            .sim_output();
+
+        flow.sim()
+            .with_cluster_size(&cluster, 2)
+            .exhaustive(async || {
+                out_recv
+                    .assert_yields_only_unordered(vec![
+                        (MemberId::from_raw_id(0), MembershipEvent::Joined),
+                        (MemberId::from_raw_id(1), MembershipEvent::Joined),
+                    ])
+                    .await;
+            });
+    }
 }

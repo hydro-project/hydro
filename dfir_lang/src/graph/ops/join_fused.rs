@@ -1,27 +1,26 @@
 use proc_macro2::TokenStream;
-use quote::{ToTokens, quote_spanned};
-use syn::spanned::Spanned;
-use syn::{Expr, ExprCall, parse_quote};
+use quote::quote_spanned;
+use syn::{Ident, parse_quote};
 
 use super::{
     DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
     RANGE_1, WriteContextArgs,
 };
-use crate::diagnostic::{Diagnostic, Level};
+use crate::diagnostic::Diagnostic;
 
 /// > 2 input streams of type `<(K, V1)>` and `<(K, V2)>`, 1 output stream of type `<(K, (V1, V2))>`
 ///
-/// `join_fused` takes two arguments, they are the configuration options for the left hand side and right hand side inputs respectively.
-/// There are three available configuration options, they are `Reduce`: if the input type is the same as the accumulator type,
+/// `join_fused` takes two arguments, they are the aggregators for the left hand side and right hand side inputs respectively.
+/// There are three main aggregators available, they are `Reduce`: if the input type is the same as the accumulator type,
 /// `Fold`: if the input type is different from the accumulator type, and the accumulator type has a sensible default value, and
 /// `FoldFrom`: if the input type is different from the accumulator type, and the accumulator needs to be derived from the first input value.
 /// Examples of all three configuration options are below:
 /// ```dfir,ignore
-/// // Left hand side input will use fold, right hand side input will use reduce,
-/// join_fused(Fold(|| "default value", |x, y| *x += y), Reduce(|x, y| *x -= y))
+/// // Left hand side input will use `Fold`, right hand side input will use `Reduce`,
+/// join_fused(Fold::new(|| "default value", |x, y| *x += y), Reduce::new(|x, y| *x -= y))
 ///
-/// // Left hand side input will use FoldFrom, and the right hand side input will use Reduce again
-/// join_fused(FoldFrom(|x| "conversion function", |x, y| *x += y), Reduce(|x, y| *x *= y))
+/// // Left hand side input will use `FoldFrom`, and the right hand side input will use `Reduce` again
+/// join_fused(FoldFrom::new(|x| "conversion function", |x, y| *x += y), Reduce::new(|x, y| *x *= y))
 /// ```
 /// The three currently supported fused operator types are `Fold(Fn() -> A, Fn(A, T) -> A)`, `Reduce(Fn(A, A) -> A)`, and `FoldFrom(Fn(T) -> A, Fn(A, T) -> A)`
 ///
@@ -41,22 +40,26 @@ use crate::diagnostic::{Diagnostic, Level};
 /// ```
 ///
 /// ```dfir
+/// use dfir_rs::util::accumulator::{Fold, Reduce};
+///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)])
 ///     -> [0]my_join;
 /// source_iter(vec![("key", 2), ("key", 3)])
 ///     -> [1]my_join;
-/// my_join = join_fused(Reduce(|x, y| *x += y), Fold(|| 1, |x, y| *x *= y))
+/// my_join = join_fused(Reduce::new(|x, y| *x += y), Fold::new(|| 1, |x, y| *x *= y))
 ///     -> assert_eq([("key", (3, 6))]);
 /// ```
 ///
-/// Here is an example of using FoldFrom to derive the accumulator from the first value:
+/// Here is an example of using `FoldFrom` to derive the accumulator from the first value:
 ///
 /// ```dfir
+/// use dfir_rs::util::accumulator::{Fold, FoldFrom};
+///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)])
 ///     -> [0]my_join;
 /// source_iter(vec![("key", 2), ("key", 3)])
 ///     -> [1]my_join;
-/// my_join = join_fused(FoldFrom(|x| x + 3, |x, y| *x += y), Fold(|| 1, |x, y| *x *= y))
+/// my_join = join_fused(FoldFrom::new(|x: u32| x + 3, |x, y| *x += y), Fold::new(|| 1, |x, y| *x *= y))
 ///     -> assert_eq([("key", (6, 6))]);
 /// ```
 ///
@@ -70,22 +73,26 @@ use crate::diagnostic::{Diagnostic, Level};
 /// for example, the two following examples have identical behavior:
 ///
 /// ```dfir
+/// use dfir_rs::util::accumulator::{Fold, Reduce};
+///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> persist::<'static>() -> [0]my_join;
 /// source_iter(vec![("key", 2)]) -> my_union;
 /// source_iter(vec![("key", 3)]) -> defer_tick() -> my_union;
 /// my_union = union() -> persist::<'static>() -> [1]my_join;
 ///
-/// my_join = join_fused(Reduce(|x, y| *x += y), Fold(|| 1, |x, y| *x *= y))
+/// my_join = join_fused(Reduce::new(|x, y| *x += y), Fold::new(|| 1, |x, y| *x *= y))
 ///     -> assert_eq([("key", (3, 2)), ("key", (3, 6))]);
 /// ```
 ///
 /// ```dfir
+/// use dfir_rs::util::accumulator::{Fold, Reduce};
+///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> [0]my_join;
 /// source_iter(vec![("key", 2)]) -> my_union;
 /// source_iter(vec![("key", 3)]) -> defer_tick() -> my_union;
 /// my_union = union() -> [1]my_join;
 ///
-/// my_join = join_fused::<'static>(Reduce(|x, y| *x += y), Fold(|| 1, |x, y| *x *= y))
+/// my_join = join_fused::<'static>(Reduce::new(|x, y| *x += y), Fold::new(|| 1, |x, y| *x *= y))
 ///     -> assert_eq([("key", (3, 2)), ("key", (3, 6))]);
 /// ```
 pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
@@ -105,8 +112,10 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| Some(DelayType::Stratum),
     write_fn: |wc @ &WriteContextArgs {
+                   root,
                    context,
                    op_span,
+                   work_fn_async,
                    ident,
                    inputs,
                    is_pull,
@@ -118,48 +127,17 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
 
         let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
 
-        let lhs_join_options =
-            parse_argument(&arguments[0]).map_err(|err| diagnostics.push(err))?;
-        let rhs_join_options =
-            parse_argument(&arguments[1]).map_err(|err| diagnostics.push(err))?;
-
         let (lhs_prologue, lhs_prologue_after, lhs_pre_write_iter, lhs_borrow) =
-            make_joindata(wc, persistences[0], &lhs_join_options, "lhs")
-                .map_err(|err| diagnostics.push(err))?;
+            make_joindata(wc, persistences[0], "lhs").map_err(|err| diagnostics.push(err))?;
 
         let (rhs_prologue, rhs_prologue_after, rhs_pre_write_iter, rhs_borrow) =
-            make_joindata(wc, persistences[1], &rhs_join_options, "rhs")
-                .map_err(|err| diagnostics.push(err))?;
+            make_joindata(wc, persistences[1], "rhs").map_err(|err| diagnostics.push(err))?;
 
         let lhs = &inputs[0];
         let rhs = &inputs[1];
 
-        let arg0_span = arguments[0].span();
-        let arg1_span = arguments[1].span();
-
-        let lhs_tokens = match lhs_join_options {
-            JoinOptions::FoldFrom(lhs_from, lhs_fold) => quote_spanned! {arg0_span=>
-                #lhs_borrow.fold_into(#lhs, #lhs_fold, #lhs_from);
-            },
-            JoinOptions::Fold(lhs_default, lhs_fold) => quote_spanned! {arg0_span=>
-                #lhs_borrow.fold_into(#lhs, #lhs_fold, #lhs_default);
-            },
-            JoinOptions::Reduce(lhs_reduce) => quote_spanned! {arg0_span=>
-                #lhs_borrow.reduce_into(#lhs, #lhs_reduce);
-            },
-        };
-
-        let rhs_tokens = match rhs_join_options {
-            JoinOptions::FoldFrom(rhs_from, rhs_fold) => quote_spanned! {arg0_span=>
-                #rhs_borrow.fold_into(#rhs, #rhs_fold, #rhs_from);
-            },
-            JoinOptions::Fold(rhs_default, rhs_fold) => quote_spanned! {arg1_span=>
-                #rhs_borrow.fold_into(#rhs, #rhs_fold, #rhs_default);
-            },
-            JoinOptions::Reduce(rhs_reduce) => quote_spanned! {arg1_span=>
-                #rhs_borrow.reduce_into(#rhs, #rhs_reduce);
-            },
-        };
+        let lhs_accum = &arguments[0];
+        let rhs_accum = &arguments[1];
 
         // Since both input arguments are stratum blocking then we don't need to keep track of ticks to avoid emitting the same thing twice in the same tick.
         let write_iterator = quote_spanned! {op_span=>
@@ -167,16 +145,27 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
             #rhs_pre_write_iter
 
             let #ident = {
-                #lhs_tokens
-                #rhs_tokens
+                async fn __check_accum<Accumulator, Key, Accum, St, Hasher, Item>(accum: &mut Accumulator, borrow: &mut ::std::collections::HashMap<Key, Accum, Hasher>, st: St)
+                where
+                    Accumulator: #root::util::accumulator::Accumulator<Accum, Item>,
+                    Key: ::std::cmp::Eq + ::std::hash::Hash + ::std::clone::Clone,
+                    St: #root::futures::stream::Stream<Item = (Key, Item)>,
+                    Hasher: ::std::hash::BuildHasher,
+                    Item: ::std::clone::Clone,
+                {
+                    #root::compiled::pull::accumulate_all(accum, borrow, st).await;
+                }
+                #work_fn_async(__check_accum(&mut #lhs_accum, &mut *#lhs_borrow, #lhs)).await;
+                #work_fn_async(__check_accum(&mut #rhs_accum, &mut *#rhs_borrow, #rhs)).await;
 
                 // TODO: start the iterator with the smallest len() table rather than always picking rhs.
-                #[allow(clippy::clone_on_copy)]
-                #[allow(suspicious_double_ref_op)]
-                #rhs_borrow
-                    .table
+                #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
+                let iter = #rhs_borrow
                     .iter()
-                    .filter_map(|(k, v2)| #lhs_borrow.table.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))))
+                    .filter_map(|(k, v2)| {
+                        #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone())))
+                    });
+                #root::futures::stream::iter(iter)
             };
         };
 
@@ -205,74 +194,12 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
     },
 };
 
-pub(crate) enum JoinOptions<'a> {
-    FoldFrom(&'a Expr, &'a Expr),
-    Fold(&'a Expr, &'a Expr),
-    Reduce(&'a Expr),
-}
-
-pub(crate) fn parse_argument(arg: &Expr) -> Result<JoinOptions<'_>, Diagnostic> {
-    let Expr::Call(ExprCall {
-        attrs: _,
-        func,
-        paren_token: _,
-        args,
-    }) = arg
-    else {
-        return Err(Diagnostic::spanned(
-            arg.span(),
-            Level::Error,
-            format!("Argument must be a function call: {arg:?}"),
-        ));
-    };
-
-    let mut elems = args.iter();
-    let func_name = func.to_token_stream().to_string();
-
-    match func_name.as_str() {
-        "Fold" => match (elems.next(), elems.next()) {
-            (Some(default), Some(fold)) => Ok(JoinOptions::Fold(default, fold)),
-            _ => Err(Diagnostic::spanned(
-                args.span(),
-                Level::Error,
-                format!(
-                    "Fold requires two arguments, first is the default function, second is the folding function: {func:?}"
-                ),
-            )),
-        },
-        "FoldFrom" => match (elems.next(), elems.next()) {
-            (Some(from), Some(fold)) => Ok(JoinOptions::FoldFrom(from, fold)),
-            _ => Err(Diagnostic::spanned(
-                args.span(),
-                Level::Error,
-                format!(
-                    "FoldFrom requires two arguments, first is the From function, second is the folding function: {func:?}"
-                ),
-            )),
-        },
-        "Reduce" => match elems.next() {
-            Some(reduce) => Ok(JoinOptions::Reduce(reduce)),
-            _ => Err(Diagnostic::spanned(
-                args.span(),
-                Level::Error,
-                format!("Reduce requires one argument, the reducing function: {func:?}"),
-            )),
-        },
-        _ => Err(Diagnostic::spanned(
-            func.span(),
-            Level::Error,
-            format!("Unknown summarizing function: {func:?}"),
-        )),
-    }
-}
-
 /// Returns `(prologue, prologue_after, pre_write_iter, borrow)`.
 pub(crate) fn make_joindata(
     wc: &WriteContextArgs,
     persistence: Persistence,
-    join_options: &JoinOptions<'_>,
     side: &str,
-) -> Result<(TokenStream, TokenStream, TokenStream, TokenStream), Diagnostic> {
+) -> Result<(TokenStream, TokenStream, TokenStream, Ident), Diagnostic> {
     let joindata_ident = wc.make_ident(format!("joindata_{}", side));
     let borrow_ident = wc.make_ident(format!("joindata_{}_borrow", side));
 
@@ -284,34 +211,20 @@ pub(crate) fn make_joindata(
         ..
     } = wc;
 
-    let join_type = match *join_options {
-        JoinOptions::FoldFrom(_, _) => {
-            quote_spanned!(op_span=> #root::compiled::pull::HalfJoinStateFoldFrom)
-        }
-        JoinOptions::Fold(_, _) => {
-            quote_spanned!(op_span=> #root::compiled::pull::HalfJoinStateFold)
-        }
-        JoinOptions::Reduce(_) => {
-            quote_spanned!(op_span=> #root::compiled::pull::HalfJoinStateReduce)
-        }
-    };
-
     Ok(match persistence {
         Persistence::None => (
             Default::default(),
             Default::default(),
             quote_spanned! {op_span=>
-                let mut #borrow_ident = #join_type::default();
+                let #borrow_ident = &mut #root::rustc_hash::FxHashMap::default();
             },
-            quote_spanned! {op_span=>
-                #borrow_ident
-            },
+            borrow_ident,
         ),
         Persistence::Tick | Persistence::Loop | Persistence::Static => {
             let lifespan = wc.persistence_as_state_lifespan(persistence);
             (
                 quote_spanned! {op_span=>
-                    let #joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(#join_type::default()));
+                    let #joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::default()));
                 },
                 lifespan.map(|lifespan| quote_spanned! {op_span=>
                     // Reset the value to the initializer fn at the end of each tick/loop execution.
@@ -323,9 +236,7 @@ pub(crate) fn make_joindata(
                         #context.state_ref_unchecked(#joindata_ident)
                     }.borrow_mut();
                 },
-                quote_spanned! {op_span=>
-                    #borrow_ident
-                },
+                borrow_ident
             )
         }
         Persistence::Mutable => panic!(),
