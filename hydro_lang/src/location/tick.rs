@@ -62,6 +62,10 @@ where
     fn root(&self) -> Self::Root {
         self.tick.root()
     }
+
+    fn name() -> String {
+        format!("Atomic<{}>", L::name())
+    }
 }
 
 #[sealed]
@@ -100,6 +104,10 @@ where
 
     fn root(&self) -> Self::Root {
         self.l.root()
+    }
+
+    fn name() -> String {
+        format!("Tick<{}>", L::name())
     }
 }
 
