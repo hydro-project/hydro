@@ -88,6 +88,6 @@ impl<'a, T, L, B: Boundedness, Order: Ordering>
     where
         T: Clone + Serialize + DeserializeOwned,
     {
-        self.send_bincode(other)
+        self.send(other, TCP.bincode())
     }
 }
