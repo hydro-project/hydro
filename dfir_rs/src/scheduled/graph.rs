@@ -20,7 +20,7 @@ use web_time::SystemTime;
 use super::context::Context;
 use super::handoff::handoff_list::PortList;
 use super::handoff::{Handoff, HandoffMeta, TeeingHandoff};
-use super::metrics::{DfirMetrics, DfirMetricsState, InstrumentSubgraph};
+use super::metrics::{DfirMetrics, DfirMetricsIntervals, InstrumentSubgraph};
 use super::port::{RECV, RecvCtx, RecvPort, SEND, SendCtx, SendPort};
 use super::reactor::Reactor;
 use super::state::StateHandle;
@@ -41,7 +41,8 @@ pub struct Dfir<'a> {
 
     pub(super) handoffs: SlotVec<HandoffTag, HandoffData>,
 
-    metrics: Rc<DfirMetricsState>,
+    /// Live-updating DFIR runtime metrics via interior mutability.
+    metrics: Rc<DfirMetrics>,
 
     #[cfg(feature = "meta")]
     /// See [`Self::meta_graph()`].
@@ -1063,9 +1064,20 @@ impl<'a> Dfir<'a> {
         loop_id
     }
 
-    /// Returns DFIR runtime metrics accumulated since runtime creation.
-    pub fn metrics(&self) -> DfirMetrics {
-        DfirMetrics {
+    /// Returns a referenced-counted handle to the continually-updated runtime metrics for this DFIR instance.
+    pub fn metrics(&self) -> Rc<DfirMetrics> {
+        Rc::clone(&self.metrics)
+    }
+
+    /// Returns an infinite iterator of [`DfirMetrics`], where each call to `next()` ends an interval.
+    ///
+    /// The first call to [`Self::next`] returns metrics since this DFIR instance was created. Each subsequent call to
+    /// [`Self::next`] returns metrics since the previous call.
+    ///
+    /// Cloning the iterator "forks" it from the original, as afterwards each iterator will return different metrics
+    /// based on when [`Self::next()`] is called.
+    pub fn metrics_intervals(&self) -> DfirMetricsIntervals {
+        DfirMetricsIntervals {
             curr: Rc::clone(&self.metrics),
             prev: None,
         }
