@@ -1071,11 +1071,11 @@ impl<'a> Dfir<'a> {
 
     /// Returns an infinite iterator of [`DfirMetrics`], where each call to `next()` ends an interval.
     ///
-    /// The first call to [`Self::next`] returns metrics since this DFIR instance was created. Each subsequent call to
-    /// [`Self::next`] returns metrics since the previous call.
+    /// The first call to [`DfirMetricsIntervals::next`] returns metrics since this DFIR instance was created. Each
+    /// subsequent call to [`DfirMetricsIntervals::next`] returns metrics since the previous call.
     ///
     /// Cloning the iterator "forks" it from the original, as afterwards each iterator will return different metrics
-    /// based on when [`Self::next()`] is called.
+    /// based on when [`DfirMetricsIntervals::next`] is called.
     pub fn metrics_intervals(&self) -> DfirMetricsIntervals {
         DfirMetricsIntervals {
             curr: Rc::clone(&self.metrics),
