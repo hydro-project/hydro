@@ -52,6 +52,7 @@ pub mod prelude {
     pub use crate::live_collections::sliced::sliced;
     pub use crate::live_collections::stream::Stream;
     pub use crate::location::{Cluster, External, Location as _, Process, Tick};
+    pub use crate::networking::BINCODE;
     pub use crate::nondet::{NonDet, nondet};
 
     /// A macro to set up a Hydro crate.
@@ -80,6 +81,8 @@ pub mod nondet;
 pub mod live_collections;
 
 pub mod location;
+
+pub mod networking;
 
 pub mod telemetry;
 

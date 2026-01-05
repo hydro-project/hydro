@@ -44,7 +44,7 @@ fn distributed_echo<'a>(
         .send_bincode(p4)
         .values()
         .map(q!(|n| n + 1))
-        .send_bincode(p5)
+        .send(p5, BINCODE)
         .map(q!(|n| n + 1))
         .send_bincode_external(external);
 
