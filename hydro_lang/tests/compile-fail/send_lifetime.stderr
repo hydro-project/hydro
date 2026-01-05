@@ -1,11 +1,11 @@
 error: lifetime may not live long enough
- --> tests/compile-fail/send_bincode_lifetime.rs:7:5
+ --> tests/compile-fail/send_lifetime.rs:7:5
   |
 6 | fn test<'a, 'b>(p1: &Process<'a, P1>, p2: &Process<'b, P2>) {
   |         --  -- lifetime `'b` defined here
   |         |
   |         lifetime `'a` defined here
-7 |     p1.source_iter(q!(0..10)).send_bincode(p2).for_each(q!(|n| println!("{}", n)));
+7 |     p1.source_iter(q!(0..10)).send(p2, TCP.bincode()).for_each(q!(|n| println!("{}", n)));
   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
   |
   = help: consider adding the following bound: `'b: 'a`
@@ -14,14 +14,14 @@ error: lifetime may not live long enough
   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
- --> tests/compile-fail/send_bincode_lifetime.rs:7:5
+ --> tests/compile-fail/send_lifetime.rs:7:5
   |
 6 | fn test<'a, 'b>(p1: &Process<'a, P1>, p2: &Process<'b, P2>) {
   |         --  -- lifetime `'b` defined here
   |         |
   |         lifetime `'a` defined here
-7 |     p1.source_iter(q!(0..10)).send_bincode(p2).for_each(q!(|n| println!("{}", n)));
-  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'a` must outlive `'b`
+7 |     p1.source_iter(q!(0..10)).send(p2, TCP.bincode()).for_each(q!(|n| println!("{}", n)));
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'a` must outlive `'b`
   |
   = help: consider adding the following bound: `'a: 'b`
   = note: requirement occurs because of the type `hydro_lang::prelude::Process<'_, P2>`, which makes the generic argument `'_` invariant
