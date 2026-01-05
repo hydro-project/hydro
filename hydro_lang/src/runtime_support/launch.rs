@@ -8,7 +8,6 @@ use dfir_rs::futures::FutureExt;
 use dfir_rs::scheduled::graph::Dfir;
 use futures::StreamExt;
 use futures::stream::FuturesUnordered;
-#[cfg(feature = "deploy_integration")]
 pub use hydro_deploy_integration::*;
 #[cfg(feature = "runtime_measure")]
 #[cfg(target_os = "linux")]
