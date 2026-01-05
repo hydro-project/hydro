@@ -21,7 +21,10 @@ pub mod runtime_support {
     #[cfg(feature = "sim")]
     pub use colored;
     pub use {bincode, dfir_rs, hydro_deploy_integration, stageleft, tokio};
-    pub mod resource_measurement;
+    #[cfg(feature = "deploy_integration")]
+    pub mod launch;
+    #[deprecated]
+    pub use launch as resource_measurement;
 }
 
 #[doc(hidden)]
