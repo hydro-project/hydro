@@ -18,6 +18,7 @@ use crate::live_collections::stream::Retries;
 use crate::location::dynamic::DynLocation;
 use crate::location::external_process::ExternalBincodeStream;
 use crate::location::{Cluster, External, Location, MemberId, MembershipEvent, NoTick, Process};
+use crate::networking::{NetworkFor, TCP};
 use crate::nondet::NonDet;
 #[cfg(feature = "sim")]
 use crate::sim::SimReceiver;
@@ -88,6 +89,7 @@ pub(crate) fn deserialize_bincode<T: DeserializeOwned>(tagged: Option<&syn::Type
 }
 
 impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>, B, O, R> {
+    #[deprecated = "use Stream::send(..., BINCODE) instead"]
     /// "Moves" elements of this stream to a new distributed location by sending them over the network,
     /// using [`bincode`] to serialize/deserialize messages.
     ///
@@ -123,18 +125,57 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     where
         T: Serialize + DeserializeOwned,
     {
-        let serialize_pipeline = Some(serialize_bincode::<T>(false));
+        self.send(other, TCP.bincode())
+    }
 
-        let deserialize_pipeline = Some(deserialize_bincode::<T>(None));
+    /// "Moves" elements of this stream to a new distributed location by sending them over the network,
+    /// using the configuration in `via` to set up the message transport.
+    ///
+    /// The returned stream captures the elements received at the destination, where values will
+    /// asynchronously arrive over the network. Sending from a [`Process`] to another [`Process`]
+    /// preserves ordering and retries guarantees when using a single TCP channel to send the values.
+    /// The recipient is guaranteed to receive a _prefix_ or the sent messages; if the connection is
+    /// dropped no further messages will be sent.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p_out| {
+    /// let p1 = flow.process::<()>();
+    /// let numbers: Stream<_, Process<_>, Unbounded> = p1.source_iter(q!(vec![1, 2, 3]));
+    /// let p2 = flow.process::<()>();
+    /// let on_p2: Stream<_, Process<_>, Unbounded> = numbers.send(&p2, BINCODE);
+    /// // 1, 2, 3
+    /// # on_p2.send(&p_out, BINCODE)
+    /// # }, |mut stream| async move {
+    /// # for w in 1..=3 {
+    /// #     assert_eq!(stream.next().await, Some(w));
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn send<L2, N: NetworkFor<T>>(
+        self,
+        to: &Process<'a, L2>,
+        via: N,
+    ) -> Stream<T, Process<'a, L2>, Unbounded, O, R>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        let _ = via;
+        let serialize_pipeline = Some(N::serialize_thunk(false));
+        let deserialize_pipeline = Some(N::deserialize_thunk(None));
 
         Stream::new(
-            other.clone(),
+            to.clone(),
             HydroNode::Network {
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: other.new_node_metadata(
+                metadata: to.new_node_metadata(
                     Stream::<T, Process<'a, L2>, Unbounded, O, R>::collection_kind(),
                 ),
             },
@@ -714,6 +755,8 @@ mod tests {
     #[cfg(feature = "sim")]
     #[test]
     fn sim_send_bincode_o2o() {
+        use crate::networking::TCP;
+
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
         let node2 = flow.process::<()>();
@@ -721,7 +764,7 @@ mod tests {
         let (in_send, input) = node.sim_input();
 
         let out_recv = input
-            .send_bincode(&node2)
+            .send(&node2, TCP.bincode())
             .batch(&node2.tick(), nondet!(/** test */))
             .count()
             .all_ticks()
