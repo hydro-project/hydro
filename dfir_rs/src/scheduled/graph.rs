@@ -100,7 +100,7 @@ impl Dfir<'_> {
 
         // Initialize handoff metrics struct.
         Rc::make_mut(&mut self.metrics)
-            .handoff_metrics
+            .handoffs
             .insert(new_hoff_id, Default::default());
 
         let output_port = RecvPort {
@@ -1000,7 +1000,7 @@ impl<'a> Dfir<'a> {
 
         // Initialize handoff metrics struct.
         Rc::make_mut(&mut self.metrics)
-            .handoff_metrics
+            .handoffs
             .insert(handoff_id, Default::default());
 
         // Make ports.
