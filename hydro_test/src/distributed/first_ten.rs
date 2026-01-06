@@ -21,7 +21,7 @@ pub fn first_ten_distributed<'a>(
     let numbers = process.source_iter(q!(0..10));
     numbers
         .map(q!(|n| SendOverNetwork { n }))
-        .send_bincode(second_process)
+        .send(second_process, TCP.bincode())
         .for_each(q!(|n| println!("{}", n.n)));
 
     numbers_external_port

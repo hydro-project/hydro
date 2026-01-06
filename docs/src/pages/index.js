@@ -123,11 +123,11 @@ export default function Home() {
             <CodeBlock
           language="rust">
             {`fn reduce_from_cluster(
-  data: Stream<usize, Cluster<Worker>, Unbounded>,
+  data: Stream<usize, Cluster<Worker>>,
   leader: &Process<Leader>
-) -> Singleton<usize, Process<Leader>, Unbounded> {
+) -> Singleton<usize, Process<Leader>> {
   data
-    .send_bincode(leader)
+    .send(leader, TCP.bincode())
     // Stream<(MemberId<Worker>, usize), Process<Leader>, ..., NoOrder>
     .map(q!(|v| v.1)) // drop the ID
     .fold_commutative(q!(0), q!(|acc, v| *acc += v))

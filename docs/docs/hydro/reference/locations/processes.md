@@ -30,7 +30,7 @@ let numbers = leader.source_iter(q!(vec![1, 2, 3, 4]));
 ```
 
 ## Networking
-Because a process represents a single machine, it is straightforward to send data to and from a process. For example, we can send a stream of integers from the leader process to another process using the `send_bincode` method (which uses [bincode](https://docs.rs/bincode/latest/bincode/) as a serialization format). This automatically sets up network senders and receivers on the two processes.
+Because a process represents a single machine, it is straightforward to send data to and from a process. For example, we can send a stream of integers from the leader process to another process using the `send` method (which can be configured to use a particular network protocol and serialization format). This automatically sets up network senders and receivers on the two processes.
 
 ```rust,no_run
 # use hydro_lang::prelude::*;
@@ -39,5 +39,5 @@ Because a process represents a single machine, it is straightforward to send dat
 # let leader: Process<Leader> = flow.process::<Leader>();
 let numbers = leader.source_iter(q!(vec![1, 2, 3, 4]));
 let process2: Process<()> = flow.process::<()>();
-let on_p2: Stream<_, Process<()>, _> = numbers.send_bincode(&process2);
+let on_p2: Stream<_, Process<()>, _> = numbers.send(&process2, TCP.bincode());
 ```

@@ -166,6 +166,8 @@ mod tests {
     #[cfg(feature = "sim")]
     use crate::location::{Location, MemberId, MembershipEvent};
     #[cfg(feature = "sim")]
+    use crate::networking::TCP;
+    #[cfg(feature = "sim")]
     use crate::nondet::nondet;
     #[cfg(feature = "sim")]
     use crate::prelude::FlowBuilder;
@@ -181,12 +183,12 @@ mod tests {
 
         let out_recv = cluster1
             .source_iter(q!(vec![CLUSTER_SELF_ID]))
-            .send_bincode(&node)
+            .send(&node, TCP.bincode())
             .values()
             .interleave(
                 cluster2
                     .source_iter(q!(vec![CLUSTER_SELF_ID]))
-                    .send_bincode(&node)
+                    .send(&node, TCP.bincode())
                     .values(),
             )
             .sim_output();
@@ -215,7 +217,7 @@ mod tests {
             .batch(&cluster.tick(), nondet!(/** test */))
             .count()
             .all_ticks()
-            .send_bincode(&node)
+            .send(&node, TCP.bincode())
             .entries()
             .map(q!(|(id, v)| (id, v)))
             .sim_output();
