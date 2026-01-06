@@ -1078,7 +1078,7 @@ impl<'a> Dfir<'a> {
     /// based on when [`DfirMetricsIntervals::next`] is called.
     pub fn metrics_intervals(&self) -> DfirMetricsIntervals {
         DfirMetricsIntervals {
-            curr: Rc::clone(&self.metrics),
+            curr: self.metrics(),
             prev: None,
         }
     }
