@@ -304,7 +304,7 @@ impl<'a> Dfir<'a> {
             // times before the next subgraph consumes the output; don't double count those.
             // (*) - usually... always true for Hydro-generated DFIR at least.
             for &handoff_id in sg_data.preds.iter() {
-                let handoff_metrics = &self.metrics.handoff_metrics[handoff_id];
+                let handoff_metrics = &self.metrics.handoffs[handoff_id];
                 let handoff_data = &mut self.handoffs[handoff_id];
                 let handoff_len = handoff_data.handoff.len();
                 handoff_metrics
@@ -414,7 +414,7 @@ impl<'a> Dfir<'a> {
                 tracing::info!("Running subgraph.");
                 sg_data.last_tick_run_in = Some(self.context.current_tick);
 
-                let sg_metrics = &self.metrics.subgraph_metrics[sg_id];
+                let sg_metrics = &self.metrics.subgraphs[sg_id];
                 let sg_fut =
                     Box::into_pin(sg_data.subgraph.run(&mut self.context, &mut self.handoffs));
                 // Update subgraph metrics.
@@ -451,7 +451,7 @@ impl<'a> Dfir<'a> {
                         }
                     }
                 }
-                let handoff_metrics = &self.metrics.handoff_metrics[handoff_id];
+                let handoff_metrics = &self.metrics.handoffs[handoff_id];
                 handoff_metrics.curr_items_count.set(handoff_len);
             }
 
@@ -877,7 +877,7 @@ impl<'a> Dfir<'a> {
 
         // Initialize subgraph metrics struct.
         Rc::make_mut(&mut self.metrics)
-            .subgraph_metrics
+            .subgraphs
             .insert(sg_id, Default::default());
 
         sg_id
@@ -980,7 +980,7 @@ impl<'a> Dfir<'a> {
 
         // Initialize subgraph metrics struct.
         Rc::make_mut(&mut self.metrics)
-            .subgraph_metrics
+            .subgraphs
             .insert(sg_id, Default::default());
 
         sg_id
