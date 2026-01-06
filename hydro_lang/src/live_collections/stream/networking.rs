@@ -18,6 +18,7 @@ use crate::live_collections::stream::Retries;
 use crate::location::dynamic::DynLocation;
 use crate::location::external_process::ExternalBincodeStream;
 use crate::location::{Cluster, External, Location, MemberId, MembershipEvent, NoTick, Process};
+use crate::networking::{NetworkFor, TCP};
 use crate::nondet::NonDet;
 #[cfg(feature = "sim")]
 use crate::sim::SimReceiver;
@@ -88,6 +89,7 @@ pub(crate) fn deserialize_bincode<T: DeserializeOwned>(tagged: Option<&syn::Type
 }
 
 impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>, B, O, R> {
+    #[deprecated = "use Stream::send(..., TCP.bincode()) instead"]
     /// "Moves" elements of this stream to a new distributed location by sending them over the network,
     /// using [`bincode`] to serialize/deserialize messages.
     ///
@@ -123,24 +125,64 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     where
         T: Serialize + DeserializeOwned,
     {
-        let serialize_pipeline = Some(serialize_bincode::<T>(false));
+        self.send(other, TCP.bincode())
+    }
 
-        let deserialize_pipeline = Some(deserialize_bincode::<T>(None));
+    /// "Moves" elements of this stream to a new distributed location by sending them over the network,
+    /// using the configuration in `via` to set up the message transport.
+    ///
+    /// The returned stream captures the elements received at the destination, where values will
+    /// asynchronously arrive over the network. Sending from a [`Process`] to another [`Process`]
+    /// preserves ordering and retries guarantees when using a single TCP channel to send the values.
+    /// The recipient is guaranteed to receive a _prefix_ or the sent messages; if the connection is
+    /// dropped no further messages will be sent.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p_out| {
+    /// let p1 = flow.process::<()>();
+    /// let numbers: Stream<_, Process<_>, Unbounded> = p1.source_iter(q!(vec![1, 2, 3]));
+    /// let p2 = flow.process::<()>();
+    /// let on_p2: Stream<_, Process<_>, Unbounded> = numbers.send(&p2, TCP.bincode());
+    /// // 1, 2, 3
+    /// # on_p2.send(&p_out, TCP.bincode())
+    /// # }, |mut stream| async move {
+    /// # for w in 1..=3 {
+    /// #     assert_eq!(stream.next().await, Some(w));
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn send<L2, N: NetworkFor<T>>(
+        self,
+        to: &Process<'a, L2>,
+        via: N,
+    ) -> Stream<T, Process<'a, L2>, Unbounded, O, R>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        let _ = via;
+        let serialize_pipeline = Some(N::serialize_thunk(false));
+        let deserialize_pipeline = Some(N::deserialize_thunk(None));
 
         Stream::new(
-            other.clone(),
+            to.clone(),
             HydroNode::Network {
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: other.new_node_metadata(
+                metadata: to.new_node_metadata(
                     Stream::<T, Process<'a, L2>, Unbounded, O, R>::collection_kind(),
                 ),
             },
         )
     }
 
+    #[deprecated = "use Stream::broadcast(..., TCP.bincode()) instead"]
     /// Broadcasts elements of this stream to all members of a cluster by sending them over the network,
     /// using [`bincode`] to serialize/deserialize messages.
     ///
@@ -189,7 +231,59 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     where
         T: Clone + Serialize + DeserializeOwned,
     {
-        let ids = track_membership(self.location.source_cluster_members(other));
+        self.broadcast(other, TCP.bincode(), nondet_membership)
+    }
+
+    /// Broadcasts elements of this stream to all members of a cluster by sending them over the network,
+    /// using the configuration in `via` to set up the message transport.
+    ///
+    /// Each element in the stream will be sent to **every** member of the cluster based on the latest
+    /// membership information. This is a common pattern in distributed systems for broadcasting data to
+    /// all nodes in a cluster. Unlike [`Stream::demux`], which requires `(MemberId, T)` tuples to
+    /// target specific members, `broadcast` takes a stream of **only data elements** and sends
+    /// each element to all cluster members.
+    ///
+    /// # Non-Determinism
+    /// The set of cluster members may asynchronously change over time. Each element is only broadcast
+    /// to the current cluster members _at that point in time_. Depending on when we are notified of
+    /// membership changes, we will broadcast each element to different members.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
+    /// let p1 = flow.process::<()>();
+    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![123]));
+    /// let on_worker: Stream<_, Cluster<_>, _> = numbers.broadcast(&workers, nondet!(/** assuming stable membership */), TCP.bincode());
+    /// # on_worker.send(&p2, TCP.bincode()).entries()
+    /// // if there are 4 members in the cluster, each receives one element
+    /// // - MemberId::<()>(0): [123]
+    /// // - MemberId::<()>(1): [123]
+    /// // - MemberId::<()>(2): [123]
+    /// // - MemberId::<()>(3): [123]
+    /// # }, |mut stream| async move {
+    /// # let mut results = Vec::new();
+    /// # for w in 0..4 {
+    /// #     results.push(format!("{:?}", stream.next().await.unwrap()));
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec!["(MemberId::<()>(0), 123)", "(MemberId::<()>(1), 123)", "(MemberId::<()>(2), 123)", "(MemberId::<()>(3), 123)"]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn broadcast<L2: 'a, N: NetworkFor<T>>(
+        self,
+        to: &Cluster<'a, L2>,
+        via: N,
+        nondet_membership: NonDet,
+    ) -> Stream<T, Cluster<'a, L2>, Unbounded, O, R>
+    where
+        T: Clone + Serialize + DeserializeOwned,
+    {
+        let ids = track_membership(self.location.source_cluster_members(to));
         sliced! {
             let members_snapshot = use(ids, nondet_membership);
             let elements = use(self, nondet_membership);
@@ -197,7 +291,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
             let current_members = members_snapshot.filter(q!(|b| *b));
             elements.repeat_with_keys(current_members)
         }
-        .demux_bincode(other)
+        .demux(to, via)
     }
 
     /// Sends the elements of this stream to an external (non-Hydro) process, using [`bincode`]
@@ -284,6 +378,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
 impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     Stream<(MemberId<L2>, T), Process<'a, L>, B, O, R>
 {
+    #[deprecated = "use Stream::demux(..., TCP.bincode()) instead"]
     /// Sends elements of this stream to specific members of a cluster, identified by a [`MemberId`],
     /// using [`bincode`] to serialize/deserialize messages.
     ///
@@ -327,11 +422,59 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     where
         T: Serialize + DeserializeOwned,
     {
-        self.into_keyed().demux_bincode(other)
+        self.demux(other, TCP.bincode())
+    }
+
+    /// Sends elements of this stream to specific members of a cluster, identified by a [`MemberId`],
+    /// using the configuration in `via` to set up the message transport.
+    ///
+    /// Each element in the stream must be a tuple `(MemberId<L2>, T)` where the first element
+    /// specifies which cluster member should receive the data. Unlike [`Stream::broadcast`],
+    /// this API allows precise targeting of specific cluster members rather than broadcasting to
+    /// all members.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
+    /// let p1 = flow.process::<()>();
+    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![0, 1, 2, 3]));
+    /// let on_worker: Stream<_, Cluster<_>, _> = numbers
+    ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)))
+    ///     .demux(&workers, TCP.bincode());
+    /// # on_worker.send(&p2, TCP.bincode()).entries()
+    /// // if there are 4 members in the cluster, each receives one element
+    /// // - MemberId::<()>(0): [0]
+    /// // - MemberId::<()>(1): [1]
+    /// // - MemberId::<()>(2): [2]
+    /// // - MemberId::<()>(3): [3]
+    /// # }, |mut stream| async move {
+    /// # let mut results = Vec::new();
+    /// # for w in 0..4 {
+    /// #     results.push(format!("{:?}", stream.next().await.unwrap()));
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec!["(MemberId::<()>(0), 0)", "(MemberId::<()>(1), 1)", "(MemberId::<()>(2), 2)", "(MemberId::<()>(3), 3)"]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn demux<N: NetworkFor<T>>(
+        self,
+        to: &Cluster<'a, L2>,
+        via: N,
+    ) -> Stream<T, Cluster<'a, L2>, Unbounded, O, R>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        self.into_keyed().demux(to, via)
     }
 }
 
 impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyOnce> {
+    #[deprecated = "use Stream::round_robin(..., TCP.bincode()) instead"]
     /// Distributes elements of this stream to cluster members in a round-robin fashion, using
     /// [`bincode`] to serialize/deserialize messages.
     ///
@@ -385,7 +528,64 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     where
         T: Serialize + DeserializeOwned,
     {
-        let ids = track_membership(self.location.source_cluster_members(other));
+        self.round_robin(other, TCP.bincode(), nondet_membership)
+    }
+
+    /// Distributes elements of this stream to cluster members in a round-robin fashion, using
+    /// the configuration in `via` to set up the message transport.
+    ///
+    /// This provides load balancing by evenly distributing work across cluster members. The
+    /// distribution is deterministic based on element order - the first element goes to member 0,
+    /// the second to member 1, and so on, wrapping around when reaching the end of the member list.
+    ///
+    /// # Non-Determinism
+    /// The set of cluster members may asynchronously change over time. Each element is distributed
+    /// based on the current cluster membership _at that point in time_. Depending on when cluster
+    /// members join and leave, the round-robin pattern will change. Furthermore, even when the
+    /// membership is stable, the order of members in the round-robin pattern may change across runs.
+    ///
+    /// # Ordering Requirements
+    /// This method is only available on streams with [`TotalOrder`] and [`ExactlyOnce`], since the
+    /// order of messages and retries affects the round-robin pattern.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use hydro_lang::live_collections::stream::{TotalOrder, ExactlyOnce};
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
+    /// let p1 = flow.process::<()>();
+    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let numbers: Stream<_, Process<_>, _, TotalOrder, ExactlyOnce> = p1.source_iter(q!(vec![1, 2, 3, 4]));
+    /// let on_worker: Stream<_, Cluster<_>, _> = numbers.round_robin(&workers, TCP.bincode(), nondet!(/** assuming stable membership */));
+    /// on_worker.send(&p2, TCP.bincode())
+    /// # .first().values() // we use first to assert that each member gets one element
+    /// // with 4 cluster members, elements are distributed (with a non-deterministic round-robin order):
+    /// // - MemberId::<()>(?): [1]
+    /// // - MemberId::<()>(?): [2]
+    /// // - MemberId::<()>(?): [3]
+    /// // - MemberId::<()>(?): [4]
+    /// # }, |mut stream| async move {
+    /// # let mut results = Vec::new();
+    /// # for w in 0..4 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![1, 2, 3, 4]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn round_robin<L2: 'a, N: NetworkFor<T>>(
+        self,
+        to: &Cluster<'a, L2>,
+        via: N,
+        nondet_membership: NonDet,
+    ) -> Stream<T, Cluster<'a, L2>, Unbounded, TotalOrder, ExactlyOnce>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        let ids = track_membership(self.location.source_cluster_members(to));
         sliced! {
             let members_snapshot = use(ids, nondet_membership);
             let elements = use(self.enumerate(), nondet_membership);
@@ -403,11 +603,12 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
                     data.1
                 )))
         }
-        .demux_bincode(other)
+        .demux(to, via)
     }
 }
 
 impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyOnce> {
+    #[deprecated = "use Stream::round_robin(..., TCP.bincode()) instead"]
     /// Distributes elements of this stream to cluster members in a round-robin fashion, using
     /// [`bincode`] to serialize/deserialize messages.
     ///
@@ -466,7 +667,69 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
     where
         T: Serialize + DeserializeOwned,
     {
-        let ids = track_membership(self.location.source_cluster_members(other));
+        self.round_robin(other, TCP.bincode(), nondet_membership)
+    }
+
+    /// Distributes elements of this stream to cluster members in a round-robin fashion, using
+    /// the configuration in `via` to set up the message transport.
+    ///
+    /// This provides load balancing by evenly distributing work across cluster members. The
+    /// distribution is deterministic based on element order - the first element goes to member 0,
+    /// the second to member 1, and so on, wrapping around when reaching the end of the member list.
+    ///
+    /// # Non-Determinism
+    /// The set of cluster members may asynchronously change over time. Each element is distributed
+    /// based on the current cluster membership _at that point in time_. Depending on when cluster
+    /// members join and leave, the round-robin pattern will change. Furthermore, even when the
+    /// membership is stable, the order of members in the round-robin pattern may change across runs.
+    ///
+    /// # Ordering Requirements
+    /// This method is only available on streams with [`TotalOrder`] and [`ExactlyOnce`], since the
+    /// order of messages and retries affects the round-robin pattern.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use hydro_lang::live_collections::stream::{TotalOrder, ExactlyOnce, NoOrder};
+    /// # use hydro_lang::location::MemberId;
+    /// # use futures::StreamExt;
+    /// # std::thread::spawn(|| {
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
+    /// let p1 = flow.process::<()>();
+    /// let workers1: Cluster<()> = flow.cluster::<()>();
+    /// let workers2: Cluster<()> = flow.cluster::<()>();
+    /// let numbers: Stream<_, Process<_>, _, TotalOrder, ExactlyOnce> = p1.source_iter(q!(0..=16));
+    /// let on_worker1: Stream<_, Cluster<_>, _> = numbers.round_robin(&workers1, TCP.bincode(), nondet!(/** assuming stable membership */));
+    /// let on_worker2: Stream<_, Cluster<_>, _> = on_worker1.round_robin(&workers2, TCP.bincode(), nondet!(/** assuming stable membership */)).entries().assume_ordering(nondet!(/** assuming stable membership */));
+    /// on_worker2.send(&p2, TCP.bincode())
+    /// # .entries()
+    /// # .map(q!(|(w2, (w1, v))| ((w2, w1), v)))
+    /// # }, |mut stream| async move {
+    /// # let mut results = Vec::new();
+    /// # let mut locations = std::collections::HashSet::new();
+    /// # for w in 0..=16 {
+    /// #     let (location, v) = stream.next().await.unwrap();
+    /// #     locations.insert(location);
+    /// #     results.push(v);
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, (0..=16).collect::<Vec<_>>());
+    /// # assert_eq!(locations.len(), 16);
+    /// # }));
+    /// # }).join().unwrap();
+    /// # }
+    /// ```
+    pub fn round_robin<L2: 'a, N: NetworkFor<T>>(
+        self,
+        to: &Cluster<'a, L2>,
+        via: N,
+        nondet_membership: NonDet,
+    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, TotalOrder, ExactlyOnce>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        let ids = track_membership(self.location.source_cluster_members(to));
         sliced! {
             let members_snapshot = use(ids, nondet_membership);
             let elements = use(self.enumerate(), nondet_membership);
@@ -484,11 +747,12 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
                     data.1
                 )))
         }
-        .demux_bincode(other)
+        .demux(to, via)
     }
 }
 
 impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>, B, O, R> {
+    #[deprecated = "use Stream::send(..., TCP.bincode()) instead"]
     /// "Moves" elements of this stream from a cluster to a process by sending them over the network,
     /// using [`bincode`] to serialize/deserialize messages.
     ///
@@ -549,18 +813,83 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     where
         T: Serialize + DeserializeOwned,
     {
-        let serialize_pipeline = Some(serialize_bincode::<T>(false));
+        self.send(other, TCP.bincode())
+    }
 
-        let deserialize_pipeline = Some(deserialize_bincode::<T>(Some(&quote_type::<L>())));
+    /// "Moves" elements of this stream from a cluster to a process by sending them over the network,
+    /// using the configuration in `via` to set up the message transport.
+    ///
+    /// Each cluster member sends its local stream elements, and they are collected at the destination
+    /// as a [`KeyedStream`] where keys identify the source cluster member.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
+    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
+    /// let all_received = numbers.send(&process, TCP.bincode()); // KeyedStream<MemberId<()>, i32, ...>
+    /// # all_received.entries()
+    /// # }, |mut stream| async move {
+    /// // if there are 4 members in the cluster, we should receive 4 elements
+    /// // { MemberId::<()>(0): [1], MemberId::<()>(1): [1], MemberId::<()>(2): [1], MemberId::<()>(3): [1] }
+    /// # let mut results = Vec::new();
+    /// # for w in 0..4 {
+    /// #     results.push(format!("{:?}", stream.next().await.unwrap()));
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec!["(MemberId::<()>(0), 1)", "(MemberId::<()>(1), 1)", "(MemberId::<()>(2), 1)", "(MemberId::<()>(3), 1)"]);
+    /// # }));
+    /// # }
+    /// ```
+    ///
+    /// If you don't need to know the source for each element, you can use `.values()`
+    /// to get just the data:
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use hydro_lang::live_collections::stream::NoOrder;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
+    /// # let workers: Cluster<()> = flow.cluster::<()>();
+    /// # let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
+    /// let values: Stream<i32, _, _, NoOrder> = numbers.send(&process, TCP.bincode()).values();
+    /// # values
+    /// # }, |mut stream| async move {
+    /// # let mut results = Vec::new();
+    /// # for w in 0..4 {
+    /// #     results.push(format!("{:?}", stream.next().await.unwrap()));
+    /// # }
+    /// # results.sort();
+    /// // if there are 4 members in the cluster, we should receive 4 elements
+    /// // 1, 1, 1, 1
+    /// # assert_eq!(results, vec!["1", "1", "1", "1"]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn send<L2, N: NetworkFor<T>>(
+        self,
+        to: &Process<'a, L2>,
+        via: N,
+    ) -> KeyedStream<MemberId<L>, T, Process<'a, L2>, Unbounded, O, R>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        let _ = via;
+        let serialize_pipeline = Some(N::serialize_thunk(false));
+
+        let deserialize_pipeline = Some(N::deserialize_thunk(Some(&quote_type::<L>())));
 
         let raw_stream: Stream<(MemberId<L>, T), Process<'a, L2>, Unbounded, O, R> = Stream::new(
-            other.clone(),
+            to.clone(),
             HydroNode::Network {
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
                 input: Box::new(self.ir_node.into_inner()),
-                metadata: other.new_node_metadata(Stream::<
+                metadata: to.new_node_metadata(Stream::<
                     (MemberId<L>, T),
                     Process<'a, L2>,
                     Unbounded,
@@ -573,6 +902,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
         raw_stream.into_keyed()
     }
 
+    #[deprecated = "use Stream::broadcast(..., TCP.bincode()) instead"]
     /// Broadcasts elements of this stream at each source member to all members of a destination
     /// cluster, using [`bincode`] to serialize/deserialize messages.
     ///
@@ -628,7 +958,66 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     where
         T: Clone + Serialize + DeserializeOwned,
     {
-        let ids = track_membership(self.location.source_cluster_members(other));
+        self.broadcast(other, TCP.bincode(), nondet_membership)
+    }
+
+    /// Broadcasts elements of this stream at each source member to all members of a destination
+    /// cluster, using the configuration in `via` to set up the message transport.
+    ///
+    /// Each source member sends each of its stream elements to **every** member of the cluster
+    /// based on its latest membership information. Unlike [`Stream::demux`], which requires
+    /// `(MemberId, T)` tuples to target specific members, `broadcast` takes a stream of
+    /// **only data elements** and sends each element to all cluster members.
+    ///
+    /// # Non-Determinism
+    /// The set of cluster members may asynchronously change over time. Each element is only broadcast
+    /// to the current cluster members known _at that point in time_ at the source member. Depending
+    /// on when each source member is notified of membership changes, it will broadcast each element
+    /// to different members.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use hydro_lang::location::MemberId;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
+    /// # type Source = ();
+    /// # type Destination = ();
+    /// let source: Cluster<Source> = flow.cluster::<Source>();
+    /// let numbers: Stream<_, Cluster<Source>, _> = source.source_iter(q!(vec![123]));
+    /// let destination: Cluster<Destination> = flow.cluster::<Destination>();
+    /// let on_destination: KeyedStream<MemberId<Source>, _, Cluster<Destination>, _> = numbers.broadcast(&destination, nondet!(/** assuming stable membership */), TCP.bincode());
+    /// # on_destination.entries().send(&p2, TCP.bincode()).entries()
+    /// // if there are 4 members in the desination, each receives one element from each source member
+    /// // - Destination(0): { Source(0): [123], Source(1): [123], ... }
+    /// // - Destination(1): { Source(0): [123], Source(1): [123], ... }
+    /// // - ...
+    /// # }, |mut stream| async move {
+    /// # let mut results = Vec::new();
+    /// # for w in 0..16 {
+    /// #     results.push(format!("{:?}", stream.next().await.unwrap()));
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![
+    /// #   "(MemberId::<()>(0), (MemberId::<()>(0), 123))", "(MemberId::<()>(0), (MemberId::<()>(1), 123))", "(MemberId::<()>(0), (MemberId::<()>(2), 123))", "(MemberId::<()>(0), (MemberId::<()>(3), 123))",
+    /// #   "(MemberId::<()>(1), (MemberId::<()>(0), 123))", "(MemberId::<()>(1), (MemberId::<()>(1), 123))", "(MemberId::<()>(1), (MemberId::<()>(2), 123))", "(MemberId::<()>(1), (MemberId::<()>(3), 123))",
+    /// #   "(MemberId::<()>(2), (MemberId::<()>(0), 123))", "(MemberId::<()>(2), (MemberId::<()>(1), 123))", "(MemberId::<()>(2), (MemberId::<()>(2), 123))", "(MemberId::<()>(2), (MemberId::<()>(3), 123))",
+    /// #   "(MemberId::<()>(3), (MemberId::<()>(0), 123))", "(MemberId::<()>(3), (MemberId::<()>(1), 123))", "(MemberId::<()>(3), (MemberId::<()>(2), 123))", "(MemberId::<()>(3), (MemberId::<()>(3), 123))"
+    /// # ]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn broadcast<L2: 'a, N: NetworkFor<T>>(
+        self,
+        to: &Cluster<'a, L2>,
+        via: N,
+        nondet_membership: NonDet,
+    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
+    where
+        T: Clone + Serialize + DeserializeOwned,
+    {
+        let ids = track_membership(self.location.source_cluster_members(to));
         sliced! {
             let members_snapshot = use(ids, nondet_membership);
             let elements = use(self, nondet_membership);
@@ -636,13 +1025,14 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
             let current_members = members_snapshot.filter(q!(|b| *b));
             elements.repeat_with_keys(current_members)
         }
-        .demux_bincode(other)
+        .demux(to, via)
     }
 }
 
 impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     Stream<(MemberId<L2>, T), Cluster<'a, L>, B, O, R>
 {
+    #[deprecated = "use Stream::demux(..., TCP.bincode()) instead"]
     /// Sends elements of this stream at each source member to specific members of a destination
     /// cluster, identified by a [`MemberId`], using [`bincode`] to serialize/deserialize messages.
     ///
@@ -695,7 +1085,64 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     where
         T: Serialize + DeserializeOwned,
     {
-        self.into_keyed().demux_bincode(other)
+        self.demux(other, TCP.bincode())
+    }
+
+    /// Sends elements of this stream at each source member to specific members of a destination
+    /// cluster, identified by a [`MemberId`], using the configuration in `via` to set up the
+    /// message transport.
+    ///
+    /// Each element in the stream must be a tuple `(MemberId<L2>, T)` where the first element
+    /// specifies which cluster member should receive the data. Unlike [`Stream::broadcast`],
+    /// this API allows precise targeting of specific cluster members rather than broadcasting to
+    /// all members.
+    ///
+    /// Each cluster member sends its local stream elements, and they are collected at each
+    /// destination member as a [`KeyedStream`] where keys identify the source cluster member.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
+    /// # type Source = ();
+    /// # type Destination = ();
+    /// let source: Cluster<Source> = flow.cluster::<Source>();
+    /// let to_send: Stream<_, Cluster<_>, _> = source
+    ///     .source_iter(q!(vec![0, 1, 2, 3]))
+    ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)));
+    /// let destination: Cluster<Destination> = flow.cluster::<Destination>();
+    /// let all_received = to_send.demux(&destination, TCP.bincode()); // KeyedStream<MemberId<Source>, i32, ...>
+    /// # all_received.entries().send(&p2, TCP.bincode()).entries()
+    /// # }, |mut stream| async move {
+    /// // if there are 4 members in the destination cluster, each receives one message from each source member
+    /// // - Destination(0): { Source(0): [0], Source(1): [0], ... }
+    /// // - Destination(1): { Source(0): [1], Source(1): [1], ... }
+    /// // - ...
+    /// # let mut results = Vec::new();
+    /// # for w in 0..16 {
+    /// #     results.push(format!("{:?}", stream.next().await.unwrap()));
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![
+    /// #   "(MemberId::<()>(0), (MemberId::<()>(0), 0))", "(MemberId::<()>(0), (MemberId::<()>(1), 0))", "(MemberId::<()>(0), (MemberId::<()>(2), 0))", "(MemberId::<()>(0), (MemberId::<()>(3), 0))",
+    /// #   "(MemberId::<()>(1), (MemberId::<()>(0), 1))", "(MemberId::<()>(1), (MemberId::<()>(1), 1))", "(MemberId::<()>(1), (MemberId::<()>(2), 1))", "(MemberId::<()>(1), (MemberId::<()>(3), 1))",
+    /// #   "(MemberId::<()>(2), (MemberId::<()>(0), 2))", "(MemberId::<()>(2), (MemberId::<()>(1), 2))", "(MemberId::<()>(2), (MemberId::<()>(2), 2))", "(MemberId::<()>(2), (MemberId::<()>(3), 2))",
+    /// #   "(MemberId::<()>(3), (MemberId::<()>(0), 3))", "(MemberId::<()>(3), (MemberId::<()>(1), 3))", "(MemberId::<()>(3), (MemberId::<()>(2), 3))", "(MemberId::<()>(3), (MemberId::<()>(3), 3))"
+    /// # ]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn demux<N: NetworkFor<T>>(
+        self,
+        to: &Cluster<'a, L2>,
+        via: N,
+    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        self.into_keyed().demux(to, via)
     }
 }
 
@@ -707,6 +1154,8 @@ mod tests {
     #[cfg(feature = "sim")]
     use crate::location::{Location, MemberId};
     #[cfg(feature = "sim")]
+    use crate::networking::TCP;
+    #[cfg(feature = "sim")]
     use crate::nondet::nondet;
     #[cfg(feature = "sim")]
     use crate::prelude::FlowBuilder;
@@ -714,6 +1163,8 @@ mod tests {
     #[cfg(feature = "sim")]
     #[test]
     fn sim_send_bincode_o2o() {
+        use crate::networking::TCP;
+
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
         let node2 = flow.process::<()>();
@@ -721,7 +1172,7 @@ mod tests {
         let (in_send, input) = node.sim_input();
 
         let out_recv = input
-            .send_bincode(&node2)
+            .send(&node2, TCP.bincode())
             .batch(&node2.tick(), nondet!(/** test */))
             .count()
             .all_ticks()
@@ -749,7 +1200,7 @@ mod tests {
         let input = cluster.source_iter(q!(vec![1]));
 
         let out_recv = input
-            .send_bincode(&node)
+            .send(&node, TCP.bincode())
             .entries()
             .batch(&node.tick(), nondet!(/** test */))
             .all_ticks()
@@ -782,13 +1233,13 @@ mod tests {
 
         let out_recv_1 = cluster1
             .source_iter(q!(vec![1]))
-            .send_bincode(&node)
+            .send(&node, TCP.bincode())
             .entries()
             .sim_output();
 
         let out_recv_2 = cluster2
             .source_iter(q!(vec![2]))
-            .send_bincode(&node)
+            .send(&node, TCP.bincode())
             .entries()
             .sim_output();
 
@@ -831,9 +1282,9 @@ mod tests {
         ]));
 
         let out_recv = input
-            .demux_bincode(&cluster)
+            .demux(&cluster, TCP.bincode())
             .map(q!(|x| x + 1))
-            .send_bincode(&node)
+            .send(&node, TCP.bincode())
             .entries()
             .sim_output();
 
@@ -859,9 +1310,9 @@ mod tests {
         let input = node.source_iter(q!(vec![123, 456]));
 
         let out_recv = input
-            .broadcast_bincode(&cluster, nondet!(/** test */))
+            .broadcast(&cluster, TCP.bincode(), nondet!(/** test */))
             .map(q!(|x| x + 1))
-            .send_bincode(&node)
+            .send(&node, TCP.bincode())
             .entries()
             .sim_output();
 
@@ -901,15 +1352,15 @@ mod tests {
         ]));
 
         let out_recv = input
-            .demux_bincode(&cluster)
+            .demux(&cluster, TCP.bincode())
             .map(q!(|x| x + 1))
             .flat_map_ordered(q!(|x| vec![
                 (MemberId::from_raw_id(0), x),
                 (MemberId::from_raw_id(1), x),
             ]))
-            .demux_bincode(&cluster)
+            .demux(&cluster, TCP.bincode())
             .entries()
-            .send_bincode(&node)
+            .send(&node, TCP.bincode())
             .entries()
             .sim_output();
 

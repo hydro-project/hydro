@@ -206,7 +206,7 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
     let keyed_throughputs = results
         .throughput
         .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
-        .send_bincode(aggregator);
+        .send(aggregator, TCP.bincode());
 
     let latest_throughputs = keyed_throughputs.reduce_idempotent(q!(|combined, new| {
         *combined = new;
@@ -279,7 +279,7 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
                 histogram: latencies,
             }
         }))
-        .send_bincode(aggregator);
+        .send(aggregator, TCP.bincode());
 
     let most_recent_histograms = keyed_latencies
         .map(q!(|histogram| histogram.histogram.borrow().clone()))

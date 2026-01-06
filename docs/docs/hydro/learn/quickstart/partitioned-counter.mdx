@@ -68,17 +68,17 @@ The `prefix_key` method adds a new key to the front of the keyed stream. Here, y
 
 :::
 
-Now you'll use `demux_bincode` to send data from the leader to the cluster. This is where Hydro fundamentally differs from traditional distributed systems frameworks. In most frameworks, you write separate programs for each service (one for the leader, one for the shards), then configure external message brokers or RPC systems to connect them. You have to manually serialize messages, manage network connections, and coordinate deployment.
+Now you'll use `demux` to send data from the leader to the cluster using the configured network protocol and serialization format. This is where Hydro fundamentally differs from traditional distributed systems frameworks. In most frameworks, you write separate programs for each service (one for the leader, one for the shards), then configure external message brokers or RPC systems to connect them. You have to manually serialize messages, manage network connections, and coordinate deployment.
 
-In Hydro, you write a **single Rust function** that describes the entire distributed service. When you call `demux_bincode`, you're performing network communication right in the middle of your function - but it feels like ordinary Rust code. The Hydro compiler automatically generates the network code, handles serialization, and deploys the right code to each machine. You can reason about your entire distributed system in one place, with full type safety and IDE support.
+In Hydro, you write a **single Rust function** that describes the entire distributed service. When you call `demux`, you're performing network communication right in the middle of your function - but it feels like ordinary Rust code. The Hydro compiler automatically generates the network code, handles serialization, and deploys the right code to each machine. You can reason about your entire distributed system in one place, with full type safety and IDE support.
 
-The `demux_bincode` method sends each element to the cluster member specified by the first component of the key:
+The `demux` method sends each element to the cluster member specified by the first component of the key:
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/partitioned_counter.rs">src/partitioned_counter.rs</Link>
 } showLineNumbers={20}>{highlightLines(getLines(partitionedCounterSrc, 20, 34), [7, 15])}</CodeBlock>
 
-After `demux_bincode`, the stream is now located at the cluster. The stream returned by a demux operator preserves the remaining keys after the `MemberId` is consumed for routing. In this case, we are left with a `KeyedStream<u32, String, Cluster<'a, CounterShard>>` - a stream keyed by client ID and key name, located on the cluster.
+After `demux`, the stream is now located at the cluster. The stream returned by a demux operator preserves the remaining keys after the `MemberId` is consumed for routing. In this case, we are left with a `KeyedStream<u32, String, Cluster<'a, CounterShard>>` - a stream keyed by client ID and key name, located on the cluster.
 
 ## Running the Counter on the Cluster
 
@@ -96,7 +96,7 @@ Finally, you need to send the responses back to the leader process:
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/partitioned_counter.rs">src/partitioned_counter.rs</Link>
 } showLineNumbers={41}>{getLines(partitionedCounterSrc, 41, 44)}</CodeBlock>
 
-The `send_bincode` method sends data from the cluster to the leader process. When data moves from a cluster to a process, it arrives as a keyed stream with `MemberId` as the first key. The `drop_key_prefix` method removes this `MemberId` key, leaving just the original keys (client ID and response data).
+The `send` method sends data from the cluster to the leader process. When data moves from a cluster to a process, it arrives as a keyed stream with `MemberId` as the first key. The `drop_key_prefix` method removes this `MemberId` key, leaving just the original keys (client ID and response data).
 
 This is a standard Hydro pattern for building a partitioned service in Hydro: prefix a key for routing, demux to cluster, process, send back, drop the routing key. You will find similar code in key-value stores and even consensus protocols.
 

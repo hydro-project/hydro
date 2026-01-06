@@ -59,7 +59,7 @@ pub trait PaxosLike<'a>: Sized {
             move |new_leader_elected| {
                 let cur_leader_id = Self::get_recipient_from_ballot(
                     new_leader_elected
-                        .broadcast_bincode(clients, nondet!(/** TODO */))
+                        .broadcast(clients, TCP.bincode(), nondet!(/** TODO */))
                         .values()
                         .inspect(q!(|ballot| println!(
                             "Client notified that leader was elected: {:?}",
@@ -88,7 +88,7 @@ pub trait PaxosLike<'a>: Sized {
                     all_payloads.cross_singleton(latest_leader)
                 }
                 .map(q!(move |(payload, leader_id)| (leader_id, payload)))
-                .demux_bincode(&leaders)
+                .demux(&leaders, TCP.bincode())
                 .values();
 
                 let payloads_at_proposer = {
