@@ -141,7 +141,7 @@ macro_rules! define_metrics {
 
 macro_rules! define_metrics_diff_field {
     (total, $field:ident, $slf:ident, $other:ident) => {
-        debug_assert!($other.$field.get() < $slf.$field.get());
+        debug_assert!($other.$field.get() <= $slf.$field.get());
         $slf.$field.update(|x| x - $other.$field.get());
     };
     (curr, $field:ident, $slf:ident, $other:ident) => {};
