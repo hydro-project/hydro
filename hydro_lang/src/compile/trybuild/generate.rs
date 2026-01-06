@@ -206,7 +206,7 @@ pub fn compile_graph_trybuild(
 
                 let flow = __hydro_runtime().await;
 
-                hydro_lang::runtime_support::resource_measurement::run_containerized(flow).await;
+                hydro_lang::runtime_support::launch::run_containerized(flow).await;
             }
         }
     } else {
@@ -224,11 +224,11 @@ pub fn compile_graph_trybuild(
 
             #[hydro_lang::runtime_support::tokio::main(crate = "hydro_lang::runtime_support::tokio", flavor = "current_thread")]
             async fn main() {
-                let ports = hydro_lang::runtime_support::resource_measurement::init_no_ack_start().await;
+                let ports = hydro_lang::runtime_support::launch::init_no_ack_start().await;
                 let flow = __hydro_runtime(&ports);
                 println!("ack start");
 
-                hydro_lang::runtime_support::resource_measurement::run(flow).await;
+                hydro_lang::runtime_support::launch::run(flow).await;
             }
         }
     };

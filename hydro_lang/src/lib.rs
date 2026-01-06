@@ -23,8 +23,6 @@ pub mod runtime_support {
     pub use {bincode, dfir_rs, hydro_deploy_integration, stageleft, tokio};
     #[cfg(feature = "deploy_integration")]
     pub mod launch;
-    #[deprecated]
-    pub use launch as resource_measurement;
 }
 
 #[doc(hidden)]
