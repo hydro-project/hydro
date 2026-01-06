@@ -29,7 +29,7 @@ pub struct DfirMetrics {
 
 impl DfirMetrics {
     /// Subtracts `other` from self.
-    pub fn diff(&mut self, other: &Self) {
+    pub(super) fn diff(&mut self, other: &Self) {
         for (sg_id, prev_sg_metrics) in other.subgraphs.iter() {
             if let Some(curr_sg_metrics) = self.subgraphs.get_mut(sg_id) {
                 curr_sg_metrics.diff(prev_sg_metrics);
