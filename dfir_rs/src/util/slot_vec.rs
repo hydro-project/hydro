@@ -76,6 +76,16 @@ impl<Tag: ?Sized, Val> SlotVec<Tag, Val> {
         }
     }
 
+    /// Returns the number of elements in the `SlotVec`.
+    pub fn len(&self) -> usize {
+        self.slots.len()
+    }
+
+    /// Returns true if the `SlotVec` is empty.
+    pub fn is_empty(&self) -> bool {
+        self.slots.is_empty()
+    }
+
     /// Inserts a value into the `SlotVec` and returns the key.
     pub fn insert(&mut self, value: Val) -> Key<Tag> {
         let key = Key::from_raw(self.slots.len());
@@ -101,16 +111,6 @@ impl<Tag: ?Sized, Val> SlotVec<Tag, Val> {
     /// Returns a mutable reference to the value associated with the key.
     pub fn get_mut(&mut self, key: Key<Tag>) -> Option<&mut Val> {
         self.slots.get_mut(key.index)
-    }
-
-    /// Returns the number of elements in the `SlotVec`.
-    pub fn len(&self) -> usize {
-        self.slots.len()
-    }
-
-    /// Returns true if the `SlotVec` is empty.
-    pub fn is_empty(&self) -> bool {
-        self.slots.is_empty()
     }
 
     /// Iterate the key-value pairs, where the value is a shared reference.
@@ -185,6 +185,16 @@ impl<Tag: ?Sized, Val> SecondarySlotVec<Tag, Val> {
             slots: Vec::new(),
             _phantom: PhantomData,
         }
+    }
+
+    /// Returns the number of elements in the secondary map.
+    pub fn len(&self) -> usize {
+        self.iter().count()
+    }
+
+    /// Returns if the secondary map is empty.
+    pub fn is_empty(&self) -> bool {
+        self.iter().next().is_none()
     }
 
     /// Inserts a value into the `SecondarySlotVec` and returns the previous value associated with the key.
