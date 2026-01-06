@@ -9,92 +9,86 @@ use std::task::{Context, Poll};
 use pin_project_lite::pin_project;
 use web_time::{Duration, Instant};
 
-use super::{HandoffId, HandoffTag, SubgraphId, SubgraphTag};
+#[expect(unused_imports, reason = "used for rustdoc links")]
+use super::graph::Dfir;
+use super::{HandoffTag, SubgraphTag};
 use crate::util::slot_vec::SecondarySlotVec;
 
+/// Metrics for a [`Dfir`] graph instance.
+///
+/// Call [`Dfir::metrics`] for referenced-counted continually-updated metrics,
+/// or call [`Dfir::metrics_intervals`] for an infinite iterator of metrics (across each interval).
 #[derive(Default, Clone)]
-pub(super) struct DfirMetricsState {
-    pub(super) subgraph_metrics: SecondarySlotVec<SubgraphTag, SubgraphMetrics>,
-    pub(super) handoff_metrics: SecondarySlotVec<HandoffTag, HandoffMetrics>,
-}
-
-/// DFIR runtime metrics accumulated across a span of time, possibly since runtime creation.
-#[derive(Clone)]
+#[non_exhaustive]
 pub struct DfirMetrics {
-    /// `curr` is constantly updating (via shared ownership).
-    pub(super) curr: Rc<DfirMetricsState>,
-    /// `prev` s an unchanging snapshot in time.
-    /// `None` for "since creation".
-    pub(super) prev: Option<DfirMetricsState>,
+    /// Per-subgraph metrics.
+    pub subgraphs: SecondarySlotVec<SubgraphTag, SubgraphMetrics>,
+    /// Per-handoff metrics.
+    pub handoffs: SecondarySlotVec<HandoffTag, HandoffMetrics>,
 }
+
 impl DfirMetrics {
-    /// Begins a new metrics collection period, effectively resetting all metrics to zero.
-    pub fn reset(&mut self) {
-        // The `clone` clones a snapshot of `curr` which no longer updates.
-        self.prev = Some(self.curr.as_ref().clone());
-    }
-
-    /// Returns an iterator over all subgraph IDs.
-    pub fn subgraph_ids(
-        &self,
-    ) -> impl '_ + DoubleEndedIterator<Item = SubgraphId> + FusedIterator + Clone {
-        self.curr.subgraph_metrics.keys()
-    }
-
-    /// Gets the metrics for a particular subgraph.
-    pub fn subgraph_metrics(&self, sg_id: SubgraphId) -> SubgraphMetrics {
-        let curr = &self.curr.subgraph_metrics[sg_id];
-        self.prev
-            .as_ref()
-            .map(|prev| &prev.subgraph_metrics[sg_id])
-            .map(|prev| SubgraphMetrics {
-                total_run_count: Cell::new(curr.total_run_count.get() - prev.total_run_count.get()),
-                total_poll_duration: Cell::new(
-                    curr.total_poll_duration.get() - prev.total_poll_duration.get(),
-                ),
-                total_poll_count: Cell::new(
-                    curr.total_poll_count.get() - prev.total_poll_count.get(),
-                ),
-                total_idle_duration: Cell::new(
-                    curr.total_idle_duration.get() - prev.total_idle_duration.get(),
-                ),
-                total_idle_count: Cell::new(
-                    curr.total_idle_count.get() - prev.total_idle_count.get(),
-                ),
-            })
-            .unwrap_or_else(|| curr.clone())
-    }
-
-    /// Returns an iterator over all handoff IDs.
-    pub fn handoff_ids(
-        &self,
-    ) -> impl '_ + DoubleEndedIterator<Item = HandoffId> + FusedIterator + Clone {
-        self.curr.handoff_metrics.keys()
-    }
-
-    /// Gets the metrics for a particular handoff.
-    pub fn handoff_metrics(&self, handoff_id: HandoffId) -> HandoffMetrics {
-        let curr = &self.curr.handoff_metrics[handoff_id];
-        self.prev
-            .as_ref()
-            .map(|prev| &prev.handoff_metrics[handoff_id])
-            .map(|prev| HandoffMetrics {
-                total_items_count: Cell::new(
-                    curr.total_items_count.get() - prev.total_items_count.get(),
-                ),
-                curr_items_count: curr.curr_items_count.clone(),
-            })
-            .unwrap_or_else(|| curr.clone())
+    /// Subtracts `other` from self.
+    pub(super) fn diff(&mut self, other: &Self) {
+        for (sg_id, prev_sg_metrics) in other.subgraphs.iter() {
+            if let Some(curr_sg_metrics) = self.subgraphs.get_mut(sg_id) {
+                curr_sg_metrics.diff(prev_sg_metrics);
+            }
+        }
+        for (handoff_id, prev_handoff_metrics) in other.handoffs.iter() {
+            if let Some(curr_handoff_metrics) = self.handoffs.get_mut(handoff_id) {
+                curr_handoff_metrics.diff(prev_handoff_metrics);
+            }
+        }
     }
 }
+
+/// Created via [`Dfir::metrics_intervals`], see its documentation for details.
+#[derive(Clone)]
+pub struct DfirMetricsIntervals {
+    /// `curr` is continually updating (via shared ownership).
+    pub(super) curr: Rc<DfirMetrics>,
+    /// `prev` is an unchanging snapshot in time. `None` for "since creation".
+    pub(super) prev: Option<DfirMetrics>,
+}
+
+impl Iterator for DfirMetricsIntervals {
+    type Item = DfirMetrics;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut curr = self.curr.as_ref().clone();
+        if let Some(prev) = self.prev.replace(curr.clone()) {
+            curr.diff(&prev);
+        }
+        Some(curr)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (usize::MAX, None)
+    }
+
+    #[track_caller]
+    fn last(self) -> Option<DfirMetrics> {
+        panic!("iterator is infinite");
+    }
+
+    #[track_caller]
+    fn count(self) -> usize {
+        panic!("iterator is infinite");
+    }
+}
+
+impl FusedIterator for DfirMetricsIntervals {}
 
 /// Declarative macro to generate metrics structs with Cell-based fields and getter methods.
-macro_rules! define_getters {
+macro_rules! define_metrics {
     (
         $(#[$struct_attr:meta])*
         pub struct $struct_name:ident {
             $(
-                $(#[$field_attr:meta])*
+                $( #[doc = $doc:literal] )*
+                #[diff($diff:ident)]
+                $( #[$field_attr:meta] )*
                 $field_vis:vis $field_name:ident: Cell<$field_type:ty>,
             )*
         }
@@ -111,37 +105,63 @@ macro_rules! define_getters {
 
         impl $struct_name {
             $(
-                $(#[$field_attr])*
+                $( #[doc = $doc] )*
                 pub fn $field_name(&self) -> $field_type {
                     self.$field_name.get()
                 }
             )*
+
+            fn diff(&mut self, other: &Self) {
+                $(
+                    define_metrics_diff_field!($diff, $field_name, self, other);
+                )*
+            }
         }
     };
 }
 
-define_getters! {
+macro_rules! define_metrics_diff_field {
+    (total, $field:ident, $slf:ident, $other:ident) => {
+        debug_assert!($other.$field.get() <= $slf.$field.get());
+        $slf.$field.update(|x| x - $other.$field.get());
+    };
+    (curr, $field:ident, $slf:ident, $other:ident) => {};
+}
+
+define_metrics! {
     /// Per-handoff metrics.
     pub struct HandoffMetrics {
         /// Number of items currently in the handoff.
+        #[diff(curr)]
         pub(super) curr_items_count: Cell<usize>,
+
         /// Total number of items read out of the handoff.
+        #[diff(total)]
         pub(super) total_items_count: Cell<usize>,
     }
 }
 
-define_getters! {
+define_metrics! {
     /// Per-subgraph metrics.
     pub struct SubgraphMetrics {
         /// Number of times the subgraph has run.
+        #[diff(total)]
         pub(super) total_run_count: Cell<usize>,
-        /// Total time elapsed during polling (when the subgraph is actively doing work).
+
+        /// Time elapsed during polling (when the subgraph is actively doing work).
+        #[diff(total)]
         pub(super) total_poll_duration: Cell<Duration>,
+
         /// Number of times the subgraph has been polled.
+        #[diff(total)]
         pub(super) total_poll_count: Cell<usize>,
-        /// Total time elapsed during idle (when the subgraph has yielded and is waiting for async events).
+
+        /// Time elapsed during idle (when the subgraph has yielded and is waiting for async events).
+        #[diff(total)]
         pub(super) total_idle_duration: Cell<Duration>,
+
         /// Number of times the subgraph has been idle.
+        #[diff(total)]
         pub(super) total_idle_count: Cell<usize>,
     }
 }
@@ -196,5 +216,78 @@ where
         this.idle_start.replace(Instant::now());
 
         out
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::scheduled::{HandoffId, SubgraphId};
+
+    #[test]
+    fn test_dfir_metrics_intervals() {
+        let sg_id = SubgraphId::from_raw(0);
+        let handoff_id = HandoffId::from_raw(0);
+
+        let mut metrics = DfirMetrics::default();
+        metrics.subgraphs.insert(
+            sg_id,
+            SubgraphMetrics {
+                total_run_count: Cell::new(5),
+                total_poll_count: Cell::new(10),
+                total_idle_count: Cell::new(2),
+                total_poll_duration: Cell::new(Duration::from_millis(500)),
+                total_idle_duration: Cell::new(Duration::from_millis(200)),
+            },
+        );
+        metrics.handoffs.insert(
+            handoff_id,
+            HandoffMetrics {
+                curr_items_count: Cell::new(3),
+                total_items_count: Cell::new(100),
+            },
+        );
+        let metrics = Rc::new(metrics);
+
+        let mut intervals = DfirMetricsIntervals {
+            curr: Rc::clone(&metrics),
+            prev: None,
+        };
+
+        // First iteration - captures initial state
+        let first = intervals.next().unwrap();
+        let sg_metrics = &first.subgraphs[sg_id];
+        assert_eq!(sg_metrics.total_run_count(), 5);
+        let hoff_metrics = &first.handoffs[handoff_id];
+        assert_eq!(hoff_metrics.total_items_count(), 100);
+        assert_eq!(hoff_metrics.curr_items_count(), 3);
+
+        // Simulate more work being done.
+        let sg_metrics = &metrics.subgraphs[sg_id];
+        sg_metrics.total_run_count.set(12);
+        sg_metrics.total_poll_count.set(25);
+        sg_metrics.total_idle_count.set(7);
+        sg_metrics
+            .total_poll_duration
+            .set(Duration::from_millis(1200));
+        sg_metrics
+            .total_idle_duration
+            .set(Duration::from_millis(600));
+        let hoff_metrics = &metrics.handoffs[handoff_id];
+        hoff_metrics.total_items_count.set(250);
+        hoff_metrics.curr_items_count.set(10);
+
+        // Second iteration - should return the diff
+        let second = intervals.next().unwrap();
+        let sg_metrics = &second.subgraphs[sg_id];
+        assert_eq!(sg_metrics.total_run_count(), 7); // 12 - 5
+        assert_eq!(sg_metrics.total_poll_count(), 15); // 25 - 10
+        assert_eq!(sg_metrics.total_idle_count(), 5); // 7 - 2
+        //
+        let hoff_metrics = &second.handoffs[handoff_id];
+        // total_items_count should be diffed
+        assert_eq!(hoff_metrics.total_items_count(), 150); // 250 - 100
+        // curr_items_count should NOT be diffed (it's a current value, not cumulative)
+        assert_eq!(hoff_metrics.curr_items_count(), 10);
     }
 }
