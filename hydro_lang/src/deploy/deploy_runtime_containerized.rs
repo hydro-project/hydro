@@ -20,7 +20,9 @@ use sinktools::buffered_lazy_sink_source::BufferedLazySinkSource;
 use sinktools::demux_map_lazy::LazyDemuxSink;
 use sinktools::lazy::{LazySink, LazySource};
 use sinktools::lazy_sink_source::LazySinkSource;
-use stageleft::runtime_support::{FreeVariableWithContext, QuoteTokens};
+use stageleft::runtime_support::{
+    FreeVariableWithContext, FreeVariableWithContextWithProps, QuoteTokens,
+};
 use stageleft::{QuotedWithContext, q};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
@@ -221,19 +223,22 @@ pub struct SocketIdent {
     pub socket_ident: syn::Ident,
 }
 
-impl<Ctx> FreeVariableWithContext<Ctx> for SocketIdent {
+impl<Ctx> FreeVariableWithContextWithProps<Ctx, ()> for SocketIdent {
     type O = TcpListener;
 
-    fn to_tokens(self, _ctx: &Ctx) -> QuoteTokens
+    fn to_tokens(self, _ctx: &Ctx) -> (QuoteTokens, ())
     where
         Self: Sized,
     {
         let ident = self.socket_ident;
 
-        QuoteTokens {
-            prelude: None,
-            expr: Some(quote::quote! { #ident }),
-        }
+        (
+            QuoteTokens {
+                prelude: None,
+                expr: Some(quote::quote! { #ident }),
+            },
+            (),
+        )
     }
 }
 
