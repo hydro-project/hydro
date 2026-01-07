@@ -17,7 +17,6 @@ default = [ "macros", "debugging", "meta" ]
 meta = [ "dep:dfir_lang" ]
 macros = [ "dfir_macro" ]
 dfir_macro = [ "dep:dfir_macro" ]
-deploy_integration = [ "dep:hydro_deploy_integration" ]
 debugging = [ "dfir_lang/debugging" ]
 
 [package.metadata.docs.rs]
