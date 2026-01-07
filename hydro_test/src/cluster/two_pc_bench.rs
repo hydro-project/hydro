@@ -25,9 +25,9 @@ pub fn two_pc_bench<'a>(
                 coordinator,
                 participants,
                 num_participants,
-                payloads.send_bincode(coordinator).entries(),
+                payloads.send(coordinator, TCP.bincode()).entries(),
             )
-            .demux_bincode(clients)
+            .demux(clients, TCP.bincode())
         },
         num_clients_per_node,
         nondet!(/** bench */),

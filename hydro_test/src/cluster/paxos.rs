@@ -304,7 +304,7 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
         .if_some_then(p_ballot.clone())
         .all_ticks()
         .inspect(q!(|_| println!("Proposer leader expired, sending P1a")))
-        .broadcast_bincode(acceptors, nondet!(/** TODO */))
+        .broadcast(acceptors, TCP.bincode(), nondet!(/** TODO */))
         .values();
 
     let (a_max_ballot, a_to_proposers_p1b) = acceptor_p1(
@@ -416,7 +416,7 @@ fn p_leader_heartbeat<'a>(
                 nondet_reelection
             ),
         )
-        .broadcast_bincode(proposers, nondet!(/** TODO */))
+        .broadcast(proposers, TCP.bincode(), nondet!(/** TODO */))
         .values();
 
     let p_leader_expired = p_to_proposers_i_am_leader
@@ -492,7 +492,7 @@ fn acceptor_p1<'a, L: Serialize + DeserializeOwned + Clone>(
                 )
             )))
             .all_ticks()
-            .demux_bincode(proposers)
+            .demux(proposers, TCP.bincode())
             .values(),
     )
 }
@@ -723,7 +723,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
                 slot,
                 value
             }))
-            .broadcast_bincode(acceptors, nondet!(/** TODO */))
+            .broadcast(acceptors, TCP.bincode(), nondet!(/** TODO */))
             .values(),
         a_checkpoint,
         proposers,
@@ -861,7 +861,7 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
             )
         )))
         .all_ticks()
-        .demux_bincode(proposers)
+        .demux(proposers, TCP.bincode())
         .values();
 
     (
