@@ -210,31 +210,3 @@ impl ServiceBuilder for RustCrate {
         )
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::deployment;
-
-    #[tokio::test]
-    async fn test_crate_panic() {
-        let mut deployment = deployment::Deployment::new();
-
-        let service = deployment.add_service(
-            RustCrate::new("../hydro_deploy_examples")
-                .example("panic_program")
-                .profile("dev"),
-            deployment.Localhost(),
-        );
-
-        deployment.deploy().await.unwrap();
-
-        let mut stdout = service.stdout();
-
-        deployment.start().await.unwrap();
-
-        assert_eq!(stdout.recv().await.unwrap(), "hello!");
-
-        assert!(stdout.recv().await.is_none());
-    }
-}

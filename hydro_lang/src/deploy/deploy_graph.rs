@@ -279,7 +279,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         extra_stmts.push(syn::parse_quote! {
             let #connect_ident = __hydro_lang_trybuild_cli
                 .port(#p2_port)
-                .connect::<#root::runtime_support::dfir_rs::util::deploy::multi_connection::ConnectedMultiConnection<_, _, #codec_type>>();
+                .connect::<#root::runtime_support::hydro_deploy_integration::multi_connection::ConnectedMultiConnection<_, _, #codec_type>>();
         });
 
         extra_stmts.push(syn::parse_quote! {
@@ -332,7 +332,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         extra_stmts.push(syn::parse_quote! {
             let #connect_ident = __hydro_lang_trybuild_cli
                 .port(#p2_port)
-                .connect::<#root::runtime_support::dfir_rs::util::deploy::single_connection::ConnectedSingleConnection<_, _, #codec_type>>();
+                .connect::<#root::runtime_support::hydro_deploy_integration::single_connection::ConnectedSingleConnection<_, _, #codec_type>>();
         });
 
         extra_stmts.push(syn::parse_quote! {
