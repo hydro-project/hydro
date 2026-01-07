@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 
 use proc_macro2::Span;
 use quote::quote;
-use stageleft::runtime_support::{FreeVariableWithContext, QuoteTokens};
-use stageleft::{QuotedWithContext, quote_type};
+use stageleft::runtime_support::{FreeVariableWithContextWithProps, QuoteTokens};
+use stageleft::{QuotedWithContextWithProps, quote_type};
 
 use super::dynamic::LocationId;
 use super::{Location, MemberId};
@@ -77,10 +77,10 @@ impl<'a> Clone for ClusterIds<'a> {
     }
 }
 
-impl<'a, Ctx> FreeVariableWithContext<Ctx> for ClusterIds<'a> {
+impl<'a, Ctx> FreeVariableWithContextWithProps<Ctx, ()> for ClusterIds<'a> {
     type O = &'a [TaglessMemberId];
 
-    fn to_tokens(self, _ctx: &Ctx) -> QuoteTokens
+    fn to_tokens(self, _ctx: &Ctx) -> (QuoteTokens, ())
     where
         Self: Sized,
     {
@@ -89,14 +89,17 @@ impl<'a, Ctx> FreeVariableWithContext<Ctx> for ClusterIds<'a> {
             Span::call_site(),
         );
 
-        QuoteTokens {
-            prelude: None,
-            expr: Some(quote! { #ident }),
-        }
+        (
+            QuoteTokens {
+                prelude: None,
+                expr: Some(quote! { #ident }),
+            },
+            (),
+        )
     }
 }
 
-impl<'a, Ctx> QuotedWithContext<'a, &'a [TaglessMemberId], Ctx> for ClusterIds<'a> {}
+impl<'a, Ctx> QuotedWithContextWithProps<'a, &'a [TaglessMemberId], Ctx, ()> for ClusterIds<'a> {}
 
 pub trait IsCluster {
     type Tag;
@@ -115,14 +118,14 @@ pub struct ClusterSelfId<'a> {
     _private: &'a (),
 }
 
-impl<'a, L> FreeVariableWithContext<L> for ClusterSelfId<'a>
+impl<'a, L> FreeVariableWithContextWithProps<L, ()> for ClusterSelfId<'a>
 where
     L: Location<'a>,
     <L as Location<'a>>::Root: IsCluster,
 {
     type O = MemberId<<<L as Location<'a>>::Root as IsCluster>::Tag>;
 
-    fn to_tokens(self, ctx: &L) -> QuoteTokens
+    fn to_tokens(self, ctx: &L) -> (QuoteTokens, ())
     where
         Self: Sized,
     {
@@ -139,16 +142,20 @@ where
         let root = get_this_crate();
         let c_type: syn::Type = quote_type::<<<L as Location<'a>>::Root as IsCluster>::Tag>();
 
-        QuoteTokens {
-            prelude: None,
-            expr: Some(
-                quote! { #root::location::MemberId::<#c_type>::from_tagless((#ident).clone()) },
-            ),
-        }
+        (
+            QuoteTokens {
+                prelude: None,
+                expr: Some(
+                    quote! { #root::location::MemberId::<#c_type>::from_tagless((#ident).clone()) },
+                ),
+            },
+            (),
+        )
     }
 }
 
-impl<'a, L> QuotedWithContext<'a, MemberId<<<L as Location<'a>>::Root as IsCluster>::Tag>, L>
+impl<'a, L>
+    QuotedWithContextWithProps<'a, MemberId<<<L as Location<'a>>::Root as IsCluster>::Tag>, L, ()>
     for ClusterSelfId<'a>
 where
     L: Location<'a>,

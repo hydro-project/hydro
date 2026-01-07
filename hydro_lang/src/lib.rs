@@ -55,6 +55,7 @@ pub mod prelude {
     pub use crate::location::{Cluster, External, Location as _, Process, Tick};
     pub use crate::networking::TCP;
     pub use crate::nondet::{NonDet, nondet};
+    pub use crate::properties::ManualProof;
 
     /// A macro to set up a Hydro crate.
     #[macro_export]
@@ -84,6 +85,8 @@ pub mod live_collections;
 pub mod location;
 
 pub mod networking;
+
+pub mod properties;
 
 pub mod telemetry;
 
