@@ -68,5 +68,7 @@ uninlined_format_args = "allow"
 upper_case_acronyms = "warn"
 
 [workspace.dependencies]
-stageleft = "0.10.3"
-stageleft_tool = "0.10.3"
+# stageleft = "0.10.3"
+stageleft = { path = "../stageleft/stageleft" }
+# stageleft_tool = "0.10.3"
+stageleft_tool = { path = "../stageleft/stageleft_tool" }
