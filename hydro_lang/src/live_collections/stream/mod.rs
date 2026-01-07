@@ -2191,7 +2191,7 @@ where
     L: Location<'a>,
 {
     #[deprecated = "use .into_keyed().fold_commutative_idempotent(...) instead"]
-    /// A special case of [`Stream::fold_commutative_idempotent`], in the spirit of SQL's GROUP BY and aggregation constructs.
+    /// A special case of [`Stream::fold`], in the spirit of SQL's GROUP BY and aggregation constructs.
     /// The input tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
     ///
@@ -2306,7 +2306,7 @@ where
     L: Location<'a>,
 {
     #[deprecated = "use .into_keyed().fold_commutative(...) instead"]
-    /// A special case of [`Stream::fold_commutative`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
+    /// A special case of [`Stream::fold`], in the spirit of SQL's GROUP BY and aggregation constructs. The input
     /// tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
     ///
@@ -2391,7 +2391,7 @@ where
     L: Location<'a>,
 {
     #[deprecated = "use .into_keyed().fold_idempotent(...) instead"]
-    /// A special case of [`Stream::fold_idempotent`], in the spirit of SQL's GROUP BY and aggregation constructs.
+    /// A special case of [`Stream::fold`], in the spirit of SQL's GROUP BY and aggregation constructs.
     /// The input tuples are partitioned into groups by the first element ("keys"), and for each group the values
     /// in the second element are accumulated via the `comb` closure.
     ///
