@@ -36,15 +36,15 @@ fn distributed_echo<'a>(
 
     let rx = rx
         .map(q!(|n| n + 1))
-        .round_robin_bincode(c2, nondet!(/** test */))
+        .round_robin(c2, TCP.bincode(), nondet!(/** test */))
         .map(q!(|n| n + 1))
-        .round_robin_bincode(c3, nondet!(/** test */))
+        .round_robin(c3, TCP.bincode(), nondet!(/** test */))
         .values()
         .map(q!(|n| n + 1))
-        .send_bincode(p4)
+        .send(p4, TCP.bincode())
         .values()
         .map(q!(|n| n + 1))
-        .send_bincode(p5)
+        .send(p5, TCP.bincode())
         .map(q!(|n| n + 1))
         .send_bincode_external(external);
 

@@ -12,7 +12,7 @@ pub fn map_reduce<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, Leader>, Cluster<'
         .map(q!(|s| s.to_string()));
 
     let partitioned_words = words
-        .round_robin_bincode(&cluster, nondet!(/** test */))
+        .round_robin(&cluster, TCP.bincode(), nondet!(/** test */))
         .map(q!(|string| (string, ())))
         .into_keyed();
 
@@ -28,7 +28,7 @@ pub fn map_reduce<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, Leader>, Cluster<'
             string, count
         )))
         .all_ticks()
-        .send_bincode(&process)
+        .send(&process, TCP.bincode())
         .values();
 
     let reduced = batches
