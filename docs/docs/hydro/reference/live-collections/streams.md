@@ -98,7 +98,7 @@ Running an aggregation (`fold`, `reduce`) converts a `Stream` into a `Singleton`
 
 :::
 
-To perform an aggregation with an unordered stream, you must use [`fold_commutative`](pathname:///rustdoc/hydro_lang/live_collections/struct.Stream#method.fold_commutative), which requires the provided closure to be commutative (and therefore immune to non-deterministic ordering):
+To perform an aggregation with an unordered stream, you must add a **property annotation**, which demonstrates that the provided closure is commutative (and therefore immune to non-deterministic ordering):
 
 ```rust,no_run
 # use hydro_lang::prelude::*;
@@ -112,12 +112,12 @@ To perform an aggregation with an unordered stream, you must use [`fold_commutat
 #     .send(&process, TCP.bincode())
 #     .values();
 let words_count = all_words
-    .fold_commutative(q!(|| 0), q!(|acc, x| *acc += 1));
+    .fold(q!(|| 0), q!(|acc, _| *acc += 1, commutative = ManualProof(/* increment is commutative */)));
 ```
 
 :::danger
 
-Developers are responsible for the commutativity of the closure they pass into `*_commutative` methods. In the future, commutativity checks will be automatically provided by the compiler (via tools like [Kani](https://github.com/model-checking/kani)).
+Developers are responsible for the commutativity when they use a `ManualProof`. In the future, commutativity checks will be automatically provided by the compiler (via tools like [Kani](https://github.com/model-checking/kani)).
 
 :::
 
