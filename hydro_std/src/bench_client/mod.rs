@@ -145,14 +145,19 @@ where
         /// across keys.
     )));
 
-    let c_latencies = c_latencies.fold_commutative(
+    let c_latencies = c_latencies.fold(
         q!(move || Rc::new(RefCell::new(Histogram::<u64>::new(3).unwrap()))),
-        q!(move |latencies, latency| {
-            latencies
-                .borrow_mut()
-                .record(latency.as_nanos() as u64)
-                .unwrap();
-        }),
+        q!(
+            move |latencies, latency| {
+                latencies
+                    .borrow_mut()
+                    .record(latency.as_nanos() as u64)
+                    .unwrap();
+            },
+            commutative = ManualProof(
+                /* adding elements to histogram is commutative */
+            )
+        ),
     );
 
     let throughput_with_timers = c_throughput_batches
