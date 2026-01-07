@@ -1,8 +1,8 @@
 use std::marker::PhantomData;
 
 use quote::quote;
-use stageleft::QuotedWithContext;
-use stageleft::runtime_support::{FreeVariableWithContext, QuoteTokens};
+use stageleft::QuotedWithContextWithProps;
+use stageleft::runtime_support::{FreeVariableWithContextWithProps, QuoteTokens};
 
 /// Utility for wrapping a quoted expression with a custom transformation, such as explicitly
 /// splicing it with a type hint.
@@ -11,7 +11,10 @@ pub(crate) struct ManualExpr<T, F> {
     _phantom: PhantomData<T>,
 }
 
-impl<'a, T, F: FnOnce(&Ctx) -> syn::Expr, Ctx> QuotedWithContext<'a, T, Ctx> for ManualExpr<T, F> {}
+impl<'a, T, F: FnOnce(&Ctx) -> syn::Expr, Ctx> QuotedWithContextWithProps<'a, T, Ctx, ()>
+    for ManualExpr<T, F>
+{
+}
 
 impl<T, F: Copy> Copy for ManualExpr<T, F> {}
 
@@ -33,14 +36,19 @@ impl<T, F> ManualExpr<T, F> {
     }
 }
 
-impl<T, F: FnOnce(&Ctx) -> syn::Expr, Ctx> FreeVariableWithContext<Ctx> for ManualExpr<T, F> {
+impl<T, F: FnOnce(&Ctx) -> syn::Expr, Ctx> FreeVariableWithContextWithProps<Ctx, ()>
+    for ManualExpr<T, F>
+{
     type O = T;
 
-    fn to_tokens(self, ctx: &Ctx) -> QuoteTokens {
+    fn to_tokens(self, ctx: &Ctx) -> (QuoteTokens, ()) {
         let expr = (self.fun)(ctx);
-        QuoteTokens {
-            prelude: None,
-            expr: Some(quote!(#expr)),
-        }
+        (
+            QuoteTokens {
+                prelude: None,
+                expr: Some(quote!(#expr)),
+            },
+            (),
+        )
     }
 }
