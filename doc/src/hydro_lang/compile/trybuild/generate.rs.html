@@ -206,7 +206,7 @@
 <a href=#206 id=206 data-nosnippet>206</a>
 <a href=#207 id=207 data-nosnippet>207</a>                <span class="kw">let </span>flow = __hydro_runtime().<span class="kw">await</span>;
 <a href=#208 id=208 data-nosnippet>208</a>
-<a href=#209 id=209 data-nosnippet>209</a>                hydro_lang::runtime_support::resource_measurement::run_containerized(flow).<span class="kw">await</span>;
+<a href=#209 id=209 data-nosnippet>209</a>                hydro_lang::runtime_support::launch::run_containerized(flow).<span class="kw">await</span>;
 <a href=#210 id=210 data-nosnippet>210</a>            }
 <a href=#211 id=211 data-nosnippet>211</a>        }
 <a href=#212 id=212 data-nosnippet>212</a>    } <span class="kw">else </span>{
@@ -217,18 +217,18 @@
 <a href=#217 id=217 data-nosnippet>217</a>            <span class="kw">pub use </span>#trybuild_crate_name_ident::__staged;
 <a href=#218 id=218 data-nosnippet>218</a>
 <a href=#219 id=219 data-nosnippet>219</a>            <span class="attr">#[allow(unused)]
-<a href=#220 id=220 data-nosnippet>220</a>            </span><span class="kw">fn </span>__hydro_runtime&lt;<span class="lifetime">'a</span>&gt;(__hydro_lang_trybuild_cli: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>hydro_lang::runtime_support::dfir_rs::util::deploy::DeployPorts&lt;hydro_lang::__staged::deploy::deploy_runtime::HydroMeta&gt;) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir&lt;<span class="lifetime">'a</span>&gt; {
+<a href=#220 id=220 data-nosnippet>220</a>            </span><span class="kw">fn </span>__hydro_runtime&lt;<span class="lifetime">'a</span>&gt;(__hydro_lang_trybuild_cli: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>hydro_lang::runtime_support::hydro_deploy_integration::DeployPorts&lt;hydro_lang::__staged::deploy::deploy_runtime::HydroMeta&gt;) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir&lt;<span class="lifetime">'a</span>&gt; {
 <a href=#221 id=221 data-nosnippet>221</a>                #(#extra_stmts)*
 <a href=#222 id=222 data-nosnippet>222</a>                #dfir_expr
 <a href=#223 id=223 data-nosnippet>223</a>            }
 <a href=#224 id=224 data-nosnippet>224</a>
 <a href=#225 id=225 data-nosnippet>225</a>            <span class="attr">#[hydro_lang::runtime_support::tokio::main(<span class="kw">crate </span>= <span class="string">"hydro_lang::runtime_support::tokio"</span>, flavor = <span class="string">"current_thread"</span>)]
 <a href=#226 id=226 data-nosnippet>226</a>            </span><span class="kw">async fn </span>main() {
-<a href=#227 id=227 data-nosnippet>227</a>                <span class="kw">let </span>ports = hydro_lang::runtime_support::dfir_rs::util::deploy::init_no_ack_start().<span class="kw">await</span>;
+<a href=#227 id=227 data-nosnippet>227</a>                <span class="kw">let </span>ports = hydro_lang::runtime_support::launch::init_no_ack_start().<span class="kw">await</span>;
 <a href=#228 id=228 data-nosnippet>228</a>                <span class="kw">let </span>flow = __hydro_runtime(<span class="kw-2">&amp;</span>ports);
 <a href=#229 id=229 data-nosnippet>229</a>                <span class="macro">println!</span>(<span class="string">"ack start"</span>);
 <a href=#230 id=230 data-nosnippet>230</a>
-<a href=#231 id=231 data-nosnippet>231</a>                hydro_lang::runtime_support::resource_measurement::run(flow).<span class="kw">await</span>;
+<a href=#231 id=231 data-nosnippet>231</a>                hydro_lang::runtime_support::launch::run(flow).<span class="kw">await</span>;
 <a href=#232 id=232 data-nosnippet>232</a>            }
 <a href=#233 id=233 data-nosnippet>233</a>        }
 <a href=#234 id=234 data-nosnippet>234</a>    };
