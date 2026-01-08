@@ -128,7 +128,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         self
     }
 
-    /// Compiles the flow into DFIR ([`DfirGraph`]) without networking.
+    /// Compiles the flow into DFIR ([`dfir_lang::graph::DfirGraph`]) without networking.
     /// Useful for generating Mermaid diagrams of the DFIR.
     ///
     /// (This returned DFIR will not compile due to the networking missing).
@@ -144,7 +144,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 }
 
 impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
-    /// Compiles the flow into DFIR ([`DfirGraph`]) including networking.
+    /// Compiles the flow into DFIR ([`dfir_lang::graph::DfirGraph`]) including networking.
     ///
     /// (This does not compile the DFIR itself, instead use [`Self::deploy`] to compile & deploy the DFIR).
     pub fn compile(&mut self) -> CompiledFlow<'a, D::GraphId> {
