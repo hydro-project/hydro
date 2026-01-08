@@ -203,11 +203,11 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 
     /// Compiles and deploys the flow.
     ///
-    /// Rough outline:
-    /// 1. Compiles the Hydro into DFIR.
-    /// 2. Instantiates nodes as configured.
-    /// 4. Compiles the corresponding DFIR into binaries for nodes as needed.
-    /// 5. Connects up networking as needed.
+    /// Rough outline of steps:
+    /// * Compiles the Hydro into DFIR.
+    /// * Instantiates nodes as configured.
+    /// * Compiles the corresponding DFIR into binaries for nodes as needed.
+    /// * Connects up networking as needed.
     #[must_use]
     pub fn deploy(mut self, env: &mut D::InstantiateEnv) -> DeployResult<'a, D> {
         let CompiledFlow {
