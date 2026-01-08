@@ -1632,7 +1632,7 @@
 <a href=#1632 id=1632 data-nosnippet>1632</a><span class="kw">where
 <a href=#1633 id=1633 data-nosnippet>1633</a>    </span>L: Location&lt;<span class="lifetime">'a</span>&gt;,
 <a href=#1634 id=1634 data-nosnippet>1634</a>{
-<a href=#1635 id=1635 data-nosnippet>1635</a>    <span class="doccomment">/// Like [`Stream::fold_commutative`], aggregates the values in each group via the `comb` closure.
+<a href=#1635 id=1635 data-nosnippet>1635</a>    <span class="doccomment">/// Like [`Stream::fold`], aggregates the values in each group via the `comb` closure.
 <a href=#1636 id=1636 data-nosnippet>1636</a>    ///
 <a href=#1637 id=1637 data-nosnippet>1637</a>    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed.
 <a href=#1638 id=1638 data-nosnippet>1638</a>    ///
@@ -1791,7 +1791,7 @@
 <a href=#1791 id=1791 data-nosnippet>1791</a><span class="kw">where
 <a href=#1792 id=1792 data-nosnippet>1792</a>    </span>L: Location&lt;<span class="lifetime">'a</span>&gt;,
 <a href=#1793 id=1793 data-nosnippet>1793</a>{
-<a href=#1794 id=1794 data-nosnippet>1794</a>    <span class="doccomment">/// Like [`Stream::fold_idempotent`], aggregates the values in each group via the `comb` closure.
+<a href=#1794 id=1794 data-nosnippet>1794</a>    <span class="doccomment">/// Like [`Stream::fold`], aggregates the values in each group via the `comb` closure.
 <a href=#1795 id=1795 data-nosnippet>1795</a>    ///
 <a href=#1796 id=1796 data-nosnippet>1796</a>    /// The `comb` closure must be **idempotent** as there may be non-deterministic duplicates.
 <a href=#1797 id=1797 data-nosnippet>1797</a>    ///
@@ -1916,7 +1916,7 @@
 <a href=#1916 id=1916 data-nosnippet>1916</a><span class="kw">where
 <a href=#1917 id=1917 data-nosnippet>1917</a>    </span>L: Location&lt;<span class="lifetime">'a</span>&gt;,
 <a href=#1918 id=1918 data-nosnippet>1918</a>{
-<a href=#1919 id=1919 data-nosnippet>1919</a>    <span class="doccomment">/// Like [`Stream::fold_commutative_idempotent`], aggregates the values in each group via the `comb` closure.
+<a href=#1919 id=1919 data-nosnippet>1919</a>    <span class="doccomment">/// Like [`Stream::fold`], aggregates the values in each group via the `comb` closure.
 <a href=#1920 id=1920 data-nosnippet>1920</a>    ///
 <a href=#1921 id=1921 data-nosnippet>1921</a>    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed, and **idempotent**,
 <a href=#1922 id=1922 data-nosnippet>1922</a>    /// as there may be non-deterministic duplicates.
