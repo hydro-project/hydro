@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::rc::Rc;
 
-use stageleft::{IntoQuotedMut, QuotedWithContext, q};
+use stageleft::{IntoQuotedMut, QuotedWithContext, QuotedWithContextWithProps, q};
 
 use super::boundedness::{Bounded, Boundedness, Unbounded};
 use super::keyed_singleton::KeyedSingleton;
@@ -19,13 +19,14 @@ use crate::compile::ir::{
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
-use crate::live_collections::stream::{Ordering, Retries};
+use crate::live_collections::stream::{AtLeastOnce, Ordering, Retries};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::DeferTick;
 use crate::location::{Atomic, Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
+use crate::properties::{AggFuncAlgebra, ValidCommutativityFor, ValidIdempotenceFor};
 
 pub mod networking;
 
@@ -336,6 +337,13 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 },
             )
         }
+    }
+
+    /// Weakens the retries guarantee provided by the stream to [`AtLeastOnce`],
+    /// which is always safe because that is the weakest possible guarantee.
+    pub fn weakest_retries(self) -> KeyedStream<K, V, L, B, O, AtLeastOnce> {
+        let nondet = nondet!(/** this is a weaker retries guarantee, so it is safe to assume */);
+        self.assume_retries::<AtLeastOnce>(nondet)
     }
 
     /// Flattens the keyed stream into an unordered stream of key-value pairs.
@@ -1180,7 +1188,7 @@ where
 {
     /// A special case of [`Stream::scan`] for keyed streams. For each key group the values are transformed via the `f` combinator.
     ///
-    /// Unlike [`Stream::fold_keyed`] which only returns the final accumulated value, `scan` produces a new stream
+    /// Unlike [`KeyedStream::fold`] which only returns the final accumulated value, `scan` produces a new stream
     /// containing all intermediate accumulated values paired with the key. The scan operation can also terminate
     /// early by returning `None`.
     ///
@@ -1357,7 +1365,7 @@ where
     /// A variant of [`Stream::fold`], intended for keyed streams. The aggregation is executed
     /// in-order across the values in each group. But the aggregation function returns a boolean,
     /// which when true indicates that the aggregated result is complete and can be released to
-    /// downstream computation. Unlike [`Stream::fold_keyed`], this means that even if the input
+    /// downstream computation. Unlike [`KeyedStream::fold`], this means that even if the input
     /// stream is [`super::boundedness::Unbounded`], the outputs of the fold can be processed like
     /// normal stream elements.
     ///
@@ -1462,296 +1470,12 @@ where
         )
         .map(q!(|v| v.unwrap()))
     }
-
-    /// Like [`Stream::fold`], aggregates the values in each group via the `comb` closure.
-    ///
-    /// Each group must have a [`TotalOrder`] guarantee, which means that the `comb` closure is allowed
-    /// to depend on the order of elements in the group.
-    ///
-    /// If the input and output value types are the same and do not require initialization then use
-    /// [`KeyedStream::reduce`].
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let numbers = process
-    ///     .source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]))
-    ///     .into_keyed();
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
-    /// batch
-    ///     .fold(q!(|| 0), q!(|acc, x| *acc += x))
-    ///     .entries()
-    ///     .all_ticks()
-    /// # }, |mut stream| async move {
-    /// // (1, 5), (2, 7)
-    /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
-    /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
-    /// # }));
-    /// # }
-    /// ```
-    pub fn fold<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
-        self,
-        init: impl IntoQuotedMut<'a, I, L>,
-        comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded>
-    where
-        K: Eq + Hash,
-    {
-        let init = init.splice_fn0_ctx(&self.location).into();
-        let comb = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
-
-        KeyedSingleton::new(
-            self.location.clone(),
-            HydroNode::FoldKeyed {
-                init,
-                acc: comb,
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata(KeyedSingleton::<
-                    K,
-                    A,
-                    L,
-                    B::WhenValueUnbounded,
-                >::collection_kind()),
-            },
-        )
-    }
-
-    /// Like [`Stream::reduce`], aggregates the values in each group via the `comb` closure.
-    ///
-    /// Each group must have a [`TotalOrder`] guarantee, which means that the `comb` closure is allowed
-    /// to depend on the order of elements in the stream.
-    ///
-    /// If you need the accumulated value to have a different type than the input, use [`KeyedStream::fold`].
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let numbers = process
-    ///     .source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]))
-    ///     .into_keyed();
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
-    /// batch.reduce(q!(|acc, x| *acc += x)).entries().all_ticks()
-    /// # }, |mut stream| async move {
-    /// // (1, 5), (2, 7)
-    /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
-    /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
-    /// # }));
-    /// # }
-    /// ```
-    pub fn reduce<F: Fn(&mut V, V) + 'a>(
-        self,
-        comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
-    where
-        K: Eq + Hash,
-    {
-        let f = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
-
-        KeyedSingleton::new(
-            self.location.clone(),
-            HydroNode::ReduceKeyed {
-                f,
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata(KeyedSingleton::<
-                    K,
-                    V,
-                    L,
-                    B::WhenValueUnbounded,
-                >::collection_kind()),
-            },
-        )
-    }
-
-    /// A special case of [`KeyedStream::reduce`] where tuples with keys less than the watermark are automatically deleted.
-    ///
-    /// Each group must have a [`TotalOrder`] guarantee, which means that the `comb` closure is allowed
-    /// to depend on the order of elements in the stream.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let watermark = tick.singleton(q!(1));
-    /// let numbers = process
-    ///     .source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
-    ///     .into_keyed();
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
-    /// batch
-    ///     .reduce_watermark(watermark, q!(|acc, x| *acc += x))
-    ///     .entries()
-    ///     .all_ticks()
-    /// # }, |mut stream| async move {
-    /// // (2, 204)
-    /// # assert_eq!(stream.next().await.unwrap(), (2, 204));
-    /// # }));
-    /// # }
-    /// ```
-    pub fn reduce_watermark<O, F>(
-        self,
-        other: impl Into<Optional<O, Tick<L::Root>, Bounded>>,
-        comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
-    where
-        K: Eq + Hash,
-        O: Clone,
-        F: Fn(&mut V, V) + 'a,
-    {
-        let other: Optional<O, Tick<L::Root>, Bounded> = other.into();
-        check_matching_location(&self.location.root(), other.location.outer());
-        let f = comb.splice_fn2_borrow_mut_ctx(&self.location).into();
-
-        KeyedSingleton::new(
-            self.location.clone(),
-            HydroNode::ReduceKeyedWatermark {
-                f,
-                input: Box::new(self.ir_node.into_inner()),
-                watermark: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata(KeyedSingleton::<
-                    K,
-                    V,
-                    L,
-                    B::WhenValueUnbounded,
-                >::collection_kind()),
-            },
-        )
-    }
 }
 
 impl<'a, K, V, L, B: Boundedness, O: Ordering> KeyedStream<K, V, L, B, O, ExactlyOnce>
 where
     L: Location<'a>,
 {
-    /// Like [`Stream::fold`], aggregates the values in each group via the `comb` closure.
-    ///
-    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed.
-    ///
-    /// If the input and output value types are the same and do not require initialization then use
-    /// [`KeyedStream::reduce_commutative`].
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let numbers = process
-    ///     .source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]))
-    ///     .into_keyed();
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
-    /// batch
-    ///     .fold_commutative(q!(|| 0), q!(|acc, x| *acc += x))
-    ///     .entries()
-    ///     .all_ticks()
-    /// # }, |mut stream| async move {
-    /// // (1, 5), (2, 7)
-    /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
-    /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
-    /// # }));
-    /// # }
-    /// ```
-    pub fn fold_commutative<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
-        self,
-        init: impl IntoQuotedMut<'a, I, L>,
-        comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded>
-    where
-        K: Eq + Hash,
-    {
-        self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
-            .fold(init, comb)
-    }
-
-    /// Like [`Stream::reduce_commutative`], aggregates the values in each group via the `comb` closure.
-    ///
-    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed.
-    ///
-    /// If you need the accumulated value to have a different type than the input, use [`KeyedStream::fold_commutative`].
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let numbers = process
-    ///     .source_iter(q!(vec![(1, 2), (2, 3), (1, 3), (2, 4)]))
-    ///     .into_keyed();
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
-    /// batch
-    ///     .reduce_commutative(q!(|acc, x| *acc += x))
-    ///     .entries()
-    ///     .all_ticks()
-    /// # }, |mut stream| async move {
-    /// // (1, 5), (2, 7)
-    /// # assert_eq!(stream.next().await.unwrap(), (1, 5));
-    /// # assert_eq!(stream.next().await.unwrap(), (2, 7));
-    /// # }));
-    /// # }
-    /// ```
-    pub fn reduce_commutative<F: Fn(&mut V, V) + 'a>(
-        self,
-        comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
-    where
-        K: Eq + Hash,
-    {
-        self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
-            .reduce(comb)
-    }
-
-    /// A special case of [`KeyedStream::reduce_commutative`] where tuples with keys less than the watermark are automatically deleted.
-    ///
-    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let watermark = tick.singleton(q!(1));
-    /// let numbers = process
-    ///     .source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
-    ///     .into_keyed();
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
-    /// batch
-    ///     .reduce_watermark_commutative(watermark, q!(|acc, x| *acc += x))
-    ///     .entries()
-    ///     .all_ticks()
-    /// # }, |mut stream| async move {
-    /// // (2, 204)
-    /// # assert_eq!(stream.next().await.unwrap(), (2, 204));
-    /// # }));
-    /// # }
-    /// ```
-    pub fn reduce_watermark_commutative<O2, F>(
-        self,
-        other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
-        comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
-    where
-        K: Eq + Hash,
-        O2: Clone,
-        F: Fn(&mut V, V) + 'a,
-    {
-        self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
-            .reduce_watermark(other, comb)
-    }
-
     /// Counts the number of elements in each group, producing a [`KeyedSingleton`] with the counts.
     ///
     /// # Example
@@ -1787,142 +1511,18 @@ where
     }
 }
 
-impl<'a, K, V, L, B: Boundedness, R: Retries> KeyedStream<K, V, L, B, TotalOrder, R>
-where
-    L: Location<'a>,
-{
-    /// Like [`Stream::fold`], aggregates the values in each group via the `comb` closure.
-    ///
-    /// The `comb` closure must be **idempotent** as there may be non-deterministic duplicates.
-    ///
-    /// If the input and output value types are the same and do not require initialization then use
-    /// [`KeyedStream::reduce_idempotent`].
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let numbers = process
-    ///     .source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]))
-    ///     .into_keyed();
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
-    /// batch
-    ///     .fold_idempotent(q!(|| false), q!(|acc, x| *acc |= x))
-    ///     .entries()
-    ///     .all_ticks()
-    /// # }, |mut stream| async move {
-    /// // (1, false), (2, true)
-    /// # assert_eq!(stream.next().await.unwrap(), (1, false));
-    /// # assert_eq!(stream.next().await.unwrap(), (2, true));
-    /// # }));
-    /// # }
-    /// ```
-    pub fn fold_idempotent<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
-        self,
-        init: impl IntoQuotedMut<'a, I, L>,
-        comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded>
-    where
-        K: Eq + Hash,
-    {
-        self.assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
-            .fold(init, comb)
-    }
-
-    /// Like [`Stream::reduce_idempotent`], aggregates the values in each group via the `comb` closure.
-    ///
-    /// The `comb` closure must be **idempotent**, as there may be non-deterministic duplicates.
-    ///
-    /// If you need the accumulated value to have a different type than the input, use [`KeyedStream::fold_idempotent`].
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let numbers = process
-    ///     .source_iter(q!(vec![(1, false), (2, true), (1, false), (2, false)]))
-    ///     .into_keyed();
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
-    /// batch
-    ///     .reduce_idempotent(q!(|acc, x| *acc |= x))
-    ///     .entries()
-    ///     .all_ticks()
-    /// # }, |mut stream| async move {
-    /// // (1, false), (2, true)
-    /// # assert_eq!(stream.next().await.unwrap(), (1, false));
-    /// # assert_eq!(stream.next().await.unwrap(), (2, true));
-    /// # }));
-    /// # }
-    /// ```
-    pub fn reduce_idempotent<F: Fn(&mut V, V) + 'a>(
-        self,
-        comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
-    where
-        K: Eq + Hash,
-    {
-        self.assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
-            .reduce(comb)
-    }
-
-    /// A special case of [`KeyedStream::reduce_idempotent`] where tuples with keys less than the watermark are automatically deleted.
-    ///
-    /// The `comb` closure must be **idempotent**, as there may be non-deterministic duplicates.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let watermark = tick.singleton(q!(1));
-    /// let numbers = process
-    ///     .source_iter(q!([(0, false), (1, false), (2, false), (2, true)]))
-    ///     .into_keyed();
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
-    /// batch
-    ///     .reduce_watermark_idempotent(watermark, q!(|acc, x| *acc |= x))
-    ///     .entries()
-    ///     .all_ticks()
-    /// # }, |mut stream| async move {
-    /// // (2, true)
-    /// # assert_eq!(stream.next().await.unwrap(), (2, true));
-    /// # }));
-    /// # }
-    /// ```
-    pub fn reduce_watermark_idempotent<O2, F>(
-        self,
-        other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
-        comb: impl IntoQuotedMut<'a, F, L>,
-    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
-    where
-        K: Eq + Hash,
-        O2: Clone,
-        F: Fn(&mut V, V) + 'a,
-    {
-        self.assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
-            .reduce_watermark(other, comb)
-    }
-}
-
 impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, L, B, O, R>
 where
     L: Location<'a>,
 {
-    /// Like [`Stream::fold`], aggregates the values in each group via the `comb` closure.
+    /// Like [`Stream::fold`] but in the spirit of SQL `GROUP BY`, aggregates the values in each
+    /// group via the `comb` closure.
     ///
-    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed, and **idempotent**,
-    /// as there may be non-deterministic duplicates.
+    /// Depending on the input stream guarantees, the closure may need to be commutative
+    /// (for unordered streams) or idempotent (for streams with non-deterministic duplicates).
     ///
     /// If the input and output value types are the same and do not require initialization then use
-    /// [`KeyedStream::reduce_commutative_idempotent`].
+    /// [`KeyedStream::reduce`].
     ///
     /// # Example
     /// ```rust
@@ -1936,7 +1536,7 @@ where
     ///     .into_keyed();
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
     /// batch
-    ///     .fold_commutative_idempotent(q!(|| false), q!(|acc, x| *acc |= x))
+    ///     .fold(q!(|| false), q!(|acc, x| *acc |= x))
     ///     .entries()
     ///     .all_ticks()
     /// # }, |mut stream| async move {
@@ -1946,25 +1546,49 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn fold_commutative_idempotent<A, I: Fn() -> A + 'a, F: Fn(&mut A, V)>(
+    pub fn fold<A, I: Fn() -> A + 'a, F: Fn(&mut A, V), C, Idemp>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
-        comb: impl IntoQuotedMut<'a, F, L>,
+        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp>>,
     ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded>
     where
         K: Eq + Hash,
+        C: ValidCommutativityFor<O>,
+        Idemp: ValidIdempotenceFor<R>,
     {
-        self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
+        let init = init.splice_fn0_ctx(&self.location).into();
+        let comb = comb
+            .splice_fn2_borrow_mut_ctx_props(&self.location)
+            .0
+            .into();
+
+        let ordered = self
             .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
-            .fold(init, comb)
+            .assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */));
+
+        KeyedSingleton::new(
+            ordered.location.clone(),
+            HydroNode::FoldKeyed {
+                init,
+                acc: comb,
+                input: Box::new(ordered.ir_node.into_inner()),
+                metadata: ordered.location.new_node_metadata(KeyedSingleton::<
+                    K,
+                    A,
+                    L,
+                    B::WhenValueUnbounded,
+                >::collection_kind()),
+            },
+        )
     }
 
-    /// Like [`Stream::reduce_commutative_idempotent`], aggregates the values in each group via the `comb` closure.
+    /// Like [`Stream::reduce`] but in the spirit of SQL `GROUP BY`, aggregates the values in each
+    /// group via the `comb` closure.
     ///
-    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed, and **idempotent**,
-    /// as there may be non-deterministic duplicates.
+    /// Depending on the input stream guarantees, the closure may need to be commutative
+    /// (for unordered streams) or idempotent (for streams with non-deterministic duplicates).
     ///
-    /// If you need the accumulated value to have a different type than the input, use [`KeyedStream::fold_commutative_idempotent`].
+    /// If you need the accumulated value to have a different type than the input, use [`KeyedStream::fold`].
     ///
     /// # Example
     /// ```rust
@@ -1978,7 +1602,7 @@ where
     ///     .into_keyed();
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
     /// batch
-    ///     .reduce_commutative_idempotent(q!(|acc, x| *acc |= x))
+    ///     .reduce(q!(|acc, x| *acc |= x))
     ///     .entries()
     ///     .all_ticks()
     /// # }, |mut stream| async move {
@@ -1988,22 +1612,44 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn reduce_commutative_idempotent<F: Fn(&mut V, V) + 'a>(
+    pub fn reduce<F: Fn(&mut V, V) + 'a, C, Idemp>(
         self,
-        comb: impl IntoQuotedMut<'a, F, L>,
+        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp>>,
     ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
     where
         K: Eq + Hash,
+        C: ValidCommutativityFor<O>,
+        Idemp: ValidIdempotenceFor<R>,
     {
-        self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
+        let f = comb
+            .splice_fn2_borrow_mut_ctx_props(&self.location)
+            .0
+            .into();
+
+        let ordered = self
             .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
-            .reduce(comb)
+            .assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */));
+
+        KeyedSingleton::new(
+            ordered.location.clone(),
+            HydroNode::ReduceKeyed {
+                f,
+                input: Box::new(ordered.ir_node.into_inner()),
+                metadata: ordered.location.new_node_metadata(KeyedSingleton::<
+                    K,
+                    V,
+                    L,
+                    B::WhenValueUnbounded,
+                >::collection_kind()),
+            },
+        )
     }
 
-    /// A special case of [`Stream::reduce_keyed_commutative_idempotent`] where tuples with keys less than the watermark are automatically deleted.
+    /// A special case of [`KeyedStream::reduce`] where tuples with keys less than the watermark
+    /// are automatically deleted.
     ///
-    /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed, and **idempotent**,
-    /// as there may be non-deterministic duplicates.
+    /// Depending on the input stream guarantees, the closure may need to be commutative
+    /// (for unordered streams) or idempotent (for streams with non-deterministic duplicates).
     ///
     /// # Example
     /// ```rust
@@ -2018,7 +1664,7 @@ where
     ///     .into_keyed();
     /// let batch = numbers.batch(&tick, nondet!(/** test */));
     /// batch
-    ///     .reduce_watermark_commutative_idempotent(watermark, q!(|acc, x| *acc |= x))
+    ///     .reduce(watermark, q!(|acc, x| *acc |= x))
     ///     .entries()
     ///     .all_ticks()
     /// # }, |mut stream| async move {
@@ -2027,19 +1673,43 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn reduce_watermark_commutative_idempotent<O2, F>(
+    pub fn reduce_watermark<O2, F, C, Idemp>(
         self,
         other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
-        comb: impl IntoQuotedMut<'a, F, L>,
+        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp>>,
     ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
     where
         K: Eq + Hash,
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
+        C: ValidCommutativityFor<O>,
+        Idemp: ValidIdempotenceFor<R>,
     {
-        self.assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */))
+        let other: Optional<O2, Tick<L::Root>, Bounded> = other.into();
+        check_matching_location(&self.location.root(), other.location.outer());
+        let f = comb
+            .splice_fn2_borrow_mut_ctx_props(&self.location)
+            .0
+            .into();
+
+        let ordered = self
             .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
-            .reduce_watermark(other, comb)
+            .assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */));
+
+        KeyedSingleton::new(
+            ordered.location.clone(),
+            HydroNode::ReduceKeyedWatermark {
+                f,
+                input: Box::new(ordered.ir_node.into_inner()),
+                watermark: Box::new(other.ir_node.into_inner()),
+                metadata: ordered.location.new_node_metadata(KeyedSingleton::<
+                    K,
+                    V,
+                    L,
+                    B::WhenValueUnbounded,
+                >::collection_kind()),
+            },
+        )
     }
 
     /// Given a bounded stream of keys `K`, returns a new keyed stream containing only the groups
@@ -2375,6 +2045,8 @@ mod tests {
     use crate::location::Location;
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::nondet::nondet;
+    #[cfg(feature = "deploy")]
+    use crate::properties::ManualProof;
 
     #[cfg(feature = "deploy")]
     #[tokio::test]
@@ -2448,11 +2120,14 @@ mod tests {
             .source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
             .interleave(tick_triggered_input)
             .into_keyed()
-            .reduce_watermark_commutative(
+            .reduce_watermark(
                 watermark,
-                q!(|acc, v| {
-                    *acc += v;
-                }),
+                q!(
+                    |acc, v| {
+                        *acc += v;
+                    },
+                    commutative = ManualProof(/* integer addition is commutative */)
+                ),
             )
             .snapshot(&node_tick, nondet!(/** test */))
             .entries()
