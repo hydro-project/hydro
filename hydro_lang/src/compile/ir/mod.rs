@@ -993,10 +993,10 @@ impl HydroRoot {
         next_stmt_id: &mut usize,
     ) {
         self.emit_core::<D>(
-            &mut BuildersOrCallback::Builders::<
+            &mut BuildersOrCallback::<
                 fn(&mut HydroRoot, &mut usize),
                 fn(&mut HydroNode, &mut usize),
-            >(graph_builders),
+            >::Builders(graph_builders),
             built_tees,
             next_stmt_id,
         );

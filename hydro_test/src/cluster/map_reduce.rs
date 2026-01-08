@@ -53,7 +53,7 @@ mod tests {
     fn map_reduce_ir() {
         let builder = hydro_lang::compile::builder::FlowBuilder::new();
         let _ = super::map_reduce(&builder);
-        let built = builder.with_default_optimize::<HydroDeploy>();
+        let mut built = builder.with_default_optimize::<HydroDeploy>();
 
         hydro_build_utils::assert_debug_snapshot!(built.ir());
 

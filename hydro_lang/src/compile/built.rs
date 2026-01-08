@@ -1,4 +1,3 @@
-use std::cell::UnsafeCell;
 use std::collections::{BTreeMap, HashMap};
 use std::marker::PhantomData;
 
@@ -312,7 +311,7 @@ impl<'a> BuiltFlow<'a> {
         };
 
         DeployFlow {
-            ir: UnsafeCell::new(std::mem::take(&mut self.ir)),
+            ir: std::mem::take(&mut self.ir),
             processes,
             process_id_name: std::mem::take(&mut self.process_id_name),
             clusters,
@@ -370,10 +369,6 @@ impl<'a> BuiltFlow<'a> {
 
     pub fn compile<D: Deploy<'a>>(self) -> CompiledFlow<'a, D::GraphId> {
         self.into_deploy::<D>().compile()
-    }
-
-    pub fn compile_no_network<D: Deploy<'a>>(self) -> CompiledFlow<'a, D::GraphId> {
-        self.into_deploy::<D>().compile_no_network()
     }
 
     pub fn deploy<D: Deploy<'a>>(self, env: &mut D::InstantiateEnv) -> DeployResult<'a, D> {

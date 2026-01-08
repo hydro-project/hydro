@@ -78,7 +78,7 @@ mod tests {
         let client_aggregator = builder.process();
 
         create_two_pc(&coordinator, &participants, &clients, &client_aggregator);
-        let built = builder.with_default_optimize::<HydroDeploy>();
+        let mut built = builder.with_default_optimize::<HydroDeploy>();
 
         hydro_lang::compile::ir::dbg_dedup_tee(|| {
             hydro_build_utils::assert_debug_snapshot!(built.ir());

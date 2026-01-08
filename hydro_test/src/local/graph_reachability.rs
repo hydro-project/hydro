@@ -45,7 +45,7 @@ mod tests {
         let out = super::graph_reachability(roots, edges);
         let out_recv = out.send_bincode_external(&external);
 
-        let built = builder.with_default_optimize();
+        let mut built = builder.with_default_optimize();
 
         println!(
             "{}",

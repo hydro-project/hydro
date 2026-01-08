@@ -1,12 +1,14 @@
 use std::collections::BTreeMap;
 
 use dfir_lang::graph::DfirGraph;
+use syn::Stmt;
 
 use crate::location::Location;
 use crate::staging_util::Invariant;
 
 pub struct CompiledFlow<'a, ID> {
     pub(super) dfir: BTreeMap<usize, DfirGraph>,
+    pub(super) extra_stmts: BTreeMap<usize, Vec<Stmt>>,
     pub(super) _phantom: Invariant<'a, ID>,
 }
 
