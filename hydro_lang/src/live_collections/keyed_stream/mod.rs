@@ -1632,7 +1632,7 @@ impl<'a, K, V, L, B: Boundedness, O: Ordering> KeyedStream<K, V, L, B, O, Exactl
 where
     L: Location<'a>,
 {
-    /// Like [`Stream::fold_commutative`], aggregates the values in each group via the `comb` closure.
+    /// Like [`Stream::fold`], aggregates the values in each group via the `comb` closure.
     ///
     /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed.
     ///
@@ -1791,7 +1791,7 @@ impl<'a, K, V, L, B: Boundedness, R: Retries> KeyedStream<K, V, L, B, TotalOrder
 where
     L: Location<'a>,
 {
-    /// Like [`Stream::fold_idempotent`], aggregates the values in each group via the `comb` closure.
+    /// Like [`Stream::fold`], aggregates the values in each group via the `comb` closure.
     ///
     /// The `comb` closure must be **idempotent** as there may be non-deterministic duplicates.
     ///
@@ -1916,7 +1916,7 @@ impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, L, 
 where
     L: Location<'a>,
 {
-    /// Like [`Stream::fold_commutative_idempotent`], aggregates the values in each group via the `comb` closure.
+    /// Like [`Stream::fold`], aggregates the values in each group via the `comb` closure.
     ///
     /// The `comb` closure must be **commutative**, as the order of input items is not guaranteed, and **idempotent**,
     /// as there may be non-deterministic duplicates.

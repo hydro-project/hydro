@@ -840,11 +840,16 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
             }),
         )
     });
-    let a_log_snapshot = a_log.entries().fold_commutative(
+    let a_log_snapshot = a_log.entries().fold(
         q!(|| HashMap::new()),
-        q!(|map, (slot, entry)| {
-            map.insert(slot, entry);
-        }),
+        q!(
+            |map, (slot, entry)| {
+                map.insert(slot, entry);
+            },
+            commutative = ManualProof(
+                /* inserting elements into map is commutative because no keys will overlap */
+            )
+        ),
     );
 
     let a_to_proposers_p2b = p_to_acceptors_p2a_batch

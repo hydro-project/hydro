@@ -130,7 +130,7 @@ export default function Home() {
     .send(leader, TCP.bincode())
     // Stream<(MemberId<Worker>, usize), Process<Leader>, ..., NoOrder>
     .map(q!(|v| v.1)) // drop the ID
-    .fold_commutative(q!(0), q!(|acc, v| *acc += v))
+    .fold(q!(0), q!(|acc, v| *acc += v, commutative = ManualProof(...)))
 }`}
             </CodeBlock>
           </div>
