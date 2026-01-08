@@ -62,7 +62,7 @@ mod tests {
     fn compute_pi_ir() {
         let builder = hydro_lang::compile::builder::FlowBuilder::new();
         let _ = super::compute_pi(&builder, 8192);
-        let built = builder.with_default_optimize::<HydroDeploy>();
+        let mut built = builder.with_default_optimize::<HydroDeploy>();
 
         hydro_build_utils::assert_debug_snapshot!(built.ir());
 

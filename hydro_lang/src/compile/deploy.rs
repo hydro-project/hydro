@@ -1,4 +1,3 @@
-use std::cell::UnsafeCell;
 use std::collections::{BTreeMap, HashMap};
 use std::io::Error;
 use std::marker::PhantomData;
@@ -29,10 +28,7 @@ pub struct DeployFlow<'a, D>
 where
     D: Deploy<'a>,
 {
-    // We need to grab an `&mut` reference to the IR in `preview_compile` even though
-    // that function does not modify the IR. Using an `UnsafeCell` allows us to do this
-    // while still being able to lend out immutable references to the IR.
-    pub(super) ir: UnsafeCell<Vec<HydroRoot>>,
+    pub(super) ir: Vec<HydroRoot>,
 
     /// Deployed instances of each process in the flow
     pub(super) processes: HashMap<usize, D::Process>,
@@ -52,10 +48,7 @@ where
 
 impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     pub fn ir(&self) -> &Vec<HydroRoot> {
-        unsafe {
-            // SAFETY: even when we grab this as mutable in `preview_compile`, we do not modify it
-            &*self.ir.get()
-        }
+        &self.ir
     }
 
     pub fn with_process_id_name(
@@ -135,32 +128,29 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         self
     }
 
-    /// Compiles the flow into DFIR using placeholders for the network.
+    /// Compiles the flow into DFIR ([`DfirGraph`]) without networking.
     /// Useful for generating Mermaid diagrams of the DFIR.
-    pub fn preview_compile(&self) -> CompiledFlow<'a, ()> {
+    ///
+    /// (This returned DFIR will not compile due to the networking missing).
+    pub fn preview_compile(&mut self) -> CompiledFlow<'a, ()> {
+        // NOTE: `build_inner` does not actually mutate the IR, but `&mut` is required
+        // only because the shared traversal logic requires it
         CompiledFlow {
-            dfir: build_inner::<D>(unsafe {
-                // SAFETY: `build_inner` does not mutate the IR, &mut is required
-                // only because the shared traversal logic requires it
-                &mut *self.ir.get()
-            }),
-            _phantom: PhantomData,
-        }
-    }
-
-    pub fn compile_no_network(mut self) -> CompiledFlow<'a, D::GraphId> {
-        CompiledFlow {
-            dfir: build_inner::<D>(self.ir.get_mut()),
+            dfir: build_inner::<D>(&mut self.ir),
+            extra_stmts: BTreeMap::new(),
             _phantom: PhantomData,
         }
     }
 }
 
 impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
-    pub fn compile(mut self) -> CompiledFlow<'a, D::GraphId> {
+    /// Compiles the flow into DFIR ([`DfirGraph`]) including networking.
+    ///
+    /// (This does not compile the DFIR itself, instead use [`Self::deploy`] to compile & deploy the DFIR).
+    pub fn compile(&mut self) -> CompiledFlow<'a, D::GraphId> {
         let mut seen_tees: HashMap<_, _> = HashMap::new();
         let mut extra_stmts = BTreeMap::new();
-        self.ir.get_mut().iter_mut().for_each(|leaf| {
+        self.ir.iter_mut().for_each(|leaf| {
             leaf.compile_network::<D>(
                 &mut extra_stmts,
                 &mut seen_tees,
@@ -171,11 +161,13 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         });
 
         CompiledFlow {
-            dfir: build_inner::<D>(self.ir.get_mut()),
+            dfir: build_inner::<D>(&mut self.ir),
+            extra_stmts,
             _phantom: PhantomData,
         }
     }
 
+    /// Creates the variables for cluster IDs and adds them into `extra_stmts`.
     fn cluster_id_stmts(&self, extra_stmts: &mut BTreeMap<usize, Vec<syn::Stmt>>) {
         let mut all_clusters_sorted = self.clusters.keys().collect::<Vec<_>>();
         all_clusters_sorted.sort();
@@ -208,24 +200,23 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
             }
         }
     }
-}
 
-impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
+    /// Compiles and deploys the flow.
+    ///
+    /// Rough outline:
+    /// 1. Compiles the Hydro into DFIR.
+    /// 2. Instantiates nodes as configured.
+    /// 4. Compiles the corresponding DFIR into binaries for nodes as needed.
+    /// 5. Connects up networking as needed.
     #[must_use]
     pub fn deploy(mut self, env: &mut D::InstantiateEnv) -> DeployResult<'a, D> {
-        let mut seen_tees_instantiate: HashMap<_, _> = HashMap::new();
-        let mut extra_stmts = BTreeMap::new();
-        self.ir.get_mut().iter_mut().for_each(|leaf| {
-            leaf.compile_network::<D>(
-                &mut extra_stmts,
-                &mut seen_tees_instantiate,
-                &self.processes,
-                &self.clusters,
-                &self.externals,
-            );
-        });
+        let CompiledFlow {
+            dfir,
+            mut extra_stmts,
+            _phantom,
+        } = self.compile();
 
-        let mut compiled = build_inner::<D>(self.ir.get_mut());
+        let mut compiled = dfir;
         self.cluster_id_stmts(&mut extra_stmts);
         let mut meta = D::Meta::default();
 
@@ -289,7 +280,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         }
 
         let mut seen_tees_connect = HashMap::new();
-        self.ir.get_mut().iter_mut().for_each(|leaf| {
+        self.ir.iter_mut().for_each(|leaf| {
             leaf.connect_network(&mut seen_tees_connect);
         });
 

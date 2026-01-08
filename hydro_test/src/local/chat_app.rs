@@ -56,7 +56,7 @@ mod tests {
         let out = super::chat_app(users, messages, false, nondet!(/** test */));
         let out_recv = out.send_bincode_external(&external);
 
-        let built = builder.with_default_optimize();
+        let mut built = builder.with_default_optimize();
 
         hydro_build_utils::assert_snapshot!(
             built
@@ -121,7 +121,7 @@ mod tests {
         let out = super::chat_app(users, messages, true, nondet!(/** test */));
         let out_recv = out.send_bincode_external(&external);
 
-        let built = builder.with_default_optimize();
+        let mut built = builder.with_default_optimize();
 
         hydro_build_utils::assert_snapshot!(
             built

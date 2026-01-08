@@ -251,10 +251,6 @@ impl<'a> FlowBuilder<'a> {
         self.with_default_optimize::<D>().compile()
     }
 
-    pub fn compile_no_network<D: Deploy<'a>>(self) -> CompiledFlow<'a, D::GraphId> {
-        self.with_default_optimize::<D>().compile_no_network()
-    }
-
     pub fn deploy<D: Deploy<'a>>(self, env: &mut D::InstantiateEnv) -> DeployResult<'a, D> {
         self.with_default_optimize().deploy(env)
     }
