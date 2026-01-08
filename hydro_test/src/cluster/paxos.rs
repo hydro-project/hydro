@@ -589,7 +589,7 @@ pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
         .map(q!(|(_checkpoint, log)| log))
         .flatten_unordered() // Convert HashMap log back to stream
         .into_keyed()
-        .fold_commutative::<(usize, Option<LogValue<P>>), _, _>(q!(|| (0, None)), q!(|curr_entry, new_entry| {
+        .fold::<(usize, Option<LogValue<P>>), _, _, _, _>(q!(|| (0, None)), q!(|curr_entry, new_entry| {
             if let Some(curr_entry_payload) = &mut curr_entry.1 {
                 let same_values = new_entry.value == curr_entry_payload.value;
                 let higher_ballot = new_entry.ballot > curr_entry_payload.ballot;
@@ -609,7 +609,7 @@ pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
             } else {
                 *curr_entry = (1, Some(new_entry));
             }
-        }))
+        }, commutative = ManualProof(/* TODO */)))
         .map(q!(|(count, entry)| (count, entry.unwrap())));
     let p_log_to_try_commit = p_p1b_highest_entries_and_count
         .clone()
@@ -827,7 +827,7 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
             }
         ));
     let a_log = a_p2as_to_place_in_log.across_ticks(|s| {
-        s.into_keyed().reduce_watermark_commutative(
+        s.into_keyed().reduce_watermark(
             a_checkpoint.clone(),
             q!(|prev_entry, entry| {
                 // Insert p2a into the log if it has a higher ballot than what was there before
@@ -837,7 +837,7 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
                         value: entry.value,
                     };
                 }
-            }),
+            }, commutative = ManualProof(/* max by ballot (TODO: not if two entries with same ballot, need assume) */)),
         )
     });
     let a_log_snapshot = a_log.entries().fold(
