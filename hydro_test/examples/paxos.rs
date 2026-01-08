@@ -1,9 +1,20 @@
 use std::sync::Arc;
 
-use clap::Parser;
+use clap::{ArgAction, Parser};
+use hydro_deploy::gcp::GcpNetwork;
+use hydro_deploy::{AwsNetwork, Deployment, Host};
+use hydro_lang::deploy::TrybuildHost;
+use hydro_lang::viz::config::GraphConfig;
+use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
+
+type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version, about, long_about = None, group(
+    clap::ArgGroup::new("cloud")
+        .args(&["gcp", "aws"])
+        .multiple(false)
+))]
 struct Args {
     #[command(flatten)]
     graph: GraphConfig,
@@ -11,14 +22,11 @@ struct Args {
     /// Use GCP for deployment (provide project name)
     #[arg(long)]
     gcp: Option<String>,
-}
-use hydro_deploy::gcp::GcpNetwork;
-use hydro_deploy::{Deployment, Host};
-use hydro_lang::deploy::TrybuildHost;
-use hydro_lang::viz::config::GraphConfig;
-use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
 
-type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
+    /// Use AWS, make sure credentials are set up
+    #[arg(long, action = ArgAction::SetTrue)]
+    aws: bool,
+}
 
 #[tokio::main]
 async fn main() {
@@ -36,6 +44,19 @@ async fn main() {
                 .machine_type("n2-standard-4")
                 .image("debian-cloud/debian-11")
                 .region("us-central1-c")
+                .network(network.clone())
+                .add()
+        })
+    } else if args.aws {
+        let region = "us-east-1";
+        let network = AwsNetwork::new(region, None);
+
+        Box::new(move |deployment| -> Arc<dyn Host> {
+            deployment
+                .AwsEc2Host()
+                .region(region)
+                .instance_type("t3.micro")
+                .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
                 .network(network.clone())
                 .add()
         })
@@ -79,7 +100,11 @@ async fn main() {
         &replicas,
     );
 
-    let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
+    let rustflags = if args.gcp.is_some() || args.aws {
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment"
+    } else {
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
+    };
 
     let built = builder.finalize();
 

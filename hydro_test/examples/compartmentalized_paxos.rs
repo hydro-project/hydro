@@ -1,9 +1,17 @@
 use std::sync::Arc;
 
-use clap::Parser;
+use clap::{ArgAction, Parser};
+use hydro_deploy::gcp::GcpNetwork;
+use hydro_deploy::{AwsNetwork, Deployment, Host};
+use hydro_lang::deploy::TrybuildHost;
+use hydro_lang::viz::config::GraphConfig;
 
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version, about, long_about = None, group(
+    clap::ArgGroup::new("cloud")
+        .args(&["gcp", "aws"])
+        .multiple(false)
+))]
 struct Args {
     #[command(flatten)]
     graph: GraphConfig,
@@ -11,11 +19,11 @@ struct Args {
     /// Use GCP for deployment (provide project name)
     #[arg(long)]
     gcp: Option<String>,
+
+    /// Use AWS, make sure credentials are set up
+    #[arg(long, action = ArgAction::SetTrue)]
+    aws: bool,
 }
-use hydro_deploy::gcp::GcpNetwork;
-use hydro_deploy::{Deployment, Host};
-use hydro_lang::deploy::TrybuildHost;
-use hydro_lang::viz::config::GraphConfig;
 use hydro_test::cluster::compartmentalized_paxos::{
     CompartmentalizedPaxosConfig, CoreCompartmentalizedPaxos,
 };
@@ -39,6 +47,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .machine_type("n2-highcpu-2")
                 .image("debian-cloud/debian-11")
                 .region("us-west1-a")
+                .network(network.clone())
+                .add()
+        })
+    } else if args.aws {
+        let region = "us-east-1";
+        let network = AwsNetwork::new(region, None);
+
+        Box::new(move |deployment| -> Arc<dyn Host> {
+            deployment
+                .AwsEc2Host()
+                .region(region)
+                .instance_type("t3.micro")
+                .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
                 .network(network.clone())
                 .add()
         })
@@ -97,7 +118,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         &replicas,
     );
 
-    let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
+    let rustflags = if args.gcp.is_some() || args.aws {
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment"
+    } else {
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
+    };
 
     // Build and optimize first, then extract IR with proper location assignments
     let built = builder.finalize();
