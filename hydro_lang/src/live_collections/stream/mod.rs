@@ -974,7 +974,10 @@ where
 
     // only for internal APIs that have been carefully vetted to ensure that the non-determinism
     // is not observable
-    fn assume_ordering_trusted<O2: Ordering>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
+    pub(crate) fn assume_ordering_trusted<O2: Ordering>(
+        self,
+        _nondet: NonDet,
+    ) -> Stream<T, L, B, O2, R> {
         if O::ORDERING_KIND == O2::ORDERING_KIND {
             Stream::new(self.location, self.ir_node.into_inner())
         } else if O2::ORDERING_KIND == StreamOrder::NoOrder {

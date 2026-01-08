@@ -830,7 +830,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
         K: Ord,
     {
         self.entries()
-            .assume_ordering(nondet!(
+            .assume_ordering_trusted(nondet!(
                 /// There is only one element associated with each key, and the keys are totallly
                 /// ordered so we will produce a deterministic value. The closure technically
                 /// isn't commutative in the case where both passed entries have the same key
