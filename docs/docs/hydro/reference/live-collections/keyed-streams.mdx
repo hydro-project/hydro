@@ -142,7 +142,7 @@ purchases.fold(q!(|| 0), q!(|acc, amount| *acc += amount))
 
 <KeyedStreamFoldAnimation />
 
-Keyed streams support different fold variants based on ordering and retry guarantees. The basic `fold` requires `TotalOrder` within groups for order-dependent aggregation, while `fold_commutative` works with `NoOrder` and requires commutative operations. For handling potential duplicates, `fold_idempotent` requires idempotent operations, and `fold_commutative_idempotent` is the most flexible, handling both unordered and duplicate messages:
+Like with streams, operators like `fold` or `reduce` on keyed streams may require property annotations for commutativity or idempotence depending on the upstream guarantees:
 
 ```rust
 # use hydro_lang::prelude::*;
@@ -150,17 +150,25 @@ Keyed streams support different fold variants based on ordering and retry guaran
 # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
 let tick = process.tick();
 
-let health_checks = process.source_iter(q!(vec![
-    ("server1", false),
-    ("server2", false),
-    ("server1", true), // had failure
-])).into_keyed();
+let health_checks =
+# process.source_iter(q!(vec![
+#     ("server1", false),
+#     ("server2", false),
+#     ("server1", true), // had failure
+# ])).into_keyed().weakest_ordering().weakest_retries();
+// ("server1", false)
+// ("server2", false)
+// ("server1", true) (had failure)
 
 // Detect a failure (commutative and idempotent)
 # let out =
-health_checks.fold_commutative_idempotent(
+health_checks.fold(
     q!(|| false), 
-    q!(|acc, check| *acc |= check)
+    q!(
+        |acc, check| *acc |= check,
+        commutative = ManualProof(/* bool or is commutative */),
+        idempotent = ManualProof(/* bool or is idempotent */)
+    )
 )
 # ;
 # out.snapshot(&process.tick(), nondet!(/** test */)).entries().all_ticks().map(q!(|(k, v)| (k.to_string(), v)))
