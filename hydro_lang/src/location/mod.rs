@@ -30,7 +30,7 @@ use crate::compile::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRo
 use crate::forward_handle::ForwardRef;
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ForwardHandle};
-use crate::live_collections::boundedness::Unbounded;
+use crate::live_collections::boundedness::{Bounded, Unbounded};
 use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::singleton::Singleton;
 use crate::live_collections::stream::{
@@ -170,26 +170,20 @@ pub trait Location<'a>: dynamic::DynLocation {
     fn source_iter<T, E>(
         &self,
         e: impl QuotedWithContext<'a, E, Self>,
-    ) -> Stream<T, Self, Unbounded, TotalOrder, ExactlyOnce>
+    ) -> Stream<T, Self, Bounded, TotalOrder, ExactlyOnce>
     where
         E: IntoIterator<Item = T>,
         Self: Sized + NoTick,
     {
-        // TODO(shadaj): we mark this as unbounded because we do not yet have a representation
-        // for bounded top-level streams, and this is the only way to generate one
         let e = e.splice_typed_ctx(self);
 
         Stream::new(
             self.clone(),
             HydroNode::Source {
                 source: HydroSource::Iter(e.into()),
-                metadata: self.new_node_metadata(Stream::<
-                    T,
-                    Self,
-                    Unbounded,
-                    TotalOrder,
-                    ExactlyOnce,
-                >::collection_kind()),
+                metadata: self.new_node_metadata(
+                    Stream::<T, Self, Bounded, TotalOrder, ExactlyOnce>::collection_kind(),
+                ),
             },
         )
     }
@@ -231,7 +225,7 @@ pub trait Location<'a>: dynamic::DynLocation {
         let (port, stream, sink) =
             self.bind_single_client::<_, Bytes, LengthDelimitedCodec>(from, NetworkHint::Auto);
 
-        sink.complete(self.source_iter(q!([])));
+        sink.complete(self.source_stream(q!(tokio_stream::empty())));
 
         (port, stream)
     }
@@ -249,7 +243,7 @@ pub trait Location<'a>: dynamic::DynLocation {
         T: Serialize + DeserializeOwned,
     {
         let (port, stream, sink) = self.bind_single_client_bincode::<_, T, ()>(from);
-        sink.complete(self.source_iter(q!([])));
+        sink.complete(self.source_stream(q!(tokio_stream::empty())));
 
         (
             ExternalBincodeSink {
@@ -955,7 +949,11 @@ mod tests {
         let (in_port, input, _membership, complete_sink) =
             first_node.bidi_external_many_bincode(&external);
         let out = input.entries().send_bincode_external(&external);
-        complete_sink.complete(first_node.source_iter::<(u64, ()), _>(q!([])).into_keyed());
+        complete_sink.complete(
+            first_node
+                .source_stream::<(u64, ()), _>(q!(tokio_stream::empty()))
+                .into_keyed(),
+        );
 
         let nodes = flow
             .with_process(&first_node, deployment.Localhost())
@@ -990,7 +988,11 @@ mod tests {
         let (in_port, input, _membership, complete_sink) =
             first_node.bidi_external_many_bincode(&external);
         let out = input.entries().send_bincode_external(&external);
-        complete_sink.complete(first_node.source_iter::<(u64, ()), _>(q!([])).into_keyed());
+        complete_sink.complete(
+            first_node
+                .source_stream::<(u64, ()), _>(q!(tokio_stream::empty()))
+                .into_keyed(),
+        );
 
         let nodes = flow
             .with_process(&first_node, deployment.Localhost())
@@ -1022,7 +1024,11 @@ mod tests {
         let (in_port, input, _membership, complete_sink) = first_node
             .bidi_external_many_bytes::<_, _, LengthDelimitedCodec>(&external, NetworkHint::Auto);
         let out = input.entries().send_bincode_external(&external);
-        complete_sink.complete(first_node.source_iter(q!([])).into_keyed());
+        complete_sink.complete(
+            first_node
+                .source_stream(q!(tokio_stream::empty()))
+                .into_keyed(),
+        );
 
         let nodes = flow
             .with_process(&first_node, deployment.Localhost())

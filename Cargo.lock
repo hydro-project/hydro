@@ -2376,6 +2376,7 @@ dependencies = [
  "stageleft",
  "stageleft_tool",
  "tokio",
+ "tokio-stream",
  "tokio-test",
  "tracing-subscriber",
 ]

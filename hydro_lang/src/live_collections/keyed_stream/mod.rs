@@ -2061,7 +2061,12 @@ mod tests {
         let watermark = node_tick.singleton(q!(1));
 
         let sum = node
-            .source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
+            .source_stream(q!(tokio_stream::iter([
+                (0, 100),
+                (1, 101),
+                (2, 102),
+                (2, 102)
+            ])))
             .into_keyed()
             .reduce_watermark(
                 watermark,
@@ -2072,6 +2077,44 @@ mod tests {
             .snapshot(&node_tick, nondet!(/** test */))
             .entries()
             .all_ticks()
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut out = nodes.connect(sum).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(out.next().await.unwrap(), (2, 204));
+    }
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn reduce_watermark_bounded() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let node_tick = node.tick();
+        let watermark = node_tick.singleton(q!(1));
+
+        let sum = node
+            .source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
+            .into_keyed()
+            .reduce_watermark(
+                watermark,
+                q!(|acc, v| {
+                    *acc += v;
+                }),
+            )
+            .entries()
             .send_bincode_external(&external);
 
         let nodes = flow
@@ -2117,7 +2160,12 @@ mod tests {
             .all_ticks();
 
         let sum = node
-            .source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
+            .source_stream(q!(tokio_stream::iter([
+                (0, 100),
+                (1, 101),
+                (2, 102),
+                (2, 102)
+            ])))
             .interleave(tick_triggered_input)
             .into_keyed()
             .reduce_watermark(

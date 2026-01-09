@@ -10,7 +10,7 @@ pub fn partition<'a, F: Fn((MemberId<()>, String)) -> (MemberId<()>, String) + '
     dist_policy: impl IntoQuotedMut<'a, F, Cluster<'a, ()>>,
 ) -> (Cluster<'a, ()>, Cluster<'a, ()>) {
     cluster1
-        .source_iter(q!(vec!(CLUSTER_SELF_ID)))
+        .source_stream(q!(tokio_stream::iter(vec!(CLUSTER_SELF_ID))))
         .map(q!(move |id| (id.clone(), format!("Hello from {}", id))))
         .send_partitioned(&cluster2, dist_policy)
         .assume_ordering(nondet!(/** testing, order does not matter */))
@@ -50,7 +50,7 @@ pub fn simple_cluster<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, ()>, Cluster<'
     let process = flow.process();
     let cluster = flow.cluster();
 
-    let numbers = process.source_iter(q!(0..5));
+    let numbers = process.source_stream(q!(tokio_stream::iter(0..5)));
     let ids = process
         .source_cluster_members(&cluster)
         .entries()
