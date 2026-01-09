@@ -20,6 +20,7 @@ pub struct BuiltFlow<'a> {
     pub(super) process_id_name: Vec<(usize, String)>,
     pub(super) cluster_id_name: Vec<(usize, String)>,
     pub(super) external_id_name: Vec<(usize, String)>,
+    pub(super) next_location_id: usize,
 
     pub(super) _phantom: Invariant<'a>,
 }
@@ -206,6 +207,7 @@ impl<'a> BuiltFlow<'a> {
             process_id_name: std::mem::take(&mut self.process_id_name),
             cluster_id_name: std::mem::take(&mut self.cluster_id_name),
             external_id_name: std::mem::take(&mut self.external_id_name),
+            next_location_id: self.next_location_id,
             _phantom: PhantomData,
         }
     }
