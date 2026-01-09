@@ -678,6 +678,7 @@ where
         check_matching_location(&self.location, &other.location);
 
         if L::is_top_level()
+            && !B::BOUNDED // only if unbounded we need to use a tick
             && let Some(tick) = self.location.try_tick()
         {
             let out = or_inside_tick(
