@@ -414,19 +414,37 @@ impl DfirBuilder for BTreeMap<usize, FlatGraphBuilder> {
         &mut self,
         in_ident: syn::Ident,
         in_location: &LocationId,
-        _in_kind: &CollectionKind,
+        in_kind: &CollectionKind,
         out_ident: &syn::Ident,
         _out_location: &LocationId,
         _op_meta: &HydroIrOpMetadata,
     ) {
         let builder = self.get_dfir_mut(in_location.root());
-        builder.add_dfir(
-            parse_quote! {
-                #out_ident = #in_ident;
-            },
-            None,
-            None,
-        );
+        if in_kind.is_bounded()
+            && matches!(
+                in_kind,
+                CollectionKind::Singleton { .. }
+                    | CollectionKind::Optional { .. }
+                    | CollectionKind::KeyedSingleton { .. }
+            )
+        {
+            assert!(in_location.is_top_level());
+            builder.add_dfir(
+                parse_quote! {
+                    #out_ident = #in_ident -> persist::<'static>();
+                },
+                None,
+                None,
+            );
+        } else {
+            builder.add_dfir(
+                parse_quote! {
+                    #out_ident = #in_ident;
+                },
+                None,
+                None,
+            );
+        }
     }
 
     fn yield_from_tick(
@@ -1359,6 +1377,30 @@ pub enum CollectionKind {
         key_type: DebugType,
         value_type: DebugType,
     },
+}
+
+impl CollectionKind {
+    pub fn is_bounded(&self) -> bool {
+        matches!(
+            self,
+            CollectionKind::Stream {
+                bound: BoundKind::Bounded,
+                ..
+            } | CollectionKind::Singleton {
+                bound: BoundKind::Bounded,
+                ..
+            } | CollectionKind::Optional {
+                bound: BoundKind::Bounded,
+                ..
+            } | CollectionKind::KeyedStream {
+                bound: BoundKind::Bounded,
+                ..
+            } | CollectionKind::KeyedSingleton {
+                bound: KeyedSingletonBoundKind::Bounded,
+                ..
+            }
+        )
+    }
 }
 
 #[derive(Clone)]
@@ -2312,10 +2354,9 @@ impl HydroNode {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let should_replay = !graph_builders.singleton_intermediates();
                         let builder = graph_builders.get_dfir_mut(&out_location);
 
-                        if should_replay || !metadata.location_kind.is_top_level() {
+                        if !metadata.location_kind.is_top_level() {
                             builder.add_dfir(
                                 parse_quote! {
                                     #source_ident = source_iter([#value]) -> persist::<'static>();
@@ -2488,15 +2529,30 @@ impl HydroNode {
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
                         let builder = graph_builders.get_dfir_mut(&out_location);
-                        builder.add_dfir(
-                            parse_quote! {
-                                #cross_ident = cross_singleton();
-                                #left_ident -> [input]#cross_ident;
-                                #right_ident -> [single]#cross_ident;
-                            },
-                            None,
-                            Some(&next_stmt_id.to_string()),
-                        );
+
+                        if right.metadata().location_kind.is_top_level()
+                            && right.metadata().collection_kind.is_bounded()
+                        {
+                            builder.add_dfir(
+                                parse_quote! {
+                                    #cross_ident = cross_singleton();
+                                    #left_ident -> [input]#cross_ident;
+                                    #right_ident -> persist::<'static>() -> [single]#cross_ident;
+                                },
+                                None,
+                                Some(&next_stmt_id.to_string()),
+                            );
+                        } else {
+                            builder.add_dfir(
+                                parse_quote! {
+                                    #cross_ident = cross_singleton();
+                                    #left_ident -> [input]#cross_ident;
+                                    #right_ident -> [single]#cross_ident;
+                                },
+                                None,
+                                Some(&next_stmt_id.to_string()),
+                            );
+                        }
                     }
                     BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
@@ -2946,12 +3002,26 @@ impl HydroNode {
             }
 
             HydroNode::Fold { .. } | HydroNode::FoldKeyed { .. } | HydroNode::Scan { .. } => {
-                let operator: syn::Ident = if matches!(self, HydroNode::Fold { .. }) {
-                    parse_quote!(fold)
+                let operator: syn::Ident = if let HydroNode::Fold { input, .. } = self {
+                    if input.metadata().location_kind.is_top_level()
+                        && input.metadata().collection_kind.is_bounded()
+                    {
+                        parse_quote!(fold_no_replay)
+                    } else {
+                        parse_quote!(fold)
+                    }
                 } else if matches!(self, HydroNode::Scan { .. }) {
                     parse_quote!(scan)
+                } else if let HydroNode::FoldKeyed { input, .. } = self {
+                    if input.metadata().location_kind.is_top_level()
+                        && input.metadata().collection_kind.is_bounded()
+                    {
+                        todo!()
+                    } else {
+                        parse_quote!(fold_keyed)
+                    }
                 } else {
-                    parse_quote!(fold_keyed)
+                    unreachable!()
                 };
 
                 let (HydroNode::Fold { input, .. }
@@ -2986,6 +3056,7 @@ impl HydroNode {
                             && self.metadata().location_kind.is_top_level()
                             && !(matches!(self.metadata().location_kind, LocationId::Atomic(_)))
                             && graph_builders.singleton_intermediates()
+                            && !self.metadata().collection_kind.is_bounded()
                         {
                             let builder = graph_builders.get_dfir_mut(&out_location);
 
@@ -3010,6 +3081,7 @@ impl HydroNode {
                             && self.metadata().location_kind.is_top_level()
                             && !(matches!(self.metadata().location_kind, LocationId::Atomic(_)))
                             && graph_builders.singleton_intermediates()
+                            && !self.metadata().collection_kind.is_bounded()
                         {
                             let builder = graph_builders.get_dfir_mut(&out_location);
 
@@ -3056,10 +3128,24 @@ impl HydroNode {
             }
 
             HydroNode::Reduce { .. } | HydroNode::ReduceKeyed { .. } => {
-                let operator: syn::Ident = if matches!(self, HydroNode::Reduce { .. }) {
-                    parse_quote!(reduce)
+                let operator: syn::Ident = if let HydroNode::Reduce { input, .. } = self {
+                    if input.metadata().location_kind.is_top_level()
+                        && input.metadata().collection_kind.is_bounded()
+                    {
+                        todo!()
+                    } else {
+                        parse_quote!(reduce)
+                    }
+                } else if let HydroNode::ReduceKeyed { input, .. } = self {
+                    if input.metadata().location_kind.is_top_level()
+                        && input.metadata().collection_kind.is_bounded()
+                    {
+                        todo!()
+                    } else {
+                        parse_quote!(reduce_keyed)
+                    }
                 } else {
-                    parse_quote!(reduce_keyed)
+                    unreachable!()
                 };
 
                 let (HydroNode::Reduce { input, .. } | HydroNode::ReduceKeyed { input, .. }) = self
@@ -3090,6 +3176,7 @@ impl HydroNode {
                             && self.metadata().location_kind.is_top_level()
                             && !(matches!(self.metadata().location_kind, LocationId::Atomic(_)))
                             && graph_builders.singleton_intermediates()
+                            && !self.metadata().collection_kind.is_bounded()
                         {
                             todo!(
                                 "Reduce with optional intermediates is not yet supported in simulator"
@@ -3098,6 +3185,7 @@ impl HydroNode {
                             && self.metadata().location_kind.is_top_level()
                             && !(matches!(self.metadata().location_kind, LocationId::Atomic(_)))
                             && graph_builders.singleton_intermediates()
+                            && !self.metadata().collection_kind.is_bounded()
                         {
                             todo!();
                         } else {
@@ -3125,6 +3213,7 @@ impl HydroNode {
                 f,
                 input,
                 watermark,
+                metadata,
                 ..
             } => {
                 let (input, lifetime) = if input.metadata().location_kind.is_top_level() {
@@ -3147,58 +3236,74 @@ impl HydroNode {
                 let fold_ident =
                     syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
 
+                let agg_operator: syn::Ident = if input.metadata().location_kind.is_top_level()
+                    && input.metadata().collection_kind.is_bounded()
+                {
+                    parse_quote!(fold_no_replay)
+                } else {
+                    parse_quote!(fold)
+                };
+
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
-                        let builder = graph_builders.get_dfir_mut(&out_location);
-                        // 1. Don't allow any values to be added to the map if the key <=the watermark
-                        // 2. If the entry didn't exist in the BTreeMap, add it. Otherwise, call f.
-                        //    If the watermark changed, delete all BTreeMap entries with a key < the watermark.
-                        // 3. Convert the BTreeMap back into a stream of (k, v)
-                        builder.add_dfir(
-                            parse_quote! {
-                                #chain_ident = chain();
-                                #input_ident
-                                    -> map(|x| (Some(x), None))
-                                    -> [0]#chain_ident;
-                                #watermark_ident
-                                    -> map(|watermark| (None, Some(watermark)))
-                                    -> [1]#chain_ident;
+                        if metadata.location_kind.is_top_level()
+                            && !(matches!(metadata.location_kind, LocationId::Atomic(_)))
+                            && graph_builders.singleton_intermediates()
+                            && !metadata.collection_kind.is_bounded()
+                        {
+                            todo!()
+                        } else {
+                            let builder = graph_builders.get_dfir_mut(&out_location);
+                            // 1. Don't allow any values to be added to the map if the key <=the watermark
+                            // 2. If the entry didn't exist in the BTreeMap, add it. Otherwise, call f.
+                            //    If the watermark changed, delete all BTreeMap entries with a key < the watermark.
+                            // 3. Convert the BTreeMap back into a stream of (k, v)
+                            builder.add_dfir(
+                                parse_quote! {
+                                    #chain_ident = chain();
+                                    #input_ident
+                                        -> map(|x| (Some(x), None))
+                                        -> [0]#chain_ident;
+                                    #watermark_ident
+                                        -> map(|watermark| (None, Some(watermark)))
+                                        -> [1]#chain_ident;
 
-                                #fold_ident = #chain_ident
-                                    -> fold::<#lifetime>(|| (::std::collections::HashMap::new(), None), {
-                                        let __reduce_keyed_fn = #f;
-                                        move |(map, opt_curr_watermark), (opt_payload, opt_watermark)| {
-                                            if let Some((k, v)) = opt_payload {
-                                                if let Some(curr_watermark) = *opt_curr_watermark {
-                                                    if k <= curr_watermark {
-                                                        return;
+                                    #fold_ident = #chain_ident
+                                        -> #agg_operator::<#lifetime>(|| (::std::collections::HashMap::new(), None), {
+                                            let __reduce_keyed_fn = #f;
+                                            move |(map, opt_curr_watermark), (opt_payload, opt_watermark)| {
+                                                if let Some((k, v)) = opt_payload {
+                                                    if let Some(curr_watermark) = *opt_curr_watermark {
+                                                        if k <= curr_watermark {
+                                                            return;
+                                                        }
                                                     }
+                                                    match map.entry(k) {
+                                                        ::std::collections::hash_map::Entry::Vacant(e) => {
+                                                            e.insert(v);
+                                                        }
+                                                        ::std::collections::hash_map::Entry::Occupied(mut e) => {
+                                                            __reduce_keyed_fn(e.get_mut(), v);
+                                                        }
+                                                    }
+                                                } else {
+                                                    let watermark = opt_watermark.unwrap();
+                                                    if let Some(curr_watermark) = *opt_curr_watermark {
+                                                        if watermark <= curr_watermark {
+                                                            return;
+                                                        }
+                                                    }
+                                                    *opt_curr_watermark = opt_watermark;
+                                                    map.retain(|k, _| *k > watermark);
                                                 }
-                                                match map.entry(k) {
-                                                    ::std::collections::hash_map::Entry::Vacant(e) => {
-                                                        e.insert(v);
-                                                    }
-                                                    ::std::collections::hash_map::Entry::Occupied(mut e) => {
-                                                        __reduce_keyed_fn(e.get_mut(), v);
-                                                    }
-                                                }
-                                            } else {
-                                                let watermark = opt_watermark.unwrap();
-                                                if let Some(curr_watermark) = *opt_curr_watermark {
-                                                    if watermark <= curr_watermark {
-                                                        return;
-                                                    }
-                                                }
-                                                *opt_curr_watermark = opt_watermark;
-                                                map.retain(|k, _| *k > watermark);
                                             }
-                                        }
-                                    })
-                                    -> flat_map(|(map, _curr_watermark)| map);
-                            },
-                            None,
-                            Some(&next_stmt_id.to_string()),
-                        );
+                                        })
+                                        -> flat_map(|(map, _curr_watermark)| map);
+                                },
+                                None,
+                                Some(&next_stmt_id.to_string()),
+                            );
+                        }
                     }
                     BuildersOrCallback::Callback(_, node_callback) => {
                         node_callback(self, next_stmt_id);
