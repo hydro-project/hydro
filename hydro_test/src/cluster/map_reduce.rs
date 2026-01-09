@@ -31,9 +31,10 @@ pub fn map_reduce<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, Leader>, Cluster<'
         .send(&process, TCP.bincode())
         .values();
 
-    let reduced = batches
-        .into_keyed()
-        .reduce_commutative(q!(|total, count| *total += count));
+    let reduced = batches.into_keyed().reduce(q!(
+        |total, count| *total += count,
+        commutative = ManualProof(/* integer add is commutative */)
+    ));
 
     reduced
         .snapshot(&process.tick(), nondet!(/** intentional output */))

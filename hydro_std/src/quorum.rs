@@ -31,7 +31,7 @@ pub fn collect_quorum_with_response<
 
         let current_responses = not_all.chain(new_inputs);
 
-        let count_per_key = current_responses.clone().into_keyed().fold_commutative(
+        let count_per_key = current_responses.clone().into_keyed().fold(
             q!(move || (0, 0)),
             q!(move |accum, value| {
                 if value.is_ok() {
@@ -39,7 +39,7 @@ pub fn collect_quorum_with_response<
                 } else {
                     accum.1 += 1;
                 }
-            }),
+            }, commutative = ManualProof(/* increment counters is commutative */)),
         );
 
          let not_reached_min_count = count_per_key
@@ -113,7 +113,7 @@ pub fn collect_quorum<
 
         let current_responses = not_all.chain(new_inputs);
 
-        let count_per_key = current_responses.clone().into_keyed().fold_commutative(
+        let count_per_key = current_responses.clone().into_keyed().fold(
             q!(move || (0, 0)),
             q!(move |accum, value| {
                 if value.is_ok() {
@@ -121,7 +121,7 @@ pub fn collect_quorum<
                 } else {
                     accum.1 += 1;
                 }
-            }),
+            }, commutative = ManualProof(/* increment counters is commutative */)),
         );
 
         let reached_min_count = count_per_key

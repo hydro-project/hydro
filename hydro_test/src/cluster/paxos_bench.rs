@@ -56,11 +56,14 @@ pub fn paxos_bench<'a>(
         let a_checkpoint = {
             let a_checkpoint_largest_seqs = replica_checkpoint
                 .broadcast(&acceptors, TCP.bincode(), nondet!(/** TODO */))
-                .reduce_commutative(q!(|curr_seq, seq| {
-                    if seq > *curr_seq {
-                        *curr_seq = seq;
-                    }
-                }));
+                .reduce(q!(
+                    |curr_seq, seq| {
+                        if seq > *curr_seq {
+                            *curr_seq = seq;
+                        }
+                    },
+                    commutative = ManualProof(/* max is commutative */)
+                ));
 
             sliced! {
                 let snapshot = use(a_checkpoint_largest_seqs, nondet!(

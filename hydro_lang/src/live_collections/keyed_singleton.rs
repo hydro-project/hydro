@@ -27,6 +27,7 @@ use crate::location::tick::DeferTick;
 use crate::location::{Atomic, Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
+use crate::properties::ManualProof;
 
 /// A marker trait indicating which components of a [`KeyedSingleton`] may change.
 ///
@@ -829,22 +830,23 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
         K: Ord,
     {
         self.entries()
-            .assume_ordering(nondet!(
+            .assume_ordering_trusted(nondet!(
                 /// There is only one element associated with each key, and the keys are totallly
-                /// ordered so we will produce a deterministic value. We can't call
-                /// `reduce_commutative_idempotent` because the closure technically isn't commutative
-                /// in the case where both passed entries have the same key but different values.
+                /// ordered so we will produce a deterministic value. The closure technically
+                /// isn't commutative in the case where both passed entries have the same key
+                /// but different values.
                 ///
                 /// In the future, we may want to have an `assume!(...)` statement in the UDF that
                 /// the two inputs do not have the same key.
             ))
-            .reduce_idempotent(q!({
+            .reduce(q!(
                 move |curr, new| {
                     if new.0 > curr.0 {
                         *curr = new;
                     }
-                }
-            }))
+                },
+                idempotent = ManualProof(/* repeated elements are ignored */)
+            ))
     }
 
     /// Converts this keyed singleton into a [`KeyedStream`] with each group having a single

@@ -85,7 +85,7 @@ pub fn http_counter_server<'a, P>(
         .values()
         .map(q!(|key| (key, ())))
         .into_keyed()
-        .fold_commutative(q!(|| 0i32), q!(|acc, _| *acc += 1));
+        .value_counts();
 
     let lookup_result = sliced! {
         let batch_get_requests = use(get_stream, nondet!(/** batch get requests */));
