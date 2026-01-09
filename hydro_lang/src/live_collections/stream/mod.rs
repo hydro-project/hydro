@@ -178,20 +178,6 @@ pub struct Stream<
     _phantom: PhantomData<(Type, Loc, Bound, Order, Retry)>,
 }
 
-impl<'a, T, L, O: Ordering, R: Retries> From<Stream<T, L, Bounded, O, R>>
-    for Stream<T, L, Unbounded, O, R>
-where
-    L: Location<'a>,
-{
-    fn from(stream: Stream<T, L, Bounded, O, R>) -> Stream<T, L, Unbounded, O, R> {
-        Stream {
-            location: stream.location,
-            ir_node: stream.ir_node,
-            _phantom: PhantomData,
-        }
-    }
-}
-
 impl<'a, T, L, B: Boundedness, R: Retries> From<Stream<T, L, B, TotalOrder, R>>
     for Stream<T, L, B, NoOrder, R>
 where
@@ -1746,10 +1732,10 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn chain<O2: Ordering, R2: Retries>(
+    pub fn chain<O2: Ordering, R2: Retries, B2: Boundedness>(
         self,
-        other: Stream<T, L, Bounded, O2, R2>,
-    ) -> Stream<T, L, Bounded, <O as MinOrder<O2>>::Min, <R as MinRetries<R2>>::Min>
+        other: Stream<T, L, B2, O2, R2>,
+    ) -> Stream<T, L, B2, <O as MinOrder<O2>>::Min, <R as MinRetries<R2>>::Min>
     where
         O: MinOrder<O2>,
         R: MinRetries<R2>,
@@ -1764,7 +1750,7 @@ where
                 metadata: self.location.new_node_metadata(Stream::<
                     T,
                     L,
-                    Bounded,
+                    B2,
                     <O as MinOrder<O2>>::Min,
                     <R as MinRetries<R2>>::Min,
                 >::collection_kind()),
@@ -2222,14 +2208,14 @@ where
     /// #   },
     /// # ));
     /// # }
-    pub fn resolve_futures(self) -> Stream<T, L, B, NoOrder, R> {
+    pub fn resolve_futures(self) -> Stream<T, L, Unbounded, NoOrder, R> {
         Stream::new(
             self.location.clone(),
             HydroNode::ResolveFutures {
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: self
                     .location
-                    .new_node_metadata(Stream::<T, L, B, NoOrder, R>::collection_kind()),
+                    .new_node_metadata(Stream::<T, L, Unbounded, NoOrder, R>::collection_kind()),
             },
         )
     }
@@ -2264,14 +2250,14 @@ where
     /// #   },
     /// # ));
     /// # }
-    pub fn resolve_futures_ordered(self) -> Stream<T, L, B, O, R> {
+    pub fn resolve_futures_ordered(self) -> Stream<T, L, Unbounded, O, R> {
         Stream::new(
             self.location.clone(),
             HydroNode::ResolveFuturesOrdered {
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: self
                     .location
-                    .new_node_metadata(Stream::<T, L, B, O, R>::collection_kind()),
+                    .new_node_metadata(Stream::<T, L, Unbounded, O, R>::collection_kind()),
             },
         )
     }
@@ -2590,6 +2576,44 @@ mod tests {
 
         external_in.send(2).await.unwrap();
         assert_eq!(external_out.next().await.unwrap(), 3);
+    }
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn top_level_bounded_cross_singleton() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_port, input) =
+            node.source_external_bincode::<_, _, TotalOrder, ExactlyOnce>(&external);
+
+        let out = input
+            .cross_singleton(
+                node.source_iter(q!(vec![1, 2, 3]))
+                    .fold(q!(|| 0), q!(|acc, v| *acc += v)),
+            )
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect(input_port).await;
+        let mut external_out = nodes.connect(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in.send(1).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), (1, 6));
+
+        external_in.send(2).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), (2, 6));
     }
 
     #[cfg(feature = "deploy")]
