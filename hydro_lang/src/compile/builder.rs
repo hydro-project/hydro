@@ -102,7 +102,7 @@ impl<'a> FlowBuilder<'a> {
         }
     }
 
-    pub fn rewritten_ir_builder<'b>(built: super::built::BuiltFlow) -> RewriteIrFlowBuilder<'b> {
+    pub fn rewritten_ir_builder<'b>(built: &super::built::BuiltFlow) -> RewriteIrFlowBuilder<'b> {
         RewriteIrFlowBuilder {
             builder: FlowBuilder {
                 flow_state: Rc::new(RefCell::new(FlowStateInner {
