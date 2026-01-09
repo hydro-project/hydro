@@ -102,25 +102,6 @@ impl<'a> FlowBuilder<'a> {
         }
     }
 
-    pub fn rewritten_ir_builder<'b>(built: &super::built::BuiltFlow) -> RewriteIrFlowBuilder<'b> {
-        RewriteIrFlowBuilder {
-            builder: FlowBuilder {
-                flow_state: Rc::new(RefCell::new(FlowStateInner {
-                    roots: None,
-                    next_external_out: 0,
-                    cycle_counts: 0,
-                    next_clock_id: 0,
-                })),
-                processes: RefCell::new(built.process_id_name.clone()),
-                clusters: RefCell::new(built.cluster_id_name.clone()),
-                externals: RefCell::new(built.external_id_name.clone()),
-                next_location_id: RefCell::new(built.next_location_id),
-                finalized: false,
-                _phantom: PhantomData,
-            },
-        }
-    }
-
     pub(crate) fn flow_state(&self) -> &FlowState {
         &self.flow_state
     }
@@ -257,6 +238,25 @@ impl<'a> FlowBuilder<'a> {
     /// of the Hydro program.
     pub fn sim(self) -> SimFlow<'a> {
         self.finalize().sim()
+    }
+
+    pub fn rewritten_ir_builder<'b>(built: &super::built::BuiltFlow) -> RewriteIrFlowBuilder<'b> {
+        RewriteIrFlowBuilder {
+            builder: FlowBuilder {
+                flow_state: Rc::new(RefCell::new(FlowStateInner {
+                    roots: None,
+                    next_external_out: 0,
+                    cycle_counts: 0,
+                    next_clock_id: 0,
+                })),
+                processes: RefCell::new(built.process_id_name.clone()),
+                clusters: RefCell::new(built.cluster_id_name.clone()),
+                externals: RefCell::new(built.external_id_name.clone()),
+                next_location_id: RefCell::new(built.next_location_id),
+                finalized: false,
+                _phantom: PhantomData,
+            },
+        }
     }
 }
 
