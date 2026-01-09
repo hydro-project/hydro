@@ -114,7 +114,7 @@ impl<'a> FlowBuilder<'a> {
                 processes: RefCell::new(built.process_id_name.clone()),
                 clusters: RefCell::new(built.cluster_id_name.clone()),
                 externals: RefCell::new(built.external_id_name.clone()),
-                next_location_id: RefCell::new(*built.next_location_id.borrow()),
+                next_location_id: RefCell::new(built.next_location_id),
                 finalized: false,
                 _phantom: PhantomData,
             },
@@ -186,7 +186,7 @@ impl<'a> FlowBuilder<'a> {
             process_id_name: self.processes.replace(vec![]),
             cluster_id_name: self.clusters.replace(vec![]),
             external_id_name: self.externals.replace(vec![]),
-            next_location_id: std::mem::take(&mut self.next_location_id),
+            next_location_id: *self.next_location_id.borrow(),
             _phantom: PhantomData,
         }
     }
@@ -262,7 +262,7 @@ impl<'a> FlowBuilder<'a> {
 
 #[expect(missing_docs, reason = "TODO")]
 pub struct RewriteIrFlowBuilder<'a> {
-    pub(crate) builder: FlowBuilder<'a>,
+    builder: FlowBuilder<'a>,
 }
 
 #[expect(missing_docs, reason = "TODO")]
