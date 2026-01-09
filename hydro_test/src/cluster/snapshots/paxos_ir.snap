@@ -2954,7 +2954,7 @@ expression: built.ir()
                                                         },
                                                     },
                                                 },
-                                                trusted: false,
+                                                trusted: true,
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Cluster(
                                                         0,
