@@ -187,15 +187,6 @@ where
     }
 }
 
-impl<'a, T, L> From<Optional<T, L, Bounded>> for Optional<T, L, Unbounded>
-where
-    L: Location<'a>,
-{
-    fn from(singleton: Optional<T, L, Bounded>) -> Self {
-        Optional::new(singleton.location, singleton.ir_node.into_inner())
-    }
-}
-
 impl<'a, T, L, B: Boundedness> From<Singleton<T, L, B>> for Optional<T, L, B>
 where
     L: Location<'a>,
