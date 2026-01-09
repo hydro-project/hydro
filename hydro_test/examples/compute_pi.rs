@@ -73,8 +73,8 @@ async fn main() {
         "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
     };
 
-    let builder = hydro_lang::compile::builder::FlowBuilder::new();
-    let (cluster, leader) = hydro_test::cluster::compute_pi::compute_pi(&builder, 8192);
+    let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
+    let (cluster, leader) = hydro_test::cluster::compute_pi::compute_pi(&mut builder, 8192);
 
     // Extract the IR for graph visualization
     let built = builder.finalize();
@@ -110,6 +110,6 @@ fn test() {
 
     let mut run = run_current_example!();
     run.read_regex(
-        r"\[hydro_test::cluster::compute_pi::Leader \(process 1\)\] pi: 3\.14\d+ \(\d{8,} trials\)",
+        r"\[hydro_test::cluster::compute_pi::Leader \(process \S+\)\] pi: 3\.14\d+ \(\d{8,} trials\)",
     );
 }

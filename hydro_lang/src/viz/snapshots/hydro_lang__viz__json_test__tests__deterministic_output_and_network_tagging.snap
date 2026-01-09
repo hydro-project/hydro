@@ -7,7 +7,10 @@ expression: output1
     {
       "data": {
         "backtrace": [],
-        "locationId": 0,
+        "locationKey": {
+          "idx": 1,
+          "version": 1
+        },
         "locationType": "Process"
       },
       "fullLabel": "a [hydro operator]",
@@ -19,7 +22,10 @@ expression: output1
     {
       "data": {
         "backtrace": [],
-        "locationId": 1,
+        "locationKey": {
+          "idx": 2,
+          "version": 3
+        },
         "locationType": "Process"
       },
       "fullLabel": "b [hydro operator]",
@@ -48,10 +54,7 @@ expression: output1
     }
   ],
   "nodeAssignments": {
-    "location": {
-      "VizNodeKey(1v1)": "loc_0",
-      "VizNodeKey(2v1)": "loc_1"
-    }
+    "location": {}
   },
   "selectedHierarchy": "location",
   "edgeStyleConfig": {

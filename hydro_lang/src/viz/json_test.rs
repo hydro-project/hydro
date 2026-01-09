@@ -6,7 +6,9 @@ mod tests {
 
     #[cfg(test)]
     use hydro_build_utils::insta;
+    use slotmap::KeyData;
 
+    use crate::location::{LocationKey, LocationType};
     use crate::viz::json::HydroJson;
     use crate::viz::render::{
         HydroEdgeProp, HydroGraphWrite, HydroNodeType, HydroWriteConfig, NodeLabel,
@@ -16,7 +18,7 @@ mod tests {
     fn test_json_structure_with_semantic_tags() {
         let mut output = String::new();
         let config = HydroWriteConfig::default();
-        let mut writer = HydroJson::new(&mut output, &config);
+        let mut writer = HydroJson::new(&mut output, config);
 
         // Write a simple graph
         writer.write_prologue().unwrap();
@@ -25,14 +27,17 @@ mod tests {
         let node_id_1 = "VizNodeKey(1v1)".parse().unwrap();
         let node_id_2 = "VizNodeKey(2v1)".parse().unwrap();
 
+        // `1v1` for testing only.
+        let loc_key_1 = LocationKey::from(KeyData::from_ffi(0x0000000100000001));
+
         // Add a source node
         writer
             .write_node_definition(
                 node_id_1,
                 &NodeLabel::Static("source".to_string()),
                 HydroNodeType::Source,
-                Some(0),
-                Some("Process"),
+                Some(loc_key_1),
+                Some(LocationType::Process),
                 None,
             )
             .unwrap();
@@ -43,8 +48,8 @@ mod tests {
                 node_id_2,
                 &NodeLabel::Static("map".to_string()),
                 HydroNodeType::Transform,
-                Some(0),
-                Some("Process"),
+                Some(loc_key_1),
+                Some(LocationType::Process),
                 None,
             )
             .unwrap();
@@ -69,7 +74,7 @@ mod tests {
     fn test_empty_semantic_tags() {
         let mut output = String::new();
         let config = HydroWriteConfig::default();
-        let mut writer = HydroJson::new(&mut output, &config);
+        let mut writer = HydroJson::new(&mut output, config);
 
         writer.write_prologue().unwrap();
 
@@ -105,8 +110,8 @@ mod tests {
         let mut output1 = String::new();
         let mut output2 = String::new();
         let config = HydroWriteConfig::default();
-        let mut w1 = HydroJson::new(&mut output1, &config);
-        let mut w2 = HydroJson::new(&mut output2, &config);
+        let mut w1 = HydroJson::new(&mut output1, config);
+        let mut w2 = HydroJson::new(&mut output2, config);
 
         // Build same small graph with two locations to force Network tag
         let mut edge_props = HashSet::new();
@@ -116,14 +121,19 @@ mod tests {
         let node_id_1 = "VizNodeKey(1v1)".parse().unwrap();
         let node_id_2 = "VizNodeKey(2v1)".parse().unwrap();
 
+        // `1v1` for testing only.
+        let loc_key_1 = LocationKey::from(KeyData::from_ffi(0x0000000100000001));
+        // `2v2` for testing only.
+        let loc_key_2 = LocationKey::from(KeyData::from_ffi(0x0000000200000002));
+
         // Graph 1
         w1.write_prologue().unwrap();
         w1.write_node_definition(
             node_id_1,
             &NodeLabel::Static("a".into()),
             HydroNodeType::Source,
-            Some(0),
-            Some("Process"),
+            Some(loc_key_1),
+            Some(LocationType::Process),
             None,
         )
         .unwrap();
@@ -131,8 +141,8 @@ mod tests {
             node_id_2,
             &NodeLabel::Static("b".into()),
             HydroNodeType::Transform,
-            Some(1),
-            Some("Process"),
+            Some(loc_key_2),
+            Some(LocationType::Process),
             None,
         )
         .unwrap();
@@ -146,8 +156,8 @@ mod tests {
             node_id_2,
             &NodeLabel::Static("b".into()),
             HydroNodeType::Transform,
-            Some(1),
-            Some("Process"),
+            Some(loc_key_2),
+            Some(LocationType::Process),
             None,
         )
         .unwrap();
@@ -155,8 +165,8 @@ mod tests {
             node_id_1,
             &NodeLabel::Static("a".into()),
             HydroNodeType::Source,
-            Some(0),
-            Some("Process"),
+            Some(loc_key_1),
+            Some(LocationType::Process),
             None,
         )
         .unwrap();

@@ -33,7 +33,7 @@ mod tests {
 
     #[test]
     fn test_concurrent_clients() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let process = flow.process();
 
         let (inc_in_port, inc_requests) = process.sim_input();

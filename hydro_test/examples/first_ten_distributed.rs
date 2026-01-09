@@ -84,7 +84,7 @@ async fn main() {
         "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
     };
 
-    let builder = hydro_lang::compile::builder::FlowBuilder::new();
+    let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
     let external = builder.external();
     let p1 = builder.process();
     let p2 = builder.process();
@@ -146,7 +146,9 @@ fn test() {
     run.read_string(
         "Enter characters and press enter to send them over the network (ctrl-d to stop):",
     );
-    run.read_string("[hydro_test::distributed::first_ten::P2 (process 2)] 9");
+    run.read_string("[hydro_test::distributed::first_ten::P2 (process loc3v1)] 9");
     run.write_line("Hello World");
-    run.read_string(r#"[hydro_test::distributed::first_ten::P1 (process 1)] hi: "Hello World\n"#);
+    run.read_string(
+        r#"[hydro_test::distributed::first_ten::P1 (process loc2v1)] hi: "Hello World\n"#,
+    );
 }

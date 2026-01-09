@@ -3,6 +3,8 @@ use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::rc::Rc;
 
+use slotmap::{SecondaryMap, SlotMap};
+
 #[cfg(feature = "build")]
 use super::compiled::CompiledFlow;
 #[cfg(feature = "build")]
@@ -10,7 +12,7 @@ use super::deploy::{DeployFlow, DeployResult};
 #[cfg(feature = "build")]
 use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
 use super::ir::HydroRoot;
-use crate::location::{Cluster, External, Process};
+use crate::location::{Cluster, External, LocationKey, LocationType, Process};
 #[cfg(feature = "sim")]
 #[cfg(stageleft_runtime)]
 use crate::sim::flow::SimFlow;
@@ -54,14 +56,13 @@ impl FlowStateInner {
     }
 }
 
-#[expect(missing_docs, reason = "TODO")]
 pub struct FlowBuilder<'a> {
     flow_state: FlowState,
-    processes: RefCell<Vec<(usize, String)>>,
-    clusters: RefCell<Vec<(usize, String)>>,
-    externals: RefCell<Vec<(usize, String)>>,
 
-    next_location_id: RefCell<usize>,
+    /// Locations and their type.
+    locations: SlotMap<LocationKey, LocationType>,
+    /// Map from raw location ID to name (including externals).
+    location_names: SecondaryMap<LocationKey, String>,
 
     /// Tracks whether this flow has been finalized; it is an error to
     /// drop without finalizing.
@@ -98,10 +99,8 @@ impl<'a> FlowBuilder<'a> {
                 cycle_counts: 0,
                 next_clock_id: 0,
             })),
-            processes: RefCell::new(vec![]),
-            clusters: RefCell::new(vec![]),
-            externals: RefCell::new(vec![]),
-            next_location_id: RefCell::new(0),
+            locations: SlotMap::with_key(),
+            location_names: SecondaryMap::new(),
             finalized: false,
             _phantom: PhantomData,
         }
@@ -111,49 +110,34 @@ impl<'a> FlowBuilder<'a> {
         &self.flow_state
     }
 
-    pub fn process<P>(&self) -> Process<'a, P> {
-        let mut next_location_id = self.next_location_id.borrow_mut();
-        let id = *next_location_id;
-        *next_location_id += 1;
-
-        self.processes
-            .borrow_mut()
-            .push((id, type_name::<P>().to_string()));
-
+    pub fn process<P>(&mut self) -> Process<'a, P> {
+        let key = self.locations.insert(LocationType::Process);
+        self.location_names
+            .insert(key, type_name::<P>().to_string());
         Process {
-            id,
+            key,
             flow_state: self.flow_state().clone(),
             _phantom: PhantomData,
         }
     }
 
-    pub fn external<P>(&self) -> External<'a, P> {
-        let mut next_location_id = self.next_location_id.borrow_mut();
-        let id = *next_location_id;
-        *next_location_id += 1;
-
-        self.externals
-            .borrow_mut()
-            .push((id, type_name::<P>().to_string()));
-
-        External {
-            id,
-            flow_state: self.flow_state().clone(),
-            _phantom: PhantomData,
-        }
-    }
-
-    pub fn cluster<C>(&self) -> Cluster<'a, C> {
-        let mut next_location_id = self.next_location_id.borrow_mut();
-        let id = *next_location_id;
-        *next_location_id += 1;
-
-        self.clusters
-            .borrow_mut()
-            .push((id, type_name::<C>().to_string()));
-
+    pub fn cluster<C>(&mut self) -> Cluster<'a, C> {
+        let key = self.locations.insert(LocationType::Cluster);
+        self.location_names
+            .insert(key, type_name::<C>().to_string());
         Cluster {
-            id,
+            key,
+            flow_state: self.flow_state().clone(),
+            _phantom: PhantomData,
+        }
+    }
+
+    pub fn external<E>(&mut self) -> External<'a, E> {
+        let key = self.locations.insert(LocationType::External);
+        self.location_names
+            .insert(key, type_name::<E>().to_string());
+        External {
+            key,
             flow_state: self.flow_state().clone(),
             _phantom: PhantomData,
         }
@@ -169,10 +153,8 @@ impl<'a> FlowBuilder<'a> {
 
         super::built::BuiltFlow {
             ir: self.flow_state.borrow_mut().roots.take().unwrap(),
-            process_id_name: self.processes.replace(vec![]),
-            cluster_id_name: self.clusters.replace(vec![]),
-            external_id_name: self.externals.replace(vec![]),
-            next_location_id: *self.next_location_id.borrow(),
+            locations: std::mem::take(&mut self.locations),
+            location_names: std::mem::take(&mut self.location_names),
             _phantom: PhantomData,
         }
     }
@@ -254,10 +236,8 @@ impl<'a> FlowBuilder<'a> {
                     cycle_counts: 0,
                     next_clock_id: 0,
                 })),
-                processes: RefCell::new(built.process_id_name.clone()),
-                clusters: RefCell::new(built.cluster_id_name.clone()),
-                externals: RefCell::new(built.external_id_name.clone()),
-                next_location_id: RefCell::new(built.next_location_id),
+                locations: built.locations.clone(),
+                location_names: built.location_names.clone(),
                 finalized: false,
                 _phantom: PhantomData,
             },
