@@ -41,6 +41,17 @@ pub struct Optional<Type, Loc, Bound: Boundedness> {
     _phantom: PhantomData<(Type, Loc, Bound)>,
 }
 
+impl<'a, T, L> From<Optional<T, L, Bounded>> for Optional<T, L, Unbounded>
+where
+    T: Clone,
+    L: Location<'a> + NoTick,
+{
+    fn from(value: Optional<T, L, Bounded>) -> Self {
+        let tick = value.location().tick();
+        value.clone_into_tick(&tick).latest()
+    }
+}
+
 impl<'a, T, L> DeferTick for Optional<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
@@ -184,15 +195,6 @@ where
                 input: Box::new(self.ir_node.into_inner()),
                 op_metadata: HydroIrOpMetadata::new(),
             });
-    }
-}
-
-impl<'a, T, L> From<Optional<T, L, Bounded>> for Optional<T, L, Unbounded>
-where
-    L: Location<'a>,
-{
-    fn from(singleton: Optional<T, L, Bounded>) -> Self {
-        Optional::new(singleton.location, singleton.ir_node.into_inner())
     }
 }
 
@@ -676,6 +678,7 @@ where
         check_matching_location(&self.location, &other.location);
 
         if L::is_top_level()
+            && !B::BOUNDED // only if unbounded we need to use a tick
             && let Some(tick) = self.location.try_tick()
         {
             let out = or_inside_tick(
@@ -801,6 +804,70 @@ impl<'a, T, L> Optional<T, L, Bounded>
 where
     L: Location<'a>,
 {
+    /// Clones this bounded optional into a tick, returning a optional that has the
+    /// same value as the outer optional. Because the outer optional is bounded, this
+    /// is deterministic because there is only a single immutable version.
+    pub fn clone_into_tick(self, tick: &Tick<L>) -> Optional<T, Tick<L>, Bounded>
+    where
+        T: Clone,
+    {
+        // TODO(shadaj): avoid printing simulator logs for this snapshot
+        self.snapshot(
+            tick,
+            nondet!(/** bounded top-level optional so deterministic */),
+        )
+    }
+
+    /// Converts this optional into a [`Stream`] containing a single element, the value, if it is
+    /// non-null. Otherwise, the stream is empty.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// # let tick = process.tick();
+    /// # // ticks are lazy by default, forces the second tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    /// # let batch_first_tick = process
+    /// #   .source_iter(q!(vec![]))
+    /// #   .batch(&tick, nondet!(/** test */));
+    /// # let batch_second_tick = process
+    /// #   .source_iter(q!(vec![123, 456]))
+    /// #   .batch(&tick, nondet!(/** test */))
+    /// #   .defer_tick(); // appears on the second tick
+    /// # let input_batch = batch_first_tick.chain(batch_second_tick);
+    /// input_batch // first tick: [], second tick: [123, 456]
+    ///     .clone()
+    ///     .max()
+    ///     .into_stream()
+    ///     .chain(input_batch)
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [456, 123, 456]
+    /// # for w in vec![456, 123, 456] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn into_stream(self) -> Stream<T, L, Bounded, TotalOrder, ExactlyOnce> {
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata(Stream::<
+                    T,
+                    Tick<L>,
+                    Bounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        )
+    }
+
     /// Filters this optional, passing through the optional value if it is non-null **and** the
     /// argument (a [`Bounded`] [`Optional`]`) is non-null, otherwise the output is null.
     ///
@@ -1226,70 +1293,23 @@ where
             },
         )
     }
-
-    /// Converts this optional into a [`Stream`] containing a single element, the value, if it is
-    /// non-null. Otherwise, the stream is empty.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// # let tick = process.tick();
-    /// # // ticks are lazy by default, forces the second tick to run
-    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    /// # let batch_first_tick = process
-    /// #   .source_iter(q!(vec![]))
-    /// #   .batch(&tick, nondet!(/** test */));
-    /// # let batch_second_tick = process
-    /// #   .source_iter(q!(vec![123, 456]))
-    /// #   .batch(&tick, nondet!(/** test */))
-    /// #   .defer_tick(); // appears on the second tick
-    /// # let input_batch = batch_first_tick.chain(batch_second_tick);
-    /// input_batch // first tick: [], second tick: [123, 456]
-    ///     .clone()
-    ///     .max()
-    ///     .into_stream()
-    ///     .chain(input_batch)
-    ///     .all_ticks()
-    /// # }, |mut stream| async move {
-    /// // [456, 123, 456]
-    /// # for w in vec![456, 123, 456] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
-    /// # }
-    /// # }));
-    /// # }
-    /// ```
-    pub fn into_stream(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
-        Stream::new(
-            self.location.clone(),
-            HydroNode::Cast {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata(Stream::<
-                    T,
-                    Tick<L>,
-                    Bounded,
-                    TotalOrder,
-                    ExactlyOnce,
-                >::collection_kind()),
-            },
-        )
-    }
 }
 
-#[cfg(feature = "deploy")]
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "deploy")]
     use futures::StreamExt;
+    #[cfg(feature = "deploy")]
     use hydro_deploy::Deployment;
     use stageleft::q;
 
     use super::Optional;
     use crate::compile::builder::FlowBuilder;
     use crate::location::Location;
+    #[cfg(feature = "deploy")]
     use crate::nondet::nondet;
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn optional_or_cardinality() {
         let mut deployment = Deployment::new();
@@ -1323,6 +1343,7 @@ mod tests {
         assert_eq!(external_out.next().await.unwrap(), 1);
     }
 
+    #[cfg(feature = "deploy")]
     #[tokio::test]
     async fn into_singleton_top_level_none_cardinality() {
         let mut deployment = Deployment::new();
@@ -1360,5 +1381,79 @@ mod tests {
         assert_eq!(external_out.next().await.unwrap(), 1);
         assert_eq!(external_out.next().await.unwrap(), 1);
         assert_eq!(external_out.next().await.unwrap(), 1);
+    }
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn into_singleton_unbounded_top_level_none_cardinality() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let node_tick = node.tick();
+        let top_level_none = node_tick.singleton(q!(123)).latest().filter(q!(|_| false));
+        let into_singleton = top_level_none.into_singleton();
+
+        let tick_driver = node.spin();
+
+        let counts = into_singleton
+            .snapshot(&node_tick, nondet!(/** test */))
+            .into_stream()
+            .count()
+            .zip(tick_driver.batch(&node_tick, nondet!(/** test */)).count())
+            .map(q!(|(c, _)| c))
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_out = nodes.connect(counts).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(external_out.next().await.unwrap(), 1);
+        assert_eq!(external_out.next().await.unwrap(), 1);
+        assert_eq!(external_out.next().await.unwrap(), 1);
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn top_level_optional_some_into_stream_no_replay() {
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
+        let folded = source_iter.fold(q!(|| 0), q!(|a, b| *a += b));
+        let filtered_some = folded.filter(q!(|_| true));
+
+        let out_recv = filtered_some.into_stream().sim_output();
+
+        flow.sim().exhaustive(async || {
+            out_recv.assert_yields_only([10]).await;
+        });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn top_level_optional_none_into_stream_no_replay() {
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
+        let folded = source_iter.fold(q!(|| 0), q!(|a, b| *a += b));
+        let filtered_none = folded.filter(q!(|_| false));
+
+        let out_recv = filtered_none.into_stream().sim_output();
+
+        flow.sim().exhaustive(async || {
+            out_recv.assert_yields_only([] as [i32; 0]).await;
+        });
     }
 }
