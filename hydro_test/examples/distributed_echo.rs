@@ -1,71 +1,17 @@
-//! hydro_lang/deploy integration tests
-
+use clap::Parser;
 use futures::{SinkExt, StreamExt};
 use hydro_deploy::{AwsNetwork, Deployment};
+use hydro_lang::deploy::{DockerDeploy, DockerNetwork};
+use hydro_lang::prelude::FlowBuilder;
+use hydro_lang::telemetry;
+use hydro_test::distributed::distributed_echo::distributed_echo;
 
-#[cfg(stageleft_runtime)]
-use crate::deploy::{DockerDeploy, DockerNetwork};
-use crate::live_collections::stream::NoOrder;
-use crate::location::external_process::{ExternalBincodeSink, ExternalBincodeStream};
-use crate::location::{MemberId, MembershipEvent};
-use crate::nondet::nondet;
-use crate::prelude::*;
-use crate::telemetry;
+const CLUSTER_SIZE: usize = 2;
 
-struct P1 {}
-struct C2 {}
-struct C3 {}
-struct P4 {}
-struct P5 {}
-
-#[expect(clippy::type_complexity, reason = "test code")]
-fn distributed_echo<'a>(
-    external: &External<'a, ()>,
-    p1: &Process<'a, P1>,
-    c2: &Cluster<'a, C2>,
-    c3: &Cluster<'a, C3>,
-    p4: &Process<'a, P4>,
-    p5: &Process<'a, P5>,
-) -> (
-    ExternalBincodeSink<u32>,
-    ExternalBincodeStream<u32, NoOrder>,
-    ExternalBincodeStream<(MemberId<C2>, MembershipEvent), NoOrder>,
-    ExternalBincodeStream<(MemberId<C3>, MembershipEvent), NoOrder>,
-) {
-    let (tx, rx) = p1.source_external_bincode(external);
-
-    let rx = rx
-        .map(q!(|n| n + 1))
-        .round_robin(c2, TCP.bincode(), nondet!(/** test */))
-        .map(q!(|n| n + 1))
-        .round_robin(c3, TCP.bincode(), nondet!(/** test */))
-        .values()
-        .map(q!(|n| n + 1))
-        .send(p4, TCP.bincode())
-        .values()
-        .map(q!(|n| n + 1))
-        .send(p5, TCP.bincode())
-        .map(q!(|n| n + 1))
-        .send_bincode_external(external);
-
-    let ems_c2 = p1
-        .source_cluster_members(c2)
-        .entries()
-        .send_bincode_external(external);
-
-    let ems_c3 = p1
-        .source_cluster_members(c3)
-        .entries()
-        .send_bincode_external(external);
-
-    (tx, rx, ems_c2, ems_c3)
-}
-
-const CLUSTER_SIZE: usize = 3;
-
-#[tokio::test]
 async fn docker() {
-    telemetry::initialize_tracing_with_directive("trace");
+    telemetry::initialize_tracing_with_filter(
+        tracing_subscriber::EnvFilter::try_new("trace,hyper=off").unwrap(),
+    );
 
     let network = DockerNetwork::new("distributed_echo_test".to_string());
 
@@ -125,6 +71,8 @@ async fn docker() {
         println!("got 2 c3 events");
     }
 
+    tokio::time::sleep(std::time::Duration::from_secs(1)).await; // TODO: hack to get around a timing issue.
+
     println!("sending 0");
     external_sink.send(0).await.unwrap();
     assert_eq!(external_stream.next().await.unwrap(), 5);
@@ -144,10 +92,9 @@ async fn docker() {
 
     deployment.cleanup(&nodes).await.unwrap();
 
-    println!("success");
+    println!("successfully deployed and cleaned up");
 }
 
-#[tokio::test]
 async fn localhost() {
     let mut deployment = Deployment::new();
 
@@ -214,12 +161,10 @@ async fn localhost() {
 
     deployment.stop().await.unwrap();
 
-    println!("success");
+    println!("successfully deployed and cleaned up");
 }
 
-#[ignore]
-#[tokio::test(flavor = "multi_thread")]
-async fn distributed_echo_aws() {
+async fn aws() {
     let mut deployment: Deployment = Deployment::new();
 
     let builder = FlowBuilder::new();
@@ -329,4 +274,45 @@ async fn distributed_echo_aws() {
     assert_eq!(external_stream.next().await.unwrap(), 8);
 
     deployment.stop().await.unwrap();
+
+    println!("successfully deployed and cleaned up");
+}
+
+#[derive(clap::ValueEnum, Clone, Debug)]
+enum DeployMode {
+    Docker,
+    Localhost,
+    Aws,
+}
+
+#[derive(Parser, Debug)]
+struct Args {
+    #[clap(long, value_enum)]
+    mode: DeployMode,
+}
+
+#[tokio::main]
+async fn main() {
+    let args = Args::parse();
+
+    match args.mode {
+        DeployMode::Docker => docker().await,
+        DeployMode::Aws => aws().await,
+        DeployMode::Localhost => localhost().await,
+    }
+}
+
+// only run this test on linux
+// macos in github actions does not have docker installed.
+// windows currently has a stack overflow issue that is being debugged in parallel.
+#[cfg(target_os = "linux")]
+#[test]
+fn test_distributed_echo_example() {
+    use example_test::run_current_example;
+
+    let mut run = run_current_example!("--mode localhost");
+    run.read_string("successfully deployed and cleaned up");
+
+    let mut run = run_current_example!("--mode docker");
+    run.read_string("successfully deployed and cleaned up");
 }

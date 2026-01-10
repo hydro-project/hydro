@@ -1,0 +1,1 @@
+../compile-fail/send_lifetime.rs
