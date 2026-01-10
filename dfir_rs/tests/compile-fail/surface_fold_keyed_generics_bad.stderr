@@ -51,8 +51,8 @@ error[E0271]: expected `new` to return `usize`, but it returns `String`
 6 | |             })
   | |______________- required by a bound introduced by this call
   |
-note: required by a bound in `std::collections::hash_map::Entry::<'a, K, V>::or_insert_with`
+note: required by a bound in `std::collections::hash_map::Entry::<'a, K, V, A>::or_insert_with`
  --> $RUST/std/src/collections/hash/map.rs
   |
   |     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
-  |                                          ^ required by this bound in `Entry::<'a, K, V>::or_insert_with`
+  |                                          ^ required by this bound in `Entry::<'a, K, V, A>::or_insert_with`

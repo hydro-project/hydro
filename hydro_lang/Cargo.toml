@@ -53,10 +53,12 @@ docker_deploy = [
     "dep:tar",
     "dep:nanoid",
     "dep:http-body-util",
+    "dep:serde_json",
 ]
 
 # Dependencies needed to compile docker-deployed binaries with trybuild
 docker_runtime = [
+    "deploy_integration",
     "dep:bollard",
 ]
 

@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use bytes::Bytes;
-use clap::{Parser, Subcommand, command};
+use clap::{Parser, Subcommand};
 use dfir_lang::graph::{WriteConfig, WriteGraphType};
 use futures::Stream;
 use tokio::sync::mpsc::UnboundedSender;

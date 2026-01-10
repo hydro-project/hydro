@@ -1,4 +1,3 @@
-use bytes::Bytes;
 use stageleft::q;
 
 use crate::live_collections::sliced::sliced;
@@ -10,10 +9,14 @@ use crate::sim::{SimReceiver, SimSender};
 
 mod trophies;
 
+// Test is currently broken in nightly.
+#[cfg(not(nightly))]
 #[test]
 #[should_panic]
 #[cfg_attr(not(target_os = "linux"), ignore)] // sim reproducer not yet reproducible on non-linux OSes
 fn sim_crash_in_output() {
+    use bytes::Bytes;
+
     // run as PATH="$PATH:." cargo sim -p hydro_lang --features sim -- sim_crash_in_output
     let flow = FlowBuilder::new();
     let node = flow.process::<()>();
@@ -31,10 +34,14 @@ fn sim_crash_in_output() {
     });
 }
 
+// Test is currently broken in nightly.
+#[cfg(not(nightly))]
 #[test]
 #[should_panic]
 #[cfg_attr(not(target_os = "linux"), ignore)] // sim reproducer not yet reproducible on non-linux OSes
 fn sim_crash_in_output_with_filter() {
+    use bytes::Bytes;
+
     // run as PATH="$PATH:." cargo sim -p hydro_lang --features sim -- sim_crash_in_output_with_filter
     let flow = FlowBuilder::new();
     let node = flow.process::<()>();

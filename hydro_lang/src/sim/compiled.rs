@@ -134,8 +134,14 @@ impl CompiledSim {
                 !e.fn_name.starts_with("hydro_lang::sim::compiled")
                     && !e.fn_name.starts_with("hydro_lang::sim::flow")
                     && !e.fn_name.starts_with("fuzz<")
+                    && !e.fn_name.starts_with("<hydro_lang::sim")
             })
             .unwrap();
+
+        eprintln!(
+            "backtrace: {:?}",
+            crate::compile::ir::backtrace::Backtrace::get_backtrace(0).elements()
+        );
 
         let caller_path = Path::new(&caller_fn.filename.unwrap()).to_path_buf();
         let repro_folder = caller_path.parent().unwrap().join("sim-failures");

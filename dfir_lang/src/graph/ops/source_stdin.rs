@@ -1,8 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    FloType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, WriteContextArgs, RANGE_0,
-    RANGE_1,
+    FloType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 
 /// > 0 input streams, 1 output stream
@@ -43,7 +43,6 @@ pub const SOURCE_STDIN: OperatorConstraints = OperatorConstraints {
                _| {
         let stream_ident = wc.make_ident("stream");
         let write_prologue = quote_spanned! {op_span=>
-            #[expect(clippy::let_and_return, reason = "gives return value a self-documenting name")]
             let mut #stream_ident = {
                 use #root::tokio::io::AsyncBufReadExt;
                 let reader = #root::tokio::io::BufReader::new(#root::tokio::io::stdin());

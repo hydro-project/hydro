@@ -6,6 +6,26 @@ use std::cell::RefCell;
 #[cfg(feature = "build")]
 use std::fmt::Debug;
 
+/// Strips `[hash]` patterns from nightly compiler symbol names.
+#[cfg(feature = "build")]
+fn strip_hash_brackets(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '[' {
+            let bracket_content: String = chars.by_ref().take_while(|&ch| ch != ']').collect();
+            if !bracket_content.chars().all(|ch| ch.is_ascii_hexdigit()) {
+                result.push('[');
+                result.push_str(&bracket_content);
+                result.push(']');
+            }
+        } else {
+            result.push(c);
+        }
+    }
+    result
+}
+
 #[cfg(not(feature = "build"))]
 /// A dummy backtrace element with no data. Enable the `build` feature to collect backtraces.
 #[derive(Clone)]
@@ -89,7 +109,7 @@ impl Backtrace {
                     .flat_map(|frame| frame.symbols())
                     .skip(self.skip_count)
                     .map(|symbol| {
-                        let full_fn_name = symbol.name().unwrap().to_string();
+                        let full_fn_name = strip_hash_brackets(&symbol.name().unwrap().to_string());
                         BacktraceElement {
                             fn_name: full_fn_name
                                 .rfind("::")
@@ -148,11 +168,10 @@ impl Debug for BacktraceElement {
 #[cfg(test)]
 mod tests {
     #[cfg(feature = "build")]
-    use super::*;
-
-    #[cfg(feature = "build")]
     #[test]
     fn test_backtrace() {
+        use super::*;
+
         if cfg!(not(target_os = "linux")) && std::env::var_os("GITHUB_ACTIONS").is_some() {
             eprintln!("Backtrace tests fail on non-linux Github Actions runners, skipping.");
             return;

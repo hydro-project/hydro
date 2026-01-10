@@ -4,6 +4,13 @@ error[E0277]: the trait bound `f64: VariadicExt` is not satisfied
 5 |     fn check(_: List) {}
   |                 ^^^^ the trait `VariadicExt` is not implemented for `f64`
   |
-  = help: the following other types implement trait `VariadicExt`:
-            ()
-            (Item, Rest)
+help: the following other types implement trait `VariadicExt`
+ --> src/lib.rs
+  |
+  | / impl<Item, Rest> VariadicExt for (Item, Rest)
+  | | where
+  | |     Rest: VariadicExt,
+  | |______________________^ `(Item, Rest)`
+...
+  |   impl VariadicExt for () {
+  |   ^^^^^^^^^^^^^^^^^^^^^^^ `()`

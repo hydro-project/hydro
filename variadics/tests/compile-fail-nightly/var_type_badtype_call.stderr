@@ -1,4 +1,4 @@
-error[E0412]: cannot find type `MyIdent` in this scope
+error[E0425]: cannot find type `MyIdent` in this scope
  --> tests/compile-fail-nightly/var_type_badtype_call.rs:4:41
   |
 4 |     type _List = var_type!(String, u32, MyIdent(), bool);

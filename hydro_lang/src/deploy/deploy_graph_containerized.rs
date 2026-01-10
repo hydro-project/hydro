@@ -178,7 +178,7 @@ impl Node for DockerDeployCluster {
 
         ret = ret.display_name("test_display_name");
 
-        ret = ret.features(vec!["hydro___feature_deploy_integration".to_string()]);
+        ret = ret.features(vec!["hydro___feature_docker_runtime".to_string()]);
 
         if let Some(features) = config.features {
             ret = ret.features(features);

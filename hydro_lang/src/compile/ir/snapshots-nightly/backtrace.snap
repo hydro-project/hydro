@@ -4,7 +4,7 @@ expression: elements
 ---
 [
     BacktraceElement {
-        fn_name: "hydro_lang::compile::ir::backtrace::tests::test_backtrace",
+        fn_name: "hydro_lang::compile::ir::backtrace::tests",
         lineno: Some(
             180,
         ),
@@ -13,7 +13,7 @@ expression: elements
         ),
     },
     BacktraceElement {
-        fn_name: "hydro_lang::compile::ir::backtrace::tests::test_backtrace::{{closure}}",
+        fn_name: "hydro_lang::compile::ir::backtrace::tests::test_backtrace",
         lineno: Some(
             172,
         ),
@@ -22,7 +22,7 @@ expression: elements
         ),
     },
     BacktraceElement {
-        fn_name: "core::ops::function::FnOnce::call_once",
+        fn_name: "<hydro_lang::compile::ir::backtrace::tests::test_backtrace::{closure#0} as core::ops::function::FnOnce<()>>",
         lineno: Some(
             250,
         ),

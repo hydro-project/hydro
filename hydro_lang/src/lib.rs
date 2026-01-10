@@ -20,8 +20,11 @@ stageleft::stageleft_no_entry_crate!();
 pub mod runtime_support {
     #[cfg(feature = "sim")]
     pub use colored;
-    pub use {bincode, dfir_rs, hydro_deploy_integration, stageleft, tokio};
     #[cfg(feature = "deploy_integration")]
+    pub use hydro_deploy_integration;
+    pub use {bincode, dfir_rs, stageleft, tokio};
+
+    #[cfg(any(feature = "deploy_integration", feature = "docker_runtime"))]
     pub mod launch;
 }
 
@@ -89,8 +92,6 @@ pub mod networking;
 pub mod properties;
 
 pub mod telemetry;
-
-pub mod tests;
 
 #[cfg(any(
     feature = "deploy",
