@@ -1,14 +1,14 @@
-use std::collections::BTreeSet;
-use std::fs::read_dir;
-use std::process::Command;
-
-use hydro_build_utils::insta::assert_snapshot;
-
 /// Bit of a jank test, runs `cargo run -p dfir --example <EXAMPLE>` for all the
 /// `example_*.rs` examples and uses `insta` to snapshot tests the stdout.
 #[cfg(not(nightly))]
 #[test]
 fn test_all() {
+    use std::collections::BTreeSet;
+    use std::fs::read_dir;
+    use std::process::Command;
+
+    use hydro_build_utils::insta::assert_snapshot;
+
     let examples_files = read_dir("examples/")
         .unwrap()
         .flat_map(Result::ok)

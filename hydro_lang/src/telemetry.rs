@@ -1,5 +1,6 @@
 //! # Telemetry
 use tracing::Subscriber;
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::fmt::{FormatEvent, FormatFields, FormattedFields};
 use tracing_subscriber::registry::LookupSpan;
 
@@ -68,37 +69,57 @@ where
     }
 }
 
-/// Initialize tracing using the above custom formatter with the default "trace" directive, if RUST_LOG is not set.
+/// Initialize tracing using the above custom formatter with the default directive level of "ERROR", if RUST_LOG is not set.
 pub fn initialize_tracing() {
-    use tracing_subscriber::filter::EnvFilter;
+    let rust_log = std::env::var("RUST_LOG").unwrap_or_else(|err| {
+        match err {
+            std::env::VarError::NotPresent => {
+                // RUST_LOG not set, the user wants the default.
+                "error".to_string()
+            }
+            std::env::VarError::NotUnicode(v) => {
+                // Almost certainly there is a configuration issue.
+                eprintln!(
+                    "RUST_LOG is not unicode, defaulting to 'error' directive: {:?}",
+                    v
+                );
+                "error".to_string()
+            }
+        }
+    });
 
-    initialize_tracing_with_directive(
-        EnvFilter::try_from_default_env()
-            .unwrap_or_else(|_| EnvFilter::new("trace"))
-            .to_string(),
-    );
+    let filter = EnvFilter::try_new(&rust_log).unwrap_or_else(|err| {
+        // Configuration error.
+        eprintln!("Failed to parse RUST_LOG: {}, err: {:?}", rust_log, err);
+        "error".to_string().parse().unwrap()
+    });
+
+    initialize_tracing_with_filter(filter)
 }
 
 /// Initialize tracing using the above custom formatter, using the tracing directive.
 /// something like "{level},{abc}={level},{xyz}={level}" where {level} is one of "tracing,debug,info,warn,error"
-pub fn initialize_tracing_with_directive(directive: impl AsRef<str>) {
+pub fn initialize_tracing_with_filter(filter: EnvFilter) {
     use tracing::subscriber::set_global_default;
-    use tracing_subscriber::filter::EnvFilter;
     use tracing_subscriber::fmt::format::FmtSpan;
     use tracing_subscriber::prelude::*;
     use tracing_subscriber::{Layer, fmt, registry};
-
-    let filter = EnvFilter::new(directive.as_ref());
 
     set_global_default(
         registry().with(
             fmt::layer()
                 .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
                 .event_format(Formatter)
-                .with_filter(filter),
+                .with_filter(filter.clone()),
         ),
     )
     .unwrap();
 
-    tracing::trace!("Tracing Initialized");
+    #[expect(
+        non_snake_case,
+        reason = "this variable represents an env var which is in all caps"
+    )]
+    let RUST_LOG = std::env::var("RUST_LOG");
+
+    tracing::trace!(name: "Tracing Initialized", ?RUST_LOG, ?filter);
 }
