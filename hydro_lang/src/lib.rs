@@ -110,6 +110,7 @@ pub mod compile;
 
 mod manual_expr;
 
+#[cfg(stageleft_runtime)]
 #[cfg(feature = "viz")]
 #[cfg_attr(docsrs, doc(cfg(feature = "viz")))]
 #[expect(missing_docs, reason = "TODO")]
