@@ -331,6 +331,8 @@ where
                     item: None,
                     multi_waker: None,
                 };
+            } else {
+                unreachable!();
             }
         }
 
