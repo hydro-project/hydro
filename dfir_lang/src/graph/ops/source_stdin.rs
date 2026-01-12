@@ -43,6 +43,7 @@ pub const SOURCE_STDIN: OperatorConstraints = OperatorConstraints {
                _| {
         let stream_ident = wc.make_ident("stream");
         let write_prologue = quote_spanned! {op_span=>
+            #[allow(clippy::let_and_return, reason = "gives return value a self-documenting name")]
             let mut #stream_ident = {
                 use #root::tokio::io::AsyncBufReadExt;
                 let reader = #root::tokio::io::BufReader::new(#root::tokio::io::stdin());
