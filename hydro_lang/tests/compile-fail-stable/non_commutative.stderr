@@ -1,0 +1,17 @@
+error[E0277]: Because the input stream has ordering `hydro_lang::live_collections::stream::NoOrder`, the closure must demonstrate commutativity with a `commutative = ...` annotation.
+ --> tests/compile-fail-stable/non_commutative.rs:6:50
+  |
+6 |     p1.source_iter(q!(0..10)).weakest_ordering().fold(
+  |                                                  ^^^^ required for this call
+  |
+  = help: the trait `ValidCommutativityFor<hydro_lang::live_collections::stream::NoOrder>` is not implemented for `NotProved`
+          but trait `ValidCommutativityFor<hydro_lang::live_collections::stream::TotalOrder>` is implemented for it
+  = help: for that trait implementation, expected `hydro_lang::live_collections::stream::TotalOrder`, found `hydro_lang::live_collections::stream::NoOrder`
+note: required by a bound in `hydro_lang::prelude::Stream::<T, L, B, O, R>::fold`
+ --> src/live_collections/stream/mod.rs
+  |
+  |     pub fn fold<A, I, F, C, Idemp>(
+  |            ---- required by a bound in this associated function
+...
+  |         C: ValidCommutativityFor<O>,
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Stream::<T, L, B, O, R>::fold`

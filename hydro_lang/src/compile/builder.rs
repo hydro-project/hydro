@@ -102,29 +102,6 @@ impl<'a> FlowBuilder<'a> {
         }
     }
 
-    pub fn rewritten_ir_builder<'b>(&self) -> RewriteIrFlowBuilder<'b> {
-        let processes = self.processes.borrow().clone();
-        let clusters = self.clusters.borrow().clone();
-        let externals = self.externals.borrow().clone();
-        let next_location_id = *self.next_location_id.borrow();
-        RewriteIrFlowBuilder {
-            builder: FlowBuilder {
-                flow_state: Rc::new(RefCell::new(FlowStateInner {
-                    roots: None,
-                    next_external_out: 0,
-                    cycle_counts: 0,
-                    next_clock_id: 0,
-                })),
-                processes: RefCell::new(processes),
-                clusters: RefCell::new(clusters),
-                externals: RefCell::new(externals),
-                next_location_id: RefCell::new(next_location_id),
-                finalized: false,
-                _phantom: PhantomData,
-            },
-        }
-    }
-
     pub(crate) fn flow_state(&self) -> &FlowState {
         &self.flow_state
     }
@@ -190,6 +167,7 @@ impl<'a> FlowBuilder<'a> {
             process_id_name: self.processes.replace(vec![]),
             cluster_id_name: self.clusters.replace(vec![]),
             external_id_name: self.externals.replace(vec![]),
+            next_location_id: *self.next_location_id.borrow(),
             _phantom: PhantomData,
         }
     }
@@ -251,10 +229,6 @@ impl<'a> FlowBuilder<'a> {
         self.with_default_optimize::<D>().compile()
     }
 
-    pub fn compile_no_network<D: Deploy<'a>>(self) -> CompiledFlow<'a, D::GraphId> {
-        self.with_default_optimize::<D>().compile_no_network()
-    }
-
     pub fn deploy<D: Deploy<'a>>(self, env: &mut D::InstantiateEnv) -> DeployResult<'a, D> {
         self.with_default_optimize().deploy(env)
     }
@@ -264,6 +238,25 @@ impl<'a> FlowBuilder<'a> {
     /// of the Hydro program.
     pub fn sim(self) -> SimFlow<'a> {
         self.finalize().sim()
+    }
+
+    pub fn rewritten_ir_builder<'b>(built: &super::built::BuiltFlow) -> RewriteIrFlowBuilder<'b> {
+        RewriteIrFlowBuilder {
+            builder: FlowBuilder {
+                flow_state: Rc::new(RefCell::new(FlowStateInner {
+                    roots: None,
+                    next_external_out: 0,
+                    cycle_counts: 0,
+                    next_clock_id: 0,
+                })),
+                processes: RefCell::new(built.process_id_name.clone()),
+                clusters: RefCell::new(built.cluster_id_name.clone()),
+                externals: RefCell::new(built.external_id_name.clone()),
+                next_location_id: RefCell::new(built.next_location_id),
+                finalized: false,
+                _phantom: PhantomData,
+            },
+        }
     }
 }
 

@@ -16,6 +16,6 @@ The simulator uses the exact same Hydro code you will run in production, and req
 | Ordered Transformations              | Full                | `map`, `filter`, `fold`, `scan`, etc. across all live collections     |
 | Networking                    | Full                | Simulated networking is supported for both `Process` and `Cluster` locations         |
 | Batching / Snapshotting             | Partial             | Supported on all live collections except `Optional` |
-| Unordered Reductions                        | Partial             | Built-in operators like `count` are supported, but not arbitrary `{fold/reduce}_commutative` |
+| Unordered Reductions                        | Full             | Built-in operators like `count` are accelerated, but not arbitrary `{fold/reduce}` |
 | Non-Deterministic Observations | Limited             | `assume_ordering::<TotalOrder>` is only supported inside ticks / `sliced!`, `assume_retries::<ExactlyOnce>` is not supported |
 

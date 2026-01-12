@@ -1,0 +1,194 @@
+---
+source: hydro_lang/src/viz/json_test.rs
+expression: output
+---
+{
+  "nodes": [
+    {
+      "data": {
+        "backtrace": [],
+        "locationId": null,
+        "locationType": null
+      },
+      "fullLabel": "node [hydro operator]",
+      "id": "0",
+      "label": "node",
+      "nodeType": "Transform",
+      "shortLabel": "node"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e0",
+      "semanticTags": [
+        "Local"
+      ],
+      "source": "0",
+      "target": "0"
+    }
+  ],
+  "hierarchyChoices": [
+    {
+      "children": [],
+      "id": "location",
+      "name": "Location"
+    }
+  ],
+  "nodeAssignments": {
+    "location": {}
+  },
+  "selectedHierarchy": "location",
+  "edgeStyleConfig": {
+    "note": "Edge styles are now computed per-edge using the unified edge style system. This config is provided for reference and compatibility.",
+    "semanticMappings": {
+      "BoundednessGroup": {
+        "Bounded": {
+          "halo": "none"
+        },
+        "Unbounded": {
+          "halo": "light-blue"
+        }
+      },
+      "CollectionGroup": {
+        "Optional": {
+          "arrowhead": "diamond-open",
+          "color": "#6b7280"
+        },
+        "Singleton": {
+          "arrowhead": "circle-filled",
+          "color": "#000000"
+        },
+        "Stream": {
+          "arrowhead": "triangle-filled",
+          "color": "#2563eb"
+        }
+      },
+      "KeyednessGroup": {
+        "Keyed": {
+          "line-style": "hash-marks"
+        },
+        "NotKeyed": {
+          "line-style": "single"
+        }
+      },
+      "NetworkGroup": {
+        "Local": {
+          "animation": "static",
+          "line-pattern": "solid"
+        },
+        "Network": {
+          "animation": "animated",
+          "line-pattern": "dashed"
+        }
+      },
+      "OrderingGroup": {
+        "NoOrder": {
+          "waviness": "wavy"
+        },
+        "TotalOrder": {
+          "waviness": "straight"
+        }
+      }
+    },
+    "semanticPriorities": [
+      [
+        "Unbounded",
+        "Bounded"
+      ],
+      [
+        "NoOrder",
+        "TotalOrder"
+      ],
+      [
+        "Keyed",
+        "NotKeyed"
+      ],
+      [
+        "Network",
+        "Local"
+      ]
+    ]
+  },
+  "nodeTypeConfig": {
+    "defaultType": "Transform",
+    "types": [
+      {
+        "colorIndex": 0,
+        "id": "Aggregation",
+        "label": "Aggregation"
+      },
+      {
+        "colorIndex": 1,
+        "id": "Join",
+        "label": "Join"
+      },
+      {
+        "colorIndex": 2,
+        "id": "Network",
+        "label": "Network"
+      },
+      {
+        "colorIndex": 3,
+        "id": "NonDeterministic",
+        "label": "NonDeterministic"
+      },
+      {
+        "colorIndex": 4,
+        "id": "Sink",
+        "label": "Sink"
+      },
+      {
+        "colorIndex": 5,
+        "id": "Source",
+        "label": "Source"
+      },
+      {
+        "colorIndex": 6,
+        "id": "Tee",
+        "label": "Tee"
+      },
+      {
+        "colorIndex": 7,
+        "id": "Transform",
+        "label": "Transform"
+      }
+    ]
+  },
+  "legend": {
+    "items": [
+      {
+        "label": "Aggregation",
+        "type": "Aggregation"
+      },
+      {
+        "label": "Join",
+        "type": "Join"
+      },
+      {
+        "label": "Network",
+        "type": "Network"
+      },
+      {
+        "label": "NonDeterministic",
+        "type": "NonDeterministic"
+      },
+      {
+        "label": "Sink",
+        "type": "Sink"
+      },
+      {
+        "label": "Source",
+        "type": "Source"
+      },
+      {
+        "label": "Tee",
+        "type": "Tee"
+      },
+      {
+        "label": "Transform",
+        "type": "Transform"
+      }
+    ],
+    "title": "Node Types"
+  }
+}

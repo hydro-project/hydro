@@ -121,11 +121,11 @@ where
             .into_keyed_stream()
             .chain(c_new_timers_when_leader_elected)
             .chain(c_updated_timers)
-            .reduce_commutative(q!(|curr_time, new_time| {
+            .reduce(q!(|curr_time, new_time| {
                 if new_time > *curr_time {
                     *curr_time = new_time;
                 }
-            }));
+            }, commutative = ManualProof(/* max is commutative */)));
 
         // Throughput tracking
         let c_throughput_new_batch = c_received_quorum_payloads
@@ -145,14 +145,19 @@ where
         /// across keys.
     )));
 
-    let c_latencies = c_latencies.fold_commutative(
+    let c_latencies = c_latencies.fold(
         q!(move || Rc::new(RefCell::new(Histogram::<u64>::new(3).unwrap()))),
-        q!(move |latencies, latency| {
-            latencies
-                .borrow_mut()
-                .record(latency.as_nanos() as u64)
-                .unwrap();
-        }),
+        q!(
+            move |latencies, latency| {
+                latencies
+                    .borrow_mut()
+                    .record(latency.as_nanos() as u64)
+                    .unwrap();
+            },
+            commutative = ManualProof(
+                /* adding elements to histogram is commutative */
+            )
+        ),
     );
 
     let throughput_with_timers = c_throughput_batches
@@ -208,9 +213,12 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
         .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
         .send(aggregator, TCP.bincode());
 
-    let latest_throughputs = keyed_throughputs.reduce_idempotent(q!(|combined, new| {
-        *combined = new;
-    }));
+    let latest_throughputs = keyed_throughputs.reduce(q!(
+        |combined, new| {
+            *combined = new;
+        },
+        idempotent = ManualProof(/* assignment is idempotent */)
+    ));
 
     let clients_with_throughputs_count = latest_throughputs
         .clone()
@@ -244,9 +252,9 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
         let latest_throughput_snapshot = use(latest_throughputs, nondet_sampling);
         latest_throughput_snapshot
             .values()
-            .reduce_commutative(q!(|combined, new| {
+            .reduce(q!(|combined, new| {
                 combined.add(new);
-            }))
+            }, commutative = ManualProof(/* rolling average is commutative */)))
     };
 
     combined_throughputs
@@ -283,18 +291,21 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
 
     let most_recent_histograms = keyed_latencies
         .map(q!(|histogram| histogram.histogram.borrow().clone()))
-        .reduce_idempotent(q!(|combined, new| {
-            // get the most recent histogram for each client
-            *combined = new;
-        }));
+        .reduce(q!(
+            |combined, new| {
+                // get the most recent histogram for each client
+                *combined = new;
+            },
+            idempotent = ManualProof(/* assignment is idempotent */)
+        ));
 
     let combined_latencies = sliced! {
         let latencies = use(most_recent_histograms, nondet_sampling);
         latencies
             .values()
-            .reduce_commutative(q!(|combined, new| {
+            .reduce(q!(|combined, new| {
                 combined.add(new).unwrap();
-            }))
+            }, commutative = ManualProof(/* combining histories is commutative */)))
     };
 
     combined_latencies

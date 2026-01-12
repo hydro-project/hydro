@@ -1,0 +1,33 @@
+---
+source: hydro_lang/src/compile/ir/backtrace.rs
+expression: elements
+---
+[
+    BacktraceElement {
+        fn_name: "hydro_lang::compile::ir::backtrace::tests",
+        lineno: Some(
+            180,
+        ),
+        colno: Some(
+            25,
+        ),
+    },
+    BacktraceElement {
+        fn_name: "hydro_lang::compile::ir::backtrace::tests::test_backtrace",
+        lineno: Some(
+            172,
+        ),
+        colno: Some(
+            24,
+        ),
+    },
+    BacktraceElement {
+        fn_name: "<hydro_lang::compile::ir::backtrace::tests::test_backtrace::{closure#0} as core::ops::function::FnOnce<()>>",
+        lineno: Some(
+            250,
+        ),
+        colno: Some(
+            5,
+        ),
+    },
+]

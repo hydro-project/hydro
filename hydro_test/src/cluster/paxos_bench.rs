@@ -56,11 +56,14 @@ pub fn paxos_bench<'a>(
         let a_checkpoint = {
             let a_checkpoint_largest_seqs = replica_checkpoint
                 .broadcast(&acceptors, TCP.bincode(), nondet!(/** TODO */))
-                .reduce_commutative(q!(|curr_seq, seq| {
-                    if seq > *curr_seq {
-                        *curr_seq = seq;
-                    }
-                }));
+                .reduce(q!(
+                    |curr_seq, seq| {
+                        if seq > *curr_seq {
+                            *curr_seq = seq;
+                        }
+                    },
+                    commutative = ManualProof(/* max is commutative */)
+                ));
 
             sliced! {
                 let snapshot = use(a_checkpoint_largest_seqs, nondet!(
@@ -181,7 +184,7 @@ mod tests {
             &client_aggregator,
             &replicas,
         );
-        let built = builder.with_default_optimize::<HydroDeploy>();
+        let mut built = builder.with_default_optimize::<HydroDeploy>();
 
         hydro_lang::compile::ir::dbg_dedup_tee(|| {
             hydro_build_utils::assert_debug_snapshot!(built.ir());

@@ -29,13 +29,13 @@ pub fn compute_pi<'a>(
         )
         .all_ticks();
 
-    let estimate = trials
-        .send(&process, TCP.bincode())
-        .values()
-        .reduce_commutative(q!(|(inside, total), (inside_batch, total_batch)| {
+    let estimate = trials.send(&process, TCP.bincode()).values().reduce(q!(
+        |(inside, total), (inside_batch, total_batch)| {
             *inside += inside_batch;
             *total += total_batch;
-        }));
+        },
+        commutative = ManualProof(/* int addition is commutative */)
+    ));
 
     estimate
         .sample_every(
@@ -62,7 +62,7 @@ mod tests {
     fn compute_pi_ir() {
         let builder = hydro_lang::compile::builder::FlowBuilder::new();
         let _ = super::compute_pi(&builder, 8192);
-        let built = builder.with_default_optimize::<HydroDeploy>();
+        let mut built = builder.with_default_optimize::<HydroDeploy>();
 
         hydro_build_utils::assert_debug_snapshot!(built.ir());
 
