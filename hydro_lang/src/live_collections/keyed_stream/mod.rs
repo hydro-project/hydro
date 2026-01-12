@@ -19,6 +19,7 @@ use crate::compile::ir::{
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
+use crate::live_collections::batch_atomic::BatchAtomic;
 use crate::live_collections::stream::{AtLeastOnce, Ordering, Retries};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
@@ -360,9 +361,12 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///     .entries()
     /// # }, |mut stream| async move {
     /// // (1, 2), (1, 3), (2, 4) in any order
-    /// # for w in vec![(1, 2), (1, 3), (2, 4)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (1, 3), (2, 4)]);
     /// # }));
     /// # }
     /// ```
@@ -392,9 +396,12 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///     .values()
     /// # }, |mut stream| async move {
     /// // 2, 3, 4 in any order
-    /// # for w in vec![2, 3, 4] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![2, 3, 4]);
     /// # }));
     /// # }
     /// ```
@@ -421,9 +428,12 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // { 1: [3, 4], 2: [5] }
-    /// # for w in vec![(1, 3), (1, 4), (2, 5)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 3), (1, 4), (2, 5)]);
     /// # }));
     /// # }
     /// ```
@@ -470,9 +480,12 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // { 1: [3, 4], 2: [6] }
-    /// # for w in vec![(1, 3), (1, 4), (2, 6)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 3), (1, 4), (2, 6)]);
     /// # }));
     /// # }
     /// ```
@@ -524,9 +537,12 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // { (1, 1): [2, 3], (0, 2): [4] }
-    /// # for w in vec![((1, 1), 2), ((1, 1), 3), ((0, 2), 4)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![((0, 2), 4), ((1, 1), 2), ((1, 1), 3)]);
     /// # }));
     /// # }
     /// ```
@@ -580,9 +596,12 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // { 1: [3], 2: [4] }
-    /// # for w in vec![(1, 3), (2, 4)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 3), (2, 4)]);
     /// # }));
     /// # }
     /// ```
@@ -628,9 +647,12 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // { 1: [3], 2: [4] }
-    /// # for w in vec![(1, 3), (2, 4)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 3), (2, 4)]);
     /// # }));
     /// # }
     /// ```
@@ -672,9 +694,12 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // { 1: [2], 2: [4] }
-    /// # for w in vec![(1, 2), (2, 4)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (2, 4)]);
     /// # }));
     /// # }
     /// ```
@@ -722,9 +747,12 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // { 2: [2] }
-    /// # for w in vec![(2, 2)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..1 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(2, 2)]);
     /// # }));
     /// # }
     /// ```
@@ -778,9 +806,12 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// batch.cross_singleton(count).all_ticks().entries()
     /// # }, |mut stream| async move {
     /// // { 1: [(123, 3), (456, 3)], 2: [(123, 3)] }
-    /// # for w in vec![(1, (123, 3)), (1, (456, 3)), (2, (123, 3))] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, (123, 3)), (1, (456, 3)), (2, (123, 3))]);
     /// # }));
     /// # }
     /// ```
@@ -829,9 +860,12 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // { 1: [2, 3, 4], 2: [5, 6] }
-    /// # for w in vec![(1, 2), (1, 3), (1, 4), (2, 5), (2, 6)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..5 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (1, 3), (1, 4), (2, 5), (2, 6)]);
     /// # }));
     /// # }
     /// ```
@@ -941,9 +975,12 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // { 1: [2, 3, 4], 2: [5, 6] }
-    /// # for w in vec![(1, 2), (1, 3), (1, 4), (2, 5), (2, 6)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..5 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (1, 3), (1, 4), (2, 5), (2, 6)]);
     /// # }));
     /// # }
     /// ```
@@ -1007,9 +1044,12 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///     .inspect(q!(|v| println!("{}", v)))
     /// #   .entries()
     /// # }, |mut stream| async move {
-    /// # for w in vec![(1, 2), (1, 3), (2, 4)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (1, 3), (2, 4)]);
     /// # }));
     /// # }
     /// ```
@@ -1051,9 +1091,12 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///     .inspect_with_key(q!(|(k, v)| println!("{}: {}", k, v)))
     /// #   .entries()
     /// # }, |mut stream| async move {
-    /// # for w in vec![(1, 2), (1, 3), (2, 4)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (1, 3), (2, 4)]);
     /// # }));
     /// # }
     /// ```
@@ -1107,9 +1150,12 @@ impl<'a, K1, K2, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // { 10: [2, 3], 20: [4] }
-    /// # for w in vec![(10, 2), (10, 3), (20, 4)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(10, 2), (10, 3), (20, 4)]);
     /// # }));
     /// # }
     /// ```
@@ -1142,9 +1188,12 @@ impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries>
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // { 1: [2, 3], 3: [4, 5] } with each group in unknown order
-    /// # for w in vec![(1, 2), (3, 4), (1, 3), (3, 5)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..4 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (1, 3), (3, 4), (3, 5)]);
     /// # }));
     /// # }
     /// ```
@@ -1215,9 +1264,12 @@ where
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // Output: { 0: [1], 1: [3, 7] }
-    /// # for w in vec![(0, 1), (1, 3), (1, 7)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(0, 1), (1, 3), (1, 7)]);
     /// # }));
     /// # }
     /// ```
@@ -1286,9 +1338,12 @@ where
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // Output: { 0: ["even", "done!"], 1: ["even"] }
-    /// # for w in vec![(0, "even".to_string()), (0, "done!".to_string()), (1, "even".to_string())] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(0, "done!".to_string()), (0, "even".to_string()), (1, "even".to_string())]);
     /// # }));
     /// # }
     /// ```
@@ -1388,9 +1443,12 @@ where
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // Output: { 0: 2, 1: 9 }
-    /// # for w in vec![(0, 2), (1, 9)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(0, 2), (1, 9)]);
     /// # }));
     /// # }
     /// ```
@@ -1451,9 +1509,12 @@ where
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // Output: { 0: 2, 1: 3 }
-    /// # for w in vec![(0, 2), (1, 3)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(0, 2), (1, 3)]);
     /// # }));
     /// # }
     /// ```
@@ -1495,8 +1556,12 @@ where
     ///     .all_ticks()
     /// # }, |mut stream| async move {
     /// // (1, 3), (2, 2)
-    /// # assert_eq!(stream.next().await.unwrap(), (1, 3));
-    /// # assert_eq!(stream.next().await.unwrap(), (2, 2));
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 3), (2, 2)]);
     /// # }));
     /// # }
     /// ```
@@ -1541,8 +1606,12 @@ where
     ///     .all_ticks()
     /// # }, |mut stream| async move {
     /// // (1, false), (2, true)
-    /// # assert_eq!(stream.next().await.unwrap(), (1, false));
-    /// # assert_eq!(stream.next().await.unwrap(), (2, true));
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, false), (2, true)]);
     /// # }));
     /// # }
     /// ```
@@ -1607,8 +1676,12 @@ where
     ///     .all_ticks()
     /// # }, |mut stream| async move {
     /// // (1, false), (2, true)
-    /// # assert_eq!(stream.next().await.unwrap(), (1, false));
-    /// # assert_eq!(stream.next().await.unwrap(), (2, true));
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, false), (2, true)]);
     /// # }));
     /// # }
     /// ```
@@ -1733,9 +1806,12 @@ where
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // { 3: ['c'], 4: ['d'] }
-    /// # for w in vec![(3, 'c'), (4, 'd')] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(3, 'c'), (4, 'd')]);
     /// # }));
     /// # }
     /// ```
@@ -1881,9 +1957,12 @@ where
     /// # .entries()
     /// # }, |mut stream| async move {
     /// // { 0: [2, 1], 1: [4, 3] }
-    /// # for w in vec![(0, 2), (1, 4), (0, 1), (1, 3)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..4 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(0, 1), (0, 2), (1, 3), (1, 4)]);
     /// # }));
     /// # }
     /// ```
@@ -1968,6 +2047,61 @@ where
         )
     }
 
+    /// Transforms the keyed stream using the given closure in "stateful" mode, where stateful operators
+    /// such as `fold` retrain their memory for each key across ticks rather than resetting across batches of each key.
+    ///
+    /// This API is particularly useful for stateful computation on batches of data, such as
+    /// maintaining an accumulated state that is up to date with the current batch.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// # // ticks are lazy by default, forces the second tick to run
+    /// # tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    /// # let batch_first_tick = process
+    /// #   .source_iter(q!(vec![(0, 1), (1, 2), (2, 3), (3, 4)]))
+    /// #   .into_keyed()
+    /// #   .batch(&tick, nondet!(/** test */));
+    /// # let batch_second_tick = process
+    /// #   .source_iter(q!(vec![(0, 5), (1, 6), (2, 7)]))
+    /// #   .into_keyed()
+    /// #   .batch(&tick, nondet!(/** test */))
+    /// #   .defer_tick(); // appears on the second tick
+    /// let input = batch_first_tick.chain(batch_second_tick).all_ticks();
+    ///
+    /// input.batch(&tick, nondet!(/** test */))
+    ///     .across_ticks(|s| s.reduce(q!(|sum, new| {
+    ///         *sum += new;
+    ///     }))).entries().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // First tick: [(0, 1), (1, 2), (2, 3), (3, 4)]
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..4 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(0, 1), (1, 2), (2, 3), (3, 4)]);
+    /// // Second tick: [(0, 6), (1, 8), (2, 10), (3, 4)]
+    /// # results.clear();
+    /// # for _ in 0..4 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(0, 6), (1, 8), (2, 10), (3, 4)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn across_ticks<Out: BatchAtomic>(
+        self,
+        thunk: impl FnOnce(KeyedStream<K, V, Atomic<L>, Unbounded, O, R>) -> Out,
+    ) -> Out::Batched {
+        thunk(self.all_ticks_atomic()).batched_atomic()
+    }
+
     /// Shifts the entries in `self` to the **next tick**, so that the returned keyed stream at
     /// tick `T` always has the entries of `self` at tick `T - 1`.
     ///
@@ -2001,10 +2135,27 @@ where
     /// )
     /// # .entries().all_ticks()
     /// # }, |mut stream| async move {
-    /// // { 1: [2, 3] } (first tick), { 1: [2, 3, 4], 2: [5] } (second tick), { 1: [4], 2: [5] } (third tick)
-    /// # for w in vec![(1, 2), (1, 3), (1, 2), (1, 3), (1, 4), (2, 5), (1, 4), (2, 5)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// // First tick: { 1: [2, 3] }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
     /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (1, 3)]);
+    /// // Second tick: { 1: [2, 3, 4], 2: [5] }
+    /// # results.clear();
+    /// # for _ in 0..4 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (1, 3), (1, 4), (2, 5)]);
+    /// // Third tick: { 1: [4], 2: [5] }
+    /// # results.clear();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 4), (2, 5)]);
     /// # }));
     /// # }
     /// ```
