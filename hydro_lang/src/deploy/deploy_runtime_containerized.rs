@@ -16,7 +16,6 @@ use std::time::Duration;
 use bytes::BytesMut;
 use futures::{FutureExt, Sink, SinkExt, Stream, StreamExt};
 use proc_macro2::Span;
-use sinktools::buffered_lazy_sink_source::BufferedLazySinkSource;
 use sinktools::demux_map_lazy::LazyDemuxSink;
 use sinktools::lazy::{LazySink, LazySource};
 use sinktools::lazy_sink_source::LazySinkSource;
@@ -245,10 +244,6 @@ impl<Ctx> FreeVariableWithContextWithProps<Ctx, ()> for SocketIdent {
 pub fn deploy_containerized_external_sink_source_ident(socket_ident: syn::Ident) -> syn::Expr {
     let socket_ident = SocketIdent { socket_ident };
 
-    // q!(BufferedLazySinkSource::<
-    //     bytes::Bytes,
-    //     Result<bytes::BytesMut, std::io::Error>,
-    //     std::io::Error,
     q!(LazySinkSource::<
         _,
         FramedRead<OwnedReadHalf, LengthDelimitedCodec>,
