@@ -2,10 +2,9 @@ use std::sync::Arc;
 
 use clap::{ArgAction, Parser};
 use dfir_rs::tokio_util::codec::LinesCodec;
-use hydro_deploy::Deployment;
 use hydro_deploy::custom_service::ServerPort;
 use hydro_deploy::gcp::GcpNetwork;
-use hydro_deploy::{AwsNetwork, Host};
+use hydro_deploy::{AwsNetwork, Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::location::{Location, NetworkHint};
 use hydro_lang::viz::config::GraphConfig;
@@ -100,7 +99,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Now use the built flow for deployment with optimization
     let nodes = built
         .with_default_optimize()
-        .with_process(&process, TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags))
+        .with_process(
+            &process,
+            TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags),
+        )
         .with_external(&external, deployment.Localhost())
         .deploy(&mut deployment);
 
