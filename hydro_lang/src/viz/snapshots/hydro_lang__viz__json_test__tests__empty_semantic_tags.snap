@@ -11,7 +11,7 @@ expression: output
         "locationType": null
       },
       "fullLabel": "node [hydro operator]",
-      "id": "0",
+      "id": "VizNodeKey(1v1)",
       "label": "node",
       "nodeType": "Transform",
       "shortLabel": "node"
@@ -23,8 +23,8 @@ expression: output
       "semanticTags": [
         "Local"
       ],
-      "source": "0",
-      "target": "0"
+      "source": "VizNodeKey(1v1)",
+      "target": "VizNodeKey(1v1)"
     }
   ],
   "hierarchyChoices": [

@@ -2321,6 +2321,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "sinktools",
+ "slotmap",
  "stageleft",
  "stageleft_tool",
  "syn 2.0.111",

@@ -6,6 +6,7 @@ use serde::Serialize;
 use super::render::{HydroEdgeProp, HydroGraphWrite, HydroNodeType};
 use crate::compile::ir::HydroRoot;
 use crate::compile::ir::backtrace::Backtrace;
+use crate::viz::render::VizNodeKey;
 
 /// A serializable backtrace frame for JSON output.
 /// Includes compatibility aliases to match potential viewer expectations.
@@ -69,15 +70,15 @@ pub struct HydroJson<W> {
     write: W,
     nodes: Vec<serde_json::Value>,
     edges: Vec<serde_json::Value>,
-    locations: HashMap<usize, (String, Vec<usize>)>, // location_id -> (label, node_ids)
-    node_locations: HashMap<usize, usize>,           // node_id -> location_id
+    locations: HashMap<usize, (String, Vec<VizNodeKey>)>, // location_id -> (label, node_ids)
+    node_locations: HashMap<VizNodeKey, usize>,           // node_id -> location_id
     edge_count: usize,
     // Type name mappings
     process_names: HashMap<usize, String>,
     cluster_names: HashMap<usize, String>,
     external_names: HashMap<usize, String>,
     // Store backtraces for hierarchy generation
-    node_backtraces: HashMap<usize, Backtrace>,
+    node_backtraces: HashMap<VizNodeKey, Backtrace>,
     // Config flags
     use_short_labels: bool,
 }
@@ -318,7 +319,7 @@ where
 
     fn write_node_definition(
         &mut self,
-        node_id: usize,
+        node_id: VizNodeKey,
         node_label: &super::render::NodeLabel,
         node_type: HydroNodeType,
         location_id: Option<usize>,
@@ -416,8 +417,8 @@ where
 
     fn write_edge(
         &mut self,
-        src_id: usize,
-        dst_id: usize,
+        src_id: VizNodeKey,
+        dst_id: VizNodeKey,
         edge_properties: &HashSet<HydroEdgeProp>,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
@@ -501,7 +502,7 @@ where
         Ok(())
     }
 
-    fn write_node(&mut self, node_id: usize) -> Result<(), Self::Err> {
+    fn write_node(&mut self, node_id: VizNodeKey) -> Result<(), Self::Err> {
         // Find the current location being written and add this node to it
         if let Some((_, node_ids)) = self.locations.values_mut().last() {
             node_ids.push(node_id);
@@ -644,7 +645,7 @@ impl<W> HydroJson<W> {
         serde_json::Map<String, serde_json::Value>,
     ) {
         // Create hierarchy structure (single level: locations as parents, nodes as children)
-        let mut locs: Vec<(&usize, &(String, Vec<usize>))> = self.locations.iter().collect();
+        let mut locs: Vec<(&usize, &(String, Vec<VizNodeKey>))> = self.locations.iter().collect();
         locs.sort_by(|a, b| a.0.cmp(b.0));
         let hierarchy: Vec<serde_json::Value> = locs
             .into_iter()
@@ -693,7 +694,7 @@ impl<W> HydroJson<W> {
         // Process each node's backtrace using the stored backtraces
         for node in &self.nodes {
             if let Some(node_id_str) = node["id"].as_str()
-                && let Ok(node_id) = node_id_str.parse::<usize>()
+                && let Ok(node_id) = node_id_str.parse::<VizNodeKey>()
                 && let Some(backtrace) = self.node_backtraces.get(&node_id)
             {
                 let elements = backtrace.elements();

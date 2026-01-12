@@ -11,7 +11,7 @@ expression: output1
         "locationType": "Process"
       },
       "fullLabel": "a [hydro operator]",
-      "id": "0",
+      "id": "VizNodeKey(1v1)",
       "label": "a",
       "nodeType": "Source",
       "shortLabel": "a"
@@ -23,7 +23,7 @@ expression: output1
         "locationType": "Process"
       },
       "fullLabel": "b [hydro operator]",
-      "id": "1",
+      "id": "VizNodeKey(2v1)",
       "label": "b",
       "nodeType": "Transform",
       "shortLabel": "b"
@@ -36,8 +36,8 @@ expression: output1
         "Network",
         "Stream"
       ],
-      "source": "0",
-      "target": "1"
+      "source": "VizNodeKey(1v1)",
+      "target": "VizNodeKey(2v1)"
     }
   ],
   "hierarchyChoices": [
@@ -49,8 +49,8 @@ expression: output1
   ],
   "nodeAssignments": {
     "location": {
-      "0": "loc_0",
-      "1": "loc_1"
+      "VizNodeKey(1v1)": "loc_0",
+      "VizNodeKey(2v1)": "loc_1"
     }
   },
   "selectedHierarchy": "location",
