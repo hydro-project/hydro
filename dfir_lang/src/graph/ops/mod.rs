@@ -287,6 +287,7 @@ declare_ops![
     flat_map::FLAT_MAP,
     flatten::FLATTEN,
     fold::FOLD,
+    fold_no_replay::FOLD_NO_REPLAY,
     for_each::FOR_EACH,
     identity::IDENTITY,
     initialize::INITIALIZE,
