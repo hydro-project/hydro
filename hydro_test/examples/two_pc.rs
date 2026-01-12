@@ -1,18 +1,27 @@
 use std::sync::Arc;
 
-use clap::Parser;
+use clap::{ArgAction, Parser};
 use hydro_deploy::gcp::GcpNetwork;
-use hydro_deploy::{Deployment, Host};
+use hydro_deploy::{AwsNetwork, Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::viz::config::GraphConfig;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
 #[derive(Parser, Debug)]
+#[command(group(
+    clap::ArgGroup::new("cloud")
+        .args(&["gcp", "aws"])
+        .multiple(false)
+))]
 struct Args {
     /// Use GCP instead of localhost (requires project name)
     #[clap(long)]
     gcp: Option<String>,
+
+    /// Use AWS, make sure credentials are set up
+    #[arg(long, action = ArgAction::SetTrue)]
+    aws: bool,
 
     #[clap(flatten)]
     graph: GraphConfig,
@@ -23,8 +32,9 @@ async fn main() {
     let args = Args::parse();
     let mut deployment = Deployment::new();
 
-    let create_host: HostCreator = if let Some(project) = args.gcp {
-        let network = GcpNetwork::new(&project, None);
+    let create_host: HostCreator = if let Some(project) = &args.gcp {
+        let network = GcpNetwork::new(project, None);
+        let project = project.clone();
 
         Box::new(move |deployment| -> Arc<dyn Host> {
             deployment
@@ -33,6 +43,19 @@ async fn main() {
                 .machine_type("n2-standard-4")
                 .image("debian-cloud/debian-11")
                 .region("us-central1-c")
+                .network(network.clone())
+                .add()
+        })
+    } else if args.aws {
+        let region = "us-east-1";
+        let network = AwsNetwork::new(region, None);
+
+        Box::new(move |deployment| -> Arc<dyn Host> {
+            deployment
+                .AwsEc2Host()
+                .region(region)
+                .instance_type("t3.micro")
+                .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
                 .network(network.clone())
                 .add()
         })
@@ -76,7 +99,11 @@ async fn main() {
     // Optimize the flow before deployment to remove marker nodes
     let optimized = built.with_default_optimize();
 
-    let rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
+    let rustflags = if args.gcp.is_some() || args.aws {
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment"
+    } else {
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
+    };
 
     let _nodes = optimized
         .with_process(
