@@ -271,10 +271,14 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
         .interleave(p_received_p2b_ballots)
         .interleave(p_to_proposers_i_am_leader_forward_ref)
         .max()
-        .unwrap_or(proposers.singleton(q!(Ballot {
-            num: 0,
-            proposer_id: MemberId::from_raw_id(0)
-        })));
+        .unwrap_or(
+            proposers
+                .singleton(q!(Ballot {
+                    num: 0,
+                    proposer_id: MemberId::from_raw_id(0)
+                }))
+                .into(),
+        );
 
     let (p_ballot, p_has_largest_ballot) = p_ballot_calc(p_received_max_ballot.snapshot(
         proposer_tick,
