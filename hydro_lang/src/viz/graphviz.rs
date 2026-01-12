@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::fmt::Write;
 
 use super::render::{HydroEdgeProp, HydroGraphWrite, HydroNodeType, IndentedGraphWriter};
+use crate::viz::render::VizNodeKey;
 
 /// Escapes a string for use in a DOT graph label.
 pub fn escape_dot(string: &str, newline: &str) -> String {
@@ -82,7 +83,7 @@ where
 
     fn write_node_definition(
         &mut self,
-        node_id: usize,
+        node_id: VizNodeKey,
         node_label: &super::render::NodeLabel,
         node_type: HydroNodeType,
         _location_id: Option<usize>,
@@ -146,8 +147,8 @@ where
 
     fn write_edge(
         &mut self,
-        src_id: usize,
-        dst_id: usize,
+        src_id: VizNodeKey,
+        dst_id: VizNodeKey,
         edge_properties: &std::collections::HashSet<HydroEdgeProp>,
         label: Option<&str>,
     ) -> Result<(), Self::Err> {
@@ -244,7 +245,7 @@ where
         Ok(())
     }
 
-    fn write_node(&mut self, node_id: usize) -> Result<(), Self::Err> {
+    fn write_node(&mut self, node_id: VizNodeKey) -> Result<(), Self::Err> {
         writeln!(
             self.base.write,
             "{b:i$}n{node_id}",

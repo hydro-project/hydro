@@ -21,10 +21,14 @@ mod tests {
         // Write a simple graph
         writer.write_prologue().unwrap();
 
+        // For testing only.
+        let node_id_1 = "VizNodeKey(1v1)".parse().unwrap();
+        let node_id_2 = "VizNodeKey(2v1)".parse().unwrap();
+
         // Add a source node
         writer
             .write_node_definition(
-                0,
+                node_id_1,
                 &NodeLabel::Static("source".to_string()),
                 HydroNodeType::Source,
                 Some(0),
@@ -36,7 +40,7 @@ mod tests {
         // Add a transform node
         writer
             .write_node_definition(
-                1,
+                node_id_2,
                 &NodeLabel::Static("map".to_string()),
                 HydroNodeType::Transform,
                 Some(0),
@@ -51,7 +55,9 @@ mod tests {
         edge_props.insert(HydroEdgeProp::Unbounded);
         edge_props.insert(HydroEdgeProp::TotalOrder);
 
-        writer.write_edge(0, 1, &edge_props, None).unwrap();
+        writer
+            .write_edge(node_id_1, node_id_2, &edge_props, None)
+            .unwrap();
 
         writer.write_epilogue().unwrap();
 
@@ -67,9 +73,12 @@ mod tests {
 
         writer.write_prologue().unwrap();
 
+        // For testing only.
+        let node_id_1 = "VizNodeKey(1v1)".parse().unwrap();
+
         writer
             .write_node_definition(
-                0,
+                node_id_1,
                 &NodeLabel::Static("node".to_string()),
                 HydroNodeType::Transform,
                 None,
@@ -80,7 +89,9 @@ mod tests {
 
         // Edge with no properties
         let edge_props = HashSet::new();
-        writer.write_edge(0, 0, &edge_props, None).unwrap();
+        writer
+            .write_edge(node_id_1, node_id_1, &edge_props, None)
+            .unwrap();
 
         writer.write_epilogue().unwrap();
 
@@ -101,10 +112,14 @@ mod tests {
         let mut edge_props = HashSet::new();
         edge_props.insert(HydroEdgeProp::Stream);
 
+        // For testing only.
+        let node_id_1 = "VizNodeKey(1v1)".parse().unwrap();
+        let node_id_2 = "VizNodeKey(2v1)".parse().unwrap();
+
         // Graph 1
         w1.write_prologue().unwrap();
         w1.write_node_definition(
-            0,
+            node_id_1,
             &NodeLabel::Static("a".into()),
             HydroNodeType::Source,
             Some(0),
@@ -113,7 +128,7 @@ mod tests {
         )
         .unwrap();
         w1.write_node_definition(
-            1,
+            node_id_2,
             &NodeLabel::Static("b".into()),
             HydroNodeType::Transform,
             Some(1),
@@ -121,13 +136,14 @@ mod tests {
             None,
         )
         .unwrap();
-        w1.write_edge(0, 1, &edge_props, None).unwrap();
+        w1.write_edge(node_id_1, node_id_2, &edge_props, None)
+            .unwrap();
         w1.write_epilogue().unwrap();
 
         // Graph 2 (same operations, different insertion order to test determinism)
         w2.write_prologue().unwrap();
         w2.write_node_definition(
-            1,
+            node_id_2,
             &NodeLabel::Static("b".into()),
             HydroNodeType::Transform,
             Some(1),
@@ -136,7 +152,7 @@ mod tests {
         )
         .unwrap();
         w2.write_node_definition(
-            0,
+            node_id_1,
             &NodeLabel::Static("a".into()),
             HydroNodeType::Source,
             Some(0),
@@ -144,7 +160,8 @@ mod tests {
             None,
         )
         .unwrap();
-        w2.write_edge(0, 1, &edge_props, None).unwrap();
+        w2.write_edge(node_id_1, node_id_2, &edge_props, None)
+            .unwrap();
         w2.write_epilogue().unwrap();
 
         // Verify deterministic output

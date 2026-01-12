@@ -13,6 +13,7 @@ use crate::location::{Cluster, External, Process};
 use crate::sim::{flow::SimFlow, graph::SimNode};
 use crate::staging_util::Invariant;
 #[cfg(feature = "viz")]
+#[cfg(stageleft_runtime)]
 use crate::viz::api::GraphApi;
 
 pub struct BuiltFlow<'a> {
@@ -58,6 +59,7 @@ impl<'a> BuiltFlow<'a> {
     }
 
     /// Get a GraphApi instance for this built flow
+    #[cfg(stageleft_runtime)]
     #[cfg(feature = "viz")]
     pub fn graph_api(&self) -> GraphApi<'_> {
         GraphApi::new(
