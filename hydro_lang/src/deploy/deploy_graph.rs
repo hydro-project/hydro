@@ -48,7 +48,6 @@ impl<'a> Deploy<'a> for HydroDeploy {
     type Meta = HashMap<usize, Vec<TaglessMemberId>>;
     type GraphId = ();
     type Port = String;
-    type ExternalRawPort = CustomClientPort;
 
     fn allocate_process_port(process: &Self::Process) -> Self::Port {
         process.next_port()
@@ -610,6 +609,16 @@ pub struct DeployExternal {
     allocated_ports: Rc<RefCell<HashMap<usize, String>>>,
 }
 
+impl DeployExternal {
+    pub(crate) fn raw_port(&self, key: usize) -> CustomClientPort {
+        self.client_ports
+            .borrow()
+            .get(self.allocated_ports.borrow().get(&key).unwrap())
+            .unwrap()
+            .clone()
+    }
+}
+
 impl<'a> RegisterPort<'a, HydroDeploy> for DeployExternal {
     fn register(&self, key: usize, port: <HydroDeploy as Deploy>::Port) {
         assert!(
@@ -618,14 +627,6 @@ impl<'a> RegisterPort<'a, HydroDeploy> for DeployExternal {
                 .insert(key, port.clone())
                 .is_none_or(|old| old == port)
         );
-    }
-
-    fn raw_port(&self, key: usize) -> <HydroDeploy as Deploy<'_>>::ExternalRawPort {
-        self.client_ports
-            .borrow()
-            .get(self.allocated_ports.borrow().get(&key).unwrap())
-            .unwrap()
-            .clone()
     }
 
     fn as_bytes_bidi(

@@ -246,11 +246,6 @@ impl<'a> RegisterPort<'a, DockerDeploy> for DockerDeployExternal {
         self.ports.borrow_mut().insert(key, port);
     }
 
-    #[instrument(level = "trace", skip_all, fields(name = self.name, %key))]
-    fn raw_port(&self, key: usize) -> <DockerDeploy as Deploy<'a>>::ExternalRawPort {
-        todo!()
-    }
-
     fn as_bytes_bidi(
         &self,
         key: usize,
@@ -816,7 +811,6 @@ impl<'a> Deploy<'a> for DockerDeploy {
     type Cluster = DockerDeployCluster;
     type External = DockerDeployExternal;
     type Port = u16;
-    type ExternalRawPort = ();
     type Meta = ();
     type GraphId = ();
 

@@ -89,10 +89,6 @@ impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
         );
     }
 
-    fn raw_port(&self, _key: usize) -> () {
-        todo!()
-    }
-
     #[expect(clippy::manual_async_fn, reason = "false positive, involves lifetimes")]
     fn as_bytes_bidi(
         &self,
@@ -149,7 +145,6 @@ impl<'a> Deploy<'a> for SimDeploy {
     type Cluster = SimNode;
     type External = SimExternal;
     type Port = usize;
-    type ExternalRawPort = ();
     type Meta = ();
     type GraphId = ();
 
