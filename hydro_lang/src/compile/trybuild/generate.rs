@@ -390,17 +390,41 @@ crate-type = ["cdylib"]"#,
             .take(8)
             .collect::<String>();
 
+        let workspace_cargo_lock = path!(project.workspace / "Cargo.lock");
+        let workspace_cargo_lock_contents_and_hash = if workspace_cargo_lock.exists() {
+            let cargo_lock_contents = fs::read_to_string(&workspace_cargo_lock)?;
+
+            let hash = format!("{:X}", Sha256::digest(&cargo_lock_contents))
+                .chars()
+                .take(8)
+                .collect::<String>();
+
+            Some((cargo_lock_contents, hash))
+        } else {
+            None
+        };
+
+        let trybuild_hash = format!(
+            "{}-{}",
+            manifest_hash,
+            workspace_cargo_lock_contents_and_hash
+                .as_ref()
+                .map(|s| s.1.as_ref())
+                .unwrap_or("")
+        );
+
         if !check_contents(
-            manifest_hash.as_bytes(),
+            trybuild_hash.as_bytes(),
             &path!(project.dir / ".hydro-trybuild-manifest"),
         )
         .is_ok_and(|b| b)
         {
             // this is expensive, so we only do it if the manifest changed
-            let workspace_cargo_lock = path!(project.workspace / "Cargo.lock");
-            if workspace_cargo_lock.exists() {
+            if let Some((cargo_lock_contents, _)) = workspace_cargo_lock_contents_and_hash {
+                // only overwrite when the hash changed, because writing Cargo.lock must be
+                // immediately followed by a local `cargo update -w`
                 write_atomic(
-                    fs::read_to_string(&workspace_cargo_lock)?.as_ref(),
+                    cargo_lock_contents.as_ref(),
                     &path!(project.dir / "Cargo.lock"),
                 )?;
             } else {
@@ -417,7 +441,7 @@ crate-type = ["cdylib"]"#,
                 .unwrap();
 
             write_atomic(
-                manifest_hash.as_bytes(),
+                trybuild_hash.as_bytes(),
                 &path!(project.dir / ".hydro-trybuild-manifest"),
             )?;
         }
