@@ -57,11 +57,18 @@ pub const SOURCE_ITER: OperatorConstraints = OperatorConstraints {
             };
         };
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = #root::futures::stream::iter(#iter_ident.by_ref());
+            let #ident = #root::futures::stream::iter(&mut #iter_ident);
         };
+
+        // Ensure contents are always drained on the first tick.
+        let write_iterator_after = quote_spanned! {op_span=>
+            ::std::iter::Iterator::for_each(&mut #iter_ident, ::std::mem::drop);
+        };
+
         Ok(OperatorWriteOutput {
             write_prologue,
             write_iterator,
+            write_iterator_after,
             ..Default::default()
         })
     },
