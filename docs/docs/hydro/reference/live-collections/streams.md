@@ -20,7 +20,7 @@ The simplest way to create a stream is to use [`Location::source_iter`](https://
 # use futures::StreamExt;
 # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p_out| {
 let process = flow.process::<()>();
-let numbers: Stream<_, Process<_>, Unbounded> = process
+let numbers: Stream<_, Process<_>, Bounded> = process
     .source_iter(q!(vec![1, 2, 3]))
     .map(q!(|x| x + 1));
 // 2, 3, 4
@@ -39,7 +39,7 @@ Streams also can be sent over the network to participate in distributed programs
 # use futures::StreamExt;
 # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p_out| {
 let p1 = flow.process::<()>();
-let numbers: Stream<_, Process<_>, Unbounded> = p1.source_iter(q!(vec![1, 2, 3]));
+let numbers: Stream<_, Process<_>, Bounded> = p1.source_iter(q!(vec![1, 2, 3]));
 let p2 = flow.process::<()>();
 let on_p2: Stream<_, Process<_>, Unbounded> = numbers.send(&p2, TCP.bincode());
 // 1, 2, 3
@@ -63,7 +63,7 @@ If we send a stream from a cluster to a process and flatten the values across se
 # let flow = FlowBuilder::new();
 use hydro_lang::live_collections::stream::{NoOrder, TotalOrder};
 let workers: Cluster<()> = flow.cluster::<()>();
-let numbers: Stream<_, Cluster<_>, Unbounded, TotalOrder> =
+let numbers: Stream<_, Cluster<_>, Bounded, TotalOrder> =
     workers.source_iter(q!(vec![1, 2, 3]));
 let process: Process<()> = flow.process::<()>();
 let on_p2: Stream<_, Process<_>, Unbounded, NoOrder> =

@@ -63,17 +63,34 @@ pub struct KeyedStream<
     _phantom: PhantomData<(K, V, Loc, Bound, Order, Retry)>,
 }
 
+impl<'a, K, V, L, O: Ordering, R: Retries> From<KeyedStream<K, V, L, Bounded, O, R>>
+    for KeyedStream<K, V, L, Unbounded, O, R>
+where
+    L: Location<'a>,
+{
+    fn from(stream: KeyedStream<K, V, L, Bounded, O, R>) -> KeyedStream<K, V, L, Unbounded, O, R> {
+        let new_meta = stream
+            .location
+            .new_node_metadata(KeyedStream::<K, V, L, Unbounded, O, R>::collection_kind());
+
+        KeyedStream {
+            location: stream.location,
+            ir_node: RefCell::new(HydroNode::Cast {
+                inner: Box::new(stream.ir_node.into_inner()),
+                metadata: new_meta,
+            }),
+            _phantom: PhantomData,
+        }
+    }
+}
+
 impl<'a, K, V, L, B: Boundedness, R: Retries> From<KeyedStream<K, V, L, B, TotalOrder, R>>
     for KeyedStream<K, V, L, B, NoOrder, R>
 where
     L: Location<'a>,
 {
     fn from(stream: KeyedStream<K, V, L, B, TotalOrder, R>) -> KeyedStream<K, V, L, B, NoOrder, R> {
-        KeyedStream {
-            location: stream.location,
-            ir_node: stream.ir_node,
-            _phantom: PhantomData,
-        }
+        stream.weakest_ordering()
     }
 }
 
@@ -906,7 +923,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, _, NoOrder, ExactlyOnce>(|process| {
     /// process
     ///     .source_iter(q!(vec![
     ///         (1, std::collections::HashSet::<i32>::from_iter(vec![2, 3])),
@@ -1000,7 +1017,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, _, NoOrder, ExactlyOnce>(|process| {
     /// process
     ///     .source_iter(q!(vec![
     ///         (1, std::collections::HashSet::<i32>::from_iter(vec![2, 3])),
@@ -1182,8 +1199,10 @@ impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries>
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let numbers1 = process.source_iter(q!(vec![(1, 2), (3, 4)])).into_keyed();
-    /// let numbers2 = process.source_iter(q!(vec![(1, 3), (3, 5)])).into_keyed();
+    /// let numbers1: KeyedStream<i32, i32, _> = // { 1: [2], 3: [4] }
+    /// # process.source_iter(q!(vec![(1, 2), (3, 4)])).into_keyed().into();
+    /// let numbers2: KeyedStream<i32, i32, _> = // { 1: [3], 3: [5] }
+    /// # process.source_iter(q!(vec![(1, 3), (3, 5)])).into_keyed().into();
     /// numbers1.interleave(numbers2)
     /// #   .entries()
     /// # }, |mut stream| async move {
@@ -2212,7 +2231,12 @@ mod tests {
         let watermark = node_tick.singleton(q!(1));
 
         let sum = node
-            .source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
+            .source_stream(q!(tokio_stream::iter([
+                (0, 100),
+                (1, 101),
+                (2, 102),
+                (2, 102)
+            ])))
             .into_keyed()
             .reduce_watermark(
                 watermark,
@@ -2223,6 +2247,44 @@ mod tests {
             .snapshot(&node_tick, nondet!(/** test */))
             .entries()
             .all_ticks()
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut out = nodes.connect(sum).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(out.next().await.unwrap(), (2, 204));
+    }
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn reduce_watermark_bounded() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let node_tick = node.tick();
+        let watermark = node_tick.singleton(q!(1));
+
+        let sum = node
+            .source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
+            .into_keyed()
+            .reduce_watermark(
+                watermark,
+                q!(|acc, v| {
+                    *acc += v;
+                }),
+            )
+            .entries()
             .send_bincode_external(&external);
 
         let nodes = flow
@@ -2268,7 +2330,12 @@ mod tests {
             .all_ticks();
 
         let sum = node
-            .source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
+            .source_stream(q!(tokio_stream::iter([
+                (0, 100),
+                (1, 101),
+                (2, 102),
+                (2, 102)
+            ])))
             .interleave(tick_triggered_input)
             .into_keyed()
             .reduce_watermark(
