@@ -2256,9 +2256,9 @@
 <a href=#2256 id=2256 data-nosnippet>2256</a>        <span class="kw">let </span>next_watermark = watermark.clone().map(<span class="macro">q!</span>(|v| v + <span class="number">1</span>));
 <a href=#2257 id=2257 data-nosnippet>2257</a>        watermark_complete_cycle.complete_next_tick(next_watermark);
 <a href=#2258 id=2258 data-nosnippet>2258</a>
-<a href=#2259 id=2259 data-nosnippet>2259</a>        <span class="kw">let </span>tick_triggered_input = node
-<a href=#2260 id=2260 data-nosnippet>2260</a>            .source_iter(<span class="macro">q!</span>([(<span class="number">3</span>, <span class="number">103</span>)]))
-<a href=#2261 id=2261 data-nosnippet>2261</a>            .batch(<span class="kw-2">&amp;</span>node_tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#2259 id=2259 data-nosnippet>2259</a>        <span class="kw">let </span>tick_triggered_input = node_tick
+<a href=#2260 id=2260 data-nosnippet>2260</a>            .singleton(<span class="macro">q!</span>((<span class="number">3</span>, <span class="number">103</span>)))
+<a href=#2261 id=2261 data-nosnippet>2261</a>            .into_stream()
 <a href=#2262 id=2262 data-nosnippet>2262</a>            .filter_if_some(
 <a href=#2263 id=2263 data-nosnippet>2263</a>                tick_trigger
 <a href=#2264 id=2264 data-nosnippet>2264</a>                    .clone()
