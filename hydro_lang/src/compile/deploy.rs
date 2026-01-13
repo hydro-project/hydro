@@ -349,13 +349,6 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
         self.externals.get(&p.id).unwrap()
     }
 
-    pub fn raw_port<M>(&self, port: ExternalBytesPort<M>) -> D::ExternalRawPort {
-        self.externals
-            .get(&port.process_id)
-            .unwrap()
-            .raw_port(port.port_id)
-    }
-
     #[deprecated(note = "use `connect` instead")]
     pub async fn connect_bytes<M>(
         &self,
@@ -426,6 +419,22 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
         port: P,
     ) -> <P as ConnectableAsync<&'b Self>>::Output {
         port.connect(self).await
+    }
+}
+
+#[cfg(stageleft_runtime)]
+#[cfg(feature = "deploy")]
+#[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
+impl DeployResult<'_, crate::deploy::HydroDeploy> {
+    /// Get the raw port handle.
+    pub fn raw_port<M>(
+        &self,
+        port: ExternalBytesPort<M>,
+    ) -> hydro_deploy::custom_service::CustomClientPort {
+        self.externals
+            .get(&port.process_id)
+            .unwrap()
+            .raw_port(port.port_id)
     }
 }
 
