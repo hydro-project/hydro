@@ -20,7 +20,6 @@ pub trait Deploy<'a> {
     type External: Node<Meta = Self::Meta, InstantiateEnv = Self::InstantiateEnv>
         + RegisterPort<'a, Self>;
     type Port: Clone;
-    type ExternalRawPort;
     type Meta: Default;
 
     /// Type of ID used to switch between different subgraphs at runtime.
@@ -212,7 +211,6 @@ where
     D: Deploy<'a> + ?Sized,
 {
     fn register(&self, key: usize, port: D::Port);
-    fn raw_port(&self, key: usize) -> D::ExternalRawPort;
 
     fn as_bytes_bidi(
         &self,
