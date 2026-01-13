@@ -8,6 +8,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use stageleft::QuotedWithContext;
 
+use crate::compile::builder::ExternalPortId;
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
 use crate::location::{MembershipEvent, NetworkHint};
@@ -210,16 +211,16 @@ pub trait RegisterPort<'a, D>: Clone
 where
     D: Deploy<'a> + ?Sized,
 {
-    fn register(&self, key: usize, port: D::Port);
+    fn register(&self, external_port_id: ExternalPortId, port: D::Port);
 
     fn as_bytes_bidi(
         &self,
-        key: usize,
+        external_port_id: ExternalPortId,
     ) -> impl Future<Output = DynSourceSink<Result<BytesMut, Error>, Bytes, Error>> + 'a;
 
     fn as_bincode_bidi<InT, OutT>(
         &self,
-        key: usize,
+        external_port_id: ExternalPortId,
     ) -> impl Future<Output = DynSourceSink<OutT, InT, Error>> + 'a
     where
         InT: Serialize + 'static,
@@ -227,14 +228,14 @@ where
 
     fn as_bincode_sink<T>(
         &self,
-        key: usize,
+        external_port_id: ExternalPortId,
     ) -> impl Future<Output = Pin<Box<dyn Sink<T, Error = Error>>>> + 'a
     where
         T: Serialize + 'static;
 
     fn as_bincode_source<T>(
         &self,
-        key: usize,
+        external_port_id: ExternalPortId,
     ) -> impl Future<Output = Pin<Box<dyn Stream<Item = T>>>> + 'a
     where
         T: DeserializeOwned + 'static;

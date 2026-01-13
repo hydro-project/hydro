@@ -871,7 +871,7 @@ impl HydroRoot {
 
             HydroRoot::SendExternal {
                 to_external_id,
-                to_key,
+                to_port_id,
                 input,
                 ..
             } => build_sink_node(
@@ -881,7 +881,7 @@ impl HydroRoot {
                 input,
                 None,
                 NodeLabel::with_exprs(
-                    format!("send_external({}:{})", to_external_id, to_key),
+                    format!("send_external({}:{})", to_external_id, to_port_id),
                     vec![],
                 ),
             ),
@@ -1063,13 +1063,13 @@ impl HydroNode {
 
             HydroNode::ExternalInput {
                 from_external_id,
-                from_key,
+                from_port_id,
                 metadata,
                 ..
             } => build_source_node(
                 structure,
                 metadata,
-                format!("external_input({}:{})", from_external_id, from_key),
+                format!("external_input({}:{})", from_external_id, from_port_id),
             ),
 
             HydroNode::CycleSource {
