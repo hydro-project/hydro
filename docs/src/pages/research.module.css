@@ -13,12 +13,26 @@ h2 {
 }
 
 h3 {
+    border-top: 1px solid #0a0a0a;
+    padding-top: 15px;
     font-size: 22px;
     margin-bottom: 5px;
 }
 
+[data-theme="dark"] h3 {
+    border-top: 1px solid #f0f0f0;
+}
+
 h3 + p {
-    font-size: 18px;
+    font-size: 20px;
     line-height: 1.4;
     margin-bottom: 10px;
+}
+
+:global(.col--8) {
+    --ifm-col-width: calc(9 / 12 * 100%) !important;
+}
+
+:global(.col--2) {
+    --ifm-col-width: calc(3 / 12 * 100%) !important;
 }
