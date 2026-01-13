@@ -10,6 +10,7 @@ use libloading::Library;
 use super::builder::SimBuilder;
 use super::compiled::{CompiledSim, CompiledSimInstance};
 use super::graph::{SimDeploy, SimExternal, SimNode, compile_sim, create_sim_graph_trybuild};
+use crate::compile::builder::ExternalPortId;
 use crate::compile::ir::HydroRoot;
 use crate::location::Location;
 use crate::location::dynamic::LocationId;
@@ -26,9 +27,10 @@ pub struct SimFlow<'a> {
     pub(crate) clusters: HashMap<usize, SimNode>,
     pub(crate) externals: HashMap<usize, SimExternal>,
 
-    /// A mapping from external "keys", which are used for looking up connections, to the IDs
+    /// A mapping from external port IDs (generated in `FlowState`)
+    /// which are used for looking up connections, to the IDs
     /// of the external channels created in the simulation.
-    pub(crate) external_registered: Rc<RefCell<HashMap<usize, usize>>>,
+    pub(crate) external_registered: Rc<RefCell<HashMap<ExternalPortId, usize>>>,
 
     pub(crate) cluster_max_sizes: HashMap<LocationId, usize>,
 

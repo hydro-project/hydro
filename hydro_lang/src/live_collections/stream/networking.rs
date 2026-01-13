@@ -335,12 +335,11 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
 
         let mut flow_state_borrow = self.location.flow_state().borrow_mut();
 
-        let external_key = flow_state_borrow.next_external_out;
-        flow_state_borrow.next_external_out += 1;
+        let external_port_id = flow_state_borrow.next_external_port.get_and_increment();
 
         flow_state_borrow.push_root(HydroRoot::SendExternal {
             to_external_id: other.id,
-            to_key: external_key,
+            to_port_id: external_port_id,
             to_many: false,
             unpaired: true,
             serialize_fn: serialize_pipeline.map(|e| e.into()),
@@ -351,7 +350,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
 
         ExternalBincodeStream {
             process_id: other.id,
-            port_id: external_key,
+            port_id: external_port_id,
             _phantom: PhantomData,
         }
     }
