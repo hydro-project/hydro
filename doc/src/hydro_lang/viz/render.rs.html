@@ -871,7 +871,7 @@
 <a href=#871 id=871 data-nosnippet>871</a>
 <a href=#872 id=872 data-nosnippet>872</a>            HydroRoot::SendExternal {
 <a href=#873 id=873 data-nosnippet>873</a>                to_external_id,
-<a href=#874 id=874 data-nosnippet>874</a>                to_key,
+<a href=#874 id=874 data-nosnippet>874</a>                to_port_id,
 <a href=#875 id=875 data-nosnippet>875</a>                input,
 <a href=#876 id=876 data-nosnippet>876</a>                ..
 <a href=#877 id=877 data-nosnippet>877</a>            } =&gt; build_sink_node(
@@ -881,7 +881,7 @@
 <a href=#881 id=881 data-nosnippet>881</a>                input,
 <a href=#882 id=882 data-nosnippet>882</a>                <span class="prelude-val">None</span>,
 <a href=#883 id=883 data-nosnippet>883</a>                NodeLabel::with_exprs(
-<a href=#884 id=884 data-nosnippet>884</a>                    <span class="macro">format!</span>(<span class="string">"send_external({}:{})"</span>, to_external_id, to_key),
+<a href=#884 id=884 data-nosnippet>884</a>                    <span class="macro">format!</span>(<span class="string">"send_external({}:{})"</span>, to_external_id, to_port_id),
 <a href=#885 id=885 data-nosnippet>885</a>                    <span class="macro">vec!</span>[],
 <a href=#886 id=886 data-nosnippet>886</a>                ),
 <a href=#887 id=887 data-nosnippet>887</a>            ),
@@ -1063,13 +1063,13 @@
 <a href=#1063 id=1063 data-nosnippet>1063</a>
 <a href=#1064 id=1064 data-nosnippet>1064</a>            HydroNode::ExternalInput {
 <a href=#1065 id=1065 data-nosnippet>1065</a>                from_external_id,
-<a href=#1066 id=1066 data-nosnippet>1066</a>                from_key,
+<a href=#1066 id=1066 data-nosnippet>1066</a>                from_port_id,
 <a href=#1067 id=1067 data-nosnippet>1067</a>                metadata,
 <a href=#1068 id=1068 data-nosnippet>1068</a>                ..
 <a href=#1069 id=1069 data-nosnippet>1069</a>            } =&gt; build_source_node(
 <a href=#1070 id=1070 data-nosnippet>1070</a>                structure,
 <a href=#1071 id=1071 data-nosnippet>1071</a>                metadata,
-<a href=#1072 id=1072 data-nosnippet>1072</a>                <span class="macro">format!</span>(<span class="string">"external_input({}:{})"</span>, from_external_id, from_key),
+<a href=#1072 id=1072 data-nosnippet>1072</a>                <span class="macro">format!</span>(<span class="string">"external_input({}:{})"</span>, from_external_id, from_port_id),
 <a href=#1073 id=1073 data-nosnippet>1073</a>            ),
 <a href=#1074 id=1074 data-nosnippet>1074</a>
 <a href=#1075 id=1075 data-nosnippet>1075</a>            HydroNode::CycleSource {
