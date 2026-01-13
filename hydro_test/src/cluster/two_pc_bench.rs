@@ -1,8 +1,9 @@
+use std::time::{Instant, SystemTime};
+
 use hydro_lang::prelude::*;
-use hydro_std::bench_client::{bench_client, print_bench_results};
+use hydro_std::bench_client::{bench_client, compute_throughput_latency, print_bench_results};
 
 use super::two_pc::{Coordinator, Participant};
-use crate::cluster::paxos_bench::inc_u32_workload_generator;
 use crate::cluster::two_pc::two_pc;
 
 pub struct Client;
@@ -16,23 +17,40 @@ pub fn two_pc_bench<'a>(
     clients: &Cluster<'a, Client>,
     client_aggregator: &Process<'a, Aggregator>,
 ) {
-    let bench_results = bench_client(
-        clients,
-        inc_u32_workload_generator,
-        |payloads| {
-            // Send committed requests back to the original client
-            two_pc(
-                coordinator,
-                participants,
-                num_participants,
-                payloads.send(coordinator, TCP.bincode()).entries(),
-            )
-            .demux(clients, TCP.bincode())
-        },
-        num_clients_per_node,
-        nondet!(/** bench */),
-    );
+    // Set up client that auto-generates requests with virtual IDs
+    let (c_received_payloads_complete, c_received_payloads) = clients.forward_ref();
+    let c_new_payload_ids = bench_client(clients, num_clients_per_node, c_received_payloads);
 
+    // Attach payloads to requests
+    let c_payloads = c_new_payload_ids.map(q!(move |payload| {
+        let value = if let Some((counter, _time)) = payload {
+            counter + 1
+        } else {
+            0
+        };
+        // Record current time for latency
+        (value, SystemTime::now())
+    }));
+
+    // Protocol
+    let completed_payloads = two_pc(
+        coordinator,
+        participants,
+        num_participants,
+        c_payloads.entries().send(coordinator, TCP.bincode()).entries(),
+    )
+    .demux(clients, TCP.bincode())
+    .into_keyed();
+
+    // Send committed requests back to the original client
+    c_received_payloads_complete.complete(completed_payloads.clone());
+
+    // Create throughput/latency graphs
+    let latencies = completed_payloads.map(q!(move |(_counter, time)| {
+        SystemTime::now().duration_since(time).unwrap()
+    }));
+    let bench_results =
+        compute_throughput_latency(clients, latencies, nondet!(/** bench */));
     print_bench_results(bench_results, client_aggregator, clients);
 }
 
