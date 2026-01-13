@@ -2256,9 +2256,9 @@ mod tests {
         let next_watermark = watermark.clone().map(q!(|v| v + 1));
         watermark_complete_cycle.complete_next_tick(next_watermark);
 
-        let tick_triggered_input = node
-            .source_iter(q!([(3, 103)]))
-            .batch(&node_tick, nondet!(/** test */))
+        let tick_triggered_input = node_tick
+            .singleton(q!((3, 103)))
+            .into_stream()
             .filter_if_some(
                 tick_trigger
                     .clone()
