@@ -25,6 +25,7 @@ use stageleft::{QuotedWithContext, RuntimeData};
 use syn::parse_quote;
 
 use super::deploy_runtime::*;
+use crate::compile::builder::ExternalPortId;
 use crate::compile::deploy_provider::{
     ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort,
 };
@@ -606,39 +607,44 @@ pub struct DeployExternal {
     host: Arc<dyn Host>,
     underlying: Rc<RefCell<Option<Arc<CustomService>>>>,
     client_ports: Rc<RefCell<HashMap<String, CustomClientPort>>>,
-    allocated_ports: Rc<RefCell<HashMap<usize, String>>>,
+    allocated_ports: Rc<RefCell<HashMap<ExternalPortId, String>>>,
 }
 
 impl DeployExternal {
-    pub(crate) fn raw_port(&self, key: usize) -> CustomClientPort {
+    pub(crate) fn raw_port(&self, external_port_id: ExternalPortId) -> CustomClientPort {
         self.client_ports
             .borrow()
-            .get(self.allocated_ports.borrow().get(&key).unwrap())
+            .get(
+                self.allocated_ports
+                    .borrow()
+                    .get(&external_port_id)
+                    .unwrap(),
+            )
             .unwrap()
             .clone()
     }
 }
 
 impl<'a> RegisterPort<'a, HydroDeploy> for DeployExternal {
-    fn register(&self, key: usize, port: <HydroDeploy as Deploy>::Port) {
+    fn register(&self, external_port_id: ExternalPortId, port: <HydroDeploy as Deploy>::Port) {
         assert!(
             self.allocated_ports
                 .borrow_mut()
-                .insert(key, port.clone())
+                .insert(external_port_id, port.clone())
                 .is_none_or(|old| old == port)
         );
     }
 
     fn as_bytes_bidi(
         &self,
-        key: usize,
+        external_port_id: ExternalPortId,
     ) -> impl Future<
         Output = (
             Pin<Box<dyn Stream<Item = Result<BytesMut, Error>>>>,
             Pin<Box<dyn Sink<Bytes, Error = Error>>>,
         ),
     > + 'a {
-        let port = self.raw_port(key);
+        let port = self.raw_port(external_port_id);
 
         async move {
             let (source, sink) = port.connect().await.into_source_sink();
@@ -651,7 +657,7 @@ impl<'a> RegisterPort<'a, HydroDeploy> for DeployExternal {
 
     fn as_bincode_bidi<InT, OutT>(
         &self,
-        key: usize,
+        external_port_id: ExternalPortId,
     ) -> impl Future<
         Output = (
             Pin<Box<dyn Stream<Item = OutT>>>,
@@ -662,7 +668,7 @@ impl<'a> RegisterPort<'a, HydroDeploy> for DeployExternal {
         InT: Serialize + 'static,
         OutT: DeserializeOwned + 'static,
     {
-        let port = self.raw_port(key);
+        let port = self.raw_port(external_port_id);
         async move {
             let (source, sink) = port.connect().await.into_source_sink();
             (
@@ -677,9 +683,9 @@ impl<'a> RegisterPort<'a, HydroDeploy> for DeployExternal {
 
     fn as_bincode_sink<T: Serialize + 'static>(
         &self,
-        key: usize,
+        external_port_id: ExternalPortId,
     ) -> impl Future<Output = Pin<Box<dyn Sink<T, Error = Error>>>> + 'a {
-        let port = self.raw_port(key);
+        let port = self.raw_port(external_port_id);
         async move {
             let sink = port.connect().await.into_sink();
             Box::pin(sink.with(|item| async move { Ok(bincode::serialize(&item).unwrap().into()) }))
@@ -689,9 +695,9 @@ impl<'a> RegisterPort<'a, HydroDeploy> for DeployExternal {
 
     fn as_bincode_source<T: DeserializeOwned + 'static>(
         &self,
-        key: usize,
+        external_port_id: ExternalPortId,
     ) -> impl Future<Output = Pin<Box<dyn Stream<Item = T>>>> + 'a {
-        let port = self.raw_port(key);
+        let port = self.raw_port(external_port_id);
         async move {
             let source = port.connect().await.into_source();
             Box::pin(source.map(|item| bincode::deserialize(&item.unwrap()).unwrap()))

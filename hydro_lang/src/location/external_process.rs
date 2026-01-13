@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use crate::compile::builder::FlowState;
+use crate::compile::builder::{ExternalPortId, FlowState};
 use crate::live_collections::stream::{ExactlyOnce, Ordering, Retries, TotalOrder};
 use crate::staging_util::Invariant;
 
@@ -12,7 +12,7 @@ pub enum Many {}
 
 pub struct ExternalBytesPort<Many = NotMany> {
     pub(crate) process_id: usize,
-    pub(crate) port_id: usize,
+    pub(crate) port_id: ExternalPortId,
     pub(crate) _phantom: PhantomData<Many>,
 }
 
@@ -35,7 +35,7 @@ pub struct ExternalBincodeSink<
     Type: Serialize,
 {
     pub(crate) process_id: usize,
-    pub(crate) port_id: usize,
+    pub(crate) port_id: ExternalPortId,
     pub(crate) _phantom: PhantomData<(Type, Many, O, R)>,
 }
 
@@ -51,7 +51,7 @@ impl<T: Serialize, O: Ordering, R: Retries> Clone for ExternalBincodeSink<T, Man
 
 pub struct ExternalBincodeBidi<InType, OutType, Many = NotMany> {
     pub(crate) process_id: usize,
-    pub(crate) port_id: usize,
+    pub(crate) port_id: ExternalPortId,
     pub(crate) _phantom: PhantomData<(InType, OutType, Many)>,
 }
 
@@ -78,7 +78,7 @@ where
         not(feature = "build"),
         expect(unused, reason = "unused without feature")
     )]
-    pub(crate) port_id: usize,
+    pub(crate) port_id: ExternalPortId,
     pub(crate) _phantom: PhantomData<(Type, O, R)>,
 }
 

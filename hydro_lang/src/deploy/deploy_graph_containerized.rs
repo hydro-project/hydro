@@ -29,6 +29,7 @@ use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 use tracing::{Instrument, instrument, trace, warn};
 
 use super::deploy_runtime_containerized::*;
+use crate::compile::builder::ExternalPortId;
 use crate::compile::deploy::DeployResult;
 use crate::compile::deploy_provider::{
     ClusterSpec, Deploy, ExternalSpec, Node, ProcessSpec, RegisterPort,
@@ -197,7 +198,7 @@ pub struct DockerDeployExternal {
     name: String,
     next_port: Rc<RefCell<u16>>,
 
-    ports: Rc<RefCell<HashMap<usize, u16>>>,
+    ports: Rc<RefCell<HashMap<ExternalPortId, u16>>>,
 
     #[expect(clippy::type_complexity, reason = "internal code")]
     connection_info: Rc<RefCell<HashMap<u16, (Rc<RefCell<Option<String>>>, u16, DockerNetwork)>>>,
@@ -241,43 +242,46 @@ type DynSourceSink<Out, In, InErr> = (
 );
 
 impl<'a> RegisterPort<'a, DockerDeploy> for DockerDeployExternal {
-    #[instrument(level = "trace", skip_all, fields(name = self.name, %key, %port))]
-    fn register(&self, key: usize, port: <DockerDeploy as Deploy>::Port) {
-        self.ports.borrow_mut().insert(key, port);
+    #[instrument(level = "trace", skip_all, fields(name = self.name, %external_port_id, %port))]
+    fn register(&self, external_port_id: ExternalPortId, port: <DockerDeploy as Deploy>::Port) {
+        self.ports.borrow_mut().insert(external_port_id, port);
     }
 
     fn as_bytes_bidi(
         &self,
-        key: usize,
+        external_port_id: ExternalPortId,
     ) -> impl Future<
         Output = DynSourceSink<Result<bytes::BytesMut, std::io::Error>, Bytes, std::io::Error>,
     > + 'a {
-        let _span = tracing::trace_span!("as_bytes_bidi", name = %self.name, %key).entered(); // the instrument macro doesn't work here because of lifetime issues?
+        let _span =
+            tracing::trace_span!("as_bytes_bidi", name = %self.name, %external_port_id).entered(); // the instrument macro doesn't work here because of lifetime issues?
         async { todo!() }
     }
 
     fn as_bincode_bidi<InT, OutT>(
         &self,
-        key: usize,
+        external_port_id: ExternalPortId,
     ) -> impl Future<Output = DynSourceSink<OutT, InT, std::io::Error>> + 'a
     where
         InT: serde::Serialize + 'static,
         OutT: serde::de::DeserializeOwned + 'static,
     {
-        let _span = tracing::trace_span!("as_bincode_bidi", name = %self.name, %key).entered(); // the instrument macro doesn't work here because of lifetime issues?
+        let _span =
+            tracing::trace_span!("as_bincode_bidi", name = %self.name, %external_port_id).entered(); // the instrument macro doesn't work here because of lifetime issues?
         async { todo!() }
     }
 
     fn as_bincode_sink<T>(
         &self,
-        key: usize,
+        external_port_id: ExternalPortId,
     ) -> impl Future<Output = Pin<Box<dyn Sink<T, Error = std::io::Error>>>> + 'a
     where
         T: serde::Serialize + 'static,
     {
-        let guard = tracing::trace_span!("as_bincode_sink", name = %self.name, %key).entered();
+        let guard =
+            tracing::trace_span!("as_bincode_sink", name = %self.name, %external_port_id).entered();
 
-        let local_port = *self.ports.borrow().get(&key).unwrap();
+        let local_port = *self.ports.borrow().get(&external_port_id).unwrap();
         let (docker_container_name, remote_port, _) = self
             .connection_info
             .borrow()
@@ -318,14 +322,15 @@ impl<'a> RegisterPort<'a, DockerDeploy> for DockerDeployExternal {
 
     fn as_bincode_source<T>(
         &self,
-        key: usize,
+        external_port_id: ExternalPortId,
     ) -> impl Future<Output = Pin<Box<dyn Stream<Item = T>>>> + 'a
     where
         T: serde::de::DeserializeOwned + 'static,
     {
-        let guard = tracing::trace_span!("as_bincode_sink", name = %self.name, %key).entered();
+        let guard =
+            tracing::trace_span!("as_bincode_sink", name = %self.name, %external_port_id).entered();
 
-        let local_port = *self.ports.borrow().get(&key).unwrap();
+        let local_port = *self.ports.borrow().get(&external_port_id).unwrap();
         let (docker_container_name, remote_port, _) = self
             .connection_info
             .borrow()

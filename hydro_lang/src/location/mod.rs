@@ -340,12 +340,11 @@ pub trait Location<'a>: dynamic::DynLocation {
     where
         Self: Sized + NoTick,
     {
-        let next_external_port_id = {
-            let mut flow_state = from.flow_state.borrow_mut();
-            let id = flow_state.next_external_out;
-            flow_state.next_external_out += 1;
-            id
-        };
+        let next_external_port_id = from
+            .flow_state
+            .borrow_mut()
+            .next_external_port
+            .get_and_increment();
 
         let (fwd_ref, to_sink) =
             self.forward_ref::<Stream<T, Self, Unbounded, TotalOrder, ExactlyOnce>>();
@@ -353,7 +352,7 @@ pub trait Location<'a>: dynamic::DynLocation {
 
         flow_state_borrow.push_root(HydroRoot::SendExternal {
             to_external_id: from.id,
-            to_key: next_external_port_id,
+            to_port_id: next_external_port_id,
             to_many: false,
             unpaired: false,
             serialize_fn: None,
@@ -372,7 +371,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             self.clone(),
             HydroNode::ExternalInput {
                 from_external_id: from.id,
-                from_key: next_external_port_id,
+                from_port_id: next_external_port_id,
                 from_many: false,
                 codec_type: quote_type::<Codec>().into(),
                 port_hint,
@@ -411,12 +410,11 @@ pub trait Location<'a>: dynamic::DynLocation {
     where
         Self: Sized + NoTick,
     {
-        let next_external_port_id = {
-            let mut flow_state = from.flow_state.borrow_mut();
-            let id = flow_state.next_external_out;
-            flow_state.next_external_out += 1;
-            id
-        };
+        let next_external_port_id = from
+            .flow_state
+            .borrow_mut()
+            .next_external_port
+            .get_and_increment();
 
         let (fwd_ref, to_sink) =
             self.forward_ref::<Stream<OutT, Self, Unbounded, TotalOrder, ExactlyOnce>>();
@@ -433,7 +431,7 @@ pub trait Location<'a>: dynamic::DynLocation {
 
         flow_state_borrow.push_root(HydroRoot::SendExternal {
             to_external_id: from.id,
-            to_key: next_external_port_id,
+            to_port_id: next_external_port_id,
             to_many: false,
             unpaired: false,
             serialize_fn: Some(ser_fn.into()),
@@ -455,7 +453,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             self.clone(),
             HydroNode::ExternalInput {
                 from_external_id: from.id,
-                from_key: next_external_port_id,
+                from_port_id: next_external_port_id,
                 from_many: false,
                 codec_type: quote_type::<LengthDelimitedCodec>().into(),
                 port_hint: NetworkHint::Auto,
@@ -496,12 +494,11 @@ pub trait Location<'a>: dynamic::DynLocation {
     where
         Self: Sized + NoTick,
     {
-        let next_external_port_id = {
-            let mut flow_state = from.flow_state.borrow_mut();
-            let id = flow_state.next_external_out;
-            flow_state.next_external_out += 1;
-            id
-        };
+        let next_external_port_id = from
+            .flow_state
+            .borrow_mut()
+            .next_external_port
+            .get_and_increment();
 
         let (fwd_ref, to_sink) =
             self.forward_ref::<KeyedStream<u64, T, Self, Unbounded, NoOrder, ExactlyOnce>>();
@@ -509,7 +506,7 @@ pub trait Location<'a>: dynamic::DynLocation {
 
         flow_state_borrow.push_root(HydroRoot::SendExternal {
             to_external_id: from.id,
-            to_key: next_external_port_id,
+            to_port_id: next_external_port_id,
             to_many: true,
             unpaired: false,
             serialize_fn: None,
@@ -528,7 +525,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             self.clone(),
             HydroNode::ExternalInput {
                 from_external_id: from.id,
-                from_key: next_external_port_id,
+                from_port_id: next_external_port_id,
                 from_many: true,
                 codec_type: quote_type::<Codec>().into(),
                 port_hint,
@@ -607,12 +604,11 @@ pub trait Location<'a>: dynamic::DynLocation {
     where
         Self: Sized + NoTick,
     {
-        let next_external_port_id = {
-            let mut flow_state = from.flow_state.borrow_mut();
-            let id = flow_state.next_external_out;
-            flow_state.next_external_out += 1;
-            id
-        };
+        let next_external_port_id = from
+            .flow_state
+            .borrow_mut()
+            .next_external_port
+            .get_and_increment();
 
         let root = get_this_crate();
 
@@ -629,7 +625,7 @@ pub trait Location<'a>: dynamic::DynLocation {
 
         flow_state_borrow.push_root(HydroRoot::SendExternal {
             to_external_id: from.id,
-            to_key: next_external_port_id,
+            to_port_id: next_external_port_id,
             to_many: true,
             unpaired: false,
             serialize_fn: Some(ser_fn.into()),
@@ -652,7 +648,7 @@ pub trait Location<'a>: dynamic::DynLocation {
                 self.clone(),
                 HydroNode::ExternalInput {
                     from_external_id: from.id,
-                    from_key: next_external_port_id,
+                    from_port_id: next_external_port_id,
                     from_many: true,
                     codec_type: quote_type::<LengthDelimitedCodec>().into(),
                     port_hint: NetworkHint::Auto,

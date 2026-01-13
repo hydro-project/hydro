@@ -13,6 +13,7 @@ use syn::visit_mut::VisitMut;
 use tempfile::TempPath;
 use trybuild_internals_api::{cargo, dependencies, path};
 
+use crate::compile::builder::ExternalPortId;
 use crate::compile::deploy_provider::{Deploy, DynSourceSink, Node, RegisterPort};
 use crate::compile::trybuild::generate::{
     CONCURRENT_TEST_LOCK, IS_TEST, TrybuildConfig, create_trybuild, write_atomic,
@@ -53,7 +54,7 @@ impl Node for SimNode {
 #[derive(Clone)]
 pub struct SimExternal {
     pub(crate) external_ports: Rc<RefCell<(Vec<usize>, usize)>>,
-    pub(crate) registered: Rc<RefCell<HashMap<usize, usize>>>,
+    pub(crate) registered: Rc<RefCell<HashMap<ExternalPortId, usize>>>,
 }
 
 impl Node for SimExternal {
@@ -80,11 +81,11 @@ impl Node for SimExternal {
 }
 
 impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
-    fn register(&self, key: usize, port: usize) {
+    fn register(&self, external_port_id: ExternalPortId, port: usize) {
         assert!(
             self.registered
                 .borrow_mut()
-                .insert(key, port)
+                .insert(external_port_id, port)
                 .is_none_or(|old| old == port)
         );
     }
@@ -92,7 +93,7 @@ impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
     #[expect(clippy::manual_async_fn, reason = "false positive, involves lifetimes")]
     fn as_bytes_bidi(
         &self,
-        _key: usize,
+        _external_port_id: ExternalPortId,
     ) -> impl Future<
         Output = DynSourceSink<
             Result<bytes::BytesMut, std::io::Error>,
@@ -106,7 +107,7 @@ impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
     #[expect(clippy::manual_async_fn, reason = "false positive, involves lifetimes")]
     fn as_bincode_bidi<InT, OutT>(
         &self,
-        _key: usize,
+        _external_port_id: ExternalPortId,
     ) -> impl Future<Output = DynSourceSink<OutT, InT, std::io::Error>> + 'a
     where
         InT: serde::Serialize + 'static,
@@ -118,7 +119,7 @@ impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
     #[expect(clippy::manual_async_fn, reason = "false positive, involves lifetimes")]
     fn as_bincode_sink<T>(
         &self,
-        _key: usize,
+        _external_port_id: ExternalPortId,
     ) -> impl Future<Output = std::pin::Pin<Box<dyn futures::Sink<T, Error = std::io::Error>>>> + 'a
     where
         T: serde::Serialize + 'static,
@@ -129,7 +130,7 @@ impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
     #[expect(clippy::manual_async_fn, reason = "false positive, involves lifetimes")]
     fn as_bincode_source<T>(
         &self,
-        _key: usize,
+        _external_port_id: ExternalPortId,
     ) -> impl Future<Output = std::pin::Pin<Box<dyn futures::Stream<Item = T>>>> + 'a
     where
         T: serde::de::DeserializeOwned + 'static,
