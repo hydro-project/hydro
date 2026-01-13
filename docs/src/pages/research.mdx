@@ -8,6 +8,22 @@ import "./research.module.css";
 
 ## 2025
 
+### [Programming Models for Correct and Modular Distributed Systems](http://www2.eecs.berkeley.edu/Pubs/TechRpts/2025/EECS-2025-85.pdf) (PhD Dissertation)
+
+**Shadaj Laddad**
+
+In this dissertation, we present a new foundation for distributed programming that offers richer correctness guarantees and enables new opportunities for modularity. We develop a generalized notion of asynchronous streams that capture distributed semantics in types and restrict downstream behavior to guarantee determinism. Our model makes it possible to write an entire distributed protocol in a single function, encapsulating the network and concurrency. These building blocks can be composed to form complex distributed systems with strong correctness guarantees.
+
+We reify this model in a Rust framework called Hydro. Hydro leverages staged programming to expose a high-level streaming interface while compiling down to bare-metal binaries with performance matching handwritten systems. We then explore optimization techniques for distributed systems enabled by our semantics, including program synthesis and term rewriting. Our work demonstrates that it is possible to build a practical programming model for distributed systems that is both correct and efficient, enabling developers to build more reliable and scalable software.
+
+### [Algebraic Approaches to Distributed Data Systems](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2025/EECS-2025-103.pdf) (PhD Dissertation)
+
+**Conor Power**
+
+In this thesis, we explore the marriage of distributed systems programming and declarative database systems. In pursuit of this marriage, we study independent trends towards algebraic models in distributed systems and database systems. This thesis extends these works, explores the relationship between them, and demonstrates the practical applicability of algebraic properties to optimizing distributed data systems.
+
+We study four lines of research on algebraic properties for distributed data systems: conflict-free replicated data types (CRDTs), algebraic models of incremental view maintenance (IVM), parallel database aggregates, and the CALM Theorem. We are able to bring the system model and mathematical model of CRDTs, studied in the distributed systems and programming languages communities, to these three other topics that have been studied entirely within the databases research community. The result is a foundation on which to support the benefits of declarativity in distributed systems programming.
+
 ### [Flo: a Semantic Foundation for Progressive Stream Processing](pathname:///papers/flo.pdf) (POPL 2025)
 
 **Shadaj Laddad, Alvin Cheung, Joseph M. Hellerstein, Mae Milano**

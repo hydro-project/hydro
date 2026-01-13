@@ -1,4 +1,3 @@
-import React from "react";
 import Link from "@docusaurus/Link";
 import Layout from "@theme/Layout";
 import Image from "@theme/IdealImage";
@@ -104,7 +103,7 @@ export default function Home() {
               ></PersonCard>
               <PersonCard
                 name={"Conor Power"}
-                role={"Scientist, UC Berkeley"}
+                role={"Scientist, Microsoft"}
                 url={"https://www.linkedin.com/in/conorpower23"}
                 img={conor}
               ></PersonCard>
