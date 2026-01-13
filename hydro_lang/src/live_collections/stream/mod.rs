@@ -184,9 +184,16 @@ where
     L: Location<'a>,
 {
     fn from(stream: Stream<T, L, Bounded, O, R>) -> Stream<T, L, Unbounded, O, R> {
+        let new_meta = stream
+            .location
+            .new_node_metadata(Stream::<T, L, Unbounded, O, R>::collection_kind());
+
         Stream {
             location: stream.location,
-            ir_node: stream.ir_node,
+            ir_node: RefCell::new(HydroNode::Cast {
+                inner: Box::new(stream.ir_node.into_inner()),
+                metadata: new_meta,
+            }),
             _phantom: PhantomData,
         }
     }
@@ -198,11 +205,7 @@ where
     L: Location<'a>,
 {
     fn from(stream: Stream<T, L, B, TotalOrder, R>) -> Stream<T, L, B, NoOrder, R> {
-        Stream {
-            location: stream.location,
-            ir_node: stream.ir_node,
-            _phantom: PhantomData,
-        }
+        stream.weaken_ordering()
     }
 }
 
@@ -212,11 +215,7 @@ where
     L: Location<'a>,
 {
     fn from(stream: Stream<T, L, B, O, ExactlyOnce>) -> Stream<T, L, B, O, AtLeastOnce> {
-        Stream {
-            location: stream.location,
-            ir_node: stream.ir_node,
-            _phantom: PhantomData,
-        }
+        stream.weaken_retries()
     }
 }
 
@@ -454,7 +453,7 @@ where
     /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce, _>(|process| {
     /// process
     ///     .source_iter(q!(vec![
     ///         std::collections::HashSet::<i32>::from_iter(vec![1, 2]),
@@ -530,7 +529,7 @@ where
     /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce, _>(|process| {
     /// process
     ///     .source_iter(q!(vec![
     ///         std::collections::HashSet::<i32>::from_iter(vec![1, 2]),
@@ -1159,12 +1158,10 @@ where
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
     /// let words = process.source_iter(q!(vec!["HELLO", "WORLD"]));
-    /// let batch = words.batch(&tick, nondet!(/** test */));
-    /// batch
+    /// words
     ///     .fold(q!(|| String::new()), q!(|acc, x| acc.push_str(x)))
-    ///     .all_ticks()
+    ///     .into_stream()
     /// # }, |mut stream| async move {
     /// // "HELLOWORLD"
     /// # assert_eq!(stream.next().await.unwrap(), "HELLOWORLD");
@@ -1217,12 +1214,8 @@ where
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
     /// let bools = process.source_iter(q!(vec![false, true, false]));
-    /// let batch = bools.batch(&tick, nondet!(/** test */));
-    /// batch
-    ///     .reduce(q!(|acc, x| *acc |= x))
-    ///     .all_ticks()
+    /// bools.reduce(q!(|acc, x| *acc |= x)).into_stream()
     /// # }, |mut stream| async move {
     /// // true
     /// # assert_eq!(stream.next().await.unwrap(), true);
@@ -1426,7 +1419,7 @@ where
     /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{TotalOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, TotalOrder, ExactlyOnce>(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, TotalOrder, ExactlyOnce, _>(|process| {
     /// let tick = process.tick();
     /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
     /// numbers.enumerate()
@@ -1587,7 +1580,8 @@ impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Stream<T, L, Unbo
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
+    /// let numbers: Stream<i32, _, Unbounded> = // 1, 2, 3, 4
+    /// # process.source_iter(q!(vec![1, 2, 3, 4])).into();
     /// numbers.clone().map(q!(|x| x + 1)).interleave(numbers)
     /// # }, |mut stream| async move {
     /// // 2, 3, 4, 5, and 1, 2, 3, 4 interleaved in unknown order
@@ -1640,7 +1634,8 @@ impl<'a, T, L: Location<'a> + NoTick, R: Retries> Stream<T, L, Unbounded, TotalO
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let numbers = process.source_iter(q!(vec![1, 3]));
+    /// let numbers: Stream<i32, _, Unbounded> = // 1, 3
+    /// # process.source_iter(q!(vec![1, 3])).into();
     /// numbers.clone().merge_ordered(numbers.map(q!(|x| x + 1)), nondet!(/** example */))
     /// # }, |mut stream| async move {
     /// // 1, 3 and 2, 4 in some order, preserving the original local order
@@ -1746,10 +1741,10 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn chain<O2: Ordering, R2: Retries>(
+    pub fn chain<O2: Ordering, R2: Retries, B2: Boundedness>(
         self,
-        other: Stream<T, L, Bounded, O2, R2>,
-    ) -> Stream<T, L, Bounded, <O as MinOrder<O2>>::Min, <R as MinRetries<R2>>::Min>
+        other: Stream<T, L, B2, O2, R2>,
+    ) -> Stream<T, L, B2, <O as MinOrder<O2>>::Min, <R as MinRetries<R2>>::Min>
     where
         O: MinOrder<O2>,
         R: MinRetries<R2>,
@@ -1764,7 +1759,7 @@ where
                 metadata: self.location.new_node_metadata(Stream::<
                     T,
                     L,
-                    Bounded,
+                    B2,
                     <O as MinOrder<O2>>::Min,
                     <R as MinRetries<R2>>::Min,
                 >::collection_kind()),
@@ -2222,14 +2217,14 @@ where
     /// #   },
     /// # ));
     /// # }
-    pub fn resolve_futures(self) -> Stream<T, L, B, NoOrder, R> {
+    pub fn resolve_futures(self) -> Stream<T, L, Unbounded, NoOrder, R> {
         Stream::new(
             self.location.clone(),
             HydroNode::ResolveFutures {
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: self
                     .location
-                    .new_node_metadata(Stream::<T, L, B, NoOrder, R>::collection_kind()),
+                    .new_node_metadata(Stream::<T, L, Unbounded, NoOrder, R>::collection_kind()),
             },
         )
     }
@@ -2264,14 +2259,14 @@ where
     /// #   },
     /// # ));
     /// # }
-    pub fn resolve_futures_ordered(self) -> Stream<T, L, B, O, R> {
+    pub fn resolve_futures_ordered(self) -> Stream<T, L, Unbounded, O, R> {
         Stream::new(
             self.location.clone(),
             HydroNode::ResolveFuturesOrdered {
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: self
                     .location
-                    .new_node_metadata(Stream::<T, L, B, O, R>::collection_kind()),
+                    .new_node_metadata(Stream::<T, L, Unbounded, O, R>::collection_kind()),
             },
         )
     }
@@ -2466,6 +2461,8 @@ mod tests {
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::compile::builder::FlowBuilder;
     #[cfg(feature = "deploy")]
+    use crate::live_collections::sliced::sliced;
+    #[cfg(feature = "deploy")]
     use crate::live_collections::stream::ExactlyOnce;
     #[cfg(feature = "sim")]
     use crate::live_collections::stream::NoOrder;
@@ -2590,6 +2587,120 @@ mod tests {
 
         external_in.send(2).await.unwrap();
         assert_eq!(external_out.next().await.unwrap(), 3);
+    }
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn top_level_bounded_cross_singleton() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_port, input) =
+            node.source_external_bincode::<_, _, TotalOrder, ExactlyOnce>(&external);
+
+        let out = input
+            .cross_singleton(
+                node.source_iter(q!(vec![1, 2, 3]))
+                    .fold(q!(|| 0), q!(|acc, v| *acc += v)),
+            )
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect(input_port).await;
+        let mut external_out = nodes.connect(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in.send(1).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), (1, 6));
+
+        external_in.send(2).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), (2, 6));
+    }
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn top_level_bounded_reduce_cardinality() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_port, input) =
+            node.source_external_bincode::<_, _, TotalOrder, ExactlyOnce>(&external);
+
+        let out = sliced! {
+            let input = use(input, nondet!(/** test */));
+            let v = use(node.source_iter(q!(vec![1, 2, 3])).reduce(q!(|acc, v| *acc += v)), nondet!(/** test */));
+            input.cross_singleton(v.into_stream().count())
+        }
+        .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect(input_port).await;
+        let mut external_out = nodes.connect(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in.send(1).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), (1, 1));
+
+        external_in.send(2).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), (2, 1));
+    }
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn top_level_bounded_into_singleton_cardinality() {
+        let mut deployment = Deployment::new();
+
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_port, input) =
+            node.source_external_bincode::<_, _, TotalOrder, ExactlyOnce>(&external);
+
+        let out = sliced! {
+            let input = use(input, nondet!(/** test */));
+            let v = use(node.source_iter(q!(vec![1, 2, 3])).reduce(q!(|acc, v| *acc += v)).into_singleton(), nondet!(/** test */));
+            input.cross_singleton(v.into_stream().count())
+        }
+        .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect(input_port).await;
+        let mut external_out = nodes.connect(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in.send(1).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), (1, 1));
+
+        external_in.send(2).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), (2, 1));
     }
 
     #[cfg(feature = "deploy")]

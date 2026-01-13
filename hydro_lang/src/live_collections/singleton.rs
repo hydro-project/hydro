@@ -44,10 +44,12 @@ pub struct Singleton<Type, Loc, Bound: Boundedness> {
 
 impl<'a, T, L> From<Singleton<T, L, Bounded>> for Singleton<T, L, Unbounded>
 where
-    L: Location<'a>,
+    T: Clone,
+    L: Location<'a> + NoTick,
 {
-    fn from(singleton: Singleton<T, L, Bounded>) -> Self {
-        Singleton::new(singleton.location, singleton.ir_node.into_inner())
+    fn from(value: Singleton<T, L, Bounded>) -> Self {
+        let tick = value.location().tick();
+        value.clone_into_tick(&tick).latest()
     }
 }
 
@@ -350,7 +352,7 @@ where
     /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce, _>(|process| {
     /// let tick = process.tick();
     /// let singleton = tick.singleton(q!(
     ///     std::collections::HashSet::<i32>::from_iter(vec![1, 2, 3])
@@ -432,7 +434,7 @@ where
     /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::{prelude::*, live_collections::stream::{NoOrder, ExactlyOnce}};
     /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce>(|process| {
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, NoOrder, ExactlyOnce, _>(|process| {
     /// let tick = process.tick();
     /// let singleton = tick.singleton(q!(
     ///     std::collections::HashSet::<i32>::from_iter(vec![1, 2, 3])
@@ -835,6 +837,64 @@ where
     }
 }
 
+impl<'a, T, L> Singleton<T, L, Bounded>
+where
+    L: Location<'a>,
+{
+    /// Clones this bounded singleton into a tick, returning a singleton that has the
+    /// same value as the outer singleton. Because the outer singleton is bounded, this
+    /// is deterministic because there is only a single immutable version.
+    pub fn clone_into_tick(self, tick: &Tick<L>) -> Singleton<T, Tick<L>, Bounded>
+    where
+        T: Clone,
+    {
+        // TODO(shadaj): avoid printing simulator logs for this snapshot
+        self.snapshot(
+            tick,
+            nondet!(/** bounded top-level singleton so deterministic */),
+        )
+    }
+
+    /// Converts this singleton into a [`Stream`] containing a single element, the value.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let batch_input = process
+    ///   .source_iter(q!(vec![123, 456]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// batch_input.clone().chain(
+    ///   batch_input.count().into_stream()
+    /// ).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [123, 456, 2]
+    /// # for w in vec![123, 456, 2] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn into_stream(self) -> Stream<T, L, Bounded, TotalOrder, ExactlyOnce> {
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata(Stream::<
+                    T,
+                    Tick<L>,
+                    Bounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        )
+    }
+}
+
 impl<'a, T, L> Singleton<T, Tick<L>, Bounded>
 where
     L: Location<'a>,
@@ -953,45 +1013,6 @@ where
                 inner: Box::new(self.ir_node.into_inner()),
                 metadata: out_location
                     .new_node_metadata(Singleton::<T, Atomic<L>, Unbounded>::collection_kind()),
-            },
-        )
-    }
-
-    /// Converts this singleton into a [`Stream`] containing a single element, the value.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let batch_input = process
-    ///   .source_iter(q!(vec![123, 456]))
-    ///   .batch(&tick, nondet!(/** test */));
-    /// batch_input.clone().chain(
-    ///   batch_input.count().into_stream()
-    /// ).all_ticks()
-    /// # }, |mut stream| async move {
-    /// // [123, 456, 2]
-    /// # for w in vec![123, 456, 2] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
-    /// # }
-    /// # }));
-    /// # }
-    /// ```
-    pub fn into_stream(self) -> Stream<T, Tick<L>, Bounded, TotalOrder, ExactlyOnce> {
-        Stream::new(
-            self.location.clone(),
-            HydroNode::Cast {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata(Stream::<
-                    T,
-                    Tick<L>,
-                    Bounded,
-                    TotalOrder,
-                    ExactlyOnce,
-                >::collection_kind()),
             },
         )
     }
@@ -1142,8 +1163,8 @@ mod tests {
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
-        let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
-        let folded = source_iter.fold(q!(|| 0), q!(|a, b| *a += b));
+        let source = node.source_stream(q!(tokio_stream::iter(vec![1, 2, 3, 4])));
+        let folded = source.fold(q!(|| 0), q!(|a, b| *a += b));
 
         let tick = node.tick();
         let batch = folded.snapshot(&tick, nondet!(/** test */));
@@ -1160,8 +1181,8 @@ mod tests {
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
-        let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
-        let folded = source_iter.fold(q!(|| 0), q!(|a, b| *a += b));
+        let source = node.source_stream(q!(tokio_stream::iter(vec![1, 2, 3, 4])));
+        let folded = source.fold(q!(|| 0), q!(|a, b| *a += b));
 
         let tick = node.tick();
         let batch = folded.snapshot(&tick, nondet!(/** test */));
@@ -1212,11 +1233,11 @@ mod tests {
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
-        let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
-        let folded = source_iter.clone().fold(q!(|| 0), q!(|a, b| *a += b));
+        let source = node.source_stream(q!(tokio_stream::iter(vec![1, 2, 3, 4])));
+        let folded = source.clone().fold(q!(|| 0), q!(|a, b| *a += b));
 
         let tick = node.tick();
-        let batch = source_iter
+        let batch = source
             .batch(&tick, nondet!(/** test */))
             .cross_singleton(folded.snapshot(&tick, nondet!(/** test */)));
         let out_recv = batch.all_ticks().sim_output();
@@ -1236,11 +1257,11 @@ mod tests {
         let flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
-        let source_iter = node.source_iter(q!(vec![1, 2]));
-        let folded = source_iter.clone().fold(q!(|| 0), q!(|a, b| *a += b));
+        let source = node.source_stream(q!(tokio_stream::iter(vec![1, 2])));
+        let folded = source.clone().fold(q!(|| 0), q!(|a, b| *a += b));
 
         let tick = node.tick();
-        let batch = source_iter
+        let batch = source
             .batch(&tick, nondet!(/** test */))
             .cross_singleton(folded.snapshot(&tick, nondet!(/** test */)));
         let out_recv = batch.all_ticks().sim_output();
@@ -1285,10 +1306,7 @@ mod tests {
         let tick = node.tick();
         let batch = source_iter
             .batch(&tick, nondet!(/** test */))
-            .cross_singleton(
-                node.singleton(q!(123))
-                    .snapshot(&tick, nondet!(/** test */)),
-            );
+            .cross_singleton(node.singleton(q!(123)).clone_into_tick(&tick));
         let out_recv = batch.all_ticks().sim_output();
 
         let instance_count = flow.sim().exhaustive(async || {
@@ -1299,5 +1317,21 @@ mod tests {
             instance_count,
             16 // 2^4 ways to split up (including a possibly empty first batch)
         )
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn top_level_singleton_into_stream_no_replay() {
+        let flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
+        let folded = source_iter.fold(q!(|| 0), q!(|a, b| *a += b));
+
+        let out_recv = folded.into_stream().sim_output();
+
+        flow.sim().exhaustive(async || {
+            out_recv.assert_yields_only([10]).await;
+        });
     }
 }
