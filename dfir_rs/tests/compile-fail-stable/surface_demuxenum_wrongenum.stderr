@@ -73,9 +73,9 @@ error[E0277]: the trait bound `impl dfir_rs::futures::Sink<std::option::Option<(
              `Box<S>` implements `dfir_rs::futures::Sink<Item>`
              `BufferUnordered<S>` implements `dfir_rs::futures::Sink<Item>`
              `Buffered<S>` implements `dfir_rs::futures::Sink<Item>`
-             `BufferedLazySinkHalf<Item, Error>` implements `dfir_rs::futures::Sink<Item>`
              `DemuxEnum<Outputs>` implements `dfir_rs::futures::Sink<Item>`
              `DemuxMap<Key, Si>` implements `dfir_rs::futures::Sink<(Key, Item)>`
+             `DemuxVar<Sinks, Error>` implements `dfir_rs::futures::Sink<(usize, Item)>`
            and $N others
 note: required by a bound in `pivot_run_sg_1v1`
   --> tests/compile-fail-stable/surface_demuxenum_wrongenum.rs:17:15
