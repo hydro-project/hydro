@@ -25,43 +25,70 @@ where
 
         let metadata = event.metadata();
 
-        write!(
-            &mut writer,
-            "{} {} {}{} {} {}:{}: ",
-            chrono::Utc::now()
-                .format("%Y-%m-%dT%H:%M:%S%.f%:z")
-                .to_string()
-                .magenta()
-                .underline()
-                .on_white(),
-            metadata.level().as_str().red(),
-            std::thread::current()
-                .name()
-                .unwrap_or("unnamed-thread")
-                .blue(),
-            format!("({:?})", std::thread::current().id()).blue(),
-            // gettid::gettid(), TODO: can't get gettid to link properly.
-            metadata.target().green(),
-            metadata.file().unwrap_or("unknown-file").red(),
-            format!("{}", metadata.line().unwrap_or(0)).red(),
-        )?;
+        if writer.has_ansi_escapes() {
+            write!(
+                &mut writer,
+                "{} {} {}{} {} {}:{}: ",
+                chrono::Utc::now()
+                    .format("%Y-%m-%dT%H:%M:%S%.f%:z")
+                    .to_string()
+                    .magenta()
+                    .underline()
+                    .on_white(),
+                metadata.level().as_str().red(),
+                std::thread::current()
+                    .name()
+                    .unwrap_or("unnamed-thread")
+                    .blue(),
+                format!("({:?})", std::thread::current().id()).blue(),
+                // gettid::gettid(), TODO: can't get gettid to link properly.
+                metadata.target().green(),
+                metadata.file().unwrap_or("unknown-file").red(),
+                format!("{}", metadata.line().unwrap_or(0)).red(),
+            )?;
+        } else {
+            write!(
+                &mut writer,
+                "{} {} {}{:?} {} {}:{}: ",
+                chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.f%:z"),
+                metadata.level().as_str().red(),
+                std::thread::current().name().unwrap_or("unnamed-thread"),
+                std::thread::current().id(),
+                // gettid::gettid(), TODO: can't get gettid to link properly.
+                metadata.target(),
+                metadata.file().unwrap_or("unknown-file"),
+                metadata.line().unwrap_or(0),
+            )?;
+        }
 
         if let Some(scope) = ctx.event_scope() {
             for span in scope.from_root() {
-                write!(writer, "{}", span.name().purple())?;
+                if writer.has_ansi_escapes() {
+                    write!(writer, "{}", span.name().purple())?;
+                } else {
+                    write!(writer, "{}", span.name())?;
+                }
 
                 let ext = span.extensions();
                 let fields = &ext.get::<FormattedFields<N>>().unwrap();
 
                 if !fields.is_empty() {
-                    write!(writer, "{{{}}}", fields.cyan())?;
+                    if writer.has_ansi_escapes() {
+                        write!(writer, "{{{}}}", fields.cyan())?;
+                    } else {
+                        write!(writer, "{{{}}}", fields)?;
+                    }
                 }
 
                 write!(writer, ": ")?;
             }
         }
 
-        write!(writer, "{}: ", metadata.name().yellow().bold().underline())?;
+        if writer.has_ansi_escapes() {
+            write!(writer, "{}: ", metadata.name().yellow().bold().underline())?;
+        } else {
+            write!(writer, "{}: ", metadata.name())?;
+        }
 
         ctx.field_format().format_fields(writer.by_ref(), event)?;
 
