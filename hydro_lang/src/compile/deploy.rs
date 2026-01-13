@@ -426,7 +426,7 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
 #[cfg(feature = "deploy")]
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 impl DeployResult<'_, crate::deploy::HydroDeploy> {
-    /// Get the port as a [`CustomClientPort`] handle.
+    /// Get the raw port handle.
     pub fn raw_port<M>(&self, port: ExternalBytesPort<M>) -> hydro_deploy::custom_service::CustomClientPort {
         self.externals
             .get(&port.process_id)
