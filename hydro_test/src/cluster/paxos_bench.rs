@@ -1,4 +1,4 @@
-use std::time::{Instant, SystemTime};
+use std::time::SystemTime;
 
 use hydro_lang::live_collections::stream::NoOrder;
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
@@ -62,7 +62,7 @@ pub fn paxos_bench<'a>(
         .values()
         .map(q!(|(index, payload)| (
             index,
-            payload.and_then(|(key, value)| Some(KvPayload { key, value }))
+            payload.map(|(key, value)| KvPayload { key, value })
         )));
 
     // Replicas
@@ -126,7 +126,7 @@ pub fn paxos_bench<'a>(
     c_received_payloads_complete.complete(completed_payloads.clone());
 
     // Create throughput/latency graphs
-    let latencies = completed_payloads.map(q!(move |(_counter, time)| {
+    let latencies = completed_payloads.values().map(q!(move |(_counter, time)| {
         SystemTime::now().duration_since(time).unwrap()
     }));
     let bench_results = compute_throughput_latency(clients, latencies, nondet!(/** bench */));

@@ -48,7 +48,6 @@ pub struct BenchResult<'a, Client> {
 ///
 /// ## Returns
 /// A stream of virtual client IDs that are ready to create a payload
-#[expect(clippy::type_complexity, reason = "stream types")]
 pub fn bench_client<'a, Client, Payload>(
     clients: &Cluster<'a, Client>,
     num_clients_per_node: usize,
@@ -58,6 +57,7 @@ where
     Payload: Clone,
 {
     let dummy = clients.singleton(q!(0));
+    #[expect(unused_variables, reason = "sliced! requires at least 1 use statement")]
     let new_payload_ids = sliced! {
         let dummy_batched = use(dummy, nondet!(/** temp */));
         let mut next_virtual_client = use::state(|l| Optional::from(l.singleton(q!((0u32, None)))));
@@ -81,18 +81,16 @@ where
 }
 
 /// Computes the throughput and latency of transactions.
-/// * `start_signal` - A signal that indicates when a transaction begins
-/// * `end_signal` - A signal that indicates when a transaction ends
 ///
 /// # Non-Determinism
 /// This function uses non-deterministic wall-clock windows for measuring throughput.
 pub fn compute_throughput_latency<'a, Client: 'a>(
     clients: &Cluster<'a, Client>,
-    latencies: KeyedStream<u32, Duration, Cluster<'a, Client>, Unbounded, NoOrder>,
+    latencies: Stream<Duration, Cluster<'a, Client>, Unbounded, NoOrder>,
     nondet_measurement_window: NonDet,
 ) -> BenchResult<'a, Client> {
     // 1. Calculate latencies
-    let latency_histogram = latencies.clone().values().fold(
+    let latency_histogram = latencies.clone().fold(
         q!(move || Rc::new(RefCell::new(Histogram::<u64>::new(3).unwrap()))),
         q!(
             move |latencies, latency| {
@@ -111,7 +109,6 @@ pub fn compute_throughput_latency<'a, Client: 'a>(
     let throughput_batch = sliced! {
         let latencies_batch = use(latencies, nondet_measurement_window);
         latencies_batch
-            .entries()
             .count()
             .into_stream()
     };

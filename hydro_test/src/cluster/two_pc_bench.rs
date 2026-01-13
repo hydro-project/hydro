@@ -1,4 +1,4 @@
-use std::time::{Instant, SystemTime};
+use std::time::SystemTime;
 
 use hydro_lang::prelude::*;
 use hydro_std::bench_client::{bench_client, compute_throughput_latency, print_bench_results};
@@ -37,7 +37,10 @@ pub fn two_pc_bench<'a>(
         coordinator,
         participants,
         num_participants,
-        c_payloads.entries().send(coordinator, TCP.bincode()).entries(),
+        c_payloads
+            .entries()
+            .send(coordinator, TCP.bincode())
+            .entries(),
     )
     .demux(clients, TCP.bincode())
     .into_keyed();
@@ -46,11 +49,10 @@ pub fn two_pc_bench<'a>(
     c_received_payloads_complete.complete(completed_payloads.clone());
 
     // Create throughput/latency graphs
-    let latencies = completed_payloads.map(q!(move |(_counter, time)| {
+    let latencies = completed_payloads.values().map(q!(move |(_counter, time)| {
         SystemTime::now().duration_since(time).unwrap()
     }));
-    let bench_results =
-        compute_throughput_latency(clients, latencies, nondet!(/** bench */));
+    let bench_results = compute_throughput_latency(clients, latencies, nondet!(/** bench */));
     print_bench_results(bench_results, client_aggregator, clients);
 }
 
