@@ -789,7 +789,6 @@ pub trait Location<'a>: dynamic::DynLocation {
     fn forward_ref<S>(&self) -> (ForwardHandle<'a, S>, S)
     where
         S: CycleCollection<'a, ForwardRef, Location = Self>,
-        Self: NoTick,
     {
         let next_id = self.flow_state().borrow_mut().next_cycle_id();
         let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
