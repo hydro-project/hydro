@@ -55,26 +55,26 @@ subgraph sg_2v1 ["sg_2v1 stratum 0"]
     subgraph sg_2v1_var_cycle_1 ["var <tt>cycle_1</tt>"]
         8v1
     end
-    subgraph sg_2v1_var_stream_5 ["var <tt>stream_5</tt>"]
+    subgraph sg_2v1_var_stream_6 ["var <tt>stream_6</tt>"]
         7v1
     end
 end
 subgraph sg_3v1 ["sg_3v1 stratum 0"]
     16v1
     17v1
-    subgraph sg_3v1_var_stream_6 ["var <tt>stream_6</tt>"]
+    subgraph sg_3v1_var_stream_10 ["var <tt>stream_10</tt>"]
+        13v1
+    end
+    subgraph sg_3v1_var_stream_11 ["var <tt>stream_11</tt>"]
+        14v1
+        15v1
+    end
+    subgraph sg_3v1_var_stream_8 ["var <tt>stream_8</tt>"]
         9v1
         10v1
     end
-    subgraph sg_3v1_var_stream_7 ["var <tt>stream_7</tt>"]
+    subgraph sg_3v1_var_stream_9 ["var <tt>stream_9</tt>"]
         11v1
         12v1
-    end
-    subgraph sg_3v1_var_stream_8 ["var <tt>stream_8</tt>"]
-        13v1
-    end
-    subgraph sg_3v1_var_stream_9 ["var <tt>stream_9</tt>"]
-        14v1
-        15v1
     end
 end
