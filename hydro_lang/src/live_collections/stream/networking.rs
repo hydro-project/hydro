@@ -106,7 +106,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p_out| {
     /// let p1 = flow.process::<()>();
-    /// let numbers: Stream<_, Process<_>, Unbounded> = p1.source_iter(q!(vec![1, 2, 3]));
+    /// let numbers: Stream<_, Process<_>, Bounded> = p1.source_iter(q!(vec![1, 2, 3]));
     /// let p2 = flow.process::<()>();
     /// let on_p2: Stream<_, Process<_>, Unbounded> = numbers.send_bincode(&p2);
     /// // 1, 2, 3
@@ -144,7 +144,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p_out| {
     /// let p1 = flow.process::<()>();
-    /// let numbers: Stream<_, Process<_>, Unbounded> = p1.source_iter(q!(vec![1, 2, 3]));
+    /// let numbers: Stream<_, Process<_>, Bounded> = p1.source_iter(q!(vec![1, 2, 3]));
     /// let p2 = flow.process::<()>();
     /// let on_p2: Stream<_, Process<_>, Unbounded> = numbers.send(&p2, TCP.bincode());
     /// // 1, 2, 3
@@ -306,7 +306,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # tokio_test::block_on(async move {
     /// let flow = FlowBuilder::new();
     /// let process = flow.process::<()>();
-    /// let numbers: Stream<_, Process<_>, Unbounded> = process.source_iter(q!(vec![1, 2, 3]));
+    /// let numbers: Stream<_, Process<_>, Bounded> = process.source_iter(q!(vec![1, 2, 3]));
     /// let external = flow.external::<()>();
     /// let external_handle = numbers.send_bincode_external(&external);
     ///

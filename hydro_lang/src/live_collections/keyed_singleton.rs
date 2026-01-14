@@ -813,8 +813,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
     /// let keyed_singleton = // { 1: 123, 2: 456, 0: 789 }
-    /// # process
-    /// #     .source_iter(q!(vec![(1, 123), (2, 456), (0, 789)]))
+    /// # Stream::<_, _>::from(process.source_iter(q!(vec![(1, 123), (2, 456), (0, 789)])))
     /// #     .into_keyed()
     /// #     .first();
     /// keyed_singleton.get_max_key()
@@ -861,8 +860,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let keyed_singleton = // { 1: 2, 2: 4 }
-    /// # process
-    /// #     .source_iter(q!(vec![(1, 2), (2, 4)]))
+    /// # Stream::<_, _>::from(process.source_iter(q!(vec![(1, 2), (2, 4)])))
     /// #     .into_keyed()
     /// #     .first();
     /// keyed_singleton

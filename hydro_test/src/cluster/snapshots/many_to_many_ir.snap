@@ -187,7 +187,7 @@ expression: built.ir()
                                                     0,
                                                 ),
                                                 collection_kind: Stream {
-                                                    bound: Unbounded,
+                                                    bound: Bounded,
                                                     order: TotalOrder,
                                                     retry: ExactlyOnce,
                                                     element_type: i32,

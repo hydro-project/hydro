@@ -64,7 +64,7 @@ expression: built.ir()
                                                                                                                                     0,
                                                                                                                                 ),
                                                                                                                                 collection_kind: Stream {
-                                                                                                                                    bound: Unbounded,
+                                                                                                                                    bound: Bounded,
                                                                                                                                     order: TotalOrder,
                                                                                                                                     retry: ExactlyOnce,
                                                                                                                                     element_type: & str,
@@ -76,7 +76,7 @@ expression: built.ir()
                                                                                                                                 0,
                                                                                                                             ),
                                                                                                                             collection_kind: Stream {
-                                                                                                                                bound: Unbounded,
+                                                                                                                                bound: Bounded,
                                                                                                                                 order: TotalOrder,
                                                                                                                                 retry: ExactlyOnce,
                                                                                                                                 element_type: std :: string :: String,
@@ -88,7 +88,7 @@ expression: built.ir()
                                                                                                                             0,
                                                                                                                         ),
                                                                                                                         collection_kind: Stream {
-                                                                                                                            bound: Unbounded,
+                                                                                                                            bound: Bounded,
                                                                                                                             order: TotalOrder,
                                                                                                                             retry: ExactlyOnce,
                                                                                                                             element_type: (usize , std :: string :: String),

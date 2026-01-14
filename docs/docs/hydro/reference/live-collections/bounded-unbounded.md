@@ -27,8 +27,7 @@ let unbounded: Stream<_, _, Unbounded> = input.into();
 # use futures::StreamExt;
 # let flow = FlowBuilder::new();
 # let process = flow.process::<()>();
-# let tick = process.tick();
-let input: Singleton<_, _, Bounded> = tick.singleton(q!(0));
+let input: Singleton<_, _, Bounded> = process.singleton(q!(0));
 let unbounded: Singleton<_, _, Unbounded> = input.into();
 ```
 

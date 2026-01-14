@@ -103,10 +103,23 @@ expression: built.ir()
                                                     },
                                                 },
                                             },
-                                            right: Source {
-                                                source: Iter(
-                                                    stageleft :: runtime_support :: type_hint :: < std :: ops :: Range < i32 > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; 0 .. 5 }),
-                                                ),
+                                            right: Cast {
+                                                inner: Source {
+                                                    source: Iter(
+                                                        stageleft :: runtime_support :: type_hint :: < std :: ops :: Range < i32 > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; 0 .. 5 }),
+                                                    ),
+                                                    metadata: HydroIrMetadata {
+                                                        location_kind: Process(
+                                                            0,
+                                                        ),
+                                                        collection_kind: Stream {
+                                                            bound: Bounded,
+                                                            order: TotalOrder,
+                                                            retry: ExactlyOnce,
+                                                            element_type: i32,
+                                                        },
+                                                    },
+                                                },
                                                 metadata: HydroIrMetadata {
                                                     location_kind: Process(
                                                         0,

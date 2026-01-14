@@ -125,6 +125,7 @@ let purchases = process.source_iter(q!(vec![
 ])).into_keyed();
 
 // Batch the stream and calculate total spending per user
+# let purchases = KeyedStream::<_, _, _, Unbounded>::from(purchases);
 # let out =
 purchases.fold(q!(|| 0), q!(|acc, amount| *acc += amount))
 # ;
@@ -151,11 +152,11 @@ Like with streams, operators like `fold` or `reduce` on keyed streams may requir
 let tick = process.tick();
 
 let health_checks =
-# process.source_iter(q!(vec![
+# Stream::<_, _>::from(process.source_iter(q!(vec![
 #     ("server1", false),
 #     ("server2", false),
 #     ("server1", true), // had failure
-# ])).into_keyed().weakest_ordering().weakest_retries();
+# ]))).into_keyed().weakest_ordering().weakest_retries();
 // ("server1", false)
 // ("server2", false)
 // ("server1", true) (had failure)
