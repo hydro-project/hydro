@@ -106,7 +106,7 @@
 <a href=#106 id=106 data-nosnippet>106</a>    /// # use futures::StreamExt;
 <a href=#107 id=107 data-nosnippet>107</a>    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p_out| {
 <a href=#108 id=108 data-nosnippet>108</a>    /// let p1 = flow.process::&lt;()&gt;();
-<a href=#109 id=109 data-nosnippet>109</a>    /// let numbers: Stream&lt;_, Process&lt;_&gt;, Unbounded&gt; = p1.source_iter(q!(vec![1, 2, 3]));
+<a href=#109 id=109 data-nosnippet>109</a>    /// let numbers: Stream&lt;_, Process&lt;_&gt;, Bounded&gt; = p1.source_iter(q!(vec![1, 2, 3]));
 <a href=#110 id=110 data-nosnippet>110</a>    /// let p2 = flow.process::&lt;()&gt;();
 <a href=#111 id=111 data-nosnippet>111</a>    /// let on_p2: Stream&lt;_, Process&lt;_&gt;, Unbounded&gt; = numbers.send_bincode(&amp;p2);
 <a href=#112 id=112 data-nosnippet>112</a>    /// // 1, 2, 3
@@ -144,7 +144,7 @@
 <a href=#144 id=144 data-nosnippet>144</a>    /// # use futures::StreamExt;
 <a href=#145 id=145 data-nosnippet>145</a>    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p_out| {
 <a href=#146 id=146 data-nosnippet>146</a>    /// let p1 = flow.process::&lt;()&gt;();
-<a href=#147 id=147 data-nosnippet>147</a>    /// let numbers: Stream&lt;_, Process&lt;_&gt;, Unbounded&gt; = p1.source_iter(q!(vec![1, 2, 3]));
+<a href=#147 id=147 data-nosnippet>147</a>    /// let numbers: Stream&lt;_, Process&lt;_&gt;, Bounded&gt; = p1.source_iter(q!(vec![1, 2, 3]));
 <a href=#148 id=148 data-nosnippet>148</a>    /// let p2 = flow.process::&lt;()&gt;();
 <a href=#149 id=149 data-nosnippet>149</a>    /// let on_p2: Stream&lt;_, Process&lt;_&gt;, Unbounded&gt; = numbers.send(&amp;p2, TCP.bincode());
 <a href=#150 id=150 data-nosnippet>150</a>    /// // 1, 2, 3
@@ -306,7 +306,7 @@
 <a href=#306 id=306 data-nosnippet>306</a>    /// # tokio_test::block_on(async move {
 <a href=#307 id=307 data-nosnippet>307</a>    /// let flow = FlowBuilder::new();
 <a href=#308 id=308 data-nosnippet>308</a>    /// let process = flow.process::&lt;()&gt;();
-<a href=#309 id=309 data-nosnippet>309</a>    /// let numbers: Stream&lt;_, Process&lt;_&gt;, Unbounded&gt; = process.source_iter(q!(vec![1, 2, 3]));
+<a href=#309 id=309 data-nosnippet>309</a>    /// let numbers: Stream&lt;_, Process&lt;_&gt;, Bounded&gt; = process.source_iter(q!(vec![1, 2, 3]));
 <a href=#310 id=310 data-nosnippet>310</a>    /// let external = flow.external::&lt;()&gt;();
 <a href=#311 id=311 data-nosnippet>311</a>    /// let external_handle = numbers.send_bincode_external(&amp;external);
 <a href=#312 id=312 data-nosnippet>312</a>    ///

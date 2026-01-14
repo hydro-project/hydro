@@ -10,7 +10,7 @@
 <a href=#10 id=10 data-nosnippet>10</a>    dist_policy: <span class="kw">impl </span>IntoQuotedMut&lt;<span class="lifetime">'a</span>, F, Cluster&lt;<span class="lifetime">'a</span>, ()&gt;&gt;,
 <a href=#11 id=11 data-nosnippet>11</a>) -&gt; (Cluster&lt;<span class="lifetime">'a</span>, ()&gt;, Cluster&lt;<span class="lifetime">'a</span>, ()&gt;) {
 <a href=#12 id=12 data-nosnippet>12</a>    cluster1
-<a href=#13 id=13 data-nosnippet>13</a>        .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>(CLUSTER_SELF_ID)))
+<a href=#13 id=13 data-nosnippet>13</a>        .source_stream(<span class="macro">q!</span>(tokio_stream::iter(<span class="macro">vec!</span>(CLUSTER_SELF_ID))))
 <a href=#14 id=14 data-nosnippet>14</a>        .map(<span class="macro">q!</span>(<span class="kw">move </span>|id| (id.clone(), <span class="macro">format!</span>(<span class="string">"Hello from {}"</span>, id))))
 <a href=#15 id=15 data-nosnippet>15</a>        .send_partitioned(<span class="kw-2">&amp;</span>cluster2, dist_policy)
 <a href=#16 id=16 data-nosnippet>16</a>        .assume_ordering(<span class="macro">nondet!</span>(<span class="doccomment">/** testing, order does not matter */</span>))
@@ -59,7 +59,7 @@
 <a href=#59 id=59 data-nosnippet>59</a>            MembershipEvent::Left =&gt; <span class="prelude-val">None</span>,
 <a href=#60 id=60 data-nosnippet>60</a>        }));
 <a href=#61 id=61 data-nosnippet>61</a>
-<a href=#62 id=62 data-nosnippet>62</a>    ids.cross_product(numbers)
+<a href=#62 id=62 data-nosnippet>62</a>    ids.cross_product(numbers.into())
 <a href=#63 id=63 data-nosnippet>63</a>        .map(<span class="macro">q!</span>(|(id, n)| (id.clone(), (id, n))))
 <a href=#64 id=64 data-nosnippet>64</a>        .demux(<span class="kw-2">&amp;</span>cluster, TCP.bincode())
 <a href=#65 id=65 data-nosnippet>65</a>        .inspect(<span class="macro">q!</span>(<span class="kw">move </span>|n| <span class="macro">println!</span>(
