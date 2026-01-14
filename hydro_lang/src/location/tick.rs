@@ -11,7 +11,7 @@ use crate::compile::builder::FlowState;
 use crate::compile::ir::{HydroNode, HydroSource};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial};
-use crate::forward_handle::{ForwardHandle, ForwardRef, TickCycle, TickCycleHandle};
+use crate::forward_handle::{TickCycle, TickCycleHandle};
 use crate::live_collections::boundedness::{Bounded, Unbounded};
 use crate::live_collections::optional::Optional;
 use crate::live_collections::singleton::Singleton;
@@ -221,29 +221,6 @@ where
                 }),
                 metadata: self.new_node_metadata(Optional::<T, Self, Bounded>::collection_kind()),
             },
-        )
-    }
-
-    #[expect(
-        private_bounds,
-        reason = "only Hydro collections can implement ReceiverComplete"
-    )]
-    pub fn forward_ref<S>(&self) -> (ForwardHandle<'a, S>, S)
-    where
-        S: CycleCollection<'a, ForwardRef, Location = Self>,
-        L: NoTick,
-    {
-        let next_id = self.flow_state().borrow_mut().next_cycle_id();
-        let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
-
-        (
-            ForwardHandle {
-                completed: false,
-                ident: ident.clone(),
-                expected_location: Location::id(self),
-                _phantom: PhantomData,
-            },
-            S::create_source(ident, self.clone()),
         )
     }
 
