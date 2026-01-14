@@ -23,7 +23,7 @@ use syn::visit_mut::VisitMut;
 
 use crate::compile::builder::ExternalPortId;
 #[cfg(feature = "build")]
-use crate::compile::deploy_provider::{Deploy, RegisterPort};
+use crate::compile::deploy_provider::{Deploy, Node, RegisterPort};
 use crate::location::NetworkHint;
 use crate::location::dynamic::LocationId;
 
@@ -726,8 +726,8 @@ impl HydroRoot {
                                             })
                                             .clone();
 
-                                        let sink_port = D::allocate_process_port(&from_node);
-                                        let source_port: <D as Deploy<'a>>::Port = D::allocate_external_port(&to_node);
+                                        let sink_port = from_node.next_port();
+                                        let source_port = to_node.next_port();
 
                                         if *unpaired {
                                             use stageleft::quote_type;
@@ -843,8 +843,8 @@ impl HydroRoot {
                                         })
                                         .clone();
 
-                                    let sink_port = D::allocate_external_port(&from_node);
-                                    let source_port = D::allocate_process_port(&to_node);
+                                    let sink_port = from_node.next_port();
+                                    let source_port = to_node.next_port();
 
                                     from_node.register(*from_port_id, sink_port.clone());
 
@@ -3775,8 +3775,8 @@ where
                 })
                 .clone();
 
-            let sink_port = D::allocate_process_port(&from_node);
-            let source_port = D::allocate_process_port(&to_node);
+            let sink_port = from_node.next_port();
+            let source_port = to_node.next_port();
 
             (
                 D::o2o_sink_source(&from_node, &sink_port, &to_node, &source_port),
@@ -3797,8 +3797,8 @@ where
                 })
                 .clone();
 
-            let sink_port = D::allocate_process_port(&from_node);
-            let source_port = D::allocate_cluster_port(&to_node);
+            let sink_port = from_node.next_port();
+            let source_port = to_node.next_port();
 
             (
                 D::o2m_sink_source(&from_node, &sink_port, &to_node, &source_port),
@@ -3819,8 +3819,8 @@ where
                 })
                 .clone();
 
-            let sink_port = D::allocate_cluster_port(&from_node);
-            let source_port = D::allocate_process_port(&to_node);
+            let sink_port = from_node.next_port();
+            let source_port = to_node.next_port();
 
             (
                 D::m2o_sink_source(&from_node, &sink_port, &to_node, &source_port),
@@ -3841,8 +3841,8 @@ where
                 })
                 .clone();
 
-            let sink_port = D::allocate_cluster_port(&from_node);
-            let source_port = D::allocate_cluster_port(&to_node);
+            let sink_port = from_node.next_port();
+            let source_port = to_node.next_port();
 
             (
                 D::m2m_sink_source(&from_node, &sink_port, &to_node, &source_port),
