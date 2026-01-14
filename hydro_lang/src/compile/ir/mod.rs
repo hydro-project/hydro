@@ -21,6 +21,7 @@ use syn::parse_quote;
 use syn::visit::{self, Visit};
 use syn::visit_mut::VisitMut;
 
+use crate::compile::builder::ExternalPortId;
 #[cfg(feature = "build")]
 use crate::compile::deploy_provider::{Deploy, RegisterPort};
 use crate::location::NetworkHint;
@@ -653,7 +654,7 @@ pub enum HydroRoot {
     },
     SendExternal {
         to_external_id: usize,
-        to_key: usize,
+        to_port_id: ExternalPortId,
         to_many: bool,
         unpaired: bool,
         serialize_fn: Option<DebugExpr>,
@@ -691,7 +692,7 @@ impl HydroRoot {
                 if let HydroRoot::SendExternal {
                     input,
                     to_external_id,
-                    to_key,
+                    to_port_id,
                     to_many,
                     unpaired,
                     instantiate_fn,
@@ -712,7 +713,7 @@ impl HydroRoot {
                                     if *to_many {
                                         (
                                             (
-                                                D::e2o_many_sink(format!("{}_{}", *to_external_id, *to_key)),
+                                                D::e2o_many_sink(format!("{}_{}", *to_external_id, *to_port_id)),
                                                 parse_quote!(DUMMY),
                                             ),
                                             Box::new(|| {}) as Box<dyn FnOnce()>,
@@ -732,14 +733,14 @@ impl HydroRoot {
                                             use stageleft::quote_type;
                                             use tokio_util::codec::LengthDelimitedCodec;
 
-                                            to_node.register(*to_key, source_port.clone());
+                                            to_node.register(*to_port_id, source_port.clone());
 
                                             let _ = D::e2o_source(
                                                 refcell_extra_stmts.borrow_mut().entry(*process_id).or_default(),
                                                 &to_node, &source_port,
                                                 &from_node, &sink_port,
                                                 &quote_type::<LengthDelimitedCodec>(),
-                                                format!("{}_{}", *to_external_id, *to_key)
+                                                format!("{}_{}", *to_external_id, *to_port_id)
                                             );
                                         }
 
@@ -750,7 +751,7 @@ impl HydroRoot {
                                                     &sink_port,
                                                     &to_node,
                                                     &source_port,
-                                                    format!("{}_{}", *to_external_id, *to_key)
+                                                    format!("{}_{}", *to_external_id, *to_port_id)
                                                 ),
                                                 parse_quote!(DUMMY),
                                             ),
@@ -812,7 +813,7 @@ impl HydroRoot {
                     .into();
                 } else if let HydroNode::ExternalInput {
                     from_external_id,
-                    from_key,
+                    from_port_id,
                     from_many,
                     codec_type,
                     port_hint,
@@ -845,7 +846,7 @@ impl HydroRoot {
                                     let sink_port = D::allocate_external_port(&from_node);
                                     let source_port = D::allocate_process_port(&to_node);
 
-                                    from_node.register(*from_key, sink_port.clone());
+                                    from_node.register(*from_port_id, sink_port.clone());
 
                                     (
                                         (
@@ -855,7 +856,7 @@ impl HydroRoot {
                                                     refcell_extra_stmts.borrow_mut().entry(*process_id).or_default(),
                                                     &to_node, &source_port,
                                                     codec_type.0.as_ref(),
-                                                    format!("{}_{}", *from_external_id, *from_key)
+                                                    format!("{}_{}", *from_external_id, *from_port_id)
                                                 )
                                             } else {
                                                 D::e2o_source(
@@ -863,7 +864,7 @@ impl HydroRoot {
                                                     &from_node, &sink_port,
                                                     &to_node, &source_port,
                                                     codec_type.0.as_ref(),
-                                                    format!("{}_{}", *from_external_id, *from_key)
+                                                    format!("{}_{}", *from_external_id, *from_port_id)
                                                 )
                                             },
                                         ),
@@ -965,7 +966,7 @@ impl HydroRoot {
             },
             HydroRoot::SendExternal {
                 to_external_id,
-                to_key,
+                to_port_id,
                 to_many,
                 unpaired,
                 serialize_fn,
@@ -974,7 +975,7 @@ impl HydroRoot {
                 op_metadata,
             } => HydroRoot::SendExternal {
                 to_external_id: *to_external_id,
-                to_key: *to_key,
+                to_port_id: *to_port_id,
                 to_many: *to_many,
                 unpaired: *unpaired,
                 serialize_fn: serialize_fn.clone(),
@@ -1684,7 +1685,7 @@ pub enum HydroNode {
 
     ExternalInput {
         from_external_id: usize,
-        from_key: usize,
+        from_port_id: ExternalPortId,
         from_many: bool,
         codec_type: DebugType,
         port_hint: NetworkHint,
@@ -2067,7 +2068,7 @@ impl HydroNode {
             },
             HydroNode::ExternalInput {
                 from_external_id,
-                from_key,
+                from_port_id,
                 from_many,
                 codec_type,
                 port_hint,
@@ -2076,7 +2077,7 @@ impl HydroNode {
                 metadata,
             } => HydroNode::ExternalInput {
                 from_external_id: *from_external_id,
-                from_key: *from_key,
+                from_port_id: *from_port_id,
                 from_many: *from_many,
                 codec_type: codec_type.clone(),
                 port_hint: *port_hint,

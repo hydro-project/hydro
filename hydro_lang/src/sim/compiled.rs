@@ -24,13 +24,14 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use super::runtime::{Hooks, InlineHooks};
 use super::{SimReceiver, SimSender};
+use crate::compile::builder::ExternalPortId;
 use crate::live_collections::stream::{ExactlyOnce, NoOrder, Ordering, Retries, TotalOrder};
 use crate::location::dynamic::LocationId;
 
 struct SimConnections {
     input_senders: HashMap<usize, Rc<UnboundedSender<Bytes>>>,
     output_receivers: HashMap<usize, Rc<Mutex<UnboundedReceiverStream<Bytes>>>>,
-    external_registered: HashMap<usize, usize>,
+    external_registered: HashMap<ExternalPortId, usize>,
 }
 
 tokio::task_local! {
@@ -42,7 +43,7 @@ pub struct CompiledSim {
     pub(super) _path: TempPath,
     pub(super) lib: Library,
     pub(super) external_ports: Vec<usize>,
-    pub(super) external_registered: HashMap<usize, usize>,
+    pub(super) external_registered: HashMap<ExternalPortId, usize>,
 }
 
 #[sealed::sealed]
@@ -336,7 +337,7 @@ impl CompiledSim {
 pub struct CompiledSimInstance<'a> {
     func: SimLoaded<'a>,
     remaining_ports: HashSet<usize>,
-    external_registered: HashMap<usize, usize>,
+    external_registered: HashMap<ExternalPortId, usize>,
     output_ports: HashMap<usize, UnboundedSender<Bytes>>,
     input_ports: HashMap<usize, UnboundedReceiverStream<Bytes>>,
     log: bool,
