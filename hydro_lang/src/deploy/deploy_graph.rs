@@ -451,6 +451,7 @@ pub struct TrybuildHost {
     host: Arc<dyn Host>,
     display_name: Option<String>,
     rustflags: Option<String>,
+    profile: Option<String>,
     additional_hydro_features: Vec<String>,
     features: Vec<String>,
     tracing: Option<TracingOptions>,
@@ -465,6 +466,7 @@ impl From<Arc<dyn Host>> for TrybuildHost {
             host,
             display_name: None,
             rustflags: None,
+            profile: None,
             additional_hydro_features: vec![],
             features: vec![],
             tracing: None,
@@ -481,6 +483,7 @@ impl<H: Host + 'static> From<Arc<H>> for TrybuildHost {
             host,
             display_name: None,
             rustflags: None,
+            profile: None,
             additional_hydro_features: vec![],
             features: vec![],
             tracing: None,
@@ -498,6 +501,7 @@ impl TrybuildHost {
             host,
             display_name: None,
             rustflags: None,
+            profile: None,
             additional_hydro_features: vec![],
             features: vec![],
             tracing: None,
@@ -525,6 +529,17 @@ impl TrybuildHost {
 
         Self {
             rustflags: Some(rustflags.into()),
+            ..self
+        }
+    }
+
+    pub fn profile(self, profile: impl Into<String>) -> Self {
+        if self.profile.is_some() {
+            panic!("{} already set", name_of!(profile in Self));
+        }
+
+        Self {
+            profile: Some(profile.into()),
             ..self
         }
     }
@@ -573,6 +588,7 @@ impl IntoProcessSpec<'_, HydroDeploy> for Arc<dyn Host> {
             host: self,
             display_name: None,
             rustflags: None,
+            profile: None,
             additional_hydro_features: vec![],
             features: vec![],
             tracing: None,
@@ -590,6 +606,7 @@ impl<H: Host + 'static> IntoProcessSpec<'_, HydroDeploy> for Arc<H> {
             host: self,
             display_name: None,
             rustflags: None,
+            profile: None,
             additional_hydro_features: vec![],
             features: vec![],
             tracing: None,
@@ -1053,6 +1070,10 @@ fn create_trybuild_service(
 
     if let Some(rustflags) = trybuild.rustflags {
         ret = ret.rustflags(rustflags);
+    }
+
+    if let Some(profile) = trybuild.profile {
+        ret = ret.profile(profile);
     }
 
     if let Some(tracing) = trybuild.tracing {
