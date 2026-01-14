@@ -24,6 +24,14 @@ In this thesis, we explore the marriage of distributed systems programming and d
 
 We study four lines of research on algebraic properties for distributed data systems: conflict-free replicated data types (CRDTs), algebraic models of incremental view maintenance (IVM), parallel database aggregates, and the CALM Theorem. We are able to bring the system model and mathematical model of CRDTs, studied in the distributed systems and programming languages communities, to these three other topics that have been studied entirely within the databases research community. The result is a foundation on which to support the benefits of declarativity in distributed systems programming.
 
+### [The Free Termination Property of Queries Over Time](pathname:///papers/free-termination.pdf) (ICDT 2025)
+
+**Conor Power, Paraschos Koutris, Joseph M. Hellerstein**
+
+Building on prior work on distributed databases and the CALM Theorem, we define and study the question of free termination: in the absence of distributed coordination, what query properties allow nodes in a distributed (database) system to unilaterally terminate execution even though they may receive additional data or messages in the future? This completeness question is complementary to the soundness questions studied in the CALM literature. We also develop a new model based on semiautomata that allows us to bridge from the relational transducer model of the CALM papers to algebraic models that are popular among software engineers (e.g. CRDTs) and of increasing interest to database theory for datalog extensions and incremental view maintenance.
+
+**Links:** [arXiv](https://arxiv.org/abs/2502.00222)
+
 ### [Flo: a Semantic Foundation for Progressive Stream Processing](pathname:///papers/flo.pdf) (POPL 2025)
 
 **Shadaj Laddad, Alvin Cheung, Joseph M. Hellerstein, Mae Milano**

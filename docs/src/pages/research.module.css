@@ -33,6 +33,12 @@ h3 + p {
     --ifm-col-width: calc(9 / 12 * 100%) !important;
 }
 
+@media (max-width: 996px) {
+    :global(.col--8) {
+        --ifm-col-width: 100% !important;
+    }
+}
+
 :global(.col--2) {
     --ifm-col-width: calc(3 / 12 * 100%) !important;
 }
