@@ -1,28 +1,43 @@
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
-use std::process::{ExitStatus, Stdio};
+use std::process::ExitStatus;
+#[cfg(feature = "tracing")]
+use std::process::Stdio;
+#[cfg(feature = "tracing")]
 use std::sync::OnceLock;
 
-use anyhow::{Result, bail};
+use anyhow::Result;
+#[cfg(feature = "tracing")]
+use anyhow::bail;
+#[cfg(feature = "tracing")]
 use async_process::Command;
 use async_trait::async_trait;
 use futures::io::BufReader as FuturesBufReader;
 use futures::{AsyncBufReadExt as _, AsyncWriteExt as _};
+#[cfg(feature = "tracing")]
 use inferno::collapse::Collapse;
+#[cfg(feature = "tracing")]
 use inferno::collapse::perf::Folder as PerfFolder;
 use tempfile::NamedTempFile;
+#[cfg(feature = "tracing")]
 use tokio::io::{AsyncBufReadExt as _, BufReader as TokioBufReader};
 use tokio::sync::{mpsc, oneshot};
+#[cfg(feature = "tracing")]
 use tokio_util::compat::FuturesAsyncReadCompatExt;
+#[cfg(feature = "tracing")]
 use tokio_util::io::SyncIoBridge;
 
+#[cfg(feature = "tracing")]
 #[cfg(any(target_os = "macos", target_family = "windows"))]
 use super::samply::samply_to_folded;
+use crate::LaunchedBinary;
+#[cfg(feature = "tracing")]
+use crate::TracingResults;
 use crate::progress::ProgressTracker;
+#[cfg(feature = "tracing")]
 use crate::rust_crate::flamegraph::handle_fold_data;
 use crate::rust_crate::tracing_options::TracingOptions;
 use crate::util::{PriorityBroadcast, prioritized_broadcast};
-use crate::{LaunchedBinary, TracingResults};
 
 pub(super) struct TracingDataLocal {
     pub(super) outfile: NamedTempFile,
@@ -33,6 +48,7 @@ pub struct LaunchedLocalhostBinary {
     child: tokio::sync::Mutex<async_process::Child>,
     tracing_config: Option<TracingOptions>,
     tracing_data_local: std::sync::Mutex<Option<TracingDataLocal>>,
+    #[cfg(feature = "tracing")]
     tracing_results: OnceLock<TracingResults>,
     stdin_sender: mpsc::UnboundedSender<String>,
     stdout_broadcast: PriorityBroadcast,
@@ -91,6 +107,7 @@ impl LaunchedLocalhostBinary {
             child: tokio::sync::Mutex::new(child),
             tracing_config,
             tracing_data_local: std::sync::Mutex::new(tracing_data_local),
+            #[cfg(feature = "tracing")]
             tracing_results: OnceLock::new(),
             stdin_sender,
             stdout_broadcast,
@@ -125,6 +142,7 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
         self.stderr_broadcast.receive(Some(prefix))
     }
 
+    #[cfg(feature = "tracing")]
     fn tracing_results(&self) -> Option<&TracingResults> {
         self.tracing_results.get()
     }
@@ -151,6 +169,7 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
 
         // Run perf post-processing and download perf output.
         if let Some(tracing_config) = self.tracing_config.as_ref() {
+            #[cfg(feature = "tracing")]
             assert!(
                 self.tracing_results.get().is_none(),
                 "`tracing_results` already set! Was `stop()` called twice? This is a bug."
@@ -172,6 +191,7 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                 std::fs::copy(&tracing_data.outfile, perf_outfile)?;
             }
 
+            #[cfg(feature = "tracing")]
             let fold_data = if cfg!(any(target_os = "macos", target_family = "windows")) {
                 #[cfg(any(target_os = "macos", target_family = "windows"))]
                 {
@@ -238,8 +258,10 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
                 );
             };
 
+            #[cfg(feature = "tracing")]
             handle_fold_data(tracing_config, fold_data.clone()).await?;
 
+            #[cfg(feature = "tracing")]
             self.tracing_results
                 .set(TracingResults {
                     folded_data: fold_data,

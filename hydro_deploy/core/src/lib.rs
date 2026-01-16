@@ -75,6 +75,7 @@ pub struct ResourceResult {
     _last_result: Option<Arc<ResourceResult>>,
 }
 
+#[cfg(feature = "tracing")]
 #[derive(Clone, Debug)]
 pub struct TracingResults {
     pub folded_data: Vec<u8>,
@@ -95,6 +96,7 @@ pub trait LaunchedBinary: Send + Sync {
     fn stdout_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String>;
     fn stderr_filter(&self, prefix: String) -> mpsc::UnboundedReceiver<String>;
 
+    #[cfg(feature = "tracing")]
     fn tracing_results(&self) -> Option<&TracingResults>;
 
     fn exit_code(&self) -> Option<i32>;

@@ -1,6 +1,8 @@
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
+#[cfg(feature = "tracing")]
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use anyhow::{Context as _, Result};
@@ -11,23 +13,31 @@ use async_ssh2_russh::sftp::SftpError;
 use async_ssh2_russh::{AsyncChannel, AsyncSession, NoCheckHandler};
 use async_trait::async_trait;
 use hydro_deploy_integration::ServerBindConfig;
+#[cfg(feature = "tracing")]
 use inferno::collapse::Collapse;
+#[cfg(feature = "tracing")]
 use inferno::collapse::perf::Folder;
 use nanoid::nanoid;
 use tokio::fs::File;
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+#[cfg(feature = "tracing")]
+use tokio::io::BufReader;
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio::sync::{mpsc, oneshot};
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::LinesStream;
+#[cfg(feature = "tracing")]
 use tokio_util::io::SyncIoBridge;
 
+#[cfg(feature = "tracing")]
+use crate::TracingResults;
 use crate::progress::ProgressTracker;
 use crate::rust_crate::build::BuildOutput;
+#[cfg(feature = "tracing")]
 use crate::rust_crate::flamegraph::handle_fold_data;
 use crate::rust_crate::tracing_options::TracingOptions;
 use crate::util::{PriorityBroadcast, async_retry, prioritized_broadcast};
-use crate::{BaseServerStrategy, LaunchedBinary, LaunchedHost, ResourceResult, TracingResults};
+use crate::{BaseServerStrategy, LaunchedBinary, LaunchedHost, ResourceResult};
 
 const PERF_OUTFILE: &str = "__profile.perf.data";
 
@@ -42,6 +52,7 @@ struct LaunchedSshBinary {
     stdout_broadcast: PriorityBroadcast,
     stderr_broadcast: PriorityBroadcast,
     tracing: Option<TracingOptions>,
+    #[cfg(feature = "tracing")]
     tracing_results: OnceLock<TracingResults>,
 }
 
@@ -71,6 +82,7 @@ impl LaunchedBinary for LaunchedSshBinary {
         self.stderr_broadcast.receive(Some(prefix))
     }
 
+    #[cfg(feature = "tracing")]
     fn tracing_results(&self) -> Option<&TracingResults> {
         self.tracing_results.get()
     }
@@ -103,6 +115,7 @@ impl LaunchedBinary for LaunchedSshBinary {
 
         // Run perf post-processing and download perf output.
         if let Some(tracing) = self.tracing.as_ref() {
+            #[cfg(feature = "tracing")]
             assert!(
                 self.tracing_results.get().is_none(),
                 "`tracing_results` already set! Was `stop()` called twice? This is a bug."
@@ -137,9 +150,12 @@ impl LaunchedBinary for LaunchedSshBinary {
                 .await?;
             }
 
+            #[cfg(feature = "tracing")]
             let script_channel = session.open_channel().await?;
+            #[cfg(feature = "tracing")]
             let mut fold_er = Folder::from(tracing.fold_perf_options.clone().unwrap_or_default());
 
+            #[cfg(feature = "tracing")]
             let fold_data = ProgressTracker::leaf("perf script & folding", async move {
                 let mut stderr_lines = script_channel.stderr().lines();
                 let stdout = script_channel.stdout();
@@ -177,12 +193,14 @@ impl LaunchedBinary for LaunchedSshBinary {
             })
             .await?;
 
+            #[cfg(feature = "tracing")]
             self.tracing_results
                 .set(TracingResults {
                     folded_data: fold_data.clone(),
                 })
                 .expect("`tracing_results` already set! This is a bug.");
 
+            #[cfg(feature = "tracing")]
             handle_fold_data(tracing, fold_data).await?;
         };
 
@@ -459,6 +477,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
             stdout_broadcast,
             stderr_broadcast,
             tracing,
+            #[cfg(feature = "tracing")]
             tracing_results: OnceLock::new(),
         }))
     }
