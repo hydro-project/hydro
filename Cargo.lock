@@ -1365,20 +1365,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dashmap"
-version = "6.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5041cc499144891f3790297212f32a74fb938e5136a14943f338ef9e0ae276cf"
-dependencies = [
- "cfg-if",
- "crossbeam-utils",
- "hashbrown 0.14.5",
- "lock_api",
- "once_cell",
- "parking_lot_core",
-]
-
-[[package]]
 name = "data-encoding"
 version = "2.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2240,7 +2226,6 @@ dependencies = [
  "bytes",
  "cargo_metadata",
  "dunce",
- "dyn-clone",
  "futures",
  "hydro_deploy_integration",
  "indicatif",
@@ -2252,7 +2237,6 @@ dependencies = [
  "nix",
  "serde",
  "serde_json",
- "serde_path_to_error",
  "shell-escape",
  "tempfile",
  "tokio",
@@ -2307,7 +2291,6 @@ dependencies = [
  "indenter",
  "itertools 0.13.0",
  "libloading",
- "match_box",
  "nameof",
  "nanoid",
  "pin-project-lite",
@@ -2677,12 +2660,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "232929e1d75fe899576a3d5c7416ad0d88dbfbb3c3d6aa00873a7408a50ddb88"
 dependencies = [
  "ahash",
- "clap",
- "crossbeam-channel",
- "crossbeam-utils",
- "dashmap",
- "env_logger",
- "indexmap 2.12.1",
  "is-terminal",
  "itoa",
  "log",
@@ -3050,17 +3027,6 @@ dependencies = [
  "thiserror 2.0.17",
  "zerocopy",
  "zerocopy-derive",
-]
-
-[[package]]
-name = "match_box"
-version = "0.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c33c1d4fa92364abfc42bcc58c201cfbb63ae80f5e471aac5c051db48dab6843"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.111",
 ]
 
 [[package]]
@@ -4700,17 +4666,6 @@ dependencies = [
  "itoa",
  "memchr",
  "ryu",
- "serde",
- "serde_core",
-]
-
-[[package]]
-name = "serde_path_to_error"
-version = "0.1.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10a9ff822e371bb5403e391ecd83e182e0e77ba7f6fe0160b795797109d1b457"
-dependencies = [
- "itoa",
  "serde",
  "serde_core",
 ]

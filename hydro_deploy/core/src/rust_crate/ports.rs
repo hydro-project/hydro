@@ -7,7 +7,6 @@ use std::sync::{Arc, Weak};
 use anyhow::{Result, bail};
 use append_only_vec::AppendOnlyVec;
 use async_recursion::async_recursion;
-use dyn_clone::DynClone;
 use hydro_deploy_integration::ServerPort;
 use tokio::sync::RwLock;
 
@@ -42,7 +41,7 @@ pub trait RustCrateSource: Send + Sync {
     }
 }
 
-pub trait RustCrateServer: DynClone + Debug + Send + Sync {
+pub trait RustCrateServer: Debug + Send + Sync {
     fn get_port(&self) -> ServerPort;
     fn launched_host(&self) -> Arc<dyn LaunchedHost>;
 }
