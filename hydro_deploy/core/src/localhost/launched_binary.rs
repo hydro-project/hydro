@@ -17,7 +17,7 @@ use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tokio_util::io::SyncIoBridge;
 
 #[cfg(any(target_os = "macos", target_family = "windows"))]
-use super::samply::{FxProfile, samply_to_folded};
+use super::samply::samply_to_folded;
 use crate::progress::ProgressTracker;
 use crate::rust_crate::flamegraph::handle_fold_data;
 use crate::rust_crate::tracing_options::TracingOptions;
@@ -175,10 +175,8 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
             let fold_data = if cfg!(any(target_os = "macos", target_family = "windows")) {
                 #[cfg(any(target_os = "macos", target_family = "windows"))]
                 {
-                    let deserializer = &mut serde_json::Deserializer::from_reader(
-                        std::fs::File::open(tracing_data.outfile.path())?,
-                    );
-                    let loaded = serde_path_to_error::deserialize::<_, FxProfile>(deserializer)?;
+                    let loaded =
+                        serde_json::from_reader(std::fs::File::open(tracing_data.outfile.path())?)?;
 
                     ProgressTracker::leaf("processing samply", samply_to_folded(loaded))
                         .await
