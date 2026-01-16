@@ -23,19 +23,16 @@ buildstructor = "0.6.0"
 bytes = "1.1.0"
 cargo_metadata = "0.18.0"
 dunce = "1.0.0"
-dyn-clone = "1.0.0"
 futures = "0.3.0"
 hydro_deploy_integration = { path = "../hydro_deploy_integration", version = "^0.15.0" }
 indicatif = "0.17.0"
-inferno = "0.11.0"
-itertools = "0.13.0"
+inferno = { version = "0.11.0", default-features = false }
 memo-map = "0.3.0"
 nameof = "1.0.0"
 nanoid = "0.4.0"
 nix = { version = "0.29.0", features = ["signal"] }
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.115"
-serde_path_to_error = "0.1.0"
 shell-escape = "0.1.0"
 tempfile = "3.0.0"
 tokio = { version = "1.29.0", features = ["full"] }
@@ -44,3 +41,4 @@ tokio-util = { version = "0.7.5", features = ["compat", "io-util"] }
 
 [target.'cfg(any(target_os = "macos", target_family = "windows"))'.dependencies]
 wholesym = "0.8.1"
+itertools = "0.13.0"
