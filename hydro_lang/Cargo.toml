@@ -27,9 +27,11 @@ viz = [
 deploy = [
     "trybuild",
     "deploy_integration",
+
     "dep:hydro_deploy",
     "dep:nameof",
 ]
+
 sim = [
     "trybuild",
     "deploy_integration",
@@ -44,22 +46,46 @@ sim = [
     "dfir_rs/meta", # affects layout of DFIR, thus the ABI
 ]
 
-# Dependencies needed to build the code that can deploy a hydro program with docker
 docker_deploy = [
-    "trybuild",
+    "deploy",
     "docker_runtime",
-    "dep:bollard",
+
     "dep:anyhow",
-    "dep:tar",
-    "dep:nanoid",
+    "dep:base64",
+    "dep:bollard",
     "dep:http-body-util",
+    "dep:nanoid",
     "dep:serde_json",
+    "dep:tar",
+]
+ecs_deploy = [
+    "deploy",
+    "ecs_runtime",
+
+    "dep:anyhow",
+
+    "dep:aws-config",
+    "dep:aws-sdk-cloudformation",
+    "dep:aws-sdk-ecr",
+    "dep:aws-sdk-ecs",
+    "dep:aws-sdk-ec2",
+    "dep:aws-sdk-iam",
 ]
 
-# Dependencies needed to compile docker-deployed binaries with trybuild
+# Dependencies needed to compile docker-targeted binaries with trybuild
 docker_runtime = [
     "deploy_integration",
+
     "dep:bollard",
+]
+
+# Dependencies needed to compile ecs-targeted binaries with trybuild
+ecs_runtime = [
+    "deploy_integration",
+
+    "dep:aws-config",
+    "dep:aws-sdk-ecs",
+    "dep:regex",
 ]
 
 deploy_integration = ["dep:hydro_deploy_integration"]
@@ -129,6 +155,16 @@ bollard = { version = "0.19.4", default-features = false, features = ["pipe"], o
 http-body-util = { version = "0.1", optional = true }
 nanoid = { version = "0.4.0", optional = true }
 tar = { version = "0.4", optional = true }
+
+# optional dependencies for ECS
+aws-config = { version = "*", optional = true }
+aws-sdk-cloudformation = { version = "*", optional = true }
+aws-sdk-ecr = { version = "*", optional = true }
+base64 = { version = "*", optional = true }
+aws-sdk-ecs = { version = "*", optional = true }
+aws-sdk-ec2 = { version = "*", optional = true }
+aws-sdk-iam = { version = "*", optional = true }
+regex = { version = "1.12.2", optional = true }
 
 # For the simulator
 bolero = { package = "bolero-hydro", version = "0.13.5", optional = true }
