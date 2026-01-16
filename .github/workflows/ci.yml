@@ -62,7 +62,7 @@ jobs:
 
       - if: matrix.rust_release == 'latest-stable' && matrix.os == 'ubuntu-latest'
         uses: ./.github/actions/use-sccache
-      
+
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo check --all-targets
       - run: cargo check --all-targets --no-default-features
@@ -97,7 +97,7 @@ jobs:
         uses: easimon/maximize-build-space@c28619d8999a147d5e09c1199f84ff6af6ad5794
         with:
           root-reserve-mb: 4096
-          
+
       - name: Checkout sources
         uses: actions/checkout@v4
 
@@ -134,6 +134,7 @@ jobs:
         env:
           INSTA_UPDATE: ${{ (matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) && 'always' || '' }}
           INSTA_FORCE_PASS: ${{ (matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) && '1' || '' }}
+          TRYBUILD: ${{ (matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) && 'overwrite' || '' }}
           RUST_BACKTRACE: "1"
         run: cargo nextest run --no-fail-fast --all-targets --features "deploy docker_deploy"
 
