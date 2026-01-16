@@ -13,10 +13,12 @@ use tokio::sync::{OnceCell, RwLock, mpsc};
 use super::build::{BuildError, BuildOutput, BuildParams, build_crate_memoized};
 use super::ports::{self, RustCratePortConfig};
 use super::tracing_options::TracingOptions;
+#[cfg(feature = "profile-folding")]
+use crate::TracingResults;
 use crate::progress::ProgressTracker;
 use crate::{
     BaseServerStrategy, Host, LaunchedBinary, LaunchedHost, PortNetworkHint, ResourceBatch,
-    ResourceResult, ServerStrategy, Service, TracingResults,
+    ResourceResult, ServerStrategy, Service,
 };
 
 pub struct RustCrateService {
@@ -125,6 +127,7 @@ impl RustCrateService {
         self.launched_binary.get().unwrap().stderr_filter(prefix)
     }
 
+    #[cfg(feature = "profile-folding")]
     pub fn tracing_results(&self) -> Option<&TracingResults> {
         self.launched_binary.get().unwrap().tracing_results()
     }
