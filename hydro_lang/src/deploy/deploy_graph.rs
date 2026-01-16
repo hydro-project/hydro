@@ -15,7 +15,7 @@ use hydro_deploy::custom_service::CustomClientPort;
 use hydro_deploy::rust_crate::RustCrateService;
 use hydro_deploy::rust_crate::ports::{DemuxSink, RustCrateSink, RustCrateSource, TaggedSource};
 use hydro_deploy::rust_crate::tracing_options::TracingOptions;
-use hydro_deploy::{CustomService, Deployment, Host, RustCrate, TracingResults};
+use hydro_deploy::{CustomService, Deployment, Host, RustCrate};
 use hydro_deploy_integration::{ConnectedSink, ConnectedSource};
 use nameof::name_of;
 use proc_macro2::Span;
@@ -438,10 +438,6 @@ pub trait DeployCrateWrapper {
         prefix: impl Into<String>,
     ) -> tokio::sync::mpsc::UnboundedReceiver<String> {
         self.underlying().stderr_filter(prefix.into())
-    }
-
-    fn tracing_results(&self) -> Option<TracingResults> {
-        self.underlying().tracing_results().cloned()
     }
 }
 
