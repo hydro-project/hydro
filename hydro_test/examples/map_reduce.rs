@@ -105,7 +105,6 @@ async fn main() {
 }
 
 #[test]
-#[cfg_attr(target_os = "windows", ignore)] // causes stack overflow on Windows CI
 fn test() {
     use example_test::run_current_example;
 
