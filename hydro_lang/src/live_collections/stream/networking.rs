@@ -632,7 +632,6 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
     /// # use hydro_lang::live_collections::stream::{TotalOrder, ExactlyOnce, NoOrder};
     /// # use hydro_lang::location::MemberId;
     /// # use futures::StreamExt;
-    /// # std::thread::spawn(|| {
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
     /// let workers1: Cluster<()> = flow.cluster::<()>();
@@ -655,7 +654,6 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
     /// # assert_eq!(results, (0..=16).collect::<Vec<_>>());
     /// # assert_eq!(locations.len(), 16);
     /// # }));
-    /// # }).join().unwrap();
     /// # }
     /// ```
     pub fn round_robin_bincode<L2: 'a>(
@@ -693,7 +691,6 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
     /// # use hydro_lang::live_collections::stream::{TotalOrder, ExactlyOnce, NoOrder};
     /// # use hydro_lang::location::MemberId;
     /// # use futures::StreamExt;
-    /// # std::thread::spawn(|| {
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
     /// let workers1: Cluster<()> = flow.cluster::<()>();
@@ -716,7 +713,6 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
     /// # assert_eq!(results, (0..=16).collect::<Vec<_>>());
     /// # assert_eq!(locations.len(), 16);
     /// # }));
-    /// # }).join().unwrap();
     /// # }
     /// ```
     pub fn round_robin<L2: 'a, N: NetworkFor<T>>(
