@@ -17,8 +17,12 @@ use trybuild_internals_api::{Runner, dependencies, features, path};
 #[cfg(feature = "deploy")]
 use super::rewriters::UseTestModeStaged;
 
-pub const HYDRO_RUNTIME_FEATURES: &[&str] =
-    &["deploy_integration", "runtime_measure", "docker_runtime"];
+pub const HYDRO_RUNTIME_FEATURES: &[&str] = &[
+    "deploy_integration",
+    "runtime_measure",
+    "docker_runtime",
+    "ecs_runtime",
+];
 
 pub(crate) static IS_TEST: std::sync::atomic::AtomicBool =
     std::sync::atomic::AtomicBool::new(false);

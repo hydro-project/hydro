@@ -10,9 +10,9 @@ error[E0277]: the trait bound `impl dfir_rs::futures::Sink<u32, Error = Infallib
              `Box<S>` implements `dfir_rs::futures::Sink<Item>`
              `BufferUnordered<S>` implements `dfir_rs::futures::Sink<Item>`
              `Buffered<S>` implements `dfir_rs::futures::Sink<Item>`
-             `BufferedLazySinkHalf<Item, Error>` implements `dfir_rs::futures::Sink<Item>`
              `DemuxEnum<Outputs>` implements `dfir_rs::futures::Sink<Item>`
              `DemuxMap<Key, Si>` implements `dfir_rs::futures::Sink<(Key, Item)>`
+             `DemuxVar<Sinks, Error>` implements `dfir_rs::futures::Sink<(usize, Item)>`
            and $N others
 note: required for `Shape` to implement `DemuxEnumSink<(Pin<&mut impl dfir_rs::futures::Sink<(f64,), Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<(f64, f64), Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<u32, Error = Infallible>>)>`
   --> tests/compile-fail/surface_demuxenum_wrongfields_1.rs:5:14
@@ -40,9 +40,9 @@ error[E0277]: the trait bound `impl dfir_rs::futures::Sink<u32, Error = Infallib
              `Box<S>` implements `dfir_rs::futures::Sink<Item>`
              `BufferUnordered<S>` implements `dfir_rs::futures::Sink<Item>`
              `Buffered<S>` implements `dfir_rs::futures::Sink<Item>`
-             `BufferedLazySinkHalf<Item, Error>` implements `dfir_rs::futures::Sink<Item>`
              `DemuxEnum<Outputs>` implements `dfir_rs::futures::Sink<Item>`
              `DemuxMap<Key, Si>` implements `dfir_rs::futures::Sink<(Key, Item)>`
+             `DemuxVar<Sinks, Error>` implements `dfir_rs::futures::Sink<(usize, Item)>`
            and $N others
 note: required for `Shape` to implement `DemuxEnumSink<(Pin<&mut impl dfir_rs::futures::Sink<(f64,), Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<(f64, f64), Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<u32, Error = Infallible>>)>`
   --> tests/compile-fail/surface_demuxenum_wrongfields_1.rs:5:14
@@ -75,9 +75,9 @@ error[E0277]: the trait bound `impl dfir_rs::futures::Sink<u32, Error = Infallib
              `Box<S>` implements `dfir_rs::futures::Sink<Item>`
              `BufferUnordered<S>` implements `dfir_rs::futures::Sink<Item>`
              `Buffered<S>` implements `dfir_rs::futures::Sink<Item>`
-             `BufferedLazySinkHalf<Item, Error>` implements `dfir_rs::futures::Sink<Item>`
              `DemuxEnum<Outputs>` implements `dfir_rs::futures::Sink<Item>`
              `DemuxMap<Key, Si>` implements `dfir_rs::futures::Sink<(Key, Item)>`
+             `DemuxVar<Sinks, Error>` implements `dfir_rs::futures::Sink<(usize, Item)>`
            and $N others
 note: required for `Shape` to implement `DemuxEnumSink<(Pin<&mut impl dfir_rs::futures::Sink<(f64,), Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<(f64, f64), Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<u32, Error = Infallible>>)>`
   --> tests/compile-fail/surface_demuxenum_wrongfields_1.rs:5:14

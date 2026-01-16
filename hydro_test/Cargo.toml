@@ -7,6 +7,10 @@ edition = "2024"
 [lints]
 workspace = true
 
+[features]
+docker = ["hydro_lang/docker_deploy"]
+ecs = ["hydro_lang/ecs_deploy"]
+
 [dependencies]
 hydro_lang = { path = "../hydro_lang", version = "^0.15.0" }
 hydro_std = { path = "../hydro_std", version = "^0.15.0" }
@@ -39,7 +43,6 @@ futures = "0.3.0"
 hydro_deploy = { path = "../hydro_deploy/core", version = "^0.15.0" }
 hydro_lang = { path = "../hydro_lang", version = "^0.15.0", features = [
     "deploy",
-    "docker_deploy",
     "sim",
     "viz",
 ] }
