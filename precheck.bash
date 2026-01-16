@@ -7,11 +7,15 @@ Run pre-check tests for the given targets.
   --all         Run all tests
   --dfir        Run DFIR tests
   --hydro       Run Hydro tests
+  --docker      Run Docker tests (requires --hydro)
+  --ecs         Run ECS tests (requires --hydro)
   --help        Display this help message
 "
 
 TEST_DFIR=false
 TEST_HYDRO=false
+TEST_DOCKER=false
+TEST_ECS=false
 TEST_WEBSITE=false
 TEST_ALL=false
 
@@ -22,6 +26,12 @@ while (( $# )); do
         ;;
         --hydro)
             TEST_HYDRO=true
+        ;;
+        --docker)
+            TEST_DOCKER=true
+        ;;
+        --ecs)
+            TEST_ECS=true
         ;;
         --website)
             TEST_WEBSITE=true
@@ -46,6 +56,14 @@ Try '$0 --help' for more information.
     shift
 done
 
+# If either `--docker` or `--ecs`, ensure `--hydro` was also included.
+if ( [ "$TEST_DOCKER" = true ] || [ "$TEST_ECS" = true ] ) && [ "$TEST_HYDRO" = false ]; then
+    echo "$0: --docker and --ecs require --hydro.
+Try '$0 --help' for more information.
+"
+    exit 3
+fi
+
 TARGETS=""
 FEATURES=""
 if [ "$TEST_DFIR" = true ]; then
@@ -54,6 +72,13 @@ fi
 if [ "$TEST_HYDRO" = true ]; then
     TARGETS="$TARGETS -p hydro_lang -p hydro_std -p hydro_test -p hydro_deploy -p hydro_deploy_integration"
     FEATURES="$FEATURES --features deploy,sim"
+
+    if [ "$TEST_DOCKER" = true ]; then
+        FEATURES="$FEATURES --features docker"
+    fi
+    if [ "$TEST_ECS" = true ]; then
+        FEATURES="$FEATURES --features ecs"
+    fi
 fi
 if [ "$TEST_WEBSITE" = true ]; then
     TARGETS="$TARGETS -p website_playground"
