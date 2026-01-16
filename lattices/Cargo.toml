@@ -23,7 +23,6 @@ cc-traits = "2.0.0"
 sealed = "0.6.0"
 serde = { version = "1.0.197", features = ["derive"], optional = true }
 lattices_macro = { path = "../lattices_macro", version = "^0.5.11" }
-ref-cast = "1.0.23"
 variadics = { path = "../variadics", version = "^0.0.10" }
 variadics_macro = { path = "../variadics_macro", version = "^0.6.2" }
 roaring = "0.10"

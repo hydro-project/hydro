@@ -1950,7 +1950,6 @@ name = "dfir_rs"
 version = "0.15.0"
 dependencies = [
  "bincode",
- "byteorder",
  "bytes",
  "chrono",
  "clap",
@@ -3484,7 +3483,6 @@ dependencies = [
  "fst",
  "hydro_build_utils",
  "lattices_macro",
- "ref-cast",
  "roaring",
  "sealed",
  "serde",
