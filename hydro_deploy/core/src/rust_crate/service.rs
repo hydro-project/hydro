@@ -16,8 +16,11 @@ use super::tracing_options::TracingOptions;
 use crate::progress::ProgressTracker;
 use crate::{
     BaseServerStrategy, Host, LaunchedBinary, LaunchedHost, PortNetworkHint, ResourceBatch,
-    ResourceResult, ServerStrategy, Service, TracingResults,
+    ResourceResult, ServerStrategy, Service,
 };
+
+#[cfg(feature = "tracing")]
+use crate::TracingResults;
 
 pub struct RustCrateService {
     id: usize,
@@ -125,6 +128,7 @@ impl RustCrateService {
         self.launched_binary.get().unwrap().stderr_filter(prefix)
     }
 
+    #[cfg(feature = "tracing")]
     pub fn tracing_results(&self) -> Option<&TracingResults> {
         self.launched_binary.get().unwrap().tracing_results()
     }

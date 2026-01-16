@@ -14,6 +14,7 @@ pub mod ports;
 pub mod service;
 pub use service::*;
 
+#[cfg(feature = "tracing")]
 pub(crate) mod flamegraph;
 pub mod tracing_options;
 

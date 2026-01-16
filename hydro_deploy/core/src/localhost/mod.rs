@@ -17,6 +17,7 @@ use crate::{
 pub mod launched_binary;
 pub use launched_binary::*;
 
+#[cfg(feature = "tracing")]
 #[cfg(any(target_os = "macos", target_family = "windows"))]
 mod samply;
 
