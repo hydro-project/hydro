@@ -28,30 +28,35 @@ There are several subpackages included that are used by Hydro but are more gener
 * `multiplatform_test` provides a convenience macro for specifying and initializing tests on
   various platforms.
 
-## Rust
+## Rust version
 
-Hydro should build on latest stable releases of Rust. However we develop on a pinned nightly
-version, which is updated every month or two. The version is in `rust-toolchain.toml` which is
+Hydro should build on latest stable releases of Rust. However we develop on a pinned stable
+version, which is usually updated regularly. The version is in `rust-toolchain.toml` which is
 automatically detected by `cargo`, so no special setup should be needed.
 
-## Python
+## `cargo-nextest`
 
-Some parts of the Hydro repo require a relatively recent version of Python 3, maybe 3.10 or
-later. On Mac, installing directly from python.org may work if `brew install` doesn't.
+We use [cargo-nextest](https://nexte.st) to run tests. To install:
+```shell
+cargo install cargo-nextest --locked
+```
+Or [install a prebuilt binary](https://nexte.st/docs/installation/pre-built-binaries/).
+
 
 ## Wasm
 
 [Node.js](https://nodejs.org/),
-[`wasm-bindgen`](https://github.com/rustwasm/wasm-bindgen?tab=readme-ov-file#install-wasm-bindgen-cli),
+[`wasm-bindgen`](https://wasm-bindgen.github.io/wasm-bindgen/wasm-bindgen-test/usage.html#install-the-test-runner),
 and [`wasm-pack`](https://rustwasm.github.io/wasm-pack/installer/) are required to run Wasm tests.
 ```shell
-cargo install wasm-bindgen-cli
+cargo install wasm-bindgen-cli --vers "X.Y.Z" # Should match version of "wasm-bindgen" in Cargo.lock
 curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 ```
 
 ## Submitting Changes
 
 ### Feature Branches
+
 Prototypes should be committed to feature branches, rather than main. To create a feature branch:
 
 ```shell
@@ -109,8 +114,9 @@ can be used instead, to update `insta` snapshots. `TRYBUILD=overwrite` can be us
 ## CI Testing
 
 The CI runs the same the tests that are done on PRs, but also runs some tests on the latest
-nightly. Sometimes these tests fail when the PR tests pass. Most often this is due to new lints
-in the latest version of `clippy`. See [Setup#Rust](#rust) above.
+nightly. Sometimes these tests fail when the PR tests pass. This is often due to new lints
+in the latest version of `clippy`. This is also often due to snapshot/trybuild changes, but
+the CI should automatically create a PR to update the snapshots. See [Setup#Rust](#rust) above.
 
 ## Releasing
 
