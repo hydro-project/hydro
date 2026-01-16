@@ -47,6 +47,12 @@ debug = 2
 lto = "off"
 strip = "none"
 
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
+
 [profile.dev.package.website_playground]
 debug-assertions = false
 
