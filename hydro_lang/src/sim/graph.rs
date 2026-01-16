@@ -529,7 +529,7 @@ pub(super) fn create_sim_graph_trybuild(
             .and_then(|lib| lib.get("path"))
             .and_then(|path| path.as_str());
 
-        let gen_staged = stageleft_tool::gen_staged_trybuild(
+        let mut gen_staged = stageleft_tool::gen_staged_trybuild(
             &maybe_custom_lib_path
                 .map(|s| path!(source_dir / s))
                 .unwrap_or_else(|| path!(source_dir / "src" / "lib.rs")),
@@ -538,17 +538,20 @@ pub(super) fn create_sim_graph_trybuild(
             Some("hydro___test".to_string()),
         );
 
-        Some(prettyplease::unparse(&syn::parse_quote! {
-            #![allow(
-                unused,
-                ambiguous_glob_reexports,
-                clippy::suspicious_else_formatting,
-                unexpected_cfgs,
-                reason = "generated code"
-            )]
+        gen_staged.attrs.insert(
+            0,
+            syn::parse_quote! {
+                #![allow(
+                    unused,
+                    ambiguous_glob_reexports,
+                    clippy::suspicious_else_formatting,
+                    unexpected_cfgs,
+                    reason = "generated code"
+                )]
+            },
+        );
 
-            #gen_staged
-        }))
+        Some(prettyplease::unparse(&gen_staged))
     } else {
         None
     };

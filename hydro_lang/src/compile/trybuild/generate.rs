@@ -87,24 +87,27 @@ pub fn create_graph_trybuild(
     );
 
     let inlined_staged = if is_test {
-        let gen_staged = stageleft_tool::gen_staged_trybuild(
+        let mut gen_staged = stageleft_tool::gen_staged_trybuild(
             &path!(source_dir / "src" / "lib.rs"),
             &path!(source_dir / "Cargo.toml"),
             crate_name.clone(),
             Some("hydro___test".to_string()),
         );
 
-        Some(prettyplease::unparse(&syn::parse_quote! {
-            #![allow(
-                unused,
-                ambiguous_glob_reexports,
-                clippy::suspicious_else_formatting,
-                unexpected_cfgs,
-                reason = "generated code"
-            )]
+        gen_staged.attrs.insert(
+            0,
+            syn::parse_quote! {
+                #![allow(
+                    unused,
+                    ambiguous_glob_reexports,
+                    clippy::suspicious_else_formatting,
+                    unexpected_cfgs,
+                    reason = "generated code"
+                )]
+            },
+        );
 
-            #gen_staged
-        }))
+        Some(prettyplease::unparse(&gen_staged))
     } else {
         None
     };
