@@ -118,10 +118,16 @@ impl<'a> SimFlow<'a> {
             );
         });
 
+        let mut seen_tees = HashMap::new();
         let mut built_tees = HashMap::new();
         let mut next_stmt_id = 0;
         for leaf in &mut self.ir {
-            leaf.emit::<SimDeploy>(&mut sim_emit, &mut built_tees, &mut next_stmt_id);
+            leaf.emit::<SimDeploy>(
+                &mut sim_emit,
+                &mut seen_tees,
+                &mut built_tees,
+                &mut next_stmt_id,
+            );
         }
 
         let process_graphs = sim_emit
