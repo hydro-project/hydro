@@ -360,7 +360,7 @@
 <a href=#360 id=360 data-nosnippet>360</a><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>compile_sim(bin: String, trybuild: TrybuildConfig) -&gt; <span class="prelude-ty">Result</span>&lt;TempPath, ()&gt; {
 <a href=#361 id=361 data-nosnippet>361</a>    <span class="kw">let </span><span class="kw-2">mut </span>command = Command::new(<span class="string">"cargo"</span>);
 <a href=#362 id=362 data-nosnippet>362</a>    command.current_dir(<span class="kw-2">&amp;</span>trybuild.project_dir);
-<a href=#363 id=363 data-nosnippet>363</a>    command.args([<span class="string">"rustc"</span>, <span class="string">"--locked"</span>]);
+<a href=#363 id=363 data-nosnippet>363</a>    command.args([<span class="string">"rustc"</span>, <span class="string">"--frozen"</span>]);
 <a href=#364 id=364 data-nosnippet>364</a>    command.args([<span class="string">"--example"</span>, <span class="string">"sim-dylib"</span>]);
 <a href=#365 id=365 data-nosnippet>365</a>    command.args([<span class="string">"--target-dir"</span>, trybuild.target_dir.to_str().unwrap()]);
 <a href=#366 id=366 data-nosnippet>366</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(features) = <span class="kw-2">&amp;</span>trybuild.features {
