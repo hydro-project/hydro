@@ -3871,7 +3871,7 @@ mod test {
         ignore = "expects inclusion of feature-gated fields"
     )]
     fn hydro_node_size() {
-        assert_eq!(size_of::<HydroNode>(), 272);
+        assert_eq!(size_of::<HydroNode>(), 240);
     }
 
     #[test]
@@ -3880,7 +3880,7 @@ mod test {
         ignore = "expects inclusion of feature-gated fields"
     )]
     fn hydro_root_size() {
-        assert_eq!(size_of::<HydroRoot>(), 168);
+        assert_eq!(size_of::<HydroRoot>(), 136);
     }
 
     #[test]

@@ -360,7 +360,7 @@ impl<'a> Deploy<'a> for SimDeploy {
 pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempPath, ()> {
     let mut command = Command::new("cargo");
     command.current_dir(&trybuild.project_dir);
-    command.args(["rustc", "--locked"]);
+    command.args(["rustc", "--frozen"]);
     command.args(["--example", "sim-dylib"]);
     command.args(["--target-dir", trybuild.target_dir.to_str().unwrap()]);
     if let Some(features) = &trybuild.features {
