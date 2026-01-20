@@ -1,10 +1,7 @@
 use std::any::type_name;
 use std::cell::RefCell;
-use std::fmt::{Display, Formatter};
 use std::marker::PhantomData;
 use std::rc::Rc;
-
-use serde::Serialize;
 
 #[cfg(feature = "build")]
 use super::compiled::CompiledFlow;
@@ -19,31 +16,9 @@ use crate::location::{Cluster, External, Process};
 use crate::sim::flow::SimFlow;
 use crate::staging_util::Invariant;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-#[serde(from = "usize", into = "usize")]
-pub struct ExternalPortId(usize);
-impl ExternalPortId {
-    /// Gets the current ID and increments for the next.
-    pub fn get_and_increment(&mut self) -> Self {
-        let id = self.0;
-        self.0 += 1;
-        Self(id)
-    }
-}
-impl From<usize> for ExternalPortId {
-    fn from(x: usize) -> Self {
-        Self(x)
-    }
-}
-impl From<ExternalPortId> for usize {
-    fn from(x: ExternalPortId) -> Self {
-        x.0
-    }
-}
-impl Display for ExternalPortId {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "ex{}", self.0)
-    }
+crate::newtype_counter! {
+    /// Counter for generating unique external output identifiers.
+    pub struct ExternalPortId(usize);
 }
 
 pub(crate) type FlowState = Rc<RefCell<FlowStateInner>>;

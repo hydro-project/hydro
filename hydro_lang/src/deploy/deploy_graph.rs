@@ -42,31 +42,20 @@ use crate::staging_util::get_this_crate;
 pub enum HydroDeploy {}
 
 impl<'a> Deploy<'a> for HydroDeploy {
+    type Meta = HashMap<usize, Vec<TaglessMemberId>>;
     type InstantiateEnv = Deployment;
+
     type Process = DeployNode;
     type Cluster = DeployCluster;
     type External = DeployExternal;
-    type Meta = HashMap<usize, Vec<TaglessMemberId>>;
+
     type GraphId = ();
-    type Port = String;
-
-    fn allocate_process_port(process: &Self::Process) -> Self::Port {
-        process.next_port()
-    }
-
-    fn allocate_cluster_port(cluster: &Self::Cluster) -> Self::Port {
-        cluster.next_port()
-    }
-
-    fn allocate_external_port(external: &Self::External) -> Self::Port {
-        external.next_port()
-    }
 
     fn o2o_sink_source(
         _p1: &Self::Process,
-        p1_port: &Self::Port,
+        p1_port: &<Self::Process as Node>::Port,
         _p2: &Self::Process,
-        p2_port: &Self::Port,
+        p2_port: &<Self::Process as Node>::Port,
     ) -> (syn::Expr, syn::Expr) {
         let p1_port = p1_port.as_str();
         let p2_port = p2_port.as_str();
@@ -79,9 +68,9 @@ impl<'a> Deploy<'a> for HydroDeploy {
 
     fn o2o_connect(
         p1: &Self::Process,
-        p1_port: &Self::Port,
+        p1_port: &<Self::Process as Node>::Port,
         p2: &Self::Process,
-        p2_port: &Self::Port,
+        p2_port: &<Self::Process as Node>::Port,
     ) -> Box<dyn FnOnce()> {
         let p1 = p1.clone();
         let p1_port = p1_port.clone();
@@ -103,9 +92,9 @@ impl<'a> Deploy<'a> for HydroDeploy {
 
     fn o2m_sink_source(
         _p1: &Self::Process,
-        p1_port: &Self::Port,
+        p1_port: &<Self::Process as Node>::Port,
         _c2: &Self::Cluster,
-        c2_port: &Self::Port,
+        c2_port: &<Self::Cluster as Node>::Port,
     ) -> (syn::Expr, syn::Expr) {
         let p1_port = p1_port.as_str();
         let c2_port = c2_port.as_str();
@@ -118,9 +107,9 @@ impl<'a> Deploy<'a> for HydroDeploy {
 
     fn o2m_connect(
         p1: &Self::Process,
-        p1_port: &Self::Port,
+        p1_port: &<Self::Process as Node>::Port,
         c2: &Self::Cluster,
-        c2_port: &Self::Port,
+        c2_port: &<Self::Cluster as Node>::Port,
     ) -> Box<dyn FnOnce()> {
         let p1 = p1.clone();
         let p1_port = p1_port.clone();
@@ -154,9 +143,9 @@ impl<'a> Deploy<'a> for HydroDeploy {
 
     fn m2o_sink_source(
         _c1: &Self::Cluster,
-        c1_port: &Self::Port,
+        c1_port: &<Self::Cluster as Node>::Port,
         _p2: &Self::Process,
-        p2_port: &Self::Port,
+        p2_port: &<Self::Process as Node>::Port,
     ) -> (syn::Expr, syn::Expr) {
         let c1_port = c1_port.as_str();
         let p2_port = p2_port.as_str();
@@ -169,9 +158,9 @@ impl<'a> Deploy<'a> for HydroDeploy {
 
     fn m2o_connect(
         c1: &Self::Cluster,
-        c1_port: &Self::Port,
+        c1_port: &<Self::Cluster as Node>::Port,
         p2: &Self::Process,
-        p2_port: &Self::Port,
+        p2_port: &<Self::Process as Node>::Port,
     ) -> Box<dyn FnOnce()> {
         let c1 = c1.clone();
         let c1_port = c1_port.clone();
@@ -197,9 +186,9 @@ impl<'a> Deploy<'a> for HydroDeploy {
 
     fn m2m_sink_source(
         _c1: &Self::Cluster,
-        c1_port: &Self::Port,
+        c1_port: &<Self::Cluster as Node>::Port,
         _c2: &Self::Cluster,
-        c2_port: &Self::Port,
+        c2_port: &<Self::Cluster as Node>::Port,
     ) -> (syn::Expr, syn::Expr) {
         let c1_port = c1_port.as_str();
         let c2_port = c2_port.as_str();
@@ -212,9 +201,9 @@ impl<'a> Deploy<'a> for HydroDeploy {
 
     fn m2m_connect(
         c1: &Self::Cluster,
-        c1_port: &Self::Port,
+        c1_port: &<Self::Cluster as Node>::Port,
         c2: &Self::Cluster,
-        c2_port: &Self::Port,
+        c2_port: &<Self::Cluster as Node>::Port,
     ) -> Box<dyn FnOnce()> {
         let c1 = c1.clone();
         let c1_port = c1_port.clone();
@@ -253,7 +242,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
     fn e2o_many_source(
         extra_stmts: &mut Vec<syn::Stmt>,
         _p2: &Self::Process,
-        p2_port: &Self::Port,
+        p2_port: &<Self::Process as Node>::Port,
         codec_type: &syn::Type,
         shared_handle: String,
     ) -> syn::Expr {
@@ -308,9 +297,9 @@ impl<'a> Deploy<'a> for HydroDeploy {
     fn e2o_source(
         extra_stmts: &mut Vec<syn::Stmt>,
         _p1: &Self::External,
-        _p1_port: &Self::Port,
+        _p1_port: &<Self::External as Node>::Port,
         _p2: &Self::Process,
-        p2_port: &Self::Port,
+        p2_port: &<Self::Process as Node>::Port,
         codec_type: &syn::Type,
         shared_handle: String,
     ) -> syn::Expr {
@@ -348,9 +337,9 @@ impl<'a> Deploy<'a> for HydroDeploy {
 
     fn e2o_connect(
         p1: &Self::External,
-        p1_port: &Self::Port,
+        p1_port: &<Self::External as Node>::Port,
         p2: &Self::Process,
-        p2_port: &Self::Port,
+        p2_port: &<Self::Process as Node>::Port,
         _many: bool,
         server_hint: NetworkHint,
     ) -> Box<dyn FnOnce()> {
@@ -384,9 +373,9 @@ impl<'a> Deploy<'a> for HydroDeploy {
 
     fn o2e_sink(
         _p1: &Self::Process,
-        _p1_port: &Self::Port,
+        _p1_port: &<Self::Process as Node>::Port,
         _p2: &Self::External,
-        _p2_port: &Self::Port,
+        _p2_port: &<Self::External as Node>::Port,
         shared_handle: String,
     ) -> syn::Expr {
         let sink_ident = syn::Ident::new(
@@ -639,7 +628,7 @@ impl DeployExternal {
 }
 
 impl<'a> RegisterPort<'a, HydroDeploy> for DeployExternal {
-    fn register(&self, external_port_id: ExternalPortId, port: <HydroDeploy as Deploy>::Port) {
+    fn register(&self, external_port_id: ExternalPortId, port: Self::Port) {
         assert!(
             self.allocated_ports
                 .borrow_mut()
