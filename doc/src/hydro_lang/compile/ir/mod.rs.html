@@ -23,7 +23,7 @@
 <a href=#23 id=23 data-nosnippet>23</a>
 <a href=#24 id=24 data-nosnippet>24</a><span class="kw">use </span><span class="kw">crate</span>::compile::builder::ExternalPortId;
 <a href=#25 id=25 data-nosnippet>25</a><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-<a href=#26 id=26 data-nosnippet>26</a></span><span class="kw">use </span><span class="kw">crate</span>::compile::deploy_provider::{Deploy, RegisterPort};
+<a href=#26 id=26 data-nosnippet>26</a></span><span class="kw">use </span><span class="kw">crate</span>::compile::deploy_provider::{Deploy, Node, RegisterPort};
 <a href=#27 id=27 data-nosnippet>27</a><span class="kw">use </span><span class="kw">crate</span>::location::NetworkHint;
 <a href=#28 id=28 data-nosnippet>28</a><span class="kw">use </span><span class="kw">crate</span>::location::dynamic::LocationId;
 <a href=#29 id=29 data-nosnippet>29</a>
@@ -726,8 +726,8 @@
 <a href=#726 id=726 data-nosnippet>726</a>                                            })
 <a href=#727 id=727 data-nosnippet>727</a>                                            .clone();
 <a href=#728 id=728 data-nosnippet>728</a>
-<a href=#729 id=729 data-nosnippet>729</a>                                        <span class="kw">let </span>sink_port = D::allocate_process_port(<span class="kw-2">&amp;</span>from_node);
-<a href=#730 id=730 data-nosnippet>730</a>                                        <span class="kw">let </span>source_port: &lt;D <span class="kw">as </span>Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;::Port = D::allocate_external_port(<span class="kw-2">&amp;</span>to_node);
+<a href=#729 id=729 data-nosnippet>729</a>                                        <span class="kw">let </span>sink_port = from_node.next_port();
+<a href=#730 id=730 data-nosnippet>730</a>                                        <span class="kw">let </span>source_port = to_node.next_port();
 <a href=#731 id=731 data-nosnippet>731</a>
 <a href=#732 id=732 data-nosnippet>732</a>                                        <span class="kw">if </span><span class="kw-2">*</span>unpaired {
 <a href=#733 id=733 data-nosnippet>733</a>                                            <span class="kw">use </span>stageleft::quote_type;
@@ -843,8 +843,8 @@
 <a href=#843 id=843 data-nosnippet>843</a>                                        })
 <a href=#844 id=844 data-nosnippet>844</a>                                        .clone();
 <a href=#845 id=845 data-nosnippet>845</a>
-<a href=#846 id=846 data-nosnippet>846</a>                                    <span class="kw">let </span>sink_port = D::allocate_external_port(<span class="kw-2">&amp;</span>from_node);
-<a href=#847 id=847 data-nosnippet>847</a>                                    <span class="kw">let </span>source_port = D::allocate_process_port(<span class="kw-2">&amp;</span>to_node);
+<a href=#846 id=846 data-nosnippet>846</a>                                    <span class="kw">let </span>sink_port = from_node.next_port();
+<a href=#847 id=847 data-nosnippet>847</a>                                    <span class="kw">let </span>source_port = to_node.next_port();
 <a href=#848 id=848 data-nosnippet>848</a>
 <a href=#849 id=849 data-nosnippet>849</a>                                    from_node.register(<span class="kw-2">*</span>from_port_id, sink_port.clone());
 <a href=#850 id=850 data-nosnippet>850</a>
@@ -3775,8 +3775,8 @@
 <a href=#3775 id=3775 data-nosnippet>3775</a>                })
 <a href=#3776 id=3776 data-nosnippet>3776</a>                .clone();
 <a href=#3777 id=3777 data-nosnippet>3777</a>
-<a href=#3778 id=3778 data-nosnippet>3778</a>            <span class="kw">let </span>sink_port = D::allocate_process_port(<span class="kw-2">&amp;</span>from_node);
-<a href=#3779 id=3779 data-nosnippet>3779</a>            <span class="kw">let </span>source_port = D::allocate_process_port(<span class="kw-2">&amp;</span>to_node);
+<a href=#3778 id=3778 data-nosnippet>3778</a>            <span class="kw">let </span>sink_port = from_node.next_port();
+<a href=#3779 id=3779 data-nosnippet>3779</a>            <span class="kw">let </span>source_port = to_node.next_port();
 <a href=#3780 id=3780 data-nosnippet>3780</a>
 <a href=#3781 id=3781 data-nosnippet>3781</a>            (
 <a href=#3782 id=3782 data-nosnippet>3782</a>                D::o2o_sink_source(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
@@ -3797,8 +3797,8 @@
 <a href=#3797 id=3797 data-nosnippet>3797</a>                })
 <a href=#3798 id=3798 data-nosnippet>3798</a>                .clone();
 <a href=#3799 id=3799 data-nosnippet>3799</a>
-<a href=#3800 id=3800 data-nosnippet>3800</a>            <span class="kw">let </span>sink_port = D::allocate_process_port(<span class="kw-2">&amp;</span>from_node);
-<a href=#3801 id=3801 data-nosnippet>3801</a>            <span class="kw">let </span>source_port = D::allocate_cluster_port(<span class="kw-2">&amp;</span>to_node);
+<a href=#3800 id=3800 data-nosnippet>3800</a>            <span class="kw">let </span>sink_port = from_node.next_port();
+<a href=#3801 id=3801 data-nosnippet>3801</a>            <span class="kw">let </span>source_port = to_node.next_port();
 <a href=#3802 id=3802 data-nosnippet>3802</a>
 <a href=#3803 id=3803 data-nosnippet>3803</a>            (
 <a href=#3804 id=3804 data-nosnippet>3804</a>                D::o2m_sink_source(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
@@ -3819,8 +3819,8 @@
 <a href=#3819 id=3819 data-nosnippet>3819</a>                })
 <a href=#3820 id=3820 data-nosnippet>3820</a>                .clone();
 <a href=#3821 id=3821 data-nosnippet>3821</a>
-<a href=#3822 id=3822 data-nosnippet>3822</a>            <span class="kw">let </span>sink_port = D::allocate_cluster_port(<span class="kw-2">&amp;</span>from_node);
-<a href=#3823 id=3823 data-nosnippet>3823</a>            <span class="kw">let </span>source_port = D::allocate_process_port(<span class="kw-2">&amp;</span>to_node);
+<a href=#3822 id=3822 data-nosnippet>3822</a>            <span class="kw">let </span>sink_port = from_node.next_port();
+<a href=#3823 id=3823 data-nosnippet>3823</a>            <span class="kw">let </span>source_port = to_node.next_port();
 <a href=#3824 id=3824 data-nosnippet>3824</a>
 <a href=#3825 id=3825 data-nosnippet>3825</a>            (
 <a href=#3826 id=3826 data-nosnippet>3826</a>                D::m2o_sink_source(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
@@ -3841,8 +3841,8 @@
 <a href=#3841 id=3841 data-nosnippet>3841</a>                })
 <a href=#3842 id=3842 data-nosnippet>3842</a>                .clone();
 <a href=#3843 id=3843 data-nosnippet>3843</a>
-<a href=#3844 id=3844 data-nosnippet>3844</a>            <span class="kw">let </span>sink_port = D::allocate_cluster_port(<span class="kw-2">&amp;</span>from_node);
-<a href=#3845 id=3845 data-nosnippet>3845</a>            <span class="kw">let </span>source_port = D::allocate_cluster_port(<span class="kw-2">&amp;</span>to_node);
+<a href=#3844 id=3844 data-nosnippet>3844</a>            <span class="kw">let </span>sink_port = from_node.next_port();
+<a href=#3845 id=3845 data-nosnippet>3845</a>            <span class="kw">let </span>source_port = to_node.next_port();
 <a href=#3846 id=3846 data-nosnippet>3846</a>
 <a href=#3847 id=3847 data-nosnippet>3847</a>            (
 <a href=#3848 id=3848 data-nosnippet>3848</a>                D::m2m_sink_source(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
