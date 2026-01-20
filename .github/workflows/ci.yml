@@ -63,8 +63,8 @@ jobs:
         uses: ./.github/actions/use-sccache
 
       - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo check --all-targets
-      - run: cargo check --all-targets --no-default-features
+      - run: cargo clippy --all-targets --no-default-features -- -D warnings
+      - run: cargo clippy --all-targets --all-features -- -D warnings
 
       - run: rustup component add --toolchain nightly rustfmt
       - run: cargo +nightly fmt --all -- --check
