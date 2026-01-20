@@ -141,7 +141,9 @@ impl CompiledSim {
 
         eprintln!(
             "backtrace: {:?}",
-            crate::compile::ir::backtrace::Backtrace::get_backtrace(0).elements()
+            crate::compile::ir::backtrace::Backtrace::get_backtrace(0)
+                .elements()
+                .collect::<Vec<_>>()
         );
 
         let caller_path = Path::new(&caller_fn.filename.unwrap()).to_path_buf();
