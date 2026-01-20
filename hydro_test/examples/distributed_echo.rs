@@ -99,8 +99,6 @@ async fn docker() {
     let ems_c2_stream = nodes.connect(ems_c2).await;
     let ems_c3_stream = nodes.connect(ems_c3).await;
 
-    tokio::time::sleep(std::time::Duration::from_secs(1)).await; // TODO: hack to get around a timing issue.
-
     run_echo_test(external_sink, external_stream, ems_c2_stream, ems_c3_stream).await;
 
     deployment.stop(&nodes).await.unwrap();
