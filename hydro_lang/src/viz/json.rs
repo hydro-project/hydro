@@ -249,7 +249,6 @@ impl<W> HydroJson<W> {
 
             // filter out obviously internal frames
             let relevant_frames: Vec<BacktraceFrame> = elements
-                .iter()
                 .map(|elem| {
                     // Truncate paths and function names for size
                     let short_filename = elem
@@ -697,7 +696,7 @@ impl<W> HydroJson<W> {
                 && let Ok(node_id) = node_id_str.parse::<VizNodeKey>()
                 && let Some(backtrace) = self.node_backtraces.get(&node_id)
             {
-                let elements = backtrace.elements();
+                let elements = backtrace.elements().collect::<Vec<_>>();
                 if elements.is_empty() {
                     continue;
                 }

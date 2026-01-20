@@ -369,7 +369,7 @@ impl DfirBuilder for SimBuilder {
                     );
                 }
                 _ => {
-                    eprintln!("{:?}", op_meta.backtrace.elements());
+                    eprintln!("{:?}", op_meta.backtrace.elements().collect::<Vec<_>>());
                     todo!("batch not implemented for kind {:?}", in_kind)
                 }
             }
@@ -974,7 +974,7 @@ fn location_for_op(op_meta: &HydroIrOpMetadata) -> (String, String, String) {
     op_meta
         .backtrace
         .elements()
-        .first()
+        .next()
         .and_then(|e| {
             let filename = e.filename.as_deref()?;
             let lineno = e.lineno?;
