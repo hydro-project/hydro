@@ -138,3 +138,81 @@ mod test_init {
         crate::compile::init_test();
     }
 }
+
+/// Creates a newtype wrapper around an integer type.
+///
+/// Usage:
+/// ```rust
+/// hydro_lang::newtype_counter! {
+///     /// My counter.
+///     pub struct MyCounter(u32);
+///
+///     /// My secret counter.
+///     struct SecretCounter(u64);
+/// }
+/// ```
+#[doc(hidden)]
+#[macro_export]
+macro_rules! newtype_counter {
+    (
+        $(
+            $( #[$attr:meta] )*
+            $vis:vis struct $name:ident($typ:ty);
+        )*
+    ) => {
+        $(
+            $( #[$attr] )*
+            #[repr(transparent)]
+            #[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
+            $vis struct $name($typ);
+
+            #[allow(clippy::allow_attributes, dead_code, reason = "macro-generated methods may be unused")]
+            impl $name {
+                /// Gets the current ID and increments for the next.
+                pub fn get_and_increment(&mut self) -> Self {
+                    let id = self.0;
+                    self.0 += 1;
+                    Self(id)
+                }
+
+                /// Returns an iterator from zero up to (but excluding) `self`.
+                ///
+                /// This is useful for iterating already-allocated values.
+                pub fn range_up_to(&self) -> impl std::iter::DoubleEndedIterator<Item = Self>
+                    + std::iter::FusedIterator
+                {
+                    (0..self.0).map(Self)
+                }
+
+                /// Reveals the inner ID.
+                pub fn into_inner(self) -> $typ {
+                    self.0
+                }
+            }
+
+            impl std::fmt::Display for $name {
+                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                    write!(f, "{}", self.0)
+                }
+            }
+
+            impl serde::ser::Serialize for $name {
+                fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where
+                    S: serde::Serializer
+                {
+                    serde::ser::Serialize::serialize(&self.0, serializer)
+                }
+            }
+
+            impl<'de> serde::de::Deserialize<'de> for $name {
+                fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                where
+                    D: serde::Deserializer<'de>
+                {
+                    serde::de::Deserialize::deserialize(deserializer).map(Self)
+                }
+            }
+        )*
+    };
+}
