@@ -40,6 +40,7 @@ impl ExampleChild {
             .arg(test_name)
             .arg("--")
             .args(args)
+            .env("RUNNING_AS_EXAMPLE_TEST", "1")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()
