@@ -4,10 +4,9 @@ error[E0277]: the trait bound `impl dfir_rs::futures::Sink<Shape, Error = Infall
 13 |         my_demux = source_iter(0..5) -> demux_enum::<Shape>();
    |                    ---------------------^^^^^^^^^^^^^^^^^^^^^
    |                    |                    |
-   |                    |                    unsatisfied trait bound
+   |                    |                    the trait `dfir_rs::futures::Sink<{integer}>` is not implemented for `impl dfir_rs::futures::Sink<Shape, Error = Infallible>`
    |                    required by a bound introduced by this call
    |
-   = help: the trait `dfir_rs::futures::Sink<{integer}>` is not implemented for `impl dfir_rs::futures::Sink<Shape, Error = Infallible>`
    = help: the following other types implement trait `dfir_rs::futures::Sink<Item>`:
              `&dfir_rs::futures::futures_channel::mpsc::UnboundedSender<T>` implements `dfir_rs::futures::Sink<T>`
              `&mut S` implements `dfir_rs::futures::Sink<Item>`
@@ -28,9 +27,8 @@ error[E0277]: the trait bound `impl dfir_rs::futures::Sink<Shape, Error = Infall
   --> tests/compile-fail/surface_demuxenum_wrongtype.rs:13:20
    |
 13 |         my_demux = source_iter(0..5) -> demux_enum::<Shape>();
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `dfir_rs::futures::Sink<{integer}>` is not implemented for `impl dfir_rs::futures::Sink<Shape, Error = Infallible>`
    |
-   = help: the trait `dfir_rs::futures::Sink<{integer}>` is not implemented for `impl dfir_rs::futures::Sink<Shape, Error = Infallible>`
    = help: the following other types implement trait `dfir_rs::futures::Sink<Item>`:
              `&dfir_rs::futures::futures_channel::mpsc::UnboundedSender<T>` implements `dfir_rs::futures::Sink<T>`
              `&mut S` implements `dfir_rs::futures::Sink<Item>`

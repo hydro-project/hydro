@@ -2,9 +2,8 @@ error[E0277]: the trait bound `impl dfir_rs::futures::Sink<(u32,), Error = Infal
   --> tests/compile-fail/surface_demuxenum_wrongfields_2.rs:17:28
    |
 17 |         ]) -> demux_enum::<Shape>();
-   |                            ^^^^^ unsatisfied trait bound
+   |                            ^^^^^ the trait `dfir_rs::futures::Sink<(f64,)>` is not implemented for `impl dfir_rs::futures::Sink<(u32,), Error = Infallible>`
    |
-   = help: the trait `dfir_rs::futures::Sink<(f64,)>` is not implemented for `impl dfir_rs::futures::Sink<(u32,), Error = Infallible>`
    = help: the following other types implement trait `dfir_rs::futures::Sink<Item>`:
              `&dfir_rs::futures::futures_channel::mpsc::UnboundedSender<T>` implements `dfir_rs::futures::Sink<T>`
              `&mut S` implements `dfir_rs::futures::Sink<Item>`
@@ -33,9 +32,8 @@ error[E0277]: the trait bound `impl dfir_rs::futures::Sink<(u32,), Error = Infal
   --> tests/compile-fail/surface_demuxenum_wrongfields_2.rs:17:15
    |
 17 |         ]) -> demux_enum::<Shape>();
-   |               ^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |               ^^^^^^^^^^^^^^^^^^^^^ the trait `dfir_rs::futures::Sink<(f64,)>` is not implemented for `impl dfir_rs::futures::Sink<(u32,), Error = Infallible>`
    |
-   = help: the trait `dfir_rs::futures::Sink<(f64,)>` is not implemented for `impl dfir_rs::futures::Sink<(u32,), Error = Infallible>`
    = help: the following other types implement trait `dfir_rs::futures::Sink<Item>`:
              `&dfir_rs::futures::futures_channel::mpsc::UnboundedSender<T>` implements `dfir_rs::futures::Sink<T>`
              `&mut S` implements `dfir_rs::futures::Sink<Item>`
@@ -69,9 +67,8 @@ error[E0277]: the trait bound `impl dfir_rs::futures::Sink<(u32,), Error = Infal
 15 | |             Shape::Square(9.0),
 16 | |             Shape::Circle { r: 5.0 },
 17 | |         ]) -> demux_enum::<Shape>();
-   | |___________________________________^ unsatisfied trait bound
+   | |___________________________________^ the trait `dfir_rs::futures::Sink<(f64,)>` is not implemented for `impl dfir_rs::futures::Sink<(u32,), Error = Infallible>`
    |
-   = help: the trait `dfir_rs::futures::Sink<(f64,)>` is not implemented for `impl dfir_rs::futures::Sink<(u32,), Error = Infallible>`
    = help: the following other types implement trait `dfir_rs::futures::Sink<Item>`:
              `&dfir_rs::futures::futures_channel::mpsc::UnboundedSender<T>` implements `dfir_rs::futures::Sink<T>`
              `&mut S` implements `dfir_rs::futures::Sink<Item>`
