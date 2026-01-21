@@ -146,7 +146,7 @@ where
             QuoteTokens {
                 prelude: None,
                 expr: Some(
-                    quote! { #root::location::MemberId::<#c_type>::from_tagless((#ident).clone()) },
+                    quote! { #root::__staged::location::MemberId::<#c_type>::from_tagless((#ident).clone()) },
                 ),
             },
             (),

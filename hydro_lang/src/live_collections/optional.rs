@@ -1303,6 +1303,7 @@ mod tests {
     use hydro_deploy::Deployment;
     use stageleft::q;
 
+    #[cfg(feature = "deploy")]
     use super::Optional;
     use crate::compile::builder::FlowBuilder;
     use crate::location::Location;

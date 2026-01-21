@@ -11,7 +11,7 @@ expression: builder.finalize().ir()
         to_many: false,
         unpaired: false,
         serialize_fn: Some(
-            :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < () , _ > (| b | hydro_lang :: runtime_support :: bincode :: serialize (& b) . unwrap () . into ()),
+            hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < () , _ > (| b | hydro_lang :: runtime_support :: bincode :: serialize (& b) . unwrap () . into ()),
         ),
         instantiate_fn: <network instantiate>,
         input: CycleSource {
@@ -99,7 +99,7 @@ expression: builder.finalize().ir()
         f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; | n | println ! ("{}" , n . n) }),
         input: Network {
             serialize_fn: Some(
-                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
+                hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
             ),
             instantiate_fn: <network instantiate>,
             deserialize_fn: Some(
