@@ -7,7 +7,7 @@ expression: ir.surface_syntax_string()
 3v1 = map (stageleft :: runtime_support :: fn1_type_hint :: < std :: string :: String , (std :: string :: String , ()) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | string | (string , ()) }));
 4v1 = fold_keyed :: < 'tick > (stageleft :: runtime_support :: fn0_type_hint :: < i32 > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | | 0 }) , stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , () , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | count , _ | * count += 1 }));
 5v1 = inspect (stageleft :: runtime_support :: fn1_borrow_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | (string , count) | println ! ("partition count: {} - {}" , string , count) }));
-6v1 = map (:: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (std :: string :: String , i32) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }));
+6v1 = map (hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (std :: string :: String , i32) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }));
 7v1 = dest_sink (DUMMY_SINK);
 // 8v1 = <handoff>;
 
