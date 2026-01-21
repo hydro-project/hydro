@@ -132,7 +132,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     /// Useful for generating Mermaid diagrams of the DFIR.
     ///
     /// (This returned DFIR will not compile due to the networking missing).
-    pub fn preview_compile(&mut self) -> CompiledFlow<'a, ()> {
+    pub fn preview_compile(&mut self) -> CompiledFlow<'a> {
         // NOTE: `build_inner` does not actually mutate the IR, but `&mut` is required
         // only because the shared traversal logic requires it
         CompiledFlow {
@@ -147,7 +147,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     /// Compiles the flow into DFIR ([`dfir_lang::graph::DfirGraph`]) including networking.
     ///
     /// (This does not compile the DFIR itself, instead use [`Self::deploy`] to compile & deploy the DFIR).
-    pub fn compile(&mut self) -> CompiledFlow<'a, D::GraphId> {
+    pub fn compile(&mut self) -> CompiledFlow<'a> {
         let mut seen_tees: HashMap<_, _> = HashMap::new();
         let mut extra_stmts = BTreeMap::new();
         self.ir.iter_mut().for_each(|leaf| {

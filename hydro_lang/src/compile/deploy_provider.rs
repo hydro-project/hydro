@@ -22,9 +22,6 @@ pub trait Deploy<'a> {
     type External: Node<Meta = Self::Meta, InstantiateEnv = Self::InstantiateEnv>
         + RegisterPort<'a, Self>;
 
-    /// Type of ID used to switch between different subgraphs at runtime.
-    type GraphId;
-
     fn o2o_sink_source(
         p1: &Self::Process,
         p1_port: &<Self::Process as Node>::Port,
