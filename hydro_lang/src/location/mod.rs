@@ -418,7 +418,7 @@ pub trait Location<'a>: dynamic::DynLocation {
 
         let out_t_type = quote_type::<OutT>();
         let ser_fn: syn::Expr = syn::parse_quote! {
-            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<#out_t_type, _>(
+            #root::runtime_support::stageleft::runtime_support::fn1_type_hint::<#out_t_type, _>(
                 |b| #root::runtime_support::bincode::serialize(&b).unwrap().into()
             )
         };
@@ -604,15 +604,15 @@ pub trait Location<'a>: dynamic::DynLocation {
             .next_external_port
             .get_and_increment();
 
-        let root = get_this_crate();
-
         let (fwd_ref, to_sink) =
             self.forward_ref::<KeyedStream<u64, OutT, Self, Unbounded, NoOrder, ExactlyOnce>>();
         let mut flow_state_borrow = self.flow_state().borrow_mut();
 
+        let root = get_this_crate();
+
         let out_t_type = quote_type::<OutT>();
         let ser_fn: syn::Expr = syn::parse_quote! {
-            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(u64, #out_t_type), _>(
+            #root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(u64, #out_t_type), _>(
                 |(id, b)| (id, #root::runtime_support::bincode::serialize(&b).unwrap().into())
             )
         };

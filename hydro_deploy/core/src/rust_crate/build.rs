@@ -31,6 +31,8 @@ pub struct BuildParams {
     no_default_features: bool,
     /// `--target <linux>` if cross-compiling for linux ([`HostTargetType::Linux`]).
     target_type: HostTargetType,
+    /// True is the build should use dynamic linking.
+    is_dylib: bool,
     /// `--features` flags, will be comma-delimited.
     features: Option<Vec<String>>,
     /// `--config` flag
@@ -49,6 +51,7 @@ impl BuildParams {
         build_env: Vec<(String, String)>,
         no_default_features: bool,
         target_type: HostTargetType,
+        is_dylib: bool,
         features: Option<Vec<String>>,
         config: Vec<String>,
     ) -> Self {
@@ -75,6 +78,7 @@ impl BuildParams {
             build_env,
             no_default_features,
             target_type,
+            is_dylib,
             features,
             config,
         }
@@ -150,22 +154,9 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                         command.args(["--target-dir", target_dir.to_str().unwrap()]);
                     }
 
-                    let is_dylib = if let Some(rustflags) = params.rustflags.as_ref() {
+                    if let Some(rustflags) = params.rustflags.as_ref() {
                         command.env("RUSTFLAGS", rustflags);
-                        false
-                    } else if params.target_type == HostTargetType::Local
-                        && !cfg!(target_os = "windows")
-                    {
-                        // When compiling for local, prefer dynamic linking to reduce binary size
-                        // Windows is currently not supported due to https://github.com/bevyengine/bevy/pull/2016
-                        command.env(
-                            "RUSTFLAGS",
-                            std::env::var("RUSTFLAGS").unwrap_or_default() + " -C prefer-dynamic",
-                        );
-                        true
-                    } else {
-                        false
-                    };
+                    }
 
                     for (k, v) in params.build_env {
                         command.env(k, v);
@@ -214,7 +205,7 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                     return Ok(BuildOutput {
                                         bin_data: data,
                                         bin_path: path_buf,
-                                        shared_library_path: if is_dylib {
+                                        shared_library_path: if params.is_dylib {
                                             Some(
                                                 params
                                                     .target_dir

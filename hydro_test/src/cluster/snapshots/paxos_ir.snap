@@ -49,7 +49,7 @@ expression: built.ir()
         },
         input: Tee {
             inner: <tee 0>: Map {
-                f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , u32) , u32 > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_tagless ((__hydro_lang_cluster_self_id_0) . clone ()) ; move | (received_max_ballot , ballot_num) | { if received_max_ballot > (Ballot { num : ballot_num , proposer_id : CLUSTER_SELF_ID__free . clone () , }) { received_max_ballot . num + 1 } else { ballot_num } } }),
+                f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , u32) , u32 > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_tagless ((__hydro_lang_cluster_self_id_0) . clone ()) ; move | (received_max_ballot , ballot_num) | { if received_max_ballot > (Ballot { num : ballot_num , proposer_id : CLUSTER_SELF_ID__free . clone () , }) { received_max_ballot . num + 1 } else { ballot_num } } }),
                 input: Cast {
                     inner: CrossSingleton {
                         left: Tee {
@@ -489,7 +489,7 @@ expression: built.ir()
                     inner: Cast {
                         inner: Network {
                             serialize_fn: Some(
-                                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                                hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                             ),
                             instantiate_fn: <network instantiate>,
                             deserialize_fn: Some(
@@ -689,7 +689,7 @@ expression: built.ir()
                                                                                         inner: YieldConcat {
                                                                                             inner: Tee {
                                                                                                 inner: <tee 4>: Map {
-                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < u32 , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_tagless ((__hydro_lang_cluster_self_id_0) . clone ()) ; move | num | Ballot { num , proposer_id : CLUSTER_SELF_ID__free . clone () } }),
+                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < u32 , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_tagless ((__hydro_lang_cluster_self_id_0) . clone ()) ; move | num | Ballot { num , proposer_id : CLUSTER_SELF_ID__free . clone () } }),
                                                                                                     input: Tee {
                                                                                                         inner: <tee 0>,
                                                                                                         metadata: HydroIrMetadata {
@@ -1168,7 +1168,7 @@ expression: built.ir()
                                         inner: Cast {
                                             inner: Network {
                                                 serialize_fn: Some(
-                                                    :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , (hydro_test :: __staged :: cluster :: paxos :: Ballot , core :: result :: Result < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >) , hydro_test :: __staged :: cluster :: paxos :: Ballot >)) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                                                    hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , (hydro_test :: __staged :: cluster :: paxos :: Ballot , core :: result :: Result < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > >) , hydro_test :: __staged :: cluster :: paxos :: Ballot >)) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                                 ),
                                                 instantiate_fn: <network instantiate>,
                                                 deserialize_fn: Some(
@@ -1188,7 +1188,7 @@ expression: built.ir()
                                                                                     inner: Cast {
                                                                                         inner: Network {
                                                                                             serialize_fn: Some(
-                                                                                                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                                                                                                hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                                                                             ),
                                                                                             instantiate_fn: <network instantiate>,
                                                                                             deserialize_fn: Some(
@@ -1660,7 +1660,7 @@ expression: built.ir()
                                                                                                                                                     input: Batch {
                                                                                                                                                         inner: Source {
                                                                                                                                                             source: Stream(
-                                                                                                                                                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let delay__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_tagless ((__hydro_lang_cluster_self_id_0) . clone ()) ; let i_am_leader_check_timeout_delay_multiplier__free = 15usize ; Duration :: from_secs ((CLUSTER_SELF_ID__free . get_raw_id () * i_am_leader_check_timeout_delay_multiplier__free as u32) . into ()) } ; let interval__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let i_am_leader_check_timeout__free = 10u64 ; Duration :: from_secs (i_am_leader_check_timeout__free) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval_at (tokio :: time :: Instant :: now () + delay__free , interval__free)) },
+                                                                                                                                                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let delay__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_tagless ((__hydro_lang_cluster_self_id_0) . clone ()) ; let i_am_leader_check_timeout_delay_multiplier__free = 15usize ; Duration :: from_secs ((CLUSTER_SELF_ID__free . get_raw_id () * i_am_leader_check_timeout_delay_multiplier__free as u32) . into ()) } ; let interval__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let i_am_leader_check_timeout__free = 10u64 ; Duration :: from_secs (i_am_leader_check_timeout__free) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval_at (tokio :: time :: Instant :: now () + delay__free , interval__free)) },
                                                                                                                                                             ),
                                                                                                                                                             metadata: HydroIrMetadata {
                                                                                                                                                                 location_kind: Cluster(
@@ -3378,7 +3378,7 @@ expression: built.ir()
                         },
                         second: Batch {
                             inner: Map {
-                                f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , u32) , hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_bench :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos_bench :: Client > :: from_tagless ((__hydro_lang_cluster_self_id_2) . clone ()) ; move | (key , value) | KvPayload { key , value : (CLUSTER_SELF_ID__free . clone () , value) } }),
+                                f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , u32) , hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_bench :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos_bench :: Client > :: from_tagless ((__hydro_lang_cluster_self_id_2) . clone ()) ; move | (key , value) | KvPayload { key , value : (CLUSTER_SELF_ID__free . clone () , value) } }),
                                 input: CycleSource {
                                     ident: Ident {
                                         sym: cycle_0,
@@ -3477,7 +3477,7 @@ expression: built.ir()
                                                                         inner: Cast {
                                                                             inner: Network {
                                                                                 serialize_fn: Some(
-                                                                                    :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                                                                                    hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                                                                 ),
                                                                                 instantiate_fn: <network instantiate>,
                                                                                 deserialize_fn: Some(
@@ -4285,7 +4285,7 @@ expression: built.ir()
                                                                             inner: Cast {
                                                                                 inner: Network {
                                                                                     serialize_fn: Some(
-                                                                                        :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) >) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                                                                                        hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) >) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                                                                     ),
                                                                                     instantiate_fn: <network instantiate>,
                                                                                     deserialize_fn: Some(
@@ -5205,7 +5205,7 @@ expression: built.ir()
                                     inner: Cast {
                                         inner: Network {
                                             serialize_fn: Some(
-                                                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: result :: Result < () , hydro_test :: __staged :: cluster :: paxos :: Ballot >)) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                                                hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: result :: Result < () , hydro_test :: __staged :: cluster :: paxos :: Ballot >)) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                             ),
                                             instantiate_fn: <network instantiate>,
                                             deserialize_fn: Some(
@@ -5224,7 +5224,7 @@ expression: built.ir()
                                                                             inner: Cast {
                                                                                 inner: Network {
                                                                                     serialize_fn: Some(
-                                                                                        :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , hydro_test :: __staged :: cluster :: paxos :: P2a < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , hydro_test :: __staged :: cluster :: paxos :: Proposer >) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                                                                                        hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , hydro_test :: __staged :: cluster :: paxos :: P2a < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , hydro_test :: __staged :: cluster :: paxos :: Proposer >) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                                                                     ),
                                                                                     instantiate_fn: <network instantiate>,
                                                                                     deserialize_fn: Some(
@@ -5393,7 +5393,7 @@ expression: built.ir()
                                                                                                 },
                                                                                                 right: Batch {
                                                                                                     inner: Map {
-                                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: option :: Option < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > >) , hydro_test :: __staged :: cluster :: paxos :: P2a < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , hydro_test :: __staged :: cluster :: paxos :: Proposer > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_tagless ((__hydro_lang_cluster_self_id_0) . clone ()) ; move | ((slot , ballot) , value) | P2a { sender : CLUSTER_SELF_ID__free . clone () , ballot , slot , value } }),
+                                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: option :: Option < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > >) , hydro_test :: __staged :: cluster :: paxos :: P2a < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > , hydro_test :: __staged :: cluster :: paxos :: Proposer > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_tagless ((__hydro_lang_cluster_self_id_0) . clone ()) ; move | ((slot , ballot) , value) | P2a { sender : CLUSTER_SELF_ID__free . clone () , ballot , slot , value } }),
                                                                                                         input: EndAtomic {
                                                                                                             inner: Tee {
                                                                                                                 inner: <tee 27>: YieldConcat {
@@ -7606,7 +7606,7 @@ expression: built.ir()
                                                 inner: Cast {
                                                     inner: Network {
                                                         serialize_fn: Some(
-                                                            :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , (usize , core :: option :: Option < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > >)) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                                                            hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , (usize , core :: option :: Option < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , u32) > >)) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                                         ),
                                                         instantiate_fn: <network instantiate>,
                                                         deserialize_fn: Some(
@@ -8873,7 +8873,7 @@ expression: built.ir()
                                                     input: Cast {
                                                         inner: Network {
                                                             serialize_fn: Some(
-                                                                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , usize) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                                                                hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , usize) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                                             ),
                                                             instantiate_fn: <network instantiate>,
                                                             deserialize_fn: Some(
@@ -9487,7 +9487,7 @@ expression: built.ir()
                                     inner: Cast {
                                         inner: Network {
                                             serialize_fn: Some(
-                                                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , ((u32 , u32) , core :: result :: Result < () , () >)) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                                                hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , ((u32 , u32) , core :: result :: Result < () , () >)) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                             ),
                                             instantiate_fn: <network instantiate>,
                                             deserialize_fn: Some(
@@ -10764,7 +10764,7 @@ expression: built.ir()
                                                                                             inner: Cast {
                                                                                                 inner: Network {
                                                                                                     serialize_fn: Some(
-                                                                                                        :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
+                                                                                                        hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
                                                                                                     ),
                                                                                                     instantiate_fn: <network instantiate>,
                                                                                                     deserialize_fn: Some(
@@ -12008,7 +12008,7 @@ expression: built.ir()
                                                                                     input: Cast {
                                                                                         inner: Network {
                                                                                             serialize_fn: Some(
-                                                                                                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: SerializableHistogramWrapper , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
+                                                                                                hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: SerializableHistogramWrapper , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
                                                                                             ),
                                                                                             instantiate_fn: <network instantiate>,
                                                                                             deserialize_fn: Some(

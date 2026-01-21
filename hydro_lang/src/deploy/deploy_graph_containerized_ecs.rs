@@ -387,7 +387,7 @@ use crate::compile::deploy::DeployResult;
 use crate::compile::deploy_provider::{
     ClusterSpec, Deploy, ExternalSpec, Node, ProcessSpec, RegisterPort,
 };
-use crate::compile::trybuild::generate::create_graph_trybuild;
+use crate::compile::trybuild::generate::{LinkingMode, create_graph_trybuild};
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
 use crate::location::{MembershipEvent, NetworkHint};
@@ -454,8 +454,13 @@ impl Node for DockerDeployProcessEcs {
         graph: DfirGraph,
         extra_stmts: Vec<syn::Stmt>,
     ) {
-        let (bin_name, config) =
-            create_graph_trybuild(graph, extra_stmts.clone(), &Some(self.name.clone()), true);
+        let (bin_name, config) = create_graph_trybuild(
+            graph,
+            extra_stmts.clone(),
+            &Some(self.name.clone()),
+            true,
+            LinkingMode::Static,
+        );
 
         let mut ret = RustCrate::new(config.project_dir)
             .target_dir(config.target_dir)
@@ -522,8 +527,13 @@ impl Node for DockerDeployClusterEcs {
         graph: DfirGraph,
         extra_stmts: Vec<syn::Stmt>,
     ) {
-        let (bin_name, config) =
-            create_graph_trybuild(graph, extra_stmts.clone(), &Some(self.name.clone()), true);
+        let (bin_name, config) = create_graph_trybuild(
+            graph,
+            extra_stmts.clone(),
+            &Some(self.name.clone()),
+            true,
+            LinkingMode::Static,
+        );
 
         let mut ret = RustCrate::new(config.project_dir)
             .target_dir(config.target_dir)

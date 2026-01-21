@@ -44,7 +44,7 @@ fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr 
 
     if is_demux {
         parse_quote! {
-            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::__staged::location::MemberId<_>, #t_type), _>(
+            #root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::__staged::location::MemberId<_>, #t_type), _>(
                 |(id, data)| {
                     (id.into_tagless(), #root::runtime_support::bincode::serialize(&data).unwrap().into())
                 }
@@ -52,7 +52,7 @@ fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr 
         }
     } else {
         parse_quote! {
-            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<#t_type, _>(
+            #root::runtime_support::stageleft::runtime_support::fn1_type_hint::<#t_type, _>(
                 |data| {
                     #root::runtime_support::bincode::serialize(&data).unwrap().into()
                 }
@@ -67,7 +67,6 @@ pub(crate) fn serialize_bincode<T: Serialize>(is_demux: bool) -> syn::Expr {
 
 fn deserialize_bincode_with_type(tagged: Option<&syn::Type>, t_type: &syn::Type) -> syn::Expr {
     let root = get_this_crate();
-
     if let Some(c_type) = tagged {
         parse_quote! {
             |res| {

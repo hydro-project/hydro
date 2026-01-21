@@ -9,6 +9,7 @@ use crate::compile::ir::{
     CollectionKind, DebugExpr, DfirBuilder, HydroIrOpMetadata, StreamOrder, StreamRetry,
 };
 use crate::location::dynamic::LocationId;
+use crate::staging_util::get_this_crate;
 
 /// A builder for DFIR graphs used in simulations.
 ///
@@ -143,6 +144,7 @@ impl DfirBuilder for SimBuilder {
             };
 
             let (batch_location, line, caret) = location_for_op(op_meta);
+            let root = get_this_crate();
 
             match in_kind {
                 CollectionKind::Stream {
@@ -154,10 +156,10 @@ impl DfirBuilder for SimBuilder {
 
                     let order_ty: syn::Type = match order {
                         StreamOrder::TotalOrder => {
-                            parse_quote! { hydro_lang::live_collections::stream::TotalOrder }
+                            parse_quote! { #root::live_collections::stream::TotalOrder }
                         }
                         StreamOrder::NoOrder => {
-                            parse_quote! { hydro_lang::live_collections::stream::NoOrder }
+                            parse_quote! { #root::live_collections::stream::NoOrder }
                         }
                     };
 
@@ -181,12 +183,12 @@ impl DfirBuilder for SimBuilder {
                         in_location,
                         out_location,
                         syn::parse_quote!(
-                            Box::new(hydro_lang::sim::runtime::StreamHook::<_, #order_ty> {
+                            Box::new(#root::sim::runtime::StreamHook::<_, #order_ty> {
                                 input: #buffered_ident.clone(),
                                 to_release: None,
                                 output: #hoff_send_ident,
                                 batch_location: (#batch_location, #line, #caret),
-                                format_item_debug: ::hydro_lang::__maybe_debug__!(),
+                                format_item_debug: #root::__maybe_debug__!(),
                                 _order: std::marker::PhantomData,
                             })
                         ),
@@ -217,10 +219,10 @@ impl DfirBuilder for SimBuilder {
 
                     let order_ty: syn::Type = match value_order {
                         StreamOrder::TotalOrder => {
-                            parse_quote! { hydro_lang::live_collections::stream::TotalOrder }
+                            parse_quote! { #root::live_collections::stream::TotalOrder }
                         }
                         StreamOrder::NoOrder => {
-                            parse_quote! { hydro_lang::live_collections::stream::NoOrder }
+                            parse_quote! { #root::live_collections::stream::NoOrder }
                         }
                     };
 
@@ -244,12 +246,12 @@ impl DfirBuilder for SimBuilder {
                         in_location,
                         out_location,
                         syn::parse_quote!(
-                            Box::new(hydro_lang::sim::runtime::KeyedStreamHook::<_, _, #order_ty> {
+                            Box::new(#root::sim::runtime::KeyedStreamHook::<_, _, #order_ty> {
                                 input: #buffered_ident.clone(),
                                 to_release: None,
                                 output: #hoff_send_ident,
                                 batch_location: (#batch_location, #line, #caret),
-                                format_item_debug: ::hydro_lang::__maybe_debug__!(),
+                                format_item_debug: #root::__maybe_debug__!(),
                                 _order: std::marker::PhantomData,
                             })
                         ),
@@ -294,11 +296,11 @@ impl DfirBuilder for SimBuilder {
                         in_location,
                         out_location,
                         syn::parse_quote! (
-                            Box::new(hydro_lang::sim::runtime::SingletonHook::<_>::new(
+                            Box::new(#root::sim::runtime::SingletonHook::<_>::new(
                                 #buffered_ident.clone(),
                                 #hoff_send_ident,
                                 (#batch_location, #line, #caret),
-                                ::hydro_lang::__maybe_debug__!(),
+                                #root::__maybe_debug__!(),
                             ))
                         ),
                     );
@@ -342,12 +344,12 @@ impl DfirBuilder for SimBuilder {
                         in_location,
                         out_location,
                         syn::parse_quote! (
-                            Box::new(hydro_lang::sim::runtime::KeyedSingletonHook::<_, _>::new(
+                            Box::new(#root::sim::runtime::KeyedSingletonHook::<_, _>::new(
                                 #buffered_ident.clone(),
                                 #hoff_send_ident,
                                 (#batch_location, #line, #caret),
-                                ::hydro_lang::__maybe_debug__!(),
-                                ::hydro_lang::__maybe_debug__!(),
+                                #root::__maybe_debug__!(),
+                                #root::__maybe_debug__!(),
                             ))
                         ),
                     );
@@ -509,6 +511,8 @@ impl DfirBuilder for SimBuilder {
             );
         } else if !location.is_top_level() {
             let (assume_location, line, caret) = location_for_op(op_meta);
+            let root = get_this_crate();
+
             match (in_kind, out_kind) {
                 (
                     CollectionKind::Stream {
@@ -547,11 +551,11 @@ impl DfirBuilder for SimBuilder {
                     self.add_inline_hook(
                         location,
                         syn::parse_quote!(
-                            Box::new(hydro_lang::sim::runtime::StreamOrderHook::<_>::new(
+                            Box::new(#root::sim::runtime::StreamOrderHook::<_>::new(
                                 #buffered_ident.clone(),
                                 #hoff_send_ident,
                                 (#assume_location, #line, #caret),
-                                ::hydro_lang::__maybe_debug__!(),
+                                #root::__maybe_debug__!(),
                             ))
                         ),
                     );
@@ -619,12 +623,12 @@ impl DfirBuilder for SimBuilder {
                     self.add_inline_hook(
                         location,
                         syn::parse_quote!(
-                            Box::new(hydro_lang::sim::runtime::KeyedStreamOrderHook::<_, _>::new(
+                            Box::new(#root::sim::runtime::KeyedStreamOrderHook::<_, _>::new(
                                 #buffered_ident.clone(),
                                 #hoff_send_ident,
                                 (#assume_location, #line, #caret),
-                                ::hydro_lang::__maybe_debug__!(),
-                                ::hydro_lang::__maybe_debug__!(),
+                                #root::__maybe_debug__!(),
+                                #root::__maybe_debug__!(),
                             ))
                         ),
                     );
@@ -680,6 +684,8 @@ impl DfirBuilder for SimBuilder {
         deserialize: &Option<DebugExpr>,
         tag_id: usize,
     ) {
+        let root = get_this_crate();
+
         match (from, to) {
             (LocationId::Process(_), LocationId::Process(_)) => {
                 self.extra_stmts_global.push(syn::parse_quote! {
@@ -724,7 +730,7 @@ impl DfirBuilder for SimBuilder {
             }
             (LocationId::Cluster(_), LocationId::Process(_)) => {
                 self.extra_stmts_global.push(syn::parse_quote! {
-                    let (#sink, #source) = __root_dfir_rs::util::unbounded_channel::<(::hydro_lang::location::TaglessMemberId, __root_dfir_rs::bytes::Bytes)>();
+                    let (#sink, #source) = __root_dfir_rs::util::unbounded_channel::<(#root::__staged::location::TaglessMemberId, __root_dfir_rs::bytes::Bytes)>();
                 });
 
                 self.extra_stmts_cluster
@@ -737,7 +743,7 @@ impl DfirBuilder for SimBuilder {
                 if let Some(serialize_pipeline) = serialize {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> map(#serialize_pipeline) -> for_each(|v| #sink.send((::hydro_lang::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
+                            #input_ident -> map(#serialize_pipeline) -> for_each(|v| #sink.send((#root::__staged::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
@@ -745,7 +751,7 @@ impl DfirBuilder for SimBuilder {
                 } else {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> for_each(|v| #sink.send((::hydro_lang::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
+                            #input_ident -> for_each(|v| #sink.send((#root::__staged::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
@@ -797,7 +803,7 @@ impl DfirBuilder for SimBuilder {
                 if let Some(serialize_pipeline) = serialize {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> map(#serialize_pipeline) -> for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::TaglessMemberId::get_raw_id(&target_member_id) as usize].send(v).unwrap());
+                            #input_ident -> map(#serialize_pipeline) -> for_each(|(target_member_id, v)| (#sink.borrow())[#root::__staged::location::TaglessMemberId::get_raw_id(&target_member_id) as usize].send(v).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
@@ -805,7 +811,7 @@ impl DfirBuilder for SimBuilder {
                 } else {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::TaglessMemberId::get_raw_id(&target_member_id) as usize].send(v).unwrap());
+                            #input_ident -> for_each(|(target_member_id, v)| (#sink.borrow())[#root::__staged::location::TaglessMemberId::get_raw_id(&target_member_id) as usize].send(v).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
@@ -836,7 +842,7 @@ impl DfirBuilder for SimBuilder {
                     Span::call_site(),
                 );
                 self.extra_stmts_global.push(syn::parse_quote! {
-                    let #sink: ::std::rc::Rc<::std::cell::RefCell<Vec<__root_dfir_rs::tokio::sync::mpsc::UnboundedSender<(::hydro_lang::location::TaglessMemberId, __root_dfir_rs::bytes::Bytes)>>>> = ::std::rc::Rc::new(::std::cell::RefCell::new(Vec::new()));
+                    let #sink: ::std::rc::Rc<::std::cell::RefCell<Vec<__root_dfir_rs::tokio::sync::mpsc::UnboundedSender<(#root::__staged::location::TaglessMemberId, __root_dfir_rs::bytes::Bytes)>>>> = ::std::rc::Rc::new(::std::cell::RefCell::new(Vec::new()));
                 });
 
                 self.extra_stmts_global.push(syn::parse_quote! {
@@ -855,7 +861,7 @@ impl DfirBuilder for SimBuilder {
                     .or_default()
                     .push(syn::parse_quote! {
                         let #source = {
-                            let (__sink, __source) = __root_dfir_rs::util::unbounded_channel::<(::hydro_lang::location::TaglessMemberId, __root_dfir_rs::bytes::Bytes)>();
+                            let (__sink, __source) = __root_dfir_rs::util::unbounded_channel::<(#root::__staged::location::TaglessMemberId, __root_dfir_rs::bytes::Bytes)>();
                             #sink_writer.borrow_mut().push(__sink);
                             __source
                         };
@@ -864,7 +870,7 @@ impl DfirBuilder for SimBuilder {
                 if let Some(serialize_pipeline) = serialize {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> map(#serialize_pipeline) -> for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::TaglessMemberId::get_raw_id(&target_member_id) as usize].send((::hydro_lang::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
+                            #input_ident -> map(#serialize_pipeline) -> for_each(|(target_member_id, v)| (#sink.borrow())[#root::__staged::location::TaglessMemberId::get_raw_id(&target_member_id) as usize].send((#root::__staged::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),
@@ -872,7 +878,7 @@ impl DfirBuilder for SimBuilder {
                 } else {
                     self.get_dfir_mut(from).add_dfir(
                         parse_quote! {
-                            #input_ident -> for_each(|(target_member_id, v)| (#sink.borrow())[::hydro_lang::location::TaglessMemberId::get_raw_id(&target_member_id) as usize].send((::hydro_lang::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
+                            #input_ident -> for_each(|(target_member_id, v)| (#sink.borrow())[#root::__staged::location::TaglessMemberId::get_raw_id(&target_member_id) as usize].send((#root::__staged::location::TaglessMemberId::from_raw_id(__current_cluster_id), v)).unwrap());
                         },
                         None,
                         Some(&format!("send{}", tag_id)),

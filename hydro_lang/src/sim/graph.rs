@@ -15,6 +15,8 @@ use trybuild_internals_api::{cargo, dependencies, path};
 
 use crate::compile::builder::ExternalPortId;
 use crate::compile::deploy_provider::{Deploy, DynSourceSink, Node, RegisterPort};
+#[cfg(feature = "deploy")]
+use crate::compile::trybuild::generate::LinkingMode;
 use crate::compile::trybuild::generate::{
     CONCURRENT_TEST_LOCK, IS_TEST, TrybuildConfig, create_trybuild, write_atomic,
 };
@@ -23,6 +25,7 @@ use crate::deploy::deploy_runtime::cluster_membership_stream;
 use crate::location::MembershipEvent;
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
+use crate::staging_util::get_this_crate;
 
 crate::newtype_counter! {
     /// Represents a [`SimNode`] port.
@@ -361,7 +364,9 @@ impl<'a> Deploy<'a> for SimDeploy {
 
 pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempPath, ()> {
     let mut command = Command::new("cargo");
-    command.current_dir(&trybuild.project_dir);
+    // Run from dylib-examples crate which has the dylib as a dev-dependency
+    let dylib_examples_dir = path!(trybuild.project_dir / "dylib-examples");
+    command.current_dir(&dylib_examples_dir);
     command.args(["rustc", "--frozen"]);
     command.args(["--example", "sim-dylib"]);
     command.args(["--target-dir", trybuild.target_dir.to_str().unwrap()]);
@@ -376,16 +381,14 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
 
     command.arg("--");
 
+    // For fuzzing, we still need prefer-dynamic because the fuzzer instruments the code
+    // and needs the entire dependency tree compiled with dynamic linking.
+    // For normal sim builds, the dylib crate provides dynamic linking automatically.
     let is_fuzz = std::env::var("BOLERO_FUZZER").is_ok();
     if is_fuzz {
         command.env(
             "RUSTFLAGS",
             std::env::var("RUSTFLAGS_OUTER").unwrap_or_default() + " -C prefer-dynamic",
-        );
-    } else {
-        command.env(
-            "RUSTFLAGS",
-            std::env::var("RUSTFLAGS").unwrap_or_default() + " -C prefer-dynamic",
         );
     }
 
@@ -569,11 +572,14 @@ pub(super) fn create_sim_graph_trybuild(
 
     let (project_dir, target_dir, mut cur_bin_enabled_features) = create_trybuild().unwrap();
 
+    // Sim builds use dynamic linking, so put examples in dylib-examples crate
+    let examples_dir = path!(project_dir / "dylib-examples" / "examples");
+
     // TODO(shadaj): garbage collect this directory occasionally
     fs::create_dir_all(path!(project_dir / "src")).unwrap();
-    fs::create_dir_all(path!(project_dir / "examples")).unwrap();
+    fs::create_dir_all(&examples_dir).unwrap();
 
-    let out_path = path!(project_dir / "examples" / format!("{bin_name}.rs"));
+    let out_path = path!(examples_dir / format!("{bin_name}.rs"));
     {
         let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
         write_atomic(source.as_ref(), &out_path).unwrap();
@@ -604,6 +610,8 @@ pub(super) fn create_sim_graph_trybuild(
             project_dir,
             target_dir,
             features: cur_bin_enabled_features,
+            #[cfg(feature = "deploy")]
+            linking_mode: LinkingMode::Dynamic,
         },
     )
 }
@@ -658,6 +666,8 @@ fn compile_sim_graph_trybuild(
         },
     );
 
+    let root = get_this_crate();
+
     let cluster_dfir_stmts = cluster_graphs
         .into_iter()
         .map(|(lid, g)| {
@@ -703,7 +713,7 @@ fn compile_sim_graph_trybuild(
                         Some(__current_cluster_id),
                         {
                             #(#extra_stmts_per_cluster)*
-                            let #self_id_ident = &*Box::leak(Box::new(::hydro_lang::location::TaglessMemberId::from_raw_id(__current_cluster_id)));
+                            let #self_id_ident = &*Box::leak(Box::new(#root::__staged::location::TaglessMemberId::from_raw_id(__current_cluster_id)));
 
                             #(#tick_dfir_stmts)*
 
@@ -724,8 +734,6 @@ fn compile_sim_graph_trybuild(
         })
         .collect::<Vec<syn::Expr>>();
 
-    let trybuild_crate_name_ident = quote::format_ident!("{}_hydro_trybuild", crate_name);
-
     let cluster_ids_stmts = cluster_max_sizes
         .iter()
         .map(|(lid, max_size)| {
@@ -745,14 +753,19 @@ fn compile_sim_graph_trybuild(
                 .collect::<Vec<syn::Expr>>();
 
             syn::parse_quote! {
-                let #ident: &'static [::hydro_lang::location::TaglessMemberId] = Box::leak(Box::new([#(::hydro_lang::location::TaglessMemberId::from_raw_id(#elements)),*]));
+                let #ident: &'static [#root::__staged::location::TaglessMemberId] = Box::leak(Box::new([#(#root::__staged::location::TaglessMemberId::from_raw_id(#elements)),*]));
             }
         })
         .collect::<Vec<syn::Stmt>>();
 
+    let orig_crate_name = quote::format_ident!("{}", crate_name);
+    let trybuild_crate_name_ident = quote::format_ident!("{}_hydro_trybuild", crate_name);
+
     let source_ast: syn::File = syn::parse_quote! {
-        use hydro_lang::prelude::*;
-        use hydro_lang::runtime_support::dfir_rs as __root_dfir_rs;
+        use #trybuild_crate_name_ident::__root as #orig_crate_name;
+        use #trybuild_crate_name_ident::__staged::__deps::*;
+        use #root::prelude::*;
+        use #root::runtime_support::dfir_rs as __root_dfir_rs;
         pub use #trybuild_crate_name_ident::__staged;
 
         /// NOTE: This method signature MUST BE THE SAME as `SimLoaded`.
@@ -766,8 +779,8 @@ fn compile_sim_graph_trybuild(
         ) -> (
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
-            hydro_lang::sim::runtime::Hooks<&'static str>,
-            hydro_lang::sim::runtime::InlineHooks<&'static str>,
+            #root::sim::runtime::Hooks<&'static str>,
+            #root::sim::runtime::InlineHooks<&'static str>,
         ) {
             macro_rules! println {
                 ($($arg:tt)*) => ({
@@ -813,8 +826,8 @@ fn compile_sim_graph_trybuild(
                 };
             }
 
-            let mut __hydro_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>> = ::std::collections::HashMap::new();
-            let mut __hydro_inline_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimInlineHook>>> = ::std::collections::HashMap::new();
+            let mut __hydro_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn #root::sim::runtime::SimHook>>> = ::std::collections::HashMap::new();
+            let mut __hydro_inline_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn #root::sim::runtime::SimInlineHook>>> = ::std::collections::HashMap::new();
             #(#extra_stmts_global)*
             #(#cluster_ids_stmts)*
 
@@ -834,10 +847,10 @@ fn compile_sim_graph_trybuild(
         ) -> (
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
-            hydro_lang::sim::runtime::Hooks<&'static str>,
-            hydro_lang::sim::runtime::InlineHooks<&'static str>,
+            #root::sim::runtime::Hooks<&'static str>,
+            #root::sim::runtime::InlineHooks<&'static str>,
         ) {
-            hydro_lang::runtime_support::colored::control::set_override(should_color);
+            #root::runtime_support::colored::control::set_override(should_color);
             __hydro_runtime_core(__hydro_external_out, __hydro_external_in, __println_handler, __eprintln_handler)
         }
     };
