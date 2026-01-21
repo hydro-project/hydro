@@ -629,7 +629,7 @@ members = ["dylib", "dylib-examples"]
 
     Ok((
         project.dir.as_ref().into(),
-        path!(project.target_dir / "hydro_trybuild"),
+        project.target_dir.as_ref().into(),
         project.features,
     ))
 }
