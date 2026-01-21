@@ -25,19 +25,6 @@ pub trait Deploy<'a> {
     /// Type of ID used to switch between different subgraphs at runtime.
     type GraphId;
 
-    fn has_trivial_node() -> bool {
-        false
-    }
-    fn trivial_process(_id: usize) -> Self::Process {
-        panic!("No trivial process")
-    }
-    fn trivial_cluster(_id: usize) -> Self::Cluster {
-        panic!("No trivial cluster")
-    }
-    fn trivial_external(_id: usize) -> Self::External {
-        panic!("No trivial external process")
-    }
-
     fn o2o_sink_source(
         p1: &Self::Process,
         p1_port: &<Self::Process as Node>::Port,
