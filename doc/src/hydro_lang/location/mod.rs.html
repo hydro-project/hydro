@@ -418,7 +418,7 @@
 <a href=#418 id=418 data-nosnippet>418</a>
 <a href=#419 id=419 data-nosnippet>419</a>        <span class="kw">let </span>out_t_type = quote_type::&lt;OutT&gt;();
 <a href=#420 id=420 data-nosnippet>420</a>        <span class="kw">let </span>ser_fn: syn::Expr = <span class="macro">syn::parse_quote!</span> {
-<a href=#421 id=421 data-nosnippet>421</a>            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::&lt;#out_t_type, <span class="kw">_</span>&gt;(
+<a href=#421 id=421 data-nosnippet>421</a>            #root::runtime_support::stageleft::runtime_support::fn1_type_hint::&lt;#out_t_type, <span class="kw">_</span>&gt;(
 <a href=#422 id=422 data-nosnippet>422</a>                |b| #root::runtime_support::bincode::serialize(<span class="kw-2">&amp;</span>b).unwrap().into()
 <a href=#423 id=423 data-nosnippet>423</a>            )
 <a href=#424 id=424 data-nosnippet>424</a>        };
@@ -604,15 +604,15 @@
 <a href=#604 id=604 data-nosnippet>604</a>            .next_external_port
 <a href=#605 id=605 data-nosnippet>605</a>            .get_and_increment();
 <a href=#606 id=606 data-nosnippet>606</a>
-<a href=#607 id=607 data-nosnippet>607</a>        <span class="kw">let </span>root = get_this_crate();
-<a href=#608 id=608 data-nosnippet>608</a>
-<a href=#609 id=609 data-nosnippet>609</a>        <span class="kw">let </span>(fwd_ref, to_sink) =
-<a href=#610 id=610 data-nosnippet>610</a>            <span class="self">self</span>.forward_ref::&lt;KeyedStream&lt;u64, OutT, <span class="self">Self</span>, Unbounded, NoOrder, ExactlyOnce&gt;&gt;();
-<a href=#611 id=611 data-nosnippet>611</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow_state_borrow = <span class="self">self</span>.flow_state().borrow_mut();
+<a href=#607 id=607 data-nosnippet>607</a>        <span class="kw">let </span>(fwd_ref, to_sink) =
+<a href=#608 id=608 data-nosnippet>608</a>            <span class="self">self</span>.forward_ref::&lt;KeyedStream&lt;u64, OutT, <span class="self">Self</span>, Unbounded, NoOrder, ExactlyOnce&gt;&gt;();
+<a href=#609 id=609 data-nosnippet>609</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow_state_borrow = <span class="self">self</span>.flow_state().borrow_mut();
+<a href=#610 id=610 data-nosnippet>610</a>
+<a href=#611 id=611 data-nosnippet>611</a>        <span class="kw">let </span>root = get_this_crate();
 <a href=#612 id=612 data-nosnippet>612</a>
 <a href=#613 id=613 data-nosnippet>613</a>        <span class="kw">let </span>out_t_type = quote_type::&lt;OutT&gt;();
 <a href=#614 id=614 data-nosnippet>614</a>        <span class="kw">let </span>ser_fn: syn::Expr = <span class="macro">syn::parse_quote!</span> {
-<a href=#615 id=615 data-nosnippet>615</a>            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::&lt;(u64, #out_t_type), <span class="kw">_</span>&gt;(
+<a href=#615 id=615 data-nosnippet>615</a>            #root::runtime_support::stageleft::runtime_support::fn1_type_hint::&lt;(u64, #out_t_type), <span class="kw">_</span>&gt;(
 <a href=#616 id=616 data-nosnippet>616</a>                |(id, b)| (id, #root::runtime_support::bincode::serialize(<span class="kw-2">&amp;</span>b).unwrap().into())
 <a href=#617 id=617 data-nosnippet>617</a>            )
 <a href=#618 id=618 data-nosnippet>618</a>        };
