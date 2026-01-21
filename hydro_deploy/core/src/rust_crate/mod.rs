@@ -39,6 +39,7 @@ pub struct RustCrate {
     rustflags: Option<String>,
     target_dir: Option<PathBuf>,
     build_env: Vec<(String, String)>,
+    is_dylib: bool,
     no_default_features: bool,
     features: Option<Vec<String>>,
     config: Vec<String>,
@@ -59,6 +60,7 @@ impl RustCrate {
             rustflags: None,
             target_dir: None,
             build_env: vec![],
+            is_dylib: false,
             no_default_features: false,
             features: None,
             config: vec![],
@@ -121,6 +123,11 @@ impl RustCrate {
 
     pub fn build_env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.build_env.push((key.into(), value.into()));
+        self
+    }
+
+    pub fn set_is_dylib(mut self, is_dylib: bool) -> Self {
+        self.is_dylib = is_dylib;
         self
     }
 
@@ -189,6 +196,7 @@ impl RustCrate {
             self.build_env.clone(),
             self.no_default_features,
             target,
+            self.is_dylib,
             self.features.clone(),
             self.config.clone(),
         )

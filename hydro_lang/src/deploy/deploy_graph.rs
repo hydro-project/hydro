@@ -29,7 +29,9 @@ use crate::compile::builder::ExternalPortId;
 use crate::compile::deploy_provider::{
     ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec, Node, ProcessSpec, RegisterPort,
 };
-use crate::compile::trybuild::generate::{HYDRO_RUNTIME_FEATURES, create_graph_trybuild};
+use crate::compile::trybuild::generate::{
+    HYDRO_RUNTIME_FEATURES, LinkingMode, create_graph_trybuild,
+};
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
 use crate::location::{MembershipEvent, NetworkHint};
@@ -820,8 +822,23 @@ impl Node for DeployNode {
         let (service, host) = match self.service_spec.borrow_mut().take().unwrap() {
             CrateOrTrybuild::Crate(c, host) => (c, host),
             CrateOrTrybuild::Trybuild(trybuild) => {
-                let (bin_name, config) =
-                    create_graph_trybuild(graph, extra_stmts, &trybuild.name_hint, false);
+                // Determine linking mode based on host target type
+                let linking_mode = if !cfg!(target_os = "windows")
+                    && trybuild.host.target_type() == hydro_deploy::HostTargetType::Local
+                {
+                    // When compiling for local, prefer dynamic linking to reduce binary size
+                    // Windows is currently not supported due to https://github.com/bevyengine/bevy/pull/2016
+                    LinkingMode::Dynamic
+                } else {
+                    LinkingMode::Static
+                };
+                let (bin_name, config) = create_graph_trybuild(
+                    graph,
+                    extra_stmts,
+                    &trybuild.name_hint,
+                    false,
+                    linking_mode,
+                );
                 let host = trybuild.host.clone();
                 (
                     create_trybuild_service(
@@ -830,6 +847,7 @@ impl Node for DeployNode {
                         &config.target_dir,
                         &config.features,
                         &bin_name,
+                        &config.linking_mode,
                     ),
                     host,
                 )
@@ -895,12 +913,33 @@ impl Node for DeployCluster {
             .iter()
             .any(|spec| matches!(spec, CrateOrTrybuild::Trybuild { .. }));
 
+        // For clusters, use static linking if ANY host is non-local (conservative approach)
+        let linking_mode = if !cfg!(target_os = "windows")
+            && self
+                .cluster_spec
+                .borrow()
+                .as_ref()
+                .unwrap()
+                .iter()
+                .all(|spec| match spec {
+                    CrateOrTrybuild::Crate(_, _) => true, // crates handle their own linking
+                    CrateOrTrybuild::Trybuild(t) => {
+                        t.host.target_type() == hydro_deploy::HostTargetType::Local
+                    }
+                }) {
+            // See comment above for Windows exception
+            LinkingMode::Dynamic
+        } else {
+            LinkingMode::Static
+        };
+
         let maybe_trybuild = if has_trybuild {
             Some(create_graph_trybuild(
                 graph,
                 extra_stmts,
                 &self.name_hint,
                 false,
+                linking_mode,
             ))
         } else {
             None
@@ -925,6 +964,7 @@ impl Node for DeployCluster {
                                 &config.target_dir,
                                 &config.features,
                                 bin_name,
+                                &config.linking_mode,
                             ),
                             host,
                         )
@@ -1044,15 +1084,24 @@ impl<T: Into<TrybuildHost>, I: IntoIterator<Item = T>> ClusterSpec<'_, HydroDepl
 
 fn create_trybuild_service(
     trybuild: TrybuildHost,
-    dir: &std::path::PathBuf,
+    dir: &std::path::Path,
     target_dir: &std::path::PathBuf,
     features: &Option<Vec<String>>,
     bin_name: &str,
+    linking_mode: &LinkingMode,
 ) -> RustCrate {
-    let mut ret = RustCrate::new(dir)
+    // For dynamic linking, use the dylib-examples crate; for static, use the base crate
+    let crate_dir = match linking_mode {
+        LinkingMode::Dynamic => dir.join("dylib-examples"),
+        LinkingMode::Static => dir.to_path_buf(),
+    };
+
+    let mut ret = RustCrate::new(&crate_dir)
         .target_dir(target_dir)
         .example(bin_name)
         .no_default_features();
+
+    ret = ret.set_is_dylib(matches!(linking_mode, LinkingMode::Dynamic));
 
     if let Some(display_name) = trybuild.display_name {
         ret = ret.display_name(display_name);
