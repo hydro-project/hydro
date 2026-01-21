@@ -1,9 +1,11 @@
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::io::{BufRead, BufReader};
 #[cfg(unix)]
 use std::os::unix::process::CommandExt;
+use std::path::PathBuf;
 use std::process::{Child, ChildStdout, Command};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, OnceLock, RwLock};
 
 use anyhow::{Context, Result, bail};
 use async_process::Stdio;
@@ -15,6 +17,31 @@ use super::progress::ProgressTracker;
 pub static TERRAFORM_ALPHABET: [char; 16] = [
     '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'a', 'b', 'c', 'd', 'e', 'f',
 ];
+
+static TERRAFORM_PATH: OnceLock<PathBuf> = OnceLock::new();
+
+/// Returns the path to the terraform-compatible CLI (tofu or terraform).
+/// Prefers `tofu` if available, otherwise falls back to `terraform`.
+/// The result is cached in a `OnceLock` for subsequent calls.
+fn get_terraform_path() -> &'static PathBuf {
+    TERRAFORM_PATH.get_or_init(|| {
+        which::which("tofu")
+            .or_else(|_| which::which("terraform"))
+            .expect("Neither `tofu` nor `terraform` found in PATH. Please install one of them.")
+    })
+}
+
+fn terraform_command() -> Command {
+    Command::new(get_terraform_path())
+}
+
+/// Returns the name of the terraform-compatible CLI being used (for display purposes).
+pub fn terraform_name() -> &'static str {
+    get_terraform_path()
+        .file_name()
+        .and_then(OsStr::to_str)
+        .unwrap_or("terraform")
+}
 
 /// Keeps track of resources which may need to be cleaned up.
 #[derive(Default)]
@@ -31,7 +58,7 @@ impl TerraformPool {
         let next_counter = self.counter;
         self.counter += 1;
 
-        let mut apply_command = Command::new("terraform");
+        let mut apply_command = terraform_command();
 
         apply_command
             .current_dir(deployment_folder.path())
@@ -49,7 +76,7 @@ impl TerraformPool {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .context("Failed to spawn `terraform`. Is it installed?")?;
+            .with_context(|| format!("Failed to spawn `{}`. Is it installed?", terraform_name()))?;
 
         let spawned_id = spawned_child.id();
 
@@ -119,7 +146,7 @@ impl TerraformBatch {
             });
         }
 
-        ProgressTracker::with_group("terraform", Some(1), || async {
+        ProgressTracker::with_group(terraform_name(), Some(1), || async {
             let dothydro_folder = std::env::current_dir().unwrap().join(".hydro");
             std::fs::create_dir_all(&dothydro_folder).unwrap();
             let deployment_folder = tempfile::tempdir_in(dothydro_folder).unwrap();
@@ -130,17 +157,19 @@ impl TerraformBatch {
             )
             .unwrap();
 
-            if !Command::new("terraform")
+            if !terraform_command()
                 .current_dir(deployment_folder.path())
                 .arg("init")
                 .stdout(Stdio::null())
                 .spawn()
-                .context("Failed to spawn `terraform`. Is it installed?")?
+                .with_context(|| {
+                    format!("Failed to spawn `{}`. Is it installed?", terraform_name())
+                })?
                 .wait()
-                .context("Failed to launch terraform init command")?
+                .with_context(|| format!("Failed to launch {} init command", terraform_name()))?
                 .success()
             {
-                bail!("Failed to initialize terraform");
+                bail!("Failed to initialize {}", terraform_name());
             }
 
             let (apply_id, apply) = pool.create_apply(deployment_folder)?;
@@ -202,7 +231,7 @@ async fn display_apply_outputs(stdout: &mut ChildStdout) {
                     let _ = sender.send(());
                     to_await.await.unwrap();
                 } else {
-                    panic!("Unexpected from Terraform: {}", line);
+                    panic!("Unexpected from {}: {}", terraform_name(), line);
                 }
             }
         } else {
@@ -213,6 +242,7 @@ async fn display_apply_outputs(stdout: &mut ChildStdout) {
 
 fn filter_terraform_logs(child: &mut Child) {
     let lines = BufReader::new(child.stdout.take().unwrap()).lines();
+    let tf_name = terraform_name();
     for line in lines {
         if let Ok(line) = line {
             let mut split = line.split(':');
@@ -221,7 +251,7 @@ fn filter_terraform_logs(child: &mut Child) {
                 && split.next().is_some()
                 && split.next().is_none()
             {
-                eprintln!("[terraform] {}", line);
+                eprintln!("[{}] {}", tf_name, line);
             }
         } else {
             break;
@@ -241,10 +271,11 @@ impl TerraformApply {
         });
 
         let display_apply = display_apply_outputs(&mut stdout);
+        let tf_name = terraform_name();
         let stderr_loop = tokio::task::spawn_blocking(move || {
             let mut lines = BufReader::new(stderr).lines();
             while let Some(Ok(line)) = lines.next() {
-                ProgressTracker::println(format!("[terraform] {}", line));
+                ProgressTracker::println(format!("[{}] {}", tf_name, line));
             }
         });
 
@@ -255,10 +286,14 @@ impl TerraformApply {
         self.child = None;
 
         if !status.unwrap().success() {
-            bail!("Terraform deployment failed, see `[terraform]` logs above.");
+            bail!(
+                "{} deployment failed, see `[{}]` logs above.",
+                terraform_name(),
+                terraform_name()
+            );
         }
 
-        let mut output_command = Command::new("terraform");
+        let mut output_command = terraform_command();
         output_command
             .current_dir(self.deployment_folder.as_ref().unwrap().path())
             .arg("output")
@@ -271,7 +306,7 @@ impl TerraformApply {
 
         let output = output_command
             .output()
-            .context("Failed to read Terraform outputs")?;
+            .with_context(|| format!("Failed to read {} outputs", terraform_name()))?;
 
         Ok(TerraformResult {
             outputs: serde_json::from_slice(&output.stdout).unwrap(),
@@ -282,11 +317,12 @@ impl TerraformApply {
 
 fn destroy_deployment(deployment_folder: TempDir) {
     println!(
-        "Destroying terraform deployment at {}",
+        "Destroying {} deployment at {}",
+        terraform_name(),
         deployment_folder.path().display()
     );
 
-    let mut destroy_command = Command::new("terraform");
+    let mut destroy_command = terraform_command();
     destroy_command
         .current_dir(deployment_folder.path())
         .arg("destroy")
@@ -302,18 +338,18 @@ fn destroy_deployment(deployment_folder: TempDir) {
 
     let mut destroy_child = destroy_command
         .spawn()
-        .expect("Failed to spawn terraform destroy command");
+        .unwrap_or_else(|_| panic!("Failed to spawn {} destroy command", terraform_name()));
 
     filter_terraform_logs(&mut destroy_child);
 
     if !destroy_child
         .wait()
-        .expect("Failed to destroy terraform deployment")
+        .unwrap_or_else(|_| panic!("Failed to destroy {} deployment", terraform_name()))
         .success()
     {
         // prevent the folder from being deleted
         let _ = deployment_folder.keep();
-        eprintln!("WARNING: failed to destroy terraform deployment");
+        eprintln!("WARNING: failed to destroy {} deployment", terraform_name());
     }
 }
 
