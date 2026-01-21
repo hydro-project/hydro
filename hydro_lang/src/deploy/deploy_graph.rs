@@ -768,7 +768,6 @@ pub(crate) enum CrateOrTrybuild {
 #[expect(missing_docs, reason = "TODO")]
 #[derive(Clone)]
 pub struct DeployNode {
-    id: usize,
     next_port: Rc<RefCell<usize>>,
     service_spec: Rc<RefCell<Option<CrateOrTrybuild>>>,
     underlying: Rc<RefCell<Option<Arc<RustCrateService>>>>,
@@ -996,9 +995,8 @@ impl DeployProcessSpec {
 }
 
 impl ProcessSpec<'_, HydroDeploy> for DeployProcessSpec {
-    fn build(self, id: usize, _name_hint: &str) -> DeployNode {
+    fn build(self, _id: usize, _name_hint: &str) -> DeployNode {
         DeployNode {
-            id,
             next_port: Rc::new(RefCell::new(0)),
             service_spec: Rc::new(RefCell::new(Some(CrateOrTrybuild::Crate(self.0, self.1)))),
             underlying: Rc::new(RefCell::new(None)),
@@ -1010,7 +1008,6 @@ impl ProcessSpec<'_, HydroDeploy> for TrybuildHost {
     fn build(mut self, id: usize, name_hint: &str) -> DeployNode {
         self.name_hint = Some(format!("{} (process {id})", name_hint));
         DeployNode {
-            id,
             next_port: Rc::new(RefCell::new(0)),
             service_spec: Rc::new(RefCell::new(Some(CrateOrTrybuild::Trybuild(self)))),
             underlying: Rc::new(RefCell::new(None)),
