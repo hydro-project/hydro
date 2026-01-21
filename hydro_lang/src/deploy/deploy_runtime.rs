@@ -25,7 +25,6 @@ use crate::location::{MemberId, MembershipEvent};
 pub(super) struct HydroMeta {
     pub clusters: HashMap<usize, Vec<TaglessMemberId>>,
     pub cluster_id: Option<TaglessMemberId>,
-    pub subgraph_id: usize,
 }
 
 pub(super) fn cluster_members(

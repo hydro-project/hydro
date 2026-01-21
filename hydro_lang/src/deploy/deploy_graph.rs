@@ -797,7 +797,6 @@ impl Node for DeployNode {
         underlying_node.as_ref().unwrap().update_meta(HydroMeta {
             clusters: meta.clone(),
             cluster_id: None,
-            subgraph_id: self.id,
         });
     }
 
@@ -980,7 +979,6 @@ impl Node for DeployCluster {
             node.underlying.update_meta(HydroMeta {
                 clusters: meta.clone(),
                 cluster_id: Some(TaglessMemberId::from_raw_id(cluster_id as u32)),
-                subgraph_id: self.id,
             });
         }
     }
