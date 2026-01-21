@@ -768,379 +768,376 @@
 <a href=#768 id=768 data-nosnippet>768</a><span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
 <a href=#769 id=769 data-nosnippet>769</a>#[derive(Clone)]
 <a href=#770 id=770 data-nosnippet>770</a></span><span class="kw">pub struct </span>DeployNode {
-<a href=#771 id=771 data-nosnippet>771</a>    id: usize,
-<a href=#772 id=772 data-nosnippet>772</a>    next_port: Rc&lt;RefCell&lt;usize&gt;&gt;,
-<a href=#773 id=773 data-nosnippet>773</a>    service_spec: Rc&lt;RefCell&lt;<span class="prelude-ty">Option</span>&lt;CrateOrTrybuild&gt;&gt;&gt;,
-<a href=#774 id=774 data-nosnippet>774</a>    underlying: Rc&lt;RefCell&lt;<span class="prelude-ty">Option</span>&lt;Arc&lt;RustCrateService&gt;&gt;&gt;&gt;,
-<a href=#775 id=775 data-nosnippet>775</a>}
-<a href=#776 id=776 data-nosnippet>776</a>
-<a href=#777 id=777 data-nosnippet>777</a><span class="kw">impl </span>DeployCrateWrapper <span class="kw">for </span>DeployNode {
-<a href=#778 id=778 data-nosnippet>778</a>    <span class="kw">fn </span>underlying(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Arc&lt;RustCrateService&gt; {
-<a href=#779 id=779 data-nosnippet>779</a>        Arc::clone(<span class="self">self</span>.underlying.borrow().as_ref().unwrap())
-<a href=#780 id=780 data-nosnippet>780</a>    }
-<a href=#781 id=781 data-nosnippet>781</a>}
-<a href=#782 id=782 data-nosnippet>782</a>
-<a href=#783 id=783 data-nosnippet>783</a><span class="kw">impl </span>Node <span class="kw">for </span>DeployNode {
-<a href=#784 id=784 data-nosnippet>784</a>    <span class="kw">type </span>Port = String;
-<a href=#785 id=785 data-nosnippet>785</a>    <span class="kw">type </span>Meta = HashMap&lt;usize, Vec&lt;TaglessMemberId&gt;&gt;;
-<a href=#786 id=786 data-nosnippet>786</a>    <span class="kw">type </span>InstantiateEnv = Deployment;
-<a href=#787 id=787 data-nosnippet>787</a>
-<a href=#788 id=788 data-nosnippet>788</a>    <span class="kw">fn </span>next_port(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-<a href=#789 id=789 data-nosnippet>789</a>        <span class="kw">let </span>next_port = <span class="kw-2">*</span><span class="self">self</span>.next_port.borrow();
-<a href=#790 id=790 data-nosnippet>790</a>        <span class="kw-2">*</span><span class="self">self</span>.next_port.borrow_mut() += <span class="number">1</span>;
-<a href=#791 id=791 data-nosnippet>791</a>
-<a href=#792 id=792 data-nosnippet>792</a>        <span class="macro">format!</span>(<span class="string">"port_{}"</span>, next_port)
-<a href=#793 id=793 data-nosnippet>793</a>    }
-<a href=#794 id=794 data-nosnippet>794</a>
-<a href=#795 id=795 data-nosnippet>795</a>    <span class="kw">fn </span>update_meta(<span class="kw-2">&amp;</span><span class="self">self</span>, meta: <span class="kw-2">&amp;</span><span class="self">Self</span>::Meta) {
-<a href=#796 id=796 data-nosnippet>796</a>        <span class="kw">let </span>underlying_node = <span class="self">self</span>.underlying.borrow();
-<a href=#797 id=797 data-nosnippet>797</a>        underlying_node.as_ref().unwrap().update_meta(HydroMeta {
-<a href=#798 id=798 data-nosnippet>798</a>            clusters: meta.clone(),
-<a href=#799 id=799 data-nosnippet>799</a>            cluster_id: <span class="prelude-val">None</span>,
-<a href=#800 id=800 data-nosnippet>800</a>        });
-<a href=#801 id=801 data-nosnippet>801</a>    }
-<a href=#802 id=802 data-nosnippet>802</a>
-<a href=#803 id=803 data-nosnippet>803</a>    <span class="kw">fn </span>instantiate(
-<a href=#804 id=804 data-nosnippet>804</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#805 id=805 data-nosnippet>805</a>        env: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::InstantiateEnv,
-<a href=#806 id=806 data-nosnippet>806</a>        _meta: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Meta,
-<a href=#807 id=807 data-nosnippet>807</a>        graph: DfirGraph,
-<a href=#808 id=808 data-nosnippet>808</a>        extra_stmts: Vec&lt;syn::Stmt&gt;,
-<a href=#809 id=809 data-nosnippet>809</a>    ) {
-<a href=#810 id=810 data-nosnippet>810</a>        <span class="kw">let </span>(service, host) = <span class="kw">match </span><span class="self">self</span>.service_spec.borrow_mut().take().unwrap() {
-<a href=#811 id=811 data-nosnippet>811</a>            CrateOrTrybuild::Crate(c, host) =&gt; (c, host),
-<a href=#812 id=812 data-nosnippet>812</a>            CrateOrTrybuild::Trybuild(trybuild) =&gt; {
-<a href=#813 id=813 data-nosnippet>813</a>                <span class="comment">// Determine linking mode based on host target type
-<a href=#814 id=814 data-nosnippet>814</a>                </span><span class="kw">let </span>linking_mode = <span class="kw">if </span>!<span class="macro">cfg!</span>(target_os = <span class="string">"windows"</span>)
-<a href=#815 id=815 data-nosnippet>815</a>                    &amp;&amp; trybuild.host.target_type() == hydro_deploy::HostTargetType::Local
-<a href=#816 id=816 data-nosnippet>816</a>                {
-<a href=#817 id=817 data-nosnippet>817</a>                    <span class="comment">// When compiling for local, prefer dynamic linking to reduce binary size
-<a href=#818 id=818 data-nosnippet>818</a>                    // Windows is currently not supported due to https://github.com/bevyengine/bevy/pull/2016
-<a href=#819 id=819 data-nosnippet>819</a>                    </span>LinkingMode::Dynamic
-<a href=#820 id=820 data-nosnippet>820</a>                } <span class="kw">else </span>{
-<a href=#821 id=821 data-nosnippet>821</a>                    LinkingMode::Static
-<a href=#822 id=822 data-nosnippet>822</a>                };
-<a href=#823 id=823 data-nosnippet>823</a>                <span class="kw">let </span>(bin_name, config) = create_graph_trybuild(
-<a href=#824 id=824 data-nosnippet>824</a>                    graph,
-<a href=#825 id=825 data-nosnippet>825</a>                    extra_stmts,
-<a href=#826 id=826 data-nosnippet>826</a>                    <span class="kw-2">&amp;</span>trybuild.name_hint,
-<a href=#827 id=827 data-nosnippet>827</a>                    <span class="bool-val">false</span>,
-<a href=#828 id=828 data-nosnippet>828</a>                    linking_mode,
-<a href=#829 id=829 data-nosnippet>829</a>                );
-<a href=#830 id=830 data-nosnippet>830</a>                <span class="kw">let </span>host = trybuild.host.clone();
-<a href=#831 id=831 data-nosnippet>831</a>                (
-<a href=#832 id=832 data-nosnippet>832</a>                    create_trybuild_service(
-<a href=#833 id=833 data-nosnippet>833</a>                        trybuild,
-<a href=#834 id=834 data-nosnippet>834</a>                        <span class="kw-2">&amp;</span>config.project_dir,
-<a href=#835 id=835 data-nosnippet>835</a>                        <span class="kw-2">&amp;</span>config.target_dir,
-<a href=#836 id=836 data-nosnippet>836</a>                        <span class="kw-2">&amp;</span>config.features,
-<a href=#837 id=837 data-nosnippet>837</a>                        <span class="kw-2">&amp;</span>bin_name,
-<a href=#838 id=838 data-nosnippet>838</a>                        <span class="kw-2">&amp;</span>config.linking_mode,
-<a href=#839 id=839 data-nosnippet>839</a>                    ),
-<a href=#840 id=840 data-nosnippet>840</a>                    host,
-<a href=#841 id=841 data-nosnippet>841</a>                )
-<a href=#842 id=842 data-nosnippet>842</a>            }
-<a href=#843 id=843 data-nosnippet>843</a>        };
-<a href=#844 id=844 data-nosnippet>844</a>
-<a href=#845 id=845 data-nosnippet>845</a>        <span class="kw-2">*</span><span class="self">self</span>.underlying.borrow_mut() = <span class="prelude-val">Some</span>(env.add_service(service, host));
-<a href=#846 id=846 data-nosnippet>846</a>    }
-<a href=#847 id=847 data-nosnippet>847</a>}
-<a href=#848 id=848 data-nosnippet>848</a>
-<a href=#849 id=849 data-nosnippet>849</a><span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#850 id=850 data-nosnippet>850</a>#[derive(Clone)]
-<a href=#851 id=851 data-nosnippet>851</a></span><span class="kw">pub struct </span>DeployClusterNode {
-<a href=#852 id=852 data-nosnippet>852</a>    underlying: Arc&lt;RustCrateService&gt;,
-<a href=#853 id=853 data-nosnippet>853</a>}
-<a href=#854 id=854 data-nosnippet>854</a>
-<a href=#855 id=855 data-nosnippet>855</a><span class="kw">impl </span>DeployCrateWrapper <span class="kw">for </span>DeployClusterNode {
-<a href=#856 id=856 data-nosnippet>856</a>    <span class="kw">fn </span>underlying(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Arc&lt;RustCrateService&gt; {
-<a href=#857 id=857 data-nosnippet>857</a>        <span class="self">self</span>.underlying.clone()
-<a href=#858 id=858 data-nosnippet>858</a>    }
-<a href=#859 id=859 data-nosnippet>859</a>}
-<a href=#860 id=860 data-nosnippet>860</a><span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#861 id=861 data-nosnippet>861</a>#[derive(Clone)]
-<a href=#862 id=862 data-nosnippet>862</a></span><span class="kw">pub struct </span>DeployCluster {
-<a href=#863 id=863 data-nosnippet>863</a>    id: usize,
-<a href=#864 id=864 data-nosnippet>864</a>    next_port: Rc&lt;RefCell&lt;usize&gt;&gt;,
-<a href=#865 id=865 data-nosnippet>865</a>    cluster_spec: Rc&lt;RefCell&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;CrateOrTrybuild&gt;&gt;&gt;&gt;,
-<a href=#866 id=866 data-nosnippet>866</a>    members: Rc&lt;RefCell&lt;Vec&lt;DeployClusterNode&gt;&gt;&gt;,
-<a href=#867 id=867 data-nosnippet>867</a>    name_hint: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#868 id=868 data-nosnippet>868</a>}
-<a href=#869 id=869 data-nosnippet>869</a>
-<a href=#870 id=870 data-nosnippet>870</a><span class="kw">impl </span>DeployCluster {
-<a href=#871 id=871 data-nosnippet>871</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#872 id=872 data-nosnippet>872</a>    </span><span class="kw">pub fn </span>members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;DeployClusterNode&gt; {
-<a href=#873 id=873 data-nosnippet>873</a>        <span class="self">self</span>.members.borrow().clone()
-<a href=#874 id=874 data-nosnippet>874</a>    }
-<a href=#875 id=875 data-nosnippet>875</a>}
-<a href=#876 id=876 data-nosnippet>876</a>
-<a href=#877 id=877 data-nosnippet>877</a><span class="kw">impl </span>Node <span class="kw">for </span>DeployCluster {
-<a href=#878 id=878 data-nosnippet>878</a>    <span class="kw">type </span>Port = String;
-<a href=#879 id=879 data-nosnippet>879</a>    <span class="kw">type </span>Meta = HashMap&lt;usize, Vec&lt;TaglessMemberId&gt;&gt;;
-<a href=#880 id=880 data-nosnippet>880</a>    <span class="kw">type </span>InstantiateEnv = Deployment;
-<a href=#881 id=881 data-nosnippet>881</a>
-<a href=#882 id=882 data-nosnippet>882</a>    <span class="kw">fn </span>next_port(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-<a href=#883 id=883 data-nosnippet>883</a>        <span class="kw">let </span>next_port = <span class="kw-2">*</span><span class="self">self</span>.next_port.borrow();
-<a href=#884 id=884 data-nosnippet>884</a>        <span class="kw-2">*</span><span class="self">self</span>.next_port.borrow_mut() += <span class="number">1</span>;
-<a href=#885 id=885 data-nosnippet>885</a>
-<a href=#886 id=886 data-nosnippet>886</a>        <span class="macro">format!</span>(<span class="string">"port_{}"</span>, next_port)
-<a href=#887 id=887 data-nosnippet>887</a>    }
-<a href=#888 id=888 data-nosnippet>888</a>
-<a href=#889 id=889 data-nosnippet>889</a>    <span class="kw">fn </span>instantiate(
-<a href=#890 id=890 data-nosnippet>890</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#891 id=891 data-nosnippet>891</a>        env: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::InstantiateEnv,
-<a href=#892 id=892 data-nosnippet>892</a>        meta: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Meta,
-<a href=#893 id=893 data-nosnippet>893</a>        graph: DfirGraph,
-<a href=#894 id=894 data-nosnippet>894</a>        extra_stmts: Vec&lt;syn::Stmt&gt;,
-<a href=#895 id=895 data-nosnippet>895</a>    ) {
-<a href=#896 id=896 data-nosnippet>896</a>        <span class="kw">let </span>has_trybuild = <span class="self">self
-<a href=#897 id=897 data-nosnippet>897</a>            </span>.cluster_spec
-<a href=#898 id=898 data-nosnippet>898</a>            .borrow()
-<a href=#899 id=899 data-nosnippet>899</a>            .as_ref()
-<a href=#900 id=900 data-nosnippet>900</a>            .unwrap()
-<a href=#901 id=901 data-nosnippet>901</a>            .iter()
-<a href=#902 id=902 data-nosnippet>902</a>            .any(|spec| <span class="macro">matches!</span>(spec, CrateOrTrybuild::Trybuild { .. }));
-<a href=#903 id=903 data-nosnippet>903</a>
-<a href=#904 id=904 data-nosnippet>904</a>        <span class="comment">// For clusters, use static linking if ANY host is non-local (conservative approach)
-<a href=#905 id=905 data-nosnippet>905</a>        </span><span class="kw">let </span>linking_mode = <span class="kw">if </span>!<span class="macro">cfg!</span>(target_os = <span class="string">"windows"</span>)
-<a href=#906 id=906 data-nosnippet>906</a>            &amp;&amp; <span class="self">self
-<a href=#907 id=907 data-nosnippet>907</a>                </span>.cluster_spec
-<a href=#908 id=908 data-nosnippet>908</a>                .borrow()
-<a href=#909 id=909 data-nosnippet>909</a>                .as_ref()
-<a href=#910 id=910 data-nosnippet>910</a>                .unwrap()
-<a href=#911 id=911 data-nosnippet>911</a>                .iter()
-<a href=#912 id=912 data-nosnippet>912</a>                .all(|spec| <span class="kw">match </span>spec {
-<a href=#913 id=913 data-nosnippet>913</a>                    CrateOrTrybuild::Crate(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="bool-val">true</span>, <span class="comment">// crates handle their own linking
-<a href=#914 id=914 data-nosnippet>914</a>                    </span>CrateOrTrybuild::Trybuild(t) =&gt; {
-<a href=#915 id=915 data-nosnippet>915</a>                        t.host.target_type() == hydro_deploy::HostTargetType::Local
-<a href=#916 id=916 data-nosnippet>916</a>                    }
-<a href=#917 id=917 data-nosnippet>917</a>                }) {
-<a href=#918 id=918 data-nosnippet>918</a>            <span class="comment">// See comment above for Windows exception
-<a href=#919 id=919 data-nosnippet>919</a>            </span>LinkingMode::Dynamic
-<a href=#920 id=920 data-nosnippet>920</a>        } <span class="kw">else </span>{
-<a href=#921 id=921 data-nosnippet>921</a>            LinkingMode::Static
-<a href=#922 id=922 data-nosnippet>922</a>        };
-<a href=#923 id=923 data-nosnippet>923</a>
-<a href=#924 id=924 data-nosnippet>924</a>        <span class="kw">let </span>maybe_trybuild = <span class="kw">if </span>has_trybuild {
-<a href=#925 id=925 data-nosnippet>925</a>            <span class="prelude-val">Some</span>(create_graph_trybuild(
-<a href=#926 id=926 data-nosnippet>926</a>                graph,
-<a href=#927 id=927 data-nosnippet>927</a>                extra_stmts,
-<a href=#928 id=928 data-nosnippet>928</a>                <span class="kw-2">&amp;</span><span class="self">self</span>.name_hint,
-<a href=#929 id=929 data-nosnippet>929</a>                <span class="bool-val">false</span>,
-<a href=#930 id=930 data-nosnippet>930</a>                linking_mode,
-<a href=#931 id=931 data-nosnippet>931</a>            ))
-<a href=#932 id=932 data-nosnippet>932</a>        } <span class="kw">else </span>{
-<a href=#933 id=933 data-nosnippet>933</a>            <span class="prelude-val">None
-<a href=#934 id=934 data-nosnippet>934</a>        </span>};
-<a href=#935 id=935 data-nosnippet>935</a>
-<a href=#936 id=936 data-nosnippet>936</a>        <span class="kw">let </span>cluster_nodes = <span class="self">self
-<a href=#937 id=937 data-nosnippet>937</a>            </span>.cluster_spec
-<a href=#938 id=938 data-nosnippet>938</a>            .borrow_mut()
-<a href=#939 id=939 data-nosnippet>939</a>            .take()
-<a href=#940 id=940 data-nosnippet>940</a>            .unwrap()
-<a href=#941 id=941 data-nosnippet>941</a>            .into_iter()
-<a href=#942 id=942 data-nosnippet>942</a>            .map(|spec| {
-<a href=#943 id=943 data-nosnippet>943</a>                <span class="kw">let </span>(service, host) = <span class="kw">match </span>spec {
-<a href=#944 id=944 data-nosnippet>944</a>                    CrateOrTrybuild::Crate(c, host) =&gt; (c, host),
-<a href=#945 id=945 data-nosnippet>945</a>                    CrateOrTrybuild::Trybuild(trybuild) =&gt; {
-<a href=#946 id=946 data-nosnippet>946</a>                        <span class="kw">let </span>(bin_name, config) = maybe_trybuild.as_ref().unwrap();
-<a href=#947 id=947 data-nosnippet>947</a>                        <span class="kw">let </span>host = trybuild.host.clone();
-<a href=#948 id=948 data-nosnippet>948</a>                        (
-<a href=#949 id=949 data-nosnippet>949</a>                            create_trybuild_service(
-<a href=#950 id=950 data-nosnippet>950</a>                                trybuild,
-<a href=#951 id=951 data-nosnippet>951</a>                                <span class="kw-2">&amp;</span>config.project_dir,
-<a href=#952 id=952 data-nosnippet>952</a>                                <span class="kw-2">&amp;</span>config.target_dir,
-<a href=#953 id=953 data-nosnippet>953</a>                                <span class="kw-2">&amp;</span>config.features,
-<a href=#954 id=954 data-nosnippet>954</a>                                bin_name,
-<a href=#955 id=955 data-nosnippet>955</a>                                <span class="kw-2">&amp;</span>config.linking_mode,
-<a href=#956 id=956 data-nosnippet>956</a>                            ),
-<a href=#957 id=957 data-nosnippet>957</a>                            host,
-<a href=#958 id=958 data-nosnippet>958</a>                        )
-<a href=#959 id=959 data-nosnippet>959</a>                    }
-<a href=#960 id=960 data-nosnippet>960</a>                };
-<a href=#961 id=961 data-nosnippet>961</a>
-<a href=#962 id=962 data-nosnippet>962</a>                env.add_service(service, host)
-<a href=#963 id=963 data-nosnippet>963</a>            })
-<a href=#964 id=964 data-nosnippet>964</a>            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-<a href=#965 id=965 data-nosnippet>965</a>        meta.insert(
-<a href=#966 id=966 data-nosnippet>966</a>            <span class="self">self</span>.id,
-<a href=#967 id=967 data-nosnippet>967</a>            (<span class="number">0</span>..(cluster_nodes.len() <span class="kw">as </span>u32))
-<a href=#968 id=968 data-nosnippet>968</a>                .map(TaglessMemberId::from_raw_id)
-<a href=#969 id=969 data-nosnippet>969</a>                .collect(),
-<a href=#970 id=970 data-nosnippet>970</a>        );
-<a href=#971 id=971 data-nosnippet>971</a>        <span class="kw-2">*</span><span class="self">self</span>.members.borrow_mut() = cluster_nodes
-<a href=#972 id=972 data-nosnippet>972</a>            .into_iter()
-<a href=#973 id=973 data-nosnippet>973</a>            .map(|n| DeployClusterNode { underlying: n })
-<a href=#974 id=974 data-nosnippet>974</a>            .collect();
-<a href=#975 id=975 data-nosnippet>975</a>    }
-<a href=#976 id=976 data-nosnippet>976</a>
-<a href=#977 id=977 data-nosnippet>977</a>    <span class="kw">fn </span>update_meta(<span class="kw-2">&amp;</span><span class="self">self</span>, meta: <span class="kw-2">&amp;</span><span class="self">Self</span>::Meta) {
-<a href=#978 id=978 data-nosnippet>978</a>        <span class="kw">for </span>(cluster_id, node) <span class="kw">in </span><span class="self">self</span>.members.borrow().iter().enumerate() {
-<a href=#979 id=979 data-nosnippet>979</a>            node.underlying.update_meta(HydroMeta {
-<a href=#980 id=980 data-nosnippet>980</a>                clusters: meta.clone(),
-<a href=#981 id=981 data-nosnippet>981</a>                cluster_id: <span class="prelude-val">Some</span>(TaglessMemberId::from_raw_id(cluster_id <span class="kw">as </span>u32)),
-<a href=#982 id=982 data-nosnippet>982</a>            });
-<a href=#983 id=983 data-nosnippet>983</a>        }
-<a href=#984 id=984 data-nosnippet>984</a>    }
-<a href=#985 id=985 data-nosnippet>985</a>}
-<a href=#986 id=986 data-nosnippet>986</a>
-<a href=#987 id=987 data-nosnippet>987</a><span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#988 id=988 data-nosnippet>988</a>#[derive(Clone)]
-<a href=#989 id=989 data-nosnippet>989</a></span><span class="kw">pub struct </span>DeployProcessSpec(RustCrate, Arc&lt;<span class="kw">dyn </span>Host&gt;);
-<a href=#990 id=990 data-nosnippet>990</a>
-<a href=#991 id=991 data-nosnippet>991</a><span class="kw">impl </span>DeployProcessSpec {
-<a href=#992 id=992 data-nosnippet>992</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#993 id=993 data-nosnippet>993</a>    </span><span class="kw">pub fn </span>new(t: RustCrate, host: Arc&lt;<span class="kw">dyn </span>Host&gt;) -&gt; <span class="self">Self </span>{
-<a href=#994 id=994 data-nosnippet>994</a>        <span class="self">Self</span>(t, host)
-<a href=#995 id=995 data-nosnippet>995</a>    }
-<a href=#996 id=996 data-nosnippet>996</a>}
-<a href=#997 id=997 data-nosnippet>997</a>
-<a href=#998 id=998 data-nosnippet>998</a><span class="kw">impl </span>ProcessSpec&lt;<span class="lifetime">'_</span>, HydroDeploy&gt; <span class="kw">for </span>DeployProcessSpec {
-<a href=#999 id=999 data-nosnippet>999</a>    <span class="kw">fn </span>build(<span class="self">self</span>, id: usize, _name_hint: <span class="kw-2">&amp;</span>str) -&gt; DeployNode {
-<a href=#1000 id=1000 data-nosnippet>1000</a>        DeployNode {
-<a href=#1001 id=1001 data-nosnippet>1001</a>            id,
-<a href=#1002 id=1002 data-nosnippet>1002</a>            next_port: Rc::new(RefCell::new(<span class="number">0</span>)),
-<a href=#1003 id=1003 data-nosnippet>1003</a>            service_spec: Rc::new(RefCell::new(<span class="prelude-val">Some</span>(CrateOrTrybuild::Crate(<span class="self">self</span>.<span class="number">0</span>, <span class="self">self</span>.<span class="number">1</span>)))),
-<a href=#1004 id=1004 data-nosnippet>1004</a>            underlying: Rc::new(RefCell::new(<span class="prelude-val">None</span>)),
-<a href=#1005 id=1005 data-nosnippet>1005</a>        }
-<a href=#1006 id=1006 data-nosnippet>1006</a>    }
-<a href=#1007 id=1007 data-nosnippet>1007</a>}
-<a href=#1008 id=1008 data-nosnippet>1008</a>
-<a href=#1009 id=1009 data-nosnippet>1009</a><span class="kw">impl </span>ProcessSpec&lt;<span class="lifetime">'_</span>, HydroDeploy&gt; <span class="kw">for </span>TrybuildHost {
-<a href=#1010 id=1010 data-nosnippet>1010</a>    <span class="kw">fn </span>build(<span class="kw-2">mut </span><span class="self">self</span>, id: usize, name_hint: <span class="kw-2">&amp;</span>str) -&gt; DeployNode {
-<a href=#1011 id=1011 data-nosnippet>1011</a>        <span class="self">self</span>.name_hint = <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"{} (process {id})"</span>, name_hint));
-<a href=#1012 id=1012 data-nosnippet>1012</a>        DeployNode {
-<a href=#1013 id=1013 data-nosnippet>1013</a>            id,
-<a href=#1014 id=1014 data-nosnippet>1014</a>            next_port: Rc::new(RefCell::new(<span class="number">0</span>)),
-<a href=#1015 id=1015 data-nosnippet>1015</a>            service_spec: Rc::new(RefCell::new(<span class="prelude-val">Some</span>(CrateOrTrybuild::Trybuild(<span class="self">self</span>)))),
-<a href=#1016 id=1016 data-nosnippet>1016</a>            underlying: Rc::new(RefCell::new(<span class="prelude-val">None</span>)),
-<a href=#1017 id=1017 data-nosnippet>1017</a>        }
-<a href=#1018 id=1018 data-nosnippet>1018</a>    }
-<a href=#1019 id=1019 data-nosnippet>1019</a>}
-<a href=#1020 id=1020 data-nosnippet>1020</a>
-<a href=#1021 id=1021 data-nosnippet>1021</a><span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#1022 id=1022 data-nosnippet>1022</a>#[derive(Clone)]
-<a href=#1023 id=1023 data-nosnippet>1023</a></span><span class="kw">pub struct </span>DeployClusterSpec(Vec&lt;(RustCrate, Arc&lt;<span class="kw">dyn </span>Host&gt;)&gt;);
-<a href=#1024 id=1024 data-nosnippet>1024</a>
-<a href=#1025 id=1025 data-nosnippet>1025</a><span class="kw">impl </span>DeployClusterSpec {
-<a href=#1026 id=1026 data-nosnippet>1026</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
-<a href=#1027 id=1027 data-nosnippet>1027</a>    </span><span class="kw">pub fn </span>new(crates: Vec&lt;(RustCrate, Arc&lt;<span class="kw">dyn </span>Host&gt;)&gt;) -&gt; <span class="self">Self </span>{
-<a href=#1028 id=1028 data-nosnippet>1028</a>        <span class="self">Self</span>(crates)
-<a href=#1029 id=1029 data-nosnippet>1029</a>    }
-<a href=#1030 id=1030 data-nosnippet>1030</a>}
-<a href=#1031 id=1031 data-nosnippet>1031</a>
-<a href=#1032 id=1032 data-nosnippet>1032</a><span class="kw">impl </span>ClusterSpec&lt;<span class="lifetime">'_</span>, HydroDeploy&gt; <span class="kw">for </span>DeployClusterSpec {
-<a href=#1033 id=1033 data-nosnippet>1033</a>    <span class="kw">fn </span>build(<span class="self">self</span>, id: usize, _name_hint: <span class="kw-2">&amp;</span>str) -&gt; DeployCluster {
-<a href=#1034 id=1034 data-nosnippet>1034</a>        DeployCluster {
-<a href=#1035 id=1035 data-nosnippet>1035</a>            id,
-<a href=#1036 id=1036 data-nosnippet>1036</a>            next_port: Rc::new(RefCell::new(<span class="number">0</span>)),
-<a href=#1037 id=1037 data-nosnippet>1037</a>            cluster_spec: Rc::new(RefCell::new(<span class="prelude-val">Some</span>(
-<a href=#1038 id=1038 data-nosnippet>1038</a>                <span class="self">self</span>.<span class="number">0
-<a href=#1039 id=1039 data-nosnippet>1039</a>                    </span>.into_iter()
-<a href=#1040 id=1040 data-nosnippet>1040</a>                    .map(|(c, h)| CrateOrTrybuild::Crate(c, h))
-<a href=#1041 id=1041 data-nosnippet>1041</a>                    .collect(),
-<a href=#1042 id=1042 data-nosnippet>1042</a>            ))),
-<a href=#1043 id=1043 data-nosnippet>1043</a>            members: Rc::new(RefCell::new(<span class="macro">vec!</span>[])),
-<a href=#1044 id=1044 data-nosnippet>1044</a>            name_hint: <span class="prelude-val">None</span>,
-<a href=#1045 id=1045 data-nosnippet>1045</a>        }
-<a href=#1046 id=1046 data-nosnippet>1046</a>    }
-<a href=#1047 id=1047 data-nosnippet>1047</a>}
-<a href=#1048 id=1048 data-nosnippet>1048</a>
-<a href=#1049 id=1049 data-nosnippet>1049</a><span class="kw">impl</span>&lt;T: Into&lt;TrybuildHost&gt;, I: IntoIterator&lt;Item = T&gt;&gt; ClusterSpec&lt;<span class="lifetime">'_</span>, HydroDeploy&gt; <span class="kw">for </span>I {
-<a href=#1050 id=1050 data-nosnippet>1050</a>    <span class="kw">fn </span>build(<span class="self">self</span>, id: usize, name_hint: <span class="kw-2">&amp;</span>str) -&gt; DeployCluster {
-<a href=#1051 id=1051 data-nosnippet>1051</a>        <span class="kw">let </span>name_hint = <span class="macro">format!</span>(<span class="string">"{} (cluster {id})"</span>, name_hint);
-<a href=#1052 id=1052 data-nosnippet>1052</a>        DeployCluster {
-<a href=#1053 id=1053 data-nosnippet>1053</a>            id,
-<a href=#1054 id=1054 data-nosnippet>1054</a>            next_port: Rc::new(RefCell::new(<span class="number">0</span>)),
-<a href=#1055 id=1055 data-nosnippet>1055</a>            cluster_spec: Rc::new(RefCell::new(<span class="prelude-val">Some</span>(
-<a href=#1056 id=1056 data-nosnippet>1056</a>                <span class="self">self</span>.into_iter()
-<a href=#1057 id=1057 data-nosnippet>1057</a>                    .enumerate()
-<a href=#1058 id=1058 data-nosnippet>1058</a>                    .map(|(idx, b)| {
-<a href=#1059 id=1059 data-nosnippet>1059</a>                        <span class="kw">let </span><span class="kw-2">mut </span>b = b.into();
-<a href=#1060 id=1060 data-nosnippet>1060</a>                        b.name_hint = <span class="prelude-val">Some</span>(name_hint.clone());
-<a href=#1061 id=1061 data-nosnippet>1061</a>                        b.cluster_idx = <span class="prelude-val">Some</span>(idx);
-<a href=#1062 id=1062 data-nosnippet>1062</a>                        CrateOrTrybuild::Trybuild(b)
-<a href=#1063 id=1063 data-nosnippet>1063</a>                    })
-<a href=#1064 id=1064 data-nosnippet>1064</a>                    .collect(),
-<a href=#1065 id=1065 data-nosnippet>1065</a>            ))),
-<a href=#1066 id=1066 data-nosnippet>1066</a>            members: Rc::new(RefCell::new(<span class="macro">vec!</span>[])),
-<a href=#1067 id=1067 data-nosnippet>1067</a>            name_hint: <span class="prelude-val">Some</span>(name_hint),
-<a href=#1068 id=1068 data-nosnippet>1068</a>        }
-<a href=#1069 id=1069 data-nosnippet>1069</a>    }
-<a href=#1070 id=1070 data-nosnippet>1070</a>}
-<a href=#1071 id=1071 data-nosnippet>1071</a>
-<a href=#1072 id=1072 data-nosnippet>1072</a><span class="kw">fn </span>create_trybuild_service(
-<a href=#1073 id=1073 data-nosnippet>1073</a>    trybuild: TrybuildHost,
-<a href=#1074 id=1074 data-nosnippet>1074</a>    dir: <span class="kw-2">&amp;</span>std::path::Path,
-<a href=#1075 id=1075 data-nosnippet>1075</a>    target_dir: <span class="kw-2">&amp;</span>std::path::PathBuf,
-<a href=#1076 id=1076 data-nosnippet>1076</a>    features: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
-<a href=#1077 id=1077 data-nosnippet>1077</a>    bin_name: <span class="kw-2">&amp;</span>str,
-<a href=#1078 id=1078 data-nosnippet>1078</a>    linking_mode: <span class="kw-2">&amp;</span>LinkingMode,
-<a href=#1079 id=1079 data-nosnippet>1079</a>) -&gt; RustCrate {
-<a href=#1080 id=1080 data-nosnippet>1080</a>    <span class="comment">// For dynamic linking, use the dylib-examples crate; for static, use the base crate
-<a href=#1081 id=1081 data-nosnippet>1081</a>    </span><span class="kw">let </span>crate_dir = <span class="kw">match </span>linking_mode {
-<a href=#1082 id=1082 data-nosnippet>1082</a>        LinkingMode::Dynamic =&gt; dir.join(<span class="string">"dylib-examples"</span>),
-<a href=#1083 id=1083 data-nosnippet>1083</a>        LinkingMode::Static =&gt; dir.to_path_buf(),
-<a href=#1084 id=1084 data-nosnippet>1084</a>    };
-<a href=#1085 id=1085 data-nosnippet>1085</a>
-<a href=#1086 id=1086 data-nosnippet>1086</a>    <span class="kw">let </span><span class="kw-2">mut </span>ret = RustCrate::new(<span class="kw-2">&amp;</span>crate_dir)
-<a href=#1087 id=1087 data-nosnippet>1087</a>        .target_dir(target_dir)
-<a href=#1088 id=1088 data-nosnippet>1088</a>        .example(bin_name)
-<a href=#1089 id=1089 data-nosnippet>1089</a>        .no_default_features();
-<a href=#1090 id=1090 data-nosnippet>1090</a>
-<a href=#1091 id=1091 data-nosnippet>1091</a>    ret = ret.set_is_dylib(<span class="macro">matches!</span>(linking_mode, LinkingMode::Dynamic));
-<a href=#1092 id=1092 data-nosnippet>1092</a>
-<a href=#1093 id=1093 data-nosnippet>1093</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(display_name) = trybuild.display_name {
-<a href=#1094 id=1094 data-nosnippet>1094</a>        ret = ret.display_name(display_name);
-<a href=#1095 id=1095 data-nosnippet>1095</a>    } <span class="kw">else if let </span><span class="prelude-val">Some</span>(name_hint) = trybuild.name_hint {
-<a href=#1096 id=1096 data-nosnippet>1096</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(cluster_idx) = trybuild.cluster_idx {
-<a href=#1097 id=1097 data-nosnippet>1097</a>            ret = ret.display_name(<span class="macro">format!</span>(<span class="string">"{} / {}"</span>, name_hint, cluster_idx));
-<a href=#1098 id=1098 data-nosnippet>1098</a>        } <span class="kw">else </span>{
-<a href=#1099 id=1099 data-nosnippet>1099</a>            ret = ret.display_name(name_hint);
-<a href=#1100 id=1100 data-nosnippet>1100</a>        }
-<a href=#1101 id=1101 data-nosnippet>1101</a>    }
-<a href=#1102 id=1102 data-nosnippet>1102</a>
-<a href=#1103 id=1103 data-nosnippet>1103</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(rustflags) = trybuild.rustflags {
-<a href=#1104 id=1104 data-nosnippet>1104</a>        ret = ret.rustflags(rustflags);
-<a href=#1105 id=1105 data-nosnippet>1105</a>    }
-<a href=#1106 id=1106 data-nosnippet>1106</a>
-<a href=#1107 id=1107 data-nosnippet>1107</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(profile) = trybuild.profile {
-<a href=#1108 id=1108 data-nosnippet>1108</a>        ret = ret.profile(profile);
-<a href=#1109 id=1109 data-nosnippet>1109</a>    }
-<a href=#1110 id=1110 data-nosnippet>1110</a>
-<a href=#1111 id=1111 data-nosnippet>1111</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(tracing) = trybuild.tracing {
-<a href=#1112 id=1112 data-nosnippet>1112</a>        ret = ret.tracing(tracing);
-<a href=#1113 id=1113 data-nosnippet>1113</a>    }
-<a href=#1114 id=1114 data-nosnippet>1114</a>
-<a href=#1115 id=1115 data-nosnippet>1115</a>    ret = ret.features(
-<a href=#1116 id=1116 data-nosnippet>1116</a>        <span class="macro">vec!</span>[<span class="string">"hydro___feature_deploy_integration"</span>.to_string()]
-<a href=#1117 id=1117 data-nosnippet>1117</a>            .into_iter()
-<a href=#1118 id=1118 data-nosnippet>1118</a>            .chain(
-<a href=#1119 id=1119 data-nosnippet>1119</a>                trybuild
-<a href=#1120 id=1120 data-nosnippet>1120</a>                    .additional_hydro_features
-<a href=#1121 id=1121 data-nosnippet>1121</a>                    .into_iter()
-<a href=#1122 id=1122 data-nosnippet>1122</a>                    .map(|runtime_feature| {
-<a href=#1123 id=1123 data-nosnippet>1123</a>                        <span class="macro">assert!</span>(
-<a href=#1124 id=1124 data-nosnippet>1124</a>                            HYDRO_RUNTIME_FEATURES.iter().any(|f| f == <span class="kw-2">&amp;</span>runtime_feature),
-<a href=#1125 id=1125 data-nosnippet>1125</a>                            <span class="string">"{runtime_feature} is not a valid Hydro runtime feature"
-<a href=#1126 id=1126 data-nosnippet>1126</a>                        </span>);
-<a href=#1127 id=1127 data-nosnippet>1127</a>                        <span class="macro">format!</span>(<span class="string">"hydro___feature_{runtime_feature}"</span>)
-<a href=#1128 id=1128 data-nosnippet>1128</a>                    }),
-<a href=#1129 id=1129 data-nosnippet>1129</a>            )
-<a href=#1130 id=1130 data-nosnippet>1130</a>            .chain(trybuild.features),
-<a href=#1131 id=1131 data-nosnippet>1131</a>    );
-<a href=#1132 id=1132 data-nosnippet>1132</a>
-<a href=#1133 id=1133 data-nosnippet>1133</a>    <span class="kw">for </span>(key, value) <span class="kw">in </span>trybuild.build_envs {
-<a href=#1134 id=1134 data-nosnippet>1134</a>        ret = ret.build_env(key, value);
-<a href=#1135 id=1135 data-nosnippet>1135</a>    }
+<a href=#771 id=771 data-nosnippet>771</a>    next_port: Rc&lt;RefCell&lt;usize&gt;&gt;,
+<a href=#772 id=772 data-nosnippet>772</a>    service_spec: Rc&lt;RefCell&lt;<span class="prelude-ty">Option</span>&lt;CrateOrTrybuild&gt;&gt;&gt;,
+<a href=#773 id=773 data-nosnippet>773</a>    underlying: Rc&lt;RefCell&lt;<span class="prelude-ty">Option</span>&lt;Arc&lt;RustCrateService&gt;&gt;&gt;&gt;,
+<a href=#774 id=774 data-nosnippet>774</a>}
+<a href=#775 id=775 data-nosnippet>775</a>
+<a href=#776 id=776 data-nosnippet>776</a><span class="kw">impl </span>DeployCrateWrapper <span class="kw">for </span>DeployNode {
+<a href=#777 id=777 data-nosnippet>777</a>    <span class="kw">fn </span>underlying(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Arc&lt;RustCrateService&gt; {
+<a href=#778 id=778 data-nosnippet>778</a>        Arc::clone(<span class="self">self</span>.underlying.borrow().as_ref().unwrap())
+<a href=#779 id=779 data-nosnippet>779</a>    }
+<a href=#780 id=780 data-nosnippet>780</a>}
+<a href=#781 id=781 data-nosnippet>781</a>
+<a href=#782 id=782 data-nosnippet>782</a><span class="kw">impl </span>Node <span class="kw">for </span>DeployNode {
+<a href=#783 id=783 data-nosnippet>783</a>    <span class="kw">type </span>Port = String;
+<a href=#784 id=784 data-nosnippet>784</a>    <span class="kw">type </span>Meta = HashMap&lt;usize, Vec&lt;TaglessMemberId&gt;&gt;;
+<a href=#785 id=785 data-nosnippet>785</a>    <span class="kw">type </span>InstantiateEnv = Deployment;
+<a href=#786 id=786 data-nosnippet>786</a>
+<a href=#787 id=787 data-nosnippet>787</a>    <span class="kw">fn </span>next_port(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+<a href=#788 id=788 data-nosnippet>788</a>        <span class="kw">let </span>next_port = <span class="kw-2">*</span><span class="self">self</span>.next_port.borrow();
+<a href=#789 id=789 data-nosnippet>789</a>        <span class="kw-2">*</span><span class="self">self</span>.next_port.borrow_mut() += <span class="number">1</span>;
+<a href=#790 id=790 data-nosnippet>790</a>
+<a href=#791 id=791 data-nosnippet>791</a>        <span class="macro">format!</span>(<span class="string">"port_{}"</span>, next_port)
+<a href=#792 id=792 data-nosnippet>792</a>    }
+<a href=#793 id=793 data-nosnippet>793</a>
+<a href=#794 id=794 data-nosnippet>794</a>    <span class="kw">fn </span>update_meta(<span class="kw-2">&amp;</span><span class="self">self</span>, meta: <span class="kw-2">&amp;</span><span class="self">Self</span>::Meta) {
+<a href=#795 id=795 data-nosnippet>795</a>        <span class="kw">let </span>underlying_node = <span class="self">self</span>.underlying.borrow();
+<a href=#796 id=796 data-nosnippet>796</a>        underlying_node.as_ref().unwrap().update_meta(HydroMeta {
+<a href=#797 id=797 data-nosnippet>797</a>            clusters: meta.clone(),
+<a href=#798 id=798 data-nosnippet>798</a>            cluster_id: <span class="prelude-val">None</span>,
+<a href=#799 id=799 data-nosnippet>799</a>        });
+<a href=#800 id=800 data-nosnippet>800</a>    }
+<a href=#801 id=801 data-nosnippet>801</a>
+<a href=#802 id=802 data-nosnippet>802</a>    <span class="kw">fn </span>instantiate(
+<a href=#803 id=803 data-nosnippet>803</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#804 id=804 data-nosnippet>804</a>        env: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::InstantiateEnv,
+<a href=#805 id=805 data-nosnippet>805</a>        _meta: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Meta,
+<a href=#806 id=806 data-nosnippet>806</a>        graph: DfirGraph,
+<a href=#807 id=807 data-nosnippet>807</a>        extra_stmts: Vec&lt;syn::Stmt&gt;,
+<a href=#808 id=808 data-nosnippet>808</a>    ) {
+<a href=#809 id=809 data-nosnippet>809</a>        <span class="kw">let </span>(service, host) = <span class="kw">match </span><span class="self">self</span>.service_spec.borrow_mut().take().unwrap() {
+<a href=#810 id=810 data-nosnippet>810</a>            CrateOrTrybuild::Crate(c, host) =&gt; (c, host),
+<a href=#811 id=811 data-nosnippet>811</a>            CrateOrTrybuild::Trybuild(trybuild) =&gt; {
+<a href=#812 id=812 data-nosnippet>812</a>                <span class="comment">// Determine linking mode based on host target type
+<a href=#813 id=813 data-nosnippet>813</a>                </span><span class="kw">let </span>linking_mode = <span class="kw">if </span>!<span class="macro">cfg!</span>(target_os = <span class="string">"windows"</span>)
+<a href=#814 id=814 data-nosnippet>814</a>                    &amp;&amp; trybuild.host.target_type() == hydro_deploy::HostTargetType::Local
+<a href=#815 id=815 data-nosnippet>815</a>                {
+<a href=#816 id=816 data-nosnippet>816</a>                    <span class="comment">// When compiling for local, prefer dynamic linking to reduce binary size
+<a href=#817 id=817 data-nosnippet>817</a>                    // Windows is currently not supported due to https://github.com/bevyengine/bevy/pull/2016
+<a href=#818 id=818 data-nosnippet>818</a>                    </span>LinkingMode::Dynamic
+<a href=#819 id=819 data-nosnippet>819</a>                } <span class="kw">else </span>{
+<a href=#820 id=820 data-nosnippet>820</a>                    LinkingMode::Static
+<a href=#821 id=821 data-nosnippet>821</a>                };
+<a href=#822 id=822 data-nosnippet>822</a>                <span class="kw">let </span>(bin_name, config) = create_graph_trybuild(
+<a href=#823 id=823 data-nosnippet>823</a>                    graph,
+<a href=#824 id=824 data-nosnippet>824</a>                    extra_stmts,
+<a href=#825 id=825 data-nosnippet>825</a>                    <span class="kw-2">&amp;</span>trybuild.name_hint,
+<a href=#826 id=826 data-nosnippet>826</a>                    <span class="bool-val">false</span>,
+<a href=#827 id=827 data-nosnippet>827</a>                    linking_mode,
+<a href=#828 id=828 data-nosnippet>828</a>                );
+<a href=#829 id=829 data-nosnippet>829</a>                <span class="kw">let </span>host = trybuild.host.clone();
+<a href=#830 id=830 data-nosnippet>830</a>                (
+<a href=#831 id=831 data-nosnippet>831</a>                    create_trybuild_service(
+<a href=#832 id=832 data-nosnippet>832</a>                        trybuild,
+<a href=#833 id=833 data-nosnippet>833</a>                        <span class="kw-2">&amp;</span>config.project_dir,
+<a href=#834 id=834 data-nosnippet>834</a>                        <span class="kw-2">&amp;</span>config.target_dir,
+<a href=#835 id=835 data-nosnippet>835</a>                        <span class="kw-2">&amp;</span>config.features,
+<a href=#836 id=836 data-nosnippet>836</a>                        <span class="kw-2">&amp;</span>bin_name,
+<a href=#837 id=837 data-nosnippet>837</a>                        <span class="kw-2">&amp;</span>config.linking_mode,
+<a href=#838 id=838 data-nosnippet>838</a>                    ),
+<a href=#839 id=839 data-nosnippet>839</a>                    host,
+<a href=#840 id=840 data-nosnippet>840</a>                )
+<a href=#841 id=841 data-nosnippet>841</a>            }
+<a href=#842 id=842 data-nosnippet>842</a>        };
+<a href=#843 id=843 data-nosnippet>843</a>
+<a href=#844 id=844 data-nosnippet>844</a>        <span class="kw-2">*</span><span class="self">self</span>.underlying.borrow_mut() = <span class="prelude-val">Some</span>(env.add_service(service, host));
+<a href=#845 id=845 data-nosnippet>845</a>    }
+<a href=#846 id=846 data-nosnippet>846</a>}
+<a href=#847 id=847 data-nosnippet>847</a>
+<a href=#848 id=848 data-nosnippet>848</a><span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
+<a href=#849 id=849 data-nosnippet>849</a>#[derive(Clone)]
+<a href=#850 id=850 data-nosnippet>850</a></span><span class="kw">pub struct </span>DeployClusterNode {
+<a href=#851 id=851 data-nosnippet>851</a>    underlying: Arc&lt;RustCrateService&gt;,
+<a href=#852 id=852 data-nosnippet>852</a>}
+<a href=#853 id=853 data-nosnippet>853</a>
+<a href=#854 id=854 data-nosnippet>854</a><span class="kw">impl </span>DeployCrateWrapper <span class="kw">for </span>DeployClusterNode {
+<a href=#855 id=855 data-nosnippet>855</a>    <span class="kw">fn </span>underlying(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Arc&lt;RustCrateService&gt; {
+<a href=#856 id=856 data-nosnippet>856</a>        <span class="self">self</span>.underlying.clone()
+<a href=#857 id=857 data-nosnippet>857</a>    }
+<a href=#858 id=858 data-nosnippet>858</a>}
+<a href=#859 id=859 data-nosnippet>859</a><span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
+<a href=#860 id=860 data-nosnippet>860</a>#[derive(Clone)]
+<a href=#861 id=861 data-nosnippet>861</a></span><span class="kw">pub struct </span>DeployCluster {
+<a href=#862 id=862 data-nosnippet>862</a>    id: usize,
+<a href=#863 id=863 data-nosnippet>863</a>    next_port: Rc&lt;RefCell&lt;usize&gt;&gt;,
+<a href=#864 id=864 data-nosnippet>864</a>    cluster_spec: Rc&lt;RefCell&lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;CrateOrTrybuild&gt;&gt;&gt;&gt;,
+<a href=#865 id=865 data-nosnippet>865</a>    members: Rc&lt;RefCell&lt;Vec&lt;DeployClusterNode&gt;&gt;&gt;,
+<a href=#866 id=866 data-nosnippet>866</a>    name_hint: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#867 id=867 data-nosnippet>867</a>}
+<a href=#868 id=868 data-nosnippet>868</a>
+<a href=#869 id=869 data-nosnippet>869</a><span class="kw">impl </span>DeployCluster {
+<a href=#870 id=870 data-nosnippet>870</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
+<a href=#871 id=871 data-nosnippet>871</a>    </span><span class="kw">pub fn </span>members(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;DeployClusterNode&gt; {
+<a href=#872 id=872 data-nosnippet>872</a>        <span class="self">self</span>.members.borrow().clone()
+<a href=#873 id=873 data-nosnippet>873</a>    }
+<a href=#874 id=874 data-nosnippet>874</a>}
+<a href=#875 id=875 data-nosnippet>875</a>
+<a href=#876 id=876 data-nosnippet>876</a><span class="kw">impl </span>Node <span class="kw">for </span>DeployCluster {
+<a href=#877 id=877 data-nosnippet>877</a>    <span class="kw">type </span>Port = String;
+<a href=#878 id=878 data-nosnippet>878</a>    <span class="kw">type </span>Meta = HashMap&lt;usize, Vec&lt;TaglessMemberId&gt;&gt;;
+<a href=#879 id=879 data-nosnippet>879</a>    <span class="kw">type </span>InstantiateEnv = Deployment;
+<a href=#880 id=880 data-nosnippet>880</a>
+<a href=#881 id=881 data-nosnippet>881</a>    <span class="kw">fn </span>next_port(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+<a href=#882 id=882 data-nosnippet>882</a>        <span class="kw">let </span>next_port = <span class="kw-2">*</span><span class="self">self</span>.next_port.borrow();
+<a href=#883 id=883 data-nosnippet>883</a>        <span class="kw-2">*</span><span class="self">self</span>.next_port.borrow_mut() += <span class="number">1</span>;
+<a href=#884 id=884 data-nosnippet>884</a>
+<a href=#885 id=885 data-nosnippet>885</a>        <span class="macro">format!</span>(<span class="string">"port_{}"</span>, next_port)
+<a href=#886 id=886 data-nosnippet>886</a>    }
+<a href=#887 id=887 data-nosnippet>887</a>
+<a href=#888 id=888 data-nosnippet>888</a>    <span class="kw">fn </span>instantiate(
+<a href=#889 id=889 data-nosnippet>889</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#890 id=890 data-nosnippet>890</a>        env: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::InstantiateEnv,
+<a href=#891 id=891 data-nosnippet>891</a>        meta: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Meta,
+<a href=#892 id=892 data-nosnippet>892</a>        graph: DfirGraph,
+<a href=#893 id=893 data-nosnippet>893</a>        extra_stmts: Vec&lt;syn::Stmt&gt;,
+<a href=#894 id=894 data-nosnippet>894</a>    ) {
+<a href=#895 id=895 data-nosnippet>895</a>        <span class="kw">let </span>has_trybuild = <span class="self">self
+<a href=#896 id=896 data-nosnippet>896</a>            </span>.cluster_spec
+<a href=#897 id=897 data-nosnippet>897</a>            .borrow()
+<a href=#898 id=898 data-nosnippet>898</a>            .as_ref()
+<a href=#899 id=899 data-nosnippet>899</a>            .unwrap()
+<a href=#900 id=900 data-nosnippet>900</a>            .iter()
+<a href=#901 id=901 data-nosnippet>901</a>            .any(|spec| <span class="macro">matches!</span>(spec, CrateOrTrybuild::Trybuild { .. }));
+<a href=#902 id=902 data-nosnippet>902</a>
+<a href=#903 id=903 data-nosnippet>903</a>        <span class="comment">// For clusters, use static linking if ANY host is non-local (conservative approach)
+<a href=#904 id=904 data-nosnippet>904</a>        </span><span class="kw">let </span>linking_mode = <span class="kw">if </span>!<span class="macro">cfg!</span>(target_os = <span class="string">"windows"</span>)
+<a href=#905 id=905 data-nosnippet>905</a>            &amp;&amp; <span class="self">self
+<a href=#906 id=906 data-nosnippet>906</a>                </span>.cluster_spec
+<a href=#907 id=907 data-nosnippet>907</a>                .borrow()
+<a href=#908 id=908 data-nosnippet>908</a>                .as_ref()
+<a href=#909 id=909 data-nosnippet>909</a>                .unwrap()
+<a href=#910 id=910 data-nosnippet>910</a>                .iter()
+<a href=#911 id=911 data-nosnippet>911</a>                .all(|spec| <span class="kw">match </span>spec {
+<a href=#912 id=912 data-nosnippet>912</a>                    CrateOrTrybuild::Crate(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="bool-val">true</span>, <span class="comment">// crates handle their own linking
+<a href=#913 id=913 data-nosnippet>913</a>                    </span>CrateOrTrybuild::Trybuild(t) =&gt; {
+<a href=#914 id=914 data-nosnippet>914</a>                        t.host.target_type() == hydro_deploy::HostTargetType::Local
+<a href=#915 id=915 data-nosnippet>915</a>                    }
+<a href=#916 id=916 data-nosnippet>916</a>                }) {
+<a href=#917 id=917 data-nosnippet>917</a>            <span class="comment">// See comment above for Windows exception
+<a href=#918 id=918 data-nosnippet>918</a>            </span>LinkingMode::Dynamic
+<a href=#919 id=919 data-nosnippet>919</a>        } <span class="kw">else </span>{
+<a href=#920 id=920 data-nosnippet>920</a>            LinkingMode::Static
+<a href=#921 id=921 data-nosnippet>921</a>        };
+<a href=#922 id=922 data-nosnippet>922</a>
+<a href=#923 id=923 data-nosnippet>923</a>        <span class="kw">let </span>maybe_trybuild = <span class="kw">if </span>has_trybuild {
+<a href=#924 id=924 data-nosnippet>924</a>            <span class="prelude-val">Some</span>(create_graph_trybuild(
+<a href=#925 id=925 data-nosnippet>925</a>                graph,
+<a href=#926 id=926 data-nosnippet>926</a>                extra_stmts,
+<a href=#927 id=927 data-nosnippet>927</a>                <span class="kw-2">&amp;</span><span class="self">self</span>.name_hint,
+<a href=#928 id=928 data-nosnippet>928</a>                <span class="bool-val">false</span>,
+<a href=#929 id=929 data-nosnippet>929</a>                linking_mode,
+<a href=#930 id=930 data-nosnippet>930</a>            ))
+<a href=#931 id=931 data-nosnippet>931</a>        } <span class="kw">else </span>{
+<a href=#932 id=932 data-nosnippet>932</a>            <span class="prelude-val">None
+<a href=#933 id=933 data-nosnippet>933</a>        </span>};
+<a href=#934 id=934 data-nosnippet>934</a>
+<a href=#935 id=935 data-nosnippet>935</a>        <span class="kw">let </span>cluster_nodes = <span class="self">self
+<a href=#936 id=936 data-nosnippet>936</a>            </span>.cluster_spec
+<a href=#937 id=937 data-nosnippet>937</a>            .borrow_mut()
+<a href=#938 id=938 data-nosnippet>938</a>            .take()
+<a href=#939 id=939 data-nosnippet>939</a>            .unwrap()
+<a href=#940 id=940 data-nosnippet>940</a>            .into_iter()
+<a href=#941 id=941 data-nosnippet>941</a>            .map(|spec| {
+<a href=#942 id=942 data-nosnippet>942</a>                <span class="kw">let </span>(service, host) = <span class="kw">match </span>spec {
+<a href=#943 id=943 data-nosnippet>943</a>                    CrateOrTrybuild::Crate(c, host) =&gt; (c, host),
+<a href=#944 id=944 data-nosnippet>944</a>                    CrateOrTrybuild::Trybuild(trybuild) =&gt; {
+<a href=#945 id=945 data-nosnippet>945</a>                        <span class="kw">let </span>(bin_name, config) = maybe_trybuild.as_ref().unwrap();
+<a href=#946 id=946 data-nosnippet>946</a>                        <span class="kw">let </span>host = trybuild.host.clone();
+<a href=#947 id=947 data-nosnippet>947</a>                        (
+<a href=#948 id=948 data-nosnippet>948</a>                            create_trybuild_service(
+<a href=#949 id=949 data-nosnippet>949</a>                                trybuild,
+<a href=#950 id=950 data-nosnippet>950</a>                                <span class="kw-2">&amp;</span>config.project_dir,
+<a href=#951 id=951 data-nosnippet>951</a>                                <span class="kw-2">&amp;</span>config.target_dir,
+<a href=#952 id=952 data-nosnippet>952</a>                                <span class="kw-2">&amp;</span>config.features,
+<a href=#953 id=953 data-nosnippet>953</a>                                bin_name,
+<a href=#954 id=954 data-nosnippet>954</a>                                <span class="kw-2">&amp;</span>config.linking_mode,
+<a href=#955 id=955 data-nosnippet>955</a>                            ),
+<a href=#956 id=956 data-nosnippet>956</a>                            host,
+<a href=#957 id=957 data-nosnippet>957</a>                        )
+<a href=#958 id=958 data-nosnippet>958</a>                    }
+<a href=#959 id=959 data-nosnippet>959</a>                };
+<a href=#960 id=960 data-nosnippet>960</a>
+<a href=#961 id=961 data-nosnippet>961</a>                env.add_service(service, host)
+<a href=#962 id=962 data-nosnippet>962</a>            })
+<a href=#963 id=963 data-nosnippet>963</a>            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
+<a href=#964 id=964 data-nosnippet>964</a>        meta.insert(
+<a href=#965 id=965 data-nosnippet>965</a>            <span class="self">self</span>.id,
+<a href=#966 id=966 data-nosnippet>966</a>            (<span class="number">0</span>..(cluster_nodes.len() <span class="kw">as </span>u32))
+<a href=#967 id=967 data-nosnippet>967</a>                .map(TaglessMemberId::from_raw_id)
+<a href=#968 id=968 data-nosnippet>968</a>                .collect(),
+<a href=#969 id=969 data-nosnippet>969</a>        );
+<a href=#970 id=970 data-nosnippet>970</a>        <span class="kw-2">*</span><span class="self">self</span>.members.borrow_mut() = cluster_nodes
+<a href=#971 id=971 data-nosnippet>971</a>            .into_iter()
+<a href=#972 id=972 data-nosnippet>972</a>            .map(|n| DeployClusterNode { underlying: n })
+<a href=#973 id=973 data-nosnippet>973</a>            .collect();
+<a href=#974 id=974 data-nosnippet>974</a>    }
+<a href=#975 id=975 data-nosnippet>975</a>
+<a href=#976 id=976 data-nosnippet>976</a>    <span class="kw">fn </span>update_meta(<span class="kw-2">&amp;</span><span class="self">self</span>, meta: <span class="kw-2">&amp;</span><span class="self">Self</span>::Meta) {
+<a href=#977 id=977 data-nosnippet>977</a>        <span class="kw">for </span>(cluster_id, node) <span class="kw">in </span><span class="self">self</span>.members.borrow().iter().enumerate() {
+<a href=#978 id=978 data-nosnippet>978</a>            node.underlying.update_meta(HydroMeta {
+<a href=#979 id=979 data-nosnippet>979</a>                clusters: meta.clone(),
+<a href=#980 id=980 data-nosnippet>980</a>                cluster_id: <span class="prelude-val">Some</span>(TaglessMemberId::from_raw_id(cluster_id <span class="kw">as </span>u32)),
+<a href=#981 id=981 data-nosnippet>981</a>            });
+<a href=#982 id=982 data-nosnippet>982</a>        }
+<a href=#983 id=983 data-nosnippet>983</a>    }
+<a href=#984 id=984 data-nosnippet>984</a>}
+<a href=#985 id=985 data-nosnippet>985</a>
+<a href=#986 id=986 data-nosnippet>986</a><span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
+<a href=#987 id=987 data-nosnippet>987</a>#[derive(Clone)]
+<a href=#988 id=988 data-nosnippet>988</a></span><span class="kw">pub struct </span>DeployProcessSpec(RustCrate, Arc&lt;<span class="kw">dyn </span>Host&gt;);
+<a href=#989 id=989 data-nosnippet>989</a>
+<a href=#990 id=990 data-nosnippet>990</a><span class="kw">impl </span>DeployProcessSpec {
+<a href=#991 id=991 data-nosnippet>991</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
+<a href=#992 id=992 data-nosnippet>992</a>    </span><span class="kw">pub fn </span>new(t: RustCrate, host: Arc&lt;<span class="kw">dyn </span>Host&gt;) -&gt; <span class="self">Self </span>{
+<a href=#993 id=993 data-nosnippet>993</a>        <span class="self">Self</span>(t, host)
+<a href=#994 id=994 data-nosnippet>994</a>    }
+<a href=#995 id=995 data-nosnippet>995</a>}
+<a href=#996 id=996 data-nosnippet>996</a>
+<a href=#997 id=997 data-nosnippet>997</a><span class="kw">impl </span>ProcessSpec&lt;<span class="lifetime">'_</span>, HydroDeploy&gt; <span class="kw">for </span>DeployProcessSpec {
+<a href=#998 id=998 data-nosnippet>998</a>    <span class="kw">fn </span>build(<span class="self">self</span>, _id: usize, _name_hint: <span class="kw-2">&amp;</span>str) -&gt; DeployNode {
+<a href=#999 id=999 data-nosnippet>999</a>        DeployNode {
+<a href=#1000 id=1000 data-nosnippet>1000</a>            next_port: Rc::new(RefCell::new(<span class="number">0</span>)),
+<a href=#1001 id=1001 data-nosnippet>1001</a>            service_spec: Rc::new(RefCell::new(<span class="prelude-val">Some</span>(CrateOrTrybuild::Crate(<span class="self">self</span>.<span class="number">0</span>, <span class="self">self</span>.<span class="number">1</span>)))),
+<a href=#1002 id=1002 data-nosnippet>1002</a>            underlying: Rc::new(RefCell::new(<span class="prelude-val">None</span>)),
+<a href=#1003 id=1003 data-nosnippet>1003</a>        }
+<a href=#1004 id=1004 data-nosnippet>1004</a>    }
+<a href=#1005 id=1005 data-nosnippet>1005</a>}
+<a href=#1006 id=1006 data-nosnippet>1006</a>
+<a href=#1007 id=1007 data-nosnippet>1007</a><span class="kw">impl </span>ProcessSpec&lt;<span class="lifetime">'_</span>, HydroDeploy&gt; <span class="kw">for </span>TrybuildHost {
+<a href=#1008 id=1008 data-nosnippet>1008</a>    <span class="kw">fn </span>build(<span class="kw-2">mut </span><span class="self">self</span>, id: usize, name_hint: <span class="kw-2">&amp;</span>str) -&gt; DeployNode {
+<a href=#1009 id=1009 data-nosnippet>1009</a>        <span class="self">self</span>.name_hint = <span class="prelude-val">Some</span>(<span class="macro">format!</span>(<span class="string">"{} (process {id})"</span>, name_hint));
+<a href=#1010 id=1010 data-nosnippet>1010</a>        DeployNode {
+<a href=#1011 id=1011 data-nosnippet>1011</a>            next_port: Rc::new(RefCell::new(<span class="number">0</span>)),
+<a href=#1012 id=1012 data-nosnippet>1012</a>            service_spec: Rc::new(RefCell::new(<span class="prelude-val">Some</span>(CrateOrTrybuild::Trybuild(<span class="self">self</span>)))),
+<a href=#1013 id=1013 data-nosnippet>1013</a>            underlying: Rc::new(RefCell::new(<span class="prelude-val">None</span>)),
+<a href=#1014 id=1014 data-nosnippet>1014</a>        }
+<a href=#1015 id=1015 data-nosnippet>1015</a>    }
+<a href=#1016 id=1016 data-nosnippet>1016</a>}
+<a href=#1017 id=1017 data-nosnippet>1017</a>
+<a href=#1018 id=1018 data-nosnippet>1018</a><span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
+<a href=#1019 id=1019 data-nosnippet>1019</a>#[derive(Clone)]
+<a href=#1020 id=1020 data-nosnippet>1020</a></span><span class="kw">pub struct </span>DeployClusterSpec(Vec&lt;(RustCrate, Arc&lt;<span class="kw">dyn </span>Host&gt;)&gt;);
+<a href=#1021 id=1021 data-nosnippet>1021</a>
+<a href=#1022 id=1022 data-nosnippet>1022</a><span class="kw">impl </span>DeployClusterSpec {
+<a href=#1023 id=1023 data-nosnippet>1023</a>    <span class="attr">#[expect(missing_docs, reason = <span class="string">"TODO"</span>)]
+<a href=#1024 id=1024 data-nosnippet>1024</a>    </span><span class="kw">pub fn </span>new(crates: Vec&lt;(RustCrate, Arc&lt;<span class="kw">dyn </span>Host&gt;)&gt;) -&gt; <span class="self">Self </span>{
+<a href=#1025 id=1025 data-nosnippet>1025</a>        <span class="self">Self</span>(crates)
+<a href=#1026 id=1026 data-nosnippet>1026</a>    }
+<a href=#1027 id=1027 data-nosnippet>1027</a>}
+<a href=#1028 id=1028 data-nosnippet>1028</a>
+<a href=#1029 id=1029 data-nosnippet>1029</a><span class="kw">impl </span>ClusterSpec&lt;<span class="lifetime">'_</span>, HydroDeploy&gt; <span class="kw">for </span>DeployClusterSpec {
+<a href=#1030 id=1030 data-nosnippet>1030</a>    <span class="kw">fn </span>build(<span class="self">self</span>, id: usize, _name_hint: <span class="kw-2">&amp;</span>str) -&gt; DeployCluster {
+<a href=#1031 id=1031 data-nosnippet>1031</a>        DeployCluster {
+<a href=#1032 id=1032 data-nosnippet>1032</a>            id,
+<a href=#1033 id=1033 data-nosnippet>1033</a>            next_port: Rc::new(RefCell::new(<span class="number">0</span>)),
+<a href=#1034 id=1034 data-nosnippet>1034</a>            cluster_spec: Rc::new(RefCell::new(<span class="prelude-val">Some</span>(
+<a href=#1035 id=1035 data-nosnippet>1035</a>                <span class="self">self</span>.<span class="number">0
+<a href=#1036 id=1036 data-nosnippet>1036</a>                    </span>.into_iter()
+<a href=#1037 id=1037 data-nosnippet>1037</a>                    .map(|(c, h)| CrateOrTrybuild::Crate(c, h))
+<a href=#1038 id=1038 data-nosnippet>1038</a>                    .collect(),
+<a href=#1039 id=1039 data-nosnippet>1039</a>            ))),
+<a href=#1040 id=1040 data-nosnippet>1040</a>            members: Rc::new(RefCell::new(<span class="macro">vec!</span>[])),
+<a href=#1041 id=1041 data-nosnippet>1041</a>            name_hint: <span class="prelude-val">None</span>,
+<a href=#1042 id=1042 data-nosnippet>1042</a>        }
+<a href=#1043 id=1043 data-nosnippet>1043</a>    }
+<a href=#1044 id=1044 data-nosnippet>1044</a>}
+<a href=#1045 id=1045 data-nosnippet>1045</a>
+<a href=#1046 id=1046 data-nosnippet>1046</a><span class="kw">impl</span>&lt;T: Into&lt;TrybuildHost&gt;, I: IntoIterator&lt;Item = T&gt;&gt; ClusterSpec&lt;<span class="lifetime">'_</span>, HydroDeploy&gt; <span class="kw">for </span>I {
+<a href=#1047 id=1047 data-nosnippet>1047</a>    <span class="kw">fn </span>build(<span class="self">self</span>, id: usize, name_hint: <span class="kw-2">&amp;</span>str) -&gt; DeployCluster {
+<a href=#1048 id=1048 data-nosnippet>1048</a>        <span class="kw">let </span>name_hint = <span class="macro">format!</span>(<span class="string">"{} (cluster {id})"</span>, name_hint);
+<a href=#1049 id=1049 data-nosnippet>1049</a>        DeployCluster {
+<a href=#1050 id=1050 data-nosnippet>1050</a>            id,
+<a href=#1051 id=1051 data-nosnippet>1051</a>            next_port: Rc::new(RefCell::new(<span class="number">0</span>)),
+<a href=#1052 id=1052 data-nosnippet>1052</a>            cluster_spec: Rc::new(RefCell::new(<span class="prelude-val">Some</span>(
+<a href=#1053 id=1053 data-nosnippet>1053</a>                <span class="self">self</span>.into_iter()
+<a href=#1054 id=1054 data-nosnippet>1054</a>                    .enumerate()
+<a href=#1055 id=1055 data-nosnippet>1055</a>                    .map(|(idx, b)| {
+<a href=#1056 id=1056 data-nosnippet>1056</a>                        <span class="kw">let </span><span class="kw-2">mut </span>b = b.into();
+<a href=#1057 id=1057 data-nosnippet>1057</a>                        b.name_hint = <span class="prelude-val">Some</span>(name_hint.clone());
+<a href=#1058 id=1058 data-nosnippet>1058</a>                        b.cluster_idx = <span class="prelude-val">Some</span>(idx);
+<a href=#1059 id=1059 data-nosnippet>1059</a>                        CrateOrTrybuild::Trybuild(b)
+<a href=#1060 id=1060 data-nosnippet>1060</a>                    })
+<a href=#1061 id=1061 data-nosnippet>1061</a>                    .collect(),
+<a href=#1062 id=1062 data-nosnippet>1062</a>            ))),
+<a href=#1063 id=1063 data-nosnippet>1063</a>            members: Rc::new(RefCell::new(<span class="macro">vec!</span>[])),
+<a href=#1064 id=1064 data-nosnippet>1064</a>            name_hint: <span class="prelude-val">Some</span>(name_hint),
+<a href=#1065 id=1065 data-nosnippet>1065</a>        }
+<a href=#1066 id=1066 data-nosnippet>1066</a>    }
+<a href=#1067 id=1067 data-nosnippet>1067</a>}
+<a href=#1068 id=1068 data-nosnippet>1068</a>
+<a href=#1069 id=1069 data-nosnippet>1069</a><span class="kw">fn </span>create_trybuild_service(
+<a href=#1070 id=1070 data-nosnippet>1070</a>    trybuild: TrybuildHost,
+<a href=#1071 id=1071 data-nosnippet>1071</a>    dir: <span class="kw-2">&amp;</span>std::path::Path,
+<a href=#1072 id=1072 data-nosnippet>1072</a>    target_dir: <span class="kw-2">&amp;</span>std::path::PathBuf,
+<a href=#1073 id=1073 data-nosnippet>1073</a>    features: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;Vec&lt;String&gt;&gt;,
+<a href=#1074 id=1074 data-nosnippet>1074</a>    bin_name: <span class="kw-2">&amp;</span>str,
+<a href=#1075 id=1075 data-nosnippet>1075</a>    linking_mode: <span class="kw-2">&amp;</span>LinkingMode,
+<a href=#1076 id=1076 data-nosnippet>1076</a>) -&gt; RustCrate {
+<a href=#1077 id=1077 data-nosnippet>1077</a>    <span class="comment">// For dynamic linking, use the dylib-examples crate; for static, use the base crate
+<a href=#1078 id=1078 data-nosnippet>1078</a>    </span><span class="kw">let </span>crate_dir = <span class="kw">match </span>linking_mode {
+<a href=#1079 id=1079 data-nosnippet>1079</a>        LinkingMode::Dynamic =&gt; dir.join(<span class="string">"dylib-examples"</span>),
+<a href=#1080 id=1080 data-nosnippet>1080</a>        LinkingMode::Static =&gt; dir.to_path_buf(),
+<a href=#1081 id=1081 data-nosnippet>1081</a>    };
+<a href=#1082 id=1082 data-nosnippet>1082</a>
+<a href=#1083 id=1083 data-nosnippet>1083</a>    <span class="kw">let </span><span class="kw-2">mut </span>ret = RustCrate::new(<span class="kw-2">&amp;</span>crate_dir)
+<a href=#1084 id=1084 data-nosnippet>1084</a>        .target_dir(target_dir)
+<a href=#1085 id=1085 data-nosnippet>1085</a>        .example(bin_name)
+<a href=#1086 id=1086 data-nosnippet>1086</a>        .no_default_features();
+<a href=#1087 id=1087 data-nosnippet>1087</a>
+<a href=#1088 id=1088 data-nosnippet>1088</a>    ret = ret.set_is_dylib(<span class="macro">matches!</span>(linking_mode, LinkingMode::Dynamic));
+<a href=#1089 id=1089 data-nosnippet>1089</a>
+<a href=#1090 id=1090 data-nosnippet>1090</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(display_name) = trybuild.display_name {
+<a href=#1091 id=1091 data-nosnippet>1091</a>        ret = ret.display_name(display_name);
+<a href=#1092 id=1092 data-nosnippet>1092</a>    } <span class="kw">else if let </span><span class="prelude-val">Some</span>(name_hint) = trybuild.name_hint {
+<a href=#1093 id=1093 data-nosnippet>1093</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(cluster_idx) = trybuild.cluster_idx {
+<a href=#1094 id=1094 data-nosnippet>1094</a>            ret = ret.display_name(<span class="macro">format!</span>(<span class="string">"{} / {}"</span>, name_hint, cluster_idx));
+<a href=#1095 id=1095 data-nosnippet>1095</a>        } <span class="kw">else </span>{
+<a href=#1096 id=1096 data-nosnippet>1096</a>            ret = ret.display_name(name_hint);
+<a href=#1097 id=1097 data-nosnippet>1097</a>        }
+<a href=#1098 id=1098 data-nosnippet>1098</a>    }
+<a href=#1099 id=1099 data-nosnippet>1099</a>
+<a href=#1100 id=1100 data-nosnippet>1100</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(rustflags) = trybuild.rustflags {
+<a href=#1101 id=1101 data-nosnippet>1101</a>        ret = ret.rustflags(rustflags);
+<a href=#1102 id=1102 data-nosnippet>1102</a>    }
+<a href=#1103 id=1103 data-nosnippet>1103</a>
+<a href=#1104 id=1104 data-nosnippet>1104</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(profile) = trybuild.profile {
+<a href=#1105 id=1105 data-nosnippet>1105</a>        ret = ret.profile(profile);
+<a href=#1106 id=1106 data-nosnippet>1106</a>    }
+<a href=#1107 id=1107 data-nosnippet>1107</a>
+<a href=#1108 id=1108 data-nosnippet>1108</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(tracing) = trybuild.tracing {
+<a href=#1109 id=1109 data-nosnippet>1109</a>        ret = ret.tracing(tracing);
+<a href=#1110 id=1110 data-nosnippet>1110</a>    }
+<a href=#1111 id=1111 data-nosnippet>1111</a>
+<a href=#1112 id=1112 data-nosnippet>1112</a>    ret = ret.features(
+<a href=#1113 id=1113 data-nosnippet>1113</a>        <span class="macro">vec!</span>[<span class="string">"hydro___feature_deploy_integration"</span>.to_string()]
+<a href=#1114 id=1114 data-nosnippet>1114</a>            .into_iter()
+<a href=#1115 id=1115 data-nosnippet>1115</a>            .chain(
+<a href=#1116 id=1116 data-nosnippet>1116</a>                trybuild
+<a href=#1117 id=1117 data-nosnippet>1117</a>                    .additional_hydro_features
+<a href=#1118 id=1118 data-nosnippet>1118</a>                    .into_iter()
+<a href=#1119 id=1119 data-nosnippet>1119</a>                    .map(|runtime_feature| {
+<a href=#1120 id=1120 data-nosnippet>1120</a>                        <span class="macro">assert!</span>(
+<a href=#1121 id=1121 data-nosnippet>1121</a>                            HYDRO_RUNTIME_FEATURES.iter().any(|f| f == <span class="kw-2">&amp;</span>runtime_feature),
+<a href=#1122 id=1122 data-nosnippet>1122</a>                            <span class="string">"{runtime_feature} is not a valid Hydro runtime feature"
+<a href=#1123 id=1123 data-nosnippet>1123</a>                        </span>);
+<a href=#1124 id=1124 data-nosnippet>1124</a>                        <span class="macro">format!</span>(<span class="string">"hydro___feature_{runtime_feature}"</span>)
+<a href=#1125 id=1125 data-nosnippet>1125</a>                    }),
+<a href=#1126 id=1126 data-nosnippet>1126</a>            )
+<a href=#1127 id=1127 data-nosnippet>1127</a>            .chain(trybuild.features),
+<a href=#1128 id=1128 data-nosnippet>1128</a>    );
+<a href=#1129 id=1129 data-nosnippet>1129</a>
+<a href=#1130 id=1130 data-nosnippet>1130</a>    <span class="kw">for </span>(key, value) <span class="kw">in </span>trybuild.build_envs {
+<a href=#1131 id=1131 data-nosnippet>1131</a>        ret = ret.build_env(key, value);
+<a href=#1132 id=1132 data-nosnippet>1132</a>    }
+<a href=#1133 id=1133 data-nosnippet>1133</a>
+<a href=#1134 id=1134 data-nosnippet>1134</a>    ret = ret.build_env(<span class="string">"STAGELEFT_TRYBUILD_BUILD_STAGED"</span>, <span class="string">"1"</span>);
+<a href=#1135 id=1135 data-nosnippet>1135</a>    ret = ret.config(<span class="string">"build.incremental = false"</span>);
 <a href=#1136 id=1136 data-nosnippet>1136</a>
-<a href=#1137 id=1137 data-nosnippet>1137</a>    ret = ret.build_env(<span class="string">"STAGELEFT_TRYBUILD_BUILD_STAGED"</span>, <span class="string">"1"</span>);
-<a href=#1138 id=1138 data-nosnippet>1138</a>    ret = ret.config(<span class="string">"build.incremental = false"</span>);
-<a href=#1139 id=1139 data-nosnippet>1139</a>
-<a href=#1140 id=1140 data-nosnippet>1140</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(features) = features {
-<a href=#1141 id=1141 data-nosnippet>1141</a>        ret = ret.features(features);
-<a href=#1142 id=1142 data-nosnippet>1142</a>    }
-<a href=#1143 id=1143 data-nosnippet>1143</a>
-<a href=#1144 id=1144 data-nosnippet>1144</a>    ret
-<a href=#1145 id=1145 data-nosnippet>1145</a>}
+<a href=#1137 id=1137 data-nosnippet>1137</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(features) = features {
+<a href=#1138 id=1138 data-nosnippet>1138</a>        ret = ret.features(features);
+<a href=#1139 id=1139 data-nosnippet>1139</a>    }
+<a href=#1140 id=1140 data-nosnippet>1140</a>
+<a href=#1141 id=1141 data-nosnippet>1141</a>    ret
+<a href=#1142 id=1142 data-nosnippet>1142</a>}
 </code></pre></div></section></main></body></html>
