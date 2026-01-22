@@ -426,6 +426,36 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         self.entries().map(q!(|(_, v)| v))
     }
 
+    /// Flattens the keyed stream into an unordered stream of just the keys.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 2), (2, 4), (1, 5)]))
+    /// #     .into_keyed()
+    /// #     .keys()
+    /// # }, |mut stream| async move {
+    /// // 1, 2 in any order
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![1, 2]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn keys(self) -> Stream<K, L, B, NoOrder, ExactlyOnce>
+    where
+        K: Eq + Hash,
+    {
+        self.entries().map(q!(|(k, _)| k)).unique()
+    }
+
     /// Transforms each value by invoking `f` on each element, with keys staying the same
     /// after transformation. If you need access to the key, see [`KeyedStream::map_with_key`].
     ///

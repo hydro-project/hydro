@@ -1098,6 +1098,64 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
             },
         )
     }
+
+    /// For each entry in `self`, looks up the entry in the `other` with a matching key.
+    /// The output is a keyed singleton with tuple values, the left one from `self and the right one from `other`.
+    /// Only keys that have a value in both `self` and `other` will be present in the output.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// # let tick = process.tick();
+    /// let requests = // { 1: 10, 2: 20 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 10), (2, 20)]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */))
+    /// #     .first();
+    /// let other = // { 1: 100, 2: 200 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 100), (2, 200)]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */))
+    /// #     .first();
+    /// requests.zip(other)
+    /// # .entries().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // { 1: (10, 100), 2: (20, 200) }
+    /// # let mut results = vec![];
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, (10, 100)), (2, (20, 200))]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn zip<V2: Clone>(
+        self,
+        other: KeyedSingleton<K, V2, Tick<L>, Bounded>,
+    ) -> KeyedSingleton<K, (V, V2), Tick<L>, Bounded> {
+        let result_stream = self.entries().join(other.entries()).into_keyed();
+
+        // The cast is guaranteed to succeed, since each key (in both `self` and `other`) has at most one value.
+        KeyedSingleton::new(
+            result_stream.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(result_stream.ir_node.into_inner()),
+                metadata: result_stream.location.new_node_metadata(KeyedSingleton::<
+                    K,
+                    (V, V2),
+                    Tick<L>,
+                    Bounded,
+                >::collection_kind(
+                )),
+            },
+        )
+    }
 }
 
 impl<'a, K, V, L, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B>
