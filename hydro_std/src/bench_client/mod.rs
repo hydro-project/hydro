@@ -1,10 +1,10 @@
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::{Duration, SystemTime};
 
 use hdrhistogram::Histogram;
 use hdrhistogram::serialization::{Deserializer, Serializer, V2Serializer};
-use hydro_lang::live_collections::stream::{NoOrder, TotalOrder};
+use hydro_lang::live_collections::stream::NoOrder;
 use hydro_lang::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -37,115 +37,109 @@ impl<'a> Deserialize<'a> for SerializableHistogramWrapper {
         })
     }
 }
+
 pub struct BenchResult<'a, Client> {
     pub latency_histogram: Singleton<Rc<RefCell<Histogram<u64>>>, Cluster<'a, Client>, Unbounded>,
     pub throughput: Singleton<RollingAverage, Cluster<'a, Client>, Unbounded>,
 }
 
 /// Benchmarks transactional workloads by concurrently submitting workloads
-/// (up to `num_clients_per_node` per machine), measuring the latency
-/// of each transaction and throughput over the entire workload.
-/// * `workload_generator` - Generates a payload `P` for each virtual client
-/// * `transaction_cycle` - Processes the payloads and returns after processing
+/// (up to `num_clients_per_node` per machine)
+/// * `workload_generator`: Converts previous output (or None, for new virtual clients) into the next input payload
+/// * `protocol`: The protocol to benchmark
 ///
-/// # Non-Determinism
-/// This function uses non-deterministic wall-clock windows for measuring throughput.
-pub fn bench_client<'a, Client, Payload>(
+/// ## Returns
+/// A stream of latencies per completed client request
+pub fn bench_client<'a, Client, Input, Output>(
     clients: &Cluster<'a, Client>,
-    workload_generator: impl FnOnce(
-        &Cluster<'a, Client>,
-        Stream<(u32, Option<Payload>), Cluster<'a, Client>, Unbounded, NoOrder>,
-    )
-        -> Stream<(u32, Payload), Cluster<'a, Client>, Unbounded, NoOrder>,
-    transaction_cycle: impl FnOnce(
-        Stream<(u32, Payload), Cluster<'a, Client>, Unbounded>,
-    )
-        -> Stream<(u32, Payload), Cluster<'a, Client>, Unbounded, NoOrder>,
     num_clients_per_node: usize,
-    nondet_throughput_window: NonDet,
-) -> BenchResult<'a, Client>
+    workload_generator: impl FnOnce(
+        KeyedStream<u32, Option<Output>, Cluster<'a, Client>, Unbounded, NoOrder>,
+    )
+        -> KeyedStream<u32, Input, Cluster<'a, Client>, Unbounded, NoOrder>,
+    protocol: impl FnOnce(
+        KeyedStream<u32, Input, Cluster<'a, Client>, Unbounded, NoOrder>,
+    ) -> KeyedStream<u32, Output, Cluster<'a, Client>, Unbounded, NoOrder>,
+) -> KeyedStream<u32, (Output, Duration), Cluster<'a, Client>, Unbounded, NoOrder>
 where
-    Payload: Clone,
+    Input: Clone,
+    Output: Clone,
 {
-    let (c_to_proposers_complete_cycle, c_to_proposers) =
-        clients.forward_ref::<Stream<_, _, _, TotalOrder>>();
-
-    let (c_latencies, c_throughput_batches, c_new_payloads) = sliced! {
-        let mut next_virtual_client = use::state(|l| Optional::from(l.singleton(q!(0u32))));
-        let mut timers = use::state_null::<KeyedSingleton<u32, Instant, _, _>>();
-
-        let transaction_results = use(transaction_cycle(c_to_proposers).into_keyed(), nondet!(
-            /// because the transaction processor is required to handle arbitrary reordering
-            /// across *different* keys, we are safe because delaying a transaction result for a key
-            /// will only affect when the next request for that key is emitted with respect to other keys
-        ));
+    let dummy = clients.singleton(q!(0));
+    #[expect(unused_variables, reason = "sliced! requires at least 1 use statement")]
+    let new_payload_ids = sliced! {
+        let dummy_batched = use(dummy, nondet!(/** temp */));
+        let mut next_virtual_client = use::state(|l| Optional::from(l.singleton(q!((0u32, None)))));
 
         // Set up virtual clients - spawn new ones each tick until we reach the limit
         let new_virtual_client = next_virtual_client.clone();
         next_virtual_client = new_virtual_client.clone().filter_map(
-            q!(move |virtual_id| {
+            q!(move |(virtual_id, _)| {
                 if virtual_id < num_clients_per_node as u32 {
-                    Some(virtual_id + 1)
+                    Some((virtual_id + 1, None))
                 } else {
                     None
                 }
             }),
         );
 
-        let new_virtual_client_stream = new_virtual_client.into_stream();
-
-        let c_new_payloads_on_start = new_virtual_client_stream
-            .clone()
-            .map(q!(|virtual_id| (virtual_id, None)))
-            .into_keyed();
-
-        let c_received_quorum_payloads = transaction_results
-            .map(q!(|payload| Some(payload)));
-
-        // Track statistics - timers for latency measurement
-        let c_new_timers_when_leader_elected =
-            new_virtual_client_stream.map(q!(|virtual_id| (virtual_id, Instant::now()))).into_keyed();
-        let c_updated_timers = c_received_quorum_payloads
-            .clone()
-            .map(q!(|_payload| Instant::now()));
-
-        let c_latencies = timers
-            .clone()
-            .get_many_if_present(c_updated_timers.clone())
-            .values()
-            .map(q!(
-                |(prev_time, curr_time)| curr_time.duration_since(prev_time)
-            ));
-
-        timers = timers // Update timers in tick+1 so we can record differences during this tick (to track latency)
-            .into_keyed_stream()
-            .chain(c_new_timers_when_leader_elected)
-            .chain(c_updated_timers)
-            .reduce(q!(|curr_time, new_time| {
-                if new_time > *curr_time {
-                    *curr_time = new_time;
-                }
-            }, commutative = ManualProof(/* max is commutative */)));
-
-        // Throughput tracking
-        let c_throughput_new_batch = c_received_quorum_payloads
-            .clone()
-            .values()
-            .count();
-
-        let c_new_payloads = c_new_payloads_on_start.chain(c_received_quorum_payloads);
-
-        (c_latencies, c_throughput_new_batch.into_stream(), c_new_payloads)
+        new_virtual_client.into_stream().into_keyed()
     };
 
-    let c_new_payloads = workload_generator(clients, c_new_payloads.entries());
-    c_to_proposers_complete_cycle.complete(c_new_payloads.assume_ordering::<TotalOrder>(nondet!(
-        /// We don't send a new write for the same key until the previous one is committed,
-        /// so this contains only a single write per key, and we don't care about order
-        /// across keys.
-    )));
+    let (protocol_outputs_complete, protocol_outputs) =
+        clients.forward_ref::<KeyedStream<u32, Output, Cluster<'a, Client>, Unbounded, NoOrder>>();
+    // Use new payload IDS and previous outputs to generate new payloads
+    let protocol_inputs = workload_generator(
+        new_payload_ids.interleave(protocol_outputs.map(q!(|payload| Some(payload)))),
+    );
+    // Feed new payloads to the protocol
+    let protocol_outputs = protocol(protocol_inputs.clone());
+    protocol_outputs_complete.complete(protocol_outputs.clone());
 
-    let c_latencies = c_latencies.fold(
+    // Persist start latency, overwrite on new value. Memory footprint = O(num_clients_per_node)
+    let start_times = protocol_inputs
+        .reduce(q!(
+            |curr, new| {
+                *curr = new;
+            },
+            commutative = ManualProof(/* The value will be thrown away */)
+        ))
+        .map(q!(|_input| SystemTime::now()));
+
+    sliced! {
+        let start_times = use(start_times, nondet!(/** Only one in-flight message per virtual client at any time, and outputs happen-after inputs, so if an output is received the start_times must contain its input time. */));
+        let current_outputs = use(protocol_outputs, nondet!(/** Batching is required to compare output to input time, but does not actually affect the result. */));
+
+        let end_times_and_output = current_outputs
+            .assume_ordering(nondet!(/** Only one in-flight message per virtual client at any time, and they are causally dependent, so this just casts to KeyedSingleton */))
+            .reduce(
+                q!(
+                    |curr, new| {
+                        *curr = new;
+                    },
+                ),
+            )
+            .map(q!(|output| (SystemTime::now(), output)));
+
+        start_times
+            .zip(end_times_and_output)
+            .map(q!(|(start_time, (end_time, output))| (output, end_time.duration_since(start_time).unwrap())))
+            .into_keyed_stream()
+            .weakest_ordering()
+    }
+}
+
+/// Computes the throughput and latency of transactions.
+///
+/// # Non-Determinism
+/// This function uses non-deterministic wall-clock windows for measuring throughput.
+pub fn compute_throughput_latency<'a, Client: 'a>(
+    clients: &Cluster<'a, Client>,
+    latencies: Stream<Duration, Cluster<'a, Client>, Unbounded, NoOrder>,
+    nondet_measurement_window: NonDet,
+) -> BenchResult<'a, Client> {
+    // 1. Calculate latencies
+    let latency_histogram = latencies.clone().fold(
         q!(move || Rc::new(RefCell::new(Histogram::<u64>::new(3).unwrap()))),
         q!(
             move |latencies, latency| {
@@ -160,16 +154,25 @@ where
         ),
     );
 
-    let throughput_with_timers = c_throughput_batches
+    // 2. Calculate throughput
+    let throughput_batch = sliced! {
+        let latencies_batch = use(latencies, nondet_measurement_window);
+        latencies_batch
+            .count()
+            .into_stream()
+    };
+
+    // Tuple of (batch_size, bool), where the bool is true if the existing throughputs should be placed in its own window, and a new window should be created
+    let punctuated_throughput = throughput_batch
         .map(q!(|batch_size| (batch_size, false)))
         .merge_ordered(
             clients
-                .source_interval(q!(Duration::from_secs(1)), nondet_throughput_window)
+                .source_interval(q!(Duration::from_secs(1)), nondet_measurement_window)
                 .map(q!(|_| (0, true))),
-            nondet_throughput_window,
+            nondet_measurement_window,
         );
 
-    let c_throughput = throughput_with_timers
+    let throughput = punctuated_throughput
         .fold(
             q!(|| (0, { RollingAverage::new() })),
             q!(|(total, stats), (batch_size, reset)| {
@@ -187,8 +190,8 @@ where
         .map(q!(|(_, stats)| stats));
 
     BenchResult {
-        latency_histogram: c_latencies,
-        throughput: c_throughput,
+        latency_histogram,
+        throughput,
     }
 }
 
