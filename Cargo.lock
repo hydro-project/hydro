@@ -2206,6 +2206,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_home"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c7f84e12ccf0a7ddc17a6c41c93326024c42920d7ee630d04950e6926645c0fe"
+
+[[package]]
 name = "env_logger"
 version = "0.11.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2808,6 +2814,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tokio-util",
+ "which",
  "wholesym",
 ]
 
@@ -5640,9 +5647,9 @@ checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 
 [[package]]
 name = "stageleft"
-version = "0.11.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57d298ebe7d1c345ace8f9aa75de8e80dc11cf3c7263be203b3e1d3686eee073"
+checksum = "36eaefb60f9f46e22a155170c369356ce23f7f86f66e262247215a9d38a5b20a"
 dependencies = [
  "ctor 0.4.3",
  "proc-macro-crate 3.4.0",
@@ -5654,9 +5661,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_macro"
-version = "0.11.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b75caa0673619e888064be2c6776d5d776333f07fff4d2c13e76570769f92766"
+checksum = "49d0693d2610bb355238fb72ff5ab1ad75523314cca9f5896338f75342715213"
 dependencies = [
  "proc-macro-crate 3.4.0",
  "proc-macro2",
@@ -5667,9 +5674,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_tool"
-version = "0.11.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62dbaa8c42dbec00aa24188b6a8a568021e70b132fa1944f9c7f035510934f5a"
+checksum = "9c0507e668793592e373859d47549ce55b45fff3a475385ea1d9d2f42139a3d3"
 dependencies = [
  "prettyplease",
  "proc-macro-crate 3.4.0",
@@ -6716,6 +6723,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "which"
+version = "8.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3fabb953106c3c8eea8306e4393700d7657561cb43122571b172bbfb7c7ba1d"
+dependencies = [
+ "env_home",
+ "rustix 1.1.2",
+ "winsafe",
+]
+
+[[package]]
 name = "wholesym"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7145,6 +7163,12 @@ checksum = "5a5364e9d77fcdeeaa6062ced926ee3381faa2ee02d3eb83a5c27a8825540829"
 dependencies = [
  "memchr",
 ]
+
+[[package]]
+name = "winsafe"
+version = "0.0.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d135d17ab770252ad95e9a872d365cf3090e3be864a34ab46f48555993efc904"
 
 [[package]]
 name = "wit-bindgen"

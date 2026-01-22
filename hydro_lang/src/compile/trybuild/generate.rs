@@ -118,7 +118,7 @@ pub fn create_graph_trybuild(
                 .map(|s| path!(source_dir / s))
                 .unwrap_or_else(|| path!(source_dir / "src" / "lib.rs")),
             &path!(source_dir / "Cargo.toml"),
-            crate_name.clone(),
+            crate_name,
             Some("hydro___test".to_string()),
         );
 
