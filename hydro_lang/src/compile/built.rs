@@ -341,7 +341,7 @@ impl<'a> BuiltFlow<'a> {
         self.into_deploy().with_remaining_clusters(spec)
     }
 
-    pub fn compile<D: Deploy<'a>>(self) -> CompiledFlow<'a, D::GraphId> {
+    pub fn compile<D: Deploy<'a>>(self) -> CompiledFlow<'a> {
         self.into_deploy::<D>().compile()
     }
 
