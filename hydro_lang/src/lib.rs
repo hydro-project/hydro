@@ -1,5 +1,5 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![warn(missing_docs)]
+#![cfg_attr(not(stageleft_trybuild), warn(missing_docs))]
 
 //! Hydro is a high-level distributed programming framework for Rust.
 //! Hydro can help you quickly write scalable distributed services that are correct by construction.
