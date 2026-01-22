@@ -401,6 +401,7 @@ pub fn create_trybuild()
         project_lock.lock()?;
 
         fs::create_dir_all(path!(project.dir / "src"))?;
+        fs::create_dir_all(path!(project.dir / "examples"))?;
 
         let crate_name_ident = syn::Ident::new(
             &crate_name.replace("-", "_"),
@@ -519,18 +520,26 @@ crate-type = ["cdylib"]
             &path!(dylib_examples_dir / "Cargo.toml"),
         )?;
 
-        // sim-dylib.rs for the dylib-examples crate
+        // sim-dylib.rs for the base crate and dylib-examples crate
+        let sim_dylib_contents = prettyplease::unparse(&syn::parse_quote! {
+            #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+            include!(std::concat!(env!("TRYBUILD_LIB_NAME"), ".rs"));
+        });
         write_atomic(
-            prettyplease::unparse(&syn::parse_quote! {
-                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
-                include!(std::concat!(env!("TRYBUILD_LIB_NAME"), ".rs"));
-            })
-            .as_bytes(),
+            sim_dylib_contents.as_bytes(),
+            &path!(project.dir / "examples" / "sim-dylib.rs"),
+        )?;
+        write_atomic(
+            sim_dylib_contents.as_bytes(),
             &path!(dylib_examples_dir / "examples" / "sim-dylib.rs"),
         )?;
 
         let workspace_manifest = format!(
             r#"{}
+[[example]]
+name = "sim-dylib"
+crate-type = ["cdylib"]
+
 [workspace]
 members = ["dylib", "dylib-examples"]
 "#,

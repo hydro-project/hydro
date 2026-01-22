@@ -362,9 +362,16 @@ impl<'a> Deploy<'a> for SimDeploy {
 
 pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempPath, ()> {
     let mut command = Command::new("cargo");
-    // Run from dylib-examples crate which has the dylib as a dev-dependency
-    let dylib_examples_dir = path!(trybuild.project_dir / "dylib-examples");
-    command.current_dir(&dylib_examples_dir);
+
+    let is_fuzz = std::env::var("BOLERO_FUZZER").is_ok();
+
+    // Run from dylib-examples crate which has the dylib as a dev-dependency (only if not fuzzing)
+    let crate_to_compile = if is_fuzz {
+        trybuild.project_dir.clone()
+    } else {
+        path!(trybuild.project_dir / "dylib-examples")
+    };
+    command.current_dir(&crate_to_compile);
     command.args(["rustc", "--frozen"]);
     command.args(["--example", "sim-dylib"]);
     command.args(["--target-dir", trybuild.target_dir.to_str().unwrap()]);
@@ -379,21 +386,8 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
 
     command.arg("--");
 
-    // For fuzzing, we still need prefer-dynamic because the fuzzer instruments the code
-    // and needs the entire dependency tree compiled with dynamic linking.
-    // For normal sim builds, the dylib crate provides dynamic linking automatically.
-    let is_fuzz = std::env::var("BOLERO_FUZZER").is_ok();
-    if is_fuzz {
-        command.env(
-            "RUSTFLAGS",
-            std::env::var("RUSTFLAGS_OUTER").unwrap_or_default() + " -C prefer-dynamic",
-        );
-    }
-
     if cfg!(target_os = "linux") {
-        let debug_path = if let Ok(target) = std::env::var("CARGO_BUILD_TARGET")
-            && !is_fuzz
-        {
+        let debug_path = if let Ok(target) = std::env::var("CARGO_BUILD_TARGET") {
             path!(trybuild.target_dir / target / "debug")
         } else {
             path!(trybuild.target_dir / "debug")
@@ -414,7 +408,6 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
 
     if let Ok(fuzzer) = std::env::var("BOLERO_FUZZER") {
         command.env_remove("BOLERO_FUZZER");
-        command.env_remove("CARGO_BUILD_TARGET");
 
         if fuzzer == "libfuzzer" {
             #[cfg(target_os = "macos")]
@@ -426,14 +419,6 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
             {
                 command.args(["-Clink-arg=-Wl,--unresolved-symbols=ignore-all"]);
             }
-
-            command.args([
-                "-Cpasses=sancov-module",
-                "-Cllvm-args=-sanitizer-coverage-inline-8bit-counters",
-                "-Cllvm-args=-sanitizer-coverage-level=4",
-                "-Cllvm-args=-sanitizer-coverage-pc-table",
-                "-Cllvm-args=-sanitizer-coverage-trace-compares",
-            ]);
         }
     }
 
@@ -570,8 +555,15 @@ pub(super) fn create_sim_graph_trybuild(
 
     let (project_dir, target_dir, mut cur_bin_enabled_features) = create_trybuild().unwrap();
 
+    let is_fuzz = std::env::var("BOLERO_FUZZER").is_ok();
+
     // Sim builds use dynamic linking, so put examples in dylib-examples crate
-    let examples_dir = path!(project_dir / "dylib-examples" / "examples");
+    // Fuzzing does not, so put them in the main trybuild project dir
+    let examples_dir = if is_fuzz {
+        path!(project_dir / "examples")
+    } else {
+        path!(project_dir / "dylib-examples" / "examples")
+    };
 
     // TODO(shadaj): garbage collect this directory occasionally
     fs::create_dir_all(path!(project_dir / "src")).unwrap();
