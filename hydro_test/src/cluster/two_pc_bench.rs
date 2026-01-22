@@ -1,12 +1,8 @@
-use std::time::{Duration, SystemTime};
-
-use hydro_lang::live_collections::stream::NoOrder;
 use hydro_lang::prelude::*;
-use hydro_std::bench_client::{
-    KeyedProtocol, WorkloadGenerator, bench_client, compute_throughput_latency, print_bench_results,
-};
+use hydro_std::bench_client::{bench_client, compute_throughput_latency, print_bench_results};
 
 use super::two_pc::{Coordinator, Participant};
+use crate::cluster::paxos_bench::inc_i32_workload_generator;
 use crate::cluster::two_pc::two_pc;
 
 pub struct Client;
@@ -23,73 +19,24 @@ pub fn two_pc_bench<'a>(
     let latencies = bench_client(
         clients,
         num_clients_per_node,
-        IncU32WorkloadGenerator {},
-        TwoPCProtocol {
-            coordinator,
-            participants,
-            num_participants,
-            clients,
+        inc_i32_workload_generator,
+        |input| {
+            two_pc(
+                coordinator,
+                participants,
+                num_participants,
+                input.entries().send(coordinator, TCP.bincode()).entries(),
+            )
+            .demux(clients, TCP.bincode())
+            .into_keyed()
         },
-    );
+    )
+    .entries()
+    .map(q!(|(_virtual_client_id, (_output, latency))| latency));
 
     // Create throughput/latency graphs
     let bench_results = compute_throughput_latency(clients, latencies, nondet!(/** bench */));
     print_bench_results(bench_results, client_aggregator, clients);
-}
-
-struct IncU32WorkloadGenerator {}
-impl<'a> WorkloadGenerator<'a, Client, (i32, SystemTime)> for IncU32WorkloadGenerator {
-    fn generate_workload(
-        self,
-        ids_and_prev_payloads: KeyedStream<
-            u32,
-            Option<(i32, SystemTime)>,
-            Cluster<'a, Client>,
-            Unbounded,
-            NoOrder,
-        >,
-    ) -> KeyedStream<u32, (i32, SystemTime), Cluster<'a, Client>, Unbounded, NoOrder> {
-        ids_and_prev_payloads.map(q!(move |payload| {
-            let value = if let Some((counter, _time)) = payload {
-                counter + 1
-            } else {
-                0
-            };
-            // Record current time for latency
-            (value, SystemTime::now())
-        }))
-    }
-}
-
-struct TwoPCProtocol<'a> {
-    coordinator: &'a Process<'a, Coordinator>,
-    participants: &'a Cluster<'a, Participant>,
-    num_participants: usize,
-    clients: &'a Cluster<'a, Client>,
-}
-impl<'a> KeyedProtocol<'a, Client, (i32, SystemTime), Stream<Duration, Cluster<'a, Client>, Unbounded, NoOrder>> for TwoPCProtocol<'a> {
-    fn protocol(
-        self,
-        input: KeyedStream<u32, (i32, SystemTime), Cluster<'a, Client>, Unbounded, NoOrder>,
-    ) -> (
-        KeyedStream<u32, (i32, SystemTime), Cluster<'a, Client>, Unbounded, NoOrder>,
-        Stream<Duration, Cluster<'a, Client>, Unbounded, NoOrder>,
-    ) {
-        let completed_payloads = two_pc(
-            self.coordinator,
-            self.participants,
-            self.num_participants,
-            input.entries().send(self.coordinator, TCP.bincode()).entries(),
-        )
-        .demux(self.clients, TCP.bincode())
-        .into_keyed();
-
-        // Calculate latencies
-        let latencies = completed_payloads.clone().values().map(q!(move |(_counter, time)| {
-            SystemTime::now().duration_since(time).unwrap()
-        }));
-        (completed_payloads, latencies)
-    }
 }
 
 #[cfg(test)]

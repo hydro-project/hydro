@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use hdrhistogram::Histogram;
 use hdrhistogram::serialization::{Deserializer, Serializer, V2Serializer};
@@ -43,44 +43,27 @@ pub struct BenchResult<'a, Client> {
     pub throughput: Singleton<RollingAverage, Cluster<'a, Client>, Unbounded>,
 }
 
-pub trait WorkloadGenerator<'a, Client, Payload: Clone> {
-    fn generate_workload(
-        self,
-        ids_and_prev_payloads: KeyedStream<
-            u32,
-            Option<Payload>,
-            Cluster<'a, Client>,
-            Unbounded,
-            NoOrder,
-        >,
-    ) -> KeyedStream<u32, Payload, Cluster<'a, Client>, Unbounded, NoOrder>;
-}
-
-pub trait KeyedProtocol<'a, Client, Payload: Clone, O> {
-    fn protocol(
-        self,
-        input: KeyedStream<u32, Payload, Cluster<'a, Client>, Unbounded, NoOrder>,
-    ) -> (
-        KeyedStream<u32, Payload, Cluster<'a, Client>, Unbounded, NoOrder>,
-        O,
-    );
-}
-
 /// Benchmarks transactional workloads by concurrently submitting workloads
 /// (up to `num_clients_per_node` per machine)
+/// * `workload_generator`: Converts previous output (or None, for new virtual clients) into the next input payload
+/// * `protocol`: The protocol to benchmark
 ///
 /// ## Returns
-/// A stream of virtual client IDs that are ready to create a payload
-pub fn bench_client<'a, Client, Payload, O, P, W>(
+/// A stream of latencies per completed client request
+pub fn bench_client<'a, Client, Input, Output>(
     clients: &Cluster<'a, Client>,
     num_clients_per_node: usize,
-    workload_generator: W,
-    protocol: P,
-) -> O
+    workload_generator: impl FnOnce(
+        KeyedStream<u32, Option<Output>, Cluster<'a, Client>, Unbounded, NoOrder>,
+    )
+        -> KeyedStream<u32, Input, Cluster<'a, Client>, Unbounded, NoOrder>,
+    protocol: impl FnOnce(
+        KeyedStream<u32, Input, Cluster<'a, Client>, Unbounded, NoOrder>,
+    ) -> KeyedStream<u32, Output, Cluster<'a, Client>, Unbounded, NoOrder>,
+) -> KeyedStream<u32, (Output, Duration), Cluster<'a, Client>, Unbounded, NoOrder>
 where
-    Payload: Clone,
-    P: KeyedProtocol<'a, Client, Payload, O>,
-    W: WorkloadGenerator<'a, Client, Payload>,
+    Input: Clone,
+    Output: Clone,
 {
     let dummy = clients.singleton(q!(0));
     #[expect(unused_variables, reason = "sliced! requires at least 1 use statement")]
@@ -104,15 +87,46 @@ where
     };
 
     let (protocol_outputs_complete, protocol_outputs) =
-        clients.forward_ref::<KeyedStream<u32, Payload, Cluster<'a, Client>, Unbounded, NoOrder>>();
-
-    let protocol_inputs = workload_generator.generate_workload(
+        clients.forward_ref::<KeyedStream<u32, Output, Cluster<'a, Client>, Unbounded, NoOrder>>();
+    // Use new payload IDS and previous outputs to generate new payloads
+    let protocol_inputs = workload_generator(
         new_payload_ids.interleave(protocol_outputs.map(q!(|payload| Some(payload)))),
     );
+    // Feed new payloads to the protocol
+    let protocol_outputs = protocol(protocol_inputs.clone());
+    protocol_outputs_complete.complete(protocol_outputs.clone());
 
-    let (protocol_out, protocol_out_metadata) = protocol.protocol(protocol_inputs);
-    protocol_outputs_complete.complete(protocol_out);
-    protocol_out_metadata
+    // Persist start latency, overwrite on new value. Memory footprint = O(num_clients_per_node)
+    let start_times = protocol_inputs
+        .reduce(q!(
+            |curr, new| {
+                *curr = new;
+            },
+            commutative = ManualProof(/* The value will be thrown away */)
+        ))
+        .map(q!(|_input| SystemTime::now()));
+
+    sliced! {
+        let start_times = use(start_times, nondet!(/** Only one in-flight message per virtual client at any time, and outputs happen-after inputs, so if an output is received the start_times must contain its input time. */));
+        let current_outputs = use(protocol_outputs, nondet!(/** Batching is required to compare output to input time, but does not actually affect the result. */));
+
+        let end_times_and_output = current_outputs
+            .assume_ordering(nondet!(/** Only one in-flight message per virtual client at any time, and they are causally dependent, so this just casts to KeyedSingleton */))
+            .reduce(
+                q!(
+                    |curr, new| {
+                        *curr = new;
+                    },
+                ),
+            )
+            .map(q!(|output| (SystemTime::now(), output)));
+
+        start_times
+            .zip(end_times_and_output)
+            .map(q!(|(start_time, (end_time, output))| (output, end_time.duration_since(start_time).unwrap())))
+            .into_keyed_stream()
+            .weakest_ordering()
+    }
 }
 
 /// Computes the throughput and latency of transactions.

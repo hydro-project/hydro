@@ -1,5 +1,3 @@
-use std::time::SystemTime;
-
 use hydro_lang::live_collections::stream::NoOrder;
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 use hydro_lang::prelude::*;
@@ -23,128 +21,116 @@ pub fn paxos_bench<'a>(
     client_aggregator: &Process<'a, Aggregator>,
     replicas: &Cluster<'a, Replica>,
 ) {
-    // Set up client that auto-generates requests with virtual IDs
-    let (c_received_payloads_complete, c_received_payloads) = clients.forward_ref();
-    let c_new_payload_ids = bench_client(clients, num_clients_per_node, c_received_payloads);
-
-    // Attach payloads to requests
-    let c_payloads = c_new_payload_ids.map(q!(move |payload| {
-        let value = if let Some((counter, _time)) = payload {
-            counter + 1
-        } else {
-            0
-        };
-        // Record client ID so replicas respond to this one, record current time for latency tracking
-        (CLUSTER_SELF_ID.clone(), SystemTime::now(), value)
-    }));
-
-    // Protocol
-    let acceptors = paxos.log_stores().clone();
-    let (acceptor_checkpoint_complete, acceptor_checkpoint) =
-        acceptors.forward_ref::<Optional<_, _, _>>();
-
-    let sequenced_payloads = paxos.with_client(
+    let latencies = bench_client(
         clients,
-        c_payloads
-            .entries()
-            .assume_ordering(nondet!(/** benchmarking, order actually doesn't matter */)),
-        acceptor_checkpoint,
-        // TODO(shadaj): we should retry when a payload is dropped due to stale leader
-        nondet!(/** benchmarking, assuming no re-election */),
-        nondet!(
-            /// clients 'own' certain keys, so interleaving elements from clients will not affect
-            /// the order of writes to the same key
-        ),
-    );
+        num_clients_per_node,
+        inc_i32_workload_generator,
+        |input| {
+            let acceptors = paxos.log_stores().clone();
+            let (acceptor_checkpoint_complete, acceptor_checkpoint) =
+                acceptors.forward_ref::<Optional<_, _, _>>();
 
-    let sequenced_to_replicas = sequenced_payloads
-        .broadcast(replicas, TCP.bincode(), nondet!(/** TODO */))
-        .values()
-        .map(q!(|(index, payload)| (
-            index,
-            payload.map(|(key, value)| KvPayload { key, value })
-        )));
+            let sequenced_payloads = paxos.with_client(
+                clients,
+                input
+                    .entries()
+                    .map(q!(move |(virtual_id, payload)| {
+                        // Append Client ID so replicas know who to contact later
+                        (virtual_id, (CLUSTER_SELF_ID.clone(), payload))
+                    }))
+                    .assume_ordering(nondet!(/** benchmarking, order actually doesn't matter */)),
+                acceptor_checkpoint,
+                // TODO(shadaj): we should retry when a payload is dropped due to stale leader
+                nondet!(/** benchmarking, assuming no re-election */),
+                nondet!(
+                    /// clients 'own' certain keys, so interleaving elements from clients will not affect
+                    /// the order of writes to the same key
+                ),
+            );
 
-    // Replicas
-    let (replica_checkpoint, processed_payloads) =
-        kv_replica(replicas, sequenced_to_replicas, checkpoint_frequency);
+            let sequenced_to_replicas = sequenced_payloads
+                .broadcast(replicas, TCP.bincode(), nondet!(/** TODO */))
+                .values()
+                .map(q!(|(index, payload)| (
+                    index,
+                    payload.map(|(key, value)| KvPayload { key, value })
+                )));
 
-    // Get the latest checkpoint sequence per replica
-    let a_checkpoint = {
-        let a_checkpoint_largest_seqs = replica_checkpoint
-            .broadcast(&acceptors, TCP.bincode(), nondet!(/** TODO */))
-            .reduce(q!(
-                |curr_seq, seq| {
-                    if seq > *curr_seq {
-                        *curr_seq = seq;
-                    }
-                },
-                commutative = ManualProof(/* max is commutative */)
-            ));
+            // Replicas
+            let (replica_checkpoint, processed_payloads) =
+                kv_replica(replicas, sequenced_to_replicas, checkpoint_frequency);
 
-        sliced! {
-            let snapshot = use(a_checkpoint_largest_seqs, nondet!(
-                /// even though we batch the checkpoint messages, because we reduce over the entire history,
-                /// the final min checkpoint is deterministic
-            ));
+            // Get the latest checkpoint sequence per replica
+            let a_checkpoint = {
+                let a_checkpoint_largest_seqs = replica_checkpoint
+                    .broadcast(&acceptors, TCP.bincode(), nondet!(/** TODO */))
+                    .reduce(q!(
+                        |curr_seq, seq| {
+                            if seq > *curr_seq {
+                                *curr_seq = seq;
+                            }
+                        },
+                        commutative = ManualProof(/* max is commutative */)
+                    ));
 
-            let a_checkpoints_quorum_reached = snapshot
-                .clone()
-                .key_count()
-                .filter_map(q!(move |num_received| if num_received == f + 1 {
-                    Some(true)
-                } else {
-                    None
-                }));
+                sliced! {
+                    let snapshot = use(a_checkpoint_largest_seqs, nondet!(
+                        /// even though we batch the checkpoint messages, because we reduce over the entire history,
+                        /// the final min checkpoint is deterministic
+                    ));
 
-            // Find the smallest checkpoint seq that everyone agrees to
-            snapshot
-                .entries()
-                .filter_if_some(a_checkpoints_quorum_reached)
-                .map(q!(|(_sender, seq)| seq))
-                .min()
-        }
-    };
+                    let a_checkpoints_quorum_reached = snapshot
+                        .clone()
+                        .key_count()
+                        .filter_map(q!(move |num_received| if num_received == f + 1 {
+                            Some(true)
+                        } else {
+                            None
+                        }));
 
-    acceptor_checkpoint_complete.complete(a_checkpoint);
+                    // Find the smallest checkpoint seq that everyone agrees to
+                    snapshot
+                        .entries()
+                        .filter_if_some(a_checkpoints_quorum_reached)
+                        .map(q!(|(_sender, seq)| seq))
+                        .min()
+                }
+            };
 
-    let c_received_payloads = processed_payloads
-        .map(q!(|payload| (
-            payload.value.0,
-            ((payload.key, (payload.value.2, payload.value.1)), Ok(()))
-        )))
-        .demux(clients, TCP.bincode())
-        .values();
+            acceptor_checkpoint_complete.complete(a_checkpoint);
 
-    // we only mark a transaction as committed when all replicas have applied it
-    let completed_payloads =
-        collect_quorum::<_, _, _, ()>(c_received_payloads, f + 1, num_replicas)
-            .0
-            .into_keyed();
+            let c_received_payloads = processed_payloads
+                .map(q!(|payload| (
+                    payload.value.0,
+                    ((payload.key, payload.value.1), Ok(()))
+                )))
+                .demux(clients, TCP.bincode())
+                .values();
 
-    // Send committed requests back to the original client
-    c_received_payloads_complete.complete(completed_payloads.clone());
+            // we only mark a transaction as committed when all replicas have applied it
+            collect_quorum::<_, _, _, ()>(c_received_payloads, f + 1, num_replicas)
+                .0
+                .into_keyed()
+        },
+    )
+    .entries()
+    .map(q!(|(_virtual_client_id, (_output, latency))| latency));
 
     // Create throughput/latency graphs
-    let latencies = completed_payloads.values().map(q!(move |(_counter, time)| {
-        SystemTime::now().duration_since(time).unwrap()
-    }));
     let bench_results = compute_throughput_latency(clients, latencies, nondet!(/** bench */));
     print_bench_results(bench_results, client_aggregator, clients);
 }
 
 /// Generates an incrementing u32 for each virtual client ID, starting at 0
-pub fn inc_u32_workload_generator<'a, Client>(
-    _client: &Cluster<'a, Client>,
-    payload_request: Stream<(u32, Option<u32>), Cluster<'a, Client>, Unbounded, NoOrder>,
-) -> Stream<(u32, u32), Cluster<'a, Client>, Unbounded, NoOrder> {
-    payload_request.map(q!(move |(virtual_id, payload)| {
-        let value = if let Some(payload) = payload {
-            payload + 1
+pub fn inc_i32_workload_generator<'a, Client>(
+    ids_and_prev_payloads: KeyedStream<u32, Option<i32>, Cluster<'a, Client>, Unbounded, NoOrder>,
+) -> KeyedStream<u32, i32, Cluster<'a, Client>, Unbounded, NoOrder> {
+    ids_and_prev_payloads.map(q!(move |payload| {
+        if let Some(counter) = payload {
+            counter + 1
         } else {
             0
-        };
-        (virtual_id, value)
+        }
     }))
 }
 
