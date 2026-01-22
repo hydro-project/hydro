@@ -401,270 +401,279 @@
 <a href=#401 id=401 data-nosnippet>401</a>        project_lock.lock()<span class="question-mark">?</span>;
 <a href=#402 id=402 data-nosnippet>402</a>
 <a href=#403 id=403 data-nosnippet>403</a>        fs::create_dir_all(<span class="macro">path!</span>(project.dir / <span class="string">"src"</span>))<span class="question-mark">?</span>;
-<a href=#404 id=404 data-nosnippet>404</a>
-<a href=#405 id=405 data-nosnippet>405</a>        <span class="kw">let </span>crate_name_ident = syn::Ident::new(
-<a href=#406 id=406 data-nosnippet>406</a>            <span class="kw-2">&amp;</span>crate_name.replace(<span class="string">"-"</span>, <span class="string">"_"</span>),
-<a href=#407 id=407 data-nosnippet>407</a>            proc_macro2::Span::call_site(),
-<a href=#408 id=408 data-nosnippet>408</a>        );
-<a href=#409 id=409 data-nosnippet>409</a>
-<a href=#410 id=410 data-nosnippet>410</a>        write_atomic(
-<a href=#411 id=411 data-nosnippet>411</a>            prettyplease::unparse(<span class="kw-2">&amp;</span><span class="macro">syn::parse_quote!</span> {
-<a href=#412 id=412 data-nosnippet>412</a>                <span class="attr">#![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
-<a href=#413 id=413 data-nosnippet>413</a>
-<a href=#414 id=414 data-nosnippet>414</a>                </span><span class="kw">pub use </span>#crate_name_ident <span class="kw">as </span>__root;
-<a href=#415 id=415 data-nosnippet>415</a>
-<a href=#416 id=416 data-nosnippet>416</a>                <span class="attr">#[cfg(feature = <span class="string">"hydro___test"</span>)]
-<a href=#417 id=417 data-nosnippet>417</a>                </span><span class="kw">pub mod </span>__staged;
-<a href=#418 id=418 data-nosnippet>418</a>
-<a href=#419 id=419 data-nosnippet>419</a>                <span class="attr">#[cfg(not(feature = <span class="string">"hydro___test"</span>))]
-<a href=#420 id=420 data-nosnippet>420</a>                </span><span class="kw">pub use </span>#crate_name_ident::__staged;
-<a href=#421 id=421 data-nosnippet>421</a>            })
-<a href=#422 id=422 data-nosnippet>422</a>            .as_bytes(),
-<a href=#423 id=423 data-nosnippet>423</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">"src" </span>/ <span class="string">"lib.rs"</span>),
-<a href=#424 id=424 data-nosnippet>424</a>        )
-<a href=#425 id=425 data-nosnippet>425</a>        .unwrap();
-<a href=#426 id=426 data-nosnippet>426</a>
-<a href=#427 id=427 data-nosnippet>427</a>        <span class="kw">let </span>manifest_toml = toml::to_string(<span class="kw-2">&amp;</span>project.manifest)<span class="question-mark">?</span>;
-<a href=#428 id=428 data-nosnippet>428</a>        <span class="kw">let </span>base_manifest = manifest_toml.clone();
-<a href=#429 id=429 data-nosnippet>429</a>
-<a href=#430 id=430 data-nosnippet>430</a>        <span class="comment">// Collect feature names for forwarding to dylib and dylib-examples crates
-<a href=#431 id=431 data-nosnippet>431</a>        </span><span class="kw">let </span>feature_names: Vec&lt;<span class="kw">_</span>&gt; = project.manifest.features.keys().cloned().collect();
-<a href=#432 id=432 data-nosnippet>432</a>
-<a href=#433 id=433 data-nosnippet>433</a>        <span class="comment">// Create dylib crate directory
-<a href=#434 id=434 data-nosnippet>434</a>        </span><span class="kw">let </span>dylib_dir = <span class="macro">path!</span>(project.dir / <span class="string">"dylib"</span>);
-<a href=#435 id=435 data-nosnippet>435</a>        fs::create_dir_all(<span class="macro">path!</span>(dylib_dir / <span class="string">"src"</span>))<span class="question-mark">?</span>;
-<a href=#436 id=436 data-nosnippet>436</a>
-<a href=#437 id=437 data-nosnippet>437</a>        <span class="kw">let </span>trybuild_crate_name_ident = syn::Ident::new(
-<a href=#438 id=438 data-nosnippet>438</a>            <span class="kw-2">&amp;</span>project_name.replace(<span class="string">"-"</span>, <span class="string">"_"</span>),
-<a href=#439 id=439 data-nosnippet>439</a>            proc_macro2::Span::call_site(),
-<a href=#440 id=440 data-nosnippet>440</a>        );
-<a href=#441 id=441 data-nosnippet>441</a>        write_atomic(
-<a href=#442 id=442 data-nosnippet>442</a>            prettyplease::unparse(<span class="kw-2">&amp;</span><span class="macro">syn::parse_quote!</span> {
-<a href=#443 id=443 data-nosnippet>443</a>                <span class="attr">#![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
-<a href=#444 id=444 data-nosnippet>444</a>                </span><span class="kw">pub use </span>#trybuild_crate_name_ident::<span class="kw-2">*</span>;
-<a href=#445 id=445 data-nosnippet>445</a>            })
-<a href=#446 id=446 data-nosnippet>446</a>            .as_bytes(),
-<a href=#447 id=447 data-nosnippet>447</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(dylib_dir / <span class="string">"src" </span>/ <span class="string">"lib.rs"</span>),
-<a href=#448 id=448 data-nosnippet>448</a>        )<span class="question-mark">?</span>;
-<a href=#449 id=449 data-nosnippet>449</a>
-<a href=#450 id=450 data-nosnippet>450</a>        <span class="kw">let </span>serialized_edition = toml::to_string(
-<a href=#451 id=451 data-nosnippet>451</a>            <span class="kw-2">&amp;</span><span class="macro">vec!</span>[(<span class="string">"edition"</span>, <span class="kw-2">&amp;</span>project.manifest.package.edition)]
-<a href=#452 id=452 data-nosnippet>452</a>                .into_iter()
-<a href=#453 id=453 data-nosnippet>453</a>                .collect::&lt;std::collections::HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;(),
-<a href=#454 id=454 data-nosnippet>454</a>        )
-<a href=#455 id=455 data-nosnippet>455</a>        .unwrap();
-<a href=#456 id=456 data-nosnippet>456</a>
-<a href=#457 id=457 data-nosnippet>457</a>        <span class="comment">// Dylib crate Cargo.toml - only dylib crate-type, no features needed
-<a href=#458 id=458 data-nosnippet>458</a>        // Features are enabled on the base crate directly from dylib-examples
-<a href=#459 id=459 data-nosnippet>459</a>        // On Windows, we currently disable dylib compilation due to https://github.com/bevyengine/bevy/pull/2016
-<a href=#460 id=460 data-nosnippet>460</a>        </span><span class="kw">let </span>dylib_manifest = <span class="macro">format!</span>(
-<a href=#461 id=461 data-nosnippet>461</a>            <span class="string">r#"[package]
-<a href=#462 id=462 data-nosnippet>462</a>name = "{project_name}-dylib"
-<a href=#463 id=463 data-nosnippet>463</a>version = "0.0.0"
-<a href=#464 id=464 data-nosnippet>464</a>{}
-<a href=#465 id=465 data-nosnippet>465</a>
-<a href=#466 id=466 data-nosnippet>466</a>[lib]
-<a href=#467 id=467 data-nosnippet>467</a>crate-type = ["{}"]
-<a href=#468 id=468 data-nosnippet>468</a>
-<a href=#469 id=469 data-nosnippet>469</a>[dependencies]
-<a href=#470 id=470 data-nosnippet>470</a>{project_name} = {{ path = "..", default-features = false }}
-<a href=#471 id=471 data-nosnippet>471</a>"#</span>,
-<a href=#472 id=472 data-nosnippet>472</a>            serialized_edition,
-<a href=#473 id=473 data-nosnippet>473</a>            <span class="kw">if </span><span class="macro">cfg!</span>(target_os = <span class="string">"windows"</span>) {
-<a href=#474 id=474 data-nosnippet>474</a>                <span class="string">"rlib"
-<a href=#475 id=475 data-nosnippet>475</a>            </span>} <span class="kw">else </span>{
-<a href=#476 id=476 data-nosnippet>476</a>                <span class="string">"dylib"
-<a href=#477 id=477 data-nosnippet>477</a>            </span>}
-<a href=#478 id=478 data-nosnippet>478</a>        );
-<a href=#479 id=479 data-nosnippet>479</a>        write_atomic(dylib_manifest.as_ref(), <span class="kw-2">&amp;</span><span class="macro">path!</span>(dylib_dir / <span class="string">"Cargo.toml"</span>))<span class="question-mark">?</span>;
-<a href=#480 id=480 data-nosnippet>480</a>
-<a href=#481 id=481 data-nosnippet>481</a>        <span class="kw">let </span>dylib_examples_dir = <span class="macro">path!</span>(project.dir / <span class="string">"dylib-examples"</span>);
-<a href=#482 id=482 data-nosnippet>482</a>        fs::create_dir_all(<span class="macro">path!</span>(dylib_examples_dir / <span class="string">"src"</span>))<span class="question-mark">?</span>;
-<a href=#483 id=483 data-nosnippet>483</a>        fs::create_dir_all(<span class="macro">path!</span>(dylib_examples_dir / <span class="string">"examples"</span>))<span class="question-mark">?</span>;
-<a href=#484 id=484 data-nosnippet>484</a>
-<a href=#485 id=485 data-nosnippet>485</a>        write_atomic(
-<a href=#486 id=486 data-nosnippet>486</a>            <span class="string">b"#![allow(unused_crate_dependencies)]\n"</span>,
-<a href=#487 id=487 data-nosnippet>487</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(dylib_examples_dir / <span class="string">"src" </span>/ <span class="string">"lib.rs"</span>),
-<a href=#488 id=488 data-nosnippet>488</a>        )<span class="question-mark">?</span>;
-<a href=#489 id=489 data-nosnippet>489</a>
-<a href=#490 id=490 data-nosnippet>490</a>        <span class="comment">// Build feature forwarding for dylib-examples - forward directly to base crate
-<a href=#491 id=491 data-nosnippet>491</a>        </span><span class="kw">let </span>features_section = feature_names
-<a href=#492 id=492 data-nosnippet>492</a>            .iter()
-<a href=#493 id=493 data-nosnippet>493</a>            .map(|f| <span class="macro">format!</span>(<span class="string">"{f} = [\"{project_name}/{f}\"]"</span>))
-<a href=#494 id=494 data-nosnippet>494</a>            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-<a href=#495 id=495 data-nosnippet>495</a>            .join(<span class="string">"\n"</span>);
-<a href=#496 id=496 data-nosnippet>496</a>
-<a href=#497 id=497 data-nosnippet>497</a>        <span class="comment">// Dylib-examples crate Cargo.toml - has dylib as dev-dependency, features go to base crate
-<a href=#498 id=498 data-nosnippet>498</a>        </span><span class="kw">let </span>dylib_examples_manifest = <span class="macro">format!</span>(
-<a href=#499 id=499 data-nosnippet>499</a>            <span class="string">r#"[package]
-<a href=#500 id=500 data-nosnippet>500</a>name = "{project_name}-dylib-examples"
-<a href=#501 id=501 data-nosnippet>501</a>version = "0.0.0"
-<a href=#502 id=502 data-nosnippet>502</a>{}
-<a href=#503 id=503 data-nosnippet>503</a>
-<a href=#504 id=504 data-nosnippet>504</a>[dev-dependencies]
-<a href=#505 id=505 data-nosnippet>505</a>{project_name} = {{ path = "..", default-features = false }}
-<a href=#506 id=506 data-nosnippet>506</a>{project_name}-dylib = {{ path = "../dylib", default-features = false }}
-<a href=#507 id=507 data-nosnippet>507</a>
-<a href=#508 id=508 data-nosnippet>508</a>[features]
-<a href=#509 id=509 data-nosnippet>509</a>{features_section}
-<a href=#510 id=510 data-nosnippet>510</a>
-<a href=#511 id=511 data-nosnippet>511</a>[[example]]
-<a href=#512 id=512 data-nosnippet>512</a>name = "sim-dylib"
-<a href=#513 id=513 data-nosnippet>513</a>crate-type = ["cdylib"]
-<a href=#514 id=514 data-nosnippet>514</a>"#</span>,
-<a href=#515 id=515 data-nosnippet>515</a>            serialized_edition
-<a href=#516 id=516 data-nosnippet>516</a>        );
-<a href=#517 id=517 data-nosnippet>517</a>        write_atomic(
-<a href=#518 id=518 data-nosnippet>518</a>            dylib_examples_manifest.as_ref(),
-<a href=#519 id=519 data-nosnippet>519</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(dylib_examples_dir / <span class="string">"Cargo.toml"</span>),
-<a href=#520 id=520 data-nosnippet>520</a>        )<span class="question-mark">?</span>;
-<a href=#521 id=521 data-nosnippet>521</a>
-<a href=#522 id=522 data-nosnippet>522</a>        <span class="comment">// sim-dylib.rs for the dylib-examples crate
-<a href=#523 id=523 data-nosnippet>523</a>        </span>write_atomic(
-<a href=#524 id=524 data-nosnippet>524</a>            prettyplease::unparse(<span class="kw-2">&amp;</span><span class="macro">syn::parse_quote!</span> {
-<a href=#525 id=525 data-nosnippet>525</a>                <span class="attr">#![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
-<a href=#526 id=526 data-nosnippet>526</a>                </span><span class="macro">include!</span>(<span class="macro">std::concat!</span>(<span class="macro">env!</span>(<span class="string">"TRYBUILD_LIB_NAME"</span>), <span class="string">".rs"</span>));
-<a href=#527 id=527 data-nosnippet>527</a>            })
-<a href=#528 id=528 data-nosnippet>528</a>            .as_bytes(),
-<a href=#529 id=529 data-nosnippet>529</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(dylib_examples_dir / <span class="string">"examples" </span>/ <span class="string">"sim-dylib.rs"</span>),
-<a href=#530 id=530 data-nosnippet>530</a>        )<span class="question-mark">?</span>;
-<a href=#531 id=531 data-nosnippet>531</a>
-<a href=#532 id=532 data-nosnippet>532</a>        <span class="kw">let </span>workspace_manifest = <span class="macro">format!</span>(
-<a href=#533 id=533 data-nosnippet>533</a>            <span class="string">r#"{}
-<a href=#534 id=534 data-nosnippet>534</a>[workspace]
-<a href=#535 id=535 data-nosnippet>535</a>members = ["dylib", "dylib-examples"]
-<a href=#536 id=536 data-nosnippet>536</a>"#</span>,
-<a href=#537 id=537 data-nosnippet>537</a>            base_manifest,
-<a href=#538 id=538 data-nosnippet>538</a>        );
-<a href=#539 id=539 data-nosnippet>539</a>
-<a href=#540 id=540 data-nosnippet>540</a>        write_atomic(
-<a href=#541 id=541 data-nosnippet>541</a>            workspace_manifest.as_ref(),
-<a href=#542 id=542 data-nosnippet>542</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">"Cargo.toml"</span>),
-<a href=#543 id=543 data-nosnippet>543</a>        )<span class="question-mark">?</span>;
-<a href=#544 id=544 data-nosnippet>544</a>
-<a href=#545 id=545 data-nosnippet>545</a>        <span class="comment">// Compute hash for cache invalidation (dylib and dylib-examples are functions of workspace_manifest)
-<a href=#546 id=546 data-nosnippet>546</a>        </span><span class="kw">let </span>manifest_hash = <span class="macro">format!</span>(<span class="string">"{:X}"</span>, Sha256::digest(<span class="kw-2">&amp;</span>workspace_manifest))
-<a href=#547 id=547 data-nosnippet>547</a>            .chars()
-<a href=#548 id=548 data-nosnippet>548</a>            .take(<span class="number">8</span>)
-<a href=#549 id=549 data-nosnippet>549</a>            .collect::&lt;String&gt;();
-<a href=#550 id=550 data-nosnippet>550</a>
-<a href=#551 id=551 data-nosnippet>551</a>        <span class="kw">let </span>workspace_cargo_lock = <span class="macro">path!</span>(project.workspace / <span class="string">"Cargo.lock"</span>);
-<a href=#552 id=552 data-nosnippet>552</a>        <span class="kw">let </span>workspace_cargo_lock_contents_and_hash = <span class="kw">if </span>workspace_cargo_lock.exists() {
-<a href=#553 id=553 data-nosnippet>553</a>            <span class="kw">let </span>cargo_lock_contents = fs::read_to_string(<span class="kw-2">&amp;</span>workspace_cargo_lock)<span class="question-mark">?</span>;
-<a href=#554 id=554 data-nosnippet>554</a>
-<a href=#555 id=555 data-nosnippet>555</a>            <span class="kw">let </span>hash = <span class="macro">format!</span>(<span class="string">"{:X}"</span>, Sha256::digest(<span class="kw-2">&amp;</span>cargo_lock_contents))
-<a href=#556 id=556 data-nosnippet>556</a>                .chars()
-<a href=#557 id=557 data-nosnippet>557</a>                .take(<span class="number">8</span>)
-<a href=#558 id=558 data-nosnippet>558</a>                .collect::&lt;String&gt;();
+<a href=#404 id=404 data-nosnippet>404</a>        fs::create_dir_all(<span class="macro">path!</span>(project.dir / <span class="string">"examples"</span>))<span class="question-mark">?</span>;
+<a href=#405 id=405 data-nosnippet>405</a>
+<a href=#406 id=406 data-nosnippet>406</a>        <span class="kw">let </span>crate_name_ident = syn::Ident::new(
+<a href=#407 id=407 data-nosnippet>407</a>            <span class="kw-2">&amp;</span>crate_name.replace(<span class="string">"-"</span>, <span class="string">"_"</span>),
+<a href=#408 id=408 data-nosnippet>408</a>            proc_macro2::Span::call_site(),
+<a href=#409 id=409 data-nosnippet>409</a>        );
+<a href=#410 id=410 data-nosnippet>410</a>
+<a href=#411 id=411 data-nosnippet>411</a>        write_atomic(
+<a href=#412 id=412 data-nosnippet>412</a>            prettyplease::unparse(<span class="kw-2">&amp;</span><span class="macro">syn::parse_quote!</span> {
+<a href=#413 id=413 data-nosnippet>413</a>                <span class="attr">#![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+<a href=#414 id=414 data-nosnippet>414</a>
+<a href=#415 id=415 data-nosnippet>415</a>                </span><span class="kw">pub use </span>#crate_name_ident <span class="kw">as </span>__root;
+<a href=#416 id=416 data-nosnippet>416</a>
+<a href=#417 id=417 data-nosnippet>417</a>                <span class="attr">#[cfg(feature = <span class="string">"hydro___test"</span>)]
+<a href=#418 id=418 data-nosnippet>418</a>                </span><span class="kw">pub mod </span>__staged;
+<a href=#419 id=419 data-nosnippet>419</a>
+<a href=#420 id=420 data-nosnippet>420</a>                <span class="attr">#[cfg(not(feature = <span class="string">"hydro___test"</span>))]
+<a href=#421 id=421 data-nosnippet>421</a>                </span><span class="kw">pub use </span>#crate_name_ident::__staged;
+<a href=#422 id=422 data-nosnippet>422</a>            })
+<a href=#423 id=423 data-nosnippet>423</a>            .as_bytes(),
+<a href=#424 id=424 data-nosnippet>424</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">"src" </span>/ <span class="string">"lib.rs"</span>),
+<a href=#425 id=425 data-nosnippet>425</a>        )
+<a href=#426 id=426 data-nosnippet>426</a>        .unwrap();
+<a href=#427 id=427 data-nosnippet>427</a>
+<a href=#428 id=428 data-nosnippet>428</a>        <span class="kw">let </span>manifest_toml = toml::to_string(<span class="kw-2">&amp;</span>project.manifest)<span class="question-mark">?</span>;
+<a href=#429 id=429 data-nosnippet>429</a>        <span class="kw">let </span>base_manifest = manifest_toml.clone();
+<a href=#430 id=430 data-nosnippet>430</a>
+<a href=#431 id=431 data-nosnippet>431</a>        <span class="comment">// Collect feature names for forwarding to dylib and dylib-examples crates
+<a href=#432 id=432 data-nosnippet>432</a>        </span><span class="kw">let </span>feature_names: Vec&lt;<span class="kw">_</span>&gt; = project.manifest.features.keys().cloned().collect();
+<a href=#433 id=433 data-nosnippet>433</a>
+<a href=#434 id=434 data-nosnippet>434</a>        <span class="comment">// Create dylib crate directory
+<a href=#435 id=435 data-nosnippet>435</a>        </span><span class="kw">let </span>dylib_dir = <span class="macro">path!</span>(project.dir / <span class="string">"dylib"</span>);
+<a href=#436 id=436 data-nosnippet>436</a>        fs::create_dir_all(<span class="macro">path!</span>(dylib_dir / <span class="string">"src"</span>))<span class="question-mark">?</span>;
+<a href=#437 id=437 data-nosnippet>437</a>
+<a href=#438 id=438 data-nosnippet>438</a>        <span class="kw">let </span>trybuild_crate_name_ident = syn::Ident::new(
+<a href=#439 id=439 data-nosnippet>439</a>            <span class="kw-2">&amp;</span>project_name.replace(<span class="string">"-"</span>, <span class="string">"_"</span>),
+<a href=#440 id=440 data-nosnippet>440</a>            proc_macro2::Span::call_site(),
+<a href=#441 id=441 data-nosnippet>441</a>        );
+<a href=#442 id=442 data-nosnippet>442</a>        write_atomic(
+<a href=#443 id=443 data-nosnippet>443</a>            prettyplease::unparse(<span class="kw-2">&amp;</span><span class="macro">syn::parse_quote!</span> {
+<a href=#444 id=444 data-nosnippet>444</a>                <span class="attr">#![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+<a href=#445 id=445 data-nosnippet>445</a>                </span><span class="kw">pub use </span>#trybuild_crate_name_ident::<span class="kw-2">*</span>;
+<a href=#446 id=446 data-nosnippet>446</a>            })
+<a href=#447 id=447 data-nosnippet>447</a>            .as_bytes(),
+<a href=#448 id=448 data-nosnippet>448</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(dylib_dir / <span class="string">"src" </span>/ <span class="string">"lib.rs"</span>),
+<a href=#449 id=449 data-nosnippet>449</a>        )<span class="question-mark">?</span>;
+<a href=#450 id=450 data-nosnippet>450</a>
+<a href=#451 id=451 data-nosnippet>451</a>        <span class="kw">let </span>serialized_edition = toml::to_string(
+<a href=#452 id=452 data-nosnippet>452</a>            <span class="kw-2">&amp;</span><span class="macro">vec!</span>[(<span class="string">"edition"</span>, <span class="kw-2">&amp;</span>project.manifest.package.edition)]
+<a href=#453 id=453 data-nosnippet>453</a>                .into_iter()
+<a href=#454 id=454 data-nosnippet>454</a>                .collect::&lt;std::collections::HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;(),
+<a href=#455 id=455 data-nosnippet>455</a>        )
+<a href=#456 id=456 data-nosnippet>456</a>        .unwrap();
+<a href=#457 id=457 data-nosnippet>457</a>
+<a href=#458 id=458 data-nosnippet>458</a>        <span class="comment">// Dylib crate Cargo.toml - only dylib crate-type, no features needed
+<a href=#459 id=459 data-nosnippet>459</a>        // Features are enabled on the base crate directly from dylib-examples
+<a href=#460 id=460 data-nosnippet>460</a>        // On Windows, we currently disable dylib compilation due to https://github.com/bevyengine/bevy/pull/2016
+<a href=#461 id=461 data-nosnippet>461</a>        </span><span class="kw">let </span>dylib_manifest = <span class="macro">format!</span>(
+<a href=#462 id=462 data-nosnippet>462</a>            <span class="string">r#"[package]
+<a href=#463 id=463 data-nosnippet>463</a>name = "{project_name}-dylib"
+<a href=#464 id=464 data-nosnippet>464</a>version = "0.0.0"
+<a href=#465 id=465 data-nosnippet>465</a>{}
+<a href=#466 id=466 data-nosnippet>466</a>
+<a href=#467 id=467 data-nosnippet>467</a>[lib]
+<a href=#468 id=468 data-nosnippet>468</a>crate-type = ["{}"]
+<a href=#469 id=469 data-nosnippet>469</a>
+<a href=#470 id=470 data-nosnippet>470</a>[dependencies]
+<a href=#471 id=471 data-nosnippet>471</a>{project_name} = {{ path = "..", default-features = false }}
+<a href=#472 id=472 data-nosnippet>472</a>"#</span>,
+<a href=#473 id=473 data-nosnippet>473</a>            serialized_edition,
+<a href=#474 id=474 data-nosnippet>474</a>            <span class="kw">if </span><span class="macro">cfg!</span>(target_os = <span class="string">"windows"</span>) {
+<a href=#475 id=475 data-nosnippet>475</a>                <span class="string">"rlib"
+<a href=#476 id=476 data-nosnippet>476</a>            </span>} <span class="kw">else </span>{
+<a href=#477 id=477 data-nosnippet>477</a>                <span class="string">"dylib"
+<a href=#478 id=478 data-nosnippet>478</a>            </span>}
+<a href=#479 id=479 data-nosnippet>479</a>        );
+<a href=#480 id=480 data-nosnippet>480</a>        write_atomic(dylib_manifest.as_ref(), <span class="kw-2">&amp;</span><span class="macro">path!</span>(dylib_dir / <span class="string">"Cargo.toml"</span>))<span class="question-mark">?</span>;
+<a href=#481 id=481 data-nosnippet>481</a>
+<a href=#482 id=482 data-nosnippet>482</a>        <span class="kw">let </span>dylib_examples_dir = <span class="macro">path!</span>(project.dir / <span class="string">"dylib-examples"</span>);
+<a href=#483 id=483 data-nosnippet>483</a>        fs::create_dir_all(<span class="macro">path!</span>(dylib_examples_dir / <span class="string">"src"</span>))<span class="question-mark">?</span>;
+<a href=#484 id=484 data-nosnippet>484</a>        fs::create_dir_all(<span class="macro">path!</span>(dylib_examples_dir / <span class="string">"examples"</span>))<span class="question-mark">?</span>;
+<a href=#485 id=485 data-nosnippet>485</a>
+<a href=#486 id=486 data-nosnippet>486</a>        write_atomic(
+<a href=#487 id=487 data-nosnippet>487</a>            <span class="string">b"#![allow(unused_crate_dependencies)]\n"</span>,
+<a href=#488 id=488 data-nosnippet>488</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(dylib_examples_dir / <span class="string">"src" </span>/ <span class="string">"lib.rs"</span>),
+<a href=#489 id=489 data-nosnippet>489</a>        )<span class="question-mark">?</span>;
+<a href=#490 id=490 data-nosnippet>490</a>
+<a href=#491 id=491 data-nosnippet>491</a>        <span class="comment">// Build feature forwarding for dylib-examples - forward directly to base crate
+<a href=#492 id=492 data-nosnippet>492</a>        </span><span class="kw">let </span>features_section = feature_names
+<a href=#493 id=493 data-nosnippet>493</a>            .iter()
+<a href=#494 id=494 data-nosnippet>494</a>            .map(|f| <span class="macro">format!</span>(<span class="string">"{f} = [\"{project_name}/{f}\"]"</span>))
+<a href=#495 id=495 data-nosnippet>495</a>            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+<a href=#496 id=496 data-nosnippet>496</a>            .join(<span class="string">"\n"</span>);
+<a href=#497 id=497 data-nosnippet>497</a>
+<a href=#498 id=498 data-nosnippet>498</a>        <span class="comment">// Dylib-examples crate Cargo.toml - has dylib as dev-dependency, features go to base crate
+<a href=#499 id=499 data-nosnippet>499</a>        </span><span class="kw">let </span>dylib_examples_manifest = <span class="macro">format!</span>(
+<a href=#500 id=500 data-nosnippet>500</a>            <span class="string">r#"[package]
+<a href=#501 id=501 data-nosnippet>501</a>name = "{project_name}-dylib-examples"
+<a href=#502 id=502 data-nosnippet>502</a>version = "0.0.0"
+<a href=#503 id=503 data-nosnippet>503</a>{}
+<a href=#504 id=504 data-nosnippet>504</a>
+<a href=#505 id=505 data-nosnippet>505</a>[dev-dependencies]
+<a href=#506 id=506 data-nosnippet>506</a>{project_name} = {{ path = "..", default-features = false }}
+<a href=#507 id=507 data-nosnippet>507</a>{project_name}-dylib = {{ path = "../dylib", default-features = false }}
+<a href=#508 id=508 data-nosnippet>508</a>
+<a href=#509 id=509 data-nosnippet>509</a>[features]
+<a href=#510 id=510 data-nosnippet>510</a>{features_section}
+<a href=#511 id=511 data-nosnippet>511</a>
+<a href=#512 id=512 data-nosnippet>512</a>[[example]]
+<a href=#513 id=513 data-nosnippet>513</a>name = "sim-dylib"
+<a href=#514 id=514 data-nosnippet>514</a>crate-type = ["cdylib"]
+<a href=#515 id=515 data-nosnippet>515</a>"#</span>,
+<a href=#516 id=516 data-nosnippet>516</a>            serialized_edition
+<a href=#517 id=517 data-nosnippet>517</a>        );
+<a href=#518 id=518 data-nosnippet>518</a>        write_atomic(
+<a href=#519 id=519 data-nosnippet>519</a>            dylib_examples_manifest.as_ref(),
+<a href=#520 id=520 data-nosnippet>520</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(dylib_examples_dir / <span class="string">"Cargo.toml"</span>),
+<a href=#521 id=521 data-nosnippet>521</a>        )<span class="question-mark">?</span>;
+<a href=#522 id=522 data-nosnippet>522</a>
+<a href=#523 id=523 data-nosnippet>523</a>        <span class="comment">// sim-dylib.rs for the base crate and dylib-examples crate
+<a href=#524 id=524 data-nosnippet>524</a>        </span><span class="kw">let </span>sim_dylib_contents = prettyplease::unparse(<span class="kw-2">&amp;</span><span class="macro">syn::parse_quote!</span> {
+<a href=#525 id=525 data-nosnippet>525</a>            <span class="attr">#![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+<a href=#526 id=526 data-nosnippet>526</a>            </span><span class="macro">include!</span>(<span class="macro">std::concat!</span>(<span class="macro">env!</span>(<span class="string">"TRYBUILD_LIB_NAME"</span>), <span class="string">".rs"</span>));
+<a href=#527 id=527 data-nosnippet>527</a>        });
+<a href=#528 id=528 data-nosnippet>528</a>        write_atomic(
+<a href=#529 id=529 data-nosnippet>529</a>            sim_dylib_contents.as_bytes(),
+<a href=#530 id=530 data-nosnippet>530</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">"examples" </span>/ <span class="string">"sim-dylib.rs"</span>),
+<a href=#531 id=531 data-nosnippet>531</a>        )<span class="question-mark">?</span>;
+<a href=#532 id=532 data-nosnippet>532</a>        write_atomic(
+<a href=#533 id=533 data-nosnippet>533</a>            sim_dylib_contents.as_bytes(),
+<a href=#534 id=534 data-nosnippet>534</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(dylib_examples_dir / <span class="string">"examples" </span>/ <span class="string">"sim-dylib.rs"</span>),
+<a href=#535 id=535 data-nosnippet>535</a>        )<span class="question-mark">?</span>;
+<a href=#536 id=536 data-nosnippet>536</a>
+<a href=#537 id=537 data-nosnippet>537</a>        <span class="kw">let </span>workspace_manifest = <span class="macro">format!</span>(
+<a href=#538 id=538 data-nosnippet>538</a>            <span class="string">r#"{}
+<a href=#539 id=539 data-nosnippet>539</a>[[example]]
+<a href=#540 id=540 data-nosnippet>540</a>name = "sim-dylib"
+<a href=#541 id=541 data-nosnippet>541</a>crate-type = ["cdylib"]
+<a href=#542 id=542 data-nosnippet>542</a>
+<a href=#543 id=543 data-nosnippet>543</a>[workspace]
+<a href=#544 id=544 data-nosnippet>544</a>members = ["dylib", "dylib-examples"]
+<a href=#545 id=545 data-nosnippet>545</a>"#</span>,
+<a href=#546 id=546 data-nosnippet>546</a>            base_manifest,
+<a href=#547 id=547 data-nosnippet>547</a>        );
+<a href=#548 id=548 data-nosnippet>548</a>
+<a href=#549 id=549 data-nosnippet>549</a>        write_atomic(
+<a href=#550 id=550 data-nosnippet>550</a>            workspace_manifest.as_ref(),
+<a href=#551 id=551 data-nosnippet>551</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">"Cargo.toml"</span>),
+<a href=#552 id=552 data-nosnippet>552</a>        )<span class="question-mark">?</span>;
+<a href=#553 id=553 data-nosnippet>553</a>
+<a href=#554 id=554 data-nosnippet>554</a>        <span class="comment">// Compute hash for cache invalidation (dylib and dylib-examples are functions of workspace_manifest)
+<a href=#555 id=555 data-nosnippet>555</a>        </span><span class="kw">let </span>manifest_hash = <span class="macro">format!</span>(<span class="string">"{:X}"</span>, Sha256::digest(<span class="kw-2">&amp;</span>workspace_manifest))
+<a href=#556 id=556 data-nosnippet>556</a>            .chars()
+<a href=#557 id=557 data-nosnippet>557</a>            .take(<span class="number">8</span>)
+<a href=#558 id=558 data-nosnippet>558</a>            .collect::&lt;String&gt;();
 <a href=#559 id=559 data-nosnippet>559</a>
-<a href=#560 id=560 data-nosnippet>560</a>            <span class="prelude-val">Some</span>((cargo_lock_contents, hash))
-<a href=#561 id=561 data-nosnippet>561</a>        } <span class="kw">else </span>{
-<a href=#562 id=562 data-nosnippet>562</a>            <span class="prelude-val">None
-<a href=#563 id=563 data-nosnippet>563</a>        </span>};
-<a href=#564 id=564 data-nosnippet>564</a>
-<a href=#565 id=565 data-nosnippet>565</a>        <span class="kw">let </span>trybuild_hash = <span class="macro">format!</span>(
-<a href=#566 id=566 data-nosnippet>566</a>            <span class="string">"{}-{}"</span>,
-<a href=#567 id=567 data-nosnippet>567</a>            manifest_hash,
-<a href=#568 id=568 data-nosnippet>568</a>            workspace_cargo_lock_contents_and_hash
-<a href=#569 id=569 data-nosnippet>569</a>                .as_ref()
-<a href=#570 id=570 data-nosnippet>570</a>                .map(|s| s.<span class="number">1</span>.as_ref())
-<a href=#571 id=571 data-nosnippet>571</a>                .unwrap_or(<span class="string">""</span>)
-<a href=#572 id=572 data-nosnippet>572</a>        );
+<a href=#560 id=560 data-nosnippet>560</a>        <span class="kw">let </span>workspace_cargo_lock = <span class="macro">path!</span>(project.workspace / <span class="string">"Cargo.lock"</span>);
+<a href=#561 id=561 data-nosnippet>561</a>        <span class="kw">let </span>workspace_cargo_lock_contents_and_hash = <span class="kw">if </span>workspace_cargo_lock.exists() {
+<a href=#562 id=562 data-nosnippet>562</a>            <span class="kw">let </span>cargo_lock_contents = fs::read_to_string(<span class="kw-2">&amp;</span>workspace_cargo_lock)<span class="question-mark">?</span>;
+<a href=#563 id=563 data-nosnippet>563</a>
+<a href=#564 id=564 data-nosnippet>564</a>            <span class="kw">let </span>hash = <span class="macro">format!</span>(<span class="string">"{:X}"</span>, Sha256::digest(<span class="kw-2">&amp;</span>cargo_lock_contents))
+<a href=#565 id=565 data-nosnippet>565</a>                .chars()
+<a href=#566 id=566 data-nosnippet>566</a>                .take(<span class="number">8</span>)
+<a href=#567 id=567 data-nosnippet>567</a>                .collect::&lt;String&gt;();
+<a href=#568 id=568 data-nosnippet>568</a>
+<a href=#569 id=569 data-nosnippet>569</a>            <span class="prelude-val">Some</span>((cargo_lock_contents, hash))
+<a href=#570 id=570 data-nosnippet>570</a>        } <span class="kw">else </span>{
+<a href=#571 id=571 data-nosnippet>571</a>            <span class="prelude-val">None
+<a href=#572 id=572 data-nosnippet>572</a>        </span>};
 <a href=#573 id=573 data-nosnippet>573</a>
-<a href=#574 id=574 data-nosnippet>574</a>        <span class="kw">if </span>!check_contents(
-<a href=#575 id=575 data-nosnippet>575</a>            trybuild_hash.as_bytes(),
-<a href=#576 id=576 data-nosnippet>576</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">".hydro-trybuild-manifest"</span>),
-<a href=#577 id=577 data-nosnippet>577</a>        )
-<a href=#578 id=578 data-nosnippet>578</a>        .is_ok_and(|b| b)
-<a href=#579 id=579 data-nosnippet>579</a>        {
-<a href=#580 id=580 data-nosnippet>580</a>            <span class="comment">// this is expensive, so we only do it if the manifest changed
-<a href=#581 id=581 data-nosnippet>581</a>            </span><span class="kw">if let </span><span class="prelude-val">Some</span>((cargo_lock_contents, <span class="kw">_</span>)) = workspace_cargo_lock_contents_and_hash {
-<a href=#582 id=582 data-nosnippet>582</a>                <span class="comment">// only overwrite when the hash changed, because writing Cargo.lock must be
-<a href=#583 id=583 data-nosnippet>583</a>                // immediately followed by a local `cargo update -w`
-<a href=#584 id=584 data-nosnippet>584</a>                </span>write_atomic(
-<a href=#585 id=585 data-nosnippet>585</a>                    cargo_lock_contents.as_ref(),
-<a href=#586 id=586 data-nosnippet>586</a>                    <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">"Cargo.lock"</span>),
-<a href=#587 id=587 data-nosnippet>587</a>                )<span class="question-mark">?</span>;
-<a href=#588 id=588 data-nosnippet>588</a>            } <span class="kw">else </span>{
-<a href=#589 id=589 data-nosnippet>589</a>                <span class="kw">let _ </span>= cargo::cargo(<span class="kw-2">&amp;</span>project).arg(<span class="string">"generate-lockfile"</span>).status();
-<a href=#590 id=590 data-nosnippet>590</a>            }
-<a href=#591 id=591 data-nosnippet>591</a>
-<a href=#592 id=592 data-nosnippet>592</a>            <span class="comment">// not `--offline` because some new runtime features may be enabled
-<a href=#593 id=593 data-nosnippet>593</a>            </span>std::process::Command::new(<span class="string">"cargo"</span>)
-<a href=#594 id=594 data-nosnippet>594</a>                .current_dir(<span class="kw-2">&amp;</span>project.dir)
-<a href=#595 id=595 data-nosnippet>595</a>                .args([<span class="string">"update"</span>, <span class="string">"-w"</span>]) <span class="comment">// -w to not actually update any versions
-<a href=#596 id=596 data-nosnippet>596</a>                </span>.stdout(std::process::Stdio::null())
-<a href=#597 id=597 data-nosnippet>597</a>                .stderr(std::process::Stdio::null())
-<a href=#598 id=598 data-nosnippet>598</a>                .status()
-<a href=#599 id=599 data-nosnippet>599</a>                .unwrap();
+<a href=#574 id=574 data-nosnippet>574</a>        <span class="kw">let </span>trybuild_hash = <span class="macro">format!</span>(
+<a href=#575 id=575 data-nosnippet>575</a>            <span class="string">"{}-{}"</span>,
+<a href=#576 id=576 data-nosnippet>576</a>            manifest_hash,
+<a href=#577 id=577 data-nosnippet>577</a>            workspace_cargo_lock_contents_and_hash
+<a href=#578 id=578 data-nosnippet>578</a>                .as_ref()
+<a href=#579 id=579 data-nosnippet>579</a>                .map(|s| s.<span class="number">1</span>.as_ref())
+<a href=#580 id=580 data-nosnippet>580</a>                .unwrap_or(<span class="string">""</span>)
+<a href=#581 id=581 data-nosnippet>581</a>        );
+<a href=#582 id=582 data-nosnippet>582</a>
+<a href=#583 id=583 data-nosnippet>583</a>        <span class="kw">if </span>!check_contents(
+<a href=#584 id=584 data-nosnippet>584</a>            trybuild_hash.as_bytes(),
+<a href=#585 id=585 data-nosnippet>585</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">".hydro-trybuild-manifest"</span>),
+<a href=#586 id=586 data-nosnippet>586</a>        )
+<a href=#587 id=587 data-nosnippet>587</a>        .is_ok_and(|b| b)
+<a href=#588 id=588 data-nosnippet>588</a>        {
+<a href=#589 id=589 data-nosnippet>589</a>            <span class="comment">// this is expensive, so we only do it if the manifest changed
+<a href=#590 id=590 data-nosnippet>590</a>            </span><span class="kw">if let </span><span class="prelude-val">Some</span>((cargo_lock_contents, <span class="kw">_</span>)) = workspace_cargo_lock_contents_and_hash {
+<a href=#591 id=591 data-nosnippet>591</a>                <span class="comment">// only overwrite when the hash changed, because writing Cargo.lock must be
+<a href=#592 id=592 data-nosnippet>592</a>                // immediately followed by a local `cargo update -w`
+<a href=#593 id=593 data-nosnippet>593</a>                </span>write_atomic(
+<a href=#594 id=594 data-nosnippet>594</a>                    cargo_lock_contents.as_ref(),
+<a href=#595 id=595 data-nosnippet>595</a>                    <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">"Cargo.lock"</span>),
+<a href=#596 id=596 data-nosnippet>596</a>                )<span class="question-mark">?</span>;
+<a href=#597 id=597 data-nosnippet>597</a>            } <span class="kw">else </span>{
+<a href=#598 id=598 data-nosnippet>598</a>                <span class="kw">let _ </span>= cargo::cargo(<span class="kw-2">&amp;</span>project).arg(<span class="string">"generate-lockfile"</span>).status();
+<a href=#599 id=599 data-nosnippet>599</a>            }
 <a href=#600 id=600 data-nosnippet>600</a>
-<a href=#601 id=601 data-nosnippet>601</a>            write_atomic(
-<a href=#602 id=602 data-nosnippet>602</a>                trybuild_hash.as_bytes(),
-<a href=#603 id=603 data-nosnippet>603</a>                <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">".hydro-trybuild-manifest"</span>),
-<a href=#604 id=604 data-nosnippet>604</a>            )<span class="question-mark">?</span>;
-<a href=#605 id=605 data-nosnippet>605</a>        }
-<a href=#606 id=606 data-nosnippet>606</a>
-<a href=#607 id=607 data-nosnippet>607</a>        <span class="comment">// Create examples folder for base crate (static linking)
-<a href=#608 id=608 data-nosnippet>608</a>        </span><span class="kw">let </span>examples_folder = <span class="macro">path!</span>(project.dir / <span class="string">"examples"</span>);
-<a href=#609 id=609 data-nosnippet>609</a>        fs::create_dir_all(<span class="kw-2">&amp;</span>examples_folder)<span class="question-mark">?</span>;
-<a href=#610 id=610 data-nosnippet>610</a>
-<a href=#611 id=611 data-nosnippet>611</a>        <span class="kw">let </span>workspace_dot_cargo_config_toml = <span class="macro">path!</span>(project.workspace / <span class="string">".cargo" </span>/ <span class="string">"config.toml"</span>);
-<a href=#612 id=612 data-nosnippet>612</a>        <span class="kw">if </span>workspace_dot_cargo_config_toml.exists() {
-<a href=#613 id=613 data-nosnippet>613</a>            <span class="kw">let </span>dot_cargo_folder = <span class="macro">path!</span>(project.dir / <span class="string">".cargo"</span>);
-<a href=#614 id=614 data-nosnippet>614</a>            fs::create_dir_all(<span class="kw-2">&amp;</span>dot_cargo_folder)<span class="question-mark">?</span>;
+<a href=#601 id=601 data-nosnippet>601</a>            <span class="comment">// not `--offline` because some new runtime features may be enabled
+<a href=#602 id=602 data-nosnippet>602</a>            </span>std::process::Command::new(<span class="string">"cargo"</span>)
+<a href=#603 id=603 data-nosnippet>603</a>                .current_dir(<span class="kw-2">&amp;</span>project.dir)
+<a href=#604 id=604 data-nosnippet>604</a>                .args([<span class="string">"update"</span>, <span class="string">"-w"</span>]) <span class="comment">// -w to not actually update any versions
+<a href=#605 id=605 data-nosnippet>605</a>                </span>.stdout(std::process::Stdio::null())
+<a href=#606 id=606 data-nosnippet>606</a>                .stderr(std::process::Stdio::null())
+<a href=#607 id=607 data-nosnippet>607</a>                .status()
+<a href=#608 id=608 data-nosnippet>608</a>                .unwrap();
+<a href=#609 id=609 data-nosnippet>609</a>
+<a href=#610 id=610 data-nosnippet>610</a>            write_atomic(
+<a href=#611 id=611 data-nosnippet>611</a>                trybuild_hash.as_bytes(),
+<a href=#612 id=612 data-nosnippet>612</a>                <span class="kw-2">&amp;</span><span class="macro">path!</span>(project.dir / <span class="string">".hydro-trybuild-manifest"</span>),
+<a href=#613 id=613 data-nosnippet>613</a>            )<span class="question-mark">?</span>;
+<a href=#614 id=614 data-nosnippet>614</a>        }
 <a href=#615 id=615 data-nosnippet>615</a>
-<a href=#616 id=616 data-nosnippet>616</a>            write_atomic(
-<a href=#617 id=617 data-nosnippet>617</a>                fs::read_to_string(<span class="kw-2">&amp;</span>workspace_dot_cargo_config_toml)<span class="question-mark">?</span>.as_ref(),
-<a href=#618 id=618 data-nosnippet>618</a>                <span class="kw-2">&amp;</span><span class="macro">path!</span>(dot_cargo_folder / <span class="string">"config.toml"</span>),
-<a href=#619 id=619 data-nosnippet>619</a>            )<span class="question-mark">?</span>;
-<a href=#620 id=620 data-nosnippet>620</a>        }
-<a href=#621 id=621 data-nosnippet>621</a>
-<a href=#622 id=622 data-nosnippet>622</a>        <span class="kw">let </span>vscode_folder = <span class="macro">path!</span>(project.dir / <span class="string">".vscode"</span>);
-<a href=#623 id=623 data-nosnippet>623</a>        fs::create_dir_all(<span class="kw-2">&amp;</span>vscode_folder)<span class="question-mark">?</span>;
-<a href=#624 id=624 data-nosnippet>624</a>        write_atomic(
-<a href=#625 id=625 data-nosnippet>625</a>            <span class="macro">include_bytes!</span>(<span class="string">"./vscode-trybuild.json"</span>),
-<a href=#626 id=626 data-nosnippet>626</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(vscode_folder / <span class="string">"settings.json"</span>),
-<a href=#627 id=627 data-nosnippet>627</a>        )<span class="question-mark">?</span>;
-<a href=#628 id=628 data-nosnippet>628</a>    }
-<a href=#629 id=629 data-nosnippet>629</a>
-<a href=#630 id=630 data-nosnippet>630</a>    <span class="prelude-val">Ok</span>((
-<a href=#631 id=631 data-nosnippet>631</a>        project.dir.as_ref().into(),
-<a href=#632 id=632 data-nosnippet>632</a>        project.target_dir.as_ref().into(),
-<a href=#633 id=633 data-nosnippet>633</a>        project.features,
-<a href=#634 id=634 data-nosnippet>634</a>    ))
-<a href=#635 id=635 data-nosnippet>635</a>}
-<a href=#636 id=636 data-nosnippet>636</a>
-<a href=#637 id=637 data-nosnippet>637</a><span class="kw">fn </span>check_contents(contents: <span class="kw-2">&amp;</span>[u8], path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;bool, std::io::Error&gt; {
-<a href=#638 id=638 data-nosnippet>638</a>    <span class="kw">let </span><span class="kw-2">mut </span>file = File::options()
-<a href=#639 id=639 data-nosnippet>639</a>        .read(<span class="bool-val">true</span>)
-<a href=#640 id=640 data-nosnippet>640</a>        .write(<span class="bool-val">false</span>)
-<a href=#641 id=641 data-nosnippet>641</a>        .create(<span class="bool-val">false</span>)
-<a href=#642 id=642 data-nosnippet>642</a>        .truncate(<span class="bool-val">false</span>)
-<a href=#643 id=643 data-nosnippet>643</a>        .open(path)<span class="question-mark">?</span>;
-<a href=#644 id=644 data-nosnippet>644</a>    file.lock()<span class="question-mark">?</span>;
+<a href=#616 id=616 data-nosnippet>616</a>        <span class="comment">// Create examples folder for base crate (static linking)
+<a href=#617 id=617 data-nosnippet>617</a>        </span><span class="kw">let </span>examples_folder = <span class="macro">path!</span>(project.dir / <span class="string">"examples"</span>);
+<a href=#618 id=618 data-nosnippet>618</a>        fs::create_dir_all(<span class="kw-2">&amp;</span>examples_folder)<span class="question-mark">?</span>;
+<a href=#619 id=619 data-nosnippet>619</a>
+<a href=#620 id=620 data-nosnippet>620</a>        <span class="kw">let </span>workspace_dot_cargo_config_toml = <span class="macro">path!</span>(project.workspace / <span class="string">".cargo" </span>/ <span class="string">"config.toml"</span>);
+<a href=#621 id=621 data-nosnippet>621</a>        <span class="kw">if </span>workspace_dot_cargo_config_toml.exists() {
+<a href=#622 id=622 data-nosnippet>622</a>            <span class="kw">let </span>dot_cargo_folder = <span class="macro">path!</span>(project.dir / <span class="string">".cargo"</span>);
+<a href=#623 id=623 data-nosnippet>623</a>            fs::create_dir_all(<span class="kw-2">&amp;</span>dot_cargo_folder)<span class="question-mark">?</span>;
+<a href=#624 id=624 data-nosnippet>624</a>
+<a href=#625 id=625 data-nosnippet>625</a>            write_atomic(
+<a href=#626 id=626 data-nosnippet>626</a>                fs::read_to_string(<span class="kw-2">&amp;</span>workspace_dot_cargo_config_toml)<span class="question-mark">?</span>.as_ref(),
+<a href=#627 id=627 data-nosnippet>627</a>                <span class="kw-2">&amp;</span><span class="macro">path!</span>(dot_cargo_folder / <span class="string">"config.toml"</span>),
+<a href=#628 id=628 data-nosnippet>628</a>            )<span class="question-mark">?</span>;
+<a href=#629 id=629 data-nosnippet>629</a>        }
+<a href=#630 id=630 data-nosnippet>630</a>
+<a href=#631 id=631 data-nosnippet>631</a>        <span class="kw">let </span>vscode_folder = <span class="macro">path!</span>(project.dir / <span class="string">".vscode"</span>);
+<a href=#632 id=632 data-nosnippet>632</a>        fs::create_dir_all(<span class="kw-2">&amp;</span>vscode_folder)<span class="question-mark">?</span>;
+<a href=#633 id=633 data-nosnippet>633</a>        write_atomic(
+<a href=#634 id=634 data-nosnippet>634</a>            <span class="macro">include_bytes!</span>(<span class="string">"./vscode-trybuild.json"</span>),
+<a href=#635 id=635 data-nosnippet>635</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(vscode_folder / <span class="string">"settings.json"</span>),
+<a href=#636 id=636 data-nosnippet>636</a>        )<span class="question-mark">?</span>;
+<a href=#637 id=637 data-nosnippet>637</a>    }
+<a href=#638 id=638 data-nosnippet>638</a>
+<a href=#639 id=639 data-nosnippet>639</a>    <span class="prelude-val">Ok</span>((
+<a href=#640 id=640 data-nosnippet>640</a>        project.dir.as_ref().into(),
+<a href=#641 id=641 data-nosnippet>641</a>        project.target_dir.as_ref().into(),
+<a href=#642 id=642 data-nosnippet>642</a>        project.features,
+<a href=#643 id=643 data-nosnippet>643</a>    ))
+<a href=#644 id=644 data-nosnippet>644</a>}
 <a href=#645 id=645 data-nosnippet>645</a>
-<a href=#646 id=646 data-nosnippet>646</a>    <span class="kw">let </span><span class="kw-2">mut </span>existing_contents = Vec::new();
-<a href=#647 id=647 data-nosnippet>647</a>    file.read_to_end(<span class="kw-2">&amp;mut </span>existing_contents)<span class="question-mark">?</span>;
-<a href=#648 id=648 data-nosnippet>648</a>    <span class="prelude-val">Ok</span>(existing_contents == contents)
-<a href=#649 id=649 data-nosnippet>649</a>}
-<a href=#650 id=650 data-nosnippet>650</a>
-<a href=#651 id=651 data-nosnippet>651</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>write_atomic(contents: <span class="kw-2">&amp;</span>[u8], path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
-<a href=#652 id=652 data-nosnippet>652</a>    <span class="kw">let </span><span class="kw-2">mut </span>file = File::options()
-<a href=#653 id=653 data-nosnippet>653</a>        .read(<span class="bool-val">true</span>)
-<a href=#654 id=654 data-nosnippet>654</a>        .write(<span class="bool-val">true</span>)
-<a href=#655 id=655 data-nosnippet>655</a>        .create(<span class="bool-val">true</span>)
-<a href=#656 id=656 data-nosnippet>656</a>        .truncate(<span class="bool-val">false</span>)
-<a href=#657 id=657 data-nosnippet>657</a>        .open(path)<span class="question-mark">?</span>;
-<a href=#658 id=658 data-nosnippet>658</a>
-<a href=#659 id=659 data-nosnippet>659</a>    <span class="kw">let </span><span class="kw-2">mut </span>existing_contents = Vec::new();
-<a href=#660 id=660 data-nosnippet>660</a>    file.read_to_end(<span class="kw-2">&amp;mut </span>existing_contents)<span class="question-mark">?</span>;
-<a href=#661 id=661 data-nosnippet>661</a>    <span class="kw">if </span><span class="macro">existing_contents !</span>= contents {
-<a href=#662 id=662 data-nosnippet>662</a>        file.lock()<span class="question-mark">?</span>;
-<a href=#663 id=663 data-nosnippet>663</a>        file.seek(SeekFrom::Start(<span class="number">0</span>))<span class="question-mark">?</span>;
-<a href=#664 id=664 data-nosnippet>664</a>        file.set_len(<span class="number">0</span>)<span class="question-mark">?</span>;
-<a href=#665 id=665 data-nosnippet>665</a>        file.write_all(contents)<span class="question-mark">?</span>;
-<a href=#666 id=666 data-nosnippet>666</a>    }
+<a href=#646 id=646 data-nosnippet>646</a><span class="kw">fn </span>check_contents(contents: <span class="kw-2">&amp;</span>[u8], path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;bool, std::io::Error&gt; {
+<a href=#647 id=647 data-nosnippet>647</a>    <span class="kw">let </span><span class="kw-2">mut </span>file = File::options()
+<a href=#648 id=648 data-nosnippet>648</a>        .read(<span class="bool-val">true</span>)
+<a href=#649 id=649 data-nosnippet>649</a>        .write(<span class="bool-val">false</span>)
+<a href=#650 id=650 data-nosnippet>650</a>        .create(<span class="bool-val">false</span>)
+<a href=#651 id=651 data-nosnippet>651</a>        .truncate(<span class="bool-val">false</span>)
+<a href=#652 id=652 data-nosnippet>652</a>        .open(path)<span class="question-mark">?</span>;
+<a href=#653 id=653 data-nosnippet>653</a>    file.lock()<span class="question-mark">?</span>;
+<a href=#654 id=654 data-nosnippet>654</a>
+<a href=#655 id=655 data-nosnippet>655</a>    <span class="kw">let </span><span class="kw-2">mut </span>existing_contents = Vec::new();
+<a href=#656 id=656 data-nosnippet>656</a>    file.read_to_end(<span class="kw-2">&amp;mut </span>existing_contents)<span class="question-mark">?</span>;
+<a href=#657 id=657 data-nosnippet>657</a>    <span class="prelude-val">Ok</span>(existing_contents == contents)
+<a href=#658 id=658 data-nosnippet>658</a>}
+<a href=#659 id=659 data-nosnippet>659</a>
+<a href=#660 id=660 data-nosnippet>660</a><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>write_atomic(contents: <span class="kw-2">&amp;</span>[u8], path: <span class="kw-2">&amp;</span>Path) -&gt; <span class="prelude-ty">Result</span>&lt;(), std::io::Error&gt; {
+<a href=#661 id=661 data-nosnippet>661</a>    <span class="kw">let </span><span class="kw-2">mut </span>file = File::options()
+<a href=#662 id=662 data-nosnippet>662</a>        .read(<span class="bool-val">true</span>)
+<a href=#663 id=663 data-nosnippet>663</a>        .write(<span class="bool-val">true</span>)
+<a href=#664 id=664 data-nosnippet>664</a>        .create(<span class="bool-val">true</span>)
+<a href=#665 id=665 data-nosnippet>665</a>        .truncate(<span class="bool-val">false</span>)
+<a href=#666 id=666 data-nosnippet>666</a>        .open(path)<span class="question-mark">?</span>;
 <a href=#667 id=667 data-nosnippet>667</a>
-<a href=#668 id=668 data-nosnippet>668</a>    <span class="prelude-val">Ok</span>(())
-<a href=#669 id=669 data-nosnippet>669</a>}
+<a href=#668 id=668 data-nosnippet>668</a>    <span class="kw">let </span><span class="kw-2">mut </span>existing_contents = Vec::new();
+<a href=#669 id=669 data-nosnippet>669</a>    file.read_to_end(<span class="kw-2">&amp;mut </span>existing_contents)<span class="question-mark">?</span>;
+<a href=#670 id=670 data-nosnippet>670</a>    <span class="kw">if </span><span class="macro">existing_contents !</span>= contents {
+<a href=#671 id=671 data-nosnippet>671</a>        file.lock()<span class="question-mark">?</span>;
+<a href=#672 id=672 data-nosnippet>672</a>        file.seek(SeekFrom::Start(<span class="number">0</span>))<span class="question-mark">?</span>;
+<a href=#673 id=673 data-nosnippet>673</a>        file.set_len(<span class="number">0</span>)<span class="question-mark">?</span>;
+<a href=#674 id=674 data-nosnippet>674</a>        file.write_all(contents)<span class="question-mark">?</span>;
+<a href=#675 id=675 data-nosnippet>675</a>    }
+<a href=#676 id=676 data-nosnippet>676</a>
+<a href=#677 id=677 data-nosnippet>677</a>    <span class="prelude-val">Ok</span>(())
+<a href=#678 id=678 data-nosnippet>678</a>}
 </code></pre></div></section></main></body></html>
