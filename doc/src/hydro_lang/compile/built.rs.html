@@ -341,7 +341,7 @@
 <a href=#341 id=341 data-nosnippet>341</a>        <span class="self">self</span>.into_deploy().with_remaining_clusters(spec)
 <a href=#342 id=342 data-nosnippet>342</a>    }
 <a href=#343 id=343 data-nosnippet>343</a>
-<a href=#344 id=344 data-nosnippet>344</a>    <span class="kw">pub fn </span>compile&lt;D: Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;(<span class="self">self</span>) -&gt; CompiledFlow&lt;<span class="lifetime">'a</span>, D::GraphId&gt; {
+<a href=#344 id=344 data-nosnippet>344</a>    <span class="kw">pub fn </span>compile&lt;D: Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;(<span class="self">self</span>) -&gt; CompiledFlow&lt;<span class="lifetime">'a</span>&gt; {
 <a href=#345 id=345 data-nosnippet>345</a>        <span class="self">self</span>.into_deploy::&lt;D&gt;().compile()
 <a href=#346 id=346 data-nosnippet>346</a>    }
 <a href=#347 id=347 data-nosnippet>347</a>
