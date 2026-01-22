@@ -37,24 +37,50 @@ impl<'a> Deserialize<'a> for SerializableHistogramWrapper {
         })
     }
 }
+
 pub struct BenchResult<'a, Client> {
     pub latency_histogram: Singleton<Rc<RefCell<Histogram<u64>>>, Cluster<'a, Client>, Unbounded>,
     pub throughput: Singleton<RollingAverage, Cluster<'a, Client>, Unbounded>,
 }
 
+pub trait WorkloadGenerator<'a, Client, Payload: Clone> {
+    fn generate_workload(
+        self,
+        ids_and_prev_payloads: KeyedStream<
+            u32,
+            Option<Payload>,
+            Cluster<'a, Client>,
+            Unbounded,
+            NoOrder,
+        >,
+    ) -> KeyedStream<u32, Payload, Cluster<'a, Client>, Unbounded, NoOrder>;
+}
+
+pub trait KeyedProtocol<'a, Client, Payload: Clone, O> {
+    fn protocol(
+        self,
+        input: KeyedStream<u32, Payload, Cluster<'a, Client>, Unbounded, NoOrder>,
+    ) -> (
+        KeyedStream<u32, Payload, Cluster<'a, Client>, Unbounded, NoOrder>,
+        O,
+    );
+}
+
 /// Benchmarks transactional workloads by concurrently submitting workloads
 /// (up to `num_clients_per_node` per machine)
-/// * `completed_ids` - A stream of virtual client IDs whose payloads have been returned by the protocol
 ///
 /// ## Returns
 /// A stream of virtual client IDs that are ready to create a payload
-pub fn bench_client<'a, Client, Payload>(
+pub fn bench_client<'a, Client, Payload, O, P, W>(
     clients: &Cluster<'a, Client>,
     num_clients_per_node: usize,
-    received_payloads: KeyedStream<u32, Payload, Cluster<'a, Client>, Unbounded, NoOrder>,
-) -> KeyedStream<u32, Option<Payload>, Cluster<'a, Client>, Unbounded, NoOrder>
+    workload_generator: W,
+    protocol: P,
+) -> O
 where
     Payload: Clone,
+    P: KeyedProtocol<'a, Client, Payload, O>,
+    W: WorkloadGenerator<'a, Client, Payload>,
 {
     let dummy = clients.singleton(q!(0));
     #[expect(unused_variables, reason = "sliced! requires at least 1 use statement")]
@@ -77,7 +103,16 @@ where
         new_virtual_client.into_stream().into_keyed()
     };
 
-    new_payload_ids.interleave(received_payloads.map(q!(|payload| Some(payload))))
+    let (protocol_outputs_complete, protocol_outputs) =
+        clients.forward_ref::<KeyedStream<u32, Payload, Cluster<'a, Client>, Unbounded, NoOrder>>();
+
+    let protocol_inputs = workload_generator.generate_workload(
+        new_payload_ids.interleave(protocol_outputs.map(q!(|payload| Some(payload)))),
+    );
+
+    let (protocol_out, protocol_out_metadata) = protocol.protocol(protocol_inputs);
+    protocol_outputs_complete.complete(protocol_out);
+    protocol_out_metadata
 }
 
 /// Computes the throughput and latency of transactions.
