@@ -1,8 +1,8 @@
 use hydro_lang::prelude::*;
-use hydro_std::bench_client::{bench_client, print_bench_results};
+use hydro_std::bench_client::{bench_client, compute_throughput_latency, print_bench_results};
 
 use super::two_pc::{Coordinator, Participant};
-use crate::cluster::paxos_bench::inc_u32_workload_generator;
+use crate::cluster::paxos_bench::inc_i32_workload_generator;
 use crate::cluster::two_pc::two_pc;
 
 pub struct Client;
@@ -16,23 +16,26 @@ pub fn two_pc_bench<'a>(
     clients: &Cluster<'a, Client>,
     client_aggregator: &Process<'a, Aggregator>,
 ) {
-    let bench_results = bench_client(
+    let latencies = bench_client(
         clients,
-        inc_u32_workload_generator,
-        |payloads| {
-            // Send committed requests back to the original client
+        num_clients_per_node,
+        inc_i32_workload_generator,
+        |input| {
             two_pc(
                 coordinator,
                 participants,
                 num_participants,
-                payloads.send(coordinator, TCP.bincode()).entries(),
+                input.entries().send(coordinator, TCP.bincode()).entries(),
             )
             .demux(clients, TCP.bincode())
+            .into_keyed()
         },
-        num_clients_per_node,
-        nondet!(/** bench */),
-    );
+    )
+    .entries()
+    .map(q!(|(_virtual_client_id, (_output, latency))| latency));
 
+    // Create throughput/latency graphs
+    let bench_results = compute_throughput_latency(clients, latencies, nondet!(/** bench */));
     print_bench_results(bench_results, client_aggregator, clients);
 }
 
