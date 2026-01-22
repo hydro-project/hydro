@@ -1413,8 +1413,6 @@ impl<'a> Deploy<'a> for DockerDeployEcs {
     type Cluster = DockerDeployClusterEcs;
     type External = DockerDeployExternalEcs;
 
-    type GraphId = ();
-
     #[instrument(level = "trace", skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, p2_port))]
     fn o2o_sink_source(
         p1: &Self::Process,

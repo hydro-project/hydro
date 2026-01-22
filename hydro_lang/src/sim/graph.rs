@@ -171,8 +171,6 @@ impl<'a> Deploy<'a> for SimDeploy {
     type Cluster = SimNode;
     type External = SimExternal;
 
-    type GraphId = ();
-
     fn o2o_sink_source(
         _p1: &Self::Process,
         p1_port: &<Self::Process as Node>::Port,
