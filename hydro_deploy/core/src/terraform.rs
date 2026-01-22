@@ -287,9 +287,8 @@ impl TerraformApply {
 
         if !status.unwrap().success() {
             bail!(
-                "{} deployment failed, see `[{}]` logs above.",
-                terraform_name(),
-                terraform_name()
+                "{tf} deployment failed, see `[{tf}]` logs above.",
+                tf = terraform_name(),
             );
         }
 
