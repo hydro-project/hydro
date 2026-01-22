@@ -114,17 +114,6 @@ jobs:
       - if: matrix.rust_release == 'latest-stable' && matrix.os == 'ubuntu-latest'
         uses: ./.github/actions/use-sccache
 
-      - if: matrix.rust_release != 'latest-stable' || matrix.os != 'ubuntu-latest'
-        name: Install local sccache
-        uses: mozilla-actions/sccache-action@v0.0.8
-
-      - if: matrix.rust_release != 'latest-stable' || matrix.os != 'ubuntu-latest'
-        name: Set local Rust caching env vars
-        uses: actions/github-script@v6
-        with:
-          script: |
-            core.exportVariable('RUSTC_WRAPPER', 'sccache');
-
       - uses: taiki-e/install-action@nextest
 
       - name: Enable Trybuild updating on nightly
