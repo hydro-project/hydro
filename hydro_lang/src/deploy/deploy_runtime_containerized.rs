@@ -16,7 +16,6 @@ use std::time::Duration;
 use bytes::BytesMut;
 use futures::{FutureExt, Sink, SinkExt, Stream, StreamExt};
 use proc_macro2::Span;
-use sinktools::buffered_lazy_sink_source::BufferedLazySinkSource;
 use sinktools::demux_map_lazy::LazyDemuxSink;
 use sinktools::lazy::{LazySink, LazySource};
 use sinktools::lazy_sink_source::LazySinkSource;
@@ -245,10 +244,6 @@ impl<Ctx> FreeVariableWithContextWithProps<Ctx, ()> for SocketIdent {
 pub fn deploy_containerized_external_sink_source_ident(socket_ident: syn::Ident) -> syn::Expr {
     let socket_ident = SocketIdent { socket_ident };
 
-    // q!(BufferedLazySinkSource::<
-    //     bytes::Bytes,
-    //     Result<bytes::BytesMut, std::io::Error>,
-    //     std::io::Error,
     q!(LazySinkSource::<
         _,
         FramedRead<OwnedReadHalf, LengthDelimitedCodec>,
@@ -299,38 +294,50 @@ pub fn cluster_membership_stream<'a>(
         >)
 }
 
+// There's a risk of race conditions here since all the containers will be starting up at the same time.
+// So we need to start listening for events and the take a snapshot of currently running containers, since they may have already started up before we started listening to events.
+// Then we need to turn that into a usable stream for the consumer in this current hydro program. The way you do that is by emitting from the snapshot first, and then start emitting from the stream. Keep a hash set around to track whether a container is up or down.
 #[instrument(skip_all, fields(%deployment_instance, %location_id))]
 fn docker_membership_stream(
     deployment_instance: String,
     location_id: usize,
 ) -> impl Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin {
+    use std::collections::HashSet;
+    use std::sync::{Arc, Mutex};
+
     use bollard::Docker;
     use bollard::query_parameters::{EventsOptions, ListContainersOptions};
-    use futures::stream::{StreamExt, once};
+    use tokio::sync::mpsc;
+
     let docker = Docker::connect_with_local_defaults()
         .unwrap()
         .with_timeout(Duration::from_secs(1));
 
-    let mut filters = HashMap::new();
-    filters.insert("type".to_string(), vec!["container".to_string()]);
-    filters.insert(
-        "event".to_string(),
-        vec!["start".to_string(), "die".to_string()],
-    );
-    let event_options = Some(EventsOptions {
-        filters: Some(filters),
-        ..Default::default()
-    });
+    let (event_tx, event_rx) = mpsc::unbounded_channel::<(String, MembershipEvent)>();
 
-    let events = {
-        let deployment_instance = deployment_instance.clone();
-        docker.events(event_options).filter_map(move |event| {
-            std::future::ready(event.ok().and_then(|e| {
+    // 1. Start event subscription in a spawned task
+    let events_docker = docker.clone();
+    let events_deployment_instance = deployment_instance.clone();
+    tokio::spawn(async move {
+        let mut filters = HashMap::new();
+        filters.insert("type".to_string(), vec!["container".to_string()]);
+        filters.insert(
+            "event".to_string(),
+            vec!["start".to_string(), "die".to_string()],
+        );
+        let event_options = Some(EventsOptions {
+            filters: Some(filters),
+            ..Default::default()
+        });
+
+        let mut events = events_docker.events(event_options);
+        while let Some(event) = events.next().await {
+            if let Some((name, membership_event)) = event.ok().and_then(|e| {
                 let name = e
                     .actor
                     .and_then(|a| a.attributes.and_then(|attrs| attrs.get("name").cloned()))?;
 
-                if name.contains(format!("{deployment_instance}-{location_id}").as_str()) {
+                if name.contains(format!("{events_deployment_instance}-{location_id}").as_str()) {
                     match e.action.as_deref() {
                         Some("start") => Some((name.clone(), MembershipEvent::Joined)),
                         Some("die") => Some((name, MembershipEvent::Left)),
@@ -339,43 +346,78 @@ fn docker_membership_stream(
                 } else {
                     None
                 }
-            }))
-        })
-    };
+            }) && event_tx.send((name, membership_event)).is_err()
+            {
+                break;
+            }
+        }
+    });
 
-    let initial = once(async move {
+    // Shared state for deduplication across snapshot and events phases
+    let seen_joined = Arc::new(Mutex::new(HashSet::<String>::new()));
+    let seen_joined_snapshot = seen_joined.clone();
+    let seen_joined_events = seen_joined;
+
+    // 2. Snapshot stream - fetch current containers and emit Joined events
+    let snapshot_stream = futures::stream::once(async move {
         let mut filters = HashMap::new();
-
         filters.insert(
             "name".to_string(),
             vec![format!("{deployment_instance}-{location_id}")],
         );
-
         let options = Some(ListContainersOptions {
-            // all: true,
             filters: Some(filters),
             ..Default::default()
         });
 
-        let ret = docker
+        docker
             .list_containers(options)
             .await
-            .unwrap()
+            .unwrap_or_default()
             .into_iter()
             .filter_map(|c| {
                 c.names
                     .and_then(|names| names.first().map(|n| n.trim_start_matches('/').to_string()))
             })
-            .map(|name| (name, MembershipEvent::Joined))
-            .collect::<Vec<_>>();
-
-        ret
+            .filter_map(|name| {
+                if seen_joined_snapshot.lock().unwrap().insert(name.clone()) {
+                    Some((name, MembershipEvent::Joined))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>()
     })
     .flat_map(futures::stream::iter);
 
+    // 3. Events stream - process live events with deduplication
+    let events_stream = tokio_stream::StreamExt::filter_map(
+        tokio_stream::wrappers::UnboundedReceiverStream::new(event_rx),
+        move |(name, event)| {
+            let mut seen = seen_joined_events.lock().unwrap();
+            match event {
+                MembershipEvent::Joined => {
+                    if seen.insert(name.clone()) {
+                        Some((name, MembershipEvent::Joined))
+                    } else {
+                        None
+                    }
+                }
+                MembershipEvent::Left => {
+                    if seen.remove(&name) {
+                        Some((name, MembershipEvent::Left))
+                    } else {
+                        None
+                    }
+                }
+            }
+        },
+    );
+
+    // 4. Chain snapshot then events
     Box::pin(
-        initial
-            .chain(events)
+        snapshot_stream
+            .chain(events_stream)
             .map(|(k, v)| (TaglessMemberId::from_container_name(k), v))
             .inspect(|(member_id, event)| debug!(name: "membership_event", ?member_id, ?event)),
     )

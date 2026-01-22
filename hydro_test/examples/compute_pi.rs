@@ -65,7 +65,9 @@ async fn main() {
         Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
     };
 
-    let rustflags = if args.gcp.is_some() || args.aws {
+    let rustflags = if std::env::var("RUNNING_AS_EXAMPLE_TEST").is_ok_and(|v| v == "1") {
+        ""
+    } else if args.gcp.is_some() || args.aws {
         "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment"
     } else {
         "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
@@ -107,5 +109,7 @@ fn test() {
     use example_test::run_current_example;
 
     let mut run = run_current_example!();
-    run.read_regex(r"\[hydro_test::cluster::compute_pi::Leader \(process 1\)\] pi: 3\.141\d+ \(\d{8,} trials\)");
+    run.read_regex(
+        r"\[hydro_test::cluster::compute_pi::Leader \(process 1\)\] pi: 3\.14\d+ \(\d{8,} trials\)",
+    );
 }

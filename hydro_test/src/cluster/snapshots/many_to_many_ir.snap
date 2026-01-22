@@ -10,7 +10,7 @@ expression: built.ir()
                 inner: Cast {
                     inner: Network {
                         serialize_fn: Some(
-                            :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , i32) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                            hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , i32) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                         ),
                         instantiate_fn: <network instantiate>,
                         deserialize_fn: Some(
@@ -187,7 +187,7 @@ expression: built.ir()
                                                     0,
                                                 ),
                                                 collection_kind: Stream {
-                                                    bound: Unbounded,
+                                                    bound: Bounded,
                                                     order: TotalOrder,
                                                     retry: ExactlyOnce,
                                                     element_type: i32,

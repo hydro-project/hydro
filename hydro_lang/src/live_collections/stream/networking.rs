@@ -44,7 +44,7 @@ fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr 
 
     if is_demux {
         parse_quote! {
-            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::__staged::location::MemberId<_>, #t_type), _>(
+            #root::runtime_support::stageleft::runtime_support::fn1_type_hint::<(#root::__staged::location::MemberId<_>, #t_type), _>(
                 |(id, data)| {
                     (id.into_tagless(), #root::runtime_support::bincode::serialize(&data).unwrap().into())
                 }
@@ -52,7 +52,7 @@ fn serialize_bincode_with_type(is_demux: bool, t_type: &syn::Type) -> syn::Expr 
         }
     } else {
         parse_quote! {
-            ::#root::runtime_support::stageleft::runtime_support::fn1_type_hint::<#t_type, _>(
+            #root::runtime_support::stageleft::runtime_support::fn1_type_hint::<#t_type, _>(
                 |data| {
                     #root::runtime_support::bincode::serialize(&data).unwrap().into()
                 }
@@ -67,7 +67,6 @@ pub(crate) fn serialize_bincode<T: Serialize>(is_demux: bool) -> syn::Expr {
 
 fn deserialize_bincode_with_type(tagged: Option<&syn::Type>, t_type: &syn::Type) -> syn::Expr {
     let root = get_this_crate();
-
     if let Some(c_type) = tagged {
         parse_quote! {
             |res| {
@@ -106,7 +105,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p_out| {
     /// let p1 = flow.process::<()>();
-    /// let numbers: Stream<_, Process<_>, Unbounded> = p1.source_iter(q!(vec![1, 2, 3]));
+    /// let numbers: Stream<_, Process<_>, Bounded> = p1.source_iter(q!(vec![1, 2, 3]));
     /// let p2 = flow.process::<()>();
     /// let on_p2: Stream<_, Process<_>, Unbounded> = numbers.send_bincode(&p2);
     /// // 1, 2, 3
@@ -144,7 +143,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p_out| {
     /// let p1 = flow.process::<()>();
-    /// let numbers: Stream<_, Process<_>, Unbounded> = p1.source_iter(q!(vec![1, 2, 3]));
+    /// let numbers: Stream<_, Process<_>, Bounded> = p1.source_iter(q!(vec![1, 2, 3]));
     /// let p2 = flow.process::<()>();
     /// let on_p2: Stream<_, Process<_>, Unbounded> = numbers.send(&p2, TCP.bincode());
     /// // 1, 2, 3
@@ -306,7 +305,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// # tokio_test::block_on(async move {
     /// let flow = FlowBuilder::new();
     /// let process = flow.process::<()>();
-    /// let numbers: Stream<_, Process<_>, Unbounded> = process.source_iter(q!(vec![1, 2, 3]));
+    /// let numbers: Stream<_, Process<_>, Bounded> = process.source_iter(q!(vec![1, 2, 3]));
     /// let external = flow.external::<()>();
     /// let external_handle = numbers.send_bincode_external(&external);
     ///
@@ -335,12 +334,11 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
 
         let mut flow_state_borrow = self.location.flow_state().borrow_mut();
 
-        let external_key = flow_state_borrow.next_external_out;
-        flow_state_borrow.next_external_out += 1;
+        let external_port_id = flow_state_borrow.next_external_port.get_and_increment();
 
         flow_state_borrow.push_root(HydroRoot::SendExternal {
             to_external_id: other.id,
-            to_key: external_key,
+            to_port_id: external_port_id,
             to_many: false,
             unpaired: true,
             serialize_fn: serialize_pipeline.map(|e| e.into()),
@@ -351,7 +349,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
 
         ExternalBincodeStream {
             process_id: other.id,
-            port_id: external_key,
+            port_id: external_port_id,
             _phantom: PhantomData,
         }
     }
@@ -633,7 +631,6 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
     /// # use hydro_lang::live_collections::stream::{TotalOrder, ExactlyOnce, NoOrder};
     /// # use hydro_lang::location::MemberId;
     /// # use futures::StreamExt;
-    /// # std::thread::spawn(|| {
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
     /// let workers1: Cluster<()> = flow.cluster::<()>();
@@ -656,7 +653,6 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
     /// # assert_eq!(results, (0..=16).collect::<Vec<_>>());
     /// # assert_eq!(locations.len(), 16);
     /// # }));
-    /// # }).join().unwrap();
     /// # }
     /// ```
     pub fn round_robin_bincode<L2: 'a>(
@@ -694,7 +690,6 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
     /// # use hydro_lang::live_collections::stream::{TotalOrder, ExactlyOnce, NoOrder};
     /// # use hydro_lang::location::MemberId;
     /// # use futures::StreamExt;
-    /// # std::thread::spawn(|| {
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
     /// let p1 = flow.process::<()>();
     /// let workers1: Cluster<()> = flow.cluster::<()>();
@@ -717,7 +712,6 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
     /// # assert_eq!(results, (0..=16).collect::<Vec<_>>());
     /// # assert_eq!(locations.len(), 16);
     /// # }));
-    /// # }).join().unwrap();
     /// # }
     /// ```
     pub fn round_robin<L2: 'a, N: NetworkFor<T>>(

@@ -222,14 +222,12 @@ impl<'a> BuiltFlow<'a> {
     /// Creates a simulation for this builder, which can be used to run deterministic simulations
     /// of the Hydro program.
     pub fn sim(mut self) -> SimFlow<'a> {
-        use std::cell::{Cell, RefCell};
+        use std::cell::RefCell;
         use std::rc::Rc;
 
-        use crate::sim::graph::SimExternal;
+        use crate::sim::graph::{SimExternal, SimExternalPortRegistry, SimNodePort};
 
-        let external_ports = Rc::new(RefCell::new((vec![], 0)));
-
-        let global_port_counter = Rc::new(Cell::new(0));
+        let shared_port_counter = Rc::new(RefCell::new(SimNodePort::default()));
         let processes = self
             .process_id_name
             .iter()
@@ -237,7 +235,7 @@ impl<'a> BuiltFlow<'a> {
                 (
                     id.0,
                     SimNode {
-                        port_counter: global_port_counter.clone(),
+                        shared_port_counter: shared_port_counter.clone(),
                     },
                 )
             })
@@ -250,13 +248,13 @@ impl<'a> BuiltFlow<'a> {
                 (
                     id.0,
                     SimNode {
-                        port_counter: global_port_counter.clone(),
+                        shared_port_counter: shared_port_counter.clone(),
                     },
                 )
             })
             .collect();
 
-        let all_external_registered = Rc::new(RefCell::new(HashMap::new()));
+        let externals_port_registry = Rc::new(RefCell::new(SimExternalPortRegistry::default()));
         let externals = self
             .external_id_name
             .iter()
@@ -264,8 +262,7 @@ impl<'a> BuiltFlow<'a> {
                 (
                     id.0,
                     SimExternal {
-                        external_ports: external_ports.clone(),
-                        registered: all_external_registered.clone(),
+                        shared_inner: externals_port_registry.clone(),
                     },
                 )
             })
@@ -273,55 +270,28 @@ impl<'a> BuiltFlow<'a> {
 
         SimFlow {
             ir: std::mem::take(&mut self.ir),
-            external_ports,
             processes,
             clusters,
             cluster_max_sizes: HashMap::new(),
             externals,
-            external_registered: all_external_registered.clone(),
-            _process_id_name: std::mem::take(&mut self.process_id_name),
-            _external_id_name: std::mem::take(&mut self.external_id_name),
-            _cluster_id_name: std::mem::take(&mut self.cluster_id_name),
+            externals_port_registry,
+            _process_id_name: self.process_id_name,
+            _external_id_name: self.external_id_name,
+            _cluster_id_name: self.cluster_id_name,
             _phantom: PhantomData,
         }
     }
 
-    pub fn into_deploy<D: Deploy<'a>>(mut self) -> DeployFlow<'a, D> {
-        let processes = if D::has_trivial_node() {
-            self.process_id_name
-                .iter()
-                .map(|id| (id.0, D::trivial_process(id.0)))
-                .collect()
-        } else {
-            HashMap::new()
-        };
-
-        let clusters = if D::has_trivial_node() {
-            self.cluster_id_name
-                .iter()
-                .map(|id| (id.0, D::trivial_cluster(id.0)))
-                .collect()
-        } else {
-            HashMap::new()
-        };
-
-        let externals = if D::has_trivial_node() {
-            self.external_id_name
-                .iter()
-                .map(|id| (id.0, D::trivial_external(id.0)))
-                .collect()
-        } else {
-            HashMap::new()
-        };
-
+    pub fn into_deploy<D: Deploy<'a>>(self) -> DeployFlow<'a, D> {
+        let (processes, clusters, externals) = Default::default();
         DeployFlow {
-            ir: std::mem::take(&mut self.ir),
+            ir: self.ir,
             processes,
-            process_id_name: std::mem::take(&mut self.process_id_name),
+            process_id_name: self.process_id_name,
             clusters,
-            cluster_id_name: std::mem::take(&mut self.cluster_id_name),
+            cluster_id_name: self.cluster_id_name,
             externals,
-            external_id_name: std::mem::take(&mut self.external_id_name),
+            external_id_name: self.external_id_name,
             _phantom: PhantomData,
         }
     }
@@ -371,7 +341,7 @@ impl<'a> BuiltFlow<'a> {
         self.into_deploy().with_remaining_clusters(spec)
     }
 
-    pub fn compile<D: Deploy<'a>>(self) -> CompiledFlow<'a, D::GraphId> {
+    pub fn compile<D: Deploy<'a>>(self) -> CompiledFlow<'a> {
         self.into_deploy::<D>().compile()
     }
 

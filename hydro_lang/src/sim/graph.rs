@@ -1,4 +1,4 @@
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::process::{Command, Stdio};
@@ -13,7 +13,10 @@ use syn::visit_mut::VisitMut;
 use tempfile::TempPath;
 use trybuild_internals_api::{cargo, dependencies, path};
 
+use crate::compile::builder::ExternalPortId;
 use crate::compile::deploy_provider::{Deploy, DynSourceSink, Node, RegisterPort};
+#[cfg(feature = "deploy")]
+use crate::compile::trybuild::generate::LinkingMode;
 use crate::compile::trybuild::generate::{
     CONCURRENT_TEST_LOCK, IS_TEST, TrybuildConfig, create_trybuild, write_atomic,
 };
@@ -22,20 +25,29 @@ use crate::deploy::deploy_runtime::cluster_membership_stream;
 use crate::location::MembershipEvent;
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
+use crate::staging_util::get_this_crate;
+
+crate::newtype_counter! {
+    /// Represents a [`SimNode`] port.
+    pub struct SimNodePort(usize);
+
+    /// Represents a [`SimExternal`] port.
+    pub struct SimExternalPort(usize);
+}
 
 #[derive(Clone)]
 pub struct SimNode {
-    /// Counter for port IDs, must be global across all nodes to prevent collisions.
-    pub port_counter: Rc<Cell<usize>>,
+    /// Counter for port IDs, must be shared across all nodes in a simulation to prevent collisions.
+    pub shared_port_counter: Rc<RefCell<SimNodePort>>,
 }
 
 impl Node for SimNode {
-    type Port = ();
+    type Port = SimNodePort;
     type Meta = ();
     type InstantiateEnv = ();
 
     fn next_port(&self) -> Self::Port {
-        todo!()
+        self.shared_port_counter.borrow_mut().get_and_increment()
     }
 
     fn update_meta(&self, _meta: &Self::Meta) {}
@@ -50,19 +62,30 @@ impl Node for SimNode {
     }
 }
 
+#[derive(Clone, Default)]
+pub(crate) struct SimExternalPortRegistry {
+    pub(crate) port_counter: SimExternalPort,
+    /// A mapping from external port IDs (generated in `FlowState`)
+    /// which are used for looking up connections, to the IDs
+    /// of the external channels created in the simulation.
+    pub(crate) registered: HashMap<ExternalPortId, SimExternalPort>,
+}
+
 #[derive(Clone)]
 pub struct SimExternal {
-    pub(crate) external_ports: Rc<RefCell<(Vec<usize>, usize)>>,
-    pub(crate) registered: Rc<RefCell<HashMap<usize, usize>>>,
+    pub(crate) shared_inner: Rc<RefCell<SimExternalPortRegistry>>,
 }
 
 impl Node for SimExternal {
-    type Port = ();
+    type Port = SimExternalPort;
     type Meta = ();
     type InstantiateEnv = ();
 
     fn next_port(&self) -> Self::Port {
-        todo!()
+        self.shared_inner
+            .borrow_mut()
+            .port_counter
+            .get_and_increment()
     }
 
     fn update_meta(&self, _meta: &Self::Meta) {
@@ -80,23 +103,20 @@ impl Node for SimExternal {
 }
 
 impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
-    fn register(&self, key: usize, port: usize) {
+    fn register(&self, external_port_id: ExternalPortId, port: Self::Port) {
         assert!(
-            self.registered
+            self.shared_inner
                 .borrow_mut()
-                .insert(key, port)
+                .registered
+                .insert(external_port_id, port)
                 .is_none_or(|old| old == port)
         );
-    }
-
-    fn raw_port(&self, _key: usize) -> () {
-        todo!()
     }
 
     #[expect(clippy::manual_async_fn, reason = "false positive, involves lifetimes")]
     fn as_bytes_bidi(
         &self,
-        _key: usize,
+        _external_port_id: ExternalPortId,
     ) -> impl Future<
         Output = DynSourceSink<
             Result<bytes::BytesMut, std::io::Error>,
@@ -110,7 +130,7 @@ impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
     #[expect(clippy::manual_async_fn, reason = "false positive, involves lifetimes")]
     fn as_bincode_bidi<InT, OutT>(
         &self,
-        _key: usize,
+        _external_port_id: ExternalPortId,
     ) -> impl Future<Output = DynSourceSink<OutT, InT, std::io::Error>> + 'a
     where
         InT: serde::Serialize + 'static,
@@ -122,7 +142,7 @@ impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
     #[expect(clippy::manual_async_fn, reason = "false positive, involves lifetimes")]
     fn as_bincode_sink<T>(
         &self,
-        _key: usize,
+        _external_port_id: ExternalPortId,
     ) -> impl Future<Output = std::pin::Pin<Box<dyn futures::Sink<T, Error = std::io::Error>>>> + 'a
     where
         T: serde::Serialize + 'static,
@@ -133,7 +153,7 @@ impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
     #[expect(clippy::manual_async_fn, reason = "false positive, involves lifetimes")]
     fn as_bincode_source<T>(
         &self,
-        _key: usize,
+        _external_port_id: ExternalPortId,
     ) -> impl Future<Output = std::pin::Pin<Box<dyn futures::Stream<Item = T>>>> + 'a
     where
         T: serde::de::DeserializeOwned + 'static,
@@ -144,41 +164,18 @@ impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
 
 pub(super) struct SimDeploy {}
 impl<'a> Deploy<'a> for SimDeploy {
+    type Meta = ();
     type InstantiateEnv = ();
+
     type Process = SimNode;
     type Cluster = SimNode;
     type External = SimExternal;
-    type Port = usize;
-    type ExternalRawPort = ();
-    type Meta = ();
-    type GraphId = ();
-
-    fn allocate_process_port(process: &Self::Process) -> Self::Port {
-        let port_id = process.port_counter.get();
-        process.port_counter.set(port_id + 1);
-        port_id
-    }
-
-    fn allocate_cluster_port(cluster: &Self::Cluster) -> Self::Port {
-        let port_id = cluster.port_counter.get();
-        cluster.port_counter.set(port_id + 1);
-        port_id
-    }
-
-    fn allocate_external_port(external: &Self::External) -> Self::Port {
-        let mut borrowed = external.external_ports.borrow_mut();
-        let port_id = borrowed.1;
-        borrowed.0.push(port_id);
-        borrowed.1 += 1;
-
-        port_id
-    }
 
     fn o2o_sink_source(
         _p1: &Self::Process,
-        p1_port: &Self::Port,
+        p1_port: &<Self::Process as Node>::Port,
         _p2: &Self::Process,
-        p2_port: &Self::Port,
+        p2_port: &<Self::Process as Node>::Port,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_o2o_sink_{}", p1_port), Span::call_site());
@@ -194,18 +191,18 @@ impl<'a> Deploy<'a> for SimDeploy {
 
     fn o2o_connect(
         _p1: &Self::Process,
-        _p1_port: &Self::Port,
+        _p1_port: &<Self::Process as Node>::Port,
         _p2: &Self::Process,
-        _p2_port: &Self::Port,
+        _p2_port: &<Self::Process as Node>::Port,
     ) -> Box<dyn FnOnce()> {
         Box::new(|| {})
     }
 
     fn o2m_sink_source(
         _p1: &Self::Process,
-        p1_port: &Self::Port,
+        p1_port: &<Self::Process as Node>::Port,
         _c2: &Self::Cluster,
-        c2_port: &Self::Port,
+        c2_port: &<Self::Cluster as Node>::Port,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_o2m_sink_{}", p1_port), Span::call_site());
@@ -221,18 +218,18 @@ impl<'a> Deploy<'a> for SimDeploy {
 
     fn o2m_connect(
         _p1: &Self::Process,
-        _p1_port: &Self::Port,
+        _p1_port: &<Self::Process as Node>::Port,
         _c2: &Self::Cluster,
-        _c2_port: &Self::Port,
+        _c2_port: &<Self::Cluster as Node>::Port,
     ) -> Box<dyn FnOnce()> {
         Box::new(|| {})
     }
 
     fn m2o_sink_source(
         _c1: &Self::Cluster,
-        c1_port: &Self::Port,
+        c1_port: &<Self::Cluster as Node>::Port,
         _p2: &Self::Process,
-        p2_port: &Self::Port,
+        p2_port: &<Self::Process as Node>::Port,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_m2o_sink_{}", c1_port), Span::call_site());
@@ -249,18 +246,18 @@ impl<'a> Deploy<'a> for SimDeploy {
 
     fn m2o_connect(
         _c1: &Self::Cluster,
-        _c1_port: &Self::Port,
+        _c1_port: &<Self::Cluster as Node>::Port,
         _p2: &Self::Process,
-        _p2_port: &Self::Port,
+        _p2_port: &<Self::Process as Node>::Port,
     ) -> Box<dyn FnOnce()> {
         Box::new(|| {})
     }
 
     fn m2m_sink_source(
         _c1: &Self::Cluster,
-        c1_port: &Self::Port,
+        c1_port: &<Self::Cluster as Node>::Port,
         _c2: &Self::Cluster,
-        c2_port: &Self::Port,
+        c2_port: &<Self::Cluster as Node>::Port,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_m2m_sink_{}", c1_port), Span::call_site());
@@ -276,9 +273,9 @@ impl<'a> Deploy<'a> for SimDeploy {
 
     fn m2m_connect(
         _c1: &Self::Cluster,
-        _c1_port: &Self::Port,
+        _c1_port: &<Self::Cluster as Node>::Port,
         _c2: &Self::Cluster,
-        _c2_port: &Self::Port,
+        _c2_port: &<Self::Cluster as Node>::Port,
     ) -> Box<dyn FnOnce()> {
         Box::new(|| {})
     }
@@ -286,7 +283,7 @@ impl<'a> Deploy<'a> for SimDeploy {
     fn e2o_many_source(
         _extra_stmts: &mut Vec<syn::Stmt>,
         _p2: &Self::Process,
-        _p2_port: &Self::Port,
+        _p2_port: &<Self::Process as Node>::Port,
         _codec_type: &syn::Type,
         _shared_handle: String,
     ) -> syn::Expr {
@@ -300,23 +297,24 @@ impl<'a> Deploy<'a> for SimDeploy {
     fn e2o_source(
         _extra_stmts: &mut Vec<syn::Stmt>,
         _p1: &Self::External,
-        p1_port: &Self::Port,
+        p1_port: &<Self::External as Node>::Port,
         _p2: &Self::Process,
-        _p2_port: &Self::Port,
+        _p2_port: &<Self::Process as Node>::Port,
         _codec_type: &syn::Type,
         _shared_handle: String,
     ) -> syn::Expr {
         let ident = syn::Ident::new("__hydro_external_in", Span::call_site());
+        let p1_port_usize = p1_port.0;
         syn::parse_quote!(
-            #ident.remove(&#p1_port).unwrap()
+            #ident.remove(&#p1_port_usize).unwrap()
         )
     }
 
     fn e2o_connect(
         _p1: &Self::External,
-        _p1_port: &Self::Port,
+        _p1_port: &<Self::External as Node>::Port,
         _p2: &Self::Process,
-        _p2_port: &Self::Port,
+        _p2_port: &<Self::Process as Node>::Port,
         _many: bool,
         _server_hint: crate::location::NetworkHint,
     ) -> Box<dyn FnOnce()> {
@@ -325,14 +323,15 @@ impl<'a> Deploy<'a> for SimDeploy {
 
     fn o2e_sink(
         _p1: &Self::Process,
-        _p1_port: &Self::Port,
+        _p1_port: &<Self::Process as Node>::Port,
         _p2: &Self::External,
-        p2_port: &Self::Port,
+        p2_port: &<Self::External as Node>::Port,
         _shared_handle: String,
     ) -> syn::Expr {
         let ident = syn::Ident::new("__hydro_external_out", Span::call_site());
+        let p2_port_usize = p2_port.0;
         syn::parse_quote!(
-            #ident.remove(&#p2_port).unwrap()
+            #ident.remove(&#p2_port_usize).unwrap()
         )
     }
 
@@ -363,8 +362,17 @@ impl<'a> Deploy<'a> for SimDeploy {
 
 pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempPath, ()> {
     let mut command = Command::new("cargo");
-    command.current_dir(&trybuild.project_dir);
-    command.args(["rustc", "--locked"]);
+
+    let is_fuzz = std::env::var("BOLERO_FUZZER").is_ok();
+
+    // Run from dylib-examples crate which has the dylib as a dev-dependency (only if not fuzzing)
+    let crate_to_compile = if is_fuzz {
+        trybuild.project_dir.clone()
+    } else {
+        path!(trybuild.project_dir / "dylib-examples")
+    };
+    command.current_dir(&crate_to_compile);
+    command.args(["rustc", "--frozen"]);
     command.args(["--example", "sim-dylib"]);
     command.args(["--target-dir", trybuild.target_dir.to_str().unwrap()]);
     if let Some(features) = &trybuild.features {
@@ -378,23 +386,8 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
 
     command.arg("--");
 
-    let is_fuzz = std::env::var("BOLERO_FUZZER").is_ok();
-    if is_fuzz {
-        command.env(
-            "RUSTFLAGS",
-            std::env::var("RUSTFLAGS_OUTER").unwrap_or_default() + " -C prefer-dynamic",
-        );
-    } else {
-        command.env(
-            "RUSTFLAGS",
-            std::env::var("RUSTFLAGS").unwrap_or_default() + " -C prefer-dynamic",
-        );
-    }
-
     if cfg!(target_os = "linux") {
-        let debug_path = if let Ok(target) = std::env::var("CARGO_BUILD_TARGET")
-            && !is_fuzz
-        {
+        let debug_path = if let Ok(target) = std::env::var("CARGO_BUILD_TARGET") {
             path!(trybuild.target_dir / target / "debug")
         } else {
             path!(trybuild.target_dir / "debug")
@@ -415,7 +408,6 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
 
     if let Ok(fuzzer) = std::env::var("BOLERO_FUZZER") {
         command.env_remove("BOLERO_FUZZER");
-        command.env_remove("CARGO_BUILD_TARGET");
 
         if fuzzer == "libfuzzer" {
             #[cfg(target_os = "macos")]
@@ -427,14 +419,6 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
             {
                 command.args(["-Clink-arg=-Wl,--unresolved-symbols=ignore-all"]);
             }
-
-            command.args([
-                "-Cpasses=sancov-module",
-                "-Cllvm-args=-sanitizer-coverage-inline-8bit-counters",
-                "-Cllvm-args=-sanitizer-coverage-level=4",
-                "-Cllvm-args=-sanitizer-coverage-pc-table",
-                "-Cllvm-args=-sanitizer-coverage-trace-compares",
-            ]);
         }
     }
 
@@ -533,7 +517,7 @@ pub(super) fn create_sim_graph_trybuild(
             .and_then(|lib| lib.get("path"))
             .and_then(|path| path.as_str());
 
-        let gen_staged = stageleft_tool::gen_staged_trybuild(
+        let mut gen_staged = stageleft_tool::gen_staged_trybuild(
             &maybe_custom_lib_path
                 .map(|s| path!(source_dir / s))
                 .unwrap_or_else(|| path!(source_dir / "src" / "lib.rs")),
@@ -542,17 +526,20 @@ pub(super) fn create_sim_graph_trybuild(
             Some("hydro___test".to_string()),
         );
 
-        Some(prettyplease::unparse(&syn::parse_quote! {
-            #![allow(
-                unused,
-                ambiguous_glob_reexports,
-                clippy::suspicious_else_formatting,
-                unexpected_cfgs,
-                reason = "generated code"
-            )]
+        gen_staged.attrs.insert(
+            0,
+            syn::parse_quote! {
+                #![allow(
+                    unused,
+                    ambiguous_glob_reexports,
+                    clippy::suspicious_else_formatting,
+                    unexpected_cfgs,
+                    reason = "generated code"
+                )]
+            },
+        );
 
-            #gen_staged
-        }))
+        Some(prettyplease::unparse(&gen_staged))
     } else {
         None
     };
@@ -568,11 +555,21 @@ pub(super) fn create_sim_graph_trybuild(
 
     let (project_dir, target_dir, mut cur_bin_enabled_features) = create_trybuild().unwrap();
 
+    let is_fuzz = std::env::var("BOLERO_FUZZER").is_ok();
+
+    // Sim builds use dynamic linking, so put examples in dylib-examples crate
+    // Fuzzing does not, so put them in the main trybuild project dir
+    let examples_dir = if is_fuzz {
+        path!(project_dir / "examples")
+    } else {
+        path!(project_dir / "dylib-examples" / "examples")
+    };
+
     // TODO(shadaj): garbage collect this directory occasionally
     fs::create_dir_all(path!(project_dir / "src")).unwrap();
-    fs::create_dir_all(path!(project_dir / "examples")).unwrap();
+    fs::create_dir_all(&examples_dir).unwrap();
 
-    let out_path = path!(project_dir / "examples" / format!("{bin_name}.rs"));
+    let out_path = path!(examples_dir / format!("{bin_name}.rs"));
     {
         let _concurrent_test_lock = CONCURRENT_TEST_LOCK.lock().unwrap();
         write_atomic(source.as_ref(), &out_path).unwrap();
@@ -603,6 +600,8 @@ pub(super) fn create_sim_graph_trybuild(
             project_dir,
             target_dir,
             features: cur_bin_enabled_features,
+            #[cfg(feature = "deploy")]
+            linking_mode: LinkingMode::Dynamic,
         },
     )
 }
@@ -657,6 +656,8 @@ fn compile_sim_graph_trybuild(
         },
     );
 
+    let root = get_this_crate();
+
     let cluster_dfir_stmts = cluster_graphs
         .into_iter()
         .map(|(lid, g)| {
@@ -702,7 +703,7 @@ fn compile_sim_graph_trybuild(
                         Some(__current_cluster_id),
                         {
                             #(#extra_stmts_per_cluster)*
-                            let #self_id_ident = &*Box::leak(Box::new(::hydro_lang::location::TaglessMemberId::from_raw_id(__current_cluster_id)));
+                            let #self_id_ident = &*Box::leak(Box::new(#root::__staged::location::TaglessMemberId::from_raw_id(__current_cluster_id)));
 
                             #(#tick_dfir_stmts)*
 
@@ -723,8 +724,6 @@ fn compile_sim_graph_trybuild(
         })
         .collect::<Vec<syn::Expr>>();
 
-    let trybuild_crate_name_ident = quote::format_ident!("{}_hydro_trybuild", crate_name);
-
     let cluster_ids_stmts = cluster_max_sizes
         .iter()
         .map(|(lid, max_size)| {
@@ -744,16 +743,23 @@ fn compile_sim_graph_trybuild(
                 .collect::<Vec<syn::Expr>>();
 
             syn::parse_quote! {
-                let #ident: &'static [::hydro_lang::location::TaglessMemberId] = Box::leak(Box::new([#(::hydro_lang::location::TaglessMemberId::from_raw_id(#elements)),*]));
+                let #ident: &'static [#root::__staged::location::TaglessMemberId] = Box::leak(Box::new([#(#root::__staged::location::TaglessMemberId::from_raw_id(#elements)),*]));
             }
         })
         .collect::<Vec<syn::Stmt>>();
 
+    let orig_crate_name = quote::format_ident!("{}", crate_name);
+    let trybuild_crate_name_ident = quote::format_ident!("{}_hydro_trybuild", crate_name);
+
     let source_ast: syn::File = syn::parse_quote! {
-        use hydro_lang::prelude::*;
-        use hydro_lang::runtime_support::dfir_rs as __root_dfir_rs;
+        use #trybuild_crate_name_ident::__root as #orig_crate_name;
+        use #trybuild_crate_name_ident::__staged::__deps::*;
+        use #root::prelude::*;
+        use #root::runtime_support::dfir_rs as __root_dfir_rs;
         pub use #trybuild_crate_name_ident::__staged;
 
+        /// NOTE: This method signature MUST BE THE SAME as `SimLoaded`.
+        /// TODO(mingwei): enforce/check this, somehow
         #[allow(unused)]
         fn __hydro_runtime_core<'a>(
             mut __hydro_external_out: ::std::collections::HashMap<usize, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>,
@@ -763,8 +769,8 @@ fn compile_sim_graph_trybuild(
         ) -> (
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
-            hydro_lang::sim::runtime::Hooks<&'static str>,
-            hydro_lang::sim::runtime::InlineHooks<&'static str>,
+            #root::sim::runtime::Hooks<&'static str>,
+            #root::sim::runtime::InlineHooks<&'static str>,
         ) {
             macro_rules! println {
                 ($($arg:tt)*) => ({
@@ -810,8 +816,8 @@ fn compile_sim_graph_trybuild(
                 };
             }
 
-            let mut __hydro_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimHook>>> = ::std::collections::HashMap::new();
-            let mut __hydro_inline_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn hydro_lang::sim::runtime::SimInlineHook>>> = ::std::collections::HashMap::new();
+            let mut __hydro_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn #root::sim::runtime::SimHook>>> = ::std::collections::HashMap::new();
+            let mut __hydro_inline_hooks: ::std::collections::HashMap<(&'static str, Option<u32>), ::std::vec::Vec<Box<dyn #root::sim::runtime::SimInlineHook>>> = ::std::collections::HashMap::new();
             #(#extra_stmts_global)*
             #(#cluster_ids_stmts)*
 
@@ -831,10 +837,10 @@ fn compile_sim_graph_trybuild(
         ) -> (
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
             Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
-            hydro_lang::sim::runtime::Hooks<&'static str>,
-            hydro_lang::sim::runtime::InlineHooks<&'static str>,
+            #root::sim::runtime::Hooks<&'static str>,
+            #root::sim::runtime::InlineHooks<&'static str>,
         ) {
-            hydro_lang::runtime_support::colored::control::set_override(should_color);
+            #root::runtime_support::colored::control::set_override(should_color);
             __hydro_runtime_core(__hydro_external_out, __hydro_external_in, __println_handler, __eprintln_handler)
         }
     };

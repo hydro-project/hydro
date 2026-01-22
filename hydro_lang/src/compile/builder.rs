@@ -16,6 +16,11 @@ use crate::location::{Cluster, External, Process};
 use crate::sim::flow::SimFlow;
 use crate::staging_util::Invariant;
 
+crate::newtype_counter! {
+    /// Counter for generating unique external output identifiers.
+    pub struct ExternalPortId(usize);
+}
+
 pub(crate) type FlowState = Rc<RefCell<FlowStateInner>>;
 
 pub(crate) struct FlowStateInner {
@@ -25,7 +30,7 @@ pub(crate) struct FlowStateInner {
     pub(crate) roots: Option<Vec<HydroRoot>>,
 
     /// Counter for generating unique external output identifiers.
-    pub(crate) next_external_out: usize,
+    pub(crate) next_external_port: ExternalPortId,
 
     /// Counters for generating identifiers for cycles.
     pub(crate) cycle_counts: usize,
@@ -89,7 +94,7 @@ impl<'a> FlowBuilder<'a> {
         FlowBuilder {
             flow_state: Rc::new(RefCell::new(FlowStateInner {
                 roots: Some(vec![]),
-                next_external_out: 0,
+                next_external_port: ExternalPortId(0),
                 cycle_counts: 0,
                 next_clock_id: 0,
             })),
@@ -225,7 +230,7 @@ impl<'a> FlowBuilder<'a> {
         self.with_default_optimize().with_remaining_clusters(spec)
     }
 
-    pub fn compile<D: Deploy<'a>>(self) -> CompiledFlow<'a, D::GraphId> {
+    pub fn compile<D: Deploy<'a>>(self) -> CompiledFlow<'a> {
         self.with_default_optimize::<D>().compile()
     }
 
@@ -245,7 +250,7 @@ impl<'a> FlowBuilder<'a> {
             builder: FlowBuilder {
                 flow_state: Rc::new(RefCell::new(FlowStateInner {
                     roots: None,
-                    next_external_out: 0,
+                    next_external_port: ExternalPortId(0),
                     cycle_counts: 0,
                     next_clock_id: 0,
                 })),

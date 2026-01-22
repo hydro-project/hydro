@@ -6,13 +6,13 @@ use syn::Stmt;
 use crate::location::Location;
 use crate::staging_util::Invariant;
 
-pub struct CompiledFlow<'a, ID> {
+pub struct CompiledFlow<'a> {
     pub(super) dfir: BTreeMap<usize, DfirGraph>,
     pub(super) extra_stmts: BTreeMap<usize, Vec<Stmt>>,
-    pub(super) _phantom: Invariant<'a, ID>,
+    pub(super) _phantom: Invariant<'a>,
 }
 
-impl<'a, ID> CompiledFlow<'a, ID> {
+impl<'a> CompiledFlow<'a> {
     pub fn dfir_for(&self, location: &impl Location<'a>) -> &DfirGraph {
         self.dfir.get(&Location::id(location).raw_id()).unwrap()
     }

@@ -16,7 +16,6 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
-  RUSTFLAGS: "-C debuginfo=line-tables-only"
 
 defaults:
   run:
@@ -62,10 +61,10 @@ jobs:
 
       - if: matrix.rust_release == 'latest-stable' && matrix.os == 'ubuntu-latest'
         uses: ./.github/actions/use-sccache
-      
+
       - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo check --all-targets
-      - run: cargo check --all-targets --no-default-features
+      - run: cargo clippy --all-targets --no-default-features -- -D warnings
+      - run: cargo clippy --all-targets --all-features -- -D warnings
 
       - run: rustup component add --toolchain nightly rustfmt
       - run: cargo +nightly fmt --all -- --check
@@ -97,7 +96,7 @@ jobs:
         uses: easimon/maximize-build-space@c28619d8999a147d5e09c1199f84ff6af6ad5794
         with:
           root-reserve-mb: 4096
-          
+
       - name: Checkout sources
         uses: actions/checkout@v4
 
@@ -115,18 +114,14 @@ jobs:
       - if: matrix.rust_release == 'latest-stable' && matrix.os == 'ubuntu-latest'
         uses: ./.github/actions/use-sccache
 
-      - if: matrix.rust_release != 'latest-stable' || matrix.os != 'ubuntu-latest'
-        name: Install local sccache
-        uses: mozilla-actions/sccache-action@v0.0.8
+      - uses: taiki-e/install-action@nextest
 
-      - if: matrix.rust_release != 'latest-stable' || matrix.os != 'ubuntu-latest'
-        name: Set local Rust caching env vars
+      - name: Enable Trybuild updating on nightly
+        if: ${{ matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
         uses: actions/github-script@v6
         with:
           script: |
-            core.exportVariable('RUSTC_WRAPPER', 'sccache');
-
-      - uses: taiki-e/install-action@nextest
+            core.exportVariable('TRYBUILD', 'overwrite');
 
       - name: Run cargo nextest on all targets
         id: nextest
@@ -135,7 +130,7 @@ jobs:
           INSTA_UPDATE: ${{ (matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) && 'always' || '' }}
           INSTA_FORCE_PASS: ${{ (matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) && '1' || '' }}
           RUST_BACKTRACE: "1"
-        run: cargo nextest run --no-fail-fast --all-targets --features "deploy docker_deploy"
+        run: cargo nextest run --no-fail-fast --all-targets --features "deploy"
 
       - name: Run doctests
         id: doctests

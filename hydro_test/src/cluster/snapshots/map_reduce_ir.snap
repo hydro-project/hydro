@@ -20,7 +20,7 @@ expression: built.ir()
                                                 inner: Cast {
                                                     inner: Network {
                                                         serialize_fn: Some(
-                                                            :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (std :: string :: String , i32) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
+                                                            hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (std :: string :: String , i32) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
                                                         ),
                                                         instantiate_fn: <network instantiate>,
                                                         deserialize_fn: Some(
@@ -40,7 +40,7 @@ expression: built.ir()
                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < std :: string :: String , (std :: string :: String , ()) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | string | (string , ()) }),
                                                                                         input: Network {
                                                                                             serialize_fn: Some(
-                                                                                                :: hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , std :: string :: String) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                                                                                                hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , std :: string :: String) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                                                                             ),
                                                                                             instantiate_fn: <network instantiate>,
                                                                                             deserialize_fn: Some(
@@ -64,7 +64,7 @@ expression: built.ir()
                                                                                                                                     0,
                                                                                                                                 ),
                                                                                                                                 collection_kind: Stream {
-                                                                                                                                    bound: Unbounded,
+                                                                                                                                    bound: Bounded,
                                                                                                                                     order: TotalOrder,
                                                                                                                                     retry: ExactlyOnce,
                                                                                                                                     element_type: & str,
@@ -76,7 +76,7 @@ expression: built.ir()
                                                                                                                                 0,
                                                                                                                             ),
                                                                                                                             collection_kind: Stream {
-                                                                                                                                bound: Unbounded,
+                                                                                                                                bound: Bounded,
                                                                                                                                 order: TotalOrder,
                                                                                                                                 retry: ExactlyOnce,
                                                                                                                                 element_type: std :: string :: String,
@@ -88,7 +88,7 @@ expression: built.ir()
                                                                                                                             0,
                                                                                                                         ),
                                                                                                                         collection_kind: Stream {
-                                                                                                                            bound: Unbounded,
+                                                                                                                            bound: Bounded,
                                                                                                                             order: TotalOrder,
                                                                                                                             retry: ExactlyOnce,
                                                                                                                             element_type: (usize , std :: string :: String),

@@ -14,21 +14,18 @@ use crate::compile::ir::HydroRoot;
 use crate::location::Location;
 use crate::location::dynamic::LocationId;
 use crate::prelude::Cluster;
+use crate::sim::graph::SimExternalPortRegistry;
 use crate::staging_util::Invariant;
 
 /// A not-yet-compiled simulator for a Hydro program.
 pub struct SimFlow<'a> {
     pub(crate) ir: Vec<HydroRoot>,
 
-    pub(crate) external_ports: Rc<RefCell<(Vec<usize>, usize)>>,
-
     pub(crate) processes: HashMap<usize, SimNode>,
     pub(crate) clusters: HashMap<usize, SimNode>,
     pub(crate) externals: HashMap<usize, SimExternal>,
 
-    /// A mapping from external "keys", which are used for looking up connections, to the IDs
-    /// of the external channels created in the simulation.
-    pub(crate) external_registered: Rc<RefCell<HashMap<usize, usize>>>,
+    pub(crate) externals_port_registry: Rc<RefCell<SimExternalPortRegistry>>,
 
     pub(crate) cluster_max_sizes: HashMap<LocationId, usize>,
 
@@ -97,11 +94,11 @@ impl<'a> SimFlow<'a> {
             next_hoff_id: 0,
         };
 
+        // Ensure the default (0) external is always present.
         self.externals.insert(
             0,
             SimExternal {
-                external_ports: self.external_ports.clone(),
-                registered: self.external_registered.clone(),
+                shared_inner: self.externals_port_registry.clone(),
             },
         );
 
@@ -116,10 +113,16 @@ impl<'a> SimFlow<'a> {
             );
         });
 
+        let mut seen_tees = HashMap::new();
         let mut built_tees = HashMap::new();
         let mut next_stmt_id = 0;
         for leaf in &mut self.ir {
-            leaf.emit::<SimDeploy>(&mut sim_emit, &mut built_tees, &mut next_stmt_id);
+            leaf.emit::<SimDeploy>(
+                &mut sim_emit,
+                &mut seen_tees,
+                &mut built_tees,
+                &mut next_stmt_id,
+            );
         }
 
         let process_graphs = sim_emit
@@ -196,12 +199,10 @@ impl<'a> SimFlow<'a> {
         let out = compile_sim(bin, trybuild).unwrap();
         let lib = unsafe { Library::new(&out).unwrap() };
 
-        let external_ports = self.external_ports.take().0;
         CompiledSim {
             _path: out,
             lib,
-            external_ports,
-            external_registered: self.external_registered.take(),
+            externals_port_registry: self.externals_port_registry.take(),
         }
     }
 }

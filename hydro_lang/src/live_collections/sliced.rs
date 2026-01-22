@@ -664,7 +664,7 @@ impl<'a, T, L: Location<'a>> Unslicable for super::Singleton<T, Tick<L>, Bounded
     }
 }
 
-impl<'a, T, L: Location<'a>> Slicable<'a, L> for super::Optional<T, L, Unbounded> {
+impl<'a, T, L: Location<'a>, B: Boundedness> Slicable<'a, L> for super::Optional<T, L, B> {
     type Slice = super::Optional<T, Tick<L>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
 

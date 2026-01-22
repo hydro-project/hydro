@@ -2,6 +2,7 @@
 source: hydro_lang/src/sim/tests/trophies/sequence_payloads.rs
 expression: log_str
 ---
+
 Running Tick
 * --> src/sim/tests/trophies/sequence_payloads.rs:40:10
 *  |        .batch(replica_tick, nondet!(

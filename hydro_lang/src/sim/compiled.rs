@@ -2,7 +2,7 @@
 
 use core::{fmt, panic};
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
 use std::panic::RefUnwindSafe;
 use std::path::Path;
@@ -24,13 +24,15 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use super::runtime::{Hooks, InlineHooks};
 use super::{SimReceiver, SimSender};
+use crate::compile::builder::ExternalPortId;
 use crate::live_collections::stream::{ExactlyOnce, NoOrder, Ordering, Retries, TotalOrder};
 use crate::location::dynamic::LocationId;
+use crate::sim::graph::{SimExternalPort, SimExternalPortRegistry};
 
 struct SimConnections {
-    input_senders: HashMap<usize, Rc<UnboundedSender<Bytes>>>,
-    output_receivers: HashMap<usize, Rc<Mutex<UnboundedReceiverStream<Bytes>>>>,
-    external_registered: HashMap<usize, usize>,
+    input_senders: HashMap<SimExternalPort, Rc<UnboundedSender<Bytes>>>,
+    output_receivers: HashMap<SimExternalPort, Rc<Mutex<UnboundedReceiverStream<Bytes>>>>,
+    external_registered: HashMap<ExternalPortId, SimExternalPort>,
 }
 
 tokio::task_local! {
@@ -41,8 +43,7 @@ tokio::task_local! {
 pub struct CompiledSim {
     pub(super) _path: TempPath,
     pub(super) lib: Library,
-    pub(super) external_ports: Vec<usize>,
-    pub(super) external_registered: HashMap<usize, usize>,
+    pub(super) externals_port_registry: SimExternalPortRegistry,
 }
 
 #[sealed::sealed]
@@ -71,11 +72,13 @@ fn eprintln_handler(args: fmt::Arguments) {
 type SimLoaded<'a> = libloading::Symbol<
     'a,
     unsafe extern "Rust" fn(
-        bool,
-        HashMap<usize, UnboundedSender<Bytes>>,
-        HashMap<usize, UnboundedReceiverStream<Bytes>>,
-        fn(fmt::Arguments<'_>),
-        fn(fmt::Arguments<'_>),
+        should_color: bool,
+        // usize: SimExternalPort
+        external_out: HashMap<usize, UnboundedSender<Bytes>>,
+        // usize: SimExternalPort
+        external_in: HashMap<usize, UnboundedReceiverStream<Bytes>>,
+        println_handler: fn(fmt::Arguments<'_>),
+        eprintln_handler: fn(fmt::Arguments<'_>),
     ) -> (
         Vec<(&'static str, Option<u32>, Dfir<'static>)>,
         Vec<(&'static str, Option<u32>, Dfir<'static>)>,
@@ -107,8 +110,7 @@ impl CompiledSim {
         thunk(
             &(|| CompiledSimInstance {
                 func: func.clone(),
-                remaining_ports: self.external_ports.iter().cloned().collect(),
-                external_registered: self.external_registered.clone(),
+                externals_port_registry: self.externals_port_registry.clone(),
                 input_ports: HashMap::new(),
                 output_ports: HashMap::new(),
                 log,
@@ -137,11 +139,6 @@ impl CompiledSim {
                     && !e.fn_name.starts_with("<hydro_lang::sim")
             })
             .unwrap();
-
-        eprintln!(
-            "backtrace: {:?}",
-            crate::compile::ir::backtrace::Backtrace::get_backtrace(0).elements()
-        );
 
         let caller_path = Path::new(&caller_fn.filename.unwrap()).to_path_buf();
         let repro_folder = caller_path.parent().unwrap().join("sim-failures");
@@ -335,10 +332,9 @@ impl CompiledSim {
 /// execute the simulation, feed inputs, and receive outputs.
 pub struct CompiledSimInstance<'a> {
     func: SimLoaded<'a>,
-    remaining_ports: HashSet<usize>,
-    external_registered: HashMap<usize, usize>,
-    output_ports: HashMap<usize, UnboundedSender<Bytes>>,
-    input_ports: HashMap<usize, UnboundedReceiverStream<Bytes>>,
+    externals_port_registry: SimExternalPortRegistry,
+    output_ports: HashMap<SimExternalPort, UnboundedSender<Bytes>>,
+    input_ports: HashMap<SimExternalPort, UnboundedReceiverStream<Bytes>>,
     log: bool,
 }
 
@@ -357,12 +353,12 @@ impl<'a> CompiledSimInstance<'a> {
     ) {
         let mut input_senders = HashMap::new();
         let mut output_receivers = HashMap::new();
-        for remaining in &self.remaining_ports {
+        for registered_port in self.externals_port_registry.port_counter.range_up_to() {
             {
                 let (sender, receiver) = dfir_rs::util::unbounded_channel::<Bytes>();
-                self.output_ports.insert(*remaining, sender);
+                self.output_ports.insert(registered_port, sender);
                 output_receivers.insert(
-                    *remaining,
+                    registered_port,
                     Rc::new(Mutex::new(UnboundedReceiverStream::new(
                         receiver.into_inner(),
                     ))),
@@ -371,8 +367,8 @@ impl<'a> CompiledSimInstance<'a> {
 
             {
                 let (sender, receiver) = dfir_rs::util::unbounded_channel::<Bytes>();
-                self.input_ports.insert(*remaining, receiver);
-                input_senders.insert(*remaining, Rc::new(sender));
+                self.input_ports.insert(registered_port, receiver);
+                input_senders.insert(registered_port, Rc::new(sender));
             }
         }
 
@@ -382,7 +378,7 @@ impl<'a> CompiledSimInstance<'a> {
                 RefCell::new(SimConnections {
                     input_senders,
                     output_receivers,
-                    external_registered: self.external_registered.clone(),
+                    external_registered: self.externals_port_registry.registered.clone(),
                 }),
                 async move {
                     thunk(self).await;
@@ -413,8 +409,14 @@ impl<'a> CompiledSimInstance<'a> {
         let (async_dfirs, tick_dfirs, hooks, inline_hooks) = unsafe {
             (self.func)(
                 colored::control::SHOULD_COLORIZE.should_colorize(),
-                self.output_ports,
-                self.input_ports,
+                self.output_ports
+                    .into_iter()
+                    .map(|(k, v)| (k.into_inner(), v))
+                    .collect(),
+                self.input_ports
+                    .into_iter()
+                    .map(|(k, v)| (k.into_inner(), v))
+                    .collect(),
                 if self.log {
                     println_handler
                 } else {

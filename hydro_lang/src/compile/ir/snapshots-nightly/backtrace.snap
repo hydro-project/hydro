@@ -1,12 +1,12 @@
 ---
 source: hydro_lang/src/compile/ir/backtrace.rs
-expression: elements
+expression: "elements.collect::<Vec<_>>()"
 ---
 [
     BacktraceElement {
         fn_name: "hydro_lang::compile::ir::backtrace::tests",
         lineno: Some(
-            180,
+            184,
         ),
         colno: Some(
             25,
@@ -15,7 +15,7 @@ expression: elements
     BacktraceElement {
         fn_name: "hydro_lang::compile::ir::backtrace::tests::test_backtrace",
         lineno: Some(
-            172,
+            176,
         ),
         colno: Some(
             24,

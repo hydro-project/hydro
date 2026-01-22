@@ -29,11 +29,12 @@ use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 use tracing::{Instrument, instrument, trace, warn};
 
 use super::deploy_runtime_containerized::*;
+use crate::compile::builder::ExternalPortId;
 use crate::compile::deploy::DeployResult;
 use crate::compile::deploy_provider::{
     ClusterSpec, Deploy, ExternalSpec, Node, ProcessSpec, RegisterPort,
 };
-use crate::compile::trybuild::generate::create_graph_trybuild;
+use crate::compile::trybuild::generate::{LinkingMode, create_graph_trybuild};
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
 use crate::location::{MembershipEvent, NetworkHint};
@@ -100,8 +101,13 @@ impl Node for DockerDeployProcess {
         graph: DfirGraph,
         extra_stmts: Vec<syn::Stmt>,
     ) {
-        let (bin_name, config) =
-            create_graph_trybuild(graph, extra_stmts, &Some(self.name.clone()), true);
+        let (bin_name, config) = create_graph_trybuild(
+            graph,
+            extra_stmts,
+            &Some(self.name.clone()),
+            true,
+            LinkingMode::Static,
+        );
 
         let mut ret = RustCrate::new(config.project_dir)
             .target_dir(config.target_dir)
@@ -168,8 +174,13 @@ impl Node for DockerDeployCluster {
         graph: DfirGraph,
         extra_stmts: Vec<syn::Stmt>,
     ) {
-        let (bin_name, config) =
-            create_graph_trybuild(graph, extra_stmts, &Some(self.name.clone()), true);
+        let (bin_name, config) = create_graph_trybuild(
+            graph,
+            extra_stmts,
+            &Some(self.name.clone()),
+            true,
+            LinkingMode::Static,
+        );
 
         let mut ret = RustCrate::new(config.project_dir)
             .target_dir(config.target_dir)
@@ -197,7 +208,7 @@ pub struct DockerDeployExternal {
     name: String,
     next_port: Rc<RefCell<u16>>,
 
-    ports: Rc<RefCell<HashMap<usize, u16>>>,
+    ports: Rc<RefCell<HashMap<ExternalPortId, u16>>>,
 
     #[expect(clippy::type_complexity, reason = "internal code")]
     connection_info: Rc<RefCell<HashMap<u16, (Rc<RefCell<Option<String>>>, u16, DockerNetwork)>>>,
@@ -241,48 +252,46 @@ type DynSourceSink<Out, In, InErr> = (
 );
 
 impl<'a> RegisterPort<'a, DockerDeploy> for DockerDeployExternal {
-    #[instrument(level = "trace", skip_all, fields(name = self.name, %key, %port))]
-    fn register(&self, key: usize, port: <DockerDeploy as Deploy>::Port) {
-        self.ports.borrow_mut().insert(key, port);
-    }
-
-    #[instrument(level = "trace", skip_all, fields(name = self.name, %key))]
-    fn raw_port(&self, key: usize) -> <DockerDeploy as Deploy<'a>>::ExternalRawPort {
-        todo!()
+    #[instrument(level = "trace", skip_all, fields(name = self.name, %external_port_id, %port))]
+    fn register(&self, external_port_id: ExternalPortId, port: Self::Port) {
+        self.ports.borrow_mut().insert(external_port_id, port);
     }
 
     fn as_bytes_bidi(
         &self,
-        key: usize,
+        external_port_id: ExternalPortId,
     ) -> impl Future<
         Output = DynSourceSink<Result<bytes::BytesMut, std::io::Error>, Bytes, std::io::Error>,
     > + 'a {
-        let _span = tracing::trace_span!("as_bytes_bidi", name = %self.name, %key).entered(); // the instrument macro doesn't work here because of lifetime issues?
+        let _span =
+            tracing::trace_span!("as_bytes_bidi", name = %self.name, %external_port_id).entered(); // the instrument macro doesn't work here because of lifetime issues?
         async { todo!() }
     }
 
     fn as_bincode_bidi<InT, OutT>(
         &self,
-        key: usize,
+        external_port_id: ExternalPortId,
     ) -> impl Future<Output = DynSourceSink<OutT, InT, std::io::Error>> + 'a
     where
         InT: serde::Serialize + 'static,
         OutT: serde::de::DeserializeOwned + 'static,
     {
-        let _span = tracing::trace_span!("as_bincode_bidi", name = %self.name, %key).entered(); // the instrument macro doesn't work here because of lifetime issues?
+        let _span =
+            tracing::trace_span!("as_bincode_bidi", name = %self.name, %external_port_id).entered(); // the instrument macro doesn't work here because of lifetime issues?
         async { todo!() }
     }
 
     fn as_bincode_sink<T>(
         &self,
-        key: usize,
+        external_port_id: ExternalPortId,
     ) -> impl Future<Output = Pin<Box<dyn Sink<T, Error = std::io::Error>>>> + 'a
     where
         T: serde::Serialize + 'static,
     {
-        let guard = tracing::trace_span!("as_bincode_sink", name = %self.name, %key).entered();
+        let guard =
+            tracing::trace_span!("as_bincode_sink", name = %self.name, %external_port_id).entered();
 
-        let local_port = *self.ports.borrow().get(&key).unwrap();
+        let local_port = *self.ports.borrow().get(&external_port_id).unwrap();
         let (docker_container_name, remote_port, _) = self
             .connection_info
             .borrow()
@@ -323,14 +332,15 @@ impl<'a> RegisterPort<'a, DockerDeploy> for DockerDeployExternal {
 
     fn as_bincode_source<T>(
         &self,
-        key: usize,
+        external_port_id: ExternalPortId,
     ) -> impl Future<Output = Pin<Box<dyn Stream<Item = T>>>> + 'a
     where
         T: serde::de::DeserializeOwned + 'static,
     {
-        let guard = tracing::trace_span!("as_bincode_sink", name = %self.name, %key).entered();
+        let guard =
+            tracing::trace_span!("as_bincode_sink", name = %self.name, %external_port_id).entered();
 
-        let local_port = *self.ports.borrow().get(&key).unwrap();
+        let local_port = *self.ports.borrow().get(&external_port_id).unwrap();
         let (docker_container_name, remote_port, _) = self
             .connection_info
             .borrow()
@@ -811,36 +821,19 @@ impl DockerDeploy {
 }
 
 impl<'a> Deploy<'a> for DockerDeploy {
+    type Meta = ();
     type InstantiateEnv = Self;
+
     type Process = DockerDeployProcess;
     type Cluster = DockerDeployCluster;
     type External = DockerDeployExternal;
-    type Port = u16;
-    type ExternalRawPort = ();
-    type Meta = ();
-    type GraphId = ();
-
-    #[instrument(level = "trace", skip_all, ret)]
-    fn allocate_process_port(process: &Self::Process) -> Self::Port {
-        process.next_port()
-    }
-
-    #[instrument(level = "trace", skip_all, ret)]
-    fn allocate_cluster_port(cluster: &Self::Cluster) -> Self::Port {
-        cluster.next_port()
-    }
-
-    #[instrument(level = "trace", skip_all, ret)]
-    fn allocate_external_port(external: &Self::External) -> Self::Port {
-        external.next_port()
-    }
 
     #[instrument(level = "trace", skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, p2_port))]
     fn o2o_sink_source(
         p1: &Self::Process,
-        p1_port: &Self::Port,
+        p1_port: &<Self::Process as Node>::Port,
         p2: &Self::Process,
-        p2_port: &Self::Port,
+        p2_port: &<Self::Process as Node>::Port,
     ) -> (syn::Expr, syn::Expr) {
         let bind_addr = format!("0.0.0.0:{}", p2_port);
         let target = format!("{}:{p2_port}", p2.name);
@@ -851,9 +844,9 @@ impl<'a> Deploy<'a> for DockerDeploy {
     #[instrument(level = "trace", skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, p2_port))]
     fn o2o_connect(
         p1: &Self::Process,
-        p1_port: &Self::Port,
+        p1_port: &<Self::Process as Node>::Port,
         p2: &Self::Process,
-        p2_port: &Self::Port,
+        p2_port: &<Self::Process as Node>::Port,
     ) -> Box<dyn FnOnce()> {
         let serialized = format!(
             "o2o_connect {}:{p1_port:?} -> {}:{p2_port:?}",
@@ -868,9 +861,9 @@ impl<'a> Deploy<'a> for DockerDeploy {
     #[instrument(level = "trace", skip_all, fields(p1 = p1.name, %p1_port, c2 = c2.name, %c2_port))]
     fn o2m_sink_source(
         p1: &Self::Process,
-        p1_port: &Self::Port,
+        p1_port: &<Self::Process as Node>::Port,
         c2: &Self::Cluster,
-        c2_port: &Self::Port,
+        c2_port: &<Self::Cluster as Node>::Port,
     ) -> (syn::Expr, syn::Expr) {
         deploy_containerized_o2m(*c2_port)
     }
@@ -878,9 +871,9 @@ impl<'a> Deploy<'a> for DockerDeploy {
     #[instrument(level = "trace", skip_all, fields(p1 = p1.name, %p1_port, c2 = c2.name, %c2_port))]
     fn o2m_connect(
         p1: &Self::Process,
-        p1_port: &Self::Port,
+        p1_port: &<Self::Process as Node>::Port,
         c2: &Self::Cluster,
-        c2_port: &Self::Port,
+        c2_port: &<Self::Cluster as Node>::Port,
     ) -> Box<dyn FnOnce()> {
         let serialized = format!(
             "o2m_connect {}:{p1_port:?} -> {}:{c2_port:?}",
@@ -895,9 +888,9 @@ impl<'a> Deploy<'a> for DockerDeploy {
     #[instrument(level = "trace", skip_all, fields(c1 = c1.name, %c1_port, p2 = p2.name, %p2_port))]
     fn m2o_sink_source(
         c1: &Self::Cluster,
-        c1_port: &Self::Port,
+        c1_port: &<Self::Cluster as Node>::Port,
         p2: &Self::Process,
-        p2_port: &Self::Port,
+        p2_port: &<Self::Process as Node>::Port,
     ) -> (syn::Expr, syn::Expr) {
         deploy_containerized_m2o(*p2_port, &p2.name)
     }
@@ -905,9 +898,9 @@ impl<'a> Deploy<'a> for DockerDeploy {
     #[instrument(level = "trace", skip_all, fields(c1 = c1.name, %c1_port, p2 = p2.name, %p2_port))]
     fn m2o_connect(
         c1: &Self::Cluster,
-        c1_port: &Self::Port,
+        c1_port: &<Self::Cluster as Node>::Port,
         p2: &Self::Process,
-        p2_port: &Self::Port,
+        p2_port: &<Self::Process as Node>::Port,
     ) -> Box<dyn FnOnce()> {
         let serialized = format!(
             "o2m_connect {}:{c1_port:?} -> {}:{p2_port:?}",
@@ -922,9 +915,9 @@ impl<'a> Deploy<'a> for DockerDeploy {
     #[instrument(level = "trace", skip_all, fields(c1 = c1.name, %c1_port, c2 = c2.name, %c2_port))]
     fn m2m_sink_source(
         c1: &Self::Cluster,
-        c1_port: &Self::Port,
+        c1_port: &<Self::Cluster as Node>::Port,
         c2: &Self::Cluster,
-        c2_port: &Self::Port,
+        c2_port: &<Self::Cluster as Node>::Port,
     ) -> (syn::Expr, syn::Expr) {
         deploy_containerized_m2m(*c2_port)
     }
@@ -932,9 +925,9 @@ impl<'a> Deploy<'a> for DockerDeploy {
     #[instrument(level = "trace", skip_all, fields(c1 = c1.name, %c1_port, c2 = c2.name, %c2_port))]
     fn m2m_connect(
         c1: &Self::Cluster,
-        c1_port: &Self::Port,
+        c1_port: &<Self::Cluster as Node>::Port,
         c2: &Self::Cluster,
-        c2_port: &Self::Port,
+        c2_port: &<Self::Cluster as Node>::Port,
     ) -> Box<dyn FnOnce()> {
         let serialized = format!(
             "m2m_connect {}:{c1_port:?} -> {}:{c2_port:?}",
@@ -950,7 +943,7 @@ impl<'a> Deploy<'a> for DockerDeploy {
     fn e2o_many_source(
         extra_stmts: &mut Vec<syn::Stmt>,
         p2: &Self::Process,
-        p2_port: &Self::Port,
+        p2_port: &<Self::Process as Node>::Port,
         _codec_type: &syn::Type,
         shared_handle: String,
     ) -> syn::Expr {
@@ -966,9 +959,9 @@ impl<'a> Deploy<'a> for DockerDeploy {
     fn e2o_source(
         extra_stmts: &mut Vec<syn::Stmt>,
         p1: &Self::External,
-        p1_port: &Self::Port,
+        p1_port: &<Self::External as Node>::Port,
         p2: &Self::Process,
-        p2_port: &Self::Port,
+        p2_port: &<Self::Process as Node>::Port,
         _codec_type: &syn::Type,
         shared_handle: String,
     ) -> syn::Expr {
@@ -1016,9 +1009,9 @@ impl<'a> Deploy<'a> for DockerDeploy {
     #[instrument(level = "trace", skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, %p2_port, ?many, ?server_hint))]
     fn e2o_connect(
         p1: &Self::External,
-        p1_port: &Self::Port,
+        p1_port: &<Self::External as Node>::Port,
         p2: &Self::Process,
-        p2_port: &Self::Port,
+        p2_port: &<Self::Process as Node>::Port,
         many: bool,
         server_hint: NetworkHint,
     ) -> Box<dyn FnOnce()> {
@@ -1035,9 +1028,9 @@ impl<'a> Deploy<'a> for DockerDeploy {
     #[instrument(level = "trace", skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, %p2_port, %shared_handle))]
     fn o2e_sink(
         p1: &Self::Process,
-        p1_port: &Self::Port,
+        p1_port: &<Self::Process as Node>::Port,
         p2: &Self::External,
-        p2_port: &Self::Port,
+        p2_port: &<Self::External as Node>::Port,
         shared_handle: String,
     ) -> syn::Expr {
         let sink_ident = syn::Ident::new(
