@@ -2259,6 +2259,7 @@ dependencies = [
 name = "example_test"
 version = "0.0.0"
 dependencies = [
+ "log",
  "regex",
  "trybuild-internals-api",
 ]

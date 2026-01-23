@@ -49,7 +49,8 @@ impl ExampleChild {
             .args(args)
             .env("RUNNING_AS_EXAMPLE_TEST", "1");
 
-        println!("Running cargo command: {:?}", cargo_cmd);
+        log::info!("Running cargo command: {:?}", cargo_cmd);
+
         let child = cargo_cmd
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
