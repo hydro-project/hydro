@@ -2260,6 +2260,7 @@ name = "example_test"
 version = "0.0.0"
 dependencies = [
  "regex",
+ "trybuild-internals-api",
 ]
 
 [[package]]
