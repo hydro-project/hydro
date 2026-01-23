@@ -37,7 +37,7 @@ impl ExampleChild {
     ) -> Self {
         let mut cargo_cmd = std::process::Command::new("cargo");
         cargo_cmd
-            .args(["run", "--locked"])
+            .args(["run", "--frozen"])
             .args(["-p", pkg_name, "--example", test_name]);
         if let Some(features) = trybuild_internals_api::features::find()
             && !features.is_empty()
