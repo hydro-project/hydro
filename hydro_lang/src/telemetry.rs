@@ -4,11 +4,7 @@ use tracing_subscriber::EnvFilter;
 use tracing_subscriber::fmt::{FormatEvent, FormatFields, FormattedFields};
 use tracing_subscriber::registry::LookupSpan;
 
-#[expect(
-    missing_docs,
-    reason = "This is internal code. This struct needs to be pub for some reason for the Formatter impl to work in staged code?"
-)]
-pub struct Formatter;
+struct Formatter;
 
 impl<S, N> FormatEvent<S, N> for Formatter
 where
