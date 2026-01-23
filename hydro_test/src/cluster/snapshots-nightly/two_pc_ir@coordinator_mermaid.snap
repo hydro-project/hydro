@@ -15,12 +15,12 @@ linkStyle default stroke:#aaa
 5v1["<div style=text-align:center>(5v1)</div> <code><br>filter({<br>    let f__free = {<br>        |b| *b<br>    };<br>    {<br>        let orig = f__free;<br>        move |t: &amp;(_, _)| orig(&amp;t.1)<br>    }<br>})</code>"]:::otherClass
 6v1["<div style=text-align:center>(6v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
 7v1["<div style=text-align:center>(7v1)</div> <code><br>source_stream(DUMMY_SOURCE)</code>"]:::otherClass
-8v1["<div style=text-align:center>(8v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::two_pc_bench::Client,<br>        &gt;::from_tagless(id as hydro_lang::__staged::location::TaglessMemberId),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;(u32, u32)&gt;(&amp;b).unwrap(),<br>    )<br>})</code>"]:::otherClass
+8v1["<div style=text-align:center>(8v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::two_pc_bench::Client,<br>        &gt;::from_tagless(id as hydro_lang::__staged::location::TaglessMemberId),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;(u32, i32)&gt;(&amp;b).unwrap(),<br>    )<br>})</code>"]:::otherClass
 9v1["<div style=text-align:center>(9v1)</div> <code><br>cross_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 10v1["<div style=text-align:center>(10v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
 11v1["<div style=text-align:center>(11v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
 12v1["<div style=text-align:center>(12v1)</div> <code><br>source_stream(DUMMY_SOURCE)</code>"]:::otherClass
-13v1["<div style=text-align:center>(13v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::two_pc::Participant,<br>        &gt;::from_tagless(id as hydro_lang::__staged::location::TaglessMemberId),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;<br>            (<br>                hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                    hydro_test::__staged::cluster::two_pc_bench::Client,<br>                &gt;,<br>                (u32, u32),<br>            ),<br>        &gt;(&amp;b)<br>            .unwrap(),<br>    )<br>})</code>"]:::otherClass
+13v1["<div style=text-align:center>(13v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::two_pc::Participant,<br>        &gt;::from_tagless(id as hydro_lang::__staged::location::TaglessMemberId),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;<br>            (<br>                hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                    hydro_test::__staged::cluster::two_pc_bench::Client,<br>                &gt;,<br>                (u32, i32),<br>            ),<br>        &gt;(&amp;b)<br>            .unwrap(),<br>    )<br>})</code>"]:::otherClass
 14v1["<div style=text-align:center>(14v1)</div> <code><br>map({<br>    |(_, v)| v<br>})</code>"]:::otherClass
 15v1["<div style=text-align:center>(15v1)</div> <code><br>map({<br>    |kv| (kv, Ok::&lt;(), ()&gt;(()))<br>})</code>"]:::otherClass
 17v1["<div style=text-align:center>(17v1)</div> <code><br>chain()</code>"]:::otherClass
@@ -29,9 +29,9 @@ linkStyle default stroke:#aaa
 21v1["<div style=text-align:center>(21v1)</div> <code><br>filter_map({<br>    let min__free = 3usize;<br>    move |(key, (success, _error))| {<br>        if success &gt;= min__free { Some(key) } else { None }<br>    }<br>})</code>"]:::otherClass
 22v1["<div style=text-align:center>(22v1)</div> <code><br>tee()</code>"]:::otherClass
 23v1["<div style=text-align:center>(23v1)</div> <code><br>anti_join::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-24v1["<div style=text-align:center>(24v1)</div> <code><br>identity::&lt;<br>    (<br>        (<br>            hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                hydro_test::__staged::cluster::two_pc_bench::Client,<br>            &gt;,<br>            (u32, u32),<br>        ),<br>        core::result::Result&lt;(), ()&gt;,<br>    ),<br>&gt;()</code>"]:::otherClass
+24v1["<div style=text-align:center>(24v1)</div> <code><br>identity::&lt;<br>    (<br>        (<br>            hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                hydro_test::__staged::cluster::two_pc_bench::Client,<br>            &gt;,<br>            (u32, i32),<br>        ),<br>        core::result::Result&lt;(), ()&gt;,<br>    ),<br>&gt;()</code>"]:::otherClass
 25v1["<div style=text-align:center>(25v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
-26v1["<div style=text-align:center>(26v1)</div> <code><br>identity::&lt;<br>    (<br>        hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>            hydro_test::__staged::cluster::two_pc_bench::Client,<br>        &gt;,<br>        (u32, u32),<br>    ),<br>&gt;()</code>"]:::otherClass
+26v1["<div style=text-align:center>(26v1)</div> <code><br>identity::&lt;<br>    (<br>        hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>            hydro_test::__staged::cluster::two_pc_bench::Client,<br>        &gt;,<br>        (u32, i32),<br>    ),<br>&gt;()</code>"]:::otherClass
 27v1["<div style=text-align:center>(27v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
 28v1["<div style=text-align:center>(28v1)</div> <code><br>source_stream({<br>    let cluster_ids__free = __hydro_lang_cluster_ids_1;<br>    Box::new(<br>        futures::stream::iter(<br>            cluster_ids__free<br>                .iter()<br>                .cloned()<br>                .map(|member_id| (member_id, MembershipEvent::Joined)),<br>        ),<br>    ) as Box&lt;dyn futures::Stream&lt;Item = (TaglessMemberId, MembershipEvent)&gt; + Unpin&gt;<br>})</code>"]:::otherClass
 29v1["<div style=text-align:center>(29v1)</div> <code><br>map({<br>    |(k, v)| (MemberId::from_tagless(k), v)<br>})</code>"]:::otherClass
@@ -42,7 +42,7 @@ linkStyle default stroke:#aaa
 34v1["<div style=text-align:center>(34v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
 35v1["<div style=text-align:center>(35v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
 36v1["<div style=text-align:center>(36v1)</div> <code><br>source_stream(DUMMY_SOURCE)</code>"]:::otherClass
-37v1["<div style=text-align:center>(37v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::two_pc::Participant,<br>        &gt;::from_tagless(id as hydro_lang::__staged::location::TaglessMemberId),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;<br>            (<br>                hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                    hydro_test::__staged::cluster::two_pc_bench::Client,<br>                &gt;,<br>                (u32, u32),<br>            ),<br>        &gt;(&amp;b)<br>            .unwrap(),<br>    )<br>})</code>"]:::otherClass
+37v1["<div style=text-align:center>(37v1)</div> <code><br>map(|res| {<br>    let (id, b) = res.unwrap();<br>    (<br>        hydro_lang::__staged::location::MemberId::&lt;<br>            hydro_test::__staged::cluster::two_pc::Participant,<br>        &gt;::from_tagless(id as hydro_lang::__staged::location::TaglessMemberId),<br>        hydro_lang::runtime_support::bincode::deserialize::&lt;<br>            (<br>                hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                    hydro_test::__staged::cluster::two_pc_bench::Client,<br>                &gt;,<br>                (u32, i32),<br>            ),<br>        &gt;(&amp;b)<br>            .unwrap(),<br>    )<br>})</code>"]:::otherClass
 38v1["<div style=text-align:center>(38v1)</div> <code><br>map({<br>    |(_, v)| v<br>})</code>"]:::otherClass
 39v1["<div style=text-align:center>(39v1)</div> <code><br>map({<br>    |kv| (kv, Ok::&lt;(), ()&gt;(()))<br>})</code>"]:::otherClass
 41v1["<div style=text-align:center>(41v1)</div> <code><br>chain()</code>"]:::otherClass
@@ -51,9 +51,9 @@ linkStyle default stroke:#aaa
 45v1["<div style=text-align:center>(45v1)</div> <code><br>filter_map({<br>    let min__free = 3usize;<br>    move |(key, (success, _error))| {<br>        if success &gt;= min__free { Some(key) } else { None }<br>    }<br>})</code>"]:::otherClass
 46v1["<div style=text-align:center>(46v1)</div> <code><br>tee()</code>"]:::otherClass
 47v1["<div style=text-align:center>(47v1)</div> <code><br>anti_join::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-48v1["<div style=text-align:center>(48v1)</div> <code><br>identity::&lt;<br>    (<br>        (<br>            hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                hydro_test::__staged::cluster::two_pc_bench::Client,<br>            &gt;,<br>            (u32, u32),<br>        ),<br>        core::result::Result&lt;(), ()&gt;,<br>    ),<br>&gt;()</code>"]:::otherClass
+48v1["<div style=text-align:center>(48v1)</div> <code><br>identity::&lt;<br>    (<br>        (<br>            hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>                hydro_test::__staged::cluster::two_pc_bench::Client,<br>            &gt;,<br>            (u32, i32),<br>        ),<br>        core::result::Result&lt;(), ()&gt;,<br>    ),<br>&gt;()</code>"]:::otherClass
 49v1["<div style=text-align:center>(49v1)</div> <code><br>defer_tick_lazy()</code>"]:::otherClass
-50v1["<div style=text-align:center>(50v1)</div> <code><br>identity::&lt;<br>    (<br>        hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>            hydro_test::__staged::cluster::two_pc_bench::Client,<br>        &gt;,<br>        (u32, u32),<br>    ),<br>&gt;()</code>"]:::otherClass
+50v1["<div style=text-align:center>(50v1)</div> <code><br>identity::&lt;<br>    (<br>        hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;<br>            hydro_test::__staged::cluster::two_pc_bench::Client,<br>        &gt;,<br>        (u32, i32),<br>    ),<br>&gt;()</code>"]:::otherClass
 51v1["<div style=text-align:center>(51v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
 52v1["<div style=text-align:center>(52v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
 66v1["<div style=text-align:center>(66v1)</div> <code><br>identity()</code>"]:::otherClass
@@ -123,162 +123,162 @@ linkStyle default stroke:#aaa
 68v1
 70v1
 72v1
-subgraph var_cycle_1 ["var <tt>cycle_1</tt>"]
-    style var_cycle_1 fill:transparent
-    24v1
-end
 subgraph var_cycle_2 ["var <tt>cycle_2</tt>"]
     style var_cycle_2 fill:transparent
-    26v1
+    24v1
 end
 subgraph var_cycle_3 ["var <tt>cycle_3</tt>"]
     style var_cycle_3 fill:transparent
-    48v1
+    26v1
 end
 subgraph var_cycle_4 ["var <tt>cycle_4</tt>"]
     style var_cycle_4 fill:transparent
+    48v1
+end
+subgraph var_cycle_5 ["var <tt>cycle_5</tt>"]
+    style var_cycle_5 fill:transparent
     50v1
 end
-subgraph var_stream_1 ["var <tt>stream_1</tt>"]
-    style var_stream_1 fill:transparent
-    1v1
+subgraph var_stream_102 ["var <tt>stream_102</tt>"]
+    style var_stream_102 fill:transparent
+    45v1
 end
-subgraph var_stream_10 ["var <tt>stream_10</tt>"]
-    style var_stream_10 fill:transparent
-    6v1
+subgraph var_stream_103 ["var <tt>stream_103</tt>"]
+    style var_stream_103 fill:transparent
+    46v1
+end
+subgraph var_stream_104 ["var <tt>stream_104</tt>"]
+    style var_stream_104 fill:transparent
+    47v1
+end
+subgraph var_stream_106 ["var <tt>stream_106</tt>"]
+    style var_stream_106 fill:transparent
+    49v1
 end
 subgraph var_stream_13 ["var <tt>stream_13</tt>"]
     style var_stream_13 fill:transparent
-    8v1
-    7v1
+    1v1
+end
+subgraph var_stream_14 ["var <tt>stream_14</tt>"]
+    style var_stream_14 fill:transparent
+    2v1
+end
+subgraph var_stream_15 ["var <tt>stream_15</tt>"]
+    style var_stream_15 fill:transparent
+    3v1
 end
 subgraph var_stream_17 ["var <tt>stream_17</tt>"]
     style var_stream_17 fill:transparent
-    9v1
+    4v1
 end
-subgraph var_stream_2 ["var <tt>stream_2</tt>"]
-    style var_stream_2 fill:transparent
-    2v1
+subgraph var_stream_19 ["var <tt>stream_19</tt>"]
+    style var_stream_19 fill:transparent
+    5v1
 end
-subgraph var_stream_21 ["var <tt>stream_21</tt>"]
-    style var_stream_21 fill:transparent
-    13v1
-    12v1
-end
-subgraph var_stream_24 ["var <tt>stream_24</tt>"]
-    style var_stream_24 fill:transparent
-    14v1
-end
-subgraph var_stream_25 ["var <tt>stream_25</tt>"]
-    style var_stream_25 fill:transparent
-    15v1
-end
-subgraph var_stream_28 ["var <tt>stream_28</tt>"]
-    style var_stream_28 fill:transparent
-    17v1
-end
-subgraph var_stream_29 ["var <tt>stream_29</tt>"]
-    style var_stream_29 fill:transparent
-    18v1
-end
-subgraph var_stream_3 ["var <tt>stream_3</tt>"]
-    style var_stream_3 fill:transparent
-    3v1
-end
-subgraph var_stream_33 ["var <tt>stream_33</tt>"]
-    style var_stream_33 fill:transparent
-    19v1
-end
-subgraph var_stream_37 ["var <tt>stream_37</tt>"]
-    style var_stream_37 fill:transparent
-    21v1
+subgraph var_stream_22 ["var <tt>stream_22</tt>"]
+    style var_stream_22 fill:transparent
+    6v1
 end
 subgraph var_stream_38 ["var <tt>stream_38</tt>"]
     style var_stream_38 fill:transparent
-    22v1
+    8v1
+    7v1
 end
-subgraph var_stream_39 ["var <tt>stream_39</tt>"]
-    style var_stream_39 fill:transparent
-    23v1
+subgraph var_stream_42 ["var <tt>stream_42</tt>"]
+    style var_stream_42 fill:transparent
+    9v1
 end
-subgraph var_stream_41 ["var <tt>stream_41</tt>"]
-    style var_stream_41 fill:transparent
-    25v1
-end
-subgraph var_stream_43 ["var <tt>stream_43</tt>"]
-    style var_stream_43 fill:transparent
-    27v1
-end
-subgraph var_stream_44 ["var <tt>stream_44</tt>"]
-    style var_stream_44 fill:transparent
-    28v1
-end
-subgraph var_stream_45 ["var <tt>stream_45</tt>"]
-    style var_stream_45 fill:transparent
-    29v1
-end
-subgraph var_stream_47 ["var <tt>stream_47</tt>"]
-    style var_stream_47 fill:transparent
-    30v1
+subgraph var_stream_46 ["var <tt>stream_46</tt>"]
+    style var_stream_46 fill:transparent
+    13v1
+    12v1
 end
 subgraph var_stream_49 ["var <tt>stream_49</tt>"]
     style var_stream_49 fill:transparent
-    31v1
+    14v1
 end
-subgraph var_stream_5 ["var <tt>stream_5</tt>"]
-    style var_stream_5 fill:transparent
-    4v1
+subgraph var_stream_50 ["var <tt>stream_50</tt>"]
+    style var_stream_50 fill:transparent
+    15v1
 end
-subgraph var_stream_52 ["var <tt>stream_52</tt>"]
-    style var_stream_52 fill:transparent
-    32v1
+subgraph var_stream_53 ["var <tt>stream_53</tt>"]
+    style var_stream_53 fill:transparent
+    17v1
 end
-subgraph var_stream_57 ["var <tt>stream_57</tt>"]
-    style var_stream_57 fill:transparent
-    33v1
+subgraph var_stream_54 ["var <tt>stream_54</tt>"]
+    style var_stream_54 fill:transparent
+    18v1
 end
-subgraph var_stream_61 ["var <tt>stream_61</tt>"]
-    style var_stream_61 fill:transparent
-    37v1
-    36v1
+subgraph var_stream_58 ["var <tt>stream_58</tt>"]
+    style var_stream_58 fill:transparent
+    19v1
+end
+subgraph var_stream_62 ["var <tt>stream_62</tt>"]
+    style var_stream_62 fill:transparent
+    21v1
+end
+subgraph var_stream_63 ["var <tt>stream_63</tt>"]
+    style var_stream_63 fill:transparent
+    22v1
 end
 subgraph var_stream_64 ["var <tt>stream_64</tt>"]
     style var_stream_64 fill:transparent
-    38v1
+    23v1
 end
-subgraph var_stream_65 ["var <tt>stream_65</tt>"]
-    style var_stream_65 fill:transparent
-    39v1
+subgraph var_stream_66 ["var <tt>stream_66</tt>"]
+    style var_stream_66 fill:transparent
+    25v1
 end
 subgraph var_stream_68 ["var <tt>stream_68</tt>"]
     style var_stream_68 fill:transparent
-    41v1
+    27v1
 end
 subgraph var_stream_69 ["var <tt>stream_69</tt>"]
     style var_stream_69 fill:transparent
-    42v1
+    28v1
 end
-subgraph var_stream_7 ["var <tt>stream_7</tt>"]
-    style var_stream_7 fill:transparent
-    5v1
+subgraph var_stream_70 ["var <tt>stream_70</tt>"]
+    style var_stream_70 fill:transparent
+    29v1
 end
-subgraph var_stream_73 ["var <tt>stream_73</tt>"]
-    style var_stream_73 fill:transparent
-    43v1
+subgraph var_stream_72 ["var <tt>stream_72</tt>"]
+    style var_stream_72 fill:transparent
+    30v1
+end
+subgraph var_stream_74 ["var <tt>stream_74</tt>"]
+    style var_stream_74 fill:transparent
+    31v1
 end
 subgraph var_stream_77 ["var <tt>stream_77</tt>"]
     style var_stream_77 fill:transparent
-    45v1
+    32v1
 end
-subgraph var_stream_78 ["var <tt>stream_78</tt>"]
-    style var_stream_78 fill:transparent
-    46v1
+subgraph var_stream_82 ["var <tt>stream_82</tt>"]
+    style var_stream_82 fill:transparent
+    33v1
 end
-subgraph var_stream_79 ["var <tt>stream_79</tt>"]
-    style var_stream_79 fill:transparent
-    47v1
+subgraph var_stream_86 ["var <tt>stream_86</tt>"]
+    style var_stream_86 fill:transparent
+    37v1
+    36v1
 end
-subgraph var_stream_81 ["var <tt>stream_81</tt>"]
-    style var_stream_81 fill:transparent
-    49v1
+subgraph var_stream_89 ["var <tt>stream_89</tt>"]
+    style var_stream_89 fill:transparent
+    38v1
+end
+subgraph var_stream_90 ["var <tt>stream_90</tt>"]
+    style var_stream_90 fill:transparent
+    39v1
+end
+subgraph var_stream_93 ["var <tt>stream_93</tt>"]
+    style var_stream_93 fill:transparent
+    41v1
+end
+subgraph var_stream_94 ["var <tt>stream_94</tt>"]
+    style var_stream_94 fill:transparent
+    42v1
+end
+subgraph var_stream_98 ["var <tt>stream_98</tt>"]
+    style var_stream_98 fill:transparent
+    43v1
 end
