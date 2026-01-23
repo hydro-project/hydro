@@ -60,7 +60,7 @@ If we send a stream from a cluster to a process and flatten the values across se
 
 ```rust,no_run
 # use hydro_lang::prelude::*;
-# let flow = FlowBuilder::new();
+# let mut flow = FlowBuilder::new();
 use hydro_lang::live_collections::stream::{NoOrder, TotalOrder};
 let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Cluster<_>, Bounded, TotalOrder> =
@@ -76,7 +76,7 @@ A particularly common API that faces this restriction is [`fold`](pathname:///ru
 
 ```compile_fail
 # use hydro_lang::prelude::*;
-# let flow = FlowBuilder::new();
+# let mut flow = FlowBuilder::new();
 let workers: Cluster<()> = flow.cluster::<()>();
 let process: Process<()> = flow.process::<()>();
 let all_words: Stream<_, Process<_>, Unbounded, NoOrder> = workers
@@ -103,7 +103,7 @@ To perform an aggregation with an unordered stream, you must add a **property an
 ```rust,no_run
 # use hydro_lang::prelude::*;
 # use futures::StreamExt;
-# let flow = FlowBuilder::new();
+# let mut flow = FlowBuilder::new();
 # let workers = flow.cluster::<()>();
 # let process = flow.process::<()>();
 # let all_words: Stream<_, Process<_>, _, hydro_lang::live_collections::stream::NoOrder> = workers

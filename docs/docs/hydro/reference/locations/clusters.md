@@ -11,7 +11,7 @@ Like when creating a process, you can pass in a type parameter to a cluster to d
 # use hydro_lang::prelude::*;
 struct Worker {}
 
-let flow = FlowBuilder::new();
+let mut flow = FlowBuilder::new();
 let workers: Cluster<Worker> = flow.cluster::<Worker>();
 ```
 
@@ -20,7 +20,7 @@ You can then instantiate a live collection on the cluster using the same APIs as
 ```rust,no_run
 # use hydro_lang::prelude::*;
 # struct Worker {}
-# let flow = FlowBuilder::new();
+# let mut flow = FlowBuilder::new();
 # let workers: Cluster<Worker> = flow.cluster::<Worker>();
 let numbers = workers.source_iter(q!(vec![1, 2, 3, 4]));
 ```
@@ -182,7 +182,7 @@ You can only use `CLUSTER_SELF_ID` in code that will run on a `Cluster<_>`, such
 
 ```compile_fail
 # use hydro_lang::prelude::*;
-# let flow = FlowBuilder::new();
+# let mut flow = FlowBuilder::new();
 let process: Process<()> = flow.process::<()>();
 process.source_iter(q!([CLUSTER_SELF_ID]));
 // error[E0277]: the trait bound `ClusterSelfId<'_>: FreeVariableWithContext<hydro_lang::Process<'_>>` is not satisfied

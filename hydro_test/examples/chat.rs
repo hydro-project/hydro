@@ -67,8 +67,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Box::new(move |_| -> Arc<dyn Host> { localhost.clone() })
     };
 
-    let flow = hydro_lang::compile::builder::FlowBuilder::new();
-
+    let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
     let process = flow.process::<()>();
     let external = flow.external::<()>();
 

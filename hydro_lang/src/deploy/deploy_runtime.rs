@@ -14,27 +14,28 @@ use hydro_deploy_integration::{
     ConnectedDemux, ConnectedDirect, ConnectedSink, ConnectedSource, ConnectedTagged, DeployPorts,
 };
 use serde::{Deserialize, Serialize};
+use slotmap::SparseSecondaryMap;
 use stageleft::{QuotedWithContext, RuntimeData, q};
 
 use crate::location::cluster::ClusterIds;
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
-use crate::location::{MemberId, MembershipEvent};
+use crate::location::{LocationKey, MemberId, MembershipEvent};
 
 #[derive(Default, Serialize, Deserialize)]
 pub(super) struct HydroMeta {
-    pub clusters: HashMap<usize, Vec<TaglessMemberId>>,
+    pub clusters: SparseSecondaryMap<LocationKey, Vec<TaglessMemberId>>,
     pub cluster_id: Option<TaglessMemberId>,
 }
 
 pub(super) fn cluster_members(
     cli: RuntimeData<&DeployPorts<HydroMeta>>,
-    of_cluster: usize,
+    of_cluster: LocationKey,
 ) -> impl QuotedWithContext<'_, &[TaglessMemberId], ()> + Clone {
     q!(cli
         .meta
         .clusters
-        .get(&of_cluster)
+        .get(of_cluster)
         .map(|v| v.as_slice())
         .unwrap_or(&[])) // we default to empty slice because this is the scenario where the cluster is unused in the graph
 }
@@ -57,7 +58,7 @@ pub fn cluster_membership_stream<'a>(
     (),
 > {
     let cluster_ids = ClusterIds {
-        id: location_id.raw_id(),
+        key: location_id.key(),
         _phantom: Default::default(),
     };
 

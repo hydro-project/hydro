@@ -15,7 +15,7 @@ A fuzz test looks almost identical to an exhaustive test, just call `fuzz()` ins
 ```rust
 #[test]
 fn test_paxos_commits() {
-    let flow = FlowBuilder::new();
+    let mut flow = FlowBuilder::new();
     // ... setup code ...
 
     flow.sim()

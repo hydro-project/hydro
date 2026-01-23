@@ -57,7 +57,7 @@ mod tests {
 
     #[test]
     fn test_counter_read_after_write() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let process = flow.process();
         let shards = flow.cluster();
 

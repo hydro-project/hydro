@@ -6,7 +6,7 @@ use tokio_util::codec::LinesCodec;
 async fn main() {
     let mut deployment = Deployment::new();
 
-    let flow = hydro_lang::compile::builder::FlowBuilder::new();
+    let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
     let process = flow.process();
     let external = flow.external::<()>();
 

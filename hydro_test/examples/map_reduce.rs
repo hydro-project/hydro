@@ -71,8 +71,8 @@ async fn main() {
         "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
     };
 
-    let builder = hydro_lang::compile::builder::FlowBuilder::new();
-    let (leader, cluster) = hydro_test::cluster::map_reduce::map_reduce(&builder);
+    let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
+    let (leader, cluster) = hydro_test::cluster::map_reduce::map_reduce(&mut builder);
 
     // Extract the IR for graph visualization
     let built = builder.finalize();
@@ -109,6 +109,6 @@ fn test() {
     use example_test::run_current_example;
 
     let mut run = run_current_example!();
-    run.read_string("[hydro_test::cluster::map_reduce::Leader (process 0)] xyz: 1");
-    run.read_string("[hydro_test::cluster::map_reduce::Leader (process 0)] abc: 3");
+    run.read_string("[hydro_test::cluster::map_reduce::Leader (process loc1v1)] xyz: 1");
+    run.read_string("[hydro_test::cluster::map_reduce::Leader (process loc1v1)] abc: 3");
 }

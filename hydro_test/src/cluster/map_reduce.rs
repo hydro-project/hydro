@@ -3,7 +3,7 @@ use hydro_lang::prelude::*;
 pub struct Leader {}
 pub struct Worker {}
 
-pub fn map_reduce<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, Leader>, Cluster<'a, Worker>) {
+pub fn map_reduce<'a>(flow: &mut FlowBuilder<'a>) -> (Process<'a, Leader>, Cluster<'a, Worker>) {
     let process = flow.process();
     let cluster = flow.cluster();
 
@@ -52,15 +52,15 @@ mod tests {
 
     #[test]
     fn map_reduce_ir() {
-        let builder = hydro_lang::compile::builder::FlowBuilder::new();
-        let _ = super::map_reduce(&builder);
+        let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
+        let _ = super::map_reduce(&mut builder);
         let mut built = builder.with_default_optimize::<HydroDeploy>();
 
         hydro_build_utils::assert_debug_snapshot!(built.ir());
 
-        for (id, ir) in built.preview_compile().all_dfir() {
+        for (location_key, ir) in built.preview_compile().all_dfir() {
             hydro_build_utils::insta::with_settings!({
-                snapshot_suffix => format!("surface_graph_{id}")
+                snapshot_suffix => format!("surface_graph_{location_key}")
             }, {
                 hydro_build_utils::assert_snapshot!(ir.surface_syntax_string());
             });

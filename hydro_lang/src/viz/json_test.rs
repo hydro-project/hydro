@@ -4,26 +4,27 @@
 mod tests {
     use std::collections::HashSet;
 
-    #[cfg(test)]
     use hydro_build_utils::insta;
 
+    use crate::location::{LocationKey, LocationType};
     use crate::viz::json::HydroJson;
     use crate::viz::render::{
-        HydroEdgeProp, HydroGraphWrite, HydroNodeType, HydroWriteConfig, NodeLabel,
+        HydroEdgeProp, HydroGraphWrite, HydroNodeType, HydroWriteConfig, NodeLabel, VizNodeKey,
     };
 
     #[test]
     fn test_json_structure_with_semantic_tags() {
         let mut output = String::new();
         let config = HydroWriteConfig::default();
-        let mut writer = HydroJson::new(&mut output, &config);
+        let mut writer: HydroJson<'_, &mut String> = HydroJson::new(&mut output, config);
 
         // Write a simple graph
         writer.write_prologue().unwrap();
 
-        // For testing only.
-        let node_id_1 = "VizNodeKey(1v1)".parse().unwrap();
-        let node_id_2 = "VizNodeKey(2v1)".parse().unwrap();
+        let node_id_1 = VizNodeKey::TEST_KEY_1;
+        let node_id_2 = VizNodeKey::TEST_KEY_2;
+
+        let loc_key_1 = LocationKey::TEST_KEY_1;
 
         // Add a source node
         writer
@@ -31,8 +32,8 @@ mod tests {
                 node_id_1,
                 &NodeLabel::Static("source".to_string()),
                 HydroNodeType::Source,
-                Some(0),
-                Some("Process"),
+                Some(loc_key_1),
+                Some(LocationType::Process),
                 None,
             )
             .unwrap();
@@ -43,8 +44,8 @@ mod tests {
                 node_id_2,
                 &NodeLabel::Static("map".to_string()),
                 HydroNodeType::Transform,
-                Some(0),
-                Some("Process"),
+                Some(loc_key_1),
+                Some(LocationType::Process),
                 None,
             )
             .unwrap();
@@ -69,12 +70,11 @@ mod tests {
     fn test_empty_semantic_tags() {
         let mut output = String::new();
         let config = HydroWriteConfig::default();
-        let mut writer = HydroJson::new(&mut output, &config);
+        let mut writer = HydroJson::new(&mut output, config);
 
         writer.write_prologue().unwrap();
 
-        // For testing only.
-        let node_id_1 = "VizNodeKey(1v1)".parse().unwrap();
+        let node_id_1 = VizNodeKey::TEST_KEY_1;
 
         writer
             .write_node_definition(
@@ -105,16 +105,18 @@ mod tests {
         let mut output1 = String::new();
         let mut output2 = String::new();
         let config = HydroWriteConfig::default();
-        let mut w1 = HydroJson::new(&mut output1, &config);
-        let mut w2 = HydroJson::new(&mut output2, &config);
+        let mut w1 = HydroJson::new(&mut output1, config);
+        let mut w2 = HydroJson::new(&mut output2, config);
 
         // Build same small graph with two locations to force Network tag
         let mut edge_props = HashSet::new();
         edge_props.insert(HydroEdgeProp::Stream);
 
-        // For testing only.
-        let node_id_1 = "VizNodeKey(1v1)".parse().unwrap();
-        let node_id_2 = "VizNodeKey(2v1)".parse().unwrap();
+        let node_id_1 = VizNodeKey::TEST_KEY_1;
+        let node_id_2 = VizNodeKey::TEST_KEY_2;
+
+        let loc_key_1 = LocationKey::TEST_KEY_1;
+        let loc_key_2 = LocationKey::TEST_KEY_2;
 
         // Graph 1
         w1.write_prologue().unwrap();
@@ -122,8 +124,8 @@ mod tests {
             node_id_1,
             &NodeLabel::Static("a".into()),
             HydroNodeType::Source,
-            Some(0),
-            Some("Process"),
+            Some(loc_key_1),
+            Some(LocationType::Process),
             None,
         )
         .unwrap();
@@ -131,8 +133,8 @@ mod tests {
             node_id_2,
             &NodeLabel::Static("b".into()),
             HydroNodeType::Transform,
-            Some(1),
-            Some("Process"),
+            Some(loc_key_2),
+            Some(LocationType::Process),
             None,
         )
         .unwrap();
@@ -146,8 +148,8 @@ mod tests {
             node_id_2,
             &NodeLabel::Static("b".into()),
             HydroNodeType::Transform,
-            Some(1),
-            Some("Process"),
+            Some(loc_key_2),
+            Some(LocationType::Process),
             None,
         )
         .unwrap();
@@ -155,8 +157,8 @@ mod tests {
             node_id_1,
             &NodeLabel::Static("a".into()),
             HydroNodeType::Source,
-            Some(0),
-            Some("Process"),
+            Some(loc_key_1),
+            Some(LocationType::Process),
             None,
         )
         .unwrap();

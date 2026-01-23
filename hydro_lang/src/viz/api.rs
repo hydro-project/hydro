@@ -1,14 +1,17 @@
 use std::error::Error;
 
+use slotmap::SecondaryMap;
+
 use crate::compile::ir::HydroRoot;
-use crate::viz::render::HydroWriteConfig;
+use crate::location::LocationKey;
+use crate::viz::render::{
+    HydroWriteConfig, render_hydro_ir_dot, render_hydro_ir_json, render_hydro_ir_mermaid,
+};
 
 /// Graph generation API for built flows
 pub struct GraphApi<'a> {
     ir: &'a [HydroRoot],
-    process_id_name: &'a [(usize, String)],
-    cluster_id_name: &'a [(usize, String)],
-    external_id_name: &'a [(usize, String)],
+    location_names: &'a SecondaryMap<LocationKey, String>,
 }
 
 /// Graph output format
@@ -38,18 +41,8 @@ impl GraphFormat {
 }
 
 impl<'a> GraphApi<'a> {
-    pub fn new(
-        ir: &'a [HydroRoot],
-        process_id_name: &'a [(usize, String)],
-        cluster_id_name: &'a [(usize, String)],
-        external_id_name: &'a [(usize, String)],
-    ) -> Self {
-        Self {
-            ir,
-            process_id_name,
-            cluster_id_name,
-            external_id_name,
-        }
+    pub fn new(ir: &'a [HydroRoot], location_names: &'a SecondaryMap<LocationKey, String>) -> Self {
+        Self { ir, location_names }
     }
 
     /// Convert configuration options to HydroWriteConfig
@@ -58,23 +51,21 @@ impl<'a> GraphApi<'a> {
         show_metadata: bool,
         show_location_groups: bool,
         use_short_labels: bool,
-    ) -> HydroWriteConfig {
+    ) -> HydroWriteConfig<'a> {
         HydroWriteConfig {
             show_metadata,
             show_location_groups,
             use_short_labels,
-            process_id_name: self.process_id_name.to_vec(),
-            cluster_id_name: self.cluster_id_name.to_vec(),
-            external_id_name: self.external_id_name.to_vec(),
+            location_names: self.location_names,
         }
     }
 
     /// Generate graph content as string
-    fn render_graph_to_string(&self, format: GraphFormat, config: &HydroWriteConfig) -> String {
+    fn render_graph_to_string(&self, format: GraphFormat, config: HydroWriteConfig<'_>) -> String {
         match format {
-            GraphFormat::Mermaid => crate::viz::render::render_hydro_ir_mermaid(self.ir, config),
-            GraphFormat::Dot => crate::viz::render::render_hydro_ir_dot(self.ir, config),
-            GraphFormat::Hydroscope => crate::viz::render::render_hydro_ir_json(self.ir, config),
+            GraphFormat::Mermaid => render_hydro_ir_mermaid(self.ir, config),
+            GraphFormat::Dot => render_hydro_ir_dot(self.ir, config),
+            GraphFormat::Hydroscope => render_hydro_ir_json(self.ir, config),
         }
     }
 
@@ -123,7 +114,7 @@ impl<'a> GraphApi<'a> {
         use_short_labels: bool,
     ) -> Result<(), Box<dyn Error>> {
         let config = self.to_hydro_config(show_metadata, show_location_groups, use_short_labels);
-        let content = self.render_graph_to_string(format, &config);
+        let content = self.render_graph_to_string(format, config);
         std::fs::write(filename, content)?;
         println!("Generated: {}", filename);
         Ok(())
@@ -137,7 +128,7 @@ impl<'a> GraphApi<'a> {
         use_short_labels: bool,
     ) -> String {
         let config = self.to_hydro_config(show_metadata, show_location_groups, use_short_labels);
-        self.render_graph_to_string(GraphFormat::Mermaid, &config)
+        self.render_graph_to_string(GraphFormat::Mermaid, config)
     }
 
     /// Generate DOT graph as string
@@ -148,7 +139,7 @@ impl<'a> GraphApi<'a> {
         use_short_labels: bool,
     ) -> String {
         let config = self.to_hydro_config(show_metadata, show_location_groups, use_short_labels);
-        self.render_graph_to_string(GraphFormat::Dot, &config)
+        self.render_graph_to_string(GraphFormat::Dot, config)
     }
 
     /// Generate Hydroscope graph as string
@@ -159,7 +150,7 @@ impl<'a> GraphApi<'a> {
         use_short_labels: bool,
     ) -> String {
         let config = self.to_hydro_config(show_metadata, show_location_groups, use_short_labels);
-        self.render_graph_to_string(GraphFormat::Hydroscope, &config)
+        self.render_graph_to_string(GraphFormat::Hydroscope, config)
     }
 
     /// Write mermaid graph to file
@@ -379,29 +370,31 @@ mod tests {
     #[test]
     fn test_graph_api_creation() {
         let ir = vec![];
-        let process_id_name = vec![(0, "test_process".to_string())];
-        let cluster_id_name = vec![];
-        let external_id_name = vec![];
 
-        let api = GraphApi::new(&ir, &process_id_name, &cluster_id_name, &external_id_name);
+        let mut location_names = SecondaryMap::new();
+        let loc_key_1 = LocationKey::TEST_KEY_1;
+        location_names.insert(loc_key_1, "test_process".to_string());
+
+        let api = GraphApi::new(&ir, &location_names);
 
         // Test config creation
         let config = api.to_hydro_config(true, true, false);
         assert!(config.show_metadata);
         assert!(config.show_location_groups);
         assert!(!config.use_short_labels);
-        assert_eq!(config.process_id_name.len(), 1);
-        assert_eq!(config.process_id_name[0].1, "test_process");
+        assert_eq!(config.location_names.len(), 1);
+        assert_eq!(config.location_names[loc_key_1], "test_process");
     }
 
     #[test]
     fn test_string_generation() {
         let ir = vec![];
-        let process_id_name = vec![(0, "test_process".to_string())];
-        let cluster_id_name = vec![];
-        let external_id_name = vec![];
 
-        let api = GraphApi::new(&ir, &process_id_name, &cluster_id_name, &external_id_name);
+        let mut location_names = SecondaryMap::new();
+        let loc_key_1 = LocationKey::TEST_KEY_1;
+        location_names.insert(loc_key_1, "test_process".to_string());
+
+        let api = GraphApi::new(&ir, &location_names);
 
         // Test that string generation methods don't panic and return some content
         let mermaid = api.mermaid_to_string(true, true, false);

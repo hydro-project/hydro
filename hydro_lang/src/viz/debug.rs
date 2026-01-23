@@ -8,7 +8,9 @@ use std::io::{Result, Write as IoWrite};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::config::VisualizerConfig;
-use super::render::{HydroWriteConfig, render_hydro_ir_dot, render_hydro_ir_mermaid};
+use super::render::{
+    HydroWriteConfig, render_hydro_ir_dot, render_hydro_ir_json, render_hydro_ir_mermaid,
+};
 use crate::compile::ir::HydroRoot;
 
 /// Opens Hydro IR roots as a single mermaid diagram.
@@ -97,10 +99,10 @@ fn render_with_config<F>(
     renderer: F,
 ) -> String
 where
-    F: Fn(&[HydroRoot], &HydroWriteConfig) -> String,
+    F: Fn(&[HydroRoot], HydroWriteConfig<'_>) -> String,
 {
     let config = config.unwrap_or_default();
-    renderer(roots, &config)
+    renderer(roots, config)
 }
 
 /// Compress JSON content using gzip compression.
@@ -308,7 +310,10 @@ fn open_json_visualizer_with_fallback(json_content: &str, config: &VisualizerCon
 /// This function generates JSON from the Hydro IR and opens it in the configured
 /// visualizer (defaults to <https://hydro.run/hydroscope>, can be overridden
 /// with HYDRO_VISUALIZER_URL environment variable).
-pub fn open_json_visualizer(roots: &[HydroRoot], config: Option<HydroWriteConfig>) -> Result<()> {
+pub fn open_json_visualizer(
+    roots: &[HydroRoot],
+    config: Option<HydroWriteConfig<'_>>,
+) -> Result<()> {
     let json_content = render_with_config(roots, config, render_hydro_ir_json);
     let viz_config = VisualizerConfig::default();
     open_json_visualizer_with_fallback(&json_content, &viz_config)
@@ -318,7 +323,7 @@ pub fn open_json_visualizer(roots: &[HydroRoot], config: Option<HydroWriteConfig
 /// Allows specifying a custom base URL and compression settings.
 pub fn open_json_visualizer_with_config(
     roots: &[HydroRoot],
-    config: Option<HydroWriteConfig>,
+    config: Option<HydroWriteConfig<'_>>,
     viz_config: VisualizerConfig,
 ) -> Result<()> {
     let json_content = render_with_config(roots, config, render_hydro_ir_json);
@@ -330,13 +335,8 @@ pub fn open_json_visualizer_with_config(
 pub fn save_json(
     roots: &[HydroRoot],
     filename: Option<&str>,
-    config: Option<HydroWriteConfig>,
+    config: Option<HydroWriteConfig<'_>>,
 ) -> Result<std::path::PathBuf> {
     let content = render_with_config(roots, config, render_hydro_ir_json);
     save_to_file(content, filename, "hydro_graph.json", "JSON file")
-}
-
-/// Helper function to render multiple Hydro IR roots as JSON.
-fn render_hydro_ir_json(roots: &[HydroRoot], config: &HydroWriteConfig) -> String {
-    super::render::render_hydro_ir_json(roots, config)
 }

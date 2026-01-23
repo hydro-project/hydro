@@ -175,7 +175,7 @@ mod tests {
 
     #[test]
     fn paxos_ir() {
-        let builder = hydro_lang::compile::builder::FlowBuilder::new();
+        let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
         let proposers = builder.cluster();
         let acceptors = builder.cluster();
         let clients = builder.cluster();
@@ -226,7 +226,7 @@ mod tests {
 
     #[tokio::test]
     async fn paxos_some_throughput() {
-        let builder = hydro_lang::compile::builder::FlowBuilder::new();
+        let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
         let proposers = builder.cluster();
         let acceptors = builder.cluster();
         let clients = builder.cluster();

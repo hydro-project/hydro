@@ -4,7 +4,9 @@ expression: builder.finalize().ir()
 ---
 [
     SendExternal {
-        to_external_id: 0,
+        to_external_key: LocationKey(
+            1v1,
+        ),
         to_port_id: ExternalPortId(
             0,
         ),
@@ -19,9 +21,7 @@ expression: builder.finalize().ir()
                 sym: cycle_0,
             },
             metadata: HydroIrMetadata {
-                location_kind: Process(
-                    1,
-                ),
+                location_id: Process(loc2v1),
                 collection_kind: Stream {
                     bound: Unbounded,
                     order: TotalOrder,
@@ -42,9 +42,7 @@ expression: builder.finalize().ir()
                     stageleft :: runtime_support :: type_hint :: < [() ; 0] > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; [] }),
                 ),
                 metadata: HydroIrMetadata {
-                    location_kind: Process(
-                        1,
-                    ),
+                    location_id: Process(loc2v1),
                     collection_kind: Stream {
                         bound: Bounded,
                         order: TotalOrder,
@@ -54,9 +52,7 @@ expression: builder.finalize().ir()
                 },
             },
             metadata: HydroIrMetadata {
-                location_kind: Process(
-                    1,
-                ),
+                location_id: Process(loc2v1),
                 collection_kind: Stream {
                     bound: Unbounded,
                     order: TotalOrder,
@@ -70,7 +66,9 @@ expression: builder.finalize().ir()
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < std :: string :: String , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; | n | println ! ("hi: {:?}" , n) }),
         input: ExternalInput {
-            from_external_id: 0,
+            from_external_key: LocationKey(
+                1v1,
+            ),
             from_port_id: ExternalPortId(
                 0,
             ),
@@ -82,9 +80,7 @@ expression: builder.finalize().ir()
                 | res | { let b = res . unwrap () ; hydro_lang :: runtime_support :: bincode :: deserialize :: < std :: string :: String > (& b) . unwrap () },
             ),
             metadata: HydroIrMetadata {
-                location_kind: Process(
-                    1,
-                ),
+                location_id: Process(loc2v1),
                 collection_kind: Stream {
                     bound: Unbounded,
                     order: TotalOrder,
@@ -112,9 +108,7 @@ expression: builder.finalize().ir()
                         stageleft :: runtime_support :: type_hint :: < std :: ops :: Range < u32 > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; 0 .. 10 }),
                     ),
                     metadata: HydroIrMetadata {
-                        location_kind: Process(
-                            1,
-                        ),
+                        location_id: Process(loc2v1),
                         collection_kind: Stream {
                             bound: Bounded,
                             order: TotalOrder,
@@ -124,9 +118,7 @@ expression: builder.finalize().ir()
                     },
                 },
                 metadata: HydroIrMetadata {
-                    location_kind: Process(
-                        1,
-                    ),
+                    location_id: Process(loc2v1),
                     collection_kind: Stream {
                         bound: Bounded,
                         order: TotalOrder,
@@ -136,9 +128,7 @@ expression: builder.finalize().ir()
                 },
             },
             metadata: HydroIrMetadata {
-                location_kind: Process(
-                    2,
-                ),
+                location_id: Process(loc3v1),
                 collection_kind: Stream {
                     bound: Unbounded,
                     order: TotalOrder,

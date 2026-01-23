@@ -288,7 +288,7 @@ where
     L: Location<'a>,
 {
     pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
-        debug_assert_eq!(ir_node.metadata().location_kind, Location::id(&location));
+        debug_assert_eq!(ir_node.metadata().location_id, Location::id(&location));
         debug_assert_eq!(ir_node.metadata().collection_kind, Self::collection_kind());
         Optional {
             location,
@@ -1315,7 +1315,7 @@ mod tests {
     async fn optional_or_cardinality() {
         let mut deployment = Deployment::new();
 
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
@@ -1349,7 +1349,7 @@ mod tests {
     async fn into_singleton_top_level_none_cardinality() {
         let mut deployment = Deployment::new();
 
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
@@ -1389,7 +1389,7 @@ mod tests {
     async fn into_singleton_unbounded_top_level_none_cardinality() {
         let mut deployment = Deployment::new();
 
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
@@ -1427,7 +1427,7 @@ mod tests {
     #[cfg(feature = "sim")]
     #[test]
     fn top_level_optional_some_into_stream_no_replay() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
@@ -1444,7 +1444,7 @@ mod tests {
     #[cfg(feature = "sim")]
     #[test]
     fn top_level_optional_none_into_stream_no_replay() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));

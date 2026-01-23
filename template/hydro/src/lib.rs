@@ -16,7 +16,7 @@ mod tests {
 
     #[test]
     fn test_echo_capitalize() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let process = flow.process();
 
         let (in_port, requests) = process.sim_input();

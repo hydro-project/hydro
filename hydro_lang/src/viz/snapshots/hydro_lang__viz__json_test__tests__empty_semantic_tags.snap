@@ -7,11 +7,11 @@ expression: output
     {
       "data": {
         "backtrace": [],
-        "locationId": null,
+        "locationKey": null,
         "locationType": null
       },
       "fullLabel": "node [hydro operator]",
-      "id": "VizNodeKey(1v1)",
+      "id": "viz1v143",
       "label": "node",
       "nodeType": "Transform",
       "shortLabel": "node"
@@ -23,8 +23,8 @@ expression: output
       "semanticTags": [
         "Local"
       ],
-      "source": "VizNodeKey(1v1)",
-      "target": "VizNodeKey(1v1)"
+      "source": "viz1v143",
+      "target": "viz1v143"
     }
   ],
   "hierarchyChoices": [
@@ -35,7 +35,9 @@ expression: output
     }
   ],
   "nodeAssignments": {
-    "location": {}
+    "location": {
+      "viz1v143": null
+    }
   },
   "selectedHierarchy": "location",
   "edgeStyleConfig": {

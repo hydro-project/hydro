@@ -74,7 +74,7 @@ mod tests {
 
     #[test]
     fn two_pc_ir() {
-        let builder = hydro_lang::compile::builder::FlowBuilder::new();
+        let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
         let coordinator = builder.process();
         let participants = builder.cluster();
         let clients = builder.cluster();
@@ -120,7 +120,7 @@ mod tests {
 
     #[tokio::test]
     async fn two_pc_some_throughput() {
-        let builder = hydro_lang::compile::builder::FlowBuilder::new();
+        let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
         let coordinator = builder.process();
         let participants = builder.cluster();
         let clients = builder.cluster();

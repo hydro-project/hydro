@@ -30,7 +30,7 @@ use tracing::{Instrument, debug, error, instrument, span, trace, trace_span};
 
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
-use crate::location::{MemberId, MembershipEvent};
+use crate::location::{LocationKey, MemberId, MembershipEvent};
 
 pub fn deploy_containerized_o2o(target_container: &str, bind_port: u16) -> (syn::Expr, syn::Expr) {
     (
@@ -296,21 +296,21 @@ pub fn cluster_membership_stream<'a>(
     location_id: &LocationId,
 ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
 {
-    let raw_id = location_id.raw_id();
+    let location_key = location_id.key();
 
     q!(Box::new(self::ecs_membership_stream(
         std::env::var("DEPLOYMENT_INSTANCE").unwrap(),
-        raw_id
+        location_key
     ))
         as Box<
             dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin,
         >)
 }
 
-#[instrument(skip_all, fields(%deployment_instance, %location_id))]
+#[instrument(skip_all, fields(%deployment_instance, %location_key))]
 fn ecs_membership_stream(
     deployment_instance: String,
-    location_id: usize,
+    location_key: LocationKey,
 ) -> impl Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin {
     use std::collections::HashSet;
 
@@ -322,8 +322,8 @@ fn ecs_membership_stream(
         regex::Regex::new(r#"arn:aws:ecs:(?<region>.*):(?<account_id>.*):task-definition\/(?<container_id>hy-(?<type>[^-]+)-(?<image_id>[^-]+)-(?<deployment_id>[^-]+)-(?<location_id>[0-9]+)-(?<instance_id>.*)):.*"#).unwrap();
 
     let poll_stream = futures::stream::unfold(
-        (HashSet::<String>::new(), deployment_instance, location_id),
-        move |(known_tasks, deployment_instance, location_id)| {
+        (HashSet::<String>::new(), deployment_instance, location_key),
+        move |(known_tasks, deployment_instance, location_key)| {
             let task_definition_arn_parser = task_definition_arn_parser.clone();
 
             async move {
@@ -333,7 +333,7 @@ fn ecs_membership_stream(
                 let ecs_client = aws_sdk_ecs::Client::new(&config);
 
                 let cluster_name = format!("hydro-{}", deployment_instance);
-                trace!(name: "querying_tasks", %cluster_name, %location_id);
+                trace!(name: "querying_tasks", %cluster_name, %location_key);
 
                 let tasks = match ecs_client
                     .list_tasks()
@@ -345,7 +345,7 @@ fn ecs_membership_stream(
                     Err(e) => {
                         trace!(name: "list_tasks_error", error = %e);
                         tokio::time::sleep(Duration::from_secs(2)).await;
-                        return Some((Vec::new(), (known_tasks, deployment_instance, location_id)));
+                        return Some((Vec::new(), (known_tasks, deployment_instance, location_key)));
                     }
                 };
 
@@ -367,7 +367,7 @@ fn ecs_membership_stream(
                         Err(e) => {
                             trace!(name: "describe_tasks_error", error = %e);
                             tokio::time::sleep(Duration::from_secs(2)).await;
-                            return Some((Vec::new(), (known_tasks, deployment_instance, location_id)));
+                            return Some((Vec::new(), (known_tasks, deployment_instance, location_key)));
                         }
                     };
 
@@ -400,21 +400,21 @@ fn ecs_membership_stream(
                         };
                         let container_id = container_id.as_str();
 
-                        let Some(task_location_id) = captures.name("location_id") else {
-                            trace!(name: "location_id_missing", %task_def_arn, ?task);
+                        let Some(task_location_key) = captures.name("location_key") else {
+                            trace!(name: "location_key_missing", %task_def_arn, ?task);
                             continue;
                         };
-                        let task_location_id: usize = match task_location_id.as_str().parse() {
+                        let task_location_key: LocationKey = match task_location_key.as_str().parse() {
                             Ok(id) => id,
                             Err(_) => {
-                                trace!(name: "location_id_parse_error", %task_def_arn, ?task);
+                                trace!(name: "location_key_parse_error", %task_def_arn, ?task);
                                 continue;
                             }
                         };
 
                         // Filter by location_id - only include tasks for this specific cluster
-                        if task_location_id != location_id {
-                            trace!(name: "location_id_mismatch", %task_location_id, %location_id, %container_id);
+                        if task_location_key != location_key {
+                            trace!(name: "location_id_mismatch", %task_location_key, %location_key, %container_id);
                             continue;
                         }
 
@@ -438,7 +438,7 @@ fn ecs_membership_stream(
                 trace!(name: "poll_complete", event_count = events.len(), current_task_count = current_tasks.len());
                 tokio::time::sleep(Duration::from_secs(2)).await;
 
-                Some((events, (current_tasks, deployment_instance, location_id)))
+                Some((events, (current_tasks, deployment_instance, location_key)))
             }.instrument(ecs_poller_span.clone())
         }
     )

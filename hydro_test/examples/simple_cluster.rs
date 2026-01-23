@@ -71,8 +71,8 @@ async fn main() {
         "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
     };
 
-    let builder = hydro_lang::compile::builder::FlowBuilder::new();
-    let (process, cluster) = hydro_test::cluster::simple_cluster::simple_cluster(&builder);
+    let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
+    let (process, cluster) = hydro_test::cluster::simple_cluster::simple_cluster(&mut builder);
 
     // Extract the IR for graph visualization
     let built = builder.finalize();

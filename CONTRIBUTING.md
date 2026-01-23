@@ -116,7 +116,7 @@ can be used instead, to update `insta` snapshots. `TRYBUILD=overwrite` can be us
 The CI runs the same the tests that are done on PRs, but also runs some tests on the latest
 nightly. Sometimes these tests fail when the PR tests pass. This is often due to new lints
 in the latest version of `clippy`. This is also often due to snapshot/trybuild changes, but
-the CI should automatically create a PR to update the snapshots. See [Setup#Rust](#rust-version) above.
+the CI should automatically create a PR to update the snapshots. See [Rust version](#rust-version) above.
 
 ## Releasing
 

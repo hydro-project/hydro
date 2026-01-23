@@ -51,7 +51,7 @@ mod tests {
     /// Test that join_responses correctly joins metadata with responses.
     #[test]
     fn test_join_responses_basic() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let process = flow.process::<()>();
 
         // Set up inputs (TotalOrder for deterministic simulation)
@@ -91,7 +91,7 @@ mod tests {
     /// Test that metadata persists across ticks until matched with a response.
     #[test]
     fn test_join_responses_metadata_persists() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let process = flow.process::<()>();
 
         let (response_send, responses) = process.sim_input::<(u32, String), _, _>();
@@ -128,7 +128,7 @@ mod tests {
     /// Test that responses without metadata are not emitted.
     #[test]
     fn test_join_responses_no_metadata() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let process = flow.process::<()>();
 
         let (response_send, responses) = process.sim_input::<(u32, String), _, _>();
@@ -164,7 +164,7 @@ mod tests {
     /// Test that metadata is removed after being matched with a response.
     #[test]
     fn test_join_responses_metadata_removed_after_match() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let process = flow.process::<()>();
 
         let (response_send, responses) = process.sim_input::<(u32, String), _, _>();

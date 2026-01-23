@@ -16,7 +16,7 @@ It is possible to create **different** locations that still have the same type, 
 
 ```rust
 # use hydro_lang::prelude::*;
-let flow = FlowBuilder::new();
+let mut flow = FlowBuilder::new();
 let process1: Process<()> = flow.process::<()>();
 let process2: Process<()> = flow.process::<()>();
 
@@ -28,7 +28,7 @@ These locations will not be unified and may be deployed to separate machines. Wh
 
 ```rust
 # use hydro_lang::prelude::*;
-let flow = FlowBuilder::new();
+let mut flow = FlowBuilder::new();
 let process1: Process<()> = flow.process::<()>();
 let process2: Process<()> = flow.process::<()>();
 

@@ -237,7 +237,7 @@ where
     L: Location<'a>,
 {
     pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
-        debug_assert_eq!(ir_node.metadata().location_kind, Location::id(&location));
+        debug_assert_eq!(ir_node.metadata().location_id, Location::id(&location));
         debug_assert_eq!(ir_node.metadata().collection_kind, Self::collection_kind());
         Singleton {
             location,
@@ -1118,7 +1118,7 @@ mod tests {
     async fn tick_cycle_cardinality() {
         let mut deployment = Deployment::new();
 
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
@@ -1160,7 +1160,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn sim_fold_intermediate_states() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let source = node.source_stream(q!(tokio_stream::iter(vec![1, 2, 3, 4])));
@@ -1178,7 +1178,7 @@ mod tests {
     #[cfg(feature = "sim")]
     #[test]
     fn sim_fold_intermediate_state_count() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let source = node.source_stream(q!(tokio_stream::iter(vec![1, 2, 3, 4])));
@@ -1204,7 +1204,7 @@ mod tests {
     fn sim_fold_no_repeat_initial() {
         // check that we don't repeat the initial state of the fold in autonomous decisions
 
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let (in_port, input) = node.sim_input();
@@ -1230,7 +1230,7 @@ mod tests {
         // when the tick is driven by a snapshot AND something else, the snapshot can
         // "stutter" and repeat the same state multiple times
 
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let source = node.source_stream(q!(tokio_stream::iter(vec![1, 2, 3, 4])));
@@ -1254,7 +1254,7 @@ mod tests {
     #[test]
     fn sim_fold_repeats_snapshots_count() {
         // check the number of instances
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let source = node.source_stream(q!(tokio_stream::iter(vec![1, 2])));
@@ -1278,7 +1278,7 @@ mod tests {
     #[test]
     fn sim_top_level_singleton_exhaustive() {
         // ensures that top-level singletons have only one snapshot
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let singleton = node.singleton(q!(1));
@@ -1299,7 +1299,7 @@ mod tests {
         // if a tick consumes a static snapshot and a stream batch, only the batch require space
         // exploration
 
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));
@@ -1322,7 +1322,7 @@ mod tests {
     #[cfg(feature = "sim")]
     #[test]
     fn top_level_singleton_into_stream_no_replay() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let source_iter = node.source_iter(q!(vec![1, 2, 3, 4]));

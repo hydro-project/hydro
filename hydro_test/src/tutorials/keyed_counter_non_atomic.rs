@@ -41,7 +41,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_counter_read_after_write_buggy() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let process = flow.process::<CounterServer>();
 
         let (inc_in_port, inc_requests) = process.sim_input();
@@ -69,7 +69,7 @@ mod tests {
 
     #[test]
     fn test_counter_read_after_write_instances() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let process = flow.process::<CounterServer>();
 
         let (inc_in_port, inc_requests) = process.sim_input();

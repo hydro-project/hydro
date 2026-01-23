@@ -1,7 +1,10 @@
 use std::borrow::Cow;
 use std::fmt::Write;
 
-use super::render::{HydroEdgeProp, HydroGraphWrite, HydroNodeType, IndentedGraphWriter};
+use super::render::{
+    HydroEdgeProp, HydroGraphWrite, HydroNodeType, HydroWriteConfig, IndentedGraphWriter,
+};
+use crate::location::{LocationKey, LocationType};
 use crate::viz::render::VizNodeKey;
 
 /// Escapes a string for use in a DOT graph label.
@@ -10,25 +13,25 @@ pub fn escape_dot(string: &str, newline: &str) -> String {
 }
 
 /// DOT/Graphviz graph writer for Hydro IR.
-pub struct HydroDot<W> {
-    base: IndentedGraphWriter<W>,
+pub struct HydroDot<'a, W> {
+    base: IndentedGraphWriter<'a, W>,
 }
 
-impl<W> HydroDot<W> {
+impl<'a, W> HydroDot<'a, W> {
     pub fn new(write: W) -> Self {
         Self {
             base: IndentedGraphWriter::new(write),
         }
     }
 
-    pub fn new_with_config(write: W, config: &super::render::HydroWriteConfig) -> Self {
+    pub fn new_with_config(write: W, config: HydroWriteConfig<'a>) -> Self {
         Self {
             base: IndentedGraphWriter::new_with_config(write, config),
         }
     }
 }
 
-impl<W> HydroGraphWrite for HydroDot<W>
+impl<W> HydroGraphWrite for HydroDot<'_, W>
 where
     W: Write,
 {
@@ -86,8 +89,8 @@ where
         node_id: VizNodeKey,
         node_label: &super::render::NodeLabel,
         node_type: HydroNodeType,
-        _location_id: Option<usize>,
-        _location_type: Option<&str>,
+        _location_id: Option<LocationKey>,
+        _location_type: Option<LocationType>,
         _backtrace: Option<&crate::compile::ir::backtrace::Backtrace>,
     ) -> Result<(), Self::Err> {
         // Create the full label string using DebugExpr::Display for expressions
@@ -198,13 +201,12 @@ where
 
     fn write_location_start(
         &mut self,
-        location_id: usize,
-        location_type: &str,
+        location_key: LocationKey,
+        location_type: LocationType,
     ) -> Result<(), Self::Err> {
         writeln!(
             self.base.write,
-            "{b:i$}subgraph cluster_loc_{id} {{",
-            id = location_id,
+            "{b:i$}subgraph cluster_{location_key} {{",
             b = "",
             i = self.base.indent,
         )?;
@@ -219,8 +221,7 @@ where
         )?;
         writeln!(
             self.base.write,
-            "{b:i$}label = \"{location_type} {id}\"",
-            id = location_id,
+            "{b:i$}label = \"{location_type:?} {location_key}\"",
             b = "",
             i = self.base.indent
         )?;
@@ -270,13 +271,11 @@ where
 pub fn open_browser(
     built_flow: &crate::compile::built::BuiltFlow,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let config = super::render::HydroWriteConfig {
+    let config = HydroWriteConfig {
         show_metadata: false,
         show_location_groups: true,
         use_short_labels: true, // Default to short labels
-        process_id_name: built_flow.process_id_name().clone(),
-        cluster_id_name: built_flow.cluster_id_name().clone(),
-        external_id_name: built_flow.external_id_name().clone(),
+        location_names: built_flow.location_names(),
     };
 
     // Use the existing debug function
