@@ -390,7 +390,7 @@ use crate::compile::deploy_provider::{
 use crate::compile::trybuild::generate::{LinkingMode, create_graph_trybuild};
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
-use crate::location::{MembershipEvent, NetworkHint};
+use crate::location::{LocationKey, MembershipEvent, NetworkHint};
 
 /// represents a docker network
 #[derive(Clone, Debug)]
@@ -410,7 +410,7 @@ impl DockerNetworkEcs {
 /// Represents a process running in a docker container
 #[derive(Clone)]
 pub struct DockerDeployProcessEcs {
-    id: usize,
+    key: LocationKey,
     name: String,
     next_port: Rc<RefCell<u16>>,
     rust_crate: Rc<RefCell<Option<RustCrate>>>,
@@ -431,7 +431,7 @@ impl Node for DockerDeployProcessEcs {
     type Meta = ();
     type InstantiateEnv = DockerDeployEcs;
 
-    #[instrument(level = "trace", skip_all, ret, fields(id = self.id, name = self.name))]
+    #[instrument(level = "trace", skip_all, ret, fields(key = %self.key, name = self.name))]
     fn next_port(&self) -> Self::Port {
         let port = {
             let mut borrow = self.next_port.borrow_mut();
@@ -443,10 +443,10 @@ impl Node for DockerDeployProcessEcs {
         port
     }
 
-    #[instrument(level = "trace", skip_all, fields(id = self.id, name = self.name))]
+    #[instrument(level = "trace", skip_all, fields(key = %self.key, name = self.name))]
     fn update_meta(&self, _meta: &Self::Meta) {}
 
-    #[instrument(level = "trace", skip_all, fields(id = self.id, name = self.name, ?meta, extra_stmts = extra_stmts.len()))]
+    #[instrument(level = "trace", skip_all, fields(key = %self.key, name = self.name, ?meta, extra_stmts = extra_stmts.len()))]
     fn instantiate(
         &self,
         _env: &mut Self::InstantiateEnv,
@@ -485,7 +485,7 @@ impl Node for DockerDeployProcessEcs {
 /// Represents a logical cluster, which can be a variable amount of individual containers.
 #[derive(Clone)]
 pub struct DockerDeployClusterEcs {
-    id: usize,
+    key: LocationKey,
     name: String,
     next_port: Rc<RefCell<u16>>,
     rust_crate: Rc<RefCell<Option<RustCrate>>>,
@@ -504,7 +504,7 @@ impl Node for DockerDeployClusterEcs {
     type Meta = ();
     type InstantiateEnv = DockerDeployEcs;
 
-    #[instrument(level = "trace", skip_all, ret, fields(id = self.id, name = self.name))]
+    #[instrument(level = "trace", skip_all, ret, fields(key = %self.key, name = self.name))]
     fn next_port(&self) -> Self::Port {
         let port = {
             let mut borrow = self.next_port.borrow_mut();
@@ -516,10 +516,10 @@ impl Node for DockerDeployClusterEcs {
         port
     }
 
-    #[instrument(level = "trace", skip_all, fields(id = self.id, name = self.name))]
+    #[instrument(level = "trace", skip_all, fields(key = %self.key, name = self.name))]
     fn update_meta(&self, _meta: &Self::Meta) {}
 
-    #[instrument(level = "trace", skip_all, fields(id = self.id, name = self.name, extra_stmts = extra_stmts.len()))]
+    #[instrument(level = "trace", skip_all, fields(key = %self.key, name = self.name, extra_stmts = extra_stmts.len()))]
     fn instantiate(
         &self,
         _env: &mut Self::InstantiateEnv,
@@ -1627,7 +1627,7 @@ impl<'a> Deploy<'a> for DockerDeployEcs {
 
     #[instrument(level = "trace", skip_all, fields(%of_cluster))]
     fn cluster_ids(
-        of_cluster: usize,
+        of_cluster: LocationKey,
     ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a {
         cluster_ids()
     }
@@ -1651,8 +1651,12 @@ const CONTAINER_ALPHABET: [char; 36] = [
     'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 ];
 
-#[instrument(level = "trace", skip_all, ret, fields(%name_hint, %location, %deployment_instance))]
-fn get_docker_image_name(name_hint: &str, location: usize, deployment_instance: &str) -> String {
+#[instrument(level = "trace", skip_all, ret, fields(%name_hint, %location_key, %deployment_instance))]
+fn get_docker_image_name(
+    name_hint: &str,
+    location_key: LocationKey,
+    deployment_instance: &str,
+) -> String {
     let name_hint = name_hint
         .split("::")
         .last()
@@ -1665,7 +1669,7 @@ fn get_docker_image_name(name_hint: &str, location: usize, deployment_instance: 
 
     let image_unique_tag = nanoid::nanoid!(6, &CONTAINER_ALPHABET);
 
-    format!("hy-{name_hint}-{image_unique_tag}-{deployment_instance}-{location}")
+    format!("hy-{name_hint}-{image_unique_tag}-{deployment_instance}-{location_key}")
 }
 
 #[instrument(level = "trace", skip_all, ret, fields(%image_name, ?instance))]
@@ -1686,11 +1690,15 @@ pub struct DockerDeployProcessSpecEcs {
 }
 
 impl<'a> ProcessSpec<'a, DockerDeployEcs> for DockerDeployProcessSpecEcs {
-    #[instrument(level = "trace", skip_all, fields(%id, %name_hint))]
-    fn build(self, id: usize, name_hint: &'_ str) -> <DockerDeployEcs as Deploy<'a>>::Process {
+    #[instrument(level = "trace", skip_all, fields(%key, %name_hint))]
+    fn build(
+        self,
+        key: LocationKey,
+        name_hint: &'_ str,
+    ) -> <DockerDeployEcs as Deploy<'a>>::Process {
         DockerDeployProcessEcs {
-            id,
-            name: get_docker_image_name(name_hint, id, &self.deployment_instance),
+            key,
+            name: get_docker_image_name(name_hint, key, &self.deployment_instance),
 
             next_port: Rc::new(RefCell::new(1000)),
             rust_crate: Rc::new(RefCell::new(None)),
@@ -1717,11 +1725,11 @@ pub struct DockerDeployClusterSpecEcs {
 }
 
 impl<'a> ClusterSpec<'a, DockerDeployEcs> for DockerDeployClusterSpecEcs {
-    #[instrument(level = "trace", skip_all, fields(%id, %name_hint))]
-    fn build(self, id: usize, name_hint: &str) -> <DockerDeployEcs as Deploy<'a>>::Cluster {
+    #[instrument(level = "trace", skip_all, fields(%key, %name_hint))]
+    fn build(self, key: LocationKey, name_hint: &str) -> <DockerDeployEcs as Deploy<'a>>::Cluster {
         DockerDeployClusterEcs {
-            id,
-            name: get_docker_image_name(name_hint, id, &self.deployment_instance),
+            key,
+            name: get_docker_image_name(name_hint, key, &self.deployment_instance),
 
             next_port: Rc::new(RefCell::new(1000)),
             rust_crate: Rc::new(RefCell::new(None)),
@@ -1743,8 +1751,8 @@ pub struct DockerDeployExternalSpecEcs {
 }
 
 impl<'a> ExternalSpec<'a, DockerDeployEcs> for DockerDeployExternalSpecEcs {
-    #[instrument(level = "trace", skip_all, fields(%id, %name_hint))]
-    fn build(self, id: usize, name_hint: &str) -> <DockerDeployEcs as Deploy<'a>>::External {
+    #[instrument(level = "trace", skip_all, fields(%key, %name_hint))]
+    fn build(self, key: LocationKey, name_hint: &str) -> <DockerDeployEcs as Deploy<'a>>::External {
         DockerDeployExternalEcs {
             name: self.name,
             next_port: Rc::new(RefCell::new(10000)),

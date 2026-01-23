@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::io::Error;
 use std::marker::PhantomData;
 use std::pin::Pin;
@@ -8,6 +8,7 @@ use futures::{Sink, Stream};
 use proc_macro2::Span;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use slotmap::{SecondaryMap, SlotMap, SparseSecondaryMap};
 use stageleft::QuotedWithContext;
 
 use super::built::build_inner;
@@ -21,7 +22,7 @@ use crate::location::dynamic::LocationId;
 use crate::location::external_process::{
     ExternalBincodeBidi, ExternalBincodeSink, ExternalBincodeStream, ExternalBytesPort,
 };
-use crate::location::{Cluster, External, Location, Process};
+use crate::location::{Cluster, External, Location, LocationKey, LocationType, Process};
 use crate::staging_util::Invariant;
 
 pub struct DeployFlow<'a, D>
@@ -30,18 +31,13 @@ where
 {
     pub(super) ir: Vec<HydroRoot>,
 
+    pub(super) locations: SlotMap<LocationKey, LocationType>,
+    pub(super) location_names: SecondaryMap<LocationKey, String>,
+
     /// Deployed instances of each process in the flow
-    pub(super) processes: HashMap<usize, D::Process>,
-
-    /// Lists all the processes that were created in the flow, same ID as `processes`
-    /// but with the type name of the tag.
-    pub(super) process_id_name: Vec<(usize, String)>,
-
-    pub(super) externals: HashMap<usize, D::External>,
-    pub(super) external_id_name: Vec<(usize, String)>,
-
-    pub(super) clusters: HashMap<usize, D::Cluster>,
-    pub(super) cluster_id_name: Vec<(usize, String)>,
+    pub(super) processes: SparseSecondaryMap<LocationKey, D::Process>,
+    pub(super) clusters: SparseSecondaryMap<LocationKey, D::Cluster>,
+    pub(super) externals: SparseSecondaryMap<LocationKey, D::External>,
 
     pub(super) _phantom: Invariant<'a, D>,
 }
@@ -51,43 +47,72 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         &self.ir
     }
 
-    pub fn with_process_id_name(
+    pub fn with_process<P>(
         mut self,
-        process_id: usize,
-        process_name: String,
+        process: &Process<P>,
         spec: impl IntoProcessSpec<'a, D>,
     ) -> Self {
         self.processes.insert(
-            process_id,
-            spec.into_process_spec().build(process_id, &process_name),
+            process.key,
+            spec.into_process_spec()
+                .build(process.key, &self.location_names[process.key]),
         );
         self
-    }
-
-    pub fn with_process<P>(self, process: &Process<P>, spec: impl IntoProcessSpec<'a, D>) -> Self {
-        self.with_process_id_name(process.id, std::any::type_name::<P>().to_string(), spec)
     }
 
     pub fn with_remaining_processes<S: IntoProcessSpec<'a, D> + 'a>(
         mut self,
         spec: impl Fn() -> S,
     ) -> Self {
-        for (id, name) in &self.process_id_name {
-            self.processes
-                .insert(*id, spec().into_process_spec().build(*id, name));
+        for (location_key, &location_type) in self.locations.iter() {
+            if LocationType::Process == location_type {
+                self.processes
+                    .entry(location_key)
+                    .expect("location was removed")
+                    .or_insert_with(|| {
+                        spec()
+                            .into_process_spec()
+                            .build(location_key, &self.location_names[location_key])
+                    });
+            }
         }
+        self
+    }
 
+    pub fn with_cluster<C>(mut self, cluster: &Cluster<C>, spec: impl ClusterSpec<'a, D>) -> Self {
+        self.clusters.insert(
+            cluster.key,
+            spec.build(cluster.key, &self.location_names[cluster.key]),
+        );
+        self
+    }
+
+    pub fn with_remaining_clusters<S: ClusterSpec<'a, D> + 'a>(
+        mut self,
+        spec: impl Fn() -> S,
+    ) -> Self {
+        for (location_key, &location_type) in self.locations.iter() {
+            if LocationType::Cluster == location_type {
+                self.clusters
+                    .entry(location_key)
+                    .expect("location was removed")
+                    .or_insert_with(|| {
+                        spec().build(location_key, &self.location_names[location_key])
+                    });
+            }
+        }
         self
     }
 
     pub fn with_external<P>(
         mut self,
-        process: &External<P>,
+        external: &External<P>,
         spec: impl ExternalSpec<'a, D>,
     ) -> Self {
-        let tag_name = std::any::type_name::<P>().to_string();
-        self.externals
-            .insert(process.id, spec.build(process.id, &tag_name));
+        self.externals.insert(
+            external.key,
+            spec.build(external.key, &self.location_names[external.key]),
+        );
         self
     }
 
@@ -95,36 +120,16 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         mut self,
         spec: impl Fn() -> S,
     ) -> Self {
-        for (id, name) in &self.external_id_name {
-            self.externals.insert(*id, spec().build(*id, name));
+        for (location_key, &location_type) in self.locations.iter() {
+            if LocationType::External == location_type {
+                self.externals
+                    .entry(location_key)
+                    .expect("location was removed")
+                    .or_insert_with(|| {
+                        spec().build(location_key, &self.location_names[location_key])
+                    });
+            }
         }
-
-        self
-    }
-
-    pub fn with_cluster_id_name(
-        mut self,
-        cluster_id: usize,
-        cluster_name: String,
-        spec: impl ClusterSpec<'a, D>,
-    ) -> Self {
-        self.clusters
-            .insert(cluster_id, spec.build(cluster_id, &cluster_name));
-        self
-    }
-
-    pub fn with_cluster<C>(self, cluster: &Cluster<C>, spec: impl ClusterSpec<'a, D>) -> Self {
-        self.with_cluster_id_name(cluster.id, std::any::type_name::<C>().to_string(), spec)
-    }
-
-    pub fn with_remaining_clusters<S: ClusterSpec<'a, D> + 'a>(
-        mut self,
-        spec: impl Fn() -> S,
-    ) -> Self {
-        for (id, name) in &self.cluster_id_name {
-            self.clusters.insert(*id, spec().build(*id, name));
-        }
-
         self
     }
 
@@ -137,19 +142,17 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         // only because the shared traversal logic requires it
         CompiledFlow {
             dfir: build_inner::<D>(&mut self.ir),
-            extra_stmts: BTreeMap::new(),
+            extra_stmts: SparseSecondaryMap::new(),
             _phantom: PhantomData,
         }
     }
-}
 
-impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     /// Compiles the flow into DFIR ([`dfir_lang::graph::DfirGraph`]) including networking.
     ///
     /// (This does not compile the DFIR itself, instead use [`Self::deploy`] to compile & deploy the DFIR).
     pub fn compile(&mut self) -> CompiledFlow<'a> {
         let mut seen_tees: HashMap<_, _> = HashMap::new();
-        let mut extra_stmts = BTreeMap::new();
+        let mut extra_stmts = SparseSecondaryMap::new();
         self.ir.iter_mut().for_each(|leaf| {
             leaf.compile_network::<D>(
                 &mut extra_stmts,
@@ -168,18 +171,19 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     }
 
     /// Creates the variables for cluster IDs and adds them into `extra_stmts`.
-    fn cluster_id_stmts(&self, extra_stmts: &mut BTreeMap<usize, Vec<syn::Stmt>>) {
+    fn cluster_id_stmts(&self, extra_stmts: &mut SparseSecondaryMap<LocationKey, Vec<syn::Stmt>>) {
         let mut all_clusters_sorted = self.clusters.keys().collect::<Vec<_>>();
         all_clusters_sorted.sort();
 
-        for &c_id in all_clusters_sorted {
+        for cluster_key in all_clusters_sorted {
             let self_id_ident = syn::Ident::new(
-                &format!("__hydro_lang_cluster_self_id_{}", c_id),
+                &format!("__hydro_lang_cluster_self_id_{}", cluster_key),
                 Span::call_site(),
             );
             let self_id_expr = D::cluster_self_id().splice_untyped();
             extra_stmts
-                .entry(c_id)
+                .entry(cluster_key)
+                .expect("location was removed")
                 .or_default()
                 .push(syn::parse_quote! {
                     let #self_id_ident = &*Box::leak(Box::new(#self_id_expr));
@@ -187,12 +191,13 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 
             for other_location in self.processes.keys().chain(self.clusters.keys()) {
                 let other_id_ident = syn::Ident::new(
-                    &format!("__hydro_lang_cluster_ids_{}", c_id),
+                    &format!("__hydro_lang_cluster_ids_{}", cluster_key),
                     Span::call_site(),
                 );
-                let other_id_expr = D::cluster_ids(c_id).splice_untyped();
+                let other_id_expr = D::cluster_ids(cluster_key).splice_untyped();
                 extra_stmts
-                    .entry(*other_location)
+                    .entry(other_location)
+                    .expect("location was removed")
                     .or_default()
                     .push(syn::parse_quote! {
                         let #other_id_ident = #other_id_expr;
@@ -221,50 +226,49 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         let mut meta = D::Meta::default();
 
         let (mut processes, mut clusters, mut externals) = (
-            std::mem::take(&mut self.processes)
+            self.processes
                 .into_iter()
-                .filter_map(|(node_id, node)| {
-                    if let Some(ir) = compiled.remove(&node_id) {
+                .filter(|&(node_key, ref node)| {
+                    if let Some(ir) = compiled.remove(node_key) {
                         node.instantiate(
                             env,
                             &mut meta,
                             ir,
-                            extra_stmts.remove(&node_id).unwrap_or_default(),
+                            extra_stmts.remove(node_key).unwrap_or_default(),
                         );
-                        Some((node_id, node))
+                        true
                     } else {
-                        None
+                        false
                     }
                 })
-                .collect::<HashMap<_, _>>(),
-            std::mem::take(&mut self.clusters)
+                .collect::<SparseSecondaryMap<_, _>>(),
+            self.clusters
                 .into_iter()
-                .filter_map(|(cluster_id, cluster)| {
-                    if let Some(ir) = compiled.remove(&cluster_id) {
+                .filter(|&(cluster_key, ref cluster)| {
+                    if let Some(ir) = compiled.remove(cluster_key) {
                         cluster.instantiate(
                             env,
                             &mut meta,
                             ir,
-                            extra_stmts.remove(&cluster_id).unwrap_or_default(),
+                            extra_stmts.remove(cluster_key).unwrap_or_default(),
                         );
-                        Some((cluster_id, cluster))
+                        true
                     } else {
-                        None
+                        false
                     }
                 })
-                .collect::<HashMap<_, _>>(),
-            std::mem::take(&mut self.externals)
+                .collect::<SparseSecondaryMap<_, _>>(),
+            self.externals
                 .into_iter()
-                .map(|(external_id, external)| {
+                .inspect(|&(external_key, ref external)| {
                     external.instantiate(
                         env,
                         &mut meta,
                         Default::default(),
-                        extra_stmts.remove(&external_id).unwrap_or_default(),
+                        extra_stmts.remove(external_key).unwrap_or_default(),
                     );
-                    (external_id, external)
                 })
-                .collect::<HashMap<_, _>>(),
+                .collect::<SparseSecondaryMap<_, _>>(),
         );
 
         for node in processes.values_mut() {
@@ -285,68 +289,58 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         });
 
         DeployResult {
+            location_names: self.location_names,
             processes,
             clusters,
             externals,
-            cluster_id_name: std::mem::take(&mut self.cluster_id_name)
-                .into_iter()
-                .collect(),
-            process_id_name: std::mem::take(&mut self.process_id_name)
-                .into_iter()
-                .collect(),
         }
     }
 }
 
 pub struct DeployResult<'a, D: Deploy<'a>> {
-    processes: HashMap<usize, D::Process>,
-    clusters: HashMap<usize, D::Cluster>,
-    externals: HashMap<usize, D::External>,
-    cluster_id_name: HashMap<usize, String>,
-    process_id_name: HashMap<usize, String>,
+    location_names: SecondaryMap<LocationKey, String>,
+    processes: SparseSecondaryMap<LocationKey, D::Process>,
+    clusters: SparseSecondaryMap<LocationKey, D::Cluster>,
+    externals: SparseSecondaryMap<LocationKey, D::External>,
 }
 
 impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
     pub fn get_process<P>(&self, p: &Process<P>) -> &D::Process {
-        let id = match p.id() {
-            LocationId::Process(id) => id,
-            _ => panic!("Process ID expected"),
+        let LocationId::Process(location_key) = p.id() else {
+            panic!("Process ID expected")
         };
-
-        self.processes.get(&id).unwrap()
+        self.processes.get(location_key).unwrap()
     }
 
     pub fn get_cluster<C>(&self, c: &Cluster<'a, C>) -> &D::Cluster {
-        let id = match c.id() {
-            LocationId::Cluster(id) => id,
-            _ => panic!("Cluster ID expected"),
+        let LocationId::Cluster(location_key) = c.id() else {
+            panic!("Cluster ID expected")
         };
-
-        self.clusters.get(&id).unwrap()
+        self.clusters.get(location_key).unwrap()
     }
 
-    pub fn get_all_clusters(&self) -> impl Iterator<Item = (LocationId, String, &D::Cluster)> {
-        self.clusters.iter().map(|(&id, c)| {
-            (
-                LocationId::Cluster(id),
-                self.cluster_id_name.get(&id).unwrap().clone(),
-                c,
-            )
-        })
+    pub fn get_external<P>(&self, e: &External<P>) -> &D::External {
+        self.externals.get(e.key).unwrap()
     }
 
     pub fn get_all_processes(&self) -> impl Iterator<Item = (LocationId, String, &D::Process)> {
-        self.processes.iter().map(|(&id, p)| {
+        self.processes.iter().map(|(location_key, p)| {
             (
-                LocationId::Process(id),
-                self.process_id_name.get(&id).unwrap().clone(),
+                LocationId::Process(location_key),
+                self.location_names[location_key].clone(),
                 p,
             )
         })
     }
 
-    pub fn get_external<P>(&self, p: &External<P>) -> &D::External {
-        self.externals.get(&p.id).unwrap()
+    pub fn get_all_clusters(&self) -> impl Iterator<Item = (LocationId, String, &D::Cluster)> {
+        self.clusters.iter().map(|(location_key, c)| {
+            (
+                LocationId::Cluster(location_key),
+                self.location_names[location_key].clone(),
+                c,
+            )
+        })
     }
 
     #[deprecated(note = "use `connect` instead")]
@@ -380,7 +374,7 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
         Pin<Box<dyn Sink<InT, Error = Error>>>,
     ) {
         self.externals
-            .get(&port.process_id)
+            .get(port.process_key)
             .unwrap()
             .as_bincode_bidi(port.port_id)
             .await
@@ -432,7 +426,7 @@ impl DeployResult<'_, crate::deploy::HydroDeploy> {
         port: ExternalBytesPort<M>,
     ) -> hydro_deploy::custom_service::CustomClientPort {
         self.externals
-            .get(&port.process_id)
+            .get(port.process_key)
             .unwrap()
             .raw_port(port.port_id)
     }
@@ -452,7 +446,7 @@ impl<'a, D: Deploy<'a>, M> ConnectableAsync<&DeployResult<'a, D>> for ExternalBy
 
     async fn connect(self, ctx: &DeployResult<'a, D>) -> Self::Output {
         ctx.externals
-            .get(&self.process_id)
+            .get(self.process_key)
             .unwrap()
             .as_bytes_bidi(self.port_id)
             .await
@@ -466,7 +460,7 @@ impl<'a, D: Deploy<'a>, T: DeserializeOwned + 'static, O: Ordering, R: Retries>
 
     async fn connect(self, ctx: &DeployResult<'a, D>) -> Self::Output {
         ctx.externals
-            .get(&self.process_id)
+            .get(self.process_key)
             .unwrap()
             .as_bincode_source(self.port_id)
             .await
@@ -480,7 +474,7 @@ impl<'a, D: Deploy<'a>, T: Serialize + 'static, Many> ConnectableAsync<&DeployRe
 
     async fn connect(self, ctx: &DeployResult<'a, D>) -> Self::Output {
         ctx.externals
-            .get(&self.process_id)
+            .get(self.process_key)
             .unwrap()
             .as_bincode_sink(self.port_id)
             .await

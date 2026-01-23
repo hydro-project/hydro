@@ -30,7 +30,7 @@ use tracing::{debug, instrument};
 
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
-use crate::location::{MemberId, MembershipEvent};
+use crate::location::{LocationKey, MemberId, MembershipEvent};
 
 pub fn deploy_containerized_o2o(target: &str, bind_addr: &str) -> (syn::Expr, syn::Expr) {
     (
@@ -283,11 +283,11 @@ pub fn cluster_membership_stream<'a>(
     location_id: &LocationId,
 ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
 {
-    let raw_id = location_id.raw_id();
+    let key = location_id.key();
 
     q!(Box::new(self::docker_membership_stream(
         std::env::var("DEPLOYMENT_INSTANCE").unwrap(),
-        raw_id
+        key
     ))
         as Box<
             dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin,
@@ -297,10 +297,10 @@ pub fn cluster_membership_stream<'a>(
 // There's a risk of race conditions here since all the containers will be starting up at the same time.
 // So we need to start listening for events and the take a snapshot of currently running containers, since they may have already started up before we started listening to events.
 // Then we need to turn that into a usable stream for the consumer in this current hydro program. The way you do that is by emitting from the snapshot first, and then start emitting from the stream. Keep a hash set around to track whether a container is up or down.
-#[instrument(skip_all, fields(%deployment_instance, %location_id))]
+#[instrument(skip_all, fields(%deployment_instance, %location_key))]
 fn docker_membership_stream(
     deployment_instance: String,
-    location_id: usize,
+    location_key: LocationKey,
 ) -> impl Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin {
     use std::collections::HashSet;
     use std::sync::{Arc, Mutex};
@@ -337,7 +337,7 @@ fn docker_membership_stream(
                     .actor
                     .and_then(|a| a.attributes.and_then(|attrs| attrs.get("name").cloned()))?;
 
-                if name.contains(format!("{events_deployment_instance}-{location_id}").as_str()) {
+                if name.contains(format!("{events_deployment_instance}-{location_key}").as_str()) {
                     match e.action.as_deref() {
                         Some("start") => Some((name.clone(), MembershipEvent::Joined)),
                         Some("die") => Some((name, MembershipEvent::Left)),
@@ -363,7 +363,7 @@ fn docker_membership_stream(
         let mut filters = HashMap::new();
         filters.insert(
             "name".to_string(),
-            vec![format!("{deployment_instance}-{location_id}")],
+            vec![format!("{deployment_instance}-{location_key}")],
         );
         let options = Some(ListContainersOptions {
             filters: Some(filters),

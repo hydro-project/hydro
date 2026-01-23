@@ -50,7 +50,7 @@ mod tests {
     async fn runtime_context() {
         let mut deployment = Deployment::new();
 
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<P1>();
         let external = flow.external::<()>();
 

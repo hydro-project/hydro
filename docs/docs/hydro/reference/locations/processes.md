@@ -9,7 +9,7 @@ The simplest type of location in Hydro is a **process**. A process represents a 
 # use hydro_lang::prelude::*;
 struct Leader {}
 
-let flow = FlowBuilder::new();
+let mut flow = FlowBuilder::new();
 let leader: Process<Leader> = flow.process::<Leader>();
 ```
 
@@ -24,7 +24,7 @@ Once we have a process, we can create live collections on that process (see [Liv
 ```rust,no_run
 # use hydro_lang::prelude::*;
 # struct Leader {}
-# let flow = FlowBuilder::new();
+# let mut flow = FlowBuilder::new();
 # let leader: Process<Leader> = flow.process::<Leader>();
 let numbers = leader.source_iter(q!(vec![1, 2, 3, 4]));
 ```
@@ -35,7 +35,7 @@ Because a process represents a single machine, it is straightforward to send dat
 ```rust,no_run
 # use hydro_lang::prelude::*;
 # struct Leader {}
-# let flow = FlowBuilder::new();
+# let mut flow = FlowBuilder::new();
 # let leader: Process<Leader> = flow.process::<Leader>();
 let numbers = leader.source_iter(q!(vec![1, 2, 3, 4]));
 let process2: Process<()> = flow.process::<()>();
