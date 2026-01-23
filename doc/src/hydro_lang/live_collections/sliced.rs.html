@@ -817,7 +817,7 @@
 <a href=#817 id=817 data-nosnippet>817</a>
 <a href=#818 id=818 data-nosnippet>818</a>    </span><span class="attr">#[test]
 <a href=#819 id=819 data-nosnippet>819</a>    </span><span class="kw">fn </span>sim_state_counter() {
-<a href=#820 id=820 data-nosnippet>820</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#820 id=820 data-nosnippet>820</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#821 id=821 data-nosnippet>821</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#822 id=822 data-nosnippet>822</a>
 <a href=#823 id=823 data-nosnippet>823</a>        <span class="kw">let </span>(input_send, input) = node.sim_input::&lt;i32, <span class="kw">_</span>, <span class="kw">_</span>&gt;();
@@ -853,7 +853,7 @@
 <a href=#853 id=853 data-nosnippet>853</a>        <span class="kw">use </span><span class="kw">crate</span>::live_collections::boundedness::Bounded;
 <a href=#854 id=854 data-nosnippet>854</a>        <span class="kw">use </span><span class="kw">crate</span>::location::{Location, Tick};
 <a href=#855 id=855 data-nosnippet>855</a>
-<a href=#856 id=856 data-nosnippet>856</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#856 id=856 data-nosnippet>856</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#857 id=857 data-nosnippet>857</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#858 id=858 data-nosnippet>858</a>
 <a href=#859 id=859 data-nosnippet>859</a>        <span class="kw">let </span>(input_send, input) = node.sim_input::&lt;i32, <span class="kw">_</span>, <span class="kw">_</span>&gt;();
@@ -890,7 +890,7 @@
 <a href=#890 id=890 data-nosnippet>890</a>
 <a href=#891 id=891 data-nosnippet>891</a>    </span><span class="attr">#[test]
 <a href=#892 id=892 data-nosnippet>892</a>    </span><span class="kw">fn </span>sim_sliced_atomic_keyed_stream() {
-<a href=#893 id=893 data-nosnippet>893</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#893 id=893 data-nosnippet>893</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#894 id=894 data-nosnippet>894</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#895 id=895 data-nosnippet>895</a>
 <a href=#896 id=896 data-nosnippet>896</a>        <span class="kw">let </span>(input_send, input) = node.sim_input::&lt;(i32, i32), <span class="kw">_</span>, <span class="kw">_</span>&gt;();

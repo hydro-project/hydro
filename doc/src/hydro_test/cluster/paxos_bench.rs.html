@@ -175,7 +175,7 @@
 <a href=#175 id=175 data-nosnippet>175</a>
 <a href=#176 id=176 data-nosnippet>176</a>    <span class="attr">#[test]
 <a href=#177 id=177 data-nosnippet>177</a>    </span><span class="kw">fn </span>paxos_ir() {
-<a href=#178 id=178 data-nosnippet>178</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
+<a href=#178 id=178 data-nosnippet>178</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
 <a href=#179 id=179 data-nosnippet>179</a>        <span class="kw">let </span>proposers = builder.cluster();
 <a href=#180 id=180 data-nosnippet>180</a>        <span class="kw">let </span>acceptors = builder.cluster();
 <a href=#181 id=181 data-nosnippet>181</a>        <span class="kw">let </span>clients = builder.cluster();
@@ -226,7 +226,7 @@
 <a href=#226 id=226 data-nosnippet>226</a>
 <a href=#227 id=227 data-nosnippet>227</a>    <span class="attr">#[tokio::test]
 <a href=#228 id=228 data-nosnippet>228</a>    </span><span class="kw">async fn </span>paxos_some_throughput() {
-<a href=#229 id=229 data-nosnippet>229</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
+<a href=#229 id=229 data-nosnippet>229</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
 <a href=#230 id=230 data-nosnippet>230</a>        <span class="kw">let </span>proposers = builder.cluster();
 <a href=#231 id=231 data-nosnippet>231</a>        <span class="kw">let </span>acceptors = builder.cluster();
 <a href=#232 id=232 data-nosnippet>232</a>        <span class="kw">let </span>clients = builder.cluster();

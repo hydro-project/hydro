@@ -245,7 +245,7 @@
 <a href=#245 id=245 data-nosnippet>245</a>
 <a href=#246 id=246 data-nosnippet>246</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, K, V, L: Location&lt;<span class="lifetime">'a</span>&gt;, B: KeyedSingletonBound&gt; KeyedSingleton&lt;K, V, L, B&gt; {
 <a href=#247 id=247 data-nosnippet>247</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(location: L, ir_node: HydroNode) -&gt; <span class="self">Self </span>{
-<a href=#248 id=248 data-nosnippet>248</a>        <span class="macro">debug_assert_eq!</span>(ir_node.metadata().location_kind, Location::id(<span class="kw-2">&amp;</span>location));
+<a href=#248 id=248 data-nosnippet>248</a>        <span class="macro">debug_assert_eq!</span>(ir_node.metadata().location_id, Location::id(<span class="kw-2">&amp;</span>location));
 <a href=#249 id=249 data-nosnippet>249</a>        <span class="macro">debug_assert_eq!</span>(ir_node.metadata().collection_kind, <span class="self">Self</span>::collection_kind());
 <a href=#250 id=250 data-nosnippet>250</a>
 <a href=#251 id=251 data-nosnippet>251</a>        KeyedSingleton {
@@ -1501,7 +1501,7 @@
 <a href=#1501 id=1501 data-nosnippet>1501</a>    </span><span class="kw">async fn </span>key_count_bounded_value() {
 <a href=#1502 id=1502 data-nosnippet>1502</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#1503 id=1503 data-nosnippet>1503</a>
-<a href=#1504 id=1504 data-nosnippet>1504</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1504 id=1504 data-nosnippet>1504</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1505 id=1505 data-nosnippet>1505</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1506 id=1506 data-nosnippet>1506</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
 <a href=#1507 id=1507 data-nosnippet>1507</a>
@@ -1539,7 +1539,7 @@
 <a href=#1539 id=1539 data-nosnippet>1539</a>    </span><span class="kw">async fn </span>key_count_unbounded_value() {
 <a href=#1540 id=1540 data-nosnippet>1540</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#1541 id=1541 data-nosnippet>1541</a>
-<a href=#1542 id=1542 data-nosnippet>1542</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1542 id=1542 data-nosnippet>1542</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1543 id=1543 data-nosnippet>1543</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1544 id=1544 data-nosnippet>1544</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
 <a href=#1545 id=1545 data-nosnippet>1545</a>
@@ -1586,7 +1586,7 @@
 <a href=#1586 id=1586 data-nosnippet>1586</a>    </span><span class="kw">async fn </span>into_singleton_bounded_value() {
 <a href=#1587 id=1587 data-nosnippet>1587</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#1588 id=1588 data-nosnippet>1588</a>
-<a href=#1589 id=1589 data-nosnippet>1589</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1589 id=1589 data-nosnippet>1589</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1590 id=1590 data-nosnippet>1590</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1591 id=1591 data-nosnippet>1591</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
 <a href=#1592 id=1592 data-nosnippet>1592</a>
@@ -1633,7 +1633,7 @@
 <a href=#1633 id=1633 data-nosnippet>1633</a>    </span><span class="kw">async fn </span>into_singleton_unbounded_value() {
 <a href=#1634 id=1634 data-nosnippet>1634</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#1635 id=1635 data-nosnippet>1635</a>
-<a href=#1636 id=1636 data-nosnippet>1636</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1636 id=1636 data-nosnippet>1636</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1637 id=1637 data-nosnippet>1637</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1638 id=1638 data-nosnippet>1638</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
 <a href=#1639 id=1639 data-nosnippet>1639</a>
@@ -1696,7 +1696,7 @@
 <a href=#1696 id=1696 data-nosnippet>1696</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
 <a href=#1697 id=1697 data-nosnippet>1697</a>    #[test]
 <a href=#1698 id=1698 data-nosnippet>1698</a>    </span><span class="kw">fn </span>sim_unbounded_singleton_snapshot() {
-<a href=#1699 id=1699 data-nosnippet>1699</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1699 id=1699 data-nosnippet>1699</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1700 id=1700 data-nosnippet>1700</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1701 id=1701 data-nosnippet>1701</a>
 <a href=#1702 id=1702 data-nosnippet>1702</a>        <span class="kw">let </span>(input_port, input) = node.sim_input();
@@ -1725,7 +1725,7 @@
 <a href=#1725 id=1725 data-nosnippet>1725</a>    </span><span class="kw">async fn </span>get_many_outer_join() {
 <a href=#1726 id=1726 data-nosnippet>1726</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#1727 id=1727 data-nosnippet>1727</a>
-<a href=#1728 id=1728 data-nosnippet>1728</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1728 id=1728 data-nosnippet>1728</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1729 id=1729 data-nosnippet>1729</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1730 id=1730 data-nosnippet>1730</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
 <a href=#1731 id=1731 data-nosnippet>1731</a>

@@ -288,7 +288,7 @@
 <a href=#288 id=288 data-nosnippet>288</a>    </span>L: Location&lt;<span class="lifetime">'a</span>&gt;,
 <a href=#289 id=289 data-nosnippet>289</a>{
 <a href=#290 id=290 data-nosnippet>290</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(location: L, ir_node: HydroNode) -&gt; <span class="self">Self </span>{
-<a href=#291 id=291 data-nosnippet>291</a>        <span class="macro">debug_assert_eq!</span>(ir_node.metadata().location_kind, Location::id(<span class="kw-2">&amp;</span>location));
+<a href=#291 id=291 data-nosnippet>291</a>        <span class="macro">debug_assert_eq!</span>(ir_node.metadata().location_id, Location::id(<span class="kw-2">&amp;</span>location));
 <a href=#292 id=292 data-nosnippet>292</a>        <span class="macro">debug_assert_eq!</span>(ir_node.metadata().collection_kind, <span class="self">Self</span>::collection_kind());
 <a href=#293 id=293 data-nosnippet>293</a>        Optional {
 <a href=#294 id=294 data-nosnippet>294</a>            location,
@@ -1315,7 +1315,7 @@
 <a href=#1315 id=1315 data-nosnippet>1315</a>    </span><span class="kw">async fn </span>optional_or_cardinality() {
 <a href=#1316 id=1316 data-nosnippet>1316</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#1317 id=1317 data-nosnippet>1317</a>
-<a href=#1318 id=1318 data-nosnippet>1318</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1318 id=1318 data-nosnippet>1318</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1319 id=1319 data-nosnippet>1319</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1320 id=1320 data-nosnippet>1320</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
 <a href=#1321 id=1321 data-nosnippet>1321</a>
@@ -1349,7 +1349,7 @@
 <a href=#1349 id=1349 data-nosnippet>1349</a>    </span><span class="kw">async fn </span>into_singleton_top_level_none_cardinality() {
 <a href=#1350 id=1350 data-nosnippet>1350</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#1351 id=1351 data-nosnippet>1351</a>
-<a href=#1352 id=1352 data-nosnippet>1352</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1352 id=1352 data-nosnippet>1352</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1353 id=1353 data-nosnippet>1353</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1354 id=1354 data-nosnippet>1354</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
 <a href=#1355 id=1355 data-nosnippet>1355</a>
@@ -1389,7 +1389,7 @@
 <a href=#1389 id=1389 data-nosnippet>1389</a>    </span><span class="kw">async fn </span>into_singleton_unbounded_top_level_none_cardinality() {
 <a href=#1390 id=1390 data-nosnippet>1390</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#1391 id=1391 data-nosnippet>1391</a>
-<a href=#1392 id=1392 data-nosnippet>1392</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1392 id=1392 data-nosnippet>1392</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1393 id=1393 data-nosnippet>1393</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1394 id=1394 data-nosnippet>1394</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
 <a href=#1395 id=1395 data-nosnippet>1395</a>
@@ -1427,7 +1427,7 @@
 <a href=#1427 id=1427 data-nosnippet>1427</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
 <a href=#1428 id=1428 data-nosnippet>1428</a>    #[test]
 <a href=#1429 id=1429 data-nosnippet>1429</a>    </span><span class="kw">fn </span>top_level_optional_some_into_stream_no_replay() {
-<a href=#1430 id=1430 data-nosnippet>1430</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1430 id=1430 data-nosnippet>1430</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1431 id=1431 data-nosnippet>1431</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1432 id=1432 data-nosnippet>1432</a>
 <a href=#1433 id=1433 data-nosnippet>1433</a>        <span class="kw">let </span>source_iter = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));
@@ -1444,7 +1444,7 @@
 <a href=#1444 id=1444 data-nosnippet>1444</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
 <a href=#1445 id=1445 data-nosnippet>1445</a>    #[test]
 <a href=#1446 id=1446 data-nosnippet>1446</a>    </span><span class="kw">fn </span>top_level_optional_none_into_stream_no_replay() {
-<a href=#1447 id=1447 data-nosnippet>1447</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1447 id=1447 data-nosnippet>1447</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1448 id=1448 data-nosnippet>1448</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1449 id=1449 data-nosnippet>1449</a>
 <a href=#1450 id=1450 data-nosnippet>1450</a>        <span class="kw">let </span>source_iter = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));

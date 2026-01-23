@@ -74,7 +74,7 @@
 <a href=#74 id=74 data-nosnippet>74</a>
 <a href=#75 id=75 data-nosnippet>75</a>    <span class="attr">#[test]
 <a href=#76 id=76 data-nosnippet>76</a>    </span><span class="kw">fn </span>two_pc_ir() {
-<a href=#77 id=77 data-nosnippet>77</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
+<a href=#77 id=77 data-nosnippet>77</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
 <a href=#78 id=78 data-nosnippet>78</a>        <span class="kw">let </span>coordinator = builder.process();
 <a href=#79 id=79 data-nosnippet>79</a>        <span class="kw">let </span>participants = builder.cluster();
 <a href=#80 id=80 data-nosnippet>80</a>        <span class="kw">let </span>clients = builder.cluster();
@@ -120,7 +120,7 @@
 <a href=#120 id=120 data-nosnippet>120</a>
 <a href=#121 id=121 data-nosnippet>121</a>    <span class="attr">#[tokio::test]
 <a href=#122 id=122 data-nosnippet>122</a>    </span><span class="kw">async fn </span>two_pc_some_throughput() {
-<a href=#123 id=123 data-nosnippet>123</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
+<a href=#123 id=123 data-nosnippet>123</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
 <a href=#124 id=124 data-nosnippet>124</a>        <span class="kw">let </span>coordinator = builder.process();
 <a href=#125 id=125 data-nosnippet>125</a>        <span class="kw">let </span>participants = builder.cluster();
 <a href=#126 id=126 data-nosnippet>126</a>        <span class="kw">let </span>clients = builder.cluster();

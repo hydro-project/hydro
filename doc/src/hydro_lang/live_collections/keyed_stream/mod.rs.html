@@ -221,7 +221,7 @@
 <a href=#221 id=221 data-nosnippet>221</a>    KeyedStream&lt;K, V, L, B, O, R&gt;
 <a href=#222 id=222 data-nosnippet>222</a>{
 <a href=#223 id=223 data-nosnippet>223</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(location: L, ir_node: HydroNode) -&gt; <span class="self">Self </span>{
-<a href=#224 id=224 data-nosnippet>224</a>        <span class="macro">debug_assert_eq!</span>(ir_node.metadata().location_kind, Location::id(<span class="kw-2">&amp;</span>location));
+<a href=#224 id=224 data-nosnippet>224</a>        <span class="macro">debug_assert_eq!</span>(ir_node.metadata().location_id, Location::id(<span class="kw-2">&amp;</span>location));
 <a href=#225 id=225 data-nosnippet>225</a>        <span class="macro">debug_assert_eq!</span>(ir_node.metadata().collection_kind, <span class="self">Self</span>::collection_kind());
 <a href=#226 id=226 data-nosnippet>226</a>
 <a href=#227 id=227 data-nosnippet>227</a>        KeyedStream {
@@ -2253,7 +2253,7 @@
 <a href=#2253 id=2253 data-nosnippet>2253</a>    </span><span class="kw">async fn </span>reduce_watermark_filter() {
 <a href=#2254 id=2254 data-nosnippet>2254</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#2255 id=2255 data-nosnippet>2255</a>
-<a href=#2256 id=2256 data-nosnippet>2256</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#2256 id=2256 data-nosnippet>2256</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#2257 id=2257 data-nosnippet>2257</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#2258 id=2258 data-nosnippet>2258</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
 <a href=#2259 id=2259 data-nosnippet>2259</a>
@@ -2298,7 +2298,7 @@
 <a href=#2298 id=2298 data-nosnippet>2298</a>    </span><span class="kw">async fn </span>reduce_watermark_bounded() {
 <a href=#2299 id=2299 data-nosnippet>2299</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#2300 id=2300 data-nosnippet>2300</a>
-<a href=#2301 id=2301 data-nosnippet>2301</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#2301 id=2301 data-nosnippet>2301</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#2302 id=2302 data-nosnippet>2302</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#2303 id=2303 data-nosnippet>2303</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
 <a href=#2304 id=2304 data-nosnippet>2304</a>
@@ -2336,7 +2336,7 @@
 <a href=#2336 id=2336 data-nosnippet>2336</a>    </span><span class="kw">async fn </span>reduce_watermark_garbage_collect() {
 <a href=#2337 id=2337 data-nosnippet>2337</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#2338 id=2338 data-nosnippet>2338</a>
-<a href=#2339 id=2339 data-nosnippet>2339</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#2339 id=2339 data-nosnippet>2339</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#2340 id=2340 data-nosnippet>2340</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#2341 id=2341 data-nosnippet>2341</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
 <a href=#2342 id=2342 data-nosnippet>2342</a>        <span class="kw">let </span>(tick_send, tick_trigger) =
@@ -2406,7 +2406,7 @@
 <a href=#2406 id=2406 data-nosnippet>2406</a>    #[test]
 <a href=#2407 id=2407 data-nosnippet>2407</a>    #[should_panic]
 <a href=#2408 id=2408 data-nosnippet>2408</a>    </span><span class="kw">fn </span>sim_batch_nondet_size() {
-<a href=#2409 id=2409 data-nosnippet>2409</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#2409 id=2409 data-nosnippet>2409</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#2410 id=2410 data-nosnippet>2410</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#2411 id=2411 data-nosnippet>2411</a>
 <a href=#2412 id=2412 data-nosnippet>2412</a>        <span class="kw">let </span>input = node.source_iter(<span class="macro">q!</span>([(<span class="number">1</span>, <span class="number">1</span>), (<span class="number">1</span>, <span class="number">2</span>), (<span class="number">2</span>, <span class="number">3</span>)])).into_keyed();
@@ -2429,7 +2429,7 @@
 <a href=#2429 id=2429 data-nosnippet>2429</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
 <a href=#2430 id=2430 data-nosnippet>2430</a>    #[test]
 <a href=#2431 id=2431 data-nosnippet>2431</a>    </span><span class="kw">fn </span>sim_batch_preserves_group_order() {
-<a href=#2432 id=2432 data-nosnippet>2432</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#2432 id=2432 data-nosnippet>2432</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#2433 id=2433 data-nosnippet>2433</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#2434 id=2434 data-nosnippet>2434</a>
 <a href=#2435 id=2435 data-nosnippet>2435</a>        <span class="kw">let </span>input = node.source_iter(<span class="macro">q!</span>([(<span class="number">1</span>, <span class="number">1</span>), (<span class="number">1</span>, <span class="number">2</span>), (<span class="number">2</span>, <span class="number">3</span>)])).into_keyed();
@@ -2464,7 +2464,7 @@
 <a href=#2464 id=2464 data-nosnippet>2464</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
 <a href=#2465 id=2465 data-nosnippet>2465</a>    #[test]
 <a href=#2466 id=2466 data-nosnippet>2466</a>    </span><span class="kw">fn </span>sim_batch_unordered_shuffles() {
-<a href=#2467 id=2467 data-nosnippet>2467</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#2467 id=2467 data-nosnippet>2467</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#2468 id=2468 data-nosnippet>2468</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#2469 id=2469 data-nosnippet>2469</a>
 <a href=#2470 id=2470 data-nosnippet>2470</a>        <span class="kw">let </span>input = node
@@ -2496,7 +2496,7 @@
 <a href=#2496 id=2496 data-nosnippet>2496</a>    #[test]
 <a href=#2497 id=2497 data-nosnippet>2497</a>    #[should_panic]
 <a href=#2498 id=2498 data-nosnippet>2498</a>    </span><span class="kw">fn </span>sim_observe_order_batched() {
-<a href=#2499 id=2499 data-nosnippet>2499</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#2499 id=2499 data-nosnippet>2499</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#2500 id=2500 data-nosnippet>2500</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#2501 id=2501 data-nosnippet>2501</a>
 <a href=#2502 id=2502 data-nosnippet>2502</a>        <span class="kw">let </span>(port, input) = node.sim_input::&lt;<span class="kw">_</span>, NoOrder, <span class="kw">_</span>&gt;();
@@ -2521,7 +2521,7 @@
 <a href=#2521 id=2521 data-nosnippet>2521</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
 <a href=#2522 id=2522 data-nosnippet>2522</a>    #[test]
 <a href=#2523 id=2523 data-nosnippet>2523</a>    </span><span class="kw">fn </span>sim_observe_order_batched_count() {
-<a href=#2524 id=2524 data-nosnippet>2524</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#2524 id=2524 data-nosnippet>2524</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#2525 id=2525 data-nosnippet>2525</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#2526 id=2526 data-nosnippet>2526</a>
 <a href=#2527 id=2527 data-nosnippet>2527</a>        <span class="kw">let </span>(port, input) = node.sim_input::&lt;<span class="kw">_</span>, NoOrder, <span class="kw">_</span>&gt;();

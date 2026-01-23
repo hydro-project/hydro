@@ -51,7 +51,7 @@
 <a href=#51 id=51 data-nosnippet>51</a>    <span class="doccomment">/// Test that join_responses correctly joins metadata with responses.
 <a href=#52 id=52 data-nosnippet>52</a>    </span><span class="attr">#[test]
 <a href=#53 id=53 data-nosnippet>53</a>    </span><span class="kw">fn </span>test_join_responses_basic() {
-<a href=#54 id=54 data-nosnippet>54</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#54 id=54 data-nosnippet>54</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#55 id=55 data-nosnippet>55</a>        <span class="kw">let </span>process = flow.process::&lt;()&gt;();
 <a href=#56 id=56 data-nosnippet>56</a>
 <a href=#57 id=57 data-nosnippet>57</a>        <span class="comment">// Set up inputs (TotalOrder for deterministic simulation)
@@ -91,7 +91,7 @@
 <a href=#91 id=91 data-nosnippet>91</a>    <span class="doccomment">/// Test that metadata persists across ticks until matched with a response.
 <a href=#92 id=92 data-nosnippet>92</a>    </span><span class="attr">#[test]
 <a href=#93 id=93 data-nosnippet>93</a>    </span><span class="kw">fn </span>test_join_responses_metadata_persists() {
-<a href=#94 id=94 data-nosnippet>94</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#94 id=94 data-nosnippet>94</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#95 id=95 data-nosnippet>95</a>        <span class="kw">let </span>process = flow.process::&lt;()&gt;();
 <a href=#96 id=96 data-nosnippet>96</a>
 <a href=#97 id=97 data-nosnippet>97</a>        <span class="kw">let </span>(response_send, responses) = process.sim_input::&lt;(u32, String), <span class="kw">_</span>, <span class="kw">_</span>&gt;();
@@ -128,7 +128,7 @@
 <a href=#128 id=128 data-nosnippet>128</a>    <span class="doccomment">/// Test that responses without metadata are not emitted.
 <a href=#129 id=129 data-nosnippet>129</a>    </span><span class="attr">#[test]
 <a href=#130 id=130 data-nosnippet>130</a>    </span><span class="kw">fn </span>test_join_responses_no_metadata() {
-<a href=#131 id=131 data-nosnippet>131</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#131 id=131 data-nosnippet>131</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#132 id=132 data-nosnippet>132</a>        <span class="kw">let </span>process = flow.process::&lt;()&gt;();
 <a href=#133 id=133 data-nosnippet>133</a>
 <a href=#134 id=134 data-nosnippet>134</a>        <span class="kw">let </span>(response_send, responses) = process.sim_input::&lt;(u32, String), <span class="kw">_</span>, <span class="kw">_</span>&gt;();
@@ -164,7 +164,7 @@
 <a href=#164 id=164 data-nosnippet>164</a>    <span class="doccomment">/// Test that metadata is removed after being matched with a response.
 <a href=#165 id=165 data-nosnippet>165</a>    </span><span class="attr">#[test]
 <a href=#166 id=166 data-nosnippet>166</a>    </span><span class="kw">fn </span>test_join_responses_metadata_removed_after_match() {
-<a href=#167 id=167 data-nosnippet>167</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#167 id=167 data-nosnippet>167</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#168 id=168 data-nosnippet>168</a>        <span class="kw">let </span>process = flow.process::&lt;()&gt;();
 <a href=#169 id=169 data-nosnippet>169</a>
 <a href=#170 id=170 data-nosnippet>170</a>        <span class="kw">let </span>(response_send, responses) = process.sim_input::&lt;(u32, String), <span class="kw">_</span>, <span class="kw">_</span>&gt;();

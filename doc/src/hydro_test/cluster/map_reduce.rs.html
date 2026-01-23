@@ -3,7 +3,7 @@
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">pub struct </span>Leader {}
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">pub struct </span>Worker {}
 <a href=#5 id=5 data-nosnippet>5</a>
-<a href=#6 id=6 data-nosnippet>6</a><span class="kw">pub fn </span>map_reduce&lt;<span class="lifetime">'a</span>&gt;(flow: <span class="kw-2">&amp;</span>FlowBuilder&lt;<span class="lifetime">'a</span>&gt;) -&gt; (Process&lt;<span class="lifetime">'a</span>, Leader&gt;, Cluster&lt;<span class="lifetime">'a</span>, Worker&gt;) {
+<a href=#6 id=6 data-nosnippet>6</a><span class="kw">pub fn </span>map_reduce&lt;<span class="lifetime">'a</span>&gt;(flow: <span class="kw-2">&amp;mut </span>FlowBuilder&lt;<span class="lifetime">'a</span>&gt;) -&gt; (Process&lt;<span class="lifetime">'a</span>, Leader&gt;, Cluster&lt;<span class="lifetime">'a</span>, Worker&gt;) {
 <a href=#7 id=7 data-nosnippet>7</a>    <span class="kw">let </span>process = flow.process();
 <a href=#8 id=8 data-nosnippet>8</a>    <span class="kw">let </span>cluster = flow.cluster();
 <a href=#9 id=9 data-nosnippet>9</a>
@@ -52,15 +52,15 @@
 <a href=#52 id=52 data-nosnippet>52</a>
 <a href=#53 id=53 data-nosnippet>53</a>    <span class="attr">#[test]
 <a href=#54 id=54 data-nosnippet>54</a>    </span><span class="kw">fn </span>map_reduce_ir() {
-<a href=#55 id=55 data-nosnippet>55</a>        <span class="kw">let </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
-<a href=#56 id=56 data-nosnippet>56</a>        <span class="kw">let _ </span>= <span class="kw">super</span>::map_reduce(<span class="kw-2">&amp;</span>builder);
+<a href=#55 id=55 data-nosnippet>55</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder = hydro_lang::compile::builder::FlowBuilder::new();
+<a href=#56 id=56 data-nosnippet>56</a>        <span class="kw">let _ </span>= <span class="kw">super</span>::map_reduce(<span class="kw-2">&amp;mut </span>builder);
 <a href=#57 id=57 data-nosnippet>57</a>        <span class="kw">let </span><span class="kw-2">mut </span>built = builder.with_default_optimize::&lt;HydroDeploy&gt;();
 <a href=#58 id=58 data-nosnippet>58</a>
 <a href=#59 id=59 data-nosnippet>59</a>        <span class="macro">hydro_build_utils::assert_debug_snapshot!</span>(built.ir());
 <a href=#60 id=60 data-nosnippet>60</a>
-<a href=#61 id=61 data-nosnippet>61</a>        <span class="kw">for </span>(id, ir) <span class="kw">in </span>built.preview_compile().all_dfir() {
+<a href=#61 id=61 data-nosnippet>61</a>        <span class="kw">for </span>(location_key, ir) <span class="kw">in </span>built.preview_compile().all_dfir() {
 <a href=#62 id=62 data-nosnippet>62</a>            <span class="macro">hydro_build_utils::insta::with_settings!</span>({
-<a href=#63 id=63 data-nosnippet>63</a>                snapshot_suffix =&gt; <span class="macro">format!</span>(<span class="string">"surface_graph_{id}"</span>)
+<a href=#63 id=63 data-nosnippet>63</a>                snapshot_suffix =&gt; <span class="macro">format!</span>(<span class="string">"surface_graph_{location_key}"</span>)
 <a href=#64 id=64 data-nosnippet>64</a>            }, {
 <a href=#65 id=65 data-nosnippet>65</a>                <span class="macro">hydro_build_utils::assert_snapshot!</span>(ir.surface_syntax_string());
 <a href=#66 id=66 data-nosnippet>66</a>            });

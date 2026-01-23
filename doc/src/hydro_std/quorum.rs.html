@@ -172,7 +172,7 @@
 <a href=#172 id=172 data-nosnippet>172</a>
 <a href=#173 id=173 data-nosnippet>173</a>    <span class="attr">#[test]
 <a href=#174 id=174 data-nosnippet>174</a>    </span><span class="kw">fn </span>collect_quorum_with_response_preserves_order() {
-<a href=#175 id=175 data-nosnippet>175</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#175 id=175 data-nosnippet>175</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#176 id=176 data-nosnippet>176</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#177 id=177 data-nosnippet>177</a>
 <a href=#178 id=178 data-nosnippet>178</a>        <span class="kw">let </span>(in_send, input) = node.sim_input();
@@ -197,7 +197,7 @@
 <a href=#197 id=197 data-nosnippet>197</a>
 <a href=#198 id=198 data-nosnippet>198</a>    <span class="attr">#[test]
 <a href=#199 id=199 data-nosnippet>199</a>    </span><span class="kw">fn </span>collect_quorum_with_response_no_order() {
-<a href=#200 id=200 data-nosnippet>200</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#200 id=200 data-nosnippet>200</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#201 id=201 data-nosnippet>201</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#202 id=202 data-nosnippet>202</a>
 <a href=#203 id=203 data-nosnippet>203</a>        <span class="kw">let </span>(in_send, input) = node.sim_input::&lt;<span class="kw">_</span>, NoOrder, <span class="kw">_</span>&gt;();
@@ -220,7 +220,7 @@
 <a href=#220 id=220 data-nosnippet>220</a>
 <a href=#221 id=221 data-nosnippet>221</a>    <span class="attr">#[test]
 <a href=#222 id=222 data-nosnippet>222</a>    </span><span class="kw">fn </span>collect_quorum_functionality() {
-<a href=#223 id=223 data-nosnippet>223</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#223 id=223 data-nosnippet>223</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#224 id=224 data-nosnippet>224</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#225 id=225 data-nosnippet>225</a>
 <a href=#226 id=226 data-nosnippet>226</a>        <span class="kw">let </span>(in_send, input) = node.sim_input();
@@ -295,7 +295,7 @@
 <a href=#295 id=295 data-nosnippet>295</a>
 <a href=#296 id=296 data-nosnippet>296</a>    <span class="attr">#[test]
 <a href=#297 id=297 data-nosnippet>297</a>    </span><span class="kw">fn </span>collect_quorum_min_equals_max() {
-<a href=#298 id=298 data-nosnippet>298</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#298 id=298 data-nosnippet>298</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#299 id=299 data-nosnippet>299</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#300 id=300 data-nosnippet>300</a>
 <a href=#301 id=301 data-nosnippet>301</a>        <span class="kw">let </span>(in_send, input) = node.sim_input();
@@ -321,7 +321,7 @@
 <a href=#321 id=321 data-nosnippet>321</a>
 <a href=#322 id=322 data-nosnippet>322</a>    <span class="attr">#[test]
 <a href=#323 id=323 data-nosnippet>323</a>    </span><span class="kw">fn </span>collect_quorum_single_response() {
-<a href=#324 id=324 data-nosnippet>324</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#324 id=324 data-nosnippet>324</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#325 id=325 data-nosnippet>325</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#326 id=326 data-nosnippet>326</a>
 <a href=#327 id=327 data-nosnippet>327</a>        <span class="kw">let </span>(in_send, input) = node.sim_input();
@@ -340,7 +340,7 @@
 <a href=#340 id=340 data-nosnippet>340</a>
 <a href=#341 id=341 data-nosnippet>341</a>    <span class="attr">#[test]
 <a href=#342 id=342 data-nosnippet>342</a>    </span><span class="kw">fn </span>collect_quorum_no_responses() {
-<a href=#343 id=343 data-nosnippet>343</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#343 id=343 data-nosnippet>343</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#344 id=344 data-nosnippet>344</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#345 id=345 data-nosnippet>345</a>
 <a href=#346 id=346 data-nosnippet>346</a>        <span class="kw">let </span>(_in_send, input) = node.sim_input::&lt;<span class="kw">_</span>, TotalOrder, <span class="kw">_</span>&gt;();
@@ -357,7 +357,7 @@
 <a href=#357 id=357 data-nosnippet>357</a>
 <a href=#358 id=358 data-nosnippet>358</a>    <span class="attr">#[test]
 <a href=#359 id=359 data-nosnippet>359</a>    </span><span class="kw">fn </span>collect_quorum_no_double_quorum_before_max() {
-<a href=#360 id=360 data-nosnippet>360</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#360 id=360 data-nosnippet>360</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#361 id=361 data-nosnippet>361</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#362 id=362 data-nosnippet>362</a>
 <a href=#363 id=363 data-nosnippet>363</a>        <span class="kw">let </span>(in_send, input) = node.sim_input::&lt;<span class="kw">_</span>, TotalOrder, <span class="kw">_</span>&gt;();

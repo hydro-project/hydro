@@ -30,7 +30,7 @@
 <a href=#30 id=30 data-nosnippet>30</a>
 <a href=#31 id=31 data-nosnippet>31</a><span class="kw">use </span><span class="kw">crate</span>::location::dynamic::LocationId;
 <a href=#32 id=32 data-nosnippet>32</a><span class="kw">use </span><span class="kw">crate</span>::location::member_id::TaglessMemberId;
-<a href=#33 id=33 data-nosnippet>33</a><span class="kw">use </span><span class="kw">crate</span>::location::{MemberId, MembershipEvent};
+<a href=#33 id=33 data-nosnippet>33</a><span class="kw">use </span><span class="kw">crate</span>::location::{LocationKey, MemberId, MembershipEvent};
 <a href=#34 id=34 data-nosnippet>34</a>
 <a href=#35 id=35 data-nosnippet>35</a><span class="kw">pub fn </span>deploy_containerized_o2o(target_container: <span class="kw-2">&amp;</span>str, bind_port: u16) -&gt; (syn::Expr, syn::Expr) {
 <a href=#36 id=36 data-nosnippet>36</a>    (
@@ -296,21 +296,21 @@
 <a href=#296 id=296 data-nosnippet>296</a>    location_id: <span class="kw-2">&amp;</span>LocationId,
 <a href=#297 id=297 data-nosnippet>297</a>) -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, Box&lt;<span class="kw">dyn </span>Stream&lt;Item = (TaglessMemberId, MembershipEvent)&gt; + Unpin&gt;, ()&gt;
 <a href=#298 id=298 data-nosnippet>298</a>{
-<a href=#299 id=299 data-nosnippet>299</a>    <span class="kw">let </span>raw_id = location_id.raw_id();
+<a href=#299 id=299 data-nosnippet>299</a>    <span class="kw">let </span>location_key = location_id.key();
 <a href=#300 id=300 data-nosnippet>300</a>
 <a href=#301 id=301 data-nosnippet>301</a>    <span class="macro">q!</span>(Box::new(<span class="self">self</span>::ecs_membership_stream(
 <a href=#302 id=302 data-nosnippet>302</a>        std::env::var(<span class="string">"DEPLOYMENT_INSTANCE"</span>).unwrap(),
-<a href=#303 id=303 data-nosnippet>303</a>        raw_id
+<a href=#303 id=303 data-nosnippet>303</a>        location_key
 <a href=#304 id=304 data-nosnippet>304</a>    ))
 <a href=#305 id=305 data-nosnippet>305</a>        <span class="kw">as </span>Box&lt;
 <a href=#306 id=306 data-nosnippet>306</a>            <span class="kw">dyn </span>Stream&lt;Item = (TaglessMemberId, MembershipEvent)&gt; + Unpin,
 <a href=#307 id=307 data-nosnippet>307</a>        &gt;)
 <a href=#308 id=308 data-nosnippet>308</a>}
 <a href=#309 id=309 data-nosnippet>309</a>
-<a href=#310 id=310 data-nosnippet>310</a><span class="attr">#[instrument(skip_all, fields(%deployment_instance, %location_id))]
+<a href=#310 id=310 data-nosnippet>310</a><span class="attr">#[instrument(skip_all, fields(%deployment_instance, %location_key))]
 <a href=#311 id=311 data-nosnippet>311</a></span><span class="kw">fn </span>ecs_membership_stream(
 <a href=#312 id=312 data-nosnippet>312</a>    deployment_instance: String,
-<a href=#313 id=313 data-nosnippet>313</a>    location_id: usize,
+<a href=#313 id=313 data-nosnippet>313</a>    location_key: LocationKey,
 <a href=#314 id=314 data-nosnippet>314</a>) -&gt; <span class="kw">impl </span>Stream&lt;Item = (TaglessMemberId, MembershipEvent)&gt; + Unpin {
 <a href=#315 id=315 data-nosnippet>315</a>    <span class="kw">use </span>std::collections::HashSet;
 <a href=#316 id=316 data-nosnippet>316</a>
@@ -322,8 +322,8 @@
 <a href=#322 id=322 data-nosnippet>322</a>        regex::Regex::new(<span class="string">r#"arn:aws:ecs:(?&lt;region&gt;.*):(?&lt;account_id&gt;.*):task-definition\/(?&lt;container_id&gt;hy-(?&lt;type&gt;[^-]+)-(?&lt;image_id&gt;[^-]+)-(?&lt;deployment_id&gt;[^-]+)-(?&lt;location_id&gt;[0-9]+)-(?&lt;instance_id&gt;.*)):.*"#</span>).unwrap();
 <a href=#323 id=323 data-nosnippet>323</a>
 <a href=#324 id=324 data-nosnippet>324</a>    <span class="kw">let </span>poll_stream = futures::stream::unfold(
-<a href=#325 id=325 data-nosnippet>325</a>        (HashSet::&lt;String&gt;::new(), deployment_instance, location_id),
-<a href=#326 id=326 data-nosnippet>326</a>        <span class="kw">move </span>|(known_tasks, deployment_instance, location_id)| {
+<a href=#325 id=325 data-nosnippet>325</a>        (HashSet::&lt;String&gt;::new(), deployment_instance, location_key),
+<a href=#326 id=326 data-nosnippet>326</a>        <span class="kw">move </span>|(known_tasks, deployment_instance, location_key)| {
 <a href=#327 id=327 data-nosnippet>327</a>            <span class="kw">let </span>task_definition_arn_parser = task_definition_arn_parser.clone();
 <a href=#328 id=328 data-nosnippet>328</a>
 <a href=#329 id=329 data-nosnippet>329</a>            <span class="kw">async move </span>{
@@ -333,7 +333,7 @@
 <a href=#333 id=333 data-nosnippet>333</a>                <span class="kw">let </span>ecs_client = aws_sdk_ecs::Client::new(<span class="kw-2">&amp;</span>config);
 <a href=#334 id=334 data-nosnippet>334</a>
 <a href=#335 id=335 data-nosnippet>335</a>                <span class="kw">let </span>cluster_name = <span class="macro">format!</span>(<span class="string">"hydro-{}"</span>, deployment_instance);
-<a href=#336 id=336 data-nosnippet>336</a>                <span class="macro">trace!</span>(name: <span class="string">"querying_tasks"</span>, %cluster_name, %location_id);
+<a href=#336 id=336 data-nosnippet>336</a>                <span class="macro">trace!</span>(name: <span class="string">"querying_tasks"</span>, %cluster_name, %location_key);
 <a href=#337 id=337 data-nosnippet>337</a>
 <a href=#338 id=338 data-nosnippet>338</a>                <span class="kw">let </span>tasks = <span class="kw">match </span>ecs_client
 <a href=#339 id=339 data-nosnippet>339</a>                    .list_tasks()
@@ -345,7 +345,7 @@
 <a href=#345 id=345 data-nosnippet>345</a>                    <span class="prelude-val">Err</span>(e) =&gt; {
 <a href=#346 id=346 data-nosnippet>346</a>                        <span class="macro">trace!</span>(name: <span class="string">"list_tasks_error"</span>, error = %e);
 <a href=#347 id=347 data-nosnippet>347</a>                        tokio::time::sleep(Duration::from_secs(<span class="number">2</span>)).<span class="kw">await</span>;
-<a href=#348 id=348 data-nosnippet>348</a>                        <span class="kw">return </span><span class="prelude-val">Some</span>((Vec::new(), (known_tasks, deployment_instance, location_id)));
+<a href=#348 id=348 data-nosnippet>348</a>                        <span class="kw">return </span><span class="prelude-val">Some</span>((Vec::new(), (known_tasks, deployment_instance, location_key)));
 <a href=#349 id=349 data-nosnippet>349</a>                    }
 <a href=#350 id=350 data-nosnippet>350</a>                };
 <a href=#351 id=351 data-nosnippet>351</a>
@@ -367,7 +367,7 @@
 <a href=#367 id=367 data-nosnippet>367</a>                        <span class="prelude-val">Err</span>(e) =&gt; {
 <a href=#368 id=368 data-nosnippet>368</a>                            <span class="macro">trace!</span>(name: <span class="string">"describe_tasks_error"</span>, error = %e);
 <a href=#369 id=369 data-nosnippet>369</a>                            tokio::time::sleep(Duration::from_secs(<span class="number">2</span>)).<span class="kw">await</span>;
-<a href=#370 id=370 data-nosnippet>370</a>                            <span class="kw">return </span><span class="prelude-val">Some</span>((Vec::new(), (known_tasks, deployment_instance, location_id)));
+<a href=#370 id=370 data-nosnippet>370</a>                            <span class="kw">return </span><span class="prelude-val">Some</span>((Vec::new(), (known_tasks, deployment_instance, location_key)));
 <a href=#371 id=371 data-nosnippet>371</a>                        }
 <a href=#372 id=372 data-nosnippet>372</a>                    };
 <a href=#373 id=373 data-nosnippet>373</a>
@@ -400,21 +400,21 @@
 <a href=#400 id=400 data-nosnippet>400</a>                        };
 <a href=#401 id=401 data-nosnippet>401</a>                        <span class="kw">let </span>container_id = container_id.as_str();
 <a href=#402 id=402 data-nosnippet>402</a>
-<a href=#403 id=403 data-nosnippet>403</a>                        <span class="kw">let </span><span class="prelude-val">Some</span>(task_location_id) = captures.name(<span class="string">"location_id"</span>) <span class="kw">else </span>{
-<a href=#404 id=404 data-nosnippet>404</a>                            <span class="macro">trace!</span>(name: <span class="string">"location_id_missing"</span>, %task_def_arn, <span class="question-mark">?</span>task);
+<a href=#403 id=403 data-nosnippet>403</a>                        <span class="kw">let </span><span class="prelude-val">Some</span>(task_location_key) = captures.name(<span class="string">"location_key"</span>) <span class="kw">else </span>{
+<a href=#404 id=404 data-nosnippet>404</a>                            <span class="macro">trace!</span>(name: <span class="string">"location_key_missing"</span>, %task_def_arn, <span class="question-mark">?</span>task);
 <a href=#405 id=405 data-nosnippet>405</a>                            <span class="kw">continue</span>;
 <a href=#406 id=406 data-nosnippet>406</a>                        };
-<a href=#407 id=407 data-nosnippet>407</a>                        <span class="kw">let </span>task_location_id: usize = <span class="kw">match </span>task_location_id.as_str().parse() {
+<a href=#407 id=407 data-nosnippet>407</a>                        <span class="kw">let </span>task_location_key: LocationKey = <span class="kw">match </span>task_location_key.as_str().parse() {
 <a href=#408 id=408 data-nosnippet>408</a>                            <span class="prelude-val">Ok</span>(id) =&gt; id,
 <a href=#409 id=409 data-nosnippet>409</a>                            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
-<a href=#410 id=410 data-nosnippet>410</a>                                <span class="macro">trace!</span>(name: <span class="string">"location_id_parse_error"</span>, %task_def_arn, <span class="question-mark">?</span>task);
+<a href=#410 id=410 data-nosnippet>410</a>                                <span class="macro">trace!</span>(name: <span class="string">"location_key_parse_error"</span>, %task_def_arn, <span class="question-mark">?</span>task);
 <a href=#411 id=411 data-nosnippet>411</a>                                <span class="kw">continue</span>;
 <a href=#412 id=412 data-nosnippet>412</a>                            }
 <a href=#413 id=413 data-nosnippet>413</a>                        };
 <a href=#414 id=414 data-nosnippet>414</a>
 <a href=#415 id=415 data-nosnippet>415</a>                        <span class="comment">// Filter by location_id - only include tasks for this specific cluster
-<a href=#416 id=416 data-nosnippet>416</a>                        </span><span class="kw">if </span><span class="macro">task_location_id !</span>= location_id {
-<a href=#417 id=417 data-nosnippet>417</a>                            <span class="macro">trace!</span>(name: <span class="string">"location_id_mismatch"</span>, %task_location_id, %location_id, %container_id);
+<a href=#416 id=416 data-nosnippet>416</a>                        </span><span class="kw">if </span><span class="macro">task_location_key !</span>= location_key {
+<a href=#417 id=417 data-nosnippet>417</a>                            <span class="macro">trace!</span>(name: <span class="string">"location_id_mismatch"</span>, %task_location_key, %location_key, %container_id);
 <a href=#418 id=418 data-nosnippet>418</a>                            <span class="kw">continue</span>;
 <a href=#419 id=419 data-nosnippet>419</a>                        }
 <a href=#420 id=420 data-nosnippet>420</a>
@@ -438,7 +438,7 @@
 <a href=#438 id=438 data-nosnippet>438</a>                <span class="macro">trace!</span>(name: <span class="string">"poll_complete"</span>, event_count = events.len(), current_task_count = current_tasks.len());
 <a href=#439 id=439 data-nosnippet>439</a>                tokio::time::sleep(Duration::from_secs(<span class="number">2</span>)).<span class="kw">await</span>;
 <a href=#440 id=440 data-nosnippet>440</a>
-<a href=#441 id=441 data-nosnippet>441</a>                <span class="prelude-val">Some</span>((events, (current_tasks, deployment_instance, location_id)))
+<a href=#441 id=441 data-nosnippet>441</a>                <span class="prelude-val">Some</span>((events, (current_tasks, deployment_instance, location_key)))
 <a href=#442 id=442 data-nosnippet>442</a>            }.instrument(ecs_poller_span.clone())
 <a href=#443 id=443 data-nosnippet>443</a>        }
 <a href=#444 id=444 data-nosnippet>444</a>    )

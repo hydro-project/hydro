@@ -390,7 +390,7 @@
 <a href=#390 id=390 data-nosnippet>390</a><span class="kw">use </span><span class="kw">crate</span>::compile::trybuild::generate::{LinkingMode, create_graph_trybuild};
 <a href=#391 id=391 data-nosnippet>391</a><span class="kw">use </span><span class="kw">crate</span>::location::dynamic::LocationId;
 <a href=#392 id=392 data-nosnippet>392</a><span class="kw">use </span><span class="kw">crate</span>::location::member_id::TaglessMemberId;
-<a href=#393 id=393 data-nosnippet>393</a><span class="kw">use </span><span class="kw">crate</span>::location::{MembershipEvent, NetworkHint};
+<a href=#393 id=393 data-nosnippet>393</a><span class="kw">use </span><span class="kw">crate</span>::location::{LocationKey, MembershipEvent, NetworkHint};
 <a href=#394 id=394 data-nosnippet>394</a>
 <a href=#395 id=395 data-nosnippet>395</a><span class="doccomment">/// represents a docker network
 <a href=#396 id=396 data-nosnippet>396</a></span><span class="attr">#[derive(Clone, Debug)]
@@ -410,7 +410,7 @@
 <a href=#410 id=410 data-nosnippet>410</a><span class="doccomment">/// Represents a process running in a docker container
 <a href=#411 id=411 data-nosnippet>411</a></span><span class="attr">#[derive(Clone)]
 <a href=#412 id=412 data-nosnippet>412</a></span><span class="kw">pub struct </span>DockerDeployProcessEcs {
-<a href=#413 id=413 data-nosnippet>413</a>    id: usize,
+<a href=#413 id=413 data-nosnippet>413</a>    key: LocationKey,
 <a href=#414 id=414 data-nosnippet>414</a>    name: String,
 <a href=#415 id=415 data-nosnippet>415</a>    next_port: Rc&lt;RefCell&lt;u16&gt;&gt;,
 <a href=#416 id=416 data-nosnippet>416</a>    rust_crate: Rc&lt;RefCell&lt;<span class="prelude-ty">Option</span>&lt;RustCrate&gt;&gt;&gt;,
@@ -431,7 +431,7 @@
 <a href=#431 id=431 data-nosnippet>431</a>    <span class="kw">type </span>Meta = ();
 <a href=#432 id=432 data-nosnippet>432</a>    <span class="kw">type </span>InstantiateEnv = DockerDeployEcs;
 <a href=#433 id=433 data-nosnippet>433</a>
-<a href=#434 id=434 data-nosnippet>434</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, ret, fields(id = <span class="self">self</span>.id, name = <span class="self">self</span>.name))]
+<a href=#434 id=434 data-nosnippet>434</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, ret, fields(key = %<span class="self">self</span>.key, name = <span class="self">self</span>.name))]
 <a href=#435 id=435 data-nosnippet>435</a>    </span><span class="kw">fn </span>next_port(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Port {
 <a href=#436 id=436 data-nosnippet>436</a>        <span class="kw">let </span>port = {
 <a href=#437 id=437 data-nosnippet>437</a>            <span class="kw">let </span><span class="kw-2">mut </span>borrow = <span class="self">self</span>.next_port.borrow_mut();
@@ -443,10 +443,10 @@
 <a href=#443 id=443 data-nosnippet>443</a>        port
 <a href=#444 id=444 data-nosnippet>444</a>    }
 <a href=#445 id=445 data-nosnippet>445</a>
-<a href=#446 id=446 data-nosnippet>446</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(id = <span class="self">self</span>.id, name = <span class="self">self</span>.name))]
+<a href=#446 id=446 data-nosnippet>446</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(key = %<span class="self">self</span>.key, name = <span class="self">self</span>.name))]
 <a href=#447 id=447 data-nosnippet>447</a>    </span><span class="kw">fn </span>update_meta(<span class="kw-2">&amp;</span><span class="self">self</span>, _meta: <span class="kw-2">&amp;</span><span class="self">Self</span>::Meta) {}
 <a href=#448 id=448 data-nosnippet>448</a>
-<a href=#449 id=449 data-nosnippet>449</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(id = <span class="self">self</span>.id, name = <span class="self">self</span>.name, <span class="question-mark">?</span>meta, extra_stmts = extra_stmts.len()))]
+<a href=#449 id=449 data-nosnippet>449</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(key = %<span class="self">self</span>.key, name = <span class="self">self</span>.name, <span class="question-mark">?</span>meta, extra_stmts = extra_stmts.len()))]
 <a href=#450 id=450 data-nosnippet>450</a>    </span><span class="kw">fn </span>instantiate(
 <a href=#451 id=451 data-nosnippet>451</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
 <a href=#452 id=452 data-nosnippet>452</a>        _env: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::InstantiateEnv,
@@ -485,7 +485,7 @@
 <a href=#485 id=485 data-nosnippet>485</a><span class="doccomment">/// Represents a logical cluster, which can be a variable amount of individual containers.
 <a href=#486 id=486 data-nosnippet>486</a></span><span class="attr">#[derive(Clone)]
 <a href=#487 id=487 data-nosnippet>487</a></span><span class="kw">pub struct </span>DockerDeployClusterEcs {
-<a href=#488 id=488 data-nosnippet>488</a>    id: usize,
+<a href=#488 id=488 data-nosnippet>488</a>    key: LocationKey,
 <a href=#489 id=489 data-nosnippet>489</a>    name: String,
 <a href=#490 id=490 data-nosnippet>490</a>    next_port: Rc&lt;RefCell&lt;u16&gt;&gt;,
 <a href=#491 id=491 data-nosnippet>491</a>    rust_crate: Rc&lt;RefCell&lt;<span class="prelude-ty">Option</span>&lt;RustCrate&gt;&gt;&gt;,
@@ -504,7 +504,7 @@
 <a href=#504 id=504 data-nosnippet>504</a>    <span class="kw">type </span>Meta = ();
 <a href=#505 id=505 data-nosnippet>505</a>    <span class="kw">type </span>InstantiateEnv = DockerDeployEcs;
 <a href=#506 id=506 data-nosnippet>506</a>
-<a href=#507 id=507 data-nosnippet>507</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, ret, fields(id = <span class="self">self</span>.id, name = <span class="self">self</span>.name))]
+<a href=#507 id=507 data-nosnippet>507</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, ret, fields(key = %<span class="self">self</span>.key, name = <span class="self">self</span>.name))]
 <a href=#508 id=508 data-nosnippet>508</a>    </span><span class="kw">fn </span>next_port(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Port {
 <a href=#509 id=509 data-nosnippet>509</a>        <span class="kw">let </span>port = {
 <a href=#510 id=510 data-nosnippet>510</a>            <span class="kw">let </span><span class="kw-2">mut </span>borrow = <span class="self">self</span>.next_port.borrow_mut();
@@ -516,10 +516,10 @@
 <a href=#516 id=516 data-nosnippet>516</a>        port
 <a href=#517 id=517 data-nosnippet>517</a>    }
 <a href=#518 id=518 data-nosnippet>518</a>
-<a href=#519 id=519 data-nosnippet>519</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(id = <span class="self">self</span>.id, name = <span class="self">self</span>.name))]
+<a href=#519 id=519 data-nosnippet>519</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(key = %<span class="self">self</span>.key, name = <span class="self">self</span>.name))]
 <a href=#520 id=520 data-nosnippet>520</a>    </span><span class="kw">fn </span>update_meta(<span class="kw-2">&amp;</span><span class="self">self</span>, _meta: <span class="kw-2">&amp;</span><span class="self">Self</span>::Meta) {}
 <a href=#521 id=521 data-nosnippet>521</a>
-<a href=#522 id=522 data-nosnippet>522</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(id = <span class="self">self</span>.id, name = <span class="self">self</span>.name, extra_stmts = extra_stmts.len()))]
+<a href=#522 id=522 data-nosnippet>522</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(key = %<span class="self">self</span>.key, name = <span class="self">self</span>.name, extra_stmts = extra_stmts.len()))]
 <a href=#523 id=523 data-nosnippet>523</a>    </span><span class="kw">fn </span>instantiate(
 <a href=#524 id=524 data-nosnippet>524</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
 <a href=#525 id=525 data-nosnippet>525</a>        _env: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::InstantiateEnv,
@@ -1627,7 +1627,7 @@
 <a href=#1627 id=1627 data-nosnippet>1627</a>
 <a href=#1628 id=1628 data-nosnippet>1628</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%of_cluster))]
 <a href=#1629 id=1629 data-nosnippet>1629</a>    </span><span class="kw">fn </span>cluster_ids(
-<a href=#1630 id=1630 data-nosnippet>1630</a>        of_cluster: usize,
+<a href=#1630 id=1630 data-nosnippet>1630</a>        of_cluster: LocationKey,
 <a href=#1631 id=1631 data-nosnippet>1631</a>    ) -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[TaglessMemberId], ()&gt; + Clone + <span class="lifetime">'a </span>{
 <a href=#1632 id=1632 data-nosnippet>1632</a>        cluster_ids()
 <a href=#1633 id=1633 data-nosnippet>1633</a>    }
@@ -1651,107 +1651,115 @@
 <a href=#1651 id=1651 data-nosnippet>1651</a>    <span class="string">'j'</span>, <span class="string">'k'</span>, <span class="string">'l'</span>, <span class="string">'m'</span>, <span class="string">'n'</span>, <span class="string">'o'</span>, <span class="string">'p'</span>, <span class="string">'q'</span>, <span class="string">'r'</span>, <span class="string">'s'</span>, <span class="string">'t'</span>, <span class="string">'u'</span>, <span class="string">'v'</span>, <span class="string">'w'</span>, <span class="string">'x'</span>, <span class="string">'y'</span>, <span class="string">'z'</span>,
 <a href=#1652 id=1652 data-nosnippet>1652</a>];
 <a href=#1653 id=1653 data-nosnippet>1653</a>
-<a href=#1654 id=1654 data-nosnippet>1654</a><span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, ret, fields(%name_hint, %location, %deployment_instance))]
-<a href=#1655 id=1655 data-nosnippet>1655</a></span><span class="kw">fn </span>get_docker_image_name(name_hint: <span class="kw-2">&amp;</span>str, location: usize, deployment_instance: <span class="kw-2">&amp;</span>str) -&gt; String {
-<a href=#1656 id=1656 data-nosnippet>1656</a>    <span class="kw">let </span>name_hint = name_hint
-<a href=#1657 id=1657 data-nosnippet>1657</a>        .split(<span class="string">"::"</span>)
-<a href=#1658 id=1658 data-nosnippet>1658</a>        .last()
-<a href=#1659 id=1659 data-nosnippet>1659</a>        .unwrap()
-<a href=#1660 id=1660 data-nosnippet>1660</a>        .to_string()
-<a href=#1661 id=1661 data-nosnippet>1661</a>        .to_ascii_lowercase()
-<a href=#1662 id=1662 data-nosnippet>1662</a>        .replace(<span class="string">"."</span>, <span class="string">"-"</span>)
-<a href=#1663 id=1663 data-nosnippet>1663</a>        .replace(<span class="string">"_"</span>, <span class="string">"-"</span>)
-<a href=#1664 id=1664 data-nosnippet>1664</a>        .replace(<span class="string">"::"</span>, <span class="string">"-"</span>);
-<a href=#1665 id=1665 data-nosnippet>1665</a>
-<a href=#1666 id=1666 data-nosnippet>1666</a>    <span class="kw">let </span>image_unique_tag = <span class="macro">nanoid::nanoid!</span>(<span class="number">6</span>, <span class="kw-2">&amp;</span>CONTAINER_ALPHABET);
-<a href=#1667 id=1667 data-nosnippet>1667</a>
-<a href=#1668 id=1668 data-nosnippet>1668</a>    <span class="macro">format!</span>(<span class="string">"hy-{name_hint}-{image_unique_tag}-{deployment_instance}-{location}"</span>)
-<a href=#1669 id=1669 data-nosnippet>1669</a>}
-<a href=#1670 id=1670 data-nosnippet>1670</a>
-<a href=#1671 id=1671 data-nosnippet>1671</a><span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, ret, fields(%image_name, <span class="question-mark">?</span>instance))]
-<a href=#1672 id=1672 data-nosnippet>1672</a></span><span class="kw">fn </span>get_docker_container_name(image_name: <span class="kw-2">&amp;</span>str, instance: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; String {
-<a href=#1673 id=1673 data-nosnippet>1673</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(instance) = instance {
-<a href=#1674 id=1674 data-nosnippet>1674</a>        <span class="macro">format!</span>(<span class="string">"{image_name}-{instance}"</span>)
-<a href=#1675 id=1675 data-nosnippet>1675</a>    } <span class="kw">else </span>{
-<a href=#1676 id=1676 data-nosnippet>1676</a>        image_name.to_string()
-<a href=#1677 id=1677 data-nosnippet>1677</a>    }
-<a href=#1678 id=1678 data-nosnippet>1678</a>}
-<a href=#1679 id=1679 data-nosnippet>1679</a><span class="doccomment">/// Represents a Process running in a docker container
-<a href=#1680 id=1680 data-nosnippet>1680</a></span><span class="attr">#[derive(Clone)]
-<a href=#1681 id=1681 data-nosnippet>1681</a></span><span class="kw">pub struct </span>DockerDeployProcessSpecEcs {
-<a href=#1682 id=1682 data-nosnippet>1682</a>    compilation_options: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#1683 id=1683 data-nosnippet>1683</a>    config: Vec&lt;String&gt;,
-<a href=#1684 id=1684 data-nosnippet>1684</a>    network: DockerNetworkEcs,
-<a href=#1685 id=1685 data-nosnippet>1685</a>    deployment_instance: String,
-<a href=#1686 id=1686 data-nosnippet>1686</a>}
-<a href=#1687 id=1687 data-nosnippet>1687</a>
-<a href=#1688 id=1688 data-nosnippet>1688</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; ProcessSpec&lt;<span class="lifetime">'a</span>, DockerDeployEcs&gt; <span class="kw">for </span>DockerDeployProcessSpecEcs {
-<a href=#1689 id=1689 data-nosnippet>1689</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%id, %name_hint))]
-<a href=#1690 id=1690 data-nosnippet>1690</a>    </span><span class="kw">fn </span>build(<span class="self">self</span>, id: usize, name_hint: <span class="kw-2">&amp;</span><span class="lifetime">'_ </span>str) -&gt; &lt;DockerDeployEcs <span class="kw">as </span>Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;::Process {
-<a href=#1691 id=1691 data-nosnippet>1691</a>        DockerDeployProcessEcs {
-<a href=#1692 id=1692 data-nosnippet>1692</a>            id,
-<a href=#1693 id=1693 data-nosnippet>1693</a>            name: get_docker_image_name(name_hint, id, <span class="kw-2">&amp;</span><span class="self">self</span>.deployment_instance),
-<a href=#1694 id=1694 data-nosnippet>1694</a>
-<a href=#1695 id=1695 data-nosnippet>1695</a>            next_port: Rc::new(RefCell::new(<span class="number">1000</span>)),
-<a href=#1696 id=1696 data-nosnippet>1696</a>            rust_crate: Rc::new(RefCell::new(<span class="prelude-val">None</span>)),
-<a href=#1697 id=1697 data-nosnippet>1697</a>
-<a href=#1698 id=1698 data-nosnippet>1698</a>            exposed_ports: Rc::new(RefCell::new(Vec::new())),
-<a href=#1699 id=1699 data-nosnippet>1699</a>
-<a href=#1700 id=1700 data-nosnippet>1700</a>            docker_container_name: Rc::new(RefCell::new(<span class="prelude-val">None</span>)),
-<a href=#1701 id=1701 data-nosnippet>1701</a>
-<a href=#1702 id=1702 data-nosnippet>1702</a>            compilation_options: <span class="self">self</span>.compilation_options,
-<a href=#1703 id=1703 data-nosnippet>1703</a>            config: <span class="self">self</span>.config,
-<a href=#1704 id=1704 data-nosnippet>1704</a>
-<a href=#1705 id=1705 data-nosnippet>1705</a>            network: <span class="self">self</span>.network.clone(),
-<a href=#1706 id=1706 data-nosnippet>1706</a>        }
-<a href=#1707 id=1707 data-nosnippet>1707</a>    }
-<a href=#1708 id=1708 data-nosnippet>1708</a>}
+<a href=#1654 id=1654 data-nosnippet>1654</a><span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, ret, fields(%name_hint, %location_key, %deployment_instance))]
+<a href=#1655 id=1655 data-nosnippet>1655</a></span><span class="kw">fn </span>get_docker_image_name(
+<a href=#1656 id=1656 data-nosnippet>1656</a>    name_hint: <span class="kw-2">&amp;</span>str,
+<a href=#1657 id=1657 data-nosnippet>1657</a>    location_key: LocationKey,
+<a href=#1658 id=1658 data-nosnippet>1658</a>    deployment_instance: <span class="kw-2">&amp;</span>str,
+<a href=#1659 id=1659 data-nosnippet>1659</a>) -&gt; String {
+<a href=#1660 id=1660 data-nosnippet>1660</a>    <span class="kw">let </span>name_hint = name_hint
+<a href=#1661 id=1661 data-nosnippet>1661</a>        .split(<span class="string">"::"</span>)
+<a href=#1662 id=1662 data-nosnippet>1662</a>        .last()
+<a href=#1663 id=1663 data-nosnippet>1663</a>        .unwrap()
+<a href=#1664 id=1664 data-nosnippet>1664</a>        .to_string()
+<a href=#1665 id=1665 data-nosnippet>1665</a>        .to_ascii_lowercase()
+<a href=#1666 id=1666 data-nosnippet>1666</a>        .replace(<span class="string">"."</span>, <span class="string">"-"</span>)
+<a href=#1667 id=1667 data-nosnippet>1667</a>        .replace(<span class="string">"_"</span>, <span class="string">"-"</span>)
+<a href=#1668 id=1668 data-nosnippet>1668</a>        .replace(<span class="string">"::"</span>, <span class="string">"-"</span>);
+<a href=#1669 id=1669 data-nosnippet>1669</a>
+<a href=#1670 id=1670 data-nosnippet>1670</a>    <span class="kw">let </span>image_unique_tag = <span class="macro">nanoid::nanoid!</span>(<span class="number">6</span>, <span class="kw-2">&amp;</span>CONTAINER_ALPHABET);
+<a href=#1671 id=1671 data-nosnippet>1671</a>
+<a href=#1672 id=1672 data-nosnippet>1672</a>    <span class="macro">format!</span>(<span class="string">"hy-{name_hint}-{image_unique_tag}-{deployment_instance}-{location_key}"</span>)
+<a href=#1673 id=1673 data-nosnippet>1673</a>}
+<a href=#1674 id=1674 data-nosnippet>1674</a>
+<a href=#1675 id=1675 data-nosnippet>1675</a><span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, ret, fields(%image_name, <span class="question-mark">?</span>instance))]
+<a href=#1676 id=1676 data-nosnippet>1676</a></span><span class="kw">fn </span>get_docker_container_name(image_name: <span class="kw-2">&amp;</span>str, instance: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; String {
+<a href=#1677 id=1677 data-nosnippet>1677</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(instance) = instance {
+<a href=#1678 id=1678 data-nosnippet>1678</a>        <span class="macro">format!</span>(<span class="string">"{image_name}-{instance}"</span>)
+<a href=#1679 id=1679 data-nosnippet>1679</a>    } <span class="kw">else </span>{
+<a href=#1680 id=1680 data-nosnippet>1680</a>        image_name.to_string()
+<a href=#1681 id=1681 data-nosnippet>1681</a>    }
+<a href=#1682 id=1682 data-nosnippet>1682</a>}
+<a href=#1683 id=1683 data-nosnippet>1683</a><span class="doccomment">/// Represents a Process running in a docker container
+<a href=#1684 id=1684 data-nosnippet>1684</a></span><span class="attr">#[derive(Clone)]
+<a href=#1685 id=1685 data-nosnippet>1685</a></span><span class="kw">pub struct </span>DockerDeployProcessSpecEcs {
+<a href=#1686 id=1686 data-nosnippet>1686</a>    compilation_options: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#1687 id=1687 data-nosnippet>1687</a>    config: Vec&lt;String&gt;,
+<a href=#1688 id=1688 data-nosnippet>1688</a>    network: DockerNetworkEcs,
+<a href=#1689 id=1689 data-nosnippet>1689</a>    deployment_instance: String,
+<a href=#1690 id=1690 data-nosnippet>1690</a>}
+<a href=#1691 id=1691 data-nosnippet>1691</a>
+<a href=#1692 id=1692 data-nosnippet>1692</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; ProcessSpec&lt;<span class="lifetime">'a</span>, DockerDeployEcs&gt; <span class="kw">for </span>DockerDeployProcessSpecEcs {
+<a href=#1693 id=1693 data-nosnippet>1693</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%key, %name_hint))]
+<a href=#1694 id=1694 data-nosnippet>1694</a>    </span><span class="kw">fn </span>build(
+<a href=#1695 id=1695 data-nosnippet>1695</a>        <span class="self">self</span>,
+<a href=#1696 id=1696 data-nosnippet>1696</a>        key: LocationKey,
+<a href=#1697 id=1697 data-nosnippet>1697</a>        name_hint: <span class="kw-2">&amp;</span><span class="lifetime">'_ </span>str,
+<a href=#1698 id=1698 data-nosnippet>1698</a>    ) -&gt; &lt;DockerDeployEcs <span class="kw">as </span>Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;::Process {
+<a href=#1699 id=1699 data-nosnippet>1699</a>        DockerDeployProcessEcs {
+<a href=#1700 id=1700 data-nosnippet>1700</a>            key,
+<a href=#1701 id=1701 data-nosnippet>1701</a>            name: get_docker_image_name(name_hint, key, <span class="kw-2">&amp;</span><span class="self">self</span>.deployment_instance),
+<a href=#1702 id=1702 data-nosnippet>1702</a>
+<a href=#1703 id=1703 data-nosnippet>1703</a>            next_port: Rc::new(RefCell::new(<span class="number">1000</span>)),
+<a href=#1704 id=1704 data-nosnippet>1704</a>            rust_crate: Rc::new(RefCell::new(<span class="prelude-val">None</span>)),
+<a href=#1705 id=1705 data-nosnippet>1705</a>
+<a href=#1706 id=1706 data-nosnippet>1706</a>            exposed_ports: Rc::new(RefCell::new(Vec::new())),
+<a href=#1707 id=1707 data-nosnippet>1707</a>
+<a href=#1708 id=1708 data-nosnippet>1708</a>            docker_container_name: Rc::new(RefCell::new(<span class="prelude-val">None</span>)),
 <a href=#1709 id=1709 data-nosnippet>1709</a>
-<a href=#1710 id=1710 data-nosnippet>1710</a><span class="doccomment">/// Represents a Cluster running across `count` docker containers.
-<a href=#1711 id=1711 data-nosnippet>1711</a></span><span class="attr">#[derive(Clone)]
-<a href=#1712 id=1712 data-nosnippet>1712</a></span><span class="kw">pub struct </span>DockerDeployClusterSpecEcs {
-<a href=#1713 id=1713 data-nosnippet>1713</a>    compilation_options: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#1714 id=1714 data-nosnippet>1714</a>    config: Vec&lt;String&gt;,
-<a href=#1715 id=1715 data-nosnippet>1715</a>    count: usize,
-<a href=#1716 id=1716 data-nosnippet>1716</a>    deployment_instance: String,
-<a href=#1717 id=1717 data-nosnippet>1717</a>}
-<a href=#1718 id=1718 data-nosnippet>1718</a>
-<a href=#1719 id=1719 data-nosnippet>1719</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; ClusterSpec&lt;<span class="lifetime">'a</span>, DockerDeployEcs&gt; <span class="kw">for </span>DockerDeployClusterSpecEcs {
-<a href=#1720 id=1720 data-nosnippet>1720</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%id, %name_hint))]
-<a href=#1721 id=1721 data-nosnippet>1721</a>    </span><span class="kw">fn </span>build(<span class="self">self</span>, id: usize, name_hint: <span class="kw-2">&amp;</span>str) -&gt; &lt;DockerDeployEcs <span class="kw">as </span>Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;::Cluster {
-<a href=#1722 id=1722 data-nosnippet>1722</a>        DockerDeployClusterEcs {
-<a href=#1723 id=1723 data-nosnippet>1723</a>            id,
-<a href=#1724 id=1724 data-nosnippet>1724</a>            name: get_docker_image_name(name_hint, id, <span class="kw-2">&amp;</span><span class="self">self</span>.deployment_instance),
-<a href=#1725 id=1725 data-nosnippet>1725</a>
-<a href=#1726 id=1726 data-nosnippet>1726</a>            next_port: Rc::new(RefCell::new(<span class="number">1000</span>)),
-<a href=#1727 id=1727 data-nosnippet>1727</a>            rust_crate: Rc::new(RefCell::new(<span class="prelude-val">None</span>)),
-<a href=#1728 id=1728 data-nosnippet>1728</a>
-<a href=#1729 id=1729 data-nosnippet>1729</a>            docker_container_name: Rc::new(RefCell::new(Vec::new())),
-<a href=#1730 id=1730 data-nosnippet>1730</a>
-<a href=#1731 id=1731 data-nosnippet>1731</a>            compilation_options: <span class="self">self</span>.compilation_options,
-<a href=#1732 id=1732 data-nosnippet>1732</a>            config: <span class="self">self</span>.config,
+<a href=#1710 id=1710 data-nosnippet>1710</a>            compilation_options: <span class="self">self</span>.compilation_options,
+<a href=#1711 id=1711 data-nosnippet>1711</a>            config: <span class="self">self</span>.config,
+<a href=#1712 id=1712 data-nosnippet>1712</a>
+<a href=#1713 id=1713 data-nosnippet>1713</a>            network: <span class="self">self</span>.network.clone(),
+<a href=#1714 id=1714 data-nosnippet>1714</a>        }
+<a href=#1715 id=1715 data-nosnippet>1715</a>    }
+<a href=#1716 id=1716 data-nosnippet>1716</a>}
+<a href=#1717 id=1717 data-nosnippet>1717</a>
+<a href=#1718 id=1718 data-nosnippet>1718</a><span class="doccomment">/// Represents a Cluster running across `count` docker containers.
+<a href=#1719 id=1719 data-nosnippet>1719</a></span><span class="attr">#[derive(Clone)]
+<a href=#1720 id=1720 data-nosnippet>1720</a></span><span class="kw">pub struct </span>DockerDeployClusterSpecEcs {
+<a href=#1721 id=1721 data-nosnippet>1721</a>    compilation_options: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#1722 id=1722 data-nosnippet>1722</a>    config: Vec&lt;String&gt;,
+<a href=#1723 id=1723 data-nosnippet>1723</a>    count: usize,
+<a href=#1724 id=1724 data-nosnippet>1724</a>    deployment_instance: String,
+<a href=#1725 id=1725 data-nosnippet>1725</a>}
+<a href=#1726 id=1726 data-nosnippet>1726</a>
+<a href=#1727 id=1727 data-nosnippet>1727</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; ClusterSpec&lt;<span class="lifetime">'a</span>, DockerDeployEcs&gt; <span class="kw">for </span>DockerDeployClusterSpecEcs {
+<a href=#1728 id=1728 data-nosnippet>1728</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%key, %name_hint))]
+<a href=#1729 id=1729 data-nosnippet>1729</a>    </span><span class="kw">fn </span>build(<span class="self">self</span>, key: LocationKey, name_hint: <span class="kw-2">&amp;</span>str) -&gt; &lt;DockerDeployEcs <span class="kw">as </span>Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;::Cluster {
+<a href=#1730 id=1730 data-nosnippet>1730</a>        DockerDeployClusterEcs {
+<a href=#1731 id=1731 data-nosnippet>1731</a>            key,
+<a href=#1732 id=1732 data-nosnippet>1732</a>            name: get_docker_image_name(name_hint, key, <span class="kw-2">&amp;</span><span class="self">self</span>.deployment_instance),
 <a href=#1733 id=1733 data-nosnippet>1733</a>
-<a href=#1734 id=1734 data-nosnippet>1734</a>            count: <span class="self">self</span>.count,
-<a href=#1735 id=1735 data-nosnippet>1735</a>        }
-<a href=#1736 id=1736 data-nosnippet>1736</a>    }
-<a href=#1737 id=1737 data-nosnippet>1737</a>}
+<a href=#1734 id=1734 data-nosnippet>1734</a>            next_port: Rc::new(RefCell::new(<span class="number">1000</span>)),
+<a href=#1735 id=1735 data-nosnippet>1735</a>            rust_crate: Rc::new(RefCell::new(<span class="prelude-val">None</span>)),
+<a href=#1736 id=1736 data-nosnippet>1736</a>
+<a href=#1737 id=1737 data-nosnippet>1737</a>            docker_container_name: Rc::new(RefCell::new(Vec::new())),
 <a href=#1738 id=1738 data-nosnippet>1738</a>
-<a href=#1739 id=1739 data-nosnippet>1739</a><span class="doccomment">/// Represents an external process outside of the management of hydro deploy.
-<a href=#1740 id=1740 data-nosnippet>1740</a></span><span class="kw">pub struct </span>DockerDeployExternalSpecEcs {
-<a href=#1741 id=1741 data-nosnippet>1741</a>    name: String,
-<a href=#1742 id=1742 data-nosnippet>1742</a>    deployment_instance: String,
-<a href=#1743 id=1743 data-nosnippet>1743</a>}
-<a href=#1744 id=1744 data-nosnippet>1744</a>
-<a href=#1745 id=1745 data-nosnippet>1745</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; ExternalSpec&lt;<span class="lifetime">'a</span>, DockerDeployEcs&gt; <span class="kw">for </span>DockerDeployExternalSpecEcs {
-<a href=#1746 id=1746 data-nosnippet>1746</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%id, %name_hint))]
-<a href=#1747 id=1747 data-nosnippet>1747</a>    </span><span class="kw">fn </span>build(<span class="self">self</span>, id: usize, name_hint: <span class="kw-2">&amp;</span>str) -&gt; &lt;DockerDeployEcs <span class="kw">as </span>Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;::External {
-<a href=#1748 id=1748 data-nosnippet>1748</a>        DockerDeployExternalEcs {
-<a href=#1749 id=1749 data-nosnippet>1749</a>            name: <span class="self">self</span>.name,
-<a href=#1750 id=1750 data-nosnippet>1750</a>            next_port: Rc::new(RefCell::new(<span class="number">10000</span>)),
-<a href=#1751 id=1751 data-nosnippet>1751</a>            ports: Rc::new(RefCell::new(HashMap::new())),
-<a href=#1752 id=1752 data-nosnippet>1752</a>            connection_info: Rc::new(RefCell::new(HashMap::new())),
-<a href=#1753 id=1753 data-nosnippet>1753</a>            deployment_instance: <span class="self">self</span>.deployment_instance,
-<a href=#1754 id=1754 data-nosnippet>1754</a>        }
-<a href=#1755 id=1755 data-nosnippet>1755</a>    }
-<a href=#1756 id=1756 data-nosnippet>1756</a>}
+<a href=#1739 id=1739 data-nosnippet>1739</a>            compilation_options: <span class="self">self</span>.compilation_options,
+<a href=#1740 id=1740 data-nosnippet>1740</a>            config: <span class="self">self</span>.config,
+<a href=#1741 id=1741 data-nosnippet>1741</a>
+<a href=#1742 id=1742 data-nosnippet>1742</a>            count: <span class="self">self</span>.count,
+<a href=#1743 id=1743 data-nosnippet>1743</a>        }
+<a href=#1744 id=1744 data-nosnippet>1744</a>    }
+<a href=#1745 id=1745 data-nosnippet>1745</a>}
+<a href=#1746 id=1746 data-nosnippet>1746</a>
+<a href=#1747 id=1747 data-nosnippet>1747</a><span class="doccomment">/// Represents an external process outside of the management of hydro deploy.
+<a href=#1748 id=1748 data-nosnippet>1748</a></span><span class="kw">pub struct </span>DockerDeployExternalSpecEcs {
+<a href=#1749 id=1749 data-nosnippet>1749</a>    name: String,
+<a href=#1750 id=1750 data-nosnippet>1750</a>    deployment_instance: String,
+<a href=#1751 id=1751 data-nosnippet>1751</a>}
+<a href=#1752 id=1752 data-nosnippet>1752</a>
+<a href=#1753 id=1753 data-nosnippet>1753</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; ExternalSpec&lt;<span class="lifetime">'a</span>, DockerDeployEcs&gt; <span class="kw">for </span>DockerDeployExternalSpecEcs {
+<a href=#1754 id=1754 data-nosnippet>1754</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%key, %name_hint))]
+<a href=#1755 id=1755 data-nosnippet>1755</a>    </span><span class="kw">fn </span>build(<span class="self">self</span>, key: LocationKey, name_hint: <span class="kw-2">&amp;</span>str) -&gt; &lt;DockerDeployEcs <span class="kw">as </span>Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;::External {
+<a href=#1756 id=1756 data-nosnippet>1756</a>        DockerDeployExternalEcs {
+<a href=#1757 id=1757 data-nosnippet>1757</a>            name: <span class="self">self</span>.name,
+<a href=#1758 id=1758 data-nosnippet>1758</a>            next_port: Rc::new(RefCell::new(<span class="number">10000</span>)),
+<a href=#1759 id=1759 data-nosnippet>1759</a>            ports: Rc::new(RefCell::new(HashMap::new())),
+<a href=#1760 id=1760 data-nosnippet>1760</a>            connection_info: Rc::new(RefCell::new(HashMap::new())),
+<a href=#1761 id=1761 data-nosnippet>1761</a>            deployment_instance: <span class="self">self</span>.deployment_instance,
+<a href=#1762 id=1762 data-nosnippet>1762</a>        }
+<a href=#1763 id=1763 data-nosnippet>1763</a>    }
+<a href=#1764 id=1764 data-nosnippet>1764</a>}
 </code></pre></div></section></main></body></html>

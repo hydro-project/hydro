@@ -30,7 +30,7 @@
 <a href=#30 id=30 data-nosnippet>30</a>
 <a href=#31 id=31 data-nosnippet>31</a><span class="kw">use </span><span class="kw">crate</span>::location::dynamic::LocationId;
 <a href=#32 id=32 data-nosnippet>32</a><span class="kw">use </span><span class="kw">crate</span>::location::member_id::TaglessMemberId;
-<a href=#33 id=33 data-nosnippet>33</a><span class="kw">use </span><span class="kw">crate</span>::location::{MemberId, MembershipEvent};
+<a href=#33 id=33 data-nosnippet>33</a><span class="kw">use </span><span class="kw">crate</span>::location::{LocationKey, MemberId, MembershipEvent};
 <a href=#34 id=34 data-nosnippet>34</a>
 <a href=#35 id=35 data-nosnippet>35</a><span class="kw">pub fn </span>deploy_containerized_o2o(target: <span class="kw-2">&amp;</span>str, bind_addr: <span class="kw-2">&amp;</span>str) -&gt; (syn::Expr, syn::Expr) {
 <a href=#36 id=36 data-nosnippet>36</a>    (
@@ -283,11 +283,11 @@
 <a href=#283 id=283 data-nosnippet>283</a>    location_id: <span class="kw-2">&amp;</span>LocationId,
 <a href=#284 id=284 data-nosnippet>284</a>) -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, Box&lt;<span class="kw">dyn </span>Stream&lt;Item = (TaglessMemberId, MembershipEvent)&gt; + Unpin&gt;, ()&gt;
 <a href=#285 id=285 data-nosnippet>285</a>{
-<a href=#286 id=286 data-nosnippet>286</a>    <span class="kw">let </span>raw_id = location_id.raw_id();
+<a href=#286 id=286 data-nosnippet>286</a>    <span class="kw">let </span>key = location_id.key();
 <a href=#287 id=287 data-nosnippet>287</a>
 <a href=#288 id=288 data-nosnippet>288</a>    <span class="macro">q!</span>(Box::new(<span class="self">self</span>::docker_membership_stream(
 <a href=#289 id=289 data-nosnippet>289</a>        std::env::var(<span class="string">"DEPLOYMENT_INSTANCE"</span>).unwrap(),
-<a href=#290 id=290 data-nosnippet>290</a>        raw_id
+<a href=#290 id=290 data-nosnippet>290</a>        key
 <a href=#291 id=291 data-nosnippet>291</a>    ))
 <a href=#292 id=292 data-nosnippet>292</a>        <span class="kw">as </span>Box&lt;
 <a href=#293 id=293 data-nosnippet>293</a>            <span class="kw">dyn </span>Stream&lt;Item = (TaglessMemberId, MembershipEvent)&gt; + Unpin,
@@ -297,10 +297,10 @@
 <a href=#297 id=297 data-nosnippet>297</a><span class="comment">// There's a risk of race conditions here since all the containers will be starting up at the same time.
 <a href=#298 id=298 data-nosnippet>298</a>// So we need to start listening for events and the take a snapshot of currently running containers, since they may have already started up before we started listening to events.
 <a href=#299 id=299 data-nosnippet>299</a>// Then we need to turn that into a usable stream for the consumer in this current hydro program. The way you do that is by emitting from the snapshot first, and then start emitting from the stream. Keep a hash set around to track whether a container is up or down.
-<a href=#300 id=300 data-nosnippet>300</a></span><span class="attr">#[instrument(skip_all, fields(%deployment_instance, %location_id))]
+<a href=#300 id=300 data-nosnippet>300</a></span><span class="attr">#[instrument(skip_all, fields(%deployment_instance, %location_key))]
 <a href=#301 id=301 data-nosnippet>301</a></span><span class="kw">fn </span>docker_membership_stream(
 <a href=#302 id=302 data-nosnippet>302</a>    deployment_instance: String,
-<a href=#303 id=303 data-nosnippet>303</a>    location_id: usize,
+<a href=#303 id=303 data-nosnippet>303</a>    location_key: LocationKey,
 <a href=#304 id=304 data-nosnippet>304</a>) -&gt; <span class="kw">impl </span>Stream&lt;Item = (TaglessMemberId, MembershipEvent)&gt; + Unpin {
 <a href=#305 id=305 data-nosnippet>305</a>    <span class="kw">use </span>std::collections::HashSet;
 <a href=#306 id=306 data-nosnippet>306</a>    <span class="kw">use </span>std::sync::{Arc, Mutex};
@@ -337,7 +337,7 @@
 <a href=#337 id=337 data-nosnippet>337</a>                    .actor
 <a href=#338 id=338 data-nosnippet>338</a>                    .and_then(|a| a.attributes.and_then(|attrs| attrs.get(<span class="string">"name"</span>).cloned()))<span class="question-mark">?</span>;
 <a href=#339 id=339 data-nosnippet>339</a>
-<a href=#340 id=340 data-nosnippet>340</a>                <span class="kw">if </span>name.contains(<span class="macro">format!</span>(<span class="string">"{events_deployment_instance}-{location_id}"</span>).as_str()) {
+<a href=#340 id=340 data-nosnippet>340</a>                <span class="kw">if </span>name.contains(<span class="macro">format!</span>(<span class="string">"{events_deployment_instance}-{location_key}"</span>).as_str()) {
 <a href=#341 id=341 data-nosnippet>341</a>                    <span class="kw">match </span>e.action.as_deref() {
 <a href=#342 id=342 data-nosnippet>342</a>                        <span class="prelude-val">Some</span>(<span class="string">"start"</span>) =&gt; <span class="prelude-val">Some</span>((name.clone(), MembershipEvent::Joined)),
 <a href=#343 id=343 data-nosnippet>343</a>                        <span class="prelude-val">Some</span>(<span class="string">"die"</span>) =&gt; <span class="prelude-val">Some</span>((name, MembershipEvent::Left)),
@@ -363,7 +363,7 @@
 <a href=#363 id=363 data-nosnippet>363</a>        <span class="kw">let </span><span class="kw-2">mut </span>filters = HashMap::new();
 <a href=#364 id=364 data-nosnippet>364</a>        filters.insert(
 <a href=#365 id=365 data-nosnippet>365</a>            <span class="string">"name"</span>.to_string(),
-<a href=#366 id=366 data-nosnippet>366</a>            <span class="macro">vec!</span>[<span class="macro">format!</span>(<span class="string">"{deployment_instance}-{location_id}"</span>)],
+<a href=#366 id=366 data-nosnippet>366</a>            <span class="macro">vec!</span>[<span class="macro">format!</span>(<span class="string">"{deployment_instance}-{location_key}"</span>)],
 <a href=#367 id=367 data-nosnippet>367</a>        );
 <a href=#368 id=368 data-nosnippet>368</a>        <span class="kw">let </span>options = <span class="prelude-val">Some</span>(ListContainersOptions {
 <a href=#369 id=369 data-nosnippet>369</a>            filters: <span class="prelude-val">Some</span>(filters),

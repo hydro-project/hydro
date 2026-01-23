@@ -237,7 +237,7 @@
 <a href=#237 id=237 data-nosnippet>237</a>    </span>L: Location&lt;<span class="lifetime">'a</span>&gt;,
 <a href=#238 id=238 data-nosnippet>238</a>{
 <a href=#239 id=239 data-nosnippet>239</a>    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(location: L, ir_node: HydroNode) -&gt; <span class="self">Self </span>{
-<a href=#240 id=240 data-nosnippet>240</a>        <span class="macro">debug_assert_eq!</span>(ir_node.metadata().location_kind, Location::id(<span class="kw-2">&amp;</span>location));
+<a href=#240 id=240 data-nosnippet>240</a>        <span class="macro">debug_assert_eq!</span>(ir_node.metadata().location_id, Location::id(<span class="kw-2">&amp;</span>location));
 <a href=#241 id=241 data-nosnippet>241</a>        <span class="macro">debug_assert_eq!</span>(ir_node.metadata().collection_kind, <span class="self">Self</span>::collection_kind());
 <a href=#242 id=242 data-nosnippet>242</a>        Singleton {
 <a href=#243 id=243 data-nosnippet>243</a>            location,
@@ -1118,7 +1118,7 @@
 <a href=#1118 id=1118 data-nosnippet>1118</a>    </span><span class="kw">async fn </span>tick_cycle_cardinality() {
 <a href=#1119 id=1119 data-nosnippet>1119</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
 <a href=#1120 id=1120 data-nosnippet>1120</a>
-<a href=#1121 id=1121 data-nosnippet>1121</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1121 id=1121 data-nosnippet>1121</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1122 id=1122 data-nosnippet>1122</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1123 id=1123 data-nosnippet>1123</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
 <a href=#1124 id=1124 data-nosnippet>1124</a>
@@ -1160,7 +1160,7 @@
 <a href=#1160 id=1160 data-nosnippet>1160</a>    #[test]
 <a href=#1161 id=1161 data-nosnippet>1161</a>    #[should_panic]
 <a href=#1162 id=1162 data-nosnippet>1162</a>    </span><span class="kw">fn </span>sim_fold_intermediate_states() {
-<a href=#1163 id=1163 data-nosnippet>1163</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1163 id=1163 data-nosnippet>1163</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1164 id=1164 data-nosnippet>1164</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1165 id=1165 data-nosnippet>1165</a>
 <a href=#1166 id=1166 data-nosnippet>1166</a>        <span class="kw">let </span>source = node.source_stream(<span class="macro">q!</span>(tokio_stream::iter(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>])));
@@ -1178,7 +1178,7 @@
 <a href=#1178 id=1178 data-nosnippet>1178</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
 <a href=#1179 id=1179 data-nosnippet>1179</a>    #[test]
 <a href=#1180 id=1180 data-nosnippet>1180</a>    </span><span class="kw">fn </span>sim_fold_intermediate_state_count() {
-<a href=#1181 id=1181 data-nosnippet>1181</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1181 id=1181 data-nosnippet>1181</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1182 id=1182 data-nosnippet>1182</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1183 id=1183 data-nosnippet>1183</a>
 <a href=#1184 id=1184 data-nosnippet>1184</a>        <span class="kw">let </span>source = node.source_stream(<span class="macro">q!</span>(tokio_stream::iter(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>])));
@@ -1204,7 +1204,7 @@
 <a href=#1204 id=1204 data-nosnippet>1204</a>    </span><span class="kw">fn </span>sim_fold_no_repeat_initial() {
 <a href=#1205 id=1205 data-nosnippet>1205</a>        <span class="comment">// check that we don't repeat the initial state of the fold in autonomous decisions
 <a href=#1206 id=1206 data-nosnippet>1206</a>
-<a href=#1207 id=1207 data-nosnippet>1207</a>        </span><span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1207 id=1207 data-nosnippet>1207</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1208 id=1208 data-nosnippet>1208</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1209 id=1209 data-nosnippet>1209</a>
 <a href=#1210 id=1210 data-nosnippet>1210</a>        <span class="kw">let </span>(in_port, input) = node.sim_input();
@@ -1230,7 +1230,7 @@
 <a href=#1230 id=1230 data-nosnippet>1230</a>        <span class="comment">// when the tick is driven by a snapshot AND something else, the snapshot can
 <a href=#1231 id=1231 data-nosnippet>1231</a>        // "stutter" and repeat the same state multiple times
 <a href=#1232 id=1232 data-nosnippet>1232</a>
-<a href=#1233 id=1233 data-nosnippet>1233</a>        </span><span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1233 id=1233 data-nosnippet>1233</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1234 id=1234 data-nosnippet>1234</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1235 id=1235 data-nosnippet>1235</a>
 <a href=#1236 id=1236 data-nosnippet>1236</a>        <span class="kw">let </span>source = node.source_stream(<span class="macro">q!</span>(tokio_stream::iter(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>])));
@@ -1254,7 +1254,7 @@
 <a href=#1254 id=1254 data-nosnippet>1254</a>    #[test]
 <a href=#1255 id=1255 data-nosnippet>1255</a>    </span><span class="kw">fn </span>sim_fold_repeats_snapshots_count() {
 <a href=#1256 id=1256 data-nosnippet>1256</a>        <span class="comment">// check the number of instances
-<a href=#1257 id=1257 data-nosnippet>1257</a>        </span><span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1257 id=1257 data-nosnippet>1257</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1258 id=1258 data-nosnippet>1258</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1259 id=1259 data-nosnippet>1259</a>
 <a href=#1260 id=1260 data-nosnippet>1260</a>        <span class="kw">let </span>source = node.source_stream(<span class="macro">q!</span>(tokio_stream::iter(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>])));
@@ -1278,7 +1278,7 @@
 <a href=#1278 id=1278 data-nosnippet>1278</a>    #[test]
 <a href=#1279 id=1279 data-nosnippet>1279</a>    </span><span class="kw">fn </span>sim_top_level_singleton_exhaustive() {
 <a href=#1280 id=1280 data-nosnippet>1280</a>        <span class="comment">// ensures that top-level singletons have only one snapshot
-<a href=#1281 id=1281 data-nosnippet>1281</a>        </span><span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1281 id=1281 data-nosnippet>1281</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1282 id=1282 data-nosnippet>1282</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1283 id=1283 data-nosnippet>1283</a>
 <a href=#1284 id=1284 data-nosnippet>1284</a>        <span class="kw">let </span>singleton = node.singleton(<span class="macro">q!</span>(<span class="number">1</span>));
@@ -1299,7 +1299,7 @@
 <a href=#1299 id=1299 data-nosnippet>1299</a>        <span class="comment">// if a tick consumes a static snapshot and a stream batch, only the batch require space
 <a href=#1300 id=1300 data-nosnippet>1300</a>        // exploration
 <a href=#1301 id=1301 data-nosnippet>1301</a>
-<a href=#1302 id=1302 data-nosnippet>1302</a>        </span><span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1302 id=1302 data-nosnippet>1302</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1303 id=1303 data-nosnippet>1303</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1304 id=1304 data-nosnippet>1304</a>
 <a href=#1305 id=1305 data-nosnippet>1305</a>        <span class="kw">let </span>source_iter = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));
@@ -1322,7 +1322,7 @@
 <a href=#1322 id=1322 data-nosnippet>1322</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
 <a href=#1323 id=1323 data-nosnippet>1323</a>    #[test]
 <a href=#1324 id=1324 data-nosnippet>1324</a>    </span><span class="kw">fn </span>top_level_singleton_into_stream_no_replay() {
-<a href=#1325 id=1325 data-nosnippet>1325</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#1325 id=1325 data-nosnippet>1325</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#1326 id=1326 data-nosnippet>1326</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
 <a href=#1327 id=1327 data-nosnippet>1327</a>
 <a href=#1328 id=1328 data-nosnippet>1328</a>        <span class="kw">let </span>source_iter = node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>]));

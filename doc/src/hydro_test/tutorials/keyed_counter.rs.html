@@ -50,7 +50,7 @@
 <a href=#50 id=50 data-nosnippet>50</a>
 <a href=#51 id=51 data-nosnippet>51</a>    <span class="attr">#[test]
 <a href=#52 id=52 data-nosnippet>52</a>    </span><span class="kw">fn </span>test_counter_read_after_write() {
-<a href=#53 id=53 data-nosnippet>53</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#53 id=53 data-nosnippet>53</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#54 id=54 data-nosnippet>54</a>        <span class="kw">let </span>process = flow.process::&lt;CounterServer&gt;();
 <a href=#55 id=55 data-nosnippet>55</a>
 <a href=#56 id=56 data-nosnippet>56</a>        <span class="kw">let </span>(inc_in_port, inc_requests) = process.sim_input();

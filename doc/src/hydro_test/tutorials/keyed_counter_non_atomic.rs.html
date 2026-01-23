@@ -41,7 +41,7 @@
 <a href=#41 id=41 data-nosnippet>41</a>    <span class="attr">#[test]
 <a href=#42 id=42 data-nosnippet>42</a>    #[should_panic]
 <a href=#43 id=43 data-nosnippet>43</a>    </span><span class="kw">fn </span>test_counter_read_after_write_buggy() {
-<a href=#44 id=44 data-nosnippet>44</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#44 id=44 data-nosnippet>44</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#45 id=45 data-nosnippet>45</a>        <span class="kw">let </span>process = flow.process::&lt;CounterServer&gt;();
 <a href=#46 id=46 data-nosnippet>46</a>
 <a href=#47 id=47 data-nosnippet>47</a>        <span class="kw">let </span>(inc_in_port, inc_requests) = process.sim_input();
@@ -69,7 +69,7 @@
 <a href=#69 id=69 data-nosnippet>69</a>
 <a href=#70 id=70 data-nosnippet>70</a>    <span class="attr">#[test]
 <a href=#71 id=71 data-nosnippet>71</a>    </span><span class="kw">fn </span>test_counter_read_after_write_instances() {
-<a href=#72 id=72 data-nosnippet>72</a>        <span class="kw">let </span>flow = FlowBuilder::new();
+<a href=#72 id=72 data-nosnippet>72</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
 <a href=#73 id=73 data-nosnippet>73</a>        <span class="kw">let </span>process = flow.process::&lt;CounterServer&gt;();
 <a href=#74 id=74 data-nosnippet>74</a>
 <a href=#75 id=75 data-nosnippet>75</a>        <span class="kw">let </span>(inc_in_port, inc_requests) = process.sim_input();
