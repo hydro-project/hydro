@@ -16,7 +16,7 @@ mod tests {
     fn test_json_structure_with_semantic_tags() {
         let mut output = String::new();
         let config = HydroWriteConfig::default();
-        let mut writer = HydroJson::new(&mut output, config);
+        let mut writer: HydroJson<'_, &mut String> = HydroJson::new(&mut output, config);
 
         // Write a simple graph
         writer.write_prologue().unwrap();
@@ -24,7 +24,6 @@ mod tests {
         let node_id_1 = VizNodeKey::TEST_KEY_1;
         let node_id_2 = VizNodeKey::TEST_KEY_2;
 
-        // `1v1` for testing only.
         let loc_key_1 = LocationKey::TEST_KEY_1;
 
         // Add a source node

@@ -635,18 +635,18 @@ impl<W> HydroJson<'_, W> {
         // Create node assignments by reading locationId from each node's data
         // This is more reliable than using the write_node tracking which depends on HashMap iteration order
         // Build and then sort assignments deterministically by node id key
-        let mut tmp: Vec<(String, String)> = Vec::new();
+        let mut tmp: Vec<(String, serde_json::Value)> = Vec::new();
         for node in self.nodes.iter() {
-            if let (Some(node_id), Some(location_key)) =
-                (node["id"].as_str(), node["data"]["locationKey"].as_str())
+            if let (Some(node_id), location_key) =
+                (node["id"].as_str(), &node["data"]["locationKey"])
             {
-                tmp.push((node_id.to_string(), location_key.to_owned()));
+                tmp.push((node_id.to_string(), location_key.clone()));
             }
         }
         tmp.sort_by(|a, b| a.0.cmp(&b.0));
         let mut node_assignments = serde_json::Map::new();
         for (k, v) in tmp {
-            node_assignments.insert(k, serde_json::Value::String(v));
+            node_assignments.insert(k, v);
         }
 
         (hierarchy, node_assignments)

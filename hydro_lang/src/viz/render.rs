@@ -530,11 +530,11 @@ impl std::str::FromStr for VizNodeKey {
 impl VizNodeKey {
     /// A key for testing with index 1.
     #[cfg(test)]
-    pub const TEST_KEY_1: Self = Self(slotmap::KeyData::from_ffi(0x000000ff00000001)); // `1v255`
+    pub const TEST_KEY_1: Self = Self(slotmap::KeyData::from_ffi(0x0000008f00000001)); // `1v143`
 
     /// A key for testing with index 2.
     #[cfg(test)]
-    pub const TEST_KEY_2: Self = Self(slotmap::KeyData::from_ffi(0x000000ff00000002)); // `2v255`
+    pub const TEST_KEY_2: Self = Self(slotmap::KeyData::from_ffi(0x0000008f00000002)); // `2v143`
 }
 
 /// Edge information in the Hydro graph.

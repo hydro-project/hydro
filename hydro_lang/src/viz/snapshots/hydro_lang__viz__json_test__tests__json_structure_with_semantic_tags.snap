@@ -14,7 +14,7 @@ expression: output
         "locationType": "Process"
       },
       "fullLabel": "source [hydro operator]",
-      "id": "viz1v255",
+      "id": "viz1v143",
       "label": "source",
       "nodeType": "Source",
       "shortLabel": "source"
@@ -29,7 +29,7 @@ expression: output
         "locationType": "Process"
       },
       "fullLabel": "map [hydro operator]",
-      "id": "viz2v255",
+      "id": "viz2v143",
       "label": "map",
       "nodeType": "Transform",
       "shortLabel": "map"
@@ -44,8 +44,8 @@ expression: output
         "TotalOrder",
         "Unbounded"
       ],
-      "source": "viz1v255",
-      "target": "viz2v255"
+      "source": "viz1v143",
+      "target": "viz2v143"
     }
   ],
   "hierarchyChoices": [
@@ -56,7 +56,16 @@ expression: output
     }
   ],
   "nodeAssignments": {
-    "location": {}
+    "location": {
+      "viz1v143": {
+        "idx": 1,
+        "version": 255
+      },
+      "viz2v143": {
+        "idx": 1,
+        "version": 255
+      }
+    }
   },
   "selectedHierarchy": "location",
   "edgeStyleConfig": {

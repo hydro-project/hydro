@@ -11,7 +11,7 @@ expression: output
         "locationType": null
       },
       "fullLabel": "node [hydro operator]",
-      "id": "viz1v255",
+      "id": "viz1v143",
       "label": "node",
       "nodeType": "Transform",
       "shortLabel": "node"
@@ -23,8 +23,8 @@ expression: output
       "semanticTags": [
         "Local"
       ],
-      "source": "viz1v255",
-      "target": "viz1v255"
+      "source": "viz1v143",
+      "target": "viz1v143"
     }
   ],
   "hierarchyChoices": [
@@ -35,7 +35,9 @@ expression: output
     }
   ],
   "nodeAssignments": {
-    "location": {}
+    "location": {
+      "viz1v143": null
+    }
   },
   "selectedHierarchy": "location",
   "edgeStyleConfig": {
