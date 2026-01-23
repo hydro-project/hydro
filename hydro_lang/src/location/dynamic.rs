@@ -6,22 +6,51 @@
 
 use serde::{Deserialize, Serialize};
 
+use super::LocationKey;
 #[cfg(stageleft_runtime)]
 use crate::compile::{
     builder::FlowState,
     ir::{CollectionKind, HydroIrMetadata},
 };
+use crate::location::LocationType;
 
-#[expect(missing_docs, reason = "TODO")]
-#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Debug, Hash, Serialize, Deserialize)]
+/// An enumeration representing a location heirarchy, including "virtual" locations (atomic/tick).
+#[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Serialize, Deserialize)]
 pub enum LocationId {
-    Process(usize),
-    Cluster(usize),
+    /// A process root location (i.e. a single node).
+    Process(LocationKey),
+    /// A cluster root location (i.e. multiple nodes).
+    Cluster(LocationKey),
+    /// An atomic region, within a tick.
     Atomic(
         /// The tick that the atomic region is associated with.
         Box<LocationId>,
     ),
+    /// A tick within a location.
     Tick(usize, Box<LocationId>),
+}
+
+/// Implement Debug to Display-print the key, reduces snapshot verbosity.
+impl std::fmt::Debug for LocationId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LocationId::Process(key) => write!(f, "Process({key})"),
+            LocationId::Cluster(key) => write!(f, "Cluster({key})"),
+            LocationId::Atomic(tick) => write!(f, "Atomic({tick:?})"),
+            LocationId::Tick(tick, id) => write!(f, "Tick({tick}, {id:?})"),
+        }
+    }
+}
+
+impl LocationId {
+    /// The [`LocationType`] of this location ID. `None` if this is not a root location.
+    pub fn location_type(&self) -> Option<LocationType> {
+        match self {
+            LocationId::Process(_) => Some(LocationType::Process),
+            LocationId::Cluster(_) => Some(LocationType::Cluster),
+            _ => None,
+        }
+    }
 }
 
 #[expect(missing_docs, reason = "TODO")]
@@ -51,7 +80,7 @@ impl LocationId {
         }
     }
 
-    pub fn raw_id(&self) -> usize {
+    pub fn key(&self) -> LocationKey {
         match self {
             LocationId::Process(id) => *id,
             LocationId::Cluster(id) => *id,
@@ -88,7 +117,7 @@ pub(crate) trait DynLocation: Clone {
         use crate::compile::ir::backtrace::Backtrace;
 
         HydroIrMetadata {
-            location_kind: self.id(),
+            location_id: self.id(),
             collection_kind,
             cardinality: None,
             tag: None,

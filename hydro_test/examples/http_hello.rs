@@ -73,7 +73,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
     };
 
-    let flow = hydro_lang::compile::builder::FlowBuilder::new();
+    let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
 
     let process = flow.process::<()>();
     let external = flow.external::<()>();

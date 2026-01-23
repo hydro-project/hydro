@@ -9,32 +9,33 @@ use stageleft::{QuotedWithContextWithProps, quote_type};
 use super::dynamic::LocationId;
 use super::{Location, MemberId};
 use crate::compile::builder::FlowState;
+use crate::location::LocationKey;
 use crate::location::member_id::TaglessMemberId;
 use crate::staging_util::{Invariant, get_this_crate};
 
 pub struct Cluster<'a, ClusterTag> {
-    pub(crate) id: usize,
+    pub(crate) key: LocationKey,
     pub(crate) flow_state: FlowState,
     pub(crate) _phantom: Invariant<'a, ClusterTag>,
 }
 
 impl<C> Debug for Cluster<'_, C> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Cluster({})", self.id)
+        write!(f, "Cluster({})", self.key)
     }
 }
 
 impl<C> Eq for Cluster<'_, C> {}
 impl<C> PartialEq for Cluster<'_, C> {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && FlowState::ptr_eq(&self.flow_state, &other.flow_state)
+        self.key == other.key && FlowState::ptr_eq(&self.flow_state, &other.flow_state)
     }
 }
 
 impl<C> Clone for Cluster<'_, C> {
     fn clone(&self) -> Self {
         Cluster {
-            id: self.id,
+            key: self.key,
             flow_state: self.flow_state.clone(),
             _phantom: PhantomData,
         }
@@ -43,7 +44,7 @@ impl<C> Clone for Cluster<'_, C> {
 
 impl<'a, C> super::dynamic::DynLocation for Cluster<'a, C> {
     fn id(&self) -> LocationId {
-        LocationId::Cluster(self.id)
+        LocationId::Cluster(self.key)
     }
 
     fn flow_state(&self) -> &FlowState {
@@ -64,14 +65,14 @@ impl<'a, C> Location<'a> for Cluster<'a, C> {
 }
 
 pub struct ClusterIds<'a> {
-    pub id: usize,
+    pub key: LocationKey,
     pub _phantom: PhantomData<&'a ()>,
 }
 
 impl<'a> Clone for ClusterIds<'a> {
     fn clone(&self) -> Self {
         Self {
-            id: self.id,
+            key: self.key,
             _phantom: Default::default(),
         }
     }
@@ -85,7 +86,7 @@ impl<'a, Ctx> FreeVariableWithContextWithProps<Ctx, ()> for ClusterIds<'a> {
         Self: Sized,
     {
         let ident = syn::Ident::new(
-            &format!("__hydro_lang_cluster_ids_{}", self.id),
+            &format!("__hydro_lang_cluster_ids_{}", self.key),
             Span::call_site(),
         );
 
@@ -182,7 +183,7 @@ mod tests {
     #[cfg(feature = "sim")]
     #[test]
     fn sim_cluster_self_id() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let cluster1 = flow.cluster::<()>();
         let cluster2 = flow.cluster::<()>();
 
@@ -215,7 +216,7 @@ mod tests {
     fn sim_cluster_with_tick() {
         use std::collections::HashMap;
 
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();
         let node = flow.process::<()>();
 
@@ -256,7 +257,7 @@ mod tests {
     #[cfg(feature = "sim")]
     #[test]
     fn sim_cluster_membership() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let cluster = flow.cluster::<()>();
         let node = flow.process::<()>();
 

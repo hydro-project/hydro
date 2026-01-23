@@ -13,7 +13,7 @@ In some cases, you may need to convert between bounded and unbounded collections
 ```rust,no_run
 # use hydro_lang::prelude::*;
 # use futures::StreamExt;
-# let flow = FlowBuilder::new();
+# let mut flow = FlowBuilder::new();
 # let process = flow.process::<()>();
 # let tick = process.tick();
 # let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
@@ -25,7 +25,7 @@ let unbounded: Stream<_, _, Unbounded> = input.into();
 ```rust,no_run
 # use hydro_lang::prelude::*;
 # use futures::StreamExt;
-# let flow = FlowBuilder::new();
+# let mut flow = FlowBuilder::new();
 # let process = flow.process::<()>();
 let input: Singleton<_, _, Bounded> = process.singleton(q!(0));
 let unbounded: Singleton<_, _, Unbounded> = input.into();
@@ -36,7 +36,7 @@ Converting from an unbounded collection **to a bounded collection**, however is 
 ```rust,no_run
 # use hydro_lang::prelude::*;
 # use futures::StreamExt;
-# let flow = FlowBuilder::new();
+# let mut flow = FlowBuilder::new();
 # let process = flow.process::<()>();
 let unbounded_input = // ...
 #  process.source_iter(q!(vec![1, 2, 3, 4]));

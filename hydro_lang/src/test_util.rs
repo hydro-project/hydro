@@ -17,17 +17,20 @@ use crate::location::Process;
 ///
 /// Each declared process is deployed as a single local process, and each cluster is deployed as four local processes.
 pub async fn multi_location_test<'a, T, C, O: Ordering, R: Retries>(
-    thunk: impl FnOnce(&FlowBuilder<'a>, &Process<'a, ()>) -> Stream<T, Process<'a>, Unbounded, O, R>,
+    thunk: impl FnOnce(
+        &mut FlowBuilder<'a>,
+        &Process<'a, ()>,
+    ) -> Stream<T, Process<'a>, Unbounded, O, R>,
     check: impl FnOnce(Pin<Box<dyn futures::Stream<Item = T>>>) -> C,
 ) where
     T: Serialize + DeserializeOwned + 'static,
     C: Future<Output = ()>,
 {
     let mut deployment = hydro_deploy::Deployment::new();
-    let flow = FlowBuilder::new();
+    let mut flow = FlowBuilder::new();
     let process = flow.process::<()>();
     let external = flow.external::<()>();
-    let out = thunk(&flow, &process);
+    let out = (thunk)(&mut flow, &process);
     let out_port = out.send_bincode_external(&external);
     let nodes = flow
         .with_remaining_processes(|| deployment.Localhost())
@@ -53,7 +56,7 @@ pub async fn stream_transform_test<'a, T, C, B: Boundedness, O: Ordering, R: Ret
     C: Future<Output = ()>,
 {
     let mut deployment = hydro_deploy::Deployment::new();
-    let flow = FlowBuilder::new();
+    let mut flow = FlowBuilder::new();
     let process = flow.process::<()>();
     let external = flow.external::<()>();
     let out = thunk(&process);

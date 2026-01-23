@@ -67,7 +67,7 @@ mod tests {
 
     #[test]
     fn sequence_payloads_sequences_all() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
         let tick = node.tick();
 

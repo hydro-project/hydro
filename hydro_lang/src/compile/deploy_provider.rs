@@ -11,7 +11,7 @@ use stageleft::QuotedWithContext;
 use crate::compile::builder::ExternalPortId;
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
-use crate::location::{MembershipEvent, NetworkHint};
+use crate::location::{LocationKey, MembershipEvent, NetworkHint};
 
 pub trait Deploy<'a> {
     type Meta: Default;
@@ -110,7 +110,7 @@ pub trait Deploy<'a> {
     ) -> syn::Expr;
 
     fn cluster_ids(
-        of_cluster: usize,
+        of_cluster: LocationKey,
     ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a;
 
     fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a;
@@ -124,7 +124,7 @@ pub trait ProcessSpec<'a, D>
 where
     D: Deploy<'a> + ?Sized,
 {
-    fn build(self, id: usize, name_hint: &str) -> D::Process;
+    fn build(self, location_key: LocationKey, name_hint: &str) -> D::Process;
 }
 
 pub trait IntoProcessSpec<'a, D>
@@ -150,14 +150,14 @@ pub trait ClusterSpec<'a, D>
 where
     D: Deploy<'a> + ?Sized,
 {
-    fn build(self, id: usize, name_hint: &str) -> D::Cluster;
+    fn build(self, location_key: LocationKey, name_hint: &str) -> D::Cluster;
 }
 
 pub trait ExternalSpec<'a, D>
 where
     D: Deploy<'a> + ?Sized,
 {
-    fn build(self, id: usize, name_hint: &str) -> D::External;
+    fn build(self, location_key: LocationKey, name_hint: &str) -> D::External;
 }
 
 pub trait Node {

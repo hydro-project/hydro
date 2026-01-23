@@ -22,7 +22,7 @@ pub mod runtime_support {
     pub use colored;
     #[cfg(feature = "deploy_integration")]
     pub use hydro_deploy_integration;
-    pub use {bincode, dfir_rs, stageleft, tokio};
+    pub use {bincode, dfir_rs, slotmap, stageleft, tokio};
 
     #[cfg(any(feature = "deploy_integration", feature = "docker_runtime"))]
     pub mod launch;

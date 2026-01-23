@@ -288,7 +288,7 @@ mod tests {
     #[cfg(feature = "sim")]
     #[test]
     fn sim_atomic_stream() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let (write_send, write_req) = node.sim_input();
@@ -336,7 +336,7 @@ mod tests {
     #[should_panic]
     fn sim_non_atomic_stream() {
         // shows that atomic is necessary
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let (write_send, write_req) = node.sim_input();

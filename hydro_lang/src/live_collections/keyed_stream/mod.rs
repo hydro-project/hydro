@@ -221,7 +221,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     KeyedStream<K, V, L, B, O, R>
 {
     pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
-        debug_assert_eq!(ir_node.metadata().location_kind, Location::id(&location));
+        debug_assert_eq!(ir_node.metadata().location_id, Location::id(&location));
         debug_assert_eq!(ir_node.metadata().collection_kind, Self::collection_kind());
 
         KeyedStream {
@@ -2253,7 +2253,7 @@ mod tests {
     async fn reduce_watermark_filter() {
         let mut deployment = Deployment::new();
 
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
@@ -2298,7 +2298,7 @@ mod tests {
     async fn reduce_watermark_bounded() {
         let mut deployment = Deployment::new();
 
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
@@ -2336,7 +2336,7 @@ mod tests {
     async fn reduce_watermark_garbage_collect() {
         let mut deployment = Deployment::new();
 
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
         let external = flow.external::<()>();
         let (tick_send, tick_trigger) =
@@ -2406,7 +2406,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn sim_batch_nondet_size() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let input = node.source_iter(q!([(1, 1), (1, 2), (2, 3)])).into_keyed();
@@ -2429,7 +2429,7 @@ mod tests {
     #[cfg(feature = "sim")]
     #[test]
     fn sim_batch_preserves_group_order() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let input = node.source_iter(q!([(1, 1), (1, 2), (2, 3)])).into_keyed();
@@ -2464,7 +2464,7 @@ mod tests {
     #[cfg(feature = "sim")]
     #[test]
     fn sim_batch_unordered_shuffles() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let input = node
@@ -2496,7 +2496,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn sim_observe_order_batched() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let (port, input) = node.sim_input::<_, NoOrder, _>();
@@ -2521,7 +2521,7 @@ mod tests {
     #[cfg(feature = "sim")]
     #[test]
     fn sim_observe_order_batched_count() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let (port, input) = node.sim_input::<_, NoOrder, _>();

@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn collect_quorum_with_response_preserves_order() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let (in_send, input) = node.sim_input();
@@ -197,7 +197,7 @@ mod tests {
 
     #[test]
     fn collect_quorum_with_response_no_order() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
@@ -220,7 +220,7 @@ mod tests {
 
     #[test]
     fn collect_quorum_functionality() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let (in_send, input) = node.sim_input();
@@ -295,7 +295,7 @@ mod tests {
 
     #[test]
     fn collect_quorum_min_equals_max() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let (in_send, input) = node.sim_input();
@@ -321,7 +321,7 @@ mod tests {
 
     #[test]
     fn collect_quorum_single_response() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let (in_send, input) = node.sim_input();
@@ -340,7 +340,7 @@ mod tests {
 
     #[test]
     fn collect_quorum_no_responses() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let (_in_send, input) = node.sim_input::<_, TotalOrder, _>();
@@ -357,7 +357,7 @@ mod tests {
 
     #[test]
     fn collect_quorum_no_double_quorum_before_max() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, TotalOrder, _>();
