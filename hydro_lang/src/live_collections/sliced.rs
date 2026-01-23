@@ -361,7 +361,7 @@ pub mod style {
 
     impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries> Slicable<'a, L>
         for Atomic<
-            crate::live_collections::KeyedStream<K, V, crate::location::Atomic<L>, Bounded, O, R>,
+            crate::live_collections::KeyedStream<K, V, crate::location::Atomic<L>, Unbounded, O, R>,
         >
     {
         type Slice = crate::live_collections::KeyedStream<K, V, Tick<L>, Bounded, O, R>;
