@@ -35,12 +35,23 @@ impl ExampleChild {
         test_name: &str,
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
     ) -> Self {
-        let child = std::process::Command::new("cargo")
-            .args(["run", "-p", pkg_name, "--example"])
-            .arg(test_name)
+        let mut cargo_cmd = std::process::Command::new("cargo");
+        cargo_cmd
+            .args(["run", "--frozen", "--no-default-features"])
+            .args(["-p", pkg_name, "--example", test_name]);
+        if let Some(features) = trybuild_internals_api::features::find()
+            && !features.is_empty()
+        {
+            cargo_cmd.args(["--features", &features.join(",")]);
+        }
+        cargo_cmd
             .arg("--")
             .args(args)
-            .env("RUNNING_AS_EXAMPLE_TEST", "1")
+            .env("RUNNING_AS_EXAMPLE_TEST", "1");
+
+        log::info!("Running cargo command: {:?}", cargo_cmd);
+
+        let child = cargo_cmd
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .spawn()
