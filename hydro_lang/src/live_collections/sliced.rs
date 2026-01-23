@@ -890,7 +890,7 @@ mod tests {
 
     #[test]
     fn sim_sliced_atomic_keyed_stream() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let (input_send, input) = node.sim_input::<(i32, i32), _, _>();
