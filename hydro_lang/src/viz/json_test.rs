@@ -4,14 +4,12 @@
 mod tests {
     use std::collections::HashSet;
 
-    #[cfg(test)]
     use hydro_build_utils::insta;
-    use slotmap::KeyData;
 
     use crate::location::{LocationKey, LocationType};
     use crate::viz::json::HydroJson;
     use crate::viz::render::{
-        HydroEdgeProp, HydroGraphWrite, HydroNodeType, HydroWriteConfig, NodeLabel,
+        HydroEdgeProp, HydroGraphWrite, HydroNodeType, HydroWriteConfig, NodeLabel, VizNodeKey,
     };
 
     #[test]
@@ -23,12 +21,11 @@ mod tests {
         // Write a simple graph
         writer.write_prologue().unwrap();
 
-        // For testing only.
-        let node_id_1 = "VizNodeKey(1v1)".parse().unwrap();
-        let node_id_2 = "VizNodeKey(2v1)".parse().unwrap();
+        let node_id_1 = VizNodeKey::TEST_KEY_1;
+        let node_id_2 = VizNodeKey::TEST_KEY_2;
 
         // `1v1` for testing only.
-        let loc_key_1 = LocationKey::from(KeyData::from_ffi(0x0000000100000001));
+        let loc_key_1 = LocationKey::TEST_KEY_1;
 
         // Add a source node
         writer
@@ -78,8 +75,7 @@ mod tests {
 
         writer.write_prologue().unwrap();
 
-        // For testing only.
-        let node_id_1 = "VizNodeKey(1v1)".parse().unwrap();
+        let node_id_1 = VizNodeKey::TEST_KEY_1;
 
         writer
             .write_node_definition(
@@ -117,14 +113,11 @@ mod tests {
         let mut edge_props = HashSet::new();
         edge_props.insert(HydroEdgeProp::Stream);
 
-        // For testing only.
-        let node_id_1 = "VizNodeKey(1v1)".parse().unwrap();
-        let node_id_2 = "VizNodeKey(2v1)".parse().unwrap();
+        let node_id_1 = VizNodeKey::TEST_KEY_1;
+        let node_id_2 = VizNodeKey::TEST_KEY_2;
 
-        // `1v1` for testing only.
-        let loc_key_1 = LocationKey::from(KeyData::from_ffi(0x0000000100000001));
-        // `2v2` for testing only.
-        let loc_key_2 = LocationKey::from(KeyData::from_ffi(0x0000000200000002));
+        let loc_key_1 = LocationKey::TEST_KEY_1;
+        let loc_key_2 = LocationKey::TEST_KEY_2;
 
         // Graph 1
         w1.write_prologue().unwrap();

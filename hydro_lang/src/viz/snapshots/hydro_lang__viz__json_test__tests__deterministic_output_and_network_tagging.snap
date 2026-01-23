@@ -9,12 +9,12 @@ expression: output1
         "backtrace": [],
         "locationKey": {
           "idx": 1,
-          "version": 1
+          "version": 255
         },
         "locationType": "Process"
       },
       "fullLabel": "a [hydro operator]",
-      "id": "VizNodeKey(1v1)",
+      "id": "viz1v255",
       "label": "a",
       "nodeType": "Source",
       "shortLabel": "a"
@@ -24,12 +24,12 @@ expression: output1
         "backtrace": [],
         "locationKey": {
           "idx": 2,
-          "version": 3
+          "version": 255
         },
         "locationType": "Process"
       },
       "fullLabel": "b [hydro operator]",
-      "id": "VizNodeKey(2v1)",
+      "id": "viz2v255",
       "label": "b",
       "nodeType": "Transform",
       "shortLabel": "b"
@@ -42,8 +42,8 @@ expression: output1
         "Network",
         "Stream"
       ],
-      "source": "VizNodeKey(1v1)",
-      "target": "VizNodeKey(2v1)"
+      "source": "viz1v255",
+      "target": "viz2v255"
     }
   ],
   "hierarchyChoices": [

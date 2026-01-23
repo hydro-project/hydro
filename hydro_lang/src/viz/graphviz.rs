@@ -206,7 +206,7 @@ where
     ) -> Result<(), Self::Err> {
         writeln!(
             self.base.write,
-            "{b:i$}subgraph cluster_loc_{location_key} {{",
+            "{b:i$}subgraph cluster_{location_key} {{",
             b = "",
             i = self.base.indent,
         )?;

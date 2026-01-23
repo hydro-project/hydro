@@ -345,8 +345,6 @@ impl<'a> GraphApi<'a> {
 
 #[cfg(test)]
 mod tests {
-    use slotmap::KeyData;
-
     use super::*;
 
     #[test]
@@ -374,7 +372,7 @@ mod tests {
         let ir = vec![];
 
         let mut location_names = SecondaryMap::new();
-        let loc_key_1 = LocationKey::from(KeyData::from_ffi(0x0000000100000001)); // `1v1` for testing
+        let loc_key_1 = LocationKey::TEST_KEY_1;
         location_names.insert(loc_key_1, "test_process".to_string());
 
         let api = GraphApi::new(&ir, &location_names);
@@ -393,7 +391,7 @@ mod tests {
         let ir = vec![];
 
         let mut location_names = SecondaryMap::new();
-        let loc_key_1 = LocationKey::from(KeyData::from_ffi(0x0000000100000001)); // `1v1` for testing
+        let loc_key_1 = LocationKey::TEST_KEY_1;
         location_names.insert(loc_key_1, "test_process".to_string());
 
         let api = GraphApi::new(&ir, &location_names);

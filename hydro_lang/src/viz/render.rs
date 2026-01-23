@@ -2,11 +2,10 @@ use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::fmt::{Display, Write};
 use std::num::ParseIntError;
-use std::str::FromStr;
 use std::sync::OnceLock;
 
 use auto_impl::auto_impl;
-use slotmap::{KeyData, SecondaryMap, SlotMap};
+use slotmap::{Key, SecondaryMap, SlotMap};
 
 pub use super::graphviz::{HydroDot, escape_dot};
 pub use super::json::HydroJson;
@@ -510,23 +509,32 @@ slotmap::new_key_type! {
 
 impl Display for VizNodeKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self) // `"VizNodeKey(1v1)"`
+        write!(f, "viz{:?}", self.data()) // `"viz1v1"``
     }
 }
 
-impl FromStr for VizNodeKey {
+/// This is used by the visualizer
+/// TODO(mingwei): Make this more robust?
+impl std::str::FromStr for VizNodeKey {
     type Err = Option<ParseIntError>;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // Parse `"VizNodeKey(1v1)"`
-        let s = s.strip_prefix("VizNodeKey(").ok_or(None)?;
-        let s = s.strip_suffix(")").ok_or(None)?;
-        let (idx, version) = s.split_once("v").ok_or(None)?;
+        let nvn = s.strip_prefix("viz").ok_or(None)?;
+        let (idx, ver) = nvn.split_once("v").ok_or(None)?;
         let idx: u64 = idx.parse()?;
-        let version: u64 = version.parse()?;
-        let key_data = KeyData::from_ffi((version << 32) | idx);
-        Ok(Self::from(key_data))
+        let ver: u64 = ver.parse()?;
+        Ok(slotmap::KeyData::from_ffi((ver << 32) | idx).into())
     }
+}
+
+impl VizNodeKey {
+    /// A key for testing with index 1.
+    #[cfg(test)]
+    pub const TEST_KEY_1: Self = Self(slotmap::KeyData::from_ffi(0x000000ff00000001)); // `1v255`
+
+    /// A key for testing with index 2.
+    #[cfg(test)]
+    pub const TEST_KEY_2: Self = Self(slotmap::KeyData::from_ffi(0x000000ff00000002)); // `2v255`
 }
 
 /// Edge information in the Hydro graph.

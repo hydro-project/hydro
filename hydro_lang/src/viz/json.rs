@@ -625,7 +625,7 @@ impl<W> HydroJson<'_, W> {
             .into_iter()
             .map(|(location_key, (label, _))| {
                 serde_json::json!({
-                    "id": format!("loc_{}", location_key),
+                    "key": location_key.to_string(),
                     "name": label,
                     "children": [] // Single level hierarchy - no nested children
                 })
@@ -636,12 +636,11 @@ impl<W> HydroJson<'_, W> {
         // This is more reliable than using the write_node tracking which depends on HashMap iteration order
         // Build and then sort assignments deterministically by node id key
         let mut tmp: Vec<(String, String)> = Vec::new();
-        for node in &self.nodes {
-            if let (Some(node_id), Some(location_id)) =
-                (node["id"].as_str(), node["data"]["locationId"].as_u64())
+        for node in self.nodes.iter() {
+            if let (Some(node_id), Some(location_key)) =
+                (node["id"].as_str(), node["data"]["locationKey"].as_str())
             {
-                let location_key = format!("loc_{}", location_id);
-                tmp.push((node_id.to_string(), location_key));
+                tmp.push((node_id.to_string(), location_key.to_owned()));
             }
         }
         tmp.sort_by(|a, b| a.0.cmp(&b.0));
@@ -666,7 +665,7 @@ impl<W> HydroJson<'_, W> {
         let mut path_to_node_assignments: HashMap<String, Vec<String>> = HashMap::new(); // path -> [node_ids]
 
         // Process each node's backtrace using the stored backtraces
-        for node in &self.nodes {
+        for node in self.nodes.iter() {
             if let Some(node_id_str) = node["id"].as_str()
                 && let Ok(node_id) = node_id_str.parse::<VizNodeKey>()
                 && let Some(backtrace) = self.node_backtraces.get(node_id)
@@ -742,7 +741,7 @@ impl<W> HydroJson<'_, W> {
         let mut nodes_without_backtrace = Vec::new();
 
         // Collect all node IDs
-        for node in &self.nodes {
+        for node in self.nodes.iter() {
             if let Some(node_id_str) = node["id"].as_str() {
                 nodes_without_backtrace.push(node_id_str.to_string());
             }

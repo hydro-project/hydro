@@ -201,7 +201,7 @@ where
     ) -> Result<(), Self::Err> {
         writeln!(
             self.base.write,
-            "{b:i$}subgraph loc_{loc} [\"{location_type:?} {loc}\"]",
+            "{b:i$}subgraph {loc} [\"{location_type:?} {loc}\"]",
             loc = location_key,
             b = "",
             i = self.base.indent,

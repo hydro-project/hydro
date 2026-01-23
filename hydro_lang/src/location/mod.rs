@@ -115,8 +115,17 @@ impl std::str::FromStr for LocationKey {
 }
 
 impl LocationKey {
+    /// TODO(minwgei): Remove this and avoid magic key for simulator external.
     /// The first location key, used by the simulator as the default external location.
     pub const FIRST: Self = Self(slotmap::KeyData::from_ffi(0x0000000100000001)); // `1v1`
+
+    /// A key for testing with index 1.
+    #[cfg(test)]
+    pub const TEST_KEY_1: Self = Self(slotmap::KeyData::from_ffi(0x000000ff00000001)); // `1v255`
+
+    /// A key for testing with index 2.
+    #[cfg(test)]
+    pub const TEST_KEY_2: Self = Self(slotmap::KeyData::from_ffi(0x000000ff00000002)); // `2v255`
 }
 
 /// This is used within `q!` code in docker and ECS.
