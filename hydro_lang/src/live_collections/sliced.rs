@@ -361,35 +361,6 @@ pub mod style {
 
     impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries> Slicable<'a, L>
         for Atomic<
-            crate::live_collections::KeyedStream<K, V, crate::location::Atomic<L>, Unbounded, O, R>,
-        >
-    {
-        type Slice = crate::live_collections::KeyedStream<K, V, Tick<L>, Bounded, O, R>;
-        type Backtrace = crate::compile::ir::backtrace::Backtrace;
-
-        fn preferred_tick(&self) -> Option<Tick<L>> {
-            Some(self.0.location().tick.clone())
-        }
-
-        fn get_location(&self) -> &L {
-            panic!("Atomic location has no accessible inner location")
-        }
-
-        fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
-            assert_eq!(
-                self.0.location().tick.id(),
-                tick.id(),
-                "Mismatched tick for atomic slicing"
-            );
-
-            let out = self.0.batch_atomic(nondet);
-            out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
-            out
-        }
-    }
-
-    impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries> Slicable<'a, L>
-        for Atomic<
             crate::live_collections::KeyedStream<K, V, crate::location::Atomic<L>, Bounded, O, R>,
         >
     {
