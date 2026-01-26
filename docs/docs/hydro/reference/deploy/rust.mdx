@@ -25,7 +25,14 @@ TODO(mingwei): Explain the details/nuances of the example and simple configurati
 `TrybuildHost` provides additional options for compiling your Hydro app, such as setting [`rustflags`](https://doc.rust-lang.org/cargo/reference/config.html#buildrustflags),
 enabling [features](https://doc.rust-lang.org/cargo/reference/features.html), or setting up [performance profiling](#performance-profiling).
 
-<CodeBlock language="rust" title="hydro_test/examples/perf_compute_pi.rs">{getLines(perfComputePiSrc, "trybuildhost")}</CodeBlock>
+<CodeBlock language="rust" title="hydro_test/examples/perf_compute_pi.rs">{getLines(perfComputePiSrc, "trybuildhost", `
+.with_process(
+    &leader,
+    TrybuildHost::new(create_host(&mut deployment))
+        .rustflags(rustflags)
+        .additional_hydro_features(vec!["runtime_measure".to_string()])
+        // ...
+`)}</CodeBlock>
 
 TODO(mingwei)
 
@@ -36,7 +43,18 @@ code are taking the most time to execute.
 
 `TrybuildHost` provides a `tracing` method that will automatically generate a flamegraph after your app has run:
 
-<CodeBlock language="rust" title="hydro_test/examples/perf_compute_pi.rs">{getLines(perfComputePiSrc, "tracing")}</CodeBlock>
+<CodeBlock language="rust" title="hydro_test/examples/perf_compute_pi.rs">{getLines(perfComputePiSrc, "tracing", `
+.tracing(
+    TracingOptions::builder()
+        .perf_raw_outfile("leader.perf.data")
+        .samply_outfile("leader.profile")
+        .fold_outfile("leader.data.folded")
+        .flamegraph_outfile("leader.svg")
+        .frequency(frequency)
+        .setup_command(setup_command)
+        .build(),
+),
+`)}</CodeBlock>
 
 The `TracingOptions` builder has several options, such as sampling frequency, output file names, tracing options, and
 optionally a setup command to run before the profiling starts. The `setup_command` can be used to install the profiling,
@@ -44,7 +62,9 @@ in this case we use the provided `DEBIAN_PERF_SETUP_COMMAND` which installs `per
 enable tracing.
 
 You may need to use `TrybuildHost` to set the following `rustflags` to enable detailed performance profiling:
-<CodeBlock language="rust" title="hydro_test/examples/perf_compute_pi.rs">{getLines(perfComputePiSrc, "rustflags")}</CodeBlock>
+<CodeBlock language="rust" title="hydro_test/examples/perf_compute_pi.rs">{getLines(perfComputePiSrc, "rustflags", `
+rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off";
+`)}</CodeBlock>
 
 Different platforms require particular configuration to enable CPU profiling. Each platform uses a different tool to collect
 CPU profiling data, but Hydro Deploy will automatically process the resulting traces and download the resulting flamegraph:
@@ -54,4 +74,6 @@ CPU profiling data, but Hydro Deploy will automatically process the resulting tr
 * Windows: `samply` for CPU profiling
 
 For example, on GCP Linux machines, you may need to include additional `rustflags`:
-<CodeBlock language="rust" title="hydro_test/examples/perf_compute_pi.rs">{getLines(perfComputePiSrc, "rustflags_gcp")}</CodeBlock>
+<CodeBlock language="rust" title="hydro_test/examples/perf_compute_pi.rs">{getLines(perfComputePiSrc, "rustflags_gcp", `
+rustflags = "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment";
+`)}</CodeBlock>
