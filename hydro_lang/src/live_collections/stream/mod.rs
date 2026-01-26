@@ -1865,7 +1865,7 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn lookup_keyed_stream<V, O2: Ordering, R2: Retries>(
+    pub fn lookup_keyed_stream<V, O2: Ordering, R2>(
         self,
         keyed_stream: KeyedStream<T, V, L, Bounded, O2, R2>,
     ) -> KeyedStream<T, Option<V>, L, Bounded, NoOrder, R2>
@@ -1873,7 +1873,7 @@ where
         T: Eq + Hash + Clone,
         V: Clone,
         R: MinRetries<R2>,
-        R2: MinRetries<R, Min = R2>,
+        R2: Retries + MinRetries<R, Min = R2>,
     {
         let found = keyed_stream
             .clone()
