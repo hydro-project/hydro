@@ -45,4 +45,6 @@ pub mod trybuild;
 pub use trybuild::generate::init_test;
 
 /// Ident used for the DFIR runtime instance variable name.
+#[cfg(feature = "trybuild")]
+#[cfg_attr(docsrs, doc(cfg(feature = "trybuild")))]
 pub(crate) const DFIR_IDENT: &str = "flow";
