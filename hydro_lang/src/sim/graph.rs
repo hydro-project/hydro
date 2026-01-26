@@ -503,7 +503,7 @@ pub(super) fn create_sim_graph_trybuild(
         cluster_tick_graphs,
         extra_stmts_global,
         extra_stmts_cluster,
-        crate_name.clone(),
+        &crate_name,
         is_test,
     );
 
@@ -616,7 +616,7 @@ fn compile_sim_graph_trybuild(
     cluster_tick_graphs: BTreeMap<LocationId, DfirGraph>,
     extra_stmts_global: Vec<syn::Stmt>,
     extra_stmts_cluster: BTreeMap<LocationId, Vec<syn::Stmt>>,
-    crate_name: String,
+    crate_name: &str,
     is_test: bool,
 ) -> syn::File {
     let mut diagnostics = Vec::new();
@@ -628,7 +628,7 @@ fn compile_sim_graph_trybuild(
 
         if is_test {
             UseTestModeStaged {
-                crate_name: crate_name.clone(),
+                crate_name,
             }
             .visit_expr_mut(&mut dfir_expr);
         }

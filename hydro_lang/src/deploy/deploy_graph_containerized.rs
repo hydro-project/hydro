@@ -104,7 +104,7 @@ impl Node for DockerDeployProcess {
         let (bin_name, config) = create_graph_trybuild(
             graph,
             extra_stmts,
-            &Some(self.name.clone()),
+            Some(&self.name),
             true,
             LinkingMode::Static,
         );
@@ -177,7 +177,7 @@ impl Node for DockerDeployCluster {
         let (bin_name, config) = create_graph_trybuild(
             graph,
             extra_stmts,
-            &Some(self.name.clone()),
+            Some(&self.name),
             true,
             LinkingMode::Static,
         );
