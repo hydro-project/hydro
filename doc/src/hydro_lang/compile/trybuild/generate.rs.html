@@ -90,7 +90,7 @@
 <a href=#90 id=90 data-nosnippet>90</a>) -&gt; (String, TrybuildConfig) {
 <a href=#91 id=91 data-nosnippet>91</a>    <span class="kw">let </span>source_dir = cargo::manifest_dir().unwrap();
 <a href=#92 id=92 data-nosnippet>92</a>    <span class="kw">let </span>source_manifest = dependencies::get_manifest(<span class="kw-2">&amp;</span>source_dir).unwrap();
-<a href=#93 id=93 data-nosnippet>93</a>    <span class="kw">let </span>crate_name = <span class="kw-2">&amp;</span>source_manifest.package.name.to_string().replace(<span class="string">"-"</span>, <span class="string">"_"</span>);
+<a href=#93 id=93 data-nosnippet>93</a>    <span class="kw">let </span>crate_name = source_manifest.package.name.replace(<span class="string">"-"</span>, <span class="string">"_"</span>);
 <a href=#94 id=94 data-nosnippet>94</a>
 <a href=#95 id=95 data-nosnippet>95</a>    <span class="kw">let </span>is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 <a href=#96 id=96 data-nosnippet>96</a>
@@ -118,7 +118,7 @@
 <a href=#118 id=118 data-nosnippet>118</a>                .map(|s| <span class="macro">path!</span>(source_dir / s))
 <a href=#119 id=119 data-nosnippet>119</a>                .unwrap_or_else(|| <span class="macro">path!</span>(source_dir / <span class="string">"src" </span>/ <span class="string">"lib.rs"</span>)),
 <a href=#120 id=120 data-nosnippet>120</a>            <span class="kw-2">&amp;</span><span class="macro">path!</span>(source_dir / <span class="string">"Cargo.toml"</span>),
-<a href=#121 id=121 data-nosnippet>121</a>            crate_name,
+<a href=#121 id=121 data-nosnippet>121</a>            <span class="kw-2">&amp;</span>crate_name,
 <a href=#122 id=122 data-nosnippet>122</a>            <span class="prelude-val">Some</span>(<span class="string">"hydro___test"</span>.to_string()),
 <a href=#123 id=123 data-nosnippet>123</a>        );
 <a href=#124 id=124 data-nosnippet>124</a>
