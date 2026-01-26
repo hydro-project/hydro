@@ -90,7 +90,7 @@ pub fn create_graph_trybuild(
 ) -> (String, TrybuildConfig) {
     let source_dir = cargo::manifest_dir().unwrap();
     let source_manifest = dependencies::get_manifest(&source_dir).unwrap();
-    let crate_name = &source_manifest.package.name.to_string().replace("-", "_");
+    let crate_name = source_manifest.package.name.replace("-", "_");
 
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
@@ -118,7 +118,7 @@ pub fn create_graph_trybuild(
                 .map(|s| path!(source_dir / s))
                 .unwrap_or_else(|| path!(source_dir / "src" / "lib.rs")),
             &path!(source_dir / "Cargo.toml"),
-            crate_name,
+            &crate_name,
             Some("hydro___test".to_string()),
         );
 
