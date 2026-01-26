@@ -627,10 +627,7 @@ fn compile_sim_graph_trybuild(
                 .unwrap();
 
         if is_test {
-            UseTestModeStaged {
-                crate_name,
-            }
-            .visit_expr_mut(&mut dfir_expr);
+            UseTestModeStaged { crate_name }.visit_expr_mut(&mut dfir_expr);
         }
 
         dfir_expr
