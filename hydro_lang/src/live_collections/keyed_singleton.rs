@@ -922,9 +922,8 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, L, Bounded> {
     /// # }
     /// ```
     pub fn get(self, key: Singleton<K, L, Bounded>) -> Optional<V, L, Bounded> {
-        self.entries()
-            .join(key.into_stream().map(q!(|k| (k, ()))))
-            .map(q!(|(_, (v, _))| v))
+        self.into_keyed_stream()
+            .get(key)
             .assume_ordering::<TotalOrder>(nondet!(/** only a single key, so totally ordered */))
             .first()
     }
