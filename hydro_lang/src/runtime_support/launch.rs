@@ -15,18 +15,16 @@ use procfs::WithCurrentSystemInfo;
 use serde::de::DeserializeOwned;
 
 #[cfg(not(feature = "runtime_measure"))]
-pub async fn run(flow: Dfir<'_>) {
-    launch_flow(flow).await;
-}
-
-pub async fn run_containerized(flow: Dfir<'_>) {
-    launch_flow_containerized(flow).await;
+pub async fn run_stdin_commands(flow: Dfir<'_>) {
+    launch_flow_stdin_commands(flow).await;
 }
 
 #[cfg(feature = "runtime_measure")]
-pub async fn run(flow: Dfir<'_>) {
+pub async fn run_stdin_commands(flow: Dfir<'_>) {
     // Make sure to print CPU even if we crash
-    let res = AssertUnwindSafe(launch_flow(flow)).catch_unwind().await;
+    let res = AssertUnwindSafe(launch_flow_stdin_commands(flow))
+        .catch_unwind()
+        .await;
 
     #[cfg(target_os = "linux")]
     {
@@ -85,30 +83,23 @@ pub async fn run(flow: Dfir<'_>) {
     res.unwrap();
 }
 
-pub async fn launch_flow(mut flow: Dfir<'_>) {
-    let stop = tokio::sync::oneshot::channel();
-    tokio::task::spawn_blocking(|| {
-        let mut line = String::new();
-        std::io::stdin().read_line(&mut line).unwrap();
-        if line.starts_with("stop") {
-            stop.0.send(()).unwrap();
-        } else {
-            eprintln!("Unexpected stdin input: {:?}", line);
+pub async fn launch_flow_stdin_commands(mut flow: Dfir<'_>) {
+    let token = tokio_util::sync::CancellationToken::new();
+    tokio::task::spawn_blocking({
+        let stop = token.clone();
+        move || {
+            let mut line = String::new();
+            std::io::stdin().read_line(&mut line).unwrap();
+            if line.starts_with("stop") {
+                stop.cancel();
+            } else {
+                eprintln!("Unexpected stdin input: {:?}", line);
+            }
         }
     });
 
-    let local_set = tokio::task::LocalSet::new();
-    let flow = local_set.run_until(flow.run());
-
-    tokio::select! {
-        _ = stop.1 => {},
-        _ = flow => {}
-    }
-}
-
-pub async fn launch_flow_containerized(mut flow: Dfir<'_>) {
-    let local_set = tokio::task::LocalSet::new();
-    local_set.run_until(flow.run()).await;
+    let run_result = token.run_until_cancelled_owned(flow.run()).await;
+    assert!(run_result.is_none()); // `flow.run()` runs forever, so cancellation is only exit.
 }
 
 pub async fn init_no_ack_start<T: DeserializeOwned + Default>() -> DeployPorts<T> {
