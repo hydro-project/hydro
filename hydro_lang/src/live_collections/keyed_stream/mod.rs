@@ -1886,8 +1886,8 @@ where
 
     /// Given a stream of keys `K`, returns a new keyed stream containing only the groups
     /// whose keys are in the stream.
-    /// 
-    /// The inverse of `filter_key_not_in`.
+    /// If the stream contains duplicates, then the output keyed stream will contain duplicate
+    /// values for that key.
     ///
     /// # Example
     /// ```rust
@@ -1903,7 +1903,7 @@ where
     /// let keys_to_keep = process
     ///     .source_iter(q!(vec![1, 2]))
     ///     .batch(&tick, nondet!(/** test */));
-    /// keyed_stream.filter_key_in(keys_to_keep).all_ticks()
+    /// keyed_stream.join_stream(keys_to_keep).all_ticks()
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // { 1: ['a'], 2: ['b'] }
@@ -1916,13 +1916,13 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn filter_key_in<O2: Ordering, R2: Retries>(
+    pub fn join_stream<O2: Ordering, R2: Retries>(
         self,
         other: Stream<K, L, B, O2, R2>,
-    ) -> KeyedStream<K, V, L, B, NoOrder, <R as MinRetries<R2>>::Min>
+    ) -> KeyedStream<K, V, L, B, NoOrder, R>
     where
         K: Eq + Hash,
-        R: MinRetries<R2>,
+        R: MinRetries<R2, Min = R>,
     {
         self.entries()
             .join(other.map(q!(|k| (k, ()))))
@@ -2212,6 +2212,124 @@ where
         self.entries()
             .join(key.into_stream().map(q!(|k| (k, ()))))
             .map(q!(|(_, (v, _))| v))
+    }
+
+    /// For each value in `lookup`, find the matching key in `self`/
+    /// The output is a keyed stream with the key from `lookup`, and a value
+    /// that is a tuple of (`lookup`'s value, Option<`self`'s value>).
+    /// If the key is not present in `self`, the option will be [`None`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// # let tick = process.tick();
+    /// let requests = // { 1: 10, 2: 20 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 10), (2, 20)]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */))
+    /// #     .first();
+    /// let other_data = // { 10: [100, 101], 11: 110 }
+    /// # process
+    /// #     .source_iter(q!(vec![(10, 100), (10, 101), (11, 110)]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */));
+    /// other_data.lookup_keyed_singleton(requests)
+    /// # .entries().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // { 1: [(10, Some(100)), (10, Some(101))], 2: (20, None) }
+    /// # let mut results = vec![];
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, (10, Some(100))), (1, (10, Some(101))), (2, (20, None))]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn lookup_keyed_singleton<K2>(
+        self,
+        lookup: KeyedSingleton<K2, K, L, Bounded>,
+    ) -> KeyedStream<K2, (K, Option<V>), L, Bounded, NoOrder, R>
+    where
+        K: Eq + Hash + Clone,
+        V: Clone,
+        K2: Eq + Hash + Clone,
+    {
+        self.lookup_keyed_stream(
+            lookup
+                .into_keyed_stream()
+                .assume_retries(nondet!(/** Retries are irrelevant for keyed singletons */)),
+        )
+    }
+
+    /// For each value in `lookup`, find the matching key in `self`/
+    /// The output is a keyed stream with the key from `lookup`, and a value
+    /// that is a tuple of (`lookup`'s value, Option<`self`'s value>).
+    /// If the key is not present in `self`, the option will be [`None`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// # let tick = process.tick();
+    /// let requests = // { 1: [10, 11], 2: 20 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 10), (1, 11), (2, 20)]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */));
+    /// let other_data = // { 10: [100, 101], 11: 110 }
+    /// # process
+    /// #     .source_iter(q!(vec![(10, 100), (10, 101), (11, 110)]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */));
+    /// other_data.lookup_keyed_stream(requests)
+    /// # .entries().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // { 1: [(10, Some(100)), (10, Some(101)), (11, Some(110))], 2: (20, None) }
+    /// # let mut results = vec![];
+    /// # for _ in 0..4 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, (10, Some(100))), (1, (10, Some(101))), (1, (11, Some(110))), (2, (20, None))]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn lookup_keyed_stream<K2, O2: Ordering>(
+        self,
+        lookup: KeyedStream<K2, K, L, Bounded, O2, R>,
+    ) -> KeyedStream<K2, (K, Option<V>), L, Bounded, NoOrder, R>
+    where
+        K: Eq + Hash + Clone,
+        V: Clone,
+        K2: Eq + Hash + Clone,
+    {
+        let inverted_lookup = lookup
+            .entries()
+            .map(q!(|(key, lookup_value)| (lookup_value, key)))
+            .into_keyed();
+        let found = inverted_lookup
+            .clone()
+            .join_keyed_stream(self.clone())
+            .entries()
+            .map(q!(|(lookup_value, (key, value))| (
+                key,
+                (lookup_value, Some(value))
+            )))
+            .into_keyed();
+        let not_found = inverted_lookup
+            .filter_key_not_in(self.keys())
+            .entries()
+            .map(q!(|(lookup_value, key)| (key, (lookup_value, None))))
+            .into_keyed();
+
+        found.chain(not_found)
     }
 }
 

@@ -87,43 +87,37 @@ pub fn http_counter_server<'a, P>(
         .into_keyed()
         .value_counts();
 
-    let (results_with_count, results_without_count) = sliced! {
+    let lookup_result = sliced! {
         let batch_get_requests = use(get_stream, nondet!(/** batch get requests */));
         let cur_counters = use::atomic(counters, nondet!(/** intentional non-determinism for get timing */));
 
-        let results_with_count = batch_get_requests
-            .clone()
-            .entries()
-            .map(q!(|(client, key)| (key, client)))
-            .join(cur_counters.entries())
-            .map(q!(|(key, (client, count))| (client, (key, count))))
-            .into_keyed();
-        let results_without_count = batch_get_requests
-            .filter_key_not_in(results_with_count.clone().keys());
-
-        (results_with_count, results_without_count.into_keyed_stream())
+        cur_counters.lookup_keyed_singleton(batch_get_requests).into_keyed_stream()
     };
-    let count_response = results_with_count.map(q!(|(key, count)| format!(
-        "HTTP/1.1 200 OK\r\n\
+    let get_responses =
+        lookup_result.map(q!(|(key, maybe_count)| if let Some(count) = maybe_count {
+            format!(
+                "HTTP/1.1 200 OK\r\n\
                     Content-Type: application/json\r\n\
                     Content-Length: {}\r\n\
                     Connection: close\r\n\
                     \r\n\
                     {{\"key\": {}, \"count\": {}}}",
-        format!("{{\"key\": {}, \"count\": {}}}", key, count).len(),
-        key,
-        count
-    )));
-    let no_count_response = results_without_count.map(q!(|key| format!(
-        "HTTP/1.1 200 OK\r\n\
+                format!("{{\"key\": {}, \"count\": {}}}", key, count).len(),
+                key,
+                count
+            )
+        } else {
+            format!(
+                "HTTP/1.1 200 OK\r\n\
                         Content-Type: application/json\r\n\
                         Content-Length: {}\r\n\
                         Connection: close\r\n\
                         \r\n\
                         {{\"key\": {}, \"count\": 0}}",
-        format!("{{\"key\": {}, \"count\": 0}}", key).len(),
-        key
-    )));
+                format!("{{\"key\": {}, \"count\": 0}}", key).len(),
+                key
+            )
+        }));
 
     // Handle increment responses (just acknowledge)
     let increment_responses = increment_stream
@@ -156,8 +150,7 @@ pub fn http_counter_server<'a, P>(
         )
     }));
 
-    count_response
-        .interleave(no_count_response)
+    get_responses
         .interleave(increment_responses.into_keyed_stream())
         .interleave(invalid_responses.into_keyed_stream())
 }
