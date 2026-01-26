@@ -57,8 +57,8 @@ pub fn init_test() {
 }
 
 #[cfg(feature = "deploy")]
-fn clean_name_hint(name_hint: &str) -> String {
-    name_hint
+fn clean_bin_name_prefix(bin_name_prefix: &str) -> String {
+    bin_name_prefix
         .replace("::", "__")
         .replace(" ", "_")
         .replace(",", "_")
@@ -84,7 +84,7 @@ pub struct TrybuildConfig {
 pub fn create_graph_trybuild(
     graph: DfirGraph,
     extra_stmts: Vec<syn::Stmt>,
-    name_hint: &Option<String>,
+    bin_name_prefix: Option<&str>,
     is_containerized: bool,
     linking_mode: LinkingMode,
 ) -> (String, TrybuildConfig) {
@@ -94,13 +94,8 @@ pub fn create_graph_trybuild(
 
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
-    let generated_code = compile_graph_trybuild(
-        graph,
-        extra_stmts,
-        crate_name.clone(),
-        is_test,
-        is_containerized,
-    );
+    let generated_code =
+        compile_graph_trybuild(graph, extra_stmts, &crate_name, is_test, is_containerized);
 
     let inlined_staged = if is_test {
         let raw_toml_manifest = toml::from_str::<toml::Value>(
@@ -147,8 +142,8 @@ pub fn create_graph_trybuild(
         .take(8)
         .collect::<String>();
 
-    let bin_name = if let Some(name_hint) = &name_hint {
-        format!("{}_{}", clean_name_hint(name_hint), &hash)
+    let bin_name = if let Some(bin_name_prefix) = &bin_name_prefix {
+        format!("{}_{}", clean_bin_name_prefix(bin_name_prefix), &hash)
     } else {
         hash
     };
@@ -204,7 +199,7 @@ pub fn create_graph_trybuild(
 pub fn compile_graph_trybuild(
     partitioned_graph: DfirGraph,
     extra_stmts: Vec<syn::Stmt>,
-    crate_name: String,
+    crate_name: &str,
     is_test: bool,
     is_containerized: bool,
 ) -> syn::File {
@@ -220,10 +215,7 @@ pub fn compile_graph_trybuild(
     .unwrap();
 
     if is_test {
-        UseTestModeStaged {
-            crate_name: crate_name.clone(),
-        }
-        .visit_expr_mut(&mut dfir_expr);
+        UseTestModeStaged { crate_name }.visit_expr_mut(&mut dfir_expr);
     }
 
     let orig_crate_name = quote::format_ident!("{}", crate_name);

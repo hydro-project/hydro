@@ -457,7 +457,7 @@ impl Node for DockerDeployProcessEcs {
         let (bin_name, config) = create_graph_trybuild(
             graph,
             extra_stmts.clone(),
-            &Some(self.name.clone()),
+            Some(&self.name),
             true,
             LinkingMode::Static,
         );
@@ -530,7 +530,7 @@ impl Node for DockerDeployClusterEcs {
         let (bin_name, config) = create_graph_trybuild(
             graph,
             extra_stmts.clone(),
-            &Some(self.name.clone()),
+            Some(&self.name),
             true,
             LinkingMode::Static,
         );

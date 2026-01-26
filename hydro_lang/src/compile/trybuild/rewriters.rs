@@ -1,11 +1,11 @@
 use proc_macro2::Span;
 use syn::visit_mut::VisitMut;
 
-pub struct UseTestModeStaged {
-    pub crate_name: String,
+pub struct UseTestModeStaged<'a> {
+    pub crate_name: &'a str,
 }
 
-impl VisitMut for UseTestModeStaged {
+impl VisitMut for UseTestModeStaged<'_> {
     fn visit_type_path_mut(&mut self, i: &mut syn::TypePath) {
         if let Some(first) = i.path.segments.first_mut()
             && first.ident == self.crate_name

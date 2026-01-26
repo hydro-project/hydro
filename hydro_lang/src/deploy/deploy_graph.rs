@@ -824,7 +824,7 @@ impl Node for DeployNode {
                 let (bin_name, config) = create_graph_trybuild(
                     graph,
                     extra_stmts,
-                    &trybuild.name_hint,
+                    trybuild.name_hint.as_deref(),
                     false,
                     linking_mode,
                 );
@@ -927,7 +927,7 @@ impl Node for DeployCluster {
             Some(create_graph_trybuild(
                 graph,
                 extra_stmts,
-                &self.name_hint,
+                self.name_hint.as_deref(),
                 false,
                 linking_mode,
             ))
