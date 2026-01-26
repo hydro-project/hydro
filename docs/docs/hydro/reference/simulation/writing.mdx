@@ -19,7 +19,24 @@ A simulation test has three parts: setup, execution, and assertions. The setup c
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_client_counter.rs">single_client_counter.rs</Link>
-} showLineNumbers={33}>{getLines(singleClientCounterSrc, 33, 52)}</CodeBlock>
+} showLineNumbers={33}>{getLines(singleClientCounterSrc, 33, 52, `
+#[test]
+fn test_counter_read_after_write() {
+    let mut flow = FlowBuilder::new();
+    let process = flow.process();
+    let (inc_in_port, inc_requests) = process.sim_input();
+    let (get_in_port, get_requests) = process.sim_input();
+    let (inc_acks, get_responses) = single_client_counter_service(inc_requests, get_requests);
+    let inc_out_port = inc_acks.sim_output();
+    let get_out_port = get_responses.sim_output();
+    flow.sim().exhaustive(async || {
+        inc_in_port.send(());
+        inc_out_port.assert_yields([()]).await;
+        get_in_port.send(());
+        get_out_port.assert_yields_only([1]).await;
+    });
+}
+`)}</CodeBlock>
 
 The execution happens inside the async closure passed to `exhaustive()`. This closure is called repeatedly—once for each distinct execution the simulator explores. Inside, you send messages using the input ports and make assertions about the outputs.
 
