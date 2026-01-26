@@ -245,7 +245,7 @@ where
 
 impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, B> {
     pub(crate) fn new(location: L, ir_node: HydroNode) -> Self {
-        debug_assert_eq!(ir_node.metadata().location_kind, Location::id(&location));
+        debug_assert_eq!(ir_node.metadata().location_id, Location::id(&location));
         debug_assert_eq!(ir_node.metadata().collection_kind, Self::collection_kind());
 
         KeyedSingleton {
@@ -1431,7 +1431,7 @@ mod tests {
     async fn key_count_bounded_value() {
         let mut deployment = Deployment::new();
 
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
@@ -1469,7 +1469,7 @@ mod tests {
     async fn key_count_unbounded_value() {
         let mut deployment = Deployment::new();
 
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
@@ -1516,7 +1516,7 @@ mod tests {
     async fn into_singleton_bounded_value() {
         let mut deployment = Deployment::new();
 
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
@@ -1563,7 +1563,7 @@ mod tests {
     async fn into_singleton_unbounded_value() {
         let mut deployment = Deployment::new();
 
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
         let external = flow.external::<()>();
 
@@ -1626,7 +1626,7 @@ mod tests {
     #[cfg(feature = "sim")]
     #[test]
     fn sim_unbounded_singleton_snapshot() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let (input_port, input) = node.sim_input();
@@ -1648,5 +1648,54 @@ mod tests {
         });
 
         assert_eq!(count, 8);
+    }
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn join_keyed_stream() {
+        let mut deployment = Deployment::new();
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let tick = node.tick();
+        let keyed_data = node
+            .source_iter(q!(vec![(1, 10), (2, 20)]))
+            .into_keyed()
+            .batch(&tick, nondet!(/** test */))
+            .first();
+        let requests = node
+            .source_iter(q!(vec![(1, 100), (2, 200), (3, 300)]))
+            .into_keyed()
+            .batch(&tick, nondet!(/** test */));
+
+        let out = keyed_data
+            .join_keyed_stream(requests)
+            .entries()
+            .all_ticks()
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_out = nodes.connect(out).await;
+
+        deployment.start().await.unwrap();
+
+        let mut results = vec![];
+        for _ in 0..2 {
+            results.push(external_out.next().await.unwrap());
+        }
+        results.sort();
+
+        assert_eq!(
+            results,
+            vec![(1, (10, 100)), (2, (20, 200))]
+        );
     }
 }

@@ -50,7 +50,7 @@ mod tests {
 
     #[test]
     fn test_counter_read_after_write() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let process = flow.process::<CounterServer>();
 
         let (inc_in_port, inc_requests) = process.sim_input();

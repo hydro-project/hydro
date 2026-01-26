@@ -2,10 +2,15 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 
 use serde::Serialize;
+use slotmap::{SecondaryMap, SparseSecondaryMap};
 
-use super::render::{HydroEdgeProp, HydroGraphWrite, HydroNodeType};
+use super::render::{
+    GraphWriteError, HydroEdgeProp, HydroGraphWrite, HydroNodeType, HydroWriteConfig,
+    write_hydro_ir_json,
+};
 use crate::compile::ir::HydroRoot;
 use crate::compile::ir::backtrace::Backtrace;
+use crate::location::{LocationKey, LocationType};
 use crate::viz::render::VizNodeKey;
 
 /// A serializable backtrace frame for JSON output.
@@ -31,10 +36,10 @@ struct BacktraceFrame {
 /// Node data for JSON output.
 #[derive(Serialize)]
 struct NodeData {
-    #[serde(rename = "locationId")]
-    location_id: Option<usize>,
+    #[serde(rename = "locationKey")]
+    location_key: Option<LocationKey>,
     #[serde(rename = "locationType")]
-    location_type: Option<String>,
+    location_type: Option<LocationType>,
     backtrace: serde_json::Value,
 }
 
@@ -66,43 +71,34 @@ struct Edge {
 
 /// JSON graph writer for Hydro IR.
 /// Outputs JSON that can be used with interactive graph visualization tools.
-pub struct HydroJson<W> {
+pub struct HydroJson<'a, W> {
     write: W,
     nodes: Vec<serde_json::Value>,
     edges: Vec<serde_json::Value>,
-    locations: HashMap<usize, (String, Vec<VizNodeKey>)>, // location_id -> (label, node_ids)
-    node_locations: HashMap<VizNodeKey, usize>,           // node_id -> location_id
+    /// location_id -> (label, node_ids)
+    locations: SecondaryMap<LocationKey, (String, Vec<VizNodeKey>)>,
+    /// node_id -> location_id
+    node_locations: SecondaryMap<VizNodeKey, LocationKey>,
     edge_count: usize,
-    // Type name mappings
-    process_names: HashMap<usize, String>,
-    cluster_names: HashMap<usize, String>,
-    external_names: HashMap<usize, String>,
-    // Store backtraces for hierarchy generation
-    node_backtraces: HashMap<VizNodeKey, Backtrace>,
-    // Config flags
+    /// Map from raw location IDs to location names.
+    location_names: &'a SecondaryMap<LocationKey, String>,
+    /// Store backtraces for hierarchy generation.
+    node_backtraces: SparseSecondaryMap<VizNodeKey, Backtrace>,
+    /// Config flags.
     use_short_labels: bool,
 }
 
-impl<W> HydroJson<W> {
-    pub fn new(write: W, config: &super::render::HydroWriteConfig) -> Self {
-        let process_names: HashMap<usize, String> =
-            config.process_id_name.iter().cloned().collect();
-        let cluster_names: HashMap<usize, String> =
-            config.cluster_id_name.iter().cloned().collect();
-        let external_names: HashMap<usize, String> =
-            config.external_id_name.iter().cloned().collect();
-
+impl<'a, W> HydroJson<'a, W> {
+    pub fn new(write: W, config: HydroWriteConfig<'a>) -> Self {
         Self {
             write,
             nodes: Vec::new(),
             edges: Vec::new(),
-            locations: HashMap::new(),
-            node_locations: HashMap::new(),
+            locations: SecondaryMap::new(),
+            node_locations: SecondaryMap::new(),
             edge_count: 0,
-            process_names,
-            cluster_names,
-            external_names,
-            node_backtraces: HashMap::new(),
+            location_names: config.location_names,
+            node_backtraces: SparseSecondaryMap::new(),
             use_short_labels: config.use_short_labels,
         }
     }
@@ -300,11 +296,11 @@ impl<W> HydroJson<W> {
     }
 }
 
-impl<W> HydroGraphWrite for HydroJson<W>
+impl<W> HydroGraphWrite for HydroJson<'_, W>
 where
     W: Write,
 {
-    type Err = super::render::GraphWriteError;
+    type Err = GraphWriteError;
 
     fn write_prologue(&mut self) -> Result<(), Self::Err> {
         // Clear any existing data
@@ -321,8 +317,8 @@ where
         node_id: VizNodeKey,
         node_label: &super::render::NodeLabel,
         node_type: HydroNodeType,
-        location_id: Option<usize>,
-        location_type: Option<&str>,
+        location_key: Option<LocationKey>,
+        location_type: Option<LocationType>,
         backtrace: Option<&Backtrace>,
     ) -> Result<(), Self::Err> {
         // Create the full label string using DebugExpr::Display for expressions
@@ -398,8 +394,8 @@ where
                 full_label
             },
             data: NodeData {
-                location_id,
-                location_type: location_type.map(|s| s.to_string()),
+                location_key,
+                location_type,
                 backtrace: backtrace_json,
             },
         };
@@ -407,8 +403,8 @@ where
             .push(serde_json::to_value(node).expect("Node serialization should not fail"));
 
         // Track node location for cross-location edge detection
-        if let Some(loc_id) = location_id {
-            self.node_locations.insert(node_id, loc_id);
+        if let Some(loc_key) = location_key {
+            self.node_locations.insert(node_id, loc_key);
         }
 
         Ok(())
@@ -431,8 +427,8 @@ where
             .collect();
 
         // Get location information for styling
-        let src_loc = self.node_locations.get(&src_id).copied();
-        let dst_loc = self.node_locations.get(&dst_id).copied();
+        let src_loc = self.node_locations.get(src_id).copied();
+        let dst_loc = self.node_locations.get(dst_id).copied();
 
         // Add Network tag if edge crosses locations; otherwise add Local for completeness
         if let (Some(src), Some(dst)) = (src_loc, dst_loc)
@@ -463,41 +459,19 @@ where
 
     fn write_location_start(
         &mut self,
-        location_id: usize,
-        location_type: &str,
+        location_key: LocationKey,
+        location_type: LocationType,
     ) -> Result<(), Self::Err> {
-        let location_label = match location_type {
-            "Process" => {
-                if let Some(name) = self.process_names.get(&location_id) {
-                    // Use default name if the type name is just "()" (unit type)
-                    if name == "()" {
-                        format!("Process {}", location_id)
-                    } else {
-                        name.clone()
-                    }
-                } else {
-                    format!("Process {}", location_id)
-                }
-            }
-            "Cluster" => {
-                if let Some(name) = self.cluster_names.get(&location_id) {
-                    name.clone()
-                } else {
-                    format!("Cluster {}", location_id)
-                }
-            }
-            "External" => {
-                if let Some(name) = self.external_names.get(&location_id) {
-                    name.clone()
-                } else {
-                    format!("External {}", location_id)
-                }
-            }
-            _ => location_type.to_string(),
+        let location_label = if let Some(location_name) = self.location_names.get(location_key)
+            && "()" != location_name
+        // Use default name if the type name is just "()" (unit type)
+        {
+            format!("{:?} {}", location_type, location_name)
+        } else {
+            format!("{:?} {:?}", location_type, location_key)
         };
-
         self.locations
-            .insert(location_id, (location_label, Vec::new()));
+            .insert(location_key, (location_label, Vec::new()));
         Ok(())
     }
 
@@ -619,7 +593,7 @@ where
     }
 }
 
-impl<W> HydroJson<W> {
+impl<W> HydroJson<'_, W> {
     /// Check if any nodes have meaningful backtrace data
     fn has_backtrace_data(&self) -> bool {
         self.nodes.iter().any(|node| {
@@ -644,13 +618,14 @@ impl<W> HydroJson<W> {
         serde_json::Map<String, serde_json::Value>,
     ) {
         // Create hierarchy structure (single level: locations as parents, nodes as children)
-        let mut locs: Vec<(&usize, &(String, Vec<VizNodeKey>))> = self.locations.iter().collect();
-        locs.sort_by(|a, b| a.0.cmp(b.0));
+        let mut locs: Vec<(LocationKey, &(String, Vec<VizNodeKey>))> =
+            self.locations.iter().collect();
+        locs.sort_by(|a, b| a.0.cmp(&b.0));
         let hierarchy: Vec<serde_json::Value> = locs
             .into_iter()
-            .map(|(location_id, (label, _))| {
+            .map(|(location_key, (label, _))| {
                 serde_json::json!({
-                    "id": format!("loc_{}", location_id),
+                    "key": location_key.to_string(),
                     "name": label,
                     "children": [] // Single level hierarchy - no nested children
                 })
@@ -660,19 +635,18 @@ impl<W> HydroJson<W> {
         // Create node assignments by reading locationId from each node's data
         // This is more reliable than using the write_node tracking which depends on HashMap iteration order
         // Build and then sort assignments deterministically by node id key
-        let mut tmp: Vec<(String, String)> = Vec::new();
-        for node in &self.nodes {
-            if let (Some(node_id), Some(location_id)) =
-                (node["id"].as_str(), node["data"]["locationId"].as_u64())
+        let mut tmp: Vec<(String, serde_json::Value)> = Vec::new();
+        for node in self.nodes.iter() {
+            if let (Some(node_id), location_key) =
+                (node["id"].as_str(), &node["data"]["locationKey"])
             {
-                let location_key = format!("loc_{}", location_id);
-                tmp.push((node_id.to_string(), location_key));
+                tmp.push((node_id.to_string(), location_key.clone()));
             }
         }
         tmp.sort_by(|a, b| a.0.cmp(&b.0));
         let mut node_assignments = serde_json::Map::new();
         for (k, v) in tmp {
-            node_assignments.insert(k, serde_json::Value::String(v));
+            node_assignments.insert(k, v);
         }
 
         (hierarchy, node_assignments)
@@ -691,10 +665,10 @@ impl<W> HydroJson<W> {
         let mut path_to_node_assignments: HashMap<String, Vec<String>> = HashMap::new(); // path -> [node_ids]
 
         // Process each node's backtrace using the stored backtraces
-        for node in &self.nodes {
+        for node in self.nodes.iter() {
             if let Some(node_id_str) = node["id"].as_str()
                 && let Ok(node_id) = node_id_str.parse::<VizNodeKey>()
-                && let Some(backtrace) = self.node_backtraces.get(&node_id)
+                && let Some(backtrace) = self.node_backtraces.get(node_id)
             {
                 let elements = backtrace.elements().collect::<Vec<_>>();
                 if elements.is_empty() {
@@ -767,7 +741,7 @@ impl<W> HydroJson<W> {
         let mut nodes_without_backtrace = Vec::new();
 
         // Collect all node IDs
-        for node in &self.nodes {
+        for node in self.nodes.iter() {
             if let Some(node_id_str) = node["id"].as_str() {
                 nodes_without_backtrace.push(node_id_str.to_string());
             }
@@ -1048,22 +1022,18 @@ impl<W> HydroJson<W> {
 /// Create JSON from Hydro IR with type names
 pub fn hydro_ir_to_json(
     ir: &[HydroRoot],
-    process_names: Vec<(usize, String)>,
-    cluster_names: Vec<(usize, String)>,
-    external_names: Vec<(usize, String)>,
+    location_names: &SecondaryMap<LocationKey, String>,
 ) -> Result<String, Box<dyn std::error::Error>> {
     let mut output = String::new();
 
-    let config = super::render::HydroWriteConfig {
+    let config = HydroWriteConfig {
         show_metadata: false,
         show_location_groups: true,
         use_short_labels: true, // Default to short labels
-        process_id_name: process_names,
-        cluster_id_name: cluster_names,
-        external_id_name: external_names,
+        location_names,
     };
 
-    super::render::write_hydro_ir_json(&mut output, ir, &config)?;
+    write_hydro_ir_json(&mut output, ir, config)?;
 
     Ok(output)
 }
@@ -1071,14 +1041,10 @@ pub fn hydro_ir_to_json(
 /// Open JSON visualization in browser using the docs visualizer with URL-encoded data
 pub fn open_json_browser(
     ir: &[HydroRoot],
-    process_names: Vec<(usize, String)>,
-    cluster_names: Vec<(usize, String)>,
-    external_names: Vec<(usize, String)>,
+    location_names: &SecondaryMap<LocationKey, String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let config = super::render::HydroWriteConfig {
-        process_id_name: process_names,
-        cluster_id_name: cluster_names,
-        external_id_name: external_names,
+    let config = HydroWriteConfig {
+        location_names,
         ..Default::default()
     };
 
@@ -1089,15 +1055,11 @@ pub fn open_json_browser(
 /// Save JSON to file using the consolidated debug utilities
 pub fn save_json(
     ir: &[HydroRoot],
-    process_names: Vec<(usize, String)>,
-    cluster_names: Vec<(usize, String)>,
-    external_names: Vec<(usize, String)>,
+    location_names: &SecondaryMap<LocationKey, String>,
     filename: &str,
 ) -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
-    let config = super::render::HydroWriteConfig {
-        process_id_name: process_names,
-        cluster_id_name: cluster_names,
-        external_id_name: external_names,
+    let config = HydroWriteConfig {
+        location_names,
         ..Default::default()
     };
 
@@ -1110,10 +1072,5 @@ pub fn save_json(
 pub fn open_browser(
     built_flow: &crate::compile::built::BuiltFlow,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    open_json_browser(
-        built_flow.ir(),
-        built_flow.process_id_name().clone(),
-        built_flow.cluster_id_name().clone(),
-        built_flow.external_id_name().clone(),
-    )
+    open_json_browser(built_flow.ir(), built_flow.location_names())
 }

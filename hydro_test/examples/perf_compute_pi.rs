@@ -103,8 +103,8 @@ async fn main() {
         //[/rustflags]//
     }
 
-    let builder = FlowBuilder::new();
-    let (cluster, leader) = hydro_test::cluster::compute_pi::compute_pi(&builder, 8192);
+    let mut builder = FlowBuilder::new();
+    let (cluster, leader) = hydro_test::cluster::compute_pi::compute_pi(&mut builder, 8192);
 
     let frequency = 128;
 

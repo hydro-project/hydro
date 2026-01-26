@@ -8,6 +8,7 @@ use dfir_lang::graph::DfirGraph;
 use proc_macro2::Span;
 use quote::quote;
 use sha2::{Digest, Sha256};
+use slotmap::SparseSecondaryMap;
 use stageleft::QuotedWithContext;
 use syn::visit_mut::VisitMut;
 use tempfile::TempPath;
@@ -22,9 +23,9 @@ use crate::compile::trybuild::generate::{
 };
 use crate::compile::trybuild::rewriters::UseTestModeStaged;
 use crate::deploy::deploy_runtime::cluster_membership_stream;
-use crate::location::MembershipEvent;
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
+use crate::location::{LocationKey, MembershipEvent};
 use crate::staging_util::get_this_crate;
 
 crate::newtype_counter! {
@@ -71,7 +72,7 @@ pub(crate) struct SimExternalPortRegistry {
     pub(crate) registered: HashMap<ExternalPortId, SimExternalPort>,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct SimExternal {
     pub(crate) shared_inner: Rc<RefCell<SimExternalPortRegistry>>,
 }
@@ -337,7 +338,7 @@ impl<'a> Deploy<'a> for SimDeploy {
 
     #[expect(unreachable_code, reason = "todo!() is unreachable")]
     fn cluster_ids(
-        _of_cluster: usize,
+        _of_cluster: LocationKey,
     ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a {
         todo!();
         stageleft::q!(todo!())
@@ -482,7 +483,7 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
 pub(super) fn create_sim_graph_trybuild(
     process_graphs: BTreeMap<LocationId, DfirGraph>,
     cluster_graphs: BTreeMap<LocationId, DfirGraph>,
-    cluster_max_sizes: HashMap<LocationId, usize>,
+    cluster_max_sizes: SparseSecondaryMap<LocationKey, usize>,
     process_tick_graphs: BTreeMap<LocationId, DfirGraph>,
     cluster_tick_graphs: BTreeMap<LocationId, DfirGraph>,
     extra_stmts_global: Vec<syn::Stmt>,
@@ -490,7 +491,7 @@ pub(super) fn create_sim_graph_trybuild(
 ) -> (String, TrybuildConfig) {
     let source_dir = cargo::manifest_dir().unwrap();
     let source_manifest = dependencies::get_manifest(&source_dir).unwrap();
-    let crate_name = &source_manifest.package.name.to_string().replace("-", "_");
+    let crate_name = source_manifest.package.name.replace("-", "_");
 
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
@@ -522,7 +523,7 @@ pub(super) fn create_sim_graph_trybuild(
                 .map(|s| path!(source_dir / s))
                 .unwrap_or_else(|| path!(source_dir / "src" / "lib.rs")),
             &path!(source_dir / "Cargo.toml"),
-            crate_name,
+            &crate_name,
             Some("hydro___test".to_string()),
         );
 
@@ -610,7 +611,7 @@ pub(super) fn create_sim_graph_trybuild(
 fn compile_sim_graph_trybuild(
     process_graphs: BTreeMap<LocationId, DfirGraph>,
     cluster_graphs: BTreeMap<LocationId, DfirGraph>,
-    cluster_max_sizes: HashMap<LocationId, usize>,
+    cluster_max_sizes: SparseSecondaryMap<LocationKey, usize>,
     process_tick_graphs: BTreeMap<LocationId, DfirGraph>,
     cluster_tick_graphs: BTreeMap<LocationId, DfirGraph>,
     extra_stmts_global: Vec<syn::Stmt>,
@@ -683,16 +684,10 @@ fn compile_sim_graph_trybuild(
             let ser_lid = serde_json::to_string(&lid).unwrap();
             let extra_stmts_per_cluster =
                 extra_stmts_cluster.get(&lid).cloned().unwrap_or_default();
-            let max_size = cluster_max_sizes.get(&lid).cloned().unwrap() as u32;
-
-            let cid = if let LocationId::Cluster(cid) = lid {
-                cid
-            } else {
-                unreachable!()
-            };
+            let max_size = cluster_max_sizes.get(lid.key()).cloned().unwrap() as u32;
 
             let self_id_ident = syn::Ident::new(
-                &format!("__hydro_lang_cluster_self_id_{}", cid),
+                &format!("__hydro_lang_cluster_self_id_{}", lid.key()),
                 Span::call_site(),
             );
 
@@ -726,14 +721,11 @@ fn compile_sim_graph_trybuild(
 
     let cluster_ids_stmts = cluster_max_sizes
         .iter()
-        .map(|(lid, max_size)| {
+        .map(|(loc_key, max_size)| {
             let ident = syn::Ident::new(
                 &format!(
                     "__hydro_lang_cluster_ids_{}",
-                    match lid {
-                        LocationId::Cluster(cid) => cid.to_string(),
-                        _ => panic!("Expected cluster location ID"),
-                    }
+                    loc_key,
                 ),
                 Span::call_site(),
             );

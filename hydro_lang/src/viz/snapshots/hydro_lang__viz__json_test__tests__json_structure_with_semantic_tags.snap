@@ -7,11 +7,14 @@ expression: output
     {
       "data": {
         "backtrace": [],
-        "locationId": 0,
+        "locationKey": {
+          "idx": 1,
+          "version": 255
+        },
         "locationType": "Process"
       },
       "fullLabel": "source [hydro operator]",
-      "id": "VizNodeKey(1v1)",
+      "id": "viz1v143",
       "label": "source",
       "nodeType": "Source",
       "shortLabel": "source"
@@ -19,11 +22,14 @@ expression: output
     {
       "data": {
         "backtrace": [],
-        "locationId": 0,
+        "locationKey": {
+          "idx": 1,
+          "version": 255
+        },
         "locationType": "Process"
       },
       "fullLabel": "map [hydro operator]",
-      "id": "VizNodeKey(2v1)",
+      "id": "viz2v143",
       "label": "map",
       "nodeType": "Transform",
       "shortLabel": "map"
@@ -38,8 +44,8 @@ expression: output
         "TotalOrder",
         "Unbounded"
       ],
-      "source": "VizNodeKey(1v1)",
-      "target": "VizNodeKey(2v1)"
+      "source": "viz1v143",
+      "target": "viz2v143"
     }
   ],
   "hierarchyChoices": [
@@ -51,8 +57,14 @@ expression: output
   ],
   "nodeAssignments": {
     "location": {
-      "VizNodeKey(1v1)": "loc_0",
-      "VizNodeKey(2v1)": "loc_0"
+      "viz1v143": {
+        "idx": 1,
+        "version": 255
+      },
+      "viz2v143": {
+        "idx": 1,
+        "version": 255
+      }
     }
   },
   "selectedHierarchy": "location",

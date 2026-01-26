@@ -21,7 +21,7 @@ pub fn partition<'a, F: Fn((MemberId<()>, String)) -> (MemberId<()>, String) + '
     (cluster1, cluster2)
 }
 
-pub fn decouple_cluster<'a>(flow: &FlowBuilder<'a>) -> (Cluster<'a, ()>, Cluster<'a, ()>) {
+pub fn decouple_cluster<'a>(flow: &mut FlowBuilder<'a>) -> (Cluster<'a, ()>, Cluster<'a, ()>) {
     let cluster1 = flow.cluster();
     let cluster2 = flow.cluster();
     cluster1
@@ -36,7 +36,7 @@ pub fn decouple_cluster<'a>(flow: &FlowBuilder<'a>) -> (Cluster<'a, ()>, Cluster
     (cluster1, cluster2)
 }
 
-pub fn decouple_process<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, ()>, Process<'a, ()>) {
+pub fn decouple_process<'a>(flow: &mut FlowBuilder<'a>) -> (Process<'a, ()>, Process<'a, ()>) {
     let process1 = flow.process();
     let process2 = flow.process();
     process1
@@ -46,7 +46,7 @@ pub fn decouple_process<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, ()>, Process
     (process1, process2)
 }
 
-pub fn simple_cluster<'a>(flow: &FlowBuilder<'a>) -> (Process<'a, ()>, Cluster<'a, ()>) {
+pub fn simple_cluster<'a>(flow: &mut FlowBuilder<'a>) -> (Process<'a, ()>, Cluster<'a, ()>) {
     let process = flow.process();
     let cluster = flow.cluster();
 
@@ -83,8 +83,8 @@ mod tests {
 
     #[test]
     fn simple_cluster_ir() {
-        let builder = hydro_lang::compile::builder::FlowBuilder::new();
-        let _ = super::simple_cluster(&builder);
+        let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
+        let _ = super::simple_cluster(&mut builder);
         let built = builder.finalize();
 
         hydro_build_utils::assert_debug_snapshot!(built.ir());
@@ -94,8 +94,8 @@ mod tests {
     async fn simple_cluster() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::compile::builder::FlowBuilder::new();
-        let (node, cluster) = super::simple_cluster(&builder);
+        let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
+        let (node, cluster) = super::simple_cluster(&mut builder);
 
         let nodes = builder
             .with_default_optimize()
@@ -150,8 +150,8 @@ mod tests {
     async fn decouple_process() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::compile::builder::FlowBuilder::new();
-        let (process1, process2) = super::decouple_process(&builder);
+        let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
+        let (process1, process2) = super::decouple_process(&mut builder);
         let built = builder.with_default_optimize();
 
         let nodes = built
@@ -172,8 +172,8 @@ mod tests {
     async fn decouple_cluster() {
         let mut deployment = Deployment::new();
 
-        let builder = hydro_lang::compile::builder::FlowBuilder::new();
-        let (cluster1, cluster2) = super::decouple_cluster(&builder);
+        let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
+        let (cluster1, cluster2) = super::decouple_cluster(&mut builder);
         let built = builder.with_default_optimize();
 
         let nodes = built
@@ -209,7 +209,7 @@ mod tests {
 
         let num_nodes = 3;
         let num_partitions = 2;
-        let builder = hydro_lang::compile::builder::FlowBuilder::new();
+        let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
         let (cluster1, cluster2) = super::partition(
             builder.cluster::<()>(),
             builder.cluster::<()>(),

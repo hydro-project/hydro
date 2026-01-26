@@ -14,7 +14,7 @@ fn backtrace_chained_ops() {
     use crate::location::Location;
     use crate::prelude::FlowBuilder;
 
-    let flow = FlowBuilder::new();
+    let mut flow = FlowBuilder::new();
     let node = flow.process::<()>();
 
     node.source_iter(q!([123])).for_each(q!(|_| {}));

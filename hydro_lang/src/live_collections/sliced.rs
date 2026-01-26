@@ -817,7 +817,7 @@ mod tests {
 
     #[test]
     fn sim_state_counter() {
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let (input_send, input) = node.sim_input::<i32, _, _>();
@@ -853,7 +853,7 @@ mod tests {
         use crate::live_collections::boundedness::Bounded;
         use crate::location::{Location, Tick};
 
-        let flow = FlowBuilder::new();
+        let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
 
         let (input_send, input) = node.sim_input::<i32, _, _>();
@@ -882,6 +882,52 @@ mod tests {
             input_send.send(30);
             // Third tick: prev is Some(20), so output is 20
             assert_eq!(out_recv.next().await.unwrap(), 20);
+        });
+    }
+
+    /// Test a counter using `use::state` with an initial singleton value.
+    /// Each input increments the counter, and we verify the output after each tick.
+
+    #[test]
+    fn sim_sliced_atomic_keyed_stream() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (input_send, input) = node.sim_input::<(i32, i32), _, _>();
+        let tick = node.tick();
+        let atomic_keyed_input = input.into_keyed().atomic(&tick);
+        let accumulated_inputs = atomic_keyed_input
+            .clone()
+            .assume_ordering(nondet!(/** Test */))
+            .fold(
+                q!(|| 0),
+                q!(|curr, new| {
+                    *curr += new;
+                }),
+            );
+
+        let out_recv = sliced! {
+            let atomic_keyed_input = use::atomic(atomic_keyed_input, nondet!(/** test */));
+            let accumulated_inputs = use::atomic(accumulated_inputs, nondet!(/** test */));
+            accumulated_inputs.join_keyed_stream(atomic_keyed_input)
+                .map(q!(|(sum, _input)| sum))
+                .entries()
+        }
+        .assume_ordering_trusted(nondet!(/** test */))
+        .sim_output();
+
+        flow.sim().exhaustive(async || {
+            input_send.send((1, 1));
+            assert_eq!(out_recv.next().await.unwrap(), (1, 1));
+
+            input_send.send((1, 2));
+            assert_eq!(out_recv.next().await.unwrap(), (1, 3));
+
+            input_send.send((2, 1));
+            assert_eq!(out_recv.next().await.unwrap(), (2, 1));
+
+            input_send.send((1, 3));
+            assert_eq!(out_recv.next().await.unwrap(), (1, 6));
         });
     }
 }

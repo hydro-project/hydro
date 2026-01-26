@@ -1,13 +1,13 @@
-use std::collections::{BTreeMap, HashMap};
 use std::marker::PhantomData;
 
 use dfir_lang::graph::{DfirGraph, eliminate_extra_unions_tees, partition_graph};
+use slotmap::{SecondaryMap, SlotMap};
 
 use super::compiled::CompiledFlow;
 use super::deploy::{DeployFlow, DeployResult};
 use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
 use super::ir::{HydroRoot, emit};
-use crate::location::{Cluster, External, Process};
+use crate::location::{Cluster, External, LocationKey, LocationType, Process};
 #[cfg(stageleft_runtime)]
 #[cfg(feature = "sim")]
 use crate::sim::{flow::SimFlow, graph::SimNode};
@@ -18,17 +18,15 @@ use crate::viz::api::GraphApi;
 
 pub struct BuiltFlow<'a> {
     pub(super) ir: Vec<HydroRoot>,
-    pub(super) process_id_name: Vec<(usize, String)>,
-    pub(super) cluster_id_name: Vec<(usize, String)>,
-    pub(super) external_id_name: Vec<(usize, String)>,
-    pub(super) next_location_id: usize,
+    pub(super) locations: SlotMap<LocationKey, LocationType>,
+    pub(super) location_names: SecondaryMap<LocationKey, String>,
 
     pub(super) _phantom: Invariant<'a>,
 }
 
 pub(crate) fn build_inner<'a, D: Deploy<'a>>(
     ir: &mut Vec<HydroRoot>,
-) -> BTreeMap<usize, DfirGraph> {
+) -> SecondaryMap<LocationKey, DfirGraph> {
     emit::<D>(ir)
         .into_iter()
         .map(|(k, v)| {
@@ -42,32 +40,21 @@ pub(crate) fn build_inner<'a, D: Deploy<'a>>(
 }
 
 impl<'a> BuiltFlow<'a> {
-    pub fn ir(&self) -> &Vec<HydroRoot> {
+    /// Returns all [`HydroRoot`]s in the IR.
+    pub fn ir(&self) -> &[HydroRoot] {
         &self.ir
     }
 
-    pub fn process_id_name(&self) -> &Vec<(usize, String)> {
-        &self.process_id_name
-    }
-
-    pub fn cluster_id_name(&self) -> &Vec<(usize, String)> {
-        &self.cluster_id_name
-    }
-
-    pub fn external_id_name(&self) -> &Vec<(usize, String)> {
-        &self.external_id_name
+    /// Returns all raw location ID -> location name mappings.
+    pub fn location_names(&self) -> &SecondaryMap<LocationKey, String> {
+        &self.location_names
     }
 
     /// Get a GraphApi instance for this built flow
     #[cfg(stageleft_runtime)]
     #[cfg(feature = "viz")]
     pub fn graph_api(&self) -> GraphApi<'_> {
-        GraphApi::new(
-            &self.ir,
-            &self.process_id_name,
-            &self.cluster_id_name,
-            &self.external_id_name,
-        )
+        GraphApi::new(&self.ir, self.location_names())
     }
 
     // String generation methods
@@ -204,14 +191,7 @@ impl<'a> BuiltFlow<'a> {
 
     pub fn optimize_with(mut self, f: impl FnOnce(&mut [HydroRoot])) -> Self {
         f(&mut self.ir);
-        BuiltFlow {
-            ir: std::mem::take(&mut self.ir),
-            process_id_name: std::mem::take(&mut self.process_id_name),
-            cluster_id_name: std::mem::take(&mut self.cluster_id_name),
-            external_id_name: std::mem::take(&mut self.external_id_name),
-            next_location_id: self.next_location_id,
-            _phantom: PhantomData,
-        }
+        self
     }
 
     pub fn with_default_optimize<D: Deploy<'a>>(self) -> DeployFlow<'a, D> {
@@ -225,59 +205,47 @@ impl<'a> BuiltFlow<'a> {
         use std::cell::RefCell;
         use std::rc::Rc;
 
-        use crate::sim::graph::{SimExternal, SimExternalPortRegistry, SimNodePort};
+        use slotmap::SparseSecondaryMap;
+
+        use crate::sim::graph::SimNodePort;
 
         let shared_port_counter = Rc::new(RefCell::new(SimNodePort::default()));
-        let processes = self
-            .process_id_name
-            .iter()
-            .map(|id| {
-                (
-                    id.0,
-                    SimNode {
-                        shared_port_counter: shared_port_counter.clone(),
-                    },
-                )
-            })
-            .collect();
 
-        let clusters = self
-            .cluster_id_name
-            .iter()
-            .map(|id| {
-                (
-                    id.0,
-                    SimNode {
-                        shared_port_counter: shared_port_counter.clone(),
-                    },
-                )
-            })
-            .collect();
+        let mut processes = SparseSecondaryMap::new();
+        let mut clusters = SparseSecondaryMap::new();
+        let externals = SparseSecondaryMap::new();
 
-        let externals_port_registry = Rc::new(RefCell::new(SimExternalPortRegistry::default()));
-        let externals = self
-            .external_id_name
-            .iter()
-            .map(|id| {
-                (
-                    id.0,
-                    SimExternal {
-                        shared_inner: externals_port_registry.clone(),
-                    },
-                )
-            })
-            .collect();
+        for (key, loc) in self.locations.iter() {
+            match loc {
+                LocationType::Process => {
+                    processes.insert(
+                        key,
+                        SimNode {
+                            shared_port_counter: shared_port_counter.clone(),
+                        },
+                    );
+                }
+                LocationType::Cluster => {
+                    clusters.insert(
+                        key,
+                        SimNode {
+                            shared_port_counter: shared_port_counter.clone(),
+                        },
+                    );
+                }
+                LocationType::External => {
+                    panic!("Sim cannot have externals");
+                }
+            }
+        }
 
         SimFlow {
             ir: std::mem::take(&mut self.ir),
             processes,
             clusters,
-            cluster_max_sizes: HashMap::new(),
             externals,
-            externals_port_registry,
-            _process_id_name: self.process_id_name,
-            _external_id_name: self.external_id_name,
-            _cluster_id_name: self.cluster_id_name,
+            cluster_max_sizes: SparseSecondaryMap::new(),
+            externals_port_registry: Default::default(),
             _phantom: PhantomData,
         }
     }
@@ -286,12 +254,11 @@ impl<'a> BuiltFlow<'a> {
         let (processes, clusters, externals) = Default::default();
         DeployFlow {
             ir: self.ir,
+            locations: self.locations,
+            location_names: self.location_names,
             processes,
-            process_id_name: self.process_id_name,
             clusters,
-            cluster_id_name: self.cluster_id_name,
             externals,
-            external_id_name: self.external_id_name,
             _phantom: PhantomData,
         }
     }

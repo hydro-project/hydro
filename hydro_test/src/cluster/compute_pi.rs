@@ -2,11 +2,11 @@ use std::time::Duration;
 
 use hydro_lang::prelude::*;
 
-pub struct Worker {}
-pub struct Leader {}
+pub enum Worker {}
+pub enum Leader {}
 
 pub fn compute_pi<'a>(
-    flow: &FlowBuilder<'a>,
+    flow: &mut FlowBuilder<'a>,
     batch_size: usize,
 ) -> (Cluster<'a, Worker>, Process<'a, Leader>) {
     let cluster = flow.cluster();
@@ -60,15 +60,15 @@ mod tests {
 
     #[test]
     fn compute_pi_ir() {
-        let builder = hydro_lang::compile::builder::FlowBuilder::new();
-        let _ = super::compute_pi(&builder, 8192);
+        let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
+        let _ = super::compute_pi(&mut builder, 8192);
         let mut built = builder.with_default_optimize::<HydroDeploy>();
 
         hydro_build_utils::assert_debug_snapshot!(built.ir());
 
-        for (id, ir) in built.preview_compile().all_dfir() {
+        for (location_key, ir) in built.preview_compile().all_dfir() {
             hydro_build_utils::insta::with_settings!({
-                snapshot_suffix => format!("surface_graph_{id}"),
+                snapshot_suffix => format!("surface_graph_{location_key}"),
             }, {
                 hydro_build_utils::assert_snapshot!(ir.surface_syntax_string());
             });
