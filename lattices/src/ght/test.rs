@@ -209,6 +209,10 @@ mod tests {
             .map(|&(a, b, c)| var_expr!(a, b, c)),
         );
         let htrie = MyGht::new_from(input.clone());
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, fine to collect into set"
+        )]
         let result = input.iter().map(|v| v.as_ref_var()).collect();
         let v: HashSet<ResultType> = htrie.recursive_iter().collect();
         assert_eq!(v, result);
@@ -241,6 +245,10 @@ mod tests {
         // let key = var_expr!(42u8).as_ref_var();
         let key = (); // (var_expr!().as_ref_var();)
         let v: HashSet<ResultType> = leaf.prefix_iter(key).collect();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, fine to collect into set"
+        )]
         let result = input
             .iter()
             // .filter(|t: &&InputType| t.0 == 42)
@@ -276,6 +284,10 @@ mod tests {
         assert_eq!(v, result);
 
         let v: HashSet<ResultType> = htrie.prefix_iter(var_expr!(42u8).as_ref_var()).collect();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, fine to collect into set"
+        )]
         let result = input
             .iter()
             .filter(|t: &&InputType| t.0 == 42)
@@ -317,6 +329,10 @@ mod tests {
         let v: HashSet<ResultType> = htrie
             .prefix_iter(var_expr!(true, 1, "hi").as_ref_var())
             .collect();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, fine to collect into set"
+        )]
         let result = input
             .iter()
             .filter(|t: &&InputType| t.0 && t.1.0 == 1 && t.1.1.0 == "hi")
@@ -326,6 +342,10 @@ mod tests {
         assert_eq!(v, result);
 
         let v: HashSet<ResultType> = htrie.prefix_iter(var_expr!(true).as_ref_var()).collect();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, fine to collect into set"
+        )]
         let result = input
             .iter()
             .filter(|t: &&InputType| t.0)
@@ -499,7 +519,7 @@ mod tests {
             ));
             let out = bim.call(&ght_a, &ght_b);
             let out: HashSet<ResultSchemaRefType> = out.recursive_iter().collect();
-            assert_eq!(out, result.iter().copied().collect());
+            assert_eq!(out, result);
         }
         {
             // Here we use DeepJoinLatticeBimorphism as a more compact representation of the
@@ -510,7 +530,7 @@ mod tests {
             let mut bim = <MyNodeBim as Default>::default();
             let out = bim.call(&ght_a, &ght_b);
             let out: HashSet<ResultSchemaRefType> = out.recursive_iter().collect();
-            assert_eq!(out, result.iter().copied().collect());
+            assert_eq!(out, result);
         }
     }
 

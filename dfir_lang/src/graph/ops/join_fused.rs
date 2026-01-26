@@ -160,6 +160,7 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
 
                 // TODO: start the iterator with the smallest len() table rather than always picking rhs.
                 #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
+                #[allow(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
                 let iter = #rhs_borrow
                     .iter()
                     .filter_map(|(k, v2)| {

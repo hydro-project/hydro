@@ -66,6 +66,10 @@ fn update_book() -> Result<()> {
                     .map(|category| (category, op.name))
             })
             .into_group_map();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, sorted after"
+        )]
         let categories = category_operators
             .keys()
             .copied()
