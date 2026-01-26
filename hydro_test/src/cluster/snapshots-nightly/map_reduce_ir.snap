@@ -60,9 +60,7 @@ expression: built.ir()
                                                                                                                                 stageleft :: runtime_support :: type_hint :: < std :: vec :: Vec < & str > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; vec ! ["abc" , "abc" , "xyz" , "abc"] }),
                                                                                                                             ),
                                                                                                                             metadata: HydroIrMetadata {
-                                                                                                                                location_kind: Process(
-                                                                                                                                    0,
-                                                                                                                                ),
+                                                                                                                                location_id: Process(loc1v1),
                                                                                                                                 collection_kind: Stream {
                                                                                                                                     bound: Bounded,
                                                                                                                                     order: TotalOrder,
@@ -72,9 +70,7 @@ expression: built.ir()
                                                                                                                             },
                                                                                                                         },
                                                                                                                         metadata: HydroIrMetadata {
-                                                                                                                            location_kind: Process(
-                                                                                                                                0,
-                                                                                                                            ),
+                                                                                                                            location_id: Process(loc1v1),
                                                                                                                             collection_kind: Stream {
                                                                                                                                 bound: Bounded,
                                                                                                                                 order: TotalOrder,
@@ -84,9 +80,7 @@ expression: built.ir()
                                                                                                                         },
                                                                                                                     },
                                                                                                                     metadata: HydroIrMetadata {
-                                                                                                                        location_kind: Process(
-                                                                                                                            0,
-                                                                                                                        ),
+                                                                                                                        location_id: Process(loc1v1),
                                                                                                                         collection_kind: Stream {
                                                                                                                             bound: Bounded,
                                                                                                                             order: TotalOrder,
@@ -96,12 +90,7 @@ expression: built.ir()
                                                                                                                     },
                                                                                                                 },
                                                                                                                 metadata: HydroIrMetadata {
-                                                                                                                    location_kind: Tick(
-                                                                                                                        0,
-                                                                                                                        Process(
-                                                                                                                            0,
-                                                                                                                        ),
-                                                                                                                    ),
+                                                                                                                    location_id: Tick(0, Process(loc1v1)),
                                                                                                                     collection_kind: Stream {
                                                                                                                         bound: Bounded,
                                                                                                                         order: TotalOrder,
@@ -130,14 +119,10 @@ expression: built.ir()
                                                                                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: TaglessMemberId , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | (k , v) | (MemberId :: from_tagless (k) , v) }),
                                                                                                                                                         input: Source {
                                                                                                                                                             source: ClusterMembers(
-                                                                                                                                                                Cluster(
-                                                                                                                                                                    1,
-                                                                                                                                                                ),
+                                                                                                                                                                Cluster(loc2v1),
                                                                                                                                                             ),
                                                                                                                                                             metadata: HydroIrMetadata {
-                                                                                                                                                                location_kind: Process(
-                                                                                                                                                                    0,
-                                                                                                                                                                ),
+                                                                                                                                                                location_id: Process(loc1v1),
                                                                                                                                                                 collection_kind: Stream {
                                                                                                                                                                     bound: Unbounded,
                                                                                                                                                                     order: TotalOrder,
@@ -147,9 +132,7 @@ expression: built.ir()
                                                                                                                                                             },
                                                                                                                                                         },
                                                                                                                                                         metadata: HydroIrMetadata {
-                                                                                                                                                            location_kind: Process(
-                                                                                                                                                                0,
-                                                                                                                                                            ),
+                                                                                                                                                            location_id: Process(loc1v1),
                                                                                                                                                             collection_kind: Stream {
                                                                                                                                                                 bound: Unbounded,
                                                                                                                                                                 order: TotalOrder,
@@ -159,9 +142,7 @@ expression: built.ir()
                                                                                                                                                         },
                                                                                                                                                     },
                                                                                                                                                     metadata: HydroIrMetadata {
-                                                                                                                                                        location_kind: Process(
-                                                                                                                                                            0,
-                                                                                                                                                        ),
+                                                                                                                                                        location_id: Process(loc1v1),
                                                                                                                                                         collection_kind: KeyedStream {
                                                                                                                                                             bound: Unbounded,
                                                                                                                                                             value_order: TotalOrder,
@@ -172,9 +153,7 @@ expression: built.ir()
                                                                                                                                                     },
                                                                                                                                                 },
                                                                                                                                                 metadata: HydroIrMetadata {
-                                                                                                                                                    location_kind: Process(
-                                                                                                                                                        0,
-                                                                                                                                                    ),
+                                                                                                                                                    location_id: Process(loc1v1),
                                                                                                                                                     collection_kind: KeyedSingleton {
                                                                                                                                                         bound: Unbounded,
                                                                                                                                                         key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: map_reduce :: Worker >,
@@ -183,12 +162,7 @@ expression: built.ir()
                                                                                                                                                 },
                                                                                                                                             },
                                                                                                                                             metadata: HydroIrMetadata {
-                                                                                                                                                location_kind: Tick(
-                                                                                                                                                    0,
-                                                                                                                                                    Process(
-                                                                                                                                                        0,
-                                                                                                                                                    ),
-                                                                                                                                                ),
+                                                                                                                                                location_id: Tick(0, Process(loc1v1)),
                                                                                                                                                 collection_kind: KeyedSingleton {
                                                                                                                                                     bound: Bounded,
                                                                                                                                                     key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: map_reduce :: Worker >,
@@ -197,12 +171,7 @@ expression: built.ir()
                                                                                                                                             },
                                                                                                                                         },
                                                                                                                                         metadata: HydroIrMetadata {
-                                                                                                                                            location_kind: Tick(
-                                                                                                                                                0,
-                                                                                                                                                Process(
-                                                                                                                                                    0,
-                                                                                                                                                ),
-                                                                                                                                            ),
+                                                                                                                                            location_id: Tick(0, Process(loc1v1)),
                                                                                                                                             collection_kind: KeyedSingleton {
                                                                                                                                                 bound: Bounded,
                                                                                                                                                 key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: map_reduce :: Worker >,
@@ -211,12 +180,7 @@ expression: built.ir()
                                                                                                                                         },
                                                                                                                                     },
                                                                                                                                     metadata: HydroIrMetadata {
-                                                                                                                                        location_kind: Tick(
-                                                                                                                                            0,
-                                                                                                                                            Process(
-                                                                                                                                                0,
-                                                                                                                                            ),
-                                                                                                                                        ),
+                                                                                                                                        location_id: Tick(0, Process(loc1v1)),
                                                                                                                                         collection_kind: KeyedStream {
                                                                                                                                             bound: Bounded,
                                                                                                                                             value_order: TotalOrder,
@@ -227,12 +191,7 @@ expression: built.ir()
                                                                                                                                     },
                                                                                                                                 },
                                                                                                                                 metadata: HydroIrMetadata {
-                                                                                                                                    location_kind: Tick(
-                                                                                                                                        0,
-                                                                                                                                        Process(
-                                                                                                                                            0,
-                                                                                                                                        ),
-                                                                                                                                    ),
+                                                                                                                                    location_id: Tick(0, Process(loc1v1)),
                                                                                                                                     collection_kind: Stream {
                                                                                                                                         bound: Bounded,
                                                                                                                                         order: NoOrder,
@@ -242,12 +201,7 @@ expression: built.ir()
                                                                                                                                 },
                                                                                                                             },
                                                                                                                             metadata: HydroIrMetadata {
-                                                                                                                                location_kind: Tick(
-                                                                                                                                    0,
-                                                                                                                                    Process(
-                                                                                                                                        0,
-                                                                                                                                    ),
-                                                                                                                                ),
+                                                                                                                                location_id: Tick(0, Process(loc1v1)),
                                                                                                                                 collection_kind: Stream {
                                                                                                                                     bound: Bounded,
                                                                                                                                     order: NoOrder,
@@ -258,12 +212,7 @@ expression: built.ir()
                                                                                                                         },
                                                                                                                         trusted: false,
                                                                                                                         metadata: HydroIrMetadata {
-                                                                                                                            location_kind: Tick(
-                                                                                                                                0,
-                                                                                                                                Process(
-                                                                                                                                    0,
-                                                                                                                                ),
-                                                                                                                            ),
+                                                                                                                            location_id: Tick(0, Process(loc1v1)),
                                                                                                                             collection_kind: Stream {
                                                                                                                                 bound: Bounded,
                                                                                                                                 order: TotalOrder,
@@ -273,12 +222,7 @@ expression: built.ir()
                                                                                                                         },
                                                                                                                     },
                                                                                                                     metadata: HydroIrMetadata {
-                                                                                                                        location_kind: Tick(
-                                                                                                                            0,
-                                                                                                                            Process(
-                                                                                                                                0,
-                                                                                                                            ),
-                                                                                                                        ),
+                                                                                                                        location_id: Tick(0, Process(loc1v1)),
                                                                                                                         collection_kind: Singleton {
                                                                                                                             bound: Bounded,
                                                                                                                             element_type: std :: vec :: Vec < hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > >,
@@ -286,12 +230,7 @@ expression: built.ir()
                                                                                                                     },
                                                                                                                 },
                                                                                                                 metadata: HydroIrMetadata {
-                                                                                                                    location_kind: Tick(
-                                                                                                                        0,
-                                                                                                                        Process(
-                                                                                                                            0,
-                                                                                                                        ),
-                                                                                                                    ),
+                                                                                                                    location_id: Tick(0, Process(loc1v1)),
                                                                                                                     collection_kind: Optional {
                                                                                                                         bound: Bounded,
                                                                                                                         element_type: std :: vec :: Vec < hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > >,
@@ -299,12 +238,7 @@ expression: built.ir()
                                                                                                                 },
                                                                                                             },
                                                                                                             metadata: HydroIrMetadata {
-                                                                                                                location_kind: Tick(
-                                                                                                                    0,
-                                                                                                                    Process(
-                                                                                                                        0,
-                                                                                                                    ),
-                                                                                                                ),
+                                                                                                                location_id: Tick(0, Process(loc1v1)),
                                                                                                                 collection_kind: Stream {
                                                                                                                     bound: Bounded,
                                                                                                                     order: TotalOrder,
@@ -314,12 +248,7 @@ expression: built.ir()
                                                                                                             },
                                                                                                         },
                                                                                                         metadata: HydroIrMetadata {
-                                                                                                            location_kind: Tick(
-                                                                                                                0,
-                                                                                                                Process(
-                                                                                                                    0,
-                                                                                                                ),
-                                                                                                            ),
+                                                                                                            location_id: Tick(0, Process(loc1v1)),
                                                                                                             collection_kind: Stream {
                                                                                                                 bound: Bounded,
                                                                                                                 order: TotalOrder,
@@ -329,9 +258,7 @@ expression: built.ir()
                                                                                                         },
                                                                                                     },
                                                                                                     metadata: HydroIrMetadata {
-                                                                                                        location_kind: Process(
-                                                                                                            0,
-                                                                                                        ),
+                                                                                                        location_id: Process(loc1v1),
                                                                                                         collection_kind: Stream {
                                                                                                             bound: Unbounded,
                                                                                                             order: TotalOrder,
@@ -341,9 +268,7 @@ expression: built.ir()
                                                                                                     },
                                                                                                 },
                                                                                                 metadata: HydroIrMetadata {
-                                                                                                    location_kind: Process(
-                                                                                                        0,
-                                                                                                    ),
+                                                                                                    location_id: Process(loc1v1),
                                                                                                     collection_kind: KeyedStream {
                                                                                                         bound: Unbounded,
                                                                                                         value_order: TotalOrder,
@@ -354,9 +279,7 @@ expression: built.ir()
                                                                                                 },
                                                                                             },
                                                                                             metadata: HydroIrMetadata {
-                                                                                                location_kind: Cluster(
-                                                                                                    1,
-                                                                                                ),
+                                                                                                location_id: Cluster(loc2v1),
                                                                                                 collection_kind: Stream {
                                                                                                     bound: Unbounded,
                                                                                                     order: TotalOrder,
@@ -366,9 +289,7 @@ expression: built.ir()
                                                                                             },
                                                                                         },
                                                                                         metadata: HydroIrMetadata {
-                                                                                            location_kind: Cluster(
-                                                                                                1,
-                                                                                            ),
+                                                                                            location_id: Cluster(loc2v1),
                                                                                             collection_kind: Stream {
                                                                                                 bound: Unbounded,
                                                                                                 order: TotalOrder,
@@ -378,9 +299,7 @@ expression: built.ir()
                                                                                         },
                                                                                     },
                                                                                     metadata: HydroIrMetadata {
-                                                                                        location_kind: Cluster(
-                                                                                            1,
-                                                                                        ),
+                                                                                        location_id: Cluster(loc2v1),
                                                                                         collection_kind: KeyedStream {
                                                                                             bound: Unbounded,
                                                                                             value_order: TotalOrder,
@@ -391,12 +310,7 @@ expression: built.ir()
                                                                                     },
                                                                                 },
                                                                                 metadata: HydroIrMetadata {
-                                                                                    location_kind: Tick(
-                                                                                        1,
-                                                                                        Cluster(
-                                                                                            1,
-                                                                                        ),
-                                                                                    ),
+                                                                                    location_id: Tick(1, Cluster(loc2v1)),
                                                                                     collection_kind: KeyedStream {
                                                                                         bound: Bounded,
                                                                                         value_order: TotalOrder,
@@ -407,12 +321,7 @@ expression: built.ir()
                                                                                 },
                                                                             },
                                                                             metadata: HydroIrMetadata {
-                                                                                location_kind: Tick(
-                                                                                    1,
-                                                                                    Cluster(
-                                                                                        1,
-                                                                                    ),
-                                                                                ),
+                                                                                location_id: Tick(1, Cluster(loc2v1)),
                                                                                 collection_kind: KeyedSingleton {
                                                                                     bound: Bounded,
                                                                                     key_type: std :: string :: String,
@@ -421,12 +330,7 @@ expression: built.ir()
                                                                             },
                                                                         },
                                                                         metadata: HydroIrMetadata {
-                                                                            location_kind: Tick(
-                                                                                1,
-                                                                                Cluster(
-                                                                                    1,
-                                                                                ),
-                                                                            ),
+                                                                            location_id: Tick(1, Cluster(loc2v1)),
                                                                             collection_kind: KeyedStream {
                                                                                 bound: Bounded,
                                                                                 value_order: TotalOrder,
@@ -437,12 +341,7 @@ expression: built.ir()
                                                                         },
                                                                     },
                                                                     metadata: HydroIrMetadata {
-                                                                        location_kind: Tick(
-                                                                            1,
-                                                                            Cluster(
-                                                                                1,
-                                                                            ),
-                                                                        ),
+                                                                        location_id: Tick(1, Cluster(loc2v1)),
                                                                         collection_kind: Stream {
                                                                             bound: Bounded,
                                                                             order: NoOrder,
@@ -452,12 +351,7 @@ expression: built.ir()
                                                                     },
                                                                 },
                                                                 metadata: HydroIrMetadata {
-                                                                    location_kind: Tick(
-                                                                        1,
-                                                                        Cluster(
-                                                                            1,
-                                                                        ),
-                                                                    ),
+                                                                    location_id: Tick(1, Cluster(loc2v1)),
                                                                     collection_kind: Stream {
                                                                         bound: Bounded,
                                                                         order: NoOrder,
@@ -467,9 +361,7 @@ expression: built.ir()
                                                                 },
                                                             },
                                                             metadata: HydroIrMetadata {
-                                                                location_kind: Cluster(
-                                                                    1,
-                                                                ),
+                                                                location_id: Cluster(loc2v1),
                                                                 collection_kind: Stream {
                                                                     bound: Unbounded,
                                                                     order: NoOrder,
@@ -479,9 +371,7 @@ expression: built.ir()
                                                             },
                                                         },
                                                         metadata: HydroIrMetadata {
-                                                            location_kind: Process(
-                                                                0,
-                                                            ),
+                                                            location_id: Process(loc1v1),
                                                             collection_kind: Stream {
                                                                 bound: Unbounded,
                                                                 order: NoOrder,
@@ -491,9 +381,7 @@ expression: built.ir()
                                                         },
                                                     },
                                                     metadata: HydroIrMetadata {
-                                                        location_kind: Process(
-                                                            0,
-                                                        ),
+                                                        location_id: Process(loc1v1),
                                                         collection_kind: KeyedStream {
                                                             bound: Unbounded,
                                                             value_order: NoOrder,
@@ -504,9 +392,7 @@ expression: built.ir()
                                                     },
                                                 },
                                                 metadata: HydroIrMetadata {
-                                                    location_kind: Process(
-                                                        0,
-                                                    ),
+                                                    location_id: Process(loc1v1),
                                                     collection_kind: Stream {
                                                         bound: Unbounded,
                                                         order: NoOrder,
@@ -516,9 +402,7 @@ expression: built.ir()
                                                 },
                                             },
                                             metadata: HydroIrMetadata {
-                                                location_kind: Process(
-                                                    0,
-                                                ),
+                                                location_id: Process(loc1v1),
                                                 collection_kind: Stream {
                                                     bound: Unbounded,
                                                     order: NoOrder,
@@ -528,9 +412,7 @@ expression: built.ir()
                                             },
                                         },
                                         metadata: HydroIrMetadata {
-                                            location_kind: Process(
-                                                0,
-                                            ),
+                                            location_id: Process(loc1v1),
                                             collection_kind: KeyedStream {
                                                 bound: Unbounded,
                                                 value_order: NoOrder,
@@ -542,9 +424,7 @@ expression: built.ir()
                                     },
                                     trusted: false,
                                     metadata: HydroIrMetadata {
-                                        location_kind: Process(
-                                            0,
-                                        ),
+                                        location_id: Process(loc1v1),
                                         collection_kind: KeyedStream {
                                             bound: Unbounded,
                                             value_order: TotalOrder,
@@ -555,9 +435,7 @@ expression: built.ir()
                                     },
                                 },
                                 metadata: HydroIrMetadata {
-                                    location_kind: Process(
-                                        0,
-                                    ),
+                                    location_id: Process(loc1v1),
                                     collection_kind: KeyedSingleton {
                                         bound: Unbounded,
                                         key_type: std :: string :: String,
@@ -566,12 +444,7 @@ expression: built.ir()
                                 },
                             },
                             metadata: HydroIrMetadata {
-                                location_kind: Tick(
-                                    2,
-                                    Process(
-                                        0,
-                                    ),
-                                ),
+                                location_id: Tick(2, Process(loc1v1)),
                                 collection_kind: KeyedSingleton {
                                     bound: Bounded,
                                     key_type: std :: string :: String,
@@ -580,12 +453,7 @@ expression: built.ir()
                             },
                         },
                         metadata: HydroIrMetadata {
-                            location_kind: Tick(
-                                2,
-                                Process(
-                                    0,
-                                ),
-                            ),
+                            location_id: Tick(2, Process(loc1v1)),
                             collection_kind: KeyedStream {
                                 bound: Bounded,
                                 value_order: TotalOrder,
@@ -596,12 +464,7 @@ expression: built.ir()
                         },
                     },
                     metadata: HydroIrMetadata {
-                        location_kind: Tick(
-                            2,
-                            Process(
-                                0,
-                            ),
-                        ),
+                        location_id: Tick(2, Process(loc1v1)),
                         collection_kind: Stream {
                             bound: Bounded,
                             order: NoOrder,
@@ -611,9 +474,7 @@ expression: built.ir()
                     },
                 },
                 metadata: HydroIrMetadata {
-                    location_kind: Process(
-                        0,
-                    ),
+                    location_id: Process(loc1v1),
                     collection_kind: Stream {
                         bound: Unbounded,
                         order: NoOrder,
@@ -624,9 +485,7 @@ expression: built.ir()
             },
             trusted: false,
             metadata: HydroIrMetadata {
-                location_kind: Process(
-                    0,
-                ),
+                location_id: Process(loc1v1),
                 collection_kind: Stream {
                     bound: Unbounded,
                     order: TotalOrder,
