@@ -164,7 +164,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
             );
             self.sidecars
                 .entry(location_key)
-                .expect("Location was removed")
+                .expect("location was removed")
                 .or_default()
                 .push(sidecar);
         }
@@ -316,11 +316,8 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                             env,
                             &mut meta,
                             ir,
-                            extra_stmts
-                                .remove(node_key)
-                                .as_deref()
-                                .get_or_insert_default(),
-                            sidecars.remove(node_key).as_deref().get_or_insert_default(),
+                            extra_stmts.remove(node_key).as_deref().unwrap_or_default(),
+                            sidecars.remove(node_key).as_deref().unwrap_or_default(),
                         );
                         true
                     } else {

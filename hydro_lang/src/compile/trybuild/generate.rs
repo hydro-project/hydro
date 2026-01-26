@@ -260,6 +260,7 @@ pub fn compile_graph_trybuild(
                 #(
                     let _ = local_set.spawn_local( #sidecars ); // Uses #dfir_ident
                 )*
+
                 let _ = local_set.run_until(#dfir_ident.run()).await;
             }
         }
@@ -289,11 +290,12 @@ pub fn compile_graph_trybuild(
                 let #dfir_ident = __hydro_runtime(&ports);
                 println!("ack start");
 
-                let local_set = tokio::task::LocalSet::new();
+                let local_set = #root::runtime_support::tokio::task::LocalSet::new();
                 #(
                     let _ = local_set.spawn_local( #sidecars ); // Uses #dfir_ident
                 )*
-                #root::runtime_support::launch::run_stdin_commands(#dfir_ident).await;
+
+                let _ = local_set.run_until(#root::runtime_support::launch::run_stdin_commands(#dfir_ident)).await;
             }
         }
     };
