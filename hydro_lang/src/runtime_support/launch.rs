@@ -85,21 +85,7 @@ pub async fn run(flow: Dfir<'_>) {
     res.unwrap();
 }
 
-#[macro_export]
-macro_rules! launch {
-    ($f:expr) => {
-        async {
-            let ports = $crate::runtime_support::launch::init_no_ack_start().await;
-            let flow = $f(&ports);
 
-            println!("ack start");
-
-            $crate::runtime_support::launch::launch_flow(flow).await
-        }
-    };
-}
-
-pub use crate::launch;
 
 pub async fn launch_flow(mut flow: Dfir<'_>) {
     let stop = tokio::sync::oneshot::channel();
