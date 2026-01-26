@@ -230,6 +230,7 @@ pub fn compile_graph_trybuild(
     let trybuild_crate_name_ident = quote::format_ident!("{}_hydro_trybuild", crate_name);
     let root = get_this_crate();
     let tokio_main_ident = format!("{}::runtime_support::tokio", root);
+    let dfir_ident = quote::format_ident!("{}", crate::compile::DFIR_IDENT);
 
     let source_ast: syn::File = if is_containerized {
         syn::parse_quote! {
@@ -253,13 +254,13 @@ pub fn compile_graph_trybuild(
             async fn main() {
                 #root::telemetry::initialize_tracing();
 
-                let flow = __hydro_runtime().await;
+                let mut #dfir_ident = __hydro_runtime().await;
 
                 let local_set = #root::runtime_support::tokio::task::LocalSet::new();
                 #(
-                    let _ = local_set.spawn_local( #sidecars );
+                    let _ = local_set.spawn_local( #sidecars ); // Uses #dfir_ident
                 )*
-                let () = local_set.run_until(flow.run()).await;
+                let _ = local_set.run_until(#dfir_ident.run()).await;
             }
         }
     } else {
@@ -285,14 +286,14 @@ pub fn compile_graph_trybuild(
             #[#root::runtime_support::tokio::main(crate = #tokio_main_ident, flavor = "current_thread")]
             async fn main() {
                 let ports = #root::runtime_support::launch::init_no_ack_start().await;
-                let flow = __hydro_runtime(&ports);
+                let #dfir_ident = __hydro_runtime(&ports);
                 println!("ack start");
 
                 let local_set = tokio::task::LocalSet::new();
                 #(
-                    let _ = local_set.spawn_local( #sidecars );
+                    let _ = local_set.spawn_local( #sidecars ); // Uses #dfir_ident
                 )*
-                #root::runtime_support::launch::run_stdin_commands(flow).await;
+                #root::runtime_support::launch::run_stdin_commands(#dfir_ident).await;
             }
         }
     };

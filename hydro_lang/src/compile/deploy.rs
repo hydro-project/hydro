@@ -10,7 +10,6 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use slotmap::{SecondaryMap, SlotMap, SparseSecondaryMap};
 use stageleft::QuotedWithContext;
-use syn::parse_quote;
 
 use super::built::build_inner;
 use super::compiled::CompiledFlow;
@@ -161,7 +160,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                 location_key,
                 location_type,
                 location_name,
-                &parse_quote!(flow), // TODO(mingwei): handle `dfir_ident`
+                &quote::format_ident!("{}", super::DFIR_IDENT),
             );
             self.sidecars
                 .entry(location_key)
@@ -186,7 +185,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
             location_key,
             location_type,
             location_name,
-            &parse_quote!(flow), // TODO(mingwei): handle `dfir_ident`
+            &quote::format_ident!("{}", super::DFIR_IDENT),
         );
         self.sidecars
             .entry(location_key)
@@ -224,10 +223,17 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     /// Compiles the flow into DFIR ([`dfir_lang::graph::DfirGraph`]) including networking.
     ///
     /// (This does not compile the DFIR itself, instead use [`Self::deploy`] to compile & deploy the DFIR).
-    pub fn compile(&mut self) -> CompiledFlow<'a> {
+    pub fn compile(mut self) -> CompiledFlow<'a> {
+        self.compile_internal()
+    }
+
+    /// Same as [`Self::compile`] but does not invalidate `self`, for internal use.
+    ///
+    /// Empties `self.sidecars` and modifies `self.ir`, leaving `self` in a partial state.
+    fn compile_internal(&mut self) -> CompiledFlow<'a> {
         let mut seen_tees: HashMap<_, _> = HashMap::new();
         let mut extra_stmts = SparseSecondaryMap::new();
-        self.ir.iter_mut().for_each(|leaf| {
+        for leaf in self.ir.iter_mut() {
             leaf.compile_network::<D>(
                 &mut extra_stmts,
                 &mut seen_tees,
@@ -235,12 +241,12 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                 &self.clusters,
                 &self.externals,
             );
-        });
+        }
 
         CompiledFlow {
             dfir: build_inner::<D>(&mut self.ir),
             extra_stmts,
-            sidecars: std::mem::take(&mut self.sidecars), // TODO(mingwei)
+            sidecars: std::mem::take(&mut self.sidecars),
             _phantom: PhantomData,
         }
     }
@@ -295,7 +301,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
             mut extra_stmts,
             mut sidecars,
             _phantom,
-        } = self.compile();
+        } = self.compile_internal();
 
         let mut compiled = dfir;
         self.cluster_id_stmts(&mut extra_stmts);
@@ -365,9 +371,9 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         }
 
         let mut seen_tees_connect = HashMap::new();
-        self.ir.iter_mut().for_each(|leaf| {
+        for leaf in self.ir.iter_mut() {
             leaf.connect_network(&mut seen_tees_connect);
-        });
+        }
 
         DeployResult {
             location_names: self.location_names,
