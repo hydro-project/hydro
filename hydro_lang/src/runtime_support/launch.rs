@@ -85,8 +85,6 @@ pub async fn run(flow: Dfir<'_>) {
     res.unwrap();
 }
 
-
-
 pub async fn launch_flow(mut flow: Dfir<'_>) {
     let stop = tokio::sync::oneshot::channel();
     tokio::task::spawn_blocking(|| {
