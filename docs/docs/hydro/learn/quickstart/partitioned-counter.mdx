@@ -26,7 +26,15 @@ Before partitioning the counter, you need to make the `keyed_counter_service` fu
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
-} showLineNumbers={8}>{getLines(keyedCounterSrc, 8, 14)}</CodeBlock>
+} showLineNumbers={8}>{getLines(keyedCounterSrc, 8, 14, `
+pub fn keyed_counter_service<'a, L: Location<'a> + NoTick>(
+    increment_requests: KeyedStream<u32, String, L, Unbounded>,
+    get_requests: KeyedStream<u32, String, L, Unbounded>,
+) -> (
+    KeyedStream<u32, String, L, Unbounded>,
+    KeyedStream<u32, (String, usize), L, Unbounded, NoOrder>,
+) {
+`)}</CodeBlock>
 
 The `L: Location<'a> + NoTick` bound means the function works with any location that that is outside a `Tick` (like `Process` or `Cluster`). This lets you reuse the same counter logic whether it runs on a single process or several cluster members. The rest of the function body remains unchanged, it already works with any location type.
 
@@ -48,7 +56,17 @@ You'll build a sharded counter service that partitions keys across cluster membe
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/partitioned_counter.rs">src/partitioned_counter.rs</Link>
-} showLineNumbers={11}>{getLines(partitionedCounterSrc, 11, 19)}</CodeBlock>
+} showLineNumbers={11}>{getLines(partitionedCounterSrc, 11, 19, `
+pub fn sharded_counter_service<'a>(
+    leader: &Process<'a, CounterServer>,
+    shard_servers: &Cluster<'a, CounterShard>,
+    increment_requests: KeyedStream<u32, String, Process<'a, CounterServer>>,
+    get_requests: KeyedStream<u32, String, Process<'a, CounterServer>>,
+) -> (
+    KeyedStream<u32, String, Process<'a, CounterServer>, Unbounded, NoOrder>,
+    KeyedStream<u32, (String, usize), Process<'a, CounterServer>, Unbounded, NoOrder>,
+) {
+`)}</CodeBlock>
 
 Unlike the previous tutorials, this function takes references to both a leader `Process` and a `Cluster` of shard servers as parameters. This is necessary because the service will send data between these locations internally: requests arrive at the leader, get routed to the appropriate shard, and responses return to the leader.
 
@@ -58,7 +76,15 @@ To partition data across the cluster, you need to assign each key to a specific 
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/partitioned_counter.rs">src/partitioned_counter.rs</Link>
-} showLineNumbers={20}>{getLines(partitionedCounterSrc, 20, 26)}</CodeBlock>
+} showLineNumbers={20}>{getLines(partitionedCounterSrc, 20, 26, `
+let sharded_increment_requests = increment_requests
+    .prefix_key(q!(|(_client, key)| {
+        let mut hasher = DefaultHasher::new();
+        key.hash(&mut hasher);
+        MemberId::from_raw_id(hasher.finish() as u32 % 5)
+    }))
+    .demux(shard_servers, TCP.bincode());
+`)}</CodeBlock>
 
 The `prefix_key` method adds a new key to the front of the keyed stream. Here, you compute a `MemberId` by hashing the key name and taking modulo 5 (assuming 5 shards). The result is a stream keyed by `(MemberId, client_id, key_name)`.
 
@@ -76,7 +102,23 @@ The `demux` method sends each element to the cluster member specified by the fir
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/partitioned_counter.rs">src/partitioned_counter.rs</Link>
-} showLineNumbers={20}>{highlightLines(getLines(partitionedCounterSrc, 20, 34), [7, 15])}</CodeBlock>
+} showLineNumbers={20}>{highlightLines(getLines(partitionedCounterSrc, 20, 34, `
+let sharded_increment_requests = increment_requests
+    .prefix_key(q!(|(_client, key)| {
+        let mut hasher = DefaultHasher::new();
+        key.hash(&mut hasher);
+        MemberId::from_raw_id(hasher.finish() as u32 % 5)
+    }))
+    .demux(shard_servers, TCP.bincode());
+
+let sharded_get_requests = get_requests
+    .prefix_key(q!(|(_client, key)| {
+        let mut hasher = DefaultHasher::new();
+        key.hash(&mut hasher);
+        MemberId::from_raw_id(hasher.finish() as u32 % 5)
+    }))
+    .demux(shard_servers, TCP.bincode());
+`), [7, 15])}</CodeBlock>
 
 After `demux`, the stream is now located at the cluster. The stream returned by a demux operator preserves the remaining keys after the `MemberId` is consumed for routing. In this case, we are left with a `KeyedStream<u32, String, Cluster<'a, CounterShard>>` - a stream keyed by client ID and key name, located on the cluster.
 
@@ -86,7 +128,12 @@ Now you can call the generic `keyed_counter_service` function with the cluster-l
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/partitioned_counter.rs">src/partitioned_counter.rs</Link>
-} showLineNumbers={36}>{getLines(partitionedCounterSrc, 36, 39)}</CodeBlock>
+} showLineNumbers={36}>{getLines(partitionedCounterSrc, 36, 39, `
+let (sharded_increment_ack, sharded_get_response) = super::keyed_counter::keyed_counter_service(
+    sharded_increment_requests,
+    sharded_get_requests,
+);
+`)}</CodeBlock>
 
 Because `keyed_counter_service` is generic over the location type, it works seamlessly with `Cluster<'a, CounterShard>`. Each cluster member independently maintains its own keyed singleton for the keys it's responsible for.
 
@@ -94,7 +141,11 @@ Finally, you need to send the responses back to the leader process:
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/partitioned_counter.rs">src/partitioned_counter.rs</Link>
-} showLineNumbers={41}>{getLines(partitionedCounterSrc, 41, 44)}</CodeBlock>
+} showLineNumbers={41}>{getLines(partitionedCounterSrc, 41, 44, `
+let increment_ack = sharded_increment_ack
+    .send(leader, TCP.bincode())
+    .drop_key_prefix();
+`)}</CodeBlock>
 
 The `send` method sends data from the cluster to the leader process. When data moves from a cluster to a process, it arrives as a keyed stream with `MemberId` as the first key. The `drop_key_prefix` method removes this `MemberId` key, leaving just the original keys (client ID and response data).
 
@@ -106,7 +157,39 @@ The test is similar to the keyed counter test, but now you need to instantiate t
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/partitioned_counter.rs">src/partitioned_counter.rs</Link>
-} showLineNumbers={54}>{highlightLines(getLines(partitionedCounterSrc, 54, 84), [5, 20])}</CodeBlock>
+} showLineNumbers={54}>{highlightLines(getLines(partitionedCounterSrc, 54, 84, `
+use hydro_lang::prelude::*;
+
+use super::*;
+
+#[test]
+fn test_counter_read_after_write() {
+    let mut flow = FlowBuilder::new();
+    let process = flow.process();
+    let shards = flow.cluster();
+
+    let (inc_in_port, inc_requests) = process.sim_input();
+    let inc_requests = inc_requests.into_keyed();
+
+    let (get_in_port, get_requests) = process.sim_input();
+    let get_requests = get_requests.into_keyed();
+
+    let (inc_acks, get_responses) =
+        sharded_counter_service(&process, &shards, inc_requests, get_requests);
+
+    let inc_out_port = inc_acks.entries().sim_output();
+    let get_out_port = get_responses.entries().sim_output();
+
+    flow.sim()
+        .with_cluster_size(&shards, 5)
+        .exhaustive(async || {
+            inc_in_port.send((1, "abc".to_string()));
+            inc_out_port
+                .assert_yields_unordered([(1, "abc".to_string())])
+                .await;
+            get_in_port.send((1, "abc".to_string()));
+            get_out_port
+`), [5, 20])}</CodeBlock>
 
 The `with_cluster_size(&shards, 5)` method configures the simulator to create 5 cluster members. The test verifies that the partitioned counter behaves identically to the single-process version, even though the state is now distributed across multiple machines.
 
