@@ -1039,7 +1039,7 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, L, Bounded> {
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// let keyed_stream = process
+    /// let keyed_singleton = process
     ///     .source_iter(q!(vec![ (1, 'a'), (2, 'b'), (3, 'c'), (4, 'd') ]))
     ///     .batch(&tick, nondet!(/** test */))
     ///     .into_keyed()
@@ -1047,8 +1047,9 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, L, Bounded> {
     /// let keys_to_keep = process
     ///     .source_iter(q!(vec![1, 2]))
     ///     .batch(&tick, nondet!(/** test */));
-    /// keyed_stream.filter_key_in(keys_to_keep).all_ticks()
+    /// keyed_singleton.filter_key_in(keys_to_keep)
     /// #   .entries()
+    /// #   .all_ticks()
     /// # }, |mut stream| async move {
     /// // { 1: ['a'], 2: ['b'] }
     /// # let mut results = Vec::new();
