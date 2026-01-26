@@ -38,7 +38,15 @@ The standard pattern in Hydro is to take in a separate parameter for each reques
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_client_counter.rs">src/single_client_counter.rs</Link>
-} showLineNumbers={5}>{getLines(singleClientCounterSrc, 5, 11)}</CodeBlock>
+} showLineNumbers={5}>{getLines(singleClientCounterSrc, 5, 11, `
+pub fn single_client_counter_service<'a>(
+    increment_requests: Stream<(), Process<'a, CounterServer>>,
+    get_requests: Stream<(), Process<'a, CounterServer>>,
+) -> (
+    Stream<(), Process<'a, CounterServer>>, // increment acknowledgments
+    Stream<usize, Process<'a, CounterServer>>, // get responses
+) {
+`)}</CodeBlock>
 
 ## Maintaining State with Singleton
 
@@ -48,7 +56,9 @@ You can create a singleton by counting the number of increment requests:
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_client_counter_buggy.rs">src/single_client_counter.rs</Link>
-} showLineNumbers={12}>{getLines(singleClientCounterBuggySrc, 12, 12)}</CodeBlock>
+} showLineNumbers={12}>{getLines(singleClientCounterBuggySrc, 12, 12, `
+let current_count = increment_requests.clone().count();
+`)}</CodeBlock>
 
 The `count()` method consumes the stream and returns a `Singleton<usize>` that tracks the total number of elements seen so far. Since you want to both count the requests and acknowledge them, you use `clone()` to create a copy of the stream.
 
@@ -56,7 +66,9 @@ For now, let's acknowledge increment requests immediately:
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_client_counter_buggy.rs">src/single_client_counter.rs</Link>
-} showLineNumbers={13}>{getLines(singleClientCounterBuggySrc, 13, 13)}</CodeBlock>
+} showLineNumbers={13}>{getLines(singleClientCounterBuggySrc, 13, 13, `
+let increment_ack = increment_requests;
+`)}</CodeBlock>
 
 ## Asynchronous State and Slices
 
@@ -66,7 +78,11 @@ Hydro provides the `sliced!` macro for this purpose. It allows you to perform co
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_client_counter_buggy.rs">src/single_client_counter.rs</Link>
-} showLineNumbers={15}>{getLines(singleClientCounterBuggySrc, 15, 17)}</CodeBlock>
+} showLineNumbers={15}>{getLines(singleClientCounterBuggySrc, 15, 17, `
+let get_response = sliced! {
+    let request_batch = use(get_requests, nondet!(/** we never observe batch boundaries */));
+    let count_snapshot = use(current_count, nondet!(/** intentional, based on when the request came in */));
+`)}</CodeBlock>
 
 The `sliced!` macro takes multiple `use` statements, using syntax inspired by React hooks. Each specifies a live collection to slice along with a non-determinism explanation, and returns the current slice. In this case:
 
@@ -88,7 +104,10 @@ After declaring the `use` statements, which must come at the top of the macro in
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_client_counter_buggy.rs">src/single_client_counter.rs</Link>
-} showLineNumbers={19}>{getLines(singleClientCounterBuggySrc, 19, 20)}</CodeBlock>
+} showLineNumbers={19}>{getLines(singleClientCounterBuggySrc, 19, 20, `
+    request_batch.cross_singleton(count_snapshot).map(q!(|(_, count)| count))
+};
+`)}</CodeBlock>
 
 The `cross_singleton` method pairs each element in the stream with the singleton value, creating tuples like `((), 5)`. Then you use `map` to extract just the count from the tuple with `map(q!(|(_, count)| count))`, converting `((), 5)` to just `5`.
 
@@ -98,7 +117,24 @@ Especially in code that involves `nondet!`, it is important to write simulation 
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_client_counter.rs">src/single_client_counter.rs</Link>
-} showLineNumbers={33}>{getLines(singleClientCounterSrc, 33, 52)}</CodeBlock>
+} showLineNumbers={33}>{getLines(singleClientCounterSrc, 33, 52, `
+#[test]
+fn test_counter_read_after_write() {
+    let mut flow = FlowBuilder::new();
+    let process = flow.process();
+    let (inc_in_port, inc_requests) = process.sim_input();
+    let (get_in_port, get_requests) = process.sim_input();
+    let (inc_acks, get_responses) = single_client_counter_service(inc_requests, get_requests);
+    let inc_out_port = inc_acks.sim_output();
+    let get_out_port = get_responses.sim_output();
+    flow.sim().exhaustive(async || {
+        inc_in_port.send(());
+        inc_out_port.assert_yields([()]).await;
+        get_in_port.send(());
+        get_out_port.assert_yields_only([1]).await;
+    });
+}
+`)}</CodeBlock>
 
 This test uses Hydro's exhaustive simulator to test a scenario where the client increments the counter and then reads it back. The test sends an increment request, waits for the acknowledgement, then sends a get request and expects to receive a count of 1.
 
@@ -133,19 +169,32 @@ Calling `atomic()` on a stream (which requires a `Tick` parameter) enables downs
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_client_counter.rs">src/single_client_counter.rs</Link>
-} showLineNumbers={12}>{getLines(singleClientCounterSrc, 12, 13)}</CodeBlock>
+} showLineNumbers={12}>{getLines(singleClientCounterSrc, 12, 13, `
+let atomic_tick = increment_requests.location().tick();
+let increment_request_processing = increment_requests.atomic(&atomic_tick);
+`)}</CodeBlock>
 
 Instead of counting the original stream, you now count using the atomic stream. This produces an atomic singleton that will allow you to take consistent snapshots later. The APIs on an atomic live collection are the same as on a regular live collection, so the counter code is unchanged:
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_client_counter.rs">src/single_client_counter.rs</Link>
-} showLineNumbers={14}>{getLines(singleClientCounterSrc, 14, 14)}</CodeBlock>
+} showLineNumbers={14}>{getLines(singleClientCounterSrc, 14, 14, `
+let current_count = increment_request_processing.clone().count();
+`)}</CodeBlock>
 
 Now, let's focus on the outputs of the counter service. It needs to release acknowledgements and process get requests, while ensuring that a read-after-write produces a consistent response:
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_client_counter.rs">src/single_client_counter.rs</Link>
-} showLineNumbers={15}>{getLines(singleClientCounterSrc, 15, 22)}</CodeBlock>
+} showLineNumbers={15}>{getLines(singleClientCounterSrc, 15, 22, `
+let increment_ack = increment_request_processing.end_atomic();
+
+let get_response = sliced! {
+    let request_batch = use(get_requests, nondet!(/** we never observe batch boundaries */));
+    let count_snapshot = use::atomic(current_count, nondet!(/** atomicity guarantees consistency wrt increments */));
+    request_batch.cross_singleton(count_snapshot).map(q!(|(_, count)| count))
+};
+`)}</CodeBlock>
 
 The `end_atomic()` call is one half of the consistency relationship. It marks the point where the acknowledgements are released to the client. The other half is `use::atomic`, which snapshots the count in a way that is **consistent with respect to** those acknowledgements. The `use::atomic` ensures that the count snapshot reflects all increments whose acknowledgements have been released.
 
