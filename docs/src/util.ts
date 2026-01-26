@@ -8,13 +8,23 @@
 /// Sections are marked in the code with a start tag `//[mysection]//` and and end tag
 /// `//[/mysection]//`. The rest of these tag lines must be whitespace, and these tag lines are not
 /// included in the output. However they are included for line number _counting_.
-export function getLines(str: string, sectionName: string): string;
-export function getLines(str: string, lineStart: number, lineEnd?: number): string;
-export function getLines(str: string, lineStartOrSectionName: number | string, lineEnd?: number): string {
+///
+/// An optional `expected` parameter can be provided as the last argument. If provided, the function
+/// will assert that the extracted content (after trimming whitespace) matches the expected string
+/// (also trimmed). This allows inlining code snippets in docs while ensuring they stay in sync
+/// with the source file.
+export function getLines(str: string, sectionName: string, expected?: string): string;
+export function getLines(str: string, lineStart: number, lineEnd?: number, expected?: string): string;
+export function getLines(str: string, lineStartOrSectionName: number | string, lineEndOrExpected?: number | string, expected?: string): string {
     // `//[section]//` or `//[/section]//` (rest of line must be whitespace).
     const SECTION_REGEX = /^\s*\/\/\[(\/?)(\S+)\]\/\/\s*$/;
     let lines;
+    let lineEnd: number | undefined;
+    let expectedContent: string | undefined;
+
     if ('string' === typeof lineStartOrSectionName) {
+        // Section name mode: getLines(str, sectionName, expected?)
+        expectedContent = lineEndOrExpected as string | undefined;
         let inSection = false;
         lines = str
             .split('\n')
@@ -31,6 +41,15 @@ export function getLines(str: string, lineStartOrSectionName: number | string, l
             })
     }
     else {
+        // Line number mode: getLines(str, lineStart, lineEnd?, expected?)
+        if ('string' === typeof lineEndOrExpected) {
+            // getLines(str, lineStart, expected) - no lineEnd provided
+            expectedContent = lineEndOrExpected;
+            lineEnd = undefined;
+        } else {
+            lineEnd = lineEndOrExpected;
+            expectedContent = expected;
+        }
         lines = str
             .split('\n')
             .slice(lineStartOrSectionName - 1, lineEnd || lineStartOrSectionName) // Select lines before removing section lines.
@@ -40,7 +59,26 @@ export function getLines(str: string, lineStartOrSectionName: number | string, l
     if (0 < leadingWhitespace) {
         lines = lines.map(line => line.slice(leadingWhitespace));
     }
-    return lines.join('\n');
+    const result = lines.join('\n');
+
+    // If expected content is provided, assert it matches
+    if (expectedContent !== undefined) {
+        // Normalize by stripping leading whitespace from each line (MDX can mess with indentation)
+        const stripLeadingWhitespace = (s: string) => s.trim().split('\n').map(line => line.trimStart()).join('\n');
+        const normalizedResult = stripLeadingWhitespace(result);
+        const normalizedExpected = stripLeadingWhitespace(expectedContent);
+        if (normalizedResult !== normalizedExpected) {
+            console.error('getLines assertion failed!');
+            console.error('Expected:\n', normalizedExpected);
+            console.error('Got:\n', normalizedResult);
+            throw new Error(
+                `getLines content mismatch. The inlined code snippet does not match the source file. ` +
+                `Update the expected string or check if the source file has changed.`
+            );
+        }
+    }
+
+    return result;
 }
 
 /// Adds `// highlight-next-line` annotations to the specified lines.
