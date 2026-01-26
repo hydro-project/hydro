@@ -1969,7 +1969,7 @@ where
         R: MinRetries<R2>,
     {
         self.entries().join(other.entries()).into_keyed()
-    }    
+    }
 }
 
 impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, L, B, O, R>
@@ -2174,109 +2174,6 @@ where
         keyed_singleton
             .join_keyed_stream(self)
             .map(q!(|(v2, v)| (v, v2)))
-    }
-
-    /// Emit a keyed stream where the keys are from self and the values are
-    /// 1. If the other keyed stream contains values for the same key, then a tuple of
-    /// (self's value, Some(other's value)).
-    /// 2. Otherwise, a tuple of (self's value, None).
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let keyed_data = process
-    ///     .source_iter(q!(vec![(1, 10), (2, 20), (3, 30)]))
-    ///     .into_keyed()
-    ///     .batch(&tick, nondet!(/** test */));
-    /// let other_data = process
-    ///     .source_iter(q!(vec![(1, 100), (2, 200), (2, 201)]))
-    ///     .into_keyed()
-    ///     .batch(&tick, nondet!(/** test */));
-    /// keyed_data.left_join_keyed_stream(other_data).entries().all_ticks()
-    /// # }, |mut stream| async move {
-    /// // { 1: [(10, Some(100))], 2: [(20, Some(200)), (20, Some(201))], 3: [(30, None)] } in any order
-    /// # let mut results = vec![];
-    /// # for _ in 0..4 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, (10, Some(100))), (2, (20, Some(200))), (2, (20, Some(201))), (3, (30, None))]);
-    /// # }));
-    /// # }
-    /// ```
-    #[expect(clippy::type_complexity, reason = "stream types")]
-    pub fn left_join_keyed_stream<V2, O2: Ordering>(
-        self,
-        other: KeyedStream<K, V2, L, Bounded, O2, R>,
-    ) -> KeyedStream<K, (V, Option<V2>), L, Bounded, NoOrder, R>
-    where
-        K: Eq + Hash + Clone,
-        V: Clone,
-        V2: Clone,
-    {
-        let inner_join = self.clone().join_keyed_stream(other.clone());
-        let left_join_no_inner = self.filter_key_not_in(other.keys()).weakest_ordering();
-
-        inner_join
-            .map(q!(|(v, v2)| (v, Some(v2))))
-            .chain(left_join_no_inner.map(q!(|v| (v, None))))
-    }
-
-    /// Emit a keyed stream where the keys are from self and the values are
-    /// 1. If the keyed singleton contains a value for the same key, then a tuple of
-    /// (self's value, Some(keyed singleton's value)).
-    /// 2. Otherwise, a tuple of (self's value, None).
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let keyed_data = process
-    ///     .source_iter(q!(vec![(1, 10), (2, 20), (3, 30)]))
-    ///     .into_keyed()
-    ///     .batch(&tick, nondet!(/** test */));
-    /// let singleton_data = process
-    ///     .source_iter(q!(vec![(1, 100), (2, 200)]))
-    ///     .into_keyed()
-    ///     .batch(&tick, nondet!(/** test */))
-    ///     .first();
-    /// keyed_data.left_join_keyed_singleton(singleton_data).entries().all_ticks()
-    /// # }, |mut stream| async move {
-    /// // { 1: [(10, Some(100))], 2: [(20, Some(200))], 3: [(30, None)] } in any order
-    /// # let mut results = vec![];
-    /// # for _ in 0..3 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, (10, Some(100))), (2, (20, Some(200))), (3, (30, None))]);
-    /// # }));
-    /// # }
-    /// ```
-    #[expect(clippy::type_complexity, reason = "stream types")]
-    pub fn left_join_keyed_singleton<V2>(
-        self,
-        keyed_singleton: KeyedSingleton<K, V2, L, Bounded>,
-    ) -> KeyedStream<K, (V, Option<V2>), L, Bounded, NoOrder, R>
-    where
-        K: Eq + Hash + Clone,
-        V: Clone,
-        V2: Clone,
-    {
-        let inner_join = self.clone().join_keyed_singleton(keyed_singleton.clone());
-        let left_join_no_inner = self
-            .filter_key_not_in(keyed_singleton.keys())
-            .weakest_ordering();
-
-        inner_join
-            .map(q!(|(v, v2)| (v, Some(v2))))
-            .chain(left_join_no_inner.map(q!(|v| (v, None))))
     }
 
     /// Gets the values associated with a specific key from the keyed stream.

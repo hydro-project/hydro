@@ -24,7 +24,7 @@ pub fn keyed_counter_service_buggy<'a, L: Location<'a> + NoTick, O: Ordering>(
         let request_batch = use(get_requests, nondet!(/** we never observe batch boundaries */));
         let count_snapshot = use(current_count, nondet!(/** atomicity guarantees consistency wrt increments */));
 
-        count_snapshot.get_many_if_present(request_batch.entries().map(q!(|(cid, key)| (key, cid))).into_keyed())
+        count_snapshot.join_keyed_stream(request_batch.entries().map(q!(|(cid, key)| (key, cid))).into_keyed())
             .entries()
             .map(q!(|(key, (count, client))| (client, (key, count))))
     };
