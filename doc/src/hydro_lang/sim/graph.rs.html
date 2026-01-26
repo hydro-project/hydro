@@ -503,7 +503,7 @@
 <a href=#503 id=503 data-nosnippet>503</a>        cluster_tick_graphs,
 <a href=#504 id=504 data-nosnippet>504</a>        extra_stmts_global,
 <a href=#505 id=505 data-nosnippet>505</a>        extra_stmts_cluster,
-<a href=#506 id=506 data-nosnippet>506</a>        crate_name.clone(),
+<a href=#506 id=506 data-nosnippet>506</a>        <span class="kw-2">&amp;</span>crate_name,
 <a href=#507 id=507 data-nosnippet>507</a>        is_test,
 <a href=#508 id=508 data-nosnippet>508</a>    );
 <a href=#509 id=509 data-nosnippet>509</a>
@@ -616,7 +616,7 @@
 <a href=#616 id=616 data-nosnippet>616</a>    cluster_tick_graphs: BTreeMap&lt;LocationId, DfirGraph&gt;,
 <a href=#617 id=617 data-nosnippet>617</a>    extra_stmts_global: Vec&lt;syn::Stmt&gt;,
 <a href=#618 id=618 data-nosnippet>618</a>    extra_stmts_cluster: BTreeMap&lt;LocationId, Vec&lt;syn::Stmt&gt;&gt;,
-<a href=#619 id=619 data-nosnippet>619</a>    crate_name: String,
+<a href=#619 id=619 data-nosnippet>619</a>    crate_name: <span class="kw-2">&amp;</span>str,
 <a href=#620 id=620 data-nosnippet>620</a>    is_test: bool,
 <a href=#621 id=621 data-nosnippet>621</a>) -&gt; syn::File {
 <a href=#622 id=622 data-nosnippet>622</a>    <span class="kw">let </span><span class="kw-2">mut </span>diagnostics = Vec::new();
@@ -628,7 +628,7 @@
 <a href=#628 id=628 data-nosnippet>628</a>
 <a href=#629 id=629 data-nosnippet>629</a>        <span class="kw">if </span>is_test {
 <a href=#630 id=630 data-nosnippet>630</a>            UseTestModeStaged {
-<a href=#631 id=631 data-nosnippet>631</a>                crate_name: crate_name.clone(),
+<a href=#631 id=631 data-nosnippet>631</a>                crate_name,
 <a href=#632 id=632 data-nosnippet>632</a>            }
 <a href=#633 id=633 data-nosnippet>633</a>            .visit_expr_mut(<span class="kw-2">&amp;mut </span>dfir_expr);
 <a href=#634 id=634 data-nosnippet>634</a>        }

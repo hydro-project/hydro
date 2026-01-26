@@ -824,7 +824,7 @@
 <a href=#824 id=824 data-nosnippet>824</a>                <span class="kw">let </span>(bin_name, config) = create_graph_trybuild(
 <a href=#825 id=825 data-nosnippet>825</a>                    graph,
 <a href=#826 id=826 data-nosnippet>826</a>                    extra_stmts,
-<a href=#827 id=827 data-nosnippet>827</a>                    <span class="kw-2">&amp;</span>trybuild.name_hint,
+<a href=#827 id=827 data-nosnippet>827</a>                    trybuild.name_hint.as_deref(),
 <a href=#828 id=828 data-nosnippet>828</a>                    <span class="bool-val">false</span>,
 <a href=#829 id=829 data-nosnippet>829</a>                    linking_mode,
 <a href=#830 id=830 data-nosnippet>830</a>                );
@@ -927,7 +927,7 @@
 <a href=#927 id=927 data-nosnippet>927</a>            <span class="prelude-val">Some</span>(create_graph_trybuild(
 <a href=#928 id=928 data-nosnippet>928</a>                graph,
 <a href=#929 id=929 data-nosnippet>929</a>                extra_stmts,
-<a href=#930 id=930 data-nosnippet>930</a>                <span class="kw-2">&amp;</span><span class="self">self</span>.name_hint,
+<a href=#930 id=930 data-nosnippet>930</a>                <span class="self">self</span>.name_hint.as_deref(),
 <a href=#931 id=931 data-nosnippet>931</a>                <span class="bool-val">false</span>,
 <a href=#932 id=932 data-nosnippet>932</a>                linking_mode,
 <a href=#933 id=933 data-nosnippet>933</a>            ))
