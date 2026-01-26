@@ -55,13 +55,23 @@ Hydro projects are typically organized into two folders:
 Let's take a look at the initial Hydro code in `src/lib.rs`, which implements an echo server. The top of the file initializes the project (this only needs to be done once, in `lib.rs`) and imports the Hydro prelude, which includes common Hydro APIs (you will want to do this in each file):
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
-} showLineNumbers={1}>{getLines(libRsSrc, 1, 4)}</CodeBlock>
+} showLineNumbers={1}>{getLines(libRsSrc, 1, 4, `
+#[cfg(stageleft_runtime)]
+hydro_lang::setup!();
+
+use hydro_lang::prelude::*;
+`)}</CodeBlock>
 
 Next, the template defines the echo server function. The server takes in a stream of requests and responds with the text of each request capitalized. Hydro uses a stream programming model, which means that instead of the server taking a single request as a parameter, it takes in a _stream_ of requests that arrive over time. Similarly, the responses are sent back as a stream of values.
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
-} showLineNumbers={6}>{getLines(libRsSrc, 6, 9)}</CodeBlock>
+} showLineNumbers={6}>{getLines(libRsSrc, 6, 9, `
+pub struct EchoServer;
+pub fn echo_capitalize<'a>(
+    input: Stream<String, Process<'a, EchoServer>>,
+) -> Stream<String, Process<'a, EchoServer>> {
+`)}</CodeBlock>
 
 Let's dive into the parameters of this function. The input is a [`Stream`](../../reference/live-collections/streams.md), a [**Live Collection**](../../reference/live-collections/index.md) where new incoming requests arrive over time. The first type parameter, `String`, tells us that each incoming request will appear as a `String` element.
 
@@ -72,7 +82,14 @@ Locations are **tagged** with a type to distinguish them at compile-time. In the
 Finally, let us take a look at the function body:
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
-} showLineNumbers={7}>{getLines(highlightLines(libRsSrc, [10]), 7, 12)}</CodeBlock>
+} showLineNumbers={7}>{getLines(highlightLines(libRsSrc, [10]), 7, 12, `
+pub fn echo_capitalize<'a>(
+    input: Stream<String, Process<'a, EchoServer>>,
+) -> Stream<String, Process<'a, EchoServer>> {
+    // highlight-next-line
+    input.map(q!(|s| s.to_uppercase()))
+}
+`)}</CodeBlock>
 
 To process incoming requests, you use the APIs available on live collections. This example uses `Stream::map`, which transforms each element of the incoming requests into a element of the outgoing responses. In Hydro, all values and closures passed to such APIs must be **quoted**. Quoting _captures_ the Rust code so that it can be run on a distributed node. To quote an expression, you wrap it with the `q!` macro.
 
@@ -94,7 +111,14 @@ The template includes a unit test for the echo server in the `tests` module. Whe
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
-} showLineNumbers={13}>{getLines(highlightLines(libRsSrc, []), 13, 18)}</CodeBlock>
+} showLineNumbers={13}>{getLines(highlightLines(libRsSrc, []), 13, 18, `
+#[cfg(test)]
+mod tests {
+    use hydro_lang::prelude::*;
+
+    #[test]
+    fn test_echo_capitalize() {
+`)}</CodeBlock>
 
 Next, let's take a look at the setup logic for the test, which:
 1. Creates the set of distributed locations involved in the test
@@ -106,19 +130,33 @@ To create locations, you must first create a `FlowBuilder`, which will track all
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
-} showLineNumbers={19}>{getLines(highlightLines(libRsSrc, []), 19, 21)}</CodeBlock>
+} showLineNumbers={19}>{getLines(highlightLines(libRsSrc, []), 19, 21, `
+let mut flow = FlowBuilder::new();
+let process = flow.process();
+`)}</CodeBlock>
 
 Now, you can create the echo server! You start by receiving inputs from the test client using `sim_input`. This returns a tuple with two values: a port handle that the test can use to send requests, and a `Stream` of the received requests. You can then pass this stream into `echo_capitalize`, which returns a stream of responses. To read the outputs from the test, you use `sim_output`. This function returns a port handle that the test can use to receive responses.
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
-} showLineNumbers={22}>{getLines(highlightLines(libRsSrc, []), 22, 24)}</CodeBlock>
+} showLineNumbers={22}>{getLines(highlightLines(libRsSrc, []), 22, 24, `
+let (in_port, requests) = process.sim_input();
+let responses = super::echo_capitalize(requests);
+let out_port = responses.sim_output();
+`)}</CodeBlock>
 
 Finally, you can write the functionality test. To create an **exhaustive** simulation test, which explores _all possible_ distributed executions, you invoke `flow.sim().exhaustive()`. This function takes in an async closure, which will be repeatedly invoked with different simulation instances, each testing a different distributed execution.
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
-} showLineNumbers={26}>{getLines(highlightLines(libRsSrc, []), 26, 31)}</CodeBlock>
+} showLineNumbers={26}>{getLines(highlightLines(libRsSrc, []), 26, 31, `
+flow.sim().exhaustive(async || {
+    in_port.send("hello".to_string());
+    in_port.send("world".to_string());
+
+    out_port.assert_yields_only(["HELLO", "WORLD"]).await;
+});
+`)}</CodeBlock>
 
 The included test sends the messages `"hello"` and `"world"` to the echo server using the `send()` method. Then, it uses `assert_yields_only` to check that the responses `"HELLO"` and `"WORLD"` are returned and that there are no additional responses. The APIs for receiving responses are async so you must use `.await` to wait for the assertion to complete.
 
@@ -138,13 +176,23 @@ Open `examples/echo_local.rs`. The script starts by setting up a deployment and 
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/examples/echo_local.rs">examples/echo_local.rs</Link>
-} showLineNumbers={7}>{getLines(echoLocalSrc, 7, 11)}</CodeBlock>
+} showLineNumbers={7}>{getLines(echoLocalSrc, 7, 11, `
+let mut deployment = Deployment::new();
+
+let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+let process = flow.process();
+let external = flow.external::<()>();
+`)}</CodeBlock>
 
 In a deployment script, you create a `Deployment` object which tracks the physical machines where your program will run. Then, you create a `FlowBuilder` just like in the simulator tests. However, instead of connecting to ports manually, you'll use `bind_single_client` to set up networking:
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/examples/echo_local.rs">examples/echo_local.rs</Link>
-} showLineNumbers={13}>{getLines(echoLocalSrc, 13, 15)}</CodeBlock>
+} showLineNumbers={13}>{getLines(echoLocalSrc, 13, 15, `
+    let (_port, input, output) =
+        process.bind_single_client::<_, _, LinesCodec>(&external, NetworkHint::TcpPort(Some(4000)));
+    output.complete(hydro_template::echo_capitalize(input));
+`)}</CodeBlock>
 
 The `bind_single_client` method creates a server that receives messages from a single external client. It returns a port handle, a stream of incoming messages, and a sink for sending responses. The method takes a codec (`LinesCodec`) that encodes and decodes the raw bytes (in this case, treating each line of text as a message). The `NetworkHint` specifies that the server should listen on port 4000.
 
@@ -152,7 +200,18 @@ Next, you map the *logical locations* to *physical machines* using `with_process
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/examples/echo_local.rs">examples/echo_local.rs</Link>
-} showLineNumbers={17}>{getLines(echoLocalSrc, 17, 26)}</CodeBlock>
+} showLineNumbers={17}>{getLines(echoLocalSrc, 17, 26, `
+    let _nodes = flow
+        .with_process(&process, deployment.Localhost())
+        .with_external(&external, deployment.Localhost())
+        .deploy(&mut deployment);
+
+    deployment.deploy().await.unwrap();
+
+    println!("Launched Echo Server! Run \`nc localhost 4000\` to connect.");
+
+    deployment.start_ctrl_c().await.unwrap();
+`)}</CodeBlock>
 
 The `with_process` method assigns the `process` location to run on `deployment.Localhost()`, which represents your local machine. Similarly, `with_external` specifies where the external client will connect from (also localhost in this case). Finally, `deploy()` compiles the program, and `start_ctrl_c()` runs it.
 
@@ -182,14 +241,31 @@ Hydro Deploy includes APIs for configuring resources on AWS, Azure, and GCP. Ins
 <TabItem value="gcp" label="GCP">
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/examples/echo_gcp.rs">examples/echo_gcp.rs</Link>
-} showLineNumbers={27}>{getLines(echoGcpSrc, 27, 37)}</CodeBlock>
+} showLineNumbers={27}>{getLines(echoGcpSrc, 24, 34, `
+  .with_process(
+        &process,
+        deployment
+        .GcpComputeEngineHost()
+        .project(gcp_project.clone())
+        .machine_type("e2-micro")
+        .image("debian-cloud/debian-11")
+        .region("us-west1-a")
+        .network(vpc.clone())
+        .add(),
+    )
+`)}</CodeBlock>
 </TabItem>
 </Tabs>
 
 
 When deploying to the cloud, the port is assigned automatically. You can retrieve it after deployment:
 
-<CodeBlock language="rust" showLineNumbers={43}>{getLines(echoGcpSrc, 43, 47)}</CodeBlock>
+<CodeBlock language="rust" showLineNumbers={43}>{getLines(echoGcpSrc, 40, 43, `
+let raw_port = nodes.raw_port(port);
+let server_port = raw_port.server_port().await;
+
+println!("Please connect a client to port {:?}", server_port);
+`)}</CodeBlock>
 
 Finally, to launch the echo server in the cloud, we run the deploy script. Hydro Deploy will automatically provision the necessary cloud resources, launch your application, and forward the server port to your local machine:
 <Tabs groupId="cloud">
