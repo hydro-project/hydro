@@ -1886,6 +1886,7 @@ where
 
     /// Given a stream of keys `K`, returns a new keyed stream containing only the groups
     /// whose keys are in the stream.
+    /// 
     /// The inverse of `filter_key_not_in`.
     ///
     /// # Example
@@ -1932,6 +1933,8 @@ where
     /// Emit a keyed stream containing keys shared between two keyed streams,
     /// where each value in the output keyed stream is a tuple of
     /// (self's value, other's value).
+    /// If there are multiple values for the same key, this performs a cross product
+    /// for each matching key.
     ///
     /// # Example
     /// ```rust
