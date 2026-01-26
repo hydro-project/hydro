@@ -1,0 +1,22 @@
+---
+source: hydro_test/src/cluster/compute_pi.rs
+expression: ir.surface_syntax_string()
+---
+1v1 = spin ();
+2v1 = flat_map (stageleft :: runtime_support :: fn1_type_hint :: < () , std :: ops :: Range < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; let batch_size__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; let batch_size__free = 8192usize ; batch_size__free } ; move | _ | 0 .. batch_size__free }));
+3v1 = map (stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; | _ | () }));
+4v1 = map (stageleft :: runtime_support :: fn1_type_hint :: < () , (f64 , f64) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | _ | rand :: random :: < (f64 , f64) > () }));
+5v1 = map (stageleft :: runtime_support :: fn1_type_hint :: < (f64 , f64) , bool > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | (x , y) | x * x + y * y < 1.0 }));
+6v1 = fold :: < 'tick > (stageleft :: runtime_support :: fn0_type_hint :: < (u64 , u64) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | | (0u64 , 0u64) }) , stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (u64 , u64) , bool , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | (inside , total) , sample_inside | { if sample_inside { * inside += 1 ; } * total += 1 ; } }));
+7v1 = map (hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (u64 , u64) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }));
+8v1 = dest_sink (DUMMY_SINK);
+// 9v1 = <handoff>;
+
+1v1 -> 2v1;
+2v1 -> 3v1;
+3v1 -> 4v1;
+4v1 -> 5v1;
+5v1 -> 9v1;
+7v1 -> 8v1;
+6v1 -> 7v1;
+9v1 -> 6v1;
