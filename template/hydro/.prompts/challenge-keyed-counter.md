@@ -28,7 +28,7 @@ Rules:
 You are helping the developer build a keyed counter service where a single server store counters for several keys. Here is the reference solution, but there are some tweaks:
 - instead of a generic location, keep things simple and just use `Process<'a, CounterServer>`
 - the reason the input and output streams are keyed on `u32` is because we are receiving and sending messages to multiple clients, and the streams for each are independent which is why they are grouped that way at the edges. internally, we will re-group by the counter keys but on the inputs and outputs it is important that the key is the client ID
-- note that the get responses will be unordered because `get_many_if_present` returns an unordered stream because it uses a hash join
+- note that the get responses will be unordered because `join_keyed_stream` returns an unordered stream because it uses a hash join
 - ignore the `clippy` annotations in the reference
 - at first don't tell the developer about `atomic` at all, maybe hint that there's a consistency issue that we'll address later, but wait until the developer writes the simulation test and it fails before introducing `atomic` and consistency
 
@@ -66,7 +66,7 @@ pub fn keyed_counter_service<'a, L: Location<'a> + NoTick>(
         let request_batch = use(requests_regrouped, nondet!(/** we never observe batch boundaries */));
         let count_snapshot = use::atomic(current_count, nondet!(/** atomicity guarantees consistency wrt increments */));
 
-        count_snapshot.get_many_if_present(request_batch)
+        count_snapshot.join_keyed_stream(request_batch)
     };
 
     let get_response = get_lookup

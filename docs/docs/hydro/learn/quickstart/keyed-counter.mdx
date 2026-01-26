@@ -112,15 +112,16 @@ This swaps the key and value: `(client_id, key_name)` becomes `(key_name, client
 let get_lookup = sliced! {
     let request_batch = use(requests_regrouped, nondet!(/** we never observe batch boundaries */));
     let count_snapshot = use::atomic(current_count, nondet!(/** atomicity guarantees consistency wrt increments */));
-    count_snapshot.get_many_if_present(request_batch)
+
+    count_snapshot.join_keyed_stream(request_batch)
 };
 `)}</CodeBlock>
 
-Just like the previous tutorial, `use::atomic` ensures that count snapshots are consistent with increment acknowledgements. The `get_many_if_present()` method looks up the count for each key in the request batch, returning a keyed stream where each element contains the count and the client ID.
+Just like the previous tutorial, `use::atomic` ensures that count snapshots are consistent with increment acknowledgements. The `join_keyed_stream()` method looks up the count for each key in the request batch, returning a keyed stream where each element contains the count and the client ID.
 
 :::info
 
-The `get_many_if_present()` method only returns entries for keys that exist in the keyed singleton. If a client queries a key that has never been incremented, no response is generated.
+The `join_keyed_stream()` method only returns entries for keys that exist in the keyed singleton. If a client queries a key that has never been incremented, no response is generated.
 
 :::
 
@@ -153,7 +154,7 @@ error[E0308]: mismatched types
               found struct `KeyedStream<_, _, _, _, NoOrder, _>`
 ```
 
-This error reveals something unique about Hydro: the type system reasons about distributed system properties like out-of-order messages and retries. The `get_many_if_present()` method performs a hash join between get requests and the keyed singleton. Hash joins process elements based on hash values rather than arrival order, so they cannot preserve ordering. The type system captures this by marking the result as `NoOrder`.
+This error reveals something unique about Hydro: the type system reasons about distributed system properties like out-of-order messages and retries. The `join_keyed_stream()` method performs a hash join between get requests and the keyed singleton. Hash joins process elements based on hash values rather than arrival order, so they cannot preserve ordering. The type system captures this by marking the result as `NoOrder`.
 
 In distributed systems, properties like ordering guarantees are critical for correctness. Consider what could go wrong if you assumed responses arrived in order:
 
