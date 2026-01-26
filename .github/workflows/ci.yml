@@ -91,12 +91,6 @@ jobs:
           - os: ${{ (((github.event_name != 'pull_request') || (github.event_name == 'pull_request' && (contains(github.event.pull_request.title, '[ci-full]') || contains(github.event.pull_request.body, '[ci-full]')))) && 'nothing') || 'macos-latest' }}
 
     steps:
-      - name: Maximize build space
-        if: ${{ matrix.os == 'ubuntu-latest' }}
-        uses: easimon/maximize-build-space@c28619d8999a147d5e09c1199f84ff6af6ad5794
-        with:
-          root-reserve-mb: 4096
-
       - name: Checkout sources
         uses: actions/checkout@v4
 
