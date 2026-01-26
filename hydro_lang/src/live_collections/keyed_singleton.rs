@@ -1692,9 +1692,6 @@ mod tests {
         }
         results.sort();
 
-        assert_eq!(
-            results,
-            vec![(1, (10, 100)), (2, (20, 200))]
-        );
+        assert_eq!(results, vec![(1, (10, 100)), (2, (20, 200))]);
     }
 }
