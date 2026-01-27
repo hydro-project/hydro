@@ -84,22 +84,25 @@ pub async fn run_stdin_commands(flow: Dfir<'_>) {
 }
 
 pub async fn launch_flow_stdin_commands(mut flow: Dfir<'_>) {
-    let token = tokio_util::sync::CancellationToken::new();
-    tokio::task::spawn_blocking({
-        let stop = token.clone();
-        move || {
-            let mut line = String::new();
-            std::io::stdin().read_line(&mut line).unwrap();
-            if line.starts_with("stop") {
-                stop.cancel();
-            } else {
-                eprintln!("Unexpected stdin input: {:?}", line);
-            }
+    // TODO(mingwei): convert to use CancellationToken at some point
+    // Not trivial: https://github.com/hydro-project/hydro/pull/2495/changes#r2733428502
+    let stop = tokio::sync::oneshot::channel();
+    tokio::task::spawn_blocking(|| {
+        let mut line = String::new();
+        std::io::stdin().read_line(&mut line).unwrap();
+        if line.starts_with("stop") {
+            stop.0.send(()).unwrap();
+        } else {
+            eprintln!("Unexpected stdin input: {:?}", line);
         }
     });
 
-    let run_result = token.run_until_cancelled_owned(flow.run()).await;
-    assert!(run_result.is_none()); // `flow.run()` runs forever, so cancellation is only exit.
+    let flow_run = flow.run();
+
+    tokio::select! {
+        _ = stop.1 => {},
+        _ = flow_run => {}
+    }
 }
 
 pub async fn init_no_ack_start<T: DeserializeOwned + Default>() -> DeployPorts<T> {
