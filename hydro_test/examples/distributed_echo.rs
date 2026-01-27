@@ -7,50 +7,57 @@ use hydro_test::distributed::distributed_echo::distributed_echo;
 
 const CLUSTER_SIZE: usize = 2;
 
-/// Common test logic: wait for cluster events, send test messages, verify responses
-async fn run_echo_test<S, R, C2, C3>(
-    mut external_sink: S,
-    mut external_stream: R,
-    mut ems_c2_stream: C2,
-    mut ems_c3_stream: C3,
-) where
-    S: SinkExt<u32> + Unpin,
+/// Common test logic: send test messages, verify responses
+/// Now works with raw bytes streams and handles JSON serialization/deserialization
+async fn run_echo_test<S, R>(mut external: (R, S))
+where
+    S: futures::Sink<bytes::Bytes> + Unpin,
     S::Error: std::fmt::Debug,
-    R: StreamExt<Item = u32> + Unpin,
-    C2: StreamExt + Unpin,
-    C3: StreamExt + Unpin,
+    R: StreamExt<Item = Result<bytes::BytesMut, std::io::Error>> + Unpin,
 {
-    println!("waiting for c2 events");
+    let (ref mut stream, ref mut sink) = external;
+
+    // Helper to send a JSON-encoded u32
+    async fn send_json<S>(sink: &mut S, value: u32)
+    where
+        S: futures::Sink<bytes::Bytes> + Unpin,
+        S::Error: std::fmt::Debug,
     {
-        let mut events = Vec::new();
-        events.push(ems_c2_stream.next().await.unwrap());
-        println!("got 1 c2 events");
-        events.push(ems_c2_stream.next().await.unwrap());
-        println!("got 2 c2 events");
+        let json = serde_json::to_string(&value).unwrap();
+        sink.send(bytes::Bytes::from(json)).await.unwrap();
     }
 
-    println!("waiting for c3 events");
+    // Helper to receive and parse JSON response (now just a u32)
+    async fn recv_response<R>(stream: &mut R) -> u32
+    where
+        R: StreamExt<Item = Result<bytes::BytesMut, std::io::Error>> + Unpin,
     {
-        let mut events = Vec::new();
-        events.push(ems_c3_stream.next().await.unwrap());
-        println!("got 1 c3 events");
-        events.push(ems_c3_stream.next().await.unwrap());
-        println!("got 2 c3 events");
+        let raw_bytes = stream.next().await.unwrap().unwrap();
+        let json_str = String::from_utf8_lossy(&raw_bytes);
+        serde_json::from_str(&json_str).unwrap()
     }
+
+    // Send test messages and verify echo responses
+    // The echo chain adds 4 to each value:
+    // external -> P1 (+1) -> C2 (+1) -> C3 (+1) -> P4 (+1) -> back to P1 -> external
 
     println!("sending 0");
-    external_sink.send(0).await.unwrap();
-    assert_eq!(external_stream.next().await.unwrap(), 5);
+    send_json(sink, 0).await;
+    let response = recv_response(stream).await;
+    assert_eq!(response, 4);
 
     println!("sending 1");
-    external_sink.send(1).await.unwrap();
-    assert_eq!(external_stream.next().await.unwrap(), 6);
+    send_json(sink, 1).await;
+    let response = recv_response(stream).await;
+    assert_eq!(response, 5);
 
-    external_sink.send(2).await.unwrap();
-    assert_eq!(external_stream.next().await.unwrap(), 7);
+    send_json(sink, 2).await;
+    let response = recv_response(stream).await;
+    assert_eq!(response, 6);
 
-    external_sink.send(3).await.unwrap();
-    assert_eq!(external_stream.next().await.unwrap(), 8);
+    send_json(sink, 3).await;
+    let response = recv_response(stream).await;
+    assert_eq!(response, 7);
 }
 
 #[cfg(feature = "docker")]
@@ -70,9 +77,7 @@ async fn docker() {
     let c2 = builder.cluster();
     let c3 = builder.cluster();
     let p4 = builder.process();
-    let p5 = builder.process();
-    let (external_sink, external_stream, ems_c2, ems_c3) =
-        distributed_echo(&external, &p1, &c2, &c3, &p4, &p5);
+    let bidi_port = distributed_echo(&external, &p1, &c2, &c3, &p4);
 
     let config = vec![r#"profile.dev.strip="symbols""#.to_string()];
 
@@ -87,79 +92,17 @@ async fn docker() {
             deployment.add_localhost_docker_cluster(None, config.clone(), CLUSTER_SIZE),
         )
         .with_process(&p4, deployment.add_localhost_docker(None, config.clone()))
-        .with_process(&p5, deployment.add_localhost_docker(None, config.clone()))
         .with_external(&external, deployment.add_external("external".to_string()))
         .deploy(&mut deployment);
 
     deployment.provision(&nodes).await.unwrap();
     deployment.start(&nodes).await.unwrap();
 
-    let external_sink = nodes.connect(external_sink).await;
-    let external_stream = nodes.connect(external_stream).await;
-    let ems_c2_stream = nodes.connect(ems_c2).await;
-    let ems_c3_stream = nodes.connect(ems_c3).await;
+    tokio::time::sleep(std::time::Duration::from_millis(2000)).await; // TOOD: hack to get around some timing issues, will fix this shortly.
 
-    run_echo_test(external_sink, external_stream, ems_c2_stream, ems_c3_stream).await;
+    let external_conn = nodes.connect(bidi_port).await;
 
-    deployment.stop(&nodes).await.unwrap();
-    deployment.cleanup(&nodes).await.unwrap();
-
-    println!("successfully deployed and cleaned up");
-}
-
-#[cfg(feature = "ecs")]
-async fn ecs() {
-    use hydro_lang::deploy::{DockerDeployEcs, DockerNetworkEcs};
-
-    telemetry::initialize_tracing_with_filter(tracing_subscriber::EnvFilter::try_new(
-        "trace,hyper=warn,aws_smithy_runtime=info,aws_sdk_ecs=info,aws_sigv4=info,aws_config=info,aws_runtime=info,aws_smithy_http_client=info,aws_sdk_ec2=info,aws_sdk_ecr=info,h2=warn,aws_sdk_iam=info,aws_sdk_servicediscovery=info,aws_sdk_cloudformation=info",
-    ).unwrap());
-
-    let network = DockerNetworkEcs::new("distributed_echo_test".to_string());
-    let mut deployment = DockerDeployEcs::new(network);
-
-    let mut builder = FlowBuilder::new();
-    let external = builder.external();
-    let p1 = builder.process();
-    let c2 = builder.cluster();
-    let c3 = builder.cluster();
-    let p4 = builder.process();
-    let p5 = builder.process();
-    let (external_sink, external_stream, ems_c2, ems_c3) =
-        distributed_echo(&external, &p1, &c2, &c3, &p4, &p5);
-
-    let config = vec![
-        // r#"profile.dev.lto="fat""#.to_string(),
-        r#"profile.dev.strip="symbols""#.to_string(),
-        // r#"profile.dev.opt-level=3"#.to_string(),
-        // r#"profile.dev.panic="abort""#.to_string(),
-        // r#"profile.dev.codegen-units=1"#.to_string(),
-    ];
-
-    let nodes = builder
-        .with_process(&p1, deployment.add_localhost_docker(None, config.clone()))
-        .with_cluster(
-            &c2,
-            deployment.add_localhost_docker_cluster(None, config.clone(), CLUSTER_SIZE),
-        )
-        .with_cluster(
-            &c3,
-            deployment.add_localhost_docker_cluster(None, config.clone(), CLUSTER_SIZE),
-        )
-        .with_process(&p4, deployment.add_localhost_docker(None, config.clone()))
-        .with_process(&p5, deployment.add_localhost_docker(None, config.clone()))
-        .with_external(&external, deployment.add_external("external".to_string()))
-        .deploy(&mut deployment);
-
-    deployment.provision(&nodes).await.unwrap();
-    deployment.start(&nodes).await.unwrap();
-
-    let external_sink = nodes.connect(external_sink).await;
-    let external_stream = nodes.connect(external_stream).await;
-    let ems_c2_stream = nodes.connect(ems_c2).await;
-    let ems_c3_stream = nodes.connect(ems_c3).await;
-
-    run_echo_test(external_sink, external_stream, ems_c2_stream, ems_c3_stream).await;
+    run_echo_test(external_conn).await;
 
     deployment.stop(&nodes).await.unwrap();
     deployment.cleanup(&nodes).await.unwrap();
@@ -180,28 +123,22 @@ async fn localhost() {
     let c2 = builder.cluster();
     let c3 = builder.cluster();
     let p4 = builder.process();
-    let p5 = builder.process();
-    let (external_sink, external_stream, ems_c2, ems_c3) =
-        distributed_echo(&external, &p1, &c2, &c3, &p4, &p5);
+    let bidi_port = distributed_echo(&external, &p1, &c2, &c3, &p4);
 
     let nodes = builder
         .with_process(&p1, deployment.Localhost())
         .with_cluster(&c2, (0..CLUSTER_SIZE).map(|_| deployment.Localhost()))
         .with_cluster(&c3, (0..CLUSTER_SIZE).map(|_| deployment.Localhost()))
         .with_process(&p4, deployment.Localhost())
-        .with_process(&p5, deployment.Localhost())
         .with_external(&external, deployment.Localhost())
         .deploy(&mut deployment);
 
     deployment.deploy().await.unwrap();
     deployment.start().await.unwrap();
 
-    let external_sink = nodes.connect(external_sink).await;
-    let external_stream = nodes.connect(external_stream).await;
-    let ems_c2_stream = nodes.connect(ems_c2).await;
-    let ems_c3_stream = nodes.connect(ems_c3).await;
+    let external_conn = nodes.connect(bidi_port).await;
 
-    run_echo_test(external_sink, external_stream, ems_c2_stream, ems_c3_stream).await;
+    run_echo_test(external_conn).await;
 
     deployment.stop().await.unwrap();
 
@@ -217,9 +154,7 @@ async fn aws() {
     let c2 = builder.cluster();
     let c3 = builder.cluster();
     let p4 = builder.process();
-    let p5 = builder.process();
-    let (external_sink, external_stream, ems_c2, ems_c3) =
-        distributed_echo(&external, &p1, &c2, &c3, &p4, &p5);
+    let bidi_port = distributed_echo(&external, &p1, &c2, &c3, &p4);
 
     let network = AwsNetwork::new("us-east-1", None);
 
@@ -264,26 +199,14 @@ async fn aws() {
                         .network(network.clone())
                         .add(),
         )
-        .with_process(
-            &p5,
-            deployment.AwsEc2Host()
-                        .region("us-east-1")
-                        .instance_type("t3.micro")
-                        .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
-                        .network(network.clone())
-                        .add(),
-        )
         .with_external(&external, deployment.Localhost())
         .deploy(&mut deployment);
 
     deployment.deploy().await.unwrap();
 
-    let external_sink = nodes.connect(external_sink).await;
-    let external_stream = nodes.connect(external_stream).await;
-    let ems_c2_stream = nodes.connect(ems_c2).await;
-    let ems_c3_stream = nodes.connect(ems_c3).await;
+    let external_conn = nodes.connect(bidi_port).await;
 
-    run_echo_test(external_sink, external_stream, ems_c2_stream, ems_c3_stream).await;
+    run_echo_test(external_conn).await;
 
     deployment.stop().await.unwrap();
 
@@ -294,8 +217,6 @@ async fn aws() {
 enum DeployMode {
     #[cfg(feature = "docker")]
     Docker,
-    #[cfg(feature = "ecs")]
-    Ecs,
     Localhost,
     Aws,
 }
@@ -313,8 +234,6 @@ async fn main() {
     match args.mode {
         #[cfg(feature = "docker")]
         DeployMode::Docker => docker().await,
-        #[cfg(feature = "ecs")]
-        DeployMode::Ecs => ecs().await,
         DeployMode::Aws => aws().await,
         DeployMode::Localhost => localhost().await,
     }
@@ -335,14 +254,4 @@ fn test_distributed_echo_example_docker() {
 
     let mut run = run_current_example!("--mode docker");
     run.read_string("successfully deployed and cleaned up");
-}
-
-#[cfg(feature = "ecs")]
-#[test]
-fn test_distributed_echo_example_ecs() {
-    use example_test::run_current_example;
-
-    // Because of no credentials this test is expected to fail, however we can still get a decent amount of coverage by asserting it fails with that error specifically.
-    let mut run = run_current_example!("--mode ecs");
-    run.read_string("provision: provision: close"); // this is printed while trying to upload the image to ecr, even if that attempt then fails.
 }
