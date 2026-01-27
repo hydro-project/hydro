@@ -225,8 +225,8 @@
 <a href=#225 id=225 data-nosnippet>225</a><span class="doccomment">/// Buildstructor methods.
 <a href=#226 id=226 data-nosnippet>226</a></span><span class="attr">#[buildstructor::buildstructor]
 <a href=#227 id=227 data-nosnippet>227</a></span><span class="kw">impl </span>Deployment {
-<a href=#228 id=228 data-nosnippet>228</a>    <span class="attr">#[builder(entry = <span class="string">"GcpComputeEngineHost"</span>, exit = <span class="string">"add"</span>)]
-<a href=#229 id=229 data-nosnippet>229</a>    </span><span class="kw">pub fn </span>add_gcp_compute_engine_host(
+<a href=#228 id=228 data-nosnippet>228</a>    <span class="attr">#[builder(entry = <span class="string">"GcpComputeEngineHost"</span>, exit = <span class="string">"add"</span>, visibility = <span class="string">"pub"</span>)]
+<a href=#229 id=229 data-nosnippet>229</a>    </span><span class="kw">fn </span>add_gcp_compute_engine_host(
 <a href=#230 id=230 data-nosnippet>230</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#231 id=231 data-nosnippet>231</a>        project: String,
 <a href=#232 id=232 data-nosnippet>232</a>        machine_type: String,
@@ -252,8 +252,8 @@
 <a href=#252 id=252 data-nosnippet>252</a>        })
 <a href=#253 id=253 data-nosnippet>253</a>    }
 <a href=#254 id=254 data-nosnippet>254</a>
-<a href=#255 id=255 data-nosnippet>255</a>    <span class="attr">#[builder(entry = <span class="string">"AzureHost"</span>, exit = <span class="string">"add"</span>)]
-<a href=#256 id=256 data-nosnippet>256</a>    </span><span class="kw">pub fn </span>add_azure_host(
+<a href=#255 id=255 data-nosnippet>255</a>    <span class="attr">#[builder(entry = <span class="string">"AzureHost"</span>, exit = <span class="string">"add"</span>, visibility = <span class="string">"pub"</span>)]
+<a href=#256 id=256 data-nosnippet>256</a>    </span><span class="kw">fn </span>add_azure_host(
 <a href=#257 id=257 data-nosnippet>257</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#258 id=258 data-nosnippet>258</a>        project: String,
 <a href=#259 id=259 data-nosnippet>259</a>        os_type: String, <span class="comment">// linux or windows
@@ -277,8 +277,8 @@
 <a href=#277 id=277 data-nosnippet>277</a>        })
 <a href=#278 id=278 data-nosnippet>278</a>    }
 <a href=#279 id=279 data-nosnippet>279</a>
-<a href=#280 id=280 data-nosnippet>280</a>    <span class="attr">#[builder(entry = <span class="string">"AwsEc2Host"</span>, exit = <span class="string">"add"</span>)]
-<a href=#281 id=281 data-nosnippet>281</a>    </span><span class="kw">pub fn </span>add_aws_ec2_host(
+<a href=#280 id=280 data-nosnippet>280</a>    <span class="attr">#[builder(entry = <span class="string">"AwsEc2Host"</span>, exit = <span class="string">"add"</span>, visibility = <span class="string">"pub"</span>)]
+<a href=#281 id=281 data-nosnippet>281</a>    </span><span class="kw">fn </span>add_aws_ec2_host(
 <a href=#282 id=282 data-nosnippet>282</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
 <a href=#283 id=283 data-nosnippet>283</a>        region: String,
 <a href=#284 id=284 data-nosnippet>284</a>        instance_type: String,
