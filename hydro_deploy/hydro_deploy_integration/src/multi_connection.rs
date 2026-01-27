@@ -502,24 +502,22 @@ impl Sink<(u64, bytes::Bytes)> for TcpMultiConnectionSink {
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let mut closed = Vec::new();
         let mut any_pending = false;
 
-        for (&id, sink) in self.connection_sinks.iter_mut() {
+        self.connection_sinks.retain(|(_id, sink)| {
             match Pin::new(sink).poll_flush(cx) {
-                Poll::Ready(Ok(())) => {}
+                Poll::Ready(Ok(())) => {
+                    true
+                }
                 Poll::Ready(Err(_)) => {
-                    closed.push(id);
+                    false
                 }
                 Poll::Pending => {
                     any_pending = true;
+                    true
                 }
             }
-        }
-
-        for id in closed {
-            self.connection_sinks.remove(&id);
-        }
+        });
 
         if any_pending {
             Poll::Pending
