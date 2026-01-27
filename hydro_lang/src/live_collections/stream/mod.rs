@@ -1160,17 +1160,15 @@ where
         Idemp: ValidIdempotenceFor<R>,
     {
         let init = init.splice_fn0_ctx(&self.location).into();
-        let comb = comb
-            .splice_fn2_borrow_mut_ctx_props(&self.location)
-            .0
-            .into();
+        let (comb, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
+        proof.register_proof(&comb);
 
         let nondet = nondet!(/** the combinator function is commutative and idempotent */);
         let ordered_etc: Stream<T, L, B> = self.assume_retries(nondet).assume_ordering(nondet);
 
         let core = HydroNode::Fold {
             init,
-            acc: comb,
+            acc: comb.into(),
             input: Box::new(ordered_etc.ir_node.into_inner()),
             metadata: ordered_etc
                 .location
@@ -1211,16 +1209,14 @@ where
         C: ValidCommutativityFor<O>,
         Idemp: ValidIdempotenceFor<R>,
     {
-        let f = comb
-            .splice_fn2_borrow_mut_ctx_props(&self.location)
-            .0
-            .into();
+        let (f, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
+        proof.register_proof(&f);
 
         let nondet = nondet!(/** the combinator function is commutative and idempotent */);
         let ordered_etc: Stream<T, L, B> = self.assume_retries(nondet).assume_ordering(nondet);
 
         let core = HydroNode::Reduce {
-            f,
+            f: f.into(),
             input: Box::new(ordered_etc.ir_node.into_inner()),
             metadata: ordered_etc
                 .location

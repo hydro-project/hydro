@@ -15,18 +15,16 @@ use procfs::WithCurrentSystemInfo;
 use serde::de::DeserializeOwned;
 
 #[cfg(not(feature = "runtime_measure"))]
-pub async fn run(flow: Dfir<'_>) {
-    launch_flow(flow).await;
-}
-
-pub async fn run_containerized(flow: Dfir<'_>) {
-    launch_flow_containerized(flow).await;
+pub async fn run_stdin_commands(flow: Dfir<'_>) {
+    launch_flow_stdin_commands(flow).await;
 }
 
 #[cfg(feature = "runtime_measure")]
-pub async fn run(flow: Dfir<'_>) {
+pub async fn run_stdin_commands(flow: Dfir<'_>) {
     // Make sure to print CPU even if we crash
-    let res = AssertUnwindSafe(launch_flow(flow)).catch_unwind().await;
+    let res = AssertUnwindSafe(launch_flow_stdin_commands(flow))
+        .catch_unwind()
+        .await;
 
     #[cfg(target_os = "linux")]
     {
@@ -85,23 +83,9 @@ pub async fn run(flow: Dfir<'_>) {
     res.unwrap();
 }
 
-#[macro_export]
-macro_rules! launch {
-    ($f:expr) => {
-        async {
-            let ports = $crate::runtime_support::launch::init_no_ack_start().await;
-            let flow = $f(&ports);
-
-            println!("ack start");
-
-            $crate::runtime_support::launch::launch_flow(flow).await
-        }
-    };
-}
-
-pub use crate::launch;
-
-pub async fn launch_flow(mut flow: Dfir<'_>) {
+pub async fn launch_flow_stdin_commands(mut flow: Dfir<'_>) {
+    // TODO(mingwei): convert to use CancellationToken at some point
+    // Not trivial: https://github.com/hydro-project/hydro/pull/2495/changes#r2733428502
     let stop = tokio::sync::oneshot::channel();
     tokio::task::spawn_blocking(|| {
         let mut line = String::new();
@@ -113,18 +97,12 @@ pub async fn launch_flow(mut flow: Dfir<'_>) {
         }
     });
 
-    let local_set = tokio::task::LocalSet::new();
-    let flow = local_set.run_until(flow.run());
+    let flow_run = flow.run();
 
     tokio::select! {
         _ = stop.1 => {},
-        _ = flow => {}
+        _ = flow_run => {}
     }
-}
-
-pub async fn launch_flow_containerized(mut flow: Dfir<'_>) {
-    let local_set = tokio::task::LocalSet::new();
-    local_set.run_until(flow.run()).await;
 }
 
 pub async fn init_no_ack_start<T: DeserializeOwned + Default>() -> DeployPorts<T> {
