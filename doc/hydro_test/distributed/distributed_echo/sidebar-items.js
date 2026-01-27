@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["distributed_echo"],"struct":["C2","C3","P1","P4","P5"]};
+window.SIDEBAR_ITEMS = {"fn":["distributed_echo"],"struct":["C2","C3","P1","P4"]};

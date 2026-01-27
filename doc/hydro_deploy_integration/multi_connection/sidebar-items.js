@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["ConnectedMultiConnection","MultiConnectionSink","MultiConnectionSource"]};
+window.SIDEBAR_ITEMS = {"fn":["tcp_multi_connection"],"struct":["ConnectedMultiConnection","MultiConnectionSink","MultiConnectionSource","TcpMultiConnectionSink","TcpMultiConnectionSource"]};
