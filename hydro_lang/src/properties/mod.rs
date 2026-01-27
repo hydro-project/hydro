@@ -8,18 +8,32 @@ use crate::live_collections::stream::{ExactlyOnce, Ordering, Retries, TotalOrder
 
 /// A trait for proof mechanisms that can validate commutativity.
 #[sealed::sealed]
-pub trait CommutativeProof {}
+pub trait CommutativeProof {
+    /// Registers the expression with the proof mechanism.
+    ///
+    /// This should not perform any blocking analysis; it is only intended to record the expression for later processing.
+    fn register_proof(&self, expr: &syn::Expr);
+}
 
 /// A trait for proof mechanisms that can validate idempotence.
 #[sealed::sealed]
-pub trait IdempotentProof {}
+pub trait IdempotentProof {
+    /// Registers the expression with the proof mechanism.
+    ///
+    /// This should not perform any blocking analysis; it is only intended to record the expression for later processing.
+    fn register_proof(&self, expr: &syn::Expr);
+}
 
 /// A hand-written human proof of the correctness property.
 pub struct ManualProof();
 #[sealed::sealed]
-impl CommutativeProof for ManualProof {}
+impl CommutativeProof for ManualProof {
+    fn register_proof(&self, _expr: &syn::Expr) {}
+}
 #[sealed::sealed]
-impl IdempotentProof for ManualProof {}
+impl IdempotentProof for ManualProof {
+    fn register_proof(&self, _expr: &syn::Expr) {}
+}
 
 /// Marks that the property is not proved.
 pub enum NotProved {}
@@ -45,17 +59,31 @@ pub enum Proved {}
 /// // state1 must be equal to state
 /// ```
 pub struct AggFuncAlgebra<Commutative = NotProved, Idempotent = NotProved>(
+    Option<Box<dyn CommutativeProof>>,
+    Option<Box<dyn IdempotentProof>>,
     PhantomData<(Commutative, Idempotent)>,
 );
+
 impl<C, I> AggFuncAlgebra<C, I> {
     /// Marks the function as being commutative, with the given proof mechanism.
-    pub fn commutative(self, _proof: impl CommutativeProof) -> AggFuncAlgebra<Proved, I> {
-        AggFuncAlgebra(PhantomData)
+    pub fn commutative(self, proof: impl CommutativeProof + 'static) -> AggFuncAlgebra<Proved, I> {
+        AggFuncAlgebra(Some(Box::new(proof)), self.1, PhantomData)
     }
 
     /// Marks the function as being idempotent, with the given proof mechanism.
-    pub fn idempotent(self, _proof: impl IdempotentProof) -> AggFuncAlgebra<C, Proved> {
-        AggFuncAlgebra(PhantomData)
+    pub fn idempotent(self, proof: impl IdempotentProof + 'static) -> AggFuncAlgebra<C, Proved> {
+        AggFuncAlgebra(self.0, Some(Box::new(proof)), PhantomData)
+    }
+
+    /// Registers the expression with the underlying proof mechanisms.
+    pub(crate) fn register_proof(self, expr: &syn::Expr) {
+        if let Some(comm_proof) = self.0 {
+            comm_proof.register_proof(expr);
+        }
+
+        if let Some(idem_proof) = self.1 {
+            idem_proof.register_proof(expr);
+        }
     }
 }
 
@@ -63,7 +91,7 @@ impl<C, I> Property for AggFuncAlgebra<C, I> {
     type Root = AggFuncAlgebra;
 
     fn make_root(_target: &mut Option<Self>) -> Self::Root {
-        AggFuncAlgebra(PhantomData)
+        AggFuncAlgebra(None, None, PhantomData)
     }
 }
 
