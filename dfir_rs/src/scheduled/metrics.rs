@@ -16,7 +16,8 @@ use crate::util::slot_vec::SecondarySlotVec;
 /// Metrics for a [`Dfir`] graph instance.
 ///
 /// Call [`Dfir::metrics`] for reference-counted continually-updated metrics,
-/// or call [`Dfir::metrics_intervals`] for an infinite iterator of metrics (across each interval).
+/// or call [`Dfir::metrics_intervals`] to obtain a [`DfirMetricsIntervals`] handle, and use
+/// [`DfirMetricsIntervals::take_interval`] to retrieve metrics for successive intervals.
 #[derive(Default, Clone)]
 #[non_exhaustive]
 pub struct DfirMetrics {
