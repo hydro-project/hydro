@@ -83,7 +83,8 @@ pub struct TrybuildConfig {
 #[cfg(feature = "deploy")]
 pub fn create_graph_trybuild(
     graph: DfirGraph,
-    extra_stmts: Vec<syn::Stmt>,
+    extra_stmts: &[syn::Stmt],
+    sidecars: &[syn::Expr],
     bin_name_prefix: Option<&str>,
     is_containerized: bool,
     linking_mode: LinkingMode,
@@ -94,8 +95,14 @@ pub fn create_graph_trybuild(
 
     let is_test = IS_TEST.load(std::sync::atomic::Ordering::Relaxed);
 
-    let generated_code =
-        compile_graph_trybuild(graph, extra_stmts, &crate_name, is_test, is_containerized);
+    let generated_code = compile_graph_trybuild(
+        graph,
+        extra_stmts,
+        sidecars,
+        &crate_name,
+        is_test,
+        is_containerized,
+    );
 
     let inlined_staged = if is_test {
         let raw_toml_manifest = toml::from_str::<toml::Value>(
@@ -198,7 +205,8 @@ pub fn create_graph_trybuild(
 #[cfg(feature = "deploy")]
 pub fn compile_graph_trybuild(
     partitioned_graph: DfirGraph,
-    extra_stmts: Vec<syn::Stmt>,
+    extra_stmts: &[syn::Stmt],
+    sidecars: &[syn::Expr],
     crate_name: &str,
     is_test: bool,
     is_containerized: bool,
@@ -222,6 +230,7 @@ pub fn compile_graph_trybuild(
     let trybuild_crate_name_ident = quote::format_ident!("{}_hydro_trybuild", crate_name);
     let root = get_this_crate();
     let tokio_main_ident = format!("{}::runtime_support::tokio", root);
+    let dfir_ident = quote::format_ident!("{}", crate::compile::DFIR_IDENT);
 
     let source_ast: syn::File = if is_containerized {
         syn::parse_quote! {
@@ -235,7 +244,7 @@ pub fn compile_graph_trybuild(
             #[allow(unused)]
             async fn __hydro_runtime<'a>() -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
                 /// extra_stmts
-                #(#extra_stmts)*
+                #( #extra_stmts )*
 
                 /// dfir_expr
                 #dfir_expr
@@ -245,9 +254,14 @@ pub fn compile_graph_trybuild(
             async fn main() {
                 #root::telemetry::initialize_tracing();
 
-                let flow = __hydro_runtime().await;
+                let mut #dfir_ident = __hydro_runtime().await;
 
-                #root::runtime_support::launch::run_containerized(flow).await;
+                let local_set = #root::runtime_support::tokio::task::LocalSet::new();
+                #(
+                    let _ = local_set.spawn_local( #sidecars ); // Uses #dfir_ident
+                )*
+
+                let _ = local_set.run_until(#dfir_ident.run()).await;
             }
         }
     } else {
@@ -260,18 +274,28 @@ pub fn compile_graph_trybuild(
             pub use #trybuild_crate_name_ident::__staged;
 
             #[allow(unused)]
-            fn __hydro_runtime<'a>(__hydro_lang_trybuild_cli: &'a #root::runtime_support::hydro_deploy_integration::DeployPorts<#root::__staged::deploy::deploy_runtime::HydroMeta>) -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
-                #(#extra_stmts)*
+            fn __hydro_runtime<'a>(
+                __hydro_lang_trybuild_cli: &'a #root::runtime_support::hydro_deploy_integration::DeployPorts<#root::__staged::deploy::deploy_runtime::HydroMeta>
+            )
+                -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a>
+            {
+                #( #extra_stmts )*
+
                 #dfir_expr
             }
 
             #[#root::runtime_support::tokio::main(crate = #tokio_main_ident, flavor = "current_thread")]
             async fn main() {
                 let ports = #root::runtime_support::launch::init_no_ack_start().await;
-                let flow = __hydro_runtime(&ports);
+                let #dfir_ident = __hydro_runtime(&ports);
                 println!("ack start");
 
-                #root::runtime_support::launch::run(flow).await;
+                let local_set = #root::runtime_support::tokio::task::LocalSet::new();
+                #(
+                    let _ = local_set.spawn_local( #sidecars ); // Uses #dfir_ident
+                )*
+
+                let _ = local_set.run_until(#root::runtime_support::launch::run_stdin_commands(#dfir_ident)).await;
             }
         }
     };

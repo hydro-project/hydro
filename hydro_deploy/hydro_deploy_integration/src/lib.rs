@@ -168,7 +168,9 @@ impl ServerBindConfig {
                 }
             }
             ServerBindConfig::TcpPort(host, port) => {
-                let listener = TcpListener::bind((host, port.unwrap_or(0))).await.unwrap();
+                let listener = TcpListener::bind((host, port.unwrap_or(0)))
+                    .await
+                    .unwrap_or_else(|e| panic!("Failed to bind port {:?}: {}", port, e));
                 let addr = listener.local_addr().unwrap();
                 BoundServer::TcpPort(TcpListenerStream::new(listener), addr)
             }
