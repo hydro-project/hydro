@@ -48,11 +48,15 @@ pub trait NetworkFor<T: ?Sized> {
 
     /// Generates deserialization logic for receiving `T`.
     fn deserialize_thunk(tagged: Option<&syn::Type>) -> syn::Expr;
+
+    /// Returns the optional name of the network channel.
+    fn name(&self) -> &Option<String>;
 }
 
 /// A network channel configuration with `T` as transport backend and `S` as the serialization
 /// backend.
-pub struct NetworkingConfig<Tr: ?Sized, S: ?Sized> {
+pub struct NetworkingConfig<Tr: ?Sized, S: ?Sized, Name = ()> {
+    name: Option<Name>,
     _phantom: (PhantomData<Tr>, PhantomData<S>),
 }
 
@@ -60,6 +64,15 @@ impl<Tr: ?Sized, S: ?Sized> NetworkingConfig<Tr, S> {
     /// Configures the network channel to use [`bincode`] to serialize items.
     pub const fn bincode(self) -> NetworkingConfig<Tr, Bincode> {
         NetworkingConfig {
+            name: self.name,
+            _phantom: (PhantomData, PhantomData),
+        }
+    }
+
+    /// Names the network channel and enables stable communication across multiple service versions.
+    pub fn name(self, name: impl Into<String>) -> NetworkingConfig<Tr, S, String> {
+        NetworkingConfig {
+            name: Some(name.into()),
             _phantom: (PhantomData, PhantomData),
         }
     }
@@ -78,9 +91,33 @@ where
     fn deserialize_thunk(tagged: Option<&syn::Type>) -> syn::Expr {
         S::deserialize_thunk(tagged)
     }
+
+    fn name(&self) -> &Option<String> {
+        &None
+    }
+}
+
+#[sealed::sealed]
+impl<Tr: ?Sized, S: ?Sized, T: ?Sized> NetworkFor<T> for NetworkingConfig<Tr, S, String>
+where
+    Tr: TransportKind,
+    S: SerKind<T>,
+{
+    fn serialize_thunk(is_demux: bool) -> syn::Expr {
+        S::serialize_thunk(is_demux)
+    }
+
+    fn deserialize_thunk(tagged: Option<&syn::Type>) -> syn::Expr {
+        S::deserialize_thunk(tagged)
+    }
+
+    fn name(&self) -> &Option<String> {
+        &self.name
+    }
 }
 
 /// A network channel that uses length-delimited TCP for transport.
 pub const TCP: NetworkingConfig<Tcp, NoSer> = NetworkingConfig {
+    name: None,
     _phantom: (PhantomData, PhantomData),
 };
