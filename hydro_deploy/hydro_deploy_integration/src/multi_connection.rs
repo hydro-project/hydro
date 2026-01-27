@@ -364,9 +364,7 @@ impl<O, C: Encoder<O>> Sink<(u64, O)> for MultiConnectionSink<O, C> {
     }
 }
 
-// =============================================================================
-// TCP-only concrete type versions for use in containerized deployments
-// =============================================================================
+/// TCP-only concrete type versions for use in containerized deployments
 pub struct TcpMultiConnectionSource {
     /// The TCP listener accepting new connections
     pub listener: TcpListener,
