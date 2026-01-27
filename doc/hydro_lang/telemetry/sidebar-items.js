@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["initialize_tracing","initialize_tracing_with_filter"]};
+window.SIDEBAR_ITEMS = {"fn":["initialize_tracing","initialize_tracing_with_filter"],"trait":["Sidecar"]};
