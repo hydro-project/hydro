@@ -2863,11 +2863,13 @@ dependencies = [
  "rand 0.8.5",
  "regex",
  "serde",
+ "serde_json",
  "stageleft",
  "stageleft_tool",
  "tokio",
  "tokio-stream",
  "tokio-test",
+ "tokio-util",
  "tracing-subscriber",
 ]
 

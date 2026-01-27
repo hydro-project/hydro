@@ -17,11 +17,13 @@ hydro_std = { path = "../hydro_std", version = "^0.15.0" }
 stageleft.workspace = true
 rand = "0.8.0"
 serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0"
 ctor = "0.2.9"
 colored = "3.0.0"
 palette = "0.7.6"
 tokio = "1.29.0"
 tokio-stream = { version = "0.1.3", default-features = false }
+tokio-util = { version = "0.7", features = ["codec"] }
 bytes = "1.1.0"
 
 # coax cargo-smart-release into publishing this crate.
