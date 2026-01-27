@@ -6,8 +6,15 @@ use crate::location::{Location, LocationKey};
 use crate::staging_util::Invariant;
 
 pub struct CompiledFlow<'a> {
+    /// The DFIR graph for each location.
     pub(super) dfir: SecondaryMap<LocationKey, DfirGraph>,
+
+    /// Extra statements to be added above the DFIR graph code, for each location.
     pub(super) extra_stmts: SparseSecondaryMap<LocationKey, Vec<Stmt>>,
+
+    /// `Future` expressions to be run alongside the DFIR graph execution, per-location. See [`crate::telemetry::Sidecar`].
+    pub(super) sidecars: SparseSecondaryMap<LocationKey, Vec<syn::Expr>>,
+
     pub(super) _phantom: Invariant<'a>,
 }
 
