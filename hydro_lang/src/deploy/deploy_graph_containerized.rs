@@ -1006,7 +1006,7 @@ impl<'a> Deploy<'a> for DockerDeploy {
         extra_stmts: &mut Vec<syn::Stmt>,
         p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
-        _codec_type: &syn::Type,
+        codec_type: &syn::Type,
         shared_handle: String,
     ) -> syn::Expr {
         p2.exposed_ports.borrow_mut().push(*p2_port);
@@ -1037,11 +1037,10 @@ impl<'a> Deploy<'a> for DockerDeploy {
             let #socket_ident = tokio::net::TcpListener::bind(#bind_addr).await.unwrap();
         });
 
-        let create_expr =
-            deploy_containerized_external_many_sink_source_ident(socket_ident.clone());
+        let root = crate::staging_util::get_this_crate();
 
         extra_stmts.push(syn::parse_quote! {
-            let (#source_ident, #sink_ident, #membership_ident) = #create_expr;
+            let (#source_ident, #sink_ident, #membership_ident) = #root::runtime_support::hydro_deploy_integration::multi_connection::tcp_multi_connection::<_, #codec_type>(#socket_ident);
         });
 
         parse_quote!(#source_ident)
@@ -1116,6 +1115,13 @@ impl<'a> Deploy<'a> for DockerDeploy {
         many: bool,
         server_hint: NetworkHint,
     ) -> Box<dyn FnOnce()> {
+        if server_hint != NetworkHint::Auto {
+            panic!(
+                "Docker deployment only supports NetworkHint::Auto, got {:?}",
+                server_hint
+            );
+        }
+
         // For many connections, we need to populate connection_info so as_bincode_bidi can find it
         if many {
             p1.connection_info.borrow_mut().insert(

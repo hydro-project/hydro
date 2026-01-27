@@ -263,18 +263,6 @@ pub fn deploy_containerized_external_sink_source_ident(socket_ident: syn::Ident)
     .splice_untyped_ctx(&())
 }
 
-pub fn deploy_containerized_external_many_sink_source_ident(socket_ident: syn::Ident) -> syn::Expr {
-    let socket_ident = SocketIdent { socket_ident };
-
-    q!({
-        let listener = socket_ident;
-        let (source, sink, membership) =
-            hydro_deploy_integration::multi_connection::tcp_multi_connection(listener);
-        (source, sink, membership)
-    })
-    .splice_untyped_ctx(&())
-}
-
 pub fn cluster_ids<'a>() -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone {
     // unimplemented!(); // this is unused.
 

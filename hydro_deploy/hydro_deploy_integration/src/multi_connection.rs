@@ -4,7 +4,6 @@ use std::ops::DerefMut;
 use std::pin::Pin;
 use std::task::{Context, Poll, ready};
 
-use bytes::BytesMut;
 use futures::{Sink, SinkExt, Stream, StreamExt};
 #[cfg(unix)]
 use tempfile::TempDir;
@@ -14,7 +13,7 @@ use tokio::net::UnixListener;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tokio_util::codec::{Decoder, Encoder, Framed, FramedRead, FramedWrite, LengthDelimitedCodec};
+use tokio_util::codec::{Decoder, Encoder, Framed, FramedRead, FramedWrite};
 
 use crate::{AcceptedServer, BoundServer, Connected, Connection};
 
@@ -365,24 +364,26 @@ impl<O, C: Encoder<O>> Sink<(u64, O)> for MultiConnectionSink<O, C> {
 }
 
 /// TCP-only concrete type versions for use in containerized deployments
-pub struct TcpMultiConnectionSource {
+pub struct TcpMultiConnectionSource<C: Decoder> {
     /// The TCP listener accepting new connections
     pub listener: TcpListener,
     /// Counter for assigning unique connection IDs
     pub next_connection_id: u64,
     /// Active connections with their IDs and framed readers
-    pub active_connections: Vec<Option<(u64, FramedRead<OwnedReadHalf, LengthDelimitedCodec>)>>,
+    pub active_connections: Vec<Option<(u64, FramedRead<OwnedReadHalf, C>)>>,
     /// Cursor for fair round-robin polling
     pub poll_cursor: usize,
     /// Channel to send new sinks to the TcpMultiConnectionSink
-    pub new_sink_sender:
-        mpsc::UnboundedSender<(u64, FramedWrite<OwnedWriteHalf, LengthDelimitedCodec>)>,
+    pub new_sink_sender: mpsc::UnboundedSender<(u64, FramedWrite<OwnedWriteHalf, C>)>,
     /// Channel to send membership events
     pub membership_sender: mpsc::UnboundedSender<(u64, bool)>,
 }
 
-impl Stream for TcpMultiConnectionSource {
-    type Item = Result<(u64, BytesMut), io::Error>;
+impl<C: Decoder + Default + Unpin> Stream for TcpMultiConnectionSource<C>
+where
+    C::Error: From<io::Error>,
+{
+    type Item = Result<(u64, C::Item), C::Error>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let me = self.deref_mut();
@@ -395,8 +396,8 @@ impl Stream for TcpMultiConnectionSource {
                     me.next_connection_id += 1;
 
                     let (rx, tx) = stream.into_split();
-                    let fr = FramedRead::new(rx, LengthDelimitedCodec::new());
-                    let fw = FramedWrite::new(tx, LengthDelimitedCodec::new());
+                    let fr = FramedRead::new(rx, C::default());
+                    let fw = FramedWrite::new(tx, C::default());
 
                     me.active_connections.push(Some((connection_id, fr)));
                     let _ = me.new_sink_sender.send((connection_id, fw));
@@ -404,7 +405,7 @@ impl Stream for TcpMultiConnectionSource {
                 }
                 Poll::Ready(Err(e)) => {
                     if !me.active_connections.iter().any(|c| c.is_some()) {
-                        return Poll::Ready(Some(Err(e)));
+                        return Poll::Ready(Some(Err(e.into())));
                     } else {
                         break;
                     }
@@ -475,49 +476,47 @@ impl Stream for TcpMultiConnectionSource {
 
 /// TCP-only multi-connection sink using concrete types (no boxing).
 /// Routes (connection_id, data) to the appropriate connection.
-pub struct TcpMultiConnectionSink {
+pub struct TcpMultiConnectionSink<I, C: Encoder<I>> {
     /// Map of connection IDs to their framed writers
-    pub connection_sinks: HashMap<u64, FramedWrite<OwnedWriteHalf, LengthDelimitedCodec>>,
+    pub connection_sinks: HashMap<u64, FramedWrite<OwnedWriteHalf, C>>,
     /// Channel to receive new sinks from TcpMultiConnectionSource
-    pub new_sink_receiver:
-        mpsc::UnboundedReceiver<(u64, FramedWrite<OwnedWriteHalf, LengthDelimitedCodec>)>,
+    pub new_sink_receiver: mpsc::UnboundedReceiver<(u64, FramedWrite<OwnedWriteHalf, C>)>,
+    _marker: std::marker::PhantomData<fn(I) -> I>, /* fn(I) -> I instead of just I to keep the struct invariant over I, which keeps it Unpin. */
 }
 
-impl Sink<(u64, bytes::Bytes)> for TcpMultiConnectionSink {
-    type Error = io::Error;
+impl<I, C: Encoder<I> + Unpin> Sink<(u64, I)> for TcpMultiConnectionSink<I, C> {
+    type Error = C::Error;
 
-    fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let me = self.get_mut();
         // Receive any new sinks
-        while let Poll::Ready(Some((id, sink))) = self.new_sink_receiver.poll_recv(cx) {
-            self.connection_sinks.insert(id, sink);
+        while let Poll::Ready(Some((id, sink))) = me.new_sink_receiver.poll_recv(cx) {
+            me.connection_sinks.insert(id, sink);
         }
         Poll::Ready(Ok(()))
     }
 
-    fn start_send(mut self: Pin<&mut Self>, item: (u64, bytes::Bytes)) -> Result<(), Self::Error> {
-        if let Some(sink) = self.connection_sinks.get_mut(&item.0) {
+    fn start_send(self: Pin<&mut Self>, item: (u64, I)) -> Result<(), Self::Error> {
+        let me = self.get_mut();
+        if let Some(sink) = me.connection_sinks.get_mut(&item.0) {
             let _ = Pin::new(sink).start_send(item.1);
         }
         Ok(())
     }
 
-    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let me = self.get_mut();
         let mut any_pending = false;
 
-        self.connection_sinks.retain(|(_id, sink)| {
-            match Pin::new(sink).poll_flush(cx) {
-                Poll::Ready(Ok(())) => {
-                    true
-                }
-                Poll::Ready(Err(_)) => {
-                    false
-                }
+        me.connection_sinks
+            .retain(|_id, sink| match Pin::new(sink).poll_flush(cx) {
+                Poll::Ready(Ok(())) => true,
+                Poll::Ready(Err(_)) => false,
                 Poll::Pending => {
                     any_pending = true;
                     true
                 }
-            }
-        });
+            });
 
         if any_pending {
             Poll::Pending
@@ -526,27 +525,19 @@ impl Sink<(u64, bytes::Bytes)> for TcpMultiConnectionSink {
         }
     }
 
-    fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let mut closed = Vec::new();
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let me = self.get_mut();
         let mut any_pending = false;
 
-        for (&id, sink) in self.connection_sinks.iter_mut() {
-            match Pin::new(sink).poll_close(cx) {
-                Poll::Ready(Ok(())) => {
-                    closed.push(id);
-                }
-                Poll::Ready(Err(_)) => {
-                    closed.push(id);
-                }
+        me.connection_sinks
+            .retain(|_id, sink| match Pin::new(sink).poll_close(cx) {
+                Poll::Ready(Ok(())) => false,
+                Poll::Ready(Err(_)) => false,
                 Poll::Pending => {
                     any_pending = true;
+                    true
                 }
-            }
-        }
-
-        for id in closed {
-            self.connection_sinks.remove(&id);
-        }
+            });
 
         if any_pending {
             Poll::Pending
@@ -556,13 +547,16 @@ impl Sink<(u64, bytes::Bytes)> for TcpMultiConnectionSink {
     }
 }
 
-pub fn tcp_multi_connection(
-    listener: TcpListener,
-) -> (
-    TcpMultiConnectionSource,
-    TcpMultiConnectionSink,
+type TcpMultiConnectionParts<I, C> = (
+    TcpMultiConnectionSource<C>,
+    TcpMultiConnectionSink<I, C>,
     UnboundedReceiverStream<(u64, bool)>,
-) {
+);
+
+pub fn tcp_multi_connection<I, C>(listener: TcpListener) -> TcpMultiConnectionParts<I, C>
+where
+    C: Decoder + Encoder<I> + Default,
+{
     let (new_sink_sender, new_sink_receiver) = mpsc::unbounded_channel();
     let (membership_sender, membership_receiver) = mpsc::unbounded_channel();
 
@@ -578,6 +572,7 @@ pub fn tcp_multi_connection(
     let sink = TcpMultiConnectionSink {
         connection_sinks: HashMap::new(),
         new_sink_receiver,
+        _marker: std::marker::PhantomData,
     };
 
     let membership = UnboundedReceiverStream::new(membership_receiver);
