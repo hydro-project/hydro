@@ -1,7 +1,6 @@
 //! Runtime metrics for DFIR.
 
 use std::cell::Cell;
-use std::iter::FusedIterator;
 use std::pin::Pin;
 use std::rc::Rc;
 use std::task::{Context, Poll};
@@ -16,8 +15,9 @@ use crate::util::slot_vec::SecondarySlotVec;
 
 /// Metrics for a [`Dfir`] graph instance.
 ///
-/// Call [`Dfir::metrics`] for referenced-counted continually-updated metrics,
-/// or call [`Dfir::metrics_intervals`] for an infinite iterator of metrics (across each interval).
+/// Call [`Dfir::metrics`] for reference-counted continually-updated metrics,
+/// or call [`Dfir::metrics_intervals`] to obtain a [`DfirMetricsIntervals`] handle, and use
+/// [`DfirMetricsIntervals::take_interval`] to retrieve metrics for successive intervals.
 #[derive(Default, Clone)]
 #[non_exhaustive]
 pub struct DfirMetrics {
@@ -43,7 +43,14 @@ impl DfirMetrics {
     }
 }
 
-/// Created via [`Dfir::metrics_intervals`], see its documentation for details.
+/// A handle into a DFIR instance's metrics, where each call to [`Self::take_interval`] ends the current interval and
+/// returns its metrics. Obtained via [`Dfir::metrics_intervals`].
+///
+/// The first call to `take_interval` returns metrics since this DFIR instance was created. Each subsequent call to
+/// `take_interval` returns metrics since the previous call.
+///
+/// Cloning the handle "forks" it from the original, as afterwards each interval may return different metrics
+/// depending on when exactly `take_interval` is called.
 #[derive(Clone)]
 pub struct DfirMetricsIntervals {
     /// `curr` is continually updating (via shared ownership).
@@ -52,33 +59,26 @@ pub struct DfirMetricsIntervals {
     pub(super) prev: Option<DfirMetrics>,
 }
 
-impl Iterator for DfirMetricsIntervals {
-    type Item = DfirMetrics;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl DfirMetricsIntervals {
+    /// Ends the current interval and returns the accumulated metrics across the interval.
+    ///
+    /// The first call to `take_interval` returns metrics since this DFIR instance was created. Each subsequent call to
+    /// `take_interval` returns metrics since the previous call.
+    pub fn take_interval(&mut self) -> DfirMetrics {
         let mut curr = self.curr.as_ref().clone();
         if let Some(prev) = self.prev.replace(curr.clone()) {
             curr.diff(&prev);
         }
-        Some(curr)
+        curr
     }
 
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (usize::MAX, None)
-    }
-
-    #[track_caller]
-    fn last(self) -> Option<DfirMetrics> {
-        panic!("iterator is infinite");
-    }
-
-    #[track_caller]
-    fn count(self) -> usize {
-        panic!("iterator is infinite");
+    /// Returns a reference-counted handle to the original continually-updated runtime metrics for this DFIR instance.
+    ///
+    /// See [`Dfir::metrics`].
+    pub fn all_metrics(&self) -> Rc<DfirMetrics> {
+        Rc::clone(&self.curr)
     }
 }
-
-impl FusedIterator for DfirMetricsIntervals {}
 
 /// Declarative macro to generate metrics structs with Cell-based fields and getter methods.
 macro_rules! define_metrics {
@@ -255,7 +255,7 @@ mod test {
         };
 
         // First iteration - captures initial state
-        let first = intervals.next().unwrap();
+        let first = intervals.take_interval();
         let sg_metrics = &first.subgraphs[sg_id];
         assert_eq!(sg_metrics.total_run_count(), 5);
         let hoff_metrics = &first.handoffs[handoff_id];
@@ -278,7 +278,7 @@ mod test {
         hoff_metrics.curr_items_count.set(10);
 
         // Second iteration - should return the diff
-        let second = intervals.next().unwrap();
+        let second = intervals.take_interval();
         let sg_metrics = &second.subgraphs[sg_id];
         assert_eq!(sg_metrics.total_run_count(), 7); // 12 - 5
         assert_eq!(sg_metrics.total_poll_count(), 15); // 25 - 10

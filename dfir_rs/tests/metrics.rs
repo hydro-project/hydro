@@ -152,7 +152,7 @@ async fn test_metrics_intervals() {
     let mut metrics_intervals = df.metrics_intervals();
 
     // Zero at start
-    let metrics = metrics_intervals.next().unwrap();
+    let metrics = metrics_intervals.take_interval();
     assert_eq!(1, metrics.subgraphs.len());
     let sg_id = metrics.subgraphs.keys().next().unwrap();
     let sg_metrics = &metrics.subgraphs[sg_id];
@@ -166,7 +166,7 @@ async fn test_metrics_intervals() {
     df.run_tick().await;
 
     // After first tick, metrics should be updated
-    let metrics = metrics_intervals.next().unwrap();
+    let metrics = metrics_intervals.take_interval();
     let sg_metrics = &metrics.subgraphs[sg_id];
     assert_eq!(1, sg_metrics.total_run_count());
     assert_eq!(1, sg_metrics.total_poll_count());
@@ -179,7 +179,7 @@ async fn test_metrics_intervals() {
     df.run_tick().await;
 
     // After second tick, metrics updated
-    let metrics = metrics_intervals.next().unwrap();
+    let metrics = metrics_intervals.take_interval();
     let sg_metrics = &metrics.subgraphs[sg_id];
     assert_eq!(1, sg_metrics.total_run_count()); // Still 1 (per tick)
     assert_eq!(1, sg_metrics.total_poll_count());
