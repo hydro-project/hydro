@@ -111,6 +111,7 @@ pub(crate) trait DynLocation: Clone {
 
     fn flow_state(&self) -> &FlowState;
     fn is_top_level() -> bool;
+    fn multiversioned(&self) -> bool;
 
     fn new_node_metadata(&self, collection_kind: CollectionKind) -> HydroIrMetadata {
         use crate::compile::ir::HydroIrOpMetadata;

@@ -51,6 +51,10 @@ impl<L: DynLocation> DynLocation for Atomic<L> {
     fn is_top_level() -> bool {
         L::is_top_level()
     }
+
+    fn multiversioned(&self) -> bool {
+        self.tick.multiversioned()
+    }
 }
 
 impl<'a, L> Location<'a> for Atomic<L>
@@ -89,6 +93,10 @@ impl<L: DynLocation> DynLocation for Tick<L> {
 
     fn is_top_level() -> bool {
         false
+    }
+
+    fn multiversioned(&self) -> bool {
+        self.l.multiversioned()
     }
 }
 

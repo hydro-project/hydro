@@ -1695,6 +1695,7 @@ pub enum HydroNode {
     },
 
     Network {
+        name: Option<String>,
         serialize_fn: Option<DebugExpr>,
         instantiate_fn: DebugInstantiate,
         deserialize_fn: Option<DebugExpr>,
@@ -2073,12 +2074,14 @@ impl HydroNode {
                 metadata: metadata.clone(),
             },
             HydroNode::Network {
+                name,
                 serialize_fn,
                 instantiate_fn,
                 deserialize_fn,
                 input,
                 metadata,
             } => HydroNode::Network {
+                name: name.clone(),
                 serialize_fn: serialize_fn.clone(),
                 instantiate_fn: instantiate_fn.clone(),
                 deserialize_fn: deserialize_fn.clone(),

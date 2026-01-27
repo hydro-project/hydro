@@ -9,6 +9,9 @@ expression: built.ir()
             inner: Cast {
                 inner: Cast {
                     inner: Network {
+                        name: Some(
+                            "m2m_broadcast",
+                        ),
                         serialize_fn: Some(
                             hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , i32) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                         ),
