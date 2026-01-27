@@ -64,6 +64,13 @@ pub struct FlowBuilder<'a> {
     /// Map from raw location ID to name (including externals).
     location_names: SecondaryMap<LocationKey, String>,
 
+    /// Application name used in telemetry.
+    #[cfg_attr(
+        not(feature = "build"),
+        expect(dead_code, reason = "unused without build")
+    )]
+    flow_name: String,
+
     /// Tracks whether this flow has been finalized; it is an error to
     /// drop without finalizing.
     finalized: bool,
@@ -92,6 +99,16 @@ impl<'a> FlowBuilder<'a> {
         reason = "call `new` explicitly, not `default`"
     )]
     pub fn new() -> FlowBuilder<'a> {
+        let mut name = std::env::var("CARGO_PKG_NAME").unwrap_or_else(|_| "unknown".to_owned());
+        if let Ok(bin_path) = std::env::current_exe()
+            && let Some(bin_name) = bin_path.file_stem()
+        {
+            name = format!("{}/{}", name, bin_name.display());
+        }
+        Self::with_name(name)
+    }
+
+    pub fn with_name(name: impl Into<String>) -> Self {
         FlowBuilder {
             flow_state: Rc::new(RefCell::new(FlowStateInner {
                 roots: Some(vec![]),
@@ -101,6 +118,7 @@ impl<'a> FlowBuilder<'a> {
             })),
             locations: SlotMap::with_key(),
             location_names: SecondaryMap::new(),
+            flow_name: name.into(),
             finalized: false,
             _phantom: PhantomData,
         }
@@ -155,6 +173,7 @@ impl<'a> FlowBuilder<'a> {
             ir: self.flow_state.borrow_mut().roots.take().unwrap(),
             locations: std::mem::take(&mut self.locations),
             location_names: std::mem::take(&mut self.location_names),
+            flow_name: std::mem::take(&mut self.flow_name),
             _phantom: PhantomData,
         }
     }
@@ -238,6 +257,7 @@ impl<'a> FlowBuilder<'a> {
                 })),
                 locations: built.locations.clone(),
                 location_names: built.location_names.clone(),
+                flow_name: built.flow_name.clone(),
                 finalized: false,
                 _phantom: PhantomData,
             },

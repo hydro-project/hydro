@@ -728,8 +728,11 @@ impl Node for DeployExternal {
         env: &mut Self::InstantiateEnv,
         _meta: &mut Self::Meta,
         _graph: DfirGraph,
-        _extra_stmts: Vec<syn::Stmt>,
+        extra_stmts: &[syn::Stmt],
+        sidecars: &[syn::Expr],
     ) {
+        assert!(extra_stmts.is_empty());
+        assert!(sidecars.is_empty());
         let service = env.CustomService(self.host.clone(), vec![]);
         *self.underlying.borrow_mut() = Some(service);
     }
@@ -806,7 +809,8 @@ impl Node for DeployNode {
         env: &mut Self::InstantiateEnv,
         _meta: &mut Self::Meta,
         graph: DfirGraph,
-        extra_stmts: Vec<syn::Stmt>,
+        extra_stmts: &[syn::Stmt],
+        sidecars: &[syn::Expr],
     ) {
         let (service, host) = match self.service_spec.borrow_mut().take().unwrap() {
             CrateOrTrybuild::Crate(c, host) => (c, host),
@@ -824,6 +828,7 @@ impl Node for DeployNode {
                 let (bin_name, config) = create_graph_trybuild(
                     graph,
                     extra_stmts,
+                    sidecars,
                     trybuild.name_hint.as_deref(),
                     false,
                     linking_mode,
@@ -893,7 +898,8 @@ impl Node for DeployCluster {
         env: &mut Self::InstantiateEnv,
         meta: &mut Self::Meta,
         graph: DfirGraph,
-        extra_stmts: Vec<syn::Stmt>,
+        extra_stmts: &[syn::Stmt],
+        sidecars: &[syn::Expr],
     ) {
         let has_trybuild = self
             .cluster_spec
@@ -927,6 +933,7 @@ impl Node for DeployCluster {
             Some(create_graph_trybuild(
                 graph,
                 extra_stmts,
+                sidecars,
                 self.name_hint.as_deref(),
                 false,
                 linking_mode,
