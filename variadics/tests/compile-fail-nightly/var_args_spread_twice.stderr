@@ -6,20 +6,10 @@ error: `var_args!` can only have the `...` spread syntax on the last field.
   |
   = note: this error originates in the macro `$crate::var_args` which comes from the expansion of the macro `var_args` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-warning: variable `a` is assigned to, but never used
+warning: unused variable: `a`
  --> tests/compile-fail-nightly/var_args_spread_twice.rs:4:19
   |
 4 |     let var_args!(a, ...b, ...c) = var_expr!(1, 2.0, "three", false);
-  |                   ^
+  |                   ^ help: if this is intentional, prefix it with an underscore: `_a`
   |
-  = note: consider using `_a` instead
   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
-
-warning: value assigned to `a` is never read
- --> tests/compile-fail-nightly/var_args_spread_twice.rs:4:19
-  |
-4 |     let var_args!(a, ...b, ...c) = var_expr!(1, 2.0, "three", false);
-  |                   ^
-  |
-  = help: maybe it is overwritten before being read?
-  = note: `#[warn(unused_assignments)]` (part of `#[warn(unused)]`) on by default
