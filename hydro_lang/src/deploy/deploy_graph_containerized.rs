@@ -263,9 +263,44 @@ impl<'a> RegisterPort<'a, DockerDeploy> for DockerDeployExternal {
     ) -> impl Future<
         Output = DynSourceSink<Result<bytes::BytesMut, std::io::Error>, Bytes, std::io::Error>,
     > + 'a {
-        let _span =
-            tracing::trace_span!("as_bytes_bidi", name = %self.name, %external_port_id).entered(); // the instrument macro doesn't work here because of lifetime issues?
-        async { todo!() }
+        let guard =
+            tracing::trace_span!("as_bytes_bidi", name = %self.name, %external_port_id).entered();
+
+        let local_port = *self.ports.borrow().get(&external_port_id).unwrap();
+        let (docker_container_name, remote_port, _) = self
+            .connection_info
+            .borrow()
+            .get(&local_port)
+            .unwrap()
+            .clone();
+
+        let docker_container_name = docker_container_name.borrow().as_ref().unwrap().clone();
+
+        async move {
+            let local_port =
+                find_dynamically_allocated_docker_port(&docker_container_name, remote_port).await;
+            let remote_ip_address = "localhost";
+
+            trace!(name: "as_bytes_bidi_connecting", to = %remote_ip_address, to_port = %local_port);
+
+            let stream = TcpStream::connect(format!("{remote_ip_address}:{local_port}"))
+                .await
+                .unwrap();
+
+            trace!(name: "as_bytes_bidi_connected", to = %remote_ip_address, to_port = %local_port);
+
+            let (rx, tx) = stream.into_split();
+
+            let source = Box::pin(
+                FramedRead::new(rx, LengthDelimitedCodec::new()),
+            ) as Pin<Box<dyn Stream<Item = Result<bytes::BytesMut, std::io::Error>>>>;
+
+            let sink = Box::pin(FramedWrite::new(tx, LengthDelimitedCodec::new()))
+                as Pin<Box<dyn Sink<Bytes, Error = std::io::Error>>>;
+
+            (source, sink)
+        }
+        .instrument(guard.exit())
     }
 
     fn as_bincode_bidi<InT, OutT>(
@@ -276,9 +311,48 @@ impl<'a> RegisterPort<'a, DockerDeploy> for DockerDeployExternal {
         InT: serde::Serialize + 'static,
         OutT: serde::de::DeserializeOwned + 'static,
     {
-        let _span =
-            tracing::trace_span!("as_bincode_bidi", name = %self.name, %external_port_id).entered(); // the instrument macro doesn't work here because of lifetime issues?
-        async { todo!() }
+        let guard =
+            tracing::trace_span!("as_bincode_bidi", name = %self.name, %external_port_id).entered();
+
+        let local_port = *self.ports.borrow().get(&external_port_id).unwrap();
+        let (docker_container_name, remote_port, _) = self
+            .connection_info
+            .borrow()
+            .get(&local_port)
+            .unwrap()
+            .clone();
+
+        let docker_container_name = docker_container_name.borrow().as_ref().unwrap().clone();
+
+        async move {
+            let local_port =
+                find_dynamically_allocated_docker_port(&docker_container_name, remote_port).await;
+            let remote_ip_address = "localhost";
+
+            trace!(name: "as_bincode_bidi_connecting", to = %remote_ip_address, to_port = %local_port);
+
+            let stream = TcpStream::connect(format!("{remote_ip_address}:{local_port}"))
+                .await
+                .unwrap();
+
+            trace!(name: "as_bincode_bidi_connected", to = %remote_ip_address, to_port = %local_port);
+
+            let (rx, tx) = stream.into_split();
+
+            let source = Box::pin(
+                FramedRead::new(rx, LengthDelimitedCodec::new())
+                    .map(|v| bincode::deserialize(&v.unwrap()).unwrap()),
+            ) as Pin<Box<dyn Stream<Item = OutT>>>;
+
+            let sink = Box::pin(
+                FramedWrite::new(tx, LengthDelimitedCodec::new()).with(move |v: InT| async move {
+                    Ok::<_, std::io::Error>(Bytes::from(bincode::serialize(&v).unwrap()))
+                }),
+            ) as Pin<Box<dyn Sink<InT, Error = std::io::Error>>>;
+
+            (source, sink)
+        }
+        .instrument(guard.exit())
     }
 
     fn as_bincode_sink<T>(
@@ -935,12 +1009,51 @@ impl<'a> Deploy<'a> for DockerDeploy {
         _codec_type: &syn::Type,
         shared_handle: String,
     ) -> syn::Expr {
-        todo!()
+        p2.exposed_ports.borrow_mut().push(*p2_port);
+
+        let socket_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_socket", &shared_handle),
+            Span::call_site(),
+        );
+
+        let source_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_source", &shared_handle),
+            Span::call_site(),
+        );
+
+        let sink_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_sink", &shared_handle),
+            Span::call_site(),
+        );
+
+        let membership_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_membership", &shared_handle),
+            Span::call_site(),
+        );
+
+        let bind_addr = format!("0.0.0.0:{}", p2_port);
+
+        extra_stmts.push(syn::parse_quote! {
+            let #socket_ident = tokio::net::TcpListener::bind(#bind_addr).await.unwrap();
+        });
+
+        let create_expr =
+            deploy_containerized_external_many_sink_source_ident(socket_ident.clone());
+
+        extra_stmts.push(syn::parse_quote! {
+            let (#source_ident, #sink_ident, #membership_ident) = #create_expr;
+        });
+
+        parse_quote!(#source_ident)
     }
 
     #[instrument(level = "trace", skip_all, fields(%shared_handle))]
     fn e2o_many_sink(shared_handle: String) -> syn::Expr {
-        todo!()
+        let sink_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_sink", &shared_handle),
+            Span::call_site(),
+        );
+        parse_quote!(#sink_ident)
     }
 
     #[instrument(level = "trace", skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, %p2_port, %shared_handle))]
@@ -1003,6 +1116,18 @@ impl<'a> Deploy<'a> for DockerDeploy {
         many: bool,
         server_hint: NetworkHint,
     ) -> Box<dyn FnOnce()> {
+        // For many connections, we need to populate connection_info so as_bincode_bidi can find it
+        if many {
+            p1.connection_info.borrow_mut().insert(
+                *p1_port,
+                (
+                    p2.docker_container_name.clone(),
+                    *p2_port,
+                    p2.network.clone(),
+                ),
+            );
+        }
+
         let serialized = format!("e2o_connect {}:{p1_port} -> {}:{p2_port}", p1.name, p2.name);
 
         Box::new(move || {
