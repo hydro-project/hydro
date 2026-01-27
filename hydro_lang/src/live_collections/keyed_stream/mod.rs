@@ -1675,10 +1675,8 @@ where
         Idemp: ValidIdempotenceFor<R>,
     {
         let init = init.splice_fn0_ctx(&self.location).into();
-        let comb = comb
-            .splice_fn2_borrow_mut_ctx_props(&self.location)
-            .0
-            .into();
+        let (comb, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
+        proof.register_proof(&comb);
 
         let ordered = self
             .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
@@ -1688,7 +1686,7 @@ where
             ordered.location.clone(),
             HydroNode::FoldKeyed {
                 init,
-                acc: comb,
+                acc: comb.into(),
                 input: Box::new(ordered.ir_node.into_inner()),
                 metadata: ordered.location.new_node_metadata(KeyedSingleton::<
                     K,
@@ -1743,10 +1741,8 @@ where
         C: ValidCommutativityFor<O>,
         Idemp: ValidIdempotenceFor<R>,
     {
-        let f = comb
-            .splice_fn2_borrow_mut_ctx_props(&self.location)
-            .0
-            .into();
+        let (f, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
+        proof.register_proof(&f);
 
         let ordered = self
             .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
@@ -1755,7 +1751,7 @@ where
         KeyedSingleton::new(
             ordered.location.clone(),
             HydroNode::ReduceKeyed {
-                f,
+                f: f.into(),
                 input: Box::new(ordered.ir_node.into_inner()),
                 metadata: ordered.location.new_node_metadata(KeyedSingleton::<
                     K,
@@ -1809,10 +1805,8 @@ where
     {
         let other: Optional<O2, Tick<L::Root>, Bounded> = other.into();
         check_matching_location(&self.location.root(), other.location.outer());
-        let f = comb
-            .splice_fn2_borrow_mut_ctx_props(&self.location)
-            .0
-            .into();
+        let (f, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
+        proof.register_proof(&f);
 
         let ordered = self
             .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
@@ -1821,7 +1815,7 @@ where
         KeyedSingleton::new(
             ordered.location.clone(),
             HydroNode::ReduceKeyedWatermark {
-                f,
+                f: f.into(),
                 input: Box::new(ordered.ir_node.into_inner()),
                 watermark: Box::new(other.ir_node.into_inner()),
                 metadata: ordered.location.new_node_metadata(KeyedSingleton::<
