@@ -110,14 +110,21 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     where
         T: Serialize + DeserializeOwned,
     {
-        let _ = via;
         let serialize_pipeline = Some(N::serialize_thunk(true));
 
         let deserialize_pipeline = Some(N::deserialize_thunk(None));
 
+        let name = via.name();
+        if to.multiversioned() && name.is_none() {
+            panic!(
+                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+            );
+        }
+
         Stream::new(
             to.clone(),
             HydroNode::Network {
+                name: name.clone(),
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
@@ -220,14 +227,21 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
     {
-        let _ = via;
         let serialize_pipeline = Some(N::serialize_thunk(true));
 
         let deserialize_pipeline = Some(N::deserialize_thunk(None));
 
+        let name = via.name();
+        if to.multiversioned() && name.is_none() {
+            panic!(
+                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+            );
+        }
+
         KeyedStream::new(
             to.clone(),
             HydroNode::Network {
+                name: name.clone(),
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
@@ -361,14 +375,21 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     where
         T: Serialize + DeserializeOwned,
     {
-        let _ = via;
         let serialize_pipeline = Some(N::serialize_thunk(true));
 
         let deserialize_pipeline = Some(N::deserialize_thunk(Some(&quote_type::<L>())));
 
+        let name = via.name();
+        if to.multiversioned() && name.is_none() {
+            panic!(
+                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+            );
+        }
+
         let raw_stream: Stream<(MemberId<L>, T), Cluster<'a, L2>, Unbounded, O, R> = Stream::new(
             to.clone(),
             HydroNode::Network {
+                name: name.clone(),
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
@@ -521,15 +542,22 @@ impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries>
         K: Serialize + DeserializeOwned,
         V: Serialize + DeserializeOwned,
     {
-        let _ = via;
         let serialize_pipeline = Some(N::serialize_thunk(false));
 
         let deserialize_pipeline = Some(N::deserialize_thunk(Some(&quote_type::<L>())));
+
+        let name = via.name();
+        if to.multiversioned() && name.is_none() {
+            panic!(
+                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+            );
+        }
 
         let raw_stream: Stream<(MemberId<L>, (K, V)), Process<'a, L2>, Unbounded, O, R> =
             Stream::new(
                 to.clone(),
                 HydroNode::Network {
+                    name: name.clone(),
                     serialize_fn: serialize_pipeline.map(|e| e.into()),
                     instantiate_fn: DebugInstantiate::Building,
                     deserialize_fn: deserialize_pipeline.map(|e| e.into()),
