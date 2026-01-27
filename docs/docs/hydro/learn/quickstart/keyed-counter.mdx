@@ -112,7 +112,6 @@ This swaps the key and value: `(client_id, key_name)` becomes `(key_name, client
 let get_lookup = sliced! {
     let request_batch = use(requests_regrouped, nondet!(/** we never observe batch boundaries */));
     let count_snapshot = use::atomic(current_count, nondet!(/** atomicity guarantees consistency wrt increments */));
-
     count_snapshot.join_keyed_stream(request_batch)
 };
 `)}</CodeBlock>
