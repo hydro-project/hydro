@@ -54,6 +54,10 @@ impl<'a, C> super::dynamic::DynLocation for Cluster<'a, C> {
     fn is_top_level() -> bool {
         true
     }
+
+    fn multiversioned(&self) -> bool {
+        false // TODO(shadaj): enable multiversioning support for clusters
+    }
 }
 
 impl<'a, C> Location<'a> for Cluster<'a, C> {
