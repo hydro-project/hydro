@@ -131,7 +131,7 @@ Finally, you need to regroup the responses by client ID so each client receives 
 } showLineNumbers={37}>{getLines(keyedCounterSrc, 37, 41, `
 let get_response = get_lookup
     .entries()
-    .map(q!(|(key, (count, client))| (client, (key, count))))
+    .map(q!(|(key, (client, count))| (client, (key, count))))
     .into_keyed();
 `)}</CodeBlock>
 
