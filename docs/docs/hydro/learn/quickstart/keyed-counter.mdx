@@ -153,7 +153,7 @@ error[E0308]: mismatched types
               found struct `KeyedStream<_, _, _, _, NoOrder, _>`
 ```
 
-This error reveals something unique about Hydro: the type system reasons about distributed system properties like out-of-order messages and retries. The `join_keyed_stream()` method performs a hash join between get requests and the keyed singleton. Hash joins process elements based on hash values rather than arrival order, so they cannot preserve ordering. The type system captures this by marking the result as `NoOrder`.
+This error reveals something unique about Hydro: the type system reasons about distributed system properties like out-of-order messages and retries. The `join_keyed_singleton()` method performs a hash join between get requests and the keyed singleton. Hash joins process elements based on hash values rather than arrival order, so they cannot preserve ordering. The type system captures this by marking the result as `NoOrder`.
 
 In distributed systems, properties like ordering guarantees are critical for correctness. Consider what could go wrong if you assumed responses arrived in order:
 
