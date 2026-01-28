@@ -806,7 +806,7 @@
 <a href=#806 id=806 data-nosnippet>806</a>            <span class="kw">let </span>snapshot = <span class="kw">use</span>(<span class="self">self</span>, nondet);
 <a href=#807 id=807 data-nosnippet>807</a>            snapshot.into_stream()
 <a href=#808 id=808 data-nosnippet>808</a>        }
-<a href=#809 id=809 data-nosnippet>809</a>        .weakest_retries()
+<a href=#809 id=809 data-nosnippet>809</a>        .weaken_retries()
 <a href=#810 id=810 data-nosnippet>810</a>    }
 <a href=#811 id=811 data-nosnippet>811</a>
 <a href=#812 id=812 data-nosnippet>812</a>    <span class="doccomment">/// Given a time interval, returns a stream corresponding to snapshots of the singleton
@@ -833,7 +833,7 @@
 <a href=#833 id=833 data-nosnippet>833</a>
 <a href=#834 id=834 data-nosnippet>834</a>            snapshot.filter_if_some(sample_batch.first()).into_stream()
 <a href=#835 id=835 data-nosnippet>835</a>        }
-<a href=#836 id=836 data-nosnippet>836</a>        .weakest_retries()
+<a href=#836 id=836 data-nosnippet>836</a>        .weaken_retries()
 <a href=#837 id=837 data-nosnippet>837</a>    }
 <a href=#838 id=838 data-nosnippet>838</a>}
 <a href=#839 id=839 data-nosnippet>839</a>

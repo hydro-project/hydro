@@ -64,10 +64,10 @@
 <a href=#64 id=64 data-nosnippet>64</a>        <span class="kw">let </span>metadata_ack = metadata_processing.clone().end_atomic();
 <a href=#65 id=65 data-nosnippet>65</a>        <span class="kw">let </span>metadata = metadata_processing
 <a href=#66 id=66 data-nosnippet>66</a>            .batch_atomic(<span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#67 id=67 data-nosnippet>67</a>            .weakest_ordering();
+<a href=#67 id=67 data-nosnippet>67</a>            .weaken_ordering();
 <a href=#68 id=68 data-nosnippet>68</a>
 <a href=#69 id=69 data-nosnippet>69</a>        <span class="comment">// Join responses with metadata (weaken ordering for join_responses)
-<a href=#70 id=70 data-nosnippet>70</a>        </span><span class="kw">let </span>joined = join_responses(responses.weakest_ordering(), metadata);
+<a href=#70 id=70 data-nosnippet>70</a>        </span><span class="kw">let </span>joined = join_responses(responses.weaken_ordering(), metadata);
 <a href=#71 id=71 data-nosnippet>71</a>
 <a href=#72 id=72 data-nosnippet>72</a>        <span class="comment">// Set up outputs
 <a href=#73 id=73 data-nosnippet>73</a>        </span><span class="kw">let </span>metadata_ack_recv = metadata_ack.sim_output();
@@ -102,9 +102,9 @@
 <a href=#102 id=102 data-nosnippet>102</a>        <span class="kw">let </span>metadata_ack = metadata_processing.clone().end_atomic();
 <a href=#103 id=103 data-nosnippet>103</a>        <span class="kw">let </span>metadata = metadata_processing
 <a href=#104 id=104 data-nosnippet>104</a>            .batch_atomic(<span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#105 id=105 data-nosnippet>105</a>            .weakest_ordering();
+<a href=#105 id=105 data-nosnippet>105</a>            .weaken_ordering();
 <a href=#106 id=106 data-nosnippet>106</a>
-<a href=#107 id=107 data-nosnippet>107</a>        <span class="kw">let </span>joined = join_responses(responses.weakest_ordering(), metadata);
+<a href=#107 id=107 data-nosnippet>107</a>        <span class="kw">let </span>joined = join_responses(responses.weaken_ordering(), metadata);
 <a href=#108 id=108 data-nosnippet>108</a>
 <a href=#109 id=109 data-nosnippet>109</a>        <span class="kw">let </span>metadata_ack_recv = metadata_ack.sim_output();
 <a href=#110 id=110 data-nosnippet>110</a>        <span class="kw">let </span>joined_recv = joined.sim_output();
@@ -139,9 +139,9 @@
 <a href=#139 id=139 data-nosnippet>139</a>        <span class="kw">let </span>metadata_ack = metadata_processing.clone().end_atomic();
 <a href=#140 id=140 data-nosnippet>140</a>        <span class="kw">let </span>metadata = metadata_processing
 <a href=#141 id=141 data-nosnippet>141</a>            .batch_atomic(<span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#142 id=142 data-nosnippet>142</a>            .weakest_ordering();
+<a href=#142 id=142 data-nosnippet>142</a>            .weaken_ordering();
 <a href=#143 id=143 data-nosnippet>143</a>
-<a href=#144 id=144 data-nosnippet>144</a>        <span class="kw">let </span>joined = join_responses(responses.weakest_ordering(), metadata);
+<a href=#144 id=144 data-nosnippet>144</a>        <span class="kw">let </span>joined = join_responses(responses.weaken_ordering(), metadata);
 <a href=#145 id=145 data-nosnippet>145</a>
 <a href=#146 id=146 data-nosnippet>146</a>        <span class="kw">let </span>metadata_ack_recv = metadata_ack.sim_output();
 <a href=#147 id=147 data-nosnippet>147</a>        <span class="kw">let </span>joined_recv = joined.sim_output();
@@ -175,9 +175,9 @@
 <a href=#175 id=175 data-nosnippet>175</a>        <span class="kw">let </span>metadata_ack = metadata_processing.clone().end_atomic();
 <a href=#176 id=176 data-nosnippet>176</a>        <span class="kw">let </span>metadata = metadata_processing
 <a href=#177 id=177 data-nosnippet>177</a>            .batch_atomic(<span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#178 id=178 data-nosnippet>178</a>            .weakest_ordering();
+<a href=#178 id=178 data-nosnippet>178</a>            .weaken_ordering();
 <a href=#179 id=179 data-nosnippet>179</a>
-<a href=#180 id=180 data-nosnippet>180</a>        <span class="kw">let </span>joined = join_responses(responses.weakest_ordering(), metadata);
+<a href=#180 id=180 data-nosnippet>180</a>        <span class="kw">let </span>joined = join_responses(responses.weaken_ordering(), metadata);
 <a href=#181 id=181 data-nosnippet>181</a>
 <a href=#182 id=182 data-nosnippet>182</a>        <span class="kw">let </span>metadata_ack_recv = metadata_ack.sim_output();
 <a href=#183 id=183 data-nosnippet>183</a>        <span class="kw">let </span>joined_recv = joined.sim_output();
