@@ -1028,10 +1028,10 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, L, Bounded> {
         )
     }
 
-    /// For each value in `lookup`, find the matching key in `self`/
-    /// The output is a keyed singleton with the key from `lookup`, and a value
-    /// that is a tuple of (`lookup`'s value, Option<`self`'s value>).
-    /// If the key is not present in `self`, the option will be [`None`].
+    /// For each value in `self`, find the matching key in `lookup`.
+    /// The output is a keyed singleton with the key from `self`, and a value
+    /// that is a tuple of (`self`'s value, Option<`lookup`'s value>).
+    /// If the key is not present in `lookup`, the option will be [`None`].
     ///
     /// # Example
     /// ```rust
@@ -1052,7 +1052,7 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, L, Bounded> {
     /// #     .into_keyed()
     /// #     .batch(&tick, nondet!(/** test */))
     /// #     .first();
-    /// other_data.lookup_keyed_singleton(requests)
+    /// requests.lookup_keyed_singleton(other_data)
     /// # .entries().all_ticks()
     /// # }, |mut stream| async move {
     /// // { 1: (10, Some(100)), 2: (20, None) }
@@ -1065,14 +1065,14 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, L, Bounded> {
     /// # }));
     /// # }
     /// ```
-    pub fn lookup_keyed_singleton<K2>(
+    pub fn lookup_keyed_singleton<V2>(
         self,
-        lookup: KeyedSingleton<K2, K, L, Bounded>,
-    ) -> KeyedSingleton<K2, (K, Option<V>), L, Bounded>
+        lookup: KeyedSingleton<V, V2, L, Bounded>,
+    ) -> KeyedSingleton<K, (V, Option<V2>), L, Bounded>
     where
         K: Eq + Hash + Clone,
-        V: Clone,
-        K2: Eq + Hash + Clone,
+        V: Eq + Hash + Clone,
+        V2: Clone,
     {
         let result_stream = self.into_keyed_stream().lookup_keyed_stream(
             lookup
@@ -1086,8 +1086,8 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, L, Bounded> {
             HydroNode::Cast {
                 inner: Box::new(result_stream.ir_node.into_inner()),
                 metadata: result_stream.location.new_node_metadata(KeyedSingleton::<
-                    K2,
-                    (K, Option<V>),
+                    K,
+                    (V, Option<V2>),
                     L,
                     Bounded,
                 >::collection_kind(
@@ -1096,10 +1096,10 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, L, Bounded> {
         )
     }
 
-    /// For each value in `lookup`, find the matching key in `self`/
-    /// The output is a keyed stream with the key from `lookup`, and a value
-    /// that is a tuple of (`lookup`'s value, Option<`self`'s value>).
-    /// If the key is not present in `self`, the option will be [`None`].
+    /// For each value in `self`, find the matching key in `lookup`.
+    /// The output is a keyed stream with the key from `self`, and a value
+    /// that is a tuple of (`self`'s value, Option<`lookup`'s value>).
+    /// If the key is not present in `lookup`, the option will be [`None`].
     ///
     /// # Example
     /// ```rust
@@ -1119,7 +1119,7 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, L, Bounded> {
     /// #     .into_keyed()
     /// #     .batch(&tick, nondet!(/** test */))
     /// #     .first();
-    /// other_data.lookup_keyed_stream(requests)
+    /// requests.lookup_keyed_stream(other_data)
     /// # .entries().all_ticks()
     /// # }, |mut stream| async move {
     /// // { 1: [(10, Some(100)), (11, Some(110))], 2: (20, None) }
@@ -1132,14 +1132,14 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, L, Bounded> {
     /// # }));
     /// # }
     /// ```
-    pub fn lookup_keyed_stream<K2, O: Ordering, R: Retries>(
+    pub fn lookup_keyed_stream<V2, O: Ordering, R: Retries>(
         self,
-        lookup: KeyedStream<K2, K, L, Bounded, O, R>,
-    ) -> KeyedStream<K2, (K, Option<V>), L, Bounded, NoOrder, R>
+        lookup: KeyedStream<V, V2, L, Bounded, O, R>,
+    ) -> KeyedStream<K, (V, Option<V2>), L, Bounded, NoOrder, R>
     where
         K: Eq + Hash + Clone,
-        V: Clone,
-        K2: Eq + Hash + Clone,
+        V: Eq + Hash + Clone,
+        V2: Clone,
     {
         self.entries()
             .weaken_retries() // TODO: Once weaken_retries() is implemented for KeyedSingleton, remove entries() and into_keyed()

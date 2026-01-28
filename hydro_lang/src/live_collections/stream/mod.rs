@@ -1825,62 +1825,6 @@ where
             .cross_product_nested_loop(self)
             .into_keyed()
     }
-
-    /// Looks up each element in `self` in the given [`KeyedStream`], returning a [`KeyedStream`]
-    /// containing all elements in `self`, where the value is `Some(v)` if the key was found
-    /// in `keyed_stream`, or `None` if it was not found.
-    ///
-    /// If `self` contains duplicates, then the output will contain multiple values for the duplicated
-    /// key.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use std::collections::HashSet;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let keys = process.source_iter(q!(vec![1, 2, 3]));
-    /// let keyed_stream = process
-    ///     .source_iter(q!(vec![(1, 'a'), (3, 'c')]))
-    ///     .into_keyed()
-    ///     .batch(&tick, nondet!(/** test */));
-    /// keys.batch(&tick, nondet!(/** test */))
-    ///     .lookup_keyed_stream(keyed_stream)
-    ///     .entries()
-    ///     .all_ticks()
-    /// # }, |mut stream| async move {
-    /// // (1, Some('a')), (2, None), (3, Some('c'))
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..3 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, Some('a')), (2, None), (3, Some('c'))]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn lookup_keyed_stream<V, O2: Ordering, R2>(
-        self,
-        keyed_stream: KeyedStream<T, V, L, Bounded, O2, R2>,
-    ) -> KeyedStream<T, Option<V>, L, Bounded, NoOrder, R2>
-    where
-        T: Eq + Hash + Clone,
-        V: Clone,
-        R: MinRetries<R2>,
-        R2: Retries + MinRetries<R, Min = R2>,
-    {
-        let found = keyed_stream
-            .clone()
-            .join_stream(self.clone())
-            .map(q!(|v| Some(v)));
-        let not_found = self
-            .filter_not_in(keyed_stream.keys().weaken_retries())
-            .map(q!(|key| (key, None)))
-            .into_keyed();
-        found.chain(not_found.weakest_ordering())
-    }
 }
 
 impl<'a, K, V1, L, B: Boundedness, O: Ordering, R: Retries> Stream<(K, V1), L, B, O, R>

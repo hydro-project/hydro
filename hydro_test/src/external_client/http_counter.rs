@@ -91,7 +91,7 @@ pub fn http_counter_server<'a, P>(
         let batch_get_requests = use(get_stream, nondet!(/** batch get requests */));
         let cur_counters = use::atomic(counters, nondet!(/** intentional non-determinism for get timing */));
 
-        cur_counters.lookup_keyed_singleton(batch_get_requests).into_keyed_stream()
+        batch_get_requests.lookup_keyed_singleton(cur_counters).into_keyed_stream()
     };
     let get_responses =
         lookup_result.map(q!(|(key, maybe_count)| if let Some(count) = maybe_count {
