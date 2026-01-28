@@ -1017,7 +1017,9 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded
         V2: Clone,
     {
         let lookup_result = self.clone().get_many_if_present(requests.clone());
-        let missing_keys = requests.filter_key_not_in(self.keys()).weakest_ordering();
+        let missing_keys = requests
+            .filter_key_not_in(self.keys())
+            .weaken_ordering::<NoOrder>();
 
         lookup_result
             .map(q!(|(v, v2)| (Some(v), v2)))
