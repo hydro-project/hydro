@@ -35,14 +35,14 @@ struct PerfComputePiArgs {
     aws: bool,
 }
 
-/// Run with no args for localhost, with `--gcp <GCP PROJECT>` for GCP, or `--aws` for AWS.
+/// Run with `--tracing` to include CPU tracing. Add `--gcp <GCP PROJECT>` for GCP, or `--aws` for AWS.
 ///
 /// ```bash
-/// cargo run -p hydro_test --example perf_compute_pi -- --gcp my-gcp-project
+/// cargo run -p hydro_test --example perf_compute_pi -- --tracing --gcp my-gcp-project
 /// ```
 ///
 /// ```bash
-/// cargo run -p hydro_test --example perf_compute_pi -- --aws
+/// cargo run -p hydro_test --example perf_compute_pi -- --tracing --aws
 /// ```
 ///
 /// Once the program is running, you can **press enter** to stop the program and see the results.
