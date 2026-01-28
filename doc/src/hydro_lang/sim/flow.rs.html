@@ -175,32 +175,36 @@
 <a href=#175 id=175 data-nosnippet>175</a>            })
 <a href=#176 id=176 data-nosnippet>176</a>            .collect::&lt;BTreeMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;();
 <a href=#177 id=177 data-nosnippet>177</a>
-<a href=#178 id=178 data-nosnippet>178</a>        <span class="kw">for </span>c <span class="kw">in </span><span class="self">self</span>.clusters.keys() {
-<a href=#179 id=179 data-nosnippet>179</a>            <span class="macro">assert!</span>(
-<a href=#180 id=180 data-nosnippet>180</a>                <span class="self">self</span>.cluster_max_sizes.contains_key(c),
-<a href=#181 id=181 data-nosnippet>181</a>                <span class="string">"Cluster {:?} missing max size; call with_cluster_size() before compiled()"</span>,
-<a href=#182 id=182 data-nosnippet>182</a>                c
-<a href=#183 id=183 data-nosnippet>183</a>            );
-<a href=#184 id=184 data-nosnippet>184</a>        }
-<a href=#185 id=185 data-nosnippet>185</a>
-<a href=#186 id=186 data-nosnippet>186</a>        <span class="kw">let </span>(bin, trybuild) = create_sim_graph_trybuild(
-<a href=#187 id=187 data-nosnippet>187</a>            process_graphs,
-<a href=#188 id=188 data-nosnippet>188</a>            cluster_graphs,
-<a href=#189 id=189 data-nosnippet>189</a>            <span class="self">self</span>.cluster_max_sizes,
-<a href=#190 id=190 data-nosnippet>190</a>            process_tick_graphs,
-<a href=#191 id=191 data-nosnippet>191</a>            cluster_tick_graphs,
-<a href=#192 id=192 data-nosnippet>192</a>            sim_emit.extra_stmts_global,
-<a href=#193 id=193 data-nosnippet>193</a>            sim_emit.extra_stmts_cluster,
-<a href=#194 id=194 data-nosnippet>194</a>        );
-<a href=#195 id=195 data-nosnippet>195</a>
-<a href=#196 id=196 data-nosnippet>196</a>        <span class="kw">let </span>out = compile_sim(bin, trybuild).unwrap();
-<a href=#197 id=197 data-nosnippet>197</a>        <span class="kw">let </span>lib = <span class="kw">unsafe </span>{ Library::new(<span class="kw-2">&amp;</span>out).unwrap() };
-<a href=#198 id=198 data-nosnippet>198</a>
-<a href=#199 id=199 data-nosnippet>199</a>        CompiledSim {
-<a href=#200 id=200 data-nosnippet>200</a>            _path: out,
-<a href=#201 id=201 data-nosnippet>201</a>            lib,
-<a href=#202 id=202 data-nosnippet>202</a>            externals_port_registry: <span class="self">self</span>.externals_port_registry.take(),
-<a href=#203 id=203 data-nosnippet>203</a>        }
-<a href=#204 id=204 data-nosnippet>204</a>    }
-<a href=#205 id=205 data-nosnippet>205</a>}
+<a href=#178 id=178 data-nosnippet>178</a>        <span class="attr">#[expect(
+<a href=#179 id=179 data-nosnippet>179</a>            clippy::disallowed_methods,
+<a href=#180 id=180 data-nosnippet>180</a>            reason = <span class="string">"nondeterministic iteration order, fine for checks"
+<a href=#181 id=181 data-nosnippet>181</a>        </span>)]
+<a href=#182 id=182 data-nosnippet>182</a>        </span><span class="kw">for </span>c <span class="kw">in </span><span class="self">self</span>.clusters.keys() {
+<a href=#183 id=183 data-nosnippet>183</a>            <span class="macro">assert!</span>(
+<a href=#184 id=184 data-nosnippet>184</a>                <span class="self">self</span>.cluster_max_sizes.contains_key(c),
+<a href=#185 id=185 data-nosnippet>185</a>                <span class="string">"Cluster {:?} missing max size; call with_cluster_size() before compiled()"</span>,
+<a href=#186 id=186 data-nosnippet>186</a>                c
+<a href=#187 id=187 data-nosnippet>187</a>            );
+<a href=#188 id=188 data-nosnippet>188</a>        }
+<a href=#189 id=189 data-nosnippet>189</a>
+<a href=#190 id=190 data-nosnippet>190</a>        <span class="kw">let </span>(bin, trybuild) = create_sim_graph_trybuild(
+<a href=#191 id=191 data-nosnippet>191</a>            process_graphs,
+<a href=#192 id=192 data-nosnippet>192</a>            cluster_graphs,
+<a href=#193 id=193 data-nosnippet>193</a>            <span class="self">self</span>.cluster_max_sizes,
+<a href=#194 id=194 data-nosnippet>194</a>            process_tick_graphs,
+<a href=#195 id=195 data-nosnippet>195</a>            cluster_tick_graphs,
+<a href=#196 id=196 data-nosnippet>196</a>            sim_emit.extra_stmts_global,
+<a href=#197 id=197 data-nosnippet>197</a>            sim_emit.extra_stmts_cluster,
+<a href=#198 id=198 data-nosnippet>198</a>        );
+<a href=#199 id=199 data-nosnippet>199</a>
+<a href=#200 id=200 data-nosnippet>200</a>        <span class="kw">let </span>out = compile_sim(bin, trybuild).unwrap();
+<a href=#201 id=201 data-nosnippet>201</a>        <span class="kw">let </span>lib = <span class="kw">unsafe </span>{ Library::new(<span class="kw-2">&amp;</span>out).unwrap() };
+<a href=#202 id=202 data-nosnippet>202</a>
+<a href=#203 id=203 data-nosnippet>203</a>        CompiledSim {
+<a href=#204 id=204 data-nosnippet>204</a>            _path: out,
+<a href=#205 id=205 data-nosnippet>205</a>            lib,
+<a href=#206 id=206 data-nosnippet>206</a>            externals_port_registry: <span class="self">self</span>.externals_port_registry.take(),
+<a href=#207 id=207 data-nosnippet>207</a>        }
+<a href=#208 id=208 data-nosnippet>208</a>    }
+<a href=#209 id=209 data-nosnippet>209</a>}
 </code></pre></div></section></main></body></html>

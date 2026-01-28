@@ -322,10 +322,14 @@
 <a href=#322 id=322 data-nosnippet>322</a>
 <a href=#323 id=323 data-nosnippet>323</a>    <span class="kw">fn </span>union_with(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; usize {
 <a href=#324 id=324 data-nosnippet>324</a>        <span class="kw">let </span>old_len = <span class="self">self</span>.len();
-<a href=#325 id=325 data-nosnippet>325</a>        <span class="kw">for </span>item <span class="kw">in </span>other.iter() {
-<a href=#326 id=326 data-nosnippet>326</a>            <span class="self">self</span>.insert(item.clone());
-<a href=#327 id=327 data-nosnippet>327</a>        }
-<a href=#328 id=328 data-nosnippet>328</a>        old_len
-<a href=#329 id=329 data-nosnippet>329</a>    }
-<a href=#330 id=330 data-nosnippet>330</a>}
+<a href=#325 id=325 data-nosnippet>325</a>        <span class="attr">#[expect(
+<a href=#326 id=326 data-nosnippet>326</a>            clippy::disallowed_methods,
+<a href=#327 id=327 data-nosnippet>327</a>            reason = <span class="string">"nondeterministic iteration order, fine to insert into set"
+<a href=#328 id=328 data-nosnippet>328</a>        </span>)]
+<a href=#329 id=329 data-nosnippet>329</a>        </span><span class="kw">for </span>item <span class="kw">in </span>other.iter() {
+<a href=#330 id=330 data-nosnippet>330</a>            <span class="self">self</span>.insert(item.clone());
+<a href=#331 id=331 data-nosnippet>331</a>        }
+<a href=#332 id=332 data-nosnippet>332</a>        old_len
+<a href=#333 id=333 data-nosnippet>333</a>    }
+<a href=#334 id=334 data-nosnippet>334</a>}
 </code></pre></div></section></main></body></html>

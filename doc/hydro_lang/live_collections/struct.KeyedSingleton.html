@@ -61,14 +61,14 @@ This is only used for testing, to correlate certain <code>HydroNode</code>s with
     self,
 ) -&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::Stream">Stream</a>&lt;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.tuple.html">(K, V)</a>, L, B::<a class="associatedtype" href="keyed_singleton/trait.KeyedSingletonBound.html#associatedtype.UnderlyingBound" title="type hydro_lang::live_collections::keyed_singleton::KeyedSingletonBound::UnderlyingBound">UnderlyingBound</a>, <a class="enum" href="stream/enum.NoOrder.html" title="enum hydro_lang::live_collections::stream::NoOrder">NoOrder</a>, <a class="enum" href="stream/enum.ExactlyOnce.html" title="enum hydro_lang::live_collections::stream::ExactlyOnce">ExactlyOnce</a>&gt;</h4></section></summary><div class="docblock"><p>Flattens the keyed singleton into an unordered stream of key-value pairs.</p>
 <p>The value for each key must be bounded, otherwise the resulting stream elements would be
-non-determinstic. As new entries are added to the keyed singleton, they will be streamed
+non-deterministic. As new entries are added to the keyed singleton, they will be streamed
 into the output.</p>
 <h5 id="example-4"><a class="doc-anchor" href="#example-4">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>keyed_singleton = <span class="comment">// { 1: 2, 2: 4 }
 </span>keyed_singleton.entries()
 <span class="comment">// (1, 2), (2, 4) in any order</span></code></pre></div></div></details><details class="toggle method-toggle" open><summary><section id="method.values" class="method"><a class="src rightside" href="../../src/hydro_lang/live_collections/keyed_singleton.rs.html#611-630">Source</a><h4 class="code-header">pub fn <a href="#method.values" class="fn">values</a>(self) -&gt; <a class="struct" href="struct.Stream.html" title="struct hydro_lang::live_collections::Stream">Stream</a>&lt;V, L, B::<a class="associatedtype" href="keyed_singleton/trait.KeyedSingletonBound.html#associatedtype.UnderlyingBound" title="type hydro_lang::live_collections::keyed_singleton::KeyedSingletonBound::UnderlyingBound">UnderlyingBound</a>, <a class="enum" href="stream/enum.NoOrder.html" title="enum hydro_lang::live_collections::stream::NoOrder">NoOrder</a>, <a class="enum" href="stream/enum.ExactlyOnce.html" title="enum hydro_lang::live_collections::stream::ExactlyOnce">ExactlyOnce</a>&gt;</h4></section></summary><div class="docblock"><p>Flattens the keyed singleton into an unordered stream of just the values.</p>
 <p>The value for each key must be bounded, otherwise the resulting stream elements would be
-non-determinstic. As new entries are added to the keyed singleton, they will be streamed
+non-deterministic. As new entries are added to the keyed singleton, they will be streamed
 into the output.</p>
 <h5 id="example-5"><a class="doc-anchor" href="#example-5">§</a>Example</h5>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>keyed_singleton = <span class="comment">// { 1: 2, 2: 4 }

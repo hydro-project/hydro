@@ -1060,61 +1060,65 @@
 <a href=#1060 id=1060 data-nosnippet>1060</a>                <span class="kw-2">&amp;</span>|x, y| {
 <a href=#1061 id=1061 data-nosnippet>1061</a>                    <span class="kw">let </span><span class="kw-2">mut </span>new_set = HashSet::new();
 <a href=#1062 id=1062 data-nosnippet>1062</a>
-<a href=#1063 id=1063 data-nosnippet>1063</a>                    <span class="kw">for </span>a <span class="kw">in </span>x.iter() {
-<a href=#1064 id=1064 data-nosnippet>1064</a>                        <span class="kw">for </span>b <span class="kw">in </span>y.iter() {
-<a href=#1065 id=1065 data-nosnippet>1065</a>                            new_set.insert(<span class="macro">format!</span>(<span class="string">"{a}{b}"</span>));
-<a href=#1066 id=1066 data-nosnippet>1066</a>                        }
-<a href=#1067 id=1067 data-nosnippet>1067</a>                    }
-<a href=#1068 id=1068 data-nosnippet>1068</a>                    new_set
-<a href=#1069 id=1069 data-nosnippet>1069</a>                },
-<a href=#1070 id=1070 data-nosnippet>1070</a>                HashSet::from([]),
-<a href=#1071 id=1071 data-nosnippet>1071</a>                HashSet::from([<span class="string">""</span>.to_owned()]),
-<a href=#1072 id=1072 data-nosnippet>1072</a>            )
-<a href=#1073 id=1073 data-nosnippet>1073</a>            .is_ok()
-<a href=#1074 id=1074 data-nosnippet>1074</a>        );
-<a href=#1075 id=1075 data-nosnippet>1075</a>    }
-<a href=#1076 id=1076 data-nosnippet>1076</a>
-<a href=#1077 id=1077 data-nosnippet>1077</a>    <span class="attr">#[test]
-<a href=#1078 id=1078 data-nosnippet>1078</a>    </span><span class="kw">fn </span>test_get_single_function_properties() {
-<a href=#1079 id=1079 data-nosnippet>1079</a>        <span class="comment">// Test that get single function properties on addition returns associative, commutative, identity, and inverses.
-<a href=#1080 id=1080 data-nosnippet>1080</a>        </span><span class="kw">let </span>test_properties_satisfied = get_single_function_properties(
-<a href=#1081 id=1081 data-nosnippet>1081</a>            TEST_ITEMS,
-<a href=#1082 id=1082 data-nosnippet>1082</a>            u32::wrapping_add,
-<a href=#1083 id=1083 data-nosnippet>1083</a>            <span class="number">0</span>,
-<a href=#1084 id=1084 data-nosnippet>1084</a>            |x| <span class="number">0u32</span>.wrapping_sub(x),
-<a href=#1085 id=1085 data-nosnippet>1085</a>            <span class="number">0</span>,
-<a href=#1086 id=1086 data-nosnippet>1086</a>        );
-<a href=#1087 id=1087 data-nosnippet>1087</a>        <span class="kw">let </span>correct_properties = <span class="macro">vec!</span>[
-<a href=#1088 id=1088 data-nosnippet>1088</a>            <span class="string">"associativity"</span>.to_string(),
-<a href=#1089 id=1089 data-nosnippet>1089</a>            <span class="string">"commutativity"</span>.to_string(),
-<a href=#1090 id=1090 data-nosnippet>1090</a>            <span class="string">"identity"</span>.to_string(),
-<a href=#1091 id=1091 data-nosnippet>1091</a>            <span class="string">"inverse"</span>.to_string(),
-<a href=#1092 id=1092 data-nosnippet>1092</a>        ];
-<a href=#1093 id=1093 data-nosnippet>1093</a>        <span class="macro">assert_eq!</span>(test_properties_satisfied, correct_properties);
-<a href=#1094 id=1094 data-nosnippet>1094</a>
-<a href=#1095 id=1095 data-nosnippet>1095</a>        <span class="comment">// Test that get single function properties on max returns associative, commutative, idempotent, identity, and absorbing element.
-<a href=#1096 id=1096 data-nosnippet>1096</a>        </span><span class="kw">let </span>test_properties_satisfied = get_single_function_properties(
-<a href=#1097 id=1097 data-nosnippet>1097</a>            <span class="kw-2">&amp;</span>[<span class="number">0.0</span>, <span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>, <span class="number">5.0</span>, <span class="number">6.0</span>, f64::INFINITY],
-<a href=#1098 id=1098 data-nosnippet>1098</a>            f64::max,
-<a href=#1099 id=1099 data-nosnippet>1099</a>            <span class="number">0.0</span>,
-<a href=#1100 id=1100 data-nosnippet>1100</a>            |x| x,
-<a href=#1101 id=1101 data-nosnippet>1101</a>            f64::INFINITY,
-<a href=#1102 id=1102 data-nosnippet>1102</a>        );
-<a href=#1103 id=1103 data-nosnippet>1103</a>        <span class="kw">let </span>correct_properties = <span class="macro">vec!</span>[
-<a href=#1104 id=1104 data-nosnippet>1104</a>            <span class="string">"associativity"</span>.to_string(),
-<a href=#1105 id=1105 data-nosnippet>1105</a>            <span class="string">"commutativity"</span>.to_string(),
-<a href=#1106 id=1106 data-nosnippet>1106</a>            <span class="string">"idempotency"</span>.to_string(),
-<a href=#1107 id=1107 data-nosnippet>1107</a>            <span class="string">"identity"</span>.to_string(),
-<a href=#1108 id=1108 data-nosnippet>1108</a>            <span class="string">"absorbing_element"</span>.to_string(),
-<a href=#1109 id=1109 data-nosnippet>1109</a>        ];
-<a href=#1110 id=1110 data-nosnippet>1110</a>        <span class="macro">assert_eq!</span>(test_properties_satisfied, correct_properties);
-<a href=#1111 id=1111 data-nosnippet>1111</a>
-<a href=#1112 id=1112 data-nosnippet>1112</a>        <span class="comment">// Define a function that takes in two u32s and returns the first one
-<a href=#1113 id=1113 data-nosnippet>1113</a>        </span><span class="kw">let </span>f = |x: u32, _y: u32| x;
-<a href=#1114 id=1114 data-nosnippet>1114</a>        <span class="kw">let </span>test_properties_satisfied =
-<a href=#1115 id=1115 data-nosnippet>1115</a>            get_single_function_properties(TEST_ITEMS, f, <span class="number">0</span>, |x| <span class="number">0u32</span>.wrapping_sub(x), <span class="number">0</span>);
-<a href=#1116 id=1116 data-nosnippet>1116</a>        <span class="kw">let </span>correct_properties = <span class="macro">vec!</span>[<span class="string">"associativity"</span>.to_string(), <span class="string">"idempotency"</span>.to_string()];
-<a href=#1117 id=1117 data-nosnippet>1117</a>        <span class="macro">assert_eq!</span>(test_properties_satisfied, correct_properties);
-<a href=#1118 id=1118 data-nosnippet>1118</a>    }
-<a href=#1119 id=1119 data-nosnippet>1119</a>}
+<a href=#1063 id=1063 data-nosnippet>1063</a>                    <span class="attr">#[expect(
+<a href=#1064 id=1064 data-nosnippet>1064</a>                        clippy::disallowed_methods,
+<a href=#1065 id=1065 data-nosnippet>1065</a>                        reason = <span class="string">"nondeterministic iteration order, fine to collect into set"
+<a href=#1066 id=1066 data-nosnippet>1066</a>                    </span>)]
+<a href=#1067 id=1067 data-nosnippet>1067</a>                    </span><span class="kw">for </span>a <span class="kw">in </span>x.iter() {
+<a href=#1068 id=1068 data-nosnippet>1068</a>                        <span class="kw">for </span>b <span class="kw">in </span>y.iter() {
+<a href=#1069 id=1069 data-nosnippet>1069</a>                            new_set.insert(<span class="macro">format!</span>(<span class="string">"{a}{b}"</span>));
+<a href=#1070 id=1070 data-nosnippet>1070</a>                        }
+<a href=#1071 id=1071 data-nosnippet>1071</a>                    }
+<a href=#1072 id=1072 data-nosnippet>1072</a>                    new_set
+<a href=#1073 id=1073 data-nosnippet>1073</a>                },
+<a href=#1074 id=1074 data-nosnippet>1074</a>                HashSet::from([]),
+<a href=#1075 id=1075 data-nosnippet>1075</a>                HashSet::from([<span class="string">""</span>.to_owned()]),
+<a href=#1076 id=1076 data-nosnippet>1076</a>            )
+<a href=#1077 id=1077 data-nosnippet>1077</a>            .is_ok()
+<a href=#1078 id=1078 data-nosnippet>1078</a>        );
+<a href=#1079 id=1079 data-nosnippet>1079</a>    }
+<a href=#1080 id=1080 data-nosnippet>1080</a>
+<a href=#1081 id=1081 data-nosnippet>1081</a>    <span class="attr">#[test]
+<a href=#1082 id=1082 data-nosnippet>1082</a>    </span><span class="kw">fn </span>test_get_single_function_properties() {
+<a href=#1083 id=1083 data-nosnippet>1083</a>        <span class="comment">// Test that get single function properties on addition returns associative, commutative, identity, and inverses.
+<a href=#1084 id=1084 data-nosnippet>1084</a>        </span><span class="kw">let </span>test_properties_satisfied = get_single_function_properties(
+<a href=#1085 id=1085 data-nosnippet>1085</a>            TEST_ITEMS,
+<a href=#1086 id=1086 data-nosnippet>1086</a>            u32::wrapping_add,
+<a href=#1087 id=1087 data-nosnippet>1087</a>            <span class="number">0</span>,
+<a href=#1088 id=1088 data-nosnippet>1088</a>            |x| <span class="number">0u32</span>.wrapping_sub(x),
+<a href=#1089 id=1089 data-nosnippet>1089</a>            <span class="number">0</span>,
+<a href=#1090 id=1090 data-nosnippet>1090</a>        );
+<a href=#1091 id=1091 data-nosnippet>1091</a>        <span class="kw">let </span>correct_properties = <span class="macro">vec!</span>[
+<a href=#1092 id=1092 data-nosnippet>1092</a>            <span class="string">"associativity"</span>.to_string(),
+<a href=#1093 id=1093 data-nosnippet>1093</a>            <span class="string">"commutativity"</span>.to_string(),
+<a href=#1094 id=1094 data-nosnippet>1094</a>            <span class="string">"identity"</span>.to_string(),
+<a href=#1095 id=1095 data-nosnippet>1095</a>            <span class="string">"inverse"</span>.to_string(),
+<a href=#1096 id=1096 data-nosnippet>1096</a>        ];
+<a href=#1097 id=1097 data-nosnippet>1097</a>        <span class="macro">assert_eq!</span>(test_properties_satisfied, correct_properties);
+<a href=#1098 id=1098 data-nosnippet>1098</a>
+<a href=#1099 id=1099 data-nosnippet>1099</a>        <span class="comment">// Test that get single function properties on max returns associative, commutative, idempotent, identity, and absorbing element.
+<a href=#1100 id=1100 data-nosnippet>1100</a>        </span><span class="kw">let </span>test_properties_satisfied = get_single_function_properties(
+<a href=#1101 id=1101 data-nosnippet>1101</a>            <span class="kw-2">&amp;</span>[<span class="number">0.0</span>, <span class="number">1.0</span>, <span class="number">2.0</span>, <span class="number">3.0</span>, <span class="number">4.0</span>, <span class="number">5.0</span>, <span class="number">6.0</span>, f64::INFINITY],
+<a href=#1102 id=1102 data-nosnippet>1102</a>            f64::max,
+<a href=#1103 id=1103 data-nosnippet>1103</a>            <span class="number">0.0</span>,
+<a href=#1104 id=1104 data-nosnippet>1104</a>            |x| x,
+<a href=#1105 id=1105 data-nosnippet>1105</a>            f64::INFINITY,
+<a href=#1106 id=1106 data-nosnippet>1106</a>        );
+<a href=#1107 id=1107 data-nosnippet>1107</a>        <span class="kw">let </span>correct_properties = <span class="macro">vec!</span>[
+<a href=#1108 id=1108 data-nosnippet>1108</a>            <span class="string">"associativity"</span>.to_string(),
+<a href=#1109 id=1109 data-nosnippet>1109</a>            <span class="string">"commutativity"</span>.to_string(),
+<a href=#1110 id=1110 data-nosnippet>1110</a>            <span class="string">"idempotency"</span>.to_string(),
+<a href=#1111 id=1111 data-nosnippet>1111</a>            <span class="string">"identity"</span>.to_string(),
+<a href=#1112 id=1112 data-nosnippet>1112</a>            <span class="string">"absorbing_element"</span>.to_string(),
+<a href=#1113 id=1113 data-nosnippet>1113</a>        ];
+<a href=#1114 id=1114 data-nosnippet>1114</a>        <span class="macro">assert_eq!</span>(test_properties_satisfied, correct_properties);
+<a href=#1115 id=1115 data-nosnippet>1115</a>
+<a href=#1116 id=1116 data-nosnippet>1116</a>        <span class="comment">// Define a function that takes in two u32s and returns the first one
+<a href=#1117 id=1117 data-nosnippet>1117</a>        </span><span class="kw">let </span>f = |x: u32, _y: u32| x;
+<a href=#1118 id=1118 data-nosnippet>1118</a>        <span class="kw">let </span>test_properties_satisfied =
+<a href=#1119 id=1119 data-nosnippet>1119</a>            get_single_function_properties(TEST_ITEMS, f, <span class="number">0</span>, |x| <span class="number">0u32</span>.wrapping_sub(x), <span class="number">0</span>);
+<a href=#1120 id=1120 data-nosnippet>1120</a>        <span class="kw">let </span>correct_properties = <span class="macro">vec!</span>[<span class="string">"associativity"</span>.to_string(), <span class="string">"idempotency"</span>.to_string()];
+<a href=#1121 id=1121 data-nosnippet>1121</a>        <span class="macro">assert_eq!</span>(test_properties_satisfied, correct_properties);
+<a href=#1122 id=1122 data-nosnippet>1122</a>    }
+<a href=#1123 id=1123 data-nosnippet>1123</a>}
 </code></pre></div></section></main></body></html>

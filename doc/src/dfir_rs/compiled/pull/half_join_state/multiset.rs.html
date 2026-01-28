@@ -98,7 +98,8 @@
 <a href=#98 id=98 data-nosnippet>98</a>        <span class="self">self</span>.len
 <a href=#99 id=99 data-nosnippet>99</a>    }
 <a href=#100 id=100 data-nosnippet>100</a>    <span class="kw">fn </span>iter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; std::collections::hash_map::Iter&lt;<span class="lifetime">'_</span>, Key, SmallVec&lt;[ValBuild; <span class="number">1</span>]&gt;&gt; {
-<a href=#101 id=101 data-nosnippet>101</a>        <span class="self">self</span>.table.iter()
-<a href=#102 id=102 data-nosnippet>102</a>    }
-<a href=#103 id=103 data-nosnippet>103</a>}
+<a href=#101 id=101 data-nosnippet>101</a>        <span class="attr">#[expect(clippy::disallowed_methods, reason = <span class="string">"FxHasher is deterministic"</span>)]
+<a href=#102 id=102 data-nosnippet>102</a>        </span><span class="self">self</span>.table.iter()
+<a href=#103 id=103 data-nosnippet>103</a>    }
+<a href=#104 id=104 data-nosnippet>104</a>}
 </code></pre></div></section></main></body></html>

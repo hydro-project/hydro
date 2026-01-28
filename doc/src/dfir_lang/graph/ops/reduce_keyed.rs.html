@@ -188,25 +188,26 @@
 <a href=#188 id=188 data-nosnippet>188</a>                    <span class="kw">let </span>() = #work_fn_async(fut).<span class="kw">await</span>;
 <a href=#189 id=189 data-nosnippet>189</a>                }
 <a href=#190 id=190 data-nosnippet>190</a>
-<a href=#191 id=191 data-nosnippet>191</a>                <span class="kw">let </span>#ident = #iter_expr;
-<a href=#192 id=192 data-nosnippet>192</a>                <span class="kw">let </span>#ident = #root::futures::stream::iter(#ident);
-<a href=#193 id=193 data-nosnippet>193</a>            }
-<a href=#194 id=194 data-nosnippet>194</a>        };
-<a href=#195 id=195 data-nosnippet>195</a>
-<a href=#196 id=196 data-nosnippet>196</a>        <span class="kw">let </span>write_iterator_after = <span class="kw">match </span>persistence {
-<a href=#197 id=197 data-nosnippet>197</a>            Persistence::None | Persistence::Tick | Persistence::Loop =&gt; Default::default(),
-<a href=#198 id=198 data-nosnippet>198</a>            Persistence::Static | Persistence::Mutable =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#199 id=199 data-nosnippet>199</a>                <span class="comment">// Reschedule the subgraph lazily to ensure replay on later ticks.
-<a href=#200 id=200 data-nosnippet>200</a>                </span>#context.schedule_subgraph(#context.current_subgraph(), <span class="bool-val">false</span>);
-<a href=#201 id=201 data-nosnippet>201</a>            },
-<a href=#202 id=202 data-nosnippet>202</a>        };
-<a href=#203 id=203 data-nosnippet>203</a>
-<a href=#204 id=204 data-nosnippet>204</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#205 id=205 data-nosnippet>205</a>            write_prologue,
-<a href=#206 id=206 data-nosnippet>206</a>            write_prologue_after,
-<a href=#207 id=207 data-nosnippet>207</a>            write_iterator,
-<a href=#208 id=208 data-nosnippet>208</a>            write_iterator_after,
-<a href=#209 id=209 data-nosnippet>209</a>        })
-<a href=#210 id=210 data-nosnippet>210</a>    },
-<a href=#211 id=211 data-nosnippet>211</a>};
+<a href=#191 id=191 data-nosnippet>191</a>                <span class="attr">#[allow(clippy::disallowed_methods, reason = <span class="string">"FxHasher is deterministic"</span>)]
+<a href=#192 id=192 data-nosnippet>192</a>                </span><span class="kw">let </span>#ident = #iter_expr;
+<a href=#193 id=193 data-nosnippet>193</a>                <span class="kw">let </span>#ident = #root::futures::stream::iter(#ident);
+<a href=#194 id=194 data-nosnippet>194</a>            }
+<a href=#195 id=195 data-nosnippet>195</a>        };
+<a href=#196 id=196 data-nosnippet>196</a>
+<a href=#197 id=197 data-nosnippet>197</a>        <span class="kw">let </span>write_iterator_after = <span class="kw">match </span>persistence {
+<a href=#198 id=198 data-nosnippet>198</a>            Persistence::None | Persistence::Tick | Persistence::Loop =&gt; Default::default(),
+<a href=#199 id=199 data-nosnippet>199</a>            Persistence::Static | Persistence::Mutable =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#200 id=200 data-nosnippet>200</a>                <span class="comment">// Reschedule the subgraph lazily to ensure replay on later ticks.
+<a href=#201 id=201 data-nosnippet>201</a>                </span>#context.schedule_subgraph(#context.current_subgraph(), <span class="bool-val">false</span>);
+<a href=#202 id=202 data-nosnippet>202</a>            },
+<a href=#203 id=203 data-nosnippet>203</a>        };
+<a href=#204 id=204 data-nosnippet>204</a>
+<a href=#205 id=205 data-nosnippet>205</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#206 id=206 data-nosnippet>206</a>            write_prologue,
+<a href=#207 id=207 data-nosnippet>207</a>            write_prologue_after,
+<a href=#208 id=208 data-nosnippet>208</a>            write_iterator,
+<a href=#209 id=209 data-nosnippet>209</a>            write_iterator_after,
+<a href=#210 id=210 data-nosnippet>210</a>        })
+<a href=#211 id=211 data-nosnippet>211</a>    },
+<a href=#212 id=212 data-nosnippet>212</a>};
 </code></pre></div></section></main></body></html>

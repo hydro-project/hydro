@@ -428,90 +428,94 @@
 <a href=#428 id=428 data-nosnippet>428</a>                    }
 <a href=#429 id=429 data-nosnippet>429</a>                }
 <a href=#430 id=430 data-nosnippet>430</a>
-<a href=#431 id=431 data-nosnippet>431</a>                <span class="kw">for </span>container_id <span class="kw">in </span>known_tasks.iter() {
-<a href=#432 id=432 data-nosnippet>432</a>                    <span class="kw">if </span>!current_tasks.contains(container_id) {
-<a href=#433 id=433 data-nosnippet>433</a>                        <span class="macro">trace!</span>(name: <span class="string">"container_left"</span>, %container_id);
-<a href=#434 id=434 data-nosnippet>434</a>                        events.push((container_id.to_owned(), MembershipEvent::Left));
-<a href=#435 id=435 data-nosnippet>435</a>                    }
-<a href=#436 id=436 data-nosnippet>436</a>                }
-<a href=#437 id=437 data-nosnippet>437</a>
-<a href=#438 id=438 data-nosnippet>438</a>                <span class="macro">trace!</span>(name: <span class="string">"poll_complete"</span>, event_count = events.len(), current_task_count = current_tasks.len());
-<a href=#439 id=439 data-nosnippet>439</a>                tokio::time::sleep(Duration::from_secs(<span class="number">2</span>)).<span class="kw">await</span>;
-<a href=#440 id=440 data-nosnippet>440</a>
-<a href=#441 id=441 data-nosnippet>441</a>                <span class="prelude-val">Some</span>((events, (current_tasks, deployment_instance, location_key)))
-<a href=#442 id=442 data-nosnippet>442</a>            }.instrument(ecs_poller_span.clone())
-<a href=#443 id=443 data-nosnippet>443</a>        }
-<a href=#444 id=444 data-nosnippet>444</a>    )
-<a href=#445 id=445 data-nosnippet>445</a>    .flat_map(futures::stream::iter);
-<a href=#446 id=446 data-nosnippet>446</a>
-<a href=#447 id=447 data-nosnippet>447</a>    Box::pin(
-<a href=#448 id=448 data-nosnippet>448</a>        poll_stream
-<a href=#449 id=449 data-nosnippet>449</a>            .map(|(k, v)| (TaglessMemberId::from_container_name(k), v))
-<a href=#450 id=450 data-nosnippet>450</a>            .inspect(|(member_id, event)| <span class="macro">trace!</span>(name: <span class="string">"membership_event"</span>, <span class="question-mark">?</span>member_id, <span class="question-mark">?</span>event)),
-<a href=#451 id=451 data-nosnippet>451</a>    )
-<a href=#452 id=452 data-nosnippet>452</a>}
-<a href=#453 id=453 data-nosnippet>453</a>
-<a href=#454 id=454 data-nosnippet>454</a><span class="doccomment">/// Resolve a container name to its private IP address via ECS API
-<a href=#455 id=455 data-nosnippet>455</a></span><span class="kw">async fn </span>resolve_container_ip(container_name: <span class="kw-2">&amp;</span>str) -&gt; String {
-<a href=#456 id=456 data-nosnippet>456</a>    <span class="kw">let </span>deployment_instance = std::env::var(<span class="string">"DEPLOYMENT_INSTANCE"</span>).unwrap();
-<a href=#457 id=457 data-nosnippet>457</a>    <span class="kw">let </span>cluster_name = <span class="macro">format!</span>(<span class="string">"hydro-{}"</span>, deployment_instance);
-<a href=#458 id=458 data-nosnippet>458</a>
-<a href=#459 id=459 data-nosnippet>459</a>    <span class="kw">let </span>config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).<span class="kw">await</span>;
-<a href=#460 id=460 data-nosnippet>460</a>    <span class="kw">let </span>ecs_client = aws_sdk_ecs::Client::new(<span class="kw-2">&amp;</span>config);
-<a href=#461 id=461 data-nosnippet>461</a>
-<a href=#462 id=462 data-nosnippet>462</a>    <span class="kw">loop </span>{
-<a href=#463 id=463 data-nosnippet>463</a>        <span class="kw">let </span>tasks = <span class="kw">match </span>ecs_client
-<a href=#464 id=464 data-nosnippet>464</a>            .list_tasks()
-<a href=#465 id=465 data-nosnippet>465</a>            .cluster(<span class="kw-2">&amp;</span>cluster_name)
-<a href=#466 id=466 data-nosnippet>466</a>            .family(container_name)
-<a href=#467 id=467 data-nosnippet>467</a>            .send()
-<a href=#468 id=468 data-nosnippet>468</a>            .<span class="kw">await
-<a href=#469 id=469 data-nosnippet>469</a>        </span>{
-<a href=#470 id=470 data-nosnippet>470</a>            <span class="prelude-val">Ok</span>(t) =&gt; t,
-<a href=#471 id=471 data-nosnippet>471</a>            <span class="prelude-val">Err</span>(e) =&gt; {
-<a href=#472 id=472 data-nosnippet>472</a>                <span class="macro">trace!</span>(name: <span class="string">"resolve_ip_list_error"</span>, %container_name, error = %e);
-<a href=#473 id=473 data-nosnippet>473</a>                tokio::time::sleep(Duration::from_secs(<span class="number">1</span>)).<span class="kw">await</span>;
-<a href=#474 id=474 data-nosnippet>474</a>                <span class="kw">continue</span>;
-<a href=#475 id=475 data-nosnippet>475</a>            }
-<a href=#476 id=476 data-nosnippet>476</a>        };
-<a href=#477 id=477 data-nosnippet>477</a>
-<a href=#478 id=478 data-nosnippet>478</a>        <span class="kw">let </span><span class="prelude-val">Some</span>(task_arn) = tasks.task_arns().first() <span class="kw">else </span>{
-<a href=#479 id=479 data-nosnippet>479</a>            <span class="macro">trace!</span>(name: <span class="string">"resolve_ip_no_task"</span>, %container_name);
-<a href=#480 id=480 data-nosnippet>480</a>            tokio::time::sleep(Duration::from_secs(<span class="number">1</span>)).<span class="kw">await</span>;
-<a href=#481 id=481 data-nosnippet>481</a>            <span class="kw">continue</span>;
-<a href=#482 id=482 data-nosnippet>482</a>        };
-<a href=#483 id=483 data-nosnippet>483</a>
-<a href=#484 id=484 data-nosnippet>484</a>        <span class="kw">let </span>task_details = <span class="kw">match </span>ecs_client
-<a href=#485 id=485 data-nosnippet>485</a>            .describe_tasks()
-<a href=#486 id=486 data-nosnippet>486</a>            .cluster(<span class="kw-2">&amp;</span>cluster_name)
-<a href=#487 id=487 data-nosnippet>487</a>            .tasks(task_arn)
-<a href=#488 id=488 data-nosnippet>488</a>            .send()
-<a href=#489 id=489 data-nosnippet>489</a>            .<span class="kw">await
-<a href=#490 id=490 data-nosnippet>490</a>        </span>{
-<a href=#491 id=491 data-nosnippet>491</a>            <span class="prelude-val">Ok</span>(d) =&gt; d,
-<a href=#492 id=492 data-nosnippet>492</a>            <span class="prelude-val">Err</span>(e) =&gt; {
-<a href=#493 id=493 data-nosnippet>493</a>                <span class="macro">trace!</span>(name: <span class="string">"resolve_ip_describe_error"</span>, %container_name, error = %e);
-<a href=#494 id=494 data-nosnippet>494</a>                tokio::time::sleep(Duration::from_secs(<span class="number">1</span>)).<span class="kw">await</span>;
-<a href=#495 id=495 data-nosnippet>495</a>                <span class="kw">continue</span>;
-<a href=#496 id=496 data-nosnippet>496</a>            }
-<a href=#497 id=497 data-nosnippet>497</a>        };
-<a href=#498 id=498 data-nosnippet>498</a>
-<a href=#499 id=499 data-nosnippet>499</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(task) = task_details.tasks().first() {
-<a href=#500 id=500 data-nosnippet>500</a>            <span class="comment">// Get private IP from task's network attachment
-<a href=#501 id=501 data-nosnippet>501</a>            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ip) = task
-<a href=#502 id=502 data-nosnippet>502</a>                .attachments()
-<a href=#503 id=503 data-nosnippet>503</a>                .iter()
-<a href=#504 id=504 data-nosnippet>504</a>                .flat_map(|a| a.details())
-<a href=#505 id=505 data-nosnippet>505</a>                .find(|d| d.name() == <span class="prelude-val">Some</span>(<span class="string">"privateIPv4Address"</span>))
-<a href=#506 id=506 data-nosnippet>506</a>                .and_then(|d| d.value())
-<a href=#507 id=507 data-nosnippet>507</a>            {
-<a href=#508 id=508 data-nosnippet>508</a>                <span class="macro">trace!</span>(name: <span class="string">"resolved_ip"</span>, %container_name, %ip);
-<a href=#509 id=509 data-nosnippet>509</a>                <span class="kw">return </span>ip.to_string();
-<a href=#510 id=510 data-nosnippet>510</a>            }
-<a href=#511 id=511 data-nosnippet>511</a>        }
-<a href=#512 id=512 data-nosnippet>512</a>
-<a href=#513 id=513 data-nosnippet>513</a>        <span class="macro">trace!</span>(name: <span class="string">"resolve_ip_no_ip"</span>, %container_name);
-<a href=#514 id=514 data-nosnippet>514</a>        tokio::time::sleep(Duration::from_secs(<span class="number">1</span>)).<span class="kw">await</span>;
-<a href=#515 id=515 data-nosnippet>515</a>    }
-<a href=#516 id=516 data-nosnippet>516</a>}
+<a href=#431 id=431 data-nosnippet>431</a>                <span class="attr">#[expect(
+<a href=#432 id=432 data-nosnippet>432</a>                    clippy::disallowed_methods,
+<a href=#433 id=433 data-nosnippet>433</a>                    reason = <span class="string">"nondeterministic iteration order, container events are not deterministically ordered"
+<a href=#434 id=434 data-nosnippet>434</a>                </span>)]
+<a href=#435 id=435 data-nosnippet>435</a>                </span><span class="kw">for </span>container_id <span class="kw">in </span>known_tasks.iter() {
+<a href=#436 id=436 data-nosnippet>436</a>                    <span class="kw">if </span>!current_tasks.contains(container_id) {
+<a href=#437 id=437 data-nosnippet>437</a>                        <span class="macro">trace!</span>(name: <span class="string">"container_left"</span>, %container_id);
+<a href=#438 id=438 data-nosnippet>438</a>                        events.push((container_id.to_owned(), MembershipEvent::Left));
+<a href=#439 id=439 data-nosnippet>439</a>                    }
+<a href=#440 id=440 data-nosnippet>440</a>                }
+<a href=#441 id=441 data-nosnippet>441</a>
+<a href=#442 id=442 data-nosnippet>442</a>                <span class="macro">trace!</span>(name: <span class="string">"poll_complete"</span>, event_count = events.len(), current_task_count = current_tasks.len());
+<a href=#443 id=443 data-nosnippet>443</a>                tokio::time::sleep(Duration::from_secs(<span class="number">2</span>)).<span class="kw">await</span>;
+<a href=#444 id=444 data-nosnippet>444</a>
+<a href=#445 id=445 data-nosnippet>445</a>                <span class="prelude-val">Some</span>((events, (current_tasks, deployment_instance, location_key)))
+<a href=#446 id=446 data-nosnippet>446</a>            }.instrument(ecs_poller_span.clone())
+<a href=#447 id=447 data-nosnippet>447</a>        }
+<a href=#448 id=448 data-nosnippet>448</a>    )
+<a href=#449 id=449 data-nosnippet>449</a>    .flat_map(futures::stream::iter);
+<a href=#450 id=450 data-nosnippet>450</a>
+<a href=#451 id=451 data-nosnippet>451</a>    Box::pin(
+<a href=#452 id=452 data-nosnippet>452</a>        poll_stream
+<a href=#453 id=453 data-nosnippet>453</a>            .map(|(k, v)| (TaglessMemberId::from_container_name(k), v))
+<a href=#454 id=454 data-nosnippet>454</a>            .inspect(|(member_id, event)| <span class="macro">trace!</span>(name: <span class="string">"membership_event"</span>, <span class="question-mark">?</span>member_id, <span class="question-mark">?</span>event)),
+<a href=#455 id=455 data-nosnippet>455</a>    )
+<a href=#456 id=456 data-nosnippet>456</a>}
+<a href=#457 id=457 data-nosnippet>457</a>
+<a href=#458 id=458 data-nosnippet>458</a><span class="doccomment">/// Resolve a container name to its private IP address via ECS API
+<a href=#459 id=459 data-nosnippet>459</a></span><span class="kw">async fn </span>resolve_container_ip(container_name: <span class="kw-2">&amp;</span>str) -&gt; String {
+<a href=#460 id=460 data-nosnippet>460</a>    <span class="kw">let </span>deployment_instance = std::env::var(<span class="string">"DEPLOYMENT_INSTANCE"</span>).unwrap();
+<a href=#461 id=461 data-nosnippet>461</a>    <span class="kw">let </span>cluster_name = <span class="macro">format!</span>(<span class="string">"hydro-{}"</span>, deployment_instance);
+<a href=#462 id=462 data-nosnippet>462</a>
+<a href=#463 id=463 data-nosnippet>463</a>    <span class="kw">let </span>config = aws_config::load_defaults(aws_config::BehaviorVersion::latest()).<span class="kw">await</span>;
+<a href=#464 id=464 data-nosnippet>464</a>    <span class="kw">let </span>ecs_client = aws_sdk_ecs::Client::new(<span class="kw-2">&amp;</span>config);
+<a href=#465 id=465 data-nosnippet>465</a>
+<a href=#466 id=466 data-nosnippet>466</a>    <span class="kw">loop </span>{
+<a href=#467 id=467 data-nosnippet>467</a>        <span class="kw">let </span>tasks = <span class="kw">match </span>ecs_client
+<a href=#468 id=468 data-nosnippet>468</a>            .list_tasks()
+<a href=#469 id=469 data-nosnippet>469</a>            .cluster(<span class="kw-2">&amp;</span>cluster_name)
+<a href=#470 id=470 data-nosnippet>470</a>            .family(container_name)
+<a href=#471 id=471 data-nosnippet>471</a>            .send()
+<a href=#472 id=472 data-nosnippet>472</a>            .<span class="kw">await
+<a href=#473 id=473 data-nosnippet>473</a>        </span>{
+<a href=#474 id=474 data-nosnippet>474</a>            <span class="prelude-val">Ok</span>(t) =&gt; t,
+<a href=#475 id=475 data-nosnippet>475</a>            <span class="prelude-val">Err</span>(e) =&gt; {
+<a href=#476 id=476 data-nosnippet>476</a>                <span class="macro">trace!</span>(name: <span class="string">"resolve_ip_list_error"</span>, %container_name, error = %e);
+<a href=#477 id=477 data-nosnippet>477</a>                tokio::time::sleep(Duration::from_secs(<span class="number">1</span>)).<span class="kw">await</span>;
+<a href=#478 id=478 data-nosnippet>478</a>                <span class="kw">continue</span>;
+<a href=#479 id=479 data-nosnippet>479</a>            }
+<a href=#480 id=480 data-nosnippet>480</a>        };
+<a href=#481 id=481 data-nosnippet>481</a>
+<a href=#482 id=482 data-nosnippet>482</a>        <span class="kw">let </span><span class="prelude-val">Some</span>(task_arn) = tasks.task_arns().first() <span class="kw">else </span>{
+<a href=#483 id=483 data-nosnippet>483</a>            <span class="macro">trace!</span>(name: <span class="string">"resolve_ip_no_task"</span>, %container_name);
+<a href=#484 id=484 data-nosnippet>484</a>            tokio::time::sleep(Duration::from_secs(<span class="number">1</span>)).<span class="kw">await</span>;
+<a href=#485 id=485 data-nosnippet>485</a>            <span class="kw">continue</span>;
+<a href=#486 id=486 data-nosnippet>486</a>        };
+<a href=#487 id=487 data-nosnippet>487</a>
+<a href=#488 id=488 data-nosnippet>488</a>        <span class="kw">let </span>task_details = <span class="kw">match </span>ecs_client
+<a href=#489 id=489 data-nosnippet>489</a>            .describe_tasks()
+<a href=#490 id=490 data-nosnippet>490</a>            .cluster(<span class="kw-2">&amp;</span>cluster_name)
+<a href=#491 id=491 data-nosnippet>491</a>            .tasks(task_arn)
+<a href=#492 id=492 data-nosnippet>492</a>            .send()
+<a href=#493 id=493 data-nosnippet>493</a>            .<span class="kw">await
+<a href=#494 id=494 data-nosnippet>494</a>        </span>{
+<a href=#495 id=495 data-nosnippet>495</a>            <span class="prelude-val">Ok</span>(d) =&gt; d,
+<a href=#496 id=496 data-nosnippet>496</a>            <span class="prelude-val">Err</span>(e) =&gt; {
+<a href=#497 id=497 data-nosnippet>497</a>                <span class="macro">trace!</span>(name: <span class="string">"resolve_ip_describe_error"</span>, %container_name, error = %e);
+<a href=#498 id=498 data-nosnippet>498</a>                tokio::time::sleep(Duration::from_secs(<span class="number">1</span>)).<span class="kw">await</span>;
+<a href=#499 id=499 data-nosnippet>499</a>                <span class="kw">continue</span>;
+<a href=#500 id=500 data-nosnippet>500</a>            }
+<a href=#501 id=501 data-nosnippet>501</a>        };
+<a href=#502 id=502 data-nosnippet>502</a>
+<a href=#503 id=503 data-nosnippet>503</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(task) = task_details.tasks().first() {
+<a href=#504 id=504 data-nosnippet>504</a>            <span class="comment">// Get private IP from task's network attachment
+<a href=#505 id=505 data-nosnippet>505</a>            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(ip) = task
+<a href=#506 id=506 data-nosnippet>506</a>                .attachments()
+<a href=#507 id=507 data-nosnippet>507</a>                .iter()
+<a href=#508 id=508 data-nosnippet>508</a>                .flat_map(|a| a.details())
+<a href=#509 id=509 data-nosnippet>509</a>                .find(|d| d.name() == <span class="prelude-val">Some</span>(<span class="string">"privateIPv4Address"</span>))
+<a href=#510 id=510 data-nosnippet>510</a>                .and_then(|d| d.value())
+<a href=#511 id=511 data-nosnippet>511</a>            {
+<a href=#512 id=512 data-nosnippet>512</a>                <span class="macro">trace!</span>(name: <span class="string">"resolved_ip"</span>, %container_name, %ip);
+<a href=#513 id=513 data-nosnippet>513</a>                <span class="kw">return </span>ip.to_string();
+<a href=#514 id=514 data-nosnippet>514</a>            }
+<a href=#515 id=515 data-nosnippet>515</a>        }
+<a href=#516 id=516 data-nosnippet>516</a>
+<a href=#517 id=517 data-nosnippet>517</a>        <span class="macro">trace!</span>(name: <span class="string">"resolve_ip_no_ip"</span>, %container_name);
+<a href=#518 id=518 data-nosnippet>518</a>        tokio::time::sleep(Duration::from_secs(<span class="number">1</span>)).<span class="kw">await</span>;
+<a href=#519 id=519 data-nosnippet>519</a>    }
+<a href=#520 id=520 data-nosnippet>520</a>}
 </code></pre></div></section></main></body></html>
