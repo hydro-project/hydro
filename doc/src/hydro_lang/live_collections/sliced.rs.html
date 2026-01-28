@@ -909,7 +909,7 @@
 <a href=#909 id=909 data-nosnippet>909</a>        <span class="kw">let </span>out_recv = <span class="macro">sliced!</span> {
 <a href=#910 id=910 data-nosnippet>910</a>            <span class="kw">let </span>atomic_keyed_input = <span class="kw">use</span>::atomic(atomic_keyed_input, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
 <a href=#911 id=911 data-nosnippet>911</a>            <span class="kw">let </span>accumulated_inputs = <span class="kw">use</span>::atomic(accumulated_inputs, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>));
-<a href=#912 id=912 data-nosnippet>912</a>            accumulated_inputs.get_many_if_present(atomic_keyed_input)
+<a href=#912 id=912 data-nosnippet>912</a>            accumulated_inputs.join_keyed_stream(atomic_keyed_input)
 <a href=#913 id=913 data-nosnippet>913</a>                .map(<span class="macro">q!</span>(|(sum, _input)| sum))
 <a href=#914 id=914 data-nosnippet>914</a>                .entries()
 <a href=#915 id=915 data-nosnippet>915</a>        }

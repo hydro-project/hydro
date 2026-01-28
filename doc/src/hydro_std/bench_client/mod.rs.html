@@ -122,7 +122,7 @@
 <a href=#122 id=122 data-nosnippet>122</a>            .map(<span class="macro">q!</span>(|output| (SystemTime::now(), output)));
 <a href=#123 id=123 data-nosnippet>123</a>
 <a href=#124 id=124 data-nosnippet>124</a>        start_times
-<a href=#125 id=125 data-nosnippet>125</a>            .zip(end_times_and_output)
+<a href=#125 id=125 data-nosnippet>125</a>            .join_keyed_singleton(end_times_and_output)
 <a href=#126 id=126 data-nosnippet>126</a>            .map(<span class="macro">q!</span>(|(start_time, (end_time, output))| (output, end_time.duration_since(start_time).unwrap())))
 <a href=#127 id=127 data-nosnippet>127</a>            .into_keyed_stream()
 <a href=#128 id=128 data-nosnippet>128</a>            .weaken_ordering()
