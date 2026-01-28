@@ -2,11 +2,13 @@
 //!
 //! <https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format_Specification.html>
 use std::marker::Unpin;
+use std::panic::AssertUnwindSafe;
 use std::time::{Duration, SystemTime};
 
 use dfir_rs::Never;
 use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::scheduled::metrics::DfirMetrics;
+use futures::FutureExt;
 use quote::quote;
 use serde_json::json;
 use syn::parse_quote;
@@ -63,13 +65,14 @@ impl Sidecar for RecordMetricsSidecar {
         };
 
         parse_quote! {
-            #root::telemetry::emf::record_metrics(&#dfir_ident, #namespace, #location_name, #file_path, #interval)
+            #root::telemetry::emf::record_metrics_sidecar(&#dfir_ident, #namespace, #location_name, #file_path, #interval)
         }
     }
 }
 
 /// Record both Dfir and Tokio metrics, at the given interval, forever.
-pub fn record_metrics(
+#[doc(hidden)]
+pub fn record_metrics_sidecar(
     dfir: &Dfir<'_>,
     namespace: &'static str,
     location_name: &'static str,
@@ -91,45 +94,53 @@ pub fn record_metrics(
             let dfir_metrics = dfir_intervals.take_interval();
             let rt_metrics = rt_intervals.next().unwrap();
 
-            let timestamp = SystemTime::now();
+            let unwind_result = AssertUnwindSafe(async {
+                let timestamp = SystemTime::now();
 
-            let file_result = tokio::fs::OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(false)
-                .append(true)
-                .open(file_path)
-                .await;
-            let file = match file_result {
-                Ok(file) => file,
-                Err(e) => {
-                    eprintln!("Failed to create metrics file: {}", e);
-                    continue;
-                }
-            };
-            let mut writer = tokio::io::BufWriter::new(file);
+                let file_result = tokio::fs::OpenOptions::new()
+                    .write(true)
+                    .create(true)
+                    .truncate(false)
+                    .append(true)
+                    .open(file_path)
+                    .await;
+                let file = match file_result {
+                    Ok(file) => file,
+                    Err(e) => {
+                        tracing::warn!("Failed to create log file for EMF metrics: {}", e);
+                        return;
+                    }
+                };
+                let mut writer = tokio::io::BufWriter::new(file);
 
-            record_metrics_dfir(
-                namespace,
-                location_name,
-                timestamp,
-                dfir_metrics,
-                &mut writer,
-            )
-            .await
-            .unwrap();
-
-            record_metrics_tokio(namespace, location_name, timestamp, rt_metrics, &mut writer)
+                record_metrics_dfir(
+                    namespace,
+                    location_name,
+                    timestamp,
+                    dfir_metrics,
+                    &mut writer,
+                )
                 .await
                 .unwrap();
 
-            writer.shutdown().await.unwrap();
+                record_metrics_tokio(namespace, location_name, timestamp, rt_metrics, &mut writer)
+                    .await
+                    .unwrap();
+
+                writer.shutdown().await.unwrap();
+            })
+            .catch_unwind()
+            .await;
+
+            if let Err(panic_reason) = unwind_result {
+                tracing::error!("Panic in metrics sidecar: {panic_reason:?}");
+            }
         }
     }
 }
 
 /// Records DFIR metrics.
-pub async fn record_metrics_dfir<W>(
+async fn record_metrics_dfir<W>(
     namespace: &str,
     location_name: &str,
     timestamp: SystemTime,
@@ -206,7 +217,7 @@ where
 }
 
 /// Records tokio runtime metrics.
-pub async fn record_metrics_tokio<W>(
+async fn record_metrics_tokio<W>(
     namespace: &str,
     location_name: &str,
     timestamp: SystemTime,
