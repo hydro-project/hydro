@@ -116,11 +116,11 @@ let get_lookup = sliced! {
 };
 `)}</CodeBlock>
 
-Just like the previous tutorial, `use::atomic` ensures that count snapshots are consistent with increment acknowledgements. The `join_keyed_stream()` method looks up the count for each key in the request batch, returning a keyed stream where each element contains the count and the client ID.
+Just like the previous tutorial, `use::atomic` ensures that count snapshots are consistent with increment acknowledgements. The `join_keyed_singleton()` method looks up the count for each key in the request batch, returning a keyed stream where each element contains the count and the client ID.
 
 :::info
 
-The `join_keyed_stream()` method only returns entries for keys that exist in the keyed singleton. If a client queries a key that has never been incremented, no response is generated.
+The `join_keyed_singleton()` method only returns entries for keys that exist in the keyed singleton. If a client queries a key that has never been incremented, no response is generated.
 
 :::
 
