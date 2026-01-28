@@ -246,38 +246,24 @@ impl<'a> FlowBuilder<'a> {
         self.finalize().sim()
     }
 
-    pub fn rewritten_ir_builder<'b>(built: &super::built::BuiltFlow) -> RewriteIrFlowBuilder<'b> {
-        RewriteIrFlowBuilder {
-            builder: FlowBuilder {
-                flow_state: Rc::new(RefCell::new(FlowStateInner {
-                    roots: None,
-                    next_external_port: ExternalPortId(0),
-                    cycle_counts: 0,
-                    next_clock_id: 0,
-                })),
-                locations: built.locations.clone(),
-                location_names: built.location_names.clone(),
-                flow_name: built.flow_name.clone(),
-                finalized: false,
-                _phantom: PhantomData,
-            },
+    pub fn from_built<'b>(built: &super::built::BuiltFlow) -> FlowBuilder<'b> {
+        FlowBuilder {
+            flow_state: Rc::new(RefCell::new(FlowStateInner {
+                roots: None,
+                next_external_port: ExternalPortId(0),
+                cycle_counts: 0,
+                next_clock_id: 0,
+            })),
+            locations: built.locations.clone(),
+            location_names: built.location_names.clone(),
+            flow_name: built.flow_name.clone(),
+            finalized: false,
+            _phantom: PhantomData,
         }
     }
-}
 
-#[expect(missing_docs, reason = "TODO")]
-pub struct RewriteIrFlowBuilder<'a> {
-    builder: FlowBuilder<'a>,
-}
-
-#[expect(missing_docs, reason = "TODO")]
-impl<'a> RewriteIrFlowBuilder<'a> {
-    pub fn build_with(
-        self,
-        thunk: impl FnOnce(&FlowBuilder<'a>) -> Vec<HydroRoot>,
-    ) -> FlowBuilder<'a> {
-        let roots = thunk(&self.builder);
-        self.builder.flow_state().borrow_mut().roots = Some(roots);
-        self.builder
+    #[doc(hidden)] // TODO(mingwei): This is an unstable API for now
+    pub fn replace_ir(&mut self, roots: Vec<HydroRoot>) {
+        self.flow_state.borrow_mut().roots = Some(roots);
     }
 }
