@@ -58,7 +58,8 @@ impl Node for SimNode {
         _env: &mut Self::InstantiateEnv,
         _meta: &mut Self::Meta,
         _graph: DfirGraph,
-        _extra_stmts: Vec<syn::Stmt>,
+        _extra_stmts: &[syn::Stmt],
+        _sidecars: &[syn::Expr],
     ) {
     }
 }
@@ -98,7 +99,8 @@ impl Node for SimExternal {
         _env: &mut Self::InstantiateEnv,
         _meta: &mut Self::Meta,
         _graph: DfirGraph,
-        _extra_stmts: Vec<syn::Stmt>,
+        _extra_stmts: &[syn::Stmt],
+        _sidecars: &[syn::Expr],
     ) {
     }
 }

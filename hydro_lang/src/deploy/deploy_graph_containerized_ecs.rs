@@ -452,11 +452,13 @@ impl Node for DockerDeployProcessEcs {
         _env: &mut Self::InstantiateEnv,
         meta: &mut Self::Meta,
         graph: DfirGraph,
-        extra_stmts: Vec<syn::Stmt>,
+        extra_stmts: &[syn::Stmt],
+        sidecars: &[syn::Expr],
     ) {
         let (bin_name, config) = create_graph_trybuild(
             graph,
-            extra_stmts.clone(),
+            extra_stmts,
+            sidecars,
             Some(&self.name),
             true,
             LinkingMode::Static,
@@ -525,11 +527,13 @@ impl Node for DockerDeployClusterEcs {
         _env: &mut Self::InstantiateEnv,
         _meta: &mut Self::Meta,
         graph: DfirGraph,
-        extra_stmts: Vec<syn::Stmt>,
+        extra_stmts: &[syn::Stmt],
+        sidecars: &[syn::Expr],
     ) {
         let (bin_name, config) = create_graph_trybuild(
             graph,
-            extra_stmts.clone(),
+            extra_stmts,
+            sidecars,
             Some(&self.name),
             true,
             LinkingMode::Static,
@@ -590,13 +594,14 @@ impl Node for DockerDeployExternalEcs {
     #[instrument(level = "trace", skip_all, fields(name = self.name))]
     fn update_meta(&self, _meta: &Self::Meta) {}
 
-    #[instrument(level = "trace", skip_all, fields(name = self.name, ?meta, extra_stmts = extra_stmts.len()))]
+    #[instrument(level = "trace", skip_all, fields(name = self.name, ?meta, extra_stmts = extra_stmts.len(), sidecars = sidecars.len()))]
     fn instantiate(
         &self,
         _env: &mut Self::InstantiateEnv,
         meta: &mut Self::Meta,
         graph: DfirGraph,
-        extra_stmts: Vec<syn::Stmt>,
+        extra_stmts: &[syn::Stmt],
+        sidecars: &[syn::Expr],
     ) {
         trace!(name: "surface", surface = graph.surface_syntax_string());
     }

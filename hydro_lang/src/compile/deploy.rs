@@ -24,6 +24,7 @@ use crate::location::external_process::{
 };
 use crate::location::{Cluster, External, Location, LocationKey, LocationType, Process};
 use crate::staging_util::Invariant;
+use crate::telemetry::Sidecar;
 
 pub struct DeployFlow<'a, D>
 where
@@ -39,12 +40,24 @@ where
     pub(super) clusters: SparseSecondaryMap<LocationKey, D::Cluster>,
     pub(super) externals: SparseSecondaryMap<LocationKey, D::External>,
 
+    /// Sidecars which may be added to each location (process or cluster, not externals).
+    /// See [`crate::telemetry::Sidecar`].
+    pub(super) sidecars: SparseSecondaryMap<LocationKey, Vec<syn::Expr>>,
+
+    /// Application name used in telemetry.
+    pub(super) flow_name: String,
+
     pub(super) _phantom: Invariant<'a, D>,
 }
 
 impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     pub fn ir(&self) -> &Vec<HydroRoot> {
         &self.ir
+    }
+
+    /// Application name used in telemetry.
+    pub fn flow_name(&self) -> &str {
+        &self.flow_name
     }
 
     pub fn with_process<P>(
@@ -133,6 +146,65 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         self
     }
 
+    /// Adds a [`Sidecar`] to all processes and clusters in the flow.
+    pub fn with_sidecar_all(mut self, sidecar: &impl Sidecar) -> Self {
+        for (location_key, &location_type) in self.locations.iter() {
+            if !matches!(location_type, LocationType::Process | LocationType::Cluster) {
+                continue;
+            }
+
+            let location_name = &self.location_names[location_key];
+
+            let sidecar = sidecar.to_expr(
+                self.flow_name(),
+                location_key,
+                location_type,
+                location_name,
+                &quote::format_ident!("{}", super::DFIR_IDENT),
+            );
+            self.sidecars
+                .entry(location_key)
+                .expect("location was removed")
+                .or_default()
+                .push(sidecar);
+        }
+
+        self
+    }
+
+    /// Adds a [`Sidecar`] to the given location.
+    pub fn with_sidecar_internal(
+        mut self,
+        location_key: LocationKey,
+        sidecar: &impl Sidecar,
+    ) -> Self {
+        let location_type = self.locations[location_key];
+        let location_name = &self.location_names[location_key];
+        let sidecar = sidecar.to_expr(
+            self.flow_name(),
+            location_key,
+            location_type,
+            location_name,
+            &quote::format_ident!("{}", super::DFIR_IDENT),
+        );
+        self.sidecars
+            .entry(location_key)
+            .expect("location was removed")
+            .or_default()
+            .push(sidecar);
+        self
+    }
+
+    /// Adds a [`Sidecar`] to a specific process in the flow.
+    pub fn with_sidecar_process(self, process: &Process<()>, sidecar: &impl Sidecar) -> Self {
+        self.with_sidecar_internal(process.key, sidecar)
+    }
+
+    /// Adds a [`Sidecar`] to a specific cluster in the flow.
+    pub fn with_sidecar_cluster(self, cluster: &Cluster<()>, sidecar: &impl Sidecar) -> Self {
+        self.with_sidecar_internal(cluster.key, sidecar)
+    }
+
     /// Compiles the flow into DFIR ([`dfir_lang::graph::DfirGraph`]) without networking.
     /// Useful for generating Mermaid diagrams of the DFIR.
     ///
@@ -143,6 +215,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         CompiledFlow {
             dfir: build_inner::<D>(&mut self.ir),
             extra_stmts: SparseSecondaryMap::new(),
+            sidecars: SparseSecondaryMap::new(),
             _phantom: PhantomData,
         }
     }
@@ -150,10 +223,17 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     /// Compiles the flow into DFIR ([`dfir_lang::graph::DfirGraph`]) including networking.
     ///
     /// (This does not compile the DFIR itself, instead use [`Self::deploy`] to compile & deploy the DFIR).
-    pub fn compile(&mut self) -> CompiledFlow<'a> {
+    pub fn compile(mut self) -> CompiledFlow<'a> {
+        self.compile_internal()
+    }
+
+    /// Same as [`Self::compile`] but does not invalidate `self`, for internal use.
+    ///
+    /// Empties `self.sidecars` and modifies `self.ir`, leaving `self` in a partial state.
+    fn compile_internal(&mut self) -> CompiledFlow<'a> {
         let mut seen_tees: HashMap<_, _> = HashMap::new();
         let mut extra_stmts = SparseSecondaryMap::new();
-        self.ir.iter_mut().for_each(|leaf| {
+        for leaf in self.ir.iter_mut() {
             leaf.compile_network::<D>(
                 &mut extra_stmts,
                 &mut seen_tees,
@@ -161,11 +241,12 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                 &self.clusters,
                 &self.externals,
             );
-        });
+        }
 
         CompiledFlow {
             dfir: build_inner::<D>(&mut self.ir),
             extra_stmts,
+            sidecars: std::mem::take(&mut self.sidecars),
             _phantom: PhantomData,
         }
     }
@@ -218,8 +299,9 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         let CompiledFlow {
             dfir,
             mut extra_stmts,
+            mut sidecars,
             _phantom,
-        } = self.compile();
+        } = self.compile_internal();
 
         let mut compiled = dfir;
         self.cluster_id_stmts(&mut extra_stmts);
@@ -234,7 +316,8 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                             env,
                             &mut meta,
                             ir,
-                            extra_stmts.remove(node_key).unwrap_or_default(),
+                            extra_stmts.remove(node_key).as_deref().unwrap_or_default(),
+                            sidecars.remove(node_key).as_deref().unwrap_or_default(),
                         );
                         true
                     } else {
@@ -250,7 +333,11 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                             env,
                             &mut meta,
                             ir,
-                            extra_stmts.remove(cluster_key).unwrap_or_default(),
+                            extra_stmts
+                                .remove(cluster_key)
+                                .as_deref()
+                                .unwrap_or_default(),
+                            sidecars.remove(cluster_key).as_deref().unwrap_or_default(),
                         );
                         true
                     } else {
@@ -261,12 +348,9 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
             self.externals
                 .into_iter()
                 .inspect(|&(external_key, ref external)| {
-                    external.instantiate(
-                        env,
-                        &mut meta,
-                        Default::default(),
-                        extra_stmts.remove(external_key).unwrap_or_default(),
-                    );
+                    assert!(!extra_stmts.contains_key(external_key));
+                    assert!(!sidecars.contains_key(external_key));
+                    external.instantiate(env, &mut meta, Default::default(), &[], &[]);
                 })
                 .collect::<SparseSecondaryMap<_, _>>(),
         );
@@ -284,9 +368,9 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         }
 
         let mut seen_tees_connect = HashMap::new();
-        self.ir.iter_mut().for_each(|leaf| {
+        for leaf in self.ir.iter_mut() {
             leaf.connect_network(&mut seen_tees_connect);
-        });
+        }
 
         DeployResult {
             location_names: self.location_names,

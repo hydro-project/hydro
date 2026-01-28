@@ -64,6 +64,13 @@ pub struct FlowBuilder<'a> {
     /// Map from raw location ID to name (including externals).
     location_names: SecondaryMap<LocationKey, String>,
 
+    /// Application name used in telemetry.
+    #[cfg_attr(
+        not(feature = "build"),
+        expect(dead_code, reason = "unused without build")
+    )]
+    flow_name: String,
+
     /// Tracks whether this flow has been finalized; it is an error to
     /// drop without finalizing.
     finalized: bool,
@@ -92,6 +99,16 @@ impl<'a> FlowBuilder<'a> {
         reason = "call `new` explicitly, not `default`"
     )]
     pub fn new() -> FlowBuilder<'a> {
+        let mut name = std::env::var("CARGO_PKG_NAME").unwrap_or_else(|_| "unknown".to_owned());
+        if let Ok(bin_path) = std::env::current_exe()
+            && let Some(bin_name) = bin_path.file_stem()
+        {
+            name = format!("{}/{}", name, bin_name.display());
+        }
+        Self::with_name(name)
+    }
+
+    pub fn with_name(name: impl Into<String>) -> Self {
         FlowBuilder {
             flow_state: Rc::new(RefCell::new(FlowStateInner {
                 roots: Some(vec![]),
@@ -101,6 +118,7 @@ impl<'a> FlowBuilder<'a> {
             })),
             locations: SlotMap::with_key(),
             location_names: SecondaryMap::new(),
+            flow_name: name.into(),
             finalized: false,
             _phantom: PhantomData,
         }
@@ -155,6 +173,7 @@ impl<'a> FlowBuilder<'a> {
             ir: self.flow_state.borrow_mut().roots.take().unwrap(),
             locations: std::mem::take(&mut self.locations),
             location_names: std::mem::take(&mut self.location_names),
+            flow_name: std::mem::take(&mut self.flow_name),
             _phantom: PhantomData,
         }
     }
@@ -227,37 +246,24 @@ impl<'a> FlowBuilder<'a> {
         self.finalize().sim()
     }
 
-    pub fn rewritten_ir_builder<'b>(built: &super::built::BuiltFlow) -> RewriteIrFlowBuilder<'b> {
-        RewriteIrFlowBuilder {
-            builder: FlowBuilder {
-                flow_state: Rc::new(RefCell::new(FlowStateInner {
-                    roots: None,
-                    next_external_port: ExternalPortId(0),
-                    cycle_counts: 0,
-                    next_clock_id: 0,
-                })),
-                locations: built.locations.clone(),
-                location_names: built.location_names.clone(),
-                finalized: false,
-                _phantom: PhantomData,
-            },
+    pub fn from_built<'b>(built: &super::built::BuiltFlow) -> FlowBuilder<'b> {
+        FlowBuilder {
+            flow_state: Rc::new(RefCell::new(FlowStateInner {
+                roots: None,
+                next_external_port: ExternalPortId(0),
+                cycle_counts: 0,
+                next_clock_id: 0,
+            })),
+            locations: built.locations.clone(),
+            location_names: built.location_names.clone(),
+            flow_name: built.flow_name.clone(),
+            finalized: false,
+            _phantom: PhantomData,
         }
     }
-}
 
-#[expect(missing_docs, reason = "TODO")]
-pub struct RewriteIrFlowBuilder<'a> {
-    builder: FlowBuilder<'a>,
-}
-
-#[expect(missing_docs, reason = "TODO")]
-impl<'a> RewriteIrFlowBuilder<'a> {
-    pub fn build_with(
-        self,
-        thunk: impl FnOnce(&FlowBuilder<'a>) -> Vec<HydroRoot>,
-    ) -> FlowBuilder<'a> {
-        let roots = thunk(&self.builder);
-        self.builder.flow_state().borrow_mut().roots = Some(roots);
-        self.builder
+    #[doc(hidden)] // TODO(mingwei): This is an unstable API for now
+    pub fn replace_ir(&mut self, roots: Vec<HydroRoot>) {
+        self.flow_state.borrow_mut().roots = Some(roots);
     }
 }

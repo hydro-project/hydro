@@ -225,8 +225,8 @@ impl Deployment {
 /// Buildstructor methods.
 #[buildstructor::buildstructor]
 impl Deployment {
-    #[builder(entry = "GcpComputeEngineHost", exit = "add")]
-    pub fn add_gcp_compute_engine_host(
+    #[builder(entry = "GcpComputeEngineHost", exit = "add", visibility = "pub")]
+    fn add_gcp_compute_engine_host(
         &mut self,
         project: String,
         machine_type: String,
@@ -252,8 +252,8 @@ impl Deployment {
         })
     }
 
-    #[builder(entry = "AzureHost", exit = "add")]
-    pub fn add_azure_host(
+    #[builder(entry = "AzureHost", exit = "add", visibility = "pub")]
+    fn add_azure_host(
         &mut self,
         project: String,
         os_type: String, // linux or windows
@@ -277,8 +277,8 @@ impl Deployment {
         })
     }
 
-    #[builder(entry = "AwsEc2Host", exit = "add")]
-    pub fn add_aws_ec2_host(
+    #[builder(entry = "AwsEc2Host", exit = "add", visibility = "pub")]
+    fn add_aws_ec2_host(
         &mut self,
         region: String,
         instance_type: String,

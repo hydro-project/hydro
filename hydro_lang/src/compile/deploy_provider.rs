@@ -181,7 +181,8 @@ pub trait Node {
         env: &mut Self::InstantiateEnv,
         meta: &mut Self::Meta,
         graph: DfirGraph,
-        extra_stmts: Vec<syn::Stmt>,
+        extra_stmts: &[syn::Stmt],
+        sidecars: &[syn::Expr],
     );
 }
 
