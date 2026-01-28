@@ -188,6 +188,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                     let () = #work_fn_async(fut).await;
                 }
 
+                #[allow(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
                 let #ident = #iter_expr;
                 let #ident = #root::futures::stream::iter(#ident);
             }

@@ -32,6 +32,10 @@ where
     type Error = Si::Error;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, the `try_fold` is not order-dependent"
+        )]
         self.get_mut()
             .sinks
             .values_mut()
@@ -51,6 +55,10 @@ where
     }
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, the `try_fold` is not order-dependent"
+        )]
         self.get_mut()
             .sinks
             .values_mut()
@@ -61,6 +69,10 @@ where
     }
 
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, the `try_fold` is not order-dependent"
+        )]
         self.get_mut()
             .sinks
             .values_mut()

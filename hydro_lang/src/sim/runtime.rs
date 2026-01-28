@@ -275,6 +275,7 @@ impl<K: Hash + Eq + Clone, V> SimHook for KeyedStreamHook<K, V, TotalOrder> {
     }
 
     fn can_make_nontrivial_decision(&self) -> bool {
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
         !self.input.borrow().values().all(|q| q.is_empty())
     }
 
@@ -285,9 +286,11 @@ impl<K: Hash + Eq + Clone, V> SimHook for KeyedStreamHook<K, V, TotalOrder> {
     ) -> bool {
         let mut current_input = self.input.borrow_mut();
         self.to_release = Some(vec![]);
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
         let nonempty_key_count = current_input.values().filter(|q| !q.is_empty()).count();
 
         let mut remaining_nonempty_keys = nonempty_key_count;
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
         for (key, queue) in current_input.iter_mut() {
             if queue.is_empty() {
                 continue;
@@ -362,6 +365,7 @@ impl<K: Hash + Eq + Clone, V> SimHook for KeyedStreamHook<K, V, NoOrder> {
     }
 
     fn can_make_nontrivial_decision(&self) -> bool {
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
         !self.input.borrow().values().all(|q| q.is_empty())
     }
 
@@ -372,9 +376,11 @@ impl<K: Hash + Eq + Clone, V> SimHook for KeyedStreamHook<K, V, NoOrder> {
     ) -> bool {
         let mut current_input = self.input.borrow_mut();
         self.to_release = Some(vec![]);
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
         let nonempty_key_count = current_input.values().filter(|q| !q.is_empty()).count();
 
         let mut remaining_nonempty_keys = nonempty_key_count;
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
         for (key, queue) in current_input.iter_mut() {
             if queue.is_empty() {
                 continue;
@@ -615,6 +621,7 @@ impl<K: Hash + Eq + Clone, V: Clone> SimHook for KeyedSingletonHook<K, V> {
     }
 
     fn can_make_nontrivial_decision(&self) -> bool {
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
         !self.input.borrow().values().all(|q| q.is_empty())
     }
 
@@ -625,10 +632,12 @@ impl<K: Hash + Eq + Clone, V: Clone> SimHook for KeyedSingletonHook<K, V> {
     ) -> bool {
         let mut current_input = self.input.borrow_mut();
         self.to_release = Some(vec![]);
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
         let nonempty_key_count = current_input.values().filter(|q| !q.is_empty()).count();
 
         let mut remaining_nonempty_keys = nonempty_key_count;
         let mut any_nontrivial = false;
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
         for (key, queue) in current_input.iter_mut() {
             if queue.is_empty() {
                 self.to_release.as_mut().unwrap().push((

@@ -297,6 +297,10 @@ impl Fleet {
     pub async fn run_single_tick_all_hosts(&mut self) -> bool {
         let mut work_done: bool = false;
 
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, TODO(mingwei)"
+        )]
         for (name, host) in self.hosts.iter_mut() {
             trace!("Running tick for host: {}", name);
             work_done |= host.run_tick().await;
@@ -315,6 +319,10 @@ impl Fleet {
         let mut all_messages: Vec<(Address, MessageWithAddress)> = Vec::new();
 
         // Collect all messages from all outboxes on all hosts.
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, TODO(mingwei)"
+        )]
         for (name, host) in self.hosts.iter_mut() {
             for (interface, output) in host.output.iter_mut() {
                 let src_address = Address::new(name.clone(), interface.clone());

@@ -158,6 +158,10 @@ where
     }
 
     fn recursive_iter(&self) -> impl Iterator<Item = <Self::Schema as VariadicExt>::AsRefVar<'_>> {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, TODO(mingwei)"
+        )]
         self.children
             .iter()
             .flat_map(|(_k, vs)| vs.recursive_iter())
@@ -425,6 +429,10 @@ where
     }
 
     fn iter(&self) -> impl Iterator<Item = Self::Head> {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, TODO(mingwei)"
+        )]
         self.children.keys().cloned()
     }
 

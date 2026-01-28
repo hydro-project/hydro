@@ -718,8 +718,14 @@ fn compile_sim_graph_trybuild(
         })
         .collect::<Vec<syn::Expr>>();
 
-    let cluster_ids_stmts = cluster_max_sizes
-        .iter()
+    // TODO(mingwei): https://github.com/rust-lang/rust-clippy/issues/8581
+    // #[expect(
+    //     clippy::disallowed_methods,
+    //     reason = "nondeterministic iteration order, will be sorted"
+    // )]
+    let mut cluster_max_sizes = cluster_max_sizes.into_iter().collect::<Vec<_>>();
+    cluster_max_sizes.sort();
+    let cluster_ids_stmts = cluster_max_sizes.into_iter()
         .map(|(loc_key, max_size)| {
             let ident = syn::Ident::new(
                 &format!(
@@ -729,7 +735,7 @@ fn compile_sim_graph_trybuild(
                 Span::call_site(),
             );
 
-            let elements = (0..*max_size as u32)
+            let elements = (0..max_size as u32)
                 .map(|i| syn::parse_quote! { #i })
                 .collect::<Vec<syn::Expr>>();
 

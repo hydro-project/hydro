@@ -103,6 +103,7 @@ where
     }
 
     fn iter(&self) -> std::collections::hash_map::Iter<'_, Key, SmallVec<[ValBuild; 1]>> {
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
         self.table.iter()
     }
 }

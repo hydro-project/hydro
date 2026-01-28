@@ -549,7 +549,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// Flattens the keyed singleton into an unordered stream of key-value pairs.
     ///
     /// The value for each key must be bounded, otherwise the resulting stream elements would be
-    /// non-determinstic. As new entries are added to the keyed singleton, they will be streamed
+    /// non-deterministic. As new entries are added to the keyed singleton, they will be streamed
     /// into the output.
     ///
     /// # Example
@@ -582,7 +582,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// Flattens the keyed singleton into an unordered stream of just the values.
     ///
     /// The value for each key must be bounded, otherwise the resulting stream elements would be
-    /// non-determinstic. As new entries are added to the keyed singleton, they will be streamed
+    /// non-deterministic. As new entries are added to the keyed singleton, they will be streamed
     /// into the output.
     ///
     /// # Example

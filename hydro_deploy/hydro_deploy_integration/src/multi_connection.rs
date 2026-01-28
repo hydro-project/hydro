@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::io;
 use std::ops::DerefMut;
 use std::pin::Pin;
-use std::task::{Context, Poll, ready};
+use std::task::{Context, Poll};
 
 use futures::{Sink, SinkExt, Stream, StreamExt};
 #[cfg(unix)]
@@ -281,21 +281,22 @@ impl<O, C: Encoder<O>> Sink<(u64, O)> for MultiConnectionSink<O, C> {
         }
 
         // Check if all sinks are ready, removing any that are closed
-        let mut closed_connections = Vec::new();
-        for (&connection_id, sink) in self.connection_sinks.iter_mut() {
-            match ready!(sink.as_mut().poll_ready(cx)) {
-                Ok(()) => {}
-                Err(_) => {
-                    closed_connections.push(connection_id);
+        let mut any_pending = false;
+        self.connection_sinks
+            .retain(|_, sink| match sink.as_mut().poll_ready(cx) {
+                Poll::Ready(Ok(())) => true,
+                Poll::Ready(Err(_)) => false,
+                Poll::Pending => {
+                    any_pending = true;
+                    true
                 }
-            }
-        }
+            });
 
-        for connection_id in closed_connections {
-            self.connection_sinks.remove(&connection_id);
+        if any_pending {
+            Poll::Pending
+        } else {
+            Poll::Ready(Ok(())) // always ready, because we drop messages if there is no sink
         }
-
-        Poll::Ready(Ok(())) // always ready, because we drop messages if there is no sink
     }
 
     fn start_send(mut self: Pin<&mut Self>, item: (u64, O)) -> Result<(), Self::Error> {
@@ -307,24 +308,17 @@ impl<O, C: Encoder<O>> Sink<(u64, O)> for MultiConnectionSink<O, C> {
     }
 
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let mut closed_connections = Vec::new();
         let mut any_pending = false;
 
-        for (&connection_id, sink) in self.connection_sinks.iter_mut() {
-            match sink.as_mut().poll_flush(cx) {
-                Poll::Ready(Ok(())) => {}
-                Poll::Ready(Err(_)) => {
-                    closed_connections.push(connection_id);
-                }
+        self.connection_sinks
+            .retain(|_, sink| match sink.as_mut().poll_flush(cx) {
+                Poll::Ready(Ok(())) => true,
+                Poll::Ready(Err(_)) => false,
                 Poll::Pending => {
                     any_pending = true;
+                    true
                 }
-            }
-        }
-
-        for connection_id in closed_connections {
-            self.connection_sinks.remove(&connection_id);
-        }
+            });
 
         if any_pending {
             Poll::Pending
@@ -334,26 +328,17 @@ impl<O, C: Encoder<O>> Sink<(u64, O)> for MultiConnectionSink<O, C> {
     }
 
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let mut closed_connections = Vec::new();
         let mut any_pending = false;
 
-        for (&connection_id, sink) in self.connection_sinks.iter_mut() {
+        self.connection_sinks.retain(|_, sink| {
             match sink.as_mut().poll_close(cx) {
-                Poll::Ready(Ok(())) => {
-                    closed_connections.push(connection_id);
-                }
-                Poll::Ready(Err(_)) => {
-                    closed_connections.push(connection_id);
-                }
+                Poll::Ready(Ok(()) | Err(_)) => false, // Remove regardless of ok/err
                 Poll::Pending => {
                     any_pending = true;
+                    true
                 }
             }
-        }
-
-        for connection_id in closed_connections {
-            self.connection_sinks.remove(&connection_id);
-        }
+        });
 
         if any_pending {
             Poll::Pending

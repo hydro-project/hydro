@@ -12,7 +12,7 @@ impl fmt::Display for Timestamp {
     }
 }
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, Ord, PartialOrd)]
 pub(crate) struct Token {
     pub(crate) ts: Timestamp,
     pub(crate) value: char,
