@@ -262,7 +262,8 @@ impl<'a> FlowBuilder<'a> {
         }
     }
 
-    pub fn force_roots(&mut self, roots: Vec<HydroRoot>) {
+    #[doc(hidden)] // TODO(mingwei): This is an unstable API for now
+    pub fn replace_ir(&mut self, roots: Vec<HydroRoot>) {
         self.flow_state.borrow_mut().roots = Some(roots);
     }
 }
