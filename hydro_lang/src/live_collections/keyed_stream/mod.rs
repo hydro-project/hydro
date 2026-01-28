@@ -367,16 +367,16 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         }
     }
 
-    #[deprecated = "use `weaker_retries::<AtLeastOnce>()` instead"]
+    #[deprecated = "use `weaken_retries::<AtLeastOnce>()` instead"]
     /// Weakens the retries guarantee provided by the stream to [`AtLeastOnce`],
     /// which is always safe because that is the weakest possible guarantee.
     pub fn weakest_retries(self) -> KeyedStream<K, V, L, B, O, AtLeastOnce> {
-        self.weaker_retries::<AtLeastOnce>()
+        self.weaken_retries::<AtLeastOnce>()
     }
 
     /// Weakens the retries guarantee provided by the stream to `R2`, with the type-system
     /// enforcing that `R2` is weaker than the input retries guarantee.
-    pub fn weaker_retries<R2: WeakerRetryThan<R>>(self) -> KeyedStream<K, V, L, B, O, R2> {
+    pub fn weaken_retries<R2: WeakerRetryThan<R>>(self) -> KeyedStream<K, V, L, B, O, R2> {
         let nondet = nondet!(/** this is a weaker retries guarantee, so it is safe to assume */);
         self.assume_retries::<R2>(nondet)
     }
@@ -2226,7 +2226,7 @@ where
         self.lookup_keyed_stream(
             lookup
                 .into_keyed_stream()
-                .assume_retries(nondet!(/** Retries are irrelevant for keyed singletons */)),
+                .assume_retries::<R>(nondet!(/** Retries are irrelevant for keyed singletons */)),
         )
     }
 
@@ -2265,14 +2265,16 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn lookup_keyed_stream<V2, O2: Ordering>(
+    #[expect(clippy::type_complexity, reason = "retries propagation")]
+    pub fn lookup_keyed_stream<V2, O2: Ordering, R2: Retries>(
         self,
-        lookup: KeyedStream<V, V2, L, Bounded, O2, R>,
-    ) -> KeyedStream<K, (V, Option<V2>), L, Bounded, NoOrder, R>
+        lookup: KeyedStream<V, V2, L, Bounded, O2, R2>,
+    ) -> KeyedStream<K, (V, Option<V2>), L, Bounded, NoOrder, <R as MinRetries<R2>>::Min>
     where
         K: Eq + Hash + Clone,
         V: Eq + Hash + Clone,
         V2: Clone,
+        R: MinRetries<R2>,
     {
         let inverted = self
             .entries()
@@ -2293,7 +2295,7 @@ where
             .map(q!(|(lookup_value, key)| (key, (lookup_value, None))))
             .into_keyed();
 
-        found.chain(not_found)
+        found.chain(not_found.weaken_retries::<<R as MinRetries<R2>>::Min>())
     }
 }
 

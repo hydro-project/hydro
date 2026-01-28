@@ -965,7 +965,7 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, L, Bounded> {
         keyed_stream: KeyedStream<K, V2, L, Bounded, O2, R2>,
     ) -> KeyedStream<K, (V, V2), L, Bounded, NoOrder, R2> {
         self.entries()
-            .weaker_retries::<R2>()
+            .weaken_retries::<R2>()
             .join(keyed_stream.entries())
             .into_keyed()
     }
@@ -1074,11 +1074,9 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, L, Bounded> {
         V: Eq + Hash + Clone,
         V2: Clone,
     {
-        let result_stream = self.into_keyed_stream().lookup_keyed_stream(
-            lookup
-                .into_keyed_stream()
-                .assume_retries(nondet!(/** Retries are irrelevant for keyed singletons */)),
-        );
+        let result_stream = self
+            .into_keyed_stream()
+            .lookup_keyed_stream(lookup.into_keyed_stream());
 
         // The cast is guaranteed to succeed since both lookup and self contain at most 1 value per key
         KeyedSingleton::new(
@@ -1142,7 +1140,7 @@ impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, L, Bounded> {
         V2: Clone,
     {
         self.entries()
-            .weaken_retries() // TODO: Once weaken_retries() is implemented for KeyedSingleton, remove entries() and into_keyed()
+            .weaken_retries::<R>() // TODO: Once weaken_retries() is implemented for KeyedSingleton, remove entries() and into_keyed()
             .into_keyed()
             .lookup_keyed_stream(lookup)
     }
