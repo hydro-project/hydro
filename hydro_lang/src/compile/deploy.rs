@@ -292,6 +292,10 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 
     /// Creates the variables for cluster IDs and adds them into `extra_stmts`.
     fn cluster_id_stmts(&self, extra_stmts: &mut SparseSecondaryMap<LocationKey, Vec<syn::Stmt>>) {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, will be sorted"
+        )]
         let mut all_clusters_sorted = self.clusters.keys().collect::<Vec<_>>();
         all_clusters_sorted.sort();
 
@@ -309,7 +313,11 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                     let #self_id_ident = &*Box::leak(Box::new(#self_id_expr));
                 });
 
-            for other_location in self.processes.keys().chain(self.clusters.keys()) {
+            let process_cluster_locations = self.location_names.keys().filter(|&location_key| {
+                self.processes.contains_key(location_key)
+                    || self.clusters.contains_key(location_key)
+            });
+            for other_location in process_cluster_locations {
                 let other_id_ident = syn::Ident::new(
                     &format!("__hydro_lang_cluster_ids_{}", cluster_key),
                     Span::call_site(),
@@ -346,7 +354,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         self.cluster_id_stmts(&mut extra_stmts);
         let mut meta = D::Meta::default();
 
-        let (mut processes, mut clusters, mut externals) = (
+        let (processes, clusters, externals) = (
             self.processes
                 .into_iter()
                 .filter(|&(node_key, ref node)| {
@@ -394,16 +402,14 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                 .collect::<SparseSecondaryMap<_, _>>(),
         );
 
-        for node in processes.values_mut() {
-            node.update_meta(&meta);
-        }
-
-        for cluster in clusters.values_mut() {
-            cluster.update_meta(&meta);
-        }
-
-        for external in externals.values_mut() {
-            external.update_meta(&meta);
+        for location_key in self.locations.keys() {
+            if let Some(node) = processes.get(location_key) {
+                node.update_meta(&meta);
+            } else if let Some(cluster) = clusters.get(location_key) {
+                cluster.update_meta(&meta);
+            } else if let Some(external) = externals.get(location_key) {
+                external.update_meta(&meta);
+            }
         }
 
         let mut seen_tees_connect = HashMap::new();
@@ -446,24 +452,24 @@ impl<'a, D: Deploy<'a>> DeployResult<'a, D> {
         self.externals.get(e.key).unwrap()
     }
 
-    pub fn get_all_processes(&self) -> impl Iterator<Item = (LocationId, String, &D::Process)> {
-        self.processes.iter().map(|(location_key, p)| {
-            (
-                LocationId::Process(location_key),
-                self.location_names[location_key].clone(),
-                p,
-            )
-        })
+    pub fn get_all_processes(&self) -> impl Iterator<Item = (LocationId, &str, &D::Process)> {
+        self.location_names
+            .iter()
+            .filter_map(|(location_key, location_name)| {
+                self.processes
+                    .get(location_key)
+                    .map(|process| (LocationId::Process(location_key), &**location_name, process))
+            })
     }
 
-    pub fn get_all_clusters(&self) -> impl Iterator<Item = (LocationId, String, &D::Cluster)> {
-        self.clusters.iter().map(|(location_key, c)| {
-            (
-                LocationId::Cluster(location_key),
-                self.location_names[location_key].clone(),
-                c,
-            )
-        })
+    pub fn get_all_clusters(&self) -> impl Iterator<Item = (LocationId, &str, &D::Cluster)> {
+        self.location_names
+            .iter()
+            .filter_map(|(location_key, location_name)| {
+                self.clusters
+                    .get(location_key)
+                    .map(|cluster| (LocationId::Cluster(location_key), &**location_name, cluster))
+            })
     }
 
     #[deprecated(note = "use `connect` instead")]

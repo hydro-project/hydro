@@ -428,6 +428,10 @@ fn ecs_membership_stream(
                     }
                 }
 
+                #[expect(
+                    clippy::disallowed_methods,
+                    reason = "nondeterministic iteration order, container events are not deterministically ordered"
+                )]
                 for container_id in known_tasks.iter() {
                     if !current_tasks.contains(container_id) {
                         trace!(name: "container_left", %container_id);

@@ -421,6 +421,10 @@ where
         self.edge_count = self.edge_count.saturating_add(1);
 
         // Convert edge properties to semantic tags (string array)
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, TODO(mingwei)"
+        )]
         let mut semantic_tags: Vec<String> = edge_properties
             .iter()
             .map(|p| Self::edge_type_to_string(*p))
@@ -748,6 +752,10 @@ impl<W> HydroJson<'_, W> {
         }
 
         // Remove nodes that already have backtrace assignments
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, TODO(mingwei)"
+        )]
         for node_ids in path_to_node_assignments.values() {
             for node_id in node_ids {
                 nodes_without_backtrace.retain(|id| id != node_id);
@@ -814,6 +822,10 @@ impl<W> HydroJson<'_, W> {
         HashMap<String, String>,
     ) {
         // Assign IDs deterministically based on sorted path names
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, TODO(mingwei)"
+        )]
         let mut keys: Vec<&String> = hierarchy_map.keys().collect();
         keys.sort();
         let mut path_to_id: HashMap<String, String> = HashMap::new();
@@ -822,6 +834,10 @@ impl<W> HydroJson<'_, W> {
         }
 
         // Find root items (depth 0) and sort by name
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, TODO(mingwei)"
+        )]
         let mut roots: Vec<(String, String)> = hierarchy_map
             .iter()
             .filter_map(|(path, (name, depth, _))| {
@@ -849,6 +865,10 @@ impl<W> HydroJson<'_, W> {
 
         // Update path_to_id with remappings
         let mut updated_path_to_id = path_to_id.clone();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, TODO(mingwei)"
+        )]
         for (path, old_id) in path_to_id.iter() {
             if let Some(new_id) = id_remapping.get(old_id) {
                 updated_path_to_id.insert(path.clone(), new_id.clone());
@@ -868,6 +888,10 @@ impl<W> HydroJson<'_, W> {
         let current_id = path_to_id.get(current_path).unwrap().clone();
 
         // Find children (paths that have this path as parent)
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, TODO(mingwei)"
+        )]
         let mut child_specs: Vec<(&String, &String)> = hierarchy_map
             .iter()
             .filter_map(|(child_path, (child_name, _, parent_path))| {
