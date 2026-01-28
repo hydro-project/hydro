@@ -64,10 +64,10 @@ mod tests {
         let metadata_ack = metadata_processing.clone().end_atomic();
         let metadata = metadata_processing
             .batch_atomic(nondet!(/** test */))
-            .weakest_ordering();
+            .weaken_ordering();
 
         // Join responses with metadata (weaken ordering for join_responses)
-        let joined = join_responses(responses.weakest_ordering(), metadata);
+        let joined = join_responses(responses.weaken_ordering(), metadata);
 
         // Set up outputs
         let metadata_ack_recv = metadata_ack.sim_output();
@@ -102,9 +102,9 @@ mod tests {
         let metadata_ack = metadata_processing.clone().end_atomic();
         let metadata = metadata_processing
             .batch_atomic(nondet!(/** test */))
-            .weakest_ordering();
+            .weaken_ordering();
 
-        let joined = join_responses(responses.weakest_ordering(), metadata);
+        let joined = join_responses(responses.weaken_ordering(), metadata);
 
         let metadata_ack_recv = metadata_ack.sim_output();
         let joined_recv = joined.sim_output();
@@ -139,9 +139,9 @@ mod tests {
         let metadata_ack = metadata_processing.clone().end_atomic();
         let metadata = metadata_processing
             .batch_atomic(nondet!(/** test */))
-            .weakest_ordering();
+            .weaken_ordering();
 
-        let joined = join_responses(responses.weakest_ordering(), metadata);
+        let joined = join_responses(responses.weaken_ordering(), metadata);
 
         let metadata_ack_recv = metadata_ack.sim_output();
         let joined_recv = joined.sim_output();
@@ -175,9 +175,9 @@ mod tests {
         let metadata_ack = metadata_processing.clone().end_atomic();
         let metadata = metadata_processing
             .batch_atomic(nondet!(/** test */))
-            .weakest_ordering();
+            .weaken_ordering();
 
-        let joined = join_responses(responses.weakest_ordering(), metadata);
+        let joined = join_responses(responses.weaken_ordering(), metadata);
 
         let metadata_ack_recv = metadata_ack.sim_output();
         let joined_recv = joined.sim_output();

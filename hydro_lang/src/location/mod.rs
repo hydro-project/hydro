@@ -1021,7 +1021,7 @@ mod tests {
             first_node
                 .source_iter::<(u64, ()), _>(q!([]))
                 .into_keyed()
-                .weakest_ordering(),
+                .weaken_ordering(),
         );
 
         let nodes = flow
@@ -1061,7 +1061,7 @@ mod tests {
             first_node
                 .source_iter::<(u64, ()), _>(q!([]))
                 .into_keyed()
-                .weakest_ordering(),
+                .weaken_ordering(),
         );
 
         let nodes = flow
@@ -1098,7 +1098,7 @@ mod tests {
             first_node
                 .source_iter(q!([]))
                 .into_keyed()
-                .weakest_ordering(),
+                .weaken_ordering(),
         );
 
         let nodes = flow

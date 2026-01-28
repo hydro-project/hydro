@@ -1089,7 +1089,7 @@ where
         L: NoTick,
     {
         let tick = self.location.tick();
-        self.snapshot(&tick, nondet).all_ticks().weakest_retries()
+        self.snapshot(&tick, nondet).all_ticks().weaken_retries()
     }
 
     /// Given a time interval, returns a stream corresponding to snapshots of the optional
@@ -1115,7 +1115,7 @@ where
         self.snapshot(&tick, nondet)
             .filter_if_some(samples.batch(&tick, nondet).first())
             .all_ticks()
-            .weakest_retries()
+            .weaken_retries()
     }
 }
 

@@ -70,8 +70,7 @@ pub fn distributed_echo<'a>(
             (client_id, bytes::Bytes::from(json))
         }))
         .into_keyed()
-        .all_ticks()
-        .weakest_ordering();
+        .all_ticks();
 
     response_sink.complete(all_responses);
 
