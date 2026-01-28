@@ -2101,8 +2101,6 @@ where
     /// keyed singleton, where each value in the output keyed stream is a tuple of
     /// (the keyed stream's value, the keyed singleton's value).
     ///
-    /// This delegates to the keyed singleton's join method.
-    ///
     /// # Example
     /// ```rust
     /// # #[cfg(feature = "deploy")] {
