@@ -76,8 +76,8 @@ async fn main() {
                 .instance_type("t3.micro")
                 .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
                 .network(network.clone())
-                    .iam_instance_profile(iam_instance_profile.clone())
-                    .cloudwatch_log_group(cloudwatch_log_group.clone())
+                .iam_instance_profile(iam_instance_profile.clone())
+                .cloudwatch_log_group(cloudwatch_log_group.clone())
                 .add()
         })
     } else {

@@ -189,7 +189,7 @@ where
                     }
                 ]
             },
-        "LocationName": location_name,
+            "LocationName": location_name,
             "SubgraphId": sg_id.to_string(),
             "TotalRunCount": sg_metrics.total_run_count(),
             "TotalPollDuration": sg_metrics.total_poll_duration().as_micros(),
