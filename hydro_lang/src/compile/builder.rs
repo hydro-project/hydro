@@ -261,4 +261,8 @@ impl<'a> FlowBuilder<'a> {
             _phantom: PhantomData,
         }
     }
+
+    pub fn force_roots(&mut self, roots: Vec<HydroRoot>) {
+        self.flow_state.borrow_mut().roots = Some(roots);
+    }
 }
