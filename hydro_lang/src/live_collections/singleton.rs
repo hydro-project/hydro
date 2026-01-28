@@ -806,7 +806,7 @@ where
             let snapshot = use(self, nondet);
             snapshot.into_stream()
         }
-        .weakest_retries()
+        .weaken_retries()
     }
 
     /// Given a time interval, returns a stream corresponding to snapshots of the singleton
@@ -833,7 +833,7 @@ where
 
             snapshot.filter_if_some(sample_batch.first()).into_stream()
         }
-        .weakest_retries()
+        .weaken_retries()
     }
 }
 

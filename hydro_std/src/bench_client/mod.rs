@@ -125,7 +125,7 @@ where
             .zip(end_times_and_output)
             .map(q!(|(start_time, (end_time, output))| (output, end_time.duration_since(start_time).unwrap())))
             .into_keyed_stream()
-            .weakest_ordering()
+            .weaken_ordering()
     }
 }
 
