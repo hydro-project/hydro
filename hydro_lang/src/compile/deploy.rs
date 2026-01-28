@@ -80,7 +80,11 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         process_loc_key: LocationKey,
         spec: impl IntoProcessSpec<'a, D>,
     ) -> Self {
-        assert_eq!(self.locations[process_loc_key], LocationType::Process);
+        assert_eq!(
+            Some(&LocationType::Process),
+            self.locations.get(process_loc_key),
+            "No process with the given `LocationKey` was found."
+        );
         self.processes.insert(
             process_loc_key,
             spec.into_process_spec()
@@ -123,7 +127,11 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         cluster_loc_key: LocationKey,
         spec: impl ClusterSpec<'a, D>,
     ) -> Self {
-        assert_eq!(self.locations[cluster_loc_key], LocationType::Cluster);
+        assert_eq!(
+            Some(&LocationType::Cluster),
+            self.locations.get(cluster_loc_key),
+            "No cluster with the given `LocationKey` was found."
+        );
         self.clusters.insert(
             cluster_loc_key,
             spec.build(cluster_loc_key, &self.location_names[cluster_loc_key]),
