@@ -79,7 +79,7 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
         }
 
         let persistdata_ident = wc.make_ident("persistdata");
-        let vec_ident = wc.make_ident("persistvec");
+        let map_ident = wc.make_ident("persistmap");
         let write_prologue = quote_spanned! {op_span=>
             let #persistdata_ident = #df_ident.add_state(::std::cell::RefCell::new(
                 #root::rustc_hash::FxHashMap::<_, #root::util::sparse_vec::SparseVec<_>>::default()
@@ -89,7 +89,7 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
         let write_iterator = {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let mut #vec_ident = unsafe {
+                let mut #map_ident = unsafe {
                     // SAFETY: handle from `#df_ident.add_state(..)`.
                     #context.state_ref_unchecked(#persistdata_ident)
                 }.borrow_mut();
@@ -104,18 +104,22 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
                         let fut = #root::compiled::pull::ForEach::new(check_stream(#input), |item| {
                             match item {
                                 #root::util::PersistenceKeyed::Persist(k, v) => {
-                                    #vec_ident.entry(k).or_default().push(v);
+                                    #map_ident.entry(k).or_default().push(v);
                                 },
                                 #root::util::PersistenceKeyed::Delete(k) => {
-                                    #vec_ident.remove(&k);
+                                    #map_ident.remove(&k);
                                 }
                             }
                         });
                         let () = #work_fn_async(fut).await;
 
                         #[allow(clippy::clone_on_copy)]
-                        Some(#vec_ident.iter()
-                            .flat_map(|(k, v)| v.iter().map(move |v| (k.clone(), v.clone()))))
+                        #[allow(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                        Some(
+                            #map_ident
+                                .iter()
+                                .flat_map(|(k, v)| v.iter().map(move |v| (k.clone(), v.clone())))
+                        )
                         .into_iter()
                         .flatten()
                     } else {

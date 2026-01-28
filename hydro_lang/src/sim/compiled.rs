@@ -731,7 +731,7 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimSender<T, O, R
 
 impl<T: Serialize + DeserializeOwned, O: Ordering> SimSender<T, O, ExactlyOnce> {
     /// Sends several messages to the external bincode sink. The messages will be asynchronously
-    /// processed as part of the simulation, in non-determinstic order.
+    /// processed as part of the simulation, in non-deterministic order.
     pub fn send_many_unordered<I: IntoIterator<Item = T>>(&self, iter: I) {
         self.with_sink(|send| {
             for t in iter {

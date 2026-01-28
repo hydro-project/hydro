@@ -332,6 +332,10 @@ fn benchmark_hydroflow_surface_cheating(c: &mut Criterion) {
 
 fn benchmark_hydroflow_surface(c: &mut Criterion) {
     c.bench_function("reachability/dfir_rs/surface", |b| {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, ok for benchmarking"
+        )]
         let edges: Vec<_> = EDGES
             .iter()
             .flat_map(|(&k, v)| v.iter().map(move |v| (k, *v)))

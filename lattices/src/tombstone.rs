@@ -322,6 +322,10 @@ where
 
     fn union_with(&mut self, other: &Self) -> usize {
         let old_len = self.len();
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, fine to insert into set"
+        )]
         for item in other.iter() {
             self.insert(item.clone());
         }

@@ -184,6 +184,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                     let () = #work_fn_async(fut).await;
                 }
 
+                #[allow(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
                 let #ident = #hashtable_ident
                     .iter()
                     .map(#[allow(suspicious_double_ref_op, clippy::clone_on_copy)] |(k, v)| (k.clone(), v.clone()));
@@ -253,6 +254,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                     let () = #work_fn_async(fut).await;
                 }
 
+                #[allow(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
                 let #ident = #iter_expr;
                 let #ident = #root::futures::stream::iter(#ident);
             }

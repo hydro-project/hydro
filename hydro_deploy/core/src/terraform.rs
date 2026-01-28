@@ -97,6 +97,10 @@ impl TerraformPool {
 
 impl Drop for TerraformPool {
     fn drop(&mut self) {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, fine for assertions"
+        )]
         for (_, apply) in self.active_applies.drain() {
             debug_assert_eq!(Arc::strong_count(&apply), 1);
         }
@@ -176,6 +180,10 @@ impl TerraformBatch {
 
             let output = ProgressTracker::with_group(
                 "apply",
+                #[expect(
+                    clippy::disallowed_methods,
+                    reason = "nondeterministic iteration order, fine for addition"
+                )]
                 Some(self.resource.values().map(|r| r.len()).sum()),
                 || async { apply.write().await.output().await },
             )

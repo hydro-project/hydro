@@ -1,2 +1,23 @@
 upper-case-acronyms-aggressive = true
 avoid-breaking-exported-api = false
+disallowed-methods = [
+    { path = "slotmap::SparseSecondaryMap::drain", reason = "nondeterministic iteration order" },
+    { path = "slotmap::SparseSecondaryMap::iter_mut", reason = "nondeterministic iteration order" },
+    { path = "slotmap::SparseSecondaryMap::iter", reason = "nondeterministic iteration order" },
+    # { path = "slotmap::SparseSecondaryMap::into_iter", reason = "nondeterministic iteration order" }, // TODO(mingwei): https://github.com/rust-lang/rust-clippy/issues/8581
+    { path = "slotmap::SparseSecondaryMap::keys", reason = "nondeterministic iteration order" },
+    { path = "slotmap::SparseSecondaryMap::values_mut", reason = "nondeterministic iteration order" },
+    { path = "slotmap::SparseSecondaryMap::values", reason = "nondeterministic iteration order" },
+
+    { path = "std::collections::HashMap::drain", reason = "nondeterministic iteration order" },
+    { path = "std::collections::HashMap::iter_mut", reason = "nondeterministic iteration order" },
+    { path = "std::collections::HashMap::iter", reason = "nondeterministic iteration order" },
+    # { path = "std::collections::HashMap::into_iter", reason = "nondeterministic iteration order" }, // TODO(mingwei): https://github.com/rust-lang/rust-clippy/issues/8581
+    { path = "std::collections::HashMap::keys", reason = "nondeterministic iteration order" },
+    { path = "std::collections::HashMap::values_mut", reason = "nondeterministic iteration order" },
+    { path = "std::collections::HashMap::values", reason = "nondeterministic iteration order" },
+
+    { path = "std::collections::HashSet::drain", reason = "nondeterministic iteration order" },
+    { path = "std::collections::HashSet::iter", reason = "nondeterministic iteration order" },
+    # { path = "std::collections::HashSet::into_iter", reason = "nondeterministic iteration order" }, // TODO(mingwei): https://github.com/rust-lang/rust-clippy/issues/8581
+]

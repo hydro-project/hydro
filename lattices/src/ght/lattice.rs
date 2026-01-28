@@ -93,6 +93,10 @@ where
         if self.children.is_empty() && other.children.is_empty() {
             Some(Equal)
         } else {
+            #[expect(
+                clippy::disallowed_methods,
+                reason = "nondeterministic iteration order, TODO(mingwei)"
+            )]
             for k in self.children.keys().chain(other.children.keys()) {
                 match (self.children.get(k), other.children.get(k)) {
                     (Some(self_value), Some(other_value)) => {
@@ -190,6 +194,10 @@ where
     Node: GeneralizedHashTrieNode + IsBot,
 {
     fn is_bot(&self) -> bool {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, TODO(mingwei)"
+        )]
         self.children.iter().all(|(_, v)| v.is_bot())
     }
 }

@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use adjacency::rga_adjacency;
 use clap::{Parser, ValueEnum};
@@ -112,8 +112,8 @@ async fn write_to_dot(
     list_recv: &mut UnboundedReceiverStream<(Timestamp, Timestamp)>,
     w: &mut impl std::fmt::Write,
 ) {
-    let tree_edges: HashSet<_> = collect_ready_async(rga_recv).await;
-    let list_edges: HashMap<_, _> = collect_ready_async(list_recv).await;
+    let tree_edges: BTreeSet<_> = collect_ready_async(rga_recv).await;
+    let list_edges: BTreeMap<_, _> = collect_ready_async(list_recv).await;
     let node_names = tree_edges
         .iter()
         .map(|(c, _)| (c.ts, c.value))

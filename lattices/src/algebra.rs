@@ -1060,6 +1060,10 @@ mod test {
                 &|x, y| {
                     let mut new_set = HashSet::new();
 
+                    #[expect(
+                        clippy::disallowed_methods,
+                        reason = "nondeterministic iteration order, fine to collect into set"
+                    )]
                     for a in x.iter() {
                         for b in y.iter() {
                             new_set.insert(format!("{a}{b}"));

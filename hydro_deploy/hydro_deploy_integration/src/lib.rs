@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::marker::PhantomData;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -55,7 +55,7 @@ type UnixListener = std::convert::Infallible;
 pub enum ServerPort {
     UnixSocket(PathBuf),
     TcpPort(SocketAddr),
-    Demux(HashMap<u32, ServerPort>),
+    Demux(BTreeMap<u32, ServerPort>),
     Merge(Vec<ServerPort>),
     Tagged(Box<ServerPort>, u32),
     Null,
@@ -94,10 +94,8 @@ impl ServerPort {
                     .iter()
                     .map(|(k, v)| async move { (*k, v.connect().await) })
                     .collect::<FuturesUnordered<_>>()
-                    .collect::<Vec<_>>()
-                    .await
-                    .into_iter()
-                    .collect(),
+                    .collect::<BTreeMap<_, _>>()
+                    .await,
             ),
             ServerPort::Merge(ports) => ClientConnection::Merge(
                 ports
@@ -105,9 +103,7 @@ impl ServerPort {
                     .map(|p| p.connect())
                     .collect::<FuturesUnordered<_>>()
                     .collect::<Vec<_>>()
-                    .await
-                    .into_iter()
-                    .collect(),
+                    .await,
             ),
             ServerPort::Tagged(port, tag) => {
                 ClientConnection::Tagged(Box::new(port.as_ref().connect().await), *tag)
@@ -125,7 +121,7 @@ impl ServerPort {
 pub enum ClientConnection {
     UnixSocket(UnixStream),
     TcpPort(TcpStream),
-    Demux(HashMap<u32, ClientConnection>),
+    Demux(BTreeMap<u32, ClientConnection>),
     Merge(Vec<ClientConnection>),
     Tagged(Box<ClientConnection>, u32),
     Null,
@@ -142,7 +138,7 @@ pub enum ServerBindConfig {
         /// If `None`, the port will be chosen automatically.
         Option<u16>,
     ),
-    Demux(HashMap<u32, ServerBindConfig>),
+    Demux(BTreeMap<u32, ServerBindConfig>),
     Merge(Vec<ServerBindConfig>),
     Tagged(Box<ServerBindConfig>, u32),
     MultiConnection(Box<ServerBindConfig>),
@@ -175,16 +171,16 @@ impl ServerBindConfig {
                 BoundServer::TcpPort(TcpListenerStream::new(listener), addr)
             }
             ServerBindConfig::Demux(bindings) => {
-                let mut demux = HashMap::new();
+                let mut demux = BTreeMap::new();
                 for (key, bind) in bindings {
-                    demux.insert(key, bind.bind().await);
+                    demux.insert(key, bind.bind().await); // TODO(mingwei): Do in parallel.
                 }
                 BoundServer::Demux(demux)
             }
             ServerBindConfig::Merge(bindings) => {
                 let mut merge = Vec::new();
                 for bind in bindings {
-                    merge.push(bind.bind().await);
+                    merge.push(bind.bind().await); // TODO(mingwei): Do in parallel.
                 }
                 BoundServer::Merge(merge)
             }
@@ -247,7 +243,7 @@ pub trait ConnectedSource {
 pub enum BoundServer {
     UnixSocket(UnixListener, TempDir),
     TcpPort(TcpListenerStream, SocketAddr),
-    Demux(HashMap<u32, BoundServer>),
+    Demux(BTreeMap<u32, BoundServer>),
     Merge(Vec<BoundServer>),
     Tagged(Box<BoundServer>, u32),
     MultiConnection(Box<BoundServer>),
@@ -258,7 +254,7 @@ pub enum BoundServer {
 pub enum AcceptedServer {
     UnixSocket(UnixStream, TempDir),
     TcpPort(TcpStream),
-    Demux(HashMap<u32, AcceptedServer>),
+    Demux(BTreeMap<u32, AcceptedServer>),
     Merge(Vec<AcceptedServer>),
     Tagged(Box<AcceptedServer>, u32),
     MultiConnection(Box<BoundServer>),
@@ -332,7 +328,7 @@ impl BoundServer {
             }
 
             BoundServer::Demux(bindings) => {
-                let mut demux = HashMap::new();
+                let mut demux = BTreeMap::new();
                 for (key, bind) in bindings {
                     demux.insert(*key, bind.server_port());
                 }

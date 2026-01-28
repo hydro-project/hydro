@@ -175,6 +175,10 @@ impl<'a> SimFlow<'a> {
             })
             .collect::<BTreeMap<_, _>>();
 
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, fine for checks"
+        )]
         for c in self.clusters.keys() {
             assert!(
                 self.cluster_max_sizes.contains_key(c),

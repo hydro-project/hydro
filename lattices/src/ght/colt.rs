@@ -207,6 +207,10 @@ where
     }
 
     fn iter(&self) -> impl Iterator<Item = Self::Head> {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, TODO(mingwei)"
+        )]
         self.0.children.keys().cloned().chain(Rest::iter(&self.1))
     }
 }
@@ -241,6 +245,10 @@ where
     }
 
     fn iter(&self) -> impl Iterator<Item = Self::Head> {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, TODO(mingwei)"
+        )]
         self.0.children.keys().cloned().chain(Rest::iter(&self.1))
     }
 }
@@ -286,6 +294,10 @@ where
     }
 
     fn iter(&self) -> impl Iterator<Item = Self::Head> {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "nondeterministic iteration order, TODO(mingwei)"
+        )]
         self.0.children.keys().cloned()
     }
 }
