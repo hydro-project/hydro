@@ -31,12 +31,12 @@ pub fn keyed_counter_service<'a, L: Location<'a> + NoTick>(
         let request_batch = use(requests_regrouped, nondet!(/** we never observe batch boundaries */));
         let count_snapshot = use::atomic(current_count, nondet!(/** atomicity guarantees consistency wrt increments */));
 
-        count_snapshot.join_keyed_stream(request_batch)
+        request_batch.join_keyed_singleton(count_snapshot)
     };
 
     let get_response = get_lookup
         .entries()
-        .map(q!(|(key, (count, client))| (client, (key, count))))
+        .map(q!(|(key, (client, count))| (client, (key, count))))
         .into_keyed();
 
     (increment_ack, get_response)
