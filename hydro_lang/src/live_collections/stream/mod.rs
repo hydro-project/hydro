@@ -63,6 +63,14 @@ impl Ordering for NoOrder {
     const ORDERING_KIND: StreamOrder = StreamOrder::NoOrder;
 }
 
+/// Marker trait for an [`Ordering`] that is available when `Self` is a weaker guarantee than
+/// `Other`, which means that a stream with `Other` guarantees can be safely converted to
+/// have `Self` guarantees instead.
+#[sealed::sealed]
+pub trait WeakerOrderingThan<Other: ?Sized>: Ordering {}
+#[sealed::sealed]
+impl<O: Ordering, O2: Ordering> WeakerOrderingThan<O2> for O where O: MinOrder<O2, Min = O> {}
+
 /// Helper trait for determining the weakest of two orderings.
 #[sealed::sealed]
 pub trait MinOrder<Other: ?Sized> {
@@ -76,7 +84,7 @@ impl<O: Ordering> MinOrder<O> for TotalOrder {
 }
 
 #[sealed::sealed]
-impl<O> MinOrder<O> for NoOrder {
+impl<O: Ordering> MinOrder<O> for NoOrder {
     type Min = NoOrder;
 }
 
@@ -109,11 +117,19 @@ impl Retries for AtLeastOnce {
     const RETRIES_KIND: StreamRetry = StreamRetry::AtLeastOnce;
 }
 
+/// Marker trait for a [`Retries`] that is available when `Self` is a weaker guarantee than
+/// `Other`, which means that a stream with `Other` guarantees can be safely converted to
+/// have `Self` guarantees instead.
+#[sealed::sealed]
+pub trait WeakerRetryThan<Other: ?Sized>: Retries {}
+#[sealed::sealed]
+impl<R: Retries, R2: Retries> WeakerRetryThan<R2> for R where R: MinRetries<R2, Min = R> {}
+
 /// Helper trait for determining the weakest of two retry guarantees.
 #[sealed::sealed]
 pub trait MinRetries<Other: ?Sized> {
     /// The weaker of the two retry guarantees.
-    type Min: Retries;
+    type Min: Retries + WeakerRetryThan<Self> + WeakerRetryThan<Other>;
 }
 
 #[sealed::sealed]
@@ -122,7 +138,7 @@ impl<R: Retries> MinRetries<R> for ExactlyOnce {
 }
 
 #[sealed::sealed]
-impl<R> MinRetries<R> for AtLeastOnce {
+impl<R: Retries> MinRetries<R> for AtLeastOnce {
     type Min = AtLeastOnce;
 }
 
@@ -984,16 +1000,16 @@ where
         }
     }
 
+    #[deprecated = "use `weaken_ordering::<NoOrder>()` instead"]
     /// Weakens the ordering guarantee provided by the stream to [`NoOrder`],
     /// which is always safe because that is the weakest possible guarantee.
     pub fn weakest_ordering(self) -> Stream<T, L, B, NoOrder, R> {
-        let nondet = nondet!(/** this is a weaker ordering guarantee, so it is safe to assume */);
-        self.assume_ordering::<NoOrder>(nondet)
+        self.weaken_ordering::<NoOrder>()
     }
 
     /// Weakens the ordering guarantee provided by the stream to `O2`, with the type-system
     /// enforcing that `O2` is weaker than the input ordering guarantee.
-    pub fn weaken_ordering<O2: Ordering + MinOrder<O, Min = O2>>(self) -> Stream<T, L, B, O2, R> {
+    pub fn weaken_ordering<O2: WeakerOrderingThan<O>>(self) -> Stream<T, L, B, O2, R> {
         let nondet = nondet!(/** this is a weaker ordering guarantee, so it is safe to assume */);
         self.assume_ordering::<O2>(nondet)
     }
@@ -1064,16 +1080,16 @@ where
         }
     }
 
+    #[deprecated = "use `weaken_retries::<AtLeastOnce>()` instead"]
     /// Weakens the retries guarantee provided by the stream to [`AtLeastOnce`],
     /// which is always safe because that is the weakest possible guarantee.
     pub fn weakest_retries(self) -> Stream<T, L, B, O, AtLeastOnce> {
-        let nondet = nondet!(/** this is a weaker retry guarantee, so it is safe to assume */);
-        self.assume_retries::<AtLeastOnce>(nondet)
+        self.weaken_retries::<AtLeastOnce>()
     }
 
     /// Weakens the retries guarantee provided by the stream to `R2`, with the type-system
     /// enforcing that `R2` is weaker than the input retries guarantee.
-    pub fn weaken_retries<R2: Retries + MinRetries<R, Min = R2>>(self) -> Stream<T, L, B, O, R2> {
+    pub fn weaken_retries<R2: WeakerRetryThan<R>>(self) -> Stream<T, L, B, O, R2> {
         let nondet = nondet!(/** this is a weaker retry guarantee, so it is safe to assume */);
         self.assume_retries::<R2>(nondet)
     }
@@ -2109,7 +2125,7 @@ where
         self.batch(&tick, nondet)
             .filter_if_some(samples.batch(&tick, nondet).first())
             .all_ticks()
-            .weakest_retries()
+            .weaken_retries()
     }
 
     /// Given a timeout duration, returns an [`Optional`]  which will have a value if the

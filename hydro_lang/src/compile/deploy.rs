@@ -73,6 +73,26 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         self
     }
 
+    /// TODO(mingwei): unstable API
+    #[doc(hidden)]
+    pub fn with_process_erased(
+        mut self,
+        process_loc_key: LocationKey,
+        spec: impl IntoProcessSpec<'a, D>,
+    ) -> Self {
+        assert_eq!(
+            Some(&LocationType::Process),
+            self.locations.get(process_loc_key),
+            "No process with the given `LocationKey` was found."
+        );
+        self.processes.insert(
+            process_loc_key,
+            spec.into_process_spec()
+                .build(process_loc_key, &self.location_names[process_loc_key]),
+        );
+        self
+    }
+
     pub fn with_remaining_processes<S: IntoProcessSpec<'a, D> + 'a>(
         mut self,
         spec: impl Fn() -> S,
@@ -96,6 +116,25 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         self.clusters.insert(
             cluster.key,
             spec.build(cluster.key, &self.location_names[cluster.key]),
+        );
+        self
+    }
+
+    /// TODO(mingwei): unstable API
+    #[doc(hidden)]
+    pub fn with_cluster_erased(
+        mut self,
+        cluster_loc_key: LocationKey,
+        spec: impl ClusterSpec<'a, D>,
+    ) -> Self {
+        assert_eq!(
+            Some(&LocationType::Cluster),
+            self.locations.get(cluster_loc_key),
+            "No cluster with the given `LocationKey` was found."
+        );
+        self.clusters.insert(
+            cluster_loc_key,
+            spec.build(cluster_loc_key, &self.location_names[cluster_loc_key]),
         );
         self
     }

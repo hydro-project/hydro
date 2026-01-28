@@ -21,7 +21,9 @@ use crate::compile::ir::{
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::live_collections::batch_atomic::BatchAtomic;
-use crate::live_collections::stream::{AtLeastOnce, Ordering, Retries};
+use crate::live_collections::stream::{
+    AtLeastOnce, Ordering, Retries, WeakerOrderingThan, WeakerRetryThan,
+};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::DeferTick;
@@ -91,7 +93,7 @@ where
     L: Location<'a>,
 {
     fn from(stream: KeyedStream<K, V, L, B, TotalOrder, R>) -> KeyedStream<K, V, L, B, NoOrder, R> {
-        stream.weakest_ordering()
+        stream.weaken_ordering()
     }
 }
 
@@ -315,11 +317,18 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         }
     }
 
+    #[deprecated = "use `weaken_ordering::<NoOrder>()` instead"]
     /// Weakens the ordering guarantee provided by the stream to [`NoOrder`],
     /// which is always safe because that is the weakest possible guarantee.
     pub fn weakest_ordering(self) -> KeyedStream<K, V, L, B, NoOrder, R> {
+        self.weaken_ordering::<NoOrder>()
+    }
+
+    /// Weakens the ordering guarantee provided by the stream to `O2`, with the type-system
+    /// enforcing that `O2` is weaker than the input ordering guarantee.
+    pub fn weaken_ordering<O2: WeakerOrderingThan<O>>(self) -> KeyedStream<K, V, L, B, O2, R> {
         let nondet = nondet!(/** this is a weaker ordering guarantee, so it is safe to assume */);
-        self.assume_ordering::<NoOrder>(nondet)
+        self.assume_ordering::<O2>(nondet)
     }
 
     /// Explicitly "casts" the keyed stream to a type with a different retries
@@ -358,11 +367,18 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         }
     }
 
+    #[deprecated = "use `weaker_retries::<AtLeastOnce>()` instead"]
     /// Weakens the retries guarantee provided by the stream to [`AtLeastOnce`],
     /// which is always safe because that is the weakest possible guarantee.
     pub fn weakest_retries(self) -> KeyedStream<K, V, L, B, O, AtLeastOnce> {
+        self.weaker_retries::<AtLeastOnce>()
+    }
+
+    /// Weakens the retries guarantee provided by the stream to `R2`, with the type-system
+    /// enforcing that `R2` is weaker than the input retries guarantee.
+    pub fn weaker_retries<R2: WeakerRetryThan<R>>(self) -> KeyedStream<K, V, L, B, O, R2> {
         let nondet = nondet!(/** this is a weaker retries guarantee, so it is safe to assume */);
-        self.assume_retries::<AtLeastOnce>(nondet)
+        self.assume_retries::<R2>(nondet)
     }
 
     /// Flattens the keyed stream into an unordered stream of key-value pairs.
@@ -1258,11 +1274,11 @@ impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries>
         // Because the outputs are unordered, we can interleave batches from both streams.
         let nondet_batch_interleaving = nondet!(/** output stream is NoOrder, can interleave */);
         self.batch(&tick, nondet_batch_interleaving)
-            .weakest_ordering()
+            .weaken_ordering::<NoOrder>()
             .chain(
                 other
                     .batch(&tick, nondet_batch_interleaving)
-                    .weakest_ordering(),
+                    .weaken_ordering::<NoOrder>(),
             )
             .all_ticks()
     }
@@ -2708,7 +2724,7 @@ mod tests {
         let input = node
             .source_iter(q!([(1, 1), (1, 2), (2, 3)]))
             .into_keyed()
-            .weakest_ordering();
+            .weaken_ordering::<NoOrder>();
 
         let tick = node.tick();
         let out_recv = input
