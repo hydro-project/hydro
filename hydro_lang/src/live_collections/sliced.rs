@@ -909,7 +909,7 @@ mod tests {
         let out_recv = sliced! {
             let atomic_keyed_input = use::atomic(atomic_keyed_input, nondet!(/** test */));
             let accumulated_inputs = use::atomic(accumulated_inputs, nondet!(/** test */));
-            accumulated_inputs.get_many_if_present(atomic_keyed_input)
+            accumulated_inputs.join_keyed_stream(atomic_keyed_input)
                 .map(q!(|(sum, _input)| sum))
                 .entries()
         }

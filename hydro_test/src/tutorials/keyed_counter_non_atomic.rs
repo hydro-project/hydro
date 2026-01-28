@@ -20,16 +20,24 @@ pub fn keyed_counter_service_buggy<'a, L: Location<'a> + NoTick, O: Ordering>(
         .value_counts();
     let increment_ack = increment_requests;
 
-    let get_response = sliced! {
-        let request_batch = use(get_requests, nondet!(/** we never observe batch boundaries */));
+    let requests_regrouped = get_requests
+        .entries()
+        .map(q!(|(cid, key)| (key, cid)))
+        .into_keyed();
+
+    let get_lookup = sliced! {
+        let request_batch = use(requests_regrouped, nondet!(/** we never observe batch boundaries */));
         let count_snapshot = use(current_count, nondet!(/** atomicity guarantees consistency wrt increments */));
 
-        count_snapshot.get_many_if_present(request_batch.entries().map(q!(|(cid, key)| (key, cid))).into_keyed())
-            .entries()
-            .map(q!(|(key, (count, client))| (client, (key, count))))
+        request_batch.join_keyed_singleton(count_snapshot)
     };
 
-    (increment_ack, get_response.into_keyed())
+    let get_response = get_lookup
+        .entries()
+        .map(q!(|(key, (client, count))| (client, (key, count))))
+        .into_keyed();
+
+    (increment_ack, get_response)
 }
 
 #[cfg(test)]
