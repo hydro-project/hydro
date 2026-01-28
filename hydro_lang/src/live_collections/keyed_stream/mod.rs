@@ -2188,27 +2188,27 @@ where
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// # let tick = process.tick();
-    /// let requests = // { 1: 10, 2: 20 }
+    /// let requests = // { 1: [10, 11], 2: 20 }
     /// # process
-    /// #     .source_iter(q!(vec![(1, 10), (2, 20)]))
+    /// #     .source_iter(q!(vec![(1, 10), (1, 11), (2, 20)]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */));
+    /// let other_data = // { 10: 100, 11: 110 }
+    /// # process
+    /// #     .source_iter(q!(vec![(10, 100), (11, 110)]))
     /// #     .into_keyed()
     /// #     .batch(&tick, nondet!(/** test */))
     /// #     .first();
-    /// let other_data = // { 10: [100, 101], 11: 110 }
-    /// # process
-    /// #     .source_iter(q!(vec![(10, 100), (10, 101), (11, 110)]))
-    /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */));
     /// requests.lookup_keyed_singleton(other_data)
     /// # .entries().all_ticks()
     /// # }, |mut stream| async move {
-    /// // { 1: [(10, Some(100)), (10, Some(101))], 2: (20, None) }
+    /// // { 1: [(10, Some(100)), (11, Some(110))], 2: (20, None) }
     /// # let mut results = vec![];
     /// # for _ in 0..3 {
     /// #     results.push(stream.next().await.unwrap());
     /// # }
     /// # results.sort();
-    /// # assert_eq!(results, vec![(1, (10, Some(100))), (1, (10, Some(101))), (2, (20, None))]);
+    /// # assert_eq!(results, vec![(1, (10, Some(100))), (1, (11, Some(110))), (2, (20, None))]);
     /// # }));
     /// # }
     /// ```
