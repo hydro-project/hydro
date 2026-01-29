@@ -2434,7 +2434,7 @@ mod tests {
     use hydro_deploy::Deployment;
     #[cfg(feature = "deploy")]
     use serde::{Deserialize, Serialize};
-    #[cfg(feature = "deploy")]
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use stageleft::q;
 
     #[cfg(any(feature = "deploy", feature = "sim"))]
@@ -3001,5 +3001,141 @@ mod tests {
             instance_count,
             16 // 2^4, { 0, 1, 2, 3 } can be a snapshot and 4 is always included
         )
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_assume_ordering() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input::<_, NoOrder, _>();
+
+        let out_recv = input
+            .assume_ordering::<TotalOrder>(nondet!(/** test */))
+            .sim_output();
+
+        let instance_count = flow.sim().exhaustive(async || {
+            in_send.send_many_unordered([1, 2, 3]);
+            let mut out = out_recv.collect::<Vec<_>>().await;
+            out.sort();
+            assert_eq!(out, vec![1, 2, 3]);
+        });
+
+        assert_eq!(instance_count, 24)
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_assume_ordering_cycle_back() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input::<_, NoOrder, _>();
+
+        let (complete_cycle_back, cycle_back) =
+            node.forward_ref::<super::Stream<_, _, _, NoOrder>>();
+        let ordered = input
+            .interleave(cycle_back)
+            .assume_ordering::<TotalOrder>(nondet!(/** test */));
+        complete_cycle_back.complete(
+            ordered
+                .clone()
+                .map(q!(|v| v + 1))
+                .filter(q!(|v| v % 2 == 1)),
+        );
+
+        let out_recv = ordered.sim_output();
+
+        let mut saw = false;
+        let instance_count = flow.sim().exhaustive(async || {
+            in_send.send_many_unordered([0, 2]);
+            let out = out_recv.collect::<Vec<_>>().await;
+
+            if out.starts_with(&[0, 1, 2]) {
+                saw = true;
+            }
+        });
+
+        assert!(saw, "did not see an instance with 0, 1, 2 in order");
+        assert_eq!(instance_count, 22)
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_assume_ordering_cycle_back_tick() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input::<_, NoOrder, _>();
+
+        let (complete_cycle_back, cycle_back) =
+            node.forward_ref::<super::Stream<_, _, _, NoOrder>>();
+        let ordered = input
+            .interleave(cycle_back)
+            .assume_ordering::<TotalOrder>(nondet!(/** test */));
+        complete_cycle_back.complete(
+            ordered
+                .clone()
+                .batch(&node.tick(), nondet!(/** test */))
+                .all_ticks()
+                .map(q!(|v| v + 1))
+                .filter(q!(|v| v % 2 == 1)),
+        );
+
+        let out_recv = ordered.sim_output();
+
+        let mut saw = false;
+        let instance_count = flow.sim().exhaustive(async || {
+            in_send.send_many_unordered([0, 2]);
+            let out = out_recv.collect::<Vec<_>>().await;
+
+            if out.starts_with(&[0, 1, 2]) {
+                saw = true;
+            }
+        });
+
+        assert!(saw, "did not see an instance with 0, 1, 2 in order");
+        assert_eq!(instance_count, 142)
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_assume_ordering_multiple() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input::<_, NoOrder, _>();
+        let (_, input2) = node.sim_input::<_, NoOrder, _>();
+
+        let (complete_cycle_back, cycle_back) =
+            node.forward_ref::<super::Stream<_, _, _, NoOrder>>();
+        let input1_ordered = input
+            .clone()
+            .interleave(cycle_back)
+            .assume_ordering::<TotalOrder>(nondet!(/** test */));
+        let foo = input1_ordered
+            .clone()
+            .map(q!(|v| v + 3))
+            .weaken_ordering::<NoOrder>()
+            .interleave(input2)
+            .assume_ordering::<TotalOrder>(nondet!(/** test */));
+
+        complete_cycle_back.complete(foo.filter(q!(|v| *v == 3)));
+
+        let out_recv = input1_ordered.sim_output();
+
+        let mut saw = false;
+        let instance_count = flow.sim().exhaustive(async || {
+            in_send.send_many_unordered([0, 1]);
+            let out = out_recv.collect::<Vec<_>>().await;
+
+            if out.starts_with(&[0, 3, 1]) {
+                saw = true;
+            }
+        });
+
+        assert!(saw, "did not see an instance with 0, 3, 1 in order");
+        assert_eq!(instance_count, 64)
     }
 }
