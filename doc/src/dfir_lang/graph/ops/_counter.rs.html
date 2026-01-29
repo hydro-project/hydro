@@ -88,7 +88,7 @@
 <a href=#88 id=88 data-nosnippet>88</a>        <span class="kw">let </span>write_iterator = <span class="kw">if </span>is_pull {
 <a href=#89 id=89 data-nosnippet>89</a>            <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
 <a href=#90 id=90 data-nosnippet>90</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#91 id=91 data-nosnippet>91</a>                <span class="kw">let </span>#ident = #input.inspect(|<span class="kw">_</span>| { #count_ident += <span class="number">1</span>; });
+<a href=#91 id=91 data-nosnippet>91</a>                <span class="kw">let </span>#ident = #root::futures::stream::StreamExt::inspect(#input, |<span class="kw">_</span>| { #count_ident += <span class="number">1</span>; });
 <a href=#92 id=92 data-nosnippet>92</a>            }
 <a href=#93 id=93 data-nosnippet>93</a>        } <span class="kw">else if </span>outputs.is_empty() {
 <a href=#94 id=94 data-nosnippet>94</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
