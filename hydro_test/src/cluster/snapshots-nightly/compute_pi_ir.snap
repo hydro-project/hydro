@@ -21,6 +21,7 @@ expression: built.ir()
                                                 input: Cast {
                                                     inner: Cast {
                                                         inner: Network {
+                                                            name: None,
                                                             serialize_fn: Some(
                                                                 hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (u64 , u64) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
                                                             ),
