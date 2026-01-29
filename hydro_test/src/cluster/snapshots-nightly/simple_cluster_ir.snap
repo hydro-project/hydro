@@ -9,6 +9,7 @@ expression: built.ir()
             inner: Cast {
                 inner: Cast {
                     inner: Network {
+                        name: None,
                         serialize_fn: Some(
                             hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
                         ),
@@ -19,6 +20,7 @@ expression: built.ir()
                         input: Inspect {
                             f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: simple_cluster :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < () > :: from_tagless ((__hydro_lang_cluster_self_id_loc2v1) . clone ()) ; move | n | println ! ("cluster received: {:?} (self cluster id: {})" , n , CLUSTER_SELF_ID__free) }),
                             input: Network {
+                                name: None,
                                 serialize_fn: Some(
                                     hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32)) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                 ),
