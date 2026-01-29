@@ -1,4 +1,5 @@
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use clap::{ArgAction, Parser};
 use hydro_deploy::aws::{AwsCloudwatchLogGroup, AwsEc2IamInstanceProfile};
@@ -197,7 +198,11 @@ async fn main() {
     };
 
     if args.aws {
-        optimized = optimized.with_sidecar_all(&emf::RecordMetricsSidecar::builder().build());
+        optimized = optimized.with_sidecar_all(
+            &emf::RecordMetricsSidecar::builder()
+                .interval(Duration::from_secs(5))
+                .build(),
+        );
     }
 
     let _nodes = optimized.deploy(&mut deployment);

@@ -84,6 +84,12 @@ pub fn record_metrics_sidecar(
     let mut dfir_intervals = dfir.metrics_intervals();
 
     async move {
+        if let Some(parent_dir) = std::path::Path::new(file_path).parent() {
+            if let Err(e) = tokio::fs::create_dir_all(parent_dir).await {
+                tracing::error!("Failed to create log file directory for EMF metrics: {}", e);
+            }
+        }
+
         // Only attempt to get Tokio runtime within async to be safe.
         let rt_monitor = tokio_metrics::RuntimeMonitor::new(&tokio::runtime::Handle::current());
         let mut rt_intervals = rt_monitor.intervals();
@@ -97,20 +103,14 @@ pub fn record_metrics_sidecar(
             let unwind_result = AssertUnwindSafe(async {
                 let timestamp = SystemTime::now();
 
-                let file_result = tokio::fs::OpenOptions::new()
+                let file = tokio::fs::OpenOptions::new()
                     .write(true)
                     .create(true)
                     .truncate(false)
                     .append(true)
                     .open(file_path)
-                    .await;
-                let file = match file_result {
-                    Ok(file) => file,
-                    Err(e) => {
-                        tracing::warn!("Failed to create log file for EMF metrics: {}", e);
-                        return;
-                    }
-                };
+                    .await
+                    .expect("Failed to open log file for EMF metrics.");
                 let mut writer = tokio::io::BufWriter::new(file);
 
                 record_metrics_dfir(
