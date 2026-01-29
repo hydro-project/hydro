@@ -88,7 +88,7 @@ pub const _COUNTER: OperatorConstraints = OperatorConstraints {
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let #ident = #input.inspect(|_| { #count_ident += 1; });
+                let #ident = #root::futures::stream::StreamExt::inspect(#input, |_| { #count_ident += 1; });
             }
         } else if outputs.is_empty() {
             quote_spanned! {op_span=>
