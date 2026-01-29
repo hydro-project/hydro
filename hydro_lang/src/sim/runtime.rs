@@ -938,3 +938,85 @@ impl<K: Hash + Eq + Clone, V> SimInlineHook for KeyedStreamOrderHook<K, V> {
         }
     }
 }
+
+pub struct TopLevelStreamOrderHook<T> {
+    pub input: Rc<RefCell<VecDeque<T>>>,
+    pub to_release: Option<Vec<T>>,
+    pub output: UnboundedSender<T>,
+    pub location: HookLocationMeta,
+    pub format_item_debug: fn(&T) -> Option<String>,
+}
+
+impl<T> SimHook for TopLevelStreamOrderHook<T> {
+    fn current_decision(&self) -> Option<bool> {
+        self.to_release.as_ref().map(|v| !v.is_empty())
+    }
+
+    fn can_make_nontrivial_decision(&self) -> bool {
+        !self.input.borrow().is_empty()
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        driver: &mut Borrowed<'a>,
+        force_nontrivial: bool,
+    ) -> bool {
+        let mut current_input = self.input.borrow_mut();
+        let mut out = vec![];
+        while !current_input.is_empty() {
+            let must_release = force_nontrivial && out.is_empty();
+            if !must_release && produce().generate(driver).unwrap() {
+                break;
+            }
+
+            let idx = (0..current_input.len()).generate(driver).unwrap();
+            let item = current_input.remove(idx).unwrap();
+            out.push(item);
+        }
+
+        let was_nontrivial = !out.is_empty();
+        self.to_release = Some(out);
+        was_nontrivial
+    }
+
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+        if let Some(to_release) = self.to_release.take() {
+            let (batch_location, line, caret_indent) = self.location;
+            let note_str = if to_release.is_empty() {
+                "^ releasing no items".to_string()
+            } else {
+                format!(
+                    "^ observered non-deterministic order: {:?}",
+                    TruncatedVecDebug(
+                        RefCell::new(Some(to_release.iter())),
+                        8,
+                        self.format_item_debug
+                    )
+                )
+            };
+
+            let _ = writeln!(
+                log_writer,
+                "{} {}",
+                "-->".color(colored::Color::Blue),
+                batch_location
+            );
+
+            let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+            let _ = writeln!(
+                log_writer,
+                " {}{}{}",
+                "|".color(colored::Color::Blue),
+                caret_indent,
+                note_str.color(colored::Color::Green)
+            );
+
+            for item in to_release {
+                self.output.send(item).unwrap();
+            }
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}

@@ -429,6 +429,12 @@ impl<'a> CompiledSimInstance<'a> {
                 },
             )
         };
+
+        let not_ready_observation = async_dfirs
+            .iter()
+            .map(|(lid, c_id, _)| (serde_json::from_str(lid).unwrap(), c_id.clone()))
+            .collect();
+
         let mut launched = LaunchedSim {
             async_dfirs: async_dfirs
                 .into_iter()
@@ -439,6 +445,8 @@ impl<'a> CompiledSimInstance<'a> {
                 .into_iter()
                 .map(|(lid, c_id, dfir)| (serde_json::from_str(lid).unwrap(), c_id, dfir))
                 .collect(),
+            possibly_ready_observation: vec![],
+            not_ready_observation,
             hooks: hooks
                 .into_iter()
                 .map(|((lid, cid), hs)| ((serde_json::from_str(lid).unwrap(), cid), hs))
@@ -785,6 +793,8 @@ struct LaunchedSim<W: std::io::Write> {
     async_dfirs: Vec<(LocationId, Option<u32>, Dfir<'static>)>,
     possibly_ready_ticks: Vec<(LocationId, Option<u32>, Dfir<'static>)>,
     not_ready_ticks: Vec<(LocationId, Option<u32>, Dfir<'static>)>,
+    possibly_ready_observation: Vec<(LocationId, Option<u32>)>,
+    not_ready_observation: Vec<(LocationId, Option<u32>)>,
     hooks: Hooks<LocationId>,
     inline_hooks: InlineHooks<LocationId>,
     log: LogKind<W>,
@@ -810,6 +820,14 @@ impl<W: std::io::Write> LaunchedSim<W> {
 
                     self.possibly_ready_ticks.extend(now_ready);
                     self.not_ready_ticks.extend(still_not_ready);
+
+                    let (now_ready_obs, still_not_ready_obs): (Vec<_>, Vec<_>) = self
+                        .not_ready_observation
+                        .drain(..)
+                        .partition(|(obs_loc, obs_c_id)| obs_loc == loc && obs_c_id == c_id);
+
+                    self.possibly_ready_observation.extend(now_ready_obs);
+                    self.not_ready_observation.extend(still_not_ready_obs);
                 }
             }
 
@@ -818,7 +836,7 @@ impl<W: std::io::Write> LaunchedSim<W> {
             } else {
                 use bolero::generator::*;
 
-                let (ready, mut not_ready): (Vec<_>, Vec<_>) = self
+                let (ready_tick, mut not_ready_tick): (Vec<_>, Vec<_>) = self
                     .possibly_ready_ticks
                     .drain(..)
                     .partition(|(name, cid, _)| {
@@ -832,117 +850,179 @@ impl<W: std::io::Write> LaunchedSim<W> {
                             })
                     });
 
-                self.possibly_ready_ticks = ready;
-                self.not_ready_ticks.append(&mut not_ready);
+                self.possibly_ready_ticks = ready_tick;
+                self.not_ready_ticks.append(&mut not_ready_tick);
 
-                if self.possibly_ready_ticks.is_empty() {
+                let (ready_obs, mut not_ready_obs): (Vec<_>, Vec<_>) = self
+                    .possibly_ready_observation
+                    .drain(..)
+                    .partition(|(name, cid)| {
+                        self.hooks
+                            .get(&(name.clone(), *cid))
+                            .into_iter()
+                            .flatten()
+                            .any(|hook| {
+                                hook.current_decision().unwrap_or(false)
+                                    || hook.can_make_nontrivial_decision()
+                            })
+                    });
+
+                self.possibly_ready_observation = ready_obs;
+                self.not_ready_observation.append(&mut not_ready_obs);
+
+                if self.possibly_ready_ticks.is_empty()
+                    && self.possibly_ready_observation.is_empty()
+                {
                     break;
                 } else {
-                    let next_tick = (0..self.possibly_ready_ticks.len()).any();
-                    let mut removed = self.possibly_ready_ticks.remove(next_tick);
+                    let next_tick_or_obs = (0..(self.possibly_ready_ticks.len()
+                        + self.possibly_ready_observation.len()))
+                        .any();
 
-                    match &mut self.log {
-                        LogKind::Null => {}
-                        LogKind::Stderr => {
-                            if let Some(cid) = &removed.1 {
-                                eprintln!(
-                                    "\n{}",
-                                    format!("Running Tick (Cluster Member {})", cid)
-                                        .color(colored::Color::Magenta)
-                                        .bold()
-                                )
-                            } else {
-                                eprintln!(
+                    if next_tick_or_obs < self.possibly_ready_ticks.len() {
+                        let next_tick = next_tick_or_obs;
+                        let mut removed = self.possibly_ready_ticks.remove(next_tick);
+
+                        match &mut self.log {
+                            LogKind::Null => {}
+                            LogKind::Stderr => {
+                                if let Some(cid) = &removed.1 {
+                                    eprintln!(
+                                        "\n{}",
+                                        format!("Running Tick (Cluster Member {})", cid)
+                                            .color(colored::Color::Magenta)
+                                            .bold()
+                                    )
+                                } else {
+                                    eprintln!(
+                                        "\n{}",
+                                        "Running Tick".color(colored::Color::Magenta).bold()
+                                    )
+                                }
+                            }
+                            LogKind::Custom(writer) => {
+                                writeln!(
+                                    writer,
                                     "\n{}",
                                     "Running Tick".color(colored::Color::Magenta).bold()
                                 )
+                                .unwrap();
                             }
                         }
-                        LogKind::Custom(writer) => {
-                            writeln!(
-                                writer,
-                                "\n{}",
-                                "Running Tick".color(colored::Color::Magenta).bold()
-                            )
-                            .unwrap();
-                        }
-                    }
 
-                    let mut asterisk_indenter = |_line_no, write: &mut dyn std::fmt::Write| {
-                        write.write_str(&"*".color(colored::Color::Magenta).bold())?;
-                        write.write_str(" ")
-                    };
+                        let mut asterisk_indenter = |_line_no, write: &mut dyn std::fmt::Write| {
+                            write.write_str(&"*".color(colored::Color::Magenta).bold())?;
+                            write.write_str(" ")
+                        };
 
-                    let mut tick_decision_writer =
-                        indenter::indented(&mut self.log).with_format(indenter::Format::Custom {
-                            inserter: &mut asterisk_indenter,
-                        });
+                        let mut tick_decision_writer = indenter::indented(&mut self.log)
+                            .with_format(indenter::Format::Custom {
+                                inserter: &mut asterisk_indenter,
+                            });
 
-                    let hooks = self.hooks.get_mut(&(removed.0.clone(), removed.1)).unwrap();
-                    let mut remaining_decision_count = hooks.len();
-                    let mut made_nontrivial_decision = false;
+                        let hooks = self.hooks.get_mut(&(removed.0.clone(), removed.1)).unwrap();
+                        let mut remaining_decision_count = hooks.len();
+                        let mut made_nontrivial_decision = false;
 
-                    bolero_generator::any::scope::borrow_with(|driver| {
-                        // first, scan manual decisions
-                        hooks.iter_mut().for_each(|hook| {
-                            if let Some(is_nontrivial) = hook.current_decision() {
-                                made_nontrivial_decision |= is_nontrivial;
-                                remaining_decision_count -= 1;
-                            } else if !hook.can_make_nontrivial_decision() {
-                                // if no nontrivial decision is possible, make a trivial one
-                                // (we need to do this in the first pass to force nontrivial decisions
-                                // on the remaining hooks)
-                                hook.autonomous_decision(driver, false);
-                                remaining_decision_count -= 1;
-                            }
-                        });
-
-                        hooks.iter_mut().for_each(|hook| {
-                            if hook.current_decision().is_none() {
-                                made_nontrivial_decision |= hook.autonomous_decision(
-                                    driver,
-                                    !made_nontrivial_decision && remaining_decision_count == 1,
-                                );
-                                remaining_decision_count -= 1;
-                            }
-
-                            hook.release_decision(&mut tick_decision_writer);
-                        });
-                    });
-
-                    let run_tick_future = removed.2.run_tick();
-                    if let Some(inline_hooks) =
-                        self.inline_hooks.get_mut(&(removed.0.clone(), removed.1))
-                    {
-                        let mut run_tick_future_pinned = pin!(run_tick_future);
-
-                        loop {
-                            tokio::select! {
-                                biased;
-                                r = &mut run_tick_future_pinned => {
-                                    assert!(r);
-                                    break;
+                        bolero_generator::any::scope::borrow_with(|driver| {
+                            // first, scan manual decisions
+                            hooks.iter_mut().for_each(|hook| {
+                                if let Some(is_nontrivial) = hook.current_decision() {
+                                    made_nontrivial_decision |= is_nontrivial;
+                                    remaining_decision_count -= 1;
+                                } else if !hook.can_make_nontrivial_decision() {
+                                    // if no nontrivial decision is possible, make a trivial one
+                                    // (we need to do this in the first pass to force nontrivial decisions
+                                    // on the remaining hooks)
+                                    hook.autonomous_decision(driver, false);
+                                    remaining_decision_count -= 1;
                                 }
-                                _ = async {} => {
-                                    bolero_generator::any::scope::borrow_with(|driver| {
-                                        for hook in inline_hooks.iter_mut() {
-                                            if hook.pending_decision() {
-                                                if !hook.has_decision() {
-                                                    hook.autonomous_decision(driver);
+                            });
+
+                            hooks.iter_mut().for_each(|hook| {
+                                if hook.current_decision().is_none() {
+                                    made_nontrivial_decision |= hook.autonomous_decision(
+                                        driver,
+                                        !made_nontrivial_decision && remaining_decision_count == 1,
+                                    );
+                                    remaining_decision_count -= 1;
+                                }
+
+                                hook.release_decision(&mut tick_decision_writer);
+                            });
+                        });
+
+                        let run_tick_future = removed.2.run_tick();
+                        if let Some(inline_hooks) =
+                            self.inline_hooks.get_mut(&(removed.0.clone(), removed.1))
+                        {
+                            let mut run_tick_future_pinned = pin!(run_tick_future);
+
+                            loop {
+                                tokio::select! {
+                                    biased;
+                                    r = &mut run_tick_future_pinned => {
+                                        assert!(r);
+                                        break;
+                                    }
+                                    _ = async {} => {
+                                        bolero_generator::any::scope::borrow_with(|driver| {
+                                            for hook in inline_hooks.iter_mut() {
+                                                if hook.pending_decision() {
+                                                    if !hook.has_decision() {
+                                                        hook.autonomous_decision(driver);
+                                                    }
+
+                                                    hook.release_decision(&mut tick_decision_writer);
                                                 }
-
-                                                hook.release_decision(&mut tick_decision_writer);
                                             }
-                                        }
-                                    });
+                                        });
+                                    }
                                 }
                             }
+                        } else {
+                            assert!(run_tick_future.await);
                         }
-                    } else {
-                        assert!(run_tick_future.await);
-                    }
 
-                    self.possibly_ready_ticks.push(removed);
+                        self.possibly_ready_ticks.push(removed);
+                    } else {
+                        let next_obs = next_tick_or_obs - self.possibly_ready_ticks.len();
+                        let mut default_hooks = vec![];
+                        let hooks = self
+                            .hooks
+                            .get_mut(&self.possibly_ready_observation[next_obs])
+                            .unwrap_or(&mut default_hooks);
+
+                        let mut remaining_decision_count = hooks.len();
+                        let mut made_nontrivial_decision = false;
+                        bolero_generator::any::scope::borrow_with(|driver| {
+                            // first, scan manual decisions
+                            hooks.iter_mut().for_each(|hook| {
+                                if let Some(is_nontrivial) = hook.current_decision() {
+                                    made_nontrivial_decision |= is_nontrivial;
+                                    remaining_decision_count -= 1;
+                                } else if !hook.can_make_nontrivial_decision() {
+                                    // if no nontrivial decision is possible, make a trivial one
+                                    // (we need to do this in the first pass to force nontrivial decisions
+                                    // on the remaining hooks)
+                                    hook.autonomous_decision(driver, false);
+                                    remaining_decision_count -= 1;
+                                }
+                            });
+
+                            hooks.iter_mut().for_each(|hook| {
+                                if hook.current_decision().is_none() {
+                                    made_nontrivial_decision |= hook.autonomous_decision(
+                                        driver,
+                                        !made_nontrivial_decision && remaining_decision_count == 1,
+                                    );
+                                    remaining_decision_count -= 1;
+                                }
+
+                                hook.release_decision(&mut self.log);
+                            });
+                        });
+                    }
                 }
             }
         }
