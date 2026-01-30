@@ -1,7 +1,5 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-#[cfg(feature = "runtime_measure")]
-use std::panic::AssertUnwindSafe;
 
 #[cfg(feature = "runtime_measure")]
 use dfir_rs::futures::FutureExt;
@@ -22,7 +20,7 @@ pub async fn run_stdin_commands(flow: Dfir<'_>) {
 #[cfg(feature = "runtime_measure")]
 pub async fn run_stdin_commands(flow: Dfir<'_>) {
     // Make sure to print CPU even if we crash
-    let res = AssertUnwindSafe(launch_flow_stdin_commands(flow))
+    let res = std::panic::AssertUnwindSafe(launch_flow_stdin_commands(flow))
         .catch_unwind()
         .await;
 

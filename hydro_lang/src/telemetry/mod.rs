@@ -6,6 +6,8 @@ use tracing_subscriber::registry::LookupSpan;
 
 use crate::location::{LocationKey, LocationType};
 
+pub mod emf;
+
 struct Formatter;
 
 impl<S, N> FormatEvent<S, N> for Formatter

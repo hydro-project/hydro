@@ -43,7 +43,7 @@ sim = [
     "dep:pin-project-lite",
     "dep:tempfile",
     "dep:serde_json",
-    "dfir_rs/meta", # affects layout of DFIR, thus the ABI
+    "dfir_rs/meta",         # affects layout of DFIR, thus the ABI
 ]
 
 docker_deploy = [
@@ -101,6 +101,7 @@ all-features = true
 [dependencies]
 backtrace = { version = "0.3", optional = true }
 bincode = "1.3.1"
+buildstructor = "0.6.0"
 bytes = { version = "1.1.0", features = ["serde"] }
 chrono = "0.4.42"
 clap = { version = "4.0", features = ["derive"], optional = true }
@@ -131,10 +132,11 @@ syn = { version = "2.0.46", features = [
     "visit",
 ] }
 tokio = "1.29.0"
-tokio-util = { version = "0.7.5", features = [ "codec" ] }
+tokio-metrics = "0.4.6"
 tokio-stream = { version = "0.1.3", default-features = false, features = [
     "time",
 ] }
+tokio-util = { version = "0.7.5", features = ["codec"] }
 toml = { version = "0.9", optional = true }
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
@@ -151,7 +153,9 @@ urlencoding = { version = "2.1", optional = true }
 
 # For docker deployments
 anyhow = { version = "1.0.100", optional = true }
-bollard = { version = "0.19.4", default-features = false, features = ["pipe"], optional = true }
+bollard = { version = "0.19.4", default-features = false, features = [
+    "pipe",
+], optional = true }
 http-body-util = { version = "0.1", optional = true }
 nanoid = { version = "0.4.0", optional = true }
 tar = { version = "0.4", optional = true }
