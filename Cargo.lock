@@ -2777,6 +2777,7 @@ dependencies = [
  "bincode",
  "bolero-hydro",
  "bollard",
+ "buildstructor",
  "bytes",
  "cargo_metadata",
  "chrono",
@@ -2817,6 +2818,7 @@ dependencies = [
  "tar",
  "tempfile",
  "tokio",
+ "tokio-metrics",
  "tokio-stream",
  "tokio-test",
  "tokio-util",
@@ -5917,6 +5919,18 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.111",
+]
+
+[[package]]
+name = "tokio-metrics"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a34e87dd30650518a4e041bca77c931f3f5a19621eecdcd794f5c1813bca9e98"
+dependencies = [
+ "futures-util",
+ "pin-project-lite",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
