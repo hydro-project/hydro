@@ -30,7 +30,7 @@ enabling [features](https://doc.rust-lang.org/cargo/reference/features.html), or
     &leader,
     TrybuildHost::new(create_host(&mut deployment))
         .rustflags(rustflags)
-        .additional_hydro_features(vec!["runtime_measure".to_string()])
+        .additional_hydro_features(vec!["runtime_measure".to_owned()])
         // ...
 `)}</CodeBlock>
 

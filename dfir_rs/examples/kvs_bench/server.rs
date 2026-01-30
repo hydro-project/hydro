@@ -191,7 +191,7 @@ pub fn run_server<RX>(
                                     key,
                                     update: MyLastWriteWins::new(
                                         Max::new(marker),
-                                        WithBot::new_from(Point::new(value.clone())),
+                                        WithBot::new_from(Point::new(value)),
                                     )
                                 }
                             },

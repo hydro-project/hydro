@@ -220,13 +220,13 @@ async fn display_apply_outputs(stdout: &mut ChildStdout) {
                     || line.contains(": Read complete after")
                 {
                 } else if line.ends_with(": Creating...") {
-                    let id = line.split(':').next().unwrap().trim().to_string();
+                    let id = line.split(':').next().unwrap().trim();
                     let (channel_send, channel_recv) = tokio::sync::oneshot::channel();
                     waiting_for_result.insert(
-                        id.to_string(),
+                        id.to_owned(),
                         (
                             channel_send,
-                            tokio::task::spawn(ProgressTracker::leaf(id, async move {
+                            tokio::task::spawn(ProgressTracker::leaf(id.to_owned(), async move {
                                 // `Err(RecvError)` means send side was dropped due to another error.
                                 // Ignore here to prevent spurious panic stack traces.
                                 let _result = channel_recv.await;

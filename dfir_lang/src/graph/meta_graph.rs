@@ -480,7 +480,7 @@ impl DfirGraph {
 
     /// Set the operator tag (for debugging/tracing).
     pub fn set_operator_tag(&mut self, node_id: GraphNodeId, tag: String) {
-        self.operator_tag.insert(node_id, tag.to_owned());
+        self.operator_tag.insert(node_id, tag);
     }
 }
 

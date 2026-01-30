@@ -478,7 +478,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let keyed_singleton = // { 1: "a", 2: "b", 3: "c" }
     /// # process
-    /// #     .source_iter(q!(vec![(1, "a".to_string()), (2, "b".to_string()), (3, "c".to_string())]))
+    /// #     .source_iter(q!(vec![(1, "a".to_owned()), (2, "b".to_owned()), (3, "c".to_owned())]))
     /// #     .into_keyed()
     /// #     .batch(&process.tick(), nondet!(/** test */))
     /// #     .first();
@@ -486,7 +486,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// # .all_ticks()
     /// # }, |mut stream| async move {
     /// // { 1: "a", 2: "b", 3: "c" }
-    /// # assert_eq!(stream.next().await.unwrap(), vec![(1, "a".to_string()), (2, "b".to_string()), (3, "c".to_string())].into_iter().collect());
+    /// # assert_eq!(stream.next().await.unwrap(), vec![(1, "a".to_owned()), (2, "b".to_owned()), (3, "c".to_owned())].into_iter().collect());
     /// # }));
     /// # }
     /// ```
@@ -537,7 +537,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
         {
             let mut node = self.ir_node.borrow_mut();
             let metadata = node.metadata_mut();
-            metadata.tag = Some(name.to_string());
+            metadata.tag = Some(name.to_owned());
         }
         self
     }

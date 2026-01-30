@@ -20,16 +20,16 @@ pub struct LaunchedVirtualMachine {
 }
 
 impl LaunchedSshHost for LaunchedVirtualMachine {
-    fn get_external_ip(&self) -> Option<String> {
-        self.external_ip.clone()
+    fn get_external_ip(&self) -> Option<&str> {
+        self.external_ip.as_deref()
     }
 
-    fn get_internal_ip(&self) -> String {
-        self.internal_ip.clone()
+    fn get_internal_ip(&self) -> &str {
+        &self.internal_ip
     }
 
-    fn get_cloud_provider(&self) -> String {
-        "Azure".to_string()
+    fn get_cloud_provider(&self) -> &'static str {
+        "Azure"
     }
 
     fn resource_result(&self) -> &Arc<ResourceResult> {
@@ -131,10 +131,10 @@ impl Host for AzureHost {
             .terraform
             .required_providers
             .insert(
-                "azurerm".to_string(),
+                "azurerm".to_owned(),
                 TerraformProvider {
-                    source: "hashicorp/azurerm".to_string(),
-                    version: "3.67.0".to_string(),
+                    source: "hashicorp/azurerm".to_owned(),
+                    version: "3.67.0".to_owned(),
                 },
             );
 
@@ -143,10 +143,10 @@ impl Host for AzureHost {
             .terraform
             .required_providers
             .insert(
-                "local".to_string(),
+                "local".to_owned(),
                 TerraformProvider {
-                    source: "hashicorp/local".to_string(),
-                    version: "2.3.0".to_string(),
+                    source: "hashicorp/local".to_owned(),
+                    version: "2.3.0".to_owned(),
                 },
             );
 
@@ -155,10 +155,10 @@ impl Host for AzureHost {
             .terraform
             .required_providers
             .insert(
-                "tls".to_string(),
+                "tls".to_owned(),
                 TerraformProvider {
-                    source: "hashicorp/tls".to_string(),
-                    version: "4.0.4".to_string(),
+                    source: "hashicorp/tls".to_owned(),
+                    version: "4.0.4".to_owned(),
                 },
             );
 
@@ -166,10 +166,10 @@ impl Host for AzureHost {
         resource_batch
             .terraform
             .resource
-            .entry("tls_private_key".to_string())
+            .entry("tls_private_key".to_owned())
             .or_default()
             .insert(
-                "vm_instance_ssh_key".to_string(),
+                "vm_instance_ssh_key".to_owned(),
                 json!({
                     "algorithm": "RSA",
                     "rsa_bits": 4096
@@ -179,10 +179,10 @@ impl Host for AzureHost {
         resource_batch
             .terraform
             .resource
-            .entry("local_file".to_string())
+            .entry("local_file".to_owned())
             .or_default()
             .insert(
-                "vm_instance_ssh_key_pem".to_string(),
+                "vm_instance_ssh_key_pem".to_owned(),
                 json!({
                     "content": "${tls_private_key.vm_instance_ssh_key.private_key_pem}",
                     "filename": ".ssh/vm_instance_ssh_key_pem",
@@ -195,7 +195,7 @@ impl Host for AzureHost {
 
         // Handle provider configuration
         resource_batch.terraform.provider.insert(
-            "azurerm".to_string(),
+            "azurerm".to_owned(),
             json!({
                 "skip_provider_registration": "true",
                 "features": {},
@@ -206,7 +206,7 @@ impl Host for AzureHost {
         resource_batch
             .terraform
             .resource
-            .entry("azurerm_resource_group".to_string())
+            .entry("azurerm_resource_group".to_owned())
             .or_default()
             .insert(
                 vm_key.to_string(),
@@ -219,7 +219,7 @@ impl Host for AzureHost {
         resource_batch
             .terraform
             .resource
-            .entry("azurerm_virtual_network".to_string())
+            .entry("azurerm_virtual_network".to_owned())
             .or_default()
             .insert(
                 vm_key.to_string(),
@@ -234,7 +234,7 @@ impl Host for AzureHost {
         resource_batch
             .terraform
             .resource
-            .entry("azurerm_subnet".to_string())
+            .entry("azurerm_subnet".to_owned())
             .or_default()
             .insert(
                 vm_key.to_string(),
@@ -249,7 +249,7 @@ impl Host for AzureHost {
         resource_batch
             .terraform
             .resource
-            .entry("azurerm_public_ip".to_string())
+            .entry("azurerm_public_ip".to_owned())
             .or_default()
             .insert(
                 vm_key.to_string(),
@@ -264,7 +264,7 @@ impl Host for AzureHost {
         resource_batch
             .terraform
             .resource
-            .entry("azurerm_network_interface".to_string())
+            .entry("azurerm_network_interface".to_owned())
             .or_default()
             .insert(
                 vm_key.to_string(),
@@ -285,7 +285,7 @@ impl Host for AzureHost {
         resource_batch
             .terraform
             .resource
-            .entry("azurerm_network_security_group".to_string())
+            .entry("azurerm_network_security_group".to_owned())
             .or_default()
             .insert(
                 vm_key.to_string(),
@@ -299,7 +299,7 @@ impl Host for AzureHost {
         resource_batch
             .terraform
             .resource
-            .entry("azurerm_network_security_rule".to_string())
+            .entry("azurerm_network_security_rule".to_owned())
             .or_default()
             .insert(
                 vm_key.to_string(),
@@ -321,7 +321,7 @@ impl Host for AzureHost {
         resource_batch
             .terraform
             .resource
-            .entry("azurerm_subnet_network_security_group_association".to_string())
+            .entry("azurerm_subnet_network_security_group_association".to_owned())
             .or_default()
             .insert(
                 vm_key.to_string(),
@@ -331,22 +331,22 @@ impl Host for AzureHost {
                 })
             );
 
-        let user = self.user.as_ref().cloned().unwrap_or("hydro".to_string());
+        let user = self.user.as_ref().cloned().unwrap_or("hydro".to_owned());
         let os_type = format!("azurerm_{}_virtual_machine", self.os_type.clone());
         let image = self.image.as_ref().cloned().unwrap_or(HashMap::from([
-            ("publisher".to_string(), "Canonical".to_string()),
+            ("publisher".to_owned(), "Canonical".to_owned()),
             (
-                "offer".to_string(),
-                "0001-com-ubuntu-server-jammy".to_string(),
+                "offer".to_owned(),
+                "0001-com-ubuntu-server-jammy".to_owned(),
             ),
-            ("sku".to_string(), "22_04-lts".to_string()),
-            ("version".to_string(), "latest".to_string()),
+            ("sku".to_owned(), "22_04-lts".to_owned()),
+            ("version".to_owned(), "latest".to_owned()),
         ]));
 
         resource_batch
             .terraform
             .resource
-            .entry(os_type.clone())
+            .entry(os_type)
             .or_default()
             .insert(
                 vm_key.clone(),
@@ -411,7 +411,7 @@ impl Host for AzureHost {
 
                 Arc::new(LaunchedVirtualMachine {
                     resource_result: resource_result.clone(),
-                    user: self.user.as_ref().cloned().unwrap_or("hydro".to_string()),
+                    user: self.user.as_ref().cloned().unwrap_or("hydro".to_owned()),
                     internal_ip,
                     external_ip,
                 })

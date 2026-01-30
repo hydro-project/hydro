@@ -1120,7 +1120,7 @@ fn create_trybuild_service(
     }
 
     ret = ret.features(
-        vec!["hydro___feature_deploy_integration".to_string()]
+        vec!["hydro___feature_deploy_integration".to_owned()]
             .into_iter()
             .chain(
                 trybuild
