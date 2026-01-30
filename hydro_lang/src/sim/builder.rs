@@ -509,9 +509,24 @@ impl DfirBuilder for SimBuilder {
                 None,
                 None,
             );
-        } else if !location.is_top_level() {
+        } else if !location.is_root() || in_kind.is_bounded() {
+            // situations where all pending elements should be processed at once
+            if location.is_root() && in_kind.is_bounded() {
+                todo!(
+                    "observe_nondet with top-level bounded input not yet supported for kinds {:?} -> {:?}",
+                    in_kind,
+                    out_kind
+                )
+            }
+
             let (assume_location, line, caret) = location_for_op(op_meta);
             let root = get_this_crate();
+
+            let location = if let LocationId::Atomic(tick) = location {
+                tick.as_ref()
+            } else {
+                location
+            };
 
             match (in_kind, out_kind) {
                 (
