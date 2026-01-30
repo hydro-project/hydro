@@ -3138,4 +3138,37 @@ mod tests {
         assert!(saw, "did not see an instance with 0, 3, 1 in order");
         assert_eq!(instance_count, 24)
     }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_atomic_assume_ordering_cycle_back() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input::<_, NoOrder, _>();
+
+        let (complete_cycle_back, cycle_back) =
+            node.forward_ref::<super::Stream<_, _, _, NoOrder>>();
+        let ordered = input
+            .interleave(cycle_back)
+            .atomic(&node.tick())
+            .assume_ordering::<TotalOrder>(nondet!(/** test */))
+            .end_atomic();
+        complete_cycle_back.complete(
+            ordered
+                .clone()
+                .map(q!(|v| v + 1))
+                .filter(q!(|v| v % 2 == 1)),
+        );
+
+        let out_recv = ordered.sim_output();
+
+        let instance_count = flow.sim().exhaustive(async || {
+            in_send.send_many_unordered([0, 2]);
+            let out = out_recv.collect::<Vec<_>>().await;
+            assert_eq!(out.len(), 4);
+        });
+
+        assert_eq!(instance_count, 22)
+    }
 }

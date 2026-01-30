@@ -796,7 +796,7 @@ impl<T> SimInlineHook for StreamOrderHook<T> {
             if !to_release.is_empty() {
                 let (batch_location, line, caret_indent) = self.batch_location;
                 let note_str = format!(
-                    "^ ordered items: {:?}",
+                    "^ observed non-deterministic order: {:?}",
                     TruncatedVecDebug(RefCell::new(Some(to_release.iter())), 8, self.format_debug)
                 );
 
@@ -906,7 +906,7 @@ impl<K: Hash + Eq + Clone, V> SimInlineHook for KeyedStreamOrderHook<K, V> {
                     }
                     note_str.push_str(&entry_text);
                 }
-                note_str = format!("^ ordered items: {{ {} }}", note_str);
+                note_str = format!("^ observed non-deterministic order: {{ {} }}", note_str);
 
                 let _ = writeln!(
                     log_writer,
