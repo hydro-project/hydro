@@ -604,8 +604,8 @@ impl<W> HydroJson<'_, W> {
             if let Some(backtrace_array) = node["data"]["backtrace"].as_array() {
                 // Check if any frame has meaningful filename or fn_name data
                 backtrace_array.iter().any(|frame| {
-                    let filename = frame["file"].as_str().unwrap_or("");
-                    let fn_name = frame["fn"].as_str().unwrap_or("");
+                    let filename = frame["file"].as_str().unwrap_or_default();
+                    let fn_name = frame["fn"].as_str().unwrap_or_default();
                     !filename.is_empty() || !fn_name.is_empty()
                 })
             } else {
@@ -943,9 +943,15 @@ impl<W> HydroJson<'_, W> {
             _ => return node,
         };
 
-        let current_name = node_obj.get("name").and_then(|v| v.as_str()).unwrap_or("");
+        let current_name = node_obj
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default();
 
-        let current_id = node_obj.get("id").and_then(|v| v.as_str()).unwrap_or("");
+        let current_id = node_obj
+            .get("id")
+            .and_then(|v| v.as_str())
+            .unwrap_or_default();
 
         // Determine the effective name (combined with parent if collapsing)
         // Use → to show call chain (parent called child)
@@ -967,7 +973,7 @@ impl<W> HydroJson<'_, W> {
                     .is_some_and(|arr| !arr.is_empty());
 
                 if child_is_container {
-                    let child_id = child.get("id").and_then(|v| v.as_str()).unwrap_or("");
+                    let child_id = child.get("id").and_then(|v| v.as_str()).unwrap_or_default();
 
                     // Record that this parent's ID should map to the child's ID
                     if !current_id.is_empty() && !child_id.is_empty() {

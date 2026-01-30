@@ -595,7 +595,7 @@ members = ["dylib", "dylib-examples"]
             workspace_cargo_lock_contents_and_hash
                 .as_ref()
                 .map(|s| s.1.as_ref())
-                .unwrap_or("")
+                .unwrap_or_default()
         );
 
         if !check_contents(
