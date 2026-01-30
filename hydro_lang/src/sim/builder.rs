@@ -730,6 +730,64 @@ impl DfirBuilder for SimBuilder {
                         None,
                     );
                 }
+                (
+                    CollectionKind::KeyedStream {
+                        value_order: StreamOrder::NoOrder,
+                        value_retry: StreamRetry::ExactlyOnce,
+                        ..
+                    },
+                    CollectionKind::KeyedStream {
+                        value_order: StreamOrder::TotalOrder,
+                        value_retry: StreamRetry::ExactlyOnce,
+                        ..
+                    },
+                ) => {
+                    let hoff_id = self.next_hoff_id;
+                    self.next_hoff_id += 1;
+
+                    let buffered_ident =
+                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    self.add_extra_stmt_internal(location, syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                    });
+                    self.add_extra_stmt_internal(location, syn::parse_quote! {
+                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(__root_dfir_rs::rustc_hash::FxHashMap::default()));
+                    });
+                    self.add_hook(
+                        location,
+                        location,
+                        syn::parse_quote!(
+                            Box::new(#root::sim::runtime::TopLevelKeyedStreamOrderHook::<_, _> {
+                                input: #buffered_ident.clone(),
+                                to_release: None,
+                                output: #hoff_send_ident,
+                                location: (#assume_location, #line, #caret),
+                                format_item_debug: #root::__maybe_debug__!(),
+                            })
+                        ),
+                    );
+
+                    self.get_dfir_mut(location).add_dfir(
+                        parse_quote! {
+                            #in_ident -> for_each(|(k, v)| #buffered_ident.borrow_mut().entry(k).or_insert_with(::std::collections::VecDeque::new).push_back(v));
+                        },
+                        None,
+                        None,
+                    );
+
+                    self.get_dfir_mut(location).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#hoff_recv_ident);
+                        },
+                        None,
+                        None,
+                    );
+                }
                 _ => {
                     todo!(
                         "non-trusted observe_nondet not yet supported for kinds {:?} -> {:?} at top-level locations",
