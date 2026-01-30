@@ -80,7 +80,3 @@ unused_async = "warn"
 [workspace.dependencies]
 stageleft = "0.13.0"
 stageleft_tool = "0.13.0"
-
-[patch.crates-io]
-stageleft = { path = "../stageleft/stageleft" } # TODO(mingwei): DO NOT MERGE
-stageleft_tool = { path = "../stageleft/stageleft_tool" } # TODO(mingwei): DO NOT MERGE
