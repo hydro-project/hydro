@@ -1021,3 +1021,103 @@ impl<T> SimHook for TopLevelStreamOrderHook<T> {
         }
     }
 }
+
+pub struct TopLevelKeyedStreamOrderHook<K: Hash + Eq + Clone, V> {
+    pub input: Rc<RefCell<FxHashMap<K, VecDeque<V>>>>,
+    pub to_release: Option<Vec<(K, V)>>,
+    pub output: UnboundedSender<(K, V)>,
+    pub location: HookLocationMeta,
+    pub format_item_debug: fn(&(K, V)) -> Option<String>,
+}
+
+impl<K: Hash + Eq + Clone, V> SimHook for TopLevelKeyedStreamOrderHook<K, V> {
+    fn current_decision(&self) -> Option<bool> {
+        self.to_release.as_ref().map(|v| !v.is_empty())
+    }
+
+    fn can_make_nontrivial_decision(&self) -> bool {
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+        !self.input.borrow().values().all(|q| q.is_empty())
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        driver: &mut Borrowed<'a>,
+        force_nontrivial: bool,
+    ) -> bool {
+        let mut current_input = self.input.borrow_mut();
+
+        // Collect non-empty keys with their queue lengths
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+        let nonempty_keys: Vec<(K, usize)> = current_input
+            .iter()
+            .filter(|(_, q)| !q.is_empty())
+            .map(|(k, q)| (k.clone(), q.len()))
+            .collect();
+
+        if nonempty_keys.is_empty() {
+            self.to_release = Some(vec![]);
+            return false;
+        }
+
+        // Decide whether to release anything
+        if !force_nontrivial && produce().generate(driver).unwrap() {
+            self.to_release = Some(vec![]);
+            return false;
+        }
+
+        // Pick which key to release from
+        let key_idx = (0..nonempty_keys.len()).generate(driver).unwrap();
+        let (key, queue_len) = &nonempty_keys[key_idx];
+
+        // Pick which item from that key's queue
+        let item_idx = (0..*queue_len).generate(driver).unwrap();
+        let item = current_input
+            .get_mut(key)
+            .unwrap()
+            .remove(item_idx)
+            .unwrap();
+
+        self.to_release = Some(vec![(key.clone(), item)]);
+        true
+    }
+
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+        if let Some(to_release) = self.to_release.take() {
+            if !to_release.is_empty() {
+                let (batch_location, line, caret_indent) = self.location;
+                let note_str = format!(
+                    "^ observed non-deterministic order: {:?}",
+                    TruncatedVecDebug(
+                        RefCell::new(Some(to_release.iter())),
+                        8,
+                        self.format_item_debug
+                    )
+                );
+
+                let _ = writeln!(
+                    log_writer,
+                    "\n{} {}",
+                    "-->".color(colored::Color::Blue),
+                    batch_location
+                );
+
+                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+                let _ = writeln!(
+                    log_writer,
+                    " {}{}{}",
+                    "|".color(colored::Color::Blue),
+                    caret_indent,
+                    note_str.color(colored::Color::Green)
+                );
+            }
+
+            for item in to_release {
+                self.output.send(item).unwrap();
+            }
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}

@@ -1270,17 +1270,21 @@ impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries>
     where
         R: MinRetries<R2>,
     {
-        let tick = self.location.tick();
-        // Because the outputs are unordered, we can interleave batches from both streams.
-        let nondet_batch_interleaving = nondet!(/** output stream is NoOrder, can interleave */);
-        self.batch(&tick, nondet_batch_interleaving)
-            .weaken_ordering::<NoOrder>()
-            .chain(
-                other
-                    .batch(&tick, nondet_batch_interleaving)
-                    .weaken_ordering::<NoOrder>(),
-            )
-            .all_ticks()
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::Chain {
+                first: Box::new(self.ir_node.into_inner()),
+                second: Box::new(other.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata(KeyedStream::<
+                    K,
+                    V,
+                    L,
+                    Unbounded,
+                    NoOrder,
+                    <R as MinRetries<R2>>::Min,
+                >::collection_kind()),
+            },
+        )
     }
 }
 
@@ -2794,5 +2798,234 @@ mod tests {
         });
 
         assert_eq!(instance_count, 104); // too complicated to enumerate here, but less than stream equivalent
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_assume_ordering() {
+        use std::collections::HashMap;
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input::<_, NoOrder, _>();
+
+        let out_recv = input
+            .into_keyed()
+            .assume_ordering::<TotalOrder>(nondet!(/** test */))
+            .fold_early_stop(
+                q!(|| Vec::new()),
+                q!(|acc, v| {
+                    acc.push(v);
+                    acc.len() >= 2
+                }),
+            )
+            .entries()
+            .sim_output();
+
+        let instance_count = flow.sim().exhaustive(async || {
+            in_send.send_many_unordered([(1, 'a'), (1, 'b'), (2, 'c'), (2, 'd')]);
+            let out: HashMap<_, _> = out_recv
+                .collect_sorted::<Vec<_>>()
+                .await
+                .into_iter()
+                .collect();
+            // Each key accumulates its values; we get one entry per key
+            assert_eq!(out.len(), 2);
+        });
+
+        assert_eq!(instance_count, 24)
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_assume_ordering_cycle_back() {
+        use std::collections::HashMap;
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input::<_, NoOrder, _>();
+
+        let (complete_cycle_back, cycle_back) =
+            node.forward_ref::<super::KeyedStream<_, _, _, _, NoOrder>>();
+        let ordered = input
+            .into_keyed()
+            .interleave(cycle_back)
+            .assume_ordering::<TotalOrder>(nondet!(/** test */));
+        complete_cycle_back.complete(
+            ordered
+                .clone()
+                .map(q!(|v| v + 1))
+                .filter(q!(|v| v % 2 == 1)),
+        );
+
+        let out_recv = ordered
+            .fold_early_stop(
+                q!(|| Vec::new()),
+                q!(|acc, v| {
+                    acc.push(v);
+                    acc.len() >= 2
+                }),
+            )
+            .entries()
+            .sim_output();
+
+        let mut saw = false;
+        let instance_count = flow.sim().exhaustive(async || {
+            // Send (1, 0) and (1, 2). 0+1=1 is odd so cycles back.
+            // We want to see [0, 1] - the cycled back value interleaved
+            in_send.send_many_unordered([(1, 0), (1, 2)]);
+            let out: HashMap<_, _> = out_recv
+                .collect_sorted::<Vec<_>>()
+                .await
+                .into_iter()
+                .collect();
+
+            // We want to see an instance where key 1 gets: 0, then 1 (cycled back from 0+1)
+            if let Some(values) = out.get(&1) {
+                if *values == vec![0, 1] {
+                    saw = true;
+                }
+            }
+        });
+
+        assert!(
+            saw,
+            "did not see an instance with key 1 having [0, 1] in order"
+        );
+        assert_eq!(instance_count, 6);
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_assume_ordering_cross_key_cycle() {
+        use std::collections::HashMap;
+
+        // This test demonstrates why releasing one entry at a time is important:
+        // When one key's observed order cycles back into a different key, we need
+        // to be able to interleave the cycled-back entry with pending items for
+        // that other key.
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input::<_, NoOrder, _>();
+
+        let (complete_cycle_back, cycle_back) =
+            node.forward_ref::<super::KeyedStream<_, _, _, _, NoOrder>>();
+        let ordered = input
+            .into_keyed()
+            .interleave(cycle_back)
+            .assume_ordering::<TotalOrder>(nondet!(/** test */));
+
+        // Cycle back: when we see (1, 10), emit (2, 100) to key 2
+        complete_cycle_back.complete(
+            ordered
+                .clone()
+                .filter(q!(|v| *v == 10))
+                .map(q!(|_| 100))
+                .entries()
+                .map(q!(|(_, v)| (2, v))) // Change key from 1 to 2
+                .into_keyed(),
+        );
+
+        let out_recv = ordered
+            .fold_early_stop(
+                q!(|| Vec::new()),
+                q!(|acc, v| {
+                    acc.push(v);
+                    acc.len() >= 2
+                }),
+            )
+            .entries()
+            .sim_output();
+
+        // We want to see an instance where:
+        // - (1, 10) is released first
+        // - This causes (2, 100) to be cycled back
+        // - (2, 100) is released BEFORE (2, 20) which was already pending
+        let mut saw_cross_key_interleave = false;
+        let instance_count = flow.sim().exhaustive(async || {
+            // Send (1, 10), (1, 11) for key 1, and (2, 20), (2, 21) for key 2
+            in_send.send_many_unordered([(1, 10), (1, 11), (2, 20), (2, 21)]);
+            let out: HashMap<_, _> = out_recv
+                .collect_sorted::<Vec<_>>()
+                .await
+                .into_iter()
+                .collect();
+
+            // Check if we see the cross-key interleaving:
+            // key 2 should have [100, 20] or [100, 21] - cycled back 100 before a pending item
+            if let Some(values) = out.get(&2) {
+                if values.len() >= 2 && values[0] == 100 {
+                    saw_cross_key_interleave = true;
+                }
+            }
+        });
+
+        assert!(
+            saw_cross_key_interleave,
+            "did not see an instance where cycled-back 100 was released before pending items for key 2"
+        );
+        assert_eq!(instance_count, 60);
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_top_level_assume_ordering_cycle_back_tick() {
+        use std::collections::HashMap;
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input::<_, NoOrder, _>();
+
+        let (complete_cycle_back, cycle_back) =
+            node.forward_ref::<super::KeyedStream<_, _, _, _, NoOrder>>();
+        let ordered = input
+            .into_keyed()
+            .interleave(cycle_back)
+            .assume_ordering::<TotalOrder>(nondet!(/** test */));
+        complete_cycle_back.complete(
+            ordered
+                .clone()
+                .batch(&node.tick(), nondet!(/** test */))
+                .all_ticks()
+                .map(q!(|v| v + 1))
+                .filter(q!(|v| v % 2 == 1)),
+        );
+
+        let out_recv = ordered
+            .fold_early_stop(
+                q!(|| Vec::new()),
+                q!(|acc, v| {
+                    acc.push(v);
+                    acc.len() >= 2
+                }),
+            )
+            .entries()
+            .sim_output();
+
+        let mut saw = false;
+        let instance_count = flow.sim().exhaustive(async || {
+            in_send.send_many_unordered([(1, 0), (1, 2)]);
+            let out: HashMap<_, _> = out_recv
+                .collect_sorted::<Vec<_>>()
+                .await
+                .into_iter()
+                .collect();
+
+            if let Some(values) = out.get(&1) {
+                if *values == vec![0, 1] {
+                    saw = true;
+                }
+            }
+        });
+
+        assert!(
+            saw,
+            "did not see an instance with key 1 having [0, 1] in order"
+        );
+        assert_eq!(instance_count, 58);
     }
 }
