@@ -3138,5 +3138,38 @@
 <a href=#3138 id=3138 data-nosnippet>3138</a>        <span class="macro">assert!</span>(saw, <span class="string">"did not see an instance with 0, 3, 1 in order"</span>);
 <a href=#3139 id=3139 data-nosnippet>3139</a>        <span class="macro">assert_eq!</span>(instance_count, <span class="number">24</span>)
 <a href=#3140 id=3140 data-nosnippet>3140</a>    }
-<a href=#3141 id=3141 data-nosnippet>3141</a>}
+<a href=#3141 id=3141 data-nosnippet>3141</a>
+<a href=#3142 id=3142 data-nosnippet>3142</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#3143 id=3143 data-nosnippet>3143</a>    #[test]
+<a href=#3144 id=3144 data-nosnippet>3144</a>    </span><span class="kw">fn </span>sim_atomic_assume_ordering_cycle_back() {
+<a href=#3145 id=3145 data-nosnippet>3145</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#3146 id=3146 data-nosnippet>3146</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#3147 id=3147 data-nosnippet>3147</a>
+<a href=#3148 id=3148 data-nosnippet>3148</a>        <span class="kw">let </span>(in_send, input) = node.sim_input::&lt;<span class="kw">_</span>, NoOrder, <span class="kw">_</span>&gt;();
+<a href=#3149 id=3149 data-nosnippet>3149</a>
+<a href=#3150 id=3150 data-nosnippet>3150</a>        <span class="kw">let </span>(complete_cycle_back, cycle_back) =
+<a href=#3151 id=3151 data-nosnippet>3151</a>            node.forward_ref::&lt;<span class="kw">super</span>::Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, NoOrder&gt;&gt;();
+<a href=#3152 id=3152 data-nosnippet>3152</a>        <span class="kw">let </span>ordered = input
+<a href=#3153 id=3153 data-nosnippet>3153</a>            .interleave(cycle_back)
+<a href=#3154 id=3154 data-nosnippet>3154</a>            .atomic(<span class="kw-2">&amp;</span>node.tick())
+<a href=#3155 id=3155 data-nosnippet>3155</a>            .assume_ordering::&lt;TotalOrder&gt;(<span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#3156 id=3156 data-nosnippet>3156</a>            .end_atomic();
+<a href=#3157 id=3157 data-nosnippet>3157</a>        complete_cycle_back.complete(
+<a href=#3158 id=3158 data-nosnippet>3158</a>            ordered
+<a href=#3159 id=3159 data-nosnippet>3159</a>                .clone()
+<a href=#3160 id=3160 data-nosnippet>3160</a>                .map(<span class="macro">q!</span>(|v| v + <span class="number">1</span>))
+<a href=#3161 id=3161 data-nosnippet>3161</a>                .filter(<span class="macro">q!</span>(|v| v % <span class="number">2 </span>== <span class="number">1</span>)),
+<a href=#3162 id=3162 data-nosnippet>3162</a>        );
+<a href=#3163 id=3163 data-nosnippet>3163</a>
+<a href=#3164 id=3164 data-nosnippet>3164</a>        <span class="kw">let </span>out_recv = ordered.sim_output();
+<a href=#3165 id=3165 data-nosnippet>3165</a>
+<a href=#3166 id=3166 data-nosnippet>3166</a>        <span class="kw">let </span>instance_count = flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#3167 id=3167 data-nosnippet>3167</a>            in_send.send_many_unordered([<span class="number">0</span>, <span class="number">2</span>]);
+<a href=#3168 id=3168 data-nosnippet>3168</a>            <span class="kw">let </span>out = out_recv.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;().<span class="kw">await</span>;
+<a href=#3169 id=3169 data-nosnippet>3169</a>            <span class="macro">assert_eq!</span>(out.len(), <span class="number">4</span>);
+<a href=#3170 id=3170 data-nosnippet>3170</a>        });
+<a href=#3171 id=3171 data-nosnippet>3171</a>
+<a href=#3172 id=3172 data-nosnippet>3172</a>        <span class="macro">assert_eq!</span>(instance_count, <span class="number">22</span>)
+<a href=#3173 id=3173 data-nosnippet>3173</a>    }
+<a href=#3174 id=3174 data-nosnippet>3174</a>}
 </code></pre></div></section></main></body></html>

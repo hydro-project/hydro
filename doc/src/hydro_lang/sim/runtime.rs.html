@@ -796,7 +796,7 @@
 <a href=#796 id=796 data-nosnippet>796</a>            <span class="kw">if </span>!to_release.is_empty() {
 <a href=#797 id=797 data-nosnippet>797</a>                <span class="kw">let </span>(batch_location, line, caret_indent) = <span class="self">self</span>.batch_location;
 <a href=#798 id=798 data-nosnippet>798</a>                <span class="kw">let </span>note_str = <span class="macro">format!</span>(
-<a href=#799 id=799 data-nosnippet>799</a>                    <span class="string">"^ ordered items: {:?}"</span>,
+<a href=#799 id=799 data-nosnippet>799</a>                    <span class="string">"^ observed non-deterministic order: {:?}"</span>,
 <a href=#800 id=800 data-nosnippet>800</a>                    TruncatedVecDebug(RefCell::new(<span class="prelude-val">Some</span>(to_release.iter())), <span class="number">8</span>, <span class="self">self</span>.format_debug)
 <a href=#801 id=801 data-nosnippet>801</a>                );
 <a href=#802 id=802 data-nosnippet>802</a>
@@ -906,7 +906,7 @@
 <a href=#906 id=906 data-nosnippet>906</a>                    }
 <a href=#907 id=907 data-nosnippet>907</a>                    note_str.push_str(<span class="kw-2">&amp;</span>entry_text);
 <a href=#908 id=908 data-nosnippet>908</a>                }
-<a href=#909 id=909 data-nosnippet>909</a>                note_str = <span class="macro">format!</span>(<span class="string">"^ ordered items: {{ {} }}"</span>, note_str);
+<a href=#909 id=909 data-nosnippet>909</a>                note_str = <span class="macro">format!</span>(<span class="string">"^ observed non-deterministic order: {{ {} }}"</span>, note_str);
 <a href=#910 id=910 data-nosnippet>910</a>
 <a href=#911 id=911 data-nosnippet>911</a>                <span class="kw">let _ </span>= <span class="macro">writeln!</span>(
 <a href=#912 id=912 data-nosnippet>912</a>                    log_writer,
