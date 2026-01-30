@@ -5,18 +5,17 @@
 
 use std::collections::HashMap;
 use std::future::Future;
-use std::sync::{Arc, Weak};
+use std::sync::{Arc, Mutex, Weak};
 
 use anyhow::Result;
 use futures::{FutureExt, StreamExt, TryStreamExt};
 
-use super::aws::AwsNetwork;
-use super::gcp::GcpNetwork;
-use super::{
-    CustomService, GcpComputeEngineHost, Host, LocalhostHost, ResourcePool, ResourceResult,
-    Service, progress,
+use crate::aws::{AwsCloudwatchLogGroup, AwsEc2IamInstanceProfile, AwsNetwork};
+use crate::gcp::GcpNetwork;
+use crate::{
+    AwsEc2Host, AzureHost, CustomService, GcpComputeEngineHost, Host, HostTargetType,
+    LocalhostHost, ResourcePool, ResourceResult, Service, ServiceBuilder, progress,
 };
-use crate::{AwsEc2Host, AzureHost, HostTargetType, ServiceBuilder};
 
 pub struct Deployment {
     pub hosts: Vec<Weak<dyn Host>>,
@@ -285,6 +284,10 @@ impl Deployment {
         target_type: Option<HostTargetType>,
         ami: String,
         network: Arc<AwsNetwork>,
+        iam_instance_profile: Option<Arc<Mutex<AwsEc2IamInstanceProfile>>>,
+        cloudwatch_log_group: Option<Arc<Mutex<AwsCloudwatchLogGroup>>>,
+        // `metrics_collected`: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Agent-Configuration-File-Details.html#CloudWatch-Agent-Configuration-File-Metricssection
+        cwa_metrics_collected: Option<serde_json::Value>,
         user: Option<String>,
         display_name: Option<String>,
     ) -> Arc<AwsEc2Host> {
@@ -296,6 +299,9 @@ impl Deployment {
                 target_type.unwrap_or(HostTargetType::Linux(crate::LinuxCompileType::Musl)),
                 ami,
                 network,
+                iam_instance_profile,
+                cloudwatch_log_group,
+                cwa_metrics_collected,
                 user,
                 display_name,
             )

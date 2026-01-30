@@ -1,11 +1,14 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use clap::{ArgAction, Parser};
+use hydro_deploy::aws::{AwsCloudwatchLogGroup, AwsEc2IamInstanceProfile};
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::rust_crate::tracing_options::TracingOptions;
 use hydro_deploy::{AwsNetwork, Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::prelude::*;
+use hydro_lang::telemetry::emf;
 use hydro_lang::viz::config::GraphConfig;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
@@ -20,6 +23,10 @@ struct PerfComputePiArgs {
     #[command(flatten)]
     graph: GraphConfig,
 
+    /// Include CPU tracing profiling (takes a long time to download)
+    #[arg(long, action = ArgAction::SetTrue)]
+    tracing: bool,
+
     /// Use GCP for deployment (provide project name)
     #[arg(long)]
     gcp: Option<String>,
@@ -29,14 +36,14 @@ struct PerfComputePiArgs {
     aws: bool,
 }
 
-/// Run with no args for localhost, with `--gcp <GCP PROJECT>` for GCP, or `--aws` for AWS.
+/// Run with `--tracing` to include CPU tracing. Add `--gcp <GCP PROJECT>` for GCP, or `--aws` for AWS.
 ///
 /// ```bash
-/// cargo run -p hydro_test --example perf_compute_pi -- --gcp my-gcp-project
+/// cargo run -p hydro_test --example perf_compute_pi -- --tracing --gcp my-gcp-project
 /// ```
 ///
 /// ```bash
-/// cargo run -p hydro_test --example perf_compute_pi -- --aws
+/// cargo run -p hydro_test --example perf_compute_pi -- --tracing --aws
 /// ```
 ///
 /// Once the program is running, you can **press enter** to stop the program and see the results.
@@ -47,7 +54,8 @@ async fn main() {
     let args = PerfComputePiArgs::parse();
     let mut deployment = Deployment::new();
 
-    let (create_host, setup_command): (HostCreator, &str) = if let Some(project) = &args.gcp {
+    let (create_host, setup_command): (HostCreator, Option<&str>) = if let Some(project) = &args.gcp
+    {
         let network = GcpNetwork::new(project, None);
         let project = project.clone();
 
@@ -62,11 +70,16 @@ async fn main() {
                     .network(network.clone())
                     .add()
             }),
-            hydro_deploy::rust_crate::tracing_options::DEBIAN_PERF_SETUP_COMMAND,
+            args.tracing
+                .then_some(hydro_deploy::rust_crate::tracing_options::DEBIAN_PERF_SETUP_COMMAND),
         )
     } else if args.aws {
         let region = "us-east-1";
         let network = AwsNetwork::new(region, None);
+        let iam_instance_profile = Arc::new(Mutex::new(
+            AwsEc2IamInstanceProfile::new(region, None).add_cloudwatch_agent_server_policy_arn(),
+        ));
+        let cloudwatch_log_group = Arc::new(Mutex::new(AwsCloudwatchLogGroup::new(region, None)));
 
         (
             Box::new(move |deployment| -> Arc<dyn Host> {
@@ -76,15 +89,18 @@ async fn main() {
                     .instance_type("t3.micro")
                     .ami("ami-0e95a5e2743ec9ec9") // Amazon Linux 2
                     .network(network.clone())
+                    .iam_instance_profile(iam_instance_profile.clone())
+                    .cloudwatch_log_group(cloudwatch_log_group.clone())
                     .add()
             }),
-            hydro_deploy::rust_crate::tracing_options::AL2_PERF_SETUP_COMMAND,
+            args.tracing
+                .then_some(hydro_deploy::rust_crate::tracing_options::AL2_PERF_SETUP_COMMAND),
         )
     } else {
         let localhost = deployment.Localhost();
         (
             Box::new(move |_| -> Arc<dyn Host> { localhost.clone() }),
-            "",
+            None,
         )
     };
 
@@ -118,49 +134,78 @@ async fn main() {
         return;
     }
 
-    let optimized = built.with_default_optimize();
-
-    let _nodes = optimized
-        //[trybuildhost]//
-        .with_process(
-            &leader,
-            TrybuildHost::new(create_host(&mut deployment))
-                .rustflags(rustflags)
-                .additional_hydro_features(vec!["runtime_measure".to_string()])
-                // ...
-                //[/trybuildhost]//
-                //[tracing]//
-                .tracing(
-                    TracingOptions::builder()
-                        .perf_raw_outfile("leader.perf.data")
-                        .samply_outfile("leader.profile")
-                        .fold_outfile("leader.data.folded")
-                        .flamegraph_outfile("leader.svg")
-                        .frequency(frequency)
-                        .setup_command(setup_command)
-                        .build(),
-                ),
-                //[/tracing]//
-        )
-        .with_cluster(
-            &cluster,
-            (0..8).map(|idx| {
+    let mut optimized = if args.tracing {
+        // With tracing.
+        let setup_command = setup_command.unwrap_or_default();
+        built.with_default_optimize()
+            //[trybuildhost]//
+            .with_process(
+                &leader,
                 TrybuildHost::new(create_host(&mut deployment))
                     .rustflags(rustflags)
                     .additional_hydro_features(vec!["runtime_measure".to_string()])
+                    // ...
+                    //[/trybuildhost]//
+                    //[tracing]//
                     .tracing(
                         TracingOptions::builder()
-                            .perf_raw_outfile(format!("cluster{}.perf.data", idx))
-                            .samply_outfile(format!("cluster{}.profile", idx))
-                            .fold_outfile(format!("cluster{}.data.folded", idx))
-                            .flamegraph_outfile(format!("cluster{}.svg", idx))
+                            .perf_raw_outfile("leader.perf.data")
+                            .samply_outfile("leader.profile")
+                            .fold_outfile("leader.data.folded")
+                            .flamegraph_outfile("leader.svg")
                             .frequency(frequency)
                             .setup_command(setup_command)
                             .build(),
-                    )
-            }),
-        )
-        .deploy(&mut deployment);
+                    ),
+                    //[/tracing]//
+            )
+            .with_cluster(
+                &cluster,
+                (0..8).map(|idx| {
+                    TrybuildHost::new(create_host(&mut deployment))
+                        .rustflags(rustflags)
+                        .additional_hydro_features(vec!["runtime_measure".to_string()])
+                        .tracing(
+                            TracingOptions::builder()
+                                .perf_raw_outfile(format!("cluster{}.perf.data", idx))
+                                .samply_outfile(format!("cluster{}.profile", idx))
+                                .fold_outfile(format!("cluster{}.data.folded", idx))
+                                .flamegraph_outfile(format!("cluster{}.svg", idx))
+                                .frequency(frequency)
+                                .setup_command(setup_command)
+                                .build(),
+                        )
+                }),
+            )
+    } else {
+        // No tracing.
+        built
+            .with_default_optimize()
+            .with_process(
+                &leader,
+                TrybuildHost::new(create_host(&mut deployment))
+                    .rustflags(rustflags)
+                    .additional_hydro_features(vec!["runtime_measure".to_string()]),
+            )
+            .with_cluster(
+                &cluster,
+                (0..8).map(|_| {
+                    TrybuildHost::new(create_host(&mut deployment))
+                        .rustflags(rustflags)
+                        .additional_hydro_features(vec!["runtime_measure".to_string()])
+                }),
+            )
+    };
+
+    if args.aws {
+        optimized = optimized.with_sidecar_all(
+            &emf::RecordMetricsSidecar::builder()
+                .interval(Duration::from_secs(5))
+                .build(),
+        );
+    }
+
+    let _nodes = optimized.deploy(&mut deployment);
 
     deployment.deploy().await.unwrap();
 
