@@ -93,7 +93,7 @@
 <a href=#93 id=93 data-nosnippet>93</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(key = %<span class="self">self</span>.key, name = <span class="self">self</span>.name))]
 <a href=#94 id=94 data-nosnippet>94</a>    </span><span class="kw">fn </span>update_meta(<span class="kw-2">&amp;</span><span class="self">self</span>, _meta: <span class="kw-2">&amp;</span><span class="self">Self</span>::Meta) {}
 <a href=#95 id=95 data-nosnippet>95</a>
-<a href=#96 id=96 data-nosnippet>96</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(key = %<span class="self">self</span>.key, name = <span class="self">self</span>.name, <span class="question-mark">?</span>meta, extra_stmts = extra_stmts.len()))]
+<a href=#96 id=96 data-nosnippet>96</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(key = %<span class="self">self</span>.key, name = <span class="self">self</span>.name, <span class="question-mark">?</span>meta, extra_stmts = extra_stmts.len(), sidecars = sidecars.len()))]
 <a href=#97 id=97 data-nosnippet>97</a>    </span><span class="kw">fn </span>instantiate(
 <a href=#98 id=98 data-nosnippet>98</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
 <a href=#99 id=99 data-nosnippet>99</a>        _env: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::InstantiateEnv,

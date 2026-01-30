@@ -204,7 +204,7 @@
 <a href=#204 id=204 data-nosnippet>204</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
 <a href=#205 id=205 data-nosnippet>205</a>    </span><span class="doccomment">/// Creates a simulation for this builder, which can be used to run deterministic simulations
 <a href=#206 id=206 data-nosnippet>206</a>    /// of the Hydro program.
-<a href=#207 id=207 data-nosnippet>207</a>    </span><span class="kw">pub fn </span>sim(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; SimFlow&lt;<span class="lifetime">'a</span>&gt; {
+<a href=#207 id=207 data-nosnippet>207</a>    </span><span class="kw">pub fn </span>sim(<span class="self">self</span>) -&gt; SimFlow&lt;<span class="lifetime">'a</span>&gt; {
 <a href=#208 id=208 data-nosnippet>208</a>        <span class="kw">use </span>std::cell::RefCell;
 <a href=#209 id=209 data-nosnippet>209</a>        <span class="kw">use </span>std::rc::Rc;
 <a href=#210 id=210 data-nosnippet>210</a>
@@ -243,7 +243,7 @@
 <a href=#243 id=243 data-nosnippet>243</a>        }
 <a href=#244 id=244 data-nosnippet>244</a>
 <a href=#245 id=245 data-nosnippet>245</a>        SimFlow {
-<a href=#246 id=246 data-nosnippet>246</a>            ir: std::mem::take(<span class="kw-2">&amp;mut </span><span class="self">self</span>.ir),
+<a href=#246 id=246 data-nosnippet>246</a>            ir: <span class="self">self</span>.ir,
 <a href=#247 id=247 data-nosnippet>247</a>            processes,
 <a href=#248 id=248 data-nosnippet>248</a>            clusters,
 <a href=#249 id=249 data-nosnippet>249</a>            externals,

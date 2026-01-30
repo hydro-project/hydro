@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["AwsEc2Host","AwsNetwork","LaunchedEc2Instance"]};
+window.SIDEBAR_ITEMS = {"struct":["AwsCloudwatchLogGroup","AwsEc2Host","AwsEc2IamInstanceProfile","AwsNetwork","LaunchedEc2Instance"]};
