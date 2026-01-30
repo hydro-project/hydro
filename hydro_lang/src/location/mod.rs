@@ -1215,8 +1215,8 @@ mod tests {
 
         deployment.start().await.unwrap();
 
-        external_in_1.send("hi".to_string()).await.unwrap();
-        external_in_2.send("hello".to_string()).await.unwrap();
+        external_in_1.send("hi".to_owned()).await.unwrap();
+        external_in_2.send("hello".to_owned()).await.unwrap();
 
         assert_eq!(external_out_1.next().await.unwrap(), "HI");
         assert_eq!(external_out_2.next().await.unwrap(), "HELLO");

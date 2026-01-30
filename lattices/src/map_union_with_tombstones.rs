@@ -486,21 +486,21 @@ mod test {
     fn fst_string_basic() {
         let mut x = MapUnionWithTombstonesFstString::new_from(
             HashMap::from([
-                ("apple".to_string(), SetUnionHashSet::new_from([1])),
-                ("banana".to_string(), SetUnionHashSet::new_from([2])),
+                ("apple".to_owned(), SetUnionHashSet::new_from([1])),
+                ("banana".to_owned(), SetUnionHashSet::new_from([2])),
             ]),
             FstTombstoneSet::new(),
         );
         let mut y = MapUnionWithTombstonesFstString::new_from(
             HashMap::from([
-                ("banana".to_string(), SetUnionHashSet::new_from([3])),
-                ("cherry".to_string(), SetUnionHashSet::new_from([4])),
+                ("banana".to_owned(), SetUnionHashSet::new_from([3])),
+                ("cherry".to_owned(), SetUnionHashSet::new_from([4])),
             ]),
             FstTombstoneSet::new(),
         );
 
         // Add tombstone for "banana"
-        y.as_reveal_mut().1.extend(vec!["banana".to_string()]);
+        y.as_reveal_mut().1.extend(vec!["banana".to_owned()]);
 
         x.merge(y);
 

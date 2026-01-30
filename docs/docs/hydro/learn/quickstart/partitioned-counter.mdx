@@ -178,11 +178,11 @@ fn test_counter_read_after_write() {
     flow.sim()
         .with_cluster_size(&shards, 5)
         .exhaustive(async || {
-            inc_in_port.send((1, "abc".to_string()));
+            inc_in_port.send((1, "abc".to_owned()));
             inc_out_port
-                .assert_yields_unordered([(1, "abc".to_string())])
+                .assert_yields_unordered([(1, "abc".to_owned())])
                 .await;
-            get_in_port.send((1, "abc".to_string()));
+            get_in_port.send((1, "abc".to_owned()));
             get_out_port
 `), [5, 20])}</CodeBlock>
 

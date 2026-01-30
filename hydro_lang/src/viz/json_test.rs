@@ -30,7 +30,7 @@ mod tests {
         writer
             .write_node_definition(
                 node_id_1,
-                &NodeLabel::Static("source".to_string()),
+                &NodeLabel::Static("source".to_owned()),
                 HydroNodeType::Source,
                 Some(loc_key_1),
                 Some(LocationType::Process),
@@ -42,7 +42,7 @@ mod tests {
         writer
             .write_node_definition(
                 node_id_2,
-                &NodeLabel::Static("map".to_string()),
+                &NodeLabel::Static("map".to_owned()),
                 HydroNodeType::Transform,
                 Some(loc_key_1),
                 Some(LocationType::Process),
@@ -79,7 +79,7 @@ mod tests {
         writer
             .write_node_definition(
                 node_id_1,
-                &NodeLabel::Static("node".to_string()),
+                &NodeLabel::Static("node".to_owned()),
                 HydroNodeType::Transform,
                 None,
                 None,

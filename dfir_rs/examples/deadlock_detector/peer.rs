@@ -109,5 +109,5 @@ pub(crate) async fn run_detector(opts: Opts, peer_list: Vec<String>) {
         serde_graph.open_graph(graph, opts.write_config).unwrap();
     }
 
-    hf.run().await.unwrap();
+    let None = hf.run().await;
 }

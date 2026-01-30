@@ -913,7 +913,7 @@ where
         {
             let mut node = self.ir_node.borrow_mut();
             let metadata = node.metadata_mut();
-            metadata.tag = Some(name.to_string());
+            metadata.tag = Some(name.to_owned());
         }
         self
     }
@@ -1797,7 +1797,7 @@ where
     /// #     .first();
     /// let stream = // [ "a", "b" ]
     /// # process
-    /// #     .source_iter(q!(vec!["a".to_string(), "b".to_string()]))
+    /// #     .source_iter(q!(vec!["a".to_owned(), "b".to_owned()]))
     /// #     .batch(&tick, nondet!(/** test */));
     /// stream.repeat_with_keys(keyed_singleton)
     /// # .entries().all_ticks()
@@ -1808,7 +1808,7 @@ where
     /// #     results.push(stream.next().await.unwrap());
     /// # }
     /// # results.sort();
-    /// # assert_eq!(results, vec![(1, "a".to_string()), (1, "b".to_string()), (2, "a".to_string()), (2, "b".to_string())]);
+    /// # assert_eq!(results, vec![(1, "a".to_owned()), (1, "b".to_owned()), (2, "a".to_owned()), (2, "b".to_owned())]);
     /// # }));
     /// # }
     /// ```

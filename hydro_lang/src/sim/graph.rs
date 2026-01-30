@@ -526,7 +526,7 @@ pub(super) fn create_sim_graph_trybuild(
                 .unwrap_or_else(|| path!(source_dir / "src" / "lib.rs")),
             &path!(source_dir / "Cargo.toml"),
             &crate_name,
-            Some("hydro___test".to_string()),
+            Some("hydro___test".to_owned()),
         );
 
         gen_staged.attrs.insert(
@@ -594,7 +594,7 @@ pub(super) fn create_sim_graph_trybuild(
         cur_bin_enabled_features
             .as_mut()
             .unwrap()
-            .push("hydro___test".to_string());
+            .push("hydro___test".to_owned());
     }
 
     (

@@ -64,13 +64,13 @@ mod tests {
         let get_out_port = get_responses.entries().sim_output();
 
         flow.sim().exhaustive(async || {
-            inc_in_port.send((1, "abc".to_string()));
+            inc_in_port.send((1, "abc".to_owned()));
             inc_out_port
-                .assert_yields_unordered([(1, "abc".to_string())])
+                .assert_yields_unordered([(1, "abc".to_owned())])
                 .await;
-            get_in_port.send((1, "abc".to_string()));
+            get_in_port.send((1, "abc".to_owned()));
             get_out_port
-                .assert_yields_only_unordered([(1, ("abc".to_string(), 1))])
+                .assert_yields_only_unordered([(1, ("abc".to_owned(), 1))])
                 .await;
         });
     }
@@ -92,11 +92,11 @@ mod tests {
         let get_out_port = get_responses.entries().sim_output();
 
         let instances = flow.sim().exhaustive(async || {
-            inc_in_port.send((1, "abc".to_string()));
+            inc_in_port.send((1, "abc".to_owned()));
             inc_out_port
-                .assert_yields_unordered([(1, "abc".to_string())])
+                .assert_yields_unordered([(1, "abc".to_owned())])
                 .await;
-            get_in_port.send((1, "abc".to_string()));
+            get_in_port.send((1, "abc".to_owned()));
             let _ = get_out_port.collect_sorted::<Vec<_>>().await;
         });
 

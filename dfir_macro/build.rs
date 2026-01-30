@@ -158,7 +158,7 @@ fn update_book() -> Result<()> {
                     .unwrap_or("&lt;EMPTY&gt;")
             )),
             Some(PortListSpec::Variadic) => {
-                Some("> Input port names: Variadic, as specified in arguments.".to_string())
+                Some("> Input port names: Variadic, as specified in arguments.".to_owned())
             }
         };
         let mut output_str_maybe = None;
@@ -176,7 +176,7 @@ fn update_book() -> Result<()> {
                         .unwrap_or("&lt;EMPTY&gt;")
                 ),
                 PortListSpec::Variadic => {
-                    "> Output port names: Variadic, as specified in arguments.".to_string()
+                    "> Output port names: Variadic, as specified in arguments.".to_owned()
                 }
             })
         }

@@ -150,8 +150,8 @@ Finally, you can write the functionality test. To create an **exhaustive** simul
   <Link href="https://github.com/hydro-project/hydro/tree/main/template/hydro/src/lib.rs">src/lib.rs</Link>
 } showLineNumbers={26}>{getLines(highlightLines(libRsSrc, []), 26, 31, `
 flow.sim().exhaustive(async || {
-    in_port.send("hello".to_string());
-    in_port.send("world".to_string());
+    in_port.send("hello".to_owned());
+    in_port.send("world".to_owned());
     out_port.assert_yields_only(["HELLO", "WORLD"]).await;
 });
 `)}</CodeBlock>

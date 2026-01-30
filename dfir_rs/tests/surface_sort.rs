@@ -57,11 +57,11 @@ fn test_sort_by_owned() {
 
     let dummies: Vec<Dummy> = vec![
         Dummy {
-            x: "a".to_string(),
+            x: "a".to_owned(),
             y: 2,
         },
         Dummy {
-            x: "b".to_string(),
+            x: "b".to_owned(),
             y: 1,
         },
     ];

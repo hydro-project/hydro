@@ -68,7 +68,7 @@ async fn docker() {
         tracing_subscriber::EnvFilter::try_new("trace,hyper=off").unwrap(),
     );
 
-    let network = DockerNetwork::new("distributed_echo_test".to_string());
+    let network = DockerNetwork::new("distributed_echo_test".to_owned());
     let mut deployment = DockerDeploy::new(network);
 
     let mut builder = FlowBuilder::new();
@@ -79,7 +79,7 @@ async fn docker() {
     let p4 = builder.process();
     let bidi_port = distributed_echo(&external, &p1, &c2, &c3, &p4);
 
-    let config = vec![r#"profile.dev.strip="symbols""#.to_string()];
+    let config = vec![r#"profile.dev.strip="symbols""#.to_owned()];
 
     let nodes = builder
         .with_process(&p1, deployment.add_localhost_docker(None, config.clone()))
@@ -92,7 +92,7 @@ async fn docker() {
             deployment.add_localhost_docker_cluster(None, config.clone(), CLUSTER_SIZE),
         )
         .with_process(&p4, deployment.add_localhost_docker(None, config.clone()))
-        .with_external(&external, deployment.add_external("external".to_string()))
+        .with_external(&external, deployment.add_external("external".to_owned()))
         .deploy(&mut deployment);
 
     deployment.provision(&nodes).await.unwrap();

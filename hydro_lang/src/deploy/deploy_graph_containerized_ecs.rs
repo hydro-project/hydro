@@ -44,7 +44,7 @@ fn generate_cloudformation_template(
 
     // Base infrastructure resources
     resources.insert(
-        "EcsTaskExecutionRole".to_string(),
+        "EcsTaskExecutionRole".to_owned(),
         json!({
             "Type": "AWS::IAM::Role",
             "Properties": {
@@ -76,7 +76,7 @@ fn generate_cloudformation_template(
     );
 
     resources.insert(
-        "EcsTaskRole".to_string(),
+        "EcsTaskRole".to_owned(),
         json!({
             "Type": "AWS::IAM::Role",
             "Properties": {
@@ -109,7 +109,7 @@ fn generate_cloudformation_template(
     );
 
     resources.insert(
-        "VPC".to_string(),
+        "VPC".to_owned(),
         json!({
             "Type": "AWS::EC2::VPC",
             "Properties": {
@@ -121,7 +121,7 @@ fn generate_cloudformation_template(
         }),
     );
 
-    resources.insert("Subnet".to_string(), json!({
+    resources.insert("Subnet".to_owned(), json!({
         "Type": "AWS::EC2::Subnet",
         "Properties": {
             "VpcId": { "Ref": "VPC" },
@@ -132,7 +132,7 @@ fn generate_cloudformation_template(
     }));
 
     resources.insert(
-        "InternetGateway".to_string(),
+        "InternetGateway".to_owned(),
         json!({
             "Type": "AWS::EC2::InternetGateway",
             "Properties": {
@@ -142,7 +142,7 @@ fn generate_cloudformation_template(
     );
 
     resources.insert(
-        "VPCGatewayAttachment".to_string(),
+        "VPCGatewayAttachment".to_owned(),
         json!({
             "Type": "AWS::EC2::VPCGatewayAttachment",
             "Properties": {
@@ -153,7 +153,7 @@ fn generate_cloudformation_template(
     );
 
     resources.insert(
-        "RouteTable".to_string(),
+        "RouteTable".to_owned(),
         json!({
             "Type": "AWS::EC2::RouteTable",
             "Properties": {
@@ -164,7 +164,7 @@ fn generate_cloudformation_template(
     );
 
     resources.insert(
-        "Route".to_string(),
+        "Route".to_owned(),
         json!({
             "Type": "AWS::EC2::Route",
             "DependsOn": "VPCGatewayAttachment",
@@ -177,7 +177,7 @@ fn generate_cloudformation_template(
     );
 
     resources.insert(
-        "SubnetRouteTableAssociation".to_string(),
+        "SubnetRouteTableAssociation".to_owned(),
         json!({
             "Type": "AWS::EC2::SubnetRouteTableAssociation",
             "Properties": {
@@ -188,7 +188,7 @@ fn generate_cloudformation_template(
     );
 
     resources.insert(
-        "SecurityGroup".to_string(),
+        "SecurityGroup".to_owned(),
         json!({
             "Type": "AWS::EC2::SecurityGroup",
             "Properties": {
@@ -204,7 +204,7 @@ fn generate_cloudformation_template(
     );
 
     resources.insert(
-        "EcsCluster".to_string(),
+        "EcsCluster".to_owned(),
         json!({
             "Type": "AWS::ECS::Cluster",
             "Properties": {
@@ -471,7 +471,7 @@ impl Node for DockerDeployProcessEcs {
 
         ret = ret.display_name("test_display_name");
 
-        ret = ret.features(vec!["hydro___feature_ecs_runtime".to_string()]);
+        ret = ret.features(vec!["hydro___feature_ecs_runtime".to_owned()]);
 
         if let Some(features) = config.features {
             ret = ret.features(features);
@@ -546,7 +546,7 @@ impl Node for DockerDeployClusterEcs {
 
         ret = ret.display_name("test_display_name");
 
-        ret = ret.features(vec!["hydro___feature_ecs_runtime".to_string()]);
+        ret = ret.features(vec!["hydro___feature_ecs_runtime".to_owned()]);
 
         if let Some(features) = config.features {
             ret = ret.features(features);
@@ -895,7 +895,7 @@ async fn build_and_create_image(
         .borrow_mut()
         .take()
         .unwrap()
-        .rustflags(compilation_options.clone().unwrap_or("".to_string()));
+        .rustflags(compilation_options.clone().unwrap_or("".to_owned()));
 
     for cfg in config {
         rust_crate = rust_crate.config(cfg);

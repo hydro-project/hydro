@@ -151,11 +151,11 @@ pub fn test_join_order() {
     let _df_good = dfir_syntax! {
         yikes = join() -> for_each(|m: ((), (u32, String))| println!("{:?}", m));
         source_iter([0,1,2]) -> map(|i| ((), i)) -> [0]yikes;
-        source_iter(["a".to_string(),"b".to_string(),"c".to_string()]) -> map(|s| ((), s)) -> [1]yikes;
+        source_iter(["a".to_owned(),"b".to_owned(),"c".to_owned()]) -> map(|s| ((), s)) -> [1]yikes;
     };
     let _df_bad = dfir_syntax! {
         yikes = join() -> for_each(|m: ((), (u32, String))| println!("{:?}", m));
-        source_iter(["a".to_string(),"b".to_string(),"c".to_string()]) -> map(|s| ((), s)) -> [1]yikes;
+        source_iter(["a".to_owned(),"b".to_owned(),"c".to_owned()]) -> map(|s| ((), s)) -> [1]yikes;
         source_iter([0,1,2]) -> map(|i| ((), i)) -> [0]yikes;
     };
 }

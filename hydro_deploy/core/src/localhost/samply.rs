@@ -99,7 +99,7 @@ pub async fn samply_to_folded(loaded: FxProfile) -> String {
                         inline_frames
                             .into_iter()
                             .rev()
-                            .map(|inline| inline.function.unwrap_or_else(|| "unknown".to_string()))
+                            .map(|inline| inline.function.unwrap_or_else(|| "unknown".to_owned()))
                             .join(";"),
                     )
                 } else {

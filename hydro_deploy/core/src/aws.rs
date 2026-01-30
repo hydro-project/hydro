@@ -19,16 +19,16 @@ pub struct LaunchedEc2Instance {
 }
 
 impl LaunchedSshHost for LaunchedEc2Instance {
-    fn get_external_ip(&self) -> Option<String> {
-        self.external_ip.clone()
+    fn get_external_ip(&self) -> Option<&str> {
+        self.external_ip.as_deref()
     }
 
-    fn get_internal_ip(&self) -> String {
-        self.internal_ip.clone()
+    fn get_internal_ip(&self) -> &str {
+        &self.internal_ip
     }
 
-    fn get_cloud_provider(&self) -> String {
-        "AWS".to_string()
+    fn get_cloud_provider(&self) -> &'static str {
+        "AWS"
     }
 
     fn resource_result(&self) -> &Arc<ResourceResult> {
@@ -62,15 +62,15 @@ impl AwsNetwork {
             .terraform
             .required_providers
             .insert(
-                "aws".to_string(),
+                "aws".to_owned(),
                 TerraformProvider {
-                    source: "hashicorp/aws".to_string(),
-                    version: "5.0.0".to_string(),
+                    source: "hashicorp/aws".to_owned(),
+                    version: "5.0.0".to_owned(),
                 },
             );
 
         resource_batch.terraform.provider.insert(
-            "aws".to_string(),
+            "aws".to_owned(),
             json!({
                 "region": self.region
             }),
@@ -90,7 +90,7 @@ impl AwsNetwork {
                 resource_batch
                     .terraform
                     .data
-                    .entry("aws_vpc".to_string())
+                    .entry("aws_vpc".to_owned())
                     .or_default()
                     .insert(
                         vpc_network.clone(),
@@ -105,7 +105,7 @@ impl AwsNetwork {
             resource_batch
                 .terraform
                 .resource
-                .entry("aws_vpc".to_string())
+                .entry("aws_vpc".to_owned())
                 .or_default()
                 .insert(
                     vpc_network.clone(),
@@ -124,7 +124,7 @@ impl AwsNetwork {
             resource_batch
                 .terraform
                 .resource
-                .entry("aws_internet_gateway".to_string())
+                .entry("aws_internet_gateway".to_owned())
                 .or_default()
                 .insert(
                     igw_key.clone(),
@@ -141,7 +141,7 @@ impl AwsNetwork {
             resource_batch
                 .terraform
                 .resource
-                .entry("aws_subnet".to_string())
+                .entry("aws_subnet".to_owned())
                 .or_default()
                 .insert(
                     subnet_key.clone(),
@@ -161,7 +161,7 @@ impl AwsNetwork {
             resource_batch
                 .terraform
                 .resource
-                .entry("aws_route_table".to_string())
+                .entry("aws_route_table".to_owned())
                 .or_default()
                 .insert(
                     rt_key.clone(),
@@ -177,7 +177,7 @@ impl AwsNetwork {
             resource_batch
                 .terraform
                 .resource
-                .entry("aws_route".to_string())
+                .entry("aws_route".to_owned())
                 .or_default()
                 .insert(
                     format!("{vpc_network}-route"),
@@ -191,7 +191,7 @@ impl AwsNetwork {
             resource_batch
                 .terraform
                 .resource
-                .entry("aws_route_table_association".to_string())
+                .entry("aws_route_table_association".to_owned())
                 .or_default()
                 .insert(
                     format!("{vpc_network}-rta"),
@@ -206,10 +206,10 @@ impl AwsNetwork {
             resource_batch
                 .terraform
                 .resource
-                .entry("aws_security_group".to_string())
+                .entry("aws_security_group".to_owned())
                 .or_default()
                 .insert(
-                    sg_key.clone(),
+                    sg_key,
                     json!({
                         "name": format!("{vpc_network}-default-allow-internal"),
                         "description": "Allow internal communication between instances",
@@ -317,15 +317,15 @@ impl AwsEc2IamInstanceProfile {
             .terraform
             .required_providers
             .insert(
-                "aws".to_string(),
+                "aws".to_owned(),
                 TerraformProvider {
-                    source: "hashicorp/aws".to_string(),
-                    version: "5.0.0".to_string(),
+                    source: "hashicorp/aws".to_owned(),
+                    version: "5.0.0".to_owned(),
                 },
             );
 
         resource_batch.terraform.provider.insert(
-            "aws".to_string(),
+            "aws".to_owned(),
             json!({
                 "region": self.region
             }),
@@ -347,7 +347,7 @@ impl AwsEc2IamInstanceProfile {
                 resource_batch
                     .terraform
                     .data
-                    .entry(RESOURCE_AWS_IAM_INSTANCE_PROFILE.to_string())
+                    .entry(RESOURCE_AWS_IAM_INSTANCE_PROFILE.to_owned())
                     .or_default()
                     .insert(
                         instance_profile_key.clone(),
@@ -364,7 +364,7 @@ impl AwsEc2IamInstanceProfile {
             resource_batch
                 .terraform
                 .resource
-                .entry(RESOURCE_AWS_IAM_ROLE.to_string())
+                .entry(RESOURCE_AWS_IAM_ROLE.to_owned())
                 .or_default()
                 .insert(
                     iam_role_key.clone(),
@@ -391,7 +391,7 @@ impl AwsEc2IamInstanceProfile {
                 resource_batch
                     .terraform
                     .resource
-                    .entry(RESOURCE_AWS_IAM_ROLE_POLICY_ATTACHMENT.to_string())
+                    .entry(RESOURCE_AWS_IAM_ROLE_POLICY_ATTACHMENT.to_owned())
                     .or_default()
                     .insert(
                         policy_attachment_key,
@@ -406,7 +406,7 @@ impl AwsEc2IamInstanceProfile {
             resource_batch
                 .terraform
                 .resource
-                .entry(RESOURCE_AWS_IAM_INSTANCE_PROFILE.to_string())
+                .entry(RESOURCE_AWS_IAM_INSTANCE_PROFILE.to_owned())
                 .or_default()
                 .insert(
                     instance_profile_key.clone(),
@@ -454,15 +454,15 @@ impl AwsCloudwatchLogGroup {
             .terraform
             .required_providers
             .insert(
-                "aws".to_string(),
+                "aws".to_owned(),
                 TerraformProvider {
-                    source: "hashicorp/aws".to_string(),
-                    version: "5.0.0".to_string(),
+                    source: "hashicorp/aws".to_owned(),
+                    version: "5.0.0".to_owned(),
                 },
             );
 
         resource_batch.terraform.provider.insert(
-            "aws".to_string(),
+            "aws".to_owned(),
             json!({
                 "region": self.region
             }),
@@ -484,7 +484,7 @@ impl AwsCloudwatchLogGroup {
                 resource_batch
                     .terraform
                     .data
-                    .entry(RESOURCE_AWS_CLOUDWATCH_LOG_GROUP.to_string())
+                    .entry(RESOURCE_AWS_CLOUDWATCH_LOG_GROUP.to_owned())
                     .or_default()
                     .insert(
                         cloudwatch_log_group_key.clone(),
@@ -500,7 +500,7 @@ impl AwsCloudwatchLogGroup {
             resource_batch
                 .terraform
                 .resource
-                .entry(RESOURCE_AWS_CLOUDWATCH_LOG_GROUP.to_string())
+                .entry(RESOURCE_AWS_CLOUDWATCH_LOG_GROUP.to_owned())
                 .or_default()
                 .insert(
                     cloudwatch_log_group_key.clone(),
@@ -630,10 +630,10 @@ impl Host for AwsEc2Host {
             .terraform
             .required_providers
             .insert(
-                "local".to_string(),
+                "local".to_owned(),
                 TerraformProvider {
-                    source: "hashicorp/local".to_string(),
-                    version: "2.3.0".to_string(),
+                    source: "hashicorp/local".to_owned(),
+                    version: "2.3.0".to_owned(),
                 },
             );
 
@@ -642,10 +642,10 @@ impl Host for AwsEc2Host {
             .terraform
             .required_providers
             .insert(
-                "tls".to_string(),
+                "tls".to_owned(),
                 TerraformProvider {
-                    source: "hashicorp/tls".to_string(),
-                    version: "4.0.4".to_string(),
+                    source: "hashicorp/tls".to_owned(),
+                    version: "4.0.4".to_owned(),
                 },
             );
 
@@ -653,10 +653,10 @@ impl Host for AwsEc2Host {
         resource_batch
             .terraform
             .resource
-            .entry("tls_private_key".to_string())
+            .entry("tls_private_key".to_owned())
             .or_default()
             .insert(
-                "vm_instance_ssh_key".to_string(),
+                "vm_instance_ssh_key".to_owned(),
                 json!({
                     "algorithm": "RSA",
                     "rsa_bits": 4096
@@ -666,10 +666,10 @@ impl Host for AwsEc2Host {
         resource_batch
             .terraform
             .resource
-            .entry("local_file".to_string())
+            .entry("local_file".to_owned())
             .or_default()
             .insert(
-                "vm_instance_ssh_key_pem".to_string(),
+                "vm_instance_ssh_key_pem".to_owned(),
                 json!({
                     "content": "${tls_private_key.vm_instance_ssh_key.private_key_pem}",
                     "filename": ".ssh/vm_instance_ssh_key_pem",
@@ -681,10 +681,10 @@ impl Host for AwsEc2Host {
         resource_batch
             .terraform
             .resource
-            .entry("aws_key_pair".to_string())
+            .entry("aws_key_pair".to_owned())
             .or_default()
             .insert(
-                "ec2_key_pair".to_string(),
+                "ec2_key_pair".to_owned(),
                 json!({
                     "key_name": format!("hydro-key-{}", nanoid!(8, &TERRAFORM_ALPHABET)),
                     "public_key": "${tls_private_key.vm_instance_ssh_key.public_key_openssh}"
@@ -713,7 +713,7 @@ impl Host for AwsEc2Host {
         );
 
         // Create additional security group for external ports if needed
-        let mut security_groups = vec![default_sg_ref.clone()];
+        let mut security_groups = vec![default_sg_ref];
         let external_ports = self.external_ports.lock().unwrap();
 
         if !external_ports.is_empty() {
@@ -737,7 +737,7 @@ impl Host for AwsEc2Host {
             resource_batch
                 .terraform
                 .resource
-                .entry("aws_security_group".to_string())
+                .entry("aws_security_group".to_owned())
                 .or_default()
                 .insert(
                     sg_key.clone(),
@@ -849,7 +849,7 @@ echo -e "{cwa_config_esc}" > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwa
         resource_batch
             .terraform
             .resource
-            .entry("aws_instance".to_string())
+            .entry("aws_instance".to_owned())
             .or_default()
             .insert(
                 instance_key.clone(),
@@ -910,11 +910,7 @@ echo -e "{cwa_config_esc}" > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwa
 
                 Arc::new(LaunchedEc2Instance {
                     resource_result: resource_result.clone(),
-                    user: self
-                        .user
-                        .as_ref()
-                        .cloned()
-                        .unwrap_or("ec2-user".to_string()),
+                    user: self.user.clone().unwrap_or_else(|| "ec2-user".to_owned()),
                     internal_ip,
                     external_ip,
                 })
