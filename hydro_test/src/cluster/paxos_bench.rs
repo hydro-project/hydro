@@ -1,7 +1,9 @@
 use hydro_lang::live_collections::stream::NoOrder;
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 use hydro_lang::prelude::*;
-use hydro_std::bench_client::{bench_client, compute_throughput_latency, print_bench_results};
+use hydro_std::bench_client::{
+    aggregate_bench_results, bench_client, compute_throughput_latency, pretty_print_bench_results,
+};
 use hydro_std::quorum::collect_quorum;
 
 use super::kv_replica::{KvPayload, Replica, kv_replica};
@@ -118,7 +120,8 @@ pub fn paxos_bench<'a>(
 
     // Create throughput/latency graphs
     let bench_results = compute_throughput_latency(clients, latencies, nondet!(/** bench */));
-    print_bench_results(bench_results, client_aggregator, clients);
+    let aggregate_results = aggregate_bench_results(bench_results, client_aggregator, clients);
+    pretty_print_bench_results(aggregate_results);
 }
 
 /// Generates an incrementing u32 for each virtual client ID, starting at 0

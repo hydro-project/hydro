@@ -1,5 +1,7 @@
 use hydro_lang::prelude::*;
-use hydro_std::bench_client::{bench_client, compute_throughput_latency, print_bench_results};
+use hydro_std::bench_client::{
+    aggregate_bench_results, bench_client, compute_throughput_latency, pretty_print_bench_results,
+};
 
 use super::two_pc::{Coordinator, Participant};
 use crate::cluster::paxos_bench::inc_i32_workload_generator;
@@ -36,7 +38,8 @@ pub fn two_pc_bench<'a>(
 
     // Create throughput/latency graphs
     let bench_results = compute_throughput_latency(clients, latencies, nondet!(/** bench */));
-    print_bench_results(bench_results, client_aggregator, clients);
+    let aggregate_results = aggregate_bench_results(bench_results, client_aggregator, clients);
+    pretty_print_bench_results(aggregate_results);
 }
 
 #[cfg(test)]
