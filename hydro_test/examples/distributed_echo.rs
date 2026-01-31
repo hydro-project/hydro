@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::Parser;
 use futures::{SinkExt, StreamExt};
 use hydro_deploy::{AwsNetwork, Deployment};
@@ -213,18 +215,63 @@ async fn aws() {
     println!("successfully deployed and cleaned up");
 }
 
+#[cfg(feature = "ecs")]
+async fn cdk_export(output_path: PathBuf) {
+    use hydro_lang::deploy::EcsDeploy;
+
+    telemetry::initialize_tracing_with_filter(tracing_subscriber::EnvFilter::try_new(
+        "info,hyper=warn,aws_smithy_runtime=info,aws_sdk_ecs=info,aws_sigv4=info,aws_config=info,aws_runtime=info,aws_smithy_http_client=info,aws_sdk_ec2=info,aws_sdk_ecr=info,h2=warn",
+    ).unwrap());
+
+    let mut deployment = EcsDeploy::new();
+
+    let mut builder = FlowBuilder::new();
+    let external = builder.external();
+    let p1 = builder.process();
+    let c2 = builder.cluster();
+    let c3 = builder.cluster();
+    let p4 = builder.process();
+    let _bidi_port = distributed_echo(&external, &p1, &c2, &c3, &p4);
+
+    let nodes = builder
+        .with_process(&p1, deployment.add_ecs_process())
+        .with_cluster(&c2, deployment.add_ecs_cluster(CLUSTER_SIZE))
+        .with_cluster(&c3, deployment.add_ecs_cluster(CLUSTER_SIZE))
+        .with_process(&p4, deployment.add_ecs_process())
+        .with_external(&external, deployment.add_external("external".to_string()))
+        .deploy(&mut deployment);
+
+    let manifest = deployment.export_for_cdk(&nodes);
+
+    tokio::fs::create_dir_all(&output_path).await.unwrap();
+    let manifest_path = output_path.join("hydro-manifest.json");
+    let manifest_json = serde_json::to_string_pretty(&manifest).unwrap();
+    tokio::fs::write(&manifest_path, &manifest_json)
+        .await
+        .unwrap();
+
+    println!("CDK export complete!");
+    println!("Manifest written to: {}", manifest_path.display());
+}
+
 #[derive(clap::ValueEnum, Clone, Debug)]
 enum DeployMode {
     #[cfg(feature = "docker")]
     Docker,
     Localhost,
     Aws,
+    #[cfg(feature = "ecs")]
+    CdkExport,
 }
 
 #[derive(Parser, Debug)]
 struct Args {
     #[clap(long, value_enum)]
     mode: DeployMode,
+
+    /// Output directory for CDK export (only used with --mode cdk-export)
+    #[clap(long, default_value = "./hydro-assets")]
+    output: PathBuf,
 }
 
 #[tokio::main]
@@ -236,6 +283,8 @@ async fn main() {
         DeployMode::Docker => docker().await,
         DeployMode::Aws => aws().await,
         DeployMode::Localhost => localhost().await,
+        #[cfg(feature = "ecs")]
+        DeployMode::CdkExport => cdk_export(args.output).await,
     }
 }
 

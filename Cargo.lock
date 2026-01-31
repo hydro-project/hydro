@@ -507,74 +507,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "aws-sdk-cloudformation"
-version = "1.104.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14aca02cf70c8a4c31b6b263e89cada99476fbd184c59a3107c53e1cfb464332"
-dependencies = [
- "aws-credential-types",
- "aws-runtime",
- "aws-smithy-async",
- "aws-smithy-http",
- "aws-smithy-json",
- "aws-smithy-query",
- "aws-smithy-runtime",
- "aws-smithy-runtime-api",
- "aws-smithy-types",
- "aws-smithy-xml",
- "aws-types",
- "fastrand",
- "http 0.2.12",
- "regex-lite",
- "tracing",
-]
-
-[[package]]
-name = "aws-sdk-ec2"
-version = "1.199.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70875840fd528ef42db20a48baee169f0bc7da603cbd9419ede2d38ab6ff648c"
-dependencies = [
- "aws-credential-types",
- "aws-runtime",
- "aws-smithy-async",
- "aws-smithy-http",
- "aws-smithy-json",
- "aws-smithy-query",
- "aws-smithy-runtime",
- "aws-smithy-runtime-api",
- "aws-smithy-types",
- "aws-smithy-xml",
- "aws-types",
- "fastrand",
- "http 0.2.12",
- "regex-lite",
- "tracing",
-]
-
-[[package]]
-name = "aws-sdk-ecr"
-version = "1.104.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc744b65972345352e16df94664932570c20c527c4c7cffd7777ee8539daf3c6"
-dependencies = [
- "aws-credential-types",
- "aws-runtime",
- "aws-smithy-async",
- "aws-smithy-http",
- "aws-smithy-json",
- "aws-smithy-runtime",
- "aws-smithy-runtime-api",
- "aws-smithy-types",
- "aws-types",
- "bytes",
- "fastrand",
- "http 0.2.12",
- "regex-lite",
- "tracing",
-]
-
-[[package]]
 name = "aws-sdk-ecs"
 version = "1.109.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -590,29 +522,6 @@ dependencies = [
  "aws-smithy-types",
  "aws-types",
  "bytes",
- "fastrand",
- "http 0.2.12",
- "regex-lite",
- "tracing",
-]
-
-[[package]]
-name = "aws-sdk-iam"
-version = "1.101.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eb009c802912bebb8219867878cec190eaa96cf1a011f205b960d09426e6ede8"
-dependencies = [
- "aws-credential-types",
- "aws-runtime",
- "aws-smithy-async",
- "aws-smithy-http",
- "aws-smithy-json",
- "aws-smithy-query",
- "aws-smithy-runtime",
- "aws-smithy-runtime-api",
- "aws-smithy-types",
- "aws-smithy-xml",
- "aws-types",
  "fastrand",
  "http 0.2.12",
  "regex-lite",
@@ -2767,11 +2676,7 @@ dependencies = [
  "anyhow",
  "auto_impl",
  "aws-config",
- "aws-sdk-cloudformation",
- "aws-sdk-ec2",
- "aws-sdk-ecr",
  "aws-sdk-ecs",
- "aws-sdk-iam",
  "backtrace",
  "base64 0.22.1",
  "bincode",
