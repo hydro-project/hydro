@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 pub enum TaglessMemberId {
     Legacy { raw_id: u32 },
     Docker { container_name: String },
+    Maelstrom { node_id: String },
 }
 
 impl TaglessMemberId {
@@ -18,6 +19,12 @@ impl TaglessMemberId {
     pub fn from_container_name(container_name: impl ToString) -> Self {
         Self::Docker {
             container_name: container_name.to_string(),
+        }
+    }
+
+    pub fn from_maelstrom_node_id(node_id: impl ToString) -> Self {
+        Self::Maelstrom {
+            node_id: node_id.to_string(),
         }
     }
 
@@ -34,6 +41,13 @@ impl TaglessMemberId {
             _ => panic!(),
         }
     }
+
+    pub fn get_maelstrom_node_id(&self) -> String {
+        match &self {
+            TaglessMemberId::Maelstrom { node_id } => node_id.clone(),
+            _ => panic!(),
+        }
+    }
 }
 
 impl Hash for TaglessMemberId {
@@ -41,6 +55,7 @@ impl Hash for TaglessMemberId {
         match self {
             TaglessMemberId::Legacy { raw_id } => raw_id.hash(state),
             TaglessMemberId::Docker { container_name } => container_name.hash(state),
+            TaglessMemberId::Maelstrom { node_id } => node_id.hash(state),
         }
     }
 }
@@ -60,6 +75,12 @@ impl PartialEq for TaglessMemberId {
                     container_name: other_container_name,
                 },
             ) => container_name == other_container_name,
+            (
+                TaglessMemberId::Maelstrom { node_id },
+                TaglessMemberId::Maelstrom {
+                    node_id: other_node_id,
+                },
+            ) => node_id == other_node_id,
             _ => unreachable!(),
         }
     }
@@ -89,6 +110,12 @@ impl Ord for TaglessMemberId {
                     container_name: other_container_name,
                 },
             ) => container_name.cmp(other_container_name),
+            (
+                TaglessMemberId::Maelstrom { node_id },
+                TaglessMemberId::Maelstrom {
+                    node_id: other_node_id,
+                },
+            ) => node_id.cmp(other_node_id),
             _ => unreachable!(),
         }
     }
@@ -147,6 +174,14 @@ impl<Tag> Display for MemberId<Tag> {
                     "MemberId::<{}>(\"{}\")",
                     std::any::type_name::<Tag>(),
                     container_name
+                )
+            }
+            TaglessMemberId::Maelstrom { node_id, .. } => {
+                write!(
+                    f,
+                    "MemberId::<{}>(\"{}\")",
+                    std::any::type_name::<Tag>(),
+                    node_id
                 )
             }
         }
