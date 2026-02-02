@@ -1,6 +1,6 @@
 use hydro_lang::prelude::*;
 use hydro_std::bench_client::{
-    aggregate_bench_results, bench_client, compute_throughput_latency, pretty_print_bench_results,
+    AggregateBenchResult, aggregate_bench_results, bench_client, compute_throughput_latency,
 };
 
 use super::two_pc::{Coordinator, Participant};
@@ -17,6 +17,8 @@ pub fn two_pc_bench<'a>(
     num_participants: usize,
     clients: &Cluster<'a, Client>,
     client_aggregator: &Process<'a, Aggregator>,
+    interval_millis: u64,
+    print_results: impl FnOnce(AggregateBenchResult<'a, Aggregator>, u64),
 ) {
     let latencies = bench_client(
         clients,
@@ -37,11 +39,10 @@ pub fn two_pc_bench<'a>(
     .map(q!(|(_virtual_client_id, (_output, latency))| latency));
 
     // Create throughput/latency graphs
-    let interval_millis = 1000; // Print every second
     let bench_results = compute_throughput_latency(clients, latencies, nondet!(/** bench */));
     let aggregate_results =
         aggregate_bench_results(bench_results, client_aggregator, clients, interval_millis);
-    pretty_print_bench_results(aggregate_results, interval_millis);
+    print_results(aggregate_results, interval_millis);
 }
 
 #[cfg(test)]
@@ -67,6 +68,8 @@ mod tests {
         clients: &Cluster<'a, Client>,
         client_aggregator: &Process<'a, Aggregator>,
     ) {
+        use hydro_std::bench_client::pretty_print_bench_results;
+
         super::two_pc_bench(
             100,
             coordinator,
@@ -74,6 +77,8 @@ mod tests {
             NUM_PARTICIPANTS,
             clients,
             client_aggregator,
+            1000,
+            pretty_print_bench_results,
         );
     }
 
