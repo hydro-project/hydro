@@ -327,7 +327,7 @@ pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
 }
 
 /// Pretty prints output of `aggregate_bench_results`.
-/// 
+///
 /// Prints the lower, median, and upper 2 std results for throughput,
 /// and the 50th, 99th, and 99.9th percentile latencies.
 pub fn pretty_print_bench_results<'a, Aggregator>(
