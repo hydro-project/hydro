@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.pull_request.base.sha }}-${{ github.event_name }}
@@ -98,11 +99,46 @@ jobs:
 
       - name: Upload benchmark artifact
         uses: actions/upload-artifact@v4
+        id: artifact-upload
         with:
           name: benchmark
           path: |
             ${{ env.WWW_DIR }}/bench
             ${{ env.WWW_DIR }}/criterion
+
+      - name: Comment on PR with artifact link
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifactUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts/${{ steps.artifact-upload.outputs.artifact-id }}`;
+            const body = `## 📊 Benchmark Results\n\nBenchmark completed! You can download the results here:\n\n🔗 [Download Benchmark Artifact](${artifactUrl})\n\n<sub>Run ID: ${context.runId}</sub>`;
+
+            // Find existing comment
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' && comment.body.includes('📊 Benchmark Results')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
 
       - name: Push to gh-pages
         # Do not deploy PRs, only benchmark main branch.
