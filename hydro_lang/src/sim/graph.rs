@@ -375,7 +375,7 @@ pub(super) fn compile_sim(bin: String, trybuild: TrybuildConfig) -> Result<TempP
         path!(trybuild.project_dir / "dylib-examples")
     };
     command.current_dir(&crate_to_compile);
-    command.args(["rustc", "--frozen"]);
+    command.args(["rustc", "--locked"]);
     command.args(["--example", "sim-dylib"]);
     command.args(["--target-dir", trybuild.target_dir.to_str().unwrap()]);
     if let Some(features) = &trybuild.features {

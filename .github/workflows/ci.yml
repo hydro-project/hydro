@@ -136,6 +136,27 @@ jobs:
           RUST_BACKTRACE: "1"
         run: cargo test --no-fail-fast --doc
 
+      # CDK synth test - only run on ubuntu-latest with stable Rust
+      - name: Setup Node.js for CDK test
+        if: matrix.os == 'ubuntu-latest' && matrix.rust_release == 'latest-stable'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: cdk/package-lock.json
+
+      - name: Install CDK dependencies
+        if: matrix.os == 'ubuntu-latest' && matrix.rust_release == 'latest-stable'
+        working-directory: cdk
+        run: npm ci
+
+      - name: Run CDK synth test
+        if: matrix.os == 'ubuntu-latest' && matrix.rust_release == 'latest-stable'
+        working-directory: cdk
+        env:
+          HYDRO_DEBUG_BUILD: '1'
+        run: npm test
+
       # Nightly snapshot update logic
       - name: Check for snapshot changes (nightly only)
         if: matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && matrix.os == 'ubuntu-latest'

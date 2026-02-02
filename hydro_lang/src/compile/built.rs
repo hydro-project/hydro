@@ -204,7 +204,7 @@ impl<'a> BuiltFlow<'a> {
     #[cfg(feature = "sim")]
     /// Creates a simulation for this builder, which can be used to run deterministic simulations
     /// of the Hydro program.
-    pub fn sim(mut self) -> SimFlow<'a> {
+    pub fn sim(self) -> SimFlow<'a> {
         use std::cell::RefCell;
         use std::rc::Rc;
 
@@ -243,7 +243,7 @@ impl<'a> BuiltFlow<'a> {
         }
 
         SimFlow {
-            ir: std::mem::take(&mut self.ir),
+            ir: self.ir,
             processes,
             clusters,
             externals,

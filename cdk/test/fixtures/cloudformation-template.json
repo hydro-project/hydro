@@ -1,0 +1,1582 @@
+{
+  "Resources": {
+    "HydroDeploymentVpc06C9E499": {
+      "Type": "AWS::EC2::VPC",
+      "Properties": {
+        "CidrBlock": "10.0.0.0/16",
+        "EnableDnsHostnames": true,
+        "EnableDnsSupport": true,
+        "InstanceTenancy": "default",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "HydroStack/HydroDeployment/Vpc"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/Resource"
+      }
+    },
+    "HydroDeploymentVpcPublicSubnet1SubnetA17B5DE6": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "CidrBlock": "10.0.0.0/18",
+        "MapPublicIpOnLaunch": true,
+        "Tags": [
+          {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Public"
+          },
+          {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Public"
+          },
+          {
+            "Key": "Name",
+            "Value": "HydroStack/HydroDeployment/Vpc/PublicSubnet1"
+          }
+        ],
+        "VpcId": {
+          "Ref": "HydroDeploymentVpc06C9E499"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/PublicSubnet1/Subnet"
+      }
+    },
+    "HydroDeploymentVpcPublicSubnet1RouteTableB05F7240": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "HydroStack/HydroDeployment/Vpc/PublicSubnet1"
+          }
+        ],
+        "VpcId": {
+          "Ref": "HydroDeploymentVpc06C9E499"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/PublicSubnet1/RouteTable"
+      }
+    },
+    "HydroDeploymentVpcPublicSubnet1RouteTableAssociation3A7ED42E": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "HydroDeploymentVpcPublicSubnet1RouteTableB05F7240"
+        },
+        "SubnetId": {
+          "Ref": "HydroDeploymentVpcPublicSubnet1SubnetA17B5DE6"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/PublicSubnet1/RouteTableAssociation"
+      }
+    },
+    "HydroDeploymentVpcPublicSubnet1DefaultRoute6CC587B8": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "HydroDeploymentVpcIGW8CCB7D22"
+        },
+        "RouteTableId": {
+          "Ref": "HydroDeploymentVpcPublicSubnet1RouteTableB05F7240"
+        }
+      },
+      "DependsOn": [
+        "HydroDeploymentVpcVPCGWA3CC6BED"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/PublicSubnet1/DefaultRoute"
+      }
+    },
+    "HydroDeploymentVpcPublicSubnet1EIPF66DF2D6": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "HydroStack/HydroDeployment/Vpc/PublicSubnet1"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/PublicSubnet1/EIP"
+      }
+    },
+    "HydroDeploymentVpcPublicSubnet1NATGateway79E2F364": {
+      "Type": "AWS::EC2::NatGateway",
+      "Properties": {
+        "AllocationId": {
+          "Fn::GetAtt": [
+            "HydroDeploymentVpcPublicSubnet1EIPF66DF2D6",
+            "AllocationId"
+          ]
+        },
+        "SubnetId": {
+          "Ref": "HydroDeploymentVpcPublicSubnet1SubnetA17B5DE6"
+        },
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "HydroStack/HydroDeployment/Vpc/PublicSubnet1"
+          }
+        ]
+      },
+      "DependsOn": [
+        "HydroDeploymentVpcPublicSubnet1DefaultRoute6CC587B8",
+        "HydroDeploymentVpcPublicSubnet1RouteTableAssociation3A7ED42E"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/PublicSubnet1/NATGateway"
+      }
+    },
+    "HydroDeploymentVpcPublicSubnet2Subnet3E056915": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "CidrBlock": "10.0.64.0/18",
+        "MapPublicIpOnLaunch": true,
+        "Tags": [
+          {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Public"
+          },
+          {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Public"
+          },
+          {
+            "Key": "Name",
+            "Value": "HydroStack/HydroDeployment/Vpc/PublicSubnet2"
+          }
+        ],
+        "VpcId": {
+          "Ref": "HydroDeploymentVpc06C9E499"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/PublicSubnet2/Subnet"
+      }
+    },
+    "HydroDeploymentVpcPublicSubnet2RouteTable3384C7A1": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "HydroStack/HydroDeployment/Vpc/PublicSubnet2"
+          }
+        ],
+        "VpcId": {
+          "Ref": "HydroDeploymentVpc06C9E499"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/PublicSubnet2/RouteTable"
+      }
+    },
+    "HydroDeploymentVpcPublicSubnet2RouteTableAssociation91988722": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "HydroDeploymentVpcPublicSubnet2RouteTable3384C7A1"
+        },
+        "SubnetId": {
+          "Ref": "HydroDeploymentVpcPublicSubnet2Subnet3E056915"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/PublicSubnet2/RouteTableAssociation"
+      }
+    },
+    "HydroDeploymentVpcPublicSubnet2DefaultRouteFBD8AD08": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Ref": "HydroDeploymentVpcIGW8CCB7D22"
+        },
+        "RouteTableId": {
+          "Ref": "HydroDeploymentVpcPublicSubnet2RouteTable3384C7A1"
+        }
+      },
+      "DependsOn": [
+        "HydroDeploymentVpcVPCGWA3CC6BED"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/PublicSubnet2/DefaultRoute"
+      }
+    },
+    "HydroDeploymentVpcPrivateSubnet1SubnetEDAD63F3": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            0,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "CidrBlock": "10.0.128.0/18",
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Private"
+          },
+          {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Private"
+          },
+          {
+            "Key": "Name",
+            "Value": "HydroStack/HydroDeployment/Vpc/PrivateSubnet1"
+          }
+        ],
+        "VpcId": {
+          "Ref": "HydroDeploymentVpc06C9E499"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/PrivateSubnet1/Subnet"
+      }
+    },
+    "HydroDeploymentVpcPrivateSubnet1RouteTableDACE75CB": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "HydroStack/HydroDeployment/Vpc/PrivateSubnet1"
+          }
+        ],
+        "VpcId": {
+          "Ref": "HydroDeploymentVpc06C9E499"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/PrivateSubnet1/RouteTable"
+      }
+    },
+    "HydroDeploymentVpcPrivateSubnet1RouteTableAssociation9AE0C710": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "HydroDeploymentVpcPrivateSubnet1RouteTableDACE75CB"
+        },
+        "SubnetId": {
+          "Ref": "HydroDeploymentVpcPrivateSubnet1SubnetEDAD63F3"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/PrivateSubnet1/RouteTableAssociation"
+      }
+    },
+    "HydroDeploymentVpcPrivateSubnet1DefaultRoute609861AC": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "NatGatewayId": {
+          "Ref": "HydroDeploymentVpcPublicSubnet1NATGateway79E2F364"
+        },
+        "RouteTableId": {
+          "Ref": "HydroDeploymentVpcPrivateSubnet1RouteTableDACE75CB"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/PrivateSubnet1/DefaultRoute"
+      }
+    },
+    "HydroDeploymentVpcPrivateSubnet2Subnet2E3895B8": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "AvailabilityZone": {
+          "Fn::Select": [
+            1,
+            {
+              "Fn::GetAZs": ""
+            }
+          ]
+        },
+        "CidrBlock": "10.0.192.0/18",
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {
+            "Key": "aws-cdk:subnet-name",
+            "Value": "Private"
+          },
+          {
+            "Key": "aws-cdk:subnet-type",
+            "Value": "Private"
+          },
+          {
+            "Key": "Name",
+            "Value": "HydroStack/HydroDeployment/Vpc/PrivateSubnet2"
+          }
+        ],
+        "VpcId": {
+          "Ref": "HydroDeploymentVpc06C9E499"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/PrivateSubnet2/Subnet"
+      }
+    },
+    "HydroDeploymentVpcPrivateSubnet2RouteTableE8CE0949": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "HydroStack/HydroDeployment/Vpc/PrivateSubnet2"
+          }
+        ],
+        "VpcId": {
+          "Ref": "HydroDeploymentVpc06C9E499"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/PrivateSubnet2/RouteTable"
+      }
+    },
+    "HydroDeploymentVpcPrivateSubnet2RouteTableAssociationF654D082": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "HydroDeploymentVpcPrivateSubnet2RouteTableE8CE0949"
+        },
+        "SubnetId": {
+          "Ref": "HydroDeploymentVpcPrivateSubnet2Subnet2E3895B8"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/PrivateSubnet2/RouteTableAssociation"
+      }
+    },
+    "HydroDeploymentVpcPrivateSubnet2DefaultRouteA60085DF": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "NatGatewayId": {
+          "Ref": "HydroDeploymentVpcPublicSubnet1NATGateway79E2F364"
+        },
+        "RouteTableId": {
+          "Ref": "HydroDeploymentVpcPrivateSubnet2RouteTableE8CE0949"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/PrivateSubnet2/DefaultRoute"
+      }
+    },
+    "HydroDeploymentVpcIGW8CCB7D22": {
+      "Type": "AWS::EC2::InternetGateway",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "HydroStack/HydroDeployment/Vpc"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/IGW"
+      }
+    },
+    "HydroDeploymentVpcVPCGWA3CC6BED": {
+      "Type": "AWS::EC2::VPCGatewayAttachment",
+      "Properties": {
+        "InternetGatewayId": {
+          "Ref": "HydroDeploymentVpcIGW8CCB7D22"
+        },
+        "VpcId": {
+          "Ref": "HydroDeploymentVpc06C9E499"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/VPCGW"
+      }
+    },
+    "HydroDeploymentVpcRestrictDefaultSecurityGroupCustomResourceBD8A7473": {
+      "Type": "Custom::VpcRestrictDefaultSG",
+      "Properties": {
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "CustomVpcRestrictDefaultSGCustomResourceProviderHandlerDC833E5E",
+            "Arn"
+          ]
+        },
+        "DefaultSecurityGroupId": {
+          "Fn::GetAtt": [
+            "HydroDeploymentVpc06C9E499",
+            "DefaultSecurityGroup"
+          ]
+        },
+        "Account": {
+          "Ref": "AWS::AccountId"
+        }
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Vpc/RestrictDefaultSecurityGroupCustomResource/Default"
+      }
+    },
+    "HydroDeploymentCluster577CC088": {
+      "Type": "AWS::ECS::Cluster",
+      "Properties": {
+        "ClusterName": "hydro-hydrodeployment",
+        "ClusterSettings": [
+          {
+            "Name": "containerInsights",
+            "Value": "enabled"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Cluster/Resource"
+      }
+    },
+    "HydroDeploymentSecurityGroupDDB8D1D4": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Security group for Hydro ECS tasks",
+        "SecurityGroupEgress": [
+          {
+            "CidrIp": "0.0.0.0/0",
+            "Description": "Allow all outbound traffic by default",
+            "IpProtocol": "-1"
+          }
+        ],
+        "SecurityGroupIngress": [
+          {
+            "CidrIp": "<EXTERNAL_IP>/32",
+            "Description": "Allow TCP traffic from deployer IP (<EXTERNAL_IP>)",
+            "FromPort": 0,
+            "IpProtocol": "tcp",
+            "ToPort": 65535
+          }
+        ],
+        "VpcId": {
+          "Ref": "HydroDeploymentVpc06C9E499"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/SecurityGroup/Resource"
+      }
+    },
+    "HydroDeploymentSecurityGroupfromHydroStackHydroDeploymentSecurityGroupB8254166ALLPORTS70B928CC": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "Description": "Allow all TCP traffic between Hydro services",
+        "FromPort": 0,
+        "GroupId": {
+          "Fn::GetAtt": [
+            "HydroDeploymentSecurityGroupDDB8D1D4",
+            "GroupId"
+          ]
+        },
+        "IpProtocol": "tcp",
+        "SourceSecurityGroupId": {
+          "Fn::GetAtt": [
+            "HydroDeploymentSecurityGroupDDB8D1D4",
+            "GroupId"
+          ]
+        },
+        "ToPort": 65535
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/SecurityGroup/from HydroStackHydroDeploymentSecurityGroupB8254166:ALL PORTS"
+      }
+    },
+    "HydroDeploymentExecutionRole794C18A6": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+              ]
+            ]
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/ExecutionRole/Resource"
+      }
+    },
+    "HydroDeploymentExecutionRoleDefaultPolicy74189A13": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:BatchGetImage",
+                "ecr:GetDownloadUrlForLayer"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":ecr:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":repository/",
+                    {
+                      "Fn::Sub": "cdk-<QUALIFIER>-assets-${AWS::AccountId}-${AWS::Region}"
+                    }
+                  ]
+                ]
+              }
+            },
+            {
+              "Action": "ecr:GetAuthorizationToken",
+              "Effect": "Allow",
+              "Resource": "*"
+            },
+            {
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": [
+                  "HydroDeploymentLogGroupC29EA0B5",
+                  "Arn"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "HydroDeploymentExecutionRoleDefaultPolicy74189A13",
+        "Roles": [
+          {
+            "Ref": "HydroDeploymentExecutionRole794C18A6"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/ExecutionRole/DefaultPolicy/Resource"
+      }
+    },
+    "HydroDeploymentTaskRole83E33266": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/TaskRole/Resource"
+      }
+    },
+    "HydroDeploymentTaskRoleDefaultPolicy1D0CAE2B": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "ec2:DescribeNetworkInterfaces",
+                "ecs:DescribeTasks",
+                "ecs:ListTasks"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "HydroDeploymentTaskRoleDefaultPolicy1D0CAE2B",
+        "Roles": [
+          {
+            "Ref": "HydroDeploymentTaskRole83E33266"
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/TaskRole/DefaultPolicy/Resource"
+      }
+    },
+    "HydroDeploymentLogGroupC29EA0B5": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/ecs/hydro-hydrodeployment",
+        "RetentionInDays": 7
+      },
+      "UpdateReplacePolicy": "Delete",
+      "DeletionPolicy": "Delete",
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/LogGroup/Resource"
+      }
+    },
+    "HydroDeploymentTaskDefhyp1loc2v10B4547CC": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "ContainerDefinitions": [
+          {
+            "Environment": [
+              {
+                "Name": "CONTAINER_NAME",
+                "Value": "hy-p1-loc2v1"
+              },
+              {
+                "Name": "CLUSTER_NAME",
+                "Value": {
+                  "Ref": "HydroDeploymentCluster577CC088"
+                }
+              },
+              {
+                "Name": "RUST_LOG",
+                "Value": "trace,aws_runtime=info,aws_sdk_ecs=info,aws_smithy_runtime=info,aws_smithy_runtime_api=info,aws_config=info,hyper_util=info,aws_smithy_http_client=info,aws_sigv4=info,dfir_rs=warn"
+              },
+              {
+                "Name": "RUST_BACKTRACE",
+                "Value": "1"
+              },
+              {
+                "Name": "NO_COLOR",
+                "Value": "1"
+              }
+            ],
+            "Essential": true,
+            "Image": {
+              "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-${AWS::AccountId}-${AWS::Region}:<IMAGE_HASH>"
+            },
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "HydroDeploymentLogGroupC29EA0B5"
+                },
+                "awslogs-stream-prefix": "hy-p1-loc2v1",
+                "awslogs-region": {
+                  "Ref": "AWS::Region"
+                }
+              }
+            },
+            "Name": "main",
+            "PortMappings": [
+              {
+                "ContainerPort": 1000,
+                "Protocol": "tcp"
+              }
+            ]
+          }
+        ],
+        "Cpu": "256",
+        "ExecutionRoleArn": {
+          "Fn::GetAtt": [
+            "HydroDeploymentExecutionRole794C18A6",
+            "Arn"
+          ]
+        },
+        "Family": "hy-p1-loc2v1",
+        "Memory": "512",
+        "NetworkMode": "awsvpc",
+        "RequiresCompatibilities": [
+          "FARGATE"
+        ],
+        "TaskRoleArn": {
+          "Fn::GetAtt": [
+            "HydroDeploymentTaskRole83E33266",
+            "Arn"
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/TaskDef-hy-p1-loc2v1/Resource"
+      }
+    },
+    "HydroDeploymentServicehyp1loc2v1ServiceB25D58D2": {
+      "Type": "AWS::ECS::Service",
+      "Properties": {
+        "Cluster": {
+          "Ref": "HydroDeploymentCluster577CC088"
+        },
+        "DeploymentConfiguration": {
+          "MaximumPercent": 200,
+          "MinimumHealthyPercent": 50
+        },
+        "DesiredCount": 1,
+        "EnableECSManagedTags": false,
+        "LaunchType": "FARGATE",
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "AssignPublicIp": "ENABLED",
+            "SecurityGroups": [
+              {
+                "Fn::GetAtt": [
+                  "HydroDeploymentSecurityGroupDDB8D1D4",
+                  "GroupId"
+                ]
+              }
+            ],
+            "Subnets": [
+              {
+                "Ref": "HydroDeploymentVpcPublicSubnet1SubnetA17B5DE6"
+              },
+              {
+                "Ref": "HydroDeploymentVpcPublicSubnet2Subnet3E056915"
+              }
+            ]
+          }
+        },
+        "ServiceName": "hy-p1-loc2v1",
+        "TaskDefinition": {
+          "Ref": "HydroDeploymentTaskDefhyp1loc2v10B4547CC"
+        }
+      },
+      "DependsOn": [
+        "HydroDeploymentTaskRoleDefaultPolicy1D0CAE2B",
+        "HydroDeploymentTaskRole83E33266"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Service-hy-p1-loc2v1/Service"
+      }
+    },
+    "HydroDeploymentTaskDefhyp4loc5v1FE00D9FD": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "ContainerDefinitions": [
+          {
+            "Environment": [
+              {
+                "Name": "CONTAINER_NAME",
+                "Value": "hy-p4-loc5v1"
+              },
+              {
+                "Name": "CLUSTER_NAME",
+                "Value": {
+                  "Ref": "HydroDeploymentCluster577CC088"
+                }
+              },
+              {
+                "Name": "RUST_LOG",
+                "Value": "trace,aws_runtime=info,aws_sdk_ecs=info,aws_smithy_runtime=info,aws_smithy_runtime_api=info,aws_config=info,hyper_util=info,aws_smithy_http_client=info,aws_sigv4=info,dfir_rs=warn"
+              },
+              {
+                "Name": "RUST_BACKTRACE",
+                "Value": "1"
+              },
+              {
+                "Name": "NO_COLOR",
+                "Value": "1"
+              }
+            ],
+            "Essential": true,
+            "Image": {
+              "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-${AWS::AccountId}-${AWS::Region}:<IMAGE_HASH>"
+            },
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "HydroDeploymentLogGroupC29EA0B5"
+                },
+                "awslogs-stream-prefix": "hy-p4-loc5v1",
+                "awslogs-region": {
+                  "Ref": "AWS::Region"
+                }
+              }
+            },
+            "Name": "main"
+          }
+        ],
+        "Cpu": "256",
+        "ExecutionRoleArn": {
+          "Fn::GetAtt": [
+            "HydroDeploymentExecutionRole794C18A6",
+            "Arn"
+          ]
+        },
+        "Family": "hy-p4-loc5v1",
+        "Memory": "512",
+        "NetworkMode": "awsvpc",
+        "RequiresCompatibilities": [
+          "FARGATE"
+        ],
+        "TaskRoleArn": {
+          "Fn::GetAtt": [
+            "HydroDeploymentTaskRole83E33266",
+            "Arn"
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/TaskDef-hy-p4-loc5v1/Resource"
+      }
+    },
+    "HydroDeploymentServicehyp4loc5v1ServiceEE944C51": {
+      "Type": "AWS::ECS::Service",
+      "Properties": {
+        "Cluster": {
+          "Ref": "HydroDeploymentCluster577CC088"
+        },
+        "DeploymentConfiguration": {
+          "MaximumPercent": 200,
+          "MinimumHealthyPercent": 50
+        },
+        "DesiredCount": 1,
+        "EnableECSManagedTags": false,
+        "LaunchType": "FARGATE",
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "AssignPublicIp": "ENABLED",
+            "SecurityGroups": [
+              {
+                "Fn::GetAtt": [
+                  "HydroDeploymentSecurityGroupDDB8D1D4",
+                  "GroupId"
+                ]
+              }
+            ],
+            "Subnets": [
+              {
+                "Ref": "HydroDeploymentVpcPublicSubnet1SubnetA17B5DE6"
+              },
+              {
+                "Ref": "HydroDeploymentVpcPublicSubnet2Subnet3E056915"
+              }
+            ]
+          }
+        },
+        "ServiceName": "hy-p4-loc5v1",
+        "TaskDefinition": {
+          "Ref": "HydroDeploymentTaskDefhyp4loc5v1FE00D9FD"
+        }
+      },
+      "DependsOn": [
+        "HydroDeploymentTaskRoleDefaultPolicy1D0CAE2B",
+        "HydroDeploymentTaskRole83E33266"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Service-hy-p4-loc5v1/Service"
+      }
+    },
+    "HydroDeploymentTaskDefhyc3loc4v17FA06B32": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "ContainerDefinitions": [
+          {
+            "Environment": [
+              {
+                "Name": "CONTAINER_NAME",
+                "Value": "hy-c3-loc4v1"
+              },
+              {
+                "Name": "CLUSTER_NAME",
+                "Value": {
+                  "Ref": "HydroDeploymentCluster577CC088"
+                }
+              },
+              {
+                "Name": "RUST_LOG",
+                "Value": "trace,aws_runtime=info,aws_sdk_ecs=info,aws_smithy_runtime=info,aws_smithy_runtime_api=info,aws_config=info,hyper_util=info,aws_smithy_http_client=info,aws_sigv4=info,dfir_rs=warn"
+              },
+              {
+                "Name": "RUST_BACKTRACE",
+                "Value": "1"
+              },
+              {
+                "Name": "NO_COLOR",
+                "Value": "1"
+              }
+            ],
+            "Essential": true,
+            "Image": {
+              "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-${AWS::AccountId}-${AWS::Region}:<IMAGE_HASH>"
+            },
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "HydroDeploymentLogGroupC29EA0B5"
+                },
+                "awslogs-stream-prefix": "hy-c3-loc4v1",
+                "awslogs-region": {
+                  "Ref": "AWS::Region"
+                }
+              }
+            },
+            "Name": "main"
+          }
+        ],
+        "Cpu": "256",
+        "ExecutionRoleArn": {
+          "Fn::GetAtt": [
+            "HydroDeploymentExecutionRole794C18A6",
+            "Arn"
+          ]
+        },
+        "Family": "hy-c3-loc4v1",
+        "Memory": "512",
+        "NetworkMode": "awsvpc",
+        "RequiresCompatibilities": [
+          "FARGATE"
+        ],
+        "TaskRoleArn": {
+          "Fn::GetAtt": [
+            "HydroDeploymentTaskRole83E33266",
+            "Arn"
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/TaskDef-hy-c3-loc4v1/Resource"
+      }
+    },
+    "HydroDeploymentServicehyc3loc4v1Service1DCBBE48": {
+      "Type": "AWS::ECS::Service",
+      "Properties": {
+        "Cluster": {
+          "Ref": "HydroDeploymentCluster577CC088"
+        },
+        "DeploymentConfiguration": {
+          "MaximumPercent": 200,
+          "MinimumHealthyPercent": 50
+        },
+        "DesiredCount": 2,
+        "EnableECSManagedTags": false,
+        "LaunchType": "FARGATE",
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "AssignPublicIp": "ENABLED",
+            "SecurityGroups": [
+              {
+                "Fn::GetAtt": [
+                  "HydroDeploymentSecurityGroupDDB8D1D4",
+                  "GroupId"
+                ]
+              }
+            ],
+            "Subnets": [
+              {
+                "Ref": "HydroDeploymentVpcPublicSubnet1SubnetA17B5DE6"
+              },
+              {
+                "Ref": "HydroDeploymentVpcPublicSubnet2Subnet3E056915"
+              }
+            ]
+          }
+        },
+        "ServiceName": "hy-c3-loc4v1",
+        "TaskDefinition": {
+          "Ref": "HydroDeploymentTaskDefhyc3loc4v17FA06B32"
+        }
+      },
+      "DependsOn": [
+        "HydroDeploymentTaskRoleDefaultPolicy1D0CAE2B",
+        "HydroDeploymentTaskRole83E33266"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Service-hy-c3-loc4v1/Service"
+      }
+    },
+    "HydroDeploymentTaskDefhyc2loc3v1A2666A67": {
+      "Type": "AWS::ECS::TaskDefinition",
+      "Properties": {
+        "ContainerDefinitions": [
+          {
+            "Environment": [
+              {
+                "Name": "CONTAINER_NAME",
+                "Value": "hy-c2-loc3v1"
+              },
+              {
+                "Name": "CLUSTER_NAME",
+                "Value": {
+                  "Ref": "HydroDeploymentCluster577CC088"
+                }
+              },
+              {
+                "Name": "RUST_LOG",
+                "Value": "trace,aws_runtime=info,aws_sdk_ecs=info,aws_smithy_runtime=info,aws_smithy_runtime_api=info,aws_config=info,hyper_util=info,aws_smithy_http_client=info,aws_sigv4=info,dfir_rs=warn"
+              },
+              {
+                "Name": "RUST_BACKTRACE",
+                "Value": "1"
+              },
+              {
+                "Name": "NO_COLOR",
+                "Value": "1"
+              }
+            ],
+            "Essential": true,
+            "Image": {
+              "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.${AWS::URLSuffix}/cdk-hnb659fds-container-assets-${AWS::AccountId}-${AWS::Region}:<IMAGE_HASH>"
+            },
+            "LogConfiguration": {
+              "LogDriver": "awslogs",
+              "Options": {
+                "awslogs-group": {
+                  "Ref": "HydroDeploymentLogGroupC29EA0B5"
+                },
+                "awslogs-stream-prefix": "hy-c2-loc3v1",
+                "awslogs-region": {
+                  "Ref": "AWS::Region"
+                }
+              }
+            },
+            "Name": "main"
+          }
+        ],
+        "Cpu": "256",
+        "ExecutionRoleArn": {
+          "Fn::GetAtt": [
+            "HydroDeploymentExecutionRole794C18A6",
+            "Arn"
+          ]
+        },
+        "Family": "hy-c2-loc3v1",
+        "Memory": "512",
+        "NetworkMode": "awsvpc",
+        "RequiresCompatibilities": [
+          "FARGATE"
+        ],
+        "TaskRoleArn": {
+          "Fn::GetAtt": [
+            "HydroDeploymentTaskRole83E33266",
+            "Arn"
+          ]
+        }
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/TaskDef-hy-c2-loc3v1/Resource"
+      }
+    },
+    "HydroDeploymentServicehyc2loc3v1Service0FB22495": {
+      "Type": "AWS::ECS::Service",
+      "Properties": {
+        "Cluster": {
+          "Ref": "HydroDeploymentCluster577CC088"
+        },
+        "DeploymentConfiguration": {
+          "MaximumPercent": 200,
+          "MinimumHealthyPercent": 50
+        },
+        "DesiredCount": 2,
+        "EnableECSManagedTags": false,
+        "LaunchType": "FARGATE",
+        "NetworkConfiguration": {
+          "AwsvpcConfiguration": {
+            "AssignPublicIp": "ENABLED",
+            "SecurityGroups": [
+              {
+                "Fn::GetAtt": [
+                  "HydroDeploymentSecurityGroupDDB8D1D4",
+                  "GroupId"
+                ]
+              }
+            ],
+            "Subnets": [
+              {
+                "Ref": "HydroDeploymentVpcPublicSubnet1SubnetA17B5DE6"
+              },
+              {
+                "Ref": "HydroDeploymentVpcPublicSubnet2Subnet3E056915"
+              }
+            ]
+          }
+        },
+        "ServiceName": "hy-c2-loc3v1",
+        "TaskDefinition": {
+          "Ref": "HydroDeploymentTaskDefhyc2loc3v1A2666A67"
+        }
+      },
+      "DependsOn": [
+        "HydroDeploymentTaskRoleDefaultPolicy1D0CAE2B",
+        "HydroDeploymentTaskRole83E33266"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/HydroDeployment/Service-hy-c2-loc3v1/Service"
+      }
+    },
+    "CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Action": "sts:AssumeRole",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "lambda.amazonaws.com"
+              }
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+          }
+        ],
+        "Policies": [
+          {
+            "PolicyName": "Inline",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "ec2:AuthorizeSecurityGroupIngress",
+                    "ec2:AuthorizeSecurityGroupEgress",
+                    "ec2:RevokeSecurityGroupIngress",
+                    "ec2:RevokeSecurityGroupEgress"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Join": [
+                        "",
+                        [
+                          "arn:",
+                          {
+                            "Ref": "AWS::Partition"
+                          },
+                          ":ec2:",
+                          {
+                            "Ref": "AWS::Region"
+                          },
+                          ":",
+                          {
+                            "Ref": "AWS::AccountId"
+                          },
+                          ":security-group/",
+                          {
+                            "Fn::GetAtt": [
+                              "HydroDeploymentVpc06C9E499",
+                              "DefaultSecurityGroup"
+                            ]
+                          }
+                        ]
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/Custom::VpcRestrictDefaultSGCustomResourceProvider/Role"
+      }
+    },
+    "CustomVpcRestrictDefaultSGCustomResourceProviderHandlerDC833E5E": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Fn::Sub": "cdk-<QUALIFIER>-assets-${AWS::AccountId}-${AWS::Region}"
+          },
+          "S3Key": "7fa1e366ee8a9ded01fc355f704cff92bfd179574e6f9cfee800a3541df1b200.zip"
+        },
+        "Timeout": 900,
+        "MemorySize": 128,
+        "Handler": "__entrypoint__.handler",
+        "Role": {
+          "Fn::GetAtt": [
+            "CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0",
+            "Arn"
+          ]
+        },
+        "Runtime": "nodejs22.x",
+        "Description": "Lambda function for removing all inbound/outbound rules from the VPC default security group"
+      },
+      "DependsOn": [
+        "CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0"
+      ],
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/Custom::VpcRestrictDefaultSGCustomResourceProvider/Handler",
+        "aws:asset:path": "asset.7fa1e366ee8a9ded01fc355f704cff92bfd179574e6f9cfee800a3541df1b200",
+        "aws:asset:property": "Code"
+      }
+    },
+    "CDKMetadata": {
+      "Type": "AWS::CDK::Metadata",
+      "Properties": {
+        "Analytics": "<CDK_ANALYTICS>"
+      },
+      "Metadata": {
+        "aws:cdk:path": "HydroStack/CDKMetadata/Default"
+      },
+      "Condition": "CDKMetadataAvailable"
+    }
+  },
+  "Outputs": {
+    "HydroDeploymentClusterName05152A59": {
+      "Description": "ECS Cluster Name",
+      "Value": {
+        "Ref": "HydroDeploymentCluster577CC088"
+      }
+    },
+    "HydroDeploymentDeploymentName48CFFF00": {
+      "Description": "Hydro Deployment Name",
+      "Value": "hydrodeployment"
+    }
+  },
+  "Conditions": {
+    "CDKMetadataAvailable": {
+      "Fn::Or": [
+        {
+          "Fn::Or": [
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "af-south-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-east-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-northeast-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-northeast-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-northeast-3"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-south-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-south-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-southeast-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-southeast-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-southeast-3"
+              ]
+            }
+          ]
+        },
+        {
+          "Fn::Or": [
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ap-southeast-4"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ca-central-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "ca-west-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "cn-north-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "cn-northwest-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-central-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-central-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-north-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-south-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-south-2"
+              ]
+            }
+          ]
+        },
+        {
+          "Fn::Or": [
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-west-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-west-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "eu-west-3"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "il-central-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "me-central-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "me-south-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "sa-east-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "us-east-1"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "us-east-2"
+              ]
+            },
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "AWS::Region"
+                },
+                "us-west-1"
+              ]
+            }
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "AWS::Region"
+            },
+            "us-west-2"
+          ]
+        }
+      ]
+    }
+  },
+  "Parameters": {
+    "BootstrapVersion": {
+      "Type": "AWS::SSM::Parameter::Value<String>",
+      "Default": "/cdk-bootstrap/<QUALIFIER>/version",
+      "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+    }
+  },
+  "Rules": {
+    "CheckBootstrapVersion": {
+      "Assertions": [
+        {
+          "Assert": {
+            "Fn::Not": [
+              {
+                "Fn::Contains": [
+                  [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5"
+                  ],
+                  {
+                    "Ref": "BootstrapVersion"
+                  }
+                ]
+              }
+            ]
+          },
+          "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+        }
+      ]
+    }
+  }
+}
