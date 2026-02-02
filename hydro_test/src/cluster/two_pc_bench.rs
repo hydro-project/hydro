@@ -10,6 +10,7 @@ use crate::cluster::two_pc::two_pc;
 pub struct Client;
 pub struct Aggregator;
 
+#[expect(clippy::too_many_arguments, reason = "internal 2PC code // TODO")]
 pub fn two_pc_bench<'a>(
     num_clients_per_node: usize,
     coordinator: &Process<'a, Coordinator>,
