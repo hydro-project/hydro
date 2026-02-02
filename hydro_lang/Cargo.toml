@@ -63,13 +63,6 @@ ecs_deploy = [
     "ecs_runtime",
 
     "dep:anyhow",
-
-    "dep:aws-config",
-    "dep:aws-sdk-cloudformation",
-    "dep:aws-sdk-ecr",
-    "dep:aws-sdk-ecs",
-    "dep:aws-sdk-ec2",
-    "dep:aws-sdk-iam",
 ]
 
 # Dependencies needed to compile docker-targeted binaries with trybuild
@@ -162,11 +155,7 @@ tar = { version = "0.4", optional = true }
 
 # optional dependencies for ECS
 aws-config = { version = "*", optional = true, default-features = false, features = [ "rt-tokio", "default-https-client" ] }
-aws-sdk-cloudformation = { version = "*", optional = true, default-features = false }
-aws-sdk-ec2 = { version = "*", optional = true, default-features = false }
-aws-sdk-ecr = { version = "*", optional = true, default-features = false }
 aws-sdk-ecs = { version = "*", optional = true, default-features = false }
-aws-sdk-iam = { version = "*", optional = true, default-features = false }
 base64 = { version = "*", optional = true }
 regex = { version = "1.12.2", optional = true }
 

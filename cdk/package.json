@@ -1,0 +1,31 @@
+{
+  "name": "cdk-example",
+  "version": "0.1.0",
+  "bin": {
+    "cdk-example": "bin/cdk-example.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "NODE_OPTIONS='--experimental-vm-modules' jest --testPathPatterns=cdk-synth.integration --runInBand",
+    "test:integration": "NODE_OPTIONS='--experimental-vm-modules' jest --testPathPatterns=integration --runInBand",
+    "generate-cloudformation-fixture": "npx ts-node scripts/generate-cloudformation-fixture.ts",
+    "cdk": "cdk"
+  },
+  "devDependencies": {
+    "@types/jest": "^30",
+    "@types/node": "^24.10.1",
+    "jest": "^30",
+    "ts-jest": "^29",
+    "aws-cdk": "2.1101.0",
+    "ts-node": "^10.9.2",
+    "typescript": "~5.9.3"
+  },
+  "dependencies": {
+    "@aws-sdk/client-ec2": "^3.700.0",
+    "@aws-sdk/client-ecs": "^3.700.0",
+    "@aws-sdk/credential-provider-env": "^3.700.0",
+    "aws-cdk-lib": "^2.234.1",
+    "constructs": "^10.0.0"
+  }
+}
