@@ -1978,7 +1978,7 @@ expression: built.ir()
                                                                                                                                 input: Batch {
                                                                                                                                     inner: Source {
                                                                                                                                         source: Stream(
-                                                                                                                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_millis (1000) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
+                                                                                                                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; let interval_millis__free = 1000u64 ; Duration :: from_millis (interval_millis__free) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
                                                                                                                                         ),
                                                                                                                                         metadata: HydroIrMetadata {
                                                                                                                                             location_id: Cluster(loc3v1),
@@ -2240,7 +2240,7 @@ expression: built.ir()
                                     input: Batch {
                                         inner: Source {
                                             source: Stream(
-                                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_millis (1000) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
+                                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; let interval_millis__free = 1000u64 ; Duration :: from_millis (interval_millis__free) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
                                             ),
                                             metadata: HydroIrMetadata {
                                                 location_id: Process(loc4v1),
@@ -2334,34 +2334,45 @@ expression: built.ir()
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < (f64 , f64 , f64) , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | (lower , mean , upper) | { println ! ("Throughput: {:.2} - {:.2} - {:.2} requests/s" , lower , mean , upper ,) ; } }),
         input: FilterMap {
-            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , usize) , core :: option :: Option < (f64 , f64 , f64) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; move | (throughputs , num_client_machines) | { if throughputs . sample_count () >= 2 && let Some ((lower , upper)) = throughputs . confidence_interval_99 () { Some ((lower * num_client_machines as f64 , throughputs . sample_mean () * num_client_machines as f64 , upper * num_client_machines as f64 ,)) } else { None } } }),
-            input: ObserveNonDet {
-                inner: YieldConcat {
-                    inner: Map {
-                        f: stageleft :: runtime_support :: fn1_type_hint :: < ((hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , usize) , ()) , (hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , usize) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | (d , _signal) | d }),
-                        input: CrossSingleton {
-                            left: CrossSingleton {
-                                left: Batch {
-                                    inner: Cast {
-                                        inner: YieldConcat {
-                                            inner: Cast {
-                                                inner: Map {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , ()) , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | (d , _signal) | d }),
-                                                    input: CrossSingleton {
-                                                        left: Batch {
-                                                            inner: YieldConcat {
-                                                                inner: Reduce {
-                                                                    f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | combined , new | { combined . add (new) ; } }),
-                                                                    input: ObserveNonDet {
-                                                                        inner: Map {
-                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage) , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (_ , v) | v }),
-                                                                            input: Batch {
-                                                                                inner: Tee {
-                                                                                    inner: <tee 13>,
+            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , usize) , core :: option :: Option < (f64 , f64 , f64) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; move | (throughputs , num_client_machines) | { if let Some ((lower , upper)) = throughputs . confidence_interval_99 () { Some ((lower * num_client_machines as f64 , throughputs . sample_mean () * num_client_machines as f64 , upper * num_client_machines as f64 ,)) } else { None } } }),
+            input: Filter {
+                f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , usize) , bool > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | (throughputs , _num_client_machines) | throughputs . sample_count () > 2 }),
+                input: ObserveNonDet {
+                    inner: YieldConcat {
+                        inner: Map {
+                            f: stageleft :: runtime_support :: fn1_type_hint :: < ((hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , usize) , ()) , (hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , usize) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | (d , _signal) | d }),
+                            input: CrossSingleton {
+                                left: CrossSingleton {
+                                    left: Batch {
+                                        inner: Cast {
+                                            inner: YieldConcat {
+                                                inner: Cast {
+                                                    inner: Map {
+                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , ()) , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | (d , _signal) | d }),
+                                                        input: CrossSingleton {
+                                                            left: Batch {
+                                                                inner: YieldConcat {
+                                                                    inner: Reduce {
+                                                                        f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | combined , new | { combined . add (new) ; } }),
+                                                                        input: ObserveNonDet {
+                                                                            inner: Map {
+                                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage) , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (_ , v) | v }),
+                                                                                input: Batch {
+                                                                                    inner: Tee {
+                                                                                        inner: <tee 13>,
+                                                                                        metadata: HydroIrMetadata {
+                                                                                            location_id: Process(loc4v1),
+                                                                                            collection_kind: KeyedSingleton {
+                                                                                                bound: Unbounded,
+                                                                                                key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client >,
+                                                                                                value_type: hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
+                                                                                            },
+                                                                                        },
+                                                                                    },
                                                                                     metadata: HydroIrMetadata {
-                                                                                        location_id: Process(loc4v1),
+                                                                                        location_id: Tick(11, Process(loc4v1)),
                                                                                         collection_kind: KeyedSingleton {
-                                                                                            bound: Unbounded,
+                                                                                            bound: Bounded,
                                                                                             key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client >,
                                                                                             value_type: hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
                                                                                         },
@@ -2369,71 +2380,72 @@ expression: built.ir()
                                                                                 },
                                                                                 metadata: HydroIrMetadata {
                                                                                     location_id: Tick(11, Process(loc4v1)),
-                                                                                    collection_kind: KeyedSingleton {
+                                                                                    collection_kind: Stream {
                                                                                         bound: Bounded,
-                                                                                        key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client >,
-                                                                                        value_type: hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
+                                                                                        order: NoOrder,
+                                                                                        retry: ExactlyOnce,
+                                                                                        element_type: hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
                                                                                     },
                                                                                 },
                                                                             },
+                                                                            trusted: false,
                                                                             metadata: HydroIrMetadata {
                                                                                 location_id: Tick(11, Process(loc4v1)),
                                                                                 collection_kind: Stream {
                                                                                     bound: Bounded,
-                                                                                    order: NoOrder,
+                                                                                    order: TotalOrder,
                                                                                     retry: ExactlyOnce,
                                                                                     element_type: hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
                                                                                 },
                                                                             },
                                                                         },
-                                                                        trusted: false,
                                                                         metadata: HydroIrMetadata {
                                                                             location_id: Tick(11, Process(loc4v1)),
-                                                                            collection_kind: Stream {
+                                                                            collection_kind: Optional {
                                                                                 bound: Bounded,
-                                                                                order: TotalOrder,
-                                                                                retry: ExactlyOnce,
                                                                                 element_type: hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
                                                                             },
                                                                         },
                                                                     },
                                                                     metadata: HydroIrMetadata {
-                                                                        location_id: Tick(11, Process(loc4v1)),
+                                                                        location_id: Process(loc4v1),
                                                                         collection_kind: Optional {
-                                                                            bound: Bounded,
+                                                                            bound: Unbounded,
                                                                             element_type: hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
                                                                         },
                                                                     },
                                                                 },
                                                                 metadata: HydroIrMetadata {
-                                                                    location_id: Process(loc4v1),
+                                                                    location_id: Tick(12, Process(loc4v1)),
                                                                     collection_kind: Optional {
-                                                                        bound: Unbounded,
+                                                                        bound: Bounded,
                                                                         element_type: hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
                                                                     },
                                                                 },
                                                             },
-                                                            metadata: HydroIrMetadata {
-                                                                location_id: Tick(12, Process(loc4v1)),
-                                                                collection_kind: Optional {
-                                                                    bound: Bounded,
-                                                                    element_type: hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
-                                                                },
-                                                            },
-                                                        },
-                                                        right: Map {
-                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _u | () }),
-                                                            input: Reduce {
-                                                                f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ , _ | { } }),
-                                                                input: Batch {
-                                                                    inner: Source {
-                                                                        source: Stream(
-                                                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_millis (1000) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
-                                                                        ),
+                                                            right: Map {
+                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _u | () }),
+                                                                input: Reduce {
+                                                                    f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ , _ | { } }),
+                                                                    input: Batch {
+                                                                        inner: Source {
+                                                                            source: Stream(
+                                                                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; let interval_millis__free = 1000u64 ; Duration :: from_millis (interval_millis__free) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
+                                                                            ),
+                                                                            metadata: HydroIrMetadata {
+                                                                                location_id: Process(loc4v1),
+                                                                                collection_kind: Stream {
+                                                                                    bound: Unbounded,
+                                                                                    order: TotalOrder,
+                                                                                    retry: ExactlyOnce,
+                                                                                    element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                                                },
+                                                                            },
+                                                                        },
                                                                         metadata: HydroIrMetadata {
-                                                                            location_id: Process(loc4v1),
+                                                                            location_id: Tick(12, Process(loc4v1)),
                                                                             collection_kind: Stream {
-                                                                                bound: Unbounded,
+                                                                                bound: Bounded,
                                                                                 order: TotalOrder,
                                                                                 retry: ExactlyOnce,
                                                                                 element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
@@ -2442,10 +2454,8 @@ expression: built.ir()
                                                                     },
                                                                     metadata: HydroIrMetadata {
                                                                         location_id: Tick(12, Process(loc4v1)),
-                                                                        collection_kind: Stream {
+                                                                        collection_kind: Optional {
                                                                             bound: Bounded,
-                                                                            order: TotalOrder,
-                                                                            retry: ExactlyOnce,
                                                                             element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
                                                                         },
                                                                     },
@@ -2454,7 +2464,7 @@ expression: built.ir()
                                                                     location_id: Tick(12, Process(loc4v1)),
                                                                     collection_kind: Optional {
                                                                         bound: Bounded,
-                                                                        element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                                        element_type: (),
                                                                     },
                                                                 },
                                                             },
@@ -2462,7 +2472,7 @@ expression: built.ir()
                                                                 location_id: Tick(12, Process(loc4v1)),
                                                                 collection_kind: Optional {
                                                                     bound: Bounded,
-                                                                    element_type: (),
+                                                                    element_type: (hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , ()),
                                                                 },
                                                             },
                                                         },
@@ -2470,22 +2480,24 @@ expression: built.ir()
                                                             location_id: Tick(12, Process(loc4v1)),
                                                             collection_kind: Optional {
                                                                 bound: Bounded,
-                                                                element_type: (hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , ()),
+                                                                element_type: hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
                                                             },
                                                         },
                                                     },
                                                     metadata: HydroIrMetadata {
                                                         location_id: Tick(12, Process(loc4v1)),
-                                                        collection_kind: Optional {
+                                                        collection_kind: Stream {
                                                             bound: Bounded,
+                                                            order: TotalOrder,
+                                                            retry: ExactlyOnce,
                                                             element_type: hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
                                                         },
                                                     },
                                                 },
                                                 metadata: HydroIrMetadata {
-                                                    location_id: Tick(12, Process(loc4v1)),
+                                                    location_id: Process(loc4v1),
                                                     collection_kind: Stream {
-                                                        bound: Bounded,
+                                                        bound: Unbounded,
                                                         order: TotalOrder,
                                                         retry: ExactlyOnce,
                                                         element_type: hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
@@ -2497,18 +2509,37 @@ expression: built.ir()
                                                 collection_kind: Stream {
                                                     bound: Unbounded,
                                                     order: TotalOrder,
-                                                    retry: ExactlyOnce,
+                                                    retry: AtLeastOnce,
                                                     element_type: hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
                                                 },
                                             },
                                         },
                                         metadata: HydroIrMetadata {
-                                            location_id: Process(loc4v1),
+                                            location_id: Tick(8, Process(loc4v1)),
                                             collection_kind: Stream {
-                                                bound: Unbounded,
+                                                bound: Bounded,
                                                 order: TotalOrder,
                                                 retry: AtLeastOnce,
                                                 element_type: hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
+                                            },
+                                        },
+                                    },
+                                    right: Cast {
+                                        inner: Tee {
+                                            inner: <tee 12>,
+                                            metadata: HydroIrMetadata {
+                                                location_id: Tick(8, Process(loc4v1)),
+                                                collection_kind: Singleton {
+                                                    bound: Bounded,
+                                                    element_type: usize,
+                                                },
+                                            },
+                                        },
+                                        metadata: HydroIrMetadata {
+                                            location_id: Tick(8, Process(loc4v1)),
+                                            collection_kind: Optional {
+                                                bound: Bounded,
+                                                element_type: usize,
                                             },
                                         },
                                     },
@@ -2518,56 +2549,35 @@ expression: built.ir()
                                             bound: Bounded,
                                             order: TotalOrder,
                                             retry: AtLeastOnce,
-                                            element_type: hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage,
+                                            element_type: (hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , usize),
                                         },
                                     },
                                 },
-                                right: Cast {
-                                    inner: Tee {
-                                        inner: <tee 12>,
-                                        metadata: HydroIrMetadata {
-                                            location_id: Tick(8, Process(loc4v1)),
-                                            collection_kind: Singleton {
-                                                bound: Bounded,
-                                                element_type: usize,
-                                            },
-                                        },
-                                    },
-                                    metadata: HydroIrMetadata {
-                                        location_id: Tick(8, Process(loc4v1)),
-                                        collection_kind: Optional {
-                                            bound: Bounded,
-                                            element_type: usize,
-                                        },
-                                    },
-                                },
-                                metadata: HydroIrMetadata {
-                                    location_id: Tick(8, Process(loc4v1)),
-                                    collection_kind: Stream {
-                                        bound: Bounded,
-                                        order: TotalOrder,
-                                        retry: AtLeastOnce,
-                                        element_type: (hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , usize),
-                                    },
-                                },
-                            },
-                            right: Map {
-                                f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _u | () }),
-                                input: Filter {
-                                    f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | o | o . is_none () }),
-                                    input: Cast {
-                                        inner: ChainFirst {
-                                            first: Map {
-                                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                                input: Map {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ | () }),
-                                                    input: Tee {
-                                                        inner: <tee 11>,
+                                right: Map {
+                                    f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _u | () }),
+                                    input: Filter {
+                                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | o | o . is_none () }),
+                                        input: Cast {
+                                            inner: ChainFirst {
+                                                first: Map {
+                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
+                                                    input: Map {
+                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ | () }),
+                                                        input: Tee {
+                                                            inner: <tee 11>,
+                                                            metadata: HydroIrMetadata {
+                                                                location_id: Tick(8, Process(loc4v1)),
+                                                                collection_kind: Optional {
+                                                                    bound: Bounded,
+                                                                    element_type: usize,
+                                                                },
+                                                            },
+                                                        },
                                                         metadata: HydroIrMetadata {
                                                             location_id: Tick(8, Process(loc4v1)),
                                                             collection_kind: Optional {
                                                                 bound: Bounded,
-                                                                element_type: usize,
+                                                                element_type: (),
                                                             },
                                                         },
                                                     },
@@ -2575,24 +2585,24 @@ expression: built.ir()
                                                         location_id: Tick(8, Process(loc4v1)),
                                                         collection_kind: Optional {
                                                             bound: Bounded,
-                                                            element_type: (),
+                                                            element_type: core :: option :: Option < () >,
                                                         },
                                                     },
                                                 },
-                                                metadata: HydroIrMetadata {
-                                                    location_id: Tick(8, Process(loc4v1)),
-                                                    collection_kind: Optional {
-                                                        bound: Bounded,
-                                                        element_type: core :: option :: Option < () >,
+                                                second: Cast {
+                                                    inner: SingletonSource {
+                                                        value: :: std :: option :: Option :: None,
+                                                        metadata: HydroIrMetadata {
+                                                            location_id: Tick(8, Process(loc4v1)),
+                                                            collection_kind: Singleton {
+                                                                bound: Bounded,
+                                                                element_type: core :: option :: Option < () >,
+                                                            },
+                                                        },
                                                     },
-                                                },
-                                            },
-                                            second: Cast {
-                                                inner: SingletonSource {
-                                                    value: :: std :: option :: Option :: None,
                                                     metadata: HydroIrMetadata {
                                                         location_id: Tick(8, Process(loc4v1)),
-                                                        collection_kind: Singleton {
+                                                        collection_kind: Optional {
                                                             bound: Bounded,
                                                             element_type: core :: option :: Option < () >,
                                                         },
@@ -2608,7 +2618,7 @@ expression: built.ir()
                                             },
                                             metadata: HydroIrMetadata {
                                                 location_id: Tick(8, Process(loc4v1)),
-                                                collection_kind: Optional {
+                                                collection_kind: Singleton {
                                                     bound: Bounded,
                                                     element_type: core :: option :: Option < () >,
                                                 },
@@ -2616,7 +2626,7 @@ expression: built.ir()
                                         },
                                         metadata: HydroIrMetadata {
                                             location_id: Tick(8, Process(loc4v1)),
-                                            collection_kind: Singleton {
+                                            collection_kind: Optional {
                                                 bound: Bounded,
                                                 element_type: core :: option :: Option < () >,
                                             },
@@ -2626,15 +2636,17 @@ expression: built.ir()
                                         location_id: Tick(8, Process(loc4v1)),
                                         collection_kind: Optional {
                                             bound: Bounded,
-                                            element_type: core :: option :: Option < () >,
+                                            element_type: (),
                                         },
                                     },
                                 },
                                 metadata: HydroIrMetadata {
                                     location_id: Tick(8, Process(loc4v1)),
-                                    collection_kind: Optional {
+                                    collection_kind: Stream {
                                         bound: Bounded,
-                                        element_type: (),
+                                        order: TotalOrder,
+                                        retry: AtLeastOnce,
+                                        element_type: ((hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , usize) , ()),
                                     },
                                 },
                             },
@@ -2644,31 +2656,31 @@ expression: built.ir()
                                     bound: Bounded,
                                     order: TotalOrder,
                                     retry: AtLeastOnce,
-                                    element_type: ((hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , usize) , ()),
+                                    element_type: (hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , usize),
                                 },
                             },
                         },
                         metadata: HydroIrMetadata {
-                            location_id: Tick(8, Process(loc4v1)),
+                            location_id: Process(loc4v1),
                             collection_kind: Stream {
-                                bound: Bounded,
+                                bound: Unbounded,
                                 order: TotalOrder,
                                 retry: AtLeastOnce,
                                 element_type: (hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , usize),
                             },
                         },
                     },
+                    trusted: false,
                     metadata: HydroIrMetadata {
                         location_id: Process(loc4v1),
                         collection_kind: Stream {
                             bound: Unbounded,
                             order: TotalOrder,
-                            retry: AtLeastOnce,
+                            retry: ExactlyOnce,
                             element_type: (hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: rolling_average :: RollingAverage , usize),
                         },
                     },
                 },
-                trusted: false,
                 metadata: HydroIrMetadata {
                     location_id: Process(loc4v1),
                     collection_kind: Stream {
@@ -2694,7 +2706,7 @@ expression: built.ir()
     ForEach {
         f: stageleft :: runtime_support :: fn1_type_hint :: < (f64 , f64 , f64 , u64) , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; move | (p50 , p99 , p999 , num_samples) | { println ! ("Latency p50: {:.3} | p99 {:.3} | p999 {:.3} ms ({:} samples)" , p50 , p99 , p999 , num_samples) ; } }),
         input: Map {
-            f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > , (f64 , f64 , f64 , u64) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; move | latencies | (Duration :: from_nanos (latencies . value_at_quantile (0.5)) . as_micros () as f64 / 1000.0 , Duration :: from_nanos (latencies . value_at_quantile (0.99)) . as_micros () as f64 / 1000.0 , Duration :: from_nanos (latencies . value_at_quantile (0.999)) . as_micros () as f64 / 1000.0 , latencies . len () ,) }),
+            f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > , (f64 , f64 , f64 , u64) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; let interval_millis__free = 1000u64 ; move | latencies | (Duration :: from_nanos (latencies . value_at_quantile (0.5)) . as_micros () as f64 / interval_millis__free as f64 , Duration :: from_nanos (latencies . value_at_quantile (0.99)) . as_micros () as f64 / interval_millis__free as f64 , Duration :: from_nanos (latencies . value_at_quantile (0.999)) . as_micros () as f64 / interval_millis__free as f64 , latencies . len () ,) }),
             input: ObserveNonDet {
                 inner: YieldConcat {
                     inner: Map {
@@ -2789,7 +2801,7 @@ expression: built.ir()
                                                                                                                                 input: Batch {
                                                                                                                                     inner: Source {
                                                                                                                                         source: Stream(
-                                                                                                                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_millis (1000) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
+                                                                                                                                            { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; let interval_millis__free = 1000u64 ; Duration :: from_millis (interval_millis__free) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
                                                                                                                                         ),
                                                                                                                                         metadata: HydroIrMetadata {
                                                                                                                                             location_id: Cluster(loc3v1),
@@ -2997,7 +3009,7 @@ expression: built.ir()
                                                             input: Batch {
                                                                 inner: Source {
                                                                     source: Stream(
-                                                                        { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Duration :: from_millis (1000) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
+                                                                        { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; let interval_millis__free = 1000u64 ; Duration :: from_millis (interval_millis__free) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
                                                                     ),
                                                                     metadata: HydroIrMetadata {
                                                                         location_id: Process(loc4v1),

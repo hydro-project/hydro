@@ -37,9 +37,11 @@ pub fn two_pc_bench<'a>(
     .map(q!(|(_virtual_client_id, (_output, latency))| latency));
 
     // Create throughput/latency graphs
+    let interval_millis = 1000; // Print every second
     let bench_results = compute_throughput_latency(clients, latencies, nondet!(/** bench */));
-    let aggregate_results = aggregate_bench_results(bench_results, client_aggregator, clients);
-    pretty_print_bench_results(aggregate_results);
+    let aggregate_results =
+        aggregate_bench_results(bench_results, client_aggregator, clients, interval_millis);
+    pretty_print_bench_results(aggregate_results, interval_millis);
 }
 
 #[cfg(test)]
