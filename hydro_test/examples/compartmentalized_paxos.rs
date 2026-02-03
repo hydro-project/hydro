@@ -76,6 +76,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let i_am_leader_send_timeout = 5; // Sec
     let i_am_leader_check_timeout = 10; // Sec
     let i_am_leader_check_timeout_delay_multiplier = 15;
+    let print_result_frequency = 1000; // Millis
 
     let num_proxy_leaders = 10;
     let acceptor_grid_rows = 2;
@@ -116,6 +117,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         &clients,
         &client_aggregator,
         &replicas,
+        print_result_frequency,
+        hydro_std::bench_client::pretty_print_bench_results,
     );
 
     let rustflags = if args.gcp.is_some() || args.aws {
