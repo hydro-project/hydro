@@ -72,6 +72,12 @@ ecs_deploy = [
     "dep:aws-sdk-iam",
 ]
 
+maelstrom = [
+    "deploy",
+    "maelstrom_runtime",
+    "dep:serde_json",
+]
+
 # Dependencies needed to compile docker-targeted binaries with trybuild
 docker_runtime = [
     "deploy_integration",
@@ -86,6 +92,13 @@ ecs_runtime = [
     "dep:aws-config",
     "dep:aws-sdk-ecs",
     "dep:regex",
+]
+
+# Dependencies needed to compile maelstrom-targeted binaries with trybuild
+maelstrom_runtime = [
+    "deploy_integration",
+    "tokio-stream/sync",
+    "dep:serde_json",
 ]
 
 deploy_integration = ["dep:hydro_deploy_integration"]

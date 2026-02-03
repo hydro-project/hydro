@@ -460,7 +460,7 @@ impl Node for DockerDeployProcessEcs {
             extra_stmts,
             sidecars,
             Some(&self.name),
-            true,
+            crate::compile::trybuild::generate::DeployMode::Containerized,
             LinkingMode::Static,
         );
 
@@ -535,7 +535,7 @@ impl Node for DockerDeployClusterEcs {
             extra_stmts,
             sidecars,
             Some(&self.name),
-            true,
+            crate::compile::trybuild::generate::DeployMode::Containerized,
             LinkingMode::Static,
         );
 
