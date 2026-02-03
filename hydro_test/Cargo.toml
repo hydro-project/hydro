@@ -47,6 +47,7 @@ hydro_lang = { path = "../hydro_lang", version = "^0.15.0", features = [
     "deploy",
     "sim",
     "viz",
+    "telemetry",
 ] }
 include_mdtests = { path = "../include_mdtests", version = "^0.0.0" }
 hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1" }

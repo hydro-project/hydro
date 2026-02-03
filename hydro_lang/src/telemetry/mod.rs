@@ -4,8 +4,11 @@ use tracing_subscriber::EnvFilter;
 use tracing_subscriber::fmt::{FormatEvent, FormatFields, FormattedFields};
 use tracing_subscriber::registry::LookupSpan;
 
+#[cfg(feature = "deploy")]
 use crate::location::{LocationKey, LocationType};
 
+#[cfg(feature = "telemetry")]
+#[cfg_attr(docsrs, doc(cfg(feature = "telemetry")))]
 pub mod emf;
 
 struct Formatter;
@@ -151,6 +154,7 @@ pub fn initialize_tracing_with_filter(filter: EnvFilter) {
     tracing::trace!(name: "Tracing Initialized", ?RUST_LOG, ?filter);
 }
 
+#[cfg(feature = "deploy")]
 /// Used to add a sidecar to generated code.
 pub trait Sidecar {
     /// Generates code to create a sidecar.
