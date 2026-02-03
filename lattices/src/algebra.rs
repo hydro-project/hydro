@@ -41,7 +41,7 @@ pub fn semiring<S: Debug + PartialEq + Clone, const N: usize>(
     one: S,  // one is the identity element of g
 ) -> Result<(), &'static str> {
     commutative_monoid(items, f, zero.clone())?;
-    monoid(items, g, one.clone())?;
+    monoid(items, g, one)?;
 
     absorbing_element(items, g, zero)?;
 
@@ -456,22 +456,22 @@ pub fn get_single_function_properties<S: Debug + PartialEq + Clone, const N: usi
 
     // TODO make this a loop through the SINGLE_FUNCTION_PROPERTIES array
     if associativity(items, &f).is_ok() {
-        properties_satisfied.push("associativity".to_string());
+        properties_satisfied.push("associativity".to_owned());
     }
     if commutativity(items, &f).is_ok() {
-        properties_satisfied.push("commutativity".to_string());
+        properties_satisfied.push("commutativity".to_owned());
     }
     if idempotency(items, &f).is_ok() {
-        properties_satisfied.push("idempotency".to_string());
+        properties_satisfied.push("idempotency".to_owned());
     }
     if identity(items, &f, e.clone()).is_ok() {
-        properties_satisfied.push("identity".to_string());
+        properties_satisfied.push("identity".to_owned());
     }
-    if inverse(items, &f, e.clone(), b).is_ok() {
-        properties_satisfied.push("inverse".to_string());
+    if inverse(items, &f, e, b).is_ok() {
+        properties_satisfied.push("inverse".to_owned());
     }
     if absorbing_element(items, &f, z).is_ok() {
-        properties_satisfied.push("absorbing_element".to_string());
+        properties_satisfied.push("absorbing_element".to_owned());
     }
 
     properties_satisfied
@@ -1089,10 +1089,10 @@ mod test {
             0,
         );
         let correct_properties = vec![
-            "associativity".to_string(),
-            "commutativity".to_string(),
-            "identity".to_string(),
-            "inverse".to_string(),
+            "associativity".to_owned(),
+            "commutativity".to_owned(),
+            "identity".to_owned(),
+            "inverse".to_owned(),
         ];
         assert_eq!(test_properties_satisfied, correct_properties);
 
@@ -1105,11 +1105,11 @@ mod test {
             f64::INFINITY,
         );
         let correct_properties = vec![
-            "associativity".to_string(),
-            "commutativity".to_string(),
-            "idempotency".to_string(),
-            "identity".to_string(),
-            "absorbing_element".to_string(),
+            "associativity".to_owned(),
+            "commutativity".to_owned(),
+            "idempotency".to_owned(),
+            "identity".to_owned(),
+            "absorbing_element".to_owned(),
         ];
         assert_eq!(test_properties_satisfied, correct_properties);
 
@@ -1117,7 +1117,7 @@ mod test {
         let f = |x: u32, _y: u32| x;
         let test_properties_satisfied =
             get_single_function_properties(TEST_ITEMS, f, 0, |x| 0u32.wrapping_sub(x), 0);
-        let correct_properties = vec!["associativity".to_string(), "idempotency".to_string()];
+        let correct_properties = vec!["associativity".to_owned(), "idempotency".to_owned()];
         assert_eq!(test_properties_satisfied, correct_properties);
     }
 }

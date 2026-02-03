@@ -50,7 +50,7 @@ pub trait NetworkFor<T: ?Sized> {
     fn deserialize_thunk(tagged: Option<&syn::Type>) -> syn::Expr;
 
     /// Returns the optional name of the network channel.
-    fn name(&self) -> &Option<String>;
+    fn name(&self) -> Option<&str>;
 }
 
 /// A network channel configuration with `T` as transport backend and `S` as the serialization
@@ -92,8 +92,8 @@ where
         S::deserialize_thunk(tagged)
     }
 
-    fn name(&self) -> &Option<String> {
-        &None
+    fn name(&self) -> Option<&str> {
+        None
     }
 }
 
@@ -111,8 +111,8 @@ where
         S::deserialize_thunk(tagged)
     }
 
-    fn name(&self) -> &Option<String> {
-        &self.name
+    fn name(&self) -> Option<&str> {
+        self.name.as_deref()
     }
 }
 

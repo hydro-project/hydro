@@ -373,7 +373,7 @@ mod tests {
 
         let mut location_names = SecondaryMap::new();
         let loc_key_1 = LocationKey::TEST_KEY_1;
-        location_names.insert(loc_key_1, "test_process".to_string());
+        location_names.insert(loc_key_1, "test_process".to_owned());
 
         let api = GraphApi::new(&ir, &location_names);
 
@@ -392,7 +392,7 @@ mod tests {
 
         let mut location_names = SecondaryMap::new();
         let loc_key_1 = LocationKey::TEST_KEY_1;
-        location_names.insert(loc_key_1, "test_process".to_string());
+        location_names.insert(loc_key_1, "test_process".to_owned());
 
         let api = GraphApi::new(&ir, &location_names);
 

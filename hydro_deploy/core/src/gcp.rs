@@ -20,16 +20,16 @@ pub struct LaunchedComputeEngine {
 }
 
 impl LaunchedSshHost for LaunchedComputeEngine {
-    fn get_external_ip(&self) -> Option<String> {
-        self.external_ip.clone()
+    fn get_external_ip(&self) -> Option<&str> {
+        self.external_ip.as_deref()
     }
 
-    fn get_internal_ip(&self) -> String {
-        self.internal_ip.clone()
+    fn get_internal_ip(&self) -> &str {
+        &self.internal_ip
     }
 
-    fn get_cloud_provider(&self) -> String {
-        "GCP".to_string()
+    fn get_cloud_provider(&self) -> &'static str {
+        "GCP"
     }
 
     fn resource_result(&self) -> &Arc<ResourceResult> {
@@ -63,10 +63,10 @@ impl GcpNetwork {
             .terraform
             .required_providers
             .insert(
-                "google".to_string(),
+                "google".to_owned(),
                 TerraformProvider {
-                    source: "hashicorp/google".to_string(),
-                    version: "4.53.1".to_string(),
+                    source: "hashicorp/google".to_owned(),
+                    version: "4.53.1".to_owned(),
                 },
             );
 
@@ -85,7 +85,7 @@ impl GcpNetwork {
                 resource_batch
                     .terraform
                     .data
-                    .entry("google_compute_network".to_string())
+                    .entry("google_compute_network".to_owned())
                     .or_default()
                     .insert(
                         vpc_network.clone(),
@@ -101,7 +101,7 @@ impl GcpNetwork {
             resource_batch
                 .terraform
                 .resource
-                .entry("google_compute_network".to_string())
+                .entry("google_compute_network".to_owned())
                 .or_default()
                 .insert(
                     vpc_network.clone(),
@@ -115,7 +115,7 @@ impl GcpNetwork {
             let firewall_entries = resource_batch
                 .terraform
                 .resource
-                .entry("google_compute_firewall".to_string())
+                .entry("google_compute_firewall".to_owned())
                 .or_default();
 
             // allow all VMs to communicate with each other over internal IPs
@@ -263,10 +263,10 @@ impl Host for GcpComputeEngineHost {
             .terraform
             .required_providers
             .insert(
-                "google".to_string(),
+                "google".to_owned(),
                 TerraformProvider {
-                    source: "hashicorp/google".to_string(),
-                    version: "4.53.1".to_string(),
+                    source: "hashicorp/google".to_owned(),
+                    version: "4.53.1".to_owned(),
                 },
             );
 
@@ -275,10 +275,10 @@ impl Host for GcpComputeEngineHost {
             .terraform
             .required_providers
             .insert(
-                "local".to_string(),
+                "local".to_owned(),
                 TerraformProvider {
-                    source: "hashicorp/local".to_string(),
-                    version: "2.3.0".to_string(),
+                    source: "hashicorp/local".to_owned(),
+                    version: "2.3.0".to_owned(),
                 },
             );
 
@@ -287,10 +287,10 @@ impl Host for GcpComputeEngineHost {
             .terraform
             .required_providers
             .insert(
-                "tls".to_string(),
+                "tls".to_owned(),
                 TerraformProvider {
-                    source: "hashicorp/tls".to_string(),
-                    version: "4.0.4".to_string(),
+                    source: "hashicorp/tls".to_owned(),
+                    version: "4.0.4".to_owned(),
                 },
             );
 
@@ -298,10 +298,10 @@ impl Host for GcpComputeEngineHost {
         resource_batch
             .terraform
             .resource
-            .entry("tls_private_key".to_string())
+            .entry("tls_private_key".to_owned())
             .or_default()
             .insert(
-                "vm_instance_ssh_key".to_string(),
+                "vm_instance_ssh_key".to_owned(),
                 json!({
                     "algorithm": "RSA",
                     "rsa_bits": 4096
@@ -311,10 +311,10 @@ impl Host for GcpComputeEngineHost {
         resource_batch
             .terraform
             .resource
-            .entry("local_file".to_string())
+            .entry("local_file".to_owned())
             .or_default()
             .insert(
-                "vm_instance_ssh_key_pem".to_string(),
+                "vm_instance_ssh_key_pem".to_owned(),
                 json!({
                     "content": "${tls_private_key.vm_instance_ssh_key.private_key_pem}",
                     "filename": ".ssh/vm_instance_ssh_key_pem",
@@ -362,7 +362,7 @@ impl Host for GcpComputeEngineHost {
                 let firewall_rule = resource_batch
                     .terraform
                     .resource
-                    .entry("google_compute_firewall".to_string())
+                    .entry("google_compute_firewall".to_owned())
                     .or_default()
                     .entry(format!("open-external-port-{}", port))
                     .or_insert(json!({
@@ -397,7 +397,7 @@ impl Host for GcpComputeEngineHost {
         resource_batch
             .terraform
             .resource
-            .entry("google_compute_instance".to_string())
+            .entry("google_compute_instance".to_owned())
             .or_default()
             .insert(
                 vm_key.clone(),
@@ -460,7 +460,7 @@ impl Host for GcpComputeEngineHost {
 
                 Arc::new(LaunchedComputeEngine {
                     resource_result: resource_result.clone(),
-                    user: self.user.as_ref().cloned().unwrap_or("hydro".to_string()),
+                    user: self.user.as_ref().cloned().unwrap_or("hydro".to_owned()),
                     internal_ip,
                     external_ip,
                 })

@@ -375,10 +375,10 @@ pub trait DfirBuilder {
         to: &LocationId,
         input_ident: syn::Ident,
         out_ident: &syn::Ident,
-        serialize: &Option<DebugExpr>,
+        serialize: Option<&DebugExpr>,
         sink: syn::Expr,
         source: syn::Expr,
-        deserialize: &Option<DebugExpr>,
+        deserialize: Option<&DebugExpr>,
         tag_id: usize,
     );
 
@@ -387,7 +387,7 @@ pub trait DfirBuilder {
         on: &LocationId,
         source_expr: syn::Expr,
         out_ident: &syn::Ident,
-        deserialize: &Option<DebugExpr>,
+        deserialize: Option<&DebugExpr>,
         tag_id: usize,
     );
 
@@ -396,7 +396,7 @@ pub trait DfirBuilder {
         on: &LocationId,
         sink_expr: syn::Expr,
         input_ident: &syn::Ident,
-        serialize: &Option<DebugExpr>,
+        serialize: Option<&DebugExpr>,
         tag_id: usize,
     );
 }
@@ -530,10 +530,10 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         to: &LocationId,
         input_ident: syn::Ident,
         out_ident: &syn::Ident,
-        serialize: &Option<DebugExpr>,
+        serialize: Option<&DebugExpr>,
         sink: syn::Expr,
         source: syn::Expr,
-        deserialize: &Option<DebugExpr>,
+        deserialize: Option<&DebugExpr>,
         tag_id: usize,
     ) {
         let sender_builder = self.get_dfir_mut(from);
@@ -581,7 +581,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         on: &LocationId,
         source_expr: syn::Expr,
         out_ident: &syn::Ident,
-        deserialize: &Option<DebugExpr>,
+        deserialize: Option<&DebugExpr>,
         tag_id: usize,
     ) {
         let receiver_builder = self.get_dfir_mut(on);
@@ -609,7 +609,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         on: &LocationId,
         sink_expr: syn::Expr,
         input_ident: &syn::Ident,
-        serialize: &Option<DebugExpr>,
+        serialize: Option<&DebugExpr>,
         tag_id: usize,
     ) {
         let sender_builder = self.get_dfir_mut(on);
@@ -1087,7 +1087,7 @@ impl HydroRoot {
                             &input.metadata().location_id,
                             sink_expr,
                             &input_ident,
-                            serialize_fn,
+                            serialize_fn.as_ref(),
                             *next_stmt_id,
                         );
                     }
@@ -1200,7 +1200,7 @@ impl HydroRoot {
     pub fn print_root(&self) -> String {
         match self {
             HydroRoot::ForEach { f, .. } => format!("ForEach({:?})", f),
-            HydroRoot::SendExternal { .. } => "SendExternal".to_string(),
+            HydroRoot::SendExternal { .. } => "SendExternal".to_owned(),
             HydroRoot::DestSink { sink, .. } => format!("DestSink({:?})", sink),
             HydroRoot::CycleSink { ident, .. } => format!("CycleSink({:?})", ident),
         }
@@ -3344,10 +3344,10 @@ impl HydroNode {
                                     &out_location,
                                     input_ident,
                                     &receiver_stream_ident,
-                                    serialize_pipeline,
+                                    serialize_pipeline.as_ref(),
                                     sink_expr,
                                     source_expr,
-                                    deserialize_pipeline,
+                                    deserialize_pipeline.as_ref(),
                                     *next_stmt_id,
                                 );
                             }
@@ -3386,7 +3386,7 @@ impl HydroNode {
                                     &out_location,
                                     source_expr,
                                     &receiver_stream_ident,
-                                    deserialize_pipeline,
+                                    deserialize_pipeline.as_ref(),
                                     *next_stmt_id,
                                 );
                             }
@@ -3688,16 +3688,16 @@ impl HydroNode {
             HydroNode::Placeholder => {
                 panic!()
             }
-            HydroNode::Cast { .. } => "Cast()".to_string(),
-            HydroNode::ObserveNonDet { .. } => "ObserveNonDet()".to_string(),
+            HydroNode::Cast { .. } => "Cast()".to_owned(),
+            HydroNode::ObserveNonDet { .. } => "ObserveNonDet()".to_owned(),
             HydroNode::Source { source, .. } => format!("Source({:?})", source),
             HydroNode::SingletonSource { value, .. } => format!("SingletonSource({:?})", value),
             HydroNode::CycleSource { ident, .. } => format!("CycleSource({})", ident),
             HydroNode::Tee { inner, .. } => format!("Tee({})", inner.0.borrow().print_root()),
-            HydroNode::YieldConcat { .. } => "YieldConcat()".to_string(),
-            HydroNode::BeginAtomic { .. } => "BeginAtomic()".to_string(),
-            HydroNode::EndAtomic { .. } => "EndAtomic()".to_string(),
-            HydroNode::Batch { .. } => "Batch()".to_string(),
+            HydroNode::YieldConcat { .. } => "YieldConcat()".to_owned(),
+            HydroNode::BeginAtomic { .. } => "BeginAtomic()".to_owned(),
+            HydroNode::EndAtomic { .. } => "EndAtomic()".to_owned(),
+            HydroNode::Batch { .. } => "Batch()".to_owned(),
             HydroNode::Chain { first, second, .. } => {
                 format!("Chain({}, {})", first.print_root(), second.print_root())
             }
@@ -3731,25 +3731,25 @@ impl HydroNode {
             HydroNode::AntiJoin { pos, neg, .. } => {
                 format!("AntiJoin({}, {})", pos.print_root(), neg.print_root())
             }
-            HydroNode::ResolveFutures { .. } => "ResolveFutures()".to_string(),
-            HydroNode::ResolveFuturesOrdered { .. } => "ResolveFuturesOrdered()".to_string(),
+            HydroNode::ResolveFutures { .. } => "ResolveFutures()".to_owned(),
+            HydroNode::ResolveFuturesOrdered { .. } => "ResolveFuturesOrdered()".to_owned(),
             HydroNode::Map { f, .. } => format!("Map({:?})", f),
             HydroNode::FlatMap { f, .. } => format!("FlatMap({:?})", f),
             HydroNode::Filter { f, .. } => format!("Filter({:?})", f),
             HydroNode::FilterMap { f, .. } => format!("FilterMap({:?})", f),
-            HydroNode::DeferTick { .. } => "DeferTick()".to_string(),
-            HydroNode::Enumerate { .. } => "Enumerate()".to_string(),
+            HydroNode::DeferTick { .. } => "DeferTick()".to_owned(),
+            HydroNode::Enumerate { .. } => "Enumerate()".to_owned(),
             HydroNode::Inspect { f, .. } => format!("Inspect({:?})", f),
-            HydroNode::Unique { .. } => "Unique()".to_string(),
-            HydroNode::Sort { .. } => "Sort()".to_string(),
+            HydroNode::Unique { .. } => "Unique()".to_owned(),
+            HydroNode::Sort { .. } => "Sort()".to_owned(),
             HydroNode::Fold { init, acc, .. } => format!("Fold({:?}, {:?})", init, acc),
             HydroNode::Scan { init, acc, .. } => format!("Scan({:?}, {:?})", init, acc),
             HydroNode::FoldKeyed { init, acc, .. } => format!("FoldKeyed({:?}, {:?})", init, acc),
             HydroNode::Reduce { f, .. } => format!("Reduce({:?})", f),
             HydroNode::ReduceKeyed { f, .. } => format!("ReduceKeyed({:?})", f),
             HydroNode::ReduceKeyedWatermark { f, .. } => format!("ReduceKeyedWatermark({:?})", f),
-            HydroNode::Network { .. } => "Network()".to_string(),
-            HydroNode::ExternalInput { .. } => "ExternalInput()".to_string(),
+            HydroNode::Network { .. } => "Network()".to_owned(),
+            HydroNode::ExternalInput { .. } => "ExternalInput()".to_owned(),
             HydroNode::Counter { tag, duration, .. } => {
                 format!("Counter({:?}, {:?})", tag, duration)
             }

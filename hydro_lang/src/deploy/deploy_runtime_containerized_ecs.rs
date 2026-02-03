@@ -419,10 +419,10 @@ fn ecs_membership_stream(
                         };
 
                         // Use task_id as the member identifier
-                        current_tasks.insert(task_id.to_string());
+                        current_tasks.insert(task_id.to_owned());
                         if !known_tasks.contains(task_id) {
                             trace!(name: "task_joined", %task_id);
-                            events.push((task_id.to_string(), MembershipEvent::Joined));
+                            events.push((task_id.to_owned(), MembershipEvent::Joined));
                         }
                     }
                 }
@@ -498,7 +498,7 @@ async fn resolve_task_ip(task_id: &str) -> String {
             let Some(task_arn) = task.task_arn() else {
                 continue;
             };
-            let current_task_id = task_arn.rsplit('/').next().unwrap_or("");
+            let current_task_id = task_arn.rsplit('/').next().unwrap_or_default();
 
             if current_task_id == task_id
                 && let Some(ip) = task
@@ -509,7 +509,7 @@ async fn resolve_task_ip(task_id: &str) -> String {
                     .and_then(|d| d.value())
             {
                 trace!(name: "resolved_ip", %task_id, %ip);
-                return ip.to_string();
+                return ip.to_owned();
             }
         }
 
@@ -549,10 +549,10 @@ async fn resolve_task_family_to_task_id(task_family: &str) -> String {
         };
 
         // Extract task ID from ARN
-        let task_id = task_arn.rsplit('/').next().unwrap_or("");
+        let task_id = task_arn.rsplit('/').next().unwrap_or_default();
         if !task_id.is_empty() {
             trace!(name: "resolved_task_id", %task_family, %task_id);
-            return task_id.to_string();
+            return task_id.to_owned();
         }
 
         trace!(name: "resolve_family_invalid_arn", %task_family, %task_arn);
@@ -568,5 +568,5 @@ fn get_self_task_id() -> String {
         .rsplit('/')
         .next()
         .expect("Invalid ECS metadata URI format")
-        .to_string()
+        .to_owned()
 }

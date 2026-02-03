@@ -578,10 +578,9 @@ mod tests {
 
         let rx_ght = MyGht::new_from(r_iter.clone().map(|(x, y)| var_expr!(x, y)));
         let sb_ght = MyGht::new_from(s_iter.clone().map(|(y, b)| var_expr!(b, y)));
-        let tx_ght = MyGht::new_from(t_iter.clone().map(|(z, x)| var_expr!(x, z)));
+        let tx_ght = MyGht::new_from(t_iter.map(|(z, x)| var_expr!(x, z)));
 
         let r_x = r_iter
-            .clone()
             .map(|(x, _y)| x)
             .collect::<HashSet<_, BuildHasherDefault<DefaultHasher>>>();
         let t_x = s_iter

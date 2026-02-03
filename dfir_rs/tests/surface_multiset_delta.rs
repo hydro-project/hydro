@@ -98,24 +98,24 @@ fn test_chat_app_replay() {
     users_send.send(1).unwrap();
     users_send.send(2).unwrap();
 
-    messages_send.send("hello".to_string()).unwrap();
-    messages_send.send("world".to_string()).unwrap();
+    messages_send.send("hello".to_owned()).unwrap();
+    messages_send.send("world".to_owned()).unwrap();
 
     chat_server.run_tick_sync();
 
     assert_eq!(
         &[
-            (1, "hello".to_string()),
-            (2, "hello".to_string()),
-            (1, "world".to_string()),
-            (2, "world".to_string())
+            (1, "hello".to_owned()),
+            (2, "hello".to_owned()),
+            (1, "world".to_owned()),
+            (2, "world".to_owned())
         ],
         &*collect_ready::<Vec<_>, _>(&mut out_recv),
     );
 
     users_send.send(3).unwrap();
 
-    messages_send.send("goodbye".to_string()).unwrap();
+    messages_send.send("goodbye".to_owned()).unwrap();
 
     chat_server.run_tick_sync();
 
@@ -123,11 +123,11 @@ fn test_chat_app_replay() {
 
     assert_eq!(
         &[
-            (3, "hello".to_string()),
-            (3, "world".to_string()),
-            (1, "goodbye".to_string()),
-            (2, "goodbye".to_string()),
-            (3, "goodbye".to_string())
+            (3, "hello".to_owned()),
+            (3, "world".to_owned()),
+            (1, "goodbye".to_owned()),
+            (2, "goodbye".to_owned()),
+            (3, "goodbye".to_owned())
         ],
         &*collect_ready::<Vec<_>, _>(&mut out_recv),
     );
@@ -152,10 +152,10 @@ fn test_chat_app_replay_manual() {
     flow.run_tick_sync();
     assert_eq!(
         &[
-            (1, "hello".to_string()),
-            (2, "hello".to_string()),
-            (1, "world".to_string()),
-            (2, "world".to_string())
+            (1, "hello".to_owned()),
+            (2, "hello".to_owned()),
+            (1, "world".to_owned()),
+            (2, "world".to_owned())
         ],
         &*collect_ready::<Vec<_>, _>(&mut result_recv),
     );
@@ -173,11 +173,11 @@ fn test_chat_app_replay_manual() {
     flow.run_tick_sync();
     assert_eq!(
         &[
-            (3, "hello".to_string()),
-            (3, "world".to_string()),
-            (1, "goodbye".to_string()),
-            (2, "goodbye".to_string()),
-            (3, "goodbye".to_string())
+            (3, "hello".to_owned()),
+            (3, "world".to_owned()),
+            (1, "goodbye".to_owned()),
+            (2, "goodbye".to_owned()),
+            (3, "goodbye".to_owned())
         ],
         &*collect_ready::<Vec<_>, _>(&mut result_recv),
     );

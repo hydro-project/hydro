@@ -820,10 +820,10 @@ impl DfirBuilder for SimBuilder {
         to: &LocationId,
         input_ident: syn::Ident,
         out_ident: &syn::Ident,
-        serialize: &Option<DebugExpr>,
+        serialize: Option<&DebugExpr>,
         sink: syn::Expr,
         source: syn::Expr,
-        deserialize: &Option<DebugExpr>,
+        deserialize: Option<&DebugExpr>,
         tag_id: usize,
     ) {
         let root = get_this_crate();
@@ -1059,7 +1059,7 @@ impl DfirBuilder for SimBuilder {
         on: &LocationId,
         source_expr: syn::Expr,
         out_ident: &syn::Ident,
-        deserialize: &Option<DebugExpr>,
+        deserialize: Option<&DebugExpr>,
         tag_id: usize,
     ) {
         if let Some(deserialize_pipeline) = deserialize {
@@ -1086,7 +1086,7 @@ impl DfirBuilder for SimBuilder {
         on: &LocationId,
         sink_expr: syn::Expr,
         input_ident: &syn::Ident,
-        serialize: &Option<DebugExpr>,
+        serialize: Option<&DebugExpr>,
         tag_id: usize,
     ) {
         let grabbed_ident = syn::Ident::new(&format!("__sink_{tag_id}"), Span::call_site());
@@ -1133,7 +1133,7 @@ fn location_for_op(op_meta: &HydroIrOpMetadata) -> (String, String, String) {
                 .and_then(|s| {
                     s.lines()
                         .nth(lineno.saturating_sub(1).try_into().unwrap())
-                        .map(|s| s.to_string())
+                        .map(|s| s.to_owned())
                 })
                 .unwrap_or_default();
 
@@ -1145,7 +1145,7 @@ fn location_for_op(op_meta: &HydroIrOpMetadata) -> (String, String, String) {
 
             let filename_display = relative_path
                 .map(|p| p.display().to_string())
-                .unwrap_or_else(|| filename.to_string());
+                .unwrap_or_else(|| filename.to_owned());
 
             Some((
                 format!("{}:{}:{}", filename_display, lineno, colno),
@@ -1153,11 +1153,5 @@ fn location_for_op(op_meta: &HydroIrOpMetadata) -> (String, String, String) {
                 format!("{:>1$}", "", (colno - 1).try_into().unwrap()),
             ))
         })
-        .unwrap_or_else(|| {
-            (
-                "unknown location".to_string(),
-                "".to_string(),
-                "".to_string(),
-            )
-        })
+        .unwrap_or_else(|| ("unknown location".to_owned(), "".to_owned(), "".to_owned()))
 }

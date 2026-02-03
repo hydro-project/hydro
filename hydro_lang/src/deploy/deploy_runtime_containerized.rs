@@ -320,10 +320,10 @@ fn docker_membership_stream(
     let events_deployment_instance = deployment_instance.clone();
     tokio::spawn(async move {
         let mut filters = HashMap::new();
-        filters.insert("type".to_string(), vec!["container".to_string()]);
+        filters.insert("type".to_owned(), vec!["container".to_owned()]);
         filters.insert(
-            "event".to_string(),
-            vec!["start".to_string(), "die".to_string()],
+            "event".to_owned(),
+            vec!["start".to_owned(), "die".to_owned()],
         );
         let event_options = Some(EventsOptions {
             filters: Some(filters),
@@ -335,12 +335,15 @@ fn docker_membership_stream(
             if let Some((name, membership_event)) = event.ok().and_then(|e| {
                 let name = e
                     .actor
-                    .and_then(|a| a.attributes.and_then(|attrs| attrs.get("name").cloned()))?;
+                    .as_ref()
+                    .and_then(|a| a.attributes.as_ref())
+                    .and_then(|attrs| attrs.get("name"))
+                    .map(|s| &**s)?;
 
                 if name.contains(format!("{events_deployment_instance}-{location_key}").as_str()) {
                     match e.action.as_deref() {
-                        Some("start") => Some((name.clone(), MembershipEvent::Joined)),
-                        Some("die") => Some((name, MembershipEvent::Left)),
+                        Some("start") => Some((name.to_owned(), MembershipEvent::Joined)),
+                        Some("die") => Some((name.to_owned(), MembershipEvent::Left)),
                         _ => None,
                     }
                 } else {
@@ -362,7 +365,7 @@ fn docker_membership_stream(
     let snapshot_stream = futures::stream::once(async move {
         let mut filters = HashMap::new();
         filters.insert(
-            "name".to_string(),
+            "name".to_owned(),
             vec![format!("{deployment_instance}-{location_key}")],
         );
         let options = Some(ListContainersOptions {
@@ -374,18 +377,12 @@ fn docker_membership_stream(
             .list_containers(options)
             .await
             .unwrap_or_default()
-            .into_iter()
-            .filter_map(|c| {
-                c.names
-                    .and_then(|names| names.first().map(|n| n.trim_start_matches('/').to_string()))
-            })
-            .filter_map(|name| {
-                if seen_joined_snapshot.lock().unwrap().insert(name.clone()) {
-                    Some((name, MembershipEvent::Joined))
-                } else {
-                    None
-                }
-            })
+            .iter()
+            .filter_map(|c| c.names.as_deref())
+            .filter_map(|names| names.first())
+            .map(|name| name.trim_start_matches('/'))
+            .filter(|&name| seen_joined_snapshot.lock().unwrap().insert(name.to_owned()))
+            .map(|name| (name.to_owned(), MembershipEvent::Joined))
             .collect::<Vec<_>>()
     })
     .flat_map(futures::stream::iter);
@@ -397,19 +394,13 @@ fn docker_membership_stream(
             let mut seen = seen_joined_events.lock().unwrap();
             match event {
                 MembershipEvent::Joined => {
-                    if seen.insert(name.clone()) {
+                    if seen.insert(name.to_owned()) {
                         Some((name, MembershipEvent::Joined))
                     } else {
                         None
                     }
                 }
-                MembershipEvent::Left => {
-                    if seen.remove(&name) {
-                        Some((name, MembershipEvent::Left))
-                    } else {
-                        None
-                    }
-                }
+                MembershipEvent::Left => seen.take(&name).map(|name| (name, MembershipEvent::Left)),
             }
         },
     );

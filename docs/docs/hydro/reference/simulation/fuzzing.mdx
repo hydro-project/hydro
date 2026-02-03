@@ -22,8 +22,8 @@ fn test_paxos_commits() {
         .with_cluster_size(&acceptors, 3)
         .fuzz(async || {
             // Send proposals and check commits
-            proposal_port.send("value1".to_string());
-            commit_port.assert_yields(["value1".to_string()]).await;
+            proposal_port.send("value1".to_owned());
+            commit_port.assert_yields(["value1".to_owned()]).await;
         });
 }
 ```

@@ -22,12 +22,12 @@ pub fn parse_command(line: String) -> Option<KvsMessage> {
         "PUT" => {
             let kv = args.split_once(',')?;
             Some(KvsMessage::Put {
-                key: kv.0.trim().to_string(),
-                value: kv.1.trim().to_string(),
+                key: kv.0.trim().to_owned(),
+                value: kv.1.trim().to_owned(),
             })
         }
         "GET" => Some(KvsMessage::Get {
-            key: args.trim().to_string(),
+            key: args.trim().to_owned(),
         }),
         _ => None,
     }

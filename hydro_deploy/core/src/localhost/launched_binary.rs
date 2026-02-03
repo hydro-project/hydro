@@ -164,7 +164,7 @@ impl LaunchedBinary for LaunchedLocalhostBinary {
         if let Err(err) = { self.child.lock().await.kill() }
             && !matches!(err.kind(), std::io::ErrorKind::InvalidInput)
         {
-            Err(err)?;
+            return Err(err.into());
         }
 
         // Run perf post-processing and download perf output.
