@@ -25,7 +25,7 @@ pub fn decouple_cluster<'a>(flow: &mut FlowBuilder<'a>) -> (Cluster<'a, ()>, Clu
     let cluster1 = flow.cluster();
     let cluster2 = flow.cluster();
     cluster1
-        .source_iter(q!(vec!(CLUSTER_SELF_ID.clone())))
+        .source_iter(q!(vec!(CLUSTER_SELF_ID)))
         // .for_each(q!(|message| println!("hey, {}", message)))
         .inspect(q!(|message| println!("Cluster1 node sending message: {}", message)))
         .decouple_cluster(&cluster2)

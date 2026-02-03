@@ -225,9 +225,9 @@ impl Drop for LaunchedSshBinary {
 
 #[async_trait]
 pub trait LaunchedSshHost: Send + Sync {
-    fn get_internal_ip(&self) -> String;
-    fn get_external_ip(&self) -> Option<String>;
-    fn get_cloud_provider(&self) -> String;
+    fn get_internal_ip(&self) -> &str;
+    fn get_external_ip(&self) -> Option<&str>;
+    fn get_cloud_provider(&self) -> &'static str;
     fn resource_result(&self) -> &Arc<ResourceResult>;
     fn ssh_user(&self) -> &str;
 
@@ -245,21 +245,17 @@ pub trait LaunchedSshHost: Send + Sync {
     async fn open_ssh_session(&self) -> Result<AsyncSession<NoCheckHandler>> {
         let target_addr = SocketAddr::new(
             self.get_external_ip()
-                .as_ref()
-                .context(
+                .context(format!(
+                    "{} host must be configured with an external IP to launch binaries",
                     self.get_cloud_provider()
-                        + " host must be configured with an external IP to launch binaries",
-                )?
+                ))?
                 .parse()
                 .unwrap(),
             22,
         );
 
         let res = ProgressTracker::leaf(
-            format!(
-                "connecting to host @ {}",
-                self.get_external_ip().as_ref().unwrap()
-            ),
+            format!("connecting to host @ {}", self.get_external_ip().unwrap()),
             async_retry(
                 &|| async {
                     let mut config = Config::default();
@@ -307,7 +303,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
         match bind_type {
             BaseServerStrategy::UnixSocket => ServerBindConfig::UnixSocket,
             BaseServerStrategy::InternalTcpPort(hint) => {
-                ServerBindConfig::TcpPort(self.get_internal_ip().clone(), *hint)
+                ServerBindConfig::TcpPort(self.get_internal_ip().to_owned(), *hint)
             }
             BaseServerStrategy::ExternalTcpPort(_) => todo!(),
         }

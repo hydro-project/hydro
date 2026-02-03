@@ -129,7 +129,7 @@ impl LaunchedHost for LaunchedLocalhost {
         match bind_type {
             BaseServerStrategy::UnixSocket => ServerBindConfig::UnixSocket,
             BaseServerStrategy::InternalTcpPort(port) => {
-                ServerBindConfig::TcpPort("127.0.0.1".to_string(), *port)
+                ServerBindConfig::TcpPort("127.0.0.1".to_owned(), *port)
             }
             BaseServerStrategy::ExternalTcpPort(_) => panic!("Cannot bind to external port"),
         }
@@ -213,7 +213,7 @@ impl LaunchedHost for LaunchedLocalhost {
                 .arg("--print")
                 .arg("target-libdir")
                 .output()
-                .map(|output| String::from_utf8(output.stdout).unwrap().trim().to_string())
+                .map(|output| str::from_utf8(&output.stdout).unwrap().trim().to_owned())
                 .unwrap()
         });
 

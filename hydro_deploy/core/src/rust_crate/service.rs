@@ -305,7 +305,7 @@ impl Service for RustCrateService {
             None,
             || async {
                 let launched_binary = self.launched_binary.get().unwrap();
-                launched_binary.stdin().send("stop\n".to_string())?;
+                launched_binary.stdin().send("stop\n".to_owned())?;
 
                 let timeout_result = ProgressTracker::leaf(
                     "waiting for exit",

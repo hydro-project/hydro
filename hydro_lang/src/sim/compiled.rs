@@ -511,10 +511,10 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimReceiver<T, O,
             future: async move {
                 self.with_stream(async |stream| {
                     if let Some(next) = stream.next().await {
-                        Err(format!(
+                        return Err(format!(
                             "Stream yielded unexpected message: {:?}, expected termination",
                             next
-                        ))?;
+                        ));
                     }
                     Ok(())
                 })
@@ -555,16 +555,16 @@ impl<T: Serialize + DeserializeOwned> SimReceiver<T, TotalOrder, ExactlyOnce> {
                     if let Some(next) = self.next().await {
                         let next_expected = expected.pop_front().unwrap();
                         if next != next_expected {
-                            Err(format!(
+                            return Err(format!(
                                 "Stream yielded unexpected message: {:?}, expected: {:?}",
                                 next, next_expected
-                            ))?
+                            ));
                         }
                     } else {
-                        Err(format!(
+                        return Err(format!(
                             "Stream ended early, still expected: {:?}",
                             expected
-                        ))?;
+                        ));
                     }
                 }
 
@@ -686,13 +686,16 @@ impl<T: Serialize + DeserializeOwned> SimReceiver<T, NoOrder, ExactlyOnce> {
                             if let Some((i, _)) = idx {
                                 expected.swap_remove(i);
                             } else {
-                                Err(format!("Stream yielded unexpected message: {:?}", next))?
+                                return Err(format!(
+                                    "Stream yielded unexpected message: {:?}",
+                                    next
+                                ));
                             }
                         } else {
-                            Err(format!(
+                            return Err(format!(
                                 "Stream ended early, still expected: {:?}",
                                 expected
-                            ))?
+                            ));
                         }
                     }
 

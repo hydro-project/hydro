@@ -102,7 +102,7 @@ pub fn initialize_tracing() {
         match err {
             std::env::VarError::NotPresent => {
                 // RUST_LOG not set, the user wants the default.
-                "error".to_string()
+                "error".to_owned()
             }
             std::env::VarError::NotUnicode(v) => {
                 // Almost certainly there is a configuration issue.
@@ -110,7 +110,7 @@ pub fn initialize_tracing() {
                     "RUST_LOG is not unicode, defaulting to 'error' directive: {:?}",
                     v
                 );
-                "error".to_string()
+                "error".to_owned()
             }
         }
     });
@@ -118,7 +118,7 @@ pub fn initialize_tracing() {
     let filter = EnvFilter::try_new(&rust_log).unwrap_or_else(|err| {
         // Configuration error.
         eprintln!("Failed to parse RUST_LOG: {}, err: {:?}", rust_log, err);
-        "error".to_string().parse().unwrap()
+        "error".to_owned().parse().unwrap()
     });
 
     initialize_tracing_with_filter(filter)

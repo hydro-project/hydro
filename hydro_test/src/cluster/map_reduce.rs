@@ -9,7 +9,7 @@ pub fn map_reduce<'a>(flow: &mut FlowBuilder<'a>) -> (Process<'a, Leader>, Clust
 
     let words = process
         .source_iter(q!(vec!["abc", "abc", "xyz", "abc"]))
-        .map(q!(|s| s.to_string()));
+        .map(q!(|s| s.to_owned()));
 
     let partitioned_words = words
         .round_robin(&cluster, TCP.bincode(), nondet!(/** test */))

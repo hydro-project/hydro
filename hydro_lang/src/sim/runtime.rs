@@ -138,7 +138,7 @@ impl<T> SimHook for StreamHook<T, TotalOrder> {
         if let Some(to_release) = self.to_release.take() {
             let (batch_location, line, caret_indent) = self.batch_location;
             let note_str = if to_release.is_empty() {
-                "^ releasing no items".to_string()
+                "^ releasing no items".to_owned()
             } else {
                 format!(
                     "^ releasing items: {:?}",
@@ -222,7 +222,7 @@ impl<T> SimHook for StreamHook<T, NoOrder> {
         if let Some(to_release) = self.to_release.take() {
             let (batch_location, line, caret_indent) = self.batch_location;
             let note_str = if to_release.is_empty() {
-                "^ releasing no items".to_string()
+                "^ releasing no items".to_owned()
             } else {
                 format!(
                     "^ releasing unordered items: {:?}",
@@ -321,7 +321,7 @@ impl<K: Hash + Eq + Clone, V> SimHook for KeyedStreamHook<K, V, TotalOrder> {
         if let Some(to_release) = self.to_release.take() {
             let (batch_location, line, caret_indent) = self.batch_location;
             let note_str = if to_release.is_empty() {
-                "^ releasing no items".to_string()
+                "^ releasing no items".to_owned()
             } else {
                 format!(
                     "^ releasing items: {:?}",
@@ -418,7 +418,7 @@ impl<K: Hash + Eq + Clone, V> SimHook for KeyedStreamHook<K, V, NoOrder> {
         if let Some(to_release) = self.to_release.take() {
             let (batch_location, line, caret_indent) = self.batch_location;
             let note_str = if to_release.is_empty() {
-                "^ releasing no items".to_string()
+                "^ releasing no items".to_owned()
             } else {
                 format!(
                     "^ releasing unordered items: {:?}",
@@ -693,7 +693,7 @@ impl<K: Hash + Eq + Clone, V: Clone> SimHook for KeyedSingletonHook<K, V> {
         if let Some(to_release) = self.to_release.take() {
             let (batch_location, line, caret_indent) = self.batch_location;
             let note_str = if to_release.is_empty() {
-                "^ releasing no items".to_string()
+                "^ releasing no items".to_owned()
             } else {
                 let mut mapping_text = String::new();
                 for (key, value, is_new) in &to_release {

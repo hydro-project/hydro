@@ -111,18 +111,18 @@ impl<'a, W> HydroJson<'a, W> {
     /// Convert HydroEdgeType to string representation for semantic tags
     fn edge_type_to_string(edge_type: HydroEdgeProp) -> String {
         match edge_type {
-            HydroEdgeProp::Bounded => "Bounded".to_string(),
-            HydroEdgeProp::Unbounded => "Unbounded".to_string(),
-            HydroEdgeProp::TotalOrder => "TotalOrder".to_string(),
-            HydroEdgeProp::NoOrder => "NoOrder".to_string(),
-            HydroEdgeProp::Keyed => "Keyed".to_string(),
-            HydroEdgeProp::Stream => "Stream".to_string(),
-            HydroEdgeProp::KeyedSingleton => "KeyedSingleton".to_string(),
-            HydroEdgeProp::KeyedStream => "KeyedStream".to_string(),
-            HydroEdgeProp::Singleton => "Singleton".to_string(),
-            HydroEdgeProp::Optional => "Optional".to_string(),
-            HydroEdgeProp::Network => "Network".to_string(),
-            HydroEdgeProp::Cycle => "Cycle".to_string(),
+            HydroEdgeProp::Bounded => "Bounded".to_owned(),
+            HydroEdgeProp::Unbounded => "Unbounded".to_owned(),
+            HydroEdgeProp::TotalOrder => "TotalOrder".to_owned(),
+            HydroEdgeProp::NoOrder => "NoOrder".to_owned(),
+            HydroEdgeProp::Keyed => "Keyed".to_owned(),
+            HydroEdgeProp::Stream => "Stream".to_owned(),
+            HydroEdgeProp::KeyedSingleton => "KeyedSingleton".to_owned(),
+            HydroEdgeProp::KeyedStream => "KeyedStream".to_owned(),
+            HydroEdgeProp::Singleton => "Singleton".to_owned(),
+            HydroEdgeProp::Optional => "Optional".to_owned(),
+            HydroEdgeProp::Network => "Network".to_owned(),
+            HydroEdgeProp::Cycle => "Cycle".to_owned(),
         }
     }
 
@@ -251,12 +251,12 @@ impl<'a, W> HydroJson<'a, W> {
                         .filename
                         .as_deref()
                         .map(|f| Self::truncate_path(f))
-                        .unwrap_or_else(|| "unknown".to_string());
+                        .unwrap_or_else(|| "unknown".to_owned());
 
-                    let short_fn_name = Self::truncate_function_name(&elem.fn_name);
+                    let short_fn_name = Self::truncate_function_name(&elem.fn_name).to_owned();
 
                     BacktraceFrame {
-                        fn_name: short_fn_name.clone(),
+                        fn_name: short_fn_name.to_owned(),
                         function: short_fn_name,
                         file: short_filename.clone(),
                         filename: short_filename,
@@ -285,14 +285,14 @@ impl<'a, W> HydroJson<'a, W> {
             // Keep last 2 components
             parts[parts.len().saturating_sub(2)..].join("/")
         } else {
-            path.to_string()
+            path.to_owned()
         }
     }
 
     /// Truncate function names to remove module paths
-    fn truncate_function_name(fn_name: &str) -> String {
+    fn truncate_function_name(fn_name: &str) -> &str {
         // Remove everything before the last "::" to get just the function name
-        fn_name.split("::").last().unwrap_or(fn_name).to_string()
+        fn_name.split("::").last().unwrap_or(fn_name)
     }
 }
 
@@ -344,20 +344,20 @@ where
         let enhanced_full_label = if short_label.len() >= full_len.saturating_sub(2) {
             // If they're nearly the same length, add more context to full label
             match short_label.as_str() {
-                "inspect" => "inspect [debug output]".to_string(),
-                "persist" => "persist [state storage]".to_string(),
-                "tee" => "tee [branch dataflow]".to_string(),
-                "delta" => "delta [change detection]".to_string(),
-                "spin" => "spin [delay/buffer]".to_string(),
-                "send_bincode" => "send_bincode [send data to process/cluster]".to_string(),
+                "inspect" => "inspect [debug output]".to_owned(),
+                "persist" => "persist [state storage]".to_owned(),
+                "tee" => "tee [branch dataflow]".to_owned(),
+                "delta" => "delta [change detection]".to_owned(),
+                "spin" => "spin [delay/buffer]".to_owned(),
+                "send_bincode" => "send_bincode [send data to process/cluster]".to_owned(),
                 "broadcast_bincode" => {
-                    "broadcast_bincode [send data to all cluster members]".to_string()
+                    "broadcast_bincode [send data to all cluster members]".to_owned()
                 }
-                "source_iter" => "source_iter [iterate over collection]".to_string(),
-                "source_stream" => "source_stream [receive external data stream]".to_string(),
-                "network(recv)" => "network(recv) [receive from network]".to_string(),
-                "network(send)" => "network(send) [send to network]".to_string(),
-                "dest_sink" => "dest_sink [output destination]".to_string(),
+                "source_iter" => "source_iter [iterate over collection]".to_owned(),
+                "source_stream" => "source_stream [receive external data stream]".to_owned(),
+                "network(recv)" => "network(recv) [receive from network]".to_owned(),
+                "network(send)" => "network(send) [send to network]".to_owned(),
+                "dest_sink" => "dest_sink [output destination]".to_owned(),
                 _ => {
                     if full_label.len() < 15 {
                         format!("{} [{}]", node_label, "hydro operator")
@@ -384,7 +384,7 @@ where
 
         let node = Node {
             id: node_id.to_string(),
-            node_type: node_type_str.to_string(),
+            node_type: node_type_str.to_owned(),
             full_label: enhanced_full_label,
             short_label: short_label.clone(),
             // Primary display label follows configuration (defaults to short)
@@ -439,10 +439,10 @@ where
             && src != dst
             && !semantic_tags.iter().any(|t| t == "Network")
         {
-            semantic_tags.push("Network".to_string());
+            semantic_tags.push("Network".to_owned());
         } else if semantic_tags.iter().all(|t| t != "Network") {
             // Only add Local if Network not present (complement for styling)
-            semantic_tags.push("Local".to_string());
+            semantic_tags.push("Local".to_owned());
         }
 
         // Ensure deterministic ordering of semantic tags
@@ -453,7 +453,7 @@ where
             source: src_id.to_string(),
             target: dst_id.to_string(),
             semantic_tags,
-            label: label.map(|s| s.to_string()),
+            label: label.map(|s| s.to_owned()),
         };
 
         self.edges
@@ -505,7 +505,7 @@ where
             "children": location_hierarchy
         }));
         node_assignments_choices.insert(
-            "location".to_string(),
+            "location".to_owned(),
             serde_json::Value::Object(location_assignments),
         );
 
@@ -518,7 +518,7 @@ where
                 "children": backtrace_hierarchy
             }));
             node_assignments_choices.insert(
-                "backtrace".to_string(),
+                "backtrace".to_owned(),
                 serde_json::Value::Object(backtrace_assignments),
             );
         }
@@ -558,21 +558,21 @@ where
 
         // Determine the selected hierarchy (first one is default)
         let selected_hierarchy = if !hierarchy_choices.is_empty() {
-            hierarchy_choices[0]["id"].as_str().map(|s| s.to_string())
+            hierarchy_choices[0]["id"].as_str()
         } else {
             None
         };
 
         #[derive(serde::Serialize)]
-        struct GraphPayload {
+        struct GraphPayload<'a> {
             nodes: Vec<serde_json::Value>,
             edges: Vec<serde_json::Value>,
             #[serde(rename = "hierarchyChoices")]
-            hierarchy_choices: Vec<serde_json::Value>,
+            hierarchy_choices: &'a [serde_json::Value],
             #[serde(rename = "nodeAssignments")]
             node_assignments: serde_json::Map<String, serde_json::Value>,
             #[serde(rename = "selectedHierarchy", skip_serializing_if = "Option::is_none")]
-            selected_hierarchy: Option<String>,
+            selected_hierarchy: Option<&'a str>,
             #[serde(rename = "edgeStyleConfig")]
             edge_style_config: serde_json::Value,
             #[serde(rename = "nodeTypeConfig")]
@@ -583,7 +583,7 @@ where
         let payload = GraphPayload {
             nodes: nodes_sorted,
             edges: edges_sorted,
-            hierarchy_choices,
+            hierarchy_choices: &hierarchy_choices,
             node_assignments: node_assignments_choices,
             selected_hierarchy,
             edge_style_config: Self::get_edge_style_config(),
@@ -604,8 +604,8 @@ impl<W> HydroJson<'_, W> {
             if let Some(backtrace_array) = node["data"]["backtrace"].as_array() {
                 // Check if any frame has meaningful filename or fn_name data
                 backtrace_array.iter().any(|frame| {
-                    let filename = frame["file"].as_str().unwrap_or("");
-                    let fn_name = frame["fn"].as_str().unwrap_or("");
+                    let filename = frame["file"].as_str().unwrap_or_default();
+                    let fn_name = frame["fn"].as_str().unwrap_or_default();
                     !filename.is_empty() || !fn_name.is_empty()
                 })
             } else {
@@ -644,7 +644,7 @@ impl<W> HydroJson<'_, W> {
             if let (Some(node_id), location_key) =
                 (node["id"].as_str(), &node["data"]["locationKey"])
             {
-                tmp.push((node_id.to_string(), location_key.clone()));
+                tmp.push((node_id.to_owned(), location_key.clone()));
             }
         }
         tmp.sort_by(|a, b| a.0.cmp(&b.0));
@@ -695,7 +695,7 @@ impl<W> HydroJson<'_, W> {
                             format!("fn_{}", Self::truncate_function_name(&elem.fn_name))
                         }
                     } else {
-                        Self::truncate_function_name(&elem.fn_name)
+                        Self::truncate_function_name(&elem.fn_name).to_owned()
                     };
                     hierarchy_path.push(label);
                 }
@@ -732,7 +732,7 @@ impl<W> HydroJson<'_, W> {
                     path_to_node_assignments
                         .entry(deepest_path)
                         .or_default()
-                        .push(node_id_str.to_string());
+                        .push(node_id_str.to_owned());
                 }
             }
         }
@@ -741,13 +741,13 @@ impl<W> HydroJson<'_, W> {
             self.build_hierarchy_tree_with_ids(&hierarchy_map);
 
         // Create a root node for nodes without backtraces
-        let root_id = "bt_root".to_string();
+        let root_id = "bt_root";
         let mut nodes_without_backtrace = Vec::new();
 
         // Collect all node IDs
         for node in self.nodes.iter() {
             if let Some(node_id_str) = node["id"].as_str() {
-                nodes_without_backtrace.push(node_id_str.to_string());
+                nodes_without_backtrace.push(node_id_str.to_owned());
             }
         }
 
@@ -765,11 +765,11 @@ impl<W> HydroJson<'_, W> {
         // If there are nodes without backtraces, create a root container for them
         if !nodes_without_backtrace.is_empty() {
             hierarchy.push(serde_json::json!({
-                "id": root_id.clone(),
+                "id": root_id,
                 "name": "(no backtrace)",
                 "children": []
             }));
-            path_to_id_map.insert("__root__".to_string(), root_id.clone());
+            path_to_id_map.insert("__root__".to_owned(), root_id.to_owned());
         }
 
         // Create node assignments using the actual hierarchy IDs
@@ -788,7 +788,7 @@ impl<W> HydroJson<'_, W> {
 
         // Assign nodes without backtraces to the root
         for node_id in nodes_without_backtrace {
-            node_assignments.insert(node_id, serde_json::Value::String(root_id.clone()));
+            node_assignments.insert(node_id, serde_json::Value::String(root_id.to_owned()));
         }
 
         // CRITICAL FIX: Apply ID remapping to node assignments
@@ -800,11 +800,11 @@ impl<W> HydroJson<'_, W> {
                 // Check if this container ID was remapped during collapsing
                 let final_container_id = id_remapping
                     .get(container_id)
-                    .map(|s| s.as_str())
+                    .map(|s| &**s)
                     .unwrap_or(container_id);
                 remapped_assignments.insert(
                     node_id.clone(),
-                    serde_json::Value::String(final_container_id.to_string()),
+                    serde_json::Value::String(final_container_id.to_owned()),
                 );
             }
         }
@@ -935,7 +935,7 @@ impl<W> HydroJson<'_, W> {
     /// id_remapping tracks which old IDs map to which new IDs after collapsing
     fn collapse_single_child_containers(
         node: serde_json::Value,
-        parent_name: Option<String>,
+        parent_name: Option<&str>,
         id_remapping: &mut HashMap<String, String>,
     ) -> serde_json::Value {
         let mut node_obj = match node {
@@ -946,21 +946,19 @@ impl<W> HydroJson<'_, W> {
         let current_name = node_obj
             .get("name")
             .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
+            .unwrap_or_default();
 
         let current_id = node_obj
             .get("id")
             .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
+            .unwrap_or_default();
 
         // Determine the effective name (combined with parent if collapsing)
         // Use → to show call chain (parent called child)
-        let effective_name = if let Some(parent) = parent_name.clone() {
+        let effective_name = if let Some(parent) = parent_name {
             format!("{} → {}", parent, current_name)
         } else {
-            current_name.clone()
+            current_name.to_owned()
         };
 
         // Check if this node has children (is a container)
@@ -972,25 +970,20 @@ impl<W> HydroJson<'_, W> {
                 let child_is_container = child
                     .get("children")
                     .and_then(|v| v.as_array())
-                    .map(|arr| !arr.is_empty())
-                    .unwrap_or(false);
+                    .is_some_and(|arr| !arr.is_empty());
 
                 if child_is_container {
-                    let child_id = child
-                        .get("id")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("")
-                        .to_string();
+                    let child_id = child.get("id").and_then(|v| v.as_str()).unwrap_or_default();
 
                     // Record that this parent's ID should map to the child's ID
                     if !current_id.is_empty() && !child_id.is_empty() {
-                        id_remapping.insert(current_id.clone(), child_id.clone());
+                        id_remapping.insert(current_id.to_owned(), child_id.to_owned());
                     }
 
                     // Collapse: recursively process the child with accumulated name
                     return Self::collapse_single_child_containers(
                         child.clone(),
-                        Some(effective_name),
+                        Some(&effective_name),
                         id_remapping,
                     );
                 }
@@ -1004,20 +997,14 @@ impl<W> HydroJson<'_, W> {
                 })
                 .collect();
 
+            node_obj.insert("name".to_owned(), serde_json::Value::String(effective_name));
             node_obj.insert(
-                "name".to_string(),
-                serde_json::Value::String(effective_name),
-            );
-            node_obj.insert(
-                "children".to_string(),
+                "children".to_owned(),
                 serde_json::Value::Array(processed_children),
             );
         } else {
             // Leaf node: just update name if accumulated
-            node_obj.insert(
-                "name".to_string(),
-                serde_json::Value::String(effective_name),
-            );
+            node_obj.insert("name".to_owned(), serde_json::Value::String(effective_name));
         }
 
         serde_json::Value::Object(node_obj)
@@ -1026,7 +1013,7 @@ impl<W> HydroJson<'_, W> {
     /// Extract meaningful file path
     fn extract_file_path(filename: &str) -> String {
         if filename.is_empty() {
-            return "unknown".to_string();
+            return "unknown".to_owned();
         }
 
         // Extract the most relevant part of the file path

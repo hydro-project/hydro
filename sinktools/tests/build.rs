@@ -151,9 +151,9 @@ async fn test_forward_unzip() {
         .map(|x: (i32, String)| (x.0 * 2, x.1.to_uppercase()))
         .unzip(sink1, sink2);
 
-    final_sink.send((1, "a".to_string())).await.unwrap();
-    final_sink.send((2, "b".to_string())).await.unwrap();
-    final_sink.send((3, "c".to_string())).await.unwrap();
+    final_sink.send((1, "a".to_owned())).await.unwrap();
+    final_sink.send((2, "b".to_owned())).await.unwrap();
+    final_sink.send((3, "c".to_owned())).await.unwrap();
     drop(final_sink);
 
     assert_eq!(&[2, 4, 6], &**collected1.borrow());
