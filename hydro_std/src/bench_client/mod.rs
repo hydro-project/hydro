@@ -66,7 +66,6 @@ where
     Output: Clone,
 {
     let dummy = clients.singleton(q!(0));
-    #[expect(unused_variables, reason = "sliced! requires at least 1 use statement")]
     let new_payload_ids = sliced! {
         let dummy_batched = use(dummy, nondet!(/** temp */));
         let mut next_virtual_client = use::state(|l| Optional::from(l.singleton(q!((0u32, None)))));

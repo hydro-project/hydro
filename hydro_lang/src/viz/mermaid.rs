@@ -149,16 +149,16 @@ where
 
         // Determine arrow style based on edge properties
         let arrow_style = if edge_properties.contains(&HydroEdgeProp::Network) {
-            "-.->".to_string()
+            "-.->".to_owned()
         } else {
             match style.line_pattern {
-                super::render::LinePattern::Dotted => "-.->".to_string(),
-                super::render::LinePattern::Dashed => "--o".to_string(),
+                super::render::LinePattern::Dotted => "-.->".to_owned(),
+                super::render::LinePattern::Dashed => "--o".to_owned(),
                 _ => {
                     if style.line_width > 1 {
-                        "==>".to_string()
+                        "==>".to_owned()
                     } else {
-                        "-->".to_string()
+                        "-->".to_owned()
                     }
                 }
             }

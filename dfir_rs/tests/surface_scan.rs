@@ -160,15 +160,15 @@ pub fn test_scan_different_types() {
     };
 
     // Send some strings
-    items_send.send("hello".to_string()).unwrap();
-    items_send.send("world".to_string()).unwrap();
+    items_send.send("hello".to_owned()).unwrap();
+    items_send.send("world".to_owned()).unwrap();
     df.run_tick_sync();
 
     // Should receive tuples with count and concatenated strings
     let results = collect_ready::<Vec<_>, _>(&mut result_recv);
     assert_eq!(2, results.len());
-    assert_eq!((1, "hello".to_string()), results[0]);
-    assert_eq!((2, "hello, world".to_string()), results[1]);
+    assert_eq!((1, "hello".to_owned()), results[0]);
+    assert_eq!((2, "hello, world".to_owned()), results[1]);
 
     df.run_available_sync(); // Should return quickly and not hang
 }
@@ -279,9 +279,9 @@ pub fn test_scan_complex_accumulator() {
     };
 
     // Send some key-value pairs
-    items_send.send(("apple".to_string(), 1)).unwrap();
-    items_send.send(("banana".to_string(), 2)).unwrap();
-    items_send.send(("apple".to_string(), 3)).unwrap();
+    items_send.send(("apple".to_owned(), 1)).unwrap();
+    items_send.send(("banana".to_owned(), 2)).unwrap();
+    items_send.send(("apple".to_owned(), 3)).unwrap();
     df.run_tick_sync();
 
     // Should receive HashMaps with accumulated counts
@@ -290,19 +290,19 @@ pub fn test_scan_complex_accumulator() {
 
     // First result: {"apple": 1}
     let mut expected1 = HashMap::new();
-    expected1.insert("apple".to_string(), 1);
+    expected1.insert("apple".to_owned(), 1);
     assert_eq!(expected1, results[0]);
 
     // Second result: {"apple": 1, "banana": 2}
     let mut expected2 = HashMap::new();
-    expected2.insert("apple".to_string(), 1);
-    expected2.insert("banana".to_string(), 2);
+    expected2.insert("apple".to_owned(), 1);
+    expected2.insert("banana".to_owned(), 2);
     assert_eq!(expected2, results[1]);
 
     // Third result: {"apple": 4, "banana": 2}
     let mut expected3 = HashMap::new();
-    expected3.insert("apple".to_string(), 4);
-    expected3.insert("banana".to_string(), 2);
+    expected3.insert("apple".to_owned(), 4);
+    expected3.insert("banana".to_owned(), 2);
     assert_eq!(expected3, results[2]);
 
     df.run_available_sync(); // Should return quickly and not hang

@@ -60,7 +60,7 @@ pub async fn handle_fold_data(
         .collect::<Vec<_>>()
         .await;
     if !errors.is_empty() {
-        Err(MultipleErrors { errors })?;
+        return Err(MultipleErrors { errors }.into());
     };
 
     Ok(())

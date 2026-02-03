@@ -383,11 +383,11 @@ mod tests {
         let mut fleet = Fleet::new();
 
         // Hostnames for the server and client
-        let server: Hostname = "server".to_string();
-        let client: Hostname = "client".to_string();
+        let server: Hostname = "server".to_owned();
+        let client: Hostname = "client".to_owned();
 
         // Interface name for the echo "protocol"
-        let interface: String = "echo".to_string();
+        let interface: String = "echo".to_owned();
 
         let server_address = Address::new(server.clone(), interface.clone());
 
@@ -428,7 +428,7 @@ mod tests {
         });
 
         // Trigger the client to send a message.
-        client_trigger_tx.send("Hello, world!".to_string()).unwrap();
+        client_trigger_tx.send("Hello, world!".to_owned()).unwrap();
 
         // Run the simulation until no new work is done by any host.
         fleet.run_until_quiescent().await;

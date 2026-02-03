@@ -26,10 +26,8 @@ pub fn sequence_payloads<'a, K: KvKey, V: KvValue, L: Location<'a> + NoTick>(
     let (r_next_slot_complete_cycle, r_next_slot) =
         replica_tick.cycle_with_initial(replica_tick.singleton(q!(0)));
     // Find highest the sequence number of any payload that can be processed in this tick. This is the payload right before a hole.
-    let r_next_slot_after_processing_payloads = r_sorted_payloads
-        .clone()
-        .cross_singleton(r_next_slot.clone())
-        .fold(
+    let r_next_slot_after_processing_payloads =
+        r_sorted_payloads.clone().cross_singleton(r_next_slot).fold(
             q!(|| 0),
             q!(|new_next_slot, (sorted_payload, next_slot)| {
                 if sorted_payload.seq == std::cmp::max(*new_next_slot, next_slot) {
@@ -46,8 +44,7 @@ pub fn sequence_payloads<'a, K: KvKey, V: KvValue, L: Location<'a> + NoTick>(
         ))
         .map(q!(|(sorted_payload, _)| { sorted_payload }));
     let r_new_non_processable_payloads = r_sorted_payloads
-        .clone()
-        .cross_singleton(r_next_slot_after_processing_payloads.clone())
+        .cross_singleton(r_next_slot_after_processing_payloads)
         .filter(q!(
             |(sorted_payload, highest_seq)| sorted_payload.seq > *highest_seq
         ))

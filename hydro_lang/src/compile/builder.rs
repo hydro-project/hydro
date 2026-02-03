@@ -133,8 +133,7 @@ impl<'a> FlowBuilder<'a> {
 
     pub fn process<P>(&mut self) -> Process<'a, P> {
         let key = self.locations.insert(LocationType::Process);
-        self.location_names
-            .insert(key, type_name::<P>().to_string());
+        self.location_names.insert(key, type_name::<P>().to_owned());
         Process {
             key,
             flow_state: self.flow_state().clone(),
@@ -144,8 +143,7 @@ impl<'a> FlowBuilder<'a> {
 
     pub fn cluster<C>(&mut self) -> Cluster<'a, C> {
         let key = self.locations.insert(LocationType::Cluster);
-        self.location_names
-            .insert(key, type_name::<C>().to_string());
+        self.location_names.insert(key, type_name::<C>().to_owned());
         Cluster {
             key,
             flow_state: self.flow_state().clone(),
@@ -155,8 +153,7 @@ impl<'a> FlowBuilder<'a> {
 
     pub fn external<E>(&mut self) -> External<'a, E> {
         let key = self.locations.insert(LocationType::External);
-        self.location_names
-            .insert(key, type_name::<E>().to_string());
+        self.location_names.insert(key, type_name::<E>().to_owned());
         External {
             key,
             flow_state: self.flow_state().clone(),

@@ -94,12 +94,12 @@ where
 {
     if is_new_tick {
         ForEach::new(lhs, |(k, v1)| {
-            lhs_state.build(k.clone(), Cow::Owned(v1));
+            lhs_state.build(k, Cow::Owned(v1));
         })
         .await;
 
         ForEach::new(rhs, |(k, v2)| {
-            rhs_state.build(k.clone(), Cow::Owned(v2));
+            rhs_state.build(k, Cow::Owned(v2));
         })
         .await;
 

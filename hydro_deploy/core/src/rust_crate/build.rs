@@ -191,9 +191,9 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                         match message.unwrap() {
                             cargo_metadata::Message::CompilerArtifact(artifact) => {
                                 let is_output = if params.example.is_some() {
-                                    artifact.target.kind.contains(&"example".to_string())
+                                    artifact.target.kind.iter().any(|k| "example" == k)
                                 } else {
-                                    artifact.target.kind.contains(&"bin".to_string())
+                                    artifact.target.kind.iter().any(|k| "bin" == k)
                                 };
 
                                 if is_output {
