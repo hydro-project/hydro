@@ -21,6 +21,8 @@ mod tests {
     use hydro_deploy::Deployment;
     use hydro_lang::deploy::DeployCrateWrapper;
 
+    use crate::test_util::skip_tracing_logs;
+
     #[test]
     fn many_to_many_ir() {
         let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
@@ -56,7 +58,8 @@ mod tests {
         for mut node_stdout in cluster_stdouts {
             let mut node_outs = vec![];
             for _i in 0..4 {
-                node_outs.push(node_stdout.recv().await.unwrap());
+                let actual_message = skip_tracing_logs(&mut node_stdout).await;
+                node_outs.push(actual_message);
             }
             node_outs.sort();
 

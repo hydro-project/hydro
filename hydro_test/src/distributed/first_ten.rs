@@ -33,6 +33,8 @@ mod tests {
     use hydro_deploy::Deployment;
     use hydro_lang::deploy::DeployCrateWrapper;
 
+    use crate::test_util::skip_tracing_logs;
+
     #[test]
     fn first_ten_distributed_ir() {
         let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
@@ -74,13 +76,13 @@ mod tests {
             .send("this is some string".to_owned())
             .await
             .unwrap();
-        assert_eq!(
-            first_node_stdout.recv().await.unwrap(),
-            "hi: \"this is some string\""
-        );
+
+        let actual_message = skip_tracing_logs(&mut first_node_stdout).await;
+        assert_eq!(actual_message, "hi: \"this is some string\"");
 
         for i in 0..10 {
-            assert_eq!(second_node_stdout.recv().await.unwrap(), i.to_string());
+            let actual_message = skip_tracing_logs(&mut second_node_stdout).await;
+            assert_eq!(actual_message, i.to_string());
         }
     }
 }
