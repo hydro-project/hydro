@@ -45,7 +45,7 @@ pub const SOURCE_ITER: OperatorConstraints = OperatorConstraints {
         let iter = &arguments[0];
         let iter_ident = wc.make_ident("iter");
         let write_prologue = quote_spanned! {op_span=>
-            let mut #iter_ident: Option<_> = {
+            let mut #iter_ident = {
                 #[inline(always)]
                 fn check_iter<IntoIter, Item>(into_iter: IntoIter) -> impl ::std::iter::Iterator<Item = Item>
                 where
@@ -53,17 +53,11 @@ pub const SOURCE_ITER: OperatorConstraints = OperatorConstraints {
                 {
                     ::std::iter::IntoIterator::into_iter(into_iter)
                 }
-                Some(check_iter(#iter))
+                check_iter(#iter)
             };
         };
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = #root::futures::stream::iter(
-                ::std::iter::Iterator::flatten(
-                    ::std::iter::IntoIterator::into_iter(
-                        ::std::option::Option::take(&mut #iter_ident)
-                    )
-                )
-            );
+            let #ident = #root::futures::stream::iter(#iter_ident.by_ref());
         };
         Ok(OperatorWriteOutput {
             write_prologue,
