@@ -68,6 +68,7 @@ async fn main() {
     let num_participants = 3;
     let num_clients = 3;
     let num_clients_per_node = 100; // Change based on experiment between 1, 50, 100.
+    let print_result_frequency = 1000; // Millis
 
     let coordinator = builder.process();
     let participants = builder.cluster();
@@ -81,6 +82,8 @@ async fn main() {
         num_participants,
         &clients,
         &client_aggregator,
+        print_result_frequency,
+        hydro_std::bench_client::pretty_print_bench_results,
     );
 
     // Extract the IR for graph visualization

@@ -1,5 +1,7 @@
 use hydro_lang::prelude::*;
-use hydro_std::bench_client::{bench_client, compute_throughput_latency, print_bench_results};
+use hydro_std::bench_client::{
+    AggregateBenchResult, aggregate_bench_results, bench_client, compute_throughput_latency,
+};
 
 use super::two_pc::{Coordinator, Participant};
 use crate::cluster::paxos_bench::inc_i32_workload_generator;
@@ -8,6 +10,7 @@ use crate::cluster::two_pc::two_pc;
 pub struct Client;
 pub struct Aggregator;
 
+#[expect(clippy::too_many_arguments, reason = "internal 2PC code // TODO")]
 pub fn two_pc_bench<'a>(
     num_clients_per_node: usize,
     coordinator: &Process<'a, Coordinator>,
@@ -15,6 +18,8 @@ pub fn two_pc_bench<'a>(
     num_participants: usize,
     clients: &Cluster<'a, Client>,
     client_aggregator: &Process<'a, Aggregator>,
+    interval_millis: u64,
+    print_results: impl FnOnce(AggregateBenchResult<'a, Aggregator>, u64),
 ) {
     let latencies = bench_client(
         clients,
@@ -36,7 +41,9 @@ pub fn two_pc_bench<'a>(
 
     // Create throughput/latency graphs
     let bench_results = compute_throughput_latency(clients, latencies, nondet!(/** bench */));
-    print_bench_results(bench_results, client_aggregator, clients);
+    let aggregate_results =
+        aggregate_bench_results(bench_results, client_aggregator, clients, interval_millis);
+    print_results(aggregate_results, interval_millis);
 }
 
 #[cfg(test)]
@@ -62,6 +69,8 @@ mod tests {
         clients: &Cluster<'a, Client>,
         client_aggregator: &Process<'a, Aggregator>,
     ) {
+        use hydro_std::bench_client::pretty_print_bench_results;
+
         super::two_pc_bench(
             100,
             coordinator,
@@ -69,6 +78,8 @@ mod tests {
             NUM_PARTICIPANTS,
             clients,
             client_aggregator,
+            1000,
+            pretty_print_bench_results,
         );
     }
 
