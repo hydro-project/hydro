@@ -134,7 +134,7 @@ pub fn collect_quorum<
             }));
 
         let just_reached_quorum = if max == min {
-            not_all = current_responses.clone().anti_join(reached_min_count.clone());
+            not_all = current_responses.anti_join(reached_min_count.clone());
 
             reached_min_count
         } else {

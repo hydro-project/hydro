@@ -97,9 +97,9 @@ pub async fn samply_to_folded(loaded: FxProfile) -> String {
                 if let Some(inline_frames) = lookuped.frames {
                     Some(
                         inline_frames
-                            .into_iter()
+                            .iter()
                             .rev()
-                            .map(|inline| inline.function.unwrap_or_else(|| "unknown".to_string()))
+                            .map(|inline| inline.function.as_deref().unwrap_or("unknown"))
                             .join(";"),
                     )
                 } else {

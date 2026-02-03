@@ -349,13 +349,13 @@ async fn asynctest_source_stream() {
         let mut flow = dfir_syntax! {
             source_stream(a_recv) -> for_each(|x| { b_send.send(x).unwrap(); });
         };
-        flow.run().await.unwrap();
+        let None = flow.run().await;
     });
     let task_b = tokio::task::spawn_local(async move {
         let mut flow = dfir_syntax! {
             source_stream(b_recv) -> for_each(|x| { c_send.send(x).unwrap(); });
         };
-        flow.run().await.unwrap();
+        let None = flow.run().await;
     });
 
     a_send.send(1).unwrap();

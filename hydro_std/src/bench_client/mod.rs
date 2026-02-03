@@ -4,7 +4,7 @@ use std::time::{Duration, SystemTime};
 
 use hdrhistogram::Histogram;
 use hdrhistogram::serialization::{Deserializer, Serializer, V2Serializer};
-use hydro_lang::live_collections::stream::NoOrder;
+use hydro_lang::live_collections::stream::{ExactlyOnce, NoOrder, TotalOrder};
 use hydro_lang::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -66,7 +66,6 @@ where
     Output: Clone,
 {
     let dummy = clients.singleton(q!(0));
-    #[expect(unused_variables, reason = "sliced! requires at least 1 use statement")]
     let new_payload_ids = sliced! {
         let dummy_batched = use(dummy, nondet!(/** temp */));
         let mut next_virtual_client = use::state(|l| Optional::from(l.singleton(q!((0u32, None)))));
@@ -195,13 +194,26 @@ pub fn compute_throughput_latency<'a, Client: 'a>(
     }
 }
 
-/// Prints transaction latency and throughput results to stdout,
-/// with percentiles for latency and a confidence interval for throughput.
-pub fn print_bench_results<'a, Client: 'a, Aggregator>(
+/// `throughput`: usize is number of clients
+pub struct AggregateBenchResult<'a, Aggregator> {
+    pub throughput: Stream<
+        (RollingAverage, usize),
+        Process<'a, Aggregator>,
+        Unbounded,
+        TotalOrder,
+        ExactlyOnce,
+    >,
+    pub latency:
+        Stream<Histogram<u64>, Process<'a, Aggregator>, Unbounded, TotalOrder, ExactlyOnce>,
+}
+
+/// Returns transaction throughput and latency results.
+pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
     results: BenchResult<'a, Client>,
     aggregator: &Process<'a, Aggregator>,
     clients: &Cluster<'a, Client>,
-) {
+    interval_millis: u64,
+) -> AggregateBenchResult<'a, Aggregator> {
     let nondet_client_count = nondet!(/** client count is stable in bench */);
     let nondet_sampling = nondet!(/** non-deterministic samping only affects logging */);
     let print_tick = aggregator.tick();
@@ -213,7 +225,7 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
 
     let keyed_throughputs = results
         .throughput
-        .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
+        .sample_every(q!(Duration::from_millis(interval_millis)), nondet_sampling)
         .send(aggregator, TCP.bincode());
 
     let latest_throughputs = keyed_throughputs.reduce(q!(
@@ -244,7 +256,7 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
     waiting_for_clients
         .clone()
         .all_ticks()
-        .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
+        .sample_every(q!(Duration::from_millis(interval_millis)), nondet_sampling)
         .assume_retries(nondet!(/** extra logs due to duplicate samples are okay */))
         .for_each(q!(|num_clients_not_responded| println!(
             "Awaiting {} clients",
@@ -260,31 +272,20 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
             }, commutative = ManualProof(/* rolling average is commutative */)))
     };
 
-    combined_throughputs
-        .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
+    let aggregate_throughput = combined_throughputs
+        .sample_every(q!(Duration::from_millis(interval_millis)), nondet_sampling)
         .batch(&print_tick, nondet_client_count)
         .cross_singleton(client_count.clone())
         .filter_if_none(waiting_for_clients.clone())
         .all_ticks()
         .assume_retries(nondet!(/** extra logs due to duplicate samples are okay */))
-        .for_each(q!(move |(throughputs, num_client_machines)| {
-            if throughputs.sample_count() >= 2 {
-                let mean = throughputs.sample_mean() * num_client_machines as f64;
-
-                if let Some((lower, upper)) = throughputs.confidence_interval_99() {
-                    println!(
-                        "Throughput: {:.2} - {:.2} - {:.2} requests/s",
-                        lower * num_client_machines as f64,
-                        mean,
-                        upper * num_client_machines as f64
-                    );
-                }
-            }
-        }));
+        .filter(q!(|(throughputs, _num_client_machines)| throughputs
+            .sample_count()
+            > 2));
 
     let keyed_latencies = results
         .latency_histogram
-        .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
+        .sample_every(q!(Duration::from_millis(interval_millis)), nondet_sampling)
         .map(q!(|latencies| {
             SerializableHistogramWrapper {
                 histogram: latencies,
@@ -311,20 +312,61 @@ pub fn print_bench_results<'a, Client: 'a, Aggregator>(
             }, commutative = ManualProof(/* combining histories is commutative */)))
     };
 
-    combined_latencies
-        .sample_every(q!(Duration::from_millis(1000)), nondet_sampling)
+    let aggregate_latency = combined_latencies
+        .sample_every(q!(Duration::from_millis(interval_millis)), nondet_sampling)
         .batch(&print_tick, nondet_client_count)
         .filter_if_none(waiting_for_clients)
         .all_ticks()
-        .assume_retries(nondet!(/** extra logs due to duplicate samples are okay */))
-        .for_each(q!(move |latencies| {
+        .assume_retries(nondet!(/** extra logs due to duplicate samples are okay */));
+
+    AggregateBenchResult {
+        throughput: aggregate_throughput,
+        latency: aggregate_latency,
+    }
+}
+
+/// Pretty prints output of `aggregate_bench_results`.
+///
+/// Prints the lower, median, and upper 2 std results for throughput,
+/// and the 50th, 99th, and 99.9th percentile latencies.
+pub fn pretty_print_bench_results<'a, Aggregator>(
+    aggregate_results: AggregateBenchResult<'a, Aggregator>,
+    interval_millis: u64,
+) {
+    aggregate_results
+        .throughput
+        .filter_map(q!(move |(throughputs, num_client_machines)| {
+            if let Some((lower, upper)) = throughputs.confidence_interval_99() {
+                Some((
+                    lower * num_client_machines as f64,
+                    throughputs.sample_mean() * num_client_machines as f64,
+                    upper * num_client_machines as f64,
+                ))
+            } else {
+                None
+            }
+        }))
+        .for_each(q!(|(lower, mean, upper)| {
+            println!(
+                "Throughput: {:.2} - {:.2} - {:.2} requests/s",
+                lower, mean, upper,
+            );
+        }));
+    aggregate_results
+        .latency
+        .map(q!(move |latencies| (
+            Duration::from_nanos(latencies.value_at_quantile(0.5)).as_micros() as f64
+                / interval_millis as f64,
+            Duration::from_nanos(latencies.value_at_quantile(0.99)).as_micros() as f64
+                / interval_millis as f64,
+            Duration::from_nanos(latencies.value_at_quantile(0.999)).as_micros() as f64
+                / interval_millis as f64,
+            latencies.len(),
+        )))
+        .for_each(q!(move |(p50, p99, p999, num_samples)| {
             println!(
                 "Latency p50: {:.3} | p99 {:.3} | p999 {:.3} ms ({:} samples)",
-                Duration::from_nanos(latencies.value_at_quantile(0.5)).as_micros() as f64 / 1000.0,
-                Duration::from_nanos(latencies.value_at_quantile(0.99)).as_micros() as f64 / 1000.0,
-                Duration::from_nanos(latencies.value_at_quantile(0.999)).as_micros() as f64
-                    / 1000.0,
-                latencies.len()
+                p50, p99, p999, num_samples
             );
         }));
 }

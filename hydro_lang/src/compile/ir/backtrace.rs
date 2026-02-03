@@ -122,7 +122,7 @@ impl Backtrace {
                 let mut element = BacktraceElement {
                     fn_name: full_fn_name
                         .rfind("::")
-                        .map(|idx| full_fn_name.split_at(idx).0.to_string())
+                        .map(|idx| full_fn_name.split_at(idx).0.to_owned())
                         .unwrap_or(full_fn_name),
                     filename: symbol.filename().map(|f| f.display().to_string()),
                     lineno: symbol.lineno(),

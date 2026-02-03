@@ -136,7 +136,7 @@ pub fn create_graph_trybuild(
                 .unwrap_or_else(|| path!(source_dir / "src" / "lib.rs")),
             &path!(source_dir / "Cargo.toml"),
             &crate_name,
-            Some("hydro___test".to_string()),
+            Some("hydro___test".to_owned()),
         );
 
         gen_staged.attrs.insert(
@@ -203,7 +203,7 @@ pub fn create_graph_trybuild(
         cur_bin_enabled_features
             .as_mut()
             .unwrap()
-            .push("hydro___test".to_string());
+            .push("hydro___test".to_owned());
     }
 
     (
@@ -444,11 +444,11 @@ pub fn create_trybuild()
         .get_mut("hydro_lang")
         .unwrap()
         .features
-        .push("runtime_support".to_string());
+        .push("runtime_support".to_owned());
 
     manifest
         .features
-        .insert("hydro___test".to_string(), dev_dependency_features);
+        .insert("hydro___test".to_owned(), dev_dependency_features);
 
     if manifest
         .workspace
@@ -504,8 +504,7 @@ pub fn create_trybuild()
         )
         .unwrap();
 
-        let manifest_toml = toml::to_string(&project.manifest)?;
-        let base_manifest = manifest_toml.clone();
+        let base_manifest = toml::to_string(&project.manifest)?;
 
         // Collect feature names for forwarding to dylib and dylib-examples crates
         let feature_names: Vec<_> = project.manifest.features.keys().cloned().collect();
@@ -655,8 +654,8 @@ members = ["dylib", "dylib-examples"]
             manifest_hash,
             workspace_cargo_lock_contents_and_hash
                 .as_ref()
-                .map(|s| s.1.as_ref())
-                .unwrap_or("")
+                .map(|(_contents, hash)| &**hash)
+                .unwrap_or_default()
         );
 
         if !check_contents(

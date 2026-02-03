@@ -86,7 +86,7 @@ let all_words: Stream<_, Process<_>, Unbounded, NoOrder> = workers
     .values();
 
 let words_concat = all_words
-    .fold(q!(|| "".to_string()), q!(|acc, x| acc += x));
+    .fold(q!(String::new), q!(|acc, x| acc += x));
 //   ^^^^ error: `hydro_lang::Stream<String, hydro_lang::Process<'_>, hydro_lang::Unbounded, NoOrder>` is not an iterator
 ```
 

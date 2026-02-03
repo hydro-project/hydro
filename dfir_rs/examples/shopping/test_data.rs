@@ -10,14 +10,14 @@ pub fn client1_vec() -> Vec<Request> {
         Request::ClLineItem {
             client: 1,
             li: LineItem {
-                name: APPLE.to_string(),
+                name: APPLE.to_owned(),
                 qty: 1,
             },
         },
         Request::ClLineItem {
             client: 1,
             li: LineItem {
-                name: BANANA.to_string(),
+                name: BANANA.to_owned(),
                 qty: 6,
             },
         },
@@ -30,14 +30,14 @@ pub fn client2_vec() -> Vec<Request> {
         Request::ClLineItem {
             client: 2,
             li: LineItem {
-                name: APPLE.to_string(),
+                name: APPLE.to_owned(),
                 qty: 1,
             },
         },
         Request::ClLineItem {
             client: 2,
             li: LineItem {
-                name: APPLE.to_string(),
+                name: APPLE.to_owned(),
                 qty: -1,
             },
         },
@@ -50,14 +50,14 @@ pub fn client100_vec() -> Vec<Request> {
         Request::ClLineItem {
             client: 100,
             li: LineItem {
-                name: POTATO.to_string(),
+                name: POTATO.to_owned(),
                 qty: 1,
             },
         },
         Request::ClLineItem {
             client: 100,
             li: LineItem {
-                name: FERRARI.to_string(),
+                name: FERRARI.to_owned(),
                 qty: 1,
             },
         },

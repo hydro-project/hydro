@@ -143,7 +143,7 @@ async fn main() {
                 &leader,
                 TrybuildHost::new(create_host(&mut deployment))
                     .rustflags(rustflags)
-                    .additional_hydro_features(vec!["runtime_measure".to_string()])
+                    .additional_hydro_features(vec!["runtime_measure".to_owned()])
                     // ...
                     //[/trybuildhost]//
                     //[tracing]//
@@ -164,7 +164,7 @@ async fn main() {
                 (0..8).map(|idx| {
                     TrybuildHost::new(create_host(&mut deployment))
                         .rustflags(rustflags)
-                        .additional_hydro_features(vec!["runtime_measure".to_string()])
+                        .additional_hydro_features(vec!["runtime_measure".to_owned()])
                         .tracing(
                             TracingOptions::builder()
                                 .perf_raw_outfile(format!("cluster{}.perf.data", idx))
@@ -185,14 +185,14 @@ async fn main() {
                 &leader,
                 TrybuildHost::new(create_host(&mut deployment))
                     .rustflags(rustflags)
-                    .additional_hydro_features(vec!["runtime_measure".to_string()]),
+                    .additional_hydro_features(vec!["runtime_measure".to_owned()]),
             )
             .with_cluster(
                 &cluster,
                 (0..8).map(|_| {
                     TrybuildHost::new(create_host(&mut deployment))
                         .rustflags(rustflags)
-                        .additional_hydro_features(vec!["runtime_measure".to_string()])
+                        .additional_hydro_features(vec!["runtime_measure".to_owned()])
                 }),
             )
     };

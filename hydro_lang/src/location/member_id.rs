@@ -16,9 +16,9 @@ impl TaglessMemberId {
         Self::Legacy { raw_id }
     }
 
-    pub fn from_container_name(container_name: impl ToString) -> Self {
+    pub fn from_container_name(container_name: impl Into<String>) -> Self {
         Self::Docker {
-            container_name: container_name.to_string(),
+            container_name: container_name.into(),
         }
     }
 

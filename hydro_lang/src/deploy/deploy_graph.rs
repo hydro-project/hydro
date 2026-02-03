@@ -839,7 +839,7 @@ impl Node for DeployNode {
                         trybuild,
                         &config.project_dir,
                         &config.target_dir,
-                        &config.features,
+                        config.features.as_deref(),
                         &bin_name,
                         &config.linking_mode,
                     ),
@@ -959,7 +959,7 @@ impl Node for DeployCluster {
                                 trybuild,
                                 &config.project_dir,
                                 &config.target_dir,
-                                &config.features,
+                                config.features.as_deref(),
                                 bin_name,
                                 &config.linking_mode,
                             ),
@@ -1080,7 +1080,7 @@ fn create_trybuild_service(
     trybuild: TrybuildHost,
     dir: &std::path::Path,
     target_dir: &std::path::PathBuf,
-    features: &Option<Vec<String>>,
+    features: Option<&[String]>,
     bin_name: &str,
     linking_mode: &LinkingMode,
 ) -> RustCrate {
@@ -1120,7 +1120,7 @@ fn create_trybuild_service(
     }
 
     ret = ret.features(
-        vec!["hydro___feature_deploy_integration".to_string()]
+        vec!["hydro___feature_deploy_integration".to_owned()]
             .into_iter()
             .chain(
                 trybuild

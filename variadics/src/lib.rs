@@ -971,8 +971,8 @@ mod test {
         use crate::VecVariadic;
 
         type Item = var_type!(i32, String);
-        let first: Item = var_expr!(1, "Joe".to_string());
-        let second: Item = var_expr!(2, "Mingwei".to_string());
+        let first: Item = var_expr!(1, "Joe".to_owned());
+        let second: Item = var_expr!(2, "Mingwei".to_owned());
         let mut column_store = first.clone().into_singleton_vec();
         column_store.push(second.clone());
         assert_eq!(column_store.len(), 2);

@@ -1186,7 +1186,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         {
             let mut node = self.ir_node.borrow_mut();
             let metadata = node.metadata_mut();
-            metadata.tag = Some(name.to_string());
+            metadata.tag = Some(name.to_owned());
         }
         self
     }
@@ -1394,11 +1394,11 @@ where
     ///             *acc += x;
     ///             if *acc > 100 {
     ///                 hydro_lang::live_collections::keyed_stream::Generate::Return(
-    ///                     "done!".to_string()
+    ///                     "done!".to_owned()
     ///                 )
     ///             } else if *acc % 2 == 0 {
     ///                 hydro_lang::live_collections::keyed_stream::Generate::Yield(
-    ///                     "even".to_string()
+    ///                     "even".to_owned()
     ///                 )
     ///             } else {
     ///                 hydro_lang::live_collections::keyed_stream::Generate::Continue
@@ -1413,7 +1413,7 @@ where
     /// #     results.push(stream.next().await.unwrap());
     /// # }
     /// # results.sort();
-    /// # assert_eq!(results, vec![(0, "done!".to_string()), (0, "even".to_string()), (1, "even".to_string())]);
+    /// # assert_eq!(results, vec![(0, "done!".to_owned()), (0, "even".to_owned()), (1, "even".to_owned())]);
     /// # }));
     /// # }
     /// ```
@@ -1484,7 +1484,7 @@ where
             >::collection_kind()),
         };
 
-        KeyedStream::new(self.location.clone(), flatten_node)
+        KeyedStream::new(self.location, flatten_node)
     }
 
     /// A variant of [`Stream::fold`], intended for keyed streams. The aggregation is executed

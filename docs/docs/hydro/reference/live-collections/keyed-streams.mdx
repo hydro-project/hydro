@@ -34,10 +34,10 @@ let keyed: KeyedStream<&str, &str, _, _, _> = data.into_keyed();
 # }
 # results.sort();
 # assert_eq!(results, vec![
-#     ("user1".to_string(), "login".to_string()),
-#     ("user1".to_string(), "purchase".to_string()),
-#     ("user2".to_string(), "click".to_string()),
-#     ("user2".to_string(), "logout".to_string()),
+#     ("user1".to_owned(), "login".to_owned()),
+#     ("user1".to_owned(), "purchase".to_owned()),
+#     ("user2".to_owned(), "click".to_owned()),
+#     ("user2".to_owned(), "logout".to_owned()),
 # ]);
 # }));
 ```
@@ -76,8 +76,8 @@ important_events.entries()
 # }
 # results.sort();
 # assert_eq!(results, vec![
-#     ("user1".to_string(), "LOGIN".to_string()),
-#     ("user1".to_string(), "PURCHASE".to_string()),
+#     ("user1".to_owned(), "LOGIN".to_owned()),
+#     ("user1".to_owned(), "PURCHASE".to_owned()),
 # ]);
 # }));
 ```
@@ -137,7 +137,7 @@ purchases.fold(q!(|| 0), q!(|acc, amount| *acc += amount))
 #     results.push(stream.next().await.unwrap());
 # }
 # results.sort();
-# assert_eq!(results, vec![("alice".to_string(), 28), ("bob".to_string(), 13)]);
+# assert_eq!(results, vec![("alice".to_owned(), 28), ("bob".to_owned(), 13)]);
 # }));
 ```
 
@@ -180,7 +180,7 @@ health_checks.fold(
 #     results.push(stream.next().await.unwrap());
 # }
 # results.sort();
-# assert_eq!(results, vec![("server1".to_string(), true), ("server2".to_string(), false)]);
+# assert_eq!(results, vec![("server1".to_owned(), true), ("server2".to_owned(), false)]);
 # }));
 ```
 

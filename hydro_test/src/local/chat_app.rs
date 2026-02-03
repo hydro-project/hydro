@@ -81,29 +81,29 @@ mod tests {
         users_send.send(1).await.unwrap();
         users_send.send(2).await.unwrap();
 
-        messages_send.send("hello".to_string()).await.unwrap();
-        messages_send.send("world".to_string()).await.unwrap();
+        messages_send.send("hello".to_owned()).await.unwrap();
+        messages_send.send("world".to_owned()).await.unwrap();
 
         assert_eq!(
             take_next_n(&mut out_recv, 4).await,
             &[
-                (1, "HELLO".to_string()),
-                (2, "HELLO".to_string()),
-                (1, "WORLD".to_string()),
-                (2, "WORLD".to_string())
+                (1, "HELLO".to_owned()),
+                (2, "HELLO".to_owned()),
+                (1, "WORLD".to_owned()),
+                (2, "WORLD".to_owned())
             ]
         );
 
         users_send.send(3).await.unwrap();
 
-        messages_send.send("goodbye".to_string()).await.unwrap();
+        messages_send.send("goodbye".to_owned()).await.unwrap();
 
         assert_eq!(
             take_next_n(&mut out_recv, 3).await,
             &[
-                (1, "GOODBYE".to_string()),
-                (2, "GOODBYE".to_string()),
-                (3, "GOODBYE".to_string())
+                (1, "GOODBYE".to_owned()),
+                (2, "GOODBYE".to_owned()),
+                (3, "GOODBYE".to_owned())
             ]
         );
     }
@@ -146,31 +146,31 @@ mod tests {
         users_send.send(1).await.unwrap();
         users_send.send(2).await.unwrap();
 
-        messages_send.send("hello".to_string()).await.unwrap();
-        messages_send.send("world".to_string()).await.unwrap();
+        messages_send.send("hello".to_owned()).await.unwrap();
+        messages_send.send("world".to_owned()).await.unwrap();
 
         assert_eq!(
             take_next_n(&mut out_recv, 4).await,
             &[
-                (1, "HELLO".to_string()),
-                (2, "HELLO".to_string()),
-                (1, "WORLD".to_string()),
-                (2, "WORLD".to_string())
+                (1, "HELLO".to_owned()),
+                (2, "HELLO".to_owned()),
+                (1, "WORLD".to_owned()),
+                (2, "WORLD".to_owned())
             ]
         );
 
         users_send.send(3).await.unwrap();
 
-        messages_send.send("goodbye".to_string()).await.unwrap();
+        messages_send.send("goodbye".to_owned()).await.unwrap();
 
         assert_eq!(
             take_next_n(&mut out_recv, 5).await,
             &[
-                (3, "HELLO".to_string()),
-                (3, "WORLD".to_string()),
-                (1, "GOODBYE".to_string()),
-                (2, "GOODBYE".to_string()),
-                (3, "GOODBYE".to_string())
+                (3, "HELLO".to_owned()),
+                (3, "WORLD".to_owned()),
+                (1, "GOODBYE".to_owned()),
+                (2, "GOODBYE".to_owned()),
+                (3, "GOODBYE".to_owned())
             ]
         );
     }

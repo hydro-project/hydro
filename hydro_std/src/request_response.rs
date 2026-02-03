@@ -80,10 +80,10 @@ mod tests {
             metadata_ack_recv.assert_yields([(1, 42)]).await;
 
             // Now send response
-            response_send.send((1, "hello".to_string()));
+            response_send.send((1, "hello".to_owned()));
             // Should get joined result
             joined_recv
-                .assert_yields_unordered([(1, (42, "hello".to_string()))])
+                .assert_yields_unordered([(1, (42, "hello".to_owned()))])
                 .await;
         });
     }
@@ -115,11 +115,11 @@ mod tests {
             metadata_ack_recv.assert_yields([(1, 10), (2, 20)]).await;
 
             // Send responses for both keys
-            response_send.send_many([(2, "two".to_string()), (1, "one".to_string())]);
+            response_send.send_many([(2, "two".to_owned()), (1, "one".to_owned())]);
             joined_recv
                 .assert_yields_only_unordered([
-                    (1, (10, "one".to_string())),
-                    (2, (20, "two".to_string())),
+                    (1, (10, "one".to_owned())),
+                    (2, (20, "two".to_owned())),
                 ])
                 .await;
         });
@@ -152,11 +152,11 @@ mod tests {
             metadata_ack_recv.assert_yields([(1, 42)]).await;
 
             // Send responses for key 1 (has metadata) and key 2 (no metadata)
-            response_send.send_many([(1, "matched".to_string()), (2, "unmatched".to_string())]);
+            response_send.send_many([(1, "matched".to_owned()), (2, "unmatched".to_owned())]);
 
             // Only key 1 should produce output
             joined_recv
-                .assert_yields_only_unordered([(1, (42, "matched".to_string()))])
+                .assert_yields_only_unordered([(1, (42, "matched".to_owned()))])
                 .await;
         });
     }
@@ -188,13 +188,13 @@ mod tests {
             metadata_ack_recv.assert_yields([(1, 42)]).await;
 
             // First response for key 1 should match
-            response_send.send((1, "first".to_string()));
+            response_send.send((1, "first".to_owned()));
             joined_recv
-                .assert_yields_unordered([(1, (42, "first".to_string()))])
+                .assert_yields_unordered([(1, (42, "first".to_owned()))])
                 .await;
 
             // Second response for key 1 should be dropped (metadata already consumed)
-            response_send.send((1, "second".to_string()));
+            response_send.send((1, "second".to_owned()));
             joined_recv.assert_no_more().await;
         });
     }

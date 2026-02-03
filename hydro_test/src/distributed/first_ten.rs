@@ -71,7 +71,7 @@ mod tests {
         deployment.start().await.unwrap();
 
         external_port
-            .send("this is some string".to_string())
+            .send("this is some string".to_owned())
             .await
             .unwrap();
         assert_eq!(

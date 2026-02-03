@@ -113,12 +113,12 @@ impl Node for DockerDeployProcess {
 
         let mut ret = RustCrate::new(config.project_dir)
             .target_dir(config.target_dir)
-            .example(bin_name.clone())
+            .example(bin_name)
             .no_default_features();
 
         ret = ret.display_name("test_display_name");
 
-        ret = ret.features(vec!["hydro___feature_docker_runtime".to_string()]);
+        ret = ret.features(vec!["hydro___feature_docker_runtime".to_owned()]);
 
         if let Some(features) = config.features {
             ret = ret.features(features);
@@ -188,12 +188,12 @@ impl Node for DockerDeployCluster {
 
         let mut ret = RustCrate::new(config.project_dir)
             .target_dir(config.target_dir)
-            .example(bin_name.clone())
+            .example(bin_name)
             .no_default_features();
 
         ret = ret.display_name("test_display_name");
 
-        ret = ret.features(vec!["hydro___feature_docker_runtime".to_string()]);
+        ret = ret.features(vec!["hydro___feature_docker_runtime".to_owned()]);
 
         if let Some(features) = config.features {
             ret = ret.features(features);
@@ -478,7 +478,7 @@ async fn find_dynamically_allocated_docker_port(
         .as_ref()
         .unwrap()
         .iter()
-        .find(|v| v.host_ip == Some("0.0.0.0".to_string()))
+        .find(|v| v.host_ip == Some("0.0.0.0".to_owned()))
         .unwrap()
         .host_port
         .as_ref()
@@ -506,12 +506,10 @@ async fn create_and_start_container(
     deployment_instance: &str,
 ) -> Result<(), anyhow::Error> {
     let config = ContainerCreateBody {
-        image: Some(image_name.to_string()),
-        hostname: Some(container_name.to_string()),
+        image: Some(image_name.to_owned()),
+        hostname: Some(container_name.to_owned()),
         host_config: Some(HostConfig {
-            binds: Some(vec![
-                "/var/run/docker.sock:/var/run/docker.sock".to_string(),
-            ]),
+            binds: Some(vec!["/var/run/docker.sock:/var/run/docker.sock".to_owned()]),
             publish_all_ports: Some(true),
             port_bindings: Some(HashMap::new()), /* Due to a bug in docker, if you don't send empty port bindings with publish_all_ports set to true and with a docker image that has EXPOSE directives in it, docker will crash because it will try to write to a map in memory that it has not initialized yet. Setting port_bindings explicitly to an empty map will initialize it first so that it does not break. */
             ..Default::default()
@@ -523,7 +521,7 @@ async fn create_and_start_container(
         ]),
         networking_config: Some(NetworkingConfig {
             endpoints_config: Some(HashMap::from([(
-                network_name.to_string(),
+                network_name.to_owned(),
                 EndpointSettings {
                     ..Default::default()
                 },
@@ -534,7 +532,7 @@ async fn create_and_start_container(
     };
 
     let options = CreateContainerOptions {
-        name: Some(container_name.to_string()),
+        name: Some(container_name.to_owned()),
         ..Default::default()
     };
 
@@ -550,7 +548,7 @@ async fn create_and_start_container(
 #[instrument(level = "trace", skip_all, fields(%image_name))]
 async fn build_and_create_image(
     rust_crate: &Rc<RefCell<Option<RustCrate>>>,
-    compilation_options: &Option<String>,
+    compilation_options: Option<&str>,
     config: &[String],
     exposed_ports: &[u16],
     image_name: &str,
@@ -559,7 +557,7 @@ async fn build_and_create_image(
         .borrow_mut()
         .take()
         .unwrap()
-        .rustflags(compilation_options.clone().unwrap_or("".to_string()));
+        .rustflags(compilation_options.unwrap_or_default());
 
     for cfg in config {
         rust_crate = rust_crate.config(cfg);
@@ -658,7 +656,7 @@ Failed to build crate {exit_status:?}
 
     let build_options = BuildImageOptions {
         dockerfile: "Dockerfile".to_owned(),
-        t: Some(image_name.to_string()),
+        t: Some(image_name.to_owned()),
         rm: true,
         ..Default::default()
     };
@@ -750,7 +748,7 @@ impl DockerDeploy {
 
             build_and_create_image(
                 &process.rust_crate,
-                &process.compilation_options,
+                process.compilation_options.as_deref(),
                 &process.config,
                 &exposed_ports,
                 &process.name,
@@ -761,7 +759,7 @@ impl DockerDeploy {
         for (_, _, cluster) in nodes.get_all_clusters() {
             build_and_create_image(
                 &cluster.rust_crate,
-                &cluster.compilation_options,
+                cluster.compilation_options.as_deref(),
                 &cluster.config,
                 &[], // clusters don't have exposed ports.
                 &cluster.name,
@@ -780,7 +778,7 @@ impl DockerDeploy {
         match docker
             .create_network(NetworkCreateRequest {
                 name: self.network.name.clone(),
-                driver: Some("bridge".to_string()),
+                driver: Some("bridge".to_owned()),
                 ..Default::default()
             })
             .await
@@ -1102,7 +1100,7 @@ impl<'a> Deploy<'a> for DockerDeploy {
             let #socket_ident = tokio::net::TcpListener::bind(#bind_addr).await.unwrap();
         });
 
-        let create_expr = deploy_containerized_external_sink_source_ident(socket_ident.clone());
+        let create_expr = deploy_containerized_external_sink_source_ident(socket_ident);
 
         extra_stmts.push(syn::parse_quote! {
             let (#sink_ident, #source_ident) = (#create_expr).split();
@@ -1197,7 +1195,6 @@ fn get_docker_image_name(
         .split("::")
         .last()
         .unwrap()
-        .to_string()
         .to_ascii_lowercase()
         .replace(".", "-")
         .replace("_", "-")
@@ -1213,7 +1210,7 @@ fn get_docker_container_name(image_name: &str, instance: Option<usize>) -> Strin
     if let Some(instance) = instance {
         format!("{image_name}-{instance}")
     } else {
-        image_name.to_string()
+        image_name.to_owned()
     }
 }
 /// Represents a Process running in a docker container

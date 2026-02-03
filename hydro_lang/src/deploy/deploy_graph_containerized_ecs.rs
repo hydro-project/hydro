@@ -136,7 +136,7 @@ impl Node for EcsDeployProcess {
         );
 
         // Store the trybuild config for CDK export
-        *self.trybuild_config.borrow_mut() = Some((bin_name.clone(), config.clone()));
+        *self.trybuild_config.borrow_mut() = Some((bin_name, config));
     }
 }
 
@@ -193,7 +193,7 @@ impl Node for EcsDeployCluster {
         );
 
         // Store the trybuild config for CDK export
-        *self.trybuild_config.borrow_mut() = Some((bin_name.clone(), config.clone()));
+        *self.trybuild_config.borrow_mut() = Some((bin_name, config));
     }
 }
 
@@ -346,7 +346,7 @@ impl EcsDeploy {
                 .clone()
                 .expect("trybuild_config should be set after instantiate");
 
-            let mut features = vec!["hydro___feature_ecs_runtime".to_string()];
+            let mut features = vec!["hydro___feature_ecs_runtime".to_owned()];
             if let Some(extra_features) = trybuild_config.features {
                 features.extend(extra_features);
             }
@@ -355,16 +355,16 @@ impl EcsDeploy {
                 .project_dir
                 .file_name()
                 .and_then(|n| n.to_str())
-                .map(|n| n.replace("_", "-"))
-                .unwrap_or_else(|| "unknown".to_string());
+                .unwrap_or("unknown")
+                .replace("_", "-");
             let package_name = format!("{}-hydro-trybuild", crate_name);
 
             manifest.processes.insert(
                 name_hint.to_owned(),
                 ProcessManifest {
                     build: BuildConfig {
-                        project_dir: trybuild_config.project_dir.to_string_lossy().to_string(),
-                        target_dir: trybuild_config.target_dir.to_string_lossy().to_string(),
+                        project_dir: trybuild_config.project_dir.to_string_lossy().into_owned(),
+                        target_dir: trybuild_config.target_dir.to_string_lossy().into_owned(),
                         bin_name,
                         package_name,
                         features,
@@ -389,7 +389,7 @@ impl EcsDeploy {
                 .clone()
                 .expect("trybuild_config should be set after instantiate");
 
-            let mut features = vec!["hydro___feature_ecs_runtime".to_string()];
+            let mut features = vec!["hydro___feature_ecs_runtime".to_owned()];
             if let Some(extra_features) = trybuild_config.features {
                 features.extend(extra_features);
             }
@@ -398,16 +398,16 @@ impl EcsDeploy {
                 .project_dir
                 .file_name()
                 .and_then(|n| n.to_str())
-                .map(|n| n.replace("_", "-"))
-                .unwrap_or_else(|| "unknown".to_string());
+                .unwrap_or("unknown")
+                .replace("_", "-");
             let package_name = format!("{}-hydro-trybuild", crate_name);
 
             manifest.clusters.insert(
                 name_hint.to_owned(),
                 ClusterManifest {
                     build: BuildConfig {
-                        project_dir: trybuild_config.project_dir.to_string_lossy().to_string(),
-                        target_dir: trybuild_config.target_dir.to_string_lossy().to_string(),
+                        project_dir: trybuild_config.project_dir.to_string_lossy().into_owned(),
+                        target_dir: trybuild_config.target_dir.to_string_lossy().into_owned(),
                         bin_name,
                         package_name,
                         features,
@@ -633,8 +633,7 @@ impl<'a> Deploy<'a> for EcsDeploy {
             let #socket_ident = tokio::net::TcpListener::bind(#bind_addr).await.unwrap();
         });
 
-        let create_expr =
-            deploy_containerized_external_sink_source_ident(bind_addr, socket_ident.clone());
+        let create_expr = deploy_containerized_external_sink_source_ident(bind_addr, socket_ident);
 
         extra_stmts.push(syn::parse_quote! {
             let (#sink_ident, #source_ident) = (#create_expr).split();
@@ -704,7 +703,6 @@ fn get_ecs_image_name(name_hint: &str, location: LocationKey) -> String {
         .split("::")
         .last()
         .unwrap()
-        .to_string()
         .to_ascii_lowercase()
         .replace(".", "-")
         .replace("_", "-")
@@ -718,7 +716,7 @@ fn get_ecs_container_name(image_name: &str, instance: Option<usize>) -> String {
     if let Some(instance) = instance {
         format!("{image_name}-{instance}")
     } else {
-        image_name.to_string()
+        image_name.to_owned()
     }
 }
 /// Represents a Process running in an ecs deployment

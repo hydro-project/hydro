@@ -118,8 +118,8 @@ mod test {
 
         let mut rx2 = priority_broadcast.receive(None);
 
-        tx.send(Ok("hello".to_string())).unwrap();
-        assert_eq!(rx2.recv().await, Some("hello".to_string()));
+        tx.send(Ok("hello".to_owned())).unwrap();
+        assert_eq!(rx2.recv().await, Some("hello".to_owned()));
 
         let wait_again = tokio::spawn(async move { rx2.recv().await });
 
