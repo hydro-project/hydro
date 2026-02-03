@@ -403,20 +403,16 @@ mod test {
     #[test]
     fn fst_string_basic() {
         let mut x = SetUnionWithTombstonesFstString::new_from(
-            HashSet::from([
-                "apple".to_string(),
-                "banana".to_string(),
-                "cherry".to_string(),
-            ]),
+            HashSet::from(["apple".to_owned(), "banana".to_owned(), "cherry".to_owned()]),
             FstTombstoneSet::new(),
         );
         let mut y = SetUnionWithTombstonesFstString::new_from(
-            HashSet::from(["banana".to_string(), "date".to_string()]),
+            HashSet::from(["banana".to_owned(), "date".to_owned()]),
             FstTombstoneSet::new(),
         );
 
         // Add tombstone for "banana"
-        y.as_reveal_mut().1.extend(vec!["banana".to_string()]);
+        y.as_reveal_mut().1.extend(vec!["banana".to_owned()]);
 
         x.merge(y);
 
@@ -433,17 +429,17 @@ mod test {
         // Test that FST union works correctly with multiple tombstones
         let mut x = SetUnionWithTombstonesFstString::new_from(
             HashSet::from([
-                "a".to_string(),
-                "b".to_string(),
-                "c".to_string(),
-                "d".to_string(),
+                "a".to_owned(),
+                "b".to_owned(),
+                "c".to_owned(),
+                "d".to_owned(),
             ]),
-            FstTombstoneSet::from_iter(vec!["x".to_string(), "y".to_string()]),
+            FstTombstoneSet::from_iter(vec!["x".to_owned(), "y".to_owned()]),
         );
 
         let y = SetUnionWithTombstonesFstString::new_from(
-            HashSet::from(["e".to_string(), "f".to_string()]),
-            FstTombstoneSet::from_iter(vec!["z".to_string(), "b".to_string()]),
+            HashSet::from(["e".to_owned(), "f".to_owned()]),
+            FstTombstoneSet::from_iter(vec!["z".to_owned(), "b".to_owned()]),
         );
 
         x.merge(y);
@@ -507,19 +503,19 @@ mod test {
     fn fst_commutativity() {
         // Test that merge order doesn't matter
         let a = SetUnionWithTombstonesFstString::new_from(
-            HashSet::from(["a".to_string(), "b".to_string()]),
-            FstTombstoneSet::from_iter(vec!["x".to_string()]),
+            HashSet::from(["a".to_owned(), "b".to_owned()]),
+            FstTombstoneSet::from_iter(vec!["x".to_owned()]),
         );
         let b = SetUnionWithTombstonesFstString::new_from(
-            HashSet::from(["c".to_string(), "d".to_string()]),
-            FstTombstoneSet::from_iter(vec!["y".to_string()]),
+            HashSet::from(["c".to_owned(), "d".to_owned()]),
+            FstTombstoneSet::from_iter(vec!["y".to_owned()]),
         );
 
         let mut x1 = a.clone();
         let mut x2 = b.clone();
 
-        x1.merge(b.clone());
-        x2.merge(a.clone());
+        x1.merge(b);
+        x2.merge(a);
 
         // Results should be the same regardless of merge order
         assert_eq!(x1.as_reveal_ref().0, x2.as_reveal_ref().0);

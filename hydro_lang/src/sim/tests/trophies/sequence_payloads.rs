@@ -73,8 +73,7 @@ fn sequence_payloads_old<'a, L: Location<'a> + NoTick>(
         ))
         .map(q!(|(sorted_payload, _)| { sorted_payload }));
     let r_new_non_processable_payloads = r_sorted_payloads
-        .clone()
-        .cross_singleton(r_highest_seq_processable_payload.clone())
+        .cross_singleton(r_highest_seq_processable_payload)
         .filter(q!(
             |(sorted_payload, highest_seq)| sorted_payload.seq > *highest_seq
         ))

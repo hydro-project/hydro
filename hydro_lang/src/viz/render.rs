@@ -639,7 +639,6 @@ pub fn extract_op_name(full_label: String) -> String {
         .split('(')
         .next()
         .unwrap_or("unknown")
-        .to_string()
         .to_lowercase()
 }
 
@@ -652,24 +651,24 @@ pub fn extract_short_label(full_label: &str) -> String {
             // Handle special cases for UI display
             "source" => {
                 if full_label.contains("Iter") {
-                    "source_iter".to_string()
+                    "source_iter".to_owned()
                 } else if full_label.contains("Stream") {
-                    "source_stream".to_string()
+                    "source_stream".to_owned()
                 } else if full_label.contains("ExternalNetwork") {
-                    "external_network".to_string()
+                    "external_network".to_owned()
                 } else if full_label.contains("Spin") {
-                    "spin".to_string()
+                    "spin".to_owned()
                 } else {
-                    "source".to_string()
+                    "source".to_owned()
                 }
             }
             "network" => {
                 if full_label.contains("deser") {
-                    "network(recv)".to_string()
+                    "network(recv)".to_owned()
                 } else if full_label.contains("ser") {
-                    "network(send)".to_string()
+                    "network(send)".to_owned()
                 } else {
-                    "network".to_string()
+                    "network".to_owned()
                 }
             }
             // For all other cases, just use the lowercase base name (same as extract_op_name)
@@ -680,7 +679,7 @@ pub fn extract_short_label(full_label: &str) -> String {
         if full_label.len() > 20 {
             format!("{}...", &full_label[..17])
         } else {
-            full_label.to_string()
+            full_label.to_owned()
         }
     }
 }
@@ -858,7 +857,7 @@ impl HydroRoot {
                 config,
                 input,
                 None,
-                NodeLabel::with_exprs("for_each".to_string(), vec![f.clone()]),
+                NodeLabel::with_exprs("for_each".to_owned(), vec![f.clone()]),
             ),
 
             HydroRoot::SendExternal {
@@ -884,7 +883,7 @@ impl HydroRoot {
                 config,
                 input,
                 None,
-                NodeLabel::with_exprs("dest_sink".to_string(), vec![sink.clone()]),
+                NodeLabel::with_exprs("dest_sink".to_owned(), vec![sink.clone()]),
             ),
 
             HydroRoot::CycleSink { ident, input, .. } => build_sink_node(
@@ -1023,7 +1022,7 @@ impl HydroNode {
 
         match self {
             HydroNode::Placeholder => structure.add_node(
-                NodeLabel::Static("PLACEHOLDER".to_string()),
+                NodeLabel::Static("PLACEHOLDER".to_owned()),
                 HydroNodeType::Transform,
                 None,
             ),
@@ -1033,9 +1032,9 @@ impl HydroNode {
             } => {
                 let label = match source {
                     HydroSource::Stream(expr) => format!("source_stream({})", expr),
-                    HydroSource::ExternalNetwork() => "external_network()".to_string(),
+                    HydroSource::ExternalNetwork() => "external_network()".to_owned(),
                     HydroSource::Iter(expr) => format!("source_iter({})", expr),
-                    HydroSource::Spin() => "spin()".to_string(),
+                    HydroSource::Spin() => "spin()".to_owned(),
                     HydroSource::ClusterMembers(location_id) => {
                         format!(
                             "source_stream(cluster_membership_stream({:?}))",
@@ -1224,7 +1223,7 @@ impl HydroNode {
                     node_id,
                     Some(left_metadata),
                     Some(metadata),
-                    Some("left".to_string()),
+                    Some("left".to_owned()),
                 );
 
                 // Extract semantic tags for right edge
@@ -1235,7 +1234,7 @@ impl HydroNode {
                     node_id,
                     Some(right_metadata),
                     Some(metadata),
-                    Some("right".to_string()),
+                    Some("right".to_owned()),
                 );
 
                 node_id
@@ -1268,7 +1267,7 @@ impl HydroNode {
                     node_id,
                     Some(left_metadata),
                     Some(metadata),
-                    Some("pos".to_string()),
+                    Some("pos".to_owned()),
                 );
 
                 // Extract semantic tags for neg edge
@@ -1279,7 +1278,7 @@ impl HydroNode {
                     node_id,
                     Some(right_metadata),
                     Some(metadata),
-                    Some("neg".to_string()),
+                    Some("neg".to_owned()),
                 );
 
                 node_id
@@ -1346,7 +1345,7 @@ impl HydroNode {
                     join_node_id,
                     Some(input_metadata),
                     Some(metadata),
-                    Some("input".to_string()),
+                    Some("input".to_owned()),
                 );
 
                 // Extract semantic tags for watermark edge
@@ -1357,14 +1356,11 @@ impl HydroNode {
                     join_node_id,
                     Some(watermark_metadata),
                     Some(metadata),
-                    Some("watermark".to_string()),
+                    Some("watermark".to_owned()),
                 );
 
                 let node_id = structure.add_node_with_backtrace(
-                    NodeLabel::with_exprs(
-                        extract_op_name(self.print_root()).to_string(),
-                        vec![f.clone()],
-                    ),
+                    NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
                     HydroNodeType::Aggregation,
                     location_key,
                     Some(metadata.op.backtrace.clone()),
@@ -1399,7 +1395,7 @@ impl HydroNode {
                 let to_location_type = root.location_type().unwrap();
                 structure.add_location(to_location_key, to_location_type);
 
-                let mut label = "network(".to_string();
+                let mut label = "network(".to_owned();
                 if serialize_fn.is_some() {
                     label.push_str("send");
                 }
@@ -1479,7 +1475,7 @@ impl HydroNode {
                     chain_id,
                     Some(first_metadata),
                     Some(metadata),
-                    Some("first".to_string()),
+                    Some("first".to_owned()),
                 );
 
                 // Extract semantic tags for second edge
@@ -1490,7 +1486,7 @@ impl HydroNode {
                     chain_id,
                     Some(second_metadata),
                     Some(metadata),
-                    Some("second".to_string()),
+                    Some("second".to_owned()),
                 );
 
                 chain_id
@@ -1519,7 +1515,7 @@ impl HydroNode {
                     chain_id,
                     Some(first_metadata),
                     Some(metadata),
-                    Some("first".to_string()),
+                    Some("first".to_owned()),
                 );
 
                 // Extract semantic tags for second edge
@@ -1530,7 +1526,7 @@ impl HydroNode {
                     chain_id,
                     Some(second_metadata),
                     Some(metadata),
-                    Some("second".to_string()),
+                    Some("second".to_owned()),
                 );
 
                 chain_id

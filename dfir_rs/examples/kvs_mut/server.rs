@@ -68,5 +68,5 @@ pub(crate) async fn run_server(opts: Opts) {
         print_graph(&flow, graph, opts.write_config);
     }
 
-    flow.run().await.unwrap();
+    let None = flow.run().await;
 }

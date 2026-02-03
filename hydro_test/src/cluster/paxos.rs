@@ -775,7 +775,6 @@ pub fn index_payloads<'a, L: Location<'a> + NoTick, P: PaxosPayload>(
 
         let num_payloads = indexed_payloads.clone().count();
         next_slot = num_payloads
-            .clone()
             .zip(base_slot)
             .map(q!(|(num_payloads, base_slot)| base_slot + num_payloads));
 

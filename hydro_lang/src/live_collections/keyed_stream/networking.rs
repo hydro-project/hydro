@@ -124,7 +124,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         Stream::new(
             to.clone(),
             HydroNode::Network {
-                name: name.clone(),
+                name: name.map(ToOwned::to_owned),
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
@@ -241,7 +241,7 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         KeyedStream::new(
             to.clone(),
             HydroNode::Network {
-                name: name.clone(),
+                name: name.map(ToOwned::to_owned),
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
@@ -389,7 +389,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         let raw_stream: Stream<(MemberId<L>, T), Cluster<'a, L2>, Unbounded, O, R> = Stream::new(
             to.clone(),
             HydroNode::Network {
-                name: name.clone(),
+                name: name.map(ToOwned::to_owned),
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
@@ -557,7 +557,7 @@ impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries>
             Stream::new(
                 to.clone(),
                 HydroNode::Network {
-                    name: name.clone(),
+                    name: name.map(ToOwned::to_owned),
                     serialize_fn: serialize_pipeline.map(|e| e.into()),
                     instantiate_fn: DebugInstantiate::Building,
                     deserialize_fn: deserialize_pipeline.map(|e| e.into()),
