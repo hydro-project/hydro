@@ -1,33 +1,35 @@
 //! Utilities for transforming live collections via slicing.
 
-use super::boundedness::{Bounded, Unbounded};
-use crate::live_collections::boundedness::Boundedness;
-use crate::live_collections::keyed_singleton::BoundedValue;
-use crate::live_collections::stream::{Ordering, Retries};
-use crate::location::{Location, NoTick, Tick};
-use crate::nondet::NonDet;
+pub mod style;
 
-#[doc(hidden)]
-pub fn __sliced_wrap_invoke<A, B, O: Unslicable>(
-    a: A,
-    b: B,
-    f: impl FnOnce(A, B) -> O,
-) -> O::Unsliced {
-    let o_slice = f(a, b);
-    o_slice.unslice()
-}
+use super::boundedness::{Bounded, Unbounded};
+use super::stream::{Ordering, Retries};
+use crate::location::{Location, NoTick, Tick};
 
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __sliced_parse_uses__ {
-    // Parse immutable use statements: let name = use(expr, nondet);
+    // Parse immutable use statements with style: let name = use::style(args...);
     (
         @uses [$($uses:tt)*]
         @states [$($states:tt)*]
-        let $name:ident = use $(::$style:ident)?($expr:expr, $nondet:expr); $($rest:tt)*
+        let $name:ident = use:: $style:ident($($args:expr),* $(,)?); $($rest:tt)*
     ) => {
         $crate::__sliced_parse_uses__!(
-            @uses [$($uses)* { $name, ($($style)?), $expr, $nondet }]
+            @uses [$($uses)* { $name, $style, ($($args),*) }]
+            @states [$($states)*]
+            $($rest)*
+        )
+    };
+
+    // Parse immutable use statements without style: let name = use(args...);
+    (
+        @uses [$($uses:tt)*]
+        @states [$($states:tt)*]
+        let $name:ident = use($($args:expr),* $(,)?); $($rest:tt)*
+    ) => {
+        $crate::__sliced_parse_uses__!(
+            @uses [$($uses)* { $name, default, ($($args),*) }]
             @states [$($states)*]
             $($rest)*
         )
@@ -37,7 +39,7 @@ macro_rules! __sliced_parse_uses__ {
     (
         @uses [$($uses:tt)*]
         @states [$($states:tt)*]
-        let mut $name:ident = use ::$style:ident $(::<$ty:ty>)? ($($args:expr)?); $($rest:tt)*
+        let mut $name:ident = use:: $style:ident $(::<$ty:ty>)? ($($args:expr)?); $($rest:tt)*
     ) => {
         $crate::__sliced_parse_uses__!(
             @uses [$($uses)*]
@@ -60,35 +62,27 @@ macro_rules! __sliced_parse_uses__ {
 
     // Terminal case: uses with optional states
     (
-        @uses [{ $first_name:ident, ($($first_style:ident)?), $first:expr, $nondet_first:expr } $({ $rest_name:ident, ($($rest_style:ident)?), $rest:expr, $nondet_expl:expr })*]
+        @uses [$({ $use_name:ident, $style_name:ident, ($($args:expr),*) })+]
         @states [$({ $state_name:ident, $state_style:ident, (($($state_ty:ty)?), ($($state_arg:expr)?)) })*]
         $($body:tt)*
     ) => {
         {
-            let _ = $nondet_first;
-            $(let _ = $nondet_expl;)*
-
             let __styled = (
-                $($crate::live_collections::sliced::style::$first_style)?($first),
-                $($($crate::live_collections::sliced::style::$rest_style)?($rest),)*
+                $($crate::live_collections::sliced::style::$style_name($($args),*),)+
             );
 
             let __tick = $crate::live_collections::sliced::Slicable::preferred_tick(&__styled).unwrap_or_else(|| $crate::live_collections::sliced::Slicable::get_location(&__styled.0).tick());
             let __backtraces = {
                 use $crate::compile::ir::backtrace::__macro_get_backtrace;
                 (
-                    $crate::macro_support::copy_span::copy_span!($first, {
+                    $($crate::macro_support::copy_span::copy_span!($($args),*, {
                         __macro_get_backtrace(1)
-                    }),
-                    $($crate::macro_support::copy_span::copy_span!($rest, {
-                        __macro_get_backtrace(1)
-                    }),)*
+                    }),)+
                 )
             };
-            let __sliced = $crate::live_collections::sliced::Slicable::slice(__styled, &__tick, __backtraces, $nondet_first);
+            let __sliced = $crate::live_collections::sliced::Slicable::slice(__styled, &__tick, __backtraces);
             let (
-                $first_name,
-                $($rest_name,)*
+                $($use_name,)+
             ) = __sliced;
 
             // Create all cycles and pack handles/values into tuples
@@ -179,282 +173,10 @@ pub use crate::__sliced__ as sliced;
 /// `sliced` will be at an atomic location that is synchronous with respect to the body
 /// of the slice.
 pub fn yield_atomic<T>(t: T) -> style::Atomic<T> {
-    style::Atomic(t)
-}
-
-/// Styles for use with the `sliced!` macro.
-pub mod style {
-    use super::Slicable;
-    #[cfg(stageleft_runtime)]
-    use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial};
-    use crate::forward_handle::{TickCycle, TickCycleHandle};
-    use crate::live_collections::boundedness::{Bounded, Unbounded};
-    use crate::live_collections::keyed_singleton::BoundedValue;
-    use crate::live_collections::sliced::Unslicable;
-    use crate::live_collections::stream::{Ordering, Retries, Stream};
-    use crate::location::tick::DeferTick;
-    use crate::location::{Location, NoTick, Tick};
-    use crate::nondet::NonDet;
-
-    /// Marks a live collection to be treated atomically during slicing.
-    pub struct Atomic<T>(pub T);
-
-    /// Wraps a live collection to be treated atomically during slicing.
-    pub fn atomic<T>(t: T) -> Atomic<T> {
-        Atomic(t)
-    }
-
-    /// Creates a stateful cycle with an initial value for use in `sliced!`.
-    ///
-    /// The initial value is computed from a closure that receives the location
-    /// for the body of the slice.
-    ///
-    /// The initial value is used on the first iteration, and subsequent iterations receive
-    /// the value assigned to the mutable binding at the end of the previous iteration.
-    #[cfg(stageleft_runtime)]
-    #[expect(
-        private_bounds,
-        reason = "only Hydro collections can implement CycleCollectionWithInitial"
-    )]
-    pub fn state<
-        'a,
-        S: CycleCollectionWithInitial<'a, TickCycle, Location = Tick<L>>,
-        L: Location<'a> + NoTick,
-    >(
-        tick: &Tick<L>,
-        initial_fn: impl FnOnce(&Tick<L>) -> S,
-    ) -> (TickCycleHandle<'a, S>, S) {
-        let initial = initial_fn(tick);
-        tick.cycle_with_initial(initial)
-    }
-
-    /// Creates a stateful cycle without an initial value for use in `sliced!`.
-    ///
-    /// On the first iteration, the state will be null/empty. Subsequent iterations receive
-    /// the value assigned to the mutable binding at the end of the previous iteration.
-    #[cfg(stageleft_runtime)]
-    #[expect(
-        private_bounds,
-        reason = "only Hydro collections can implement CycleCollection"
-    )]
-    pub fn state_null<
-        'a,
-        S: CycleCollection<'a, TickCycle, Location = Tick<L>> + DeferTick,
-        L: Location<'a> + NoTick,
-    >(
-        tick: &Tick<L>,
-    ) -> (TickCycleHandle<'a, S>, S) {
-        tick.cycle::<S>()
-    }
-
-    impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Slicable<'a, L>
-        for Atomic<Stream<T, crate::location::Atomic<L>, Unbounded, O, R>>
-    {
-        type Slice = Stream<T, Tick<L>, Bounded, O, R>;
-        type Backtrace = crate::compile::ir::backtrace::Backtrace;
-
-        fn preferred_tick(&self) -> Option<Tick<L>> {
-            Some(self.0.location().tick.clone())
-        }
-
-        fn get_location(&self) -> &L {
-            panic!("Atomic location has no accessible inner location")
-        }
-
-        fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
-            assert_eq!(
-                self.0.location().tick.id(),
-                tick.id(),
-                "Mismatched tick for atomic slicing"
-            );
-
-            let out = self.0.batch_atomic(nondet);
-            out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
-            out
-        }
-    }
-
-    impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Unslicable
-        for Atomic<Stream<T, Tick<L>, Bounded, O, R>>
-    {
-        type Unsliced = Stream<T, crate::location::Atomic<L>, Unbounded, O, R>;
-
-        fn unslice(self) -> Self::Unsliced {
-            self.0.all_ticks_atomic()
-        }
-    }
-
-    impl<'a, T, L: Location<'a> + NoTick> Slicable<'a, L>
-        for Atomic<crate::live_collections::Singleton<T, crate::location::Atomic<L>, Unbounded>>
-    {
-        type Slice = crate::live_collections::Singleton<T, Tick<L>, Bounded>;
-        type Backtrace = crate::compile::ir::backtrace::Backtrace;
-
-        fn preferred_tick(&self) -> Option<Tick<L>> {
-            Some(self.0.location().tick.clone())
-        }
-
-        fn get_location(&self) -> &L {
-            panic!("Atomic location has no accessible inner location")
-        }
-
-        fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
-            assert_eq!(
-                self.0.location().tick.id(),
-                tick.id(),
-                "Mismatched tick for atomic slicing"
-            );
-
-            let out = self.0.snapshot_atomic(nondet);
-            out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
-            out
-        }
-    }
-
-    impl<'a, T, L: Location<'a> + NoTick> Unslicable
-        for Atomic<crate::live_collections::Singleton<T, Tick<L>, Bounded>>
-    {
-        type Unsliced =
-            crate::live_collections::Singleton<T, crate::location::Atomic<L>, Unbounded>;
-
-        fn unslice(self) -> Self::Unsliced {
-            self.0.latest_atomic()
-        }
-    }
-
-    impl<'a, T, L: Location<'a> + NoTick> Slicable<'a, L>
-        for Atomic<crate::live_collections::Optional<T, crate::location::Atomic<L>, Unbounded>>
-    {
-        type Slice = crate::live_collections::Optional<T, Tick<L>, Bounded>;
-        type Backtrace = crate::compile::ir::backtrace::Backtrace;
-
-        fn preferred_tick(&self) -> Option<Tick<L>> {
-            Some(self.0.location().tick.clone())
-        }
-
-        fn get_location(&self) -> &L {
-            panic!("Atomic location has no accessible inner location")
-        }
-
-        fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
-            assert_eq!(
-                self.0.location().tick.id(),
-                tick.id(),
-                "Mismatched tick for atomic slicing"
-            );
-
-            let out = self.0.snapshot_atomic(nondet);
-            out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
-            out
-        }
-    }
-
-    impl<'a, T, L: Location<'a> + NoTick> Unslicable
-        for Atomic<crate::live_collections::Optional<T, Tick<L>, Bounded>>
-    {
-        type Unsliced = crate::live_collections::Optional<T, crate::location::Atomic<L>, Unbounded>;
-
-        fn unslice(self) -> Self::Unsliced {
-            self.0.latest_atomic()
-        }
-    }
-
-    impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries> Slicable<'a, L>
-        for Atomic<
-            crate::live_collections::KeyedStream<K, V, crate::location::Atomic<L>, Unbounded, O, R>,
-        >
-    {
-        type Slice = crate::live_collections::KeyedStream<K, V, Tick<L>, Bounded, O, R>;
-        type Backtrace = crate::compile::ir::backtrace::Backtrace;
-
-        fn preferred_tick(&self) -> Option<Tick<L>> {
-            Some(self.0.location().tick.clone())
-        }
-
-        fn get_location(&self) -> &L {
-            panic!("Atomic location has no accessible inner location")
-        }
-
-        fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
-            assert_eq!(
-                self.0.location().tick.id(),
-                tick.id(),
-                "Mismatched tick for atomic slicing"
-            );
-
-            let out = self.0.batch_atomic(nondet);
-            out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
-            out
-        }
-    }
-
-    impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries> Unslicable
-        for Atomic<crate::live_collections::KeyedStream<K, V, Tick<L>, Bounded, O, R>>
-    {
-        type Unsliced =
-            crate::live_collections::KeyedStream<K, V, crate::location::Atomic<L>, Unbounded, O, R>;
-
-        fn unslice(self) -> Self::Unsliced {
-            self.0.all_ticks_atomic()
-        }
-    }
-
-    impl<'a, K, V, L: Location<'a> + NoTick> Slicable<'a, L>
-        for Atomic<
-            crate::live_collections::KeyedSingleton<K, V, crate::location::Atomic<L>, Unbounded>,
-        >
-    {
-        type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L>, Bounded>;
-        type Backtrace = crate::compile::ir::backtrace::Backtrace;
-
-        fn preferred_tick(&self) -> Option<Tick<L>> {
-            Some(self.0.location().tick.clone())
-        }
-
-        fn get_location(&self) -> &L {
-            panic!("Atomic location has no accessible inner location")
-        }
-
-        fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
-            assert_eq!(
-                self.0.location().tick.id(),
-                tick.id(),
-                "Mismatched tick for atomic slicing"
-            );
-
-            let out = self.0.snapshot_atomic(nondet);
-            out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
-            out
-        }
-    }
-
-    impl<'a, K, V, L: Location<'a> + NoTick> Slicable<'a, L>
-        for Atomic<
-            crate::live_collections::KeyedSingleton<K, V, crate::location::Atomic<L>, BoundedValue>,
-        >
-    {
-        type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L>, Bounded>;
-        type Backtrace = crate::compile::ir::backtrace::Backtrace;
-
-        fn preferred_tick(&self) -> Option<Tick<L>> {
-            Some(self.0.location().tick.clone())
-        }
-
-        fn get_location(&self) -> &L {
-            panic!("Atomic location has no accessible inner location")
-        }
-
-        fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
-            assert_eq!(
-                self.0.location().tick.id(),
-                tick.id(),
-                "Mismatched tick for atomic slicing"
-            );
-
-            let out = self.0.batch_atomic(nondet);
-            out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
-            out
-        }
+    style::Atomic {
+        collection: t,
+        // yield_atomic doesn't need a nondet since it's for output, not input
+        nondet: crate::nondet::NonDet,
     }
 }
 
@@ -476,9 +198,8 @@ pub trait Slicable<'a, L: Location<'a>> {
     ///
     /// # Non-Determinism
     /// Slicing a live collection may involve non-determinism, such as choosing which messages
-    /// to include in a batch. The provided `nondet` parameter should be used to explain the impact
-    /// of this non-determinism on the program's behavior.
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice;
+    /// to include in a batch.
+    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice;
 }
 
 /// A trait for live collections which can be yielded out of a slice back into their original form.
@@ -533,7 +254,7 @@ impl<'a, L: Location<'a>> Slicable<'a, L> for () {
         None
     }
 
-    fn slice(self, _tick: &Tick<L>, __backtrace: Self::Backtrace, _nondet: NonDet) -> Self::Slice {}
+    fn slice(self, _tick: &Tick<L>, _backtrace: Self::Backtrace) -> Self::Slice {}
 }
 
 impl Unslicable for () {
@@ -572,10 +293,10 @@ macro_rules! impl_slicable_for_tuple {
             }
 
             #[expect(non_snake_case, reason = "macro codegen")]
-            fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
+            fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
                 let ($($T,)+) = self;
                 let ($($T_bt,)+) = backtrace;
-                ($($T.slice(tick, $T_bt, nondet),)+)
+                ($($T.slice(tick, $T_bt),)+)
             }
         }
 
@@ -646,27 +367,7 @@ impl_cycles_for_tuple!(H1, S1, 0, H2, S2, 1, H3, S3, 2, H4, S4, 3);
 #[cfg(stageleft_runtime)]
 impl_cycles_for_tuple!(H1, S1, 0, H2, S2, 1, H3, S3, 2, H4, S4, 3, H5, S5, 4);
 
-impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries> Slicable<'a, L>
-    for super::Stream<T, L, B, O, R>
-{
-    type Slice = super::Stream<T, Tick<L>, Bounded, O, R>;
-    type Backtrace = crate::compile::ir::backtrace::Backtrace;
-
-    fn get_location(&self) -> &L {
-        self.location()
-    }
-
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        None
-    }
-
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
-        let out = self.batch(tick, nondet);
-        out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
-        out
-    }
-}
-
+// Unslicable implementations for plain collections (used when returning from sliced! body)
 impl<'a, T, L: Location<'a>, O: Ordering, R: Retries> Unslicable
     for super::Stream<T, Tick<L>, Bounded, O, R>
 {
@@ -674,25 +375,6 @@ impl<'a, T, L: Location<'a>, O: Ordering, R: Retries> Unslicable
 
     fn unslice(self) -> Self::Unsliced {
         self.all_ticks()
-    }
-}
-
-impl<'a, T, L: Location<'a>, B: Boundedness> Slicable<'a, L> for super::Singleton<T, L, B> {
-    type Slice = super::Singleton<T, Tick<L>, Bounded>;
-    type Backtrace = crate::compile::ir::backtrace::Backtrace;
-
-    fn get_location(&self) -> &L {
-        self.location()
-    }
-
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        None
-    }
-
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
-        let out = self.snapshot(tick, nondet);
-        out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
-        out
     }
 }
 
@@ -704,51 +386,11 @@ impl<'a, T, L: Location<'a>> Unslicable for super::Singleton<T, Tick<L>, Bounded
     }
 }
 
-impl<'a, T, L: Location<'a>, B: Boundedness> Slicable<'a, L> for super::Optional<T, L, B> {
-    type Slice = super::Optional<T, Tick<L>, Bounded>;
-    type Backtrace = crate::compile::ir::backtrace::Backtrace;
-
-    fn get_location(&self) -> &L {
-        self.location()
-    }
-
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        None
-    }
-
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
-        let out = self.snapshot(tick, nondet);
-        out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
-        out
-    }
-}
-
 impl<'a, T, L: Location<'a>> Unslicable for super::Optional<T, Tick<L>, Bounded> {
     type Unsliced = super::Optional<T, L, Unbounded>;
 
     fn unslice(self) -> Self::Unsliced {
         self.latest()
-    }
-}
-
-impl<'a, K, V, L: Location<'a>, O: Ordering, R: Retries> Slicable<'a, L>
-    for super::KeyedStream<K, V, L, Unbounded, O, R>
-{
-    type Slice = super::KeyedStream<K, V, Tick<L>, Bounded, O, R>;
-    type Backtrace = crate::compile::ir::backtrace::Backtrace;
-
-    fn get_location(&self) -> &L {
-        self.location()
-    }
-
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        None
-    }
-
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
-        let out = self.batch(tick, nondet);
-        out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
-        out
     }
 }
 
@@ -762,43 +404,44 @@ impl<'a, K, V, L: Location<'a>, O: Ordering, R: Retries> Unslicable
     }
 }
 
-impl<'a, K, V, L: Location<'a>> Slicable<'a, L> for super::KeyedSingleton<K, V, L, Unbounded> {
-    type Slice = super::KeyedSingleton<K, V, Tick<L>, Bounded>;
-    type Backtrace = crate::compile::ir::backtrace::Backtrace;
+// Unslicable implementations for Atomic-wrapped bounded collections
+impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Unslicable
+    for style::Atomic<super::Stream<T, Tick<L>, Bounded, O, R>>
+{
+    type Unsliced = super::Stream<T, crate::location::Atomic<L>, Unbounded, O, R>;
 
-    fn get_location(&self) -> &L {
-        self.location()
-    }
-
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        None
-    }
-
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
-        let out = self.snapshot(tick, nondet);
-        out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
-        out
+    fn unslice(self) -> Self::Unsliced {
+        self.collection.all_ticks_atomic()
     }
 }
 
-impl<'a, K, V, L: Location<'a> + NoTick> Slicable<'a, L>
-    for super::KeyedSingleton<K, V, L, BoundedValue>
+impl<'a, T, L: Location<'a> + NoTick> Unslicable
+    for style::Atomic<super::Singleton<T, Tick<L>, Bounded>>
 {
-    type Slice = super::KeyedSingleton<K, V, Tick<L>, Bounded>;
-    type Backtrace = crate::compile::ir::backtrace::Backtrace;
+    type Unsliced = super::Singleton<T, crate::location::Atomic<L>, Unbounded>;
 
-    fn get_location(&self) -> &L {
-        self.location()
+    fn unslice(self) -> Self::Unsliced {
+        self.collection.latest_atomic()
     }
+}
 
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        None
+impl<'a, T, L: Location<'a> + NoTick> Unslicable
+    for style::Atomic<super::Optional<T, Tick<L>, Bounded>>
+{
+    type Unsliced = super::Optional<T, crate::location::Atomic<L>, Unbounded>;
+
+    fn unslice(self) -> Self::Unsliced {
+        self.collection.latest_atomic()
     }
+}
 
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace, nondet: NonDet) -> Self::Slice {
-        let out = self.batch(tick, nondet);
-        out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
-        out
+impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries> Unslicable
+    for style::Atomic<super::KeyedStream<K, V, Tick<L>, Bounded, O, R>>
+{
+    type Unsliced = super::KeyedStream<K, V, crate::location::Atomic<L>, Unbounded, O, R>;
+
+    fn unslice(self) -> Self::Unsliced {
+        self.collection.all_ticks_atomic()
     }
 }
 
@@ -814,7 +457,6 @@ mod tests {
 
     /// Test a counter using `use::state` with an initial singleton value.
     /// Each input increments the counter, and we verify the output after each tick.
-
     #[test]
     fn sim_state_counter() {
         let mut flow = FlowBuilder::new();
@@ -885,9 +527,7 @@ mod tests {
         });
     }
 
-    /// Test a counter using `use::state` with an initial singleton value.
-    /// Each input increments the counter, and we verify the output after each tick.
-
+    /// Test atomic slicing with keyed streams.
     #[test]
     fn sim_sliced_atomic_keyed_stream() {
         let mut flow = FlowBuilder::new();
