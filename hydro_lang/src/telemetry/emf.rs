@@ -17,7 +17,7 @@ use tokio_metrics::RuntimeMetrics;
 
 use crate::location::{LocationKey, LocationType};
 use crate::staging_util::get_this_crate;
-use crate::telemetry::Sidecar;
+use crate::compile::deploy::Sidecar;
 
 /// Default file path for [`RecordMetricsSidecar`].
 pub const DEFAULT_FILE_PATH: &str = "/var/log/hydro/metrics.log";

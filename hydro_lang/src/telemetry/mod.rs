@@ -4,9 +4,6 @@ use tracing_subscriber::EnvFilter;
 use tracing_subscriber::fmt::{FormatEvent, FormatFields, FormattedFields};
 use tracing_subscriber::registry::LookupSpan;
 
-#[cfg(feature = "deploy")]
-use crate::location::{LocationKey, LocationType};
-
 #[cfg(feature = "telemetry")]
 #[cfg_attr(docsrs, doc(cfg(feature = "telemetry")))]
 pub mod emf;
@@ -152,20 +149,4 @@ pub fn initialize_tracing_with_filter(filter: EnvFilter) {
     let RUST_LOG = std::env::var("RUST_LOG");
 
     tracing::trace!(name: "Tracing Initialized", ?RUST_LOG, ?filter);
-}
-
-#[cfg(feature = "deploy")]
-/// Used to add a sidecar to generated code.
-pub trait Sidecar {
-    /// Generates code to create a sidecar.
-    ///
-    /// The generated code should be an expression which evaluates as a `Future`.
-    fn to_expr(
-        &self,
-        flow_name: &str,
-        location_key: LocationKey,
-        location_type: LocationType,
-        location_name: &str,
-        dfir_ident: &syn::Ident,
-    ) -> syn::Expr;
 }

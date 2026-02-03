@@ -24,7 +24,21 @@ use crate::location::external_process::{
 };
 use crate::location::{Cluster, External, Location, LocationKey, LocationType, Process};
 use crate::staging_util::Invariant;
-use crate::telemetry::Sidecar;
+
+/// Used to add a sidecar to generated code.
+pub trait Sidecar {
+    /// Generates code to create a sidecar.
+    ///
+    /// The generated code should be an expression which evaluates as a `Future`.
+    fn to_expr(
+        &self,
+        flow_name: &str,
+        location_key: LocationKey,
+        location_type: LocationType,
+        location_name: &str,
+        dfir_ident: &syn::Ident,
+    ) -> syn::Expr;
+}
 
 pub struct DeployFlow<'a, D>
 where
@@ -41,7 +55,7 @@ where
     pub(super) externals: SparseSecondaryMap<LocationKey, D::External>,
 
     /// Sidecars which may be added to each location (process or cluster, not externals).
-    /// See [`crate::telemetry::Sidecar`].
+    /// See [`Sidecar`].
     pub(super) sidecars: SparseSecondaryMap<LocationKey, Vec<syn::Expr>>,
 
     /// Application name used in telemetry.
