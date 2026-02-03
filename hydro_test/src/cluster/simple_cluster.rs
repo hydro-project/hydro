@@ -81,6 +81,8 @@ mod tests {
     use hydro_lang::location::MemberId;
     use stageleft::q;
 
+    use crate::test_util::skip_tracing_logs;
+
     #[test]
     fn simple_cluster_ir() {
         let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
@@ -117,8 +119,10 @@ mod tests {
 
         for (i, mut stdout) in cluster_stdouts.into_iter().enumerate() {
             for j in 0..5 {
+                let actual_message = skip_tracing_logs(&mut stdout).await;
+
                 assert_eq!(
-                    stdout.recv().await.unwrap(),
+                    actual_message,
                     format!(
                         "cluster received: (MemberId::<()>({}), {}) (self cluster id: MemberId::<()>({}))",
                         i, j, i
@@ -129,7 +133,8 @@ mod tests {
 
         let mut node_outs = vec![];
         for _i in 0..10 {
-            node_outs.push(node_stdout.recv().await.unwrap());
+            let actual_message = skip_tracing_logs(&mut node_stdout).await;
+            node_outs.push(actual_message);
         }
         node_outs.sort();
 
@@ -162,9 +167,11 @@ mod tests {
         deployment.deploy().await.unwrap();
         let mut process2_stdout = nodes.get_process(&process2).stdout();
         deployment.start().await.unwrap();
+
         for i in 0..3 {
             let expected_message = format!("I received message is {}", i);
-            assert_eq!(process2_stdout.recv().await.unwrap(), expected_message);
+            let actual_message = skip_tracing_logs(&mut process2_stdout).await;
+            assert_eq!(actual_message, expected_message);
         }
     }
 
@@ -198,7 +205,9 @@ mod tests {
                     "My self id is MemberId::<()>({}), my message is MemberId::<()>({})",
                     i, i
                 );
-                assert_eq!(stdout.recv().await.unwrap(), expected_message);
+
+                let actual_message = skip_tracing_logs(&mut stdout).await;
+                assert_eq!(actual_message, expected_message);
             }
         }
     }
@@ -246,7 +255,9 @@ mod tests {
                     cluster2_id,
                     cluster2_id / num_partitions
                 );
-                assert_eq!(stdout.recv().await.unwrap(), expected_message);
+
+                let actual_message = skip_tracing_logs(&mut stdout).await;
+                assert_eq!(actual_message, expected_message);
             }
         }
     }
