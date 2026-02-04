@@ -202,7 +202,7 @@ impl std::fmt::Display for SerdeSpan {
     }
 }
 
-/// A basic push-only wrapper around [`Vec<Diagnostic>`] with pretty debug printing.
+/// A basic wrapper around [`Vec<Diagnostic>`] with pretty debug printing and utility methods.
 pub struct Diagnostics<S = Span> {
     diagnostics: Vec<Diagnostic<S>>,
 }
