@@ -40,6 +40,9 @@ fn recursively_set_span(token: &mut proc_macro2::TokenTree, span: proc_macro2::S
             new_group.set_span(span);
             *group = new_group;
         }
+        proc_macro2::TokenTree::Ident(i) if *i == "$crate" => {
+            token.set_span(span.resolved_at(token.span()));
+        }
         _ => {
             token.set_span(span);
         }
