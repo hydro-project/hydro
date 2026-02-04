@@ -1,18 +1,31 @@
 //! AWS CloudWatch embedded metric format (EMF).
 //!
 //! <https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format_Specification.html>
+#[cfg(feature = "runtime_support")]
 use std::marker::Unpin;
+#[cfg(feature = "runtime_support")]
 use std::panic::AssertUnwindSafe;
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
+#[cfg(feature = "runtime_support")]
+use std::time::SystemTime;
 
+#[cfg(feature = "runtime_support")]
 use dfir_rs::Never;
+#[cfg(feature = "runtime_support")]
 use dfir_rs::scheduled::graph::Dfir;
+#[cfg(feature = "runtime_support")]
 use dfir_rs::scheduled::metrics::DfirMetrics;
+#[cfg(feature = "runtime_support")]
 use futures::FutureExt;
 use quote::quote;
+#[cfg(feature = "runtime_support")]
 use serde_json::json;
 use syn::parse_quote;
-use tokio::io::{AsyncWrite, AsyncWriteExt};
+#[cfg(feature = "runtime_support")]
+use tokio::io::AsyncWrite;
+#[cfg(feature = "runtime_support")]
+use tokio::io::AsyncWriteExt;
+#[cfg(feature = "runtime_support")]
 use tokio_metrics::RuntimeMetrics;
 
 use crate::location::{LocationKey, LocationType};
@@ -71,6 +84,7 @@ impl Sidecar for RecordMetricsSidecar {
 }
 
 /// Record both Dfir and Tokio metrics, at the given interval, forever.
+#[cfg(feature = "runtime_support")]
 #[doc(hidden)]
 pub fn record_metrics_sidecar(
     dfir: &Dfir<'_>,
@@ -142,6 +156,7 @@ pub fn record_metrics_sidecar(
     }
 }
 
+#[cfg(feature = "runtime_support")]
 /// Records DFIR metrics.
 async fn record_metrics_dfir<W>(
     namespace: &str,
@@ -219,6 +234,7 @@ where
     Ok(())
 }
 
+#[cfg(feature = "runtime_support")]
 /// Records tokio runtime metrics.
 async fn record_metrics_tokio<W>(
     namespace: &str,
