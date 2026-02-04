@@ -33,6 +33,15 @@ function extractRunHistory(commentBody) {
 }
 
 /**
+ * Escapes special regex characters in a string.
+ * @param {string} str - String to escape
+ * @returns {string} Escaped string safe for use in RegExp constructor
+ */
+function escapeRegex(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Creates the formatted comment body with status and run history.
  * @param {string} status - Status message (e.g., "⏳ Benchmark is currently running...")
  * @param {string} runHistory - Formatted run history entries
@@ -111,8 +120,14 @@ async function postCompletionComment(github, context, artifactId) {
     const existingHistory = extractRunHistory(botComment.body);
     
     // Update the current run's status in history
+    // Escape special regex characters in user-controlled values
+    const escapedOwner = escapeRegex(context.repo.owner);
+    const escapedRepo = escapeRegex(context.repo.repo);
+    const escapedRunNumber = escapeRegex(context.runNumber);
+    const escapedRunId = escapeRegex(context.runId);
+    
     const runPattern = new RegExp(
-      `- \\[Run #${context.runNumber}\\]\\(https://github\\.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\\) - .*`
+      `- \\[Run #${escapedRunNumber}\\]\\(https://github\\.com/${escapedOwner}/${escapedRepo}/actions/runs/${escapedRunId}\\) - .*`
     );
     const newRunEntry = createRunEntry(
       context.runNumber,
@@ -163,6 +178,7 @@ async function postCompletionComment(github, context, artifactId) {
 module.exports = {
   findBenchmarkComment,
   extractRunHistory,
+  escapeRegex,
   createCommentBody,
   createRunEntry,
   postInitialComment,
