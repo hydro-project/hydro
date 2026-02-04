@@ -131,7 +131,7 @@ impl Node for EcsDeployProcess {
             extra_stmts,
             sidecars,
             Some(&self.name),
-            true,
+            crate::compile::trybuild::generate::DeployMode::Containerized,
             crate::compile::trybuild::generate::LinkingMode::Static,
         );
 
@@ -188,7 +188,7 @@ impl Node for EcsDeployCluster {
             extra_stmts,
             sidecars,
             Some(&self.name),
-            true,
+            crate::compile::trybuild::generate::DeployMode::Containerized,
             crate::compile::trybuild::generate::LinkingMode::Static,
         );
 
