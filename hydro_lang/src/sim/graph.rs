@@ -4,6 +4,7 @@ use std::fs;
 use std::process::{Command, Stdio};
 use std::rc::Rc;
 
+use dfir_lang::diagnostic::Diagnostics;
 use dfir_lang::graph::DfirGraph;
 use proc_macro2::Span;
 use quote::quote;
@@ -621,12 +622,14 @@ fn compile_sim_graph_trybuild(
     crate_name: &str,
     is_test: bool,
 ) -> syn::File {
-    let mut diagnostics = Vec::new();
+    let mut diagnostics = Diagnostics::new();
 
     let mut dfir_into_code = |g: &DfirGraph| {
-        let mut dfir_expr: syn::Expr =
-            syn::parse2(g.as_code(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics))
-                .unwrap();
+        let mut dfir_expr: syn::Expr = syn::parse2(
+            g.as_code(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
+                .expect("DFIR code generation failed with diagnostics."),
+        )
+        .unwrap();
 
         if is_test {
             UseTestModeStaged { crate_name }.visit_expr_mut(&mut dfir_expr);
