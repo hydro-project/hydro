@@ -63,7 +63,7 @@ jobs:
         with:
           script: |
             const script = require('./.github/workflows/benchmark-comment.js');
-            await script.postInitialComment(github, context);
+            await script.postBenchmarkComment(github, context);
 
       - name: Checkout gh-pages
         shell: bash
@@ -120,7 +120,7 @@ jobs:
         with:
           script: |
             const script = require('./.github/workflows/benchmark-comment.js');
-            await script.postCompletionComment(github, context, '${{ steps.artifact-upload.outputs.artifact-id }}');
+            await script.postBenchmarkComment(github, context, '${{ steps.artifact-upload.outputs.artifact-id }}');
 
       - name: Push to gh-pages
         # Do not deploy PRs, only benchmark main branch.

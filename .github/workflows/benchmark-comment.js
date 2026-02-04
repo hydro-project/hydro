@@ -6,76 +6,23 @@
  */
 
 /**
- * Finds the existing benchmark results comment in the PR.
+ * Updates or creates the benchmark comment.
  * @param {import('@octokit/rest').Octokit} github - GitHub API client
  * @param {Object} context - GitHub Actions context
- * @returns {Promise<Object|null>} The comment object if found, null otherwise
+ * @param {string} [artifactId] - The artifact ID for the download link (if provided, marks as completion)
  */
-async function findBenchmarkComment(github, context) {
+async function postBenchmarkComment(github, context, artifactId) {
+  const isCompletion = artifactId !== undefined;
+  
+  // Find existing benchmark results comment in the PR
   const { data: comments } = await github.rest.issues.listComments({
     owner: context.repo.owner,
     repo: context.repo.repo,
     issue_number: context.issue.number,
   });
-  return comments.find(comment =>
+  const botComment = comments.find(comment =>
     comment.user.type === 'Bot' && comment.body.includes('📊 Benchmark Results')
   ) || null;
-}
-
-/**
- * Extracts the run history section from an existing comment body.
- * @param {string} commentBody - The full comment body text
- * @returns {string} The extracted history entries (lines between "### Run History:" and timestamp)
- */
-function extractRunHistory(commentBody) {
-  const historyMatch = commentBody.match(/### Run History:\n([\s\S]*?)\n\n<sub>/);
-  return historyMatch ? historyMatch[1] : '';
-}
-
-/**
- * Escapes special regex characters in a string.
- * @param {string} str - String to escape
- * @returns {string} Escaped string safe for use in RegExp constructor
- */
-function escapeRegex(str) {
-  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/**
- * Creates the formatted comment body with status and run history.
- * @param {string} status - Status message (e.g., "⏳ Benchmark is currently running...")
- * @param {string} runHistory - Formatted run history entries
- * @returns {string} The complete formatted comment body
- */
-function createCommentBody(status, runHistory) {
-  return `## 📊 Benchmark Results\n\n${status}\n\n### Run History:\n${runHistory}\n\n<sub>Last updated: ${new Date().toISOString()}</sub>`;
-}
-
-/**
- * Creates a run entry for the history section.
- * @param {number} runNumber - The workflow run number
- * @param {string} owner - Repository owner
- * @param {string} repo - Repository name
- * @param {string} runId - The workflow run ID
- * @param {string} status - Status text for the run (e.g., "In Progress ⏳")
- * @returns {string} Formatted run entry line
- */
-function createRunEntry(runNumber, owner, repo, runId, status) {
-  return `- [Run #${runNumber}](https://github.com/${owner}/${repo}/actions/runs/${runId}) - ${status}`;
-}
-
-/**
- * Updates or creates the benchmark comment.
- * @param {import('@octokit/rest').Octokit} github - GitHub API client
- * @param {Object} context - GitHub Actions context
- * @param {Object} options - Optional parameters
- * @param {string} [options.artifactId] - The artifact ID for the download link (completion only)
- */
-async function postBenchmarkComment(github, context, options = {}) {
-  const { artifactId } = options;
-  const isCompletion = artifactId !== undefined;
-  
-  const botComment = await findBenchmarkComment(github, context);
   
   // Determine status and run entry based on whether this is initial or completion
   let status, runStatus;
@@ -88,27 +35,23 @@ async function postBenchmarkComment(github, context, options = {}) {
     runStatus = 'In Progress ⏳';
   }
   
-  const newRunEntry = createRunEntry(
-    context.runNumber,
-    context.repo.owner,
-    context.repo.repo,
-    context.runId,
-    runStatus
-  );
+  // Format the run entry line
+  const newRunEntry = `- [Run #${context.runNumber}](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) - ${runStatus}`;
 
   if (botComment) {
-    // Extract existing history
-    const existingHistory = extractRunHistory(botComment.body);
+    // Extract existing history from comment body (between "### Run History:" and timestamp)
+    const historyMatch = botComment.body.match(/### Run History:\n([\s\S]*?)\n\n<sub>/);
+    const existingHistory = historyMatch ? historyMatch[1] : '';
     
     let updatedHistory;
     if (isCompletion && existingHistory) {
       // Try to update existing entry for this run
-      // Escape special regex characters in user-controlled values
-      // Convert numbers to strings before escaping
-      const escapedOwner = escapeRegex(String(context.repo.owner));
-      const escapedRepo = escapeRegex(String(context.repo.repo));
-      const escapedRunNumber = escapeRegex(String(context.runNumber));
-      const escapedRunId = escapeRegex(String(context.runId));
+      // Escape special regex characters in user-controlled values to prevent regex injection
+      const escapeRegex = (str) => String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escapedOwner = escapeRegex(context.repo.owner);
+      const escapedRepo = escapeRegex(context.repo.repo);
+      const escapedRunNumber = escapeRegex(context.runNumber);
+      const escapedRunId = escapeRegex(context.runId);
       
       const runPattern = new RegExp(
         `- \\[Run #${escapedRunNumber}\\]\\(https://github\\.com/${escapedOwner}/${escapedRepo}/actions/runs/${escapedRunId}\\) - .*`
@@ -126,7 +69,8 @@ async function postBenchmarkComment(github, context, options = {}) {
       updatedHistory = existingHistory ? `${existingHistory}\n${newRunEntry}` : newRunEntry;
     }
     
-    const updatedBody = createCommentBody(status, updatedHistory);
+    // Format the complete comment body with status and run history
+    const updatedBody = `## 📊 Benchmark Results\n\n${status}\n\n### Run History:\n${updatedHistory}\n\n<sub>Last updated: ${new Date().toISOString()}</sub>`;
 
     await github.rest.issues.updateComment({
       owner: context.repo.owner,
@@ -136,7 +80,7 @@ async function postBenchmarkComment(github, context, options = {}) {
     });
   } else {
     // Create new comment if none exists
-    const body = createCommentBody(status, newRunEntry);
+    const body = `## 📊 Benchmark Results\n\n${status}\n\n### Run History:\n${newRunEntry}\n\n<sub>Last updated: ${new Date().toISOString()}</sub>`;
     await github.rest.issues.createComment({
       owner: context.repo.owner,
       repo: context.repo.repo,
@@ -146,27 +90,7 @@ async function postBenchmarkComment(github, context, options = {}) {
   }
 }
 
-/**
- * Posts initial "In Progress" comment for benchmark run.
- * @param {import('@octokit/rest').Octokit} github - GitHub API client
- * @param {Object} context - GitHub Actions context
- */
-async function postInitialComment(github, context) {
-  await postBenchmarkComment(github, context);
-}
-
-/**
- * Updates comment with completion status and artifact link.
- * @param {import('@octokit/rest').Octokit} github - GitHub API client
- * @param {Object} context - GitHub Actions context
- * @param {string} artifactId - The artifact ID for the download link
- */
-async function postCompletionComment(github, context, artifactId) {
-  await postBenchmarkComment(github, context, { artifactId });
-}
-
-// Export functions for use in GitHub Actions workflow
+// Export function for use in GitHub Actions workflow
 module.exports = {
-  postInitialComment,
-  postCompletionComment
+  postBenchmarkComment
 };
