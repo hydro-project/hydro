@@ -120,9 +120,10 @@ jobs:
       - name: Download and setup Maelstrom
         if: matrix.os != 'windows-latest'
         run: |
-          curl -L -o maelstrom.tar.bz2 https://github.com/jepsen-io/maelstrom/releases/download/v0.2.4/maelstrom.tar.bz2
-          tar -xjf maelstrom.tar.bz2
-          echo "MAELSTROM_PATH=${{ github.workspace }}/maelstrom/maelstrom" >> $GITHUB_ENV
+          MAELSTROM_DIR=$(mktemp -d)
+          curl -L -o "$MAELSTROM_DIR/maelstrom.tar.bz2" https://github.com/jepsen-io/maelstrom/releases/download/v0.2.4/maelstrom.tar.bz2
+          tar -xjf "$MAELSTROM_DIR/maelstrom.tar.bz2" -C "$MAELSTROM_DIR"
+          echo "MAELSTROM_PATH=$MAELSTROM_DIR/maelstrom/maelstrom" >> $GITHUB_ENV
 
       - name: Enable Trybuild updating on nightly
         if: ${{ matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
