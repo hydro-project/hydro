@@ -10,7 +10,7 @@
 //! application. To pass a non-determinism guard, you must invoke `nondet!()` with an explanation
 //! for how the non-determinism affects the application.
 //!
-//! See the [Hydro docs](https://hydro.run/docs/hydro/live-collections/determinism) for more.
+//! See the [Hydro docs](https://hydro.run/docs/hydro/reference/live-collections/determinism) for more.
 
 /// A non-determinism guard, which documents how a source of non-determinism affects the application.
 ///
