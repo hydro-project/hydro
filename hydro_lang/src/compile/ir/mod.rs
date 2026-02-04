@@ -3101,7 +3101,6 @@ impl HydroNode {
 
                                     builder.add_dfir(
                                         parse_quote! {
-                                            source_iter([(#init)()]) -> [0]#fold_ident;
                                             #fold_ident = #input_ident -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #acc);
                                         },
                                         None,

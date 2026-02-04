@@ -4,13 +4,13 @@ use proc_macro2::Span;
 use quote::quote_spanned;
 use syn::spanned::Spanned;
 use syn::token::Colon;
-use syn::{parse_quote_spanned, Expr, Ident, LitInt, Pat, PatType};
+use syn::{Expr, Ident, LitInt, Pat, PatType, parse_quote_spanned};
 
 use super::{
     OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput, PortIndexValue,
-    PortListSpec, WriteContextArgs, RANGE_0, RANGE_1,
+    PortListSpec, RANGE_0, RANGE_1, WriteContextArgs,
 };
-use crate::diagnostic::{Diagnostic, Level};
+use crate::diagnostic::{Diagnostic, Diagnostics, Level};
 use crate::pretty_span::PrettySpan;
 
 /// This operator takes the input pipeline and allows the user to determine which singular output
@@ -150,7 +150,7 @@ fn determine_indices_or_idents(
     output_ports: &[PortIndexValue],
     op_span: Span,
     op_name: &'static str,
-    diagnostics: &mut Vec<Diagnostic>,
+    diagnostics: &mut Diagnostics,
 ) -> Result<Option<Vec<Ident>>, ()> {
     // Port idents supplied via port connections in the surface syntax.
     // Two modes, either all numeric `0, 1, 2, 3, ...` or all `Ident`s.
@@ -198,7 +198,10 @@ fn determine_indices_or_idents(
     match (!ports_numeric.is_empty(), !ports_idents.is_empty()) {
         (false, false) => {
             // Had no ports or only elided ports.
-            assert!(diagnostics.iter().any(Diagnostic::is_error), "Empty input ports, expected an error diagnostic but none were emitted, this is a bug.");
+            assert!(
+                diagnostics.has_error(),
+                "Empty input ports, expected an error diagnostic but none were emitted, this is a bug."
+            );
             Err(())
         }
         (true, true) => {
@@ -297,7 +300,7 @@ fn extract_closure_idents(
                 "Second argument for the `{}` closure must have a Rust 'slice pattern' to determine the port names and order. \
                 For example: `[foo, bar, baz]` for ports `foo`, `bar`, and `baz`.",
                 op_name
-            )
+            ),
         ));
     };
 
@@ -332,7 +335,7 @@ fn check_closure_ports_match(
     port_idents: &[Ident],
     op_name: &'static str,
     arg2_span: Span,
-    diagnostics: &mut Vec<Diagnostic>,
+    diagnostics: &mut Diagnostics,
 ) -> Result<(), ()> {
     let mut err = false;
     for port_ident in port_idents {
