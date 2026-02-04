@@ -22,9 +22,7 @@ use quote::quote;
 use serde_json::json;
 use syn::parse_quote;
 #[cfg(feature = "runtime_support")]
-use tokio::io::AsyncWrite;
-#[cfg(feature = "runtime_support")]
-use tokio::io::AsyncWriteExt;
+use tokio::io::{AsyncWrite, AsyncWriteExt};
 #[cfg(feature = "runtime_support")]
 use tokio_metrics::RuntimeMetrics;
 
