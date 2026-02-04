@@ -65,25 +65,66 @@ function createRunEntry(runNumber, owner, repo, runId, status) {
 }
 
 /**
- * Updates or creates the benchmark comment with "In Progress" status.
+ * Updates or creates the benchmark comment.
  * @param {import('@octokit/rest').Octokit} github - GitHub API client
  * @param {Object} context - GitHub Actions context
+ * @param {Object} options - Optional parameters
+ * @param {string} [options.artifactId] - The artifact ID for the download link (completion only)
  */
-async function postInitialComment(github, context) {
+async function postBenchmarkComment(github, context, options = {}) {
+  const { artifactId } = options;
+  const isCompletion = artifactId !== undefined;
+  
   const botComment = await findBenchmarkComment(github, context);
-  const status = '⏳ Benchmark is currently running...';
+  
+  // Determine status and run entry based on whether this is initial or completion
+  let status, runStatus;
+  if (isCompletion) {
+    const artifactUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts/${artifactId}`;
+    status = '✅ Benchmark completed! You can download the results from the links below.';
+    runStatus = `✅ Complete ([Download Artifact](${artifactUrl}))`;
+  } else {
+    status = '⏳ Benchmark is currently running...';
+    runStatus = 'In Progress ⏳';
+  }
+  
   const newRunEntry = createRunEntry(
     context.runNumber,
     context.repo.owner,
     context.repo.repo,
     context.runId,
-    'In Progress ⏳'
+    runStatus
   );
 
   if (botComment) {
-    // Extract existing history and append new run
+    // Extract existing history
     const existingHistory = extractRunHistory(botComment.body);
-    const updatedHistory = existingHistory ? `${existingHistory}\n${newRunEntry}` : newRunEntry;
+    
+    let updatedHistory;
+    if (isCompletion && existingHistory) {
+      // Try to update existing entry for this run
+      // Escape special regex characters in user-controlled values
+      const escapedOwner = escapeRegex(context.repo.owner);
+      const escapedRepo = escapeRegex(context.repo.repo);
+      const escapedRunNumber = escapeRegex(context.runNumber);
+      const escapedRunId = escapeRegex(context.runId);
+      
+      const runPattern = new RegExp(
+        `- \\[Run #${escapedRunNumber}\\]\\(https://github\\.com/${escapedOwner}/${escapedRepo}/actions/runs/${escapedRunId}\\) - .*`
+      );
+      
+      if (existingHistory.match(runPattern)) {
+        // Update existing entry
+        updatedHistory = existingHistory.replace(runPattern, newRunEntry);
+      } else {
+        // Append new entry (fallback if initial comment was missed)
+        updatedHistory = `${existingHistory}\n${newRunEntry}`;
+      }
+    } else {
+      // Append new run entry for initial comment
+      updatedHistory = existingHistory ? `${existingHistory}\n${newRunEntry}` : newRunEntry;
+    }
+    
     const updatedBody = createCommentBody(status, updatedHistory);
 
     await github.rest.issues.updateComment({
@@ -93,7 +134,7 @@ async function postInitialComment(github, context) {
       body: updatedBody
     });
   } else {
-    // Create new comment
+    // Create new comment if none exists
     const body = createCommentBody(status, newRunEntry);
     await github.rest.issues.createComment({
       owner: context.repo.owner,
@@ -105,73 +146,22 @@ async function postInitialComment(github, context) {
 }
 
 /**
- * Updates the benchmark comment with completion status and artifact link.
+ * Posts initial "In Progress" comment for benchmark run.
+ * @param {import('@octokit/rest').Octokit} github - GitHub API client
+ * @param {Object} context - GitHub Actions context
+ */
+async function postInitialComment(github, context) {
+  await postBenchmarkComment(github, context);
+}
+
+/**
+ * Updates comment with completion status and artifact link.
  * @param {import('@octokit/rest').Octokit} github - GitHub API client
  * @param {Object} context - GitHub Actions context
  * @param {string} artifactId - The artifact ID for the download link
  */
 async function postCompletionComment(github, context, artifactId) {
-  const artifactUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts/${artifactId}`;
-  const botComment = await findBenchmarkComment(github, context);
-  const status = '✅ Benchmark completed! You can download the results from the links below.';
-
-  if (botComment) {
-    // Extract existing history
-    const existingHistory = extractRunHistory(botComment.body);
-    
-    // Update the current run's status in history
-    // Escape special regex characters in user-controlled values
-    const escapedOwner = escapeRegex(context.repo.owner);
-    const escapedRepo = escapeRegex(context.repo.repo);
-    const escapedRunNumber = escapeRegex(context.runNumber);
-    const escapedRunId = escapeRegex(context.runId);
-    
-    const runPattern = new RegExp(
-      `- \\[Run #${escapedRunNumber}\\]\\(https://github\\.com/${escapedOwner}/${escapedRepo}/actions/runs/${escapedRunId}\\) - .*`
-    );
-    const newRunEntry = createRunEntry(
-      context.runNumber,
-      context.repo.owner,
-      context.repo.repo,
-      context.runId,
-      `✅ Complete ([Download Artifact](${artifactUrl}))`
-    );
-    
-    let updatedHistory;
-    if (existingHistory.match(runPattern)) {
-      // Update existing entry
-      updatedHistory = existingHistory.replace(runPattern, newRunEntry);
-    } else {
-      // Append new entry (fallback if initial comment was missed)
-      updatedHistory = existingHistory ? `${existingHistory}\n${newRunEntry}` : newRunEntry;
-    }
-    
-    const body = createCommentBody(status, updatedHistory);
-
-    await github.rest.issues.updateComment({
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      comment_id: botComment.id,
-      body: body
-    });
-  } else {
-    // Create new comment if none exists (fallback)
-    const newRunEntry = createRunEntry(
-      context.runNumber,
-      context.repo.owner,
-      context.repo.repo,
-      context.runId,
-      `✅ Complete ([Download Artifact](${artifactUrl}))`
-    );
-    const body = createCommentBody(status, newRunEntry);
-    
-    await github.rest.issues.createComment({
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      issue_number: context.issue.number,
-      body: body
-    });
-  }
+  await postBenchmarkComment(github, context, { artifactId });
 }
 
 // Export functions for use in GitHub Actions workflow
@@ -181,6 +171,7 @@ module.exports = {
   escapeRegex,
   createCommentBody,
   createRunEntry,
+  postBenchmarkComment,
   postInitialComment,
   postCompletionComment
 };
