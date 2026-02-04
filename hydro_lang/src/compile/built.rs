@@ -1,6 +1,8 @@
 use std::marker::PhantomData;
 
-use dfir_lang::graph::{DfirGraph, eliminate_extra_unions_tees, partition_graph};
+use dfir_lang::graph::{
+    DfirGraph, FlatGraphBuilderOutput, eliminate_extra_unions_tees, partition_graph,
+};
 use slotmap::{SecondaryMap, SlotMap, SparseSecondaryMap};
 
 use super::compiled::CompiledFlow;
@@ -33,7 +35,8 @@ pub(crate) fn build_inner<'a, D: Deploy<'a>>(
     emit::<D>(ir)
         .into_iter()
         .map(|(k, v)| {
-            let (mut flat_graph, _, _) = v.build();
+            let FlatGraphBuilderOutput { mut flat_graph, .. } =
+                v.build().expect("Failed to build DFIR flat graph.");
             eliminate_extra_unions_tees(&mut flat_graph);
             let partitioned_graph =
                 partition_graph(flat_graph).expect("Failed to partition (cycle detected).");

@@ -1,7 +1,7 @@
 mod utils;
 
 use dfir_lang::diagnostic::{Diagnostic, Level};
-use dfir_lang::graph::{WriteConfig, build_hfcode};
+use dfir_lang::graph::{BuildDfirCodeOutput, WriteConfig, build_dfir_code};
 use proc_macro2::{LineColumn, Span};
 use quote::quote;
 use serde::{Deserialize, Serialize};
@@ -119,18 +119,25 @@ pub fn compile_dfir(
 
     let out = match syn::parse_str(&program) {
         Ok(input) => {
-            let (graph_code_opt, diagnostics) = build_hfcode(input, &quote!(dfir_rs));
-            let output = graph_code_opt.map(|(graph, code)| {
-                let mermaid = graph.to_mermaid(&write_config);
-                let file = syn::parse_quote! {
-                    fn main() {
-                        let mut df = #code;
-                        df.run_available();
-                    }
-                };
-                let compiled = prettyplease::unparse(&file);
-                DfirOutput { mermaid, compiled }
-            });
+            let (output, diagnostics) = match build_dfir_code(input, &quote!(dfir_rs)) {
+                Ok(BuildDfirCodeOutput {
+                    partitioned_graph,
+                    code,
+                    diagnostics,
+                }) => {
+                    let mermaid = partitioned_graph.to_mermaid(&write_config);
+                    let file = syn::parse_quote! {
+                        async fn main() {
+                            let mut df = #code;
+                            df.run_available().await;
+                        }
+                    };
+                    let compiled = prettyplease::unparse(&file);
+                    let output = DfirOutput { mermaid, compiled };
+                    (Some(output), diagnostics)
+                }
+                Err(diagnostics) => (None, diagnostics),
+            };
             DfirResult {
                 output,
                 diagnostics: diagnostics.into_iter().map(Into::into).collect(),

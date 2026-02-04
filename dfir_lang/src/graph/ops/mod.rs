@@ -17,7 +17,7 @@ use super::{
     GraphLoopId, GraphNode, GraphNodeId, GraphSubgraphId, OpInstGenerics, OperatorInstance,
     PortIndexValue,
 };
-use crate::diagnostic::{Diagnostic, Level};
+use crate::diagnostic::{Diagnostic, Diagnostics, Level};
 use crate::parse::{Operator, PortIndex};
 
 /// The delay (soft barrier) type, for each input to an operator if needed.
@@ -87,8 +87,7 @@ pub struct OperatorConstraints {
 }
 
 /// Type alias for [`OperatorConstraints::write_fn`]'s type.
-pub type WriteFn =
-    fn(&WriteContextArgs<'_>, &mut Vec<Diagnostic>) -> Result<OperatorWriteOutput, ()>;
+pub type WriteFn = fn(&WriteContextArgs<'_>, &mut Diagnostics) -> Result<OperatorWriteOutput, ()>;
 
 impl Debug for OperatorConstraints {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -449,7 +448,7 @@ impl WriteContextArgs<'_> {
     /// Returns the given number of persistence arguments, disallowing mutable lifetimes.
     pub fn persistence_args_disallow_mutable<const N: usize>(
         &self,
-        diagnostics: &mut Vec<Diagnostic>,
+        diagnostics: &mut Diagnostics,
     ) -> [Persistence; N] {
         let len = self.op_inst.generics.persistence_args.len();
         if 0 != len && 1 != len && N != len {

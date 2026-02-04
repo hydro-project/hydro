@@ -3,8 +3,10 @@
     feature(proc_macro_diagnostic, proc_macro_span, proc_macro_def_site)
 )]
 
-use dfir_lang::diagnostic::{Diagnostic, Level};
-use dfir_lang::graph::{FlatGraphBuilder, build_hfcode, partition_graph};
+use dfir_lang::diagnostic::Level;
+use dfir_lang::graph::{
+    BuildDfirCodeOutput, FlatGraphBuilder, FlatGraphBuilderOutput, build_dfir_code, partition_graph,
+};
 use dfir_lang::parse::DfirCode;
 use proc_macro2::{Ident, Literal, Span};
 use quote::{format_ident, quote, quote_spanned};
@@ -65,26 +67,29 @@ fn root() -> proc_macro2::TokenStream {
 
 fn dfir_syntax_internal(
     input: proc_macro::TokenStream,
-    min_diagnostic_level: Option<Level>,
+    retain_diagnostic_level: Option<Level>,
 ) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DfirCode);
     let root = root();
-    let (graph_code_opt, diagnostics) = build_hfcode(input, &root);
-    let tokens = graph_code_opt
-        .map(|(_graph, code)| code)
-        .unwrap_or_else(|| quote! { #root::scheduled::graph::Dfir::new() });
 
-    let diagnostics = diagnostics
-        .iter()
-        .filter(|diag: &&Diagnostic| Some(diag.level) <= min_diagnostic_level);
+    let (code, mut diagnostics) = match build_dfir_code(input, &root) {
+        Ok(BuildDfirCodeOutput {
+            partitioned_graph: _,
+            code,
+            diagnostics,
+        }) => (code, diagnostics),
+        Err(diagnostics) => (quote! { #root::scheduled::graph::Dfir::new() }, diagnostics),
+    };
 
-    let diagnostic_tokens = Diagnostic::try_emit_all(diagnostics)
-        .err()
-        .unwrap_or_default();
+    let diagnostic_tokens = retain_diagnostic_level.and_then(|level| {
+        diagnostics.retain_level(level);
+        diagnostics.try_emit_all().err()
+    });
+
     quote! {
         {
             #diagnostic_tokens
-            #tokens
+            #code
         }
     }
     .into()
@@ -98,29 +103,41 @@ pub fn dfir_parser(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DfirCode);
 
     let flat_graph_builder = FlatGraphBuilder::from_dfir(input);
-    let (mut flat_graph, _uses, mut diagnostics) = flat_graph_builder.build();
-    if !diagnostics.iter().any(Diagnostic::is_error) {
+    let err_diagnostics = 'err: {
+        let (mut flat_graph, mut diagnostics) = match flat_graph_builder.build() {
+            Ok(FlatGraphBuilderOutput {
+                flat_graph,
+                uses: _,
+                diagnostics,
+            }) => (flat_graph, diagnostics),
+            Err(diagnostics) => {
+                break 'err diagnostics;
+            }
+        };
+
         if let Err(diagnostic) = flat_graph.merge_modules() {
             diagnostics.push(diagnostic);
-        } else {
-            let flat_mermaid = flat_graph.mermaid_string_flat();
-
-            let part_graph = partition_graph(flat_graph).unwrap();
-            let part_mermaid = part_graph.to_mermaid(&Default::default());
-
-            let lit0 = Literal::string(&flat_mermaid);
-            let lit1 = Literal::string(&part_mermaid);
-
-            return quote! {
-                {
-                    println!("{}\n\n{}\n", #lit0, #lit1);
-                }
-            }
-            .into();
+            break 'err diagnostics;
         }
-    }
 
-    Diagnostic::try_emit_all(diagnostics.iter())
+        let flat_mermaid = flat_graph.mermaid_string_flat();
+
+        let part_graph = partition_graph(flat_graph).unwrap();
+        let part_mermaid = part_graph.to_mermaid(&Default::default());
+
+        let lit0 = Literal::string(&flat_mermaid);
+        let lit1 = Literal::string(&part_mermaid);
+
+        return quote! {
+            {
+                println!("{}\n\n{}\n", #lit0, #lit1);
+            }
+        }
+        .into();
+    };
+
+    err_diagnostics
+        .try_emit_all()
         .err()
         .unwrap_or_default()
         .into()

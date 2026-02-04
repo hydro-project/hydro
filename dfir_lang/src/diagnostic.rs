@@ -4,6 +4,7 @@ extern crate proc_macro;
 
 use std::hash::{Hash, Hasher};
 
+use itertools::Itertools;
 use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::quote_spanned;
 use serde::{Deserialize, Serialize};
@@ -32,9 +33,9 @@ pub enum Level {
     Help,
 }
 impl Level {
-    /// If this level is [`Level::Error`].
-    pub fn is_error(&self) -> bool {
-        self <= &Self::Error
+    /// Iterator of all levels from most to least severe.
+    pub fn iter() -> std::array::IntoIter<Self, 4> {
+        [Self::Error, Self::Warning, Self::Note, Self::Help].into_iter()
     }
 }
 
@@ -42,7 +43,7 @@ impl Level {
 /// usually as a squiggly red or yellow underline.
 ///
 /// Diagnostics must be emitted via [`Diagnostic::try_emit`], [`Diagnostic::to_tokens`], or
-/// [`Diagnostic::try_emit_all`] for diagnostics to show up.
+/// [`Diagnostics::try_emit_all`] for diagnostics to show up.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Diagnostic<S = Span> {
     /// Span (source code location).
@@ -51,12 +52,6 @@ pub struct Diagnostic<S = Span> {
     pub level: Level,
     /// Human-readable message.
     pub message: String,
-}
-impl<S> Diagnostic<S> {
-    /// If this diagnostic's level is [`Level::Error`].
-    pub fn is_error(&self) -> bool {
-        self.level.is_error()
-    }
 }
 impl Diagnostic {
     /// Create a new diagnostic from the given span, level, and message.
@@ -84,25 +79,6 @@ impl Diagnostic {
             return Ok(());
         }
         Err(self.to_tokens())
-    }
-
-    /// Emits all if possible, otherwise returns `Err` containing a [`TokenStream`] of
-    /// `compile_error!(...)` calls.
-    pub fn try_emit_all<'a>(
-        diagnostics: impl IntoIterator<Item = &'a Self>,
-    ) -> Result<(), TokenStream> {
-        if let Some(tokens) = diagnostics
-            .into_iter()
-            .filter_map(|diag| diag.try_emit().err())
-            .reduce(|mut tokens, next| {
-                tokens.extend(next);
-                tokens
-            })
-        {
-            Err(tokens)
-        } else {
-            Ok(())
-        }
     }
 
     /// Used to emulate `proc_macro::Diagnostic::emit` by turning this diagnostic into a properly spanned [`TokenStream`]
@@ -223,5 +199,125 @@ impl std::fmt::Display for SerdeSpan {
             self.line,
             self.column
         )
+    }
+}
+
+/// A basic wrapper around [`Vec<Diagnostic>`] with pretty debug printing and utility methods.
+pub struct Diagnostics<S = Span> {
+    diagnostics: Vec<Diagnostic<S>>,
+}
+
+impl<S> Default for Diagnostics<S> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<S> Diagnostics<S> {
+    /// Creates a new empty `Diagnostics`.
+    pub fn new() -> Self {
+        Self {
+            diagnostics: Vec::new(),
+        }
+    }
+
+    /// Retains only diagnostics as severe as `level` or more severe.
+    pub fn retain_level(&mut self, level: Level) {
+        self.diagnostics.retain(|d| d.level <= level);
+    }
+
+    /// Returns if any errors exist in this collection.
+    pub fn has_error(&self) -> bool {
+        self.diagnostics.iter().any(|d| Level::Error == d.level)
+    }
+
+    /// Adds a diagnostic to this collection.
+    pub fn push(&mut self, diagnostic: Diagnostic<S>) {
+        self.diagnostics.push(diagnostic);
+    }
+
+    /// Returns an iterator over the diagnostics.
+    pub fn iter(&self) -> std::slice::Iter<'_, Diagnostic<S>> {
+        self.diagnostics.iter()
+    }
+
+    /// Returns the number of diagnostics in this collection.
+    pub fn len(&self) -> usize {
+        self.diagnostics.len()
+    }
+
+    /// Returns if this collection is empty.
+    pub fn is_empty(&self) -> bool {
+        self.diagnostics.is_empty()
+    }
+}
+
+impl Diagnostics {
+    /// Emits all if possible, otherwise returns `Err` containing a [`TokenStream`] of code spanned to emit each error
+    /// and warning indirectly.
+    pub fn try_emit_all(&self) -> Result<(), TokenStream> {
+        if let Some(tokens) = self
+            .diagnostics
+            .iter()
+            .filter_map(|diag| diag.try_emit().err())
+            .reduce(|mut tokens, next| {
+                tokens.extend(next);
+                tokens
+            })
+        {
+            Err(tokens)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+impl<S> Extend<Diagnostic<S>> for Diagnostics<S> {
+    fn extend<T: IntoIterator<Item = Diagnostic<S>>>(&mut self, iter: T) {
+        self.diagnostics.extend(iter);
+    }
+}
+
+impl<S> std::fmt::Debug for Diagnostics<S>
+where
+    Diagnostic<S>: std::fmt::Display,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.diagnostics.is_empty() {
+            write!(f, "Diagnostics (empty)")?;
+        } else {
+            write!(f, "Diagnostics (")?;
+            let groups = self.diagnostics.iter().into_group_map_by(|d| d.level);
+            for (level, count) in
+                Level::iter().filter_map(|level| groups.get(&level).map(|vec| (level, vec.len())))
+            {
+                write!(f, "{level:?}: {count}, ")?;
+            }
+            writeln!(f, "):")?;
+            for diagnostic in Level::iter()
+                .filter_map(|level| groups.get(&level))
+                .flatten()
+            {
+                writeln!(f, "{diagnostic}")?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<S> FromIterator<Diagnostic<S>> for Diagnostics<S> {
+    fn from_iter<T: IntoIterator<Item = Diagnostic<S>>>(iter: T) -> Self {
+        Self {
+            diagnostics: Vec::from_iter(iter),
+        }
+    }
+}
+
+impl<S> IntoIterator for Diagnostics<S> {
+    type Item = Diagnostic<S>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.diagnostics.into_iter()
     }
 }

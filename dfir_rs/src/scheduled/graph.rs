@@ -9,7 +9,7 @@ use std::marker::PhantomData;
 use std::rc::Rc;
 
 #[cfg(feature = "meta")]
-use dfir_lang::diagnostic::{Diagnostic, SerdeSpan};
+use dfir_lang::diagnostic::{Diagnostic, Diagnostics, SerdeSpan};
 #[cfg(feature = "meta")]
 use dfir_lang::graph::DfirGraph;
 use ref_cast::RefCast;
@@ -155,7 +155,7 @@ impl<'a> Dfir<'a> {
             let mut meta_graph: DfirGraph =
                 serde_json::from_str(_meta_graph_json).expect("Failed to deserialize graph.");
 
-            let mut op_inst_diagnostics = Vec::new();
+            let mut op_inst_diagnostics = Diagnostics::new();
             meta_graph.insert_node_op_insts_all(&mut op_inst_diagnostics);
             assert!(
                 op_inst_diagnostics.is_empty(),

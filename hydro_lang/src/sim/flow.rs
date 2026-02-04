@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::panic::RefUnwindSafe;
 use std::rc::Rc;
 
+use dfir_lang::graph::{DfirGraph, FlatGraphBuilder, FlatGraphBuilderOutput};
 use libloading::Library;
 use slotmap::SparseSecondaryMap;
 
@@ -13,6 +14,7 @@ use super::compiled::{CompiledSim, CompiledSimInstance};
 use super::graph::{SimDeploy, SimExternal, SimNode, compile_sim, create_sim_graph_trybuild};
 use crate::compile::ir::HydroRoot;
 use crate::location::LocationKey;
+use crate::location::dynamic::LocationId;
 use crate::prelude::Cluster;
 use crate::sim::graph::SimExternalPortRegistry;
 use crate::staging_util::Invariant;
@@ -123,57 +125,27 @@ impl<'a> SimFlow<'a> {
             );
         }
 
-        let process_graphs = sim_emit
-            .process_graphs
-            .into_iter()
-            .map(|(l, g)| {
-                let (mut flat_graph, _, _) = g.build();
-                eliminate_extra_unions_tees(&mut flat_graph);
-                (
-                    l,
-                    partition_graph(flat_graph).expect("Failed to partition (cycle detected)."),
-                )
-            })
-            .collect::<BTreeMap<_, _>>();
+        fn build_graphs(
+            graphs: BTreeMap<LocationId, FlatGraphBuilder>,
+        ) -> BTreeMap<LocationId, DfirGraph> {
+            graphs
+                .into_iter()
+                .map(|(l, g)| {
+                    let FlatGraphBuilderOutput { mut flat_graph, .. } =
+                        g.build().expect("Failed to build DFIR flat graph.");
+                    eliminate_extra_unions_tees(&mut flat_graph);
+                    (
+                        l,
+                        partition_graph(flat_graph).expect("Failed to partition (cycle detected)."),
+                    )
+                })
+                .collect()
+        }
 
-        let cluster_graphs = sim_emit
-            .cluster_graphs
-            .into_iter()
-            .map(|(l, g)| {
-                let (mut flat_graph, _, _) = g.build();
-                eliminate_extra_unions_tees(&mut flat_graph);
-                (
-                    l,
-                    partition_graph(flat_graph).expect("Failed to partition (cycle detected)."),
-                )
-            })
-            .collect::<BTreeMap<_, _>>();
-
-        let process_tick_graphs = sim_emit
-            .process_tick_dfirs
-            .into_iter()
-            .map(|(l, g)| {
-                let (mut flat_graph, _, _) = g.build();
-                eliminate_extra_unions_tees(&mut flat_graph);
-                (
-                    l,
-                    partition_graph(flat_graph).expect("Failed to partition (cycle detected)."),
-                )
-            })
-            .collect::<BTreeMap<_, _>>();
-
-        let cluster_tick_graphs = sim_emit
-            .cluster_tick_dfirs
-            .into_iter()
-            .map(|(l, g)| {
-                let (mut flat_graph, _, _) = g.build();
-                eliminate_extra_unions_tees(&mut flat_graph);
-                (
-                    l,
-                    partition_graph(flat_graph).expect("Failed to partition (cycle detected)."),
-                )
-            })
-            .collect::<BTreeMap<_, _>>();
+        let process_graphs = build_graphs(sim_emit.process_graphs);
+        let cluster_graphs = build_graphs(sim_emit.cluster_graphs);
+        let process_tick_graphs = build_graphs(sim_emit.process_tick_dfirs);
+        let cluster_tick_graphs = build_graphs(sim_emit.cluster_tick_dfirs);
 
         #[expect(
             clippy::disallowed_methods,

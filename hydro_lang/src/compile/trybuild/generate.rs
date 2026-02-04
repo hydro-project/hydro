@@ -2,6 +2,7 @@ use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
+use dfir_lang::diagnostic::Diagnostics;
 #[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use dfir_lang::graph::DfirGraph;
 use sha2::{Digest, Sha256};
@@ -232,13 +233,12 @@ pub fn compile_graph_trybuild(
 ) -> syn::File {
     use crate::staging_util::get_this_crate;
 
-    let mut diagnostics = Vec::new();
-    let mut dfir_expr: syn::Expr = syn::parse2(partitioned_graph.as_code(
-        &quote! { __root_dfir_rs },
-        true,
-        quote!(),
-        &mut diagnostics,
-    ))
+    let mut diagnostics = Diagnostics::new();
+    let mut dfir_expr: syn::Expr = syn::parse2(
+        partitioned_graph
+            .as_code(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
+            .expect("DFIR code generation failed with diagnostics."),
+    )
     .unwrap();
 
     if is_test {

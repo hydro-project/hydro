@@ -23,7 +23,7 @@ use super::{
     GraphSubgraphId, HANDOFF_NODE_STR, MODULE_BOUNDARY_NODE_STR, OperatorInstance, PortIndexValue,
     Varname, change_spans, get_operator_generics,
 };
-use crate::diagnostic::{Diagnostic, Level};
+use crate::diagnostic::{Diagnostic, Diagnostics, Level};
 use crate::pretty_span::{PrettyRowCol, PrettySpan};
 use crate::process_singletons;
 
@@ -242,7 +242,7 @@ impl DfirGraph {
     }
 
     /// Assign all operator instances if not set. Write diagnostic messages/errors into `diagnostics`.
-    pub fn insert_node_op_insts_all(&mut self, diagnostics: &mut Vec<Diagnostic>) {
+    pub fn insert_node_op_insts_all(&mut self, diagnostics: &mut Diagnostics) {
         let mut op_insts = Vec::new();
         for (node_id, node) in self.nodes() {
             let GraphNode::Operator(operator) = node else {
@@ -378,10 +378,11 @@ impl DfirGraph {
                 break 'oc None;
             };
             let (input_port, output_port) = self.ports.get(edge_id).cloned().unwrap();
-            let generics = get_operator_generics(
-                &mut Vec::new(), // TODO(mingwei) diagnostics
-                operator,
-            );
+
+            let mut dummy_diagnostics = Diagnostics::new();
+            let generics = get_operator_generics(&mut dummy_diagnostics, operator);
+            assert!(dummy_diagnostics.is_empty());
+
             Some(OperatorInstance {
                 op_constraints,
                 input_ports: vec![input_port],
@@ -841,13 +842,15 @@ impl DfirGraph {
     }
 
     /// Emit this graph as runnable Rust source code tokens.
+    ///
+    /// Returns all diagnostics as `Err(diagnostics)` if any are errors (leaving `&mut diagnostics` empty).
     pub fn as_code(
         &self,
         root: &TokenStream,
         include_type_guards: bool,
         prefix: TokenStream,
-        diagnostics: &mut Vec<Diagnostic>,
-    ) -> TokenStream {
+        diagnostics: &mut Diagnostics,
+    ) -> Result<TokenStream, Diagnostics> {
         let df = Ident::new(GRAPH, Span::call_site());
         let context = Ident::new(CONTEXT, Span::call_site());
 
@@ -1090,7 +1093,7 @@ impl DfirGraph {
                                 write_iterator_after,
                             } = write_result.unwrap_or_else(|()| {
                                 assert!(
-                                    diagnostics.iter().any(Diagnostic::is_error),
+                                    diagnostics.has_error(),
                                     "Operator `{}` returned `Err` but emitted no diagnostics, this is a bug.",
                                     op_name,
                                 );
@@ -1304,6 +1307,11 @@ impl DfirGraph {
             }
         }
 
+        if diagnostics.has_error() {
+            return Err(std::mem::take(diagnostics));
+        }
+        let _ = diagnostics; // Ensure no more diagnostics may be added after checking for errors.
+
         let loop_code = self.codegen_nested_loops(&df);
 
         // These two are quoted separately here because iterators are lazily evaluated, so this
@@ -1325,7 +1333,7 @@ impl DfirGraph {
         let diagnostics_json = serde_json::to_string(&*serde_diagnostics).unwrap();
         let diagnostics_json = Literal::string(&diagnostics_json);
 
-        quote! {
+        Ok(quote! {
             {
                 #[allow(unused_qualifications, clippy::await_holding_refcell_ref)]
                 {
@@ -1342,7 +1350,7 @@ impl DfirGraph {
                     #df
                 }
             }
-        }
+        })
     }
 
     /// Color mode (pull vs. push, handoff vs. comp) for nodes. Some nodes can be push *OR* pull;
