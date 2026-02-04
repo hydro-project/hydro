@@ -13,10 +13,10 @@ macro_rules! __sliced_parse_uses__ {
     (
         @uses [$($uses:tt)*]
         @states [$($states:tt)*]
-        let $name:ident = use:: $style:ident($($args:expr),* $(,)?); $($rest:tt)*
+        let $name:ident = use:: $invocation:expr; $($rest:tt)*
     ) => {
         $crate::__sliced_parse_uses__!(
-            @uses [$($uses)* { $name, $style, ($($args),*) }]
+            @uses [$($uses)* { $name, $invocation, $invocation }]
             @states [$($states)*]
             $($rest)*
         )
@@ -29,7 +29,7 @@ macro_rules! __sliced_parse_uses__ {
         let $name:ident = use($($args:expr),* $(,)?); $($rest:tt)*
     ) => {
         $crate::__sliced_parse_uses__!(
-            @uses [$($uses)* { $name, default, ($($args),*) }]
+            @uses [$($uses)* { $name, $crate::macro_support::copy_span::copy_span!($($args,)* default)($($args),*), $($args),* }]
             @states [$($states)*]
             $($rest)*
         )
@@ -62,20 +62,21 @@ macro_rules! __sliced_parse_uses__ {
 
     // Terminal case: uses with optional states
     (
-        @uses [$({ $use_name:ident, $style_name:ident, ($($args:expr),*) })+]
+        @uses [$({ $use_name:ident, $invocation:expr, $($invocation_spans:expr),* })+]
         @states [$({ $state_name:ident, $state_style:ident, (($($state_ty:ty)?), ($($state_arg:expr)?)) })*]
         $($body:tt)*
     ) => {
         {
+            use $crate::live_collections::sliced::style::*;
             let __styled = (
-                $($crate::live_collections::sliced::style::$style_name($($args),*),)+
+                $($invocation,)+
             );
 
-            let __tick = $crate::live_collections::sliced::Slicable::preferred_tick(&__styled).unwrap_or_else(|| $crate::live_collections::sliced::Slicable::get_location(&__styled.0).tick());
+            let __tick = $crate::live_collections::sliced::Slicable::preferred_tick(&__styled).unwrap_or_else(|| $crate::live_collections::sliced::Slicable::create_tick(&__styled.0));
             let __backtraces = {
                 use $crate::compile::ir::backtrace::__macro_get_backtrace;
                 (
-                    $($crate::macro_support::copy_span::copy_span!($($args),*, {
+                    $($crate::macro_support::copy_span::copy_span!($($invocation_spans,)* {
                         __macro_get_backtrace(1)
                     }),)+
                 )
@@ -193,6 +194,14 @@ pub trait Slicable<'a, L: Location<'a>> {
 
     /// Gets the location associated with this live collection.
     fn get_location(&self) -> &L;
+
+    /// Creates a tick that is appropriate for the collection's location.
+    fn create_tick(&self) -> Tick<L>
+    where
+        L: NoTick,
+    {
+        self.get_location().tick()
+    }
 
     /// Slices this live collection at the given tick.
     ///

@@ -67,7 +67,7 @@ where
 {
     let dummy = clients.singleton(q!(0));
     let new_payload_ids = sliced! {
-        let dummy_batched = use(dummy, nondet!(/** temp */));
+        let _dummy_batched = use(dummy, nondet!(/** temp */));
         let mut next_virtual_client = use::state(|l| Optional::from(l.singleton(q!((0u32, None)))));
 
         // Set up virtual clients - spawn new ones each tick until we reach the limit
