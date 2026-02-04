@@ -12,7 +12,7 @@ use syn::spanned::Spanned;
 use syn::{Expr, ExprPath, GenericArgument, Token, Type};
 
 use self::ops::{OperatorConstraints, Persistence};
-use crate::diagnostic::{Diagnostic, Level};
+use crate::diagnostic::{Diagnostic, Diagnostics, Level};
 use crate::parse::{DfirCode, IndexInt, Operator, PortIndex, Ported};
 use crate::pretty_span::PrettySpan;
 
@@ -28,7 +28,7 @@ use std::fmt::Display;
 
 pub use di_mul_graph::DiMulGraph;
 pub use eliminate_extra_unions_tees::eliminate_extra_unions_tees;
-pub use flat_graph_builder::FlatGraphBuilder;
+pub use flat_graph_builder::{FlatGraphBuilder, FlatGraphBuilderOutput};
 pub use flat_to_partitioned::partition_graph;
 pub use meta_graph::{DfirGraph, WriteConfig, WriteGraphType};
 
@@ -217,10 +217,7 @@ pub struct OpInstGenerics {
 ///
 /// This helper method is useful due to the special handling of persistence lifetimes (`'static`,
 /// `'tick`, `'mutable`) which must come before other generic parameters.
-pub fn get_operator_generics(
-    diagnostics: &mut Vec<Diagnostic>,
-    operator: &Operator,
-) -> OpInstGenerics {
+pub fn get_operator_generics(diagnostics: &mut Diagnostics, operator: &Operator) -> OpInstGenerics {
     // Generic arguments.
     let generic_args = operator.type_arguments().cloned();
     let persistence_args = generic_args.iter().flatten().map_while(|generic_arg| match generic_arg {
@@ -396,38 +393,56 @@ impl Display for PortIndexValue {
     }
 }
 
+/// Output of [`build_dfir_code`].
+pub struct BuildDfirCodeOutput {
+    /// The now-partitioned graph.
+    pub partitioned_graph: DfirGraph,
+    /// The Rust source code tokens for the DFIR.
+    pub code: TokenStream,
+    /// Any (non-error) diagnostics emitted.
+    pub diagnostics: Diagnostics,
+}
+
 /// The main function of this module. Compiles a [`DfirCode`] AST into a [`DfirGraph`] and
 /// source code, or [`Diagnostic`] errors.
-pub fn build_hfcode(
-    hf_code: DfirCode,
+pub fn build_dfir_code(
+    dfir_code: DfirCode,
     root: &TokenStream,
-) -> (Option<(DfirGraph, TokenStream)>, Vec<Diagnostic>) {
-    let flat_graph_builder = FlatGraphBuilder::from_dfir(hf_code);
-    let (mut flat_graph, uses, mut diagnostics) = flat_graph_builder.build();
-    if !diagnostics.iter().any(Diagnostic::is_error) {
-        if let Err(diagnostic) = flat_graph.merge_modules() {
-            diagnostics.push(diagnostic);
-            return (None, diagnostics);
-        }
+) -> Result<BuildDfirCodeOutput, Diagnostics> {
+    let flat_graph_builder = FlatGraphBuilder::from_dfir(dfir_code);
 
-        eliminate_extra_unions_tees(&mut flat_graph);
-        match partition_graph(flat_graph) {
-            Ok(partitioned_graph) => {
-                let code = partitioned_graph.as_code(
-                    root,
-                    true,
-                    quote::quote! { #( #uses )* },
-                    &mut diagnostics,
-                );
-                if !diagnostics.iter().any(Diagnostic::is_error) {
-                    // Success.
-                    return (Some((partitioned_graph, code)), diagnostics);
-                }
-            }
-            Err(diagnostic) => diagnostics.push(diagnostic),
+    let FlatGraphBuilderOutput {
+        mut flat_graph,
+        uses,
+        mut diagnostics,
+    } = flat_graph_builder.build()?;
+
+    let () = match flat_graph.merge_modules() {
+        Ok(()) => (),
+        Err(d) => {
+            diagnostics.push(d);
+            return Err(diagnostics);
         }
-    }
-    (None, diagnostics)
+    };
+
+    eliminate_extra_unions_tees(&mut flat_graph);
+    let partitioned_graph = match partition_graph(flat_graph) {
+        Ok(partitioned_graph) => partitioned_graph,
+        Err(d) => {
+            diagnostics.push(d);
+            return Err(diagnostics);
+        }
+    };
+
+    let code =
+        partitioned_graph.as_code(root, true, quote::quote! { #( #uses )* }, &mut diagnostics)?;
+
+    // Success
+    Ok(BuildDfirCodeOutput {
+        partitioned_graph,
+        code,
+        diagnostics,
+    })
 }
 
 /// Changes all of token's spans to `span`, recursing into groups.

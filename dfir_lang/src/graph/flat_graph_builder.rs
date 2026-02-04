@@ -13,7 +13,7 @@ use syn::{Error, Ident, ItemUse};
 use super::ops::next_iteration::NEXT_ITERATION;
 use super::ops::{FloType, Persistence};
 use super::{DfirGraph, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, PortIndexValue};
-use crate::diagnostic::{Diagnostic, Level};
+use crate::diagnostic::{Diagnostic, Diagnostics, Level};
 use crate::graph::graph_algorithms;
 use crate::graph::ops::{PortListSpec, RangeTrait};
 use crate::parse::{DfirCode, DfirStatement, Operator, Pipeline};
@@ -58,7 +58,7 @@ impl VarnameInfo {
 #[derive(Debug, Default)]
 pub struct FlatGraphBuilder {
     /// Spanned error/warning/etc diagnostics to emit.
-    diagnostics: Vec<Diagnostic>,
+    diagnostics: Diagnostics,
 
     /// [`DfirGraph`] being built.
     flat_graph: DfirGraph,
@@ -75,6 +75,16 @@ pub struct FlatGraphBuilder {
     module_boundary_nodes: Option<(GraphNodeId, GraphNodeId)>,
 }
 
+/// Output of [`FlatGraphBuilder::build`].
+pub struct FlatGraphBuilderOutput {
+    /// The flat DFIR graph.
+    pub flat_graph: DfirGraph,
+    /// Any `use` statements.
+    pub uses: Vec<ItemUse>,
+    /// Any emitted diagnostics (warnings, errors).
+    pub diagnostics: Diagnostics,
+}
+
 impl FlatGraphBuilder {
     /// Create a new empty graph builder.
     pub fn new() -> Self {
@@ -88,16 +98,23 @@ impl FlatGraphBuilder {
         builder
     }
 
-    /// Build into an unpartitioned [`DfirGraph`], returning a tuple of the graph and
-    /// any diagnostics.
+    /// Build into an unpartitioned [`DfirGraph`], returning a struct containing the flat graph, any diagnostics, and
+    /// other outputs.
     ///
-    /// Even if there are errors, the graph will be returned (potentially in a invalid
-    /// state). Does not call `emit` on any diagnostics.
-    pub fn build(mut self) -> (DfirGraph, Vec<ItemUse>, Vec<Diagnostic>) {
+    /// If any diagnostics are errors, `Err` is returned and the underlying graph is lost.
+    pub fn build(mut self) -> Result<FlatGraphBuilderOutput, Diagnostics> {
         self.finalize_connect_operator_links();
         self.process_operator_errors();
 
-        (self.flat_graph, self.uses, self.diagnostics)
+        if self.diagnostics.has_error() {
+            Err(self.diagnostics)
+        } else {
+            Ok(FlatGraphBuilderOutput {
+                flat_graph: self.flat_graph,
+                uses: self.uses,
+                diagnostics: self.diagnostics,
+            })
+        }
     }
 
     /// Adds all [`DfirStatement`]s within the [`DfirCode`] to this [`DfirGraph`].
@@ -512,7 +529,7 @@ impl FlatGraphBuilder {
                 inout: &str,
                 old: &PortIndexValue,
                 new: &PortIndexValue,
-                diagnostics: &mut Vec<Diagnostic>,
+                diagnostics: &mut Diagnostics,
             ) {
                 // TODO(mingwei): Use `MultiSpan` once `proc_macro2` supports it.
                 diagnostics.push(Diagnostic::spanned(
@@ -609,7 +626,7 @@ impl FlatGraphBuilder {
                         is_hard: bool,
                         degree: usize,
                         range: &dyn RangeTrait<usize>,
-                        diagnostics: &mut Vec<Diagnostic>,
+                        diagnostics: &mut Diagnostics,
                     ) -> bool {
                         let op_name = &*operator.name_string();
                         let message = format!(
@@ -674,7 +691,7 @@ impl FlatGraphBuilder {
                         expected_ports_fn: Option<fn() -> PortListSpec>,
                         actual_ports_iter: impl Iterator<Item = &'a PortIndexValue>,
                         input_output: &'static str,
-                        diagnostics: &mut Vec<Diagnostic>,
+                        diagnostics: &mut Diagnostics,
                     ) {
                         let Some(expected_ports_fn) = expected_ports_fn else {
                             return;
@@ -821,7 +838,7 @@ impl FlatGraphBuilder {
 
     /// Emit a warning to `diagnostics` for an unused port (i.e. if the port is specified for
     /// reason).
-    fn helper_check_unused_port(diagnostics: &mut Vec<Diagnostic>, ends: &Ends, is_in: bool) {
+    fn helper_check_unused_port(diagnostics: &mut Diagnostics, ends: &Ends, is_in: bool) {
         let port = if is_in { &ends.inn } else { &ends.out };
         if let Some((port, _)) = port
             && port.is_specified()
@@ -842,7 +859,7 @@ impl FlatGraphBuilder {
     /// Because the name may already have indexing, this may introduce double indexing (i.e. `[0][0]my_var[0][0]`)
     /// which would be an error.
     fn helper_combine_ends(
-        diagnostics: &mut Vec<Diagnostic>,
+        diagnostics: &mut Diagnostics,
         og_ends: Ends,
         inn_port: PortIndexValue,
         out_port: PortIndexValue,
@@ -856,7 +873,7 @@ impl FlatGraphBuilder {
     /// Helper function.
     /// Combine the port indexing info for one input or output.
     fn helper_combine_end(
-        diagnostics: &mut Vec<Diagnostic>,
+        diagnostics: &mut Diagnostics,
         og: Option<(PortIndexValue, GraphDet)>,
         other: PortIndexValue,
         input_output: &'static str,
