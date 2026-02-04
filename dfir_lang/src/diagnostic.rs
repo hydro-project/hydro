@@ -43,7 +43,7 @@ impl Level {
 /// usually as a squiggly red or yellow underline.
 ///
 /// Diagnostics must be emitted via [`Diagnostic::try_emit`], [`Diagnostic::to_tokens`], or
-/// [`Diagnostic::try_emit_all`] for diagnostics to show up.
+/// [`Diagnostics::try_emit_all`] for diagnostics to show up.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Diagnostic<S = Span> {
     /// Span (source code location).
@@ -253,8 +253,8 @@ impl<S> Diagnostics<S> {
 }
 
 impl Diagnostics {
-    /// Emits all if possible, otherwise returns `Err` containing a [`TokenStream`] of code to spanned to emit each
-    /// error and warning indirectly.
+    /// Emits all if possible, otherwise returns `Err` containing a [`TokenStream`] of code spanned to emit each error
+    /// and warning indirectly.
     pub fn try_emit_all(&self) -> Result<(), TokenStream> {
         if let Some(tokens) = self
             .diagnostics
