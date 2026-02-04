@@ -12,7 +12,7 @@
 //! handled via live collections, so the majority of application logic written with Hydro will involve
 //! manipulating live collections.
 //!
-//! See the [Hydro docs](https://hydro.run/docs/hydro/live-collections) for more.
+//! See the [Hydro docs](https://hydro.run/docs/hydro/reference/live-collections) for more.
 
 pub mod boundedness;
 
