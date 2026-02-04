@@ -135,6 +135,7 @@ pub fn initialize_tracing_with_filter(filter: EnvFilter) {
     set_global_default(
         registry().with(
             fmt::layer()
+                .with_writer(std::io::stderr)
                 .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE)
                 .event_format(Formatter)
                 .with_filter(filter.clone()),

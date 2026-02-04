@@ -9,6 +9,9 @@ pub mod deploy_runtime_containerized;
 #[cfg(feature = "ecs_runtime")]
 pub mod deploy_runtime_containerized_ecs;
 
+#[cfg(any(feature = "maelstrom", feature = "maelstrom_runtime"))]
+pub mod maelstrom;
+
 #[cfg(stageleft_runtime)]
 #[cfg(feature = "deploy")]
 #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]

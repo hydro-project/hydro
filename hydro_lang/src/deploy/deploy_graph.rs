@@ -830,7 +830,7 @@ impl Node for DeployNode {
                     extra_stmts,
                     sidecars,
                     trybuild.name_hint.as_deref(),
-                    false,
+                    crate::compile::trybuild::generate::DeployMode::HydroDeploy,
                     linking_mode,
                 );
                 let host = trybuild.host.clone();
@@ -935,7 +935,7 @@ impl Node for DeployCluster {
                 extra_stmts,
                 sidecars,
                 self.name_hint.as_deref(),
-                false,
+                crate::compile::trybuild::generate::DeployMode::HydroDeploy,
                 linking_mode,
             ))
         } else {

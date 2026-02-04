@@ -2,19 +2,15 @@ use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
-#[cfg(feature = "deploy")]
 use dfir_lang::graph::DfirGraph;
 use sha2::{Digest, Sha256};
-#[cfg(feature = "deploy")]
 use stageleft::internal::quote;
-#[cfg(feature = "deploy")]
 use syn::visit_mut::VisitMut;
 use trybuild_internals_api::cargo::{self, Metadata};
 use trybuild_internals_api::env::Update;
 use trybuild_internals_api::run::{PathDependency, Project};
 use trybuild_internals_api::{Runner, dependencies, features, path};
 
-#[cfg(feature = "deploy")]
 use super::rewriters::UseTestModeStaged;
 
 pub const HYDRO_RUNTIME_FEATURES: &[&str] = &[
@@ -22,16 +18,31 @@ pub const HYDRO_RUNTIME_FEATURES: &[&str] = &[
     "runtime_measure",
     "docker_runtime",
     "ecs_runtime",
+    "maelstrom_runtime",
 ];
 
-#[cfg(feature = "deploy")]
 /// Whether to use dynamic linking for the generated binary.
 /// - `Static`: Place in base crate examples (for remote/containerized deploys)
 /// - `Dynamic`: Place in dylib crate examples (for sim and localhost deploys)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LinkingMode {
     Static,
+    #[cfg(feature = "deploy")]
     Dynamic,
+}
+
+/// The deployment mode for code generation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DeployMode {
+    #[cfg(feature = "deploy")]
+    /// Standard HydroDeploy
+    HydroDeploy,
+    #[cfg(any(feature = "docker_deploy", feature = "ecs_deploy"))]
+    /// Containerized deployment (Docker/ECS)
+    Containerized,
+    #[cfg(feature = "maelstrom")]
+    /// Maelstrom deployment with stdin/stdout JSON protocol
+    Maelstrom,
 }
 
 pub(crate) static IS_TEST: std::sync::atomic::AtomicBool =
@@ -56,7 +67,6 @@ pub fn init_test() {
     IS_TEST.store(true, std::sync::atomic::Ordering::Relaxed);
 }
 
-#[cfg(feature = "deploy")]
 fn clean_bin_name_prefix(bin_name_prefix: &str) -> String {
     bin_name_prefix
         .replace("::", "__")
@@ -80,13 +90,12 @@ pub struct TrybuildConfig {
     pub linking_mode: LinkingMode,
 }
 
-#[cfg(feature = "deploy")]
 pub fn create_graph_trybuild(
     graph: DfirGraph,
     extra_stmts: &[syn::Stmt],
     sidecars: &[syn::Expr],
     bin_name_prefix: Option<&str>,
-    is_containerized: bool,
+    deploy_mode: DeployMode,
     linking_mode: LinkingMode,
 ) -> (String, TrybuildConfig) {
     let source_dir = cargo::manifest_dir().unwrap();
@@ -101,7 +110,7 @@ pub fn create_graph_trybuild(
         sidecars,
         &crate_name,
         is_test,
-        is_containerized,
+        deploy_mode,
     );
 
     let inlined_staged = if is_test {
@@ -160,6 +169,7 @@ pub fn create_graph_trybuild(
     // Determine which crate's examples folder to use based on linking mode
     let examples_dir = match linking_mode {
         LinkingMode::Static => path!(project_dir / "examples"),
+        #[cfg(feature = "deploy")]
         LinkingMode::Dynamic => path!(project_dir / "dylib-examples" / "examples"),
     };
 
@@ -197,19 +207,19 @@ pub fn create_graph_trybuild(
             project_dir,
             target_dir,
             features: cur_bin_enabled_features,
+            #[cfg(feature = "deploy")]
             linking_mode,
         },
     )
 }
 
-#[cfg(feature = "deploy")]
 pub fn compile_graph_trybuild(
     partitioned_graph: DfirGraph,
     extra_stmts: &[syn::Stmt],
     sidecars: &[syn::Expr],
     crate_name: &str,
     is_test: bool,
-    is_containerized: bool,
+    deploy_mode: DeployMode,
 ) -> syn::File {
     use crate::staging_util::get_this_crate;
 
@@ -232,73 +242,119 @@ pub fn compile_graph_trybuild(
     let tokio_main_ident = format!("{}::runtime_support::tokio", root);
     let dfir_ident = quote::format_ident!("{}", crate::compile::DFIR_IDENT);
 
-    let source_ast: syn::File = if is_containerized {
-        syn::parse_quote! {
-            #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
-            use #trybuild_crate_name_ident::__root as #orig_crate_name;
-            use #trybuild_crate_name_ident::__staged::__deps::*;
-            use #root::prelude::*;
-            use #root::runtime_support::dfir_rs as __root_dfir_rs;
-            pub use #trybuild_crate_name_ident::__staged;
+    let source_ast: syn::File = match deploy_mode {
+        #[cfg(any(feature = "docker_deploy", feature = "ecs_deploy"))]
+        DeployMode::Containerized => {
+            syn::parse_quote! {
+                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+                use #trybuild_crate_name_ident::__root as #orig_crate_name;
+                use #trybuild_crate_name_ident::__staged::__deps::*;
+                use #root::prelude::*;
+                use #root::runtime_support::dfir_rs as __root_dfir_rs;
+                pub use #trybuild_crate_name_ident::__staged;
 
-            #[allow(unused)]
-            async fn __hydro_runtime<'a>() -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
-                /// extra_stmts
-                #( #extra_stmts )*
+                #[allow(unused)]
+                async fn __hydro_runtime<'a>() -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
+                    /// extra_stmts
+                    #( #extra_stmts )*
 
-                /// dfir_expr
-                #dfir_expr
-            }
+                    /// dfir_expr
+                    #dfir_expr
+                }
 
-            #[#root::runtime_support::tokio::main(crate = #tokio_main_ident, flavor = "current_thread")]
-            async fn main() {
-                #root::telemetry::initialize_tracing();
+                #[#root::runtime_support::tokio::main(crate = #tokio_main_ident, flavor = "current_thread")]
+                async fn main() {
+                    #root::telemetry::initialize_tracing();
 
-                let mut #dfir_ident = __hydro_runtime().await;
+                    let mut #dfir_ident = __hydro_runtime().await;
 
-                let local_set = #root::runtime_support::tokio::task::LocalSet::new();
-                #(
-                    let _ = local_set.spawn_local( #sidecars ); // Uses #dfir_ident
-                )*
+                    let local_set = #root::runtime_support::tokio::task::LocalSet::new();
+                    #(
+                        let _ = local_set.spawn_local( #sidecars ); // Uses #dfir_ident
+                    )*
 
-                let _ = local_set.run_until(#dfir_ident.run()).await;
+                    let _ = local_set.run_until(#dfir_ident.run()).await;
+                }
             }
         }
-    } else {
-        syn::parse_quote! {
-            #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
-            use #trybuild_crate_name_ident::__root as #orig_crate_name;
-            use #trybuild_crate_name_ident::__staged::__deps::*;
-            use #root::prelude::*;
-            use #root::runtime_support::dfir_rs as __root_dfir_rs;
-            pub use #trybuild_crate_name_ident::__staged;
+        #[cfg(feature = "deploy")]
+        DeployMode::HydroDeploy => {
+            syn::parse_quote! {
+                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+                use #trybuild_crate_name_ident::__root as #orig_crate_name;
+                use #trybuild_crate_name_ident::__staged::__deps::*;
+                use #root::prelude::*;
+                use #root::runtime_support::dfir_rs as __root_dfir_rs;
+                pub use #trybuild_crate_name_ident::__staged;
 
-            #[allow(unused)]
-            fn __hydro_runtime<'a>(
-                __hydro_lang_trybuild_cli: &'a #root::runtime_support::hydro_deploy_integration::DeployPorts<#root::__staged::deploy::deploy_runtime::HydroMeta>
-            )
-                -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a>
-            {
-                #( #extra_stmts )*
+                #[allow(unused)]
+                fn __hydro_runtime<'a>(
+                    __hydro_lang_trybuild_cli: &'a #root::runtime_support::hydro_deploy_integration::DeployPorts<#root::__staged::deploy::deploy_runtime::HydroMeta>
+                )
+                    -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a>
+                {
+                    #( #extra_stmts )*
 
-                #dfir_expr
+                    #dfir_expr
+                }
+
+                #[#root::runtime_support::tokio::main(crate = #tokio_main_ident, flavor = "current_thread")]
+                async fn main() {
+                    let ports = #root::runtime_support::launch::init_no_ack_start().await;
+                    let #dfir_ident = __hydro_runtime(&ports);
+                    println!("ack start");
+
+                    // TODO(mingwei): initialize `tracing` at this point in execution.
+                    // After "ack start" is when we can print whatever we want.
+
+                    let local_set = #root::runtime_support::tokio::task::LocalSet::new();
+                    #(
+                        let _ = local_set.spawn_local( #sidecars ); // Uses #dfir_ident
+                    )*
+
+                    let _ = local_set.run_until(#root::runtime_support::launch::run_stdin_commands(#dfir_ident)).await;
+                }
             }
+        }
+        #[cfg(feature = "maelstrom")]
+        DeployMode::Maelstrom => {
+            syn::parse_quote! {
+                #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
+                use #trybuild_crate_name_ident::__root as #orig_crate_name;
+                use #trybuild_crate_name_ident::__staged::__deps::*;
+                use #root::prelude::*;
+                use #root::runtime_support::dfir_rs as __root_dfir_rs;
+                pub use #trybuild_crate_name_ident::__staged;
 
-            #[#root::runtime_support::tokio::main(crate = #tokio_main_ident, flavor = "current_thread")]
-            async fn main() {
-                let ports = #root::runtime_support::launch::init_no_ack_start().await;
-                let #dfir_ident = __hydro_runtime(&ports);
-                println!("ack start");
+                #[allow(unused)]
+                fn __hydro_runtime<'a>(
+                    __hydro_lang_maelstrom_meta: &'a #root::__staged::deploy::maelstrom::deploy_runtime_maelstrom::MaelstromMeta
+                )
+                    -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a>
+                {
+                    #( #extra_stmts )*
 
-                // TODO(mingwei): initialize `tracing` at this point in execution.
-                // After "ack start" is when we can print whatever we want.
+                    #dfir_expr
+                }
 
-                let local_set = #root::runtime_support::tokio::task::LocalSet::new();
-                #(
-                    let _ = local_set.spawn_local( #sidecars ); // Uses #dfir_ident
-                )*
+                #[#root::runtime_support::tokio::main(crate = #tokio_main_ident, flavor = "current_thread")]
+                async fn main() {
+                    #root::telemetry::initialize_tracing();
 
-                let _ = local_set.run_until(#root::runtime_support::launch::run_stdin_commands(#dfir_ident)).await;
+                    // Initialize Maelstrom protocol - read init message and send init_ok
+                    let __hydro_lang_maelstrom_meta = #root::__staged::deploy::maelstrom::deploy_runtime_maelstrom::maelstrom_init();
+
+                    let mut #dfir_ident = __hydro_runtime(&__hydro_lang_maelstrom_meta);
+
+                    __hydro_lang_maelstrom_meta.start_receiving(); // start receiving messages after initializing subscribers
+
+                    let local_set = #root::runtime_support::tokio::task::LocalSet::new();
+                    #(
+                        let _ = local_set.spawn_local( #sidecars ); // Uses #dfir_ident
+                    )*
+
+                    let _ = local_set.run_until(#dfir_ident.run()).await;
+                }
             }
         }
     };

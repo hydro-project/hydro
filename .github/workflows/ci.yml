@@ -110,6 +110,20 @@ jobs:
 
       - uses: taiki-e/install-action@nextest
 
+      - name: Install Java for Maelstrom
+        if: matrix.os != 'windows-latest'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Download and setup Maelstrom
+        if: matrix.os != 'windows-latest'
+        run: |
+          curl -L -o maelstrom.tar.bz2 https://github.com/jepsen-io/maelstrom/releases/download/v0.2.4/maelstrom.tar.bz2
+          tar -xjf maelstrom.tar.bz2
+          echo "MAELSTROM_PATH=${{ github.workspace }}/maelstrom/maelstrom" >> $GITHUB_ENV
+
       - name: Enable Trybuild updating on nightly
         if: ${{ matrix.rust_release == 'latest-nightly' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
         uses: actions/github-script@v6

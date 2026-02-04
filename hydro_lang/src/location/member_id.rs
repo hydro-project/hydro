@@ -13,6 +13,9 @@ pub enum TaglessMemberId {
     #[cfg(feature = "docker_runtime")]
     #[cfg_attr(docsrs, doc(cfg(feature = "docker_runtime")))]
     Docker { container_name: String },
+    #[cfg(feature = "maelstrom_runtime")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "maelstrom_runtime")))]
+    Maelstrom { node_id: String },
 }
 
 macro_rules! assert_feature {
@@ -73,6 +76,30 @@ impl TaglessMemberId {
             container_name
         }
     }
+
+    pub fn from_maelstrom_node_id(_node_id: impl Into<String>) -> Self {
+        assert_feature! {
+                #[cfg(feature = "maelstrom_runtime")]
+                Self::Maelstrom {
+                node_id: _node_id.into(),
+            }
+        }
+    }
+
+    pub fn get_maelstrom_node_id(&self) -> &str {
+        assert_feature! {
+            #[cfg(feature = "maelstrom_runtime")]
+            #[expect(clippy::allow_attributes, reason = "Depends on features.")]
+            #[allow(
+                irrefutable_let_patterns,
+                reason = "Depends on features."
+            )]
+            let TaglessMemberId::Maelstrom { node_id } = self else {
+                panic!("Not `Maelstrom` variant.");
+            }
+            node_id
+        }
+    }
 }
 
 impl Display for TaglessMemberId {
@@ -82,8 +109,8 @@ impl Display for TaglessMemberId {
             TaglessMemberId::Legacy { raw_id } => write!(_f, "{:?}", raw_id),
             #[cfg(feature = "docker_runtime")]
             TaglessMemberId::Docker { container_name } => write!(_f, "{:?}", container_name),
-            // #[cfg(feature = "maelstrom_runtime")]
-            // TaglessMemberId::Maelstrom { node_id } => write!(_f, "{:?}", node_id),
+            #[cfg(feature = "maelstrom_runtime")]
+            TaglessMemberId::Maelstrom { node_id } => write!(_f, "{:?}", node_id),
             #[expect(
                 clippy::allow_attributes,
                 reason = "Only triggers when `TaglessMemberId` is empty."
