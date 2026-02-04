@@ -62,44 +62,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const body = `## 📊 Benchmark Results\n\n⏳ Benchmark is currently running...\n\n### Run History:\n- [Run #${context.runNumber}](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) - In Progress ⏳\n\n<sub>Last updated: ${new Date().toISOString()}</sub>`;
-
-            // Find existing comment
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            const botComment = comments.find(comment =>
-              comment.user.type === 'Bot' && comment.body.includes('📊 Benchmark Results')
-            );
-
-            if (botComment) {
-              // Extract existing history if present
-              const historyMatch = botComment.body.match(/### Run History:\n([\s\S]*?)\n\n<sub>/);
-              let existingHistory = '';
-              if (historyMatch) {
-                existingHistory = historyMatch[1];
-              }
-              
-              const newHistoryEntry = `- [Run #${context.runNumber}](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) - In Progress ⏳`;
-              const updatedHistory = existingHistory ? `${existingHistory}\n${newHistoryEntry}` : newHistoryEntry;
-              const updatedBody = `## 📊 Benchmark Results\n\n⏳ Benchmark is currently running...\n\n### Run History:\n${updatedHistory}\n\n<sub>Last updated: ${new Date().toISOString()}</sub>`;
-
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: updatedBody
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: body
-              });
-            }
+            const script = require('./.github/workflows/benchmark-comment.js');
+            await script.postInitialComment(github, context);
 
       - name: Checkout gh-pages
         shell: bash
@@ -155,58 +119,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const artifactUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}/artifacts/${{ steps.artifact-upload.outputs.artifact-id }}`;
-
-            // Find existing comment
-            const { data: comments } = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-            const botComment = comments.find(comment =>
-              comment.user.type === 'Bot' && comment.body.includes('📊 Benchmark Results')
-            );
-
-            if (botComment) {
-              // Extract existing history
-              const historyMatch = botComment.body.match(/### Run History:\n([\s\S]*?)\n\n<sub>/);
-              let existingHistory = '';
-              if (historyMatch) {
-                existingHistory = historyMatch[1];
-              }
-              
-              // Update the current run's status in history
-              const runPattern = new RegExp(`- \\[Run #${context.runNumber}\\]\\(https://github\\.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\\) - .*`);
-              const newRunEntry = `- [Run #${context.runNumber}](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) - ✅ Complete ([Download Artifact](${artifactUrl}))`;
-              
-              let updatedHistory;
-              if (existingHistory.match(runPattern)) {
-                // Update existing entry
-                updatedHistory = existingHistory.replace(runPattern, newRunEntry);
-              } else {
-                // Append new entry (shouldn't happen, but handle gracefully)
-                updatedHistory = existingHistory ? `${existingHistory}\n${newRunEntry}` : newRunEntry;
-              }
-              
-              const body = `## 📊 Benchmark Results\n\n✅ Benchmark completed! You can download the results from the links below.\n\n### Run History:\n${updatedHistory}\n\n<sub>Last updated: ${new Date().toISOString()}</sub>`;
-
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: botComment.id,
-                body: body
-              });
-            } else {
-              // Create new comment if none exists (fallback)
-              const body = `## 📊 Benchmark Results\n\n✅ Benchmark completed! You can download the results from the link below.\n\n### Run History:\n- [Run #${context.runNumber}](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}) - ✅ Complete ([Download Artifact](${artifactUrl}))\n\n<sub>Last updated: ${new Date().toISOString()}</sub>`;
-              
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: body
-              });
-            }
+            const script = require('./.github/workflows/benchmark-comment.js');
+            await script.postCompletionComment(github, context, '${{ steps.artifact-upload.outputs.artifact-id }}');
 
       - name: Push to gh-pages
         # Do not deploy PRs, only benchmark main branch.
