@@ -11,7 +11,7 @@
 //! and [`Cluster`]). To create distributed programs, Hydro provides a variety of APIs
 //! to allow live collections to be _moved_ between locations via network send/receive.
 //!
-//! See [the Hydro docs](https://hydro.run/docs/hydro/locations/) for more information.
+//! See [the Hydro docs](https://hydro.run/docs/hydro/reference/locations/) for more information.
 
 use std::fmt::Debug;
 use std::marker::PhantomData;
@@ -66,6 +66,7 @@ pub use cluster::Cluster;
 #[expect(missing_docs, reason = "TODO")]
 pub mod member_id;
 pub use member_id::{MemberId, TaglessMemberId};
+
 #[expect(missing_docs, reason = "TODO")]
 pub mod tick;
 pub use tick::{Atomic, NoTick, Tick};
@@ -161,16 +162,42 @@ pub enum LocationType {
     External,
 }
 
-#[expect(missing_docs, reason = "TODO")]
+/// A location where data can be materialized and computation can be executed.
+///
+/// Hydro is a **global**, **distributed** programming model. This means that the data
+/// and computation in a Hydro program can be spread across multiple machines, data
+/// centers, and even continents. To achieve this, Hydro uses the concept of
+/// **locations** to keep track of _where_ data is located and computation is executed.
+///
+/// Each live collection type (in [`crate::live_collections`]) has a type parameter `L`
+/// which will always be a type that implements the [`Location`] trait (e.g. [`Process`]
+/// and [`Cluster`]). To create distributed programs, Hydro provides a variety of APIs
+/// to allow live collections to be _moved_ between locations via network send/receive.
+///
+/// See [the Hydro docs](https://hydro.run/docs/hydro/reference/locations/) for more information.
 #[expect(
     private_bounds,
     reason = "only internal Hydro code can define location types"
 )]
 pub trait Location<'a>: dynamic::DynLocation {
+    /// The root location type for this location.
+    ///
+    /// For top-level locations like [`Process`] and [`Cluster`], this is `Self`.
+    /// For nested locations like [`Tick`], this is the root location that contains it.
     type Root: Location<'a>;
 
+    /// Returns the root location for this location.
+    ///
+    /// For top-level locations like [`Process`] and [`Cluster`], this returns `self`.
+    /// For nested locations like [`Tick`], this returns the root location that contains it.
     fn root(&self) -> Self::Root;
 
+    /// Attempts to create a new [`Tick`] clock domain at this location.
+    ///
+    /// Returns `Some(Tick)` if this is a top-level location (like [`Process`] or [`Cluster`]),
+    /// or `None` if this location is already inside a tick (nested ticks are not supported).
+    ///
+    /// Prefer using [`Location::tick`] when you know the location is top-level.
     fn try_tick(&self) -> Option<Tick<Self>> {
         if Self::is_top_level() {
             let next_id = self.flow_state().borrow_mut().next_clock_id;
@@ -184,10 +211,36 @@ pub trait Location<'a>: dynamic::DynLocation {
         }
     }
 
+    /// Returns the unique identifier for this location.
     fn id(&self) -> LocationId {
         dynamic::DynLocation::id(self)
     }
 
+    /// Creates a new [`Tick`] clock domain at this location.
+    ///
+    /// A tick represents a logical clock that can be used to batch streaming data
+    /// into discrete time steps. This is useful for implementing iterative algorithms
+    /// or for synchronizing data across multiple streams.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let inside_tick = process
+    ///     .source_iter(q!(vec![1, 2, 3, 4]))
+    ///     .batch(&tick, nondet!(/** test */));
+    /// inside_tick.all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3, 4
+    /// # for w in vec![1, 2, 3, 4] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
     fn tick(&self) -> Tick<Self>
     where
         Self: NoTick,
@@ -200,6 +253,30 @@ pub trait Location<'a>: dynamic::DynLocation {
         }
     }
 
+    /// Creates an unbounded stream that continuously emits unit values `()`.
+    ///
+    /// This is useful for driving computations that need to run continuously,
+    /// such as polling or heartbeat mechanisms.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// process.spin()
+    ///     .batch(&tick, nondet!(/** test */))
+    ///     .map(q!(|_| 42))
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 42, 42, 42, ...
+    /// # assert_eq!(stream.next().await.unwrap(), 42);
+    /// # assert_eq!(stream.next().await.unwrap(), 42);
+    /// # assert_eq!(stream.next().await.unwrap(), 42);
+    /// # }));
+    /// # }
+    /// ```
     fn spin(&self) -> Stream<(), Self, Unbounded, TotalOrder, ExactlyOnce>
     where
         Self: Sized + NoTick,
@@ -219,6 +296,26 @@ pub trait Location<'a>: dynamic::DynLocation {
         )
     }
 
+    /// Creates a stream from an async [`FuturesStream`].
+    ///
+    /// This is useful for integrating with external async data sources,
+    /// such as network connections or file readers.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process.source_stream(q!(futures::stream::iter(vec![1, 2, 3])))
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3
+    /// # for w in vec![1, 2, 3] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
     fn source_stream<T, E>(
         &self,
         e: impl QuotedWithContext<'a, E, Self>,
@@ -244,6 +341,27 @@ pub trait Location<'a>: dynamic::DynLocation {
         )
     }
 
+    /// Creates a bounded stream from an iterator.
+    ///
+    /// The iterator is evaluated once at runtime, and all elements are emitted
+    /// in order. This is useful for creating streams from static data or
+    /// for testing.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process.source_iter(q!(vec![1, 2, 3, 4]))
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3, 4
+    /// # for w in vec![1, 2, 3, 4] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
     fn source_iter<T, E>(
         &self,
         e: impl QuotedWithContext<'a, E, Self>,
@@ -265,6 +383,39 @@ pub trait Location<'a>: dynamic::DynLocation {
         )
     }
 
+    /// Creates a stream of membership events for a cluster.
+    ///
+    /// This stream emits [`MembershipEvent::Joined`] when a cluster member joins
+    /// and [`MembershipEvent::Left`] when a cluster member leaves. The stream is
+    /// keyed by the [`MemberId`] of the cluster member.
+    ///
+    /// This is useful for implementing protocols that need to track cluster membership,
+    /// such as broadcasting to all members or detecting failures.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
+    /// let p1 = flow.process::<()>();
+    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// # // do nothing on each worker
+    /// # workers.source_iter(q!(vec![])).for_each(q!(|_: ()| {}));
+    /// let cluster_members = p1.source_cluster_members(&workers);
+    /// # cluster_members.entries().send(&p2, TCP.bincode())
+    /// // if there are 4 members in the cluster, we would see a join event for each
+    /// // { MemberId::<Worker>(0): [MembershipEvent::Join], MemberId::<Worker>(2): [MembershipEvent::Join], ... }
+    /// # }, |mut stream| async move {
+    /// # let mut results = Vec::new();
+    /// # for w in 0..4 {
+    /// #     results.push(format!("{:?}", stream.next().await.unwrap()));
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec!["(MemberId::<()>(0), Joined)", "(MemberId::<()>(1), Joined)", "(MemberId::<()>(2), Joined)", "(MemberId::<()>(3), Joined)"]);
+    /// # }));
+    /// # }
+    /// ```
     fn source_cluster_members<C: 'a>(
         &self,
         cluster: &Cluster<'a, C>,
@@ -289,6 +440,13 @@ pub trait Location<'a>: dynamic::DynLocation {
         .into_keyed()
     }
 
+    /// Creates a one-way connection from an external process to receive raw bytes.
+    ///
+    /// Returns a port handle for the external process to connect to, and a stream
+    /// of received byte buffers.
+    ///
+    /// For bidirectional communication or typed data, see [`Location::bind_single_client`]
+    /// or [`Location::source_external_bincode`].
     fn source_external_bytes<L>(
         &self,
         from: &External<L>,
@@ -307,6 +465,12 @@ pub trait Location<'a>: dynamic::DynLocation {
         (port, stream)
     }
 
+    /// Creates a one-way connection from an external process to receive bincode-serialized data.
+    ///
+    /// Returns a sink handle for the external process to send data to, and a stream
+    /// of received values.
+    ///
+    /// For bidirectional communication, see [`Location::bind_single_client_bincode`].
     #[expect(clippy::type_complexity, reason = "stream markers")]
     fn source_external_bincode<L, T, O: Ordering, R: Retries>(
         &self,
@@ -332,10 +496,12 @@ pub trait Location<'a>: dynamic::DynLocation {
         )
     }
 
+    /// Sets up a simulated input port on this location for testing.
+    ///
+    /// Returns a handle to send messages to the location as well as a stream
+    /// of received messages. This is only available when the `sim` feature is enabled.
     #[cfg(feature = "sim")]
     #[expect(clippy::type_complexity, reason = "stream markers")]
-    /// Sets up a simulated input port on this location, returning a handle to send messages to
-    /// the location as well as a stream of received messages.
     fn sim_input<T, O: Ordering, R: Retries>(
         &self,
     ) -> (SimSender<T, O, R>, Stream<T, Self, Unbounded, O, R>)
@@ -469,6 +635,15 @@ pub trait Location<'a>: dynamic::DynLocation {
         )
     }
 
+    /// Establishes a bidirectional connection from a single external client using bincode serialization.
+    ///
+    /// Returns a port handle for the external process to connect to, a stream of incoming messages,
+    /// and a handle to send outgoing messages. This is a convenience wrapper around
+    /// [`Location::bind_single_client`] that uses bincode for serialization.
+    ///
+    /// # Type Parameters
+    /// - `InT`: The type of incoming messages (must implement [`DeserializeOwned`])
+    /// - `OutT`: The type of outgoing messages (must implement [`Serialize`])
     #[expect(clippy::type_complexity, reason = "stream markers")]
     fn bind_single_client_bincode<L, InT: DeserializeOwned, OutT: Serialize>(
         &self,
@@ -551,6 +726,17 @@ pub trait Location<'a>: dynamic::DynLocation {
         )
     }
 
+    /// Establishes a server on this location to receive bidirectional connections from multiple
+    /// external clients using raw bytes.
+    ///
+    /// Unlike [`Location::bind_single_client`], this method supports multiple concurrent client
+    /// connections. Each client is assigned a unique `u64` identifier.
+    ///
+    /// Returns:
+    /// - A port handle for external processes to connect to
+    /// - A keyed stream of incoming messages, keyed by client ID
+    /// - A keyed stream of membership events (client joins/leaves), keyed by client ID
+    /// - A handle to send outgoing messages, keyed by client ID
     #[expect(clippy::type_complexity, reason = "stream markers")]
     fn bidi_external_many_bytes<L, T, Codec: Encoder<T> + Decoder>(
         &self,
@@ -662,6 +848,21 @@ pub trait Location<'a>: dynamic::DynLocation {
         )
     }
 
+    /// Establishes a server on this location to receive bidirectional connections from multiple
+    /// external clients using bincode serialization.
+    ///
+    /// Unlike [`Location::bind_single_client_bincode`], this method supports multiple concurrent
+    /// client connections. Each client is assigned a unique `u64` identifier.
+    ///
+    /// Returns:
+    /// - A port handle for external processes to connect to
+    /// - A keyed stream of incoming messages, keyed by client ID
+    /// - A keyed stream of membership events (client joins/leaves), keyed by client ID
+    /// - A handle to send outgoing messages, keyed by client ID
+    ///
+    /// # Type Parameters
+    /// - `InT`: The type of incoming messages (must implement [`DeserializeOwned`])
+    /// - `OutT`: The type of outgoing messages (must implement [`Serialize`])
     #[expect(clippy::type_complexity, reason = "stream markers")]
     fn bidi_external_many_bincode<L, InT: DeserializeOwned, OutT: Serialize>(
         &self,
@@ -863,6 +1064,41 @@ pub trait Location<'a>: dynamic::DynLocation {
         )))
     }
 
+    /// Creates a forward reference for defining recursive or mutually-dependent dataflows.
+    ///
+    /// Returns a handle that must be completed with the actual stream, and a placeholder
+    /// stream that can be used in the dataflow graph before the actual stream is defined.
+    ///
+    /// This is useful for implementing feedback loops or recursive computations where
+    /// a stream depends on its own output.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use hydro_lang::live_collections::stream::NoOrder;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// // Create a forward reference for the feedback stream
+    /// let (complete, feedback) = process.forward_ref::<Stream<i32, _, _, NoOrder>>();
+    ///
+    /// // Combine initial input with feedback, then increment
+    /// let input: Stream<_, _, Unbounded> = process.source_iter(q!([1])).into();
+    /// let output: Stream<_, _, _, NoOrder> = input
+    ///     .interleave(feedback)
+    ///     .map(q!(|x| x + 1));
+    ///
+    /// // Complete the forward reference with the output
+    /// complete.complete(output.clone());
+    /// output
+    /// # }, |mut stream| async move {
+    /// // 2, 3, 4, 5, ...
+    /// # assert_eq!(stream.next().await.unwrap(), 2);
+    /// # assert_eq!(stream.next().await.unwrap(), 3);
+    /// # assert_eq!(stream.next().await.unwrap(), 4);
+    /// # }));
+    /// # }
+    /// ```
     fn forward_ref<S>(&self) -> (ForwardHandle<'a, S>, S)
     where
         S: CycleCollection<'a, ForwardRef, Location = Self>,
