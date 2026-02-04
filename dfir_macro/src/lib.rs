@@ -136,11 +136,11 @@ pub fn dfir_parser(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         .into();
     };
 
-    return err_diagnostics
+    err_diagnostics
         .try_emit_all()
         .err()
         .unwrap_or_default()
-        .into();
+        .into()
 }
 
 fn wrap_localset(item: proc_macro::TokenStream, attribute: Attribute) -> proc_macro::TokenStream {
