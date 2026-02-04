@@ -3,14 +3,14 @@
 
 //! Hydro is a high-level distributed programming framework for Rust.
 //! Hydro can help you quickly write scalable distributed services that are correct by construction.
-//! Much like Rust helps with memory safety, Hydro helps with [distributed safety](https://hydro.run/docs/hydro/correctness).
+//! Much like Rust helps with memory safety, Hydro helps with [distributed safety](https://hydro.run/docs/hydro/reference/correctness).
 //!
-//! The core Hydro API involves [live collections](https://hydro.run/docs/hydro/live-collections/), which represent asynchronously
+//! The core Hydro API involves [live collections](https://hydro.run/docs/hydro/reference/live-collections/), which represent asynchronously
 //! updated sources of data such as incoming network requests and application state. The most common live collection is
 //! [`live_collections::stream::Stream`]; other live collections can be found in [`live_collections`].
 //!
 //! Hydro uses a unique compilation approach where you define deployment logic as Rust code alongside your distributed system implementation.
-//! For more details on this API, see the [Hydro docs](https://hydro.run/docs/hydro/deploy/) and the [`deploy`] module.
+//! For more details on this API, see the [Hydro docs](https://hydro.run/docs/hydro/reference/deploy/) and the [`deploy`] module.
 
 stageleft::stageleft_no_entry_crate!();
 
