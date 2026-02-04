@@ -31,10 +31,10 @@ pub mod builder;
 #[cfg_attr(docsrs, doc(cfg(feature = "trybuild")))]
 #[expect(missing_docs, reason = "TODO")]
 #[cfg_attr(
-    not(any(feature = "deploy", feature = "sim")),
+    not(any(feature = "deploy", feature = "sim", feature = "maelstrom")),
     expect(
         dead_code,
-        reason = "\"trybuild\" feature should be enabled by \"deploy\" and/or \"sim\""
+        reason = "\"trybuild\" feature should be enabled by \"deploy\" / \"sim\" / \"maelstrom\""
     )
 )]
 pub mod trybuild;
