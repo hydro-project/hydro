@@ -1,0 +1,34 @@
+---
+source: hydro_lang/src/compile/ir/backtrace.rs
+assertion_line: 187
+expression: "elements.collect::<Vec<_>>()"
+---
+[
+    BacktraceElement {
+        fn_name: "test_backtrace",
+        lineno: Some(
+            184,
+        ),
+        colno: Some(
+            25,
+        ),
+    },
+    BacktraceElement {
+        fn_name: "{closure#0}",
+        lineno: Some(
+            176,
+        ),
+        colno: Some(
+            24,
+        ),
+    },
+    BacktraceElement {
+        fn_name: "call_once<hydro_lang::compile::ir::backtrace::tests::test_backtrace",
+        lineno: Some(
+            250,
+        ),
+        colno: Some(
+            5,
+        ),
+    },
+]

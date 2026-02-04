@@ -2,15 +2,19 @@ use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
+#[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use dfir_lang::graph::DfirGraph;
 use sha2::{Digest, Sha256};
+#[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use stageleft::internal::quote;
+#[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use syn::visit_mut::VisitMut;
 use trybuild_internals_api::cargo::{self, Metadata};
 use trybuild_internals_api::env::Update;
 use trybuild_internals_api::run::{PathDependency, Project};
 use trybuild_internals_api::{Runner, dependencies, features, path};
 
+#[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use super::rewriters::UseTestModeStaged;
 
 pub const HYDRO_RUNTIME_FEATURES: &[&str] = &[
@@ -21,6 +25,7 @@ pub const HYDRO_RUNTIME_FEATURES: &[&str] = &[
     "maelstrom_runtime",
 ];
 
+#[cfg(any(feature = "deploy", feature = "maelstrom"))]
 /// Whether to use dynamic linking for the generated binary.
 /// - `Static`: Place in base crate examples (for remote/containerized deploys)
 /// - `Dynamic`: Place in dylib crate examples (for sim and localhost deploys)
@@ -31,6 +36,7 @@ pub enum LinkingMode {
     Dynamic,
 }
 
+#[cfg(any(feature = "deploy", feature = "maelstrom"))]
 /// The deployment mode for code generation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DeployMode {
@@ -67,6 +73,7 @@ pub fn init_test() {
     IS_TEST.store(true, std::sync::atomic::Ordering::Relaxed);
 }
 
+#[cfg(any(feature = "deploy", feature = "maelstrom"))]
 fn clean_bin_name_prefix(bin_name_prefix: &str) -> String {
     bin_name_prefix
         .replace("::", "__")
@@ -90,6 +97,7 @@ pub struct TrybuildConfig {
     pub linking_mode: LinkingMode,
 }
 
+#[cfg(any(feature = "deploy", feature = "maelstrom"))]
 pub fn create_graph_trybuild(
     graph: DfirGraph,
     extra_stmts: &[syn::Stmt],
@@ -213,6 +221,7 @@ pub fn create_graph_trybuild(
     )
 }
 
+#[cfg(any(feature = "deploy", feature = "maelstrom"))]
 pub fn compile_graph_trybuild(
     partitioned_graph: DfirGraph,
     extra_stmts: &[syn::Stmt],
