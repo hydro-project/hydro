@@ -104,10 +104,11 @@ async function postBenchmarkComment(github, context, options = {}) {
     if (isCompletion && existingHistory) {
       // Try to update existing entry for this run
       // Escape special regex characters in user-controlled values
-      const escapedOwner = escapeRegex(context.repo.owner);
-      const escapedRepo = escapeRegex(context.repo.repo);
-      const escapedRunNumber = escapeRegex(context.runNumber);
-      const escapedRunId = escapeRegex(context.runId);
+      // Convert numbers to strings before escaping
+      const escapedOwner = escapeRegex(String(context.repo.owner));
+      const escapedRepo = escapeRegex(String(context.repo.repo));
+      const escapedRunNumber = escapeRegex(String(context.runNumber));
+      const escapedRunId = escapeRegex(String(context.runId));
       
       const runPattern = new RegExp(
         `- \\[Run #${escapedRunNumber}\\]\\(https://github\\.com/${escapedOwner}/${escapedRepo}/actions/runs/${escapedRunId}\\) - .*`
@@ -166,12 +167,6 @@ async function postCompletionComment(github, context, artifactId) {
 
 // Export functions for use in GitHub Actions workflow
 module.exports = {
-  findBenchmarkComment,
-  extractRunHistory,
-  escapeRegex,
-  createCommentBody,
-  createRunEntry,
-  postBenchmarkComment,
   postInitialComment,
   postCompletionComment
 };
