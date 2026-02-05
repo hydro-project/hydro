@@ -60,7 +60,7 @@ fn broadcast_core<'a, C: 'a>(
         cur_state
             .clone()
             .sample_every(q!(Duration::from_millis(50)), nondet!(/** TODO */))
-            .broadcast(cluster, TCP.bincode(), nondet!(/** TODO */))
+            .broadcast(cluster, TCP.fail_stop().bincode(), nondet!(/** TODO */))
             .values(),
     );
 

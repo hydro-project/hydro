@@ -39,5 +39,5 @@ Because a process represents a single machine, it is straightforward to send dat
 # let leader: Process<Leader> = flow.process::<Leader>();
 let numbers = leader.source_iter(q!(vec![1, 2, 3, 4]));
 let process2: Process<()> = flow.process::<()>();
-let on_p2: Stream<_, Process<()>, _> = numbers.send(&process2, TCP.bincode());
+let on_p2: Stream<_, Process<()>, _> = numbers.send(&process2, TCP.fail_stop().bincode());
 ```
