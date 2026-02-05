@@ -29,13 +29,16 @@ pub fn compute_pi<'a>(
         )
         .all_ticks();
 
-    let estimate = trials.send(&process, TCP.bincode()).values().reduce(q!(
-        |(inside, total), (inside_batch, total_batch)| {
-            *inside += inside_batch;
-            *total += total_batch;
-        },
-        commutative = ManualProof(/* int addition is commutative */)
-    ));
+    let estimate = trials
+        .send(&process, TCP.fail_stop().bincode())
+        .values()
+        .reduce(q!(
+            |(inside, total), (inside_batch, total_batch)| {
+                *inside += inside_batch;
+                *total += total_batch;
+            },
+            commutative = ManualProof(/* int addition is commutative */)
+        ));
 
     estimate
         .sample_every(

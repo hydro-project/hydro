@@ -34,7 +34,7 @@ When sending a live collection from a cluster to another location, **each** memb
 # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
 # let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
-numbers.send(&process, TCP.bincode()) // KeyedStream<MemberId<()>, i32, ...>
+numbers.send(&process, TCP.fail_stop().bincode()) // KeyedStream<MemberId<()>, i32, ...>
 # .entries()
 # }, |mut stream| async move {
 // if there are 4 members in the cluster, we should receive 4 elements
@@ -58,7 +58,7 @@ If you do not need to know _which_ member of the cluster the data came from, you
 # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
 # let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
-numbers.send(&process, TCP.bincode()).values()
+numbers.send(&process, TCP.fail_stop().bincode()).values()
 # }, |mut stream| async move {
 // if there are 4 members in the cluster, we should receive 4 elements
 // 1, 1, 1, 1
@@ -84,8 +84,8 @@ In the reverse direction, when sending a stream _to_ a cluster, the sender must 
 let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![0, 1, 2, 3]));
 let on_worker: Stream<_, Cluster<_>, _> = numbers
     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)))
-    .demux(&workers, TCP.bincode());
-on_worker.send(&p2, TCP.bincode())
+    .demux(&workers, TCP.fail_stop().bincode());
+on_worker.send(&p2, TCP.fail_stop().bincode())
 # .entries()
 // if there are 4 members in the cluster, we should receive 4 elements
 // { MemberId::<Worker>(0): [0], MemberId::<Worker>(1): [1], MemberId::<Worker>(2): [2], MemberId::<Worker>(3): [3] }
@@ -109,8 +109,8 @@ A common pattern in distributed systems is to broadcast data to all members of a
 # let p1 = flow.process::<()>();
 # let workers: Cluster<()> = flow.cluster::<()>();
 let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![123]));
-let on_worker: Stream<_, Cluster<_>, _> = numbers.broadcast(&workers, TCP.bincode(), nondet!(/** assuming stable membership */));
-on_worker.send(&p2, TCP.bincode())
+let on_worker: Stream<_, Cluster<_>, _> = numbers.broadcast(&workers, TCP.fail_stop().bincode(), nondet!(/** assuming stable membership */));
+on_worker.send(&p2, TCP.fail_stop().bincode())
 # .entries()
 // if there are 4 members in the cluster, we should receive 4 elements
 // { MemberId::<Worker>(0): [123], MemberId::<Worker>(1): [123], MemberId::<Worker>(2): [123, MemberId::<Worker>(3): [123] }
@@ -135,7 +135,7 @@ let workers: Cluster<()> = flow.cluster::<()>();
 # // do nothing on each worker
 # workers.source_iter(q!(vec![])).for_each(q!(|_: ()| {}));
 let cluster_members = p1.source_cluster_members(&workers);
-# cluster_members.entries().send(&p2, TCP.bincode())
+# cluster_members.entries().send(&p2, TCP.fail_stop().bincode())
 // if there are 4 members in the cluster, we would see a join event for each
 // { MemberId::<Worker>(0): [MembershipEvent::Join], MemberId::<Worker>(2): [MembershipEvent::Join], ... }
 # }, |mut stream| async move {
@@ -162,7 +162,7 @@ let self_id_stream = workers.source_iter(q!([CLUSTER_SELF_ID]));
 self_id_stream
     .filter(q!(|x| x.get_raw_id() % 2 == 0))
     .map(q!(|x| format!("hello from {}", x.get_raw_id())))
-    .send(&process, TCP.bincode())
+    .send(&process, TCP.fail_stop().bincode())
     .values()
 // if there are 4 members in the cluster, we should receive 2 elements
 // "hello from 0", "hello from 2"
