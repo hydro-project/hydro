@@ -1,0 +1,87 @@
+error[E0425]: cannot find value `fake` in this scope
+  --> tests/compile-fail/sliced_missing_arg.rs:11:21
+   |
+11 |         let e = use(fake, nondet!(/** test */));
+   |                     ^^^^ not found in this scope
+
+error[E0425]: cannot find value `fake` in this scope
+  --> tests/compile-fail/sliced_missing_arg.rs:12:29
+   |
+12 |         let f = use::atomic(fake, nondet!(/** test */));
+   |                             ^^^^ not found in this scope
+
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+  --> tests/compile-fail/sliced_missing_arg.rs:7:21
+   |
+ 6 | /     sliced! {
+ 7 | |         let a = use(input);
+   | |                     ^^^^^
+ 8 | |         let b = use::atomic(input.atomic(&input.location().tick()));
+ 9 | |         let c = use(input, 123);
+...  |
+13 | |         let g = use::foobar();
+14 | |     }
+   | |_____- argument #2 of type `NonDet` is missing
+   |
+note: function defined here
+  --> src/live_collections/sliced/style.rs
+   |
+   | pub fn default<T>(t: T, nondet: NonDet) -> Default<T> {
+   |        ^^^^^^^
+help: provide the argument
+  --> src/live_collections/sliced/mod.rs
+   |
+   -             @uses [$($uses)* { $name, $crate::macro_support::copy_span::copy_span!($($args,)* default)($($args),*), $($args),* }]
+   +             @uses [$($uses)* { $name, (input, /* NonDet */), $($args),* }]
+   |
+
+error[E0061]: this function takes 2 arguments but 1 argument was supplied
+ --> tests/compile-fail/sliced_missing_arg.rs:8:22
+  |
+8 |         let b = use::atomic(input.atomic(&input.location().tick()));
+  |                      ^^^^^^---------------------------------------- argument #2 of type `NonDet` is missing
+  |
+note: function defined here
+ --> src/live_collections/sliced/style.rs
+  |
+  | pub fn atomic<T>(t: T, nondet: NonDet) -> Atomic<T> {
+  |        ^^^^^^
+help: provide the argument
+  |
+8 |         let b = use::atomic(input.atomic(&input.location().tick()), /* NonDet */);
+  |                                                                   ++++++++++++++
+
+error[E0308]: mismatched types
+ --> tests/compile-fail/sliced_missing_arg.rs:9:28
+  |
+9 |         let c = use(input, 123);
+  |                     -------^^^
+  |                     |      |
+  |                     |      expected `NonDet`, found integer
+  |                     arguments to this function are incorrect
+  |
+note: function defined here
+ --> src/live_collections/sliced/style.rs
+  |
+  | pub fn default<T>(t: T, nondet: NonDet) -> Default<T> {
+  |        ^^^^^^^
+
+error[E0308]: mismatched types
+  --> tests/compile-fail/sliced_missing_arg.rs:10:69
+   |
+10 |         let d = use::atomic(input.atomic(&input.location().tick()), 123);
+   |                      ------                                         ^^^ expected `NonDet`, found integer
+   |                      |
+   |                      arguments to this function are incorrect
+   |
+note: function defined here
+  --> src/live_collections/sliced/style.rs
+   |
+   | pub fn atomic<T>(t: T, nondet: NonDet) -> Atomic<T> {
+   |        ^^^^^^
+
+error[E0425]: cannot find function `foobar` in this scope
+  --> tests/compile-fail/sliced_missing_arg.rs:13:22
+   |
+13 |         let g = use::foobar();
+   |                      ^^^^^^ not found in this scope
