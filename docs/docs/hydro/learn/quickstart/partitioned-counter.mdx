@@ -83,7 +83,7 @@ let sharded_increment_requests = increment_requests
         key.hash(&mut hasher);
         MemberId::from_raw_id(hasher.finish() as u32 % 5)
     }))
-    .demux(shard_servers, TCP.bincode());
+    .demux(shard_servers, TCP.fail_stop().bincode());
 `)}</CodeBlock>
 
 The `prefix_key` method adds a new key to the front of the keyed stream. Here, you compute a `MemberId` by hashing the key name and taking modulo 5 (assuming 5 shards). The result is a stream keyed by `(MemberId, client_id, key_name)`.
@@ -109,7 +109,7 @@ let sharded_increment_requests = increment_requests
         key.hash(&mut hasher);
         MemberId::from_raw_id(hasher.finish() as u32 % 5)
     }))
-    .demux(shard_servers, TCP.bincode());
+    .demux(shard_servers, TCP.fail_stop().bincode());
 
 let sharded_get_requests = get_requests
     .prefix_key(q!(|(_client, key)| {
@@ -117,7 +117,7 @@ let sharded_get_requests = get_requests
         key.hash(&mut hasher);
         MemberId::from_raw_id(hasher.finish() as u32 % 5)
     }))
-    .demux(shard_servers, TCP.bincode());
+    .demux(shard_servers, TCP.fail_stop().bincode());
 `), [7, 15])}</CodeBlock>
 
 After `demux`, the stream is now located at the cluster. The stream returned by a demux operator preserves the remaining keys after the `MemberId` is consumed for routing. In this case, we are left with a `KeyedStream<u32, String, Cluster<'a, CounterShard>>` - a stream keyed by client ID and key name, located on the cluster.
@@ -143,7 +143,7 @@ Finally, you need to send the responses back to the leader process:
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/partitioned_counter.rs">src/partitioned_counter.rs</Link>
 } showLineNumbers={41}>{getLines(partitionedCounterSrc, 41, 44, `
 let increment_ack = sharded_increment_ack
-    .send(leader, TCP.bincode())
+    .send(leader, TCP.fail_stop().bincode())
     .drop_key_prefix();
 `)}</CodeBlock>
 

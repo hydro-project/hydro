@@ -90,7 +90,7 @@ pub(crate) fn deserialize_bincode<T: DeserializeOwned>(tagged: Option<&syn::Type
 }
 
 impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>, B, O, R> {
-    #[deprecated = "use Stream::send(..., TCP.bincode()) instead"]
+    #[deprecated = "use Stream::send(..., TCP.fail_stop().bincode()) instead"]
     /// "Moves" elements of this stream to a new distributed location by sending them over the network,
     /// using [`bincode`] to serialize/deserialize messages.
     ///
@@ -147,9 +147,9 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// let p1 = flow.process::<()>();
     /// let numbers: Stream<_, Process<_>, Bounded> = p1.source_iter(q!(vec![1, 2, 3]));
     /// let p2 = flow.process::<()>();
-    /// let on_p2: Stream<_, Process<_>, Unbounded> = numbers.send(&p2, TCP.bincode());
+    /// let on_p2: Stream<_, Process<_>, Unbounded> = numbers.send(&p2, TCP.fail_stop().bincode());
     /// // 1, 2, 3
-    /// # on_p2.send(&p_out, TCP.bincode())
+    /// # on_p2.send(&p_out, TCP.fail_stop().bincode())
     /// # }, |mut stream| async move {
     /// # for w in 1..=3 {
     /// #     assert_eq!(stream.next().await, Some(w));
@@ -190,7 +190,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         )
     }
 
-    #[deprecated = "use Stream::broadcast(..., TCP.bincode()) instead"]
+    #[deprecated = "use Stream::broadcast(..., TCP.fail_stop().bincode()) instead"]
     /// Broadcasts elements of this stream to all members of a cluster by sending them over the network,
     /// using [`bincode`] to serialize/deserialize messages.
     ///
@@ -265,8 +265,8 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// let p1 = flow.process::<()>();
     /// let workers: Cluster<()> = flow.cluster::<()>();
     /// let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![123]));
-    /// let on_worker: Stream<_, Cluster<_>, _> = numbers.broadcast(&workers, TCP.bincode(), nondet!(/** assuming stable membership */));
-    /// # on_worker.send(&p2, TCP.bincode()).entries()
+    /// let on_worker: Stream<_, Cluster<_>, _> = numbers.broadcast(&workers, TCP.fail_stop().bincode(), nondet!(/** assuming stable membership */));
+    /// # on_worker.send(&p2, TCP.fail_stop().bincode()).entries()
     /// // if there are 4 members in the cluster, each receives one element
     /// // - MemberId::<()>(0): [123]
     /// // - MemberId::<()>(1): [123]
@@ -385,7 +385,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
 impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     Stream<(MemberId<L2>, T), Process<'a, L>, B, O, R>
 {
-    #[deprecated = "use Stream::demux(..., TCP.bincode()) instead"]
+    #[deprecated = "use Stream::demux(..., TCP.fail_stop().bincode()) instead"]
     /// Sends elements of this stream to specific members of a cluster, identified by a [`MemberId`],
     /// using [`bincode`] to serialize/deserialize messages.
     ///
@@ -451,8 +451,8 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![0, 1, 2, 3]));
     /// let on_worker: Stream<_, Cluster<_>, _> = numbers
     ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)))
-    ///     .demux(&workers, TCP.bincode());
-    /// # on_worker.send(&p2, TCP.bincode()).entries()
+    ///     .demux(&workers, TCP.fail_stop().bincode());
+    /// # on_worker.send(&p2, TCP.fail_stop().bincode()).entries()
     /// // if there are 4 members in the cluster, each receives one element
     /// // - MemberId::<()>(0): [0]
     /// // - MemberId::<()>(1): [1]
@@ -481,7 +481,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
 }
 
 impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyOnce> {
-    #[deprecated = "use Stream::round_robin(..., TCP.bincode()) instead"]
+    #[deprecated = "use Stream::round_robin(..., TCP.fail_stop().bincode()) instead"]
     /// Distributes elements of this stream to cluster members in a round-robin fashion, using
     /// [`bincode`] to serialize/deserialize messages.
     ///
@@ -565,8 +565,8 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     /// let p1 = flow.process::<()>();
     /// let workers: Cluster<()> = flow.cluster::<()>();
     /// let numbers: Stream<_, Process<_>, _, TotalOrder, ExactlyOnce> = p1.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let on_worker: Stream<_, Cluster<_>, _> = numbers.round_robin(&workers, TCP.bincode(), nondet!(/** assuming stable membership */));
-    /// on_worker.send(&p2, TCP.bincode())
+    /// let on_worker: Stream<_, Cluster<_>, _> = numbers.round_robin(&workers, TCP.fail_stop().bincode(), nondet!(/** assuming stable membership */));
+    /// on_worker.send(&p2, TCP.fail_stop().bincode())
     /// # .first().values() // we use first to assert that each member gets one element
     /// // with 4 cluster members, elements are distributed (with a non-deterministic round-robin order):
     /// // - MemberId::<()>(?): [1]
@@ -615,7 +615,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
 }
 
 impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyOnce> {
-    #[deprecated = "use Stream::round_robin(..., TCP.bincode()) instead"]
+    #[deprecated = "use Stream::round_robin(..., TCP.fail_stop().bincode()) instead"]
     /// Distributes elements of this stream to cluster members in a round-robin fashion, using
     /// [`bincode`] to serialize/deserialize messages.
     ///
@@ -704,9 +704,9 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
     /// let workers1: Cluster<()> = flow.cluster::<()>();
     /// let workers2: Cluster<()> = flow.cluster::<()>();
     /// let numbers: Stream<_, Process<_>, _, TotalOrder, ExactlyOnce> = p1.source_iter(q!(0..=16));
-    /// let on_worker1: Stream<_, Cluster<_>, _> = numbers.round_robin(&workers1, TCP.bincode(), nondet!(/** assuming stable membership */));
-    /// let on_worker2: Stream<_, Cluster<_>, _> = on_worker1.round_robin(&workers2, TCP.bincode(), nondet!(/** assuming stable membership */)).entries().assume_ordering(nondet!(/** assuming stable membership */));
-    /// on_worker2.send(&p2, TCP.bincode())
+    /// let on_worker1: Stream<_, Cluster<_>, _> = numbers.round_robin(&workers1, TCP.fail_stop().bincode(), nondet!(/** assuming stable membership */));
+    /// let on_worker2: Stream<_, Cluster<_>, _> = on_worker1.round_robin(&workers2, TCP.fail_stop().bincode(), nondet!(/** assuming stable membership */)).entries().assume_ordering(nondet!(/** assuming stable membership */));
+    /// on_worker2.send(&p2, TCP.fail_stop().bincode())
     /// # .entries()
     /// # .map(q!(|(w2, (w1, v))| ((w2, w1), v)))
     /// # }, |mut stream| async move {
@@ -755,7 +755,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
 }
 
 impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>, B, O, R> {
-    #[deprecated = "use Stream::send(..., TCP.bincode()) instead"]
+    #[deprecated = "use Stream::send(..., TCP.fail_stop().bincode()) instead"]
     /// "Moves" elements of this stream from a cluster to a process by sending them over the network,
     /// using [`bincode`] to serialize/deserialize messages.
     ///
@@ -833,7 +833,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
     /// let workers: Cluster<()> = flow.cluster::<()>();
     /// let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
-    /// let all_received = numbers.send(&process, TCP.bincode()); // KeyedStream<MemberId<()>, i32, ...>
+    /// let all_received = numbers.send(&process, TCP.fail_stop().bincode()); // KeyedStream<MemberId<()>, i32, ...>
     /// # all_received.entries()
     /// # }, |mut stream| async move {
     /// // if there are 4 members in the cluster, we should receive 4 elements
@@ -858,7 +858,8 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, process| {
     /// # let workers: Cluster<()> = flow.cluster::<()>();
     /// # let numbers: Stream<_, Cluster<_>, _> = workers.source_iter(q!(vec![1]));
-    /// let values: Stream<i32, _, _, NoOrder> = numbers.send(&process, TCP.bincode()).values();
+    /// let values: Stream<i32, _, _, NoOrder> =
+    ///     numbers.send(&process, TCP.fail_stop().bincode()).values();
     /// # values
     /// # }, |mut stream| async move {
     /// # let mut results = Vec::new();
@@ -912,7 +913,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
         raw_stream.into_keyed()
     }
 
-    #[deprecated = "use Stream::broadcast(..., TCP.bincode()) instead"]
+    #[deprecated = "use Stream::broadcast(..., TCP.fail_stop().bincode()) instead"]
     /// Broadcasts elements of this stream at each source member to all members of a destination
     /// cluster, using [`bincode`] to serialize/deserialize messages.
     ///
@@ -997,8 +998,8 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     /// let source: Cluster<Source> = flow.cluster::<Source>();
     /// let numbers: Stream<_, Cluster<Source>, _> = source.source_iter(q!(vec![123]));
     /// let destination: Cluster<Destination> = flow.cluster::<Destination>();
-    /// let on_destination: KeyedStream<MemberId<Source>, _, Cluster<Destination>, _> = numbers.broadcast(&destination, TCP.bincode(), nondet!(/** assuming stable membership */));
-    /// # on_destination.entries().send(&p2, TCP.bincode()).entries()
+    /// let on_destination: KeyedStream<MemberId<Source>, _, Cluster<Destination>, _> = numbers.broadcast(&destination, TCP.fail_stop().bincode(), nondet!(/** assuming stable membership */));
+    /// # on_destination.entries().send(&p2, TCP.fail_stop().bincode()).entries()
     /// // if there are 4 members in the desination, each receives one element from each source member
     /// // - Destination(0): { Source(0): [123], Source(1): [123], ... }
     /// // - Destination(1): { Source(0): [123], Source(1): [123], ... }
@@ -1042,7 +1043,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
 impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     Stream<(MemberId<L2>, T), Cluster<'a, L>, B, O, R>
 {
-    #[deprecated = "use Stream::demux(..., TCP.bincode()) instead"]
+    #[deprecated = "use Stream::demux(..., TCP.fail_stop().bincode()) instead"]
     /// Sends elements of this stream at each source member to specific members of a destination
     /// cluster, identified by a [`MemberId`], using [`bincode`] to serialize/deserialize messages.
     ///
@@ -1123,8 +1124,8 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     ///     .source_iter(q!(vec![0, 1, 2, 3]))
     ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)));
     /// let destination: Cluster<Destination> = flow.cluster::<Destination>();
-    /// let all_received = to_send.demux(&destination, TCP.bincode()); // KeyedStream<MemberId<Source>, i32, ...>
-    /// # all_received.entries().send(&p2, TCP.bincode()).entries()
+    /// let all_received = to_send.demux(&destination, TCP.fail_stop().bincode()); // KeyedStream<MemberId<Source>, i32, ...>
+    /// # all_received.entries().send(&p2, TCP.fail_stop().bincode()).entries()
     /// # }, |mut stream| async move {
     /// // if there are 4 members in the destination cluster, each receives one message from each source member
     /// // - Destination(0): { Source(0): [0], Source(1): [0], ... }
