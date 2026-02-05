@@ -41,7 +41,11 @@ async function postBenchmarkComment(github, context, artifactId) {
   if (botComment) {
     // Extract existing history from comment body (between "### Run History:" and timestamp)
     const historyMatch = botComment.body.match(/### Run History:\n([\s\S]*?)\n\n<sub>/);
-    const existingHistory = historyMatch ? historyMatch[1] : '';
+    let existingHistory = historyMatch ? historyMatch[1] : '';
+    
+    // Mark any "In Progress" runs as cancelled since new runs cancel previous ones
+    // Do this BEFORE adding/updating the current run to avoid special handling
+    existingHistory = existingHistory.replace(/- (\[Run #\d+\]\([^)]+\)) - In Progress ⏳/g, '- $1 - ❌ Cancelled');
     
     let updatedHistory;
     if (isCompletion && existingHistory) {
@@ -58,7 +62,7 @@ async function postBenchmarkComment(github, context, artifactId) {
       );
       
       if (existingHistory.match(runPattern)) {
-        // Update existing entry
+        // Update existing entry (e.g., from Cancelled to Complete)
         updatedHistory = existingHistory.replace(runPattern, newRunEntry);
       } else {
         // Prepend new entry (newest at top)
@@ -68,19 +72,6 @@ async function postBenchmarkComment(github, context, artifactId) {
       // Prepend new run entry for initial comment (newest at top)
       updatedHistory = existingHistory ? `${newRunEntry}\n${existingHistory}` : newRunEntry;
     }
-    
-    // Mark any remaining "In Progress" runs as cancelled since new runs cancel previous ones
-    // Split into lines to avoid replacing the current run if it's in progress
-    const lines = updatedHistory.split('\n');
-    const processedLines = lines.map((line, index) => {
-      // Skip the first line if this is a new run (not completion) to keep current run as "In Progress"
-      if (!isCompletion && index === 0 && line.includes('In Progress ⏳')) {
-        return line;
-      }
-      // Replace all other "In Progress" entries with "Cancelled"
-      return line.replace(/- (\[Run #\d+\]\([^)]+\)) - In Progress ⏳/, '- $1 - ❌ Cancelled');
-    });
-    updatedHistory = processedLines.join('\n');
     
     // Format the complete comment body with status and run history
     const updatedBody = `## 📊 Benchmark Results\n\n${status}\n\n### Run History:\n${updatedHistory}\n\n<sub>Last updated: ${new Date().toISOString()}</sub>`;
