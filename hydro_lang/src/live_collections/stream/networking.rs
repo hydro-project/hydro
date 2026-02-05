@@ -126,7 +126,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     where
         T: Serialize + DeserializeOwned,
     {
-        self.send(other, TCP.bincode())
+        self.send(other, TCP.fail_stop().bincode())
     }
 
     /// "Moves" elements of this stream to a new distributed location by sending them over the network,
@@ -239,7 +239,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     where
         T: Clone + Serialize + DeserializeOwned,
     {
-        self.broadcast(other, TCP.bincode(), nondet_membership)
+        self.broadcast(other, TCP.fail_stop().bincode(), nondet_membership)
     }
 
     /// Broadcasts elements of this stream to all members of a cluster by sending them over the network,
@@ -429,7 +429,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     where
         T: Serialize + DeserializeOwned,
     {
-        self.demux(other, TCP.bincode())
+        self.demux(other, TCP.fail_stop().bincode())
     }
 
     /// Sends elements of this stream to specific members of a cluster, identified by a [`MemberId`],
@@ -535,7 +535,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     where
         T: Serialize + DeserializeOwned,
     {
-        self.round_robin(other, TCP.bincode(), nondet_membership)
+        self.round_robin(other, TCP.fail_stop().bincode(), nondet_membership)
     }
 
     /// Distributes elements of this stream to cluster members in a round-robin fashion, using
@@ -672,7 +672,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
     where
         T: Serialize + DeserializeOwned,
     {
-        self.round_robin(other, TCP.bincode(), nondet_membership)
+        self.round_robin(other, TCP.fail_stop().bincode(), nondet_membership)
     }
 
     /// Distributes elements of this stream to cluster members in a round-robin fashion, using
@@ -816,7 +816,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     where
         T: Serialize + DeserializeOwned,
     {
-        self.send(other, TCP.bincode())
+        self.send(other, TCP.fail_stop().bincode())
     }
 
     /// "Moves" elements of this stream from a cluster to a process by sending them over the network,
@@ -968,7 +968,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     where
         T: Clone + Serialize + DeserializeOwned,
     {
-        self.broadcast(other, TCP.bincode(), nondet_membership)
+        self.broadcast(other, TCP.fail_stop().bincode(), nondet_membership)
     }
 
     /// Broadcasts elements of this stream at each source member to all members of a destination
@@ -1095,7 +1095,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     where
         T: Serialize + DeserializeOwned,
     {
-        self.demux(other, TCP.bincode())
+        self.demux(other, TCP.fail_stop().bincode())
     }
 
     /// Sends elements of this stream at each source member to specific members of a destination
@@ -1182,7 +1182,7 @@ mod tests {
         let (in_send, input) = node.sim_input();
 
         let out_recv = input
-            .send(&node2, TCP.bincode())
+            .send(&node2, TCP.fail_stop().bincode())
             .batch(&node2.tick(), nondet!(/** test */))
             .count()
             .all_ticks()
@@ -1210,7 +1210,7 @@ mod tests {
         let input = cluster.source_iter(q!(vec![1]));
 
         let out_recv = input
-            .send(&node, TCP.bincode())
+            .send(&node, TCP.fail_stop().bincode())
             .entries()
             .batch(&node.tick(), nondet!(/** test */))
             .all_ticks()
@@ -1243,13 +1243,13 @@ mod tests {
 
         let out_recv_1 = cluster1
             .source_iter(q!(vec![1]))
-            .send(&node, TCP.bincode())
+            .send(&node, TCP.fail_stop().bincode())
             .entries()
             .sim_output();
 
         let out_recv_2 = cluster2
             .source_iter(q!(vec![2]))
-            .send(&node, TCP.bincode())
+            .send(&node, TCP.fail_stop().bincode())
             .entries()
             .sim_output();
 
@@ -1292,9 +1292,9 @@ mod tests {
         ]));
 
         let out_recv = input
-            .demux(&cluster, TCP.bincode())
+            .demux(&cluster, TCP.fail_stop().bincode())
             .map(q!(|x| x + 1))
-            .send(&node, TCP.bincode())
+            .send(&node, TCP.fail_stop().bincode())
             .entries()
             .sim_output();
 
@@ -1320,9 +1320,9 @@ mod tests {
         let input = node.source_iter(q!(vec![123, 456]));
 
         let out_recv = input
-            .broadcast(&cluster, TCP.bincode(), nondet!(/** test */))
+            .broadcast(&cluster, TCP.fail_stop().bincode(), nondet!(/** test */))
             .map(q!(|x| x + 1))
-            .send(&node, TCP.bincode())
+            .send(&node, TCP.fail_stop().bincode())
             .entries()
             .sim_output();
 
@@ -1362,15 +1362,15 @@ mod tests {
         ]));
 
         let out_recv = input
-            .demux(&cluster, TCP.bincode())
+            .demux(&cluster, TCP.fail_stop().bincode())
             .map(q!(|x| x + 1))
             .flat_map_ordered(q!(|x| vec![
                 (MemberId::from_raw_id(0), x),
                 (MemberId::from_raw_id(1), x),
             ]))
-            .demux(&cluster, TCP.bincode())
+            .demux(&cluster, TCP.fail_stop().bincode())
             .entries()
-            .send(&node, TCP.bincode())
+            .send(&node, TCP.fail_stop().bincode())
             .entries()
             .sim_output();
 

@@ -61,7 +61,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     where
         T: Serialize + DeserializeOwned,
     {
-        self.demux(other, TCP.bincode())
+        self.demux(other, TCP.fail_stop().bincode())
     }
 
     /// Sends each group of this stream to a specific member of a cluster, with the [`MemberId`] key
@@ -182,7 +182,7 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
     {
-        self.demux(other, TCP.bincode())
+        self.demux(other, TCP.fail_stop().bincode())
     }
 
     /// Sends each group of this stream to a specific member of a cluster. The input stream has a
@@ -317,7 +317,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     where
         T: Serialize + DeserializeOwned,
     {
-        self.demux(other, TCP.bincode())
+        self.demux(other, TCP.fail_stop().bincode())
     }
 
     /// Sends each group of this stream at each source member to a specific member of a destination
@@ -475,7 +475,7 @@ impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries>
         K: Serialize + DeserializeOwned,
         V: Serialize + DeserializeOwned,
     {
-        self.send(other, TCP.bincode())
+        self.send(other, TCP.fail_stop().bincode())
     }
 
     #[expect(clippy::type_complexity, reason = "compound key types with ordering")]
