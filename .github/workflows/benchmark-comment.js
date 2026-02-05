@@ -61,12 +61,12 @@ async function postBenchmarkComment(github, context, artifactId) {
         // Update existing entry
         updatedHistory = existingHistory.replace(runPattern, newRunEntry);
       } else {
-        // Append new entry (fallback if initial comment was missed)
-        updatedHistory = `${existingHistory}\n${newRunEntry}`;
+        // Prepend new entry (newest at top)
+        updatedHistory = `${newRunEntry}\n${existingHistory}`;
       }
     } else {
-      // Append new run entry for initial comment
-      updatedHistory = existingHistory ? `${existingHistory}\n${newRunEntry}` : newRunEntry;
+      // Prepend new run entry for initial comment (newest at top)
+      updatedHistory = existingHistory ? `${newRunEntry}\n${existingHistory}` : newRunEntry;
     }
     
     // Format the complete comment body with status and run history
