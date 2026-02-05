@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"attr":["main","test"],"derive":["DemuxEnum"],"macro":["assert_var_impl","dfir_expect_warnings","dfir_parser","dfir_syntax","dfir_syntax_noemit","monotonic_fn","morphism","rassert","rassert_eq","var_args","var_expr","var_type"],"mod":["compiled","scheduled","util"],"type":["Never"]};

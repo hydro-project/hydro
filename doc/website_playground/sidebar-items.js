@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["compile_dfir","init"],"struct":["DfirOutput","DfirResult","JsDiagnostic","JsLineColumn","JsSpan"]};

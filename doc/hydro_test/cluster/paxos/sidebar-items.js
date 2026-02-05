@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["acceptor_p2","index_payloads","leader_election","paxos_core","recommit_after_leader_election"],"struct":["Acceptor","Ballot","CorePaxos","LogValue","P2a","PaxosConfig","Proposer"],"trait":["PaxosPayload"]};

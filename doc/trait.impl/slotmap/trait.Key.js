@@ -1,0 +1,9 @@
+(function() {
+    const implementors = Object.fromEntries([["dfir_lang",[["impl <a class=\"trait\" href=\"https://docs.rs/slotmap/1.1.1/slotmap/trait.Key.html\" title=\"trait slotmap::Key\">Key</a> for <a class=\"struct\" href=\"dfir_lang/graph/struct.GraphEdgeId.html\" title=\"struct dfir_lang::graph::GraphEdgeId\">GraphEdgeId</a>",0],["impl <a class=\"trait\" href=\"https://docs.rs/slotmap/1.1.1/slotmap/trait.Key.html\" title=\"trait slotmap::Key\">Key</a> for <a class=\"struct\" href=\"dfir_lang/graph/struct.GraphLoopId.html\" title=\"struct dfir_lang::graph::GraphLoopId\">GraphLoopId</a>",0],["impl <a class=\"trait\" href=\"https://docs.rs/slotmap/1.1.1/slotmap/trait.Key.html\" title=\"trait slotmap::Key\">Key</a> for <a class=\"struct\" href=\"dfir_lang/graph/struct.GraphNodeId.html\" title=\"struct dfir_lang::graph::GraphNodeId\">GraphNodeId</a>",0],["impl <a class=\"trait\" href=\"https://docs.rs/slotmap/1.1.1/slotmap/trait.Key.html\" title=\"trait slotmap::Key\">Key</a> for <a class=\"struct\" href=\"dfir_lang/graph/struct.GraphSubgraphId.html\" title=\"struct dfir_lang::graph::GraphSubgraphId\">GraphSubgraphId</a>",0]]],["hydro_lang",[["impl <a class=\"trait\" href=\"https://docs.rs/slotmap/1.1.1/slotmap/trait.Key.html\" title=\"trait slotmap::Key\">Key</a> for <a class=\"struct\" href=\"hydro_lang/location/struct.LocationKey.html\" title=\"struct hydro_lang::location::LocationKey\">LocationKey</a>",0],["impl <a class=\"trait\" href=\"https://docs.rs/slotmap/1.1.1/slotmap/trait.Key.html\" title=\"trait slotmap::Key\">Key</a> for <a class=\"struct\" href=\"hydro_lang/viz/render/struct.VizNodeKey.html\" title=\"struct hydro_lang::viz::render::VizNodeKey\">VizNodeKey</a>",0]]]]);
+    if (window.register_implementors) {
+        window.register_implementors(implementors);
+    } else {
+        window.pending_implementors = implementors;
+    }
+})()
+//{"start":59,"fragment_lengths":[1087,565]}

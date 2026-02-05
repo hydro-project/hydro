@@ -1,0 +1,246 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Convenience extension methods for the `Dfir` struct."><title>GraphExt in dfir_rs::scheduled::graph_ext - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b7b9f40b.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="dfir_rs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.95.0-nightly (db3e99bba 2026-02-04)" data-channel="nightly" data-search-js="search-fb33671b.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-f9617a14.js"></script><script defer src="sidebar-items.js"></script><script defer src="../../../static.files/main-12f88f4f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc trait"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">GraphExt</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../dfir_rs/index.html">dfir_rs</a><span class="version">0.15.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Graph<wbr>Ext</a></h2><h3><a href="#required-methods">Required Methods</a></h3><ul class="block"><li><a href="#tymethod.add_channel_input" title="add_channel_input">add_channel_input</a></li><li><a href="#tymethod.add_input" title="add_input">add_input</a></li><li><a href="#tymethod.add_input_from_stream" title="add_input_from_stream">add_input_from_stream</a></li><li><a href="#tymethod.add_subgraph_2in_2out" title="add_subgraph_2in_2out">add_subgraph_2in_2out</a></li><li><a href="#tymethod.add_subgraph_2in_out" title="add_subgraph_2in_out">add_subgraph_2in_out</a></li><li><a href="#tymethod.add_subgraph_2sink" title="add_subgraph_2sink">add_subgraph_2sink</a></li><li><a href="#tymethod.add_subgraph_in_2out" title="add_subgraph_in_2out">add_subgraph_in_2out</a></li><li><a href="#tymethod.add_subgraph_in_out" title="add_subgraph_in_out">add_subgraph_in_out</a></li><li><a href="#tymethod.add_subgraph_sink" title="add_subgraph_sink">add_subgraph_sink</a></li><li><a href="#tymethod.add_subgraph_source" title="add_subgraph_source">add_subgraph_source</a></li></ul><h3><a href="#dyn-compatibility">Dyn Compatibility</a></h3><h3><a href="#implementors">Implementors</a></h3></section><div id="rustdoc-modnav"><h2><a href="index.html">In dfir_<wbr>rs::<wbr>scheduled::<wbr>graph_<wbr>ext</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../../index.html">dfir_rs</a>::<wbr><a href="../index.html">scheduled</a>::<wbr><a href="index.html">graph_ext</a></div><h1>Trait <span class="trait">Graph<wbr>Ext</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../../src/dfir_rs/scheduled/graph_ext.rs.html#74-131">Source</a> </span></div><pre class="rust item-decl"><code>pub trait GraphExt: Sealed {
+    // Required methods
+    fn <a href="#tymethod.add_subgraph_sink" class="fn">add_subgraph_sink</a>&lt;Name, F, R&gt;(
+        &amp;mut self,
+        name: Name,
+        recv_port: <a class="type" href="../port/type.RecvPort.html" title="type dfir_rs::scheduled::port::RecvPort">RecvPort</a>&lt;R&gt;,
+        subgraph: F,
+    ) -&gt; <a class="type" href="../type.SubgraphId.html" title="type dfir_rs::scheduled::SubgraphId">SubgraphId</a>
+       <span class="where">where Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+             F: 'static + <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(&amp;<a class="struct" href="../context/struct.Context.html" title="struct dfir_rs::scheduled::context::Context">Context</a>, &amp;<a class="type" href="../port/type.RecvCtx.html" title="type dfir_rs::scheduled::port::RecvCtx">RecvCtx</a>&lt;R&gt;),
+             R: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a></span>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.add_subgraph_2sink" class="fn">add_subgraph_2sink</a>&lt;Name, F, R1, R2&gt;(
+        &amp;mut self,
+        name: Name,
+        recv_port_1: <a class="type" href="../port/type.RecvPort.html" title="type dfir_rs::scheduled::port::RecvPort">RecvPort</a>&lt;R1&gt;,
+        recv_port_2: <a class="type" href="../port/type.RecvPort.html" title="type dfir_rs::scheduled::port::RecvPort">RecvPort</a>&lt;R2&gt;,
+        subgraph: F,
+    ) -&gt; <a class="type" href="../type.SubgraphId.html" title="type dfir_rs::scheduled::SubgraphId">SubgraphId</a>
+       <span class="where">where Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+             F: 'static + <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(&amp;<a class="struct" href="../context/struct.Context.html" title="struct dfir_rs::scheduled::context::Context">Context</a>, &amp;<a class="type" href="../port/type.RecvCtx.html" title="type dfir_rs::scheduled::port::RecvCtx">RecvCtx</a>&lt;R1&gt;, &amp;<a class="type" href="../port/type.RecvCtx.html" title="type dfir_rs::scheduled::port::RecvCtx">RecvCtx</a>&lt;R2&gt;),
+             R1: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,
+             R2: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a></span>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.add_subgraph_source" class="fn">add_subgraph_source</a>&lt;Name, F, W&gt;(
+        &amp;mut self,
+        name: Name,
+        send_port: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W&gt;,
+        subgraph: F,
+    ) -&gt; <a class="type" href="../type.SubgraphId.html" title="type dfir_rs::scheduled::SubgraphId">SubgraphId</a>
+       <span class="where">where Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+             F: 'static + <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(&amp;<a class="struct" href="../context/struct.Context.html" title="struct dfir_rs::scheduled::context::Context">Context</a>, &amp;<a class="type" href="../port/type.SendCtx.html" title="type dfir_rs::scheduled::port::SendCtx">SendCtx</a>&lt;W&gt;),
+             W: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a></span>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.add_subgraph_in_out" class="fn">add_subgraph_in_out</a>&lt;Name, F, R, W&gt;(
+        &amp;mut self,
+        name: Name,
+        recv_port: <a class="type" href="../port/type.RecvPort.html" title="type dfir_rs::scheduled::port::RecvPort">RecvPort</a>&lt;R&gt;,
+        send_port: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W&gt;,
+        subgraph: F,
+    ) -&gt; <a class="type" href="../type.SubgraphId.html" title="type dfir_rs::scheduled::SubgraphId">SubgraphId</a>
+       <span class="where">where Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+             F: 'static + <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(&amp;<a class="struct" href="../context/struct.Context.html" title="struct dfir_rs::scheduled::context::Context">Context</a>, &amp;<a class="type" href="../port/type.RecvCtx.html" title="type dfir_rs::scheduled::port::RecvCtx">RecvCtx</a>&lt;R&gt;, &amp;<a class="type" href="../port/type.SendCtx.html" title="type dfir_rs::scheduled::port::SendCtx">SendCtx</a>&lt;W&gt;),
+             R: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,
+             W: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a></span>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.add_subgraph_in_2out" class="fn">add_subgraph_in_2out</a>&lt;Name, F, R, W1, W2&gt;(
+        &amp;mut self,
+        name: Name,
+        recv_port: <a class="type" href="../port/type.RecvPort.html" title="type dfir_rs::scheduled::port::RecvPort">RecvPort</a>&lt;R&gt;,
+        send_port_1: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W1&gt;,
+        send_port_2: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W2&gt;,
+        subgraph: F,
+    ) -&gt; <a class="type" href="../type.SubgraphId.html" title="type dfir_rs::scheduled::SubgraphId">SubgraphId</a>
+       <span class="where">where Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+             F: 'static + <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(&amp;<a class="struct" href="../context/struct.Context.html" title="struct dfir_rs::scheduled::context::Context">Context</a>, &amp;<a class="type" href="../port/type.RecvCtx.html" title="type dfir_rs::scheduled::port::RecvCtx">RecvCtx</a>&lt;R&gt;, &amp;<a class="type" href="../port/type.SendCtx.html" title="type dfir_rs::scheduled::port::SendCtx">SendCtx</a>&lt;W1&gt;, &amp;<a class="type" href="../port/type.SendCtx.html" title="type dfir_rs::scheduled::port::SendCtx">SendCtx</a>&lt;W2&gt;),
+             R: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,
+             W1: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,
+             W2: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a></span>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.add_subgraph_2in_out" class="fn">add_subgraph_2in_out</a>&lt;Name, F, R1, R2, W&gt;(
+        &amp;mut self,
+        name: Name,
+        recv_port_1: <a class="type" href="../port/type.RecvPort.html" title="type dfir_rs::scheduled::port::RecvPort">RecvPort</a>&lt;R1&gt;,
+        recv_port_2: <a class="type" href="../port/type.RecvPort.html" title="type dfir_rs::scheduled::port::RecvPort">RecvPort</a>&lt;R2&gt;,
+        send_port: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W&gt;,
+        subgraph: F,
+    ) -&gt; <a class="type" href="../type.SubgraphId.html" title="type dfir_rs::scheduled::SubgraphId">SubgraphId</a>
+       <span class="where">where Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+             F: 'static + <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(&amp;<a class="struct" href="../context/struct.Context.html" title="struct dfir_rs::scheduled::context::Context">Context</a>, &amp;<a class="type" href="../port/type.RecvCtx.html" title="type dfir_rs::scheduled::port::RecvCtx">RecvCtx</a>&lt;R1&gt;, &amp;<a class="type" href="../port/type.RecvCtx.html" title="type dfir_rs::scheduled::port::RecvCtx">RecvCtx</a>&lt;R2&gt;, &amp;<a class="type" href="../port/type.SendCtx.html" title="type dfir_rs::scheduled::port::SendCtx">SendCtx</a>&lt;W&gt;),
+             R1: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,
+             R2: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,
+             W: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a></span>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.add_subgraph_2in_2out" class="fn">add_subgraph_2in_2out</a>&lt;Name, F, R1, R2, W1, W2&gt;(
+        &amp;mut self,
+        name: Name,
+        recv_port_1: <a class="type" href="../port/type.RecvPort.html" title="type dfir_rs::scheduled::port::RecvPort">RecvPort</a>&lt;R1&gt;,
+        recv_port_2: <a class="type" href="../port/type.RecvPort.html" title="type dfir_rs::scheduled::port::RecvPort">RecvPort</a>&lt;R2&gt;,
+        send_port_1: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W1&gt;,
+        send_port_2: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W2&gt;,
+        subgraph: F,
+    ) -&gt; <a class="type" href="../type.SubgraphId.html" title="type dfir_rs::scheduled::SubgraphId">SubgraphId</a>
+       <span class="where">where Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+             F: 'static + <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(&amp;<a class="struct" href="../context/struct.Context.html" title="struct dfir_rs::scheduled::context::Context">Context</a>, &amp;<a class="type" href="../port/type.RecvCtx.html" title="type dfir_rs::scheduled::port::RecvCtx">RecvCtx</a>&lt;R1&gt;, &amp;<a class="type" href="../port/type.RecvCtx.html" title="type dfir_rs::scheduled::port::RecvCtx">RecvCtx</a>&lt;R2&gt;, &amp;<a class="type" href="../port/type.SendCtx.html" title="type dfir_rs::scheduled::port::SendCtx">SendCtx</a>&lt;W1&gt;, &amp;<a class="type" href="../port/type.SendCtx.html" title="type dfir_rs::scheduled::port::SendCtx">SendCtx</a>&lt;W2&gt;),
+             R1: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,
+             R2: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,
+             W1: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,
+             W2: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a></span>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.add_channel_input" class="fn">add_channel_input</a>&lt;Name, T, W&gt;(
+        &amp;mut self,
+        name: Name,
+        send_port: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W&gt;,
+    ) -&gt; <a class="struct" href="../input/struct.Input.html" title="struct dfir_rs::scheduled::input::Input">Input</a>&lt;T, <a class="struct" href="https://doc.rust-lang.org/nightly/std/sync/mpsc/struct.SyncSender.html" title="struct std::sync::mpsc::SyncSender">SyncSender</a>&lt;T&gt;&gt;
+       <span class="where">where Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+             T: 'static,
+             W: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a> + <a class="trait" href="../handoff/trait.CanReceive.html" title="trait dfir_rs::scheduled::handoff::CanReceive">CanReceive</a>&lt;T&gt;</span>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.add_input" class="fn">add_input</a>&lt;Name, T, W&gt;(
+        &amp;mut self,
+        name: Name,
+        send_port: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W&gt;,
+    ) -&gt; <a class="struct" href="../input/struct.Input.html" title="struct dfir_rs::scheduled::input::Input">Input</a>&lt;T, <a class="struct" href="../input/struct.Buffer.html" title="struct dfir_rs::scheduled::input::Buffer">Buffer</a>&lt;T&gt;&gt;
+       <span class="where">where Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+             T: 'static,
+             W: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a> + <a class="trait" href="../handoff/trait.CanReceive.html" title="trait dfir_rs::scheduled::handoff::CanReceive">CanReceive</a>&lt;T&gt;</span>;
+<span class="item-spacer"></span>    fn <a href="#tymethod.add_input_from_stream" class="fn">add_input_from_stream</a>&lt;Name, T, W, S&gt;(
+        &amp;mut self,
+        name: Name,
+        send_port: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W&gt;,
+        stream: S,
+    )
+       <span class="where">where Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+             S: 'static + Stream&lt;Item = T&gt;,
+             W: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a> + <a class="trait" href="../handoff/trait.CanReceive.html" title="trait dfir_rs::scheduled::handoff::CanReceive">CanReceive</a>&lt;T&gt;</span>;
+}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Convenience extension methods for the <a href="../graph/struct.Dfir.html" title="struct dfir_rs::scheduled::graph::Dfir"><code>Dfir</code></a> struct.</p>
+<p>Prefer DFIR syntax to avoid subgraph-per-op strucuring.</p>
+</div></details><h2 id="required-methods" class="section-header">Required Methods<a href="#required-methods" class="anchor">§</a></h2><div class="methods"><details class="toggle method-toggle" open><summary><section id="tymethod.add_subgraph_sink" class="method"><a class="src rightside" href="../../../src/dfir_rs/scheduled/graph_ext.rs.html#75">Source</a><h4 class="code-header">fn <a href="#tymethod.add_subgraph_sink" class="fn">add_subgraph_sink</a>&lt;Name, F, R&gt;(
+    &amp;mut self,
+    name: Name,
+    recv_port: <a class="type" href="../port/type.RecvPort.html" title="type dfir_rs::scheduled::port::RecvPort">RecvPort</a>&lt;R&gt;,
+    subgraph: F,
+) -&gt; <a class="type" href="../type.SubgraphId.html" title="type dfir_rs::scheduled::SubgraphId">SubgraphId</a><div class="where">where
+    Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+    F: 'static + <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(&amp;<a class="struct" href="../context/struct.Context.html" title="struct dfir_rs::scheduled::context::Context">Context</a>, &amp;<a class="type" href="../port/type.RecvCtx.html" title="type dfir_rs::scheduled::port::RecvCtx">RecvCtx</a>&lt;R&gt;),
+    R: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,</div></h4></section></summary><div class="docblock"><p>Adds a subgraph with specific topology:</p>
+<ul>
+<li>Inputs: R,</li>
+<li>Outputs:</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.add_subgraph_2sink" class="method"><a class="src rightside" href="../../../src/dfir_rs/scheduled/graph_ext.rs.html#76">Source</a><h4 class="code-header">fn <a href="#tymethod.add_subgraph_2sink" class="fn">add_subgraph_2sink</a>&lt;Name, F, R1, R2&gt;(
+    &amp;mut self,
+    name: Name,
+    recv_port_1: <a class="type" href="../port/type.RecvPort.html" title="type dfir_rs::scheduled::port::RecvPort">RecvPort</a>&lt;R1&gt;,
+    recv_port_2: <a class="type" href="../port/type.RecvPort.html" title="type dfir_rs::scheduled::port::RecvPort">RecvPort</a>&lt;R2&gt;,
+    subgraph: F,
+) -&gt; <a class="type" href="../type.SubgraphId.html" title="type dfir_rs::scheduled::SubgraphId">SubgraphId</a><div class="where">where
+    Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+    F: 'static + <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(&amp;<a class="struct" href="../context/struct.Context.html" title="struct dfir_rs::scheduled::context::Context">Context</a>, &amp;<a class="type" href="../port/type.RecvCtx.html" title="type dfir_rs::scheduled::port::RecvCtx">RecvCtx</a>&lt;R1&gt;, &amp;<a class="type" href="../port/type.RecvCtx.html" title="type dfir_rs::scheduled::port::RecvCtx">RecvCtx</a>&lt;R2&gt;),
+    R1: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,
+    R2: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,</div></h4></section></summary><div class="docblock"><p>Adds a subgraph with specific topology:</p>
+<ul>
+<li>Inputs: R1, R2,</li>
+<li>Outputs:</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.add_subgraph_source" class="method"><a class="src rightside" href="../../../src/dfir_rs/scheduled/graph_ext.rs.html#78">Source</a><h4 class="code-header">fn <a href="#tymethod.add_subgraph_source" class="fn">add_subgraph_source</a>&lt;Name, F, W&gt;(
+    &amp;mut self,
+    name: Name,
+    send_port: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W&gt;,
+    subgraph: F,
+) -&gt; <a class="type" href="../type.SubgraphId.html" title="type dfir_rs::scheduled::SubgraphId">SubgraphId</a><div class="where">where
+    Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+    F: 'static + <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(&amp;<a class="struct" href="../context/struct.Context.html" title="struct dfir_rs::scheduled::context::Context">Context</a>, &amp;<a class="type" href="../port/type.SendCtx.html" title="type dfir_rs::scheduled::port::SendCtx">SendCtx</a>&lt;W&gt;),
+    W: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,</div></h4></section></summary><div class="docblock"><p>Adds a subgraph with specific topology:</p>
+<ul>
+<li>Inputs:</li>
+<li>Outputs: W,</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.add_subgraph_in_out" class="method"><a class="src rightside" href="../../../src/dfir_rs/scheduled/graph_ext.rs.html#80">Source</a><h4 class="code-header">fn <a href="#tymethod.add_subgraph_in_out" class="fn">add_subgraph_in_out</a>&lt;Name, F, R, W&gt;(
+    &amp;mut self,
+    name: Name,
+    recv_port: <a class="type" href="../port/type.RecvPort.html" title="type dfir_rs::scheduled::port::RecvPort">RecvPort</a>&lt;R&gt;,
+    send_port: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W&gt;,
+    subgraph: F,
+) -&gt; <a class="type" href="../type.SubgraphId.html" title="type dfir_rs::scheduled::SubgraphId">SubgraphId</a><div class="where">where
+    Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+    F: 'static + <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(&amp;<a class="struct" href="../context/struct.Context.html" title="struct dfir_rs::scheduled::context::Context">Context</a>, &amp;<a class="type" href="../port/type.RecvCtx.html" title="type dfir_rs::scheduled::port::RecvCtx">RecvCtx</a>&lt;R&gt;, &amp;<a class="type" href="../port/type.SendCtx.html" title="type dfir_rs::scheduled::port::SendCtx">SendCtx</a>&lt;W&gt;),
+    R: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,
+    W: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,</div></h4></section></summary><div class="docblock"><p>Adds a subgraph with specific topology:</p>
+<ul>
+<li>Inputs: R,</li>
+<li>Outputs: W,</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.add_subgraph_in_2out" class="method"><a class="src rightside" href="../../../src/dfir_rs/scheduled/graph_ext.rs.html#81-85">Source</a><h4 class="code-header">fn <a href="#tymethod.add_subgraph_in_2out" class="fn">add_subgraph_in_2out</a>&lt;Name, F, R, W1, W2&gt;(
+    &amp;mut self,
+    name: Name,
+    recv_port: <a class="type" href="../port/type.RecvPort.html" title="type dfir_rs::scheduled::port::RecvPort">RecvPort</a>&lt;R&gt;,
+    send_port_1: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W1&gt;,
+    send_port_2: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W2&gt;,
+    subgraph: F,
+) -&gt; <a class="type" href="../type.SubgraphId.html" title="type dfir_rs::scheduled::SubgraphId">SubgraphId</a><div class="where">where
+    Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+    F: 'static + <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(&amp;<a class="struct" href="../context/struct.Context.html" title="struct dfir_rs::scheduled::context::Context">Context</a>, &amp;<a class="type" href="../port/type.RecvCtx.html" title="type dfir_rs::scheduled::port::RecvCtx">RecvCtx</a>&lt;R&gt;, &amp;<a class="type" href="../port/type.SendCtx.html" title="type dfir_rs::scheduled::port::SendCtx">SendCtx</a>&lt;W1&gt;, &amp;<a class="type" href="../port/type.SendCtx.html" title="type dfir_rs::scheduled::port::SendCtx">SendCtx</a>&lt;W2&gt;),
+    R: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,
+    W1: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,
+    W2: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,</div></h4></section></summary><div class="docblock"><p>Adds a subgraph with specific topology:</p>
+<ul>
+<li>Inputs: R,</li>
+<li>Outputs: W1, W2,</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.add_subgraph_2in_out" class="method"><a class="src rightside" href="../../../src/dfir_rs/scheduled/graph_ext.rs.html#87-91">Source</a><h4 class="code-header">fn <a href="#tymethod.add_subgraph_2in_out" class="fn">add_subgraph_2in_out</a>&lt;Name, F, R1, R2, W&gt;(
+    &amp;mut self,
+    name: Name,
+    recv_port_1: <a class="type" href="../port/type.RecvPort.html" title="type dfir_rs::scheduled::port::RecvPort">RecvPort</a>&lt;R1&gt;,
+    recv_port_2: <a class="type" href="../port/type.RecvPort.html" title="type dfir_rs::scheduled::port::RecvPort">RecvPort</a>&lt;R2&gt;,
+    send_port: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W&gt;,
+    subgraph: F,
+) -&gt; <a class="type" href="../type.SubgraphId.html" title="type dfir_rs::scheduled::SubgraphId">SubgraphId</a><div class="where">where
+    Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+    F: 'static + <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(&amp;<a class="struct" href="../context/struct.Context.html" title="struct dfir_rs::scheduled::context::Context">Context</a>, &amp;<a class="type" href="../port/type.RecvCtx.html" title="type dfir_rs::scheduled::port::RecvCtx">RecvCtx</a>&lt;R1&gt;, &amp;<a class="type" href="../port/type.RecvCtx.html" title="type dfir_rs::scheduled::port::RecvCtx">RecvCtx</a>&lt;R2&gt;, &amp;<a class="type" href="../port/type.SendCtx.html" title="type dfir_rs::scheduled::port::SendCtx">SendCtx</a>&lt;W&gt;),
+    R1: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,
+    R2: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,
+    W: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,</div></h4></section></summary><div class="docblock"><p>Adds a subgraph with specific topology:</p>
+<ul>
+<li>Inputs: R1, R2,</li>
+<li>Outputs: W,</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.add_subgraph_2in_2out" class="method"><a class="src rightside" href="../../../src/dfir_rs/scheduled/graph_ext.rs.html#92-96">Source</a><h4 class="code-header">fn <a href="#tymethod.add_subgraph_2in_2out" class="fn">add_subgraph_2in_2out</a>&lt;Name, F, R1, R2, W1, W2&gt;(
+    &amp;mut self,
+    name: Name,
+    recv_port_1: <a class="type" href="../port/type.RecvPort.html" title="type dfir_rs::scheduled::port::RecvPort">RecvPort</a>&lt;R1&gt;,
+    recv_port_2: <a class="type" href="../port/type.RecvPort.html" title="type dfir_rs::scheduled::port::RecvPort">RecvPort</a>&lt;R2&gt;,
+    send_port_1: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W1&gt;,
+    send_port_2: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W2&gt;,
+    subgraph: F,
+) -&gt; <a class="type" href="../type.SubgraphId.html" title="type dfir_rs::scheduled::SubgraphId">SubgraphId</a><div class="where">where
+    Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+    F: 'static + <a class="trait" href="https://doc.rust-lang.org/nightly/core/ops/function/trait.FnMut.html" title="trait core::ops::function::FnMut">FnMut</a>(&amp;<a class="struct" href="../context/struct.Context.html" title="struct dfir_rs::scheduled::context::Context">Context</a>, &amp;<a class="type" href="../port/type.RecvCtx.html" title="type dfir_rs::scheduled::port::RecvCtx">RecvCtx</a>&lt;R1&gt;, &amp;<a class="type" href="../port/type.RecvCtx.html" title="type dfir_rs::scheduled::port::RecvCtx">RecvCtx</a>&lt;R2&gt;, &amp;<a class="type" href="../port/type.SendCtx.html" title="type dfir_rs::scheduled::port::SendCtx">SendCtx</a>&lt;W1&gt;, &amp;<a class="type" href="../port/type.SendCtx.html" title="type dfir_rs::scheduled::port::SendCtx">SendCtx</a>&lt;W2&gt;),
+    R1: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,
+    R2: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,
+    W1: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,
+    W2: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a>,</div></h4></section></summary><div class="docblock"><p>Adds a subgraph with specific topology:</p>
+<ul>
+<li>Inputs: R1, R2,</li>
+<li>Outputs: W1, W2,</li>
+</ul>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.add_channel_input" class="method"><a class="src rightside" href="../../../src/dfir_rs/scheduled/graph_ext.rs.html#99-107">Source</a><h4 class="code-header">fn <a href="#tymethod.add_channel_input" class="fn">add_channel_input</a>&lt;Name, T, W&gt;(
+    &amp;mut self,
+    name: Name,
+    send_port: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W&gt;,
+) -&gt; <a class="struct" href="../input/struct.Input.html" title="struct dfir_rs::scheduled::input::Input">Input</a>&lt;T, <a class="struct" href="https://doc.rust-lang.org/nightly/std/sync/mpsc/struct.SyncSender.html" title="struct std::sync::mpsc::SyncSender">SyncSender</a>&lt;T&gt;&gt;<div class="where">where
+    Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+    T: 'static,
+    W: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a> + <a class="trait" href="../handoff/trait.CanReceive.html" title="trait dfir_rs::scheduled::handoff::CanReceive">CanReceive</a>&lt;T&gt;,</div></h4></section></summary><div class="docblock"><p>Adds a channel input which sends to the <code>send_port</code>.</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.add_input" class="method"><a class="src rightside" href="../../../src/dfir_rs/scheduled/graph_ext.rs.html#111-119">Source</a><h4 class="code-header">fn <a href="#tymethod.add_input" class="fn">add_input</a>&lt;Name, T, W&gt;(
+    &amp;mut self,
+    name: Name,
+    send_port: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W&gt;,
+) -&gt; <a class="struct" href="../input/struct.Input.html" title="struct dfir_rs::scheduled::input::Input">Input</a>&lt;T, <a class="struct" href="../input/struct.Buffer.html" title="struct dfir_rs::scheduled::input::Buffer">Buffer</a>&lt;T&gt;&gt;<div class="where">where
+    Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+    T: 'static,
+    W: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a> + <a class="trait" href="../handoff/trait.CanReceive.html" title="trait dfir_rs::scheduled::handoff::CanReceive">CanReceive</a>&lt;T&gt;,</div></h4></section></summary><div class="docblock"><p>Adds an “input” operator, returning a handle to insert data into it.
+TODO(justin): make this thing work better</p>
+</div></details><details class="toggle method-toggle" open><summary><section id="tymethod.add_input_from_stream" class="method"><a class="src rightside" href="../../../src/dfir_rs/scheduled/graph_ext.rs.html#122-130">Source</a><h4 class="code-header">fn <a href="#tymethod.add_input_from_stream" class="fn">add_input_from_stream</a>&lt;Name, T, W, S&gt;(
+    &amp;mut self,
+    name: Name,
+    send_port: <a class="type" href="../port/type.SendPort.html" title="type dfir_rs::scheduled::port::SendPort">SendPort</a>&lt;W&gt;,
+    stream: S,
+)<div class="where">where
+    Name: <a class="trait" href="https://doc.rust-lang.org/nightly/core/convert/trait.Into.html" title="trait core::convert::Into">Into</a>&lt;<a class="enum" href="https://doc.rust-lang.org/nightly/alloc/borrow/enum.Cow.html" title="enum alloc::borrow::Cow">Cow</a>&lt;'static, <a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;&gt;,
+    S: 'static + Stream&lt;Item = T&gt;,
+    W: 'static + <a class="trait" href="../handoff/trait.Handoff.html" title="trait dfir_rs::scheduled::handoff::Handoff">Handoff</a> + <a class="trait" href="../handoff/trait.CanReceive.html" title="trait dfir_rs::scheduled::handoff::CanReceive">CanReceive</a>&lt;T&gt;,</div></h4></section></summary><div class="docblock"><p>Adds a subgraph which pulls from the async stream and sends to the <code>send_port</code>.</p>
+</div></details></div><h2 id="dyn-compatibility" class="section-header">Dyn Compatibility<a href="#dyn-compatibility" class="anchor">§</a></h2><div class="dyn-compatibility-info"><p>This trait is <b>not</b> <a href="https://doc.rust-lang.org/nightly/reference/items/traits.html#dyn-compatibility">dyn compatible</a>.</p><p><i>In older versions of Rust, dyn compatibility was called "object safety", so this trait is not object safe.</i></p></div><h2 id="implementors" class="section-header">Implementors<a href="#implementors" class="anchor">§</a></h2><div id="implementors-list"><div class="negative-marker"></div><section id="impl-GraphExt-for-Dfir%3C'_%3E" class="impl"><a class="src rightside" href="../../../src/dfir_rs/scheduled/graph_ext.rs.html#134-222">Source</a><a href="#impl-GraphExt-for-Dfir%3C'_%3E" class="anchor">§</a><h3 class="code-header">impl <a class="trait" href="trait.GraphExt.html" title="trait dfir_rs::scheduled::graph_ext::GraphExt">GraphExt</a> for <a class="struct" href="../graph/struct.Dfir.html" title="struct dfir_rs::scheduled::graph::Dfir">Dfir</a>&lt;'_&gt;</h3></section></div><script src="../../../trait.impl/dfir_rs/scheduled/graph_ext/trait.GraphExt.js" async></script></section></div></main></body></html>

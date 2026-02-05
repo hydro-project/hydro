@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["echo_capitalize"],"struct":["EchoServer"]};

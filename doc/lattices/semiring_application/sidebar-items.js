@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["U32WithInfinity"],"struct":["BinaryTrust","ConfidenceScore","Cost","FuzzyLogic","Multiplicity"]};

@@ -1,0 +1,280 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Blocking Ops and Stratification - The Hydroflow Book</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var html = document.querySelector('html');
+            var sidebar = null;
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="index.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="quickstart.html"><strong aria-hidden="true">2.</strong> Quickstart</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="setup.html"><strong aria-hidden="true">2.1.</strong> Setup</a></li><li class="chapter-item expanded "><a href="example_1_simplest.html"><strong aria-hidden="true">2.2.</strong> Simplest Example</a></li><li class="chapter-item expanded "><a href="example_2_simple.html"><strong aria-hidden="true">2.3.</strong> Simple Example</a></li><li class="chapter-item expanded "><a href="example_3_stream.html"><strong aria-hidden="true">2.4.</strong> A Example With Streaming Input</a></li><li class="chapter-item expanded "><a href="example_4_neighbors.html"><strong aria-hidden="true">2.5.</strong> Graph Neighbors</a></li><li class="chapter-item expanded "><a href="example_5_reachability.html"><strong aria-hidden="true">2.6.</strong> Graph Reachability</a></li><li class="chapter-item expanded "><a href="example_6_unreachability.html"><strong aria-hidden="true">2.7.</strong> Graph Un-Reachability</a></li><li class="chapter-item expanded "><a href="example_7_echo_server.html"><strong aria-hidden="true">2.8.</strong> Networked Services 1: EchoServer</a></li><li class="chapter-item expanded "><a href="example_8_chat_server.html"><strong aria-hidden="true">2.9.</strong> Networked Services 2: ChatServer</a></li></ol></li><li class="chapter-item expanded "><a href="surface_syntax.html"><strong aria-hidden="true">3.</strong> Syntax</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="surface_embedding.html"><strong aria-hidden="true">3.1.</strong> Rust Embedding</a></li><li class="chapter-item expanded "><a href="surface_flows.html"><strong aria-hidden="true">3.2.</strong> Flows</a></li><li class="chapter-item expanded "><a href="surface_data.html"><strong aria-hidden="true">3.3.</strong> Data Sources</a></li><li class="chapter-item expanded "><a href="surface_ops.gen.html"><strong aria-hidden="true">3.4.</strong> Operators</a></li><li class="chapter-item expanded "><a href="state.html"><strong aria-hidden="true">3.5.</strong> State and Lifetimes</a></li></ol></li><li class="chapter-item expanded "><a href="ecosystem.html"><strong aria-hidden="true">4.</strong> The Hydro Ecosystem</a></li><li class="chapter-item expanded "><a href="concepts.html"><strong aria-hidden="true">5.</strong> Concepts</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="life_and_times.html"><strong aria-hidden="true">5.1.</strong> Life and Times of Hydroflow</a></li><li class="chapter-item expanded "><a href="stratification.html" class="active"><strong aria-hidden="true">5.2.</strong> Blocking Ops and Stratification</a></li><li class="chapter-item expanded "><a href="distributed_time.html"><strong aria-hidden="true">5.3.</strong> Distributed Time</a></li><li class="chapter-item expanded "><a href="debugging.html"><strong aria-hidden="true">5.4.</strong> Debugging Hydroflow</a></li><li class="chapter-item expanded "><a href="error_handling.html"><strong aria-hidden="true">5.5.</strong> Error Handling</a></li></ol></li><li class="chapter-item expanded "><a href="architecture.html"><strong aria-hidden="true">6.</strong> Architecture</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="scheduling.html"><strong aria-hidden="true">6.1.</strong> Scheduling</a></li><li class="chapter-item expanded "><a href="handoffs.html"><strong aria-hidden="true">6.2.</strong> Handoffs</a></li><li class="chapter-item expanded "><a href="networking.html"><strong aria-hidden="true">6.3.</strong> Networking</a></li><li class="chapter-item expanded "><a href="in-out_trees.html"><strong aria-hidden="true">6.4.</strong> Subgraph In-Out Trees</a></li></ol></li><li class="chapter-item expanded "><a href="lattices_crate.html"><strong aria-hidden="true">7.</strong> The Lattices Crate</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lattice_math.html"><strong aria-hidden="true">7.1.</strong> Lattice Math</a></li></ol></li><li class="chapter-item expanded "><a href="todo.html"><strong aria-hidden="true">8.</strong> TODO</a></li><li class="chapter-item expanded "><a href="faq.html"><strong aria-hidden="true">9.</strong> FAQ</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Hydroflow Book</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+<h1 id="streaming-blocking-and-stratification"><a class="header" href="#streaming-blocking-and-stratification">Streaming, Blocking and Stratification</a></h1>
+<p>Many Hydroflow operators (e.g. <code>map</code>, <code>filter</code> and <code>join</code>) work in a streaming fashion. Streaming operators process data as it arrives, generating outputs in the midst of processing inputs. If you restrict yourself to operators that work in this streaming fashion, then your transducer may start sending data across the network mid-tick, even while it is still consuming the data in the input batch.</p>
+<p>But some operators are blocking, and must wait for all their input data to arrive before they can produce any output data. For example, a <code>sort</code> operator must wait for all its input data to arrive before it can produce a single output value. After all, the lowest value may be the last to arrive!</p>
+<h2 id="examples-of-blocking-operators"><a class="header" href="#examples-of-blocking-operators">Examples of Blocking Operators</a></h2>
+<p>The discussion above should raise questions in your mind. What do we mean by &quot;all the input data&quot; in a long-running service? We don't want to wait until the end of time—this is one reason we break time up into discrete &quot;ticks&quot; at each transducer. So when we say that a blocking operator waits for &quot;all the input data&quot;, we mean &quot;all the input data in the current tick&quot;.</p>
+<p>Consider the simple statement below, which receives data from a network source each tick, sorts that tick's worth of data, and prints it to stdout:</p>
+<pre><code class="language-rust ignore">source_stream(inbound) -&gt; sort() -&gt; for_each(|x| println!(&quot;{:?}&quot;, x));</code></pre>
+<p>The runtime determines arbitrarily what batch of data is taken from the channel and fed into the <code>source_stream_serde</code> operator for this tick. The sort operator will need to know that the <code>source_stream_serde</code> operator has no more data to send this tick, so that it can sort the data that got buffered and then send the sorted data to the <code>for_each</code> operator, which prints it to stdout. To do this, the runtime provides a mechanism for the <code>source_stream_serde</code> operator to buffer its output and notify the <code>sort</code> operator that it has no more data to send. This is called a <em>handoff</em>.</p>
+<p>You can see the mermaid graph for the statement above just below this paragraph. Notice the two outer rectangles and the handoff between them. Each rectangle is a subflow that is
+assigned a <em>stratum</em> number. (&quot;Stratum&quot; is latin for &quot;layer&quot;; the plural of &quot;stratum&quot; is &quot;strata&quot;.) </p>
+<pre class="mermaid">%%{init: {'theme': 'base', 'themeVariables': {'clusterBkg':'#ddd'}}}%%
+flowchart LR
+classDef pullClass fill:#02f,color:#fff,stroke:#000
+classDef pushClass fill:#ff0,stroke:#000
+linkStyle default stroke:#aaa,stroke-width:4px,color:red,font-size:1.5em;
+subgraph &quot;sg_1v1 stratum 0&quot;
+    1v1[\&quot;(1v1) &lt;tt&gt;source_stream(edges_recv)&lt;/tt&gt;&quot;/]:::pullClass
+end
+subgraph &quot;sg_2v1 stratum 1&quot;
+    2v1[/&quot;(2v1) &lt;tt&gt;sort()&lt;/tt&gt;&quot;\]:::pushClass
+    3v1[/&quot;(3v1) &lt;tt&gt;for_each(| x | println! (&amp;quot;{:?}&amp;quot;, x))&lt;/tt&gt;&quot;\]:::pushClass
+    2v1---&gt;3v1
+end
+1v1---&gt;4v1
+4v1[&quot;(4v1) &lt;tt&gt;handoff&lt;/tt&gt;&quot;]:::otherClass
+4v1===o2v1
+</pre>
+<p>At compile time, the Hydroflow spec is <em>stratified</em>: partitioned into subflows, where each subflow is assigned a stratum number. Subsequently at runtime, each tick executes the strata one-by-one in ascending order of stratum number. In the example above, the <code>source_stream</code> operator is in stratum 0, and the <code>sort</code> and <code>for_each</code> operators are in stratum 1. The runtime executes the <code>source_stream</code> operator first, buffering output in the Handoff. The <code>sort</code> operator will not receive any data until the <code>source_stream</code> operator has finished executing. When stratum 0 is complete, the subflow in stratum 1 is scheduled and executes the <code>sort</code> and <code>for_each</code> operators to complete the tick. </p>
+<p>Let's look back at the <a href="./surface_ops.gen.html#difference"><code>difference</code></a> operator as used in the <a href="./example_6_unreachability.html">Graph Unreachability example</a>.</p>
+<pre class="mermaid">flowchart TD
+classDef pullClass fill:#02f,color:#fff,stroke:#000
+classDef pushClass fill:#ff0,stroke:#000
+linkStyle default stroke:#aaa,stroke-width:4px,color:red,font-size:1.5em;
+subgraph &quot;sg_4v1 stratum 1&quot;
+    11v1[\&quot;(11v1) &lt;tt&gt;difference()&lt;/tt&gt;&quot;/]:::pullClass
+    14v1[/&quot;(14v1) &lt;tt&gt;for_each(| v | println! (&amp;quot;unreached_vertices vertex: {}&amp;quot;, v))&lt;/tt&gt;&quot;\]:::pushClass
+    11v1---&gt;14v1
+end
+17v1[&quot;(17v1) &lt;tt&gt;handoff&lt;/tt&gt;&quot;]:::otherClass
+17v1--pos---&gt;11v1
+18v1[&quot;(18v1) &lt;tt&gt;handoff&lt;/tt&gt;&quot;]:::otherClass
+18v1==neg===o11v1
+</pre>
+<p>The <code>difference</code> operators is one with inputs of two different types. It is supposed to output all the items from its <code>pos</code> input that do not appear in its <code>neg</code> input. To achieve that, the <code>neg</code> input must be blocking, but the <code>pos</code> input can stream. Blocking on the <code>neg</code> input ensures that if the operator streams an output from the <code>pos</code> input, it will never need to retract that output.</p>
+<p>Given these examples, we can refine our diagram of the Hydroflow transducer loop to account for stratified execution within each tick:</p>
+<pre class="mermaid">%%{init: {'theme':'neutral'}}%%
+flowchart LR
+    subgraph external[External]
+        network&gt;&quot;messages\n&amp; events&quot;\nfa:fa-telegram]--&gt;buffer[[buffer]]
+    end
+    subgraph transducer[Transducer Loop]
+         buffer--&gt;ingest&gt;&quot;ingest a batch\nof data&quot;]--&gt;loop(((&quot;for each stratum in\n[0..max(strata)]\nrun stratum to fixpoint\nfa:fa-cog&quot;)))--&gt;stream[stream out\nmsgs &amp; events\nfa:fa-telegram]--&gt;clock((advance\nclock\nfa:fa-clock-o))-- new tick! --&gt;ingest
+    end
+    style stream fill:#0fa,stroke:#aaa,stroke-width:2px,stroke-dasharray: 5 5
+    style loop fill:#0fa
+    style clock fill:#f00
+    style ingest fill:#f00
+    linkStyle 5 stroke:red,stroke-width:4px,color:red;
+</pre>
+<h2 id="technical-details"><a class="header" href="#technical-details">Technical Details</a></h2>
+<p>The concept of stratification is taken directly from stratified negation in the <a href="https://en.wikipedia.org/wiki/Datalog">Datalog</a> language. Hydroflow identifies a stratum boundary at any blocking input to an operator, where classical Datalog only stratifies its negation operator.</p>
+<p>The Hydroflow compiler performs stratification via static analysis of the Hydroflow spec. The analysis is based on the following rules:</p>
+<ul>
+<li>A Handoff is interposed in front of any blocking input to an operator (as documented in the <a href="./surface_ops.gen.html">operator definitions</a>.</li>
+<li>The flow is partitioned at the Handoffs into subflows called &quot;strata&quot;.</li>
+<li>The resulting graph of strata and Handoffs is tested to ensure that it's acyclic. (Cycles through blocking operators are forbidden as they not have well-defined behavior—note that the blocking operators in a cycle would deadlock waiting for each other.)</li>
+</ul>
+<p>Given the acyclicity test, any legal Hydroflow program consists of a directed acyclic graph (DAG) of strata and handoffs. The strata are numbered in ascending order by assigning stratum number 0 to the &quot;leaves&quot; of the DAG (strata with no upstream operators), and then ensuring that each stratum is assigned a number that is one larger than any of its upstream strata.</p>
+<p>As a Hydroflow operator executes, it is running on a particular transducer, in a particular tick, in a particular stratum. </p>
+<h3 id="determining-whether-an-operator-should-block-monotonicity"><a class="header" href="#determining-whether-an-operator-should-block-monotonicity">Determining whether an operator should block: Monotonicity</a></h3>
+<p>Why are some inputs to operators streaming, and others blocking? Intuitively, the blocking operators must hold off on emitting outputs early because they may receive another input that would change their output. For example, a <code>difference</code> operator on integers cannot emit the number 4 from its <code>pos</code> input if it may subsequently receive a 4  within the same tick on the <code>neg</code> input. More generally, it cannot output anything until it has received all the <code>neg</code> input data. </p>
+<p>By contrast, streaming operators like <code>filter</code> have the property that they can always emit an output, <em>regardless of what other data they will receive later in the tick</em>. </p>
+<p>Mathematically, we can think of a dataflow operator as a function <em>f(in) → out</em> from one batch of data to another. We call a function <a href="https://en.wikipedia.org/wiki/Monotonic_function#In_order_theory">monotone</a> if its output is a growing function of its input. That is, <em>f</em> is classified as a monotone function if <em>f(B) ⊆ f(C)</em> whenever <em>B ⊆ C</em>.</p>
+<p>By contrast, consider the output of a blocking operator like <code>difference</code>. The output of <code>difference</code> is a function of both its inputs, but it is <em>non-monotone</em> with respect to its <code>neg</code> input. That is, it is <em>not</em> the case that <em>(A — B) ⊆ (A — C)</em> whenever <em>B ⊆ C</em>. </p>
+<p>Hydroflow is designed to use the monotonicity property to determine whether an operator should block. If an operator is monotone with respect to an input, that input is streaming. If an operator is non-monotone, it is blocking.</p>
+<p>Monotonicity turns out to be particularly important for distributed systems. In particular, if all your transducers are fully monotone across ticks, then they can run in parallel without any coordination—they will always stream correct prefixes of the final outputs, and eventually will deliver the complete output. This is the positive direction of the <a href="https://cacm.acm.org/magazines/2020/9/246941-keeping-calm/fulltext">CALM Theorem</a>.</p>
+<blockquote>
+<p>In future versions of Hydroflow, the type system will represent monotonicity explicitly and reason about it automatically.</p>
+</blockquote>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="life_and_times.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="distributed_time.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="life_and_times.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="distributed_time.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="mermaid.min.js"></script>
+        <script src="mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

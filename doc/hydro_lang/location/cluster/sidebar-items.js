@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"static":["CLUSTER_SELF_ID"],"struct":["Cluster","ClusterIds","ClusterSelfId"],"trait":["IsCluster"]};

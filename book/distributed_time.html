@@ -1,0 +1,225 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Distributed Time - The Hydroflow Book</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var html = document.querySelector('html');
+            var sidebar = null;
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="index.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="quickstart.html"><strong aria-hidden="true">2.</strong> Quickstart</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="setup.html"><strong aria-hidden="true">2.1.</strong> Setup</a></li><li class="chapter-item expanded "><a href="example_1_simplest.html"><strong aria-hidden="true">2.2.</strong> Simplest Example</a></li><li class="chapter-item expanded "><a href="example_2_simple.html"><strong aria-hidden="true">2.3.</strong> Simple Example</a></li><li class="chapter-item expanded "><a href="example_3_stream.html"><strong aria-hidden="true">2.4.</strong> A Example With Streaming Input</a></li><li class="chapter-item expanded "><a href="example_4_neighbors.html"><strong aria-hidden="true">2.5.</strong> Graph Neighbors</a></li><li class="chapter-item expanded "><a href="example_5_reachability.html"><strong aria-hidden="true">2.6.</strong> Graph Reachability</a></li><li class="chapter-item expanded "><a href="example_6_unreachability.html"><strong aria-hidden="true">2.7.</strong> Graph Un-Reachability</a></li><li class="chapter-item expanded "><a href="example_7_echo_server.html"><strong aria-hidden="true">2.8.</strong> Networked Services 1: EchoServer</a></li><li class="chapter-item expanded "><a href="example_8_chat_server.html"><strong aria-hidden="true">2.9.</strong> Networked Services 2: ChatServer</a></li></ol></li><li class="chapter-item expanded "><a href="surface_syntax.html"><strong aria-hidden="true">3.</strong> Syntax</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="surface_embedding.html"><strong aria-hidden="true">3.1.</strong> Rust Embedding</a></li><li class="chapter-item expanded "><a href="surface_flows.html"><strong aria-hidden="true">3.2.</strong> Flows</a></li><li class="chapter-item expanded "><a href="surface_data.html"><strong aria-hidden="true">3.3.</strong> Data Sources</a></li><li class="chapter-item expanded "><a href="surface_ops.gen.html"><strong aria-hidden="true">3.4.</strong> Operators</a></li><li class="chapter-item expanded "><a href="state.html"><strong aria-hidden="true">3.5.</strong> State and Lifetimes</a></li></ol></li><li class="chapter-item expanded "><a href="ecosystem.html"><strong aria-hidden="true">4.</strong> The Hydro Ecosystem</a></li><li class="chapter-item expanded "><a href="concepts.html"><strong aria-hidden="true">5.</strong> Concepts</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="life_and_times.html"><strong aria-hidden="true">5.1.</strong> Life and Times of Hydroflow</a></li><li class="chapter-item expanded "><a href="stratification.html"><strong aria-hidden="true">5.2.</strong> Blocking Ops and Stratification</a></li><li class="chapter-item expanded "><a href="distributed_time.html" class="active"><strong aria-hidden="true">5.3.</strong> Distributed Time</a></li><li class="chapter-item expanded "><a href="debugging.html"><strong aria-hidden="true">5.4.</strong> Debugging Hydroflow</a></li><li class="chapter-item expanded "><a href="error_handling.html"><strong aria-hidden="true">5.5.</strong> Error Handling</a></li></ol></li><li class="chapter-item expanded "><a href="architecture.html"><strong aria-hidden="true">6.</strong> Architecture</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="scheduling.html"><strong aria-hidden="true">6.1.</strong> Scheduling</a></li><li class="chapter-item expanded "><a href="handoffs.html"><strong aria-hidden="true">6.2.</strong> Handoffs</a></li><li class="chapter-item expanded "><a href="networking.html"><strong aria-hidden="true">6.3.</strong> Networking</a></li><li class="chapter-item expanded "><a href="in-out_trees.html"><strong aria-hidden="true">6.4.</strong> Subgraph In-Out Trees</a></li></ol></li><li class="chapter-item expanded "><a href="lattices_crate.html"><strong aria-hidden="true">7.</strong> The Lattices Crate</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lattice_math.html"><strong aria-hidden="true">7.1.</strong> Lattice Math</a></li></ol></li><li class="chapter-item expanded "><a href="todo.html"><strong aria-hidden="true">8.</strong> TODO</a></li><li class="chapter-item expanded "><a href="faq.html"><strong aria-hidden="true">9.</strong> FAQ</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Hydroflow Book</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+<h1 id="distributed-time"><a class="header" href="#distributed-time">Distributed Time</a></h1>
+<p>Hydroflow does not embed a particular notion of distributed time, but instead provides primitives for 
+you to implement one of many possible distributed time models. If you're a distributed systems aficionado, you might
+be interested to read this chapter to learn about how Hydroflow's time model compares to classical distributed time models.</p>
+<h2 id="lamport-time"><a class="header" href="#lamport-time">Lamport Time</a></h2>
+<p>Lamport's paper on <a href="https://lamport.azurewebsites.net/pubs/time-clocks.pdf">Time, Clocks, and the Ordering of Events in a Distributed System</a> provides a classical definition of time in a distributed system. In that paper, each single-threaded <em>process</em> has a sequential clock (a so-called <a href="https://en.wikipedia.org/wiki/Lamport_timestamp">Lamport Clock</a>). The clock in a process advances by one unit of time for each <em>event</em> that the process observes. Between events, the clock is frozen and the process does local computation.</p>
+<p>In addition, to maintain Lamport Clocks, each process stamps its outbound messages with the current clock value, and begins each &quot;tick&quot; by <em>advancing</em> its local clock to the larger of </p>
+<ul>
+<li>its current clock value and </li>
+<li>the largest clock value of any message it received. </li>
+</ul>
+<p>The way that Lamport clocks jump ahead provides a desirable property: the timestamps provide a reasonable notion of what events <em>happen-before</em> other events in a distributed system.
+Lamport timestamps track not only the order of events on a single node, they also ensure that the timestamps on events reflect distributed ordering. Suppose that node <code>source</code> wants to send a message to node <code>dest</code>, and node source has current clock value <em>T_source</em>. The events that precede that message on node <code>source</code> have smaller timestamps. In addition, consider an event at node <code>dest</code> that follows the receipt of that message. That event must have a timestamp greater than <em>T_source</em> by Lamport's advancing rule above. Hence all the events on node <code>source</code> that preceded the sending of the message have lower timestamps than the events on node <code>dest</code> following the receipt of the message. This is Lamport's distributed &quot;happens-before&quot; relation, and the Lamport clock capture that relation.</p>
+<h2 id="hydroflow-time"><a class="header" href="#hydroflow-time">Hydroflow Time</a></h2>
+<p>As a built-in primitive, Hydroflow defines time only for a single transducer, as a sequence of consecutive ticks without any gaps. </p>
+<p>Thus the main difference between Hydroflow events and Lamport events are:</p>
+<ol>
+<li><strong>Batched Events</strong>: Hydroflow treats the ingestion of a batch of multiple inbound events as a single tick. <em>TODO: is it possible to limit batch size to 1?</em> </li>
+<li><strong>Fixpoints between Events</strong>: Hydroflow <em>requires</em> a fixpoint computation to complete between ticks.</li>
+<li><strong>Consecutive Ticks</strong>: the built-in clock primitive in Hydroflow always advances sequentially and cannot skip a tick like the Lamport clock does.</li>
+</ol>
+<h2 id="implementing-distributed-time-in-hydroflow"><a class="header" href="#implementing-distributed-time-in-hydroflow">Implementing Distributed Time in Hydroflow</a></h2>
+<p>Although Lamport clocks are not built into Hydroflow, it is straightforward to implement them in Hydroflow. Alternatively, one can implement more sophisticated distributed clocks like <a href="https://en.wikipedia.org/wiki/Vector_clock">vector clocks</a> in Hydroflow instead. By leaving this decision to the user, Hydroflow can be used in a variety of distributed time models.</p>
+<p><em>TODO: add example of implementing Lamport clocks?</em>.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="stratification.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="debugging.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="stratification.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="debugging.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="mermaid.min.js"></script>
+        <script src="mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

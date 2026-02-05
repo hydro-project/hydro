@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["decouple_cluster","decouple_process","partition","simple_cluster"]};

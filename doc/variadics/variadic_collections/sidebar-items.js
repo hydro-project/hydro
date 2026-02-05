@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["DuplicateCounted","VariadicColumnMultiset","VariadicCountedHashSet","VariadicHashSet"],"trait":["VariadicCollection","VariadicMultiset","VariadicSet"]};

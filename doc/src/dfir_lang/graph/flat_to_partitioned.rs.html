@@ -1,0 +1,566 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `dfir_lang/src/graph/flat_to_partitioned.rs`."><title>flat_to_partitioned.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b7b9f40b.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="dfir_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.95.0-nightly (db3e99bba 2026-02-04)" data-channel="nightly" data-search-js="search-fb33671b.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-f9617a14.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-12f88f4f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">dfir_lang/graph/</div>flat_to_partitioned.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Subgraph partioning algorithm
+<a href=#2 id=2 data-nosnippet>2</a>
+<a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">use </span>std::collections::{BTreeMap, BTreeSet};
+<a href=#4 id=4 data-nosnippet>4</a>
+<a href=#5 id=5 data-nosnippet>5</a><span class="kw">use </span>slotmap::{SecondaryMap, SparseSecondaryMap};
+<a href=#6 id=6 data-nosnippet>6</a><span class="kw">use </span>syn::parse_quote;
+<a href=#7 id=7 data-nosnippet>7</a>
+<a href=#8 id=8 data-nosnippet>8</a><span class="kw">use </span><span class="kw">super</span>::meta_graph::DfirGraph;
+<a href=#9 id=9 data-nosnippet>9</a><span class="kw">use </span><span class="kw">super</span>::ops::{DelayType, FloType, find_node_op_constraints};
+<a href=#10 id=10 data-nosnippet>10</a><span class="kw">use </span>super::{Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId, graph_algorithms};
+<a href=#11 id=11 data-nosnippet>11</a><span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Level};
+<a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span><span class="kw">crate</span>::union_find::UnionFind;
+<a href=#13 id=13 data-nosnippet>13</a>
+<a href=#14 id=14 data-nosnippet>14</a><span class="doccomment">/// Helper struct for tracking barrier crossers, see [`find_barrier_crossers`].
+<a href=#15 id=15 data-nosnippet>15</a></span><span class="kw">struct </span>BarrierCrossers {
+<a href=#16 id=16 data-nosnippet>16</a>    <span class="doccomment">/// Edge barrier crossers, including what type.
+<a href=#17 id=17 data-nosnippet>17</a>    </span><span class="kw">pub </span>edge_barrier_crossers: SecondaryMap&lt;GraphEdgeId, DelayType&gt;,
+<a href=#18 id=18 data-nosnippet>18</a>    <span class="doccomment">/// Singleton reference barrier crossers, considered to be [`DelayType::Stratum`].
+<a href=#19 id=19 data-nosnippet>19</a>    </span><span class="kw">pub </span>singleton_barrier_crossers: Vec&lt;(GraphNodeId, GraphNodeId)&gt;,
+<a href=#20 id=20 data-nosnippet>20</a>}
+<a href=#21 id=21 data-nosnippet>21</a><span class="kw">impl </span>BarrierCrossers {
+<a href=#22 id=22 data-nosnippet>22</a>    <span class="doccomment">/// Iterate pairs of nodes that are across a barrier. Excludes `DelayType::NextIteration` pairs.
+<a href=#23 id=23 data-nosnippet>23</a>    </span><span class="kw">fn </span>iter_node_pairs&lt;<span class="lifetime">'a</span>&gt;(
+<a href=#24 id=24 data-nosnippet>24</a>        <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">self</span>,
+<a href=#25 id=25 data-nosnippet>25</a>        partitioned_graph: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>DfirGraph,
+<a href=#26 id=26 data-nosnippet>26</a>    ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ Iterator&lt;Item = ((GraphNodeId, GraphNodeId), DelayType)&gt; {
+<a href=#27 id=27 data-nosnippet>27</a>        <span class="kw">let </span>edge_pairs_iter = <span class="self">self
+<a href=#28 id=28 data-nosnippet>28</a>            </span>.edge_barrier_crossers
+<a href=#29 id=29 data-nosnippet>29</a>            .iter()
+<a href=#30 id=30 data-nosnippet>30</a>            .map(|(edge_id, <span class="kw-2">&amp;</span>delay_type)| {
+<a href=#31 id=31 data-nosnippet>31</a>                <span class="kw">let </span>src_dst = partitioned_graph.edge(edge_id);
+<a href=#32 id=32 data-nosnippet>32</a>                (src_dst, delay_type)
+<a href=#33 id=33 data-nosnippet>33</a>            });
+<a href=#34 id=34 data-nosnippet>34</a>        <span class="kw">let </span>singleton_pairs_iter = <span class="self">self
+<a href=#35 id=35 data-nosnippet>35</a>            </span>.singleton_barrier_crossers
+<a href=#36 id=36 data-nosnippet>36</a>            .iter()
+<a href=#37 id=37 data-nosnippet>37</a>            .map(|<span class="kw-2">&amp;</span>src_dst| (src_dst, DelayType::Stratum));
+<a href=#38 id=38 data-nosnippet>38</a>        edge_pairs_iter.chain(singleton_pairs_iter)
+<a href=#39 id=39 data-nosnippet>39</a>    }
+<a href=#40 id=40 data-nosnippet>40</a>
+<a href=#41 id=41 data-nosnippet>41</a>    <span class="doccomment">/// Insert/replace edge.
+<a href=#42 id=42 data-nosnippet>42</a>    </span><span class="kw">fn </span>replace_edge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, old_edge_id: GraphEdgeId, new_edge_id: GraphEdgeId) {
+<a href=#43 id=43 data-nosnippet>43</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(delay_type) = <span class="self">self</span>.edge_barrier_crossers.remove(old_edge_id) {
+<a href=#44 id=44 data-nosnippet>44</a>            <span class="self">self</span>.edge_barrier_crossers.insert(new_edge_id, delay_type);
+<a href=#45 id=45 data-nosnippet>45</a>        }
+<a href=#46 id=46 data-nosnippet>46</a>    }
+<a href=#47 id=47 data-nosnippet>47</a>}
+<a href=#48 id=48 data-nosnippet>48</a>
+<a href=#49 id=49 data-nosnippet>49</a><span class="doccomment">/// Find all the barrier crossers.
+<a href=#50 id=50 data-nosnippet>50</a></span><span class="kw">fn </span>find_barrier_crossers(partitioned_graph: <span class="kw-2">&amp;</span>DfirGraph) -&gt; BarrierCrossers {
+<a href=#51 id=51 data-nosnippet>51</a>    <span class="kw">let </span>edge_barrier_crossers = partitioned_graph
+<a href=#52 id=52 data-nosnippet>52</a>        .edges()
+<a href=#53 id=53 data-nosnippet>53</a>        .filter(|<span class="kw-2">&amp;</span>(<span class="kw">_</span>, (_src, dst))| {
+<a href=#54 id=54 data-nosnippet>54</a>            <span class="comment">// Ignore barriers within `loop {` blocks.
+<a href=#55 id=55 data-nosnippet>55</a>            </span>partitioned_graph.node_loop(dst).is_none()
+<a href=#56 id=56 data-nosnippet>56</a>        })
+<a href=#57 id=57 data-nosnippet>57</a>        .filter_map(|(edge_id, (_src, dst))| {
+<a href=#58 id=58 data-nosnippet>58</a>            <span class="kw">let </span>(_src_port, dst_port) = partitioned_graph.edge_ports(edge_id);
+<a href=#59 id=59 data-nosnippet>59</a>            <span class="kw">let </span>op_constraints = partitioned_graph.node_op_inst(dst)<span class="question-mark">?</span>.op_constraints;
+<a href=#60 id=60 data-nosnippet>60</a>            <span class="kw">let </span>input_barrier = (op_constraints.input_delaytype_fn)(dst_port)<span class="question-mark">?</span>;
+<a href=#61 id=61 data-nosnippet>61</a>            <span class="prelude-val">Some</span>((edge_id, input_barrier))
+<a href=#62 id=62 data-nosnippet>62</a>        })
+<a href=#63 id=63 data-nosnippet>63</a>        .collect();
+<a href=#64 id=64 data-nosnippet>64</a>    <span class="kw">let </span>singleton_barrier_crossers = partitioned_graph
+<a href=#65 id=65 data-nosnippet>65</a>        .node_ids()
+<a href=#66 id=66 data-nosnippet>66</a>        .flat_map(|dst| {
+<a href=#67 id=67 data-nosnippet>67</a>            partitioned_graph
+<a href=#68 id=68 data-nosnippet>68</a>                .node_singleton_references(dst)
+<a href=#69 id=69 data-nosnippet>69</a>                .iter()
+<a href=#70 id=70 data-nosnippet>70</a>                .flatten()
+<a href=#71 id=71 data-nosnippet>71</a>                .map(<span class="kw">move </span>|<span class="kw-2">&amp;</span>src_ref| (src_ref, dst))
+<a href=#72 id=72 data-nosnippet>72</a>        })
+<a href=#73 id=73 data-nosnippet>73</a>        .collect();
+<a href=#74 id=74 data-nosnippet>74</a>    BarrierCrossers {
+<a href=#75 id=75 data-nosnippet>75</a>        edge_barrier_crossers,
+<a href=#76 id=76 data-nosnippet>76</a>        singleton_barrier_crossers,
+<a href=#77 id=77 data-nosnippet>77</a>    }
+<a href=#78 id=78 data-nosnippet>78</a>}
+<a href=#79 id=79 data-nosnippet>79</a>
+<a href=#80 id=80 data-nosnippet>80</a><span class="kw">fn </span>find_subgraph_unionfind(
+<a href=#81 id=81 data-nosnippet>81</a>    partitioned_graph: <span class="kw-2">&amp;</span>DfirGraph,
+<a href=#82 id=82 data-nosnippet>82</a>    barrier_crossers: <span class="kw-2">&amp;</span>BarrierCrossers,
+<a href=#83 id=83 data-nosnippet>83</a>) -&gt; (UnionFind&lt;GraphNodeId&gt;, BTreeSet&lt;GraphEdgeId&gt;) {
+<a href=#84 id=84 data-nosnippet>84</a>    <span class="comment">// Modality (color) of nodes, push or pull.
+<a href=#85 id=85 data-nosnippet>85</a>    // TODO(mingwei)? This does NOT consider `DelayType` barriers (which generally imply `Pull`),
+<a href=#86 id=86 data-nosnippet>86</a>    // which makes it inconsistant with the final output in `as_code()`. But this doesn't create
+<a href=#87 id=87 data-nosnippet>87</a>    // any bugs since we exclude `DelayType` edges from joining subgraphs anyway.
+<a href=#88 id=88 data-nosnippet>88</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>node_color = partitioned_graph
+<a href=#89 id=89 data-nosnippet>89</a>        .node_ids()
+<a href=#90 id=90 data-nosnippet>90</a>        .filter_map(|node_id| {
+<a href=#91 id=91 data-nosnippet>91</a>            <span class="kw">let </span>op_color = partitioned_graph.node_color(node_id)<span class="question-mark">?</span>;
+<a href=#92 id=92 data-nosnippet>92</a>            <span class="prelude-val">Some</span>((node_id, op_color))
+<a href=#93 id=93 data-nosnippet>93</a>        })
+<a href=#94 id=94 data-nosnippet>94</a>        .collect::&lt;SparseSecondaryMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;&gt;();
+<a href=#95 id=95 data-nosnippet>95</a>
+<a href=#96 id=96 data-nosnippet>96</a>    <span class="kw">let </span><span class="kw-2">mut </span>subgraph_unionfind: UnionFind&lt;GraphNodeId&gt; =
+<a href=#97 id=97 data-nosnippet>97</a>        UnionFind::with_capacity(partitioned_graph.nodes().len());
+<a href=#98 id=98 data-nosnippet>98</a>
+<a href=#99 id=99 data-nosnippet>99</a>    <span class="comment">// Will contain all edges which are handoffs. Starts out with all edges and
+<a href=#100 id=100 data-nosnippet>100</a>    // we remove from this set as we combine nodes into subgraphs.
+<a href=#101 id=101 data-nosnippet>101</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>handoff_edges: BTreeSet&lt;GraphEdgeId&gt; = partitioned_graph.edge_ids().collect();
+<a href=#102 id=102 data-nosnippet>102</a>    <span class="comment">// Would sort edges here for priority (for now, no sort/priority).
+<a href=#103 id=103 data-nosnippet>103</a>
+<a href=#104 id=104 data-nosnippet>104</a>    // Each edge gets looked at in order. However we may not know if a linear
+<a href=#105 id=105 data-nosnippet>105</a>    // chain of operators is PUSH vs PULL until we look at the ends. A fancier
+<a href=#106 id=106 data-nosnippet>106</a>    // algorithm would know to handle linear chains from the outside inward.
+<a href=#107 id=107 data-nosnippet>107</a>    // But instead we just run through the edges in a loop until no more
+<a href=#108 id=108 data-nosnippet>108</a>    // progress is made. Could have some sort of O(N^2) pathological worst
+<a href=#109 id=109 data-nosnippet>109</a>    // case.
+<a href=#110 id=110 data-nosnippet>110</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>progress = <span class="bool-val">true</span>;
+<a href=#111 id=111 data-nosnippet>111</a>    <span class="kw">while </span>progress {
+<a href=#112 id=112 data-nosnippet>112</a>        progress = <span class="bool-val">false</span>;
+<a href=#113 id=113 data-nosnippet>113</a>        <span class="comment">// TODO(mingwei): Could this iterate `handoff_edges` instead? (Modulo ownership). Then no case (1) below.
+<a href=#114 id=114 data-nosnippet>114</a>        </span><span class="kw">for </span>(edge_id, (src, dst)) <span class="kw">in </span>partitioned_graph.edges().collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;() {
+<a href=#115 id=115 data-nosnippet>115</a>            <span class="comment">// Ignore (1) already added edges as well as (2) new self-cycles. (Unless reference edge).
+<a href=#116 id=116 data-nosnippet>116</a>            </span><span class="kw">if </span>subgraph_unionfind.same_set(src, dst) {
+<a href=#117 id=117 data-nosnippet>117</a>                <span class="comment">// Note that the _edge_ `edge_id` might not be in the subgraph even when both `src` and `dst` are. This prevents case 2.
+<a href=#118 id=118 data-nosnippet>118</a>                // Handoffs will be inserted later for this self-loop.
+<a href=#119 id=119 data-nosnippet>119</a>                </span><span class="kw">continue</span>;
+<a href=#120 id=120 data-nosnippet>120</a>            }
+<a href=#121 id=121 data-nosnippet>121</a>
+<a href=#122 id=122 data-nosnippet>122</a>            <span class="comment">// Do not connect stratum crossers (next edges).
+<a href=#123 id=123 data-nosnippet>123</a>            </span><span class="kw">if </span>barrier_crossers
+<a href=#124 id=124 data-nosnippet>124</a>                .iter_node_pairs(partitioned_graph)
+<a href=#125 id=125 data-nosnippet>125</a>                .any(|((x_src, x_dst), <span class="kw">_</span>)| {
+<a href=#126 id=126 data-nosnippet>126</a>                    (subgraph_unionfind.same_set(x_src, src)
+<a href=#127 id=127 data-nosnippet>127</a>                        &amp;&amp; subgraph_unionfind.same_set(x_dst, dst))
+<a href=#128 id=128 data-nosnippet>128</a>                        || (subgraph_unionfind.same_set(x_src, dst)
+<a href=#129 id=129 data-nosnippet>129</a>                            &amp;&amp; subgraph_unionfind.same_set(x_dst, src))
+<a href=#130 id=130 data-nosnippet>130</a>                })
+<a href=#131 id=131 data-nosnippet>131</a>            {
+<a href=#132 id=132 data-nosnippet>132</a>                <span class="kw">continue</span>;
+<a href=#133 id=133 data-nosnippet>133</a>            }
+<a href=#134 id=134 data-nosnippet>134</a>
+<a href=#135 id=135 data-nosnippet>135</a>            <span class="comment">// Do not connect across loop contexts.
+<a href=#136 id=136 data-nosnippet>136</a>            </span><span class="kw">if </span>partitioned_graph.node_loop(src) != partitioned_graph.node_loop(dst) {
+<a href=#137 id=137 data-nosnippet>137</a>                <span class="kw">continue</span>;
+<a href=#138 id=138 data-nosnippet>138</a>            }
+<a href=#139 id=139 data-nosnippet>139</a>            <span class="comment">// Do not connect `next_iteration()`.
+<a href=#140 id=140 data-nosnippet>140</a>            </span><span class="kw">if </span>partitioned_graph.node_op_inst(dst).is_some_and(|op_inst| {
+<a href=#141 id=141 data-nosnippet>141</a>                <span class="prelude-val">Some</span>(FloType::NextIteration) == op_inst.op_constraints.flo_type
+<a href=#142 id=142 data-nosnippet>142</a>            }) {
+<a href=#143 id=143 data-nosnippet>143</a>                <span class="kw">continue</span>;
+<a href=#144 id=144 data-nosnippet>144</a>            }
+<a href=#145 id=145 data-nosnippet>145</a>
+<a href=#146 id=146 data-nosnippet>146</a>            <span class="kw">if </span>can_connect_colorize(<span class="kw-2">&amp;mut </span>node_color, src, dst) {
+<a href=#147 id=147 data-nosnippet>147</a>                <span class="comment">// At this point we have selected this edge and its src &amp; dst to be
+<a href=#148 id=148 data-nosnippet>148</a>                // within a single subgraph.
+<a href=#149 id=149 data-nosnippet>149</a>                </span>subgraph_unionfind.union(src, dst);
+<a href=#150 id=150 data-nosnippet>150</a>                <span class="macro">assert!</span>(handoff_edges.remove(<span class="kw-2">&amp;</span>edge_id));
+<a href=#151 id=151 data-nosnippet>151</a>                progress = <span class="bool-val">true</span>;
+<a href=#152 id=152 data-nosnippet>152</a>            }
+<a href=#153 id=153 data-nosnippet>153</a>        }
+<a href=#154 id=154 data-nosnippet>154</a>    }
+<a href=#155 id=155 data-nosnippet>155</a>
+<a href=#156 id=156 data-nosnippet>156</a>    (subgraph_unionfind, handoff_edges)
+<a href=#157 id=157 data-nosnippet>157</a>}
+<a href=#158 id=158 data-nosnippet>158</a>
+<a href=#159 id=159 data-nosnippet>159</a><span class="doccomment">/// Builds the datastructures for checking which subgraph each node belongs to
+<a href=#160 id=160 data-nosnippet>160</a>/// after handoffs have already been inserted to partition subgraphs.
+<a href=#161 id=161 data-nosnippet>161</a>/// This list of nodes in each subgraph are returned in topological sort order.
+<a href=#162 id=162 data-nosnippet>162</a></span><span class="kw">fn </span>make_subgraph_collect(
+<a href=#163 id=163 data-nosnippet>163</a>    partitioned_graph: <span class="kw-2">&amp;</span>DfirGraph,
+<a href=#164 id=164 data-nosnippet>164</a>    <span class="kw-2">mut </span>subgraph_unionfind: UnionFind&lt;GraphNodeId&gt;,
+<a href=#165 id=165 data-nosnippet>165</a>) -&gt; SecondaryMap&lt;GraphNodeId, Vec&lt;GraphNodeId&gt;&gt; {
+<a href=#166 id=166 data-nosnippet>166</a>    <span class="comment">// We want the nodes of each subgraph to be listed in topo-sort order.
+<a href=#167 id=167 data-nosnippet>167</a>    // We could do this on each subgraph, or we could do it all at once on the
+<a href=#168 id=168 data-nosnippet>168</a>    // whole node graph by ignoring handoffs, which is what we do here:
+<a href=#169 id=169 data-nosnippet>169</a>    </span><span class="kw">let </span>topo_sort = graph_algorithms::topo_sort(
+<a href=#170 id=170 data-nosnippet>170</a>        partitioned_graph
+<a href=#171 id=171 data-nosnippet>171</a>            .nodes()
+<a href=#172 id=172 data-nosnippet>172</a>            .filter(|<span class="kw-2">&amp;</span>(<span class="kw">_</span>, node)| !<span class="macro">matches!</span>(node, GraphNode::Handoff { .. }))
+<a href=#173 id=173 data-nosnippet>173</a>            .map(|(node_id, <span class="kw">_</span>)| node_id),
+<a href=#174 id=174 data-nosnippet>174</a>        |v| {
+<a href=#175 id=175 data-nosnippet>175</a>            partitioned_graph
+<a href=#176 id=176 data-nosnippet>176</a>                .node_predecessor_nodes(v)
+<a href=#177 id=177 data-nosnippet>177</a>                .filter(|<span class="kw-2">&amp;</span>pred_id| {
+<a href=#178 id=178 data-nosnippet>178</a>                    <span class="kw">let </span>pred = partitioned_graph.node(pred_id);
+<a href=#179 id=179 data-nosnippet>179</a>                    !<span class="macro">matches!</span>(pred, GraphNode::Handoff { .. })
+<a href=#180 id=180 data-nosnippet>180</a>                })
+<a href=#181 id=181 data-nosnippet>181</a>        },
+<a href=#182 id=182 data-nosnippet>182</a>    )
+<a href=#183 id=183 data-nosnippet>183</a>    .expect(<span class="string">"Subgraphs are in-out trees."</span>);
+<a href=#184 id=184 data-nosnippet>184</a>
+<a href=#185 id=185 data-nosnippet>185</a>    <span class="kw">let </span><span class="kw-2">mut </span>grouped_nodes: SecondaryMap&lt;GraphNodeId, Vec&lt;GraphNodeId&gt;&gt; = Default::default();
+<a href=#186 id=186 data-nosnippet>186</a>    <span class="kw">for </span>node_id <span class="kw">in </span>topo_sort {
+<a href=#187 id=187 data-nosnippet>187</a>        <span class="kw">let </span>repr_node = subgraph_unionfind.find(node_id);
+<a href=#188 id=188 data-nosnippet>188</a>        <span class="kw">if </span>!grouped_nodes.contains_key(repr_node) {
+<a href=#189 id=189 data-nosnippet>189</a>            grouped_nodes.insert(repr_node, Default::default());
+<a href=#190 id=190 data-nosnippet>190</a>        }
+<a href=#191 id=191 data-nosnippet>191</a>        grouped_nodes[repr_node].push(node_id);
+<a href=#192 id=192 data-nosnippet>192</a>    }
+<a href=#193 id=193 data-nosnippet>193</a>    grouped_nodes
+<a href=#194 id=194 data-nosnippet>194</a>}
+<a href=#195 id=195 data-nosnippet>195</a>
+<a href=#196 id=196 data-nosnippet>196</a><span class="doccomment">/// Find subgraph and insert handoffs.
+<a href=#197 id=197 data-nosnippet>197</a>/// Modifies barrier_crossers so that the edge OUT of an inserted handoff has
+<a href=#198 id=198 data-nosnippet>198</a>/// the DelayType data.
+<a href=#199 id=199 data-nosnippet>199</a></span><span class="kw">fn </span>make_subgraphs(partitioned_graph: <span class="kw-2">&amp;mut </span>DfirGraph, barrier_crossers: <span class="kw-2">&amp;mut </span>BarrierCrossers) {
+<a href=#200 id=200 data-nosnippet>200</a>    <span class="comment">// Algorithm:
+<a href=#201 id=201 data-nosnippet>201</a>    // 1. Each node begins as its own subgraph.
+<a href=#202 id=202 data-nosnippet>202</a>    // 2. Collect edges. (Future optimization: sort so edges which should not be split across a handoff come first).
+<a href=#203 id=203 data-nosnippet>203</a>    // 3. For each edge, try to join `(to, from)` into the same subgraph.
+<a href=#204 id=204 data-nosnippet>204</a>
+<a href=#205 id=205 data-nosnippet>205</a>    // TODO(mingwei):
+<a href=#206 id=206 data-nosnippet>206</a>    // self.partitioned_graph.assert_valid();
+<a href=#207 id=207 data-nosnippet>207</a>
+<a href=#208 id=208 data-nosnippet>208</a>    </span><span class="kw">let </span>(subgraph_unionfind, handoff_edges) =
+<a href=#209 id=209 data-nosnippet>209</a>        find_subgraph_unionfind(partitioned_graph, barrier_crossers);
+<a href=#210 id=210 data-nosnippet>210</a>
+<a href=#211 id=211 data-nosnippet>211</a>    <span class="comment">// Insert handoffs between subgraphs (or on subgraph self-loop edges)
+<a href=#212 id=212 data-nosnippet>212</a>    </span><span class="kw">for </span>edge_id <span class="kw">in </span>handoff_edges {
+<a href=#213 id=213 data-nosnippet>213</a>        <span class="kw">let </span>(src_id, dst_id) = partitioned_graph.edge(edge_id);
+<a href=#214 id=214 data-nosnippet>214</a>
+<a href=#215 id=215 data-nosnippet>215</a>        <span class="comment">// Already has a handoff, no need to insert one.
+<a href=#216 id=216 data-nosnippet>216</a>        </span><span class="kw">let </span>src_node = partitioned_graph.node(src_id);
+<a href=#217 id=217 data-nosnippet>217</a>        <span class="kw">let </span>dst_node = partitioned_graph.node(dst_id);
+<a href=#218 id=218 data-nosnippet>218</a>        <span class="kw">if </span><span class="macro">matches!</span>(src_node, GraphNode::Handoff { .. })
+<a href=#219 id=219 data-nosnippet>219</a>            || <span class="macro">matches!</span>(dst_node, GraphNode::Handoff { .. })
+<a href=#220 id=220 data-nosnippet>220</a>        {
+<a href=#221 id=221 data-nosnippet>221</a>            <span class="kw">continue</span>;
+<a href=#222 id=222 data-nosnippet>222</a>        }
+<a href=#223 id=223 data-nosnippet>223</a>
+<a href=#224 id=224 data-nosnippet>224</a>        <span class="kw">let </span>hoff = GraphNode::Handoff {
+<a href=#225 id=225 data-nosnippet>225</a>            src_span: src_node.span(),
+<a href=#226 id=226 data-nosnippet>226</a>            dst_span: dst_node.span(),
+<a href=#227 id=227 data-nosnippet>227</a>        };
+<a href=#228 id=228 data-nosnippet>228</a>        <span class="kw">let </span>(_node_id, out_edge_id) = partitioned_graph.insert_intermediate_node(edge_id, hoff);
+<a href=#229 id=229 data-nosnippet>229</a>
+<a href=#230 id=230 data-nosnippet>230</a>        <span class="comment">// Update barrier_crossers for inserted node.
+<a href=#231 id=231 data-nosnippet>231</a>        </span>barrier_crossers.replace_edge(edge_id, out_edge_id);
+<a href=#232 id=232 data-nosnippet>232</a>    }
+<a href=#233 id=233 data-nosnippet>233</a>
+<a href=#234 id=234 data-nosnippet>234</a>    <span class="comment">// Determine node's subgraph and subgraph's nodes.
+<a href=#235 id=235 data-nosnippet>235</a>    // This list of nodes in each subgraph are to be in topological sort order.
+<a href=#236 id=236 data-nosnippet>236</a>    // Eventually returned directly in the [`DfirGraph`].
+<a href=#237 id=237 data-nosnippet>237</a>    </span><span class="kw">let </span>grouped_nodes = make_subgraph_collect(partitioned_graph, subgraph_unionfind);
+<a href=#238 id=238 data-nosnippet>238</a>    <span class="kw">for </span>(_repr_node, member_nodes) <span class="kw">in </span>grouped_nodes {
+<a href=#239 id=239 data-nosnippet>239</a>        partitioned_graph.insert_subgraph(member_nodes).unwrap();
+<a href=#240 id=240 data-nosnippet>240</a>    }
+<a href=#241 id=241 data-nosnippet>241</a>}
+<a href=#242 id=242 data-nosnippet>242</a>
+<a href=#243 id=243 data-nosnippet>243</a><span class="doccomment">/// Set `src` or `dst` color if `None` based on the other (if possible):
+<a href=#244 id=244 data-nosnippet>244</a>/// `None` indicates an op could be pull or push i.e. unary-in &amp; unary-out.
+<a href=#245 id=245 data-nosnippet>245</a>/// So in that case we color `src` or `dst` based on its newfound neighbor (the other one).
+<a href=#246 id=246 data-nosnippet>246</a>///
+<a href=#247 id=247 data-nosnippet>247</a>/// Returns if `src` and `dst` can be in the same subgraph.
+<a href=#248 id=248 data-nosnippet>248</a></span><span class="kw">fn </span>can_connect_colorize(
+<a href=#249 id=249 data-nosnippet>249</a>    node_color: <span class="kw-2">&amp;mut </span>SparseSecondaryMap&lt;GraphNodeId, Color&gt;,
+<a href=#250 id=250 data-nosnippet>250</a>    src: GraphNodeId,
+<a href=#251 id=251 data-nosnippet>251</a>    dst: GraphNodeId,
+<a href=#252 id=252 data-nosnippet>252</a>) -&gt; bool {
+<a href=#253 id=253 data-nosnippet>253</a>    <span class="comment">// Pull -&gt; Pull
+<a href=#254 id=254 data-nosnippet>254</a>    // Push -&gt; Push
+<a href=#255 id=255 data-nosnippet>255</a>    // Pull -&gt; [Computation] -&gt; Push
+<a href=#256 id=256 data-nosnippet>256</a>    // Push -&gt; [Handoff] -&gt; Pull
+<a href=#257 id=257 data-nosnippet>257</a>    </span><span class="kw">let </span>can_connect = <span class="kw">match </span>(node_color.get(src), node_color.get(dst)) {
+<a href=#258 id=258 data-nosnippet>258</a>        <span class="comment">// Linear chain, can't connect because it may cause future conflicts.
+<a href=#259 id=259 data-nosnippet>259</a>        // But if it doesn't in the _future_ we can connect it (once either/both ends are determined).
+<a href=#260 id=260 data-nosnippet>260</a>        </span>(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="bool-val">false</span>,
+<a href=#261 id=261 data-nosnippet>261</a>
+<a href=#262 id=262 data-nosnippet>262</a>        <span class="comment">// Infer left side.
+<a href=#263 id=263 data-nosnippet>263</a>        </span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(Color::Pull | Color::Comp)) =&gt; {
+<a href=#264 id=264 data-nosnippet>264</a>            node_color.insert(src, Color::Pull);
+<a href=#265 id=265 data-nosnippet>265</a>            <span class="bool-val">true
+<a href=#266 id=266 data-nosnippet>266</a>        </span>}
+<a href=#267 id=267 data-nosnippet>267</a>        (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(Color::Push | Color::Hoff)) =&gt; {
+<a href=#268 id=268 data-nosnippet>268</a>            node_color.insert(src, Color::Push);
+<a href=#269 id=269 data-nosnippet>269</a>            <span class="bool-val">true
+<a href=#270 id=270 data-nosnippet>270</a>        </span>}
+<a href=#271 id=271 data-nosnippet>271</a>
+<a href=#272 id=272 data-nosnippet>272</a>        <span class="comment">// Infer right side.
+<a href=#273 id=273 data-nosnippet>273</a>        </span>(<span class="prelude-val">Some</span>(Color::Pull | Color::Hoff), <span class="prelude-val">None</span>) =&gt; {
+<a href=#274 id=274 data-nosnippet>274</a>            node_color.insert(dst, Color::Pull);
+<a href=#275 id=275 data-nosnippet>275</a>            <span class="bool-val">true
+<a href=#276 id=276 data-nosnippet>276</a>        </span>}
+<a href=#277 id=277 data-nosnippet>277</a>        (<span class="prelude-val">Some</span>(Color::Comp | Color::Push), <span class="prelude-val">None</span>) =&gt; {
+<a href=#278 id=278 data-nosnippet>278</a>            node_color.insert(dst, Color::Push);
+<a href=#279 id=279 data-nosnippet>279</a>            <span class="bool-val">true
+<a href=#280 id=280 data-nosnippet>280</a>        </span>}
+<a href=#281 id=281 data-nosnippet>281</a>
+<a href=#282 id=282 data-nosnippet>282</a>        <span class="comment">// Both sides already specified.
+<a href=#283 id=283 data-nosnippet>283</a>        </span>(<span class="prelude-val">Some</span>(Color::Pull), <span class="prelude-val">Some</span>(Color::Pull)) =&gt; <span class="bool-val">true</span>,
+<a href=#284 id=284 data-nosnippet>284</a>        (<span class="prelude-val">Some</span>(Color::Pull), <span class="prelude-val">Some</span>(Color::Comp)) =&gt; <span class="bool-val">true</span>,
+<a href=#285 id=285 data-nosnippet>285</a>        (<span class="prelude-val">Some</span>(Color::Pull), <span class="prelude-val">Some</span>(Color::Push)) =&gt; <span class="bool-val">true</span>,
+<a href=#286 id=286 data-nosnippet>286</a>
+<a href=#287 id=287 data-nosnippet>287</a>        (<span class="prelude-val">Some</span>(Color::Comp), <span class="prelude-val">Some</span>(Color::Pull)) =&gt; <span class="bool-val">false</span>,
+<a href=#288 id=288 data-nosnippet>288</a>        (<span class="prelude-val">Some</span>(Color::Comp), <span class="prelude-val">Some</span>(Color::Comp)) =&gt; <span class="bool-val">false</span>,
+<a href=#289 id=289 data-nosnippet>289</a>        (<span class="prelude-val">Some</span>(Color::Comp), <span class="prelude-val">Some</span>(Color::Push)) =&gt; <span class="bool-val">true</span>,
+<a href=#290 id=290 data-nosnippet>290</a>
+<a href=#291 id=291 data-nosnippet>291</a>        (<span class="prelude-val">Some</span>(Color::Push), <span class="prelude-val">Some</span>(Color::Pull)) =&gt; <span class="bool-val">false</span>,
+<a href=#292 id=292 data-nosnippet>292</a>        (<span class="prelude-val">Some</span>(Color::Push), <span class="prelude-val">Some</span>(Color::Comp)) =&gt; <span class="bool-val">false</span>,
+<a href=#293 id=293 data-nosnippet>293</a>        (<span class="prelude-val">Some</span>(Color::Push), <span class="prelude-val">Some</span>(Color::Push)) =&gt; <span class="bool-val">true</span>,
+<a href=#294 id=294 data-nosnippet>294</a>
+<a href=#295 id=295 data-nosnippet>295</a>        <span class="comment">// Handoffs are not part of subgraphs.
+<a href=#296 id=296 data-nosnippet>296</a>        </span>(<span class="prelude-val">Some</span>(Color::Hoff), <span class="prelude-val">Some</span>(<span class="kw">_</span>)) =&gt; <span class="bool-val">false</span>,
+<a href=#297 id=297 data-nosnippet>297</a>        (<span class="prelude-val">Some</span>(<span class="kw">_</span>), <span class="prelude-val">Some</span>(Color::Hoff)) =&gt; <span class="bool-val">false</span>,
+<a href=#298 id=298 data-nosnippet>298</a>    };
+<a href=#299 id=299 data-nosnippet>299</a>    can_connect
+<a href=#300 id=300 data-nosnippet>300</a>}
+<a href=#301 id=301 data-nosnippet>301</a>
+<a href=#302 id=302 data-nosnippet>302</a><span class="doccomment">/// Stratification is surprisingly tricky. Basically it is topological sort, but with some nuance.
+<a href=#303 id=303 data-nosnippet>303</a>///
+<a href=#304 id=304 data-nosnippet>304</a>/// Returns an error if there is a cycle thru negation.
+<a href=#305 id=305 data-nosnippet>305</a></span><span class="kw">fn </span>find_subgraph_strata(
+<a href=#306 id=306 data-nosnippet>306</a>    partitioned_graph: <span class="kw-2">&amp;mut </span>DfirGraph,
+<a href=#307 id=307 data-nosnippet>307</a>    barrier_crossers: <span class="kw-2">&amp;</span>BarrierCrossers,
+<a href=#308 id=308 data-nosnippet>308</a>) -&gt; <span class="prelude-ty">Result</span>&lt;(), Diagnostic&gt; {
+<a href=#309 id=309 data-nosnippet>309</a>    <span class="comment">// Determine subgraphs's stratum number.
+<a href=#310 id=310 data-nosnippet>310</a>    // Find SCCs ignoring `defer_tick()` (`DelayType::Tick`) edges, then do TopoSort on the
+<a href=#311 id=311 data-nosnippet>311</a>    // resulting DAG.
+<a href=#312 id=312 data-nosnippet>312</a>    // Cycles thru cross-stratum negative edges (both `DelayType::Tick` and `DelayType::Stratum`)
+<a href=#313 id=313 data-nosnippet>313</a>    // are an error.
+<a href=#314 id=314 data-nosnippet>314</a>
+<a href=#315 id=315 data-nosnippet>315</a>    // Generate a subgraph graph. I.e. each node is a subgraph.
+<a href=#316 id=316 data-nosnippet>316</a>    // Edges are connections between subgraphs, ignoring tick-crossers.
+<a href=#317 id=317 data-nosnippet>317</a>    // TODO: use DiMulGraph here?
+<a href=#318 id=318 data-nosnippet>318</a>    </span><span class="attr">#[derive(Default)]
+<a href=#319 id=319 data-nosnippet>319</a>    </span><span class="kw">struct </span>SubgraphGraph {
+<a href=#320 id=320 data-nosnippet>320</a>        preds: BTreeMap&lt;GraphSubgraphId, Vec&lt;GraphSubgraphId&gt;&gt;,
+<a href=#321 id=321 data-nosnippet>321</a>        succs: BTreeMap&lt;GraphSubgraphId, Vec&lt;GraphSubgraphId&gt;&gt;,
+<a href=#322 id=322 data-nosnippet>322</a>    }
+<a href=#323 id=323 data-nosnippet>323</a>    <span class="kw">impl </span>SubgraphGraph {
+<a href=#324 id=324 data-nosnippet>324</a>        <span class="kw">fn </span>insert_edge(<span class="kw-2">&amp;mut </span><span class="self">self</span>, src: GraphSubgraphId, dst: GraphSubgraphId) {
+<a href=#325 id=325 data-nosnippet>325</a>            <span class="self">self</span>.preds.entry(dst).or_default().push(src);
+<a href=#326 id=326 data-nosnippet>326</a>            <span class="self">self</span>.succs.entry(src).or_default().push(dst);
+<a href=#327 id=327 data-nosnippet>327</a>        }
+<a href=#328 id=328 data-nosnippet>328</a>    }
+<a href=#329 id=329 data-nosnippet>329</a>    <span class="kw">let </span><span class="kw-2">mut </span>subgraph_graph = SubgraphGraph::default();
+<a href=#330 id=330 data-nosnippet>330</a>
+<a href=#331 id=331 data-nosnippet>331</a>    <span class="comment">// Negative (next stratum) connections between subgraphs. (Ignore `defer_tick()` connections).
+<a href=#332 id=332 data-nosnippet>332</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>subgraph_stratum_barriers: BTreeSet&lt;(GraphSubgraphId, GraphSubgraphId)&gt; =
+<a href=#333 id=333 data-nosnippet>333</a>        Default::default();
+<a href=#334 id=334 data-nosnippet>334</a>
+<a href=#335 id=335 data-nosnippet>335</a>    <span class="comment">// Iterate handoffs between subgraphs, to build a subgraph meta-graph.
+<a href=#336 id=336 data-nosnippet>336</a>    </span><span class="kw">for </span>(node_id, node) <span class="kw">in </span>partitioned_graph.nodes() {
+<a href=#337 id=337 data-nosnippet>337</a>        <span class="kw">if </span><span class="macro">matches!</span>(node, GraphNode::Handoff { .. }) {
+<a href=#338 id=338 data-nosnippet>338</a>            <span class="macro">assert_eq!</span>(<span class="number">1</span>, partitioned_graph.node_successors(node_id).count());
+<a href=#339 id=339 data-nosnippet>339</a>            <span class="kw">let </span>(succ_edge, succ) = partitioned_graph.node_successors(node_id).next().unwrap();
+<a href=#340 id=340 data-nosnippet>340</a>
+<a href=#341 id=341 data-nosnippet>341</a>            <span class="comment">// TODO(mingwei): Should we look at the singleton references too?
+<a href=#342 id=342 data-nosnippet>342</a>            </span><span class="kw">let </span>succ_edge_delaytype = barrier_crossers
+<a href=#343 id=343 data-nosnippet>343</a>                .edge_barrier_crossers
+<a href=#344 id=344 data-nosnippet>344</a>                .get(succ_edge)
+<a href=#345 id=345 data-nosnippet>345</a>                .copied();
+<a href=#346 id=346 data-nosnippet>346</a>            <span class="comment">// Ignore tick edges.
+<a href=#347 id=347 data-nosnippet>347</a>            </span><span class="kw">if let </span><span class="prelude-val">Some</span>(DelayType::Tick | DelayType::TickLazy) = succ_edge_delaytype {
+<a href=#348 id=348 data-nosnippet>348</a>                <span class="kw">continue</span>;
+<a href=#349 id=349 data-nosnippet>349</a>            }
+<a href=#350 id=350 data-nosnippet>350</a>
+<a href=#351 id=351 data-nosnippet>351</a>            <span class="macro">assert_eq!</span>(<span class="number">1</span>, partitioned_graph.node_predecessors(node_id).count());
+<a href=#352 id=352 data-nosnippet>352</a>            <span class="kw">let </span>(_edge_id, pred) = partitioned_graph.node_predecessors(node_id).next().unwrap();
+<a href=#353 id=353 data-nosnippet>353</a>
+<a href=#354 id=354 data-nosnippet>354</a>            <span class="kw">let </span>pred_sg = partitioned_graph.node_subgraph(pred).unwrap();
+<a href=#355 id=355 data-nosnippet>355</a>            <span class="kw">let </span>succ_sg = partitioned_graph.node_subgraph(succ).unwrap();
+<a href=#356 id=356 data-nosnippet>356</a>
+<a href=#357 id=357 data-nosnippet>357</a>            subgraph_graph.insert_edge(pred_sg, succ_sg);
+<a href=#358 id=358 data-nosnippet>358</a>
+<a href=#359 id=359 data-nosnippet>359</a>            <span class="kw">if </span><span class="prelude-val">Some</span>(DelayType::Stratum) == succ_edge_delaytype {
+<a href=#360 id=360 data-nosnippet>360</a>                subgraph_stratum_barriers.insert((pred_sg, succ_sg));
+<a href=#361 id=361 data-nosnippet>361</a>            }
+<a href=#362 id=362 data-nosnippet>362</a>        }
+<a href=#363 id=363 data-nosnippet>363</a>    }
+<a href=#364 id=364 data-nosnippet>364</a>    <span class="comment">// Include reference edges as well.
+<a href=#365 id=365 data-nosnippet>365</a>    // TODO(mingwei): deduplicate graph building code.
+<a href=#366 id=366 data-nosnippet>366</a>    </span><span class="kw">for </span><span class="kw-2">&amp;</span>(pred, succ) <span class="kw">in </span>barrier_crossers.singleton_barrier_crossers.iter() {
+<a href=#367 id=367 data-nosnippet>367</a>        <span class="macro">assert_ne!</span>(pred, succ, <span class="string">"TODO(mingwei)"</span>);
+<a href=#368 id=368 data-nosnippet>368</a>        <span class="kw">let </span>pred_sg = partitioned_graph.node_subgraph(pred).unwrap();
+<a href=#369 id=369 data-nosnippet>369</a>        <span class="kw">let </span>succ_sg = partitioned_graph.node_subgraph(succ).unwrap();
+<a href=#370 id=370 data-nosnippet>370</a>        <span class="macro">assert_ne!</span>(pred_sg, succ_sg);
+<a href=#371 id=371 data-nosnippet>371</a>        subgraph_graph.insert_edge(pred_sg, succ_sg);
+<a href=#372 id=372 data-nosnippet>372</a>        subgraph_stratum_barriers.insert((pred_sg, succ_sg));
+<a href=#373 id=373 data-nosnippet>373</a>    }
+<a href=#374 id=374 data-nosnippet>374</a>
+<a href=#375 id=375 data-nosnippet>375</a>    <span class="comment">// Topological sort (of strongly connected components) is how we find the (nondecreasing)
+<a href=#376 id=376 data-nosnippet>376</a>    // order of strata.
+<a href=#377 id=377 data-nosnippet>377</a>    </span><span class="kw">let </span>topo_sort_order = graph_algorithms::topo_sort_scc(
+<a href=#378 id=378 data-nosnippet>378</a>        || partitioned_graph.subgraph_ids(),
+<a href=#379 id=379 data-nosnippet>379</a>        |v| subgraph_graph.preds.get(<span class="kw-2">&amp;</span>v).into_iter().flatten().cloned(),
+<a href=#380 id=380 data-nosnippet>380</a>        |u| subgraph_graph.succs.get(<span class="kw-2">&amp;</span>u).into_iter().flatten().cloned(),
+<a href=#381 id=381 data-nosnippet>381</a>    );
+<a href=#382 id=382 data-nosnippet>382</a>
+<a href=#383 id=383 data-nosnippet>383</a>    <span class="comment">// Each subgraph's stratum number is the same as it's predecessors.
+<a href=#384 id=384 data-nosnippet>384</a>    //
+<a href=#385 id=385 data-nosnippet>385</a>    // Unless:
+<a href=#386 id=386 data-nosnippet>386</a>    // - At the top level: there is a negative edge (e.g. `fold()`), then we increment.
+<a href=#387 id=387 data-nosnippet>387</a>    // - Entering or exiting a loop.
+<a href=#388 id=388 data-nosnippet>388</a>    </span><span class="kw">for </span>sg_id <span class="kw">in </span>topo_sort_order {
+<a href=#389 id=389 data-nosnippet>389</a>        <span class="kw">let </span>curr_loop = partitioned_graph.subgraph_loop(sg_id);
+<a href=#390 id=390 data-nosnippet>390</a>
+<a href=#391 id=391 data-nosnippet>391</a>        <span class="kw">let </span>stratum = subgraph_graph
+<a href=#392 id=392 data-nosnippet>392</a>            .preds
+<a href=#393 id=393 data-nosnippet>393</a>            .get(<span class="kw-2">&amp;</span>sg_id)
+<a href=#394 id=394 data-nosnippet>394</a>            .into_iter()
+<a href=#395 id=395 data-nosnippet>395</a>            .flatten()
+<a href=#396 id=396 data-nosnippet>396</a>            .filter_map(|<span class="kw-2">&amp;</span>pred_sg_id| {
+<a href=#397 id=397 data-nosnippet>397</a>                partitioned_graph
+<a href=#398 id=398 data-nosnippet>398</a>                    .subgraph_stratum(pred_sg_id)
+<a href=#399 id=399 data-nosnippet>399</a>                    .map(|stratum| {
+<a href=#400 id=400 data-nosnippet>400</a>                        <span class="kw">let </span>pred_loop = partitioned_graph.subgraph_loop(pred_sg_id);
+<a href=#401 id=401 data-nosnippet>401</a>                        <span class="kw">if </span><span class="macro">curr_loop !</span>= pred_loop {
+<a href=#402 id=402 data-nosnippet>402</a>                            <span class="comment">// Entering or exiting a loop.
+<a href=#403 id=403 data-nosnippet>403</a>                            </span>stratum + <span class="number">1
+<a href=#404 id=404 data-nosnippet>404</a>                        </span>} <span class="kw">else if </span>curr_loop.is_none()
+<a href=#405 id=405 data-nosnippet>405</a>                            &amp;&amp; subgraph_stratum_barriers.contains(<span class="kw-2">&amp;</span>(pred_sg_id, sg_id))
+<a href=#406 id=406 data-nosnippet>406</a>                        {
+<a href=#407 id=407 data-nosnippet>407</a>                            <span class="comment">// Top level &amp;&amp; negative edge.
+<a href=#408 id=408 data-nosnippet>408</a>                            </span>stratum + <span class="number">1
+<a href=#409 id=409 data-nosnippet>409</a>                        </span>} <span class="kw">else </span>{
+<a href=#410 id=410 data-nosnippet>410</a>                            stratum
+<a href=#411 id=411 data-nosnippet>411</a>                        }
+<a href=#412 id=412 data-nosnippet>412</a>                    })
+<a href=#413 id=413 data-nosnippet>413</a>            })
+<a href=#414 id=414 data-nosnippet>414</a>            .max()
+<a href=#415 id=415 data-nosnippet>415</a>            .unwrap_or(<span class="number">0</span>);
+<a href=#416 id=416 data-nosnippet>416</a>        partitioned_graph.set_subgraph_stratum(sg_id, stratum);
+<a href=#417 id=417 data-nosnippet>417</a>    }
+<a href=#418 id=418 data-nosnippet>418</a>
+<a href=#419 id=419 data-nosnippet>419</a>    <span class="comment">// Re-introduce the `defer_tick()` edges, ensuring they actually go to the next tick.
+<a href=#420 id=420 data-nosnippet>420</a>    </span><span class="kw">let </span>extra_stratum = partitioned_graph.max_stratum().unwrap_or(<span class="number">0</span>) + <span class="number">1</span>; <span class="comment">// Used for `defer_tick()` delayer subgraphs.
+<a href=#421 id=421 data-nosnippet>421</a>    </span><span class="kw">for </span>(edge_id, <span class="kw-2">&amp;</span>delay_type) <span class="kw">in </span>barrier_crossers.edge_barrier_crossers.iter() {
+<a href=#422 id=422 data-nosnippet>422</a>        <span class="kw">let </span>(hoff, dst) = partitioned_graph.edge(edge_id);
+<a href=#423 id=423 data-nosnippet>423</a>        <span class="comment">// Ignore barriers within `loop {` blocks.
+<a href=#424 id=424 data-nosnippet>424</a>        </span><span class="kw">if </span>partitioned_graph.node_loop(dst).is_some() {
+<a href=#425 id=425 data-nosnippet>425</a>            <span class="kw">continue</span>;
+<a href=#426 id=426 data-nosnippet>426</a>        }
+<a href=#427 id=427 data-nosnippet>427</a>        <span class="kw">let </span>(_hoff_port, dst_port) = partitioned_graph.edge_ports(edge_id);
+<a href=#428 id=428 data-nosnippet>428</a>
+<a href=#429 id=429 data-nosnippet>429</a>        <span class="macro">assert_eq!</span>(<span class="number">1</span>, partitioned_graph.node_predecessors(hoff).count());
+<a href=#430 id=430 data-nosnippet>430</a>        <span class="kw">let </span>src = partitioned_graph
+<a href=#431 id=431 data-nosnippet>431</a>            .node_predecessor_nodes(hoff)
+<a href=#432 id=432 data-nosnippet>432</a>            .next()
+<a href=#433 id=433 data-nosnippet>433</a>            .unwrap();
+<a href=#434 id=434 data-nosnippet>434</a>
+<a href=#435 id=435 data-nosnippet>435</a>        <span class="kw">let </span>src_sg = partitioned_graph.node_subgraph(src).unwrap();
+<a href=#436 id=436 data-nosnippet>436</a>        <span class="kw">let </span>dst_sg = partitioned_graph.node_subgraph(dst).unwrap();
+<a href=#437 id=437 data-nosnippet>437</a>        <span class="kw">let </span>src_stratum = partitioned_graph.subgraph_stratum(src_sg);
+<a href=#438 id=438 data-nosnippet>438</a>        <span class="kw">let </span>dst_stratum = partitioned_graph.subgraph_stratum(dst_sg);
+<a href=#439 id=439 data-nosnippet>439</a>        <span class="kw">let </span>dst_span = partitioned_graph.node(dst).span();
+<a href=#440 id=440 data-nosnippet>440</a>        <span class="kw">match </span>delay_type {
+<a href=#441 id=441 data-nosnippet>441</a>            DelayType::Tick | DelayType::TickLazy =&gt; {
+<a href=#442 id=442 data-nosnippet>442</a>                <span class="kw">let </span>is_lazy = <span class="macro">matches!</span>(delay_type, DelayType::TickLazy);
+<a href=#443 id=443 data-nosnippet>443</a>                <span class="comment">// If tick edge goes foreward in stratum, need to buffer.
+<a href=#444 id=444 data-nosnippet>444</a>                // (TODO(mingwei): could use a different kind of handoff.)
+<a href=#445 id=445 data-nosnippet>445</a>                // Or if lazy, need to create extra subgraph to mark as lazy.
+<a href=#446 id=446 data-nosnippet>446</a>                </span><span class="kw">if </span>src_stratum &lt;= dst_stratum || is_lazy {
+<a href=#447 id=447 data-nosnippet>447</a>                    <span class="comment">// We inject a new subgraph between the src/dst which runs as the last stratum
+<a href=#448 id=448 data-nosnippet>448</a>                    // of the tick and therefore delays the data until the next tick.
+<a href=#449 id=449 data-nosnippet>449</a>
+<a href=#450 id=450 data-nosnippet>450</a>                    // Before: A (src) -&gt; H -&gt; B (dst)
+<a href=#451 id=451 data-nosnippet>451</a>                    // Then add intermediate identity:
+<a href=#452 id=452 data-nosnippet>452</a>                    </span><span class="kw">let </span>(new_node_id, new_edge_id) = partitioned_graph.insert_intermediate_node(
+<a href=#453 id=453 data-nosnippet>453</a>                        edge_id,
+<a href=#454 id=454 data-nosnippet>454</a>                        <span class="comment">// TODO(mingwei): Proper span w/ `parse_quote_spanned!`?
+<a href=#455 id=455 data-nosnippet>455</a>                        </span>GraphNode::Operator(<span class="macro">parse_quote!</span> { identity() }),
+<a href=#456 id=456 data-nosnippet>456</a>                    );
+<a href=#457 id=457 data-nosnippet>457</a>                    <span class="comment">// Intermediate: A (src) -&gt; H -&gt; ID -&gt; B (dst)
+<a href=#458 id=458 data-nosnippet>458</a>                    </span><span class="kw">let </span>hoff = GraphNode::Handoff {
+<a href=#459 id=459 data-nosnippet>459</a>                        <span class="comment">// Span to the node that has the input stratum barrier.
+<a href=#460 id=460 data-nosnippet>460</a>                        </span>src_span: dst_span,
+<a href=#461 id=461 data-nosnippet>461</a>                        dst_span,
+<a href=#462 id=462 data-nosnippet>462</a>                    };
+<a href=#463 id=463 data-nosnippet>463</a>                    <span class="kw">let </span>(_hoff_node_id, _hoff_edge_id) =
+<a href=#464 id=464 data-nosnippet>464</a>                        partitioned_graph.insert_intermediate_node(new_edge_id, hoff);
+<a href=#465 id=465 data-nosnippet>465</a>                    <span class="comment">// After: A (src) -&gt; H -&gt; ID -&gt; H' -&gt; B (dst)
+<a href=#466 id=466 data-nosnippet>466</a>
+<a href=#467 id=467 data-nosnippet>467</a>                    // Set stratum number for new intermediate:
+<a href=#468 id=468 data-nosnippet>468</a>                    // Create subgraph.
+<a href=#469 id=469 data-nosnippet>469</a>                    </span><span class="kw">let </span>new_subgraph_id = partitioned_graph
+<a href=#470 id=470 data-nosnippet>470</a>                        .insert_subgraph(<span class="macro">vec!</span>[new_node_id])
+<a href=#471 id=471 data-nosnippet>471</a>                        .unwrap();
+<a href=#472 id=472 data-nosnippet>472</a>
+<a href=#473 id=473 data-nosnippet>473</a>                    <span class="comment">// Assign stratum.
+<a href=#474 id=474 data-nosnippet>474</a>                    </span>partitioned_graph.set_subgraph_stratum(new_subgraph_id, extra_stratum);
+<a href=#475 id=475 data-nosnippet>475</a>
+<a href=#476 id=476 data-nosnippet>476</a>                    <span class="comment">// Assign laziness.
+<a href=#477 id=477 data-nosnippet>477</a>                    </span>partitioned_graph.set_subgraph_laziness(new_subgraph_id, is_lazy);
+<a href=#478 id=478 data-nosnippet>478</a>                }
+<a href=#479 id=479 data-nosnippet>479</a>            }
+<a href=#480 id=480 data-nosnippet>480</a>            DelayType::Stratum =&gt; {
+<a href=#481 id=481 data-nosnippet>481</a>                <span class="comment">// Any negative edges which go onto the same or previous stratum are bad.
+<a href=#482 id=482 data-nosnippet>482</a>                // Indicates an unbroken negative cycle.
+<a href=#483 id=483 data-nosnippet>483</a>                // TODO(mingwei): This check is insufficient: https://github.com/hydro-project/hydro/issues/1115#issuecomment-2018385033
+<a href=#484 id=484 data-nosnippet>484</a>                </span><span class="kw">if </span>dst_stratum &lt;= src_stratum {
+<a href=#485 id=485 data-nosnippet>485</a>                    <span class="kw">return </span><span class="prelude-val">Err</span>(Diagnostic::spanned(
+<a href=#486 id=486 data-nosnippet>486</a>                        dst_port.span(),
+<a href=#487 id=487 data-nosnippet>487</a>                        Level::Error,
+<a href=#488 id=488 data-nosnippet>488</a>                        <span class="string">"Negative edge creates a negative cycle which must be broken with a `defer_tick()` operator."</span>,
+<a href=#489 id=489 data-nosnippet>489</a>                    ));
+<a href=#490 id=490 data-nosnippet>490</a>                }
+<a href=#491 id=491 data-nosnippet>491</a>            }
+<a href=#492 id=492 data-nosnippet>492</a>            DelayType::MonotoneAccum =&gt; {
+<a href=#493 id=493 data-nosnippet>493</a>                <span class="comment">// cycles are actually fine
+<a href=#494 id=494 data-nosnippet>494</a>                </span><span class="kw">continue</span>;
+<a href=#495 id=495 data-nosnippet>495</a>            }
+<a href=#496 id=496 data-nosnippet>496</a>        }
+<a href=#497 id=497 data-nosnippet>497</a>    }
+<a href=#498 id=498 data-nosnippet>498</a>    <span class="prelude-val">Ok</span>(())
+<a href=#499 id=499 data-nosnippet>499</a>}
+<a href=#500 id=500 data-nosnippet>500</a>
+<a href=#501 id=501 data-nosnippet>501</a><span class="doccomment">/// Put `is_external_input: true` operators in separate stratum 0 subgraphs if they are not in stratum 0.
+<a href=#502 id=502 data-nosnippet>502</a>/// By ripping them out of their subgraph/stratum if they're not already in statum 0.
+<a href=#503 id=503 data-nosnippet>503</a></span><span class="kw">fn </span>separate_external_inputs(partitioned_graph: <span class="kw-2">&amp;mut </span>DfirGraph) {
+<a href=#504 id=504 data-nosnippet>504</a>    <span class="kw">let </span>external_input_nodes: Vec&lt;<span class="kw">_</span>&gt; = partitioned_graph
+<a href=#505 id=505 data-nosnippet>505</a>        .nodes()
+<a href=#506 id=506 data-nosnippet>506</a>        <span class="comment">// Ensure node is an operator (not a handoff), get constraints spec.
+<a href=#507 id=507 data-nosnippet>507</a>        </span>.filter_map(|(node_id, node)| {
+<a href=#508 id=508 data-nosnippet>508</a>            find_node_op_constraints(node).map(|op_constraints| (node_id, op_constraints))
+<a href=#509 id=509 data-nosnippet>509</a>        })
+<a href=#510 id=510 data-nosnippet>510</a>        <span class="comment">// Ensure current `node_id` is an external input.
+<a href=#511 id=511 data-nosnippet>511</a>        </span>.filter(|(_node_id, op_constraints)| op_constraints.is_external_input)
+<a href=#512 id=512 data-nosnippet>512</a>        <span class="comment">// Collect just `node_id`s.
+<a href=#513 id=513 data-nosnippet>513</a>        </span>.map(|(node_id, _op_constraints)| node_id)
+<a href=#514 id=514 data-nosnippet>514</a>        <span class="comment">// Ignore if operator node is already stratum 0.
+<a href=#515 id=515 data-nosnippet>515</a>        </span>.filter(|<span class="kw-2">&amp;</span>node_id| {
+<a href=#516 id=516 data-nosnippet>516</a>            <span class="number">0 </span>!= partitioned_graph
+<a href=#517 id=517 data-nosnippet>517</a>                .subgraph_stratum(partitioned_graph.node_subgraph(node_id).unwrap())
+<a href=#518 id=518 data-nosnippet>518</a>                .unwrap()
+<a href=#519 id=519 data-nosnippet>519</a>        })
+<a href=#520 id=520 data-nosnippet>520</a>        .collect();
+<a href=#521 id=521 data-nosnippet>521</a>
+<a href=#522 id=522 data-nosnippet>522</a>    <span class="kw">for </span>node_id <span class="kw">in </span>external_input_nodes {
+<a href=#523 id=523 data-nosnippet>523</a>        <span class="comment">// Remove node from old subgraph.
+<a href=#524 id=524 data-nosnippet>524</a>        </span><span class="macro">assert!</span>(
+<a href=#525 id=525 data-nosnippet>525</a>            partitioned_graph.remove_from_subgraph(node_id),
+<a href=#526 id=526 data-nosnippet>526</a>            <span class="string">"Cannot move input node that is not in a subgraph, this is a bug."
+<a href=#527 id=527 data-nosnippet>527</a>        </span>);
+<a href=#528 id=528 data-nosnippet>528</a>        <span class="comment">// Create new subgraph in stratum 0 for this source.
+<a href=#529 id=529 data-nosnippet>529</a>        </span><span class="kw">let </span>new_sg_id = partitioned_graph.insert_subgraph(<span class="macro">vec!</span>[node_id]).unwrap();
+<a href=#530 id=530 data-nosnippet>530</a>        partitioned_graph.set_subgraph_stratum(new_sg_id, <span class="number">0</span>);
+<a href=#531 id=531 data-nosnippet>531</a>
+<a href=#532 id=532 data-nosnippet>532</a>        <span class="comment">// Insert handoff.
+<a href=#533 id=533 data-nosnippet>533</a>        </span><span class="kw">for </span>edge_id <span class="kw">in </span>partitioned_graph
+<a href=#534 id=534 data-nosnippet>534</a>            .node_successor_edges(node_id)
+<a href=#535 id=535 data-nosnippet>535</a>            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+<a href=#536 id=536 data-nosnippet>536</a>        {
+<a href=#537 id=537 data-nosnippet>537</a>            <span class="kw">let </span>span = partitioned_graph.node(node_id).span();
+<a href=#538 id=538 data-nosnippet>538</a>            <span class="kw">let </span>hoff = GraphNode::Handoff {
+<a href=#539 id=539 data-nosnippet>539</a>                src_span: span,
+<a href=#540 id=540 data-nosnippet>540</a>                dst_span: span,
+<a href=#541 id=541 data-nosnippet>541</a>            };
+<a href=#542 id=542 data-nosnippet>542</a>            partitioned_graph.insert_intermediate_node(edge_id, hoff);
+<a href=#543 id=543 data-nosnippet>543</a>        }
+<a href=#544 id=544 data-nosnippet>544</a>    }
+<a href=#545 id=545 data-nosnippet>545</a>}
+<a href=#546 id=546 data-nosnippet>546</a>
+<a href=#547 id=547 data-nosnippet>547</a><span class="doccomment">/// Main method for this module. Partions a flat [`DfirGraph`] into one with subgraphs.
+<a href=#548 id=548 data-nosnippet>548</a>///
+<a href=#549 id=549 data-nosnippet>549</a>/// Returns an error if a negative cycle exists in the graph. Negative cycles prevent partioning.
+<a href=#550 id=550 data-nosnippet>550</a></span><span class="kw">pub fn </span>partition_graph(flat_graph: DfirGraph) -&gt; <span class="prelude-ty">Result</span>&lt;DfirGraph, Diagnostic&gt; {
+<a href=#551 id=551 data-nosnippet>551</a>    <span class="comment">// Pre-find barrier crossers (input edges with a `DelayType`).
+<a href=#552 id=552 data-nosnippet>552</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>barrier_crossers = find_barrier_crossers(<span class="kw-2">&amp;</span>flat_graph);
+<a href=#553 id=553 data-nosnippet>553</a>    <span class="kw">let </span><span class="kw-2">mut </span>partitioned_graph = flat_graph;
+<a href=#554 id=554 data-nosnippet>554</a>
+<a href=#555 id=555 data-nosnippet>555</a>    <span class="comment">// Partition into subgraphs.
+<a href=#556 id=556 data-nosnippet>556</a>    </span>make_subgraphs(<span class="kw-2">&amp;mut </span>partitioned_graph, <span class="kw-2">&amp;mut </span>barrier_crossers);
+<a href=#557 id=557 data-nosnippet>557</a>
+<a href=#558 id=558 data-nosnippet>558</a>    <span class="comment">// Find strata for subgraphs (early returns with error if negative cycle found).
+<a href=#559 id=559 data-nosnippet>559</a>    </span>find_subgraph_strata(<span class="kw-2">&amp;mut </span>partitioned_graph, <span class="kw-2">&amp;</span>barrier_crossers)<span class="question-mark">?</span>;
+<a href=#560 id=560 data-nosnippet>560</a>
+<a href=#561 id=561 data-nosnippet>561</a>    <span class="comment">// Ensure all external inputs are in stratum 0.
+<a href=#562 id=562 data-nosnippet>562</a>    </span>separate_external_inputs(<span class="kw-2">&amp;mut </span>partitioned_graph);
+<a href=#563 id=563 data-nosnippet>563</a>
+<a href=#564 id=564 data-nosnippet>564</a>    <span class="prelude-val">Ok</span>(partitioned_graph)
+<a href=#565 id=565 data-nosnippet>565</a>}
+</code></pre></div></section></main></body></html>

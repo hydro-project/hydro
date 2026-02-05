@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["terraform_name"],"static":["TERRAFORM_ALPHABET"],"struct":["TerraformBatch","TerraformConfig","TerraformOutput","TerraformPool","TerraformProvider","TerraformResult","TerraformResultOutput"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["maelstrom_client_source","maelstrom_init","maelstrom_send_response"],"struct":["InitBody","InitOkBody","MaelstromMessage","MaelstromMeta"]};

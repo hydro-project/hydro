@@ -1,0 +1,62 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Hydro/DFIR Deterministic Simulation Testing Framework"><title>dfir_rs::util::simulation - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b7b9f40b.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="dfir_rs" data-themes="" data-resource-suffix="" data-rustdoc-version="1.95.0-nightly (db3e99bba 2026-02-04)" data-channel="nightly" data-search-js="search-fb33671b.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-f9617a14.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../static.files/main-12f88f4f.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">Module simulation</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../dfir_rs/index.html">dfir_rs</a><span class="version">0.15.0</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module simulation</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#hydrodfir-deterministic-simulation-testing-framework" title="Hydro/DFIR Deterministic Simulation Testing Framework">Hydro/DFIR Deterministic Simulation Testing Framework</a><ul><li><a href="#overview" title="Overview">Overview</a></li><li><a href="#network-processing" title="Network Processing">Network Processing</a></li><li><a href="#progress-of-time-in-the-simulation" title="Progress of Time in the Simulation">Progress of Time in the Simulation</a></li><li><a href="#examples" title="Examples">Examples</a></li></ul></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#traits" title="Traits">Traits</a></li><li><a href="#types" title="Type Aliases">Type Aliases</a></li></ul></section><div id="rustdoc-modnav"><h2><a href="../index.html">In dfir_<wbr>rs::<wbr>util</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../../index.html">dfir_rs</a>::<wbr><a href="../index.html">util</a></div><h1>Module <span>simulation</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../../src/dfir_rs/util/simulation.rs.html#1-440">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="hydrodfir-deterministic-simulation-testing-framework"><a class="doc-anchor" href="#hydrodfir-deterministic-simulation-testing-framework">§</a>Hydro/DFIR Deterministic Simulation Testing Framework</h2>
+<p>This module provides a deterministic simulation testing framework for testing Hydro/DFIR
+processes.</p>
+<p>It can be used to test complex interactions between multiple Hydro/DFIR processes in a
+deterministic manner by running them in a single-threaded environment. The framework also
+provides a “virtual network” implementation that allows production processes to exchange
+messages within the simulation. More importantly, the network is fully under control of the
+unit test and the test can introduce faults such as message delays, message drops and
+network partitions.</p>
+<h3 id="overview"><a class="doc-anchor" href="#overview">§</a>Overview</h3>
+<p>Conceptually, the simulation contains a “Fleet”, which is a collection of “Hosts”. These
+aren’t real hosts, but rather a collection of individual Hydro/DFIR processes (one per host)
+that can communicate with each other over a virtual network. Every host has a “hostname”
+which uniquely identifies it within the fleet.</p>
+<div class="example-wrap"><pre class="language-text"><code> ┌───────────────────────────────────────────────────────────────────────────────────────────┐
+ │SIMULATION                                                                                 │
+ │ ┌───────────────────────────────────────────────────────────────────────────────────────┐ │
+ │ │FLEET                                                                                  │ │
+ │ │ ┌───────────────────────────────┐                   ┌───────────────────────────────┐ │ │
+ │ │ │HOST                           │                   │HOST                           │ │ │
+ │ │ │ ┌──────┐   ┌──────┐  ┌──────┐ │                   │ ┌──────┐   ┌──────┐  ┌──────┐ │ │ │
+ │ │ │ │INBOX │   │INBOX │  │INBOX │ │                 ┌-┼-►INBOX │   │INBOX │  │INBOX │ │ │ │
+ │ │ │ └──┬───┘   └──┬───┘  └──┬───┘ │                 │ │ └──┬───┘   └──┬───┘  └──┬───┘ │ │ │
+ │ │ │ ┌──▼──────────▼─────────▼───┐ │                 │ │ ┌──▼──────────▼─────────▼───┐ │ │ │
+ │ │ │ │                           │ │                 │ │ │                           │ │ │ │
+ │ │ │ │        TRANSDUCER         │ │                 │ │ │        TRANSDUCER         │ │ │ │
+ │ │ │ │                           │ │                 │ │ │                           │ │ │ │
+ │ │ │ └───┬─────────┬──────────┬──┘ │                 │ │ └───┬─────────┬─────────┬───┘ │ │ │
+ │ │ │  ┌──▼───┐  ┌──▼───┐  ┌───▼──┐ │                 │ │  ┌──▼───┐  ┌──▼───┐  ┌──▼───┐ │ │ │
+ │ │ │  │OUTBOX│  │OUTBOX│  │OUTBOX┼-┼--┐              │ │  │OUTBOX│  │OUTBOX│  │OUTBOX│ │ │ │
+ │ │ │  └──────┘  └──────┘  └──────┘ │  │              │ │  └──────┘  └──────┘  └──────┘ │ │ │
+ │ │ └───────────────────────────────┘  │              │ └───────────────────────────────┘ │ │
+ │ └────────────────────────────────────┼──────────────┼───────────────────────────────────┘ │
+ │                                    ┌─┼──────────────┼─┐                                   │
+ │                                    │ └--------------┘ │                                   │
+ │                                    │ NETWORK MESSAGE  │                                   │
+ │                                    │    PROCESSING    │                                   │
+ │                                    └──────────────────┘                                   │
+ └───────────────────────────────────────────────────────────────────────────────────────────┘</code></pre></div><h3 id="network-processing"><a class="doc-anchor" href="#network-processing">§</a>Network Processing</h3><h4 id="outboxes--inboxes"><a class="doc-anchor" href="#outboxes--inboxes">§</a>Outboxes &amp; Inboxes</h4>
+<p>When a process wishes to send a message to another process, it sends the message to an
+“outbox” on its host. The unit test invokes the simulation’s network message processing logic
+at some desired cadence to pick up all messages from all outboxes and deliver them to the
+corresponding inboxes on the destination hosts. The network message processing logic is the
+point at which failures can be injected to change the behavior of the network.</p>
+<h4 id="interface-names"><a class="doc-anchor" href="#interface-names">§</a>Interface Names</h4>
+<p>Every inbox and outbox is associated with an “interface name”. This is a string that uniquely
+identifies the interface on the host. When a process sends a message, it specifies the
+destination hostname and the interface name on that host to which the message should be
+delivered.</p>
+<h3 id="progress-of-time-in-the-simulation"><a class="doc-anchor" href="#progress-of-time-in-the-simulation">§</a>Progress of Time in the Simulation</h3>
+<p>The single-threaded unit test can drive time forward on every host by invoking the <code>run_tick</code>
+method on the host. This ultimately runs a single tick on the process. The unit test is
+also responsible for invoking the network message processing at the time of its choosing and
+can interleave the progress of time on various hosts and network processing as it sees fit.</p>
+<h3 id="examples"><a class="doc-anchor" href="#examples">§</a>Examples</h3>
+<p>Check the tests module for examples on how to use the simulation framework.</p>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><dl class="item-table"><dt><a class="struct" href="struct.Address.html" title="struct dfir_rs::util::simulation::Address">Address</a></dt><dd>An address is a combination of a hostname and an interface name.</dd><dt><a class="struct" href="struct.Fleet.html" title="struct dfir_rs::util::simulation::Fleet">Fleet</a></dt><dd>A fleet is a collection of hosts in the simulation. It is responsible for running the
+simulation and processing network messages.</dd><dt><a class="struct" href="struct.Host.html" title="struct dfir_rs::util::simulation::Host">Host</a></dt><dd>A host is a single Hydro/DFIR process running in the simulation. It has a unique hostname
+and can communicate with other hosts over the virtual network. It has a collection of inboxes
+and outboxes.</dd><dt><a class="struct" href="struct.HostBuilder.html" title="struct dfir_rs::util::simulation::HostBuilder">Host<wbr>Builder</a></dt><dd>A builder for constructing a host in the simulation.</dd><dt><a class="struct" href="struct.Inbox.html" title="struct dfir_rs::util::simulation::Inbox">Inbox</a></dt><dd>An inbox is used by a host to receive messages for the process.</dd><dt><a class="struct" href="struct.Outbox.html" title="struct dfir_rs::util::simulation::Outbox">Outbox</a></dt><dd>Processes can send messages to other processes by putting those messages in an outbox
+on their host.</dd><dt><a class="struct" href="struct.ProcessBuilderContext.html" title="struct dfir_rs::util::simulation::ProcessBuilderContext">Process<wbr>Builder<wbr>Context</a></dt><dd>Used in conjunction with the <code>HostBuilder</code> to construct a host in the simulation.</dd></dl><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><dl class="item-table"><dt><a class="trait" href="trait.MessageSender.html" title="trait dfir_rs::util::simulation::MessageSender">Message<wbr>Sender</a></dt><dd>A message sender is used to send messages to an inbox on a host.</dd></dl><h2 id="types" class="section-header">Type Aliases<a href="#types" class="anchor">§</a></h2><dl class="item-table"><dt><a class="type" href="type.Hostname.html" title="type dfir_rs::util::simulation::Hostname">Hostname</a></dt><dd>A hostname is a unique identifier for a host in the simulation. It is used to address messages
+to a specific host (and thus a specific Hydro/DFIR process).</dd><dt><a class="type" href="type.MessageWithAddress.html" title="type dfir_rs::util::simulation::MessageWithAddress">Message<wbr>With<wbr>Address</a></dt><dd>A message with an delivery address.</dd></dl></section></div></main></body></html>

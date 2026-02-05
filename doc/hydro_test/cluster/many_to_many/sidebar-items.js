@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["many_to_many"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Leader","Worker"],"fn":["compute_pi"]};

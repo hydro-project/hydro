@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["compartmentalized_paxos","compute_pi","kv_replica","many_to_many","map_reduce","paxos","paxos_bench","paxos_with_client","simple_cluster","two_pc","two_pc_bench"]};

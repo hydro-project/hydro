@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["handoff_list"],"struct":["Iter","TeeingHandoff","VecHandoff"],"trait":["CanReceive","Handoff","HandoffMeta","TryCanReceive"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["extract_example_name"],"macro":["run_current_example"],"struct":["ExampleChild"]};

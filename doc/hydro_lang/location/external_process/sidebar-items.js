@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Many","NotMany"],"struct":["External","ExternalBincodeBidi","ExternalBincodeSink","ExternalBincodeStream","ExternalBytesPort"]};

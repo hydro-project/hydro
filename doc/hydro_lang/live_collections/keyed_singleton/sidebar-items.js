@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["BoundedValue","KeyedSingleton"],"trait":["KeyedSingletonBound"]};

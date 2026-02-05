@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["TrySendError"],"fn":["bounded","channel","unbounded"],"struct":["Receiver","SendError","Sender"]};

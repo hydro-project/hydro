@@ -1,0 +1,33 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Variadic types macro."><title>var_type in variadics - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../static.files/rustdoc-b7b9f40b.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="variadics" data-themes="" data-resource-suffix="" data-rustdoc-version="1.95.0-nightly (db3e99bba 2026-02-04)" data-channel="nightly" data-search-js="search-fb33671b.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-170eb4bf.js" ><script src="../static.files/storage-f9617a14.js"></script><script defer src="sidebar-items.js"></script><script defer src="../static.files/main-12f88f4f.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-044be391.svg"></head><body class="rustdoc macro"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">var_type</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../variadics/index.html">variadics</a><span class="version">0.0.10</span></h2></div><div class="sidebar-elems"><div id="rustdoc-modnav"></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="index.html">variadics</a></div><h1>Macro <span class="macro">var_<wbr>type</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/variadics/lib.rs.html#44-52">Source</a> </span></div><pre class="rust item-decl"><code>macro_rules! var_type {
+    () =&gt; { ... };
+    (...$a:ty $(,)? ) =&gt; { ... };
+    (...$a:ty, $( $b:tt )+) =&gt; { ... };
+    ($a:ty $(,)? ) =&gt; { ... };
+    ($a:ty, $( $b:tt )+) =&gt; { ... };
+}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Variadic types macro.</p>
+<p>Creates a variadic tuple type from a list of types.</p>
+<p><code>var_expr!</code> can be used to define simple types but will result in confusing errors for more
+complex types. Use this macro, <code>var_type!</code> instead.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>variadics::{var_expr, var_type};
+
+<span class="comment">// A simple variadic type. Although `var_expr!` would work in this case, it cannot handle
+// more complex types i.e. ones with generics.
+</span><span class="kw">let </span>list: <span class="macro">var_type!</span>(i32, bool, String) = Default::default();
+
+<span class="comment">// A more complex type:
+</span><span class="kw">let </span>list: <span class="macro">var_type!</span>(
+    <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str,
+    HashMap&lt;i32, i32&gt;,
+    &lt;std::vec::Vec&lt;bool&gt; <span class="kw">as </span>IntoIterator&gt;::Item,
+) = <span class="macro">var_expr!</span>(<span class="string">"foo"</span>, HashMap::new(), <span class="bool-val">false</span>);</code></pre></div>
+<p>The “spread” (or “splat”) syntax <code>...</code> can be used to concatenate variadics together:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">type </span>ListA = <span class="macro">var_type!</span>(f32, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str);
+<span class="kw">type </span>ListB = <span class="macro">var_type!</span>(i32, bool);
+<span class="comment">// Spread syntax:
+</span><span class="kw">type </span>ListC = <span class="macro">var_type!</span>(...ListA, ...ListB, Option::&lt;()&gt;);
+<span class="comment">// Equals `var_type!(f32, &amp;'static str, i32, bool, Option::&lt;()&gt;)`.</span></code></pre></div>
+<p>Unfortunately, expressions and types cannot be handled using the same macro due to the
+undefeated <a href="https://github.com/rust-lang/rust/blob/7fd15f09008dd72f40d76a5bebb60e3991095a5f/src/test/ui/parser/bastion-of-the-turbofish.rs">bastion of the turbofish</a>.</p>
+</div></details></section></div></main></body></html>

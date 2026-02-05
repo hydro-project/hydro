@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["escape_mermaid","open_browser"],"struct":["HydroMermaid"]};

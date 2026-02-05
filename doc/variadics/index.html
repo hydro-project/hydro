@@ -1,0 +1,143 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Variadics"><title>variadics - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../static.files/rustdoc-b7b9f40b.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="variadics" data-themes="" data-resource-suffix="" data-rustdoc-version="1.95.0-nightly (db3e99bba 2026-02-04)" data-channel="nightly" data-search-js="search-fb33671b.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-170eb4bf.js" ><script src="../static.files/storage-f9617a14.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-12f88f4f.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-044be391.svg"></head><body class="rustdoc mod crate"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">Crate variadics</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../variadics/index.html">variadics</a><span class="version">0.0.10</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#variadics" title="Variadics">Variadics</a><ul><li><a href="#variadic-generics" title="Variadic Generics?">Variadic Generics?</a></li><li><a href="#tuple-lists" title="Tuple lists">Tuple lists</a></li><li><a href="#usage" title="Usage">Usage</a></li><li><a href="#acknowledgements" title="Acknowledgements">Acknowledgements</a></li></ul></li><li><a href="#main-macros" title="Main Macros">Main Macros</a><ul><li><a href="#var_expr" title="`var_expr!`"><code>var_expr!</code></a></li><li><a href="#var_type" title="`var_type!`"><code>var_type!</code></a></li><li><a href="#var_args" title="`var_args!`"><code>var_args!</code></a></li></ul></li></ul><h3><a href="#modules">Crate Items</a></h3><ul class="block"><li><a href="#modules" title="Modules">Modules</a></li><li><a href="#macros" title="Macros">Macros</a></li><li><a href="#traits" title="Traits">Traits</a></li></ul></section><div id="rustdoc-modnav"></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1>Crate <span>variadics</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/variadics/lib.rs.html#1-1018">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="variadics"><a class="doc-anchor" href="#variadics">§</a>Variadics</h2>
+<p>Variadic generics in stable Rust</p>
+<h3 id="variadic-generics"><a class="doc-anchor" href="#variadic-generics">§</a>Variadic Generics?</h3>
+<p>Variadic generics are one of the most discussed potential Rust features. They would enable
+traits, functions, and data structures to be generic over variable length tuples of arbitrary
+types.</p>
+<p>Currently you can only implement generic code for tuples of a specific length. If you want to
+handle tuples of varying lengths you must write a separate implementation for each length. This
+leads to the notorious limitation that traits in Rust generally
+<a href="https://doc.rust-lang.org/std/primitive.tuple.html#impl-From%3C(T,+T,+T,+T,+T,+T,+T,+T,+T,+T,+T,+T)%3E-for-%5BT;+12%5D">only apply for tuples up to length 12</a>.</p>
+<p>Variadic generics allow generic code to handle tuples of any length.</p>
+<h3 id="tuple-lists"><a class="doc-anchor" href="#tuple-lists">§</a>Tuple lists</h3>
+<p>Although variadic generics fundamentally require changing the Rust compiler, we can emulate
+pretty well with tuple lists.</p>
+<p>Any tuple <code>(A, B, C, D)</code> can be mapped to (and from) a recursive tuple <code>(A, (B, (C, (D, ()))))</code>.</p>
+<p>Each element consists of a nested pair <code>(Item, Rest)</code>, where <code>Item</code> is tuple element and <code>Rest</code>
+is the rest of the list. For last element <code>Rest</code> is a unit tuple <code>()</code>. Unlike regular flat
+tuples, these recursive tuples can be effectively reasoned about in stable Rust.</p>
+<p>You may recognize this fundamental structure from <a href="https://en.wikipedia.org/wiki/Cons#Lists"><code>cons</code> lists in Lisp</a>
+as well as <a href="https://hackage.haskell.org/package/HList/docs/Data-HList-HList.html"><code>HList</code>s in Haskell</a>.</p>
+<p>This crate calls these lists “variadics” and provides traits and macros to allow simple,
+ergonimc use of them.</p>
+<h3 id="usage"><a class="doc-anchor" href="#usage">§</a>Usage</h3>
+<p><a href="macro.var_expr.html" title="macro variadics::var_expr"><code>var_expr!</code></a> creates variadic values/expressions,
+<a href="macro.var_type.html" title="macro variadics::var_type"><code>var_type!</code></a> creates variadic types,
+and <a href="macro.var_args.html" title="macro variadics::var_args"><code>var_args!</code></a> creates variadic patterns (used in unpacking arguments, on the left side of <code>let</code>
+declarations, etc.).</p>
+<p>These macros support the “spread” syntax <code>...</code>, also known as “splat”. For example, <code>var_expr!(a, ...var_b, ...var_c, d)</code>
+will concatenate <code>a</code>, the items of <code>var_b</code>, the items of <code>var_c</code> and <code>d</code> together into a single
+variadic list.</p>
+<h3 id="acknowledgements"><a class="doc-anchor" href="#acknowledgements">§</a>Acknowledgements</h3>
+<p>This crate is based on <a href="https://github.com/VFLashM/tuple_list"><code>tuple_list</code> by VFLashM</a>, which is MIT licensed:</p>
+<details>
+    <summary>MIT license</summary>
+<div class="example-wrap"><pre class="language-text"><code>Copyright (c) 2020 Valerii Lashmanov
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the &quot;Software&quot;), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE</code></pre></div></details>
+&nbsp;
+<h2 id="main-macros"><a class="doc-anchor" href="#main-macros">§</a>Main Macros</h2><h3 id="var_expr"><a class="doc-anchor" href="#var_expr">§</a><a href="macro.var_expr.html" title="macro variadics::var_expr"><code>var_expr!</code></a></h3>
+<p>Variadic expressions (values) macro.</p>
+<p>Creates a variadic tuple value from a list of expressions.</p>
+<p>Create a variadic tuple value:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>variadics::var_expr;
+
+<span class="kw">let </span>list = <span class="macro">var_expr!</span>(<span class="number">10</span>, <span class="bool-val">false</span>, <span class="string">"foo"</span>);
+
+<span class="macro">assert_eq!</span>(list, (<span class="number">10</span>, (<span class="bool-val">false</span>, (<span class="string">"foo"</span>, ()))),)</code></pre></div>
+<p>Although this can be used as a pattern to unpack tuples, <a href="macro.var_args.html" title="macro variadics::var_args"><code>var_args!</code></a> should be used instead:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="comment">// Ok...
+</span><span class="kw">let </span><span class="macro">var_expr!</span>(a, b, c) = <span class="macro">var_expr!</span>(<span class="number">10</span>, <span class="bool-val">false</span>, <span class="string">"foo"</span>);
+<span class="comment">// Better:
+</span><span class="kw">let </span><span class="macro">var_args!</span>(a, b, c) = <span class="macro">var_expr!</span>(<span class="number">10</span>, <span class="bool-val">false</span>, <span class="string">"foo"</span>);
+
+<span class="macro">assert_eq!</span>(a, <span class="number">10</span>);
+<span class="macro">assert_eq!</span>(b, <span class="bool-val">false</span>);
+<span class="macro">assert_eq!</span>(c, <span class="string">"foo"</span>);</code></pre></div>
+<p>The “spread” (or “splat”) syntax <code>...</code> can be used to concatenate variadics together:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span>list_a = <span class="macro">var_expr!</span>(<span class="number">0.5</span>, <span class="string">"foo"</span>);
+<span class="kw">let </span>list_b = <span class="macro">var_expr!</span>(-<span class="number">5</span>, <span class="bool-val">false</span>);
+<span class="comment">// Spread syntax:
+</span><span class="kw">let </span>list_c = <span class="macro">var_expr!</span>(...list_a, ...list_b, <span class="string">"bar"</span>);
+<span class="comment">// Equals `var_expr!(0.5, "foo", -5, false, "bar)`.</span></code></pre></div><h3 id="var_type"><a class="doc-anchor" href="#var_type">§</a><a href="macro.var_type.html" title="macro variadics::var_type"><code>var_type!</code></a></h3>
+<p>Variadic types macro.</p>
+<p>Creates a variadic tuple type from a list of types.</p>
+<p><code>var_expr!</code> can be used to define simple types but will result in confusing errors for more
+complex types. Use this macro, <code>var_type!</code> instead.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>variadics::{var_expr, var_type};
+
+<span class="comment">// A simple variadic type. Although `var_expr!` would work in this case, it cannot handle
+// more complex types i.e. ones with generics.
+</span><span class="kw">let </span>list: <span class="macro">var_type!</span>(i32, bool, String) = Default::default();
+
+<span class="comment">// A more complex type:
+</span><span class="kw">let </span>list: <span class="macro">var_type!</span>(
+    <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str,
+    HashMap&lt;i32, i32&gt;,
+    &lt;std::vec::Vec&lt;bool&gt; <span class="kw">as </span>IntoIterator&gt;::Item,
+) = <span class="macro">var_expr!</span>(<span class="string">"foo"</span>, HashMap::new(), <span class="bool-val">false</span>);</code></pre></div>
+<p>The “spread” (or “splat”) syntax <code>...</code> can be used to concatenate variadics together:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">type </span>ListA = <span class="macro">var_type!</span>(f32, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str);
+<span class="kw">type </span>ListB = <span class="macro">var_type!</span>(i32, bool);
+<span class="comment">// Spread syntax:
+</span><span class="kw">type </span>ListC = <span class="macro">var_type!</span>(...ListA, ...ListB, Option::&lt;()&gt;);
+<span class="comment">// Equals `var_type!(f32, &amp;'static str, i32, bool, Option::&lt;()&gt;)`.</span></code></pre></div>
+<p>Unfortunately, expressions and types cannot be handled using the same macro due to the
+undefeated <a href="https://github.com/rust-lang/rust/blob/7fd15f09008dd72f40d76a5bebb60e3991095a5f/src/test/ui/parser/bastion-of-the-turbofish.rs">bastion of the turbofish</a>.</p>
+<h3 id="var_args"><a class="doc-anchor" href="#var_args">§</a><a href="macro.var_args.html" title="macro variadics::var_args"><code>var_args!</code></a></h3>
+<p>Variadic patterns macro.</p>
+<p>Used to <a href="https://doc.rust-lang.org/reference/patterns.html">pattern-match</a> or “unpack” variadic
+tuples. This is used for function arguments, as well as in <code>match</code>, <code>if/while let ...</code>,
+<code>let ... else</code>, and <code>for</code> expressions.</p>
+<p>Although it may somtimes be possible to use <code>var_expr!</code> in place of this macro, doing so may
+cause confusing errors.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>variadics::{var_args, var_expr, var_type};
+
+<span class="kw">fn </span>my_fn(<span class="macro">var_args!</span>(a, b, c): <span class="macro">var_type!</span>(usize, <span class="kw-2">&amp;</span>str, bool)) {
+    <span class="macro">println!</span>(<span class="string">"{} {} {}"</span>, a, b, c);
+}
+my_fn(<span class="macro">var_expr!</span>(<span class="number">12</span>, <span class="string">"hello"</span>, <span class="bool-val">false</span>));</code></pre></div>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>variadics::{var_args, var_expr};
+
+<span class="kw">let </span>val = <span class="macro">var_expr!</span>(<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(<span class="string">"foo"</span>), <span class="number">2</span>);
+<span class="kw">if let </span><span class="macro">var_args!</span>(<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(item), <span class="number">0</span>..=<span class="number">3</span>) = val {
+    <span class="macro">println!</span>(<span class="string">"{}"</span>, item);
+} <span class="kw">else </span>{
+    <span class="macro">unreachable!</span>();
+}</code></pre></div>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">match </span><span class="macro">var_expr!</span>(<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(<span class="number">100</span>), <span class="number">5</span>) {
+    <span class="macro">var_args!</span>(<span class="bool-val">false</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
+    <span class="macro">var_args!</span>(<span class="bool-val">true</span>, <span class="prelude-val">None</span>, <span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
+    <span class="macro">var_args!</span>(<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(<span class="number">0</span>..=<span class="number">10</span>), <span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
+    <span class="macro">var_args!</span>(<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(a), b) =&gt; <span class="macro">println!</span>(<span class="string">"{} {}"</span>, a, b),
+}</code></pre></div>
+<p>The “spread” (or “splat”) syntax <code>...</code> can be used to unpack the tail of a variadic. Note that
+unlike with the other macros, this macro (<code>var_args!</code>) only allows the spread syntax on the
+final argument.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span><span class="macro">var_args!</span>(a, b, ...list_c) = <span class="macro">var_expr!</span>(<span class="string">"hi"</span>, <span class="number">100</span>, <span class="number">0.5</span>, <span class="bool-val">false</span>);
+<span class="macro">assert_eq!</span>(<span class="macro">var_expr!</span>(<span class="number">0.5</span>, <span class="bool-val">false</span>), list_c);</code></pre></div></div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><dl class="item-table"><dt><a class="mod" href="variadic_collections/index.html" title="mod variadics::variadic_collections">variadic_<wbr>collections</a><wbr><span class="stab portability" title="Available on crate feature `std` only"><code>std</code></span></dt><dd>module of collection types for variadics</dd></dl><h2 id="macros" class="section-header">Macros<a href="#macros" class="anchor">§</a></h2><dl class="item-table"><dt><a class="macro" href="macro.var_args.html" title="macro variadics::var_args">var_<wbr>args</a></dt><dd>Variadic patterns macro.</dd><dt><a class="macro" href="macro.var_expr.html" title="macro variadics::var_expr">var_<wbr>expr</a></dt><dd>Variadic expressions (values) macro.</dd><dt><a class="macro" href="macro.var_type.html" title="macro variadics::var_type">var_<wbr>type</a></dt><dd>Variadic types macro.</dd><dt><a class="macro" href="macro.variadic_trait.html" title="macro variadics::variadic_trait">variadic_<wbr>trait</a></dt><dd>This macro generates a basic variadic trait where each element must fulfill the <code>where</code> clause.</dd></dl><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><dl class="item-table"><dt><a class="trait" href="trait.CloneVariadic.html" title="trait variadics::CloneVariadic">Clone<wbr>Variadic</a></dt><dd>Clone a variadic of references <a href="trait.VariadicExt.html#associatedtype.AsRefVar" title="associated type variadics::VariadicExt::AsRefVar"><code>AsRefVar</code></a> into a variadic of owned values.</dd><dt><a class="trait" href="trait.CopyRefVariadic.html" title="trait variadics::CopyRefVariadic">Copy<wbr>RefVariadic</a></dt><dd>Copy a variadic of references <a href="trait.EitherRefVariadic.html" title="trait variadics::EitherRefVariadic"><code>EitherRefVariadic</code></a> into a variadic of owned values <a href="trait.EitherRefVariadic.html#associatedtype.UnRefVar" title="associated type variadics::EitherRefVariadic::UnRefVar"><code>EitherRefVariadic::UnRefVar</code></a>.</dd><dt><a class="trait" href="trait.EitherRefVariadic.html" title="trait variadics::EitherRefVariadic">Either<wbr>RefVariadic</a></dt><dd>A variadic of either shared references, exclusive references, or both.</dd><dt><a class="trait" href="trait.HomogenousVariadic.html" title="trait variadics::HomogenousVariadic">Homogenous<wbr>Variadic</a></dt><dd>A variadic where all elements are the same type, <code>T</code>.</dd><dt><a class="trait" href="trait.MutVariadic.html" title="trait variadics::MutVariadic">MutVariadic</a></dt><dd>A variadic where each item is an exclusive reference <code>&amp;mut item</code>.</dd><dt><a class="trait" href="trait.PartialEqVariadic.html" title="trait variadics::PartialEqVariadic">Partial<wbr>EqVariadic</a></dt><dd>A variadic where all item implement <a href="https://doc.rust-lang.org/nightly/core/cmp/trait.PartialEq.html" title="trait core::cmp::PartialEq"><code>PartialEq</code></a>.</dd><dt><a class="trait" href="trait.RefVariadic.html" title="trait variadics::RefVariadic">RefVariadic</a></dt><dd>A variadic where each item is a shared reference <code>&amp;item</code>.</dd><dt><a class="trait" href="trait.Split.html" title="trait variadics::Split">Split</a></dt><dd>Helper trait for splitting a variadic into two parts. <code>Prefix</code> is the first part, everything
+after is the <code>Suffix</code> or second part.</dd><dt><a class="trait" href="trait.SplitBySuffix.html" title="trait variadics::SplitBySuffix">Split<wbr>BySuffix</a></dt><dd>Helper trait for splitting a variadic into two parts. <code>Prefix</code> is the first part, everything
+after is the <code>Suffix</code> or second part.</dd><dt><a class="trait" href="trait.Variadic.html" title="trait variadics::Variadic">Variadic</a></dt><dd>A variadic tuple list.</dd><dt><a class="trait" href="trait.VariadicExt.html" title="trait variadics::VariadicExt">Variadic<wbr>Ext</a></dt><dd>Extension methods/types for <a href="trait.Variadic.html" title="trait variadics::Variadic"><code>Variadic</code></a>s.</dd><dt><a class="trait" href="trait.VecVariadic.html" title="trait variadics::VecVariadic">VecVariadic</a></dt><dd>trait for Variadic of vecs, as formed by <code>VariadicExt::into_vec()</code></dd></dl></section></div></main></body></html>

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["inc_i32_workload_generator","paxos_bench"],"struct":["Aggregator","Client"]};

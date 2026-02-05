@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["yield_atomic"],"macro":["sliced"],"mod":["style"],"trait":["Slicable","Unslicable"]};

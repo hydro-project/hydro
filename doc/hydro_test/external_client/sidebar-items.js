@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["chat","echo","http_counter","http_hello"]};

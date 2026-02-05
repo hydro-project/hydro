@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["compartmentalized_paxos_core"],"struct":["CompartmentalizedPaxosConfig","CoreCompartmentalizedPaxos","ProxyLeader"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["cluster_ids","cluster_membership_stream","cluster_self_id","deploy_containerized_external_sink_source_ident","deploy_containerized_m2m","deploy_containerized_m2o","deploy_containerized_o2m","deploy_containerized_o2o"],"struct":["SocketIdent"]};

@@ -1,0 +1,50 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Shared tombstone set implementations for efficient storage of deleted keys."><title>lattices::tombstone - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-b7b9f40b.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="lattices" data-themes="" data-resource-suffix="" data-rustdoc-version="1.95.0-nightly (db3e99bba 2026-02-04)" data-channel="nightly" data-search-js="search-fb33671b.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-170eb4bf.js" ><script src="../../static.files/storage-f9617a14.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-12f88f4f.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc mod"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">Module tombstone</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../lattices/index.html">lattices</a><span class="version">0.6.2</span></h2></div><div class="sidebar-elems"><section id="rustdoc-toc"><h2 class="location"><a href="#">Module tombstone</a></h2><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#choosing-a-tombstone-implementation" title="Choosing a Tombstone Implementation">Choosing a Tombstone Implementation</a><ul><li><a href="#for-integer-keys-u64" title="For Integer Keys (u64)">For Integer Keys (u64)</a></li><li><a href="#for-string-keys" title="For String Keys">For String Keys</a></li><li><a href="#for-other-types" title="For Other Types">For Other Types</a></li><li><a href="#performance-characteristics" title="Performance Characteristics">Performance Characteristics</a></li></ul></li><li><a href="#performance-considerations" title="Performance Considerations">Performance Considerations</a></li><li><a href="#thread-safety" title="Thread Safety">Thread Safety</a></li></ul><h3><a href="#structs">Module Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#traits" title="Traits">Traits</a></li></ul></section><div id="rustdoc-modnav"><h2 class="in-crate"><a href="../index.html">In crate lattices</a></h2></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="../index.html">lattices</a></div><h1>Module <span>tombstone</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../../src/lattices/tombstone.rs.html#1-334">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Shared tombstone set implementations for efficient storage of deleted keys.</p>
+<p>This module provides specialized tombstone storage implementations that can be used
+with both <a href="../set_union_with_tombstones/struct.SetUnionWithTombstones.html" title="struct lattices::set_union_with_tombstones::SetUnionWithTombstones"><code>crate::set_union_with_tombstones::SetUnionWithTombstones</code></a> and
+<a href="../map_union_with_tombstones/struct.MapUnionWithTombstones.html" title="struct lattices::map_union_with_tombstones::MapUnionWithTombstones"><code>crate::map_union_with_tombstones::MapUnionWithTombstones</code></a>.</p>
+<h2 id="choosing-a-tombstone-implementation"><a class="doc-anchor" href="#choosing-a-tombstone-implementation">§</a>Choosing a Tombstone Implementation</h2>
+<p>This module provides several specialized tombstone storage implementations optimized for different key types:</p>
+<h3 id="for-integer-keys-u64"><a class="doc-anchor" href="#for-integer-keys-u64">§</a>For Integer Keys (u64)</h3>
+<p>Use <a href="struct.RoaringTombstoneSet.html" title="struct lattices::tombstone::RoaringTombstoneSet"><code>RoaringTombstoneSet</code></a>:</p>
+<ul>
+<li>Extremely space-efficient bitmap compression</li>
+<li>Fast O(1) lookups and efficient bitmap OR operations during merge</li>
+<li>Works with u64 keys (other integer types can be cast to u64)</li>
+</ul>
+<h3 id="for-string-keys"><a class="doc-anchor" href="#for-string-keys">§</a>For String Keys</h3>
+<p>Use <a href="struct.FstTombstoneSet.html" title="struct lattices::tombstone::FstTombstoneSet"><code>FstTombstoneSet&lt;String&gt;</code></a>:</p>
+<ul>
+<li>Compressed finite state transducer storage</li>
+<li>Zero false positives (collision-free)</li>
+<li>Efficient union operations for merging</li>
+<li>Maintains sorted order</li>
+<li><strong>Note:</strong> For arbitrary byte sequences, encode them as hex or base64 strings first</li>
+</ul>
+<h3 id="for-other-types"><a class="doc-anchor" href="#for-other-types">§</a>For Other Types</h3>
+<p>Use <a href="https://doc.rust-lang.org/nightly/std/collections/hash/set/struct.HashSet.html" title="struct std::collections::hash::set::HashSet"><code>std::collections::HashSet</code></a> for tombstones:</p>
+<ul>
+<li>Works with any <code>Hash + Eq</code> key type</li>
+<li>No compression, but simple and flexible</li>
+</ul>
+<p>Alternatively, you can hash to 64-bit integers and follow instructions for that case above,
+understanding there’s a tiny risk of hash collision which could result in keys being
+tombstoned (deleted) incorrectly.</p>
+<h3 id="performance-characteristics"><a class="doc-anchor" href="#performance-characteristics">§</a>Performance Characteristics</h3><div><table><thead><tr><th>Implementation</th><th>Space Efficiency</th><th>Merge Speed</th><th>Lookup Speed</th><th>False Positives</th></tr></thead><tbody>
+<tr><td>RoaringBitmap</td><td>Excellent</td><td>Excellent</td><td>Excellent</td><td>None</td></tr>
+<tr><td>FST</td><td>Very Good</td><td>Good</td><td>Very Good</td><td>None</td></tr>
+<tr><td>HashSet</td><td>Poor</td><td>Good</td><td>Excellent</td><td>None</td></tr>
+</tbody></table>
+</div><h2 id="performance-considerations"><a class="doc-anchor" href="#performance-considerations">§</a>Performance Considerations</h2>
+<ul>
+<li><strong>RoaringBitmap:</strong> Optimized for dense integer sets. Very fast for all operations.</li>
+<li><strong>FST:</strong> The <code>extend()</code> operation rebuilds the entire FST, so batch your insertions.
+Use <code>from_iter()</code> when possible for better performance.</li>
+</ul>
+<h2 id="thread-safety"><a class="doc-anchor" href="#thread-safety">§</a>Thread Safety</h2>
+<p>Both implementations are <code>Send</code> and <code>Sync</code> when their contained types are.
+They do not use interior mutability.</p>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><dl class="item-table"><dt><a class="struct" href="struct.FstTombstoneSet.html" title="struct lattices::tombstone::FstTombstoneSet">FstTombstone<wbr>Set</a></dt><dd>A tombstone set backed by FST (Finite State Transducer) for byte string keys.
+This provides space-efficient storage with zero false positives for any type
+that can be serialized to bytes (strings, serialized structs, etc.).
+FST maintains keys in sorted order and supports efficient set operations.</dd><dt><a class="struct" href="struct.RoaringTombstoneSet.html" title="struct lattices::tombstone::RoaringTombstoneSet">Roaring<wbr>Tombstone<wbr>Set</a></dt><dd>A tombstone set backed by [<code>RoaringTreemap</code>] for u64 integer keys.
+This provides space-efficient bitmap compression for integer tombstones.</dd></dl><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><dl class="item-table"><dt><a class="trait" href="trait.AsBytes.html" title="trait lattices::tombstone::AsBytes">AsBytes</a></dt><dd>Helper trait to convert keys to byte slices for FST operations.</dd><dt><a class="trait" href="trait.TombstoneSet.html" title="trait lattices::tombstone::TombstoneSet">Tombstone<wbr>Set</a></dt><dd>Trait for tombstone set implementations that support efficient union operations.</dd></dl></section></div></main></body></html>

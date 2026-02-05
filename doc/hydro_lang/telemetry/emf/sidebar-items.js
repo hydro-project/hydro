@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DEFAULT_FILE_PATH","DEFAULT_INTERVAL"],"enum":["Unit"],"struct":["RecordMetricsSidecar"],"type":["NewRecordMetricsSidecarBuilder"]};

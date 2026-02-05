@@ -1,0 +1,50 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="`multiplatform_test`"><title>multiplatform_test - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../static.files/rustdoc-b7b9f40b.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="multiplatform_test" data-themes="" data-resource-suffix="" data-rustdoc-version="1.95.0-nightly (db3e99bba 2026-02-04)" data-channel="nightly" data-search-js="search-fb33671b.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-170eb4bf.js" ><script src="../static.files/storage-f9617a14.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-12f88f4f.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-044be391.svg"></head><body class="rustdoc mod crate"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">Crate multiplatform_test</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../multiplatform_test/index.html">multiplatform_<wbr>test</a><span class="version">0.6.0</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#multiplatform_test" title="`multiplatform_test`"><code>multiplatform_test</code></a><ul><li><a href="#installation" title="Installation">Installation</a></li><li><a href="#usage" title="Usage">Usage</a></li></ul></li></ul><h3><a href="#attributes">Crate Items</a></h3><ul class="block"><li><a href="#attributes" title="Attribute Macros">Attribute Macros</a></li></ul></section><div id="rustdoc-modnav"></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1>Crate <span>multiplatform_<wbr>test</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/multiplatform_test/lib.rs.html#1-236">Source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="multiplatform_test"><a class="doc-anchor" href="#multiplatform_test">§</a><code>multiplatform_test</code></h2>
+<p>Provides a proc-macro that expands to testing on platforms relevant to
+Hydroflow. By default, expands to testing on the host (using the normal
+<code>#[test]</code> attribute) and wasm (using <code>#[wasm_bindgen_test]</code>).</p>
+<p>For example, the test</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>multiplatform_test::multiplatform_test;
+
+<span class="attr">#[multiplatform_test]
+</span><span class="kw">fn </span>my_test() {
+  <span class="comment">// ...
+</span>}</code></pre></div>
+<p>Expands to</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[test]
+#[wasm_bindgen_test::wasm_bindgen_test]
+</span><span class="kw">fn </span>my_test() {
+  <span class="comment">// ...
+</span>}</code></pre></div><h3 id="installation"><a class="doc-anchor" href="#installation">§</a>Installation</h3><div class="example-wrap"><pre class="language-toml"><code>[dependencies]
+multiplatform_test = * # replace with version.</code></pre></div>
+<p>If you’re using <code>wasm</code> naturally you will need to add the <a href="https://crates.io/crates/wasm-bindgen-test-macro/"><code>wasm_bindgen_test</code></a>
+crate as a dependency.</p>
+<h3 id="usage"><a class="doc-anchor" href="#usage">§</a>Usage</h3><h4 id="specifying-platforms"><a class="doc-anchor" href="#specifying-platforms">§</a>Specifying platforms</h4>
+<p>There are many platforms which can be specified:</p>
+<ul>
+<li><code>test</code> - Adds a standard <a href="https://doc.rust-lang.org/reference/attributes/testing.html#the-test-attribute"><code>#[test]</code> attribute</a>.</li>
+<li><code>tokio</code> - Adds a <a href="https://docs.rs/tokio/latest/tokio/attr.test.html"><code>#[tokio::test]</code> attribute</a>.</li>
+<li><code>async_std</code> - Adds an <a href="https://docs.rs/async-std/latest/async_std/attr.test.html"><code>#[async_std::test]</code> attribute</a>.</li>
+<li><code>dfir</code> - Adds a <a href="https://docs.rs/hydroflow/latest/hydroflow/attr.test.html"><code>#[dfir_rs::test]</code> attribute</a>.</li>
+<li><code>wasm</code> - Adds a <a href="https://docs.rs/wasm-bindgen-test/0.3.36/wasm_bindgen_test/attr.wasm_bindgen_test.html"><code>#[wasm_bindgen_test::wasm_bindgen_test]</code> attribute</a>.</li>
+<li><code>env_logging</code> - Registers <a href="https://docs.rs/env_logger/latest/env_logger/"><code>env_logger</code></a> for <a href="https://docs.rs/log/latest/log/"><code>log</code>ging</a>.</li>
+<li><code>env_tracing</code> - Registers a <a href="https://docs.rs/tracing-subscriber/latest/tracing_subscriber/index.html#reexport.FmtSubscriber"><code>FmtSubscriber</code></a> with an <a href="https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html"><code>EnvFilter</code></a> for <a href="https://docs.rs/tracing/latest/tracing/"><code>tracing</code></a>.</li>
+</ul>
+<p>You can test on a subset of platforms by passing in the platforms in parens:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>multiplatform_test::multiplatform_test;
+
+<span class="attr">#[multiplatform_test(test, env_logging)]  </span><span class="comment">// Only test on the standard `#[test]` platform, but enables logging
+</span><span class="kw">fn </span>my_test() {
+  <span class="comment">// ...
+</span>}</code></pre></div>
+<p>expands to</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>multiplatform_test::multiplatform_test;
+
+<span class="attr">#[test]
+</span><span class="kw">fn </span>my_test() {
+  <span class="kw">let _ </span>= env_logger::builder().is_test(<span class="bool-val">true</span>).try_init();
+  <span class="comment">// ...
+</span>}</code></pre></div></div></details><h2 id="attributes" class="section-header">Attribute Macros<a href="#attributes" class="anchor">§</a></h2><dl class="item-table"><dt><a class="attr" href="attr.multiplatform_test.html" title="attr multiplatform_test::multiplatform_test">multiplatform_<wbr>test</a></dt><dd>See the <a href="index.html" title="mod multiplatform_test">crate</a> docs for usage information.</dd></dl></section></div></main></body></html>

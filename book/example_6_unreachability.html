@@ -1,0 +1,367 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Graph Un-Reachability - The Hydroflow Book</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+    </head>
+    <body>
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var html = document.querySelector('html');
+            var sidebar = null;
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="index.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item expanded "><a href="quickstart.html"><strong aria-hidden="true">2.</strong> Quickstart</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="setup.html"><strong aria-hidden="true">2.1.</strong> Setup</a></li><li class="chapter-item expanded "><a href="example_1_simplest.html"><strong aria-hidden="true">2.2.</strong> Simplest Example</a></li><li class="chapter-item expanded "><a href="example_2_simple.html"><strong aria-hidden="true">2.3.</strong> Simple Example</a></li><li class="chapter-item expanded "><a href="example_3_stream.html"><strong aria-hidden="true">2.4.</strong> A Example With Streaming Input</a></li><li class="chapter-item expanded "><a href="example_4_neighbors.html"><strong aria-hidden="true">2.5.</strong> Graph Neighbors</a></li><li class="chapter-item expanded "><a href="example_5_reachability.html"><strong aria-hidden="true">2.6.</strong> Graph Reachability</a></li><li class="chapter-item expanded "><a href="example_6_unreachability.html" class="active"><strong aria-hidden="true">2.7.</strong> Graph Un-Reachability</a></li><li class="chapter-item expanded "><a href="example_7_echo_server.html"><strong aria-hidden="true">2.8.</strong> Networked Services 1: EchoServer</a></li><li class="chapter-item expanded "><a href="example_8_chat_server.html"><strong aria-hidden="true">2.9.</strong> Networked Services 2: ChatServer</a></li></ol></li><li class="chapter-item expanded "><a href="surface_syntax.html"><strong aria-hidden="true">3.</strong> Syntax</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="surface_embedding.html"><strong aria-hidden="true">3.1.</strong> Rust Embedding</a></li><li class="chapter-item expanded "><a href="surface_flows.html"><strong aria-hidden="true">3.2.</strong> Flows</a></li><li class="chapter-item expanded "><a href="surface_data.html"><strong aria-hidden="true">3.3.</strong> Data Sources</a></li><li class="chapter-item expanded "><a href="surface_ops.gen.html"><strong aria-hidden="true">3.4.</strong> Operators</a></li><li class="chapter-item expanded "><a href="state.html"><strong aria-hidden="true">3.5.</strong> State and Lifetimes</a></li></ol></li><li class="chapter-item expanded "><a href="ecosystem.html"><strong aria-hidden="true">4.</strong> The Hydro Ecosystem</a></li><li class="chapter-item expanded "><a href="concepts.html"><strong aria-hidden="true">5.</strong> Concepts</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="life_and_times.html"><strong aria-hidden="true">5.1.</strong> Life and Times of Hydroflow</a></li><li class="chapter-item expanded "><a href="stratification.html"><strong aria-hidden="true">5.2.</strong> Blocking Ops and Stratification</a></li><li class="chapter-item expanded "><a href="distributed_time.html"><strong aria-hidden="true">5.3.</strong> Distributed Time</a></li><li class="chapter-item expanded "><a href="debugging.html"><strong aria-hidden="true">5.4.</strong> Debugging Hydroflow</a></li><li class="chapter-item expanded "><a href="error_handling.html"><strong aria-hidden="true">5.5.</strong> Error Handling</a></li></ol></li><li class="chapter-item expanded "><a href="architecture.html"><strong aria-hidden="true">6.</strong> Architecture</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="scheduling.html"><strong aria-hidden="true">6.1.</strong> Scheduling</a></li><li class="chapter-item expanded "><a href="handoffs.html"><strong aria-hidden="true">6.2.</strong> Handoffs</a></li><li class="chapter-item expanded "><a href="networking.html"><strong aria-hidden="true">6.3.</strong> Networking</a></li><li class="chapter-item expanded "><a href="in-out_trees.html"><strong aria-hidden="true">6.4.</strong> Subgraph In-Out Trees</a></li></ol></li><li class="chapter-item expanded "><a href="lattices_crate.html"><strong aria-hidden="true">7.</strong> The Lattices Crate</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lattice_math.html"><strong aria-hidden="true">7.1.</strong> Lattice Math</a></li></ol></li><li class="chapter-item expanded "><a href="todo.html"><strong aria-hidden="true">8.</strong> TODO</a></li><li class="chapter-item expanded "><a href="faq.html"><strong aria-hidden="true">9.</strong> FAQ</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">The Hydroflow Book</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+<h1 id="graph-un-reachability"><a class="header" href="#graph-un-reachability">Graph Un-Reachability</a></h1>
+<blockquote>
+<p>In this example we cover:</p>
+<ul>
+<li>Extending a program with additional downstream logic.</li>
+<li>Hydroflow's (<a href="./surface_ops.gen.html#difference"><code>difference</code></a>) operator</li>
+<li>Further examples of automatic stratification.</li>
+</ul>
+</blockquote>
+<p>Our next example builds on the previous by finding vertices that are <em>not</em> reachable. To do this, we need to capture the set <code>all_vertices</code>, and use a <a href="./surface_ops.gen.html#difference">difference</a> operator to form the difference between that set of vertices and <code>reachable_vertices</code>.</p>
+<p>Essentially we want a flow like this:</p>
+<pre class="mermaid">graph TD
+  subgraph sources
+    01[Stream of Edges]
+  end
+  subgraph reachable from origin
+    00[Origin Vertex]
+    10[Reached Vertices]
+    20(&quot;V ⨝ E&quot;)
+
+    00 --&gt; 10
+    10 --&gt; 20
+    20 --&gt; 10
+
+    01 --&gt; 20
+  end
+  subgraph unreachable
+    15[All Vertices]
+    30(All - Reached)
+    01 ---&gt; 15
+    15 --&gt; 30
+    10 --&gt; 30
+    30 --&gt; 40
+   end
+40[Output]
+</pre>
+<p>This is a simple augmentation of our previous example. Replace the contents of <code>src/main.rs</code> with the following:</p>
+<pre><pre class="playground"><code class="language-rust">use hydroflow::hydroflow_syntax;
+
+pub fn main() {
+    // An edge in the input data = a pair of `usize` vertex IDs.
+    let (pairs_send, pairs_recv) = hydroflow::util::unbounded_channel::&lt;(usize, usize)&gt;();
+
+    let mut flow = hydroflow_syntax! {
+        origin = source_iter(vec![0]);
+        stream_of_edges = source_stream(pairs_recv) -&gt; tee();
+        reached_vertices = merge()-&gt;tee();
+        origin -&gt; [0]reached_vertices;
+
+        // the join for reachable vertices
+        my_join = join() -&gt; flat_map(|(src, ((), dst))| [src, dst]);
+        reached_vertices[0] -&gt; map(|v| (v, ())) -&gt; [0]my_join;
+        stream_of_edges[1] -&gt; [1]my_join;
+
+        // the loop
+        my_join -&gt; [1]reached_vertices;
+
+        // the difference all_vertices - reached_vertices
+        all_vertices = stream_of_edges[0]
+          -&gt; flat_map(|(src, dst)| [src, dst]) -&gt; tee();
+        unreached_vertices = difference();
+        all_vertices[0] -&gt; [pos]unreached_vertices;
+        reached_vertices[1] -&gt; [neg]unreached_vertices;
+
+        // the output
+        all_vertices[1] -&gt; unique() -&gt; for_each(|v| println!(&quot;Received vertex: {}&quot;, v));
+        unreached_vertices -&gt; for_each(|v| println!(&quot;unreached_vertices vertex: {}&quot;, v));
+    };
+
+    println!(
+        &quot;{}&quot;,
+        flow.meta_graph()
+            .expect(&quot;No graph found, maybe failed to parse.&quot;)
+            .to_mermaid()
+    );
+
+    pairs_send.send((5, 10)).unwrap();
+    pairs_send.send((0, 3)).unwrap();
+    pairs_send.send((3, 6)).unwrap();
+    pairs_send.send((6, 5)).unwrap();
+    pairs_send.send((11, 12)).unwrap();
+    flow.run_available();
+}</code></pre></pre>
+<p>Notice that we are now sending in some new pairs to test this code. The output should be:</p>
+<pre><code class="language-console">% cargo run
+&lt;build output&gt;
+&lt;graph output&gt;
+Received vertex: 12
+Received vertex: 6
+Received vertex: 11
+Received vertex: 0
+Received vertex: 5
+Received vertex: 10
+Received vertex: 3
+unreached_vertices vertex: 12
+unreached_vertices vertex: 11
+</code></pre>
+<p>Let's review the changes, all of which come at the end of the program. First, 
+we remove code to print <code>reached_vertices</code>. Then we define <code>all_vertices</code> to be
+the vertices that appear in any edge (using familiar <code>flat_map</code> code from the previous 
+examples.) In the last few lines, we wire up a 
+<a href="./surface_ops.gen.html#difference">difference</a> operator
+to compute the difference between <code>all_vertices</code> and <code>reached_vertices</code>; note 
+how we wire up the <code>pos</code> and <code>neg</code> inputs to the <code>difference</code> operator! 
+Finally we print both <code>all_vertices</code> and <code>unreached_vertices</code>.</p>
+<p>The auto-generated mermaid looks like so:</p>
+<pre class="mermaid">%%{init: {'theme': 'base', 'themeVariables': {'clusterBkg':'#ddd'}}}%%
+flowchart TD
+classDef pullClass fill:#02f,color:#fff,stroke:#000
+classDef pushClass fill:#ff0,stroke:#000
+linkStyle default stroke:#aaa,stroke-width:4px,color:red,font-size:1.5em;
+subgraph &quot;sg_1v1 stratum 0&quot;
+    1v1[\&quot;(1v1) &lt;tt&gt;source_iter(vec! [0])&lt;/tt&gt;&quot;/]:::pullClass
+    8v1[\&quot;(8v1) &lt;tt&gt;map(| v | (v, ()))&lt;/tt&gt;&quot;/]:::pullClass
+    6v1[\&quot;(6v1) &lt;tt&gt;join()&lt;/tt&gt;&quot;/]:::pullClass
+    7v1[\&quot;(7v1) &lt;tt&gt;flat_map(| (src, ((), dst)) | [src, dst])&lt;/tt&gt;&quot;/]:::pullClass
+    4v1[\&quot;(4v1) &lt;tt&gt;merge()&lt;/tt&gt;&quot;/]:::pullClass
+    5v1[/&quot;(5v1) &lt;tt&gt;tee()&lt;/tt&gt;&quot;\]:::pushClass
+    15v1[&quot;(15v1) &lt;tt&gt;handoff&lt;/tt&gt;&quot;]:::otherClass
+    15v1---&gt;8v1
+    1v1--0---&gt;4v1
+    8v1--0---&gt;6v1
+    6v1---&gt;7v1
+    7v1--1---&gt;4v1
+    4v1---&gt;5v1
+    5v1--0---&gt;15v1
+end
+subgraph &quot;sg_2v1 stratum 0&quot;
+    2v1[\&quot;(2v1) &lt;tt&gt;source_stream(pairs_recv)&lt;/tt&gt;&quot;/]:::pullClass
+    3v1[/&quot;(3v1) &lt;tt&gt;tee()&lt;/tt&gt;&quot;\]:::pushClass
+    9v1[/&quot;(9v1) &lt;tt&gt;flat_map(| (src, dst) | [src, dst])&lt;/tt&gt;&quot;\]:::pushClass
+    10v1[/&quot;(10v1) &lt;tt&gt;tee()&lt;/tt&gt;&quot;\]:::pushClass
+    2v1---&gt;3v1
+    3v1--0---&gt;9v1
+    9v1---&gt;10v1
+end
+subgraph &quot;sg_3v1 stratum 1&quot;
+    12v1[/&quot;(12v1) &lt;tt&gt;unique()&lt;/tt&gt;&quot;\]:::pushClass
+    13v1[/&quot;(13v1) &lt;tt&gt;for_each(| v | println! (&amp;quot;Received vertex: {}&amp;quot;, v))&lt;/tt&gt;&quot;\]:::pushClass
+    12v1---&gt;13v1
+end
+subgraph &quot;sg_4v1 stratum 1&quot;
+    11v1[\&quot;(11v1) &lt;tt&gt;difference()&lt;/tt&gt;&quot;/]:::pullClass
+    14v1[/&quot;(14v1) &lt;tt&gt;for_each(| v | println! (&amp;quot;unreached_vertices vertex: {}&amp;quot;, v))&lt;/tt&gt;&quot;\]:::pushClass
+    11v1---&gt;14v1
+end
+3v1--1---&gt;16v1
+5v1--1---&gt;18v1
+10v1--0---&gt;17v1
+10v1--1---&gt;19v1
+16v1[&quot;(16v1) &lt;tt&gt;handoff&lt;/tt&gt;&quot;]:::otherClass
+16v1--1---&gt;6v1
+17v1[&quot;(17v1) &lt;tt&gt;handoff&lt;/tt&gt;&quot;]:::otherClass
+17v1--pos---&gt;11v1
+18v1[&quot;(18v1) &lt;tt&gt;handoff&lt;/tt&gt;&quot;]:::otherClass
+18v1==neg===o11v1
+19v1[&quot;(19v1) &lt;tt&gt;handoff&lt;/tt&gt;&quot;]:::otherClass
+19v1===o12v1
+</pre>
+<p>If you look carefully, you'll see two subgraphs labeled with <code>stratum 0</code>, and two with
+<code>stratum 1</code>. The reason the strata were broken into subgraphs has nothing to do with
+correctness, but rather the way that Hydroflow graphs are compiled and scheduled, as 
+discussed in the chapter on <a href="./architecture.html">Architecture</a>.</p>
+<p>All the subgraphs labeled <code>stratum 0</code> are run first to completion, 
+and then all the subgraphs labeled <code>stratum 1</code> are run. This captures the requirements of the <code>unique</code> and <code>difference</code> operators used in the lower subgraphs: each has to wait for its full inputs before it can start producing output. Note
+how the <code>difference</code> operator has two inputs (labeled <code>pos</code> and <code>neg</code>), and only the <code>neg</code> input shows up as blocking (with the bold edge ending in a ball).</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="example_5_reachability.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next" href="example_7_echo_server.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="example_5_reachability.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next" href="example_7_echo_server.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="mermaid.min.js"></script>
+        <script src="mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["UnionFind"],"type":["UnionFindArrayMap","UnionFindBTreeMap","UnionFindHashMap","UnionFindOptionMap","UnionFindSingletonMap","UnionFindVec"]};

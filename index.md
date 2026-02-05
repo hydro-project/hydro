@@ -1,0 +1,7 @@
+---
+---
+- [Main website (hydro.run) 🔗](https://hydro.run)
+- [Github Repository 🔗](https://github.com/hydro-project/hydro)
+- [Design Docs]({{ "/design_docs/" | prepend: site.github.url | replace: 'https://', '//' }})
+- [Benchmark History]({{ "/bench/" | prepend: site.github.url | replace: 'https://', '//' }})
+- [Latest Benchmarks]({{ "/criterion/report/" | prepend: site.github.url | replace: 'https://', '//' }})

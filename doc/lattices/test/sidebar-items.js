@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["cartesian_power","check_all","check_atomize_each","check_lattice_bimorphism","check_lattice_default_is_bot","check_lattice_is_bot","check_lattice_is_top","check_lattice_morphism","check_lattice_ord","check_lattice_properties","check_partial_ord_properties"]};

@@ -1,0 +1,39 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Variadic patterns macro."><title>var_args in variadics - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../static.files/rustdoc-b7b9f40b.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="variadics" data-themes="" data-resource-suffix="" data-rustdoc-version="1.95.0-nightly (db3e99bba 2026-02-04)" data-channel="nightly" data-search-js="search-fb33671b.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-170eb4bf.js" ><script src="../static.files/storage-f9617a14.js"></script><script defer src="sidebar-items.js"></script><script defer src="../static.files/main-12f88f4f.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-044be391.svg"></head><body class="rustdoc macro"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><rustdoc-topbar><h2><a href="#">var_args</a></h2></rustdoc-topbar><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../variadics/index.html">variadics</a><span class="version">0.0.10</span></h2></div><div class="sidebar-elems"><div id="rustdoc-modnav"></div></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><div class="width-limiter"><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><div class="rustdoc-breadcrumbs"><a href="index.html">variadics</a></div><h1>Macro <span class="macro">var_<wbr>args</span>&nbsp;<button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/variadics/lib.rs.html#56-64">Source</a> </span></div><pre class="rust item-decl"><code>macro_rules! var_args {
+    () =&gt; { ... };
+    (...$a:pat $(,)? ) =&gt; { ... };
+    (...$a:ty, $( $b:tt )+) =&gt; { ... };
+    ($a:pat $(,)? ) =&gt; { ... };
+    ($a:pat, $( $b:tt )+) =&gt; { ... };
+}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Variadic patterns macro.</p>
+<p>Used to <a href="https://doc.rust-lang.org/reference/patterns.html">pattern-match</a> or “unpack” variadic
+tuples. This is used for function arguments, as well as in <code>match</code>, <code>if/while let ...</code>,
+<code>let ... else</code>, and <code>for</code> expressions.</p>
+<p>Although it may somtimes be possible to use <code>var_expr!</code> in place of this macro, doing so may
+cause confusing errors.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>variadics::{var_args, var_expr, var_type};
+
+<span class="kw">fn </span>my_fn(<span class="macro">var_args!</span>(a, b, c): <span class="macro">var_type!</span>(usize, <span class="kw-2">&amp;</span>str, bool)) {
+    <span class="macro">println!</span>(<span class="string">"{} {} {}"</span>, a, b, c);
+}
+my_fn(<span class="macro">var_expr!</span>(<span class="number">12</span>, <span class="string">"hello"</span>, <span class="bool-val">false</span>));</code></pre></div>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>variadics::{var_args, var_expr};
+
+<span class="kw">let </span>val = <span class="macro">var_expr!</span>(<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(<span class="string">"foo"</span>), <span class="number">2</span>);
+<span class="kw">if let </span><span class="macro">var_args!</span>(<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(item), <span class="number">0</span>..=<span class="number">3</span>) = val {
+    <span class="macro">println!</span>(<span class="string">"{}"</span>, item);
+} <span class="kw">else </span>{
+    <span class="macro">unreachable!</span>();
+}</code></pre></div>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">match </span><span class="macro">var_expr!</span>(<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(<span class="number">100</span>), <span class="number">5</span>) {
+    <span class="macro">var_args!</span>(<span class="bool-val">false</span>, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
+    <span class="macro">var_args!</span>(<span class="bool-val">true</span>, <span class="prelude-val">None</span>, <span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
+    <span class="macro">var_args!</span>(<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(<span class="number">0</span>..=<span class="number">10</span>), <span class="kw">_</span>) =&gt; <span class="macro">unreachable!</span>(),
+    <span class="macro">var_args!</span>(<span class="bool-val">true</span>, <span class="prelude-val">Some</span>(a), b) =&gt; <span class="macro">println!</span>(<span class="string">"{} {}"</span>, a, b),
+}</code></pre></div>
+<p>The “spread” (or “splat”) syntax <code>...</code> can be used to unpack the tail of a variadic. Note that
+unlike with the other macros, this macro (<code>var_args!</code>) only allows the spread syntax on the
+final argument.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">let </span><span class="macro">var_args!</span>(a, b, ...list_c) = <span class="macro">var_expr!</span>(<span class="string">"hi"</span>, <span class="number">100</span>, <span class="number">0.5</span>, <span class="bool-val">false</span>);
+<span class="macro">assert_eq!</span>(<span class="macro">var_expr!</span>(<span class="number">0.5</span>, <span class="bool-val">false</span>), list_c);</code></pre></div></div></details></section></div></main></body></html>
