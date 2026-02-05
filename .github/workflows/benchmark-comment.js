@@ -1,7 +1,7 @@
 /**
  * Shared utilities for managing benchmark results comments in GitHub PRs.
  * 
- * This module provides functions to find, extract, and update benchmark
+ * This module provides a function to find, extract, and update benchmark
  * results in PR comments, maintaining a history of all benchmark runs.
  */
 
