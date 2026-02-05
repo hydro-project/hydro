@@ -154,6 +154,10 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                         command.args(["--target-dir", target_dir.to_str().unwrap()]);
                     }
 
+                    if let Some(rustflags) = params.rustflags.as_ref() {
+                        command.env("RUSTFLAGS", rustflags);
+                    }
+
                     for (k, v) in params.build_env {
                         command.env(k, v);
                     }
