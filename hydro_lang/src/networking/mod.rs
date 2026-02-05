@@ -34,11 +34,24 @@ pub enum NoSer {}
 #[sealed::sealed]
 trait TransportKind {}
 
+#[sealed::sealed]
+#[diagnostic::on_unimplemented(
+    message = "TCP transport requires a failure policy. For example, `TCP.fail_stop()` stops sending messages after a failed connection."
+)]
+trait TcpFailPolicy {}
+
+/// A TCP failure policy that stops sending messages after a failed connection.
+pub enum FailStop {}
+#[sealed::sealed]
+impl TcpFailPolicy for FailStop {}
+
 /// Send items across a length-delimited TCP channel.
-pub enum Tcp {}
+pub struct Tcp<F> {
+    _phantom: PhantomData<F>,
+}
 
 #[sealed::sealed]
-impl TransportKind for Tcp {}
+impl<F: TcpFailPolicy> TransportKind for Tcp<F> {}
 
 /// A networking backend implementation that supports items of type `T`.
 #[sealed::sealed]
@@ -73,6 +86,22 @@ impl<Tr: ?Sized, S: ?Sized> NetworkingConfig<Tr, S> {
     pub fn name(self, name: impl Into<String>) -> NetworkingConfig<Tr, S, String> {
         NetworkingConfig {
             name: Some(name.into()),
+            _phantom: (PhantomData, PhantomData),
+        }
+    }
+}
+
+impl<S: ?Sized> NetworkingConfig<Tcp<()>, S> {
+    /// Configures the TCP transport to stop sending messages after a failed connection.
+    ///
+    /// Note that the Hydro simulator will not simulate connection failures that impact the
+    /// *liveness* of a program. If an output assertion depends on a `fail_stop` channel
+    /// making progress, that channel will not experience a failure that would cause the test to
+    /// block indefinitely. However, any *safety* issues caused by connection failures will still
+    /// be caught, such as a race condition between a failed connection and some other message.
+    pub const fn fail_stop(self) -> NetworkingConfig<Tcp<FailStop>, S> {
+        NetworkingConfig {
+            name: self.name,
             _phantom: (PhantomData, PhantomData),
         }
     }
@@ -117,7 +146,7 @@ where
 }
 
 /// A network channel that uses length-delimited TCP for transport.
-pub const TCP: NetworkingConfig<Tcp, NoSer> = NetworkingConfig {
+pub const TCP: NetworkingConfig<Tcp<()>, NoSer> = NetworkingConfig {
     name: None,
     _phantom: (PhantomData, PhantomData),
 };

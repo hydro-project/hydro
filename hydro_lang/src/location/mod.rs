@@ -403,7 +403,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     /// # // do nothing on each worker
     /// # workers.source_iter(q!(vec![])).for_each(q!(|_: ()| {}));
     /// let cluster_members = p1.source_cluster_members(&workers);
-    /// # cluster_members.entries().send(&p2, TCP.bincode())
+    /// # cluster_members.entries().send(&p2, TCP.fail_stop().bincode())
     /// // if there are 4 members in the cluster, we would see a join event for each
     /// // { MemberId::<Worker>(0): [MembershipEvent::Join], MemberId::<Worker>(2): [MembershipEvent::Join], ... }
     /// # }, |mut stream| async move {

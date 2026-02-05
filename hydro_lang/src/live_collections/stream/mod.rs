@@ -2480,7 +2480,7 @@ mod tests {
         let numbers = first_node.source_iter(q!(0..10));
         let out_port = numbers
             .map(q!(|n| SendOverNetwork { n }))
-            .send(&second_node, TCP.bincode())
+            .send(&second_node, TCP.fail_stop().bincode())
             .send_bincode_external(&external);
 
         let nodes = flow
