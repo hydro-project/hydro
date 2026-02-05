@@ -56,7 +56,7 @@ expression: built.ir()
                                                                                                             left: Batch {
                                                                                                                 inner: Enumerate {
                                                                                                                     input: Map {
-                                                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < & str , std :: string :: String > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | s | s . to_string () }),
+                                                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < & str , std :: string :: String > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | s | s . to_owned () }),
                                                                                                                         input: Source {
                                                                                                                             source: Iter(
                                                                                                                                 stageleft :: runtime_support :: type_hint :: < std :: vec :: Vec < & str > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; vec ! ["abc" , "abc" , "xyz" , "abc"] }),
