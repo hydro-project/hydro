@@ -69,6 +69,19 @@ async function postBenchmarkComment(github, context, artifactId) {
       updatedHistory = existingHistory ? `${newRunEntry}\n${existingHistory}` : newRunEntry;
     }
     
+    // Mark any remaining "In Progress" runs as cancelled since new runs cancel previous ones
+    // Split into lines to avoid replacing the current run if it's in progress
+    const lines = updatedHistory.split('\n');
+    const processedLines = lines.map((line, index) => {
+      // Skip the first line if this is a new run (not completion) to keep current run as "In Progress"
+      if (!isCompletion && index === 0 && line.includes('In Progress ⏳')) {
+        return line;
+      }
+      // Replace all other "In Progress" entries with "Cancelled"
+      return line.replace(/- (\[Run #\d+\]\([^)]+\)) - In Progress ⏳/, '- $1 - ❌ Cancelled');
+    });
+    updatedHistory = processedLines.join('\n');
+    
     // Format the complete comment body with status and run history
     const updatedBody = `## 📊 Benchmark Results\n\n${status}\n\n### Run History:\n${updatedHistory}\n\n<sub>Last updated: ${new Date().toISOString()}</sub>`;
 
