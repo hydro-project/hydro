@@ -390,8 +390,91 @@ where
 #[cfg(test)]
 mod test {
     use futures_util::{SinkExt, StreamExt};
+    use tokio_util::sync::PollSendError;
 
     use super::*;
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn stream_drives_initialization() {
+        let local = tokio::task::LocalSet::new();
+        local
+            .run_until(async {
+                let (init_lazy_send, init_lazy_recv) = tokio::sync::oneshot::channel::<()>();
+
+                let sink_source = LazySinkSource::new(async move {
+                    let () = init_lazy_recv.await.unwrap();
+                    let (send, recv) = tokio::sync::mpsc::channel(1);
+                    let sink = tokio_util::sync::PollSender::new(send);
+                    let stream = tokio_stream::wrappers::ReceiverStream::new(recv);
+                    Ok::<_, PollSendError<_>>((stream, sink))
+                });
+
+                let (mut sink, mut stream) = sink_source.split();
+
+                // Ensures stream starts the lazy.
+                let (stream_init_send, stream_init_recv) = tokio::sync::oneshot::channel::<()>();
+                let stream_task = tokio::task::spawn_local(async move {
+                    stream_init_send.send(()).unwrap();
+                    (stream.next().await.unwrap(), stream.next().await.unwrap())
+                });
+                let sink_task = tokio::task::spawn_local(async move {
+                    stream_init_recv.await.unwrap();
+                    SinkExt::send(&mut sink, "test1").await.unwrap();
+                    SinkExt::send(&mut sink, "test2").await.unwrap();
+                });
+
+                // finish the future.
+                init_lazy_send.send(()).unwrap();
+
+                tokio::task::yield_now().await;
+
+                assert!(sink_task.is_finished());
+                assert_eq!(("test1", "test2"), stream_task.await.unwrap());
+                sink_task.await.unwrap();
+            })
+            .await;
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn sink_drives_initialization() {
+        let local = tokio::task::LocalSet::new();
+        local
+            .run_until(async {
+                let (init_lazy_send, init_lazy_recv) = tokio::sync::oneshot::channel::<()>();
+
+                let sink_source = LazySinkSource::new(async move {
+                    let () = init_lazy_recv.await.unwrap();
+                    let (send, recv) = tokio::sync::mpsc::channel(1);
+                    let sink = tokio_util::sync::PollSender::new(send);
+                    let stream = tokio_stream::wrappers::ReceiverStream::new(recv);
+                    Ok::<_, PollSendError<_>>((stream, sink))
+                });
+
+                let (mut sink, mut stream) = sink_source.split();
+
+                // Ensures stream starts the lazy.
+                let (sink_init_send, sink_init_recv) = tokio::sync::oneshot::channel::<()>();
+                let stream_task = tokio::task::spawn_local(async move {
+                    sink_init_recv.await.unwrap();
+                    (stream.next().await.unwrap(), stream.next().await.unwrap())
+                });
+                let sink_task = tokio::task::spawn_local(async move {
+                    sink_init_send.send(()).unwrap();
+                    SinkExt::send(&mut sink, "test1").await.unwrap();
+                    SinkExt::send(&mut sink, "test2").await.unwrap();
+                });
+
+                // finish the future.
+                init_lazy_send.send(()).unwrap();
+
+                tokio::task::yield_now().await;
+
+                assert!(sink_task.is_finished());
+                assert_eq!(("test1", "test2"), stream_task.await.unwrap());
+                sink_task.await.unwrap();
+            })
+            .await;
+    }
 
     #[tokio::test(flavor = "current_thread")]
     async fn tcp_stream_drives_initialization() {
@@ -510,11 +593,9 @@ mod test {
                 let mut client_rx = FramedRead::new(client_rx, LengthDelimitedCodec::new());
 
                 // try to be really sure that the effects of the above initialization completing are propagated.
-                for _ in 0..20 {
-                    tokio::task::yield_now().await
-                }
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
-                assert!(sink_task.is_finished()); // We haven't sent anything yet, so the stream should definitely not be resolved now.
+                assert!(sink_task.is_finished()); // Sink should have sent its item.
 
                 assert_eq!(&client_rx.next().await.unwrap().unwrap()[..], b"test2");
 
