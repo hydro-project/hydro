@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["aggregate_bench_results","bench_client","compute_throughput_latency","pretty_print_bench_results"],"mod":["rolling_average"],"struct":["AggregateBenchResult","BenchResult","SerializableHistogramWrapper"]};
+window.SIDEBAR_ITEMS = {"fn":["aggregate_bench_results","bench_client","compute_throughput_latency","pretty_print_bench_results"],"mod":["rolling_average"],"struct":["BenchResult","SerializableHistogramWrapper"]};
