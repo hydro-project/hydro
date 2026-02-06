@@ -11,7 +11,6 @@
     "rust-analyzer.rustfmt.extraArgs": [
         "+nightly"
     ],
-    "rust-analyzer.cargo.features": "all",
     "editor.semanticTokenColorCustomizations": {
         "enabled": true,
         "rules": {
