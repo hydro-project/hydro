@@ -178,7 +178,7 @@ impl ProcessBuilderContext<'_> {
     pub fn new_inbox<T: 'static>(
         &mut self,
         interface: InterfaceName,
-    ) -> UnboundedReceiverStream<(T, Address)> {
+    ) -> futures::stream::Fuse<UnboundedReceiverStream<(T, Address)>> {
         let (sender, receiver) = unbounded_channel::<(T, Address)>();
         self.inboxes.insert(
             interface,

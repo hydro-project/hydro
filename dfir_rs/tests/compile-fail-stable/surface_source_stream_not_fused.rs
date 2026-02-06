@@ -1,0 +1,1 @@
+../compile-fail/surface_source_stream_not_fused.rs

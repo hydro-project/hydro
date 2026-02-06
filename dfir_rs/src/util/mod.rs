@@ -31,7 +31,7 @@ use std::net::SocketAddr;
 use std::num::NonZeroUsize;
 use std::task::{Context, Poll};
 
-use futures::Stream;
+use futures::{Stream, StreamExt};
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
 #[cfg(unix)]
@@ -56,10 +56,10 @@ pub enum PersistenceKeyed<K, V> {
 /// Returns a channel as a (1) unbounded sender and (2) unbounded receiver `Stream` for use in DFIR.
 pub fn unbounded_channel<T>() -> (
     tokio::sync::mpsc::UnboundedSender<T>,
-    tokio_stream::wrappers::UnboundedReceiverStream<T>,
+    futures::stream::Fuse<tokio_stream::wrappers::UnboundedReceiverStream<T>>,
 ) {
     let (send, recv) = tokio::sync::mpsc::unbounded_channel();
-    let recv = tokio_stream::wrappers::UnboundedReceiverStream::new(recv);
+    let recv = tokio_stream::wrappers::UnboundedReceiverStream::new(recv).fuse();
     (send, recv)
 }
 
