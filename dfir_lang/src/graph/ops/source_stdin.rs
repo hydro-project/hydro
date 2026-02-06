@@ -48,7 +48,7 @@ pub const SOURCE_STDIN: OperatorConstraints = OperatorConstraints {
                 use #root::tokio::io::AsyncBufReadExt;
                 let reader = #root::tokio::io::BufReader::new(#root::tokio::io::stdin());
                 let stdin_lines = #root::tokio_stream::wrappers::LinesStream::new(reader.lines());
-                stdin_lines
+                #root::futures::stream::StreamExt::fuse(stdin_lines)
             };
         };
         let write_iterator = quote_spanned! {op_span=>

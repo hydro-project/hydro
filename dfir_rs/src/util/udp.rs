@@ -3,7 +3,7 @@
 use std::net::SocketAddr;
 
 use bytes::Bytes;
-use futures::stream::{SplitSink, SplitStream};
+use futures::stream::{SplitSink, SplitStream, StreamExt};
 use tokio::net::UdpSocket;
 use tokio_util::codec::length_delimited::LengthDelimitedCodec;
 use tokio_util::codec::{BytesCodec, Decoder, Encoder, LinesCodec};
@@ -12,7 +12,7 @@ use tokio_util::udp::UdpFramed;
 /// A framed UDP `Sink` (sending).
 pub type UdpFramedSink<Codec, Item> = SplitSink<UdpFramed<Codec>, (Item, SocketAddr)>;
 /// A framed UDP `Stream` (receiving).
-pub type UdpFramedStream<Codec> = SplitStream<UdpFramed<Codec>>;
+pub type UdpFramedStream<Codec> = futures::stream::Fuse<SplitStream<UdpFramed<Codec>>>;
 /// Returns a UDP `Stream`, `Sink`, and address for the given socket, using the given `Codec` to
 /// handle delineation between inputs/outputs.
 pub fn udp_framed<Codec, Item>(
@@ -28,8 +28,8 @@ where
 {
     let framed = UdpFramed::new(socket, codec);
     let addr = framed.get_ref().local_addr().unwrap();
-    let split = futures::stream::StreamExt::split(framed);
-    (split.0, split.1, addr)
+    let split = StreamExt::split(framed);
+    (split.0, split.1.fuse(), addr)
 }
 
 /// A UDP length-delimited frame `Sink` (sending).

@@ -55,8 +55,8 @@ pub const SOURCE_STREAM: OperatorConstraints = OperatorConstraints {
             // TODO(mingwei): use `::std::pin::pin!(..)`?
             let mut #stream_ident = {
                 #[inline(always)]
-                fn check_stream<Stream: #root::futures::stream::Stream<Item = Item> + ::std::marker::Unpin, Item>(stream: Stream)
-                    -> impl #root::futures::stream::Stream<Item = Item> + ::std::marker::Unpin
+                fn check_stream<Stream: #root::futures::stream::Stream<Item = Item> + #root::futures::stream::FusedStream + ::std::marker::Unpin, Item>(stream: Stream)
+                    -> impl #root::futures::stream::Stream<Item = Item> + #root::futures::stream::FusedStream + ::std::marker::Unpin
                 {
                     stream
                 }

@@ -3,6 +3,7 @@ use std::net::SocketAddr;
 
 use dfir_rs::dfir_syntax;
 use dfir_rs::scheduled::graph::Dfir;
+use futures::StreamExt;
 use tokio::io::AsyncBufReadExt;
 use tokio::net::UdpSocket;
 use tokio_stream::wrappers::LinesStream;
@@ -18,7 +19,7 @@ pub(crate) async fn run_detector(opts: Opts, peer_list: Vec<String>) {
 
     // We provide a command line for users to type waits-for edges (u32,u32).
     let reader = tokio::io::BufReader::new(tokio::io::stdin());
-    let stdin_lines = LinesStream::new(reader.lines());
+    let stdin_lines = LinesStream::new(reader.lines()).fuse();
 
     let mut hf: Dfir = dfir_syntax! {
         // fetch peers from file, convert ip:port to a SocketAddr, and tee

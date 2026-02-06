@@ -6,7 +6,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 use crate::{Timestamp, Token};
 
 pub(crate) fn rga_minimal(
-    input_recv: UnboundedReceiverStream<(Token, Timestamp)>,
+    input_recv: futures::stream::Fuse<UnboundedReceiverStream<(Token, Timestamp)>>,
     rga_send: UnboundedSender<(Token, Timestamp)>,
     _list_send: UnboundedSender<(Timestamp, Timestamp)>,
 ) -> Dfir<'static> {
