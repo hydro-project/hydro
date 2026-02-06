@@ -9,9 +9,6 @@ use hydro_lang::prelude::*;
 use serde::{Deserialize, Serialize};
 
 pub mod rolling_average;
-use rolling_average::RollingAverage;
-
-use crate::membership::track_membership;
 
 pub struct SerializableHistogramWrapper {
     pub histogram: Rc<RefCell<Histogram<u64>>>,
@@ -38,9 +35,10 @@ impl<'a> Deserialize<'a> for SerializableHistogramWrapper {
     }
 }
 
-pub struct BenchResult<'a, Client> {
-    pub latency_histogram: Singleton<Rc<RefCell<Histogram<u64>>>, Cluster<'a, Client>, Unbounded>,
-    pub throughput: Singleton<RollingAverage, Cluster<'a, Client>, Unbounded>,
+pub struct BenchResult<L> {
+    pub latency_histogram:
+        Stream<Rc<RefCell<Histogram<u64>>>, L, Unbounded, TotalOrder, ExactlyOnce>,
+    pub throughput: Stream<usize, L, Unbounded, TotalOrder, ExactlyOnce>,
 }
 
 /// Benchmarks transactional workloads by concurrently submitting workloads
@@ -128,240 +126,181 @@ where
     }
 }
 
-/// Computes the throughput and latency of transactions.
+/// Computes the throughput and latency of transactions and outputs it every `interval_millis`.
+/// An output is produced even if there are no transactions.
 ///
 /// # Non-Determinism
 /// This function uses non-deterministic wall-clock windows for measuring throughput.
 pub fn compute_throughput_latency<'a, Client: 'a>(
     clients: &Cluster<'a, Client>,
     latencies: Stream<Duration, Cluster<'a, Client>, Unbounded, NoOrder>,
+    interval_millis: u64,
     nondet_measurement_window: NonDet,
-) -> BenchResult<'a, Client> {
-    // 1. Calculate latencies
-    let latency_histogram = latencies.clone().fold(
-        q!(move || Rc::new(RefCell::new(Histogram::<u64>::new(3).unwrap()))),
-        q!(
-            move |latencies, latency| {
-                latencies
-                    .borrow_mut()
-                    .record(latency.as_nanos() as u64)
-                    .unwrap();
-            },
-            commutative = ManualProof(
-                /* adding elements to histogram is commutative */
-            )
-        ),
+) -> BenchResult<Cluster<'a, Client>> {
+    let punctuation = clients.source_interval(
+        q!(Duration::from_millis(interval_millis)),
+        nondet_measurement_window,
     );
 
-    // 2. Calculate throughput
-    let throughput_batch = sliced! {
-        let latencies_batch = use(latencies, nondet_measurement_window);
-        latencies_batch
-            .count()
-            .into_stream()
-    };
+    let (interval_throughput, interval_latency) = sliced! {
+        let punctuation = use(punctuation, nondet_measurement_window);
+        let latencies = use(latencies, nondet_measurement_window);
+        let mut latency_histogram = use::state(|l| l.singleton(q!(Rc::new(RefCell::new(Histogram::<u64>::new(3).unwrap())))));
+        let mut throughput = use::state(|l| l.singleton(q!(0usize)));
 
-    // Tuple of (batch_size, bool), where the bool is true if the existing throughputs should be placed in its own window, and a new window should be created
-    let punctuated_throughput = throughput_batch
-        .map(q!(|batch_size| (batch_size, false)))
-        .merge_ordered(
-            clients
-                .source_interval(q!(Duration::from_secs(1)), nondet_measurement_window)
-                .map(q!(|_| (0, true))),
-            nondet_measurement_window,
+        let punctuation_option = punctuation.first();
+        let batched_latency_histogram = latencies.clone().fold(
+            q!(move || Histogram::<u64>::new(3).unwrap()),
+            q!(move |latencies, latency| {
+                    latencies
+                        .record(latency.as_nanos() as u64)
+                        .unwrap();
+                },
+                commutative = ManualProof(
+                    /* adding elements to histogram is commutative */
+                )
+            ),
         );
 
-    let throughput = punctuated_throughput
-        .fold(
-            q!(|| (0, { RollingAverage::new() })),
-            q!(|(total, stats), (batch_size, reset)| {
-                if reset {
-                    if *total > 0 {
-                        stats.add_sample(*total as f64);
-                    }
+        // Output every punctuation
+        let interval_throughput = throughput.clone().filter_if_some(punctuation_option.clone());
+        let interval_latency = latency_histogram.clone().filter_if_some(punctuation_option.clone());
 
-                    *total = 0;
-                } else {
-                    *total += batch_size;
-                }
-            }),
-        )
-        .map(q!(|(_, stats)| stats));
+        let batched_throughput = latencies.count();
+        // Clear every punctuation
+        let prev_throughput = throughput.filter_if_none(punctuation_option.clone());
+        // Merge new values
+        throughput = batched_throughput
+            .clone()
+            .zip(prev_throughput.clone())
+            .map(q!(|(new, old)| new + old))
+            .unwrap_or(batched_throughput.clone());
+
+        // Clear every punctuation
+        let prev_histogram = latency_histogram.filter_if_none(punctuation_option);
+        // Merge new values
+        latency_histogram = batched_latency_histogram
+            .clone()
+            .zip(prev_histogram.clone())
+            .map(q!(|(new, old)| {
+                old.borrow_mut().add(new).expect("Error adding value to histogram");
+                old
+            }))
+            .unwrap_or(batched_latency_histogram.map(q!(|histogram| Rc::new(RefCell::new(histogram)))));
+
+        (interval_throughput.into_stream(), interval_latency.into_stream())
+    };
 
     BenchResult {
-        latency_histogram,
-        throughput,
+        latency_histogram: interval_latency,
+        throughput: interval_throughput,
     }
 }
 
-/// `throughput`: usize is number of clients
-pub struct AggregateBenchResult<'a, Aggregator> {
-    pub throughput: Stream<
-        (RollingAverage, usize),
-        Process<'a, Aggregator>,
-        Unbounded,
-        TotalOrder,
-        ExactlyOnce,
-    >,
-    pub latency:
-        Stream<Histogram<u64>, Process<'a, Aggregator>, Unbounded, TotalOrder, ExactlyOnce>,
-}
-
 /// Returns transaction throughput and latency results.
+/// Aggregates results from clients and outputs every `output_interval_millis`.
+///
+/// Note: Inconsistent windowing may result in unexpected outputs unless `output_interval_millis` >> `interval_millis`.
 pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
-    results: BenchResult<'a, Client>,
+    results: BenchResult<Cluster<'a, Client>>,
     aggregator: &Process<'a, Aggregator>,
-    clients: &Cluster<'a, Client>,
-    interval_millis: u64,
-) -> AggregateBenchResult<'a, Aggregator> {
-    let nondet_client_count = nondet!(/** client count is stable in bench */);
+    output_interval_millis: u64,
+) -> BenchResult<Process<'a, Aggregator>> {
     let nondet_sampling = nondet!(/** non-deterministic samping only affects logging */);
-    let print_tick = aggregator.tick();
-    let client_members = aggregator.source_cluster_members(clients);
-    let client_count = track_membership(client_members)
-        .snapshot(&print_tick, nondet_client_count)
-        .filter(q!(|b| *b))
-        .key_count();
+    let punctuation = aggregator.source_interval(
+        q!(Duration::from_millis(output_interval_millis)),
+        nondet_sampling,
+    );
 
-    let keyed_throughputs = results
-        .throughput
-        .sample_every(q!(Duration::from_millis(interval_millis)), nondet_sampling)
-        .send(aggregator, TCP.bincode());
+    let a_throughputs = results.throughput.send(aggregator, TCP.bincode()).values();
 
-    let latest_throughputs = keyed_throughputs.reduce(q!(
-        |combined, new| {
-            *combined = new;
-        },
-        idempotent = ManualProof(/* assignment is idempotent */)
-    ));
-
-    let clients_with_throughputs_count = latest_throughputs
-        .clone()
-        .snapshot(&print_tick, nondet_client_count)
-        // Remove throughputs from clients that have yet to actually record process
-        .filter(q!(|throughputs| throughputs.sample_mean() > 0.0))
-        .key_count();
-
-    let waiting_for_clients = client_count
-        .clone()
-        .zip(clients_with_throughputs_count)
-        .filter_map(q!(|(num_clients, num_clients_with_throughput)| {
-            if num_clients > num_clients_with_throughput {
-                Some(num_clients - num_clients_with_throughput)
-            } else {
-                None
-            }
-        }));
-
-    waiting_for_clients
-        .clone()
-        .all_ticks()
-        .sample_every(q!(Duration::from_millis(interval_millis)), nondet_sampling)
-        .assume_retries(nondet!(/** extra logs due to duplicate samples are okay */))
-        .for_each(q!(|num_clients_not_responded| println!(
-            "Awaiting {} clients",
-            num_clients_not_responded
-        )));
-
-    let combined_throughputs = sliced! {
-        let latest_throughput_snapshot = use(latest_throughputs, nondet_sampling);
-        latest_throughput_snapshot
-            .values()
-            .reduce(q!(|combined, new| {
-                combined.add(new);
-            }, commutative = ManualProof(/* rolling average is commutative */)))
-    };
-
-    let aggregate_throughput = combined_throughputs
-        .sample_every(q!(Duration::from_millis(interval_millis)), nondet_sampling)
-        .batch(&print_tick, nondet_client_count)
-        .cross_singleton(client_count.clone())
-        .filter_if_none(waiting_for_clients.clone())
-        .all_ticks()
-        .assume_retries(nondet!(/** extra logs due to duplicate samples are okay */))
-        .filter(q!(|(throughputs, _num_client_machines)| throughputs
-            .sample_count()
-            > 2));
-
-    let keyed_latencies = results
+    let a_latencies = results
         .latency_histogram
-        .sample_every(q!(Duration::from_millis(interval_millis)), nondet_sampling)
         .map(q!(|latencies| {
             SerializableHistogramWrapper {
                 histogram: latencies,
             }
         }))
-        .send(aggregator, TCP.bincode());
+        .send(aggregator, TCP.bincode())
+        .values()
+        .map(q!(|wrapper| wrapper.histogram));
 
-    let most_recent_histograms = keyed_latencies
-        .map(q!(|histogram| histogram.histogram.borrow().clone()))
-        .reduce(q!(
-            |combined, new| {
-                // get the most recent histogram for each client
-                *combined = new;
-            },
-            idempotent = ManualProof(/* assignment is idempotent */)
-        ));
+    let (combined_throughputs, combined_latencies) = sliced! {
+        let punctuation = use(punctuation, nondet_sampling);
+        let a_throughputs = use(a_throughputs, nondet_sampling);
+        let a_latencies = use(a_latencies, nondet_sampling);
+        let mut latency_histogram = use::state(|l| l.singleton(q!(Rc::new(RefCell::new(Histogram::<u64>::new(3).unwrap())))));
+        let mut throughput = use::state(|l| l.singleton(q!(0usize)));
 
-    let combined_latencies = sliced! {
-        let latencies = use(most_recent_histograms, nondet_sampling);
-        latencies
-            .values()
-            .reduce(q!(|combined, new| {
-                combined.add(new).unwrap();
-            }, commutative = ManualProof(/* combining histories is commutative */)))
+        let punctuation_option = punctuation.first();
+
+        // Output every punctuation
+        let interval_throughput = throughput.clone().filter_if_some(punctuation_option.clone());
+        let interval_latency = latency_histogram.clone().filter_if_some(punctuation_option.clone());
+
+        // Clear every punctuation
+        let prev_throughput = throughput.filter_if_none(punctuation_option.clone()).into_stream();
+        // Merge new values
+        throughput = a_throughputs
+            .chain(prev_throughput)
+            .fold(q!(|| 0usize), q!(|curr, new| {
+                    *curr += new;
+                },
+                commutative = ManualProof(/* Addition is commutative */)
+            ));
+
+        // Merge new values
+        let merged_new_histograms = a_latencies
+            .reduce(
+                q!(|curr, new| {
+                    curr.borrow_mut().add(&*new.borrow_mut()).expect("Error adding value to histogram");
+                },
+                commutative = ManualProof(/* Merge is commutative */)
+            ));
+        // Clear every punctuation
+        latency_histogram = latency_histogram
+            .zip(merged_new_histograms.into_singleton())
+            .zip(punctuation_option.into_singleton())
+            .map(q!(|((old, new), reset)| {
+                if reset.is_some() {
+                    // Use replace instead of clear, since interval_latency is pointing to the Histogram too
+                    old.replace(Histogram::<u64>::new(3).unwrap());
+                }
+                if let Some(new) = new {
+                    old.borrow_mut().add(&*new.borrow_mut()).expect("Error adding value to histogram");
+                }
+                old
+            }));
+
+        (interval_throughput.into_stream(), interval_latency.into_stream())
     };
 
-    let aggregate_latency = combined_latencies
-        .sample_every(q!(Duration::from_millis(interval_millis)), nondet_sampling)
-        .batch(&print_tick, nondet_client_count)
-        .filter_if_none(waiting_for_clients)
-        .all_ticks()
-        .assume_retries(nondet!(/** extra logs due to duplicate samples are okay */));
-
-    AggregateBenchResult {
-        throughput: aggregate_throughput,
-        latency: aggregate_latency,
+    BenchResult {
+        throughput: combined_throughputs,
+        latency_histogram: combined_latencies,
     }
 }
 
 /// Pretty prints output of `aggregate_bench_results`.
 ///
-/// Prints the lower, median, and upper 2 std results for throughput,
-/// and the 50th, 99th, and 99.9th percentile latencies.
+/// Prints the throughput, and the 50th, 99th, and 99.9th percentile latencies.
 pub fn pretty_print_bench_results<'a, Aggregator>(
-    aggregate_results: AggregateBenchResult<'a, Aggregator>,
-    interval_millis: u64,
+    aggregate_results: BenchResult<Process<'a, Aggregator>>,
 ) {
+    aggregate_results.throughput.for_each(q!(|throughput| {
+        println!("Throughput: {:.2} requests/s", throughput);
+    }));
     aggregate_results
-        .throughput
-        .filter_map(q!(move |(throughputs, num_client_machines)| {
-            if let Some((lower, upper)) = throughputs.confidence_interval_99() {
-                Some((
-                    lower * num_client_machines as f64,
-                    throughputs.sample_mean() * num_client_machines as f64,
-                    upper * num_client_machines as f64,
-                ))
-            } else {
-                None
-            }
-        }))
-        .for_each(q!(|(lower, mean, upper)| {
-            println!(
-                "Throughput: {:.2} - {:.2} - {:.2} requests/s",
-                lower, mean, upper,
-            );
-        }));
-    aggregate_results
-        .latency
+        .latency_histogram
         .map(q!(move |latencies| (
-            Duration::from_nanos(latencies.value_at_quantile(0.5)).as_micros() as f64
-                / interval_millis as f64,
-            Duration::from_nanos(latencies.value_at_quantile(0.99)).as_micros() as f64
-                / interval_millis as f64,
-            Duration::from_nanos(latencies.value_at_quantile(0.999)).as_micros() as f64
-                / interval_millis as f64,
-            latencies.len(),
+            // Convert to milliseconds but include floating point (as_millis is for whole numbers only)
+            Duration::from_nanos(latencies.borrow().value_at_quantile(0.5)).as_micros() as f64
+                / 1000.0,
+            Duration::from_nanos(latencies.borrow().value_at_quantile(0.99)).as_micros() as f64
+                / 1000.0,
+            Duration::from_nanos(latencies.borrow().value_at_quantile(0.999)).as_micros() as f64
+                / 1000.0,
+            latencies.borrow().len(),
         )))
         .for_each(q!(move |(p50, p99, p999, num_samples)| {
             println!(

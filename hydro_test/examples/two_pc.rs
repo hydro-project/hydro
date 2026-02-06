@@ -82,6 +82,7 @@ async fn main() {
         num_participants,
         &clients,
         &client_aggregator,
+        print_result_frequency / 10,
         print_result_frequency,
         hydro_std::bench_client::pretty_print_bench_results,
     );
