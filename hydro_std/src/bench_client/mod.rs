@@ -183,10 +183,7 @@ pub fn compute_throughput_latency<'a, Client: 'a>(
             .clone()
             .zip(prev_histogram.clone())
             .map(q!(|(new, old)| {
-                let result = old.borrow_mut().add(new);
-                if result.is_err() {
-                    panic!("Error adding value to histogram: {:?}", result.err());
-                }
+                old.borrow_mut().add(new).expect("Error adding value to histogram");
                 old
             }))
             .unwrap_or(batched_latency_histogram.map(q!(|histogram| Rc::new(RefCell::new(histogram)))));
@@ -256,10 +253,7 @@ pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
         let merged_new_histograms = a_latencies
             .reduce(
                 q!(|curr, new| {
-                    let result = curr.borrow_mut().add(&*new.borrow_mut());
-                    if result.is_err() {
-                        panic!("Error adding value to histogram: {:?}", result.err());
-                    }
+                    curr.borrow_mut().add(&*new.borrow_mut()).expect("Error adding value to histogram");
                 },
                 commutative = ManualProof(/* Merge is commutative */)
             ));
@@ -273,10 +267,7 @@ pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
                     old.replace(Histogram::<u64>::new(3).unwrap());
                 }
                 if let Some(new) = new {
-                    let result = old.borrow_mut().add(&*new.borrow_mut());
-                    if result.is_err() {
-                        panic!("Error adding value to histogram: {:?}", result.err());
-                    }
+                    old.borrow_mut().add(&*new.borrow_mut()).expect("Error adding value to histogram");
                 }
                 old
             }));
