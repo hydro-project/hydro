@@ -38,7 +38,7 @@ fn broadcast_core<'a, C: 'a>(
     writes: Stream<u32, Cluster<'a, C>, Unbounded, NoOrder>,
 ) -> Stream<u32, Cluster<'a, C>, Unbounded, NoOrder> {
     writes
-        .broadcast(cluster, TCP.bincode(), nondet!(/** TODO */))
+        .broadcast(cluster, TCP.fail_stop().bincode(), nondet!(/** TODO */))
         .values()
 }
 

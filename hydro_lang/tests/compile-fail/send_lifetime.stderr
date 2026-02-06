@@ -5,7 +5,7 @@ error: lifetime may not live long enough
   |         --  -- lifetime `'b` defined here
   |         |
   |         lifetime `'a` defined here
-7 |     p1.source_iter(q!(0..10)).send(p2, TCP.bincode()).for_each(q!(|n| println!("{}", n)));
+7 |     p1.source_iter(q!(0..10)).send(p2, TCP.fail_stop().bincode()).for_each(q!(|n| println!("{}", n)));
   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
   |
   = help: consider adding the following bound: `'b: 'a`
@@ -20,7 +20,7 @@ error: lifetime may not live long enough
   |         --  -- lifetime `'b` defined here
   |         |
   |         lifetime `'a` defined here
-7 |     p1.source_iter(q!(0..10)).send(p2, TCP.bincode()).for_each(q!(|n| println!("{}", n)));
+7 |     p1.source_iter(q!(0..10)).send(p2, TCP.fail_stop().bincode()).for_each(q!(|n| println!("{}", n)));
   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'a` must outlive `'b`
   |
   = help: consider adding the following bound: `'a: 'b`

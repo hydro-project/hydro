@@ -16,7 +16,7 @@ use crate::networking::{NetworkFor, TCP};
 impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     KeyedStream<MemberId<L2>, T, Process<'a, L>, B, O, R>
 {
-    #[deprecated = "use KeyedStream::demux(..., TCP.bincode()) instead"]
+    #[deprecated = "use KeyedStream::demux(..., TCP.fail_stop().bincode()) instead"]
     /// Sends each group of this stream to a specific member of a cluster, with the [`MemberId`] key
     /// identifying the recipient for each group and using [`bincode`] to serialize/deserialize messages.
     ///
@@ -61,7 +61,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     where
         T: Serialize + DeserializeOwned,
     {
-        self.demux(other, TCP.bincode())
+        self.demux(other, TCP.fail_stop().bincode())
     }
 
     /// Sends each group of this stream to a specific member of a cluster, with the [`MemberId`] key
@@ -85,8 +85,8 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// let on_worker: Stream<_, Cluster<_>, _> = numbers
     ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)))
     ///     .into_keyed()
-    ///     .demux(&workers, TCP.bincode());
-    /// # on_worker.send(&p2, TCP.bincode()).entries()
+    ///     .demux(&workers, TCP.fail_stop().bincode());
+    /// # on_worker.send(&p2, TCP.fail_stop().bincode()).entries()
     /// // if there are 4 members in the cluster, each receives one element
     /// // - MemberId::<()>(0): [0]
     /// // - MemberId::<()>(1): [1]
@@ -140,7 +140,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
 impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     KeyedStream<(MemberId<L2>, K), T, Process<'a, L>, B, O, R>
 {
-    #[deprecated = "use KeyedStream::demux(..., TCP.bincode()) instead"]
+    #[deprecated = "use KeyedStream::demux(..., TCP.fail_stop().bincode()) instead"]
     /// Sends each group of this stream to a specific member of a cluster. The input stream has a
     /// compound key where the first element is the recipient's [`MemberId`] and the second element
     /// is a key that will be sent along with the value, using [`bincode`] to serialize/deserialize
@@ -182,7 +182,7 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
     {
-        self.demux(other, TCP.bincode())
+        self.demux(other, TCP.fail_stop().bincode())
     }
 
     /// Sends each group of this stream to a specific member of a cluster. The input stream has a
@@ -202,8 +202,8 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     ///     .source_iter(q!(vec![0, 1, 2, 3]))
     ///     .map(q!(|x| ((hydro_lang::location::MemberId::from_raw_id(x), x), x + 123)))
     ///     .into_keyed();
-    /// let on_worker: KeyedStream<_, _, Cluster<_>, _> = to_send.demux(&workers, TCP.bincode());
-    /// # on_worker.entries().send(&p2, TCP.bincode()).entries()
+    /// let on_worker: KeyedStream<_, _, Cluster<_>, _> = to_send.demux(&workers, TCP.fail_stop().bincode());
+    /// # on_worker.entries().send(&p2, TCP.fail_stop().bincode()).entries()
     /// // if there are 4 members in the cluster, each receives one element
     /// // - MemberId::<()>(0): { 0: [123] }
     /// // - MemberId::<()>(1): { 1: [124] }
@@ -262,7 +262,7 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
 impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     KeyedStream<MemberId<L2>, T, Cluster<'a, L>, B, O, R>
 {
-    #[deprecated = "use KeyedStream::demux(..., TCP.bincode()) instead"]
+    #[deprecated = "use KeyedStream::demux(..., TCP.fail_stop().bincode()) instead"]
     /// Sends each group of this stream at each source member to a specific member of a destination
     /// cluster, with the [`MemberId`] key identifying the recipient for each group and using
     /// [`bincode`] to serialize/deserialize messages.
@@ -317,7 +317,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     where
         T: Serialize + DeserializeOwned,
     {
-        self.demux(other, TCP.bincode())
+        self.demux(other, TCP.fail_stop().bincode())
     }
 
     /// Sends each group of this stream at each source member to a specific member of a destination
@@ -346,8 +346,8 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)))
     ///     .into_keyed();
     /// let destination: Cluster<Destination> = flow.cluster::<Destination>();
-    /// let all_received = to_send.demux(&destination, TCP.bincode()); // KeyedStream<MemberId<Source>, i32, ...>
-    /// # all_received.entries().send(&p2, TCP.bincode()).entries()
+    /// let all_received = to_send.demux(&destination, TCP.fail_stop().bincode()); // KeyedStream<MemberId<Source>, i32, ...>
+    /// # all_received.entries().send(&p2, TCP.fail_stop().bincode()).entries()
     /// # }, |mut stream| async move {
     /// // if there are 4 members in the destination cluster, each receives one message from each source member
     /// // - Destination(0): { Source(0): [0], Source(1): [0], ... }
@@ -412,7 +412,7 @@ impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries>
     KeyedStream<K, V, Cluster<'a, L>, B, O, R>
 {
     #[expect(clippy::type_complexity, reason = "compound key types with ordering")]
-    #[deprecated = "use KeyedStream::send(..., TCP.bincode()) instead"]
+    #[deprecated = "use KeyedStream::send(..., TCP.fail_stop().bincode()) instead"]
     /// "Moves" elements of this keyed stream from a cluster to a process by sending them over the
     /// network, using [`bincode`] to serialize/deserialize messages. The resulting [`KeyedStream`]
     /// has a compound key where the first element is the sender's [`MemberId`] and the second
@@ -475,7 +475,7 @@ impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries>
         K: Serialize + DeserializeOwned,
         V: Serialize + DeserializeOwned,
     {
-        self.send(other, TCP.bincode())
+        self.send(other, TCP.fail_stop().bincode())
     }
 
     #[expect(clippy::type_complexity, reason = "compound key types with ordering")]
@@ -498,8 +498,8 @@ impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries>
     ///     .map(q!(|x| (x, x + 123)))
     ///     .into_keyed();
     /// let destination_process = flow.process::<Destination>();
-    /// let all_received = to_send.send(&destination_process, TCP.bincode()); // KeyedStream<(MemberId<Source>, i32), i32, ...>
-    /// # all_received.entries().send(&p2, TCP.bincode())
+    /// let all_received = to_send.send(&destination_process, TCP.fail_stop().bincode()); // KeyedStream<(MemberId<Source>, i32), i32, ...>
+    /// # all_received.entries().send(&p2, TCP.fail_stop().bincode())
     /// # }, |mut stream| async move {
     /// // if there are 4 members in the source cluster, the destination process receives four messages from each source member
     /// // {

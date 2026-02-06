@@ -277,7 +277,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
             ((slot, ballot), payload)
         ))))
         .all_ticks()
-        .demux(proxy_leaders, TCP.bincode())
+        .demux(proxy_leaders, TCP.fail_stop().bincode())
         .values()
         .atomic(proxy_leader_tick);
 
@@ -305,7 +305,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
             p2as
         }))
         .end_atomic()
-        .demux(acceptors, TCP.bincode())
+        .demux(acceptors, TCP.fail_stop().bincode())
         .values();
 
     let (a_log, a_to_proxy_leaders_p2b) = acceptor_p2(
@@ -336,7 +336,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
     let pl_failed_p2b_to_proposer = fails
         .map(q!(|(_, ballot)| (ballot.proposer_id.clone(), ballot)))
         .inspect(q!(|(_, ballot)| println!("Failed P2b: {:?}", ballot)))
-        .demux(proposers, TCP.bincode())
+        .demux(proposers, TCP.fail_stop().bincode())
         .values();
 
     (
