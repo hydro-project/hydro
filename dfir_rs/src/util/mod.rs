@@ -66,8 +66,9 @@ pub fn unbounded_channel<T>() -> (
 /// Returns an unsync channel as a (1) sender and (2) receiver `Stream` for use in DFIR.
 pub fn unsync_channel<T>(
     capacity: Option<NonZeroUsize>,
-) -> (unsync::mpsc::Sender<T>, unsync::mpsc::Receiver<T>) {
-    unsync::mpsc::channel(capacity)
+) -> (unsync::mpsc::Sender<T>, futures::stream::Fuse<unsync::mpsc::Receiver<T>>) {
+    let (sender, receiver) = unsync::mpsc::channel(capacity);
+    (sender, receiver.fuse())
 }
 
 /// Returns an [`Iterator`] of any immediately available items from the [`Stream`].
@@ -184,7 +185,7 @@ pub async fn bind_tcp_bytes(
     addr: SocketAddr,
 ) -> (
     unsync::mpsc::Sender<(bytes::Bytes, SocketAddr)>,
-    unsync::mpsc::Receiver<Result<(bytes::BytesMut, SocketAddr), std::io::Error>>,
+    futures::stream::Fuse<unsync::mpsc::Receiver<Result<(bytes::BytesMut, SocketAddr), std::io::Error>>>,
     SocketAddr,
 ) {
     bind_tcp(addr, tokio_util::codec::LengthDelimitedCodec::new())
@@ -198,7 +199,7 @@ pub async fn bind_tcp_lines(
     addr: SocketAddr,
 ) -> (
     unsync::mpsc::Sender<(String, SocketAddr)>,
-    unsync::mpsc::Receiver<Result<(String, SocketAddr), tokio_util::codec::LinesCodecError>>,
+    futures::stream::Fuse<unsync::mpsc::Receiver<Result<(String, SocketAddr), tokio_util::codec::LinesCodecError>>>,
     SocketAddr,
 ) {
     bind_tcp(addr, tokio_util::codec::LinesCodec::new())
@@ -248,7 +249,7 @@ where
 pub fn iter_batches_stream<I>(
     iter: I,
     n: usize,
-) -> futures::stream::PollFn<impl FnMut(&mut Context<'_>) -> Poll<Option<I::Item>>>
+) -> futures::stream::Fuse<futures::stream::PollFn<impl FnMut(&mut Context<'_>) -> Poll<Option<I::Item>>>>
 where
     I: IntoIterator + Unpin,
 {
@@ -264,6 +265,7 @@ where
             Poll::Ready(iter.next())
         }
     })
+    .fuse()
 }
 
 #[cfg(test)]
