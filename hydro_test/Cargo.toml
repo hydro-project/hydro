@@ -11,6 +11,7 @@ workspace = true
 docker = ["hydro_lang/docker_deploy"]
 ecs = ["hydro_lang/ecs_deploy"]
 maelstrom = ["hydro_lang/maelstrom"]
+stageleft_macro_entrypoint = []
 
 [dependencies]
 hydro_lang = { path = "../hydro_lang", version = "^0.15.0" }
