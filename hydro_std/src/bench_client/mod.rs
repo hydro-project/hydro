@@ -212,7 +212,10 @@ pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
         nondet_sampling,
     );
 
-    let a_throughputs = results.throughput.send(aggregator, TCP.bincode()).values();
+    let a_throughputs = results
+        .throughput
+        .send(aggregator, TCP.fail_stop().bincode())
+        .values();
 
     let a_latencies = results
         .latency_histogram
@@ -221,7 +224,7 @@ pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
                 histogram: latencies,
             }
         }))
-        .send(aggregator, TCP.bincode())
+        .send(aggregator, TCP.fail_stop().bincode())
         .values()
         .map(q!(|wrapper| wrapper.histogram));
 
