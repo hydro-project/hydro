@@ -141,7 +141,7 @@ where
             // SAFETY: The Rc<RefCell<>> ensures the data won't move as long as we hold the borrow.
             // We need pinned access to poll the future.
             let state_pin = unsafe { Pin::new_unchecked(&mut *state) };
-            
+
             match state_pin.project() {
                 SharedStateProj::Thunkulating {
                     future,
@@ -183,7 +183,7 @@ where
         if let SharedState::Done { .. } = &*state {
             // SAFETY: The Rc<RefCell<>> ensures the data won't move as long as we hold the borrow.
             let state_pin = unsafe { Pin::new_unchecked(&mut *state) };
-            
+
             match state_pin.project() {
                 SharedStateProj::Done { mut sink, buf, .. } => {
                     if buf.is_some() {
@@ -223,7 +223,7 @@ where
         if let SharedState::Done { .. } = &*state {
             // SAFETY: The Rc<RefCell<>> ensures the data won't move as long as we hold the borrow.
             let state_pin = unsafe { Pin::new_unchecked(&mut *state) };
-            
+
             match state_pin.project() {
                 SharedStateProj::Done { sink, buf, .. } => {
                     debug_assert!(buf.is_none());
@@ -247,7 +247,7 @@ where
         if let SharedState::Thunkulating { .. } = &*state {
             // SAFETY: The Rc<RefCell<>> ensures the data won't move as long as we hold the borrow.
             let state_pin = unsafe { Pin::new_unchecked(&mut *state) };
-            
+
             match state_pin.project() {
                 SharedStateProj::Thunkulating {
                     future,
@@ -289,7 +289,7 @@ where
         if let SharedState::Done { .. } = &*state {
             // SAFETY: The Rc<RefCell<>> ensures the data won't move as long as we hold the borrow.
             let state_pin = unsafe { Pin::new_unchecked(&mut *state) };
-            
+
             match state_pin.project() {
                 SharedStateProj::Done { mut sink, buf, .. } => {
                     if buf.is_some() {
@@ -316,7 +316,7 @@ where
         if let SharedState::Thunkulating { .. } = &*state {
             // SAFETY: The Rc<RefCell<>> ensures the data won't move as long as we hold the borrow.
             let state_pin = unsafe { Pin::new_unchecked(&mut *state) };
-            
+
             match state_pin.project() {
                 SharedStateProj::Thunkulating {
                     future,
@@ -358,7 +358,7 @@ where
         if let SharedState::Done { .. } = &*state {
             // SAFETY: The Rc<RefCell<>> ensures the data won't move as long as we hold the borrow.
             let state_pin = unsafe { Pin::new_unchecked(&mut *state) };
-            
+
             match state_pin.project() {
                 SharedStateProj::Done { mut sink, buf, .. } => {
                     if buf.is_some() {
@@ -403,7 +403,7 @@ where
         if let SharedState::Thunkulating { .. } = &*state {
             // SAFETY: The Rc<RefCell<>> ensures the data won't move as long as we hold the borrow.
             let state_pin = unsafe { Pin::new_unchecked(&mut *state) };
-            
+
             match state_pin.project() {
                 SharedStateProj::Thunkulating {
                     future,
@@ -447,7 +447,7 @@ where
         if let SharedState::Done { .. } = &*state {
             // SAFETY: The Rc<RefCell<>> ensures the data won't move as long as we hold the borrow.
             let state_pin = unsafe { Pin::new_unchecked(&mut *state) };
-            
+
             match state_pin.project() {
                 SharedStateProj::Done { stream, .. } => {
                     let result = stream.poll_next(cx);
