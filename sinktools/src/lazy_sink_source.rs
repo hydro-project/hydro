@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex};
 use std::task::Wake;
 
 use futures_util::{ready, Sink, Stream};
+use pin_project_lite::pin_project;
 
 struct MultiWaker {
     wakers: Mutex<Vec<Waker>>,
@@ -41,27 +42,34 @@ impl Wake for MultiWaker {
     }
 }
 
-enum SharedState<Fut, St, Si, Item> {
-    Uninit {
-        future: Pin<Box<Fut>>,
-    },
-    Thunkulating {
-        future: Pin<Box<Fut>>,
-        item: Option<Item>,
-        multi_waker: Option<Arc<MultiWaker>>,
-    },
-    Done {
-        stream: Pin<Box<St>>,
-        sink: Pin<Box<Si>>,
-        buf: Option<Item>,
-    },
-    Taken,
+pin_project! {
+    #[project = SharedStateProj]
+    #[project_replace = SharedStateProjReplace]
+    enum SharedState<Fut, St, Si, Item> {
+        Uninit {
+            future: Pin<Box<Fut>>,
+        },
+        Thunkulating {
+            future: Pin<Box<Fut>>,
+            item: Option<Item>,
+            multi_waker: Option<Arc<MultiWaker>>,
+        },
+        Done {
+            stream: Pin<Box<St>>,
+            sink: Pin<Box<Si>>,
+            buf: Option<Item>,
+        },
+        Taken,
+    }
 }
 
-/// A lazy sink-source that implements both Sink and Stream traits. The internal state is initialized when the first item is attempted to be pulled from the stream, or when the first item is sent to the sink.
-pub struct LazySinkSource<Fut, St, Si, Item, Error> {
-    state: SharedState<Fut, St, Si, Item>,
-    _phantom: PhantomData<Error>,
+pin_project! {
+    /// A lazy sink-source that implements both Sink and Stream traits. The internal state is initialized when the first item is attempted to be pulled from the stream, or when the first item is sent to the sink.
+    pub struct LazySinkSource<Fut, St, Si, Item, Error> {
+        #[pin]
+        state: SharedState<Fut, St, Si, Item>,
+        _phantom: PhantomData<Error>,
+    }
 }
 
 impl<Fut, St, Si, Item, Error> LazySinkSource<Fut, St, Si, Item, Error> {
@@ -86,194 +94,203 @@ where
     type Error = Error;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let state = unsafe { &mut self.get_unchecked_mut().state };
+        let mut this = self.project();
 
-        if let SharedState::Uninit { .. } = &*state {
-            return Poll::Ready(Ok(()));
-        }
+        match this.state.as_mut().project() {
+            SharedStateProj::Uninit { .. } => {
+                return Poll::Ready(Ok(()));
+            }
+            SharedStateProj::Thunkulating {
+                future,
+                item,
+                multi_waker,
+            } => {
+                let waker = if let Some(waker) = multi_waker {
+                    waker.push(cx.waker());
+                    Waker::from(waker.clone())
+                } else {
+                    let waker = Arc::new(MultiWaker::new(cx.waker()));
+                    *multi_waker = Some(waker.clone());
+                    Waker::from(waker)
+                };
 
-        if let SharedState::Thunkulating {
-            future,
-            item,
-            multi_waker,
-        } = &mut *state
-        {
-            let waker = if let Some(waker) = multi_waker {
-                waker.push(cx.waker());
-                Waker::from(waker.clone())
-            } else {
-                let waker = Arc::new(MultiWaker::new(cx.waker()));
-                *multi_waker = Some(waker.clone());
-                Waker::from(waker)
-            };
+                let mut new_context = Context::from_waker(&waker);
 
-            let mut new_context = Context::from_waker(&waker);
-
-            match future.as_mut().poll(&mut new_context) {
-                Poll::Ready(Ok((stream, sink))) => {
-                    let buf = item.take();
-                    *state = SharedState::Done {
-                        stream: Box::pin(stream),
-                        sink: Box::pin(sink),
-                        buf,
-                    };
-                }
-                Poll::Ready(Err(e)) => {
-                    return Poll::Ready(Err(e));
-                }
-                Poll::Pending => {
-                    return Poll::Pending;
+                match future.as_mut().poll(&mut new_context) {
+                    Poll::Ready(Ok((stream, sink))) => {
+                        let buf = item.take();
+                        this.state.set(SharedState::Done {
+                            stream: Box::pin(stream),
+                            sink: Box::pin(sink),
+                            buf,
+                        });
+                    }
+                    Poll::Ready(Err(e)) => {
+                        return Poll::Ready(Err(e));
+                    }
+                    Poll::Pending => {
+                        return Poll::Pending;
+                    }
                 }
             }
+            _ => {}
         }
 
-        if let SharedState::Done { sink, buf, .. } = &mut *state {
-            if buf.is_some() {
-                ready!(sink.as_mut().poll_ready(cx).map_err(From::from)?);
-                sink.as_mut().start_send(buf.take().unwrap())?;
+        match this.state.project() {
+            SharedStateProj::Done {sink, buf, .. } => {
+                if buf.is_some() {
+                    ready!(sink.as_mut().poll_ready(cx).map_err(From::from)?);
+                    sink.as_mut().start_send(buf.take().unwrap())?;
+                }
+                let result = sink.as_mut().poll_ready(cx).map_err(From::from);
+                return result;
             }
-            let result = sink.as_mut().poll_ready(cx).map_err(From::from);
-            return result;
+            _ => panic!("LazySinkSource in invalid state."),
         }
-
-        panic!("LazySinkSource in invalid state.");
     }
 
     fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
-        let state = unsafe { &mut self.get_unchecked_mut().state };
+        let mut this = self.project();
 
-        if let SharedState::Uninit { .. } = &*state {
-            let old_state = std::mem::replace(&mut *state, SharedState::Taken);
-            if let SharedState::Uninit { future } = old_state {
-                *state = SharedState::Thunkulating {
-                    future,
-                    item: Some(item),
-                    multi_waker: None,
-                };
-
-                return Ok(());
+        match this.state.as_mut().project() {
+            SharedStateProj::Uninit { .. } => {
+                // Need to transition to Thunkulating
+                let old_state = this.state.as_mut().project_replace(SharedState::Taken);
+                match old_state {
+                    SharedStateProjReplace::Uninit { future } => {
+                        this.state.set(SharedState::Thunkulating {
+                            future,
+                            item: Some(item),
+                            multi_waker: None,
+                        });
+                        return Ok(());
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            SharedStateProj::Thunkulating { .. } => {
+                panic!("LazySinkSource not ready.");
+            }
+            SharedStateProj::Done {sink, buf, .. } => {
+                debug_assert!(buf.is_none());
+                return sink.as_mut().start_send(item).map_err(From::from);
+            }
+            SharedStateProj::Taken => {
+                panic!("LazySinkSource not ready.");
             }
         }
-
-        if let SharedState::Thunkulating { .. } = &mut *state {
-            panic!("LazySinkSource not ready.");
-        }
-
-        if let SharedState::Done { sink, buf, .. } = &mut *state {
-            debug_assert!(buf.is_none());
-            let result = sink.as_mut().start_send(item).map_err(From::from);
-            return result;
-        }
-
-        panic!("LazySinkSource not ready.");
     }
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let state = unsafe { &mut self.get_unchecked_mut().state };
+        let mut this = self.project();
 
-        if let SharedState::Uninit { .. } = &*state {
-            return Poll::Ready(Ok(()));
-        }
+        match this.state.as_mut().project() {
+            SharedStateProj::Uninit { .. } => {
+                return Poll::Ready(Ok(()));
+            }
+            SharedStateProj::Thunkulating {
+                future,
+                item,
+                multi_waker,
+            } => {
+                let waker = if let Some(waker) = multi_waker {
+                    waker.push(cx.waker());
+                    Waker::from(waker.clone())
+                } else {
+                    let waker = Arc::new(MultiWaker::new(cx.waker()));
+                    *multi_waker = Some(waker.clone());
+                    Waker::from(waker)
+                };
 
-        if let SharedState::Thunkulating {
-            future,
-            item,
-            multi_waker,
-        } = &mut *state
-        {
-            let waker = if let Some(waker) = multi_waker {
-                waker.push(cx.waker());
-                Waker::from(waker.clone())
-            } else {
-                let waker = Arc::new(MultiWaker::new(cx.waker()));
-                *multi_waker = Some(waker.clone());
-                Waker::from(waker)
-            };
+                let mut new_context = Context::from_waker(&waker);
 
-            let mut new_context = Context::from_waker(&waker);
-
-            match future.as_mut().poll(&mut new_context) {
-                Poll::Ready(Ok((stream, sink))) => {
-                    let buf = item.take();
-                    *state = SharedState::Done {
-                        stream: Box::pin(stream),
-                        sink: Box::pin(sink),
-                        buf,
-                    };
-                }
-                Poll::Ready(Err(e)) => {
-                    return Poll::Ready(Err(e));
-                }
-                Poll::Pending => {
-                    return Poll::Pending;
+                match future.as_mut().poll(&mut new_context) {
+                    Poll::Ready(Ok((stream, sink))) => {
+                        let buf = item.take();
+                        this.state.set(SharedState::Done {
+                            stream: Box::pin(stream),
+                            sink: Box::pin(sink),
+                            buf,
+                        });
+                    }
+                    Poll::Ready(Err(e)) => {
+                        return Poll::Ready(Err(e));
+                    }
+                    Poll::Pending => {
+                        return Poll::Pending;
+                    }
                 }
             }
+            _ => {}
         }
 
-        if let SharedState::Done { sink, buf, .. } = &mut *state {
-            if buf.is_some() {
-                ready!(sink.as_mut().poll_ready(cx).map_err(From::from)?);
-                sink.as_mut().start_send(buf.take().unwrap())?;
+        match this.state.project() {
+            SharedStateProj::Done {sink, buf, .. } => {
+                if buf.is_some() {
+                    ready!(sink.as_mut().poll_ready(cx).map_err(From::from)?);
+                    sink.as_mut().start_send(buf.take().unwrap())?;
+                }
+                let result = sink.as_mut().poll_flush(cx).map_err(From::from);
+                return result;
             }
-            let result = sink.as_mut().poll_flush(cx).map_err(From::from);
-            return result;
+            _ => panic!("LazySinkSource in invalid state."),
         }
-
-        panic!("LazySinkSource in invalid state.");
     }
 
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let state = unsafe { &mut self.get_unchecked_mut().state };
+        let mut this = self.project();
 
-        if let SharedState::Uninit { .. } = &*state {
-            return Poll::Ready(Ok(()));
-        }
+        match this.state.as_mut().project() {
+            SharedStateProj::Uninit { .. } => {
+                return Poll::Ready(Ok(()));
+            }
+            SharedStateProj::Thunkulating {
+                future,
+                item,
+                multi_waker,
+            } => {
+                let waker = if let Some(waker) = multi_waker {
+                    waker.push(cx.waker());
+                    Waker::from(waker.clone())
+                } else {
+                    let waker = Arc::new(MultiWaker::new(cx.waker()));
+                    *multi_waker = Some(waker.clone());
+                    Waker::from(waker)
+                };
 
-        if let SharedState::Thunkulating {
-            future,
-            item,
-            multi_waker,
-        } = &mut *state
-        {
-            let waker = if let Some(waker) = multi_waker {
-                waker.push(cx.waker());
-                Waker::from(waker.clone())
-            } else {
-                let waker = Arc::new(MultiWaker::new(cx.waker()));
-                *multi_waker = Some(waker.clone());
-                Waker::from(waker)
-            };
+                let mut new_context = Context::from_waker(&waker);
 
-            let mut new_context = Context::from_waker(&waker);
-
-            match future.as_mut().poll(&mut new_context) {
-                Poll::Ready(Ok((stream, sink))) => {
-                    let buf = item.take();
-                    *state = SharedState::Done {
-                        stream: Box::pin(stream),
-                        sink: Box::pin(sink),
-                        buf,
-                    };
-                }
-                Poll::Ready(Err(e)) => {
-                    return Poll::Ready(Err(e));
-                }
-                Poll::Pending => {
-                    return Poll::Pending;
+                match future.as_mut().poll(&mut new_context) {
+                    Poll::Ready(Ok((stream, sink))) => {
+                        let buf = item.take();
+                        this.state.set(SharedState::Done {
+                            stream: Box::pin(stream),
+                            sink: Box::pin(sink),
+                            buf,
+                        });
+                    }
+                    Poll::Ready(Err(e)) => {
+                        return Poll::Ready(Err(e));
+                    }
+                    Poll::Pending => {
+                        return Poll::Pending;
+                    }
                 }
             }
+            _ => {}
         }
 
-        if let SharedState::Done { sink, buf, .. } = &mut *state {
-            if buf.is_some() {
-                ready!(sink.as_mut().poll_ready(cx).map_err(From::from)?);
-                sink.as_mut().start_send(buf.take().unwrap())?;
+        match this.state.project() {
+            SharedStateProj::Done {sink, buf, .. } => {
+                if buf.is_some() {
+                    ready!(sink.as_mut().poll_ready(cx).map_err(From::from)?);
+                    sink.as_mut().start_send(buf.take().unwrap())?;
+                }
+                let result = sink.as_mut().poll_close(cx).map_err(From::from);
+                return result;
             }
-            let result = sink.as_mut().poll_close(cx).map_err(From::from);
-            return result;
+            _ => panic!("LazySinkSource in invalid state."),
         }
-
-        panic!("LazySinkSource in invalid state.");
     }
 }
 
@@ -286,69 +303,77 @@ where
     type Item = St::Item;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let state = unsafe { &mut self.get_unchecked_mut().state };
+        let mut this = self.project();
 
-        if let SharedState::Uninit { .. } = &*state {
-            let old_state = std::mem::replace(&mut *state, SharedState::Taken);
-            if let SharedState::Uninit { future } = old_state {
-                *state = SharedState::Thunkulating {
-                    future,
-                    item: None,
-                    multi_waker: None,
+        match this.state.as_mut().project() {
+            SharedStateProj::Uninit { .. } => {
+                // Need to transition to Thunkulating
+                let old_state = this.state.as_mut().project_replace(SharedState::Taken);
+                match old_state {
+                    SharedStateProjReplace::Uninit { future } => {
+                        this.state.set(SharedState::Thunkulating {
+                            future,
+                            item: None,
+                            multi_waker: None,
+                        });
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            _ => {}
+        }
+
+        match this.state.as_mut().project() {
+            SharedStateProj::Thunkulating {
+                future,
+                item,
+                multi_waker,
+            } => {
+                let waker = if let Some(waker) = multi_waker {
+                    waker.push(cx.waker());
+                    Waker::from(waker.clone())
+                } else {
+                    let waker = Arc::new(MultiWaker::new(cx.waker()));
+                    *multi_waker = Some(waker.clone());
+                    Waker::from(waker)
                 };
-            } else {
-                unreachable!();
-            }
-        }
 
-        if let SharedState::Thunkulating {
-            future,
-            item,
-            multi_waker,
-        } = &mut *state
-        {
-            let waker = if let Some(waker) = multi_waker {
-                waker.push(cx.waker());
-                Waker::from(waker.clone())
-            } else {
-                let waker = Arc::new(MultiWaker::new(cx.waker()));
-                *multi_waker = Some(waker.clone());
-                Waker::from(waker)
-            };
+                let mut new_context = Context::from_waker(&waker);
 
-            let mut new_context = Context::from_waker(&waker);
+                match future.as_mut().poll(&mut new_context) {
+                    Poll::Ready(Ok((stream, sink))) => {
+                        let buf = item.take();
+                        this.state.set(SharedState::Done {
+                            stream: Box::pin(stream),
+                            sink: Box::pin(sink),
+                            buf,
+                        });
+                    }
 
-            match future.as_mut().poll(&mut new_context) {
-                Poll::Ready(Ok((stream, sink))) => {
-                    let buf = item.take();
-                    *state = SharedState::Done {
-                        stream: Box::pin(stream),
-                        sink: Box::pin(sink),
-                        buf,
-                    };
-                }
+                    Poll::Ready(Err(_)) => {
+                        return Poll::Ready(None);
+                    }
 
-                Poll::Ready(Err(_)) => {
-                    return Poll::Ready(None);
-                }
-
-                Poll::Pending => {
-                    return Poll::Pending;
+                    Poll::Pending => {
+                        return Poll::Pending;
+                    }
                 }
             }
+            _ => {}
         }
 
-        if let SharedState::Done { stream, .. } = &mut *state {
-            let result = stream.as_mut().poll_next(cx);
-            match &result {
-                Poll::Ready(Some(_)) => {}
-                Poll::Ready(None) => {}
-                Poll::Pending => {}
+        match this.state.project() {
+            SharedStateProj::Done { stream, .. } => {
+                let result = stream.as_mut().poll_next(cx);
+                match &result {
+                    Poll::Ready(Some(_)) => {}
+                    Poll::Ready(None) => {}
+                    Poll::Pending => {}
+                }
+                return result;
             }
-            return result;
+            _ => panic!("LazySinkSource in invalid state."),
         }
-
-        panic!("LazySinkSource in invalid state.");
     }
 }
 
