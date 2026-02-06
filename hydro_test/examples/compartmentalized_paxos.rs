@@ -117,6 +117,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         &clients,
         &client_aggregator,
         &replicas,
+        print_result_frequency / 10,
         print_result_frequency,
         hydro_std::bench_client::pretty_print_bench_results,
     );
