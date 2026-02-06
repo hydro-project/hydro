@@ -226,7 +226,7 @@ pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
     let keyed_throughputs = results
         .throughput
         .sample_every(q!(Duration::from_millis(interval_millis)), nondet_sampling)
-        .send(aggregator, TCP.bincode());
+        .send(aggregator, TCP.fail_stop().bincode());
 
     let latest_throughputs = keyed_throughputs.reduce(q!(
         |combined, new| {
@@ -291,7 +291,7 @@ pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
                 histogram: latencies,
             }
         }))
-        .send(aggregator, TCP.bincode());
+        .send(aggregator, TCP.fail_stop().bincode());
 
     let most_recent_histograms = keyed_latencies
         .map(q!(|histogram| histogram.histogram.borrow().clone()))

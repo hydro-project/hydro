@@ -23,7 +23,7 @@ pub fn sharded_counter_service<'a>(
             key.hash(&mut hasher);
             MemberId::from_raw_id(hasher.finish() as u32 % 5)
         }))
-        .demux(shard_servers, TCP.bincode());
+        .demux(shard_servers, TCP.fail_stop().bincode());
 
     let sharded_get_requests = get_requests
         .prefix_key(q!(|(_client, key)| {
@@ -31,7 +31,7 @@ pub fn sharded_counter_service<'a>(
             key.hash(&mut hasher);
             MemberId::from_raw_id(hasher.finish() as u32 % 5)
         }))
-        .demux(shard_servers, TCP.bincode());
+        .demux(shard_servers, TCP.fail_stop().bincode());
 
     let (sharded_increment_ack, sharded_get_response) = super::keyed_counter::keyed_counter_service(
         sharded_increment_requests,
@@ -39,11 +39,11 @@ pub fn sharded_counter_service<'a>(
     );
 
     let increment_ack = sharded_increment_ack
-        .send(leader, TCP.bincode())
+        .send(leader, TCP.fail_stop().bincode())
         .drop_key_prefix();
 
     let get_response = sharded_get_response
-        .send(leader, TCP.bincode())
+        .send(leader, TCP.fail_stop().bincode())
         .drop_key_prefix();
 
     (increment_ack, get_response)

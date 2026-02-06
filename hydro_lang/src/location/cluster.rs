@@ -195,12 +195,12 @@ mod tests {
 
         let out_recv = cluster1
             .source_iter(q!(vec![CLUSTER_SELF_ID]))
-            .send(&node, TCP.bincode())
+            .send(&node, TCP.fail_stop().bincode())
             .values()
             .interleave(
                 cluster2
                     .source_iter(q!(vec![CLUSTER_SELF_ID]))
-                    .send(&node, TCP.bincode())
+                    .send(&node, TCP.fail_stop().bincode())
                     .values(),
             )
             .sim_output();
@@ -229,7 +229,7 @@ mod tests {
             .batch(&cluster.tick(), nondet!(/** test */))
             .count()
             .all_ticks()
-            .send(&node, TCP.bincode())
+            .send(&node, TCP.fail_stop().bincode())
             .entries()
             .map(q!(|(id, v)| (id, v)))
             .sim_output();
