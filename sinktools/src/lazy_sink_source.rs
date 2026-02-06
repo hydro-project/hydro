@@ -1,5 +1,6 @@
 //! [`LazySinkSource`], and related items.
 
+use core::future::Future;
 use core::marker::PhantomData;
 use core::pin::Pin;
 use core::task::{Context, Poll, Waker};
@@ -9,6 +10,7 @@ use std::sync::{Arc, Mutex};
 use std::task::Wake;
 
 use futures_util::{Sink, Stream, ready};
+use pin_project_lite::pin_project;
 
 struct MultiWaker {
     wakers: Mutex<Vec<Waker>>,
@@ -42,21 +44,29 @@ impl Wake for MultiWaker {
     }
 }
 
-enum SharedState<Fut, St, Si, Item> {
-    Uninit {
-        future: Pin<Box<Fut>>,
-    },
-    Thunkulating {
-        future: Pin<Box<Fut>>,
-        item: Option<Item>,
-        multi_waker: Option<Arc<MultiWaker>>,
-    },
-    Done {
-        stream: Pin<Box<St>>,
-        sink: Pin<Box<Si>>,
-        buf: Option<Item>,
-    },
-    Taken,
+pin_project! {
+    #[project = SharedStateProj]
+    #[project_replace = SharedStateProjReplace]
+    enum SharedState<Fut, St, Si, Item> {
+        Uninit {
+            #[pin]
+            future: Fut,
+        },
+        Thunkulating {
+            #[pin]
+            future: Fut,
+            item: Option<Item>,
+            multi_waker: Option<Arc<MultiWaker>>,
+        },
+        Done {
+            #[pin]
+            stream: St,
+            #[pin]
+            sink: Si,
+            buf: Option<Item>,
+        },
+        Taken,
+    }
 }
 
 /// A lazy sink-source that can be split into a sink and a source. The internal state is initialized when the first item is attempted to be pulled from the source half, or when the first item is sent to the sink half.
@@ -70,7 +80,7 @@ impl<Fut, St, Si, Item, Error> LazySinkSource<Fut, St, Si, Item, Error> {
     pub fn new(future: Fut) -> Self {
         Self {
             state: Rc::new(RefCell::new(SharedState::Uninit {
-                future: Box::pin(future),
+                future,
             })),
             _phantom: PhantomData,
         }
@@ -127,48 +137,64 @@ where
             return Poll::Ready(Ok(()));
         }
 
-        if let SharedState::Thunkulating {
-            future,
-            item,
-            multi_waker,
-        } = &mut *state
-        {
-            let waker = if let Some(waker) = multi_waker {
-                waker.push(cx.waker());
-                Waker::from(waker.clone())
-            } else {
-                let waker = Arc::new(MultiWaker::new(cx.waker()));
-                *multi_waker = Some(waker.clone());
-                Waker::from(waker)
-            };
-
-            let mut new_context = Context::from_waker(&waker);
-
-            match future.as_mut().poll(&mut new_context) {
-                Poll::Ready(Ok((stream, sink))) => {
-                    let buf = item.take();
-                    *state = SharedState::Done {
-                        stream: Box::pin(stream),
-                        sink: Box::pin(sink),
-                        buf,
+        if let SharedState::Thunkulating { .. } = &*state {
+            // SAFETY: The Rc<RefCell<>> ensures the data won't move as long as we hold the borrow.
+            // We need pinned access to poll the future.
+            let state_pin = unsafe { Pin::new_unchecked(&mut *state) };
+            
+            match state_pin.project() {
+                SharedStateProj::Thunkulating {
+                    future,
+                    item,
+                    multi_waker,
+                } => {
+                    let waker = if let Some(waker) = multi_waker {
+                        waker.push(cx.waker());
+                        Waker::from(waker.clone())
+                    } else {
+                        let waker = Arc::new(MultiWaker::new(cx.waker()));
+                        *multi_waker = Some(waker.clone());
+                        Waker::from(waker)
                     };
+
+                    let mut new_context = Context::from_waker(&waker);
+
+                    match future.poll(&mut new_context) {
+                        Poll::Ready(Ok((stream, sink))) => {
+                            let buf = item.take();
+                            *state = SharedState::Done {
+                                stream,
+                                sink,
+                                buf,
+                            };
+                        }
+                        Poll::Ready(Err(e)) => {
+                            return Poll::Ready(Err(e));
+                        }
+                        Poll::Pending => {
+                            return Poll::Pending;
+                        }
+                    }
                 }
-                Poll::Ready(Err(e)) => {
-                    return Poll::Ready(Err(e));
-                }
-                Poll::Pending => {
-                    return Poll::Pending;
-                }
+                _ => unreachable!(),
             }
         }
 
-        if let SharedState::Done { sink, buf, .. } = &mut *state {
-            if buf.is_some() {
-                ready!(sink.as_mut().poll_ready(cx).map_err(From::from)?);
-                sink.as_mut().start_send(buf.take().unwrap())?;
+        if let SharedState::Done { .. } = &*state {
+            // SAFETY: The Rc<RefCell<>> ensures the data won't move as long as we hold the borrow.
+            let state_pin = unsafe { Pin::new_unchecked(&mut *state) };
+            
+            match state_pin.project() {
+                SharedStateProj::Done { mut sink, buf, .. } => {
+                    if buf.is_some() {
+                        ready!(sink.as_mut().poll_ready(cx).map_err(From::from)?);
+                        sink.as_mut().start_send(buf.take().unwrap())?;
+                    }
+                    let result = sink.poll_ready(cx).map_err(From::from);
+                    return result;
+                }
+                _ => unreachable!(),
             }
-            let result = sink.as_mut().poll_ready(cx).map_err(From::from);
-            return result;
         }
 
         panic!("LazySinkHalf in invalid state.");
@@ -194,10 +220,18 @@ where
             panic!("LazySinkHalf not ready.");
         }
 
-        if let SharedState::Done { sink, buf, .. } = &mut *state {
-            debug_assert!(buf.is_none());
-            let result = sink.as_mut().start_send(item).map_err(From::from);
-            return result;
+        if let SharedState::Done { .. } = &*state {
+            // SAFETY: The Rc<RefCell<>> ensures the data won't move as long as we hold the borrow.
+            let state_pin = unsafe { Pin::new_unchecked(&mut *state) };
+            
+            match state_pin.project() {
+                SharedStateProj::Done { sink, buf, .. } => {
+                    debug_assert!(buf.is_none());
+                    let result = sink.start_send(item).map_err(From::from);
+                    return result;
+                }
+                _ => unreachable!(),
+            }
         }
 
         panic!("LazySinkHalf not ready.");
@@ -210,48 +244,63 @@ where
             return Poll::Ready(Ok(()));
         }
 
-        if let SharedState::Thunkulating {
-            future,
-            item,
-            multi_waker,
-        } = &mut *state
-        {
-            let waker = if let Some(waker) = multi_waker {
-                waker.push(cx.waker());
-                Waker::from(waker.clone())
-            } else {
-                let waker = Arc::new(MultiWaker::new(cx.waker()));
-                *multi_waker = Some(waker.clone());
-                Waker::from(waker)
-            };
-
-            let mut new_context = Context::from_waker(&waker);
-
-            match future.as_mut().poll(&mut new_context) {
-                Poll::Ready(Ok((stream, sink))) => {
-                    let buf = item.take();
-                    *state = SharedState::Done {
-                        stream: Box::pin(stream),
-                        sink: Box::pin(sink),
-                        buf,
+        if let SharedState::Thunkulating { .. } = &*state {
+            // SAFETY: The Rc<RefCell<>> ensures the data won't move as long as we hold the borrow.
+            let state_pin = unsafe { Pin::new_unchecked(&mut *state) };
+            
+            match state_pin.project() {
+                SharedStateProj::Thunkulating {
+                    future,
+                    item,
+                    multi_waker,
+                } => {
+                    let waker = if let Some(waker) = multi_waker {
+                        waker.push(cx.waker());
+                        Waker::from(waker.clone())
+                    } else {
+                        let waker = Arc::new(MultiWaker::new(cx.waker()));
+                        *multi_waker = Some(waker.clone());
+                        Waker::from(waker)
                     };
+
+                    let mut new_context = Context::from_waker(&waker);
+
+                    match future.poll(&mut new_context) {
+                        Poll::Ready(Ok((stream, sink))) => {
+                            let buf = item.take();
+                            *state = SharedState::Done {
+                                stream,
+                                sink,
+                                buf,
+                            };
+                        }
+                        Poll::Ready(Err(e)) => {
+                            return Poll::Ready(Err(e));
+                        }
+                        Poll::Pending => {
+                            return Poll::Pending;
+                        }
+                    }
                 }
-                Poll::Ready(Err(e)) => {
-                    return Poll::Ready(Err(e));
-                }
-                Poll::Pending => {
-                    return Poll::Pending;
-                }
+                _ => unreachable!(),
             }
         }
 
-        if let SharedState::Done { sink, buf, .. } = &mut *state {
-            if buf.is_some() {
-                ready!(sink.as_mut().poll_ready(cx).map_err(From::from)?);
-                sink.as_mut().start_send(buf.take().unwrap())?;
+        if let SharedState::Done { .. } = &*state {
+            // SAFETY: The Rc<RefCell<>> ensures the data won't move as long as we hold the borrow.
+            let state_pin = unsafe { Pin::new_unchecked(&mut *state) };
+            
+            match state_pin.project() {
+                SharedStateProj::Done { mut sink, buf, .. } => {
+                    if buf.is_some() {
+                        ready!(sink.as_mut().poll_ready(cx).map_err(From::from)?);
+                        sink.as_mut().start_send(buf.take().unwrap())?;
+                    }
+                    let result = sink.poll_flush(cx).map_err(From::from);
+                    return result;
+                }
+                _ => unreachable!(),
             }
-            let result = sink.as_mut().poll_flush(cx).map_err(From::from);
-            return result;
         }
 
         panic!("LazySinkHalf in invalid state.");
@@ -264,48 +313,63 @@ where
             return Poll::Ready(Ok(()));
         }
 
-        if let SharedState::Thunkulating {
-            future,
-            item,
-            multi_waker,
-        } = &mut *state
-        {
-            let waker = if let Some(waker) = multi_waker {
-                waker.push(cx.waker());
-                Waker::from(waker.clone())
-            } else {
-                let waker = Arc::new(MultiWaker::new(cx.waker()));
-                *multi_waker = Some(waker.clone());
-                Waker::from(waker)
-            };
-
-            let mut new_context = Context::from_waker(&waker);
-
-            match future.as_mut().poll(&mut new_context) {
-                Poll::Ready(Ok((stream, sink))) => {
-                    let buf = item.take();
-                    *state = SharedState::Done {
-                        stream: Box::pin(stream),
-                        sink: Box::pin(sink),
-                        buf,
+        if let SharedState::Thunkulating { .. } = &*state {
+            // SAFETY: The Rc<RefCell<>> ensures the data won't move as long as we hold the borrow.
+            let state_pin = unsafe { Pin::new_unchecked(&mut *state) };
+            
+            match state_pin.project() {
+                SharedStateProj::Thunkulating {
+                    future,
+                    item,
+                    multi_waker,
+                } => {
+                    let waker = if let Some(waker) = multi_waker {
+                        waker.push(cx.waker());
+                        Waker::from(waker.clone())
+                    } else {
+                        let waker = Arc::new(MultiWaker::new(cx.waker()));
+                        *multi_waker = Some(waker.clone());
+                        Waker::from(waker)
                     };
+
+                    let mut new_context = Context::from_waker(&waker);
+
+                    match future.poll(&mut new_context) {
+                        Poll::Ready(Ok((stream, sink))) => {
+                            let buf = item.take();
+                            *state = SharedState::Done {
+                                stream,
+                                sink,
+                                buf,
+                            };
+                        }
+                        Poll::Ready(Err(e)) => {
+                            return Poll::Ready(Err(e));
+                        }
+                        Poll::Pending => {
+                            return Poll::Pending;
+                        }
+                    }
                 }
-                Poll::Ready(Err(e)) => {
-                    return Poll::Ready(Err(e));
-                }
-                Poll::Pending => {
-                    return Poll::Pending;
-                }
+                _ => unreachable!(),
             }
         }
 
-        if let SharedState::Done { sink, buf, .. } = &mut *state {
-            if buf.is_some() {
-                ready!(sink.as_mut().poll_ready(cx).map_err(From::from)?);
-                sink.as_mut().start_send(buf.take().unwrap())?;
+        if let SharedState::Done { .. } = &*state {
+            // SAFETY: The Rc<RefCell<>> ensures the data won't move as long as we hold the borrow.
+            let state_pin = unsafe { Pin::new_unchecked(&mut *state) };
+            
+            match state_pin.project() {
+                SharedStateProj::Done { mut sink, buf, .. } => {
+                    if buf.is_some() {
+                        ready!(sink.as_mut().poll_ready(cx).map_err(From::from)?);
+                        sink.as_mut().start_send(buf.take().unwrap())?;
+                    }
+                    let result = sink.poll_close(cx).map_err(From::from);
+                    return result;
+                }
+                _ => unreachable!(),
             }
-            let result = sink.as_mut().poll_close(cx).map_err(From::from);
-            return result;
         }
 
         panic!("LazySinkHalf in invalid state.");
@@ -336,51 +400,66 @@ where
             }
         }
 
-        if let SharedState::Thunkulating {
-            future,
-            item,
-            multi_waker,
-        } = &mut *state
-        {
-            let waker = if let Some(waker) = multi_waker {
-                waker.push(cx.waker());
-                Waker::from(waker.clone())
-            } else {
-                let waker = Arc::new(MultiWaker::new(cx.waker()));
-                *multi_waker = Some(waker.clone());
-                Waker::from(waker)
-            };
-
-            let mut new_context = Context::from_waker(&waker);
-
-            match future.as_mut().poll(&mut new_context) {
-                Poll::Ready(Ok((stream, sink))) => {
-                    let buf = item.take();
-                    *state = SharedState::Done {
-                        stream: Box::pin(stream),
-                        sink: Box::pin(sink),
-                        buf,
+        if let SharedState::Thunkulating { .. } = &*state {
+            // SAFETY: The Rc<RefCell<>> ensures the data won't move as long as we hold the borrow.
+            let state_pin = unsafe { Pin::new_unchecked(&mut *state) };
+            
+            match state_pin.project() {
+                SharedStateProj::Thunkulating {
+                    future,
+                    item,
+                    multi_waker,
+                } => {
+                    let waker = if let Some(waker) = multi_waker {
+                        waker.push(cx.waker());
+                        Waker::from(waker.clone())
+                    } else {
+                        let waker = Arc::new(MultiWaker::new(cx.waker()));
+                        *multi_waker = Some(waker.clone());
+                        Waker::from(waker)
                     };
-                }
 
-                Poll::Ready(Err(_)) => {
-                    return Poll::Ready(None);
-                }
+                    let mut new_context = Context::from_waker(&waker);
 
-                Poll::Pending => {
-                    return Poll::Pending;
+                    match future.poll(&mut new_context) {
+                        Poll::Ready(Ok((stream, sink))) => {
+                            let buf = item.take();
+                            *state = SharedState::Done {
+                                stream,
+                                sink,
+                                buf,
+                            };
+                        }
+
+                        Poll::Ready(Err(_)) => {
+                            return Poll::Ready(None);
+                        }
+
+                        Poll::Pending => {
+                            return Poll::Pending;
+                        }
+                    }
                 }
+                _ => unreachable!(),
             }
         }
 
-        if let SharedState::Done { stream, .. } = &mut *state {
-            let result = stream.as_mut().poll_next(cx);
-            match &result {
-                Poll::Ready(Some(_)) => {}
-                Poll::Ready(None) => {}
-                Poll::Pending => {}
+        if let SharedState::Done { .. } = &*state {
+            // SAFETY: The Rc<RefCell<>> ensures the data won't move as long as we hold the borrow.
+            let state_pin = unsafe { Pin::new_unchecked(&mut *state) };
+            
+            match state_pin.project() {
+                SharedStateProj::Done { stream, .. } => {
+                    let result = stream.poll_next(cx);
+                    match &result {
+                        Poll::Ready(Some(_)) => {}
+                        Poll::Ready(None) => {}
+                        Poll::Pending => {}
+                    }
+                    return result;
+                }
+                _ => unreachable!(),
             }
-            return result;
         }
 
         panic!("LazySourceHalf in invalid state.");
