@@ -81,7 +81,7 @@ where
         } = &mut *state
         {
             dual_waker.sink.register(cx.waker());
-            let waker = Waker::from(Arc::clone(&dual_waker));
+            let waker = Waker::from(Arc::clone(dual_waker));
 
             let mut new_context = Context::from_waker(&waker);
 
@@ -158,7 +158,7 @@ where
         } = &mut *state
         {
             dual_waker.sink.register(cx.waker());
-            let waker = Waker::from(Arc::clone(&dual_waker));
+            let waker = Waker::from(Arc::clone(dual_waker));
 
             let mut new_context = Context::from_waker(&waker);
 
@@ -206,7 +206,7 @@ where
         } = &mut *state
         {
             dual_waker.sink.register(cx.waker());
-            let waker = Waker::from(Arc::clone(&dual_waker));
+            let waker = Waker::from(Arc::clone(dual_waker));
 
             let mut new_context = Context::from_waker(&waker);
 
@@ -273,7 +273,7 @@ where
         } = &mut *state
         {
             dual_waker.stream.register(cx.waker());
-            let waker = Waker::from(Arc::clone(&dual_waker));
+            let waker = Waker::from(Arc::clone(dual_waker));
 
             let mut new_context = Context::from_waker(&waker);
 
