@@ -2782,6 +2782,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "hydro_test_embedded"
+version = "0.0.0"
+dependencies = [
+ "dfir_rs",
+ "hydro_lang",
+ "hydro_test",
+ "prettyplease",
+ "stageleft",
+ "tokio",
+]
+
+[[package]]
 name = "hydro_test_template"
 version = "0.0.0"
 dependencies = [
