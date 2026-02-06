@@ -6,7 +6,7 @@ pub fn many_to_many<'a>(flow: &mut FlowBuilder<'a>) -> Cluster<'a, ()> {
         .source_iter(q!(0..2))
         .broadcast(
             &cluster,
-            TCP.bincode().name("m2m_broadcast"),
+            TCP.fail_stop().bincode().name("m2m_broadcast"),
             nondet!(/** test */),
         )
         .entries()

@@ -31,9 +31,12 @@ pub fn two_pc_bench<'a>(
                 coordinator,
                 participants,
                 num_participants,
-                input.entries().send(coordinator, TCP.bincode()).entries(),
+                input
+                    .entries()
+                    .send(coordinator, TCP.fail_stop().bincode())
+                    .entries(),
             )
-            .demux(clients, TCP.bincode())
+            .demux(clients, TCP.fail_stop().bincode())
             .into_keyed()
         },
     )

@@ -24,7 +24,7 @@ let numbers: Stream<_, Process<_>, Bounded> = process
     .source_iter(q!(vec![1, 2, 3]))
     .map(q!(|x| x + 1));
 // 2, 3, 4
-# numbers.send(&p_out, TCP.bincode())
+# numbers.send(&p_out, TCP.fail_stop().bincode())
 # }, |mut stream| async move {
 # for w in 2..=4 {
 #     assert_eq!(stream.next().await, Some(w));
@@ -41,9 +41,9 @@ Streams also can be sent over the network to participate in distributed programs
 let p1 = flow.process::<()>();
 let numbers: Stream<_, Process<_>, Bounded> = p1.source_iter(q!(vec![1, 2, 3]));
 let p2 = flow.process::<()>();
-let on_p2: Stream<_, Process<_>, Unbounded> = numbers.send(&p2, TCP.bincode());
+let on_p2: Stream<_, Process<_>, Unbounded> = numbers.send(&p2, TCP.fail_stop().bincode());
 // 1, 2, 3
-# on_p2.send(&p_out, TCP.bincode())
+# on_p2.send(&p_out, TCP.fail_stop().bincode())
 # }, |mut stream| async move {
 # for w in 1..=3 {
 #     assert_eq!(stream.next().await, Some(w));
@@ -67,7 +67,7 @@ let numbers: Stream<_, Cluster<_>, Bounded, TotalOrder> =
     workers.source_iter(q!(vec![1, 2, 3]));
 let process: Process<()> = flow.process::<()>();
 let on_p2: Stream<_, Process<_>, Unbounded, NoOrder> =
-    numbers.send(&process, TCP.bincode()).values();
+    numbers.send(&process, TCP.fail_stop().bincode()).values();
 ```
 
 The ordering of a stream determines which APIs are available on it. For example, `map` and `filter` are available on all streams, but `last` is only available on streams with `TotalOrder`. This ensures that even when the network introduces non-determinism, the program will not compile if it tries to use an API that requires a deterministic order.
@@ -82,7 +82,7 @@ let process: Process<()> = flow.process::<()>();
 let all_words: Stream<_, Process<_>, Unbounded, NoOrder> = workers
     .source_iter(q!(vec!["hello", "world"]))
     .map(q!(|x| x.to_string()))
-    .send(&process, TCP.bincode())
+    .send(&process, TCP.fail_stop().bincode())
     .values();
 
 let words_concat = all_words
@@ -109,7 +109,7 @@ To perform an aggregation with an unordered stream, you must add a **property an
 # let all_words: Stream<_, Process<_>, _, hydro_lang::live_collections::stream::NoOrder> = workers
 #     .source_iter(q!(vec!["hello", "world"]))
 #     .map(q!(|x| x.to_string()))
-#     .send(&process, TCP.bincode())
+#     .send(&process, TCP.fail_stop().bincode())
 #     .values();
 let words_count = all_words
     .fold(q!(|| 0), q!(|acc, _| *acc += 1, commutative = ManualProof(/* increment is commutative */)));

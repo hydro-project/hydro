@@ -54,7 +54,7 @@ pub fn paxos_bench<'a>(
             );
 
             let sequenced_to_replicas = sequenced_payloads
-                .broadcast(replicas, TCP.bincode(), nondet!(/** TODO */))
+                .broadcast(replicas, TCP.fail_stop().bincode(), nondet!(/** TODO */))
                 .values()
                 .map(q!(|(index, payload)| (
                     index,
@@ -68,7 +68,7 @@ pub fn paxos_bench<'a>(
             // Get the latest checkpoint sequence per replica
             let a_checkpoint = {
                 let a_checkpoint_largest_seqs = replica_checkpoint
-                    .broadcast(&acceptors, TCP.bincode(), nondet!(/** TODO */))
+                    .broadcast(&acceptors, TCP.fail_stop().bincode(), nondet!(/** TODO */))
                     .reduce(q!(
                         |curr_seq, seq| {
                             if seq > *curr_seq {
@@ -109,7 +109,7 @@ pub fn paxos_bench<'a>(
                     payload.value.0,
                     ((payload.key, payload.value.1), Ok(()))
                 )))
-                .demux(clients, TCP.bincode())
+                .demux(clients, TCP.fail_stop().bincode())
                 .values();
 
             // we only mark a transaction as committed when all replicas have applied it

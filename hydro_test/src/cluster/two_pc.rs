@@ -24,7 +24,7 @@ where
     // broadcast prepare message to participants
     let p_prepare = payloads.ir_node_named("c_prepare").broadcast(
         participants,
-        TCP.bincode(),
+        TCP.fail_stop().bincode(),
         nondet!(/** TODO */),
     );
 
@@ -32,7 +32,7 @@ where
     // TODO: Participants log
     let c_votes = p_prepare
         .ir_node_named("p_prepare")
-        .send(coordinator, TCP.bincode())
+        .send(coordinator, TCP.fail_stop().bincode())
         .ir_node_named("c_votes")
         .values();
 
@@ -46,12 +46,16 @@ where
     // TODO: Coordinator log
 
     // broadcast commit transactions to participants.
-    let p_commit = c_all_vote_yes.broadcast(participants, TCP.bincode(), nondet!(/** TODO */));
+    let p_commit = c_all_vote_yes.broadcast(
+        participants,
+        TCP.fail_stop().bincode(),
+        nondet!(/** TODO */),
+    );
     // TODO: Participants log
 
     let c_commits = p_commit
         .ir_node_named("p_commits")
-        .send(coordinator, TCP.bincode())
+        .send(coordinator, TCP.fail_stop().bincode())
         .ir_node_named("c_commits")
         .values();
     let (c_all_commit, _) = collect_quorum(

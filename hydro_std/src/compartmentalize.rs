@@ -28,7 +28,9 @@ impl<'a, T, C1, C2, Order: Ordering> PartitionStream<'a, T, C1, C2, Order>
     where
         T: Clone + Serialize + DeserializeOwned,
     {
-        self.map(dist_policy).demux(other, TCP.bincode()).values()
+        self.map(dist_policy)
+            .demux(other, TCP.fail_stop().bincode())
+            .values()
     }
 }
 
@@ -60,7 +62,7 @@ where
                 MemberId::from_tagless(CLUSTER_SELF_ID.clone().into_tagless()), // this is a seemingly round about way to convert from one member id tag to another.
                 b
             )))
-            .demux(other, TCP.bincode())
+            .demux(other, TCP.fail_stop().bincode())
             .values();
 
         sent.assume_ordering(
@@ -88,6 +90,6 @@ impl<'a, T, L, B: Boundedness, Order: Ordering>
     where
         T: Clone + Serialize + DeserializeOwned,
     {
-        self.send(other, TCP.bincode())
+        self.send(other, TCP.fail_stop().bincode())
     }
 }

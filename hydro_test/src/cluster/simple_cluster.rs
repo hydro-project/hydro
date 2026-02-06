@@ -61,12 +61,12 @@ pub fn simple_cluster<'a>(flow: &mut FlowBuilder<'a>) -> (Process<'a, ()>, Clust
 
     ids.cross_product(numbers.into())
         .map(q!(|(id, n)| (id.clone(), (id, n))))
-        .demux(&cluster, TCP.bincode())
+        .demux(&cluster, TCP.fail_stop().bincode())
         .inspect(q!(move |n| println!(
             "cluster received: {:?} (self cluster id: {})",
             n, CLUSTER_SELF_ID
         )))
-        .send(&process, TCP.bincode())
+        .send(&process, TCP.fail_stop().bincode())
         .entries()
         .assume_ordering(nondet!(/** testing, order does not matter */))
         .for_each(q!(|(id, d)| println!("node received: ({}, {:?})", id, d)));
