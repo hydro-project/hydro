@@ -1103,7 +1103,7 @@ impl<'a> Deploy<'a> for DockerDeploy {
         let create_expr = deploy_containerized_external_sink_source_ident(socket_ident);
 
         extra_stmts.push(syn::parse_quote! {
-            let (#sink_ident, #source_ident) = (#create_expr).split();
+            let (#sink_ident, #source_ident) = futures::stream::StreamExt::split(#create_expr);
         });
 
         parse_quote!(#source_ident)
