@@ -99,27 +99,32 @@ async fn main() {
         &clients,
         &client_aggregator,
         &replicas,
+        print_result_frequency / 10,
         print_result_frequency,
         hydro_std::bench_client::pretty_print_bench_results,
     );
 
-    let rustflags = if args.gcp.is_some() || args.aws {
-        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment"
-    } else {
-        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
-    };
-
+    // Extract the IR for graph visualization
     let built = builder.finalize();
 
-    // Generate graphs if requested
-    let _ = built.generate_graph_with_config(&args.graph, None);
+    // Generate graph visualizations based on command line arguments
+    if let Err(e) = built.generate_graph_with_config(&args.graph, None) {
+        eprintln!("Error generating graph: {}", e);
+    }
 
     // If we're just generating a graph file, exit early
     if args.graph.should_exit_after_graph_generation() {
         return;
     }
 
+    // Optimize the flow before deployment to remove marker nodes
     let optimized = built.with_default_optimize();
+
+    let rustflags = if args.gcp.is_some() || args.aws {
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off -C link-args=--no-rosegment"
+    } else {
+        "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
+    };
 
     let _nodes = optimized
         .with_cluster(

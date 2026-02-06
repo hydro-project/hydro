@@ -1,6 +1,6 @@
 use hydro_lang::prelude::*;
 use hydro_std::bench_client::{
-    AggregateBenchResult, aggregate_bench_results, bench_client, compute_throughput_latency,
+    BenchResult, aggregate_bench_results, bench_client, compute_throughput_latency,
 };
 
 use super::two_pc::{Coordinator, Participant};
@@ -18,8 +18,9 @@ pub fn two_pc_bench<'a>(
     num_participants: usize,
     clients: &Cluster<'a, Client>,
     client_aggregator: &Process<'a, Aggregator>,
-    interval_millis: u64,
-    print_results: impl FnOnce(AggregateBenchResult<'a, Aggregator>, u64),
+    client_interval_millis: u64,
+    aggregate_interval_millis: u64,
+    print_results: impl FnOnce(BenchResult<Process<'a, Aggregator>>),
 ) {
     let latencies = bench_client(
         clients,
@@ -40,10 +41,15 @@ pub fn two_pc_bench<'a>(
     .map(q!(|(_virtual_client_id, (_output, latency))| latency));
 
     // Create throughput/latency graphs
-    let bench_results = compute_throughput_latency(clients, latencies, nondet!(/** bench */));
+    let bench_results = compute_throughput_latency(
+        clients,
+        latencies,
+        client_interval_millis,
+        nondet!(/** bench */),
+    );
     let aggregate_results =
-        aggregate_bench_results(bench_results, client_aggregator, clients, interval_millis);
-    print_results(aggregate_results, interval_millis);
+        aggregate_bench_results(bench_results, client_aggregator, aggregate_interval_millis);
+    print_results(aggregate_results);
 }
 
 #[cfg(test)]
@@ -78,6 +84,7 @@ mod tests {
             NUM_PARTICIPANTS,
             clients,
             client_aggregator,
+            100,
             1000,
             pretty_print_bench_results,
         );
@@ -164,7 +171,7 @@ mod tests {
 
         use regex::Regex;
 
-        let re = Regex::new(r"Throughput: ([^ ]+) - ([^ ]+) - ([^ ]+) requests/s").unwrap();
+        let re = Regex::new(r"Throughput: ([^ ]+) requests/s").unwrap();
         let mut found = 0;
         let mut client_out = client_out;
         while let Some(line) = client_out.recv().await {
