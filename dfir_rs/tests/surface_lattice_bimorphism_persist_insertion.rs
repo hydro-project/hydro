@@ -6,13 +6,14 @@ use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use lattices::set_union::{CartesianProductBimorphism, SetUnionHashSet, SetUnionSingletonSet};
 use multiplatform_test::multiplatform_test;
 use tokio::sync::mpsc::UnboundedSender;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 
 /// Check that the following tests all behave the same.
 fn check_cartesian_product_multi_tick(
     mut df: Dfir,
     lhs_send: UnboundedSender<u32>,
     rhs_send: UnboundedSender<u32>,
-    mut out_recv: futures::stream::Fuse<tokio_stream::wrappers::UnboundedReceiverStream<SetUnionHashSet<(u32, u32)>>>,
+    mut out_recv: futures::stream::Fuse<UnboundedReceiverStream<SetUnionHashSet<(u32, u32)>>>,
 ) {
     df.run_available_sync();
     assert_eq!(0, collect_ready::<Vec<_>, _>(&mut out_recv).len());
