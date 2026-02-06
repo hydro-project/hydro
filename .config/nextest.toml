@@ -40,3 +40,7 @@ test-group = 'hydro-trybuild-group'
 [[profile.default.overrides]]
 filter = 'package(hydro_test_template)'
 test-group = 'hydro-trybuild-group'
+
+[[profile.default.overrides]]
+filter = 'package(hydro_test_embedded) && kind(example)'
+test-group = 'hydro-trybuild-group'
