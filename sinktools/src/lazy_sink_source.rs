@@ -3,42 +3,22 @@
 use core::marker::PhantomData;
 use core::pin::Pin;
 use core::task::{Context, Poll, Waker};
-use std::cell::RefCell;
-use std::rc::Rc;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::task::Wake;
 
+use futures_util::task::AtomicWaker;
 use futures_util::{Sink, Stream, ready};
 
-struct MultiWaker {
-    wakers: Mutex<Vec<Waker>>,
+#[derive(Default)]
+struct DualWaker {
+    sink: AtomicWaker,
+    stream: AtomicWaker,
 }
 
-impl MultiWaker {
-    fn new(waker: &Waker) -> Self {
-        MultiWaker {
-            wakers: Mutex::new(vec![waker.clone()]),
-        }
-    }
-
-    fn push(&self, waker: &Waker) {
-        let mut guard = self.wakers.lock().unwrap();
-        guard.push(waker.clone());
-    }
-}
-
-impl Wake for MultiWaker {
+impl Wake for DualWaker {
     fn wake(self: Arc<Self>) {
-        let mut wakers = Vec::new();
-
-        {
-            let mut guard = self.wakers.lock().unwrap();
-            std::mem::swap(&mut wakers, &mut *guard);
-        }
-
-        for waker in wakers {
-            waker.wake();
-        }
+        self.sink.wake();
+        self.stream.wake();
     }
 }
 
@@ -49,7 +29,7 @@ enum SharedState<Fut, St, Si, Item> {
     Thunkulating {
         future: Pin<Box<Fut>>,
         item: Option<Item>,
-        multi_waker: Option<Arc<MultiWaker>>,
+        dual_waker: Arc<DualWaker>,
     },
     Done {
         stream: Pin<Box<St>>,
@@ -61,7 +41,7 @@ enum SharedState<Fut, St, Si, Item> {
 
 /// A lazy sink-source that can be split into a sink and a source. The internal state is initialized when the first item is attempted to be pulled from the source half, or when the first item is sent to the sink half.
 pub struct LazySinkSource<Fut, St, Si, Item, Error> {
-    state: Rc<RefCell<SharedState<Fut, St, Si, Item>>>,
+    state: SharedState<Fut, St, Si, Item>,
     _phantom: PhantomData<Error>,
 }
 
@@ -69,50 +49,17 @@ impl<Fut, St, Si, Item, Error> LazySinkSource<Fut, St, Si, Item, Error> {
     /// Creates a new `LazySinkSource` with the given initialization future.
     pub fn new(future: Fut) -> Self {
         Self {
-            state: Rc::new(RefCell::new(SharedState::Uninit {
+            state: SharedState::Uninit {
                 future: Box::pin(future),
-            })),
+            },
             _phantom: PhantomData,
         }
     }
-
-    #[expect(
-        clippy::type_complexity,
-        reason = "this type is actually fine and not too complex."
-    )]
-    /// Splits into a sink and stream that share the same underlying connection.
-    pub fn split(
-        self,
-    ) -> (
-        LazySinkHalf<Fut, St, Si, Item, Error>,
-        LazySourceHalf<Fut, St, Si, Item, Error>,
-    ) {
-        let sink = LazySinkHalf {
-            state: Rc::clone(&self.state),
-            _phantom: PhantomData,
-        };
-        let stream = LazySourceHalf {
-            state: self.state,
-            _phantom: PhantomData,
-        };
-        (sink, stream)
-    }
 }
 
-/// Sink half of the SinkSource
-pub struct LazySinkHalf<Fut, St, Si, Item, Error> {
-    state: Rc<RefCell<SharedState<Fut, St, Si, Item>>>,
-    _phantom: PhantomData<Error>,
-}
-
-/// Stream half of the SinkSource
-pub struct LazySourceHalf<Fut, St, Si, Item, Error> {
-    state: Rc<RefCell<SharedState<Fut, St, Si, Item>>>,
-    _phantom: PhantomData<Error>,
-}
-
-impl<Fut, St, Si, Item, Error> Sink<Item> for LazySinkHalf<Fut, St, Si, Item, Error>
+impl<Fut, St, Si, Item, Error> Sink<Item> for LazySinkSource<Fut, St, Si, Item, Error>
 where
+    Self: Unpin,
     Fut: Future<Output = Result<(St, Si), Error>>,
     St: Stream,
     Si: Sink<Item>,
@@ -121,7 +68,7 @@ where
     type Error = Error;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let mut state = self.state.borrow_mut();
+        let state = &mut self.get_mut().state;
 
         if let SharedState::Uninit { .. } = &*state {
             return Poll::Ready(Ok(()));
@@ -130,17 +77,11 @@ where
         if let SharedState::Thunkulating {
             future,
             item,
-            multi_waker,
+            dual_waker,
         } = &mut *state
         {
-            let waker = if let Some(waker) = multi_waker {
-                waker.push(cx.waker());
-                Waker::from(waker.clone())
-            } else {
-                let waker = Arc::new(MultiWaker::new(cx.waker()));
-                *multi_waker = Some(waker.clone());
-                Waker::from(waker)
-            };
+            dual_waker.sink.register(cx.waker());
+            let waker = Waker::from(Arc::clone(dual_waker));
 
             let mut new_context = Context::from_waker(&waker);
 
@@ -175,7 +116,7 @@ where
     }
 
     fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
-        let mut state = self.state.borrow_mut();
+        let state = &mut self.get_mut().state;
 
         if let SharedState::Uninit { .. } = &*state {
             let old_state = std::mem::replace(&mut *state, SharedState::Taken);
@@ -183,7 +124,7 @@ where
                 *state = SharedState::Thunkulating {
                     future,
                     item: Some(item),
-                    multi_waker: None,
+                    dual_waker: Default::default(),
                 };
 
                 return Ok(());
@@ -204,7 +145,7 @@ where
     }
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let mut state = self.state.borrow_mut();
+        let state = &mut self.get_mut().state;
 
         if let SharedState::Uninit { .. } = &*state {
             return Poll::Ready(Ok(()));
@@ -213,17 +154,11 @@ where
         if let SharedState::Thunkulating {
             future,
             item,
-            multi_waker,
+            dual_waker,
         } = &mut *state
         {
-            let waker = if let Some(waker) = multi_waker {
-                waker.push(cx.waker());
-                Waker::from(waker.clone())
-            } else {
-                let waker = Arc::new(MultiWaker::new(cx.waker()));
-                *multi_waker = Some(waker.clone());
-                Waker::from(waker)
-            };
+            dual_waker.sink.register(cx.waker());
+            let waker = Waker::from(Arc::clone(dual_waker));
 
             let mut new_context = Context::from_waker(&waker);
 
@@ -258,7 +193,7 @@ where
     }
 
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
-        let mut state = self.state.borrow_mut();
+        let state = &mut self.get_mut().state;
 
         if let SharedState::Uninit { .. } = &*state {
             return Poll::Ready(Ok(()));
@@ -267,17 +202,11 @@ where
         if let SharedState::Thunkulating {
             future,
             item,
-            multi_waker,
+            dual_waker,
         } = &mut *state
         {
-            let waker = if let Some(waker) = multi_waker {
-                waker.push(cx.waker());
-                Waker::from(waker.clone())
-            } else {
-                let waker = Arc::new(MultiWaker::new(cx.waker()));
-                *multi_waker = Some(waker.clone());
-                Waker::from(waker)
-            };
+            dual_waker.sink.register(cx.waker());
+            let waker = Waker::from(Arc::clone(dual_waker));
 
             let mut new_context = Context::from_waker(&waker);
 
@@ -312,8 +241,9 @@ where
     }
 }
 
-impl<Fut, St, Si, Item, Error> Stream for LazySourceHalf<Fut, St, Si, Item, Error>
+impl<Fut, St, Si, Item, Error> Stream for LazySinkSource<Fut, St, Si, Item, Error>
 where
+    Self: Unpin,
     Fut: Future<Output = Result<(St, Si), Error>>,
     St: Stream,
     Si: Sink<Item>,
@@ -321,7 +251,7 @@ where
     type Item = St::Item;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let mut state = self.state.borrow_mut();
+        let state = &mut self.get_mut().state;
 
         if let SharedState::Uninit { .. } = &*state {
             let old_state = std::mem::replace(&mut *state, SharedState::Taken);
@@ -329,7 +259,7 @@ where
                 *state = SharedState::Thunkulating {
                     future,
                     item: None,
-                    multi_waker: None,
+                    dual_waker: Default::default(),
                 };
             } else {
                 unreachable!();
@@ -339,17 +269,11 @@ where
         if let SharedState::Thunkulating {
             future,
             item,
-            multi_waker,
+            dual_waker,
         } = &mut *state
         {
-            let waker = if let Some(waker) = multi_waker {
-                waker.push(cx.waker());
-                Waker::from(waker.clone())
-            } else {
-                let waker = Arc::new(MultiWaker::new(cx.waker()));
-                *multi_waker = Some(waker.clone());
-                Waker::from(waker)
-            };
+            dual_waker.stream.register(cx.waker());
+            let waker = Waker::from(Arc::clone(dual_waker));
 
             let mut new_context = Context::from_waker(&waker);
 
@@ -390,8 +314,91 @@ where
 #[cfg(test)]
 mod test {
     use futures_util::{SinkExt, StreamExt};
+    use tokio_util::sync::PollSendError;
 
     use super::*;
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn stream_drives_initialization() {
+        let local = tokio::task::LocalSet::new();
+        local
+            .run_until(async {
+                let (init_lazy_send, init_lazy_recv) = tokio::sync::oneshot::channel::<()>();
+
+                let sink_source = LazySinkSource::new(async move {
+                    let () = init_lazy_recv.await.unwrap();
+                    let (send, recv) = tokio::sync::mpsc::channel(1);
+                    let sink = tokio_util::sync::PollSender::new(send);
+                    let stream = tokio_stream::wrappers::ReceiverStream::new(recv);
+                    Ok::<_, PollSendError<_>>((stream, sink))
+                });
+
+                let (mut sink, mut stream) = sink_source.split();
+
+                // Ensures stream starts the lazy.
+                let (stream_init_send, stream_init_recv) = tokio::sync::oneshot::channel::<()>();
+                let stream_task = tokio::task::spawn_local(async move {
+                    stream_init_send.send(()).unwrap();
+                    (stream.next().await.unwrap(), stream.next().await.unwrap())
+                });
+                let sink_task = tokio::task::spawn_local(async move {
+                    stream_init_recv.await.unwrap();
+                    SinkExt::send(&mut sink, "test1").await.unwrap();
+                    SinkExt::send(&mut sink, "test2").await.unwrap();
+                });
+
+                // finish the future.
+                init_lazy_send.send(()).unwrap();
+
+                tokio::task::yield_now().await;
+
+                assert!(sink_task.is_finished());
+                assert_eq!(("test1", "test2"), stream_task.await.unwrap());
+                sink_task.await.unwrap();
+            })
+            .await;
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn sink_drives_initialization() {
+        let local = tokio::task::LocalSet::new();
+        local
+            .run_until(async {
+                let (init_lazy_send, init_lazy_recv) = tokio::sync::oneshot::channel::<()>();
+
+                let sink_source = LazySinkSource::new(async move {
+                    let () = init_lazy_recv.await.unwrap();
+                    let (send, recv) = tokio::sync::mpsc::channel(1);
+                    let sink = tokio_util::sync::PollSender::new(send);
+                    let stream = tokio_stream::wrappers::ReceiverStream::new(recv);
+                    Ok::<_, PollSendError<_>>((stream, sink))
+                });
+
+                let (mut sink, mut stream) = sink_source.split();
+
+                // Ensures stream starts the lazy.
+                let (sink_init_send, sink_init_recv) = tokio::sync::oneshot::channel::<()>();
+                let stream_task = tokio::task::spawn_local(async move {
+                    sink_init_recv.await.unwrap();
+                    (stream.next().await.unwrap(), stream.next().await.unwrap())
+                });
+                let sink_task = tokio::task::spawn_local(async move {
+                    sink_init_send.send(()).unwrap();
+                    SinkExt::send(&mut sink, "test1").await.unwrap();
+                    SinkExt::send(&mut sink, "test2").await.unwrap();
+                });
+
+                // finish the future.
+                init_lazy_send.send(()).unwrap();
+
+                tokio::task::yield_now().await;
+
+                assert!(sink_task.is_finished());
+                assert_eq!(("test1", "test2"), stream_task.await.unwrap());
+                sink_task.await.unwrap();
+            })
+            .await;
+    }
 
     #[tokio::test(flavor = "current_thread")]
     async fn tcp_stream_drives_initialization() {
@@ -405,6 +412,7 @@ mod test {
             .run_until(async {
                 let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
                 let addr = listener.local_addr().unwrap();
+                println!("Listening on {}", addr);
 
                 let sink_source = LazySinkSource::new(async move {
                     // initialization is at least partially started now.
@@ -472,6 +480,8 @@ mod test {
             .run_until(async {
                 let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
                 let addr = listener.local_addr().unwrap();
+                println!("Listening on {}", addr);
+
 
                 let sink_source = LazySinkSource::new(async move {
                     // initialization is at least partially started now.
@@ -501,7 +511,7 @@ mod test {
                     tokio::task::yield_now().await
                 }
 
-                assert!(!sink_task.is_finished()); // We haven't sent anything yet, so the stream should definitely not be resolved now.
+                assert!(!sink_task.is_finished(), "We haven't sent anything yet, so the sink should definitely not be resolved now.");
 
                 // trigger further initialization of the future.
                 let mut socket = TcpStream::connect(addr).await.unwrap();
@@ -510,11 +520,9 @@ mod test {
                 let mut client_rx = FramedRead::new(client_rx, LengthDelimitedCodec::new());
 
                 // try to be really sure that the effects of the above initialization completing are propagated.
-                for _ in 0..20 {
-                    tokio::task::yield_now().await
-                }
+                tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
-                assert!(sink_task.is_finished()); // We haven't sent anything yet, so the stream should definitely not be resolved now.
+                assert!(sink_task.is_finished()); // Sink should have sent its item.
 
                 assert_eq!(&client_rx.next().await.unwrap().unwrap()[..], b"test2");
 
