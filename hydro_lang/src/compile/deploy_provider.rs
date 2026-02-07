@@ -118,6 +118,18 @@ pub trait Deploy<'a> {
     fn cluster_membership_stream(
         location_id: &LocationId,
     ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>;
+
+    /// Registers an embedded input for the given ident and element type.
+    ///
+    /// Only meaningful for the embedded deployment backend. The default
+    /// implementation panics.
+    fn register_embedded_input(
+        _env: &mut Self::InstantiateEnv,
+        _ident: &syn::Ident,
+        _element_type: &syn::Type,
+    ) {
+        panic!("register_embedded_input is only supported by EmbeddedDeploy");
+    }
 }
 
 pub trait ProcessSpec<'a, D>

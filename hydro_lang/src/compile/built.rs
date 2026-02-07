@@ -316,7 +316,7 @@ impl<'a> BuiltFlow<'a> {
         self.into_deploy().with_remaining_clusters(spec)
     }
 
-    pub fn compile<D: Deploy<'a>>(self) -> CompiledFlow<'a> {
+    pub fn compile<D: Deploy<'a, InstantiateEnv = ()>>(self) -> CompiledFlow<'a> {
         self.into_deploy::<D>().compile()
     }
 
