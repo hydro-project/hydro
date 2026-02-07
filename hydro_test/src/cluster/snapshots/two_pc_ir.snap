@@ -1368,32 +1368,42 @@ expression: built.ir()
                                                                             inner: Join {
                                                                                 left: Cast {
                                                                                     inner: Cast {
-                                                                                        inner: Batch {
-                                                                                            inner: Map {
-                                                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , i32) , (u32 , std :: time :: SystemTime) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < i32 , std :: time :: SystemTime > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | _input | SystemTime :: now () }) ; { let orig = f__free ; move | (k , v) | (k , orig (v)) } }),
-                                                                                                input: ReduceKeyed {
-                                                                                                    f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , i32 , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | curr , new | { * curr = new ; } }),
-                                                                                                    input: ObserveNonDet {
-                                                                                                        inner: Tee {
-                                                                                                            inner: <tee 3>,
+                                                                                        inner: DeferTick {
+                                                                                            input: Batch {
+                                                                                                inner: Map {
+                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , i32) , (u32 , std :: time :: SystemTime) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < i32 , std :: time :: SystemTime > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | _input | SystemTime :: now () }) ; { let orig = f__free ; move | (k , v) | (k , orig (v)) } }),
+                                                                                                    input: ReduceKeyed {
+                                                                                                        f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , i32 , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | curr , new | { * curr = new ; } }),
+                                                                                                        input: ObserveNonDet {
+                                                                                                            inner: Tee {
+                                                                                                                inner: <tee 3>,
+                                                                                                                metadata: HydroIrMetadata {
+                                                                                                                    location_id: Cluster(loc3v1),
+                                                                                                                    collection_kind: KeyedStream {
+                                                                                                                        bound: Unbounded,
+                                                                                                                        value_order: NoOrder,
+                                                                                                                        value_retry: ExactlyOnce,
+                                                                                                                        key_type: u32,
+                                                                                                                        value_type: i32,
+                                                                                                                    },
+                                                                                                                },
+                                                                                                            },
+                                                                                                            trusted: false,
                                                                                                             metadata: HydroIrMetadata {
                                                                                                                 location_id: Cluster(loc3v1),
                                                                                                                 collection_kind: KeyedStream {
                                                                                                                     bound: Unbounded,
-                                                                                                                    value_order: NoOrder,
+                                                                                                                    value_order: TotalOrder,
                                                                                                                     value_retry: ExactlyOnce,
                                                                                                                     key_type: u32,
                                                                                                                     value_type: i32,
                                                                                                                 },
                                                                                                             },
                                                                                                         },
-                                                                                                        trusted: false,
                                                                                                         metadata: HydroIrMetadata {
                                                                                                             location_id: Cluster(loc3v1),
-                                                                                                            collection_kind: KeyedStream {
+                                                                                                            collection_kind: KeyedSingleton {
                                                                                                                 bound: Unbounded,
-                                                                                                                value_order: TotalOrder,
-                                                                                                                value_retry: ExactlyOnce,
                                                                                                                 key_type: u32,
                                                                                                                 value_type: i32,
                                                                                                             },
@@ -1404,14 +1414,14 @@ expression: built.ir()
                                                                                                         collection_kind: KeyedSingleton {
                                                                                                             bound: Unbounded,
                                                                                                             key_type: u32,
-                                                                                                            value_type: i32,
+                                                                                                            value_type: std :: time :: SystemTime,
                                                                                                         },
                                                                                                     },
                                                                                                 },
                                                                                                 metadata: HydroIrMetadata {
-                                                                                                    location_id: Cluster(loc3v1),
+                                                                                                    location_id: Tick(5, Cluster(loc3v1)),
                                                                                                     collection_kind: KeyedSingleton {
-                                                                                                        bound: Unbounded,
+                                                                                                        bound: Bounded,
                                                                                                         key_type: u32,
                                                                                                         value_type: std :: time :: SystemTime,
                                                                                                     },
