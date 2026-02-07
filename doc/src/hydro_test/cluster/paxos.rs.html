@@ -308,7 +308,7 @@
 <a href=#308 id=308 data-nosnippet>308</a>        .if_some_then(p_ballot.clone())
 <a href=#309 id=309 data-nosnippet>309</a>        .all_ticks()
 <a href=#310 id=310 data-nosnippet>310</a>        .inspect(<span class="macro">q!</span>(|<span class="kw">_</span>| <span class="macro">println!</span>(<span class="string">"Proposer leader expired, sending P1a"</span>)))
-<a href=#311 id=311 data-nosnippet>311</a>        .broadcast(acceptors, TCP.bincode(), <span class="macro">nondet!</span>(<span class="doccomment">/** TODO */</span>))
+<a href=#311 id=311 data-nosnippet>311</a>        .broadcast(acceptors, TCP.fail_stop().bincode(), <span class="macro">nondet!</span>(<span class="doccomment">/** TODO */</span>))
 <a href=#312 id=312 data-nosnippet>312</a>        .values();
 <a href=#313 id=313 data-nosnippet>313</a>
 <a href=#314 id=314 data-nosnippet>314</a>    <span class="kw">let </span>(a_max_ballot, a_to_proposers_p1b) = acceptor_p1(
@@ -420,7 +420,7 @@
 <a href=#420 id=420 data-nosnippet>420</a>                </span>nondet_reelection
 <a href=#421 id=421 data-nosnippet>421</a>            ),
 <a href=#422 id=422 data-nosnippet>422</a>        )
-<a href=#423 id=423 data-nosnippet>423</a>        .broadcast(proposers, TCP.bincode(), <span class="macro">nondet!</span>(<span class="doccomment">/** TODO */</span>))
+<a href=#423 id=423 data-nosnippet>423</a>        .broadcast(proposers, TCP.fail_stop().bincode(), <span class="macro">nondet!</span>(<span class="doccomment">/** TODO */</span>))
 <a href=#424 id=424 data-nosnippet>424</a>        .values();
 <a href=#425 id=425 data-nosnippet>425</a>
 <a href=#426 id=426 data-nosnippet>426</a>    <span class="kw">let </span>p_leader_expired = p_to_proposers_i_am_leader
@@ -496,7 +496,7 @@
 <a href=#496 id=496 data-nosnippet>496</a>                )
 <a href=#497 id=497 data-nosnippet>497</a>            )))
 <a href=#498 id=498 data-nosnippet>498</a>            .all_ticks()
-<a href=#499 id=499 data-nosnippet>499</a>            .demux(proposers, TCP.bincode())
+<a href=#499 id=499 data-nosnippet>499</a>            .demux(proposers, TCP.fail_stop().bincode())
 <a href=#500 id=500 data-nosnippet>500</a>            .values(),
 <a href=#501 id=501 data-nosnippet>501</a>    )
 <a href=#502 id=502 data-nosnippet>502</a>}
@@ -727,7 +727,7 @@
 <a href=#727 id=727 data-nosnippet>727</a>                slot,
 <a href=#728 id=728 data-nosnippet>728</a>                value
 <a href=#729 id=729 data-nosnippet>729</a>            }))
-<a href=#730 id=730 data-nosnippet>730</a>            .broadcast(acceptors, TCP.bincode(), <span class="macro">nondet!</span>(<span class="doccomment">/** TODO */</span>))
+<a href=#730 id=730 data-nosnippet>730</a>            .broadcast(acceptors, TCP.fail_stop().bincode(), <span class="macro">nondet!</span>(<span class="doccomment">/** TODO */</span>))
 <a href=#731 id=731 data-nosnippet>731</a>            .values(),
 <a href=#732 id=732 data-nosnippet>732</a>        a_checkpoint,
 <a href=#733 id=733 data-nosnippet>733</a>        proposers,
@@ -869,7 +869,7 @@
 <a href=#869 id=869 data-nosnippet>869</a>            )
 <a href=#870 id=870 data-nosnippet>870</a>        )))
 <a href=#871 id=871 data-nosnippet>871</a>        .all_ticks()
-<a href=#872 id=872 data-nosnippet>872</a>        .demux(proposers, TCP.bincode())
+<a href=#872 id=872 data-nosnippet>872</a>        .demux(proposers, TCP.fail_stop().bincode())
 <a href=#873 id=873 data-nosnippet>873</a>        .values();
 <a href=#874 id=874 data-nosnippet>874</a>
 <a href=#875 id=875 data-nosnippet>875</a>    (

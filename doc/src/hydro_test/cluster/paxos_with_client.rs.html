@@ -59,7 +59,7 @@
 <a href=#59 id=59 data-nosnippet>59</a>            <span class="kw">move </span>|new_leader_elected| {
 <a href=#60 id=60 data-nosnippet>60</a>                <span class="kw">let </span>cur_leader_id = <span class="self">Self</span>::get_recipient_from_ballot(
 <a href=#61 id=61 data-nosnippet>61</a>                    new_leader_elected
-<a href=#62 id=62 data-nosnippet>62</a>                        .broadcast(clients, TCP.bincode(), <span class="macro">nondet!</span>(<span class="doccomment">/** TODO */</span>))
+<a href=#62 id=62 data-nosnippet>62</a>                        .broadcast(clients, TCP.fail_stop().bincode(), <span class="macro">nondet!</span>(<span class="doccomment">/** TODO */</span>))
 <a href=#63 id=63 data-nosnippet>63</a>                        .values()
 <a href=#64 id=64 data-nosnippet>64</a>                        .inspect(<span class="macro">q!</span>(|ballot| <span class="macro">println!</span>(
 <a href=#65 id=65 data-nosnippet>65</a>                            <span class="string">"Client notified that leader was elected: {:?}"</span>,
@@ -88,7 +88,7 @@
 <a href=#88 id=88 data-nosnippet>88</a>                    all_payloads.cross_singleton(latest_leader)
 <a href=#89 id=89 data-nosnippet>89</a>                }
 <a href=#90 id=90 data-nosnippet>90</a>                .map(<span class="macro">q!</span>(<span class="kw">move </span>|(payload, leader_id)| (leader_id, payload)))
-<a href=#91 id=91 data-nosnippet>91</a>                .demux(<span class="kw-2">&amp;</span>leaders, TCP.bincode())
+<a href=#91 id=91 data-nosnippet>91</a>                .demux(<span class="kw-2">&amp;</span>leaders, TCP.fail_stop().bincode())
 <a href=#92 id=92 data-nosnippet>92</a>                .values();
 <a href=#93 id=93 data-nosnippet>93</a>
 <a href=#94 id=94 data-nosnippet>94</a>                <span class="kw">let </span>payloads_at_proposer = {

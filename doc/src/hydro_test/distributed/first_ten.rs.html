@@ -21,7 +21,7 @@
 <a href=#21 id=21 data-nosnippet>21</a>    <span class="kw">let </span>numbers = process.source_iter(<span class="macro">q!</span>(<span class="number">0</span>..<span class="number">10</span>));
 <a href=#22 id=22 data-nosnippet>22</a>    numbers
 <a href=#23 id=23 data-nosnippet>23</a>        .map(<span class="macro">q!</span>(|n| SendOverNetwork { n }))
-<a href=#24 id=24 data-nosnippet>24</a>        .send(second_process, TCP.bincode())
+<a href=#24 id=24 data-nosnippet>24</a>        .send(second_process, TCP.fail_stop().bincode())
 <a href=#25 id=25 data-nosnippet>25</a>        .for_each(<span class="macro">q!</span>(|n| <span class="macro">println!</span>(<span class="string">"{}"</span>, n.n)));
 <a href=#26 id=26 data-nosnippet>26</a>
 <a href=#27 id=27 data-nosnippet>27</a>    numbers_external_port

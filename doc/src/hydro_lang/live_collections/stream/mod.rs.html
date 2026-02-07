@@ -2480,7 +2480,7 @@
 <a href=#2480 id=2480 data-nosnippet>2480</a>        <span class="kw">let </span>numbers = first_node.source_iter(<span class="macro">q!</span>(<span class="number">0</span>..<span class="number">10</span>));
 <a href=#2481 id=2481 data-nosnippet>2481</a>        <span class="kw">let </span>out_port = numbers
 <a href=#2482 id=2482 data-nosnippet>2482</a>            .map(<span class="macro">q!</span>(|n| SendOverNetwork { n }))
-<a href=#2483 id=2483 data-nosnippet>2483</a>            .send(<span class="kw-2">&amp;</span>second_node, TCP.bincode())
+<a href=#2483 id=2483 data-nosnippet>2483</a>            .send(<span class="kw-2">&amp;</span>second_node, TCP.fail_stop().bincode())
 <a href=#2484 id=2484 data-nosnippet>2484</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
 <a href=#2485 id=2485 data-nosnippet>2485</a>
 <a href=#2486 id=2486 data-nosnippet>2486</a>        <span class="kw">let </span>nodes = flow

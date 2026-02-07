@@ -16,7 +16,7 @@
 <a href=#16 id=16 data-nosnippet>16</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L, L2, B: Boundedness, O: Ordering, R: Retries&gt;
 <a href=#17 id=17 data-nosnippet>17</a>    KeyedStream&lt;MemberId&lt;L2&gt;, T, Process&lt;<span class="lifetime">'a</span>, L&gt;, B, O, R&gt;
 <a href=#18 id=18 data-nosnippet>18</a>{
-<a href=#19 id=19 data-nosnippet>19</a>    <span class="attr">#[deprecated = <span class="string">"use KeyedStream::demux(..., TCP.bincode()) instead"</span>]
+<a href=#19 id=19 data-nosnippet>19</a>    <span class="attr">#[deprecated = <span class="string">"use KeyedStream::demux(..., TCP.fail_stop().bincode()) instead"</span>]
 <a href=#20 id=20 data-nosnippet>20</a>    </span><span class="doccomment">/// Sends each group of this stream to a specific member of a cluster, with the [`MemberId`] key
 <a href=#21 id=21 data-nosnippet>21</a>    /// identifying the recipient for each group and using [`bincode`] to serialize/deserialize messages.
 <a href=#22 id=22 data-nosnippet>22</a>    ///
@@ -61,7 +61,7 @@
 <a href=#61 id=61 data-nosnippet>61</a>    <span class="kw">where
 <a href=#62 id=62 data-nosnippet>62</a>        </span>T: Serialize + DeserializeOwned,
 <a href=#63 id=63 data-nosnippet>63</a>    {
-<a href=#64 id=64 data-nosnippet>64</a>        <span class="self">self</span>.demux(other, TCP.bincode())
+<a href=#64 id=64 data-nosnippet>64</a>        <span class="self">self</span>.demux(other, TCP.fail_stop().bincode())
 <a href=#65 id=65 data-nosnippet>65</a>    }
 <a href=#66 id=66 data-nosnippet>66</a>
 <a href=#67 id=67 data-nosnippet>67</a>    <span class="doccomment">/// Sends each group of this stream to a specific member of a cluster, with the [`MemberId`] key
@@ -85,8 +85,8 @@
 <a href=#85 id=85 data-nosnippet>85</a>    /// let on_worker: Stream&lt;_, Cluster&lt;_&gt;, _&gt; = numbers
 <a href=#86 id=86 data-nosnippet>86</a>    ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)))
 <a href=#87 id=87 data-nosnippet>87</a>    ///     .into_keyed()
-<a href=#88 id=88 data-nosnippet>88</a>    ///     .demux(&amp;workers, TCP.bincode());
-<a href=#89 id=89 data-nosnippet>89</a>    /// # on_worker.send(&amp;p2, TCP.bincode()).entries()
+<a href=#88 id=88 data-nosnippet>88</a>    ///     .demux(&amp;workers, TCP.fail_stop().bincode());
+<a href=#89 id=89 data-nosnippet>89</a>    /// # on_worker.send(&amp;p2, TCP.fail_stop().bincode()).entries()
 <a href=#90 id=90 data-nosnippet>90</a>    /// // if there are 4 members in the cluster, each receives one element
 <a href=#91 id=91 data-nosnippet>91</a>    /// // - MemberId::&lt;()&gt;(0): [0]
 <a href=#92 id=92 data-nosnippet>92</a>    /// // - MemberId::&lt;()&gt;(1): [1]
@@ -140,7 +140,7 @@
 <a href=#140 id=140 data-nosnippet>140</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries&gt;
 <a href=#141 id=141 data-nosnippet>141</a>    KeyedStream&lt;(MemberId&lt;L2&gt;, K), T, Process&lt;<span class="lifetime">'a</span>, L&gt;, B, O, R&gt;
 <a href=#142 id=142 data-nosnippet>142</a>{
-<a href=#143 id=143 data-nosnippet>143</a>    <span class="attr">#[deprecated = <span class="string">"use KeyedStream::demux(..., TCP.bincode()) instead"</span>]
+<a href=#143 id=143 data-nosnippet>143</a>    <span class="attr">#[deprecated = <span class="string">"use KeyedStream::demux(..., TCP.fail_stop().bincode()) instead"</span>]
 <a href=#144 id=144 data-nosnippet>144</a>    </span><span class="doccomment">/// Sends each group of this stream to a specific member of a cluster. The input stream has a
 <a href=#145 id=145 data-nosnippet>145</a>    /// compound key where the first element is the recipient's [`MemberId`] and the second element
 <a href=#146 id=146 data-nosnippet>146</a>    /// is a key that will be sent along with the value, using [`bincode`] to serialize/deserialize
@@ -182,7 +182,7 @@
 <a href=#182 id=182 data-nosnippet>182</a>        </span>K: Serialize + DeserializeOwned,
 <a href=#183 id=183 data-nosnippet>183</a>        T: Serialize + DeserializeOwned,
 <a href=#184 id=184 data-nosnippet>184</a>    {
-<a href=#185 id=185 data-nosnippet>185</a>        <span class="self">self</span>.demux(other, TCP.bincode())
+<a href=#185 id=185 data-nosnippet>185</a>        <span class="self">self</span>.demux(other, TCP.fail_stop().bincode())
 <a href=#186 id=186 data-nosnippet>186</a>    }
 <a href=#187 id=187 data-nosnippet>187</a>
 <a href=#188 id=188 data-nosnippet>188</a>    <span class="doccomment">/// Sends each group of this stream to a specific member of a cluster. The input stream has a
@@ -202,8 +202,8 @@
 <a href=#202 id=202 data-nosnippet>202</a>    ///     .source_iter(q!(vec![0, 1, 2, 3]))
 <a href=#203 id=203 data-nosnippet>203</a>    ///     .map(q!(|x| ((hydro_lang::location::MemberId::from_raw_id(x), x), x + 123)))
 <a href=#204 id=204 data-nosnippet>204</a>    ///     .into_keyed();
-<a href=#205 id=205 data-nosnippet>205</a>    /// let on_worker: KeyedStream&lt;_, _, Cluster&lt;_&gt;, _&gt; = to_send.demux(&amp;workers, TCP.bincode());
-<a href=#206 id=206 data-nosnippet>206</a>    /// # on_worker.entries().send(&amp;p2, TCP.bincode()).entries()
+<a href=#205 id=205 data-nosnippet>205</a>    /// let on_worker: KeyedStream&lt;_, _, Cluster&lt;_&gt;, _&gt; = to_send.demux(&amp;workers, TCP.fail_stop().bincode());
+<a href=#206 id=206 data-nosnippet>206</a>    /// # on_worker.entries().send(&amp;p2, TCP.fail_stop().bincode()).entries()
 <a href=#207 id=207 data-nosnippet>207</a>    /// // if there are 4 members in the cluster, each receives one element
 <a href=#208 id=208 data-nosnippet>208</a>    /// // - MemberId::&lt;()&gt;(0): { 0: [123] }
 <a href=#209 id=209 data-nosnippet>209</a>    /// // - MemberId::&lt;()&gt;(1): { 1: [124] }
@@ -262,7 +262,7 @@
 <a href=#262 id=262 data-nosnippet>262</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L, L2, B: Boundedness, O: Ordering, R: Retries&gt;
 <a href=#263 id=263 data-nosnippet>263</a>    KeyedStream&lt;MemberId&lt;L2&gt;, T, Cluster&lt;<span class="lifetime">'a</span>, L&gt;, B, O, R&gt;
 <a href=#264 id=264 data-nosnippet>264</a>{
-<a href=#265 id=265 data-nosnippet>265</a>    <span class="attr">#[deprecated = <span class="string">"use KeyedStream::demux(..., TCP.bincode()) instead"</span>]
+<a href=#265 id=265 data-nosnippet>265</a>    <span class="attr">#[deprecated = <span class="string">"use KeyedStream::demux(..., TCP.fail_stop().bincode()) instead"</span>]
 <a href=#266 id=266 data-nosnippet>266</a>    </span><span class="doccomment">/// Sends each group of this stream at each source member to a specific member of a destination
 <a href=#267 id=267 data-nosnippet>267</a>    /// cluster, with the [`MemberId`] key identifying the recipient for each group and using
 <a href=#268 id=268 data-nosnippet>268</a>    /// [`bincode`] to serialize/deserialize messages.
@@ -317,7 +317,7 @@
 <a href=#317 id=317 data-nosnippet>317</a>    <span class="kw">where
 <a href=#318 id=318 data-nosnippet>318</a>        </span>T: Serialize + DeserializeOwned,
 <a href=#319 id=319 data-nosnippet>319</a>    {
-<a href=#320 id=320 data-nosnippet>320</a>        <span class="self">self</span>.demux(other, TCP.bincode())
+<a href=#320 id=320 data-nosnippet>320</a>        <span class="self">self</span>.demux(other, TCP.fail_stop().bincode())
 <a href=#321 id=321 data-nosnippet>321</a>    }
 <a href=#322 id=322 data-nosnippet>322</a>
 <a href=#323 id=323 data-nosnippet>323</a>    <span class="doccomment">/// Sends each group of this stream at each source member to a specific member of a destination
@@ -346,8 +346,8 @@
 <a href=#346 id=346 data-nosnippet>346</a>    ///     .map(q!(|x| (hydro_lang::location::MemberId::from_raw_id(x), x)))
 <a href=#347 id=347 data-nosnippet>347</a>    ///     .into_keyed();
 <a href=#348 id=348 data-nosnippet>348</a>    /// let destination: Cluster&lt;Destination&gt; = flow.cluster::&lt;Destination&gt;();
-<a href=#349 id=349 data-nosnippet>349</a>    /// let all_received = to_send.demux(&amp;destination, TCP.bincode()); // KeyedStream&lt;MemberId&lt;Source&gt;, i32, ...&gt;
-<a href=#350 id=350 data-nosnippet>350</a>    /// # all_received.entries().send(&amp;p2, TCP.bincode()).entries()
+<a href=#349 id=349 data-nosnippet>349</a>    /// let all_received = to_send.demux(&amp;destination, TCP.fail_stop().bincode()); // KeyedStream&lt;MemberId&lt;Source&gt;, i32, ...&gt;
+<a href=#350 id=350 data-nosnippet>350</a>    /// # all_received.entries().send(&amp;p2, TCP.fail_stop().bincode()).entries()
 <a href=#351 id=351 data-nosnippet>351</a>    /// # }, |mut stream| async move {
 <a href=#352 id=352 data-nosnippet>352</a>    /// // if there are 4 members in the destination cluster, each receives one message from each source member
 <a href=#353 id=353 data-nosnippet>353</a>    /// // - Destination(0): { Source(0): [0], Source(1): [0], ... }
@@ -412,7 +412,7 @@
 <a href=#412 id=412 data-nosnippet>412</a>    KeyedStream&lt;K, V, Cluster&lt;<span class="lifetime">'a</span>, L&gt;, B, O, R&gt;
 <a href=#413 id=413 data-nosnippet>413</a>{
 <a href=#414 id=414 data-nosnippet>414</a>    <span class="attr">#[expect(clippy::type_complexity, reason = <span class="string">"compound key types with ordering"</span>)]
-<a href=#415 id=415 data-nosnippet>415</a>    #[deprecated = <span class="string">"use KeyedStream::send(..., TCP.bincode()) instead"</span>]
+<a href=#415 id=415 data-nosnippet>415</a>    #[deprecated = <span class="string">"use KeyedStream::send(..., TCP.fail_stop().bincode()) instead"</span>]
 <a href=#416 id=416 data-nosnippet>416</a>    </span><span class="doccomment">/// "Moves" elements of this keyed stream from a cluster to a process by sending them over the
 <a href=#417 id=417 data-nosnippet>417</a>    /// network, using [`bincode`] to serialize/deserialize messages. The resulting [`KeyedStream`]
 <a href=#418 id=418 data-nosnippet>418</a>    /// has a compound key where the first element is the sender's [`MemberId`] and the second
@@ -475,7 +475,7 @@
 <a href=#475 id=475 data-nosnippet>475</a>        </span>K: Serialize + DeserializeOwned,
 <a href=#476 id=476 data-nosnippet>476</a>        V: Serialize + DeserializeOwned,
 <a href=#477 id=477 data-nosnippet>477</a>    {
-<a href=#478 id=478 data-nosnippet>478</a>        <span class="self">self</span>.send(other, TCP.bincode())
+<a href=#478 id=478 data-nosnippet>478</a>        <span class="self">self</span>.send(other, TCP.fail_stop().bincode())
 <a href=#479 id=479 data-nosnippet>479</a>    }
 <a href=#480 id=480 data-nosnippet>480</a>
 <a href=#481 id=481 data-nosnippet>481</a>    <span class="attr">#[expect(clippy::type_complexity, reason = <span class="string">"compound key types with ordering"</span>)]
@@ -498,8 +498,8 @@
 <a href=#498 id=498 data-nosnippet>498</a>    ///     .map(q!(|x| (x, x + 123)))
 <a href=#499 id=499 data-nosnippet>499</a>    ///     .into_keyed();
 <a href=#500 id=500 data-nosnippet>500</a>    /// let destination_process = flow.process::&lt;Destination&gt;();
-<a href=#501 id=501 data-nosnippet>501</a>    /// let all_received = to_send.send(&amp;destination_process, TCP.bincode()); // KeyedStream&lt;(MemberId&lt;Source&gt;, i32), i32, ...&gt;
-<a href=#502 id=502 data-nosnippet>502</a>    /// # all_received.entries().send(&amp;p2, TCP.bincode())
+<a href=#501 id=501 data-nosnippet>501</a>    /// let all_received = to_send.send(&amp;destination_process, TCP.fail_stop().bincode()); // KeyedStream&lt;(MemberId&lt;Source&gt;, i32), i32, ...&gt;
+<a href=#502 id=502 data-nosnippet>502</a>    /// # all_received.entries().send(&amp;p2, TCP.fail_stop().bincode())
 <a href=#503 id=503 data-nosnippet>503</a>    /// # }, |mut stream| async move {
 <a href=#504 id=504 data-nosnippet>504</a>    /// // if there are 4 members in the source cluster, the destination process receives four messages from each source member
 <a href=#505 id=505 data-nosnippet>505</a>    /// // {

@@ -403,7 +403,7 @@
 <a href=#403 id=403 data-nosnippet>403</a>    /// # // do nothing on each worker
 <a href=#404 id=404 data-nosnippet>404</a>    /// # workers.source_iter(q!(vec![])).for_each(q!(|_: ()| {}));
 <a href=#405 id=405 data-nosnippet>405</a>    /// let cluster_members = p1.source_cluster_members(&amp;workers);
-<a href=#406 id=406 data-nosnippet>406</a>    /// # cluster_members.entries().send(&amp;p2, TCP.bincode())
+<a href=#406 id=406 data-nosnippet>406</a>    /// # cluster_members.entries().send(&amp;p2, TCP.fail_stop().bincode())
 <a href=#407 id=407 data-nosnippet>407</a>    /// // if there are 4 members in the cluster, we would see a join event for each
 <a href=#408 id=408 data-nosnippet>408</a>    /// // { MemberId::&lt;Worker&gt;(0): [MembershipEvent::Join], MemberId::&lt;Worker&gt;(2): [MembershipEvent::Join], ... }
 <a href=#409 id=409 data-nosnippet>409</a>    /// # }, |mut stream| async move {

@@ -54,7 +54,7 @@
 <a href=#54 id=54 data-nosnippet>54</a>            );
 <a href=#55 id=55 data-nosnippet>55</a>
 <a href=#56 id=56 data-nosnippet>56</a>            <span class="kw">let </span>sequenced_to_replicas = sequenced_payloads
-<a href=#57 id=57 data-nosnippet>57</a>                .broadcast(replicas, TCP.bincode(), <span class="macro">nondet!</span>(<span class="doccomment">/** TODO */</span>))
+<a href=#57 id=57 data-nosnippet>57</a>                .broadcast(replicas, TCP.fail_stop().bincode(), <span class="macro">nondet!</span>(<span class="doccomment">/** TODO */</span>))
 <a href=#58 id=58 data-nosnippet>58</a>                .values()
 <a href=#59 id=59 data-nosnippet>59</a>                .map(<span class="macro">q!</span>(|(index, payload)| (
 <a href=#60 id=60 data-nosnippet>60</a>                    index,
@@ -68,7 +68,7 @@
 <a href=#68 id=68 data-nosnippet>68</a>            <span class="comment">// Get the latest checkpoint sequence per replica
 <a href=#69 id=69 data-nosnippet>69</a>            </span><span class="kw">let </span>a_checkpoint = {
 <a href=#70 id=70 data-nosnippet>70</a>                <span class="kw">let </span>a_checkpoint_largest_seqs = replica_checkpoint
-<a href=#71 id=71 data-nosnippet>71</a>                    .broadcast(<span class="kw-2">&amp;</span>acceptors, TCP.bincode(), <span class="macro">nondet!</span>(<span class="doccomment">/** TODO */</span>))
+<a href=#71 id=71 data-nosnippet>71</a>                    .broadcast(<span class="kw-2">&amp;</span>acceptors, TCP.fail_stop().bincode(), <span class="macro">nondet!</span>(<span class="doccomment">/** TODO */</span>))
 <a href=#72 id=72 data-nosnippet>72</a>                    .reduce(<span class="macro">q!</span>(
 <a href=#73 id=73 data-nosnippet>73</a>                        |curr_seq, seq| {
 <a href=#74 id=74 data-nosnippet>74</a>                            <span class="kw">if </span>seq &gt; <span class="kw-2">*</span>curr_seq {
@@ -109,7 +109,7 @@
 <a href=#109 id=109 data-nosnippet>109</a>                    payload.value.<span class="number">0</span>,
 <a href=#110 id=110 data-nosnippet>110</a>                    ((payload.key, payload.value.<span class="number">1</span>), <span class="prelude-val">Ok</span>(()))
 <a href=#111 id=111 data-nosnippet>111</a>                )))
-<a href=#112 id=112 data-nosnippet>112</a>                .demux(clients, TCP.bincode())
+<a href=#112 id=112 data-nosnippet>112</a>                .demux(clients, TCP.fail_stop().bincode())
 <a href=#113 id=113 data-nosnippet>113</a>                .values();
 <a href=#114 id=114 data-nosnippet>114</a>
 <a href=#115 id=115 data-nosnippet>115</a>            <span class="comment">// we only mark a transaction as committed when all replicas have applied it

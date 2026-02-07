@@ -61,12 +61,12 @@
 <a href=#61 id=61 data-nosnippet>61</a>
 <a href=#62 id=62 data-nosnippet>62</a>    ids.cross_product(numbers.into())
 <a href=#63 id=63 data-nosnippet>63</a>        .map(<span class="macro">q!</span>(|(id, n)| (id.clone(), (id, n))))
-<a href=#64 id=64 data-nosnippet>64</a>        .demux(<span class="kw-2">&amp;</span>cluster, TCP.bincode())
+<a href=#64 id=64 data-nosnippet>64</a>        .demux(<span class="kw-2">&amp;</span>cluster, TCP.fail_stop().bincode())
 <a href=#65 id=65 data-nosnippet>65</a>        .inspect(<span class="macro">q!</span>(<span class="kw">move </span>|n| <span class="macro">println!</span>(
 <a href=#66 id=66 data-nosnippet>66</a>            <span class="string">"cluster received: {:?} (self cluster id: {})"</span>,
 <a href=#67 id=67 data-nosnippet>67</a>            n, CLUSTER_SELF_ID
 <a href=#68 id=68 data-nosnippet>68</a>        )))
-<a href=#69 id=69 data-nosnippet>69</a>        .send(<span class="kw-2">&amp;</span>process, TCP.bincode())
+<a href=#69 id=69 data-nosnippet>69</a>        .send(<span class="kw-2">&amp;</span>process, TCP.fail_stop().bincode())
 <a href=#70 id=70 data-nosnippet>70</a>        .entries()
 <a href=#71 id=71 data-nosnippet>71</a>        .assume_ordering(<span class="macro">nondet!</span>(<span class="doccomment">/** testing, order does not matter */</span>))
 <a href=#72 id=72 data-nosnippet>72</a>        .for_each(<span class="macro">q!</span>(|(id, d)| <span class="macro">println!</span>(<span class="string">"node received: ({}, {:?})"</span>, id, d)));

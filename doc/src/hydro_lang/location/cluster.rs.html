@@ -195,12 +195,12 @@
 <a href=#195 id=195 data-nosnippet>195</a>
 <a href=#196 id=196 data-nosnippet>196</a>        <span class="kw">let </span>out_recv = cluster1
 <a href=#197 id=197 data-nosnippet>197</a>            .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[CLUSTER_SELF_ID]))
-<a href=#198 id=198 data-nosnippet>198</a>            .send(<span class="kw-2">&amp;</span>node, TCP.bincode())
+<a href=#198 id=198 data-nosnippet>198</a>            .send(<span class="kw-2">&amp;</span>node, TCP.fail_stop().bincode())
 <a href=#199 id=199 data-nosnippet>199</a>            .values()
 <a href=#200 id=200 data-nosnippet>200</a>            .interleave(
 <a href=#201 id=201 data-nosnippet>201</a>                cluster2
 <a href=#202 id=202 data-nosnippet>202</a>                    .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[CLUSTER_SELF_ID]))
-<a href=#203 id=203 data-nosnippet>203</a>                    .send(<span class="kw-2">&amp;</span>node, TCP.bincode())
+<a href=#203 id=203 data-nosnippet>203</a>                    .send(<span class="kw-2">&amp;</span>node, TCP.fail_stop().bincode())
 <a href=#204 id=204 data-nosnippet>204</a>                    .values(),
 <a href=#205 id=205 data-nosnippet>205</a>            )
 <a href=#206 id=206 data-nosnippet>206</a>            .sim_output();
@@ -229,7 +229,7 @@
 <a href=#229 id=229 data-nosnippet>229</a>            .batch(<span class="kw-2">&amp;</span>cluster.tick(), <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
 <a href=#230 id=230 data-nosnippet>230</a>            .count()
 <a href=#231 id=231 data-nosnippet>231</a>            .all_ticks()
-<a href=#232 id=232 data-nosnippet>232</a>            .send(<span class="kw-2">&amp;</span>node, TCP.bincode())
+<a href=#232 id=232 data-nosnippet>232</a>            .send(<span class="kw-2">&amp;</span>node, TCP.fail_stop().bincode())
 <a href=#233 id=233 data-nosnippet>233</a>            .entries()
 <a href=#234 id=234 data-nosnippet>234</a>            .map(<span class="macro">q!</span>(|(id, v)| (id, v)))
 <a href=#235 id=235 data-nosnippet>235</a>            .sim_output();

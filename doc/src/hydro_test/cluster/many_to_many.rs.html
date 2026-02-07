@@ -6,7 +6,7 @@
 <a href=#6 id=6 data-nosnippet>6</a>        .source_iter(<span class="macro">q!</span>(<span class="number">0</span>..<span class="number">2</span>))
 <a href=#7 id=7 data-nosnippet>7</a>        .broadcast(
 <a href=#8 id=8 data-nosnippet>8</a>            <span class="kw-2">&amp;</span>cluster,
-<a href=#9 id=9 data-nosnippet>9</a>            TCP.bincode().name(<span class="string">"m2m_broadcast"</span>),
+<a href=#9 id=9 data-nosnippet>9</a>            TCP.fail_stop().bincode().name(<span class="string">"m2m_broadcast"</span>),
 <a href=#10 id=10 data-nosnippet>10</a>            <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>),
 <a href=#11 id=11 data-nosnippet>11</a>        )
 <a href=#12 id=12 data-nosnippet>12</a>        .entries()

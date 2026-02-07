@@ -38,7 +38,7 @@
 <a href=#38 id=38 data-nosnippet>38</a>    writes: Stream&lt;u32, Cluster&lt;<span class="lifetime">'a</span>, C&gt;, Unbounded, NoOrder&gt;,
 <a href=#39 id=39 data-nosnippet>39</a>) -&gt; Stream&lt;u32, Cluster&lt;<span class="lifetime">'a</span>, C&gt;, Unbounded, NoOrder&gt; {
 <a href=#40 id=40 data-nosnippet>40</a>    writes
-<a href=#41 id=41 data-nosnippet>41</a>        .broadcast(cluster, TCP.bincode(), <span class="macro">nondet!</span>(<span class="doccomment">/** TODO */</span>))
+<a href=#41 id=41 data-nosnippet>41</a>        .broadcast(cluster, TCP.fail_stop().bincode(), <span class="macro">nondet!</span>(<span class="doccomment">/** TODO */</span>))
 <a href=#42 id=42 data-nosnippet>42</a>        .values()
 <a href=#43 id=43 data-nosnippet>43</a>}
 <a href=#44 id=44 data-nosnippet>44</a>
