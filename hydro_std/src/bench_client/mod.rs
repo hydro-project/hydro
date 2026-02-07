@@ -119,6 +119,7 @@ where
             .map(q!(|output| (SystemTime::now(), output)));
 
         start_times
+            .defer_tick() // Get the start_times before they were overwritten with the newly generated input
             .join_keyed_singleton(end_times_and_output)
             .map(q!(|(start_time, (end_time, output))| (output, end_time.duration_since(start_time).unwrap())))
             .into_keyed_stream()
