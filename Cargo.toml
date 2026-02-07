@@ -13,6 +13,7 @@ members = [
     "hydro_lang",
     "hydro_std",
     "hydro_test",
+    "hydro_test_embedded",
     "hydro_test_template",
     "include_mdtests",
     "lattices_macro",

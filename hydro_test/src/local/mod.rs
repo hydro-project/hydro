@@ -1,3 +1,4 @@
+pub mod capitalize;
 pub mod chat_app;
 pub mod count_elems;
 pub mod futures;

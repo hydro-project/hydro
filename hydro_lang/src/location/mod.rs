@@ -520,6 +520,35 @@ pub trait Location<'a>: dynamic::DynLocation {
         (SimSender(external.port_id, PhantomData), stream)
     }
 
+    /// Creates an external input stream for embedded deployment mode.
+    ///
+    /// The `name` parameter specifies the name of the generated function parameter
+    /// that will supply data to this stream at runtime. The generated function will
+    /// accept an `impl Stream<Item = T> + Unpin` argument with this name.
+    fn embedded_input<T>(
+        &self,
+        name: impl Into<String>,
+    ) -> Stream<T, Self, Unbounded, TotalOrder, ExactlyOnce>
+    where
+        Self: Sized + NoTick,
+    {
+        let ident = syn::Ident::new(&name.into(), Span::call_site());
+
+        Stream::new(
+            self.clone(),
+            HydroNode::EmbeddedInput {
+                ident,
+                metadata: self.new_node_metadata(Stream::<
+                    T,
+                    Self,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        )
+    }
+
     /// Establishes a server on this location to receive a bidirectional connection from a single
     /// client, identified by the given `External` handle. Returns a port handle for the external
     /// process to connect to, a stream of incoming messages, and a handle to send outgoing

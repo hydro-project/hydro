@@ -262,14 +262,17 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     /// Compiles the flow into DFIR ([`dfir_lang::graph::DfirGraph`]) including networking.
     ///
     /// (This does not compile the DFIR itself, instead use [`Self::deploy`] to compile & deploy the DFIR).
-    pub fn compile(mut self) -> CompiledFlow<'a> {
-        self.compile_internal()
+    pub fn compile(mut self) -> CompiledFlow<'a>
+    where
+        D: Deploy<'a, InstantiateEnv = ()>,
+    {
+        self.compile_internal(&mut ())
     }
 
     /// Same as [`Self::compile`] but does not invalidate `self`, for internal use.
     ///
     /// Empties `self.sidecars` and modifies `self.ir`, leaving `self` in a partial state.
-    fn compile_internal(&mut self) -> CompiledFlow<'a> {
+    pub(super) fn compile_internal(&mut self, env: &mut D::InstantiateEnv) -> CompiledFlow<'a> {
         let mut seen_tees: HashMap<_, _> = HashMap::new();
         let mut extra_stmts = SparseSecondaryMap::new();
         for leaf in self.ir.iter_mut() {
@@ -279,6 +282,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
                 &self.processes,
                 &self.clusters,
                 &self.externals,
+                env,
             );
         }
 
@@ -348,7 +352,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
             mut extra_stmts,
             mut sidecars,
             _phantom,
-        } = self.compile_internal();
+        } = self.compile_internal(env);
 
         let mut compiled = dfir;
         self.cluster_id_stmts(&mut extra_stmts);
