@@ -685,10 +685,12 @@ impl HydroRoot {
         processes: &SparseSecondaryMap<LocationKey, D::Process>,
         clusters: &SparseSecondaryMap<LocationKey, D::Cluster>,
         externals: &SparseSecondaryMap<LocationKey, D::External>,
+        env: &mut D::InstantiateEnv,
     ) where
         D: Deploy<'a>,
     {
         let refcell_extra_stmts = RefCell::new(extra_stmts);
+        let refcell_env = RefCell::new(env);
         self.transform_bottom_up(
             &mut |l| {
                 if let HydroRoot::SendExternal {
@@ -887,6 +889,16 @@ impl HydroRoot {
                         connect_fn: Some(connect_fn),
                     }
                     .into();
+                } else if let HydroNode::EmbeddedInput { ident, metadata } = n {
+                    let element_type = match &metadata.collection_kind {
+                        CollectionKind::Stream { element_type, .. } => element_type.0.as_ref().clone(),
+                        _ => panic!("EmbeddedInput must have Stream collection kind"),
+                    };
+                    D::register_embedded_input(
+                        &mut refcell_env.borrow_mut(),
+                        ident,
+                        &element_type,
+                    );
                 }
             },
             seen_tees,
@@ -1721,6 +1733,15 @@ pub enum HydroNode {
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
+
+    /// An external input for embedded deployment mode.
+    ///
+    /// This node compiles to `source_stream(ident)` where `ident` is a parameter
+    /// added to the generated function signature.
+    EmbeddedInput {
+        ident: syn::Ident,
+        metadata: HydroIrMetadata,
+    },
 }
 
 pub type SeenTees = HashMap<*const RefCell<HydroNode>, Rc<RefCell<HydroNode>>>;
@@ -1776,7 +1797,8 @@ impl HydroNode {
             HydroNode::Source { .. }
             | HydroNode::SingletonSource { .. }
             | HydroNode::CycleSource { .. }
-            | HydroNode::ExternalInput { .. } => {}
+            | HydroNode::ExternalInput { .. }
+            | HydroNode::EmbeddedInput { .. } => {}
 
             HydroNode::Tee { inner, .. } => {
                 if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
@@ -2118,6 +2140,10 @@ impl HydroNode {
                 duration: duration.clone(),
                 prefix: prefix.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::EmbeddedInput { ident, metadata } => HydroNode::EmbeddedInput {
+                ident: ident.clone(),
                 metadata: metadata.clone(),
             },
         }
@@ -3430,6 +3456,33 @@ impl HydroNode {
 
                         ident_stack.push(counter_ident);
                     }
+
+                    HydroNode::EmbeddedInput { ident, .. } => {
+                        let source_ident =
+                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                        let ident = ident.clone();
+
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(graph_builders) => {
+                                let builder = graph_builders.get_dfir_mut(&out_location);
+                                builder.add_dfir(
+                                    parse_quote! {
+                                        #source_ident = source_stream(#ident);
+                                    },
+                                    None,
+                                    Some(&next_stmt_id.to_string()),
+                                );
+                            }
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
+
+                        *next_stmt_id += 1;
+
+                        ident_stack.push(source_ident);
+                    }
                 }
             },
             seen_tees,
@@ -3508,6 +3561,7 @@ impl HydroNode {
                     transform(deserialize_fn);
                 }
             }
+            HydroNode::EmbeddedInput { .. } => {}
             HydroNode::Counter { duration, .. } => {
                 transform(duration);
             }
@@ -3560,6 +3614,7 @@ impl HydroNode {
             HydroNode::ExternalInput { metadata, .. } => metadata,
             HydroNode::Network { metadata, .. } => metadata,
             HydroNode::Counter { metadata, .. } => metadata,
+            HydroNode::EmbeddedInput { metadata, .. } => metadata,
         }
     }
 
@@ -3609,6 +3664,7 @@ impl HydroNode {
             HydroNode::ExternalInput { metadata, .. } => metadata,
             HydroNode::Network { metadata, .. } => metadata,
             HydroNode::Counter { metadata, .. } => metadata,
+            HydroNode::EmbeddedInput { metadata, .. } => metadata,
         }
     }
 
@@ -3621,6 +3677,7 @@ impl HydroNode {
             | HydroNode::SingletonSource { .. }
             | HydroNode::ExternalInput { .. }
             | HydroNode::CycleSource { .. }
+            | HydroNode::EmbeddedInput { .. }
             | HydroNode::Tee { .. } => {
                 // Tee should find its input in separate special ways
                 vec![]
@@ -3752,6 +3809,7 @@ impl HydroNode {
             HydroNode::Counter { tag, duration, .. } => {
                 format!("Counter({:?}, {:?})", tag, duration)
             }
+            HydroNode::EmbeddedInput { ident, .. } => format!("EmbeddedInput({})", ident),
         }
     }
 }

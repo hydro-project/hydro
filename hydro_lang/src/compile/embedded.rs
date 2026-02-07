@@ -48,7 +48,7 @@ pub struct EmbeddedNode {
 impl Node for EmbeddedNode {
     type Port = ();
     type Meta = ();
-    type InstantiateEnv = ();
+    type InstantiateEnv = EmbeddedInstantiateEnv;
 
     fn next_port(&self) -> Self::Port {}
 
@@ -140,9 +140,20 @@ impl<S: Into<String>> ExternalSpec<'_, EmbeddedDeploy> for S {
     }
 }
 
+/// Collected embedded input registrations.
+///
+/// During `compile_network`, each `EmbeddedInput` IR node registers its ident
+/// and element type here. `generate_embedded` then uses this to add parameters
+/// to the generated functions.
+#[derive(Default)]
+pub struct EmbeddedInstantiateEnv {
+    /// (ident name, element type) pairs collected during compilation.
+    pub inputs: Vec<(syn::Ident, syn::Type)>,
+}
+
 impl<'a> Deploy<'a> for EmbeddedDeploy {
     type Meta = ();
-    type InstantiateEnv = ();
+    type InstantiateEnv = EmbeddedInstantiateEnv;
 
     type Process = EmbeddedNode;
     type Cluster = EmbeddedNode;
@@ -302,6 +313,14 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
             "EmbeddedDeploy does not support cluster membership streams"
         ))
     }
+
+    fn register_embedded_input(
+        env: &mut Self::InstantiateEnv,
+        ident: &syn::Ident,
+        element_type: &syn::Type,
+    ) {
+        env.inputs.push((ident.clone(), element_type.clone()));
+    }
 }
 
 impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
@@ -336,7 +355,12 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
     /// include!(concat!(env!("OUT_DIR"), "/embedded.rs"));
     /// ```
     pub fn generate_embedded(mut self, crate_name: &str) -> syn::File {
-        let compiled = self.compile_internal();
+        let mut env = EmbeddedInstantiateEnv::default();
+        let compiled = self.compile_internal(&mut env);
+
+        // Sort inputs by name for deterministic output.
+        let mut inputs = env.inputs;
+        inputs.sort_by(|a, b| a.0.to_string().cmp(&b.0.to_string()));
 
         let root = crate::staging_util::get_this_crate();
         let orig_crate_name = quote::format_ident!("{}", crate_name.replace('-', "_"));
@@ -346,6 +370,14 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
         // Sort location keys for deterministic output.
         let mut location_keys: Vec<_> = compiled.all_dfir().keys().collect();
         location_keys.sort();
+
+        // Build the input parameters for each generated function.
+        let input_params: Vec<proc_macro2::TokenStream> = inputs
+            .iter()
+            .map(|(ident, element_type)| {
+                quote! { #ident: impl __root_dfir_rs::futures::Stream<Item = #element_type> + Unpin + 'a }
+            })
+            .collect();
 
         for location_key in location_keys {
             let graph = &compiled.all_dfir()[location_key];
@@ -368,7 +400,7 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
 
             let func: syn::Item = syn::parse_quote! {
                 #[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
-                pub fn #fn_ident<'a>() -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
+                pub fn #fn_ident<'a>(#(#input_params),*) -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
                     #dfir_tokens
                 }
             };
