@@ -1,7 +1,12 @@
 #[cfg(feature = "test_embedded")]
 #[tokio::main]
 async fn main() {
-    let mut flow = hydro_test_embedded::embedded::first_ten();
+    let input = dfir_rs::futures::stream::iter(vec![
+        "hello".to_string(),
+        "world".to_string(),
+        "hydro".to_string(),
+    ]);
+    let mut flow = hydro_test_embedded::embedded::capitalize(input);
     tokio::task::LocalSet::new()
         .run_until(flow.run_available())
         .await;
@@ -18,7 +23,7 @@ mod tests {
     use std::process::{Command, Stdio};
 
     #[test]
-    fn test_embedded_first_ten() {
+    fn test_embedded_capitalize() {
         let output = Command::new("cargo")
             .args([
                 "run",
@@ -26,7 +31,7 @@ mod tests {
                 "-p",
                 "hydro_test_embedded",
                 "--example",
-                "embedded_first_ten",
+                "embedded_capitalize",
                 "--features",
                 "test_embedded",
             ])
@@ -44,10 +49,10 @@ mod tests {
         );
 
         let lines: Vec<&str> = stdout.lines().collect();
-        let expected: Vec<String> = (0..10).map(|i| i.to_string()).collect();
+        let expected = vec!["HELLO", "WORLD", "HYDRO"];
         assert_eq!(
             lines, expected,
-            "expected first 10 numbers, got:\n{}",
+            "expected capitalized strings, got:\n{}",
             stdout
         );
     }
