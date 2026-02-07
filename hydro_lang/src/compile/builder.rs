@@ -231,7 +231,7 @@ impl<'a> FlowBuilder<'a> {
         self.with_default_optimize().with_remaining_clusters(spec)
     }
 
-    pub fn compile<D: Deploy<'a>>(self) -> CompiledFlow<'a> {
+    pub fn compile<D: Deploy<'a, InstantiateEnv = ()>>(self) -> CompiledFlow<'a> {
         self.with_default_optimize::<D>().compile()
     }
 

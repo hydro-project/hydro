@@ -1550,6 +1550,10 @@ impl HydroNode {
                 },
                 duration,
             ),
+
+            HydroNode::EmbeddedInput { ident, metadata } => {
+                build_source_node(structure, metadata, format!("embedded_input({})", ident))
+            }
         }
     }
 }
