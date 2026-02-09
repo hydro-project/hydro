@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Deserialize, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
+#[non_exhaustive] // Force handling of multiple features.
 pub enum TaglessMemberId {
     #[cfg(feature = "deploy_integration")]
     #[cfg_attr(docsrs, doc(cfg(feature = "deploy_integration")))]
@@ -25,10 +26,10 @@ impl TaglessMemberId {
     }
 
     pub fn get_raw_id(&self) -> u32 {
-        match self {
-            TaglessMemberId::Legacy { raw_id } => *raw_id,
-            _ => panic!(),
-        }
+        let TaglessMemberId::Legacy { raw_id } = self else {
+            panic!()
+        };
+        *raw_id
     }
 }
 
@@ -41,28 +42,28 @@ impl TaglessMemberId {
         }
     }
 
-    pub fn get_container_name(&self) -> String {
-        match &self {
-            TaglessMemberId::Docker { container_name } => container_name.clone(),
-            _ => panic!(),
-        }
+    pub fn get_container_name(&self) -> &str {
+        let TaglessMemberId::Docker { container_name } = self else {
+            panic!()
+        };
+        container_name
     }
 }
 
 #[cfg(feature = "maelstrom_runtime")]
 #[cfg_attr(docsrs, doc(cfg(feature = "maelstrom_runtime")))]
 impl TaglessMemberId {
-    pub fn from_maelstrom_node_id(node_id: impl ToString) -> Self {
+    pub fn from_maelstrom_node_id(node_id: impl Into<String>) -> Self {
         Self::Maelstrom {
-            node_id: node_id.to_string(),
+            node_id: node_id.into(),
         }
     }
 
-    pub fn get_maelstrom_node_id(&self) -> String {
-        match &self {
-            TaglessMemberId::Maelstrom { node_id } => node_id.clone(),
-            _ => panic!(),
-        }
+    pub fn get_maelstrom_node_id(&self) -> &str {
+        let TaglessMemberId::Maelstrom { node_id } = self else {
+            panic!()
+        };
+        node_id
     }
 }
 
