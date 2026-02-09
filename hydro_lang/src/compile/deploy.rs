@@ -269,7 +269,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     /// Same as [`Self::compile`] but does not invalidate `self`, for internal use.
     ///
     /// Empties `self.sidecars` and modifies `self.ir`, leaving `self` in a partial state.
-    fn compile_internal(&mut self) -> CompiledFlow<'a> {
+    pub(super) fn compile_internal(&mut self) -> CompiledFlow<'a> {
         let mut seen_tees: HashMap<_, _> = HashMap::new();
         let mut extra_stmts = SparseSecondaryMap::new();
         for leaf in self.ir.iter_mut() {

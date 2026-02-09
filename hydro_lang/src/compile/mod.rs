@@ -20,6 +20,10 @@ pub mod deploy;
 
 #[cfg(feature = "build")]
 #[cfg_attr(docsrs, doc(cfg(feature = "build")))]
+pub mod embedded;
+
+#[cfg(feature = "build")]
+#[cfg_attr(docsrs, doc(cfg(feature = "build")))]
 #[expect(missing_docs, reason = "TODO")]
 pub mod deploy_provider;
 
@@ -45,6 +49,6 @@ pub mod trybuild;
 pub use trybuild::generate::init_test;
 
 /// Ident used for the DFIR runtime instance variable name.
-#[cfg(feature = "trybuild")]
-#[cfg_attr(docsrs, doc(cfg(feature = "trybuild")))]
+#[cfg(feature = "build")]
+#[cfg_attr(docsrs, doc(cfg(feature = "build")))]
 pub(crate) const DFIR_IDENT: &str = "flow";

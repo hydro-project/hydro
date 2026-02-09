@@ -1,0 +1,31 @@
+[package]
+name = "hydro_test_embedded"
+publish = false
+version = "0.0.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[features]
+default = []
+test_embedded = [
+    "dep:hydro_lang",
+    "dep:hydro_test",
+    "dep:stageleft",
+    "dep:prettyplease",
+]
+
+[dependencies]
+hydro_lang = { path = "../hydro_lang", version = "^0.15.0", features = ["runtime_support"], optional = true }
+hydro_test = { path = "../hydro_test", version = "0.0.0", features = ["stageleft_macro_entrypoint"], optional = true }
+stageleft = { workspace = true, optional = true }
+
+[dev-dependencies]
+dfir_rs = { path = "../dfir_rs", version = "^0.15.0", default-features = false }
+tokio = { version = "1.29.0", features = ["full"] }
+
+[build-dependencies]
+hydro_lang = { path = "../hydro_lang", version = "^0.15.0", features = ["build"], optional = true }
+hydro_test = { path = "../hydro_test", version = "0.0.0", optional = true }
+prettyplease = { version = "0.2.0", features = ["verbatim"], optional = true }
