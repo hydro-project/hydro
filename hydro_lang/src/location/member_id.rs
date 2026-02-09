@@ -5,7 +5,6 @@ use std::marker::PhantomData;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Deserialize, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-#[non_exhaustive] // Force handling of multiple features.
 pub enum TaglessMemberId {
     #[cfg(feature = "deploy_integration")]
     #[cfg_attr(docsrs, doc(cfg(feature = "deploy_integration")))]
@@ -98,6 +97,8 @@ impl<Tag> MemberId<Tag> {
         }
     }
 
+    #[cfg(feature = "deploy_integration")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "deploy_integration")))]
     pub fn from_raw_id(raw_id: u32) -> Self {
         Self {
             inner: TaglessMemberId::from_raw_id(raw_id),
@@ -105,6 +106,8 @@ impl<Tag> MemberId<Tag> {
         }
     }
 
+    #[cfg(feature = "deploy_integration")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "deploy_integration")))]
     pub fn get_raw_id(&self) -> u32 {
         self.inner.get_raw_id()
     }
@@ -179,6 +182,8 @@ impl<Tag> Eq for MemberId<Tag> {}
 impl<Tag> Hash for MemberId<Tag> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.inner.hash(state);
-        std::any::type_name::<Tag>().hash(state); // This seems like the a good thing to do. This will ensure that two member ids that come from different clusters but the same underlying host receive different hashes.
+        // This seems like the a good thing to do. This will ensure that two member ids that come from different
+        // clusters but the same underlying host receive different hashes.
+        std::any::type_name::<Tag>().hash(state);
     }
 }
