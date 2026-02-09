@@ -604,6 +604,7 @@ impl FlatGraphBuilder {
                         continue;
                     };
                     let op_constraints = op_inst.op_constraints;
+                    let op_name = operator.name_string();
 
                     // Check number of args
                     if op_constraints.num_args != operator.args.len() {
@@ -611,7 +612,8 @@ impl FlatGraphBuilder {
                             operator.span(),
                             Level::Error,
                             format!(
-                                "expected {} argument(s), found {}",
+                                "`{}` expects {} argument(s), received {}.",
+                                op_name,
                                 op_constraints.num_args,
                                 operator.args.len()
                             ),
@@ -621,14 +623,14 @@ impl FlatGraphBuilder {
                     // Check input/output (port) arity
                     /// Returns true if an error was found.
                     fn emit_arity_error(
-                        operator: &Operator,
+                        op_span: Span,
+                        op_name: &str,
                         is_in: bool,
                         is_hard: bool,
                         degree: usize,
                         range: &dyn RangeTrait<usize>,
                         diagnostics: &mut Diagnostics,
                     ) -> bool {
-                        let op_name = &*operator.name_string();
                         let message = format!(
                             "`{}` {} have {} {}, actually has {}.",
                             op_name,
@@ -640,7 +642,7 @@ impl FlatGraphBuilder {
                         let out_of_range = !range.contains(&degree);
                         if out_of_range {
                             diagnostics.push(Diagnostic::spanned(
-                                operator.span(),
+                                op_span,
                                 if is_hard {
                                     Level::Error
                                 } else {
@@ -654,14 +656,16 @@ impl FlatGraphBuilder {
 
                     let inn_degree = self.flat_graph.node_degree_in(node_id);
                     let _ = emit_arity_error(
-                        operator,
+                        operator.span(),
+                        &op_name,
                         true,
                         true,
                         inn_degree,
                         op_constraints.hard_range_inn,
                         &mut self.diagnostics,
                     ) || emit_arity_error(
-                        operator,
+                        operator.span(),
+                        &op_name,
                         true,
                         false,
                         inn_degree,
@@ -671,14 +675,16 @@ impl FlatGraphBuilder {
 
                     let out_degree = self.flat_graph.node_degree_out(node_id);
                     let _ = emit_arity_error(
-                        operator,
+                        operator.span(),
+                        &op_name,
                         false,
                         true,
                         out_degree,
                         op_constraints.hard_range_out,
                         &mut self.diagnostics,
                     ) || emit_arity_error(
-                        operator,
+                        operator.span(),
+                        &op_name,
                         false,
                         false,
                         out_degree,
@@ -687,7 +693,8 @@ impl FlatGraphBuilder {
                     );
 
                     fn emit_port_error<'a>(
-                        operator_span: Span,
+                        op_span: Span,
+                        op_name: &str,
                         expected_ports_fn: Option<fn() -> PortListSpec>,
                         actual_ports_iter: impl Iterator<Item = &'a PortIndexValue>,
                         input_output: &'static str,
@@ -717,16 +724,16 @@ impl FlatGraphBuilder {
                                         actual_port_iv.span(),
                                         Level::Error,
                                         format!(
-                                            "Unexpected {} port: {}. Expected one of: `{}`",
+                                            "`{}` received unexpected {} port: {}. Expected one of: `{}`",
+                                            op_name,
                                             input_output,
                                             actual_port_iv.as_error_message_string(),
                                             Itertools::intersperse(
                                                 expected_ports
                                                     .iter()
-                                                    .map(|port| Cow::Owned(
-                                                        port.to_token_stream().to_string()
-                                                    )),
-                                                Cow::Borrowed("`, `")
+                                                    .map(|port| port.to_token_stream().to_string())
+                                                    .map(Cow::Owned),
+                                                Cow::Borrowed("`, `"),
                                             ).collect::<String>()
                                         ),
                                     ))
@@ -748,10 +755,11 @@ impl FlatGraphBuilder {
                             .collect();
                         if !missing.is_empty() {
                             diagnostics.push(Diagnostic::spanned(
-                                operator_span,
+                                op_span,
                                 Level::Error,
                                 format!(
-                                    "Missing expected {} port(s): `{}`.",
+                                    "`{}` missing expected {} port(s): `{}`.",
+                                    op_name,
                                     input_output,
                                     Itertools::intersperse(
                                         missing.into_iter().map(|port| Cow::Owned(
@@ -767,6 +775,7 @@ impl FlatGraphBuilder {
 
                     emit_port_error(
                         operator.span(),
+                        &op_name,
                         op_constraints.ports_inn,
                         self.flat_graph
                             .node_predecessor_edges(node_id)
@@ -776,6 +785,7 @@ impl FlatGraphBuilder {
                     );
                     emit_port_error(
                         operator.span(),
+                        &op_name,
                         op_constraints.ports_out,
                         self.flat_graph
                             .node_successor_edges(node_id)
