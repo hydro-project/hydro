@@ -3412,10 +3412,11 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
+                                let arg = format!("{}({})", prefix, tag);
                                 let builder = graph_builders.get_dfir_mut(&out_location);
                                 builder.add_dfir(
                                     parse_quote! {
-                                        #counter_ident = #input_ident -> _counter(#tag, #duration, #prefix);
+                                        #counter_ident = #input_ident -> _counter(#arg, #duration);
                                     },
                                     None,
                                     Some(&next_stmt_id.to_string()),

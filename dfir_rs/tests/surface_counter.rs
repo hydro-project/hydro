@@ -20,7 +20,7 @@ pub async fn test_fib() {
     let mut df: Dfir = dfir_syntax! {
         source_stream(iter_batches_stream(0..=40, 1))
             -> map(fib)
-            -> _counter("nums", Duration::from_millis(50));
+            -> _counter("_counter(nums)", Duration::from_millis(50));
     };
 
     df.run_available().await;
@@ -36,7 +36,7 @@ pub async fn test_fib() {
 pub async fn test_stream() {
     let mut df: Dfir = dfir_syntax! {
         source_stream(iter_batches_stream(0..=100_000, 1))
-            -> _counter("nums", Duration::from_millis(100));
+            -> _counter("_counter(nums)", Duration::from_millis(100));
     };
 
     df.run_available().await;
@@ -65,7 +65,7 @@ pub async fn test_pull() {
 
     let mut df: Dfir = dfir_syntax! {
         source_iter(0..10)
-            -> _counter("pull_test", Duration::from_millis(50))
+            -> _counter("_counter(pull_test)", Duration::from_millis(50))
             -> for_each(|x| output_ref.borrow_mut().push(x));
     };
 
