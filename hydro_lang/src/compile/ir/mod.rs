@@ -306,6 +306,7 @@ pub enum HydroSource {
     Iter(DebugExpr),
     Spin(),
     ClusterMembers(LocationId),
+    Embedded(syn::Ident),
 }
 
 #[cfg(feature = "build")]
@@ -685,10 +686,12 @@ impl HydroRoot {
         processes: &SparseSecondaryMap<LocationKey, D::Process>,
         clusters: &SparseSecondaryMap<LocationKey, D::Cluster>,
         externals: &SparseSecondaryMap<LocationKey, D::External>,
+        env: &mut D::InstantiateEnv,
     ) where
         D: Deploy<'a>,
     {
         let refcell_extra_stmts = RefCell::new(extra_stmts);
+        let refcell_env = RefCell::new(env);
         self.transform_bottom_up(
             &mut |l| {
                 if let HydroRoot::SendExternal {
@@ -887,6 +890,16 @@ impl HydroRoot {
                         connect_fn: Some(connect_fn),
                     }
                     .into();
+                } else if let HydroNode::Source { source: HydroSource::Embedded(ident), metadata } = n {
+                    let element_type = match &metadata.collection_kind {
+                        CollectionKind::Stream { element_type, .. } => element_type.0.as_ref().clone(),
+                        _ => panic!("Embedded source must have Stream collection kind"),
+                    };
+                    D::register_embedded_input(
+                        &mut refcell_env.borrow_mut(),
+                        ident,
+                        &element_type,
+                    );
                 }
             },
             seen_tees,
@@ -2351,6 +2364,12 @@ impl HydroNode {
                                         #source_ident = source_stream(#expr);
                                     }
                                 }
+
+                                HydroSource::Embedded(ident) => {
+                                    parse_quote! {
+                                        #source_ident = source_stream(#ident);
+                                    }
+                                }
                             };
 
                             match builders_or_callback {
@@ -3452,7 +3471,8 @@ impl HydroNode {
                 HydroSource::Stream(expr) | HydroSource::Iter(expr) => transform(expr),
                 HydroSource::ExternalNetwork()
                 | HydroSource::Spin()
-                | HydroSource::ClusterMembers(_) => {} // TODO: what goes here?
+                | HydroSource::ClusterMembers(_)
+                | HydroSource::Embedded(_) => {} // TODO: what goes here?
             },
             HydroNode::SingletonSource { value, .. } => {
                 transform(value);
