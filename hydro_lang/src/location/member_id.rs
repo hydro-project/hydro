@@ -66,6 +66,19 @@ impl TaglessMemberId {
     }
 }
 
+impl Display for TaglessMemberId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            #[cfg(feature = "deploy_integration")]
+            TaglessMemberId::Legacy { raw_id } => write!(f, "{:?}", raw_id),
+            #[cfg(feature = "docker_runtime")]
+            TaglessMemberId::Docker { container_name } => write!(f, "{:?}", container_name),
+            #[cfg(feature = "maelstrom_runtime")]
+            TaglessMemberId::Maelstrom { node_id } => write!(f, "{:?}", node_id),
+        }
+    }
+}
+
 #[repr(transparent)]
 pub struct MemberId<Tag> {
     inner: TaglessMemberId,
@@ -104,32 +117,12 @@ impl<Tag> Debug for MemberId<Tag> {
 
 impl<Tag> Display for MemberId<Tag> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match &self.inner {
-            TaglessMemberId::Legacy { raw_id, .. } => {
-                write!(
-                    f,
-                    "MemberId::<{}>({})",
-                    std::any::type_name::<Tag>(),
-                    raw_id
-                )
-            }
-            TaglessMemberId::Docker { container_name, .. } => {
-                write!(
-                    f,
-                    "MemberId::<{}>(\"{}\")",
-                    std::any::type_name::<Tag>(),
-                    container_name
-                )
-            }
-            TaglessMemberId::Maelstrom { node_id, .. } => {
-                write!(
-                    f,
-                    "MemberId::<{}>(\"{}\")",
-                    std::any::type_name::<Tag>(),
-                    node_id
-                )
-            }
-        }
+        write!(
+            f,
+            "MemberId::<{}>({})",
+            std::any::type_name::<Tag>(),
+            self.inner
+        )
     }
 }
 
