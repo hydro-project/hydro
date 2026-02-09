@@ -4,34 +4,40 @@ use std::marker::PhantomData;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum TaglessMemberId {
+    #[cfg(feature = "deploy_integration")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "deploy_integration")))]
     Legacy { raw_id: u32 },
+    #[cfg(feature = "docker_runtime")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "docker_runtime")))]
     Docker { container_name: String },
+    #[cfg(feature = "maelstrom_runtime")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "maelstrom_runtime")))]
     Maelstrom { node_id: String },
 }
 
+#[cfg(feature = "deploy_integration")]
+#[cfg_attr(docsrs, doc(cfg(feature = "deploy_integration")))]
 impl TaglessMemberId {
     pub fn from_raw_id(raw_id: u32) -> Self {
         Self::Legacy { raw_id }
-    }
-
-    pub fn from_container_name(container_name: impl Into<String>) -> Self {
-        Self::Docker {
-            container_name: container_name.into(),
-        }
-    }
-
-    pub fn from_maelstrom_node_id(node_id: impl ToString) -> Self {
-        Self::Maelstrom {
-            node_id: node_id.to_string(),
-        }
     }
 
     pub fn get_raw_id(&self) -> u32 {
         match self {
             TaglessMemberId::Legacy { raw_id } => *raw_id,
             _ => panic!(),
+        }
+    }
+}
+
+#[cfg(feature = "docker_runtime")]
+#[cfg_attr(docsrs, doc(cfg(feature = "docker_runtime")))]
+impl TaglessMemberId {
+    pub fn from_container_name(container_name: impl Into<String>) -> Self {
+        Self::Docker {
+            container_name: container_name.into(),
         }
     }
 
@@ -41,82 +47,21 @@ impl TaglessMemberId {
             _ => panic!(),
         }
     }
+}
+
+#[cfg(feature = "maelstrom_runtime")]
+#[cfg_attr(docsrs, doc(cfg(feature = "maelstrom_runtime")))]
+impl TaglessMemberId {
+    pub fn from_maelstrom_node_id(node_id: impl ToString) -> Self {
+        Self::Maelstrom {
+            node_id: node_id.to_string(),
+        }
+    }
 
     pub fn get_maelstrom_node_id(&self) -> String {
         match &self {
             TaglessMemberId::Maelstrom { node_id } => node_id.clone(),
             _ => panic!(),
-        }
-    }
-}
-
-impl Hash for TaglessMemberId {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        match self {
-            TaglessMemberId::Legacy { raw_id } => raw_id.hash(state),
-            TaglessMemberId::Docker { container_name } => container_name.hash(state),
-            TaglessMemberId::Maelstrom { node_id } => node_id.hash(state),
-        }
-    }
-}
-
-impl PartialEq for TaglessMemberId {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (
-                TaglessMemberId::Legacy { raw_id },
-                TaglessMemberId::Legacy {
-                    raw_id: other_raw_id,
-                },
-            ) => raw_id == other_raw_id,
-            (
-                TaglessMemberId::Docker { container_name },
-                TaglessMemberId::Docker {
-                    container_name: other_container_name,
-                },
-            ) => container_name == other_container_name,
-            (
-                TaglessMemberId::Maelstrom { node_id },
-                TaglessMemberId::Maelstrom {
-                    node_id: other_node_id,
-                },
-            ) => node_id == other_node_id,
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl Eq for TaglessMemberId {}
-
-impl PartialOrd for TaglessMemberId {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for TaglessMemberId {
-    // Comparing tags of different deployment origins means something has gone very wrong and the best thing to do is just crash immediately.
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        match (self, other) {
-            (
-                TaglessMemberId::Legacy { raw_id },
-                TaglessMemberId::Legacy {
-                    raw_id: other_raw_id,
-                },
-            ) => raw_id.cmp(other_raw_id),
-            (
-                TaglessMemberId::Docker { container_name },
-                TaglessMemberId::Docker {
-                    container_name: other_container_name,
-                },
-            ) => container_name.cmp(other_container_name),
-            (
-                TaglessMemberId::Maelstrom { node_id },
-                TaglessMemberId::Maelstrom {
-                    node_id: other_node_id,
-                },
-            ) => node_id.cmp(other_node_id),
-            _ => unreachable!(),
         }
     }
 }
