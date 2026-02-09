@@ -3412,511 +3412,512 @@
 <a href=#3412 id=3412 data-nosnippet>3412</a>
 <a href=#3413 id=3413 data-nosnippet>3413</a>                        <span class="kw">match </span>builders_or_callback {
 <a href=#3414 id=3414 data-nosnippet>3414</a>                            BuildersOrCallback::Builders(graph_builders) =&gt; {
-<a href=#3415 id=3415 data-nosnippet>3415</a>                                <span class="kw">let </span>builder = graph_builders.get_dfir_mut(<span class="kw-2">&amp;</span>out_location);
-<a href=#3416 id=3416 data-nosnippet>3416</a>                                builder.add_dfir(
-<a href=#3417 id=3417 data-nosnippet>3417</a>                                    <span class="macro">parse_quote!</span> {
-<a href=#3418 id=3418 data-nosnippet>3418</a>                                        #counter_ident = #input_ident -&gt; _counter(#tag, #duration, #prefix);
-<a href=#3419 id=3419 data-nosnippet>3419</a>                                    },
-<a href=#3420 id=3420 data-nosnippet>3420</a>                                    <span class="prelude-val">None</span>,
-<a href=#3421 id=3421 data-nosnippet>3421</a>                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
-<a href=#3422 id=3422 data-nosnippet>3422</a>                                );
-<a href=#3423 id=3423 data-nosnippet>3423</a>                            }
-<a href=#3424 id=3424 data-nosnippet>3424</a>                            BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
-<a href=#3425 id=3425 data-nosnippet>3425</a>                                node_callback(node, next_stmt_id);
-<a href=#3426 id=3426 data-nosnippet>3426</a>                            }
-<a href=#3427 id=3427 data-nosnippet>3427</a>                        }
-<a href=#3428 id=3428 data-nosnippet>3428</a>
-<a href=#3429 id=3429 data-nosnippet>3429</a>                        <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
-<a href=#3430 id=3430 data-nosnippet>3430</a>
-<a href=#3431 id=3431 data-nosnippet>3431</a>                        ident_stack.push(counter_ident);
-<a href=#3432 id=3432 data-nosnippet>3432</a>                    }
-<a href=#3433 id=3433 data-nosnippet>3433</a>                }
-<a href=#3434 id=3434 data-nosnippet>3434</a>            },
-<a href=#3435 id=3435 data-nosnippet>3435</a>            seen_tees,
-<a href=#3436 id=3436 data-nosnippet>3436</a>            <span class="bool-val">false</span>,
-<a href=#3437 id=3437 data-nosnippet>3437</a>        );
-<a href=#3438 id=3438 data-nosnippet>3438</a>
-<a href=#3439 id=3439 data-nosnippet>3439</a>        ident_stack
-<a href=#3440 id=3440 data-nosnippet>3440</a>            .pop()
-<a href=#3441 id=3441 data-nosnippet>3441</a>            .expect(<span class="string">"ident_stack should have exactly one element after traversal"</span>)
-<a href=#3442 id=3442 data-nosnippet>3442</a>    }
-<a href=#3443 id=3443 data-nosnippet>3443</a>
-<a href=#3444 id=3444 data-nosnippet>3444</a>    <span class="kw">pub fn </span>visit_debug_expr(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>transform: <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>DebugExpr)) {
-<a href=#3445 id=3445 data-nosnippet>3445</a>        <span class="kw">match </span><span class="self">self </span>{
-<a href=#3446 id=3446 data-nosnippet>3446</a>            HydroNode::Placeholder =&gt; {
-<a href=#3447 id=3447 data-nosnippet>3447</a>                <span class="macro">panic!</span>()
-<a href=#3448 id=3448 data-nosnippet>3448</a>            }
-<a href=#3449 id=3449 data-nosnippet>3449</a>            HydroNode::Cast { .. } | HydroNode::ObserveNonDet { .. } =&gt; {}
-<a href=#3450 id=3450 data-nosnippet>3450</a>            HydroNode::Source { source, .. } =&gt; <span class="kw">match </span>source {
-<a href=#3451 id=3451 data-nosnippet>3451</a>                HydroSource::Stream(expr) | HydroSource::Iter(expr) =&gt; transform(expr),
-<a href=#3452 id=3452 data-nosnippet>3452</a>                HydroSource::ExternalNetwork()
-<a href=#3453 id=3453 data-nosnippet>3453</a>                | HydroSource::Spin()
-<a href=#3454 id=3454 data-nosnippet>3454</a>                | HydroSource::ClusterMembers(<span class="kw">_</span>) =&gt; {} <span class="comment">// TODO: what goes here?
-<a href=#3455 id=3455 data-nosnippet>3455</a>            </span>},
-<a href=#3456 id=3456 data-nosnippet>3456</a>            HydroNode::SingletonSource { value, .. } =&gt; {
-<a href=#3457 id=3457 data-nosnippet>3457</a>                transform(value);
-<a href=#3458 id=3458 data-nosnippet>3458</a>            }
-<a href=#3459 id=3459 data-nosnippet>3459</a>            HydroNode::CycleSource { .. }
-<a href=#3460 id=3460 data-nosnippet>3460</a>            | HydroNode::Tee { .. }
-<a href=#3461 id=3461 data-nosnippet>3461</a>            | HydroNode::YieldConcat { .. }
-<a href=#3462 id=3462 data-nosnippet>3462</a>            | HydroNode::BeginAtomic { .. }
-<a href=#3463 id=3463 data-nosnippet>3463</a>            | HydroNode::EndAtomic { .. }
-<a href=#3464 id=3464 data-nosnippet>3464</a>            | HydroNode::Batch { .. }
-<a href=#3465 id=3465 data-nosnippet>3465</a>            | HydroNode::Chain { .. }
-<a href=#3466 id=3466 data-nosnippet>3466</a>            | HydroNode::ChainFirst { .. }
-<a href=#3467 id=3467 data-nosnippet>3467</a>            | HydroNode::CrossProduct { .. }
-<a href=#3468 id=3468 data-nosnippet>3468</a>            | HydroNode::CrossSingleton { .. }
-<a href=#3469 id=3469 data-nosnippet>3469</a>            | HydroNode::ResolveFutures { .. }
-<a href=#3470 id=3470 data-nosnippet>3470</a>            | HydroNode::ResolveFuturesOrdered { .. }
-<a href=#3471 id=3471 data-nosnippet>3471</a>            | HydroNode::Join { .. }
-<a href=#3472 id=3472 data-nosnippet>3472</a>            | HydroNode::Difference { .. }
-<a href=#3473 id=3473 data-nosnippet>3473</a>            | HydroNode::AntiJoin { .. }
-<a href=#3474 id=3474 data-nosnippet>3474</a>            | HydroNode::DeferTick { .. }
-<a href=#3475 id=3475 data-nosnippet>3475</a>            | HydroNode::Enumerate { .. }
-<a href=#3476 id=3476 data-nosnippet>3476</a>            | HydroNode::Unique { .. }
-<a href=#3477 id=3477 data-nosnippet>3477</a>            | HydroNode::Sort { .. } =&gt; {}
-<a href=#3478 id=3478 data-nosnippet>3478</a>            HydroNode::Map { f, .. }
-<a href=#3479 id=3479 data-nosnippet>3479</a>            | HydroNode::FlatMap { f, .. }
-<a href=#3480 id=3480 data-nosnippet>3480</a>            | HydroNode::Filter { f, .. }
-<a href=#3481 id=3481 data-nosnippet>3481</a>            | HydroNode::FilterMap { f, .. }
-<a href=#3482 id=3482 data-nosnippet>3482</a>            | HydroNode::Inspect { f, .. }
-<a href=#3483 id=3483 data-nosnippet>3483</a>            | HydroNode::Reduce { f, .. }
-<a href=#3484 id=3484 data-nosnippet>3484</a>            | HydroNode::ReduceKeyed { f, .. }
-<a href=#3485 id=3485 data-nosnippet>3485</a>            | HydroNode::ReduceKeyedWatermark { f, .. } =&gt; {
-<a href=#3486 id=3486 data-nosnippet>3486</a>                transform(f);
-<a href=#3487 id=3487 data-nosnippet>3487</a>            }
-<a href=#3488 id=3488 data-nosnippet>3488</a>            HydroNode::Fold { init, acc, .. }
-<a href=#3489 id=3489 data-nosnippet>3489</a>            | HydroNode::Scan { init, acc, .. }
-<a href=#3490 id=3490 data-nosnippet>3490</a>            | HydroNode::FoldKeyed { init, acc, .. } =&gt; {
-<a href=#3491 id=3491 data-nosnippet>3491</a>                transform(init);
-<a href=#3492 id=3492 data-nosnippet>3492</a>                transform(acc);
-<a href=#3493 id=3493 data-nosnippet>3493</a>            }
-<a href=#3494 id=3494 data-nosnippet>3494</a>            HydroNode::Network {
-<a href=#3495 id=3495 data-nosnippet>3495</a>                serialize_fn,
-<a href=#3496 id=3496 data-nosnippet>3496</a>                deserialize_fn,
-<a href=#3497 id=3497 data-nosnippet>3497</a>                ..
-<a href=#3498 id=3498 data-nosnippet>3498</a>            } =&gt; {
-<a href=#3499 id=3499 data-nosnippet>3499</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(serialize_fn) = serialize_fn {
-<a href=#3500 id=3500 data-nosnippet>3500</a>                    transform(serialize_fn);
-<a href=#3501 id=3501 data-nosnippet>3501</a>                }
-<a href=#3502 id=3502 data-nosnippet>3502</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(deserialize_fn) = deserialize_fn {
-<a href=#3503 id=3503 data-nosnippet>3503</a>                    transform(deserialize_fn);
-<a href=#3504 id=3504 data-nosnippet>3504</a>                }
-<a href=#3505 id=3505 data-nosnippet>3505</a>            }
-<a href=#3506 id=3506 data-nosnippet>3506</a>            HydroNode::ExternalInput { deserialize_fn, .. } =&gt; {
-<a href=#3507 id=3507 data-nosnippet>3507</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(deserialize_fn) = deserialize_fn {
-<a href=#3508 id=3508 data-nosnippet>3508</a>                    transform(deserialize_fn);
-<a href=#3509 id=3509 data-nosnippet>3509</a>                }
-<a href=#3510 id=3510 data-nosnippet>3510</a>            }
-<a href=#3511 id=3511 data-nosnippet>3511</a>            HydroNode::Counter { duration, .. } =&gt; {
-<a href=#3512 id=3512 data-nosnippet>3512</a>                transform(duration);
-<a href=#3513 id=3513 data-nosnippet>3513</a>            }
-<a href=#3514 id=3514 data-nosnippet>3514</a>        }
-<a href=#3515 id=3515 data-nosnippet>3515</a>    }
-<a href=#3516 id=3516 data-nosnippet>3516</a>
-<a href=#3517 id=3517 data-nosnippet>3517</a>    <span class="kw">pub fn </span>op_metadata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HydroIrOpMetadata {
-<a href=#3518 id=3518 data-nosnippet>3518</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.metadata().op
-<a href=#3519 id=3519 data-nosnippet>3519</a>    }
-<a href=#3520 id=3520 data-nosnippet>3520</a>
-<a href=#3521 id=3521 data-nosnippet>3521</a>    <span class="kw">pub fn </span>metadata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HydroIrMetadata {
-<a href=#3522 id=3522 data-nosnippet>3522</a>        <span class="kw">match </span><span class="self">self </span>{
-<a href=#3523 id=3523 data-nosnippet>3523</a>            HydroNode::Placeholder =&gt; {
-<a href=#3524 id=3524 data-nosnippet>3524</a>                <span class="macro">panic!</span>()
-<a href=#3525 id=3525 data-nosnippet>3525</a>            }
-<a href=#3526 id=3526 data-nosnippet>3526</a>            HydroNode::Cast { metadata, .. } =&gt; metadata,
-<a href=#3527 id=3527 data-nosnippet>3527</a>            HydroNode::ObserveNonDet { metadata, .. } =&gt; metadata,
-<a href=#3528 id=3528 data-nosnippet>3528</a>            HydroNode::Source { metadata, .. } =&gt; metadata,
-<a href=#3529 id=3529 data-nosnippet>3529</a>            HydroNode::SingletonSource { metadata, .. } =&gt; metadata,
-<a href=#3530 id=3530 data-nosnippet>3530</a>            HydroNode::CycleSource { metadata, .. } =&gt; metadata,
-<a href=#3531 id=3531 data-nosnippet>3531</a>            HydroNode::Tee { metadata, .. } =&gt; metadata,
-<a href=#3532 id=3532 data-nosnippet>3532</a>            HydroNode::YieldConcat { metadata, .. } =&gt; metadata,
-<a href=#3533 id=3533 data-nosnippet>3533</a>            HydroNode::BeginAtomic { metadata, .. } =&gt; metadata,
-<a href=#3534 id=3534 data-nosnippet>3534</a>            HydroNode::EndAtomic { metadata, .. } =&gt; metadata,
-<a href=#3535 id=3535 data-nosnippet>3535</a>            HydroNode::Batch { metadata, .. } =&gt; metadata,
-<a href=#3536 id=3536 data-nosnippet>3536</a>            HydroNode::Chain { metadata, .. } =&gt; metadata,
-<a href=#3537 id=3537 data-nosnippet>3537</a>            HydroNode::ChainFirst { metadata, .. } =&gt; metadata,
-<a href=#3538 id=3538 data-nosnippet>3538</a>            HydroNode::CrossProduct { metadata, .. } =&gt; metadata,
-<a href=#3539 id=3539 data-nosnippet>3539</a>            HydroNode::CrossSingleton { metadata, .. } =&gt; metadata,
-<a href=#3540 id=3540 data-nosnippet>3540</a>            HydroNode::Join { metadata, .. } =&gt; metadata,
-<a href=#3541 id=3541 data-nosnippet>3541</a>            HydroNode::Difference { metadata, .. } =&gt; metadata,
-<a href=#3542 id=3542 data-nosnippet>3542</a>            HydroNode::AntiJoin { metadata, .. } =&gt; metadata,
-<a href=#3543 id=3543 data-nosnippet>3543</a>            HydroNode::ResolveFutures { metadata, .. } =&gt; metadata,
-<a href=#3544 id=3544 data-nosnippet>3544</a>            HydroNode::ResolveFuturesOrdered { metadata, .. } =&gt; metadata,
-<a href=#3545 id=3545 data-nosnippet>3545</a>            HydroNode::Map { metadata, .. } =&gt; metadata,
-<a href=#3546 id=3546 data-nosnippet>3546</a>            HydroNode::FlatMap { metadata, .. } =&gt; metadata,
-<a href=#3547 id=3547 data-nosnippet>3547</a>            HydroNode::Filter { metadata, .. } =&gt; metadata,
-<a href=#3548 id=3548 data-nosnippet>3548</a>            HydroNode::FilterMap { metadata, .. } =&gt; metadata,
-<a href=#3549 id=3549 data-nosnippet>3549</a>            HydroNode::DeferTick { metadata, .. } =&gt; metadata,
-<a href=#3550 id=3550 data-nosnippet>3550</a>            HydroNode::Enumerate { metadata, .. } =&gt; metadata,
-<a href=#3551 id=3551 data-nosnippet>3551</a>            HydroNode::Inspect { metadata, .. } =&gt; metadata,
-<a href=#3552 id=3552 data-nosnippet>3552</a>            HydroNode::Unique { metadata, .. } =&gt; metadata,
-<a href=#3553 id=3553 data-nosnippet>3553</a>            HydroNode::Sort { metadata, .. } =&gt; metadata,
-<a href=#3554 id=3554 data-nosnippet>3554</a>            HydroNode::Scan { metadata, .. } =&gt; metadata,
-<a href=#3555 id=3555 data-nosnippet>3555</a>            HydroNode::Fold { metadata, .. } =&gt; metadata,
-<a href=#3556 id=3556 data-nosnippet>3556</a>            HydroNode::FoldKeyed { metadata, .. } =&gt; metadata,
-<a href=#3557 id=3557 data-nosnippet>3557</a>            HydroNode::Reduce { metadata, .. } =&gt; metadata,
-<a href=#3558 id=3558 data-nosnippet>3558</a>            HydroNode::ReduceKeyed { metadata, .. } =&gt; metadata,
-<a href=#3559 id=3559 data-nosnippet>3559</a>            HydroNode::ReduceKeyedWatermark { metadata, .. } =&gt; metadata,
-<a href=#3560 id=3560 data-nosnippet>3560</a>            HydroNode::ExternalInput { metadata, .. } =&gt; metadata,
-<a href=#3561 id=3561 data-nosnippet>3561</a>            HydroNode::Network { metadata, .. } =&gt; metadata,
-<a href=#3562 id=3562 data-nosnippet>3562</a>            HydroNode::Counter { metadata, .. } =&gt; metadata,
-<a href=#3563 id=3563 data-nosnippet>3563</a>        }
-<a href=#3564 id=3564 data-nosnippet>3564</a>    }
-<a href=#3565 id=3565 data-nosnippet>3565</a>
-<a href=#3566 id=3566 data-nosnippet>3566</a>    <span class="kw">pub fn </span>op_metadata_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>HydroIrOpMetadata {
-<a href=#3567 id=3567 data-nosnippet>3567</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.metadata_mut().op
-<a href=#3568 id=3568 data-nosnippet>3568</a>    }
-<a href=#3569 id=3569 data-nosnippet>3569</a>
-<a href=#3570 id=3570 data-nosnippet>3570</a>    <span class="kw">pub fn </span>metadata_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>HydroIrMetadata {
-<a href=#3571 id=3571 data-nosnippet>3571</a>        <span class="kw">match </span><span class="self">self </span>{
-<a href=#3572 id=3572 data-nosnippet>3572</a>            HydroNode::Placeholder =&gt; {
-<a href=#3573 id=3573 data-nosnippet>3573</a>                <span class="macro">panic!</span>()
-<a href=#3574 id=3574 data-nosnippet>3574</a>            }
-<a href=#3575 id=3575 data-nosnippet>3575</a>            HydroNode::Cast { metadata, .. } =&gt; metadata,
-<a href=#3576 id=3576 data-nosnippet>3576</a>            HydroNode::ObserveNonDet { metadata, .. } =&gt; metadata,
-<a href=#3577 id=3577 data-nosnippet>3577</a>            HydroNode::Source { metadata, .. } =&gt; metadata,
-<a href=#3578 id=3578 data-nosnippet>3578</a>            HydroNode::SingletonSource { metadata, .. } =&gt; metadata,
-<a href=#3579 id=3579 data-nosnippet>3579</a>            HydroNode::CycleSource { metadata, .. } =&gt; metadata,
-<a href=#3580 id=3580 data-nosnippet>3580</a>            HydroNode::Tee { metadata, .. } =&gt; metadata,
-<a href=#3581 id=3581 data-nosnippet>3581</a>            HydroNode::YieldConcat { metadata, .. } =&gt; metadata,
-<a href=#3582 id=3582 data-nosnippet>3582</a>            HydroNode::BeginAtomic { metadata, .. } =&gt; metadata,
-<a href=#3583 id=3583 data-nosnippet>3583</a>            HydroNode::EndAtomic { metadata, .. } =&gt; metadata,
-<a href=#3584 id=3584 data-nosnippet>3584</a>            HydroNode::Batch { metadata, .. } =&gt; metadata,
-<a href=#3585 id=3585 data-nosnippet>3585</a>            HydroNode::Chain { metadata, .. } =&gt; metadata,
-<a href=#3586 id=3586 data-nosnippet>3586</a>            HydroNode::ChainFirst { metadata, .. } =&gt; metadata,
-<a href=#3587 id=3587 data-nosnippet>3587</a>            HydroNode::CrossProduct { metadata, .. } =&gt; metadata,
-<a href=#3588 id=3588 data-nosnippet>3588</a>            HydroNode::CrossSingleton { metadata, .. } =&gt; metadata,
-<a href=#3589 id=3589 data-nosnippet>3589</a>            HydroNode::Join { metadata, .. } =&gt; metadata,
-<a href=#3590 id=3590 data-nosnippet>3590</a>            HydroNode::Difference { metadata, .. } =&gt; metadata,
-<a href=#3591 id=3591 data-nosnippet>3591</a>            HydroNode::AntiJoin { metadata, .. } =&gt; metadata,
-<a href=#3592 id=3592 data-nosnippet>3592</a>            HydroNode::ResolveFutures { metadata, .. } =&gt; metadata,
-<a href=#3593 id=3593 data-nosnippet>3593</a>            HydroNode::ResolveFuturesOrdered { metadata, .. } =&gt; metadata,
-<a href=#3594 id=3594 data-nosnippet>3594</a>            HydroNode::Map { metadata, .. } =&gt; metadata,
-<a href=#3595 id=3595 data-nosnippet>3595</a>            HydroNode::FlatMap { metadata, .. } =&gt; metadata,
-<a href=#3596 id=3596 data-nosnippet>3596</a>            HydroNode::Filter { metadata, .. } =&gt; metadata,
-<a href=#3597 id=3597 data-nosnippet>3597</a>            HydroNode::FilterMap { metadata, .. } =&gt; metadata,
-<a href=#3598 id=3598 data-nosnippet>3598</a>            HydroNode::DeferTick { metadata, .. } =&gt; metadata,
-<a href=#3599 id=3599 data-nosnippet>3599</a>            HydroNode::Enumerate { metadata, .. } =&gt; metadata,
-<a href=#3600 id=3600 data-nosnippet>3600</a>            HydroNode::Inspect { metadata, .. } =&gt; metadata,
-<a href=#3601 id=3601 data-nosnippet>3601</a>            HydroNode::Unique { metadata, .. } =&gt; metadata,
-<a href=#3602 id=3602 data-nosnippet>3602</a>            HydroNode::Sort { metadata, .. } =&gt; metadata,
-<a href=#3603 id=3603 data-nosnippet>3603</a>            HydroNode::Scan { metadata, .. } =&gt; metadata,
-<a href=#3604 id=3604 data-nosnippet>3604</a>            HydroNode::Fold { metadata, .. } =&gt; metadata,
-<a href=#3605 id=3605 data-nosnippet>3605</a>            HydroNode::FoldKeyed { metadata, .. } =&gt; metadata,
-<a href=#3606 id=3606 data-nosnippet>3606</a>            HydroNode::Reduce { metadata, .. } =&gt; metadata,
-<a href=#3607 id=3607 data-nosnippet>3607</a>            HydroNode::ReduceKeyed { metadata, .. } =&gt; metadata,
-<a href=#3608 id=3608 data-nosnippet>3608</a>            HydroNode::ReduceKeyedWatermark { metadata, .. } =&gt; metadata,
-<a href=#3609 id=3609 data-nosnippet>3609</a>            HydroNode::ExternalInput { metadata, .. } =&gt; metadata,
-<a href=#3610 id=3610 data-nosnippet>3610</a>            HydroNode::Network { metadata, .. } =&gt; metadata,
-<a href=#3611 id=3611 data-nosnippet>3611</a>            HydroNode::Counter { metadata, .. } =&gt; metadata,
-<a href=#3612 id=3612 data-nosnippet>3612</a>        }
-<a href=#3613 id=3613 data-nosnippet>3613</a>    }
-<a href=#3614 id=3614 data-nosnippet>3614</a>
-<a href=#3615 id=3615 data-nosnippet>3615</a>    <span class="kw">pub fn </span>input(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="kw-2">&amp;</span>HydroNode&gt; {
-<a href=#3616 id=3616 data-nosnippet>3616</a>        <span class="kw">match </span><span class="self">self </span>{
-<a href=#3617 id=3617 data-nosnippet>3617</a>            HydroNode::Placeholder =&gt; {
-<a href=#3618 id=3618 data-nosnippet>3618</a>                <span class="macro">panic!</span>()
-<a href=#3619 id=3619 data-nosnippet>3619</a>            }
-<a href=#3620 id=3620 data-nosnippet>3620</a>            HydroNode::Source { .. }
-<a href=#3621 id=3621 data-nosnippet>3621</a>            | HydroNode::SingletonSource { .. }
-<a href=#3622 id=3622 data-nosnippet>3622</a>            | HydroNode::ExternalInput { .. }
-<a href=#3623 id=3623 data-nosnippet>3623</a>            | HydroNode::CycleSource { .. }
-<a href=#3624 id=3624 data-nosnippet>3624</a>            | HydroNode::Tee { .. } =&gt; {
-<a href=#3625 id=3625 data-nosnippet>3625</a>                <span class="comment">// Tee should find its input in separate special ways
-<a href=#3626 id=3626 data-nosnippet>3626</a>                </span><span class="macro">vec!</span>[]
-<a href=#3627 id=3627 data-nosnippet>3627</a>            }
-<a href=#3628 id=3628 data-nosnippet>3628</a>            HydroNode::Cast { inner, .. }
-<a href=#3629 id=3629 data-nosnippet>3629</a>            | HydroNode::ObserveNonDet { inner, .. }
-<a href=#3630 id=3630 data-nosnippet>3630</a>            | HydroNode::YieldConcat { inner, .. }
-<a href=#3631 id=3631 data-nosnippet>3631</a>            | HydroNode::BeginAtomic { inner, .. }
-<a href=#3632 id=3632 data-nosnippet>3632</a>            | HydroNode::EndAtomic { inner, .. }
-<a href=#3633 id=3633 data-nosnippet>3633</a>            | HydroNode::Batch { inner, .. } =&gt; {
-<a href=#3634 id=3634 data-nosnippet>3634</a>                <span class="macro">vec!</span>[inner]
-<a href=#3635 id=3635 data-nosnippet>3635</a>            }
-<a href=#3636 id=3636 data-nosnippet>3636</a>            HydroNode::Chain { first, second, .. } =&gt; {
-<a href=#3637 id=3637 data-nosnippet>3637</a>                <span class="macro">vec!</span>[first, second]
-<a href=#3638 id=3638 data-nosnippet>3638</a>            }
-<a href=#3639 id=3639 data-nosnippet>3639</a>            HydroNode::ChainFirst { first, second, .. } =&gt; {
-<a href=#3640 id=3640 data-nosnippet>3640</a>                <span class="macro">vec!</span>[first, second]
-<a href=#3641 id=3641 data-nosnippet>3641</a>            }
-<a href=#3642 id=3642 data-nosnippet>3642</a>            HydroNode::CrossProduct { left, right, .. }
-<a href=#3643 id=3643 data-nosnippet>3643</a>            | HydroNode::CrossSingleton { left, right, .. }
-<a href=#3644 id=3644 data-nosnippet>3644</a>            | HydroNode::Join { left, right, .. } =&gt; {
-<a href=#3645 id=3645 data-nosnippet>3645</a>                <span class="macro">vec!</span>[left, right]
-<a href=#3646 id=3646 data-nosnippet>3646</a>            }
-<a href=#3647 id=3647 data-nosnippet>3647</a>            HydroNode::Difference { pos, neg, .. } | HydroNode::AntiJoin { pos, neg, .. } =&gt; {
-<a href=#3648 id=3648 data-nosnippet>3648</a>                <span class="macro">vec!</span>[pos, neg]
-<a href=#3649 id=3649 data-nosnippet>3649</a>            }
-<a href=#3650 id=3650 data-nosnippet>3650</a>            HydroNode::Map { input, .. }
-<a href=#3651 id=3651 data-nosnippet>3651</a>            | HydroNode::FlatMap { input, .. }
-<a href=#3652 id=3652 data-nosnippet>3652</a>            | HydroNode::Filter { input, .. }
-<a href=#3653 id=3653 data-nosnippet>3653</a>            | HydroNode::FilterMap { input, .. }
-<a href=#3654 id=3654 data-nosnippet>3654</a>            | HydroNode::Sort { input, .. }
-<a href=#3655 id=3655 data-nosnippet>3655</a>            | HydroNode::DeferTick { input, .. }
-<a href=#3656 id=3656 data-nosnippet>3656</a>            | HydroNode::Enumerate { input, .. }
-<a href=#3657 id=3657 data-nosnippet>3657</a>            | HydroNode::Inspect { input, .. }
-<a href=#3658 id=3658 data-nosnippet>3658</a>            | HydroNode::Unique { input, .. }
-<a href=#3659 id=3659 data-nosnippet>3659</a>            | HydroNode::Network { input, .. }
-<a href=#3660 id=3660 data-nosnippet>3660</a>            | HydroNode::Counter { input, .. }
-<a href=#3661 id=3661 data-nosnippet>3661</a>            | HydroNode::ResolveFutures { input, .. }
-<a href=#3662 id=3662 data-nosnippet>3662</a>            | HydroNode::ResolveFuturesOrdered { input, .. }
-<a href=#3663 id=3663 data-nosnippet>3663</a>            | HydroNode::Fold { input, .. }
-<a href=#3664 id=3664 data-nosnippet>3664</a>            | HydroNode::FoldKeyed { input, .. }
-<a href=#3665 id=3665 data-nosnippet>3665</a>            | HydroNode::Reduce { input, .. }
-<a href=#3666 id=3666 data-nosnippet>3666</a>            | HydroNode::ReduceKeyed { input, .. }
-<a href=#3667 id=3667 data-nosnippet>3667</a>            | HydroNode::Scan { input, .. } =&gt; {
-<a href=#3668 id=3668 data-nosnippet>3668</a>                <span class="macro">vec!</span>[input]
-<a href=#3669 id=3669 data-nosnippet>3669</a>            }
-<a href=#3670 id=3670 data-nosnippet>3670</a>            HydroNode::ReduceKeyedWatermark {
-<a href=#3671 id=3671 data-nosnippet>3671</a>                input, watermark, ..
-<a href=#3672 id=3672 data-nosnippet>3672</a>            } =&gt; {
-<a href=#3673 id=3673 data-nosnippet>3673</a>                <span class="macro">vec!</span>[input, watermark]
-<a href=#3674 id=3674 data-nosnippet>3674</a>            }
-<a href=#3675 id=3675 data-nosnippet>3675</a>        }
-<a href=#3676 id=3676 data-nosnippet>3676</a>    }
-<a href=#3677 id=3677 data-nosnippet>3677</a>
-<a href=#3678 id=3678 data-nosnippet>3678</a>    <span class="kw">pub fn </span>input_metadata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="kw-2">&amp;</span>HydroIrMetadata&gt; {
-<a href=#3679 id=3679 data-nosnippet>3679</a>        <span class="self">self</span>.input()
-<a href=#3680 id=3680 data-nosnippet>3680</a>            .iter()
-<a href=#3681 id=3681 data-nosnippet>3681</a>            .map(|input_node| input_node.metadata())
-<a href=#3682 id=3682 data-nosnippet>3682</a>            .collect()
-<a href=#3683 id=3683 data-nosnippet>3683</a>    }
-<a href=#3684 id=3684 data-nosnippet>3684</a>
-<a href=#3685 id=3685 data-nosnippet>3685</a>    <span class="kw">pub fn </span>print_root(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-<a href=#3686 id=3686 data-nosnippet>3686</a>        <span class="kw">match </span><span class="self">self </span>{
-<a href=#3687 id=3687 data-nosnippet>3687</a>            HydroNode::Placeholder =&gt; {
-<a href=#3688 id=3688 data-nosnippet>3688</a>                <span class="macro">panic!</span>()
-<a href=#3689 id=3689 data-nosnippet>3689</a>            }
-<a href=#3690 id=3690 data-nosnippet>3690</a>            HydroNode::Cast { .. } =&gt; <span class="string">"Cast()"</span>.to_owned(),
-<a href=#3691 id=3691 data-nosnippet>3691</a>            HydroNode::ObserveNonDet { .. } =&gt; <span class="string">"ObserveNonDet()"</span>.to_owned(),
-<a href=#3692 id=3692 data-nosnippet>3692</a>            HydroNode::Source { source, .. } =&gt; <span class="macro">format!</span>(<span class="string">"Source({:?})"</span>, source),
-<a href=#3693 id=3693 data-nosnippet>3693</a>            HydroNode::SingletonSource { value, .. } =&gt; <span class="macro">format!</span>(<span class="string">"SingletonSource({:?})"</span>, value),
-<a href=#3694 id=3694 data-nosnippet>3694</a>            HydroNode::CycleSource { ident, .. } =&gt; <span class="macro">format!</span>(<span class="string">"CycleSource({})"</span>, ident),
-<a href=#3695 id=3695 data-nosnippet>3695</a>            HydroNode::Tee { inner, .. } =&gt; <span class="macro">format!</span>(<span class="string">"Tee({})"</span>, inner.<span class="number">0</span>.borrow().print_root()),
-<a href=#3696 id=3696 data-nosnippet>3696</a>            HydroNode::YieldConcat { .. } =&gt; <span class="string">"YieldConcat()"</span>.to_owned(),
-<a href=#3697 id=3697 data-nosnippet>3697</a>            HydroNode::BeginAtomic { .. } =&gt; <span class="string">"BeginAtomic()"</span>.to_owned(),
-<a href=#3698 id=3698 data-nosnippet>3698</a>            HydroNode::EndAtomic { .. } =&gt; <span class="string">"EndAtomic()"</span>.to_owned(),
-<a href=#3699 id=3699 data-nosnippet>3699</a>            HydroNode::Batch { .. } =&gt; <span class="string">"Batch()"</span>.to_owned(),
-<a href=#3700 id=3700 data-nosnippet>3700</a>            HydroNode::Chain { first, second, .. } =&gt; {
-<a href=#3701 id=3701 data-nosnippet>3701</a>                <span class="macro">format!</span>(<span class="string">"Chain({}, {})"</span>, first.print_root(), second.print_root())
-<a href=#3702 id=3702 data-nosnippet>3702</a>            }
-<a href=#3703 id=3703 data-nosnippet>3703</a>            HydroNode::ChainFirst { first, second, .. } =&gt; {
-<a href=#3704 id=3704 data-nosnippet>3704</a>                <span class="macro">format!</span>(
-<a href=#3705 id=3705 data-nosnippet>3705</a>                    <span class="string">"ChainFirst({}, {})"</span>,
-<a href=#3706 id=3706 data-nosnippet>3706</a>                    first.print_root(),
-<a href=#3707 id=3707 data-nosnippet>3707</a>                    second.print_root()
-<a href=#3708 id=3708 data-nosnippet>3708</a>                )
-<a href=#3709 id=3709 data-nosnippet>3709</a>            }
-<a href=#3710 id=3710 data-nosnippet>3710</a>            HydroNode::CrossProduct { left, right, .. } =&gt; {
-<a href=#3711 id=3711 data-nosnippet>3711</a>                <span class="macro">format!</span>(
-<a href=#3712 id=3712 data-nosnippet>3712</a>                    <span class="string">"CrossProduct({}, {})"</span>,
-<a href=#3713 id=3713 data-nosnippet>3713</a>                    left.print_root(),
-<a href=#3714 id=3714 data-nosnippet>3714</a>                    right.print_root()
-<a href=#3715 id=3715 data-nosnippet>3715</a>                )
-<a href=#3716 id=3716 data-nosnippet>3716</a>            }
-<a href=#3717 id=3717 data-nosnippet>3717</a>            HydroNode::CrossSingleton { left, right, .. } =&gt; {
-<a href=#3718 id=3718 data-nosnippet>3718</a>                <span class="macro">format!</span>(
-<a href=#3719 id=3719 data-nosnippet>3719</a>                    <span class="string">"CrossSingleton({}, {})"</span>,
-<a href=#3720 id=3720 data-nosnippet>3720</a>                    left.print_root(),
-<a href=#3721 id=3721 data-nosnippet>3721</a>                    right.print_root()
-<a href=#3722 id=3722 data-nosnippet>3722</a>                )
-<a href=#3723 id=3723 data-nosnippet>3723</a>            }
-<a href=#3724 id=3724 data-nosnippet>3724</a>            HydroNode::Join { left, right, .. } =&gt; {
-<a href=#3725 id=3725 data-nosnippet>3725</a>                <span class="macro">format!</span>(<span class="string">"Join({}, {})"</span>, left.print_root(), right.print_root())
-<a href=#3726 id=3726 data-nosnippet>3726</a>            }
-<a href=#3727 id=3727 data-nosnippet>3727</a>            HydroNode::Difference { pos, neg, .. } =&gt; {
-<a href=#3728 id=3728 data-nosnippet>3728</a>                <span class="macro">format!</span>(<span class="string">"Difference({}, {})"</span>, pos.print_root(), neg.print_root())
-<a href=#3729 id=3729 data-nosnippet>3729</a>            }
-<a href=#3730 id=3730 data-nosnippet>3730</a>            HydroNode::AntiJoin { pos, neg, .. } =&gt; {
-<a href=#3731 id=3731 data-nosnippet>3731</a>                <span class="macro">format!</span>(<span class="string">"AntiJoin({}, {})"</span>, pos.print_root(), neg.print_root())
-<a href=#3732 id=3732 data-nosnippet>3732</a>            }
-<a href=#3733 id=3733 data-nosnippet>3733</a>            HydroNode::ResolveFutures { .. } =&gt; <span class="string">"ResolveFutures()"</span>.to_owned(),
-<a href=#3734 id=3734 data-nosnippet>3734</a>            HydroNode::ResolveFuturesOrdered { .. } =&gt; <span class="string">"ResolveFuturesOrdered()"</span>.to_owned(),
-<a href=#3735 id=3735 data-nosnippet>3735</a>            HydroNode::Map { f, .. } =&gt; <span class="macro">format!</span>(<span class="string">"Map({:?})"</span>, f),
-<a href=#3736 id=3736 data-nosnippet>3736</a>            HydroNode::FlatMap { f, .. } =&gt; <span class="macro">format!</span>(<span class="string">"FlatMap({:?})"</span>, f),
-<a href=#3737 id=3737 data-nosnippet>3737</a>            HydroNode::Filter { f, .. } =&gt; <span class="macro">format!</span>(<span class="string">"Filter({:?})"</span>, f),
-<a href=#3738 id=3738 data-nosnippet>3738</a>            HydroNode::FilterMap { f, .. } =&gt; <span class="macro">format!</span>(<span class="string">"FilterMap({:?})"</span>, f),
-<a href=#3739 id=3739 data-nosnippet>3739</a>            HydroNode::DeferTick { .. } =&gt; <span class="string">"DeferTick()"</span>.to_owned(),
-<a href=#3740 id=3740 data-nosnippet>3740</a>            HydroNode::Enumerate { .. } =&gt; <span class="string">"Enumerate()"</span>.to_owned(),
-<a href=#3741 id=3741 data-nosnippet>3741</a>            HydroNode::Inspect { f, .. } =&gt; <span class="macro">format!</span>(<span class="string">"Inspect({:?})"</span>, f),
-<a href=#3742 id=3742 data-nosnippet>3742</a>            HydroNode::Unique { .. } =&gt; <span class="string">"Unique()"</span>.to_owned(),
-<a href=#3743 id=3743 data-nosnippet>3743</a>            HydroNode::Sort { .. } =&gt; <span class="string">"Sort()"</span>.to_owned(),
-<a href=#3744 id=3744 data-nosnippet>3744</a>            HydroNode::Fold { init, acc, .. } =&gt; <span class="macro">format!</span>(<span class="string">"Fold({:?}, {:?})"</span>, init, acc),
-<a href=#3745 id=3745 data-nosnippet>3745</a>            HydroNode::Scan { init, acc, .. } =&gt; <span class="macro">format!</span>(<span class="string">"Scan({:?}, {:?})"</span>, init, acc),
-<a href=#3746 id=3746 data-nosnippet>3746</a>            HydroNode::FoldKeyed { init, acc, .. } =&gt; <span class="macro">format!</span>(<span class="string">"FoldKeyed({:?}, {:?})"</span>, init, acc),
-<a href=#3747 id=3747 data-nosnippet>3747</a>            HydroNode::Reduce { f, .. } =&gt; <span class="macro">format!</span>(<span class="string">"Reduce({:?})"</span>, f),
-<a href=#3748 id=3748 data-nosnippet>3748</a>            HydroNode::ReduceKeyed { f, .. } =&gt; <span class="macro">format!</span>(<span class="string">"ReduceKeyed({:?})"</span>, f),
-<a href=#3749 id=3749 data-nosnippet>3749</a>            HydroNode::ReduceKeyedWatermark { f, .. } =&gt; <span class="macro">format!</span>(<span class="string">"ReduceKeyedWatermark({:?})"</span>, f),
-<a href=#3750 id=3750 data-nosnippet>3750</a>            HydroNode::Network { .. } =&gt; <span class="string">"Network()"</span>.to_owned(),
-<a href=#3751 id=3751 data-nosnippet>3751</a>            HydroNode::ExternalInput { .. } =&gt; <span class="string">"ExternalInput()"</span>.to_owned(),
-<a href=#3752 id=3752 data-nosnippet>3752</a>            HydroNode::Counter { tag, duration, .. } =&gt; {
-<a href=#3753 id=3753 data-nosnippet>3753</a>                <span class="macro">format!</span>(<span class="string">"Counter({:?}, {:?})"</span>, tag, duration)
-<a href=#3754 id=3754 data-nosnippet>3754</a>            }
-<a href=#3755 id=3755 data-nosnippet>3755</a>        }
-<a href=#3756 id=3756 data-nosnippet>3756</a>    }
-<a href=#3757 id=3757 data-nosnippet>3757</a>}
-<a href=#3758 id=3758 data-nosnippet>3758</a>
-<a href=#3759 id=3759 data-nosnippet>3759</a><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
-<a href=#3760 id=3760 data-nosnippet>3760</a></span><span class="kw">fn </span>instantiate_network&lt;<span class="lifetime">'a</span>, D&gt;(
-<a href=#3761 id=3761 data-nosnippet>3761</a>    from_location: <span class="kw-2">&amp;</span>LocationId,
-<a href=#3762 id=3762 data-nosnippet>3762</a>    to_location: <span class="kw-2">&amp;</span>LocationId,
-<a href=#3763 id=3763 data-nosnippet>3763</a>    processes: <span class="kw-2">&amp;</span>SparseSecondaryMap&lt;LocationKey, D::Process&gt;,
-<a href=#3764 id=3764 data-nosnippet>3764</a>    clusters: <span class="kw-2">&amp;</span>SparseSecondaryMap&lt;LocationKey, D::Cluster&gt;,
-<a href=#3765 id=3765 data-nosnippet>3765</a>) -&gt; (syn::Expr, syn::Expr, Box&lt;<span class="kw">dyn </span>FnOnce()&gt;)
-<a href=#3766 id=3766 data-nosnippet>3766</a><span class="kw">where
-<a href=#3767 id=3767 data-nosnippet>3767</a>    </span>D: Deploy&lt;<span class="lifetime">'a</span>&gt;,
-<a href=#3768 id=3768 data-nosnippet>3768</a>{
-<a href=#3769 id=3769 data-nosnippet>3769</a>    <span class="kw">let </span>((sink, source), connect_fn) = <span class="kw">match </span>(from_location, to_location) {
-<a href=#3770 id=3770 data-nosnippet>3770</a>        (<span class="kw-2">&amp;</span>LocationId::Process(from), <span class="kw-2">&amp;</span>LocationId::Process(to)) =&gt; {
-<a href=#3771 id=3771 data-nosnippet>3771</a>            <span class="kw">let </span>from_node = processes
-<a href=#3772 id=3772 data-nosnippet>3772</a>                .get(from)
-<a href=#3773 id=3773 data-nosnippet>3773</a>                .unwrap_or_else(|| {
-<a href=#3774 id=3774 data-nosnippet>3774</a>                    <span class="macro">panic!</span>(<span class="string">"A process used in the graph was not instantiated: {}"</span>, from)
-<a href=#3775 id=3775 data-nosnippet>3775</a>                })
-<a href=#3776 id=3776 data-nosnippet>3776</a>                .clone();
-<a href=#3777 id=3777 data-nosnippet>3777</a>            <span class="kw">let </span>to_node = processes
-<a href=#3778 id=3778 data-nosnippet>3778</a>                .get(to)
-<a href=#3779 id=3779 data-nosnippet>3779</a>                .unwrap_or_else(|| {
-<a href=#3780 id=3780 data-nosnippet>3780</a>                    <span class="macro">panic!</span>(<span class="string">"A process used in the graph was not instantiated: {}"</span>, to)
-<a href=#3781 id=3781 data-nosnippet>3781</a>                })
-<a href=#3782 id=3782 data-nosnippet>3782</a>                .clone();
-<a href=#3783 id=3783 data-nosnippet>3783</a>
-<a href=#3784 id=3784 data-nosnippet>3784</a>            <span class="kw">let </span>sink_port = from_node.next_port();
-<a href=#3785 id=3785 data-nosnippet>3785</a>            <span class="kw">let </span>source_port = to_node.next_port();
-<a href=#3786 id=3786 data-nosnippet>3786</a>
-<a href=#3787 id=3787 data-nosnippet>3787</a>            (
-<a href=#3788 id=3788 data-nosnippet>3788</a>                D::o2o_sink_source(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
-<a href=#3789 id=3789 data-nosnippet>3789</a>                D::o2o_connect(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
-<a href=#3790 id=3790 data-nosnippet>3790</a>            )
-<a href=#3791 id=3791 data-nosnippet>3791</a>        }
-<a href=#3792 id=3792 data-nosnippet>3792</a>        (<span class="kw-2">&amp;</span>LocationId::Process(from), <span class="kw-2">&amp;</span>LocationId::Cluster(to)) =&gt; {
-<a href=#3793 id=3793 data-nosnippet>3793</a>            <span class="kw">let </span>from_node = processes
-<a href=#3794 id=3794 data-nosnippet>3794</a>                .get(from)
-<a href=#3795 id=3795 data-nosnippet>3795</a>                .unwrap_or_else(|| {
-<a href=#3796 id=3796 data-nosnippet>3796</a>                    <span class="macro">panic!</span>(<span class="string">"A process used in the graph was not instantiated: {}"</span>, from)
-<a href=#3797 id=3797 data-nosnippet>3797</a>                })
-<a href=#3798 id=3798 data-nosnippet>3798</a>                .clone();
-<a href=#3799 id=3799 data-nosnippet>3799</a>            <span class="kw">let </span>to_node = clusters
-<a href=#3800 id=3800 data-nosnippet>3800</a>                .get(to)
-<a href=#3801 id=3801 data-nosnippet>3801</a>                .unwrap_or_else(|| {
-<a href=#3802 id=3802 data-nosnippet>3802</a>                    <span class="macro">panic!</span>(<span class="string">"A cluster used in the graph was not instantiated: {}"</span>, to)
-<a href=#3803 id=3803 data-nosnippet>3803</a>                })
-<a href=#3804 id=3804 data-nosnippet>3804</a>                .clone();
-<a href=#3805 id=3805 data-nosnippet>3805</a>
-<a href=#3806 id=3806 data-nosnippet>3806</a>            <span class="kw">let </span>sink_port = from_node.next_port();
-<a href=#3807 id=3807 data-nosnippet>3807</a>            <span class="kw">let </span>source_port = to_node.next_port();
-<a href=#3808 id=3808 data-nosnippet>3808</a>
-<a href=#3809 id=3809 data-nosnippet>3809</a>            (
-<a href=#3810 id=3810 data-nosnippet>3810</a>                D::o2m_sink_source(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
-<a href=#3811 id=3811 data-nosnippet>3811</a>                D::o2m_connect(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
-<a href=#3812 id=3812 data-nosnippet>3812</a>            )
-<a href=#3813 id=3813 data-nosnippet>3813</a>        }
-<a href=#3814 id=3814 data-nosnippet>3814</a>        (<span class="kw-2">&amp;</span>LocationId::Cluster(from), <span class="kw-2">&amp;</span>LocationId::Process(to)) =&gt; {
-<a href=#3815 id=3815 data-nosnippet>3815</a>            <span class="kw">let </span>from_node = clusters
-<a href=#3816 id=3816 data-nosnippet>3816</a>                .get(from)
-<a href=#3817 id=3817 data-nosnippet>3817</a>                .unwrap_or_else(|| {
-<a href=#3818 id=3818 data-nosnippet>3818</a>                    <span class="macro">panic!</span>(<span class="string">"A cluster used in the graph was not instantiated: {}"</span>, from)
-<a href=#3819 id=3819 data-nosnippet>3819</a>                })
-<a href=#3820 id=3820 data-nosnippet>3820</a>                .clone();
-<a href=#3821 id=3821 data-nosnippet>3821</a>            <span class="kw">let </span>to_node = processes
-<a href=#3822 id=3822 data-nosnippet>3822</a>                .get(to)
-<a href=#3823 id=3823 data-nosnippet>3823</a>                .unwrap_or_else(|| {
-<a href=#3824 id=3824 data-nosnippet>3824</a>                    <span class="macro">panic!</span>(<span class="string">"A process used in the graph was not instantiated: {}"</span>, to)
-<a href=#3825 id=3825 data-nosnippet>3825</a>                })
-<a href=#3826 id=3826 data-nosnippet>3826</a>                .clone();
-<a href=#3827 id=3827 data-nosnippet>3827</a>
-<a href=#3828 id=3828 data-nosnippet>3828</a>            <span class="kw">let </span>sink_port = from_node.next_port();
-<a href=#3829 id=3829 data-nosnippet>3829</a>            <span class="kw">let </span>source_port = to_node.next_port();
-<a href=#3830 id=3830 data-nosnippet>3830</a>
-<a href=#3831 id=3831 data-nosnippet>3831</a>            (
-<a href=#3832 id=3832 data-nosnippet>3832</a>                D::m2o_sink_source(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
-<a href=#3833 id=3833 data-nosnippet>3833</a>                D::m2o_connect(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
-<a href=#3834 id=3834 data-nosnippet>3834</a>            )
-<a href=#3835 id=3835 data-nosnippet>3835</a>        }
-<a href=#3836 id=3836 data-nosnippet>3836</a>        (<span class="kw-2">&amp;</span>LocationId::Cluster(from), <span class="kw-2">&amp;</span>LocationId::Cluster(to)) =&gt; {
-<a href=#3837 id=3837 data-nosnippet>3837</a>            <span class="kw">let </span>from_node = clusters
-<a href=#3838 id=3838 data-nosnippet>3838</a>                .get(from)
-<a href=#3839 id=3839 data-nosnippet>3839</a>                .unwrap_or_else(|| {
-<a href=#3840 id=3840 data-nosnippet>3840</a>                    <span class="macro">panic!</span>(<span class="string">"A cluster used in the graph was not instantiated: {}"</span>, from)
-<a href=#3841 id=3841 data-nosnippet>3841</a>                })
-<a href=#3842 id=3842 data-nosnippet>3842</a>                .clone();
-<a href=#3843 id=3843 data-nosnippet>3843</a>            <span class="kw">let </span>to_node = clusters
-<a href=#3844 id=3844 data-nosnippet>3844</a>                .get(to)
-<a href=#3845 id=3845 data-nosnippet>3845</a>                .unwrap_or_else(|| {
-<a href=#3846 id=3846 data-nosnippet>3846</a>                    <span class="macro">panic!</span>(<span class="string">"A cluster used in the graph was not instantiated: {}"</span>, to)
-<a href=#3847 id=3847 data-nosnippet>3847</a>                })
-<a href=#3848 id=3848 data-nosnippet>3848</a>                .clone();
-<a href=#3849 id=3849 data-nosnippet>3849</a>
-<a href=#3850 id=3850 data-nosnippet>3850</a>            <span class="kw">let </span>sink_port = from_node.next_port();
-<a href=#3851 id=3851 data-nosnippet>3851</a>            <span class="kw">let </span>source_port = to_node.next_port();
-<a href=#3852 id=3852 data-nosnippet>3852</a>
-<a href=#3853 id=3853 data-nosnippet>3853</a>            (
-<a href=#3854 id=3854 data-nosnippet>3854</a>                D::m2m_sink_source(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
-<a href=#3855 id=3855 data-nosnippet>3855</a>                D::m2m_connect(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
-<a href=#3856 id=3856 data-nosnippet>3856</a>            )
-<a href=#3857 id=3857 data-nosnippet>3857</a>        }
-<a href=#3858 id=3858 data-nosnippet>3858</a>        (LocationId::Tick(<span class="kw">_</span>, <span class="kw">_</span>), <span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(),
-<a href=#3859 id=3859 data-nosnippet>3859</a>        (<span class="kw">_</span>, LocationId::Tick(<span class="kw">_</span>, <span class="kw">_</span>)) =&gt; <span class="macro">panic!</span>(),
-<a href=#3860 id=3860 data-nosnippet>3860</a>        (LocationId::Atomic(<span class="kw">_</span>), <span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(),
-<a href=#3861 id=3861 data-nosnippet>3861</a>        (<span class="kw">_</span>, LocationId::Atomic(<span class="kw">_</span>)) =&gt; <span class="macro">panic!</span>(),
-<a href=#3862 id=3862 data-nosnippet>3862</a>    };
-<a href=#3863 id=3863 data-nosnippet>3863</a>    (sink, source, connect_fn)
-<a href=#3864 id=3864 data-nosnippet>3864</a>}
-<a href=#3865 id=3865 data-nosnippet>3865</a>
-<a href=#3866 id=3866 data-nosnippet>3866</a><span class="attr">#[cfg(test)]
-<a href=#3867 id=3867 data-nosnippet>3867</a></span><span class="kw">mod </span>test {
-<a href=#3868 id=3868 data-nosnippet>3868</a>    <span class="kw">use </span>std::mem::size_of;
-<a href=#3869 id=3869 data-nosnippet>3869</a>
-<a href=#3870 id=3870 data-nosnippet>3870</a>    <span class="kw">use </span>stageleft::{QuotedWithContext, q};
-<a href=#3871 id=3871 data-nosnippet>3871</a>
-<a href=#3872 id=3872 data-nosnippet>3872</a>    <span class="kw">use </span>super::<span class="kw-2">*</span>;
-<a href=#3873 id=3873 data-nosnippet>3873</a>
-<a href=#3874 id=3874 data-nosnippet>3874</a>    <span class="attr">#[test]
-<a href=#3875 id=3875 data-nosnippet>3875</a>    #[cfg_attr(
-<a href=#3876 id=3876 data-nosnippet>3876</a>        not(feature = <span class="string">"build"</span>),
-<a href=#3877 id=3877 data-nosnippet>3877</a>        ignore = <span class="string">"expects inclusion of feature-gated fields"
-<a href=#3878 id=3878 data-nosnippet>3878</a>    </span>)]
-<a href=#3879 id=3879 data-nosnippet>3879</a>    </span><span class="kw">fn </span>hydro_node_size() {
-<a href=#3880 id=3880 data-nosnippet>3880</a>        <span class="macro">assert_eq!</span>(size_of::&lt;HydroNode&gt;(), <span class="number">240</span>);
-<a href=#3881 id=3881 data-nosnippet>3881</a>    }
-<a href=#3882 id=3882 data-nosnippet>3882</a>
-<a href=#3883 id=3883 data-nosnippet>3883</a>    <span class="attr">#[test]
-<a href=#3884 id=3884 data-nosnippet>3884</a>    #[cfg_attr(
-<a href=#3885 id=3885 data-nosnippet>3885</a>        not(feature = <span class="string">"build"</span>),
-<a href=#3886 id=3886 data-nosnippet>3886</a>        ignore = <span class="string">"expects inclusion of feature-gated fields"
-<a href=#3887 id=3887 data-nosnippet>3887</a>    </span>)]
-<a href=#3888 id=3888 data-nosnippet>3888</a>    </span><span class="kw">fn </span>hydro_root_size() {
-<a href=#3889 id=3889 data-nosnippet>3889</a>        <span class="macro">assert_eq!</span>(size_of::&lt;HydroRoot&gt;(), <span class="number">136</span>);
-<a href=#3890 id=3890 data-nosnippet>3890</a>    }
-<a href=#3891 id=3891 data-nosnippet>3891</a>
-<a href=#3892 id=3892 data-nosnippet>3892</a>    <span class="attr">#[test]
-<a href=#3893 id=3893 data-nosnippet>3893</a>    </span><span class="kw">fn </span>test_simplify_q_macro_basic() {
-<a href=#3894 id=3894 data-nosnippet>3894</a>        <span class="comment">// Test basic non-q! expression
-<a href=#3895 id=3895 data-nosnippet>3895</a>        </span><span class="kw">let </span>simple_expr: syn::Expr = syn::parse_str(<span class="string">"x + y"</span>).unwrap();
-<a href=#3896 id=3896 data-nosnippet>3896</a>        <span class="kw">let </span>result = simplify_q_macro(simple_expr.clone());
-<a href=#3897 id=3897 data-nosnippet>3897</a>        <span class="macro">assert_eq!</span>(result, simple_expr);
-<a href=#3898 id=3898 data-nosnippet>3898</a>    }
-<a href=#3899 id=3899 data-nosnippet>3899</a>
-<a href=#3900 id=3900 data-nosnippet>3900</a>    <span class="attr">#[test]
-<a href=#3901 id=3901 data-nosnippet>3901</a>    </span><span class="kw">fn </span>test_simplify_q_macro_actual_stageleft_call() {
-<a href=#3902 id=3902 data-nosnippet>3902</a>        <span class="comment">// Test a simplified version of what a real stageleft call might look like
-<a href=#3903 id=3903 data-nosnippet>3903</a>        </span><span class="kw">let </span>stageleft_call = <span class="macro">q!</span>(|x: usize| x + <span class="number">1</span>).splice_fn1_ctx(<span class="kw-2">&amp;</span>());
-<a href=#3904 id=3904 data-nosnippet>3904</a>        <span class="kw">let </span>result = simplify_q_macro(stageleft_call);
-<a href=#3905 id=3905 data-nosnippet>3905</a>        <span class="comment">// This should be processed by our visitor and simplified to q!(...)
-<a href=#3906 id=3906 data-nosnippet>3906</a>        // since we detect the stageleft::runtime_support::fn_* pattern
-<a href=#3907 id=3907 data-nosnippet>3907</a>        </span><span class="macro">hydro_build_utils::assert_snapshot!</span>(result.to_token_stream().to_string());
-<a href=#3908 id=3908 data-nosnippet>3908</a>    }
-<a href=#3909 id=3909 data-nosnippet>3909</a>
-<a href=#3910 id=3910 data-nosnippet>3910</a>    <span class="attr">#[test]
-<a href=#3911 id=3911 data-nosnippet>3911</a>    </span><span class="kw">fn </span>test_closure_no_pipe_at_start() {
-<a href=#3912 id=3912 data-nosnippet>3912</a>        <span class="comment">// Test a closure that does not start with a pipe
-<a href=#3913 id=3913 data-nosnippet>3913</a>        </span><span class="kw">let </span>stageleft_call = <span class="macro">q!</span>({
-<a href=#3914 id=3914 data-nosnippet>3914</a>            <span class="kw">let </span>foo = <span class="number">123</span>;
-<a href=#3915 id=3915 data-nosnippet>3915</a>            <span class="kw">move </span>|b: usize| b + foo
-<a href=#3916 id=3916 data-nosnippet>3916</a>        })
-<a href=#3917 id=3917 data-nosnippet>3917</a>        .splice_fn1_ctx(<span class="kw-2">&amp;</span>());
-<a href=#3918 id=3918 data-nosnippet>3918</a>        <span class="kw">let </span>result = simplify_q_macro(stageleft_call);
-<a href=#3919 id=3919 data-nosnippet>3919</a>        <span class="macro">hydro_build_utils::assert_snapshot!</span>(result.to_token_stream().to_string());
-<a href=#3920 id=3920 data-nosnippet>3920</a>    }
-<a href=#3921 id=3921 data-nosnippet>3921</a>}
+<a href=#3415 id=3415 data-nosnippet>3415</a>                                <span class="kw">let </span>arg = <span class="macro">format!</span>(<span class="string">"{}({})"</span>, prefix, tag);
+<a href=#3416 id=3416 data-nosnippet>3416</a>                                <span class="kw">let </span>builder = graph_builders.get_dfir_mut(<span class="kw-2">&amp;</span>out_location);
+<a href=#3417 id=3417 data-nosnippet>3417</a>                                builder.add_dfir(
+<a href=#3418 id=3418 data-nosnippet>3418</a>                                    <span class="macro">parse_quote!</span> {
+<a href=#3419 id=3419 data-nosnippet>3419</a>                                        #counter_ident = #input_ident -&gt; _counter(#arg, #duration);
+<a href=#3420 id=3420 data-nosnippet>3420</a>                                    },
+<a href=#3421 id=3421 data-nosnippet>3421</a>                                    <span class="prelude-val">None</span>,
+<a href=#3422 id=3422 data-nosnippet>3422</a>                                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>next_stmt_id.to_string()),
+<a href=#3423 id=3423 data-nosnippet>3423</a>                                );
+<a href=#3424 id=3424 data-nosnippet>3424</a>                            }
+<a href=#3425 id=3425 data-nosnippet>3425</a>                            BuildersOrCallback::Callback(<span class="kw">_</span>, node_callback) =&gt; {
+<a href=#3426 id=3426 data-nosnippet>3426</a>                                node_callback(node, next_stmt_id);
+<a href=#3427 id=3427 data-nosnippet>3427</a>                            }
+<a href=#3428 id=3428 data-nosnippet>3428</a>                        }
+<a href=#3429 id=3429 data-nosnippet>3429</a>
+<a href=#3430 id=3430 data-nosnippet>3430</a>                        <span class="kw-2">*</span>next_stmt_id += <span class="number">1</span>;
+<a href=#3431 id=3431 data-nosnippet>3431</a>
+<a href=#3432 id=3432 data-nosnippet>3432</a>                        ident_stack.push(counter_ident);
+<a href=#3433 id=3433 data-nosnippet>3433</a>                    }
+<a href=#3434 id=3434 data-nosnippet>3434</a>                }
+<a href=#3435 id=3435 data-nosnippet>3435</a>            },
+<a href=#3436 id=3436 data-nosnippet>3436</a>            seen_tees,
+<a href=#3437 id=3437 data-nosnippet>3437</a>            <span class="bool-val">false</span>,
+<a href=#3438 id=3438 data-nosnippet>3438</a>        );
+<a href=#3439 id=3439 data-nosnippet>3439</a>
+<a href=#3440 id=3440 data-nosnippet>3440</a>        ident_stack
+<a href=#3441 id=3441 data-nosnippet>3441</a>            .pop()
+<a href=#3442 id=3442 data-nosnippet>3442</a>            .expect(<span class="string">"ident_stack should have exactly one element after traversal"</span>)
+<a href=#3443 id=3443 data-nosnippet>3443</a>    }
+<a href=#3444 id=3444 data-nosnippet>3444</a>
+<a href=#3445 id=3445 data-nosnippet>3445</a>    <span class="kw">pub fn </span>visit_debug_expr(<span class="kw-2">&amp;mut </span><span class="self">self</span>, <span class="kw-2">mut </span>transform: <span class="kw">impl </span>FnMut(<span class="kw-2">&amp;mut </span>DebugExpr)) {
+<a href=#3446 id=3446 data-nosnippet>3446</a>        <span class="kw">match </span><span class="self">self </span>{
+<a href=#3447 id=3447 data-nosnippet>3447</a>            HydroNode::Placeholder =&gt; {
+<a href=#3448 id=3448 data-nosnippet>3448</a>                <span class="macro">panic!</span>()
+<a href=#3449 id=3449 data-nosnippet>3449</a>            }
+<a href=#3450 id=3450 data-nosnippet>3450</a>            HydroNode::Cast { .. } | HydroNode::ObserveNonDet { .. } =&gt; {}
+<a href=#3451 id=3451 data-nosnippet>3451</a>            HydroNode::Source { source, .. } =&gt; <span class="kw">match </span>source {
+<a href=#3452 id=3452 data-nosnippet>3452</a>                HydroSource::Stream(expr) | HydroSource::Iter(expr) =&gt; transform(expr),
+<a href=#3453 id=3453 data-nosnippet>3453</a>                HydroSource::ExternalNetwork()
+<a href=#3454 id=3454 data-nosnippet>3454</a>                | HydroSource::Spin()
+<a href=#3455 id=3455 data-nosnippet>3455</a>                | HydroSource::ClusterMembers(<span class="kw">_</span>) =&gt; {} <span class="comment">// TODO: what goes here?
+<a href=#3456 id=3456 data-nosnippet>3456</a>            </span>},
+<a href=#3457 id=3457 data-nosnippet>3457</a>            HydroNode::SingletonSource { value, .. } =&gt; {
+<a href=#3458 id=3458 data-nosnippet>3458</a>                transform(value);
+<a href=#3459 id=3459 data-nosnippet>3459</a>            }
+<a href=#3460 id=3460 data-nosnippet>3460</a>            HydroNode::CycleSource { .. }
+<a href=#3461 id=3461 data-nosnippet>3461</a>            | HydroNode::Tee { .. }
+<a href=#3462 id=3462 data-nosnippet>3462</a>            | HydroNode::YieldConcat { .. }
+<a href=#3463 id=3463 data-nosnippet>3463</a>            | HydroNode::BeginAtomic { .. }
+<a href=#3464 id=3464 data-nosnippet>3464</a>            | HydroNode::EndAtomic { .. }
+<a href=#3465 id=3465 data-nosnippet>3465</a>            | HydroNode::Batch { .. }
+<a href=#3466 id=3466 data-nosnippet>3466</a>            | HydroNode::Chain { .. }
+<a href=#3467 id=3467 data-nosnippet>3467</a>            | HydroNode::ChainFirst { .. }
+<a href=#3468 id=3468 data-nosnippet>3468</a>            | HydroNode::CrossProduct { .. }
+<a href=#3469 id=3469 data-nosnippet>3469</a>            | HydroNode::CrossSingleton { .. }
+<a href=#3470 id=3470 data-nosnippet>3470</a>            | HydroNode::ResolveFutures { .. }
+<a href=#3471 id=3471 data-nosnippet>3471</a>            | HydroNode::ResolveFuturesOrdered { .. }
+<a href=#3472 id=3472 data-nosnippet>3472</a>            | HydroNode::Join { .. }
+<a href=#3473 id=3473 data-nosnippet>3473</a>            | HydroNode::Difference { .. }
+<a href=#3474 id=3474 data-nosnippet>3474</a>            | HydroNode::AntiJoin { .. }
+<a href=#3475 id=3475 data-nosnippet>3475</a>            | HydroNode::DeferTick { .. }
+<a href=#3476 id=3476 data-nosnippet>3476</a>            | HydroNode::Enumerate { .. }
+<a href=#3477 id=3477 data-nosnippet>3477</a>            | HydroNode::Unique { .. }
+<a href=#3478 id=3478 data-nosnippet>3478</a>            | HydroNode::Sort { .. } =&gt; {}
+<a href=#3479 id=3479 data-nosnippet>3479</a>            HydroNode::Map { f, .. }
+<a href=#3480 id=3480 data-nosnippet>3480</a>            | HydroNode::FlatMap { f, .. }
+<a href=#3481 id=3481 data-nosnippet>3481</a>            | HydroNode::Filter { f, .. }
+<a href=#3482 id=3482 data-nosnippet>3482</a>            | HydroNode::FilterMap { f, .. }
+<a href=#3483 id=3483 data-nosnippet>3483</a>            | HydroNode::Inspect { f, .. }
+<a href=#3484 id=3484 data-nosnippet>3484</a>            | HydroNode::Reduce { f, .. }
+<a href=#3485 id=3485 data-nosnippet>3485</a>            | HydroNode::ReduceKeyed { f, .. }
+<a href=#3486 id=3486 data-nosnippet>3486</a>            | HydroNode::ReduceKeyedWatermark { f, .. } =&gt; {
+<a href=#3487 id=3487 data-nosnippet>3487</a>                transform(f);
+<a href=#3488 id=3488 data-nosnippet>3488</a>            }
+<a href=#3489 id=3489 data-nosnippet>3489</a>            HydroNode::Fold { init, acc, .. }
+<a href=#3490 id=3490 data-nosnippet>3490</a>            | HydroNode::Scan { init, acc, .. }
+<a href=#3491 id=3491 data-nosnippet>3491</a>            | HydroNode::FoldKeyed { init, acc, .. } =&gt; {
+<a href=#3492 id=3492 data-nosnippet>3492</a>                transform(init);
+<a href=#3493 id=3493 data-nosnippet>3493</a>                transform(acc);
+<a href=#3494 id=3494 data-nosnippet>3494</a>            }
+<a href=#3495 id=3495 data-nosnippet>3495</a>            HydroNode::Network {
+<a href=#3496 id=3496 data-nosnippet>3496</a>                serialize_fn,
+<a href=#3497 id=3497 data-nosnippet>3497</a>                deserialize_fn,
+<a href=#3498 id=3498 data-nosnippet>3498</a>                ..
+<a href=#3499 id=3499 data-nosnippet>3499</a>            } =&gt; {
+<a href=#3500 id=3500 data-nosnippet>3500</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(serialize_fn) = serialize_fn {
+<a href=#3501 id=3501 data-nosnippet>3501</a>                    transform(serialize_fn);
+<a href=#3502 id=3502 data-nosnippet>3502</a>                }
+<a href=#3503 id=3503 data-nosnippet>3503</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(deserialize_fn) = deserialize_fn {
+<a href=#3504 id=3504 data-nosnippet>3504</a>                    transform(deserialize_fn);
+<a href=#3505 id=3505 data-nosnippet>3505</a>                }
+<a href=#3506 id=3506 data-nosnippet>3506</a>            }
+<a href=#3507 id=3507 data-nosnippet>3507</a>            HydroNode::ExternalInput { deserialize_fn, .. } =&gt; {
+<a href=#3508 id=3508 data-nosnippet>3508</a>                <span class="kw">if let </span><span class="prelude-val">Some</span>(deserialize_fn) = deserialize_fn {
+<a href=#3509 id=3509 data-nosnippet>3509</a>                    transform(deserialize_fn);
+<a href=#3510 id=3510 data-nosnippet>3510</a>                }
+<a href=#3511 id=3511 data-nosnippet>3511</a>            }
+<a href=#3512 id=3512 data-nosnippet>3512</a>            HydroNode::Counter { duration, .. } =&gt; {
+<a href=#3513 id=3513 data-nosnippet>3513</a>                transform(duration);
+<a href=#3514 id=3514 data-nosnippet>3514</a>            }
+<a href=#3515 id=3515 data-nosnippet>3515</a>        }
+<a href=#3516 id=3516 data-nosnippet>3516</a>    }
+<a href=#3517 id=3517 data-nosnippet>3517</a>
+<a href=#3518 id=3518 data-nosnippet>3518</a>    <span class="kw">pub fn </span>op_metadata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HydroIrOpMetadata {
+<a href=#3519 id=3519 data-nosnippet>3519</a>        <span class="kw-2">&amp;</span><span class="self">self</span>.metadata().op
+<a href=#3520 id=3520 data-nosnippet>3520</a>    }
+<a href=#3521 id=3521 data-nosnippet>3521</a>
+<a href=#3522 id=3522 data-nosnippet>3522</a>    <span class="kw">pub fn </span>metadata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>HydroIrMetadata {
+<a href=#3523 id=3523 data-nosnippet>3523</a>        <span class="kw">match </span><span class="self">self </span>{
+<a href=#3524 id=3524 data-nosnippet>3524</a>            HydroNode::Placeholder =&gt; {
+<a href=#3525 id=3525 data-nosnippet>3525</a>                <span class="macro">panic!</span>()
+<a href=#3526 id=3526 data-nosnippet>3526</a>            }
+<a href=#3527 id=3527 data-nosnippet>3527</a>            HydroNode::Cast { metadata, .. } =&gt; metadata,
+<a href=#3528 id=3528 data-nosnippet>3528</a>            HydroNode::ObserveNonDet { metadata, .. } =&gt; metadata,
+<a href=#3529 id=3529 data-nosnippet>3529</a>            HydroNode::Source { metadata, .. } =&gt; metadata,
+<a href=#3530 id=3530 data-nosnippet>3530</a>            HydroNode::SingletonSource { metadata, .. } =&gt; metadata,
+<a href=#3531 id=3531 data-nosnippet>3531</a>            HydroNode::CycleSource { metadata, .. } =&gt; metadata,
+<a href=#3532 id=3532 data-nosnippet>3532</a>            HydroNode::Tee { metadata, .. } =&gt; metadata,
+<a href=#3533 id=3533 data-nosnippet>3533</a>            HydroNode::YieldConcat { metadata, .. } =&gt; metadata,
+<a href=#3534 id=3534 data-nosnippet>3534</a>            HydroNode::BeginAtomic { metadata, .. } =&gt; metadata,
+<a href=#3535 id=3535 data-nosnippet>3535</a>            HydroNode::EndAtomic { metadata, .. } =&gt; metadata,
+<a href=#3536 id=3536 data-nosnippet>3536</a>            HydroNode::Batch { metadata, .. } =&gt; metadata,
+<a href=#3537 id=3537 data-nosnippet>3537</a>            HydroNode::Chain { metadata, .. } =&gt; metadata,
+<a href=#3538 id=3538 data-nosnippet>3538</a>            HydroNode::ChainFirst { metadata, .. } =&gt; metadata,
+<a href=#3539 id=3539 data-nosnippet>3539</a>            HydroNode::CrossProduct { metadata, .. } =&gt; metadata,
+<a href=#3540 id=3540 data-nosnippet>3540</a>            HydroNode::CrossSingleton { metadata, .. } =&gt; metadata,
+<a href=#3541 id=3541 data-nosnippet>3541</a>            HydroNode::Join { metadata, .. } =&gt; metadata,
+<a href=#3542 id=3542 data-nosnippet>3542</a>            HydroNode::Difference { metadata, .. } =&gt; metadata,
+<a href=#3543 id=3543 data-nosnippet>3543</a>            HydroNode::AntiJoin { metadata, .. } =&gt; metadata,
+<a href=#3544 id=3544 data-nosnippet>3544</a>            HydroNode::ResolveFutures { metadata, .. } =&gt; metadata,
+<a href=#3545 id=3545 data-nosnippet>3545</a>            HydroNode::ResolveFuturesOrdered { metadata, .. } =&gt; metadata,
+<a href=#3546 id=3546 data-nosnippet>3546</a>            HydroNode::Map { metadata, .. } =&gt; metadata,
+<a href=#3547 id=3547 data-nosnippet>3547</a>            HydroNode::FlatMap { metadata, .. } =&gt; metadata,
+<a href=#3548 id=3548 data-nosnippet>3548</a>            HydroNode::Filter { metadata, .. } =&gt; metadata,
+<a href=#3549 id=3549 data-nosnippet>3549</a>            HydroNode::FilterMap { metadata, .. } =&gt; metadata,
+<a href=#3550 id=3550 data-nosnippet>3550</a>            HydroNode::DeferTick { metadata, .. } =&gt; metadata,
+<a href=#3551 id=3551 data-nosnippet>3551</a>            HydroNode::Enumerate { metadata, .. } =&gt; metadata,
+<a href=#3552 id=3552 data-nosnippet>3552</a>            HydroNode::Inspect { metadata, .. } =&gt; metadata,
+<a href=#3553 id=3553 data-nosnippet>3553</a>            HydroNode::Unique { metadata, .. } =&gt; metadata,
+<a href=#3554 id=3554 data-nosnippet>3554</a>            HydroNode::Sort { metadata, .. } =&gt; metadata,
+<a href=#3555 id=3555 data-nosnippet>3555</a>            HydroNode::Scan { metadata, .. } =&gt; metadata,
+<a href=#3556 id=3556 data-nosnippet>3556</a>            HydroNode::Fold { metadata, .. } =&gt; metadata,
+<a href=#3557 id=3557 data-nosnippet>3557</a>            HydroNode::FoldKeyed { metadata, .. } =&gt; metadata,
+<a href=#3558 id=3558 data-nosnippet>3558</a>            HydroNode::Reduce { metadata, .. } =&gt; metadata,
+<a href=#3559 id=3559 data-nosnippet>3559</a>            HydroNode::ReduceKeyed { metadata, .. } =&gt; metadata,
+<a href=#3560 id=3560 data-nosnippet>3560</a>            HydroNode::ReduceKeyedWatermark { metadata, .. } =&gt; metadata,
+<a href=#3561 id=3561 data-nosnippet>3561</a>            HydroNode::ExternalInput { metadata, .. } =&gt; metadata,
+<a href=#3562 id=3562 data-nosnippet>3562</a>            HydroNode::Network { metadata, .. } =&gt; metadata,
+<a href=#3563 id=3563 data-nosnippet>3563</a>            HydroNode::Counter { metadata, .. } =&gt; metadata,
+<a href=#3564 id=3564 data-nosnippet>3564</a>        }
+<a href=#3565 id=3565 data-nosnippet>3565</a>    }
+<a href=#3566 id=3566 data-nosnippet>3566</a>
+<a href=#3567 id=3567 data-nosnippet>3567</a>    <span class="kw">pub fn </span>op_metadata_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>HydroIrOpMetadata {
+<a href=#3568 id=3568 data-nosnippet>3568</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>.metadata_mut().op
+<a href=#3569 id=3569 data-nosnippet>3569</a>    }
+<a href=#3570 id=3570 data-nosnippet>3570</a>
+<a href=#3571 id=3571 data-nosnippet>3571</a>    <span class="kw">pub fn </span>metadata_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span>HydroIrMetadata {
+<a href=#3572 id=3572 data-nosnippet>3572</a>        <span class="kw">match </span><span class="self">self </span>{
+<a href=#3573 id=3573 data-nosnippet>3573</a>            HydroNode::Placeholder =&gt; {
+<a href=#3574 id=3574 data-nosnippet>3574</a>                <span class="macro">panic!</span>()
+<a href=#3575 id=3575 data-nosnippet>3575</a>            }
+<a href=#3576 id=3576 data-nosnippet>3576</a>            HydroNode::Cast { metadata, .. } =&gt; metadata,
+<a href=#3577 id=3577 data-nosnippet>3577</a>            HydroNode::ObserveNonDet { metadata, .. } =&gt; metadata,
+<a href=#3578 id=3578 data-nosnippet>3578</a>            HydroNode::Source { metadata, .. } =&gt; metadata,
+<a href=#3579 id=3579 data-nosnippet>3579</a>            HydroNode::SingletonSource { metadata, .. } =&gt; metadata,
+<a href=#3580 id=3580 data-nosnippet>3580</a>            HydroNode::CycleSource { metadata, .. } =&gt; metadata,
+<a href=#3581 id=3581 data-nosnippet>3581</a>            HydroNode::Tee { metadata, .. } =&gt; metadata,
+<a href=#3582 id=3582 data-nosnippet>3582</a>            HydroNode::YieldConcat { metadata, .. } =&gt; metadata,
+<a href=#3583 id=3583 data-nosnippet>3583</a>            HydroNode::BeginAtomic { metadata, .. } =&gt; metadata,
+<a href=#3584 id=3584 data-nosnippet>3584</a>            HydroNode::EndAtomic { metadata, .. } =&gt; metadata,
+<a href=#3585 id=3585 data-nosnippet>3585</a>            HydroNode::Batch { metadata, .. } =&gt; metadata,
+<a href=#3586 id=3586 data-nosnippet>3586</a>            HydroNode::Chain { metadata, .. } =&gt; metadata,
+<a href=#3587 id=3587 data-nosnippet>3587</a>            HydroNode::ChainFirst { metadata, .. } =&gt; metadata,
+<a href=#3588 id=3588 data-nosnippet>3588</a>            HydroNode::CrossProduct { metadata, .. } =&gt; metadata,
+<a href=#3589 id=3589 data-nosnippet>3589</a>            HydroNode::CrossSingleton { metadata, .. } =&gt; metadata,
+<a href=#3590 id=3590 data-nosnippet>3590</a>            HydroNode::Join { metadata, .. } =&gt; metadata,
+<a href=#3591 id=3591 data-nosnippet>3591</a>            HydroNode::Difference { metadata, .. } =&gt; metadata,
+<a href=#3592 id=3592 data-nosnippet>3592</a>            HydroNode::AntiJoin { metadata, .. } =&gt; metadata,
+<a href=#3593 id=3593 data-nosnippet>3593</a>            HydroNode::ResolveFutures { metadata, .. } =&gt; metadata,
+<a href=#3594 id=3594 data-nosnippet>3594</a>            HydroNode::ResolveFuturesOrdered { metadata, .. } =&gt; metadata,
+<a href=#3595 id=3595 data-nosnippet>3595</a>            HydroNode::Map { metadata, .. } =&gt; metadata,
+<a href=#3596 id=3596 data-nosnippet>3596</a>            HydroNode::FlatMap { metadata, .. } =&gt; metadata,
+<a href=#3597 id=3597 data-nosnippet>3597</a>            HydroNode::Filter { metadata, .. } =&gt; metadata,
+<a href=#3598 id=3598 data-nosnippet>3598</a>            HydroNode::FilterMap { metadata, .. } =&gt; metadata,
+<a href=#3599 id=3599 data-nosnippet>3599</a>            HydroNode::DeferTick { metadata, .. } =&gt; metadata,
+<a href=#3600 id=3600 data-nosnippet>3600</a>            HydroNode::Enumerate { metadata, .. } =&gt; metadata,
+<a href=#3601 id=3601 data-nosnippet>3601</a>            HydroNode::Inspect { metadata, .. } =&gt; metadata,
+<a href=#3602 id=3602 data-nosnippet>3602</a>            HydroNode::Unique { metadata, .. } =&gt; metadata,
+<a href=#3603 id=3603 data-nosnippet>3603</a>            HydroNode::Sort { metadata, .. } =&gt; metadata,
+<a href=#3604 id=3604 data-nosnippet>3604</a>            HydroNode::Scan { metadata, .. } =&gt; metadata,
+<a href=#3605 id=3605 data-nosnippet>3605</a>            HydroNode::Fold { metadata, .. } =&gt; metadata,
+<a href=#3606 id=3606 data-nosnippet>3606</a>            HydroNode::FoldKeyed { metadata, .. } =&gt; metadata,
+<a href=#3607 id=3607 data-nosnippet>3607</a>            HydroNode::Reduce { metadata, .. } =&gt; metadata,
+<a href=#3608 id=3608 data-nosnippet>3608</a>            HydroNode::ReduceKeyed { metadata, .. } =&gt; metadata,
+<a href=#3609 id=3609 data-nosnippet>3609</a>            HydroNode::ReduceKeyedWatermark { metadata, .. } =&gt; metadata,
+<a href=#3610 id=3610 data-nosnippet>3610</a>            HydroNode::ExternalInput { metadata, .. } =&gt; metadata,
+<a href=#3611 id=3611 data-nosnippet>3611</a>            HydroNode::Network { metadata, .. } =&gt; metadata,
+<a href=#3612 id=3612 data-nosnippet>3612</a>            HydroNode::Counter { metadata, .. } =&gt; metadata,
+<a href=#3613 id=3613 data-nosnippet>3613</a>        }
+<a href=#3614 id=3614 data-nosnippet>3614</a>    }
+<a href=#3615 id=3615 data-nosnippet>3615</a>
+<a href=#3616 id=3616 data-nosnippet>3616</a>    <span class="kw">pub fn </span>input(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="kw-2">&amp;</span>HydroNode&gt; {
+<a href=#3617 id=3617 data-nosnippet>3617</a>        <span class="kw">match </span><span class="self">self </span>{
+<a href=#3618 id=3618 data-nosnippet>3618</a>            HydroNode::Placeholder =&gt; {
+<a href=#3619 id=3619 data-nosnippet>3619</a>                <span class="macro">panic!</span>()
+<a href=#3620 id=3620 data-nosnippet>3620</a>            }
+<a href=#3621 id=3621 data-nosnippet>3621</a>            HydroNode::Source { .. }
+<a href=#3622 id=3622 data-nosnippet>3622</a>            | HydroNode::SingletonSource { .. }
+<a href=#3623 id=3623 data-nosnippet>3623</a>            | HydroNode::ExternalInput { .. }
+<a href=#3624 id=3624 data-nosnippet>3624</a>            | HydroNode::CycleSource { .. }
+<a href=#3625 id=3625 data-nosnippet>3625</a>            | HydroNode::Tee { .. } =&gt; {
+<a href=#3626 id=3626 data-nosnippet>3626</a>                <span class="comment">// Tee should find its input in separate special ways
+<a href=#3627 id=3627 data-nosnippet>3627</a>                </span><span class="macro">vec!</span>[]
+<a href=#3628 id=3628 data-nosnippet>3628</a>            }
+<a href=#3629 id=3629 data-nosnippet>3629</a>            HydroNode::Cast { inner, .. }
+<a href=#3630 id=3630 data-nosnippet>3630</a>            | HydroNode::ObserveNonDet { inner, .. }
+<a href=#3631 id=3631 data-nosnippet>3631</a>            | HydroNode::YieldConcat { inner, .. }
+<a href=#3632 id=3632 data-nosnippet>3632</a>            | HydroNode::BeginAtomic { inner, .. }
+<a href=#3633 id=3633 data-nosnippet>3633</a>            | HydroNode::EndAtomic { inner, .. }
+<a href=#3634 id=3634 data-nosnippet>3634</a>            | HydroNode::Batch { inner, .. } =&gt; {
+<a href=#3635 id=3635 data-nosnippet>3635</a>                <span class="macro">vec!</span>[inner]
+<a href=#3636 id=3636 data-nosnippet>3636</a>            }
+<a href=#3637 id=3637 data-nosnippet>3637</a>            HydroNode::Chain { first, second, .. } =&gt; {
+<a href=#3638 id=3638 data-nosnippet>3638</a>                <span class="macro">vec!</span>[first, second]
+<a href=#3639 id=3639 data-nosnippet>3639</a>            }
+<a href=#3640 id=3640 data-nosnippet>3640</a>            HydroNode::ChainFirst { first, second, .. } =&gt; {
+<a href=#3641 id=3641 data-nosnippet>3641</a>                <span class="macro">vec!</span>[first, second]
+<a href=#3642 id=3642 data-nosnippet>3642</a>            }
+<a href=#3643 id=3643 data-nosnippet>3643</a>            HydroNode::CrossProduct { left, right, .. }
+<a href=#3644 id=3644 data-nosnippet>3644</a>            | HydroNode::CrossSingleton { left, right, .. }
+<a href=#3645 id=3645 data-nosnippet>3645</a>            | HydroNode::Join { left, right, .. } =&gt; {
+<a href=#3646 id=3646 data-nosnippet>3646</a>                <span class="macro">vec!</span>[left, right]
+<a href=#3647 id=3647 data-nosnippet>3647</a>            }
+<a href=#3648 id=3648 data-nosnippet>3648</a>            HydroNode::Difference { pos, neg, .. } | HydroNode::AntiJoin { pos, neg, .. } =&gt; {
+<a href=#3649 id=3649 data-nosnippet>3649</a>                <span class="macro">vec!</span>[pos, neg]
+<a href=#3650 id=3650 data-nosnippet>3650</a>            }
+<a href=#3651 id=3651 data-nosnippet>3651</a>            HydroNode::Map { input, .. }
+<a href=#3652 id=3652 data-nosnippet>3652</a>            | HydroNode::FlatMap { input, .. }
+<a href=#3653 id=3653 data-nosnippet>3653</a>            | HydroNode::Filter { input, .. }
+<a href=#3654 id=3654 data-nosnippet>3654</a>            | HydroNode::FilterMap { input, .. }
+<a href=#3655 id=3655 data-nosnippet>3655</a>            | HydroNode::Sort { input, .. }
+<a href=#3656 id=3656 data-nosnippet>3656</a>            | HydroNode::DeferTick { input, .. }
+<a href=#3657 id=3657 data-nosnippet>3657</a>            | HydroNode::Enumerate { input, .. }
+<a href=#3658 id=3658 data-nosnippet>3658</a>            | HydroNode::Inspect { input, .. }
+<a href=#3659 id=3659 data-nosnippet>3659</a>            | HydroNode::Unique { input, .. }
+<a href=#3660 id=3660 data-nosnippet>3660</a>            | HydroNode::Network { input, .. }
+<a href=#3661 id=3661 data-nosnippet>3661</a>            | HydroNode::Counter { input, .. }
+<a href=#3662 id=3662 data-nosnippet>3662</a>            | HydroNode::ResolveFutures { input, .. }
+<a href=#3663 id=3663 data-nosnippet>3663</a>            | HydroNode::ResolveFuturesOrdered { input, .. }
+<a href=#3664 id=3664 data-nosnippet>3664</a>            | HydroNode::Fold { input, .. }
+<a href=#3665 id=3665 data-nosnippet>3665</a>            | HydroNode::FoldKeyed { input, .. }
+<a href=#3666 id=3666 data-nosnippet>3666</a>            | HydroNode::Reduce { input, .. }
+<a href=#3667 id=3667 data-nosnippet>3667</a>            | HydroNode::ReduceKeyed { input, .. }
+<a href=#3668 id=3668 data-nosnippet>3668</a>            | HydroNode::Scan { input, .. } =&gt; {
+<a href=#3669 id=3669 data-nosnippet>3669</a>                <span class="macro">vec!</span>[input]
+<a href=#3670 id=3670 data-nosnippet>3670</a>            }
+<a href=#3671 id=3671 data-nosnippet>3671</a>            HydroNode::ReduceKeyedWatermark {
+<a href=#3672 id=3672 data-nosnippet>3672</a>                input, watermark, ..
+<a href=#3673 id=3673 data-nosnippet>3673</a>            } =&gt; {
+<a href=#3674 id=3674 data-nosnippet>3674</a>                <span class="macro">vec!</span>[input, watermark]
+<a href=#3675 id=3675 data-nosnippet>3675</a>            }
+<a href=#3676 id=3676 data-nosnippet>3676</a>        }
+<a href=#3677 id=3677 data-nosnippet>3677</a>    }
+<a href=#3678 id=3678 data-nosnippet>3678</a>
+<a href=#3679 id=3679 data-nosnippet>3679</a>    <span class="kw">pub fn </span>input_metadata(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;<span class="kw-2">&amp;</span>HydroIrMetadata&gt; {
+<a href=#3680 id=3680 data-nosnippet>3680</a>        <span class="self">self</span>.input()
+<a href=#3681 id=3681 data-nosnippet>3681</a>            .iter()
+<a href=#3682 id=3682 data-nosnippet>3682</a>            .map(|input_node| input_node.metadata())
+<a href=#3683 id=3683 data-nosnippet>3683</a>            .collect()
+<a href=#3684 id=3684 data-nosnippet>3684</a>    }
+<a href=#3685 id=3685 data-nosnippet>3685</a>
+<a href=#3686 id=3686 data-nosnippet>3686</a>    <span class="kw">pub fn </span>print_root(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+<a href=#3687 id=3687 data-nosnippet>3687</a>        <span class="kw">match </span><span class="self">self </span>{
+<a href=#3688 id=3688 data-nosnippet>3688</a>            HydroNode::Placeholder =&gt; {
+<a href=#3689 id=3689 data-nosnippet>3689</a>                <span class="macro">panic!</span>()
+<a href=#3690 id=3690 data-nosnippet>3690</a>            }
+<a href=#3691 id=3691 data-nosnippet>3691</a>            HydroNode::Cast { .. } =&gt; <span class="string">"Cast()"</span>.to_owned(),
+<a href=#3692 id=3692 data-nosnippet>3692</a>            HydroNode::ObserveNonDet { .. } =&gt; <span class="string">"ObserveNonDet()"</span>.to_owned(),
+<a href=#3693 id=3693 data-nosnippet>3693</a>            HydroNode::Source { source, .. } =&gt; <span class="macro">format!</span>(<span class="string">"Source({:?})"</span>, source),
+<a href=#3694 id=3694 data-nosnippet>3694</a>            HydroNode::SingletonSource { value, .. } =&gt; <span class="macro">format!</span>(<span class="string">"SingletonSource({:?})"</span>, value),
+<a href=#3695 id=3695 data-nosnippet>3695</a>            HydroNode::CycleSource { ident, .. } =&gt; <span class="macro">format!</span>(<span class="string">"CycleSource({})"</span>, ident),
+<a href=#3696 id=3696 data-nosnippet>3696</a>            HydroNode::Tee { inner, .. } =&gt; <span class="macro">format!</span>(<span class="string">"Tee({})"</span>, inner.<span class="number">0</span>.borrow().print_root()),
+<a href=#3697 id=3697 data-nosnippet>3697</a>            HydroNode::YieldConcat { .. } =&gt; <span class="string">"YieldConcat()"</span>.to_owned(),
+<a href=#3698 id=3698 data-nosnippet>3698</a>            HydroNode::BeginAtomic { .. } =&gt; <span class="string">"BeginAtomic()"</span>.to_owned(),
+<a href=#3699 id=3699 data-nosnippet>3699</a>            HydroNode::EndAtomic { .. } =&gt; <span class="string">"EndAtomic()"</span>.to_owned(),
+<a href=#3700 id=3700 data-nosnippet>3700</a>            HydroNode::Batch { .. } =&gt; <span class="string">"Batch()"</span>.to_owned(),
+<a href=#3701 id=3701 data-nosnippet>3701</a>            HydroNode::Chain { first, second, .. } =&gt; {
+<a href=#3702 id=3702 data-nosnippet>3702</a>                <span class="macro">format!</span>(<span class="string">"Chain({}, {})"</span>, first.print_root(), second.print_root())
+<a href=#3703 id=3703 data-nosnippet>3703</a>            }
+<a href=#3704 id=3704 data-nosnippet>3704</a>            HydroNode::ChainFirst { first, second, .. } =&gt; {
+<a href=#3705 id=3705 data-nosnippet>3705</a>                <span class="macro">format!</span>(
+<a href=#3706 id=3706 data-nosnippet>3706</a>                    <span class="string">"ChainFirst({}, {})"</span>,
+<a href=#3707 id=3707 data-nosnippet>3707</a>                    first.print_root(),
+<a href=#3708 id=3708 data-nosnippet>3708</a>                    second.print_root()
+<a href=#3709 id=3709 data-nosnippet>3709</a>                )
+<a href=#3710 id=3710 data-nosnippet>3710</a>            }
+<a href=#3711 id=3711 data-nosnippet>3711</a>            HydroNode::CrossProduct { left, right, .. } =&gt; {
+<a href=#3712 id=3712 data-nosnippet>3712</a>                <span class="macro">format!</span>(
+<a href=#3713 id=3713 data-nosnippet>3713</a>                    <span class="string">"CrossProduct({}, {})"</span>,
+<a href=#3714 id=3714 data-nosnippet>3714</a>                    left.print_root(),
+<a href=#3715 id=3715 data-nosnippet>3715</a>                    right.print_root()
+<a href=#3716 id=3716 data-nosnippet>3716</a>                )
+<a href=#3717 id=3717 data-nosnippet>3717</a>            }
+<a href=#3718 id=3718 data-nosnippet>3718</a>            HydroNode::CrossSingleton { left, right, .. } =&gt; {
+<a href=#3719 id=3719 data-nosnippet>3719</a>                <span class="macro">format!</span>(
+<a href=#3720 id=3720 data-nosnippet>3720</a>                    <span class="string">"CrossSingleton({}, {})"</span>,
+<a href=#3721 id=3721 data-nosnippet>3721</a>                    left.print_root(),
+<a href=#3722 id=3722 data-nosnippet>3722</a>                    right.print_root()
+<a href=#3723 id=3723 data-nosnippet>3723</a>                )
+<a href=#3724 id=3724 data-nosnippet>3724</a>            }
+<a href=#3725 id=3725 data-nosnippet>3725</a>            HydroNode::Join { left, right, .. } =&gt; {
+<a href=#3726 id=3726 data-nosnippet>3726</a>                <span class="macro">format!</span>(<span class="string">"Join({}, {})"</span>, left.print_root(), right.print_root())
+<a href=#3727 id=3727 data-nosnippet>3727</a>            }
+<a href=#3728 id=3728 data-nosnippet>3728</a>            HydroNode::Difference { pos, neg, .. } =&gt; {
+<a href=#3729 id=3729 data-nosnippet>3729</a>                <span class="macro">format!</span>(<span class="string">"Difference({}, {})"</span>, pos.print_root(), neg.print_root())
+<a href=#3730 id=3730 data-nosnippet>3730</a>            }
+<a href=#3731 id=3731 data-nosnippet>3731</a>            HydroNode::AntiJoin { pos, neg, .. } =&gt; {
+<a href=#3732 id=3732 data-nosnippet>3732</a>                <span class="macro">format!</span>(<span class="string">"AntiJoin({}, {})"</span>, pos.print_root(), neg.print_root())
+<a href=#3733 id=3733 data-nosnippet>3733</a>            }
+<a href=#3734 id=3734 data-nosnippet>3734</a>            HydroNode::ResolveFutures { .. } =&gt; <span class="string">"ResolveFutures()"</span>.to_owned(),
+<a href=#3735 id=3735 data-nosnippet>3735</a>            HydroNode::ResolveFuturesOrdered { .. } =&gt; <span class="string">"ResolveFuturesOrdered()"</span>.to_owned(),
+<a href=#3736 id=3736 data-nosnippet>3736</a>            HydroNode::Map { f, .. } =&gt; <span class="macro">format!</span>(<span class="string">"Map({:?})"</span>, f),
+<a href=#3737 id=3737 data-nosnippet>3737</a>            HydroNode::FlatMap { f, .. } =&gt; <span class="macro">format!</span>(<span class="string">"FlatMap({:?})"</span>, f),
+<a href=#3738 id=3738 data-nosnippet>3738</a>            HydroNode::Filter { f, .. } =&gt; <span class="macro">format!</span>(<span class="string">"Filter({:?})"</span>, f),
+<a href=#3739 id=3739 data-nosnippet>3739</a>            HydroNode::FilterMap { f, .. } =&gt; <span class="macro">format!</span>(<span class="string">"FilterMap({:?})"</span>, f),
+<a href=#3740 id=3740 data-nosnippet>3740</a>            HydroNode::DeferTick { .. } =&gt; <span class="string">"DeferTick()"</span>.to_owned(),
+<a href=#3741 id=3741 data-nosnippet>3741</a>            HydroNode::Enumerate { .. } =&gt; <span class="string">"Enumerate()"</span>.to_owned(),
+<a href=#3742 id=3742 data-nosnippet>3742</a>            HydroNode::Inspect { f, .. } =&gt; <span class="macro">format!</span>(<span class="string">"Inspect({:?})"</span>, f),
+<a href=#3743 id=3743 data-nosnippet>3743</a>            HydroNode::Unique { .. } =&gt; <span class="string">"Unique()"</span>.to_owned(),
+<a href=#3744 id=3744 data-nosnippet>3744</a>            HydroNode::Sort { .. } =&gt; <span class="string">"Sort()"</span>.to_owned(),
+<a href=#3745 id=3745 data-nosnippet>3745</a>            HydroNode::Fold { init, acc, .. } =&gt; <span class="macro">format!</span>(<span class="string">"Fold({:?}, {:?})"</span>, init, acc),
+<a href=#3746 id=3746 data-nosnippet>3746</a>            HydroNode::Scan { init, acc, .. } =&gt; <span class="macro">format!</span>(<span class="string">"Scan({:?}, {:?})"</span>, init, acc),
+<a href=#3747 id=3747 data-nosnippet>3747</a>            HydroNode::FoldKeyed { init, acc, .. } =&gt; <span class="macro">format!</span>(<span class="string">"FoldKeyed({:?}, {:?})"</span>, init, acc),
+<a href=#3748 id=3748 data-nosnippet>3748</a>            HydroNode::Reduce { f, .. } =&gt; <span class="macro">format!</span>(<span class="string">"Reduce({:?})"</span>, f),
+<a href=#3749 id=3749 data-nosnippet>3749</a>            HydroNode::ReduceKeyed { f, .. } =&gt; <span class="macro">format!</span>(<span class="string">"ReduceKeyed({:?})"</span>, f),
+<a href=#3750 id=3750 data-nosnippet>3750</a>            HydroNode::ReduceKeyedWatermark { f, .. } =&gt; <span class="macro">format!</span>(<span class="string">"ReduceKeyedWatermark({:?})"</span>, f),
+<a href=#3751 id=3751 data-nosnippet>3751</a>            HydroNode::Network { .. } =&gt; <span class="string">"Network()"</span>.to_owned(),
+<a href=#3752 id=3752 data-nosnippet>3752</a>            HydroNode::ExternalInput { .. } =&gt; <span class="string">"ExternalInput()"</span>.to_owned(),
+<a href=#3753 id=3753 data-nosnippet>3753</a>            HydroNode::Counter { tag, duration, .. } =&gt; {
+<a href=#3754 id=3754 data-nosnippet>3754</a>                <span class="macro">format!</span>(<span class="string">"Counter({:?}, {:?})"</span>, tag, duration)
+<a href=#3755 id=3755 data-nosnippet>3755</a>            }
+<a href=#3756 id=3756 data-nosnippet>3756</a>        }
+<a href=#3757 id=3757 data-nosnippet>3757</a>    }
+<a href=#3758 id=3758 data-nosnippet>3758</a>}
+<a href=#3759 id=3759 data-nosnippet>3759</a>
+<a href=#3760 id=3760 data-nosnippet>3760</a><span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
+<a href=#3761 id=3761 data-nosnippet>3761</a></span><span class="kw">fn </span>instantiate_network&lt;<span class="lifetime">'a</span>, D&gt;(
+<a href=#3762 id=3762 data-nosnippet>3762</a>    from_location: <span class="kw-2">&amp;</span>LocationId,
+<a href=#3763 id=3763 data-nosnippet>3763</a>    to_location: <span class="kw-2">&amp;</span>LocationId,
+<a href=#3764 id=3764 data-nosnippet>3764</a>    processes: <span class="kw-2">&amp;</span>SparseSecondaryMap&lt;LocationKey, D::Process&gt;,
+<a href=#3765 id=3765 data-nosnippet>3765</a>    clusters: <span class="kw-2">&amp;</span>SparseSecondaryMap&lt;LocationKey, D::Cluster&gt;,
+<a href=#3766 id=3766 data-nosnippet>3766</a>) -&gt; (syn::Expr, syn::Expr, Box&lt;<span class="kw">dyn </span>FnOnce()&gt;)
+<a href=#3767 id=3767 data-nosnippet>3767</a><span class="kw">where
+<a href=#3768 id=3768 data-nosnippet>3768</a>    </span>D: Deploy&lt;<span class="lifetime">'a</span>&gt;,
+<a href=#3769 id=3769 data-nosnippet>3769</a>{
+<a href=#3770 id=3770 data-nosnippet>3770</a>    <span class="kw">let </span>((sink, source), connect_fn) = <span class="kw">match </span>(from_location, to_location) {
+<a href=#3771 id=3771 data-nosnippet>3771</a>        (<span class="kw-2">&amp;</span>LocationId::Process(from), <span class="kw-2">&amp;</span>LocationId::Process(to)) =&gt; {
+<a href=#3772 id=3772 data-nosnippet>3772</a>            <span class="kw">let </span>from_node = processes
+<a href=#3773 id=3773 data-nosnippet>3773</a>                .get(from)
+<a href=#3774 id=3774 data-nosnippet>3774</a>                .unwrap_or_else(|| {
+<a href=#3775 id=3775 data-nosnippet>3775</a>                    <span class="macro">panic!</span>(<span class="string">"A process used in the graph was not instantiated: {}"</span>, from)
+<a href=#3776 id=3776 data-nosnippet>3776</a>                })
+<a href=#3777 id=3777 data-nosnippet>3777</a>                .clone();
+<a href=#3778 id=3778 data-nosnippet>3778</a>            <span class="kw">let </span>to_node = processes
+<a href=#3779 id=3779 data-nosnippet>3779</a>                .get(to)
+<a href=#3780 id=3780 data-nosnippet>3780</a>                .unwrap_or_else(|| {
+<a href=#3781 id=3781 data-nosnippet>3781</a>                    <span class="macro">panic!</span>(<span class="string">"A process used in the graph was not instantiated: {}"</span>, to)
+<a href=#3782 id=3782 data-nosnippet>3782</a>                })
+<a href=#3783 id=3783 data-nosnippet>3783</a>                .clone();
+<a href=#3784 id=3784 data-nosnippet>3784</a>
+<a href=#3785 id=3785 data-nosnippet>3785</a>            <span class="kw">let </span>sink_port = from_node.next_port();
+<a href=#3786 id=3786 data-nosnippet>3786</a>            <span class="kw">let </span>source_port = to_node.next_port();
+<a href=#3787 id=3787 data-nosnippet>3787</a>
+<a href=#3788 id=3788 data-nosnippet>3788</a>            (
+<a href=#3789 id=3789 data-nosnippet>3789</a>                D::o2o_sink_source(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
+<a href=#3790 id=3790 data-nosnippet>3790</a>                D::o2o_connect(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
+<a href=#3791 id=3791 data-nosnippet>3791</a>            )
+<a href=#3792 id=3792 data-nosnippet>3792</a>        }
+<a href=#3793 id=3793 data-nosnippet>3793</a>        (<span class="kw-2">&amp;</span>LocationId::Process(from), <span class="kw-2">&amp;</span>LocationId::Cluster(to)) =&gt; {
+<a href=#3794 id=3794 data-nosnippet>3794</a>            <span class="kw">let </span>from_node = processes
+<a href=#3795 id=3795 data-nosnippet>3795</a>                .get(from)
+<a href=#3796 id=3796 data-nosnippet>3796</a>                .unwrap_or_else(|| {
+<a href=#3797 id=3797 data-nosnippet>3797</a>                    <span class="macro">panic!</span>(<span class="string">"A process used in the graph was not instantiated: {}"</span>, from)
+<a href=#3798 id=3798 data-nosnippet>3798</a>                })
+<a href=#3799 id=3799 data-nosnippet>3799</a>                .clone();
+<a href=#3800 id=3800 data-nosnippet>3800</a>            <span class="kw">let </span>to_node = clusters
+<a href=#3801 id=3801 data-nosnippet>3801</a>                .get(to)
+<a href=#3802 id=3802 data-nosnippet>3802</a>                .unwrap_or_else(|| {
+<a href=#3803 id=3803 data-nosnippet>3803</a>                    <span class="macro">panic!</span>(<span class="string">"A cluster used in the graph was not instantiated: {}"</span>, to)
+<a href=#3804 id=3804 data-nosnippet>3804</a>                })
+<a href=#3805 id=3805 data-nosnippet>3805</a>                .clone();
+<a href=#3806 id=3806 data-nosnippet>3806</a>
+<a href=#3807 id=3807 data-nosnippet>3807</a>            <span class="kw">let </span>sink_port = from_node.next_port();
+<a href=#3808 id=3808 data-nosnippet>3808</a>            <span class="kw">let </span>source_port = to_node.next_port();
+<a href=#3809 id=3809 data-nosnippet>3809</a>
+<a href=#3810 id=3810 data-nosnippet>3810</a>            (
+<a href=#3811 id=3811 data-nosnippet>3811</a>                D::o2m_sink_source(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
+<a href=#3812 id=3812 data-nosnippet>3812</a>                D::o2m_connect(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
+<a href=#3813 id=3813 data-nosnippet>3813</a>            )
+<a href=#3814 id=3814 data-nosnippet>3814</a>        }
+<a href=#3815 id=3815 data-nosnippet>3815</a>        (<span class="kw-2">&amp;</span>LocationId::Cluster(from), <span class="kw-2">&amp;</span>LocationId::Process(to)) =&gt; {
+<a href=#3816 id=3816 data-nosnippet>3816</a>            <span class="kw">let </span>from_node = clusters
+<a href=#3817 id=3817 data-nosnippet>3817</a>                .get(from)
+<a href=#3818 id=3818 data-nosnippet>3818</a>                .unwrap_or_else(|| {
+<a href=#3819 id=3819 data-nosnippet>3819</a>                    <span class="macro">panic!</span>(<span class="string">"A cluster used in the graph was not instantiated: {}"</span>, from)
+<a href=#3820 id=3820 data-nosnippet>3820</a>                })
+<a href=#3821 id=3821 data-nosnippet>3821</a>                .clone();
+<a href=#3822 id=3822 data-nosnippet>3822</a>            <span class="kw">let </span>to_node = processes
+<a href=#3823 id=3823 data-nosnippet>3823</a>                .get(to)
+<a href=#3824 id=3824 data-nosnippet>3824</a>                .unwrap_or_else(|| {
+<a href=#3825 id=3825 data-nosnippet>3825</a>                    <span class="macro">panic!</span>(<span class="string">"A process used in the graph was not instantiated: {}"</span>, to)
+<a href=#3826 id=3826 data-nosnippet>3826</a>                })
+<a href=#3827 id=3827 data-nosnippet>3827</a>                .clone();
+<a href=#3828 id=3828 data-nosnippet>3828</a>
+<a href=#3829 id=3829 data-nosnippet>3829</a>            <span class="kw">let </span>sink_port = from_node.next_port();
+<a href=#3830 id=3830 data-nosnippet>3830</a>            <span class="kw">let </span>source_port = to_node.next_port();
+<a href=#3831 id=3831 data-nosnippet>3831</a>
+<a href=#3832 id=3832 data-nosnippet>3832</a>            (
+<a href=#3833 id=3833 data-nosnippet>3833</a>                D::m2o_sink_source(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
+<a href=#3834 id=3834 data-nosnippet>3834</a>                D::m2o_connect(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
+<a href=#3835 id=3835 data-nosnippet>3835</a>            )
+<a href=#3836 id=3836 data-nosnippet>3836</a>        }
+<a href=#3837 id=3837 data-nosnippet>3837</a>        (<span class="kw-2">&amp;</span>LocationId::Cluster(from), <span class="kw-2">&amp;</span>LocationId::Cluster(to)) =&gt; {
+<a href=#3838 id=3838 data-nosnippet>3838</a>            <span class="kw">let </span>from_node = clusters
+<a href=#3839 id=3839 data-nosnippet>3839</a>                .get(from)
+<a href=#3840 id=3840 data-nosnippet>3840</a>                .unwrap_or_else(|| {
+<a href=#3841 id=3841 data-nosnippet>3841</a>                    <span class="macro">panic!</span>(<span class="string">"A cluster used in the graph was not instantiated: {}"</span>, from)
+<a href=#3842 id=3842 data-nosnippet>3842</a>                })
+<a href=#3843 id=3843 data-nosnippet>3843</a>                .clone();
+<a href=#3844 id=3844 data-nosnippet>3844</a>            <span class="kw">let </span>to_node = clusters
+<a href=#3845 id=3845 data-nosnippet>3845</a>                .get(to)
+<a href=#3846 id=3846 data-nosnippet>3846</a>                .unwrap_or_else(|| {
+<a href=#3847 id=3847 data-nosnippet>3847</a>                    <span class="macro">panic!</span>(<span class="string">"A cluster used in the graph was not instantiated: {}"</span>, to)
+<a href=#3848 id=3848 data-nosnippet>3848</a>                })
+<a href=#3849 id=3849 data-nosnippet>3849</a>                .clone();
+<a href=#3850 id=3850 data-nosnippet>3850</a>
+<a href=#3851 id=3851 data-nosnippet>3851</a>            <span class="kw">let </span>sink_port = from_node.next_port();
+<a href=#3852 id=3852 data-nosnippet>3852</a>            <span class="kw">let </span>source_port = to_node.next_port();
+<a href=#3853 id=3853 data-nosnippet>3853</a>
+<a href=#3854 id=3854 data-nosnippet>3854</a>            (
+<a href=#3855 id=3855 data-nosnippet>3855</a>                D::m2m_sink_source(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
+<a href=#3856 id=3856 data-nosnippet>3856</a>                D::m2m_connect(<span class="kw-2">&amp;</span>from_node, <span class="kw-2">&amp;</span>sink_port, <span class="kw-2">&amp;</span>to_node, <span class="kw-2">&amp;</span>source_port),
+<a href=#3857 id=3857 data-nosnippet>3857</a>            )
+<a href=#3858 id=3858 data-nosnippet>3858</a>        }
+<a href=#3859 id=3859 data-nosnippet>3859</a>        (LocationId::Tick(<span class="kw">_</span>, <span class="kw">_</span>), <span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(),
+<a href=#3860 id=3860 data-nosnippet>3860</a>        (<span class="kw">_</span>, LocationId::Tick(<span class="kw">_</span>, <span class="kw">_</span>)) =&gt; <span class="macro">panic!</span>(),
+<a href=#3861 id=3861 data-nosnippet>3861</a>        (LocationId::Atomic(<span class="kw">_</span>), <span class="kw">_</span>) =&gt; <span class="macro">panic!</span>(),
+<a href=#3862 id=3862 data-nosnippet>3862</a>        (<span class="kw">_</span>, LocationId::Atomic(<span class="kw">_</span>)) =&gt; <span class="macro">panic!</span>(),
+<a href=#3863 id=3863 data-nosnippet>3863</a>    };
+<a href=#3864 id=3864 data-nosnippet>3864</a>    (sink, source, connect_fn)
+<a href=#3865 id=3865 data-nosnippet>3865</a>}
+<a href=#3866 id=3866 data-nosnippet>3866</a>
+<a href=#3867 id=3867 data-nosnippet>3867</a><span class="attr">#[cfg(test)]
+<a href=#3868 id=3868 data-nosnippet>3868</a></span><span class="kw">mod </span>test {
+<a href=#3869 id=3869 data-nosnippet>3869</a>    <span class="kw">use </span>std::mem::size_of;
+<a href=#3870 id=3870 data-nosnippet>3870</a>
+<a href=#3871 id=3871 data-nosnippet>3871</a>    <span class="kw">use </span>stageleft::{QuotedWithContext, q};
+<a href=#3872 id=3872 data-nosnippet>3872</a>
+<a href=#3873 id=3873 data-nosnippet>3873</a>    <span class="kw">use </span>super::<span class="kw-2">*</span>;
+<a href=#3874 id=3874 data-nosnippet>3874</a>
+<a href=#3875 id=3875 data-nosnippet>3875</a>    <span class="attr">#[test]
+<a href=#3876 id=3876 data-nosnippet>3876</a>    #[cfg_attr(
+<a href=#3877 id=3877 data-nosnippet>3877</a>        not(feature = <span class="string">"build"</span>),
+<a href=#3878 id=3878 data-nosnippet>3878</a>        ignore = <span class="string">"expects inclusion of feature-gated fields"
+<a href=#3879 id=3879 data-nosnippet>3879</a>    </span>)]
+<a href=#3880 id=3880 data-nosnippet>3880</a>    </span><span class="kw">fn </span>hydro_node_size() {
+<a href=#3881 id=3881 data-nosnippet>3881</a>        <span class="macro">assert_eq!</span>(size_of::&lt;HydroNode&gt;(), <span class="number">240</span>);
+<a href=#3882 id=3882 data-nosnippet>3882</a>    }
+<a href=#3883 id=3883 data-nosnippet>3883</a>
+<a href=#3884 id=3884 data-nosnippet>3884</a>    <span class="attr">#[test]
+<a href=#3885 id=3885 data-nosnippet>3885</a>    #[cfg_attr(
+<a href=#3886 id=3886 data-nosnippet>3886</a>        not(feature = <span class="string">"build"</span>),
+<a href=#3887 id=3887 data-nosnippet>3887</a>        ignore = <span class="string">"expects inclusion of feature-gated fields"
+<a href=#3888 id=3888 data-nosnippet>3888</a>    </span>)]
+<a href=#3889 id=3889 data-nosnippet>3889</a>    </span><span class="kw">fn </span>hydro_root_size() {
+<a href=#3890 id=3890 data-nosnippet>3890</a>        <span class="macro">assert_eq!</span>(size_of::&lt;HydroRoot&gt;(), <span class="number">136</span>);
+<a href=#3891 id=3891 data-nosnippet>3891</a>    }
+<a href=#3892 id=3892 data-nosnippet>3892</a>
+<a href=#3893 id=3893 data-nosnippet>3893</a>    <span class="attr">#[test]
+<a href=#3894 id=3894 data-nosnippet>3894</a>    </span><span class="kw">fn </span>test_simplify_q_macro_basic() {
+<a href=#3895 id=3895 data-nosnippet>3895</a>        <span class="comment">// Test basic non-q! expression
+<a href=#3896 id=3896 data-nosnippet>3896</a>        </span><span class="kw">let </span>simple_expr: syn::Expr = syn::parse_str(<span class="string">"x + y"</span>).unwrap();
+<a href=#3897 id=3897 data-nosnippet>3897</a>        <span class="kw">let </span>result = simplify_q_macro(simple_expr.clone());
+<a href=#3898 id=3898 data-nosnippet>3898</a>        <span class="macro">assert_eq!</span>(result, simple_expr);
+<a href=#3899 id=3899 data-nosnippet>3899</a>    }
+<a href=#3900 id=3900 data-nosnippet>3900</a>
+<a href=#3901 id=3901 data-nosnippet>3901</a>    <span class="attr">#[test]
+<a href=#3902 id=3902 data-nosnippet>3902</a>    </span><span class="kw">fn </span>test_simplify_q_macro_actual_stageleft_call() {
+<a href=#3903 id=3903 data-nosnippet>3903</a>        <span class="comment">// Test a simplified version of what a real stageleft call might look like
+<a href=#3904 id=3904 data-nosnippet>3904</a>        </span><span class="kw">let </span>stageleft_call = <span class="macro">q!</span>(|x: usize| x + <span class="number">1</span>).splice_fn1_ctx(<span class="kw-2">&amp;</span>());
+<a href=#3905 id=3905 data-nosnippet>3905</a>        <span class="kw">let </span>result = simplify_q_macro(stageleft_call);
+<a href=#3906 id=3906 data-nosnippet>3906</a>        <span class="comment">// This should be processed by our visitor and simplified to q!(...)
+<a href=#3907 id=3907 data-nosnippet>3907</a>        // since we detect the stageleft::runtime_support::fn_* pattern
+<a href=#3908 id=3908 data-nosnippet>3908</a>        </span><span class="macro">hydro_build_utils::assert_snapshot!</span>(result.to_token_stream().to_string());
+<a href=#3909 id=3909 data-nosnippet>3909</a>    }
+<a href=#3910 id=3910 data-nosnippet>3910</a>
+<a href=#3911 id=3911 data-nosnippet>3911</a>    <span class="attr">#[test]
+<a href=#3912 id=3912 data-nosnippet>3912</a>    </span><span class="kw">fn </span>test_closure_no_pipe_at_start() {
+<a href=#3913 id=3913 data-nosnippet>3913</a>        <span class="comment">// Test a closure that does not start with a pipe
+<a href=#3914 id=3914 data-nosnippet>3914</a>        </span><span class="kw">let </span>stageleft_call = <span class="macro">q!</span>({
+<a href=#3915 id=3915 data-nosnippet>3915</a>            <span class="kw">let </span>foo = <span class="number">123</span>;
+<a href=#3916 id=3916 data-nosnippet>3916</a>            <span class="kw">move </span>|b: usize| b + foo
+<a href=#3917 id=3917 data-nosnippet>3917</a>        })
+<a href=#3918 id=3918 data-nosnippet>3918</a>        .splice_fn1_ctx(<span class="kw-2">&amp;</span>());
+<a href=#3919 id=3919 data-nosnippet>3919</a>        <span class="kw">let </span>result = simplify_q_macro(stageleft_call);
+<a href=#3920 id=3920 data-nosnippet>3920</a>        <span class="macro">hydro_build_utils::assert_snapshot!</span>(result.to_token_stream().to_string());
+<a href=#3921 id=3921 data-nosnippet>3921</a>    }
+<a href=#3922 id=3922 data-nosnippet>3922</a>}
 </code></pre></div></section></main></body></html>
