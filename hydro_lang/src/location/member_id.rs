@@ -5,20 +5,20 @@ use std::marker::PhantomData;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Deserialize, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub enum TaglessMemberId {
-    #[cfg(feature = "deploy_integration")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "deploy_integration")))]
+pub(crate) enum TaglessMemberId {
+    #[cfg(feature = "deploy")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
     Legacy { raw_id: u32 },
-    #[cfg(feature = "docker_runtime")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "docker_runtime")))]
+    #[cfg(feature = "docker_deploy")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "docker_deploy")))]
     Docker { container_name: String },
-    #[cfg(feature = "maelstrom_runtime")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "maelstrom_runtime")))]
+    #[cfg(feature = "maelstrom")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "maelstrom")))]
     Maelstrom { node_id: String },
 }
 
-#[cfg(feature = "deploy_integration")]
-#[cfg_attr(docsrs, doc(cfg(feature = "deploy_integration")))]
+#[cfg(feature = "deploy")]
+#[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
 impl TaglessMemberId {
     pub fn from_raw_id(raw_id: u32) -> Self {
         Self::Legacy { raw_id }
@@ -32,8 +32,8 @@ impl TaglessMemberId {
     }
 }
 
-#[cfg(feature = "docker_runtime")]
-#[cfg_attr(docsrs, doc(cfg(feature = "docker_runtime")))]
+#[cfg(feature = "docker_deploy")]
+#[cfg_attr(docsrs, doc(cfg(feature = "docker_deploy")))]
 impl TaglessMemberId {
     pub fn from_container_name(container_name: impl Into<String>) -> Self {
         Self::Docker {
@@ -49,8 +49,8 @@ impl TaglessMemberId {
     }
 }
 
-#[cfg(feature = "maelstrom_runtime")]
-#[cfg_attr(docsrs, doc(cfg(feature = "maelstrom_runtime")))]
+#[cfg(feature = "maelstrom")]
+#[cfg_attr(docsrs, doc(cfg(feature = "maelstrom")))]
 impl TaglessMemberId {
     pub fn from_maelstrom_node_id(node_id: impl Into<String>) -> Self {
         Self::Maelstrom {
@@ -69,12 +69,15 @@ impl TaglessMemberId {
 impl Display for TaglessMemberId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            #[cfg(feature = "deploy_integration")]
+            #[cfg(feature = "deploy")]
             TaglessMemberId::Legacy { raw_id } => write!(f, "{:?}", raw_id),
-            #[cfg(feature = "docker_runtime")]
+            #[cfg(feature = "docker_deploy")]
             TaglessMemberId::Docker { container_name } => write!(f, "{:?}", container_name),
-            #[cfg(feature = "maelstrom_runtime")]
+            #[cfg(feature = "maelstrom")]
             TaglessMemberId::Maelstrom { node_id } => write!(f, "{:?}", node_id),
+            #[expect(clippy::allow_attributes, reason = "Only triggers when `TaglessMemberId` is empty.")]
+            #[allow(unreachable_patterns, reason = "Needed when `TaglessMemberId` is empty.")]
+            _ => panic!(),
         }
     }
 }
@@ -97,8 +100,8 @@ impl<Tag> MemberId<Tag> {
         }
     }
 
-    #[cfg(feature = "deploy_integration")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "deploy_integration")))]
+    #[cfg(feature = "deploy")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
     pub fn from_raw_id(raw_id: u32) -> Self {
         Self {
             inner: TaglessMemberId::from_raw_id(raw_id),
@@ -106,8 +109,8 @@ impl<Tag> MemberId<Tag> {
         }
     }
 
-    #[cfg(feature = "deploy_integration")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "deploy_integration")))]
+    #[cfg(feature = "deploy")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
     pub fn get_raw_id(&self) -> u32 {
         self.inner.get_raw_id()
     }
