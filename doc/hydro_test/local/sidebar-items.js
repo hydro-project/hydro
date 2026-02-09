@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["chat_app","count_elems","futures","graph_reachability"]};
+window.SIDEBAR_ITEMS = {"mod":["chat_app","count_elems","first_ten","futures","graph_reachability"]};

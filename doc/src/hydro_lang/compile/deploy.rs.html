@@ -269,7 +269,7 @@
 <a href=#269 id=269 data-nosnippet>269</a>    <span class="doccomment">/// Same as [`Self::compile`] but does not invalidate `self`, for internal use.
 <a href=#270 id=270 data-nosnippet>270</a>    ///
 <a href=#271 id=271 data-nosnippet>271</a>    /// Empties `self.sidecars` and modifies `self.ir`, leaving `self` in a partial state.
-<a href=#272 id=272 data-nosnippet>272</a>    </span><span class="kw">fn </span>compile_internal(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; CompiledFlow&lt;<span class="lifetime">'a</span>&gt; {
+<a href=#272 id=272 data-nosnippet>272</a>    </span><span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn </span>compile_internal(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; CompiledFlow&lt;<span class="lifetime">'a</span>&gt; {
 <a href=#273 id=273 data-nosnippet>273</a>        <span class="kw">let </span><span class="kw-2">mut </span>seen_tees: HashMap&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; = HashMap::new();
 <a href=#274 id=274 data-nosnippet>274</a>        <span class="kw">let </span><span class="kw-2">mut </span>extra_stmts = SparseSecondaryMap::new();
 <a href=#275 id=275 data-nosnippet>275</a>        <span class="kw">for </span>leaf <span class="kw">in </span><span class="self">self</span>.ir.iter_mut() {
