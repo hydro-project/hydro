@@ -1,5 +1,6 @@
 [profile.default]
 slow-timeout = { terminate-after = 10 } # terminate after 10 intervals of (default: `period = "60s"`).
+default-filter = "not (package(hydro_test) & kind(bench))"
 
 [test-groups]
 serial-integration = { max-threads = 1 }
