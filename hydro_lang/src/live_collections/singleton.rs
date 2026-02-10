@@ -700,6 +700,37 @@ where
     }
 }
 
+impl<'a, T, L, B: Boundedness> Singleton<Option<T>, L, B>
+where
+    L: Location<'a>,
+{
+    /// Converts a `Singleton<Option<U>, L, B>` into an `Optional<U, L, B>` by unwrapping
+    /// the inner `Option`.
+    ///
+    /// This is implemented as an identity [`Singleton::filter_map`], passing through the
+    /// `Option<U>` directly. If the singleton's value is `Some(v)`, the resulting
+    /// [`Optional`] contains `v`; if `None`, the [`Optional`] is empty.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let singleton = tick.singleton(q!(Some(42)));
+    /// singleton.into_optional().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 42
+    /// # assert_eq!(stream.next().await.unwrap(), 42);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn into_optional(self) -> Optional<T, L, B> {
+        self.filter_map(q!(|v| v))
+    }
+}
+
 impl<'a, T, L, B: Boundedness> Singleton<T, Atomic<L>, B>
 where
     L: Location<'a> + NoTick,
