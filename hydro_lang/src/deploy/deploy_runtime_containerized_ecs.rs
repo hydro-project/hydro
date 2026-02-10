@@ -76,7 +76,7 @@ pub fn deploy_containerized_o2m(port: u16) -> (syn::Expr, syn::Expr) {
                         Box::pin(async move {
                             let port = port;
                             let task_id = key.get_container_name();
-                            let ip = self::resolve_task_ip(&task_id).await;
+                            let ip = self::resolve_task_ip(task_id).await;
                             let target = format!("{}:{}", ip, port);
                             debug!(name: "connecting", %target, %task_id);
 
@@ -170,7 +170,7 @@ pub fn deploy_containerized_m2m(port: u16) -> (syn::Expr, syn::Expr) {
                         Box::pin(async move {
                             let port = port;
                             let task_id = key.get_container_name();
-                            let ip = self::resolve_task_ip(&task_id).await;
+                            let ip = self::resolve_task_ip(task_id).await;
                             let target = format!("{}:{}", ip, port);
                             debug!(name: "connecting", %target, %task_id);
 

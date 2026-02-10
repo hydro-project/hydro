@@ -1301,11 +1301,14 @@ mod tests {
     use futures::StreamExt;
     #[cfg(feature = "deploy")]
     use hydro_deploy::Deployment;
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use stageleft::q;
 
     #[cfg(feature = "deploy")]
     use super::Optional;
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::compile::builder::FlowBuilder;
+    #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::location::Location;
     #[cfg(feature = "deploy")]
     use crate::nondet::nondet;
