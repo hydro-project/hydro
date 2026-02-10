@@ -1041,6 +1041,9 @@ impl HydroNode {
                             location_id
                         )
                     }
+                    HydroSource::Embedded(ident) => {
+                        format!("embedded_input({})", ident)
+                    }
                 };
                 build_source_node(structure, metadata, label)
             }
