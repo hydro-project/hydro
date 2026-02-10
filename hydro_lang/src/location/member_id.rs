@@ -5,78 +5,120 @@ use std::marker::PhantomData;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Deserialize, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Serialize)]
-pub(crate) enum TaglessMemberId {
-    #[cfg(feature = "deploy")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
+#[non_exhaustive] // Variants change based on features.
+pub enum TaglessMemberId {
+    #[cfg(feature = "deploy_integration")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "deploy_integration")))]
     Legacy { raw_id: u32 },
-    #[cfg(feature = "docker_deploy")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "docker_deploy")))]
+    #[cfg(feature = "docker_runtime")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "docker_runtime")))]
     Docker { container_name: String },
-    #[cfg(feature = "maelstrom")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "maelstrom")))]
+    #[cfg(feature = "maelstrom_runtime")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "maelstrom_runtime")))]
     Maelstrom { node_id: String },
 }
 
-#[cfg(feature = "deploy")]
-#[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
+macro_rules! assert_feature {
+    (#[cfg(feature = $feat:expr)] $( $code:stmt )+) => {
+        #[cfg(not(feature = $feat))]
+        panic!("Feature {:?} is not enabled.", $feat);
+
+        #[cfg(feature = $feat)]
+        {
+            $( $code )+
+        }
+    };
+}
+
 impl TaglessMemberId {
-    pub fn from_raw_id(raw_id: u32) -> Self {
-        Self::Legacy { raw_id }
+    pub fn from_raw_id(_raw_id: u32) -> Self {
+        assert_feature! {
+            #[cfg(feature = "deploy_integration")]
+            Self::Legacy { raw_id: _raw_id }
+        }
     }
 
     pub fn get_raw_id(&self) -> u32 {
-        let TaglessMemberId::Legacy { raw_id } = self else {
-            panic!()
-        };
-        *raw_id
+        assert_feature! {
+            #[cfg(feature = "deploy_integration")]
+            #[expect(clippy::allow_attributes, reason = "Depends on features.")]
+            #[allow(
+                irrefutable_let_patterns,
+                reason = "Depends on features."
+            )]
+            let TaglessMemberId::Legacy { raw_id } = self else {
+                panic!("Not `Legacy` variant.");
+            }
+            *raw_id
+        }
     }
-}
 
-#[cfg(feature = "docker_deploy")]
-#[cfg_attr(docsrs, doc(cfg(feature = "docker_deploy")))]
-impl TaglessMemberId {
-    pub fn from_container_name(container_name: impl Into<String>) -> Self {
-        Self::Docker {
-            container_name: container_name.into(),
+    pub fn from_container_name(_container_name: impl Into<String>) -> Self {
+        assert_feature! {
+            #[cfg(feature = "docker_runtime")]
+            Self::Docker {
+                container_name: _container_name.into(),
+            }
         }
     }
 
     pub fn get_container_name(&self) -> &str {
-        let TaglessMemberId::Docker { container_name } = self else {
-            panic!()
-        };
-        container_name
+        assert_feature! {
+            #[cfg(feature = "docker_runtime")]
+            #[expect(clippy::allow_attributes, reason = "Depends on features.")]
+            #[allow(
+                irrefutable_let_patterns,
+                reason = "Depends on features."
+            )]
+            let TaglessMemberId::Docker { container_name } = self else {
+                panic!("Not `Docker` variant.");
+            }
+            container_name
+        }
     }
-}
 
-#[cfg(feature = "maelstrom")]
-#[cfg_attr(docsrs, doc(cfg(feature = "maelstrom")))]
-impl TaglessMemberId {
-    pub fn from_maelstrom_node_id(node_id: impl Into<String>) -> Self {
-        Self::Maelstrom {
-            node_id: node_id.into(),
+    pub fn from_maelstrom_node_id(_node_id: impl Into<String>) -> Self {
+        assert_feature! {
+                #[cfg(feature = "maelstrom_runtime")]
+                Self::Maelstrom {
+                node_id: _node_id.into(),
+            }
         }
     }
 
     pub fn get_maelstrom_node_id(&self) -> &str {
-        let TaglessMemberId::Maelstrom { node_id } = self else {
-            panic!()
-        };
-        node_id
+        assert_feature! {
+            #[cfg(feature = "maelstrom_runtime")]
+            #[expect(clippy::allow_attributes, reason = "Depends on features.")]
+            #[allow(
+                irrefutable_let_patterns,
+                reason = "Depends on features."
+            )]
+            let TaglessMemberId::Maelstrom { node_id } = self else {
+                panic!("Not `Maelstrom` variant.");
+            }
+            node_id
+        }
     }
 }
 
 impl Display for TaglessMemberId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            #[cfg(feature = "deploy")]
-            TaglessMemberId::Legacy { raw_id } => write!(f, "{:?}", raw_id),
-            #[cfg(feature = "docker_deploy")]
-            TaglessMemberId::Docker { container_name } => write!(f, "{:?}", container_name),
-            #[cfg(feature = "maelstrom")]
-            TaglessMemberId::Maelstrom { node_id } => write!(f, "{:?}", node_id),
-            #[expect(clippy::allow_attributes, reason = "Only triggers when `TaglessMemberId` is empty.")]
-            #[allow(unreachable_patterns, reason = "Needed when `TaglessMemberId` is empty.")]
+            #[cfg(feature = "deploy_integration")]
+            TaglessMemberId::Legacy { raw_id } => write!(_f, "{:?}", raw_id),
+            #[cfg(feature = "docker_runtime")]
+            TaglessMemberId::Docker { container_name } => write!(_f, "{:?}", container_name),
+            #[cfg(feature = "maelstrom_runtime")]
+            TaglessMemberId::Maelstrom { node_id } => write!(_f, "{:?}", node_id),
+            #[expect(
+                clippy::allow_attributes,
+                reason = "Only triggers when `TaglessMemberId` is empty."
+            )]
+            #[allow(
+                unreachable_patterns,
+                reason = "Needed when `TaglessMemberId` is empty."
+            )]
             _ => panic!(),
         }
     }
@@ -100,17 +142,18 @@ impl<Tag> MemberId<Tag> {
         }
     }
 
-    #[cfg(feature = "deploy")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
     pub fn from_raw_id(raw_id: u32) -> Self {
+        #[expect(clippy::allow_attributes, reason = "Depends on features.")]
+        #[allow(
+            unreachable_code,
+            reason = "`inner` may be uninhabited depending on features."
+        )]
         Self {
             inner: TaglessMemberId::from_raw_id(raw_id),
             _phantom: Default::default(),
         }
     }
 
-    #[cfg(feature = "deploy")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "deploy")))]
     pub fn get_raw_id(&self) -> u32 {
         self.inner.get_raw_id()
     }
@@ -135,6 +178,11 @@ impl<Tag> Display for MemberId<Tag> {
 
 impl<Tag> Clone for MemberId<Tag> {
     fn clone(&self) -> Self {
+        #[expect(clippy::allow_attributes, reason = "Depends on features.")]
+        #[allow(
+            unreachable_code,
+            reason = "`inner` may be uninhabited depending on features."
+        )]
         Self {
             inner: self.inner.clone(),
             _phantom: Default::default(),
@@ -156,6 +204,11 @@ impl<'a, Tag> Deserialize<'a> for MemberId<Tag> {
     where
         D: serde::Deserializer<'a>,
     {
+        #[expect(clippy::allow_attributes, reason = "Depends on features.")]
+        #[allow(
+            unreachable_code,
+            reason = "`inner` may be uninhabited depending on features."
+        )]
         Ok(Self::from_tagless(TaglessMemberId::deserialize(
             deserializer,
         )?))

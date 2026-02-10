@@ -2,6 +2,7 @@ use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 
+#[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use dfir_lang::diagnostic::Diagnostics;
 #[cfg(any(feature = "deploy", feature = "maelstrom"))]
 use dfir_lang::graph::DfirGraph;
