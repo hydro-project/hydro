@@ -1,16 +1,16 @@
-error: Unexpected input port: <elided>. Expected one of: `0`, `1`
+error: `join` received unexpected input port: <elided>. Expected one of: `0`, `1`
  --> tests/compile-fail/surface_port_join.rs:6:42
   |
 6 |         source_iter([(1, 1), (2, 2)]) -> j;
   |                                          ^
 
-error: Unexpected input port: <elided>. Expected one of: `0`, `1`
+error: `join` received unexpected input port: <elided>. Expected one of: `0`, `1`
  --> tests/compile-fail/surface_port_join.rs:7:42
   |
 7 |         source_iter([(3, 3), (4, 4)]) -> j;
   |                                          ^
 
-error: Missing expected input port(s): `0`, `1`.
+error: `join` missing expected input port(s): `0`, `1`.
  --> tests/compile-fail/surface_port_join.rs:5:13
   |
 5 |         j = join() -> for_each(std::mem::drop);
