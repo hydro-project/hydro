@@ -1,10 +1,10 @@
-error: expected 1 argument(s), found 0
+error: `source_iter` expects 1 argument(s), received 0.
  --> tests/compile-fail/surface_missing_args.rs:5:9
   |
 5 |         source_iter() -> for_each();
   |         ^^^^^^^^^^^^^
 
-error: expected 1 argument(s), found 0
+error: `for_each` expects 1 argument(s), received 0.
  --> tests/compile-fail/surface_missing_args.rs:5:26
   |
 5 |         source_iter() -> for_each();
