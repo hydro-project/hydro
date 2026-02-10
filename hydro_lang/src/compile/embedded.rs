@@ -25,6 +25,7 @@ use proc_macro2::Span;
 use quote::quote;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
+use slotmap::SparseSecondaryMap;
 use stageleft::{QuotedWithContext, q};
 
 use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, Node, ProcessSpec, RegisterPort};
@@ -140,15 +141,18 @@ impl<S: Into<String>> ExternalSpec<'_, EmbeddedDeploy> for S {
     }
 }
 
-/// Collected embedded input registrations.
+/// Collected embedded input/output registrations, keyed by location.
 ///
-/// During `compile_network`, each `HydroSource::Embedded` IR node registers its ident
-/// and element type here. `generate_embedded` then uses this to add parameters
-/// to the generated functions.
+/// During `compile_network`, each `HydroSource::Embedded` and `HydroRoot::EmbeddedOutput`
+/// IR node registers its ident, element type, and location key here.
+/// `generate_embedded` then uses this to add the appropriate parameters
+/// to each generated function.
 #[derive(Default)]
 pub struct EmbeddedInstantiateEnv {
-    /// (ident name, element type) pairs collected during compilation.
-    pub inputs: Vec<(syn::Ident, syn::Type)>,
+    /// (ident name, element type) pairs per location key, for inputs.
+    pub inputs: SparseSecondaryMap<LocationKey, Vec<(syn::Ident, syn::Type)>>,
+    /// (ident name, element type) pairs per location key, for outputs.
+    pub outputs: SparseSecondaryMap<LocationKey, Vec<(syn::Ident, syn::Type)>>,
 }
 
 impl<'a> Deploy<'a> for EmbeddedDeploy {
@@ -316,10 +320,28 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
 
     fn register_embedded_input(
         env: &mut Self::InstantiateEnv,
+        location_key: LocationKey,
         ident: &syn::Ident,
         element_type: &syn::Type,
     ) {
-        env.inputs.push((ident.clone(), element_type.clone()));
+        env.inputs
+            .entry(location_key)
+            .unwrap()
+            .or_default()
+            .push((ident.clone(), element_type.clone()));
+    }
+
+    fn register_embedded_output(
+        env: &mut Self::InstantiateEnv,
+        location_key: LocationKey,
+        ident: &syn::Ident,
+        element_type: &syn::Type,
+    ) {
+        env.outputs
+            .entry(location_key)
+            .unwrap()
+            .or_default()
+            .push((ident.clone(), element_type.clone()));
     }
 }
 
@@ -358,26 +380,14 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
         let mut env = EmbeddedInstantiateEnv::default();
         let compiled = self.compile_internal(&mut env);
 
-        // Sort inputs by name for deterministic output.
-        let mut inputs = env.inputs;
-        inputs.sort_by(|a, b| a.0.to_string().cmp(&b.0.to_string()));
-
         let root = crate::staging_util::get_this_crate();
         let orig_crate_name = quote::format_ident!("{}", crate_name.replace('-', "_"));
 
-        let mut functions: Vec<syn::Item> = Vec::new();
+        let mut items: Vec<syn::Item> = Vec::new();
 
         // Sort location keys for deterministic output.
         let mut location_keys: Vec<_> = compiled.all_dfir().keys().collect();
         location_keys.sort();
-
-        // Build the input parameters for each generated function.
-        let input_params: Vec<proc_macro2::TokenStream> = inputs
-            .iter()
-            .map(|(ident, element_type)| {
-                quote! { #ident: impl __root_dfir_rs::futures::Stream<Item = #element_type> + Unpin + 'a }
-            })
-            .collect();
 
         for location_key in location_keys {
             let graph = &compiled.all_dfir()[location_key];
@@ -393,18 +403,106 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
 
             let fn_ident = syn::Ident::new(fn_name, Span::call_site());
 
+            // Get inputs for this location, sorted by name.
+            let mut loc_inputs = env.inputs.get(location_key).cloned().unwrap_or_default();
+            loc_inputs.sort_by(|a, b| a.0.to_string().cmp(&b.0.to_string()));
+
+            // Get outputs for this location, sorted by name.
+            let mut loc_outputs = env.outputs.get(location_key).cloned().unwrap_or_default();
+            loc_outputs.sort_by(|a, b| a.0.to_string().cmp(&b.0.to_string()));
+
             let mut diagnostics = Diagnostics::new();
             let dfir_tokens = graph
                 .as_code(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
                 .expect("DFIR code generation failed with diagnostics.");
 
-            let func: syn::Item = syn::parse_quote! {
-                #[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
-                pub fn #fn_ident<'a>(#(#input_params),*) -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
-                    #dfir_tokens
-                }
-            };
-            functions.push(func);
+            // Build the input parameters.
+            let input_params: Vec<proc_macro2::TokenStream> = loc_inputs
+                .iter()
+                .map(|(ident, element_type)| {
+                    quote! { #ident: impl __root_dfir_rs::futures::Stream<Item = #element_type> + Unpin + 'a }
+                })
+                .collect();
+
+            let has_outputs = !loc_outputs.is_empty();
+
+            if has_outputs {
+                let output_struct_ident = syn::Ident::new("EmbeddedOutputs", Span::call_site());
+
+                // One generic per output field.
+                let output_generic_idents: Vec<syn::Ident> = loc_outputs
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| quote::format_ident!("__Out{}", i))
+                    .collect();
+
+                let struct_fields: Vec<proc_macro2::TokenStream> = loc_outputs
+                    .iter()
+                    .zip(output_generic_idents.iter())
+                    .map(|((ident, _), generic)| {
+                        quote! { pub #ident: #generic }
+                    })
+                    .collect();
+
+                let struct_generics: Vec<proc_macro2::TokenStream> = loc_outputs
+                    .iter()
+                    .zip(output_generic_idents.iter())
+                    .map(|((_, element_type), generic)| {
+                        quote! { #generic: FnMut(#element_type) }
+                    })
+                    .collect();
+
+                let fn_generics: Vec<proc_macro2::TokenStream> = loc_outputs
+                    .iter()
+                    .zip(output_generic_idents.iter())
+                    .map(|((_, element_type), generic)| {
+                        quote! { #generic: FnMut(#element_type) + 'a }
+                    })
+                    .collect();
+
+                let output_param = quote! {
+                    __outputs: &'a mut #fn_ident::#output_struct_ident<#(#output_generic_idents),*>
+                };
+
+                let output_destructure: Vec<proc_macro2::TokenStream> = loc_outputs
+                    .iter()
+                    .map(|(ident, _)| {
+                        quote! { let mut #ident = &mut __outputs.#ident; }
+                    })
+                    .collect();
+
+                let all_params: Vec<proc_macro2::TokenStream> = input_params
+                    .into_iter()
+                    .chain(std::iter::once(output_param))
+                    .collect();
+
+                // Module containing the outputs struct.
+                let output_mod: syn::Item = syn::parse_quote! {
+                    pub mod #fn_ident {
+                        pub struct #output_struct_ident<#(#struct_generics),*> {
+                            #(#struct_fields),*
+                        }
+                    }
+                };
+                items.push(output_mod);
+
+                let func: syn::Item = syn::parse_quote! {
+                    #[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
+                    pub fn #fn_ident<'a, #(#fn_generics),*>(#(#all_params),*) -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
+                        #(#output_destructure)*
+                        #dfir_tokens
+                    }
+                };
+                items.push(func);
+            } else {
+                let func: syn::Item = syn::parse_quote! {
+                    #[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
+                    pub fn #fn_ident<'a>(#(#input_params),*) -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
+                        #dfir_tokens
+                    }
+                };
+                items.push(func);
+            }
         }
 
         syn::parse_quote! {
@@ -413,7 +511,7 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
             use #root::runtime_support::dfir_rs as __root_dfir_rs;
             pub use #orig_crate_name::__staged;
 
-            #( #functions )*
+            #( #items )*
         }
     }
 }

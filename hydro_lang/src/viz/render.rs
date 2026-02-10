@@ -894,6 +894,15 @@ impl HydroRoot {
                 None,
                 NodeLabel::static_label(format!("cycle_sink({})", ident)),
             ),
+
+            HydroRoot::EmbeddedOutput { ident, input, .. } => build_sink_node(
+                structure,
+                seen_tees,
+                config,
+                input,
+                None,
+                NodeLabel::static_label(format!("embedded_output({})", ident)),
+            ),
         }
     }
 }

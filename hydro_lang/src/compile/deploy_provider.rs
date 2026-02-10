@@ -125,10 +125,24 @@ pub trait Deploy<'a> {
     /// implementation panics.
     fn register_embedded_input(
         _env: &mut Self::InstantiateEnv,
+        _location_key: LocationKey,
         _ident: &syn::Ident,
         _element_type: &syn::Type,
     ) {
         panic!("register_embedded_input is only supported by EmbeddedDeploy");
+    }
+
+    /// Registers an embedded output for the given ident and element type.
+    ///
+    /// Only meaningful for the embedded deployment backend. The default
+    /// implementation panics.
+    fn register_embedded_output(
+        _env: &mut Self::InstantiateEnv,
+        _location_key: LocationKey,
+        _ident: &syn::Ident,
+        _element_type: &syn::Type,
+    ) {
+        panic!("register_embedded_output is only supported by EmbeddedDeploy");
     }
 }
 

@@ -675,6 +675,11 @@ pub enum HydroRoot {
         input: Box<HydroNode>,
         op_metadata: HydroIrOpMetadata,
     },
+    EmbeddedOutput {
+        ident: syn::Ident,
+        input: Box<HydroNode>,
+        op_metadata: HydroIrOpMetadata,
+    },
 }
 
 impl HydroRoot {
@@ -789,6 +794,21 @@ impl HydroRoot {
                         connect_fn: Some(connect_fn),
                     }
                     .into();
+                } else if let HydroRoot::EmbeddedOutput { ident, input, .. } = l {
+                    let element_type = match &input.metadata().collection_kind {
+                        CollectionKind::Stream { element_type, .. } => element_type.0.as_ref().clone(),
+                        _ => panic!("Embedded output must have Stream collection kind"),
+                    };
+                    let location_key = match input.metadata().location_id.root() {
+                        LocationId::Process(key) | LocationId::Cluster(key) => *key,
+                        _ => panic!("Embedded output must be on a process or cluster"),
+                    };
+                    D::register_embedded_output(
+                        &mut refcell_env.borrow_mut(),
+                        location_key,
+                        ident,
+                        &element_type,
+                    );
                 }
             },
             &mut |n| {
@@ -895,8 +915,13 @@ impl HydroRoot {
                         CollectionKind::Stream { element_type, .. } => element_type.0.as_ref().clone(),
                         _ => panic!("Embedded source must have Stream collection kind"),
                     };
+                    let location_key = match metadata.location_id.root() {
+                        LocationId::Process(key) | LocationId::Cluster(key) => *key,
+                        _ => panic!("Embedded source must be on a process or cluster"),
+                    };
                     D::register_embedded_input(
                         &mut refcell_env.borrow_mut(),
+                        location_key,
                         ident,
                         &element_type,
                     );
@@ -962,7 +987,8 @@ impl HydroRoot {
             HydroRoot::ForEach { input, .. }
             | HydroRoot::SendExternal { input, .. }
             | HydroRoot::DestSink { input, .. }
-            | HydroRoot::CycleSink { input, .. } => {
+            | HydroRoot::CycleSink { input, .. }
+            | HydroRoot::EmbeddedOutput { input, .. } => {
                 transform(input, seen_tees);
             }
         }
@@ -1012,6 +1038,15 @@ impl HydroRoot {
                 input,
                 op_metadata,
             } => HydroRoot::CycleSink {
+                ident: ident.clone(),
+                input: Box::new(input.deep_clone(seen_tees)),
+                op_metadata: op_metadata.clone(),
+            },
+            HydroRoot::EmbeddedOutput {
+                ident,
+                input,
+                op_metadata,
+            } => HydroRoot::EmbeddedOutput {
                 ident: ident.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
                 op_metadata: op_metadata.clone(),
@@ -1176,6 +1211,30 @@ impl HydroRoot {
                     BuildersOrCallback::Callback(_, _) => {}
                 }
             }
+
+            HydroRoot::EmbeddedOutput { ident, input, .. } => {
+                let input_ident =
+                    input.emit_core::<D>(builders_or_callback, seen_tees, built_tees, next_stmt_id);
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        graph_builders
+                            .get_dfir_mut(&input.metadata().location_id)
+                            .add_dfir(
+                                parse_quote! {
+                                    #input_ident -> for_each(&mut #ident);
+                                },
+                                None,
+                                Some(&next_stmt_id.to_string()),
+                            );
+                    }
+                    BuildersOrCallback::Callback(leaf_callback, _) => {
+                        leaf_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+            }
         }
     }
 
@@ -1184,7 +1243,8 @@ impl HydroRoot {
             HydroRoot::ForEach { op_metadata, .. }
             | HydroRoot::SendExternal { op_metadata, .. }
             | HydroRoot::DestSink { op_metadata, .. }
-            | HydroRoot::CycleSink { op_metadata, .. } => op_metadata,
+            | HydroRoot::CycleSink { op_metadata, .. }
+            | HydroRoot::EmbeddedOutput { op_metadata, .. } => op_metadata,
         }
     }
 
@@ -1193,7 +1253,8 @@ impl HydroRoot {
             HydroRoot::ForEach { op_metadata, .. }
             | HydroRoot::SendExternal { op_metadata, .. }
             | HydroRoot::DestSink { op_metadata, .. }
-            | HydroRoot::CycleSink { op_metadata, .. } => op_metadata,
+            | HydroRoot::CycleSink { op_metadata, .. }
+            | HydroRoot::EmbeddedOutput { op_metadata, .. } => op_metadata,
         }
     }
 
@@ -1202,7 +1263,8 @@ impl HydroRoot {
             HydroRoot::ForEach { input, .. }
             | HydroRoot::SendExternal { input, .. }
             | HydroRoot::DestSink { input, .. }
-            | HydroRoot::CycleSink { input, .. } => input,
+            | HydroRoot::CycleSink { input, .. }
+            | HydroRoot::EmbeddedOutput { input, .. } => input,
         }
     }
 
@@ -1216,6 +1278,9 @@ impl HydroRoot {
             HydroRoot::SendExternal { .. } => "SendExternal".to_owned(),
             HydroRoot::DestSink { sink, .. } => format!("DestSink({:?})", sink),
             HydroRoot::CycleSink { ident, .. } => format!("CycleSink({:?})", ident),
+            HydroRoot::EmbeddedOutput { ident, .. } => {
+                format!("EmbeddedOutput({})", ident)
+            }
         }
     }
 
@@ -1224,7 +1289,9 @@ impl HydroRoot {
             HydroRoot::ForEach { f, .. } | HydroRoot::DestSink { sink: f, .. } => {
                 transform(f);
             }
-            HydroRoot::SendExternal { .. } | HydroRoot::CycleSink { .. } => {}
+            HydroRoot::SendExternal { .. }
+            | HydroRoot::CycleSink { .. }
+            | HydroRoot::EmbeddedOutput { .. } => {}
         }
     }
 }

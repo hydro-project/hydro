@@ -382,6 +382,27 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     }
 }
 
+impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyOnce> {
+    /// Creates an external output for embedded deployment mode.
+    ///
+    /// The `name` parameter specifies the name of the field in the generated
+    /// `EmbeddedOutputs` struct that will receive elements from this stream.
+    /// The generated function will accept an `EmbeddedOutputs` struct with an
+    /// `impl FnMut(T)` field with this name.
+    pub fn embedded_output(self, name: impl Into<String>) {
+        let ident = syn::Ident::new(&name.into(), proc_macro2::Span::call_site());
+
+        self.location
+            .flow_state()
+            .borrow_mut()
+            .push_root(HydroRoot::EmbeddedOutput {
+                ident,
+                input: Box::new(self.ir_node.into_inner()),
+                op_metadata: HydroIrOpMetadata::new(),
+            });
+    }
+}
+
 impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     Stream<(MemberId<L2>, T), Process<'a, L>, B, O, R>
 {
