@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["capitalize"]};
+window.SIDEBAR_ITEMS = {"fn":["capitalize"],"mod":["capitalize"]};

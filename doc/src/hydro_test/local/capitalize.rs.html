@@ -3,6 +3,6 @@
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">pub fn </span>capitalize&lt;<span class="lifetime">'a</span>&gt;(input: Stream&lt;String, Process&lt;<span class="lifetime">'a</span>, ()&gt;&gt;) {
 <a href=#4 id=4 data-nosnippet>4</a>    input
 <a href=#5 id=5 data-nosnippet>5</a>        .map(<span class="macro">q!</span>(|s| s.to_uppercase()))
-<a href=#6 id=6 data-nosnippet>6</a>        .for_each(<span class="macro">q!</span>(|s| <span class="macro">println!</span>(<span class="string">"{}"</span>, s)));
+<a href=#6 id=6 data-nosnippet>6</a>        .embedded_output(<span class="string">"output"</span>);
 <a href=#7 id=7 data-nosnippet>7</a>}
 </code></pre></div></section></main></body></html>
