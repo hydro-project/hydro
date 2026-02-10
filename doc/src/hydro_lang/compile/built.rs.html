@@ -316,7 +316,7 @@
 <a href=#316 id=316 data-nosnippet>316</a>        <span class="self">self</span>.into_deploy().with_remaining_clusters(spec)
 <a href=#317 id=317 data-nosnippet>317</a>    }
 <a href=#318 id=318 data-nosnippet>318</a>
-<a href=#319 id=319 data-nosnippet>319</a>    <span class="kw">pub fn </span>compile&lt;D: Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;(<span class="self">self</span>) -&gt; CompiledFlow&lt;<span class="lifetime">'a</span>&gt; {
+<a href=#319 id=319 data-nosnippet>319</a>    <span class="kw">pub fn </span>compile&lt;D: Deploy&lt;<span class="lifetime">'a</span>, InstantiateEnv = ()&gt;&gt;(<span class="self">self</span>) -&gt; CompiledFlow&lt;<span class="lifetime">'a</span>&gt; {
 <a href=#320 id=320 data-nosnippet>320</a>        <span class="self">self</span>.into_deploy::&lt;D&gt;().compile()
 <a href=#321 id=321 data-nosnippet>321</a>    }
 <a href=#322 id=322 data-nosnippet>322</a>

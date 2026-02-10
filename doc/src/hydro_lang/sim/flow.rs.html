@@ -110,73 +110,74 @@
 <a href=#110 id=110 data-nosnippet>110</a>                <span class="kw-2">&amp;</span><span class="self">self</span>.processes,
 <a href=#111 id=111 data-nosnippet>111</a>                <span class="kw-2">&amp;</span><span class="self">self</span>.clusters,
 <a href=#112 id=112 data-nosnippet>112</a>                <span class="kw-2">&amp;</span><span class="self">self</span>.externals,
-<a href=#113 id=113 data-nosnippet>113</a>            );
-<a href=#114 id=114 data-nosnippet>114</a>        });
-<a href=#115 id=115 data-nosnippet>115</a>
-<a href=#116 id=116 data-nosnippet>116</a>        <span class="kw">let </span><span class="kw-2">mut </span>seen_tees = HashMap::new();
-<a href=#117 id=117 data-nosnippet>117</a>        <span class="kw">let </span><span class="kw-2">mut </span>built_tees = HashMap::new();
-<a href=#118 id=118 data-nosnippet>118</a>        <span class="kw">let </span><span class="kw-2">mut </span>next_stmt_id = <span class="number">0</span>;
-<a href=#119 id=119 data-nosnippet>119</a>        <span class="kw">for </span>leaf <span class="kw">in </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.ir {
-<a href=#120 id=120 data-nosnippet>120</a>            leaf.emit::&lt;SimDeploy&gt;(
-<a href=#121 id=121 data-nosnippet>121</a>                <span class="kw-2">&amp;mut </span>sim_emit,
-<a href=#122 id=122 data-nosnippet>122</a>                <span class="kw-2">&amp;mut </span>seen_tees,
-<a href=#123 id=123 data-nosnippet>123</a>                <span class="kw-2">&amp;mut </span>built_tees,
-<a href=#124 id=124 data-nosnippet>124</a>                <span class="kw-2">&amp;mut </span>next_stmt_id,
-<a href=#125 id=125 data-nosnippet>125</a>            );
-<a href=#126 id=126 data-nosnippet>126</a>        }
-<a href=#127 id=127 data-nosnippet>127</a>
-<a href=#128 id=128 data-nosnippet>128</a>        <span class="kw">fn </span>build_graphs(
-<a href=#129 id=129 data-nosnippet>129</a>            graphs: BTreeMap&lt;LocationId, FlatGraphBuilder&gt;,
-<a href=#130 id=130 data-nosnippet>130</a>        ) -&gt; BTreeMap&lt;LocationId, DfirGraph&gt; {
-<a href=#131 id=131 data-nosnippet>131</a>            graphs
-<a href=#132 id=132 data-nosnippet>132</a>                .into_iter()
-<a href=#133 id=133 data-nosnippet>133</a>                .map(|(l, g)| {
-<a href=#134 id=134 data-nosnippet>134</a>                    <span class="kw">let </span>FlatGraphBuilderOutput { <span class="kw-2">mut </span>flat_graph, .. } =
-<a href=#135 id=135 data-nosnippet>135</a>                        g.build().expect(<span class="string">"Failed to build DFIR flat graph."</span>);
-<a href=#136 id=136 data-nosnippet>136</a>                    eliminate_extra_unions_tees(<span class="kw-2">&amp;mut </span>flat_graph);
-<a href=#137 id=137 data-nosnippet>137</a>                    (
-<a href=#138 id=138 data-nosnippet>138</a>                        l,
-<a href=#139 id=139 data-nosnippet>139</a>                        partition_graph(flat_graph).expect(<span class="string">"Failed to partition (cycle detected)."</span>),
-<a href=#140 id=140 data-nosnippet>140</a>                    )
-<a href=#141 id=141 data-nosnippet>141</a>                })
-<a href=#142 id=142 data-nosnippet>142</a>                .collect()
-<a href=#143 id=143 data-nosnippet>143</a>        }
-<a href=#144 id=144 data-nosnippet>144</a>
-<a href=#145 id=145 data-nosnippet>145</a>        <span class="kw">let </span>process_graphs = build_graphs(sim_emit.process_graphs);
-<a href=#146 id=146 data-nosnippet>146</a>        <span class="kw">let </span>cluster_graphs = build_graphs(sim_emit.cluster_graphs);
-<a href=#147 id=147 data-nosnippet>147</a>        <span class="kw">let </span>process_tick_graphs = build_graphs(sim_emit.process_tick_dfirs);
-<a href=#148 id=148 data-nosnippet>148</a>        <span class="kw">let </span>cluster_tick_graphs = build_graphs(sim_emit.cluster_tick_dfirs);
-<a href=#149 id=149 data-nosnippet>149</a>
-<a href=#150 id=150 data-nosnippet>150</a>        <span class="attr">#[expect(
-<a href=#151 id=151 data-nosnippet>151</a>            clippy::disallowed_methods,
-<a href=#152 id=152 data-nosnippet>152</a>            reason = <span class="string">"nondeterministic iteration order, fine for checks"
-<a href=#153 id=153 data-nosnippet>153</a>        </span>)]
-<a href=#154 id=154 data-nosnippet>154</a>        </span><span class="kw">for </span>c <span class="kw">in </span><span class="self">self</span>.clusters.keys() {
-<a href=#155 id=155 data-nosnippet>155</a>            <span class="macro">assert!</span>(
-<a href=#156 id=156 data-nosnippet>156</a>                <span class="self">self</span>.cluster_max_sizes.contains_key(c),
-<a href=#157 id=157 data-nosnippet>157</a>                <span class="string">"Cluster {:?} missing max size; call with_cluster_size() before compiled()"</span>,
-<a href=#158 id=158 data-nosnippet>158</a>                c
-<a href=#159 id=159 data-nosnippet>159</a>            );
-<a href=#160 id=160 data-nosnippet>160</a>        }
-<a href=#161 id=161 data-nosnippet>161</a>
-<a href=#162 id=162 data-nosnippet>162</a>        <span class="kw">let </span>(bin, trybuild) = create_sim_graph_trybuild(
-<a href=#163 id=163 data-nosnippet>163</a>            process_graphs,
-<a href=#164 id=164 data-nosnippet>164</a>            cluster_graphs,
-<a href=#165 id=165 data-nosnippet>165</a>            <span class="self">self</span>.cluster_max_sizes,
-<a href=#166 id=166 data-nosnippet>166</a>            process_tick_graphs,
-<a href=#167 id=167 data-nosnippet>167</a>            cluster_tick_graphs,
-<a href=#168 id=168 data-nosnippet>168</a>            sim_emit.extra_stmts_global,
-<a href=#169 id=169 data-nosnippet>169</a>            sim_emit.extra_stmts_cluster,
-<a href=#170 id=170 data-nosnippet>170</a>        );
-<a href=#171 id=171 data-nosnippet>171</a>
-<a href=#172 id=172 data-nosnippet>172</a>        <span class="kw">let </span>out = compile_sim(bin, trybuild).unwrap();
-<a href=#173 id=173 data-nosnippet>173</a>        <span class="kw">let </span>lib = <span class="kw">unsafe </span>{ Library::new(<span class="kw-2">&amp;</span>out).unwrap() };
-<a href=#174 id=174 data-nosnippet>174</a>
-<a href=#175 id=175 data-nosnippet>175</a>        CompiledSim {
-<a href=#176 id=176 data-nosnippet>176</a>            _path: out,
-<a href=#177 id=177 data-nosnippet>177</a>            lib,
-<a href=#178 id=178 data-nosnippet>178</a>            externals_port_registry: <span class="self">self</span>.externals_port_registry.take(),
-<a href=#179 id=179 data-nosnippet>179</a>        }
-<a href=#180 id=180 data-nosnippet>180</a>    }
-<a href=#181 id=181 data-nosnippet>181</a>}
+<a href=#113 id=113 data-nosnippet>113</a>                <span class="kw-2">&amp;mut </span>(),
+<a href=#114 id=114 data-nosnippet>114</a>            );
+<a href=#115 id=115 data-nosnippet>115</a>        });
+<a href=#116 id=116 data-nosnippet>116</a>
+<a href=#117 id=117 data-nosnippet>117</a>        <span class="kw">let </span><span class="kw-2">mut </span>seen_tees = HashMap::new();
+<a href=#118 id=118 data-nosnippet>118</a>        <span class="kw">let </span><span class="kw-2">mut </span>built_tees = HashMap::new();
+<a href=#119 id=119 data-nosnippet>119</a>        <span class="kw">let </span><span class="kw-2">mut </span>next_stmt_id = <span class="number">0</span>;
+<a href=#120 id=120 data-nosnippet>120</a>        <span class="kw">for </span>leaf <span class="kw">in </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.ir {
+<a href=#121 id=121 data-nosnippet>121</a>            leaf.emit::&lt;SimDeploy&gt;(
+<a href=#122 id=122 data-nosnippet>122</a>                <span class="kw-2">&amp;mut </span>sim_emit,
+<a href=#123 id=123 data-nosnippet>123</a>                <span class="kw-2">&amp;mut </span>seen_tees,
+<a href=#124 id=124 data-nosnippet>124</a>                <span class="kw-2">&amp;mut </span>built_tees,
+<a href=#125 id=125 data-nosnippet>125</a>                <span class="kw-2">&amp;mut </span>next_stmt_id,
+<a href=#126 id=126 data-nosnippet>126</a>            );
+<a href=#127 id=127 data-nosnippet>127</a>        }
+<a href=#128 id=128 data-nosnippet>128</a>
+<a href=#129 id=129 data-nosnippet>129</a>        <span class="kw">fn </span>build_graphs(
+<a href=#130 id=130 data-nosnippet>130</a>            graphs: BTreeMap&lt;LocationId, FlatGraphBuilder&gt;,
+<a href=#131 id=131 data-nosnippet>131</a>        ) -&gt; BTreeMap&lt;LocationId, DfirGraph&gt; {
+<a href=#132 id=132 data-nosnippet>132</a>            graphs
+<a href=#133 id=133 data-nosnippet>133</a>                .into_iter()
+<a href=#134 id=134 data-nosnippet>134</a>                .map(|(l, g)| {
+<a href=#135 id=135 data-nosnippet>135</a>                    <span class="kw">let </span>FlatGraphBuilderOutput { <span class="kw-2">mut </span>flat_graph, .. } =
+<a href=#136 id=136 data-nosnippet>136</a>                        g.build().expect(<span class="string">"Failed to build DFIR flat graph."</span>);
+<a href=#137 id=137 data-nosnippet>137</a>                    eliminate_extra_unions_tees(<span class="kw-2">&amp;mut </span>flat_graph);
+<a href=#138 id=138 data-nosnippet>138</a>                    (
+<a href=#139 id=139 data-nosnippet>139</a>                        l,
+<a href=#140 id=140 data-nosnippet>140</a>                        partition_graph(flat_graph).expect(<span class="string">"Failed to partition (cycle detected)."</span>),
+<a href=#141 id=141 data-nosnippet>141</a>                    )
+<a href=#142 id=142 data-nosnippet>142</a>                })
+<a href=#143 id=143 data-nosnippet>143</a>                .collect()
+<a href=#144 id=144 data-nosnippet>144</a>        }
+<a href=#145 id=145 data-nosnippet>145</a>
+<a href=#146 id=146 data-nosnippet>146</a>        <span class="kw">let </span>process_graphs = build_graphs(sim_emit.process_graphs);
+<a href=#147 id=147 data-nosnippet>147</a>        <span class="kw">let </span>cluster_graphs = build_graphs(sim_emit.cluster_graphs);
+<a href=#148 id=148 data-nosnippet>148</a>        <span class="kw">let </span>process_tick_graphs = build_graphs(sim_emit.process_tick_dfirs);
+<a href=#149 id=149 data-nosnippet>149</a>        <span class="kw">let </span>cluster_tick_graphs = build_graphs(sim_emit.cluster_tick_dfirs);
+<a href=#150 id=150 data-nosnippet>150</a>
+<a href=#151 id=151 data-nosnippet>151</a>        <span class="attr">#[expect(
+<a href=#152 id=152 data-nosnippet>152</a>            clippy::disallowed_methods,
+<a href=#153 id=153 data-nosnippet>153</a>            reason = <span class="string">"nondeterministic iteration order, fine for checks"
+<a href=#154 id=154 data-nosnippet>154</a>        </span>)]
+<a href=#155 id=155 data-nosnippet>155</a>        </span><span class="kw">for </span>c <span class="kw">in </span><span class="self">self</span>.clusters.keys() {
+<a href=#156 id=156 data-nosnippet>156</a>            <span class="macro">assert!</span>(
+<a href=#157 id=157 data-nosnippet>157</a>                <span class="self">self</span>.cluster_max_sizes.contains_key(c),
+<a href=#158 id=158 data-nosnippet>158</a>                <span class="string">"Cluster {:?} missing max size; call with_cluster_size() before compiled()"</span>,
+<a href=#159 id=159 data-nosnippet>159</a>                c
+<a href=#160 id=160 data-nosnippet>160</a>            );
+<a href=#161 id=161 data-nosnippet>161</a>        }
+<a href=#162 id=162 data-nosnippet>162</a>
+<a href=#163 id=163 data-nosnippet>163</a>        <span class="kw">let </span>(bin, trybuild) = create_sim_graph_trybuild(
+<a href=#164 id=164 data-nosnippet>164</a>            process_graphs,
+<a href=#165 id=165 data-nosnippet>165</a>            cluster_graphs,
+<a href=#166 id=166 data-nosnippet>166</a>            <span class="self">self</span>.cluster_max_sizes,
+<a href=#167 id=167 data-nosnippet>167</a>            process_tick_graphs,
+<a href=#168 id=168 data-nosnippet>168</a>            cluster_tick_graphs,
+<a href=#169 id=169 data-nosnippet>169</a>            sim_emit.extra_stmts_global,
+<a href=#170 id=170 data-nosnippet>170</a>            sim_emit.extra_stmts_cluster,
+<a href=#171 id=171 data-nosnippet>171</a>        );
+<a href=#172 id=172 data-nosnippet>172</a>
+<a href=#173 id=173 data-nosnippet>173</a>        <span class="kw">let </span>out = compile_sim(bin, trybuild).unwrap();
+<a href=#174 id=174 data-nosnippet>174</a>        <span class="kw">let </span>lib = <span class="kw">unsafe </span>{ Library::new(<span class="kw-2">&amp;</span>out).unwrap() };
+<a href=#175 id=175 data-nosnippet>175</a>
+<a href=#176 id=176 data-nosnippet>176</a>        CompiledSim {
+<a href=#177 id=177 data-nosnippet>177</a>            _path: out,
+<a href=#178 id=178 data-nosnippet>178</a>            lib,
+<a href=#179 id=179 data-nosnippet>179</a>            externals_port_registry: <span class="self">self</span>.externals_port_registry.take(),
+<a href=#180 id=180 data-nosnippet>180</a>        }
+<a href=#181 id=181 data-nosnippet>181</a>    }
+<a href=#182 id=182 data-nosnippet>182</a>}
 </code></pre></div></section></main></body></html>
