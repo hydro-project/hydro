@@ -1941,6 +1941,100 @@ where
     {
         self.entries().join(other.entries()).into_keyed()
     }
+    /// Deduplicates values within each key group, emitting each unique value per key
+    /// exactly once.
+    ///
+    /// The output keyed stream has an [`ExactlyOnce`] guarantee on the values within
+    /// each group. This is a streaming operator that processes elements as they arrive.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, 10), (2, 20), (1, 10), (2, 30), (1, 20)]))
+    ///     .into_keyed()
+    ///     .unique()
+    /// # .entries()
+    /// # }, |mut stream| async move {
+    /// // unique values per key: { 1: [10, 20], 2: [20, 30] }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..4 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # let mut key1: Vec<_> = results.iter().filter(|(k, _)| *k == 1).map(|(_, v)| *v).collect();
+    /// # let mut key2: Vec<_> = results.iter().filter(|(k, _)| *k == 2).map(|(_, v)| *v).collect();
+    /// # key1.sort();
+    /// # key2.sort();
+    /// # assert_eq!(key1, vec![10, 20]);
+    /// # assert_eq!(key2, vec![20, 30]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn unique(self) -> KeyedStream<K, V, L, B, O, ExactlyOnce>
+    where
+        V: Eq + Hash,
+    {
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::UniqueKeyed {
+                input: Box::new(self.ir_node.into_inner()),
+                metadata:
+                    self.location.new_node_metadata(
+                        KeyedStream::<K, V, L, B, O, ExactlyOnce>::collection_kind(),
+                    ),
+            },
+        )
+    }
+
+    /// Assigns a zero-based index to each value within each key group, emitting
+    /// `(K, (index, V))` tuples with per-key sequential indices.
+    ///
+    /// The output keyed stream has [`TotalOrder`] and [`ExactlyOnce`] guarantees.
+    /// This is a streaming operator that processes elements as they arrive.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, 10), (2, 20), (1, 30)]))
+    ///     .into_keyed()
+    ///     .enumerate()
+    /// # .entries()
+    /// # }, |mut stream| async move {
+    /// // per-key indices: { 1: [(0, 10), (1, 30)], 2: [(0, 20)] }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # let key1: Vec<_> = results.iter().filter(|(k, _)| *k == 1).map(|(_, v)| *v).collect();
+    /// # let key2: Vec<_> = results.iter().filter(|(k, _)| *k == 2).map(|(_, v)| *v).collect();
+    /// # assert_eq!(key1, vec![(0, 10), (1, 30)]);
+    /// # assert_eq!(key2, vec![(0, 20)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn enumerate(self) -> KeyedStream<K, (usize, V), L, B, TotalOrder, ExactlyOnce> {
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::EnumerateKeyed {
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata(KeyedStream::<
+                    K,
+                    (usize, V),
+                    L,
+                    B,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        )
+    }
 }
 
 impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, L, B, O, R>
@@ -2043,6 +2137,58 @@ impl<'a, K, V, L, O: Ordering, R: Retries> KeyedStream<K, V, L, Bounded, O, R>
 where
     L: Location<'a>,
 {
+    /// Sorts the values within each key group in ascending order.
+    ///
+    /// The output keyed stream has a [`TotalOrder`] guarantee on the values within
+    /// each group. This operator will block until all elements in the input stream
+    /// are available, so it requires the input stream to be [`Bounded`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process
+    ///     .source_iter(q!(vec![(1, 3), (2, 1), (1, 1), (2, 2)]))
+    ///     .into_keyed();
+    /// let batch = numbers.batch(&tick, nondet!(/** test */));
+    /// batch.sort().all_ticks()
+    /// # .entries()
+    /// # }, |mut stream| async move {
+    /// // values sorted within each key: { 1: [1, 3], 2: [1, 2] }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..4 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # let key1_vals: Vec<_> = results.iter().filter(|(k, _)| *k == 1).map(|(_, v)| *v).collect();
+    /// # let key2_vals: Vec<_> = results.iter().filter(|(k, _)| *k == 2).map(|(_, v)| *v).collect();
+    /// # assert_eq!(key1_vals, vec![1, 3]);
+    /// # assert_eq!(key2_vals, vec![1, 2]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn sort(self) -> KeyedStream<K, V, L, Bounded, TotalOrder, R>
+    where
+        V: Ord,
+    {
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::SortKeyed {
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata(KeyedStream::<
+                    K,
+                    V,
+                    L,
+                    Bounded,
+                    TotalOrder,
+                    R,
+                >::collection_kind()),
+            },
+        )
+    }
+
     /// Produces a new keyed stream that combines the groups of the inputs by first emitting the
     /// elements of the `self` stream, and then emits the elements of the `other` stream (if a key
     /// is only present in one of the inputs, its values are passed through as-is). The output has

@@ -1135,7 +1135,15 @@ impl HydroNode {
                 metadata,
                 ..
             }
+            | HydroNode::EnumerateKeyed {
+                input: inner,
+                metadata,
+            }
             | HydroNode::Unique {
+                input: inner,
+                metadata,
+            }
+            | HydroNode::UniqueKeyed {
                 input: inner,
                 metadata,
             }
@@ -1158,6 +1166,10 @@ impl HydroNode {
 
             // Aggregation operation - semantic tags extracted from metadata
             HydroNode::Sort {
+                input: inner,
+                metadata,
+            }
+            | HydroNode::SortKeyed {
                 input: inner,
                 metadata,
             } => build_simple_transform(TransformParams {

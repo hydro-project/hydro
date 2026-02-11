@@ -1722,6 +1722,10 @@ pub enum HydroNode {
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
+    EnumerateKeyed {
+        input: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
     Inspect {
         f: DebugExpr,
         input: Box<HydroNode>,
@@ -1732,8 +1736,16 @@ pub enum HydroNode {
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
+    UniqueKeyed {
+        input: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
 
     Sort {
+        input: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
+    SortKeyed {
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
@@ -1916,10 +1928,13 @@ impl HydroNode {
             | HydroNode::Filter { input, .. }
             | HydroNode::FilterMap { input, .. }
             | HydroNode::Sort { input, .. }
+            | HydroNode::SortKeyed { input, .. }
             | HydroNode::DeferTick { input, .. }
             | HydroNode::Enumerate { input, .. }
+            | HydroNode::EnumerateKeyed { input, .. }
             | HydroNode::Inspect { input, .. }
             | HydroNode::Unique { input, .. }
+            | HydroNode::UniqueKeyed { input, .. }
             | HydroNode::Network { input, .. }
             | HydroNode::Fold { input, .. }
             | HydroNode::Scan { input, .. }
@@ -2096,6 +2111,18 @@ impl HydroNode {
                 metadata: metadata.clone(),
             },
             HydroNode::Sort { input, metadata } => HydroNode::Sort {
+                input: Box::new(input.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::SortKeyed { input, metadata } => HydroNode::SortKeyed {
+                input: Box::new(input.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::UniqueKeyed { input, metadata } => HydroNode::UniqueKeyed {
+                input: Box::new(input.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::EnumerateKeyed { input, metadata } => HydroNode::EnumerateKeyed {
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
@@ -2970,6 +2997,33 @@ impl HydroNode {
                         ident_stack.push(sort_ident);
                     }
 
+                    HydroNode::SortKeyed { .. } => {
+                        let input_ident = ident_stack.pop().unwrap();
+
+                        let sort_keyed_ident =
+                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(graph_builders) => {
+                                let builder = graph_builders.get_dfir_mut(&out_location);
+                                builder.add_dfir(
+                                    parse_quote! {
+                                        #sort_keyed_ident = #input_ident -> sort_keyed();
+                                    },
+                                    None,
+                                    Some(&next_stmt_id.to_string()),
+                                );
+                            }
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
+
+                        *next_stmt_id += 1;
+
+                        ident_stack.push(sort_keyed_ident);
+                    }
+
                     HydroNode::DeferTick { .. } => {
                         let input_ident = ident_stack.pop().unwrap();
 
@@ -3027,6 +3081,38 @@ impl HydroNode {
                         *next_stmt_id += 1;
 
                         ident_stack.push(enumerate_ident);
+                    }
+
+                    HydroNode::EnumerateKeyed { input, .. } => {
+                        let input_ident = ident_stack.pop().unwrap();
+
+                        let enumerate_keyed_ident =
+                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(graph_builders) => {
+                                let builder = graph_builders.get_dfir_mut(&out_location);
+                                let lifetime = if input.metadata().location_id.is_top_level() {
+                                    quote!('static)
+                                } else {
+                                    quote!('tick)
+                                };
+                                builder.add_dfir(
+                                    parse_quote! {
+                                        #enumerate_keyed_ident = #input_ident -> enumerate_keyed::<#lifetime>();
+                                    },
+                                    None,
+                                    Some(&next_stmt_id.to_string()),
+                                );
+                            }
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
+
+                        *next_stmt_id += 1;
+
+                        ident_stack.push(enumerate_keyed_ident);
                     }
 
                     HydroNode::Inspect { f, .. } => {
@@ -3087,6 +3173,39 @@ impl HydroNode {
                         *next_stmt_id += 1;
 
                         ident_stack.push(unique_ident);
+                    }
+
+                    HydroNode::UniqueKeyed { input, .. } => {
+                        let input_ident = ident_stack.pop().unwrap();
+
+                        let unique_keyed_ident =
+                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(graph_builders) => {
+                                let builder = graph_builders.get_dfir_mut(&out_location);
+                                let lifetime = if input.metadata().location_id.is_top_level() {
+                                    quote!('static)
+                                } else {
+                                    quote!('tick)
+                                };
+
+                                builder.add_dfir(
+                                    parse_quote! {
+                                        #unique_keyed_ident = #input_ident -> unique_keyed::<#lifetime>();
+                                    },
+                                    None,
+                                    Some(&next_stmt_id.to_string()),
+                                );
+                            }
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
+
+                        *next_stmt_id += 1;
+
+                        ident_stack.push(unique_keyed_ident);
                     }
 
                     HydroNode::Fold { .. } | HydroNode::FoldKeyed { .. } | HydroNode::Scan { .. } => {
@@ -3561,8 +3680,11 @@ impl HydroNode {
             | HydroNode::AntiJoin { .. }
             | HydroNode::DeferTick { .. }
             | HydroNode::Enumerate { .. }
+            | HydroNode::EnumerateKeyed { .. }
             | HydroNode::Unique { .. }
-            | HydroNode::Sort { .. } => {}
+            | HydroNode::UniqueKeyed { .. }
+            | HydroNode::Sort { .. }
+            | HydroNode::SortKeyed { .. } => {}
             HydroNode::Map { f, .. }
             | HydroNode::FlatMap { f, .. }
             | HydroNode::Filter { f, .. }
@@ -3638,7 +3760,10 @@ impl HydroNode {
             HydroNode::Enumerate { metadata, .. } => metadata,
             HydroNode::Inspect { metadata, .. } => metadata,
             HydroNode::Unique { metadata, .. } => metadata,
+            HydroNode::UniqueKeyed { metadata, .. } => metadata,
             HydroNode::Sort { metadata, .. } => metadata,
+            HydroNode::SortKeyed { metadata, .. } => metadata,
+            HydroNode::EnumerateKeyed { metadata, .. } => metadata,
             HydroNode::Scan { metadata, .. } => metadata,
             HydroNode::Fold { metadata, .. } => metadata,
             HydroNode::FoldKeyed { metadata, .. } => metadata,
@@ -3687,7 +3812,10 @@ impl HydroNode {
             HydroNode::Enumerate { metadata, .. } => metadata,
             HydroNode::Inspect { metadata, .. } => metadata,
             HydroNode::Unique { metadata, .. } => metadata,
+            HydroNode::UniqueKeyed { metadata, .. } => metadata,
             HydroNode::Sort { metadata, .. } => metadata,
+            HydroNode::SortKeyed { metadata, .. } => metadata,
+            HydroNode::EnumerateKeyed { metadata, .. } => metadata,
             HydroNode::Scan { metadata, .. } => metadata,
             HydroNode::Fold { metadata, .. } => metadata,
             HydroNode::FoldKeyed { metadata, .. } => metadata,
@@ -3740,10 +3868,13 @@ impl HydroNode {
             | HydroNode::Filter { input, .. }
             | HydroNode::FilterMap { input, .. }
             | HydroNode::Sort { input, .. }
+            | HydroNode::SortKeyed { input, .. }
             | HydroNode::DeferTick { input, .. }
             | HydroNode::Enumerate { input, .. }
+            | HydroNode::EnumerateKeyed { input, .. }
             | HydroNode::Inspect { input, .. }
             | HydroNode::Unique { input, .. }
+            | HydroNode::UniqueKeyed { input, .. }
             | HydroNode::Network { input, .. }
             | HydroNode::Counter { input, .. }
             | HydroNode::ResolveFutures { input, .. }
@@ -3828,7 +3959,10 @@ impl HydroNode {
             HydroNode::Enumerate { .. } => "Enumerate()".to_owned(),
             HydroNode::Inspect { f, .. } => format!("Inspect({:?})", f),
             HydroNode::Unique { .. } => "Unique()".to_owned(),
+            HydroNode::UniqueKeyed { .. } => "UniqueKeyed()".to_owned(),
             HydroNode::Sort { .. } => "Sort()".to_owned(),
+            HydroNode::SortKeyed { .. } => "SortKeyed()".to_owned(),
+            HydroNode::EnumerateKeyed { .. } => "EnumerateKeyed()".to_owned(),
             HydroNode::Fold { init, acc, .. } => format!("Fold({:?}, {:?})", init, acc),
             HydroNode::Scan { init, acc, .. } => format!("Scan({:?}, {:?})", init, acc),
             HydroNode::FoldKeyed { init, acc, .. } => format!("FoldKeyed({:?}, {:?})", init, acc),
