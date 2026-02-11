@@ -77,8 +77,11 @@ pub const ENUMERATE_KEYED: OperatorConstraints = OperatorConstraints {
                     #context.state_ref_unchecked(#counterdata_ident)
                 }.borrow_mut();
 
-                let counter = map.entry(::std::clone::Clone::clone(&k))
-                    .or_insert(0);
+                let counter = if let Some(c) = map.get_mut(&k) {
+                    c
+                } else {
+                    map.entry(::std::clone::Clone::clone(&k)).or_insert(0)
+                };
                 let index = *counter;
                 *counter += 1;
                 (k, (index, v))

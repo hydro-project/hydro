@@ -1601,6 +1601,56 @@ where
         )
         .map(q!(|v| v.unwrap()))
     }
+
+    /// Assigns a zero-based index to each value within each key group, emitting
+    /// `(K, (index, V))` tuples with per-key sequential indices.
+    ///
+    /// The output keyed stream has [`TotalOrder`] and [`ExactlyOnce`] guarantees.
+    /// This is a streaming operator that processes elements as they arrive.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, 10), (2, 20), (1, 30)]))
+    ///     .into_keyed()
+    ///     .enumerate()
+    /// # .entries()
+    /// # }, |mut stream| async move {
+    /// // per-key indices: { 1: [(0, 10), (1, 30)], 2: [(0, 20)] }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # let key1: Vec<_> = results.iter().filter(|(k, _)| *k == 1).map(|(_, v)| *v).collect();
+    /// # let key2: Vec<_> = results.iter().filter(|(k, _)| *k == 2).map(|(_, v)| *v).collect();
+    /// # assert_eq!(key1, vec![(0, 10), (1, 30)]);
+    /// # assert_eq!(key2, vec![(0, 20)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn enumerate(self) -> KeyedStream<K, (usize, V), L, B, TotalOrder, ExactlyOnce>
+    where
+        K: Eq + Hash + Clone,
+    {
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::EnumerateKeyed {
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata(KeyedStream::<
+                    K,
+                    (usize, V),
+                    L,
+                    B,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        )
+    }
 }
 
 impl<'a, K, V, L, B: Boundedness, O: Ordering> KeyedStream<K, V, L, B, O, ExactlyOnce>
@@ -1985,53 +2035,6 @@ where
                     self.location.new_node_metadata(
                         KeyedStream::<K, V, L, B, O, ExactlyOnce>::collection_kind(),
                     ),
-            },
-        )
-    }
-
-    /// Assigns a zero-based index to each value within each key group, emitting
-    /// `(K, (index, V))` tuples with per-key sequential indices.
-    ///
-    /// The output keyed stream has [`TotalOrder`] and [`ExactlyOnce`] guarantees.
-    /// This is a streaming operator that processes elements as they arrive.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// process
-    ///     .source_iter(q!(vec![(1, 10), (2, 20), (1, 30)]))
-    ///     .into_keyed()
-    ///     .enumerate()
-    /// # .entries()
-    /// # }, |mut stream| async move {
-    /// // per-key indices: { 1: [(0, 10), (1, 30)], 2: [(0, 20)] }
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..3 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # let key1: Vec<_> = results.iter().filter(|(k, _)| *k == 1).map(|(_, v)| *v).collect();
-    /// # let key2: Vec<_> = results.iter().filter(|(k, _)| *k == 2).map(|(_, v)| *v).collect();
-    /// # assert_eq!(key1, vec![(0, 10), (1, 30)]);
-    /// # assert_eq!(key2, vec![(0, 20)]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn enumerate(self) -> KeyedStream<K, (usize, V), L, B, TotalOrder, ExactlyOnce> {
-        KeyedStream::new(
-            self.location.clone(),
-            HydroNode::EnumerateKeyed {
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata(KeyedStream::<
-                    K,
-                    (usize, V),
-                    L,
-                    B,
-                    TotalOrder,
-                    ExactlyOnce,
-                >::collection_kind()),
             },
         )
     }

@@ -19,7 +19,9 @@ fn run_unique_keyed(input: Vec<(String, i32)>) -> Vec<(String, i32)> {
 fn distinct_values_per_key(tuples: &[(String, i32)]) -> BTreeMap<String, BTreeSet<i32>> {
     let mut map = BTreeMap::new();
     for (k, v) in tuples {
-        map.entry(k.clone()).or_insert_with(BTreeSet::new).insert(*v);
+        map.entry(k.clone())
+            .or_insert_with(BTreeSet::new)
+            .insert(*v);
     }
     map
 }
