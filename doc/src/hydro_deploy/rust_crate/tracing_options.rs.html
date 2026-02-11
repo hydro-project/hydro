@@ -60,4 +60,9 @@
 <a href=#60 id=60 data-nosnippet>60</a>///
 <a href=#61 id=61 data-nosnippet>61</a>/// Uses `yum` to install `perf`, sets kernel parameters to allow tracing, and disables `kptr_restrict`.
 <a href=#62 id=62 data-nosnippet>62</a></span><span class="kw">pub const </span>AL2_PERF_SETUP_COMMAND: <span class="kw-2">&amp;</span>str = <span class="string">"sudo sh -c 'yum install -y perf &amp;&amp; echo -1 &gt; /proc/sys/kernel/perf_event_paranoid &amp;&amp; echo 0 &gt; /proc/sys/kernel/kptr_restrict'"</span>;
+<a href=#63 id=63 data-nosnippet>63</a>
+<a href=#64 id=64 data-nosnippet>64</a><span class="doccomment">/// A command to run on Amazon Linux 2023 to set up `perf` for tracing.
+<a href=#65 id=65 data-nosnippet>65</a>///
+<a href=#66 id=66 data-nosnippet>66</a>/// Uses `dnf` to install `perf`, sets kernel parameters to allow tracing, and disables `kptr_restrict`.
+<a href=#67 id=67 data-nosnippet>67</a></span><span class="kw">pub const </span>AL2023_PERF_SETUP_COMMAND: <span class="kw-2">&amp;</span>str = <span class="string">"sudo sh -c 'dnf update -y &amp;&amp; dnf install perf -y &amp;&amp; echo -1 &gt; /proc/sys/kernel/perf_event_paranoid &amp;&amp; echo 0 &gt; /proc/sys/kernel/kptr_restrict'"</span>;
 </code></pre></div></section></main></body></html>
