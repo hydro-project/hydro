@@ -13,7 +13,7 @@ use super::{
 ///     -> fold::<'static>(::std::collections::BTreeMap::<&str, Vec<i32>>::new, |map: &mut ::std::collections::BTreeMap<&str, Vec<i32>>, (k, v): (&str, i32)| {
 ///         map.entry(k).or_default().push(v);
 ///     })
-///     -> for_each(|map: ::std::collections::BTreeMap::<&str, Vec<(usize, &str)>>| {
+///     -> for_each(|map: ::std::collections::BTreeMap::<&str, Vec<i32>>| {
 ///         assert_eq!(map.get("a").unwrap(), &vec![1, 2]);
 ///         assert_eq!(map.get("b").unwrap(), &vec![2, 3]);
 ///     });
