@@ -186,8 +186,6 @@ async fn main() {
 
     deployment.deploy().await.unwrap();
 
-    deployment.start().await.unwrap();
-
     deployment
         .start_until(async {
             std::io::stdin().read_line(&mut String::new()).unwrap();
