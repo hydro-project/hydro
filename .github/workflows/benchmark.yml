@@ -87,6 +87,7 @@ jobs:
         run: |
           time cargo bench -p benches -- dfir --output-format bencher | tee output.txt
           time cargo bench -p benches -- micro/ops/ --output-format bencher | tee -a output.txt
+          time cargo bench -p hydro_test --profile=dev | tee -a output.txt # due to staging, no need to apply optimizations to the bench runner
 
       - name: Generate benchmark page
         uses: benchmark-action/github-action-benchmark@v1

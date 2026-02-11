@@ -58,3 +58,7 @@ tokio = { version = "1.29.0", features = ["full"] }
 tokio-test = "0.4.4"
 dfir_rs = { path = "../dfir_rs", version = "^0.15.0", default-features = false }
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
+
+[[bench]]
+name = "paxos_bench"
+harness = false
