@@ -13,7 +13,7 @@ use super::{
 ///     -> fold::<'static>(::std::collections::BTreeMap::<&str, Vec<i32>>::new, |map: &mut ::std::collections::BTreeMap<&str, Vec<i32>>, (k, v): (&str, i32)| {
 ///         map.entry(k).or_default().push(v);
 ///     })
-///     -> for_each(|map| {
+///     -> for_each(|map: ::std::collections::BTreeMap::<&str, Vec<(usize, &str)>>| {
 ///         assert_eq!(map.get("a").unwrap(), &vec![1, 2]);
 ///         assert_eq!(map.get("b").unwrap(), &vec![2, 3]);
 ///     });
@@ -78,9 +78,19 @@ pub const UNIQUE_KEYED: OperatorConstraints = OperatorConstraints {
                     #context.state_ref_unchecked(#uniquedata_ident)
                 }.borrow_mut();
 
-                map.entry(::std::clone::Clone::clone(k))
-                    .or_default()
-                    .insert(::std::clone::Clone::clone(v))
+                if let Some(set) = map.get_mut(k) {
+                    if set.contains(v) {
+                        false
+                    } else {
+                        set.insert(::std::clone::Clone::clone(v));
+                        true
+                    }
+                } else {
+                    let mut set = #root::rustc_hash::FxHashSet::default();
+                    set.insert(::std::clone::Clone::clone(v));
+                    map.insert(::std::clone::Clone::clone(k), set);
+                    true
+                }
             }
         };
         let write_iterator = if is_pull {

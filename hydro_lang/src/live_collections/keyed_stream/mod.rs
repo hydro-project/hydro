@@ -2025,7 +2025,8 @@ where
     /// ```
     pub fn unique(self) -> KeyedStream<K, V, L, B, O, ExactlyOnce>
     where
-        V: Eq + Hash,
+        K: Eq + Hash + Clone,
+        V: Eq + Hash + Clone,
     {
         KeyedStream::new(
             self.location.clone(),

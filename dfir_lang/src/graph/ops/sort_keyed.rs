@@ -5,8 +5,8 @@ use super::{
     WriteContextArgs,
 };
 
-/// Takes a `(K, V)` stream as input, groups tuples by key K, sorts the values V within each
-/// group in ascending order, and emits `(K, V)` tuples with values sorted per key group.
+/// Takes a `(K, V)` stream as input and sorts tuples lexicographically by `(K, V)`, so that
+/// values within each key group are in ascending order and keys are grouped together.
 ///
 /// ```dfir
 /// source_iter([("a", 3), ("b", 1), ("a", 1), ("b", 2)])
@@ -20,7 +20,7 @@ use super::{
 ///     });
 /// ```
 ///
-/// `sort_keyed` is blocking. Only the values collected within a single tick will be sorted and
+/// `sort_keyed` is blocking. Only the tuples collected within a single tick will be sorted and
 /// emitted.
 pub const SORT_KEYED: OperatorConstraints = OperatorConstraints {
     name: "sort_keyed",
@@ -52,27 +52,11 @@ pub const SORT_KEYED: OperatorConstraints = OperatorConstraints {
 
         let input = &inputs[0];
         let write_iterator = quote_spanned! {op_span=>
+            // TODO(mingwei): unnecessary extra handoff into_iter() then collect().
             let #ident = {
-                let mut map: #root::rustc_hash::FxHashMap<_, ::std::vec::Vec<_>> =
-                    #root::rustc_hash::FxHashMap::default();
-                {
-                    let fut = #root::compiled::pull::ForEach::new(#input, |(k, v)| {
-                        map.entry(k).or_default().push(v);
-                    });
-                    let () = #work_fn_async(fut).await;
-                }
-                #root::futures::stream::iter(
-                    {
-                        #[allow(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
-                        let items = map.drain()
-                            .flat_map(|(k, mut vs)| {
-                                vs.sort_unstable();
-                                vs.into_iter().map(move |v| (k.clone(), v))
-                            })
-                            .collect::<::std::vec::Vec<_>>();
-                        items
-                    }
-                )
+                let mut tmp = #work_fn_async(#root::futures::stream::StreamExt::collect::<::std::vec::Vec<_>>(#input)).await;
+                <[_]>::sort_unstable_by(&mut tmp, |a, b| a.1.cmp(&b.1));
+                #root::futures::stream::iter(tmp)
             };
         };
         Ok(OperatorWriteOutput {
