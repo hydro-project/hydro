@@ -60,3 +60,8 @@ pub const DEBIAN_PERF_SETUP_COMMAND: &str = "sudo sh -c 'apt update && apt insta
 ///
 /// Uses `yum` to install `perf`, sets kernel parameters to allow tracing, and disables `kptr_restrict`.
 pub const AL2_PERF_SETUP_COMMAND: &str = "sudo sh -c 'yum install -y perf && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";
+
+/// A command to run on Amazon Linux 2023 to set up `perf` for tracing.
+///
+/// Uses `dnf` to install `perf`, sets kernel parameters to allow tracing, and disables `kptr_restrict`.
+pub const AL2023_PERF_SETUP_COMMAND: &str = "sudo sh -c 'dnf update -y && dnf install perf -y && echo -1 > /proc/sys/kernel/perf_event_paranoid && echo 0 > /proc/sys/kernel/kptr_restrict'";

@@ -288,9 +288,8 @@ fn sequence_payload<'a, P: PaxosPayload>(
         .clone()
         .flat_map_unordered(q!(move |((slot, ballot), payload)| {
             let row = slot % num_acceptor_rows;
-            let mut p2as = Vec::new();
-            for i in 0..num_acceptor_cols {
-                p2as.push((
+            (0..num_acceptor_cols).map(move |i| {
+                (
                     MemberId::<Acceptor>::from_raw_id((row * num_acceptor_cols + i) as u32),
                     P2a {
                         sender: MemberId::<ProxyLeader>::from_raw_id(
@@ -300,9 +299,8 @@ fn sequence_payload<'a, P: PaxosPayload>(
                         ballot: ballot.clone(),
                         value: payload.clone(),
                     },
-                ));
-            }
-            p2as
+                )
+            })
         }))
         .end_atomic()
         .demux(acceptors, TCP.fail_stop().bincode())

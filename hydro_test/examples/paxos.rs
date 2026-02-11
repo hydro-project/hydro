@@ -2,6 +2,9 @@ use std::sync::Arc;
 
 use clap::{ArgAction, Parser};
 use hydro_deploy::gcp::GcpNetwork;
+use hydro_deploy::rust_crate::tracing_options::{
+    AL2_PERF_SETUP_COMMAND, DEBIAN_PERF_SETUP_COMMAND, TracingOptions,
+};
 use hydro_deploy::{AwsNetwork, Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
 use hydro_lang::viz::config::GraphConfig;
@@ -18,6 +21,10 @@ type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 struct Args {
     #[command(flatten)]
     graph: GraphConfig,
+
+    /// Include CPU tracing profiling (takes a long time to download)
+    #[arg(long, action = ArgAction::SetTrue)]
+    tracing: bool,
 
     /// Use GCP for deployment (provide project name)
     #[arg(long)]
@@ -126,36 +133,63 @@ async fn main() {
         "-C opt-level=3 -C codegen-units=1 -C strip=none -C debuginfo=2 -C lto=off"
     };
 
+    let frequency = 128;
+    let setup_command = if args.gcp.is_some() {
+        DEBIAN_PERF_SETUP_COMMAND
+    } else if args.aws {
+        AL2_PERF_SETUP_COMMAND
+    } else {
+        ""
+    };
+    let create_trybuild_host = |host: Arc<dyn Host + 'static>, name: &str, i: usize| {
+        let tbh = TrybuildHost::new(host).rustflags(rustflags);
+        if args.tracing {
+            tbh.tracing(
+                TracingOptions::builder()
+                    .perf_raw_outfile(format!("{name}{i}.perf.data"))
+                    .samply_outfile(format!("{name}{i}.profile"))
+                    .fold_outfile(format!("{name}{i}.data.folded"))
+                    .flamegraph_outfile(format!("{name}{i}.svg"))
+                    .frequency(frequency)
+                    .setup_command(setup_command)
+                    .build(),
+            )
+        } else {
+            tbh
+        }
+    };
+
     let _nodes = optimized
         .with_cluster(
             &proposers,
-            (0..f + 1)
-                .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
+            (0..f + 1).map(|i| create_trybuild_host(create_host(&mut deployment), "proposers", i)),
         )
         .with_cluster(
             &acceptors,
             (0..2 * f + 1)
-                .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
+                .map(|i| create_trybuild_host(create_host(&mut deployment), "acceptors", i)),
         )
         .with_cluster(
             &clients,
             (0..num_clients)
-                .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
+                .map(|i| create_trybuild_host(create_host(&mut deployment), "clients", i)),
         )
         .with_process(
             &client_aggregator,
-            TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags),
+            create_trybuild_host(create_host(&mut deployment), "client_aggregator", 0),
         )
         .with_cluster(
             &replicas,
-            (0..f + 1)
-                .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
+            (0..f + 1).map(|i| create_trybuild_host(create_host(&mut deployment), "replicas", i)),
         )
         .deploy(&mut deployment);
 
     deployment.deploy().await.unwrap();
 
-    deployment.start().await.unwrap();
-
-    tokio::signal::ctrl_c().await.unwrap();
+    deployment
+        .start_until(async {
+            std::io::stdin().read_line(&mut String::new()).unwrap();
+        })
+        .await
+        .unwrap();
 }
