@@ -75,7 +75,7 @@ pub struct ForwardHandle<'a, C: ReceiverComplete<'a, ForwardRef>> {
     reason = "only Hydro collections can implement ReceiverComplete"
 )]
 impl<'a, C: ReceiverComplete<'a, ForwardRef>> ForwardHandle<'a, C> {
-    pub(crate)fn new(ident: syn::Ident, expected_location: LocationId) -> Self {
+    pub(crate) fn new(ident: syn::Ident, expected_location: LocationId) -> Self {
         Self {
             completed: false,
             ident,
