@@ -200,10 +200,9 @@ pub trait Location<'a>: dynamic::DynLocation {
     /// Prefer using [`Location::tick`] when you know the location is top-level.
     fn try_tick(&self) -> Option<Tick<Self>> {
         if Self::is_top_level() {
-            let next_id = self.flow_state().borrow_mut().next_clock_id;
-            self.flow_state().borrow_mut().next_clock_id += 1;
+            let id = self.flow_state().borrow_mut().next_clock_id();
             Some(Tick {
-                id: next_id,
+                id,
                 l: self.clone(),
             })
         } else {
@@ -245,10 +244,9 @@ pub trait Location<'a>: dynamic::DynLocation {
     where
         Self: NoTick,
     {
-        let next_id = self.flow_state().borrow_mut().next_clock_id;
-        self.flow_state().borrow_mut().next_clock_id += 1;
+        let id = self.flow_state().borrow_mut().next_clock_id();
         Tick {
-            id: next_id,
+            id,
             l: self.clone(),
         }
     }

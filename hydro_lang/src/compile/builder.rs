@@ -19,8 +19,14 @@ use crate::sim::flow::SimFlow;
 use crate::staging_util::Invariant;
 
 crate::newtype_counter! {
-    /// Counter for generating unique external output identifiers.
+    /// ID for an external output.
     pub struct ExternalPortId(usize);
+
+    /// ID for a [`ForwardRef`] cycle.
+    pub(crate) struct CycleId(usize);
+
+    /// ID for clocks (ticks).
+    pub struct ClockId(usize);
 }
 
 pub(crate) type FlowState = Rc<RefCell<FlowStateInner>>;
@@ -35,17 +41,19 @@ pub(crate) struct FlowStateInner {
     pub(crate) next_external_port: ExternalPortId,
 
     /// Counters for generating identifiers for cycles.
-    pub(crate) cycle_counts: usize,
+    next_cycle_id: CycleId,
 
     /// Counters for clock IDs.
-    pub(crate) next_clock_id: usize,
+    next_clock_id: ClockId,
 }
 
 impl FlowStateInner {
-    pub fn next_cycle_id(&mut self) -> usize {
-        let id = self.cycle_counts;
-        self.cycle_counts += 1;
-        id
+    pub fn next_cycle_id(&mut self) -> CycleId {
+        self.next_cycle_id.get_and_increment()
+    }
+
+    pub fn next_clock_id(&mut self) -> ClockId {
+        self.next_clock_id.get_and_increment()
     }
 
     pub fn push_root(&mut self, root: HydroRoot) {
@@ -115,9 +123,9 @@ impl<'a> FlowBuilder<'a> {
         Self {
             flow_state: Rc::new(RefCell::new(FlowStateInner {
                 roots: Some(vec![]),
-                next_external_port: ExternalPortId(0),
-                cycle_counts: 0,
-                next_clock_id: 0,
+                next_external_port: ExternalPortId::default(),
+                next_cycle_id: CycleId::default(),
+                next_clock_id: ClockId::default(),
             })),
             locations: SlotMap::with_key(),
             location_names: SecondaryMap::new(),
@@ -250,9 +258,9 @@ impl<'a> FlowBuilder<'a> {
         FlowBuilder {
             flow_state: Rc::new(RefCell::new(FlowStateInner {
                 roots: None,
-                next_external_port: ExternalPortId(0),
-                cycle_counts: 0,
-                next_clock_id: 0,
+                next_external_port: ExternalPortId::default(),
+                next_cycle_id: CycleId::default(),
+                next_clock_id: ClockId::default(),
             })),
             locations: built.locations.clone(),
             location_names: built.location_names.clone(),

@@ -7,7 +7,7 @@ use stageleft::{QuotedWithContext, q};
 #[cfg(stageleft_runtime)]
 use super::dynamic::DynLocation;
 use super::{Cluster, Location, LocationId, Process};
-use crate::compile::builder::FlowState;
+use crate::compile::builder::{ClockId, FlowState};
 use crate::compile::ir::{HydroNode, HydroSource};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial};
@@ -78,7 +78,8 @@ pub trait DeferTick {
 /// Marks the stream as being inside the single global clock domain.
 #[derive(Clone)]
 pub struct Tick<L> {
-    pub(crate) id: usize,
+    pub(crate) id: ClockId,
+    /// Location.
     pub(crate) l: L,
 }
 
