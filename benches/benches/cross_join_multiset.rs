@@ -97,7 +97,7 @@ where
             self.rhs_items.push(v2);
         }
         while let Some(lhs) = self.lhs.peek() {
-            while let Some(rhs) = self.rhs_items.get(self.rhs_idx) {
+            if let Some(rhs) = self.rhs_items.get(self.rhs_idx) {
                 self.rhs_idx += 1;
 
                 return Some((lhs.clone(), rhs.clone()));
