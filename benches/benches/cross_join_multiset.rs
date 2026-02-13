@@ -175,8 +175,8 @@ fn ops(c: &mut Criterion) {
             let mut x: u32 = 123;
             std::iter::from_fn(move || {
                 x = x.wrapping_mul(16843009).wrapping_add(3014898611);
-                let l = ((x & 0x00ff0000) >> 16) ^ (x & 0x00000ff);
-                let u = ((x & 0xff000000) >> 16) ^ (x & 0x000ff00);
+                let l = ((x & 0x00ff0000) >> 16) ^ (x & 0x000000ff);
+                let u = ((x & 0xff000000) >> 16) ^ (x & 0x0000ff00);
                 Some((l << 8) | (u >> 8))
             })
             .take(n)
