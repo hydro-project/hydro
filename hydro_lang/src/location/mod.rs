@@ -604,11 +604,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     where
         Self: Sized + NoTick,
     {
-        let next_external_port_id = from
-            .flow_state
-            .borrow_mut()
-            .next_external_port
-            .get_and_increment();
+        let next_external_port_id = from.flow_state.borrow_mut().next_external_port();
 
         let (fwd_ref, to_sink) =
             self.forward_ref::<Stream<T, Self, Unbounded, TotalOrder, ExactlyOnce>>();
@@ -683,11 +679,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     where
         Self: Sized + NoTick,
     {
-        let next_external_port_id = from
-            .flow_state
-            .borrow_mut()
-            .next_external_port
-            .get_and_increment();
+        let next_external_port_id = from.flow_state.borrow_mut().next_external_port();
 
         let (fwd_ref, to_sink) =
             self.forward_ref::<Stream<OutT, Self, Unbounded, TotalOrder, ExactlyOnce>>();
@@ -778,11 +770,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     where
         Self: Sized + NoTick,
     {
-        let next_external_port_id = from
-            .flow_state
-            .borrow_mut()
-            .next_external_port
-            .get_and_increment();
+        let next_external_port_id = from.flow_state.borrow_mut().next_external_port();
 
         let (fwd_ref, to_sink) =
             self.forward_ref::<KeyedStream<u64, T, Self, Unbounded, NoOrder, ExactlyOnce>>();
@@ -903,11 +891,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     where
         Self: Sized + NoTick,
     {
-        let next_external_port_id = from
-            .flow_state
-            .borrow_mut()
-            .next_external_port
-            .get_and_increment();
+        let next_external_port_id = from.flow_state.borrow_mut().next_external_port();
 
         let (fwd_ref, to_sink) =
             self.forward_ref::<KeyedStream<u64, OutT, Self, Unbounded, NoOrder, ExactlyOnce>>();

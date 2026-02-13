@@ -35,10 +35,10 @@ pub(crate) struct FlowStateInner {
     /// Tracks the roots of the dataflow IR. This is referenced by
     /// `Stream` and `HfCycle` to build the IR. The inner option will
     /// be set to `None` when this builder is finalized.
-    pub(crate) roots: Option<Vec<HydroRoot>>,
+    roots: Option<Vec<HydroRoot>>,
 
     /// Counter for generating unique external output identifiers.
-    pub(crate) next_external_port: ExternalPortId,
+    next_external_port: ExternalPortId,
 
     /// Counters for generating identifiers for cycles.
     next_cycle_id: CycleId,
@@ -48,6 +48,10 @@ pub(crate) struct FlowStateInner {
 }
 
 impl FlowStateInner {
+    pub fn next_external_port(&mut self) -> ExternalPortId {
+        self.next_external_port.get_and_increment()
+    }
+
     pub fn next_cycle_id(&mut self) -> CycleId {
         self.next_cycle_id.get_and_increment()
     }

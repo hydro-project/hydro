@@ -343,7 +343,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
 
         let mut flow_state_borrow = self.location.flow_state().borrow_mut();
 
-        let external_port_id = flow_state_borrow.next_external_port.get_and_increment();
+        let external_port_id = flow_state_borrow.next_external_port();
 
         flow_state_borrow.push_root(HydroRoot::SendExternal {
             to_external_key: other.key,
