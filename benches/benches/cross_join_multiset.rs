@@ -93,7 +93,7 @@ where
     type Item = (I1::Item, I2::Item);
 
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some(v2) = self.rhs.next() {
+        for v2 in self.rhs.by_ref() {
             self.rhs_items.push(v2);
         }
         while let Some(lhs) = self.lhs.peek() {
