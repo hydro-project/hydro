@@ -1116,12 +1116,7 @@ pub trait Location<'a>: dynamic::DynLocation {
         let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
 
         (
-            ForwardHandle {
-                completed: false,
-                ident: ident.clone(),
-                expected_location: Location::id(self),
-                _phantom: PhantomData,
-            },
+            ForwardHandle::new(ident.clone(), Location::id(self)),
             S::create_source(ident, self.clone()),
         )
     }

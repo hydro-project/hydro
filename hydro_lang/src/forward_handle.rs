@@ -56,18 +56,33 @@ where
     ) -> Self;
 }
 
+/// A handle that can be used to fulfill a forward reference.
+///
+/// The `C` type parameter specifies the collection type that can be used to complete the handle.
 #[expect(
     private_bounds,
     reason = "only Hydro collections can implement ReceiverComplete"
 )]
-/// A handle that can be used to fulfill a forward reference.
-///
-/// The `C` type parameter specifies the collection type that can be used to complete the handle.
 pub struct ForwardHandle<'a, C: ReceiverComplete<'a, ForwardRef>> {
-    pub(crate) completed: bool,
-    pub(crate) ident: syn::Ident,
-    pub(crate) expected_location: LocationId,
-    pub(crate) _phantom: Invariant<'a, C>,
+    completed: bool,
+    ident: syn::Ident,
+    expected_location: LocationId,
+    _phantom: Invariant<'a, C>,
+}
+
+#[expect(
+    private_bounds,
+    reason = "only Hydro collections can implement ReceiverComplete"
+)]
+impl<'a, C: ReceiverComplete<'a, ForwardRef>> ForwardHandle<'a, C> {
+    pub(crate)fn new(ident: syn::Ident, expected_location: LocationId) -> Self {
+        Self {
+            completed: false,
+            ident,
+            expected_location,
+            _phantom: std::marker::PhantomData,
+        }
+    }
 }
 
 impl<'a, C: ReceiverComplete<'a, ForwardRef>> Drop for ForwardHandle<'a, C> {
