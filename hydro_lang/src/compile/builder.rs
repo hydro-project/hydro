@@ -22,11 +22,17 @@ crate::newtype_counter! {
     /// ID for an external output.
     pub struct ExternalPortId(usize);
 
-    /// ID for a [`ForwardRef`] cycle.
-    pub(crate) struct CycleId(usize);
+    /// ID for a [`crate::location::Location::forward_ref`] cycle.
+    pub struct CycleId(usize);
 
     /// ID for clocks (ticks).
     pub struct ClockId(usize);
+}
+
+impl CycleId {
+    pub(crate) fn as_ident(&self) -> syn::Ident {
+        syn::Ident::new(&format!("cycle_{}", self), proc_macro2::Span::call_site())
+    }
 }
 
 pub(crate) type FlowState = Rc<RefCell<FlowStateInner>>;

@@ -886,13 +886,15 @@ impl HydroRoot {
                 NodeLabel::with_exprs("dest_sink".to_owned(), vec![sink.clone()]),
             ),
 
-            HydroRoot::CycleSink { ident, input, .. } => build_sink_node(
+            HydroRoot::CycleSink {
+                cycle_id, input, ..
+            } => build_sink_node(
                 structure,
                 seen_tees,
                 config,
                 input,
                 None,
-                NodeLabel::static_label(format!("cycle_sink({})", ident)),
+                NodeLabel::static_label(format!("cycle_sink({})", cycle_id)),
             ),
 
             HydroRoot::EmbeddedOutput { ident, input, .. } => build_sink_node(
@@ -1074,8 +1076,8 @@ impl HydroNode {
             ),
 
             HydroNode::CycleSource {
-                ident, metadata, ..
-            } => build_source_node(structure, metadata, format!("cycle_source({})", ident)),
+                cycle_id, metadata, ..
+            } => build_source_node(structure, metadata, format!("cycle_source({})", cycle_id)),
 
             HydroNode::Tee { inner, metadata } => {
                 let ptr = inner.as_ptr();

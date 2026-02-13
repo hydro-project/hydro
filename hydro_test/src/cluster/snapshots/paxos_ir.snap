@@ -4,18 +4,18 @@ expression: built.ir()
 ---
 [
     CycleSink {
-        ident: Ident {
-            sym: cycle_0,
-        },
+        cycle_id: CycleId(
+            0,
+        ),
         input: FilterMap {
             f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , core :: option :: Option < i32 >) , core :: option :: Option < (u32 , core :: option :: Option < i32 >) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; let num_clients_per_node__free = 100usize ; move | (virtual_id , _) | { if virtual_id < num_clients_per_node__free as u32 { Some ((virtual_id + 1 , None)) } else { None } } }),
             input: Tee {
                 inner: <tee 0>: ChainFirst {
                     first: DeferTick {
                         input: CycleSource {
-                            ident: Ident {
-                                sym: cycle_0,
-                            },
+                            cycle_id: CycleId(
+                                0,
+                            ),
                             metadata: HydroIrMetadata {
                                 location_id: Tick(0, Cluster(loc3v1)),
                                 collection_kind: Optional {
@@ -164,9 +164,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_8,
-        },
+        cycle_id: CycleId(
+            8,
+        ),
         input: Tee {
             inner: <tee 1>: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , u32) , u32 > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_tagless ((__hydro_lang_cluster_self_id_loc1v1) . clone ()) ; move | (received_max_ballot , ballot_num) | { if received_max_ballot > (Ballot { num : ballot_num , proposer_id : CLUSTER_SELF_ID__free . clone () , }) { received_max_ballot . num + 1 } else { ballot_num } } }),
@@ -187,9 +187,9 @@ expression: built.ir()
                                                                     inner: Chain {
                                                                         first: Chain {
                                                                             first: CycleSource {
-                                                                                ident: Ident {
-                                                                                    sym: cycle_5,
-                                                                                },
+                                                                                cycle_id: CycleId(
+                                                                                    5,
+                                                                                ),
                                                                                 metadata: HydroIrMetadata {
                                                                                     location_id: Cluster(loc1v1),
                                                                                     collection_kind: Stream {
@@ -201,9 +201,9 @@ expression: built.ir()
                                                                                 },
                                                                             },
                                                                             second: CycleSource {
-                                                                                ident: Ident {
-                                                                                    sym: cycle_3,
-                                                                                },
+                                                                                cycle_id: CycleId(
+                                                                                    3,
+                                                                                ),
                                                                                 metadata: HydroIrMetadata {
                                                                                     location_id: Cluster(loc1v1),
                                                                                     collection_kind: Stream {
@@ -225,9 +225,9 @@ expression: built.ir()
                                                                             },
                                                                         },
                                                                         second: CycleSource {
-                                                                            ident: Ident {
-                                                                                sym: cycle_6,
-                                                                            },
+                                                                            cycle_id: CycleId(
+                                                                                6,
+                                                                            ),
                                                                             metadata: HydroIrMetadata {
                                                                                 location_id: Cluster(loc1v1),
                                                                                 collection_kind: Stream {
@@ -392,9 +392,9 @@ expression: built.ir()
                             inner: ChainFirst {
                                 first: DeferTick {
                                     input: CycleSource {
-                                        ident: Ident {
-                                            sym: cycle_8,
-                                        },
+                                        cycle_id: CycleId(
+                                            8,
+                                        ),
                                         metadata: HydroIrMetadata {
                                             location_id: Tick(1, Cluster(loc1v1)),
                                             collection_kind: Singleton {
@@ -481,9 +481,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_6,
-        },
+        cycle_id: CycleId(
+            6,
+        ),
         input: Tee {
             inner: <tee 3>: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
@@ -702,9 +702,9 @@ expression: built.ir()
                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
                                                                                     input: Tee {
                                                                                         inner: <tee 6>: CycleSource {
-                                                                                            ident: Ident {
-                                                                                                sym: cycle_7,
-                                                                                            },
+                                                                                            cycle_id: CycleId(
+                                                                                                7,
+                                                                                            ),
                                                                                             metadata: HydroIrMetadata {
                                                                                                 location_id: Tick(1, Cluster(loc1v1)),
                                                                                                 collection_kind: Optional {
@@ -948,17 +948,17 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_9,
-        },
+        cycle_id: CycleId(
+            9,
+        ),
         input: AntiJoin {
             pos: Tee {
                 inner: <tee 7>: Chain {
                     first: DeferTick {
                         input: CycleSource {
-                            ident: Ident {
-                                sym: cycle_9,
-                            },
+                            cycle_id: CycleId(
+                                9,
+                            ),
                             metadata: HydroIrMetadata {
                                 location_id: Tick(9, Cluster(loc1v1)),
                                 collection_kind: Stream {
@@ -1702,9 +1702,9 @@ expression: built.ir()
                                                                 },
                                                                 right: Cast {
                                                                     inner: CycleSource {
-                                                                        ident: Ident {
-                                                                            sym: cycle_4,
-                                                                        },
+                                                                        cycle_id: CycleId(
+                                                                            4,
+                                                                        ),
                                                                         metadata: HydroIrMetadata {
                                                                             location_id: Tick(2, Cluster(loc2v1)),
                                                                             collection_kind: Singleton {
@@ -1982,9 +1982,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_10,
-        },
+        cycle_id: CycleId(
+            10,
+        ),
         input: Difference {
             pos: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , (usize , usize)) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
@@ -2068,9 +2068,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_7,
-        },
+        cycle_id: CycleId(
+            7,
+        ),
         input: Tee {
             inner: <tee 13>: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (() , ()) , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | (d , _signal) | d }),
@@ -2181,9 +2181,9 @@ expression: built.ir()
                                                                                         },
                                                                                         neg: DeferTick {
                                                                                             input: CycleSource {
-                                                                                                ident: Ident {
-                                                                                                    sym: cycle_10,
-                                                                                                },
+                                                                                                cycle_id: CycleId(
+                                                                                                    10,
+                                                                                                ),
                                                                                                 metadata: HydroIrMetadata {
                                                                                                     location_id: Tick(9, Cluster(loc1v1)),
                                                                                                     collection_kind: Stream {
@@ -2508,9 +2508,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_5,
-        },
+        cycle_id: CycleId(
+            5,
+        ),
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (_ , ballot) | ballot }),
             input: FilterMap {
@@ -2550,9 +2550,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_11,
-        },
+        cycle_id: CycleId(
+            11,
+        ),
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < ((u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) , ()) , (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | (d , _signal) | d }),
             input: CrossSingleton {
@@ -2560,9 +2560,9 @@ expression: built.ir()
                     inner: <tee 16>: Chain {
                         first: DeferTick {
                             input: CycleSource {
-                                ident: Ident {
-                                    sym: cycle_11,
-                                },
+                                cycle_id: CycleId(
+                                    11,
+                                ),
                                 metadata: HydroIrMetadata {
                                     location_id: Tick(11, Cluster(loc3v1)),
                                     collection_kind: Stream {
@@ -2640,9 +2640,9 @@ expression: built.ir()
                                                     second: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , i32) , (u32 , core :: option :: Option < i32 >) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < i32 , core :: option :: Option < i32 > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | payload | Some (payload) }) ; { let orig = f__free ; move | (k , v) | (k , orig (v)) } }),
                                                         input: CycleSource {
-                                                            ident: Ident {
-                                                                sym: cycle_1,
-                                                            },
+                                                            cycle_id: CycleId(
+                                                                1,
+                                                            ),
                                                             metadata: HydroIrMetadata {
                                                                 location_id: Cluster(loc3v1),
                                                                 collection_kind: KeyedStream {
@@ -3334,9 +3334,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_12,
-        },
+        cycle_id: CycleId(
+            12,
+        ),
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , usize) , usize > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (num_payloads , base_slot) | base_slot + num_payloads }),
             input: Cast {
@@ -3787,9 +3787,9 @@ expression: built.ir()
                                                             inner: ChainFirst {
                                                                 first: DeferTick {
                                                                     input: CycleSource {
-                                                                        ident: Ident {
-                                                                            sym: cycle_12,
-                                                                        },
+                                                                        cycle_id: CycleId(
+                                                                            12,
+                                                                        ),
                                                                         metadata: HydroIrMetadata {
                                                                             location_id: Tick(1, Cluster(loc1v1)),
                                                                             collection_kind: Singleton {
@@ -3956,17 +3956,17 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_13,
-        },
+        cycle_id: CycleId(
+            13,
+        ),
         input: AntiJoin {
             pos: Tee {
                 inner: <tee 25>: Chain {
                     first: DeferTick {
                         input: CycleSource {
-                            ident: Ident {
-                                sym: cycle_13,
-                            },
+                            cycle_id: CycleId(
+                                13,
+                            ),
                             metadata: HydroIrMetadata {
                                 location_id: Tick(13, Cluster(loc1v1)),
                                 collection_kind: Stream {
@@ -5050,9 +5050,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_14,
-        },
+        cycle_id: CycleId(
+            14,
+        ),
         input: Difference {
             pos: Tee {
                 inner: <tee 32>: FilterMap {
@@ -5136,17 +5136,17 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_15,
-        },
+        cycle_id: CycleId(
+            15,
+        ),
         input: AntiJoin {
             pos: Tee {
                 inner: <tee 33>: Chain {
                     first: DeferTick {
                         input: CycleSource {
-                            ident: Ident {
-                                sym: cycle_15,
-                            },
+                            cycle_id: CycleId(
+                                15,
+                            ),
                             metadata: HydroIrMetadata {
                                 location_id: Tick(1, Cluster(loc1v1)),
                                 collection_kind: Stream {
@@ -5254,9 +5254,9 @@ expression: built.ir()
                                     },
                                     neg: DeferTick {
                                         input: CycleSource {
-                                            ident: Ident {
-                                                sym: cycle_14,
-                                            },
+                                            cycle_id: CycleId(
+                                                14,
+                                            ),
                                             metadata: HydroIrMetadata {
                                                 location_id: Tick(13, Cluster(loc1v1)),
                                                 collection_kind: Stream {
@@ -5350,9 +5350,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_4,
-        },
+        cycle_id: CycleId(
+            4,
+        ),
         input: Batch {
             inner: YieldConcat {
                 inner: Cast {
@@ -5364,9 +5364,9 @@ expression: built.ir()
                                     input: Tee {
                                         inner: <tee 35>: Batch {
                                             inner: CycleSource {
-                                                ident: Ident {
-                                                    sym: cycle_2,
-                                                },
+                                                cycle_id: CycleId(
+                                                    2,
+                                                ),
                                                 metadata: HydroIrMetadata {
                                                     location_id: Cluster(loc2v1),
                                                     collection_kind: Optional {
@@ -5636,9 +5636,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_3,
-        },
+        cycle_id: CycleId(
+            3,
+        ),
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (_ , ballot) | ballot }),
             input: FilterMap {
@@ -5678,9 +5678,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_16,
-        },
+        cycle_id: CycleId(
+            16,
+        ),
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > , usize) , hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: sequence_payloads :: * ; | (sorted_payload , _) | { sorted_payload } }),
             input: Filter {
@@ -6014,9 +6014,9 @@ expression: built.ir()
                                 },
                                 second: DeferTick {
                                     input: CycleSource {
-                                        ident: Ident {
-                                            sym: cycle_16,
-                                        },
+                                        cycle_id: CycleId(
+                                            16,
+                                        ),
                                         metadata: HydroIrMetadata {
                                             location_id: Tick(15, Cluster(loc5v1)),
                                             collection_kind: Stream {
@@ -6090,9 +6090,9 @@ expression: built.ir()
                                             inner: ChainFirst {
                                                 first: DeferTick {
                                                     input: CycleSource {
-                                                        ident: Ident {
-                                                            sym: cycle_17,
-                                                        },
+                                                        cycle_id: CycleId(
+                                                            17,
+                                                        ),
                                                         metadata: HydroIrMetadata {
                                                             location_id: Tick(15, Cluster(loc5v1)),
                                                             collection_kind: Singleton {
@@ -6219,9 +6219,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_17,
-        },
+        cycle_id: CycleId(
+            17,
+        ),
         input: Tee {
             inner: <tee 38>: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: collections :: hash_map :: HashMap < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > , usize) , usize > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; | (_kv_store , next_slot) | next_slot }),
@@ -6352,9 +6352,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_18,
-        },
+        cycle_id: CycleId(
+            18,
+        ),
         input: Tee {
             inner: <tee 40>: FilterMap {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (core :: option :: Option < usize > , usize) , core :: option :: Option < usize > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; let checkpoint_frequency__free = 1000usize ; move | (max_checkpointed_seq , next_slot) | if max_checkpointed_seq . map (| m | next_slot - m >= checkpoint_frequency__free) . unwrap_or (true) { Some (next_slot) } else { None } }),
@@ -6371,9 +6371,9 @@ expression: built.ir()
                                                 inner: Cast {
                                                     inner: DeferTick {
                                                         input: CycleSource {
-                                                            ident: Ident {
-                                                                sym: cycle_18,
-                                                            },
+                                                            cycle_id: CycleId(
+                                                                18,
+                                                            ),
                                                             metadata: HydroIrMetadata {
                                                                 location_id: Tick(15, Cluster(loc5v1)),
                                                                 collection_kind: Optional {
@@ -6569,9 +6569,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_2,
-        },
+        cycle_id: CycleId(
+            2,
+        ),
         input: YieldConcat {
             inner: Reduce {
                 f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | curr , new | { if new < * curr { * curr = new ; } } }),
@@ -6999,17 +6999,17 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_19,
-        },
+        cycle_id: CycleId(
+            19,
+        ),
         input: AntiJoin {
             pos: Tee {
                 inner: <tee 42>: Chain {
                     first: DeferTick {
                         input: CycleSource {
-                            ident: Ident {
-                                sym: cycle_19,
-                            },
+                            cycle_id: CycleId(
+                                19,
+                            ),
                             metadata: HydroIrMetadata {
                                 location_id: Tick(18, Cluster(loc3v1)),
                                 collection_kind: Stream {
@@ -7303,14 +7303,14 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_20,
-        },
+        cycle_id: CycleId(
+            20,
+        ),
         input: DeferTick {
             input: CycleSource {
-                ident: Ident {
-                    sym: cycle_20,
-                },
+                cycle_id: CycleId(
+                    20,
+                ),
                 metadata: HydroIrMetadata {
                     location_id: Tick(18, Cluster(loc3v1)),
                     collection_kind: Stream {
@@ -7334,9 +7334,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_1,
-        },
+        cycle_id: CycleId(
+            1,
+        ),
         input: Tee {
             inner: <tee 46>: Cast {
                 inner: YieldConcat {
@@ -7387,9 +7387,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_21,
-        },
+        cycle_id: CycleId(
+            21,
+        ),
         input: Cast {
             inner: ChainFirst {
                 first: Map {
@@ -7735,9 +7735,9 @@ expression: built.ir()
                                             inner: ChainFirst {
                                                 first: DeferTick {
                                                     input: CycleSource {
-                                                        ident: Ident {
-                                                            sym: cycle_21,
-                                                        },
+                                                        cycle_id: CycleId(
+                                                            21,
+                                                        ),
                                                         metadata: HydroIrMetadata {
                                                             location_id: Tick(20, Cluster(loc3v1)),
                                                             collection_kind: Singleton {
@@ -8006,9 +8006,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_22,
-        },
+        cycle_id: CycleId(
+            22,
+        ),
         input: Cast {
             inner: ChainFirst {
                 first: Map {
@@ -8067,9 +8067,9 @@ expression: built.ir()
                                             inner: ChainFirst {
                                                 first: DeferTick {
                                                     input: CycleSource {
-                                                        ident: Ident {
-                                                            sym: cycle_22,
-                                                        },
+                                                        cycle_id: CycleId(
+                                                            22,
+                                                        ),
                                                         metadata: HydroIrMetadata {
                                                             location_id: Tick(20, Cluster(loc3v1)),
                                                             collection_kind: Singleton {
@@ -8294,9 +8294,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_23,
-        },
+        cycle_id: CycleId(
+            23,
+        ),
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < ((std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , core :: option :: Option < std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > >) , core :: option :: Option < hydro_test :: __staged :: __deps :: tokio :: time :: Instant >) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | ((old , new) , reset) | { if reset . is_some () { old . replace (Histogram :: < u64 > :: new (3) . unwrap ()) ; } if let Some (new) = new { old . borrow_mut () . add (& * new . borrow_mut ()) . expect ("Error adding value to histogram") ; } old } }),
             input: Cast {
@@ -8308,9 +8308,9 @@ expression: built.ir()
                                     inner: ChainFirst {
                                         first: DeferTick {
                                             input: CycleSource {
-                                                ident: Ident {
-                                                    sym: cycle_23,
-                                                },
+                                                cycle_id: CycleId(
+                                                    23,
+                                                ),
                                                 metadata: HydroIrMetadata {
                                                     location_id: Tick(21, Process(loc4v1)),
                                                     collection_kind: Singleton {
@@ -8733,9 +8733,9 @@ expression: built.ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_24,
-        },
+        cycle_id: CycleId(
+            24,
+        ),
         input: Fold {
             init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | | 0usize }),
             acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , usize , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | curr , new | { * curr += new ; } }),
@@ -8886,9 +8886,9 @@ expression: built.ir()
                                         inner: ChainFirst {
                                             first: DeferTick {
                                                 input: CycleSource {
-                                                    ident: Ident {
-                                                        sym: cycle_24,
-                                                    },
+                                                    cycle_id: CycleId(
+                                                        24,
+                                                    ),
                                                     metadata: HydroIrMetadata {
                                                         location_id: Tick(21, Process(loc4v1)),
                                                         collection_kind: Singleton {

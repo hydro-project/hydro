@@ -1112,12 +1112,10 @@ pub trait Location<'a>: dynamic::DynLocation {
     where
         S: CycleCollection<'a, ForwardRef, Location = Self>,
     {
-        let next_id = self.flow_state().borrow_mut().next_cycle_id();
-        let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
-
+        let cycle_id = self.flow_state().borrow_mut().next_cycle_id();
         (
-            ForwardHandle::new(ident.clone(), Location::id(self)),
-            S::create_source(ident, self.clone()),
+            ForwardHandle::new(cycle_id, Location::id(self)),
+            S::create_source(cycle_id, self.clone()),
         )
     }
 }

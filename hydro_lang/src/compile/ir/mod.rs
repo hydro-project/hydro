@@ -21,7 +21,7 @@ use syn::parse_quote;
 use syn::visit::{self, Visit};
 use syn::visit_mut::VisitMut;
 
-use crate::compile::builder::ExternalPortId;
+use crate::compile::builder::{CycleId, ExternalPortId};
 #[cfg(feature = "build")]
 use crate::compile::deploy_provider::{Deploy, Node, RegisterPort};
 use crate::location::dynamic::LocationId;
@@ -671,7 +671,7 @@ pub enum HydroRoot {
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: syn::Ident,
+        cycle_id: CycleId,
         input: Box<HydroNode>,
         op_metadata: HydroIrOpMetadata,
     },
@@ -1034,11 +1034,11 @@ impl HydroRoot {
                 op_metadata: op_metadata.clone(),
             },
             HydroRoot::CycleSink {
-                ident,
+                cycle_id,
                 input,
                 op_metadata,
             } => HydroRoot::CycleSink {
-                ident: ident.clone(),
+                cycle_id: *cycle_id,
                 input: Box::new(input.deep_clone(seen_tees)),
                 op_metadata: op_metadata.clone(),
             },
@@ -1171,7 +1171,9 @@ impl HydroRoot {
                 *next_stmt_id += 1;
             }
 
-            HydroRoot::CycleSink { ident, input, .. } => {
+            HydroRoot::CycleSink {
+                cycle_id, input, ..
+            } => {
                 let input_ident =
                     input.emit_core::<D>(builders_or_callback, seen_tees, built_tees, next_stmt_id);
 
@@ -1197,11 +1199,12 @@ impl HydroRoot {
                             }
                         };
 
+                        let cycle_id_ident = cycle_id.as_ident();
                         graph_builders
                             .get_dfir_mut(&input.metadata().location_id)
                             .add_dfir(
                                 parse_quote! {
-                                    #ident = #input_ident -> identity::<#elem_type>();
+                                    #cycle_id_ident = #input_ident -> identity::<#elem_type>();
                                 },
                                 None,
                                 None,
@@ -1277,7 +1280,7 @@ impl HydroRoot {
             HydroRoot::ForEach { f, .. } => format!("ForEach({:?})", f),
             HydroRoot::SendExternal { .. } => "SendExternal".to_owned(),
             HydroRoot::DestSink { sink, .. } => format!("DestSink({:?})", sink),
-            HydroRoot::CycleSink { ident, .. } => format!("CycleSink({:?})", ident),
+            HydroRoot::CycleSink { cycle_id, .. } => format!("CycleSink({})", cycle_id),
             HydroRoot::EmbeddedOutput { ident, .. } => {
                 format!("EmbeddedOutput({})", ident)
             }
@@ -1613,7 +1616,7 @@ pub enum HydroNode {
     },
 
     CycleSource {
-        ident: syn::Ident,
+        cycle_id: CycleId,
         metadata: HydroIrMetadata,
     },
 
@@ -1956,8 +1959,8 @@ impl HydroNode {
                 value: value.clone(),
                 metadata: metadata.clone(),
             },
-            HydroNode::CycleSource { ident, metadata } => HydroNode::CycleSource {
-                ident: ident.clone(),
+            HydroNode::CycleSource { cycle_id, metadata } => HydroNode::CycleSource {
+                cycle_id: *cycle_id,
                 metadata: metadata.clone(),
             },
             HydroNode::Tee { inner, metadata } => {
@@ -2493,8 +2496,8 @@ impl HydroNode {
                         ident_stack.push(source_ident);
                     }
 
-                    HydroNode::CycleSource { ident, .. } => {
-                        let ident = ident.clone();
+                    HydroNode::CycleSource { cycle_id, .. } => {
+                        let ident = cycle_id.as_ident();
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(_) => {}
@@ -3779,7 +3782,7 @@ impl HydroNode {
             HydroNode::ObserveNonDet { .. } => "ObserveNonDet()".to_owned(),
             HydroNode::Source { source, .. } => format!("Source({:?})", source),
             HydroNode::SingletonSource { value, .. } => format!("SingletonSource({:?})", value),
-            HydroNode::CycleSource { ident, .. } => format!("CycleSource({})", ident),
+            HydroNode::CycleSource { cycle_id, .. } => format!("CycleSource({})", cycle_id),
             HydroNode::Tee { inner, .. } => format!("Tee({})", inner.0.borrow().print_root()),
             HydroNode::YieldConcat { .. } => "YieldConcat()".to_owned(),
             HydroNode::BeginAtomic { .. } => "BeginAtomic()".to_owned(),

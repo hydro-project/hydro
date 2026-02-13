@@ -15,6 +15,7 @@ use super::keyed_singleton::KeyedSingleton;
 use super::keyed_stream::KeyedStream;
 use super::optional::Optional;
 use super::singleton::Singleton;
+use crate::compile::builder::CycleId;
 use crate::compile::ir::{
     CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, StreamOrder, StreamRetry, TeeNode,
 };
@@ -231,11 +232,11 @@ where
 {
     type Location = Tick<L>;
 
-    fn create_source(ident: syn::Ident, location: Tick<L>) -> Self {
+    fn create_source(cycle_id: CycleId, location: Tick<L>) -> Self {
         Stream::new(
             location.clone(),
             HydroNode::CycleSource {
-                ident,
+                cycle_id,
                 metadata: location.new_node_metadata(Self::collection_kind()),
             },
         )
@@ -247,7 +248,7 @@ impl<'a, T, L, O: Ordering, R: Retries> ReceiverComplete<'a, TickCycle>
 where
     L: Location<'a>,
 {
-    fn complete(self, ident: syn::Ident, expected_location: LocationId) {
+    fn complete(self, cycle_id: CycleId, expected_location: LocationId) {
         assert_eq!(
             Location::id(&self.location),
             expected_location,
@@ -257,7 +258,7 @@ where
             .flow_state()
             .borrow_mut()
             .push_root(HydroRoot::CycleSink {
-                ident,
+                cycle_id,
                 input: Box::new(self.ir_node.into_inner()),
                 op_metadata: HydroIrOpMetadata::new(),
             });
@@ -271,11 +272,11 @@ where
 {
     type Location = L;
 
-    fn create_source(ident: syn::Ident, location: L) -> Self {
+    fn create_source(cycle_id: CycleId, location: L) -> Self {
         Stream::new(
             location.clone(),
             HydroNode::CycleSource {
-                ident,
+                cycle_id,
                 metadata: location.new_node_metadata(Self::collection_kind()),
             },
         )
@@ -287,7 +288,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> ReceiverComplete<'a, For
 where
     L: Location<'a> + NoTick,
 {
-    fn complete(self, ident: syn::Ident, expected_location: LocationId) {
+    fn complete(self, cycle_id: CycleId, expected_location: LocationId) {
         assert_eq!(
             Location::id(&self.location),
             expected_location,
@@ -297,7 +298,7 @@ where
             .flow_state()
             .borrow_mut()
             .push_root(HydroRoot::CycleSink {
-                ident,
+                cycle_id,
                 input: Box::new(self.ir_node.into_inner()),
                 op_metadata: HydroIrOpMetadata::new(),
             });

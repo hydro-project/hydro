@@ -2,6 +2,7 @@
 
 use sealed::sealed;
 
+use crate::compile::builder::CycleId;
 use crate::location::Location;
 use crate::location::dynamic::LocationId;
 use crate::staging_util::Invariant;
@@ -31,7 +32,7 @@ pub(crate) trait ReceiverComplete<'a, Marker>
 where
     Marker: ReceiverKind,
 {
-    fn complete(self, ident: syn::Ident, expected_location: LocationId);
+    fn complete(self, cycle_id: CycleId, expected_location: LocationId);
 }
 
 pub(crate) trait CycleCollection<'a, Kind>: ReceiverComplete<'a, Kind>
@@ -40,7 +41,7 @@ where
 {
     type Location: Location<'a>;
 
-    fn create_source(ident: syn::Ident, location: Self::Location) -> Self;
+    fn create_source(id: CycleId, location: Self::Location) -> Self;
 }
 
 pub(crate) trait CycleCollectionWithInitial<'a, Kind>: ReceiverComplete<'a, Kind>
@@ -50,7 +51,7 @@ where
     type Location: Location<'a>;
 
     fn create_source_with_initial(
-        ident: syn::Ident,
+        cycle_id: CycleId,
         initial: Self,
         location: Self::Location,
     ) -> Self;
@@ -65,7 +66,7 @@ where
 )]
 pub struct ForwardHandle<'a, C: ReceiverComplete<'a, ForwardRef>> {
     completed: bool,
-    ident: syn::Ident,
+    cycle_id: CycleId,
     expected_location: LocationId,
     _phantom: Invariant<'a, C>,
 }
@@ -75,10 +76,10 @@ pub struct ForwardHandle<'a, C: ReceiverComplete<'a, ForwardRef>> {
     reason = "only Hydro collections can implement ReceiverComplete"
 )]
 impl<'a, C: ReceiverComplete<'a, ForwardRef>> ForwardHandle<'a, C> {
-    pub(crate) fn new(ident: syn::Ident, expected_location: LocationId) -> Self {
+    pub(crate) fn new(cycle_id: CycleId, expected_location: LocationId) -> Self {
         Self {
             completed: false,
-            ident,
+            cycle_id,
             expected_location,
             _phantom: std::marker::PhantomData,
         }
@@ -106,23 +107,37 @@ impl<'a, C: ReceiverComplete<'a, ForwardRef>> ForwardHandle<'a, C> {
     /// allowed, since the program can continue running while the cycle is processed.
     pub fn complete(mut self, stream: impl Into<C>) {
         self.completed = true;
-        let ident = self.ident.clone();
-        C::complete(stream.into(), ident, self.expected_location.clone())
+        C::complete(stream.into(), self.cycle_id, self.expected_location.clone())
     }
+}
+
+/// A handle that can be used to complete a tick cycle by sending a collection to the next tick.
+///
+/// The `C` type parameter specifies the collection type that can be used to complete the handle.
+#[expect(
+    private_bounds,
+    reason = "only Hydro collections can implement ReceiverComplete"
+)]
+pub struct TickCycleHandle<'a, C: ReceiverComplete<'a, TickCycle>> {
+    completed: bool,
+    cycle_id: CycleId,
+    expected_location: LocationId,
+    _phantom: Invariant<'a, C>,
 }
 
 #[expect(
     private_bounds,
     reason = "only Hydro collections can implement ReceiverComplete"
 )]
-/// A handle that can be used to complete a tick cycle by sending a collection to the next tick.
-///
-/// The `C` type parameter specifies the collection type that can be used to complete the handle.
-pub struct TickCycleHandle<'a, C: ReceiverComplete<'a, TickCycle>> {
-    pub(crate) completed: bool,
-    pub(crate) ident: syn::Ident,
-    pub(crate) expected_location: LocationId,
-    pub(crate) _phantom: Invariant<'a, C>,
+impl<'a, C: ReceiverComplete<'a, TickCycle>> TickCycleHandle<'a, C> {
+    pub(crate) fn new(cycle_id: CycleId, expected_location: LocationId) -> Self {
+        Self {
+            completed: false,
+            cycle_id,
+            expected_location,
+            _phantom: std::marker::PhantomData,
+        }
+    }
 }
 
 impl<'a, C: ReceiverComplete<'a, TickCycle>> Drop for TickCycleHandle<'a, C> {
@@ -143,8 +158,7 @@ impl<'a, C: ReceiverComplete<'a, TickCycle>> TickCycleHandle<'a, C> {
     /// [`crate::location::Tick::cycle_with_initial`].
     pub fn complete_next_tick(mut self, stream: impl Into<C>) {
         self.completed = true;
-        let ident = self.ident.clone();
-        C::complete(stream.into(), ident, self.expected_location.clone())
+        C::complete(stream.into(), self.cycle_id, self.expected_location.clone())
     }
 }
 
