@@ -54,10 +54,12 @@ impl<'a> Deploy<'a> for HydroDeploy {
     type External = DeployExternal;
 
     fn o2o_sink_source(
+        _env: &mut Self::InstantiateEnv,
         _p1: &Self::Process,
         p1_port: &<Self::Process as Node>::Port,
         _p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
+        _name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
         let p1_port = p1_port.as_str();
         let p2_port = p2_port.as_str();

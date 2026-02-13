@@ -44,10 +44,12 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
     type External = MaelstromExternal;
 
     fn o2o_sink_source(
+        _env: &mut Self::InstantiateEnv,
         _p1: &Self::Process,
         _p1_port: &<Self::Process as Node>::Port,
         _p2: &Self::Process,
         _p2_port: &<Self::Process as Node>::Port,
+        _name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
         panic!("Maelstrom deployment does not support processes, only clusters")
     }

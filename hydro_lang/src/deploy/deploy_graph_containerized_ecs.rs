@@ -433,10 +433,12 @@ impl<'a> Deploy<'a> for EcsDeploy {
 
     #[instrument(level = "trace", skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, p2_port))]
     fn o2o_sink_source(
+        _env: &mut Self::InstantiateEnv,
         p1: &Self::Process,
         p1_port: &<Self::Process as Node>::Port,
         p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
+        _name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
         deploy_containerized_o2o(&p2.name, *p2_port)
     }

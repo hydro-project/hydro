@@ -13,7 +13,9 @@ Instead of producing self-contained binaries, embedded mode generates a Rust sou
 - **Custom I/O**: You need to connect Hydro to a transport or runtime that Hydro Deploy doesn't support (DPDK, shared memory, a game loop, etc.).
 - **Library use**: You want to ship a crate that uses Hydro internally but exposes a normal Rust API to consumers.
 
-Embedded mode only supports **local, single-process computation**. Networking between locations is not available — all `Deploy` networking trait methods will panic if called. If you need multi-node communication, use [Hydro Deploy](./index.mdx) instead.
+Embedded mode only supports **local, single-process computation** and **process-to-process (o2o) networking**. Cluster networking, external ports, and other multi-node patterns are not yet available.
+
+When your Hydro program sends data between processes, the generated functions gain additional `network_out` and `network_in` parameters. You wire these up yourself — for example with in-memory channels, Unix sockets, or any transport you like. See [Networking](#networking) below for details.
 
 ## How It Works
 Embedded mode uses a `build.rs` script to compile your Hydro program at build time. The generated code is then `include!`-ed into your crate. The workflow has three parts:
@@ -140,3 +142,46 @@ async fn run() {
 ```
 
 The generated function accepts your input streams as `impl Stream<Item = T> + Unpin` parameters and a mutable reference to the `EmbeddedOutputs` struct. It returns a `Dfir` graph that you run with `run_available()` (or tick manually).
+
+
+## Networking
+
+Embedded mode supports process-to-process (o2o) networking. When your Hydro program uses `.send()` between two processes, the generated functions get extra parameters so you can wire up the transport yourself.
+
+Network channels in embedded mode **must be named**. Use `.name()` on the networking config:
+
+```rust,ignore
+input.send(receiver, TCP.fail_stop().bincode().name("messages"))
+```
+
+The name becomes a field name in the generated structs, so it must be a valid Rust identifier. Consider a two-process program where `Sender` sends to `Receiver` over a channel named `"messages"`. `Sender` gets an `EmbeddedNetworkOut` struct parameter with an `FnMut(Bytes)` field per outgoing channel:
+
+```rust,ignore
+pub mod echo_sender {
+    pub struct EmbeddedNetworkOut<F: FnMut(Bytes)> {
+        pub messages: F,
+    }
+}
+
+pub fn echo_sender<'a, F: FnMut(Bytes) + 'a>(
+    input: impl Stream<Item = String> + Unpin + 'a,
+    __network_out: &'a mut echo_sender::EmbeddedNetworkOut<F>,
+) -> Dfir<'a> { ... }
+```
+
+On the other side, `Receiver` gets an `EmbeddedNetworkIn` struct parameter with a `Stream<Item = Result<BytesMut, io::Error>>` field per incoming channel:
+
+```rust,ignore
+pub mod echo_receiver {
+    pub struct EmbeddedNetworkIn<S: Stream<Item = Result<BytesMut, io::Error>> + Unpin> {
+        pub messages: S,
+    }
+}
+
+pub fn echo_receiver<'a, S: Stream<Item = Result<BytesMut, io::Error>> + Unpin + 'a>(
+    __outputs: &'a mut echo_receiver::EmbeddedOutputs<...>,
+    __network_in: echo_receiver::EmbeddedNetworkIn<S>,
+) -> Dfir<'a> { ... }
+```
+
+Hydro automatically handles serialization — just shuttle the raw bytes between sender and receiver. You must ensure that you are preserving any guarantees of the network protocol specified in the Hydro program. For example, if the channel uses `TCP`, you must ensure that your networking mechanism preserves ordering and exactly-once delivery.

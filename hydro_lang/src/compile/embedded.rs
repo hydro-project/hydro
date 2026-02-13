@@ -7,11 +7,20 @@
 //! This is useful when you want full control over where and how the projected DFIR
 //! code runs (e.g. embedding it into an existing application).
 //!
-//! # Limitations
+//! # Networking
 //!
-//! Networking is **not** supported. All `Deploy` networking trait methods will panic
-//! if called. Only pure local computations (with data embedded in the Hydro program)
-//! are supported.
+//! Process-to-process (o2o) networking is supported. When a location has network
+//! sends or receives, the generated function takes additional `network_out` and
+//! `network_in` parameters whose types are generated structs with one field per
+//! network port (named after the channel). Network channels must be named via
+//! `.name()` on the networking config.
+//!
+//! - Sinks (`EmbeddedNetworkOut`): one `FnMut(Bytes)` field per outgoing channel.
+//! - Sources (`EmbeddedNetworkIn`): one `Stream<Item = Result<BytesMut, io::Error>>`
+//!   field per incoming channel.
+//!
+//! The caller is responsible for wiring these together (e.g. via in-memory channels,
+//! sockets, etc.). Cluster networking and external ports are not supported.
 
 use std::future::Future;
 use std::io::Error;
@@ -44,6 +53,8 @@ pub enum EmbeddedDeploy {}
 pub struct EmbeddedNode {
     /// The function name to use in the generated code for this location.
     pub fn_name: String,
+    /// The location key for this node, used to register network ports.
+    pub location_key: LocationKey,
 }
 
 impl Node for EmbeddedNode {
@@ -118,25 +129,28 @@ impl<'a> RegisterPort<'a, EmbeddedDeploy> for EmbeddedNode {
 }
 
 impl<S: Into<String>> ProcessSpec<'_, EmbeddedDeploy> for S {
-    fn build(self, _location_key: LocationKey, _name_hint: &str) -> EmbeddedNode {
+    fn build(self, location_key: LocationKey, _name_hint: &str) -> EmbeddedNode {
         EmbeddedNode {
             fn_name: self.into(),
+            location_key,
         }
     }
 }
 
 impl<S: Into<String>> ClusterSpec<'_, EmbeddedDeploy> for S {
-    fn build(self, _location_key: LocationKey, _name_hint: &str) -> EmbeddedNode {
+    fn build(self, location_key: LocationKey, _name_hint: &str) -> EmbeddedNode {
         EmbeddedNode {
             fn_name: self.into(),
+            location_key,
         }
     }
 }
 
 impl<S: Into<String>> ExternalSpec<'_, EmbeddedDeploy> for S {
-    fn build(self, _location_key: LocationKey, _name_hint: &str) -> EmbeddedNode {
+    fn build(self, location_key: LocationKey, _name_hint: &str) -> EmbeddedNode {
         EmbeddedNode {
             fn_name: self.into(),
+            location_key,
         }
     }
 }
@@ -153,6 +167,10 @@ pub struct EmbeddedInstantiateEnv {
     pub inputs: SparseSecondaryMap<LocationKey, Vec<(syn::Ident, syn::Type)>>,
     /// (ident name, element type) pairs per location key, for outputs.
     pub outputs: SparseSecondaryMap<LocationKey, Vec<(syn::Ident, syn::Type)>>,
+    /// Network output port names per location key (sender side of o2o channels).
+    pub network_outputs: SparseSecondaryMap<LocationKey, Vec<String>>,
+    /// Network input port names per location key (receiver side of o2o channels).
+    pub network_inputs: SparseSecondaryMap<LocationKey, Vec<String>>,
 }
 
 impl<'a> Deploy<'a> for EmbeddedDeploy {
@@ -164,12 +182,35 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
     type External = EmbeddedNode;
 
     fn o2o_sink_source(
-        _p1: &Self::Process,
+        env: &mut Self::InstantiateEnv,
+        p1: &Self::Process,
         _p1_port: &(),
-        _p2: &Self::Process,
+        p2: &Self::Process,
         _p2_port: &(),
+        name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
-        panic!("EmbeddedDeploy does not support networking (o2o)")
+        let name = name.expect(
+            "EmbeddedDeploy o2o networking requires a channel name. Use `TCP.name(\"my_channel\")` to provide one.",
+        );
+
+        let sink_ident = syn::Ident::new(&format!("__network_out_{name}"), Span::call_site());
+        let source_ident = syn::Ident::new(&format!("__network_in_{name}"), Span::call_site());
+
+        env.network_outputs
+            .entry(p1.location_key)
+            .unwrap()
+            .or_default()
+            .push(name.to_owned());
+        env.network_inputs
+            .entry(p2.location_key)
+            .unwrap()
+            .or_default()
+            .push(name.to_owned());
+
+        (
+            syn::parse_quote!(__root_dfir_rs::sinktools::for_each(#sink_ident)),
+            syn::parse_quote!(#source_ident),
+        )
     }
 
     fn o2o_connect(
@@ -178,7 +219,7 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
         _p2: &Self::Process,
         _p2_port: &(),
     ) -> Box<dyn FnOnce()> {
-        panic!("EmbeddedDeploy does not support networking (o2o)")
+        Box::new(|| {})
     }
 
     fn o2m_sink_source(
@@ -411,6 +452,24 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
             let mut loc_outputs = env.outputs.get(location_key).cloned().unwrap_or_default();
             loc_outputs.sort_by(|a, b| a.0.to_string().cmp(&b.0.to_string()));
 
+            // Get network outputs (sinks) for this location, sorted by name.
+            let mut loc_net_outputs = env
+                .network_outputs
+                .get(location_key)
+                .cloned()
+                .unwrap_or_default();
+            loc_net_outputs.sort();
+            loc_net_outputs.dedup();
+
+            // Get network inputs (sources) for this location, sorted by name.
+            let mut loc_net_inputs = env
+                .network_inputs
+                .get(location_key)
+                .cloned()
+                .unwrap_or_default();
+            loc_net_inputs.sort();
+            loc_net_inputs.dedup();
+
             let mut diagnostics = Diagnostics::new();
             let dfir_tokens = graph
                 .as_code(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
@@ -425,11 +484,19 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                 .collect();
 
             let has_outputs = !loc_outputs.is_empty();
+            let has_net_out = !loc_net_outputs.is_empty();
+            let has_net_in = !loc_net_inputs.is_empty();
 
+            // --- Build module items (output struct, network structs) ---
+            let mut mod_items: Vec<proc_macro2::TokenStream> = Vec::new();
+            let mut extra_fn_generics: Vec<proc_macro2::TokenStream> = Vec::new();
+            let mut extra_fn_params: Vec<proc_macro2::TokenStream> = Vec::new();
+            let mut extra_destructure: Vec<proc_macro2::TokenStream> = Vec::new();
+
+            // Embedded outputs (FnMut callbacks).
             if has_outputs {
                 let output_struct_ident = syn::Ident::new("EmbeddedOutputs", Span::call_site());
 
-                // One generic per output field.
                 let output_generic_idents: Vec<syn::Ident> = loc_outputs
                     .iter()
                     .enumerate()
@@ -452,44 +519,150 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                     })
                     .collect();
 
-                let fn_generics: Vec<proc_macro2::TokenStream> = loc_outputs
-                    .iter()
-                    .zip(output_generic_idents.iter())
-                    .map(|((_, element_type), generic)| {
-                        quote! { #generic: FnMut(#element_type) + 'a }
-                    })
-                    .collect();
+                for ((_, element_type), generic) in
+                    loc_outputs.iter().zip(output_generic_idents.iter())
+                {
+                    extra_fn_generics.push(quote! { #generic: FnMut(#element_type) + 'a });
+                }
 
-                let output_param = quote! {
+                extra_fn_params.push(quote! {
                     __outputs: &'a mut #fn_ident::#output_struct_ident<#(#output_generic_idents),*>
-                };
+                });
 
-                let output_destructure: Vec<proc_macro2::TokenStream> = loc_outputs
+                for (ident, _) in &loc_outputs {
+                    extra_destructure.push(quote! { let mut #ident = &mut __outputs.#ident; });
+                }
+
+                mod_items.push(quote! {
+                    pub struct #output_struct_ident<#(#struct_generics),*> {
+                        #(#struct_fields),*
+                    }
+                });
+            }
+
+            // Network outputs (FnMut(Bytes) sinks).
+            if has_net_out {
+                let net_out_struct_ident = syn::Ident::new("EmbeddedNetworkOut", Span::call_site());
+
+                let net_out_generic_idents: Vec<syn::Ident> = loc_net_outputs
                     .iter()
-                    .map(|(ident, _)| {
-                        quote! { let mut #ident = &mut __outputs.#ident; }
+                    .enumerate()
+                    .map(|(i, _)| quote::format_ident!("__NetOut{}", i))
+                    .collect();
+
+                let struct_fields: Vec<proc_macro2::TokenStream> = loc_net_outputs
+                    .iter()
+                    .zip(net_out_generic_idents.iter())
+                    .map(|(name, generic)| {
+                        let field_ident = syn::Ident::new(name, Span::call_site());
+                        quote! { pub #field_ident: #generic }
                     })
                     .collect();
 
-                let all_params: Vec<proc_macro2::TokenStream> = input_params
-                    .into_iter()
-                    .chain(std::iter::once(output_param))
+                let struct_generics: Vec<proc_macro2::TokenStream> = net_out_generic_idents
+                    .iter()
+                    .map(|generic| {
+                        quote! { #generic: FnMut(#root::runtime_support::dfir_rs::bytes::Bytes) }
+                    })
                     .collect();
 
-                // Module containing the outputs struct.
+                for generic in &net_out_generic_idents {
+                    extra_fn_generics.push(
+                        quote! { #generic: FnMut(#root::runtime_support::dfir_rs::bytes::Bytes) + 'a },
+                    );
+                }
+
+                extra_fn_params.push(quote! {
+                    __network_out: &'a mut #fn_ident::#net_out_struct_ident<#(#net_out_generic_idents),*>
+                });
+
+                for name in &loc_net_outputs {
+                    let field_ident = syn::Ident::new(name, Span::call_site());
+                    let var_ident =
+                        syn::Ident::new(&format!("__network_out_{name}"), Span::call_site());
+                    extra_destructure
+                        .push(quote! { let mut #var_ident = &mut __network_out.#field_ident; });
+                }
+
+                mod_items.push(quote! {
+                    pub struct #net_out_struct_ident<#(#struct_generics),*> {
+                        #(#struct_fields),*
+                    }
+                });
+            }
+
+            // Network inputs (Stream<Item = Result<BytesMut, io::Error>> sources).
+            if has_net_in {
+                let net_in_struct_ident = syn::Ident::new("EmbeddedNetworkIn", Span::call_site());
+
+                let net_in_generic_idents: Vec<syn::Ident> = loc_net_inputs
+                    .iter()
+                    .enumerate()
+                    .map(|(i, _)| quote::format_ident!("__NetIn{}", i))
+                    .collect();
+
+                let struct_fields: Vec<proc_macro2::TokenStream> = loc_net_inputs
+                    .iter()
+                    .zip(net_in_generic_idents.iter())
+                    .map(|(name, generic)| {
+                        let field_ident = syn::Ident::new(name, Span::call_site());
+                        quote! { pub #field_ident: #generic }
+                    })
+                    .collect();
+
+                let struct_generics: Vec<proc_macro2::TokenStream> = net_in_generic_idents
+                    .iter()
+                    .map(|generic| {
+                        quote! { #generic: __root_dfir_rs::futures::Stream<Item = Result<__root_dfir_rs::bytes::BytesMut, std::io::Error>> + Unpin }
+                    })
+                    .collect();
+
+                for generic in &net_in_generic_idents {
+                    extra_fn_generics.push(
+                        quote! { #generic: __root_dfir_rs::futures::Stream<Item = Result<__root_dfir_rs::bytes::BytesMut, std::io::Error>> + Unpin + 'a },
+                    );
+                }
+
+                extra_fn_params.push(quote! {
+                    __network_in: #fn_ident::#net_in_struct_ident<#(#net_in_generic_idents),*>
+                });
+
+                for name in &loc_net_inputs {
+                    let field_ident = syn::Ident::new(name, Span::call_site());
+                    let var_ident =
+                        syn::Ident::new(&format!("__network_in_{name}"), Span::call_site());
+                    extra_destructure.push(quote! { let #var_ident = __network_in.#field_ident; });
+                }
+
+                mod_items.push(quote! {
+                    pub struct #net_in_struct_ident<#(#struct_generics),*> {
+                        #(#struct_fields),*
+                    }
+                });
+            }
+
+            // Emit the module if there are any structs.
+            if !mod_items.is_empty() {
                 let output_mod: syn::Item = syn::parse_quote! {
                     pub mod #fn_ident {
-                        pub struct #output_struct_ident<#(#struct_generics),*> {
-                            #(#struct_fields),*
-                        }
+                        use super::*;
+                        #(#mod_items)*
                     }
                 };
                 items.push(output_mod);
+            }
 
+            // Build the function.
+            let all_params: Vec<proc_macro2::TokenStream> =
+                input_params.into_iter().chain(extra_fn_params).collect();
+
+            let has_generics = !extra_fn_generics.is_empty();
+
+            if has_generics {
                 let func: syn::Item = syn::parse_quote! {
                     #[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
-                    pub fn #fn_ident<'a, #(#fn_generics),*>(#(#all_params),*) -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
-                        #(#output_destructure)*
+                    pub fn #fn_ident<'a, #(#extra_fn_generics),*>(#(#all_params),*) -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
+                        #(#extra_destructure)*
                         #dfir_tokens
                     }
                 };
@@ -497,7 +670,7 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
             } else {
                 let func: syn::Item = syn::parse_quote! {
                     #[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
-                    pub fn #fn_ident<'a>(#(#input_params),*) -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
+                    pub fn #fn_ident<'a>(#(#all_params),*) -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
                         #dfir_tokens
                     }
                 };

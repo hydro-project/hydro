@@ -813,6 +813,7 @@ impl HydroRoot {
             },
             &mut |n| {
                 if let HydroNode::Network {
+                    name,
                     input,
                     instantiate_fn,
                     metadata,
@@ -821,10 +822,12 @@ impl HydroRoot {
                 {
                     let (sink_expr, source_expr, connect_fn) = match instantiate_fn {
                         DebugInstantiate::Building => instantiate_network::<D>(
+                            &mut refcell_env.borrow_mut(),
                             input.metadata().location_id.root(),
                             metadata.location_id.root(),
                             processes,
                             clusters,
+                            name.as_deref(),
                         ),
 
                         DebugInstantiate::Finalized(_) => panic!("network already finalized"),
@@ -3849,10 +3852,12 @@ impl HydroNode {
 
 #[cfg(feature = "build")]
 fn instantiate_network<'a, D>(
+    env: &mut D::InstantiateEnv,
     from_location: &LocationId,
     to_location: &LocationId,
     processes: &SparseSecondaryMap<LocationKey, D::Process>,
     clusters: &SparseSecondaryMap<LocationKey, D::Cluster>,
+    name: Option<&str>,
 ) -> (syn::Expr, syn::Expr, Box<dyn FnOnce()>)
 where
     D: Deploy<'a>,
@@ -3876,7 +3881,7 @@ where
             let source_port = to_node.next_port();
 
             (
-                D::o2o_sink_source(&from_node, &sink_port, &to_node, &source_port),
+                D::o2o_sink_source(env, &from_node, &sink_port, &to_node, &source_port, name),
                 D::o2o_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
