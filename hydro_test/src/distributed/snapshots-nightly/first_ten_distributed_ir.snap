@@ -17,9 +17,9 @@ expression: builder.finalize().ir()
         ),
         instantiate_fn: <network instantiate>,
         input: CycleSource {
-            ident: Ident {
-                sym: cycle_0,
-            },
+            cycle_id: CycleId(
+                0,
+            ),
             metadata: HydroIrMetadata {
                 location_id: Process(loc2v1),
                 collection_kind: Stream {
@@ -33,9 +33,9 @@ expression: builder.finalize().ir()
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: Ident {
-            sym: cycle_0,
-        },
+        cycle_id: CycleId(
+            0,
+        ),
         input: Cast {
             inner: Source {
                 source: Iter(
