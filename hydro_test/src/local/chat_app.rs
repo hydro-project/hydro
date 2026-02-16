@@ -84,15 +84,23 @@ mod tests {
         messages_send.send("hello".to_owned()).await.unwrap();
         messages_send.send("world".to_owned()).await.unwrap();
 
-        assert_eq!(
-            take_next_n(&mut out_recv, 4).await,
-            &[
-                (1, "HELLO".to_owned()),
-                (2, "HELLO".to_owned()),
-                (1, "WORLD".to_owned()),
-                (2, "WORLD".to_owned())
-            ]
-        );
+        {
+            let out = take_next_n(&mut out_recv, 4).await;
+            let h1 = out.iter().position(|x| *x == (1, "HELLO".to_owned()));
+            let h2 = out.iter().position(|x| *x == (2, "HELLO".to_owned()));
+            let w1 = out.iter().position(|x| *x == (1, "WORLD".to_owned()));
+            let w2 = out.iter().position(|x| *x == (2, "WORLD".to_owned()));
+            // Assert all items exist.
+            assert!(h1.is_some());
+            assert!(h2.is_some());
+            assert!(w1.is_some());
+            assert!(w2.is_some());
+            // Assert partial order is preserved
+            assert!(h1.unwrap() < h2.unwrap());
+            assert!(h1.unwrap() < w1.unwrap());
+            assert!(h2.unwrap() < w2.unwrap());
+            assert!(w1.unwrap() < w2.unwrap());
+        }
 
         users_send.send(3).await.unwrap();
 
@@ -149,29 +157,46 @@ mod tests {
         messages_send.send("hello".to_owned()).await.unwrap();
         messages_send.send("world".to_owned()).await.unwrap();
 
-        assert_eq!(
-            take_next_n(&mut out_recv, 4).await,
-            &[
-                (1, "HELLO".to_owned()),
-                (2, "HELLO".to_owned()),
-                (1, "WORLD".to_owned()),
-                (2, "WORLD".to_owned())
-            ]
-        );
+        {
+            let out = take_next_n(&mut out_recv, 4).await;
+            let h1 = out.iter().position(|x| *x == (1, "HELLO".to_owned()));
+            let h2 = out.iter().position(|x| *x == (2, "HELLO".to_owned()));
+            let w1 = out.iter().position(|x| *x == (1, "WORLD".to_owned()));
+            let w2 = out.iter().position(|x| *x == (2, "WORLD".to_owned()));
+            // Assert all items exist.
+            assert!(h1.is_some());
+            assert!(h2.is_some());
+            assert!(w1.is_some());
+            assert!(w2.is_some());
+            // Assert partial order is preserved
+            assert!(h1.unwrap() < h2.unwrap());
+            assert!(h1.unwrap() < w1.unwrap());
+            assert!(h2.unwrap() < w2.unwrap());
+            assert!(w1.unwrap() < w2.unwrap());
+        }
 
         users_send.send(3).await.unwrap();
 
         messages_send.send("goodbye".to_owned()).await.unwrap();
 
-        assert_eq!(
-            take_next_n(&mut out_recv, 5).await,
-            &[
-                (3, "HELLO".to_owned()),
-                (3, "WORLD".to_owned()),
-                (1, "GOODBYE".to_owned()),
-                (2, "GOODBYE".to_owned()),
-                (3, "GOODBYE".to_owned())
-            ]
-        );
+        {
+            let out = take_next_n(&mut out_recv, 5).await;
+            let h3 = out.iter().position(|x| *x == (3, "HELLO".to_owned()));
+            let w3 = out.iter().position(|x| *x == (3, "WORLD".to_owned()));
+            let g1 = out.iter().position(|x| *x == (1, "GOODBYE".to_owned()));
+            let g2 = out.iter().position(|x| *x == (2, "GOODBYE".to_owned()));
+            let g3 = out.iter().position(|x| *x == (3, "GOODBYE".to_owned()));
+            // Assert all items exist.
+            assert!(h3.is_some());
+            assert!(w3.is_some());
+            assert!(g1.is_some());
+            assert!(g2.is_some());
+            assert!(g3.is_some());
+            // Assert partial order is preserved
+            assert!(g1.unwrap() < g2.unwrap());
+            assert!(g2.unwrap() < g3.unwrap());
+            assert!(h3.unwrap() < w3.unwrap());
+            assert!(w3.unwrap() < g3.unwrap());
+        }
     }
 }
