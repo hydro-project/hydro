@@ -1172,6 +1172,20 @@ impl HydroNode {
                 node_type: HydroNodeType::Aggregation,
             }),
 
+            HydroNode::Limit {
+                input: inner,
+                metadata,
+                ..
+            } => build_simple_transform(TransformParams {
+                structure,
+                seen_tees,
+                config,
+                input: inner,
+                metadata,
+                op_name: extract_op_name(self.print_root()),
+                node_type: HydroNodeType::Transform,
+            }),
+
             // Single-expression Transform operations - grouped by node type
             HydroNode::Map { f, input, metadata }
             | HydroNode::Filter { f, input, metadata }

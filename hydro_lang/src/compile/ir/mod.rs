@@ -1740,6 +1740,11 @@ pub enum HydroNode {
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
+    Limit {
+        n: usize,
+        input: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
     Fold {
         init: DebugExpr,
         acc: DebugExpr,
@@ -1919,6 +1924,7 @@ impl HydroNode {
             | HydroNode::Filter { input, .. }
             | HydroNode::FilterMap { input, .. }
             | HydroNode::Sort { input, .. }
+            | HydroNode::Limit { input, .. }
             | HydroNode::DeferTick { input, .. }
             | HydroNode::Enumerate { input, .. }
             | HydroNode::Inspect { input, .. }
@@ -2099,6 +2105,11 @@ impl HydroNode {
                 metadata: metadata.clone(),
             },
             HydroNode::Sort { input, metadata } => HydroNode::Sort {
+                input: Box::new(input.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::Limit { n, input, metadata } => HydroNode::Limit {
+                n: *n,
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
@@ -2973,6 +2984,42 @@ impl HydroNode {
                         ident_stack.push(sort_ident);
                     }
 
+                    HydroNode::Limit { n, .. } => {
+                        let input_ident = ident_stack.pop().unwrap();
+
+                        let enum_ident =
+                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+                        let limit_ident =
+                            syn::Ident::new(&format!("stream_{}", *next_stmt_id + 1), Span::call_site());
+
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(graph_builders) => {
+                                let builder = graph_builders.get_dfir_mut(&out_location);
+                                builder.add_dfir(
+                                    parse_quote! {
+                                        #enum_ident = #input_ident -> enumerate();
+                                    },
+                                    None,
+                                    Some(&next_stmt_id.to_string()),
+                                );
+                                builder.add_dfir(
+                                    parse_quote! {
+                                        #limit_ident = #enum_ident -> filter(|(i, _)| *i < #n) -> map(|(_, v)| v);
+                                    },
+                                    None,
+                                    Some(&(*next_stmt_id + 1).to_string()),
+                                );
+                            }
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
+
+                        *next_stmt_id += 2;
+
+                        ident_stack.push(limit_ident);
+                    }
+
                     HydroNode::DeferTick { .. } => {
                         let input_ident = ident_stack.pop().unwrap();
 
@@ -3565,7 +3612,8 @@ impl HydroNode {
             | HydroNode::DeferTick { .. }
             | HydroNode::Enumerate { .. }
             | HydroNode::Unique { .. }
-            | HydroNode::Sort { .. } => {}
+            | HydroNode::Sort { .. }
+            | HydroNode::Limit { .. } => {}
             HydroNode::Map { f, .. }
             | HydroNode::FlatMap { f, .. }
             | HydroNode::Filter { f, .. }
@@ -3642,6 +3690,7 @@ impl HydroNode {
             HydroNode::Inspect { metadata, .. } => metadata,
             HydroNode::Unique { metadata, .. } => metadata,
             HydroNode::Sort { metadata, .. } => metadata,
+            HydroNode::Limit { metadata, .. } => metadata,
             HydroNode::Scan { metadata, .. } => metadata,
             HydroNode::Fold { metadata, .. } => metadata,
             HydroNode::FoldKeyed { metadata, .. } => metadata,
@@ -3691,6 +3740,7 @@ impl HydroNode {
             HydroNode::Inspect { metadata, .. } => metadata,
             HydroNode::Unique { metadata, .. } => metadata,
             HydroNode::Sort { metadata, .. } => metadata,
+            HydroNode::Limit { metadata, .. } => metadata,
             HydroNode::Scan { metadata, .. } => metadata,
             HydroNode::Fold { metadata, .. } => metadata,
             HydroNode::FoldKeyed { metadata, .. } => metadata,
@@ -3743,6 +3793,7 @@ impl HydroNode {
             | HydroNode::Filter { input, .. }
             | HydroNode::FilterMap { input, .. }
             | HydroNode::Sort { input, .. }
+            | HydroNode::Limit { input, .. }
             | HydroNode::DeferTick { input, .. }
             | HydroNode::Enumerate { input, .. }
             | HydroNode::Inspect { input, .. }
@@ -3832,6 +3883,7 @@ impl HydroNode {
             HydroNode::Inspect { f, .. } => format!("Inspect({:?})", f),
             HydroNode::Unique { .. } => "Unique()".to_owned(),
             HydroNode::Sort { .. } => "Sort()".to_owned(),
+            HydroNode::Limit { n, .. } => format!("Limit({})", n),
             HydroNode::Fold { init, acc, .. } => format!("Fold({:?}, {:?})", init, acc),
             HydroNode::Scan { init, acc, .. } => format!("Scan({:?}, {:?})", init, acc),
             HydroNode::FoldKeyed { init, acc, .. } => format!("FoldKeyed({:?}, {:?})", init, acc),

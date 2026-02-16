@@ -626,6 +626,41 @@ where
         )
     }
 
+    /// Limits the stream to the first `n` elements.
+    ///
+    /// This operator is useful for web applications that need to return the latest
+    /// X elements, similar to SQL's LIMIT clause.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4, 5, 6]));
+    /// numbers.limit(3).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3
+    /// # for w in vec![1, 2, 3] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # assert!(stream.next().await.is_none());
+    /// # }));
+    /// # }
+    /// ```
+    pub fn limit(self, n: usize) -> Self {
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Limit {
+                n,
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self
+                    .location
+                    .new_node_metadata(Self::collection_kind()),
+            },
+        )
+    }
+
     /// Generates a stream that maps each input element `i` to a tuple `(i, x)`,
     /// where `x` is the final value of `other`, a bounded [`Singleton`] or [`Optional`].
     /// If `other` is an empty [`Optional`], no values will be produced.
@@ -3171,5 +3206,63 @@ mod tests {
         });
 
         assert_eq!(instance_count, 22)
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_limit_basic() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input();
+
+        let out_recv = input.limit(3).sim_output();
+
+        flow.sim().exhaustive(async || {
+            in_send.send(1);
+            in_send.send(2);
+            in_send.send(3);
+            in_send.send(4);
+            in_send.send(5);
+
+            out_recv.assert_yields_only([1, 2, 3]).await;
+        });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_limit_less_than_n() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input();
+
+        let out_recv = input.limit(10).sim_output();
+
+        flow.sim().exhaustive(async || {
+            in_send.send(1);
+            in_send.send(2);
+            in_send.send(3);
+
+            out_recv.assert_yields_only([1, 2, 3]).await;
+        });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_limit_zero() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input::<u32, _, _>();
+
+        let out_recv = input.limit(0).sim_output();
+
+        flow.sim().exhaustive(async || {
+            in_send.send(1);
+            in_send.send(2);
+
+            out_recv.assert_yields_only::<u32, _>([]).await;
+        });
     }
 }
