@@ -2995,6 +2995,8 @@ impl HydroNode {
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
                                 let builder = graph_builders.get_dfir_mut(&out_location);
+                                // DFIR doesn't have a native `take` operator, so we implement limit
+                                // using enumerate() -> filter(index < n) -> map(drop index)
                                 builder.add_dfir(
                                     parse_quote! {
                                         #enum_ident = #input_ident -> enumerate();
