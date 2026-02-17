@@ -99,7 +99,7 @@ pub const ZIP: OperatorConstraints = OperatorConstraints {
 
                 let len = ::std::cmp::min(#lhs_borrow.len(), #rhs_borrow.len());
                 let iter = #lhs_borrow.drain(..len).zip(#rhs_borrow.drain(..len));
-                #root::futures::stream::iter(iter)
+                #root::dfir_pipes::from_iter(iter)
             };
         };
 

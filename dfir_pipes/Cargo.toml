@@ -1,0 +1,23 @@
+[package]
+name = "dfir_pipes"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+default = ["std"]
+std = ["alloc", "futures-core/std", "futures-sink/std"]
+alloc = ["futures-core/alloc", "futures-sink/alloc"]
+
+[dependencies]
+futures-core = { version = "0.3.0", default-features = false }
+futures-sink = { version = "0.3.0", default-features = false }
+pin-project-lite = "0.2.16"
+sealed = "0.6.0"
+
+[build-dependencies]
+hydro_build_utils = { path = "../hydro_build_utils" }
+
+[lints]
+workspace = true

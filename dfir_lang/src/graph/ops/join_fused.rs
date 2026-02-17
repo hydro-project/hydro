@@ -166,7 +166,7 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
                     .filter_map(|(k, v2)| {
                         #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone())))
                     });
-                #root::futures::stream::iter(iter)
+                #root::dfir_pipes::from_iter(iter)
             };
         };
 

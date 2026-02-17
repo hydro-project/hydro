@@ -64,7 +64,7 @@ pub const PREFIX: OperatorConstraints = OperatorConstraints {
                 let () = #work_fn_async(fut).await;
 
                 let iter = #vec_ident.iter().cloned();
-                #root::futures::stream::iter(iter)
+                #root::dfir_pipes::from_iter(iter)
             };
         };
         let write_iterator_after = quote_spanned! {op_span=>

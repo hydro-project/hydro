@@ -85,7 +85,7 @@ pub const DEFER_SIGNAL: OperatorConstraints = OperatorConstraints {
                     #work_fn_async(fut).await.is_some()
                 };
 
-                let #ident = #root::futures::stream::iter(if #signal_ident {
+                let #ident = #root::dfir_pipes::from_iter(if #signal_ident {
                     #borrow_ident.drain(..)
                 } else {
                     #borrow_ident.drain(..0) // Hack for empty.

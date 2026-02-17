@@ -91,7 +91,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                     ).await;
 
                     #[allow(clippy::clone_on_copy)]
-                    #root::tokio_stream::StreamExt::filter_map(#rhs, |(k, v2)| #lhs_borrow.get(&k).map(|v1| (k, (v1.clone(), v2.clone()))))
+                    #root::dfir_pipes::filter_map::FilterMap::new(#rhs, |(k, v2)| #lhs_borrow.get(&k).map(|v1| (k, (v1.clone(), v2.clone()))))
                 };
             },
             Persistence::Static => quote_spanned! {op_span=>
@@ -127,7 +127,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                     let iter = #rhs_borrow_ident[replay_idx..]
                         .iter()
                         .filter_map(|(k, v2)| #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))));
-                    #root::futures::stream::iter(iter)
+                    #root::dfir_pipes::from_iter(iter)
                 };
             },
             Persistence::Mutable => unreachable!(),

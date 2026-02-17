@@ -116,6 +116,7 @@ macro_rules! dfir_expect_warnings {
 
 /// Test helper, emits and checks snapshots for the mermaid and dot graphs.
 #[doc(hidden)]
+#[cfg(test)]
 #[macro_export]
 macro_rules! assert_graphvis_snapshots {
     ($df:ident) => {

@@ -68,7 +68,7 @@ pub const SOURCE_INTERVAL: OperatorConstraints = OperatorConstraints {
         let ident_intervalstream = wc.make_ident("intervalstream");
         let mut write_prologue = quote_spanned! {op_span=>
             let #ident_intervalstream =
-                #root::tokio_stream::StreamExt::map(
+                #root::dfir_pipes::map::Map::new(
                     #root::tokio_stream::wrappers::IntervalStream::new(#root::tokio::time::interval(#arguments)),
                     |_| {  }
                 );

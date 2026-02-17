@@ -21,6 +21,8 @@ pub use into_next::IntoNext;
 mod symmetric_hash_join;
 pub use symmetric_hash_join::*;
 
+pub mod symmetric_hash_join_pull;
+
 mod lattice_bimorphism;
 pub use lattice_bimorphism::LatticeBimorphismStream;
 

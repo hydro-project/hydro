@@ -120,14 +120,14 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
 
                 // Eagerly consume input to ensure updated state.
                 {
-                    let __fut = #root::compiled::pull::ForEach::new(#input, |#item_ident| {
+                    let __fut = #root::dfir_pipes::Pull::for_each(#input, |#item_ident| {
                         #foreach_body
                     });
                     let () = #work_fn_async(__fut).await;
                 }
 
                 let #ident = #work_fn(
-                    || #root::tokio_stream::once(
+                    || #root::dfir_pipes::once(
                         ::std::clone::Clone::clone(&*#accumulator_ident)
                     )
                 );

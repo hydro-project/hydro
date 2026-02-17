@@ -197,15 +197,15 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                     lhs_state: &'a mut #join_type<K, V1, V2>,
                     rhs_state: &'a mut #join_type<K, V2, V1>,
                     is_new_tick: bool,
-                ) -> impl 'a + #root::futures::stream::Stream<Item = (K, (V1, V2))>
+                ) -> impl 'a + #root::dfir_pipes::Pull<Item = (K, (V1, V2)), Meta = ()>
                 where
                     K: Eq + std::hash::Hash + Clone,
                     V1: Clone #additional_trait_bounds,
                     V2: Clone #additional_trait_bounds,
-                    I1: 'a + #root::futures::stream::Stream<Item = (K, V1)>,
-                    I2: 'a + #root::futures::stream::Stream<Item = (K, V2)>,
+                    I1: 'a + #root::dfir_pipes::Pull<Item = (K, V1), Meta = ()>,
+                    I2: 'a + #root::dfir_pipes::Pull<Item = (K, V2), Meta = ()>,
                 {
-                    #root::compiled::pull::symmetric_hash_join_into_stream(lhs, rhs, lhs_state, rhs_state, is_new_tick).await
+                    #root::compiled::pull::symmetric_hash_join_pull::symmetric_hash_join(lhs, rhs, lhs_state, rhs_state, is_new_tick).await
                 }
 
                 let fut = check_inputs(#lhs, #rhs, &mut *#lhs_borrow_ident, &mut *#rhs_borrow_ident, #context.is_first_run_this_tick());

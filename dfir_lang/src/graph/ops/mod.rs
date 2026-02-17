@@ -166,11 +166,11 @@ pub fn identity_write_iterator_fn(
         let input = &inputs[0];
         quote_spanned! {op_span=>
             let #ident = {
-                fn check_input<St, Item>(stream: St) -> impl #root::futures::stream::Stream<Item = Item>
+                fn check_input<Pull, Item>(pull: Pull) -> impl #root::dfir_pipes::Pull<Item = Item>
                 where
-                    St: #root::futures::stream::Stream<Item = Item>,
+                    Pull: #root::dfir_pipes::Pull<Item = Item>,
                 {
-                    stream
+                    pull
                 }
                 check_input::<_, #generic_type>(#input)
             };
@@ -223,15 +223,20 @@ pub fn null_write_iterator_fn(
 
     if is_pull {
         quote_spanned! {op_span=>
-            let #ident = #root::futures::stream::poll_fn(move |_cx| {
+            let #ident = #root::dfir_pipes::pull_fn(move || {
                 // Make sure to poll all #inputs to completion.
+                // Note: We create a dummy context here since pull_fn closures don't receive one
+                let waker = #root::futures::task::noop_waker();
+                let mut _cx = ::std::task::Context::from_waker(&waker);
                 #(
-                    let #inputs = #root::futures::stream::Stream::poll_next(::std::pin::pin!(#inputs), _cx);
+                    let #inputs = #root::dfir_pipes::Pull::pull(::std::pin::pin!(#inputs), &mut _cx);
                 )*
                 #(
-                    let _ = ::std::task::ready!(#inputs);
+                    let #root::dfir_pipes::Step::Ready(_, _) = #inputs else {
+                        return #root::dfir_pipes::Step::Ended(#root::dfir_pipes::Yes);
+                    };
                 )*
-                ::std::task::Poll::Ready(::std::option::Option::None)
+                #root::dfir_pipes::Step::Ended(#root::dfir_pipes::Yes)
             });
         }
     } else {

@@ -106,8 +106,8 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
                     };
 
                     #root::compiled::pull::LatticeBimorphismStream::new(
-                        #root::futures::stream::StreamExt::fuse(lhs_stream),
-                        #root::futures::stream::StreamExt::fuse(rhs_stream),
+                        #root::dfir_pipes::fuse::Fuse::new(lhs_stream),
+                        #root::dfir_pipes::fuse::Fuse::new(rhs_stream),
                         func,
                         lhs_state,
                         rhs_state,

@@ -125,7 +125,7 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
                     } else {
                         None.into_iter().flatten()
                     };
-                    #root::futures::stream::iter(iter)
+                    #root::dfir_pipes::from_iter(iter)
                 };
             }
         };

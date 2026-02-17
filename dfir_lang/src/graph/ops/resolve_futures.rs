@@ -72,38 +72,36 @@ pub fn resolve_futures_writer(
 
         let if_pending = if blocking {
             // Wait for all items.
-            quote_spanned! {op_span=> ::std::task::Poll::Pending }
+            quote_spanned! {op_span=> #root::dfir_pipes::Step::<_, _, #root::dfir_pipes::Yes, _>::Pending(#root::dfir_pipes::Yes) }
         } else {
             // EOS immediately, futures items will be in future ticks.
-            quote_spanned! {op_span=> ::std::task::Poll::Ready(::std::option::Option::None) }
+            quote_spanned! {op_span=> #root::dfir_pipes::Step::<_, _, #root::dfir_pipes::No, _>::Ended(#root::dfir_pipes::Yes) }
         };
 
         quote_spanned! {op_span=>
             {
                 let first_item_opt = #work_fn_async(async {
                     // Accumulate all futures.
-                    let () = #root::compiled::pull::ForEach::new(#input, |f| {
-                        ::std::iter::Extend::extend(&mut *#queue_ident, ::std::iter::once(f));
+                    let () = #root::dfir_pipes::Pull::for_each(#input, |fut| {
+                        ::std::iter::Extend::extend(&mut *#queue_ident, ::std::iter::once(fut));
                     }).await;
 
                     // Ensure the queue starts, by polling it.
                     // This unfortunately means we also need to store the result of the first poll in `first_item_opt`.
-                    #root::futures::future::poll_fn(|_cx| {
-                        let opt = if let ::std::task::Poll::Ready(opt) = #root::futures::stream::Stream::poll_next(::std::pin::Pin::new(&mut *#queue_ident), #task_cx) {
-                            opt
-                        } else {
-                            ::std::option::Option::None
-                        };
-                        ::std::task::Poll::Ready(opt) // Always resolve immediately.
-                    }).await
+                    if let ::std::task::Poll::Ready(opt) = #root::futures::stream::Stream::poll_next(::std::pin::Pin::new(&mut *#queue_ident), #task_cx) {
+                        opt
+                    } else {
+                        ::std::option::Option::None
+                    }
                 }).await;
 
-                #root::futures::stream::StreamExt::chain(
-                    #root::futures::stream::iter(first_item_opt),
-                    #root::futures::stream::poll_fn(|_cx| {
-                        match #root::futures::Stream::poll_next(::std::pin::Pin::new(&mut *#queue_ident), #task_cx) {
-                            ::std::task::Poll::Ready(opt) => ::std::task::Poll::Ready(opt),
+                #root::dfir_pipes::Pull::chain(
+                    #root::dfir_pipes::from_iter(first_item_opt),
+                    #root::dfir_pipes::from_fn(|| {
+                        match #root::futures::stream::Stream::poll_next(::std::pin::Pin::new(&mut *#queue_ident), #task_cx) {
                             ::std::task::Poll::Pending => #if_pending,
+                            ::std::task::Poll::Ready(::std::option::Option::Some(item)) => #root::dfir_pipes::Step::Ready(item, ()),
+                            ::std::task::Poll::Ready(::std::option::Option::None) => #root::dfir_pipes::Step::Ended(#root::dfir_pipes::Yes),
                         }
                     }),
                 )
