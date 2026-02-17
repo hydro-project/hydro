@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["embedded"]};
+window.SIDEBAR_ITEMS = {"mod":["echo_network","embedded"]};
