@@ -73,7 +73,7 @@ pub const DEFER_SIGNAL: OperatorConstraints = OperatorConstraints {
 
                 // Eagerly consume input to ensure updated state.
                 {
-                    let fut = #root::compiled::pull::ForEach::new(#input, |item| {
+                    let fut = #root::dfir_pipes::Pull::for_each(#input, |item| {
                         ::std::vec::Vec::push(&mut *#borrow_ident, item);
                     });
                     let () = #work_fn_async(fut).await;
@@ -81,11 +81,11 @@ pub const DEFER_SIGNAL: OperatorConstraints = OperatorConstraints {
 
                 let #signal_ident = {
                     // Short-circuit after first signal message.
-                    let fut = #root::compiled::pull::IntoNext::new(#signal);
+                    let fut = #root::dfir_pipes::Pull::next(#signal);
                     #work_fn_async(fut).await.is_some()
                 };
 
-                let #ident = #root::futures::stream::iter(if #signal_ident {
+                let #ident = #root::dfir_pipes::iter(if #signal_ident {
                     #borrow_ident.drain(..)
                 } else {
                     #borrow_ident.drain(..0) // Hack for empty.

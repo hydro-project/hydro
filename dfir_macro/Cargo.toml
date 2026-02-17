@@ -31,6 +31,6 @@ hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1", optiona
 
 [build-dependencies]
 dfir_lang = { path = "../dfir_lang", version = "^0.15.0" }
-itertools = "0.13.0"
+itertools = "0.14.0"
 quote = "1.0.35"
 hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1" }

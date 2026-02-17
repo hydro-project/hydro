@@ -111,13 +111,13 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                         #vec_ident.len()
                     };
 
-                    let fut = #root::compiled::pull::ForEach::new(#input, |item| {
+                    let fut = #root::dfir_pipes::Pull::for_each(#input, |item| {
                         #vec_ident.push(item);
                     });
                     let () = #work_fn_async(fut).await;
 
                     let iter = #vec_ident[replay_idx..].iter().cloned();
-                    #root::futures::stream::iter(iter)
+                    #root::dfir_pipes::iter(iter)
                 };
             }
         } else {

@@ -52,10 +52,11 @@ pub const SOURCE_STDIN: OperatorConstraints = OperatorConstraints {
             };
         };
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = #root::futures::stream::poll_fn(|_cx| {
+            let #ident = #root::dfir_pipes::from_fn(|| {
                 match #root::futures::stream::Stream::poll_next(::std::pin::Pin::new(&mut #stream_ident), &mut ::std::task::Context::from_waker(&#context.waker())) {
-                    ::std::task::Poll::Ready(maybe) => ::std::task::Poll::Ready(maybe),
-                    ::std::task::Poll::Pending => ::std::task::Poll::Ready(::std::option::Option::None),
+                    ::std::task::Poll::Ready(::std::option::Option::Some(item)) => #root::dfir_pipes::Step::Ready(item, ()),
+                    ::std::task::Poll::Ready(::std::option::Option::None) => #root::dfir_pipes::Step::Ended(#root::dfir_pipes::Yes),
+                    ::std::task::Poll::Pending => #root::dfir_pipes::Step::Ended(#root::dfir_pipes::Yes),
                 }
             });
         };

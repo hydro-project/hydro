@@ -4,8 +4,7 @@ use std::pin::pin;
 use std::task::{Context, Poll, Waker};
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use dfir_rs::compiled::pull::{HalfSetJoinState, symmetric_hash_join_into_stream};
-use futures::stream::Stream;
+use dfir_rs::dfir_pipes::{self, HalfSetJoinState, Pull, Step, symmetric_hash_join as shj_fn};
 use rand::SeedableRng;
 use rand::distributions::Distribution;
 use rand::rngs::StdRng;
@@ -22,9 +21,11 @@ fn run_join_benchmark<K, V1, V2>(
 {
     let (mut lhs_state, mut rhs_state) =
         black_box((HalfSetJoinState::default(), HalfSetJoinState::default()));
-    let join = symmetric_hash_join_into_stream(
-        black_box(futures::stream::iter(lhs)),
-        black_box(futures::stream::iter(rhs)),
+    let lhs_pull = dfir_pipes::iter(lhs).fuse();
+    let rhs_pull = dfir_pipes::iter(rhs).fuse();
+    let join = shj_fn(
+        black_box(lhs_pull),
+        black_box(rhs_pull),
         &mut lhs_state,
         &mut rhs_state,
         false,
@@ -35,10 +36,14 @@ fn run_join_benchmark<K, V1, V2>(
     };
 
     let mut join = pin!(join);
-    while let Poll::Ready(Some(item)) =
-        Stream::poll_next(join.as_mut(), &mut Context::from_waker(Waker::noop()))
-    {
-        black_box(item);
+    loop {
+        match join.as_mut().pull(&mut ()) {
+            Step::Ready(item, _) => {
+                black_box(item);
+            }
+            Step::Ended(_) => break,
+            Step::Pending(_) => unreachable!(),
+        }
     }
 }
 

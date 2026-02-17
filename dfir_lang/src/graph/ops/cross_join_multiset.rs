@@ -96,28 +96,26 @@ pub const CROSS_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                 (#lhs_borrow.len(), #rhs_borrow.len())
             };
 
-            #work_fn_async(#root::compiled::pull::ForEach::new(#lhs, |x| #lhs_borrow.push(x))).await;
-            #work_fn_async(#root::compiled::pull::ForEach::new(#rhs, |x| #rhs_borrow.push(x))).await;
+            #work_fn_async(#root::dfir_pipes::Pull::for_each(#lhs, |x| #lhs_borrow.push(x))).await;
+            #work_fn_async(#root::dfir_pipes::Pull::for_each(#rhs, |x| #rhs_borrow.push(x))).await;
 
-            let #ident = {
-                //       RHS
-                //   +-----+-----+
-                // L | Old | New |
-                // H +-----+-----+
-                // S | New | New |
-                //   +-----+-----+
-                #root::futures::stream::iter(
-                    #lhs_borrow
-                        .iter()
-                        .enumerate()
-                        .flat_map(|(i, lhs)| {
-                            let j = if i < #lhs_i { #rhs_i } else { 0 };
-                            #rhs_borrow[j..]
-                                .iter()
-                                .map(move |rhs| (::std::clone::Clone::clone(lhs), ::std::clone::Clone::clone(rhs)))
-                        })
-                )
-            };
+            //       RHS
+            //   +-----+-----+
+            // L | Old | New |
+            // H +-----+-----+
+            // S | New | New |
+            //   +-----+-----+
+            let #ident = #root::dfir_pipes::iter(
+                #lhs_borrow
+                    .iter()
+                    .enumerate()
+                    .flat_map(|(i, lhs)| {
+                        let j = if i < #lhs_i { #rhs_i } else { 0 };
+                        #rhs_borrow[j..]
+                            .iter()
+                            .map(move |rhs| (::std::clone::Clone::clone(lhs), ::std::clone::Clone::clone(rhs)))
+                    })
+            );
         };
 
         let replay_code = matches!(

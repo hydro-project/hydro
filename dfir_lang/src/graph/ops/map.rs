@@ -52,7 +52,7 @@ pub const MAP: OperatorConstraints = OperatorConstraints {
             let input = &inputs[0];
             quote_spanned! {op_span=>
                 #[allow(clippy::map_clone, reason = "dfir has no explicit `cloned`/`copied` operator")]
-                let #ident = #root::futures::stream::StreamExt::map(#input, #func);
+                let #ident = #root::dfir_pipes::Pull::map(#input, #func);
             }
         } else {
             let output = &outputs[0];

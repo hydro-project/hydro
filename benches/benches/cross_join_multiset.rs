@@ -5,9 +5,8 @@ use std::pin::pin;
 use std::task::{Context, Poll, Waker};
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use dfir_rs::compiled::pull::{HalfMultisetJoinState, symmetric_hash_join_into_stream};
+use dfir_rs::dfir_pipes::{self, HalfMultisetJoinState, Pull, Step, symmetric_hash_join};
 use dfir_rs::dfir_syntax;
-use futures::stream::Stream;
 
 fn run_shj_cross_benchmark<V1, V2>(
     lhs: impl IntoIterator<Item = V1>,
@@ -16,29 +15,27 @@ fn run_shj_cross_benchmark<V1, V2>(
     V1: Clone,
     V2: Clone,
 {
-    use futures::stream::StreamExt;
-
     let (mut lhs_state, mut rhs_state) = (
         HalfMultisetJoinState::default(),
         HalfMultisetJoinState::default(),
     );
-    let join = symmetric_hash_join_into_stream(
-        futures::stream::iter(lhs).map(|x| ((), x)),
-        futures::stream::iter(rhs).map(|x| ((), x)),
-        &mut lhs_state,
-        &mut rhs_state,
-        false,
-    );
+    let lhs_pull = dfir_pipes::iter(lhs.into_iter().map(|x| ((), x))).fuse();
+    let rhs_pull = dfir_pipes::iter(rhs.into_iter().map(|x| ((), x))).fuse();
+    let join = symmetric_hash_join(lhs_pull, rhs_pull, &mut lhs_state, &mut rhs_state, false);
     let join = pin!(join);
     let Poll::Ready(join) = Future::poll(join, &mut Context::from_waker(Waker::noop())) else {
         panic!()
     };
 
     let mut join = pin!(join);
-    while let Poll::Ready(Some(item)) =
-        Stream::poll_next(join.as_mut(), &mut Context::from_waker(Waker::noop()))
-    {
-        black_box(item);
+    loop {
+        match join.as_mut().pull(&mut ()) {
+            Step::Ready(item, _) => {
+                black_box(item);
+            }
+            Step::Ended(_) => break,
+            Step::Pending(_) => unreachable!(),
+        }
     }
 }
 
