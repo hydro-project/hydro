@@ -143,6 +143,7 @@ impl<I, C: Decoder<Item = I> + Send + Sync + Default + 'static> Stream
 {
     type Item = Result<I, <C as Decoder>::Error>;
 
+    #[inline(always)]
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let me = self.deref_mut();
 
@@ -161,6 +162,7 @@ impl<I, C: Decoder<Item = I> + Send + Sync + Default + 'static> Stream
 impl<O, C: Encoder<O>> Sink<O> for SingleConnectionSink<O, C> {
     type Error = <C as Encoder<O>>::Error;
 
+    #[inline(always)]
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         if self.connection_sink.is_none() {
             match ready!(self.new_sink_receiver.poll_recv(cx)) {
@@ -178,6 +180,7 @@ impl<O, C: Encoder<O>> Sink<O> for SingleConnectionSink<O, C> {
             .poll_ready(cx)
     }
 
+    #[inline(always)]
     fn start_send(mut self: Pin<&mut Self>, item: O) -> Result<(), Self::Error> {
         self.connection_sink
             .as_mut()
@@ -186,6 +189,7 @@ impl<O, C: Encoder<O>> Sink<O> for SingleConnectionSink<O, C> {
             .start_send(item)
     }
 
+    #[inline(always)]
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         if let Some(sink) = self.connection_sink.as_mut() {
             sink.as_mut().poll_flush(cx)
@@ -194,6 +198,7 @@ impl<O, C: Encoder<O>> Sink<O> for SingleConnectionSink<O, C> {
         }
     }
 
+    #[inline(always)]
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         if let Some(sink) = self.connection_sink.as_mut() {
             sink.as_mut().poll_close(cx)

@@ -422,18 +422,22 @@ struct IoErrorDrain<T> {
 impl<T> Sink<T> for IoErrorDrain<T> {
     type Error = io::Error;
 
+    #[inline(always)]
     fn poll_ready(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
+    #[inline(always)]
     fn start_send(self: Pin<&mut Self>, _item: T) -> Result<(), Self::Error> {
         Ok(())
     }
 
+    #[inline(always)]
     fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
+    #[inline(always)]
     fn poll_close(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
@@ -652,6 +656,7 @@ pub struct MergeSource<T: Unpin, S: Stream<Item = T> + Send + Sync + ?Sized> {
 impl<T: Unpin, S: Stream<Item = T> + Send + Sync + ?Sized> Stream for MergeSource<T, S> {
     type Item = T;
 
+    #[inline(always)]
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let me = self.get_mut();
         let mut out = Poll::Pending;
@@ -723,6 +728,7 @@ impl<T: Unpin, S: Stream<Item = Result<T, io::Error>> + Send + Sync + ?Sized> St
 {
     type Item = Result<(u32, T), io::Error>;
 
+    #[inline(always)]
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let id = self.as_ref().id;
         let source = &mut self.get_mut().source;

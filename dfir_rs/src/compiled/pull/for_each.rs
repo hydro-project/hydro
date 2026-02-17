@@ -32,6 +32,7 @@ where
 {
     type Output = ();
 
+    #[inline(always)]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut this = self.project();
         while let Some(item) = ready!(this.stream.as_mut().poll_next(cx)) {

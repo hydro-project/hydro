@@ -30,19 +30,23 @@ where
 {
     type Error = core::convert::Infallible;
 
+    #[inline(always)]
     fn poll_ready(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
+    #[inline(always)]
     fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
         (self.project().func)(item);
         Ok(())
     }
 
+    #[inline(always)]
     fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
+    #[inline(always)]
     fn poll_close(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }

@@ -120,6 +120,7 @@ where
 {
     type Error = Error;
 
+    #[inline(always)]
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut state = self.state.borrow_mut();
 
@@ -174,6 +175,7 @@ where
         panic!("LazySinkHalf in invalid state.");
     }
 
+    #[inline(always)]
     fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
         let mut state = self.state.borrow_mut();
 
@@ -203,6 +205,7 @@ where
         panic!("LazySinkHalf not ready.");
     }
 
+    #[inline(always)]
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut state = self.state.borrow_mut();
 
@@ -257,6 +260,7 @@ where
         panic!("LazySinkHalf in invalid state.");
     }
 
+    #[inline(always)]
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut state = self.state.borrow_mut();
 
@@ -320,6 +324,7 @@ where
 {
     type Item = St::Item;
 
+    #[inline(always)]
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut state = self.state.borrow_mut();
 

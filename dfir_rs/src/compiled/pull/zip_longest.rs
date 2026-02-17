@@ -34,6 +34,7 @@ where
 {
     type Item = EitherOrBoth<St1::Item, St2::Item>;
 
+    #[inline(always)]
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
 

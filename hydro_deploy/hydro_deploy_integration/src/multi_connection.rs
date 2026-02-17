@@ -110,6 +110,7 @@ impl<
 {
     type Item = Result<(u64, I), <C as Decoder>::Error>;
 
+    #[inline(always)]
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let me = self.deref_mut();
         // Handle Unix socket accepts
@@ -257,6 +258,7 @@ impl<
 impl<O, C: Encoder<O>> Sink<(u64, O)> for MultiConnectionSink<O, C> {
     type Error = <C as Encoder<O>>::Error;
 
+    #[inline(always)]
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         loop {
             match self.new_sink_receiver.poll_recv(cx) {
@@ -299,6 +301,7 @@ impl<O, C: Encoder<O>> Sink<(u64, O)> for MultiConnectionSink<O, C> {
         }
     }
 
+    #[inline(always)]
     fn start_send(mut self: Pin<&mut Self>, item: (u64, O)) -> Result<(), Self::Error> {
         if let Some(sink) = self.connection_sinks.get_mut(&item.0) {
             let _ = sink.as_mut().start_send(item.1); // TODO(shadaj): log errors when we have principled logging
@@ -307,6 +310,7 @@ impl<O, C: Encoder<O>> Sink<(u64, O)> for MultiConnectionSink<O, C> {
         Ok(())
     }
 
+    #[inline(always)]
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut any_pending = false;
 
@@ -327,6 +331,7 @@ impl<O, C: Encoder<O>> Sink<(u64, O)> for MultiConnectionSink<O, C> {
         }
     }
 
+    #[inline(always)]
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let mut any_pending = false;
 
@@ -370,6 +375,7 @@ where
 {
     type Item = Result<(u64, C::Item), C::Error>;
 
+    #[inline(always)]
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let me = self.deref_mut();
 
@@ -472,6 +478,7 @@ pub struct TcpMultiConnectionSink<I, C: Encoder<I>> {
 impl<I, C: Encoder<I> + Unpin> Sink<(u64, I)> for TcpMultiConnectionSink<I, C> {
     type Error = C::Error;
 
+    #[inline(always)]
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let me = self.get_mut();
         // Receive any new sinks
@@ -481,6 +488,7 @@ impl<I, C: Encoder<I> + Unpin> Sink<(u64, I)> for TcpMultiConnectionSink<I, C> {
         Poll::Ready(Ok(()))
     }
 
+    #[inline(always)]
     fn start_send(self: Pin<&mut Self>, item: (u64, I)) -> Result<(), Self::Error> {
         let me = self.get_mut();
         if let Some(sink) = me.connection_sinks.get_mut(&item.0) {
@@ -489,6 +497,7 @@ impl<I, C: Encoder<I> + Unpin> Sink<(u64, I)> for TcpMultiConnectionSink<I, C> {
         Ok(())
     }
 
+    #[inline(always)]
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let me = self.get_mut();
         let mut any_pending = false;
@@ -510,6 +519,7 @@ impl<I, C: Encoder<I> + Unpin> Sink<(u64, I)> for TcpMultiConnectionSink<I, C> {
         }
     }
 
+    #[inline(always)]
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let me = self.get_mut();
         let mut any_pending = false;

@@ -31,18 +31,22 @@ where
 {
     type Error = Item::Error;
 
+    #[inline(always)]
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Item::poll_ready(self.project().outputs, cx)
     }
 
+    #[inline(always)]
     fn start_send(self: Pin<&mut Self>, item: Item) -> Result<(), Self::Error> {
         Item::start_send(item, self.project().outputs)
     }
 
+    #[inline(always)]
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Item::poll_flush(self.project().outputs, cx)
     }
 
+    #[inline(always)]
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Item::poll_close(self.project().outputs, cx)
     }

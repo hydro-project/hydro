@@ -34,6 +34,7 @@ where
 {
     type Error = Si::Error;
 
+    #[inline(always)]
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         #[expect(
             clippy::disallowed_methods,
@@ -48,6 +49,7 @@ where
             })
     }
 
+    #[inline(always)]
     fn start_send(self: Pin<&mut Self>, item: (Key, Item)) -> Result<(), Self::Error> {
         let this = self.get_mut();
         let sink = this
@@ -57,6 +59,7 @@ where
         Pin::new(sink).start_send(item.1)
     }
 
+    #[inline(always)]
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         #[expect(
             clippy::disallowed_methods,
@@ -71,6 +74,7 @@ where
             })
     }
 
+    #[inline(always)]
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         #[expect(
             clippy::disallowed_methods,

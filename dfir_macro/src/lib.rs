@@ -327,6 +327,7 @@ pub fn derive_demux_enum(item: proc_macro::TokenStream) -> proc_macro::TokenStre
         {
             type Error = #root::Never;
 
+            #[inline(always)]
             fn poll_ready(
                 ( #( #variant_localvars_sink, )* ): &mut #variant_generics_pinned_sink_all,
                 __cx: &mut ::std::task::Context<'_>,
@@ -341,6 +342,7 @@ pub fn derive_demux_enum(item: proc_macro::TokenStream) -> proc_macro::TokenStre
                 ::std::task::Poll::Ready(::std::result::Result::Ok(()))
             }
 
+            #[inline(always)]
             fn start_send(
                 self,
                 ( #( #variant_localvars_sink, )* ): &mut #variant_generics_pinned_sink_all,
@@ -350,6 +352,7 @@ pub fn derive_demux_enum(item: proc_macro::TokenStream) -> proc_macro::TokenStre
                 }
             }
 
+            #[inline(always)]
             fn poll_flush(
                 ( #( #variant_localvars_sink, )* ): &mut #variant_generics_pinned_sink_all,
                 __cx: &mut ::std::task::Context<'_>,
@@ -364,6 +367,7 @@ pub fn derive_demux_enum(item: proc_macro::TokenStream) -> proc_macro::TokenStre
                 ::std::task::Poll::Ready(::std::result::Result::Ok(()))
             }
 
+            #[inline(always)]
             fn poll_close(
                 ( #( #variant_localvars_sink, )* ): &mut #variant_generics_pinned_sink_all,
                 __cx: &mut ::std::task::Context<'_>,

@@ -28,6 +28,7 @@ where
 {
     type Output = Option<St::Item>;
 
+    #[inline(always)]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
         this.stream.poll_next(cx)

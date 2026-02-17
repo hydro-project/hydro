@@ -99,6 +99,7 @@ impl<T> Drop for Sender<T> {
 impl<T> Sink<T> for Sender<T> {
     type Error = TrySendError<Option<T>>;
 
+    #[inline(always)]
     fn poll_ready(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         if let Some(strong) = Weak::upgrade(&self.weak) {
             let mut shared = strong.borrow_mut();
@@ -119,6 +120,7 @@ impl<T> Sink<T> for Sender<T> {
         }
     }
 
+    #[inline(always)]
     fn start_send(self: Pin<&mut Self>, item: T) -> Result<(), Self::Error> {
         self.try_send(item).map_err(|e| match e {
             TrySendError::Full(item) => TrySendError::Full(Some(item)),
@@ -126,10 +128,12 @@ impl<T> Sink<T> for Sender<T> {
         })
     }
 
+    #[inline(always)]
     fn poll_flush(self: Pin<&mut Self>, _ctx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         Poll::Ready(Ok(()))
     }
 
+    #[inline(always)]
     fn poll_close(
         mut self: Pin<&mut Self>,
         ctx: &mut Context<'_>,
@@ -194,6 +198,7 @@ impl<T> Drop for Receiver<T> {
 impl<T> Stream for Receiver<T> {
     type Item = T;
 
+    #[inline(always)]
     fn poll_next(mut self: Pin<&mut Self>, ctx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.poll_recv(ctx)
     }

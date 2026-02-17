@@ -37,6 +37,7 @@ where
         }
     }
 
+    #[inline(always)]
     fn poll_ready_impl(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Si::Error>>
     where
         Si: Sink<IntoIter::Item>,
@@ -66,10 +67,12 @@ where
 {
     type Error = Si::Error;
 
+    #[inline(always)]
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         self.poll_ready_impl(cx)
     }
 
+    #[inline(always)]
     fn start_send(self: Pin<&mut Self>, item: IntoIter) -> Result<(), Self::Error> {
         let this = self.project();
 
@@ -82,11 +85,13 @@ where
         Ok(())
     }
 
+    #[inline(always)]
     fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         ready!(self.as_mut().poll_ready_impl(cx)?);
         self.project().sink.poll_flush(cx)
     }
 
+    #[inline(always)]
     fn poll_close(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         ready!(self.as_mut().poll_ready_impl(cx)?);
         self.project().sink.poll_close(cx)

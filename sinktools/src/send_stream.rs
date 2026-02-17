@@ -33,6 +33,7 @@ where
 {
     type Output = Result<(), Push::Error>;
 
+    #[inline(always)]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut this = self.project();
 

@@ -1182,6 +1182,7 @@ impl DfirGraph {
                                                 {
                                                     type Error = Si::Error;
 
+                                                    #[inline(always)]
                                                     fn poll_ready(
                                                         self: ::std::pin::Pin<&mut Self>,
                                                         cx: &mut ::std::task::Context<'_>,
@@ -1189,6 +1190,7 @@ impl DfirGraph {
                                                         self.project().si.poll_ready(cx)
                                                     }
 
+                                                    #[inline(always)]
                                                     fn start_send(
                                                         self: ::std::pin::Pin<&mut Self>,
                                                         item: Item,
@@ -1196,6 +1198,7 @@ impl DfirGraph {
                                                         self.project().si.start_send(item)
                                                     }
 
+                                                    #[inline(always)]
                                                     fn poll_flush(
                                                         self: ::std::pin::Pin<&mut Self>,
                                                         cx: &mut ::std::task::Context<'_>,
@@ -1203,6 +1206,7 @@ impl DfirGraph {
                                                         self.project().si.poll_flush(cx)
                                                     }
 
+                                                    #[inline(always)]
                                                     fn poll_close(
                                                         self: ::std::pin::Pin<&mut Self>,
                                                         cx: &mut ::std::task::Context<'_>,

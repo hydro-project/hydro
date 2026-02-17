@@ -37,22 +37,29 @@ where
 {
     type Error = Si0::Error;
 
+    #[inline(always)]
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let this = self.project();
         ready_both!(this.sink_0.poll_ready(cx)?, this.sink_1.poll_ready(cx)?,);
         Poll::Ready(Ok(()))
     }
+
+    #[inline(always)]
     fn start_send(self: Pin<&mut Self>, item: (Item0, Item1)) -> Result<(), Self::Error> {
         let this = self.project();
         this.sink_0.start_send(item.0)?;
         this.sink_1.start_send(item.1)?;
         Ok(())
     }
+
+    #[inline(always)]
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let this = self.project();
         ready_both!(this.sink_0.poll_flush(cx)?, this.sink_1.poll_flush(cx)?,);
         Poll::Ready(Ok(()))
     }
+
+    #[inline(always)]
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
         let this = self.project();
         ready_both!(this.sink_0.poll_close(cx)?, this.sink_1.poll_close(cx)?,);

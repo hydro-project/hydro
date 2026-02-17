@@ -191,6 +191,8 @@ where
     Fut: Future,
 {
     type Output = Fut::Output;
+
+    #[inline(always)]
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let this = self.project();
 

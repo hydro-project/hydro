@@ -34,12 +34,14 @@ where
     Si: Sink<Item>,
     Rest: SinkVariadic<Item, Si::Error>,
 {
+    #[inline(always)]
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Si::Error>> {
         let (sink, rest) = pin_project_pair(self);
         ready_both!(sink.poll_ready(cx)?, rest.poll_ready(cx)?);
         Poll::Ready(Ok(()))
     }
 
+    #[inline(always)]
     fn start_send(self: Pin<&mut Self>, idx: usize, item: Item) -> Result<(), Si::Error> {
         let (sink, rest) = pin_project_pair(self);
         if idx == 0 {
@@ -49,12 +51,14 @@ where
         }
     }
 
+    #[inline(always)]
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Si::Error>> {
         let (sink, rest) = pin_project_pair(self);
         ready_both!(sink.poll_flush(cx)?, rest.poll_flush(cx)?);
         Poll::Ready(Ok(()))
     }
 
+    #[inline(always)]
     fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Si::Error>> {
         let (sink, rest) = pin_project_pair(self);
         ready_both!(sink.poll_close(cx)?, rest.poll_close(cx)?);
@@ -64,18 +68,22 @@ where
 
 #[sealed]
 impl<Item, Error> SinkVariadic<Item, Error> for () {
+    #[inline(always)]
     fn poll_ready(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         Poll::Ready(Ok(()))
     }
 
+    #[inline(always)]
     fn start_send(self: Pin<&mut Self>, idx: usize, _item: Item) -> Result<(), Error> {
         panic!("index out of bounds (len + {idx})");
     }
 
+    #[inline(always)]
     fn poll_flush(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         Poll::Ready(Ok(()))
     }
 
+    #[inline(always)]
     fn poll_close(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Result<(), Error>> {
         Poll::Ready(Ok(()))
     }
