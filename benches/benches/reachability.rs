@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::io::{BufRead, BufReader, Cursor};
+use std::num::NonZeroU64;
 use std::rc::Rc;
 use std::sync::LazyLock;
 
@@ -377,13 +378,266 @@ fn benchmark_hydroflow_surface(c: &mut Criterion) {
     });
 }
 
+fn benchmark_hydroflow_surface_tracing(c: &mut Criterion) {
+    c.bench_function("reachability/dfir_rs/surface/tracing", |b| {
+        let edges: Vec<_> = EDGES
+            .iter()
+            .flat_map(|(&k, v)| v.iter().map(move |v| (k, *v)))
+            .collect();
+
+        b.iter_batched(
+            || {
+                let reachable_verts = Rc::new(RefCell::new(HashSet::new()));
+
+                #[derive(Debug, Copy, Clone, Eq)]
+                #[expect(dead_code, reason = "id for testing")]
+                struct SpanId(NonZeroU64);
+                // Hack to make the flow reach fixpoint.
+                impl PartialOrd for SpanId {
+                    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+                        Some(self.cmp(other))
+                    }
+                }
+                impl Ord for SpanId {
+                    fn cmp(&self, _: &Self) -> std::cmp::Ordering {
+                        std::cmp::Ordering::Equal
+                    }
+                }
+                impl PartialEq for SpanId {
+                    fn eq(&self, _: &Self) -> bool {
+                        true
+                    }
+                }
+
+                let span_id = Rc::new(std::cell::Cell::new(3));
+                let span_id_out = Rc::clone(&span_id);
+
+                let follows_from = Rc::new(RefCell::new(Vec::new()));
+                let follows_from_out = Rc::clone(&follows_from);
+
+                let df = {
+                    let edges_span = SpanId(NonZeroU64::new(2).unwrap());
+                    let edges = edges.clone();
+                    let reachable_inner = reachable_verts.clone();
+
+                    dfir_syntax! {
+                        origin = source_iter(vec![(1, SpanId(NonZeroU64::new(1).unwrap()))]);
+                        stream_of_edges = source_iter(edges) -> map(|(src, dst)| (src, (dst, edges_span)));
+                        reached_vertices = union();
+                        origin -> reached_vertices;
+
+                        my_join_tee = join() -> flat_map(|(src, (src_span, (dst, dst_span)))| {
+                            let id = span_id.get();
+                            span_id.set(u64::checked_add(id, 1).unwrap());
+                            let out_span = SpanId(NonZeroU64::new(id).unwrap());
+                            follows_from.borrow_mut().push((out_span, src_span));
+                            follows_from.borrow_mut().push((out_span, dst_span));
+                            [(src, out_span), (dst, out_span)]
+                        }) -> tee();
+                        reached_vertices -> [0]my_join_tee;
+                        stream_of_edges -> [1]my_join_tee;
+
+                        my_join_tee -> reached_vertices;
+                        my_join_tee -> for_each(|(x, _span)| {
+                            reachable_inner.borrow_mut().insert(x);
+                        });
+                    }
+                };
+
+                (df, reachable_verts, span_id_out, follows_from_out)
+            },
+            |(mut df, reachable_verts, span_id, follows_from)| {
+                df.run_available_sync();
+                assert_eq!(&*reachable_verts.borrow(), &*REACHABLE);
+                let _ = criterion::black_box((span_id, follows_from));
+            },
+            criterion::BatchSize::LargeInput,
+        );
+    });
+}
+
+fn benchmark_hydroflow_surface_tracing_fractional(c: &mut Criterion) {
+    c.bench_function("reachability/dfir_rs/surface/tracing-fractional", |b| {
+        let edges: Vec<_> = EDGES
+            .iter()
+            .flat_map(|(&k, v)| v.iter().map(move |v| (k, *v)))
+            .collect();
+
+        b.iter_batched(
+            || {
+                let reachable_verts = Rc::new(RefCell::new(HashSet::new()));
+
+                #[derive(Debug, Copy, Clone, Eq)]
+                #[expect(dead_code, reason = "id for testing")]
+                struct SpanId(NonZeroU64);
+                // Hack to make the flow reach fixpoint.
+                impl PartialOrd for SpanId {
+                    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+                        Some(self.cmp(other))
+                    }
+                }
+                impl Ord for SpanId {
+                    fn cmp(&self, _: &Self) -> std::cmp::Ordering {
+                        std::cmp::Ordering::Equal
+                    }
+                }
+                impl PartialEq for SpanId {
+                    fn eq(&self, _: &Self) -> bool {
+                        true
+                    }
+                }
+
+                assert_eq!(size_of::<u64>(), size_of::<Option<SpanId>>());
+
+                let span_id = Rc::new(std::cell::Cell::new(3));
+                let span_id_out = Rc::clone(&span_id);
+
+                let follows_from = Rc::new(RefCell::new(Vec::new()));
+                let follows_from_out = Rc::clone(&follows_from);
+
+                let df = {
+                    let edges_span = SpanId(NonZeroU64::new(2).unwrap());
+                    let edges: Vec<(usize, usize)> = edges.clone();
+                    let reachable_inner = reachable_verts.clone();
+
+                    dfir_syntax! {
+                        origin = source_iter(vec![(1, None)]); //Some(SpanId(NonZeroU64::new(1).unwrap())))]);
+                        stream_of_edges = source_iter(edges)
+                            -> enumerate()
+                            -> map(|(i, (src, dst))| {
+                                // if 0 == i % 10 {
+                                //     (src, (dst, Some(edges_span)))
+                                // } else {
+                                //     (src, (dst, None))
+                                // }
+                                (src, (dst, None))
+                            });
+                        reached_vertices = union();
+                        origin -> reached_vertices;
+
+                        my_join_tee = join() -> flat_map(|(src, (src_span, (dst, dst_span)))| {
+                            let out_span = Option::zip(src_span, dst_span).map(|(src_span, dst_span)| {
+                                let id = span_id.get();
+                                span_id.set(u64::checked_add(id, 1).unwrap());
+                                let out_span = SpanId(NonZeroU64::new(id).unwrap());
+                                follows_from.borrow_mut().push((out_span, src_span));
+                                follows_from.borrow_mut().push((out_span, dst_span));
+                                out_span
+                            });
+                            [(src, out_span), (dst, out_span)]
+                        }) -> tee();
+                        reached_vertices -> [0]my_join_tee;
+                        stream_of_edges -> [1]my_join_tee;
+
+                        my_join_tee -> reached_vertices;
+                        my_join_tee -> for_each(|(x, _span)| {
+                            reachable_inner.borrow_mut().insert(x);
+                        });
+                    }
+                };
+
+                (df, reachable_verts, span_id_out, follows_from_out)
+            },
+            |(mut df, reachable_verts, span_id, follows_from)| {
+                df.run_available_sync();
+                assert_eq!(&*reachable_verts.borrow(), &*REACHABLE);
+                let _ = criterion::black_box((span_id, follows_from));
+            },
+            criterion::BatchSize::LargeInput,
+        );
+    });
+}
+
+fn benchmark_hydroflow_surface_spanned(c: &mut Criterion) {
+    c.bench_function("reachability/dfir_rs/surface/spanned", |b| {
+        use dfir_rs::tracing;
+
+        let edges: Vec<_> = EDGES
+            .iter()
+            .flat_map(|(&k, v)| v.iter().map(move |v| (k, *v)))
+            .collect();
+
+        b.iter_batched(
+            || {
+
+                #[derive(Debug, Clone)]
+                struct EqSpan(tracing::Span);
+                // Hack to make the flow reach fixpoint.
+                impl PartialOrd for EqSpan {
+                    fn partial_cmp(&self, _: &Self) -> Option<std::cmp::Ordering> {
+                        Some(std::cmp::Ordering::Equal)
+                    }
+                }
+                impl Ord for EqSpan {
+                    fn cmp(&self, _: &Self) -> std::cmp::Ordering {
+                        std::cmp::Ordering::Equal
+                    }
+                }
+                impl PartialEq for EqSpan {
+                    fn eq(&self, _: &Self) -> bool {
+                        true
+                    }
+                }
+                impl Eq for EqSpan {}
+
+                let reachable_verts = Rc::new(RefCell::new(HashSet::new()));
+
+                let df = {
+                    let edges_span = EqSpan(tracing::span!(tracing::Level::INFO, "edges"));
+                    let edges = edges.clone();
+                    let reachable_inner = reachable_verts.clone();
+
+                    dfir_syntax! {
+                        origin = source_iter(vec![(1, EqSpan(tracing::span!(tracing::Level::INFO, "origin")))]);
+                        stream_of_edges = source_iter(edges) -> map(|(src, dst)| (src, (dst, edges_span.clone())));
+                        reached_vertices = union();
+                        origin -> reached_vertices;
+
+                        my_join_tee = join() -> flat_map(|(src, (src_span, (dst, dst_span)))| {
+                            let out_span = EqSpan(tracing::span!(tracing::Level::INFO, "join"));
+                            if let Some(out_span_id) = out_span.0.id() {
+                                tracing::dispatcher::get_default(|d| {
+                                    if let Some(src_span_id) = src_span.0.id() {
+                                        d.record_follows_from(&out_span_id, &src_span_id);
+                                    }
+                                    if let Some(dst_span_id) = dst_span.0.id() {
+                                        d.record_follows_from(&out_span_id, &dst_span_id);
+                                    }
+                                });
+                            }
+                            [(src, out_span.clone()), (dst, out_span)]
+                        }) -> tee();
+                        reached_vertices -> [0]my_join_tee;
+                        stream_of_edges -> [1]my_join_tee;
+
+                        my_join_tee -> reached_vertices;
+                        my_join_tee -> for_each(|(x, _span)| {
+                            reachable_inner.borrow_mut().insert(x);
+                        });
+                    }
+                };
+
+                (df, reachable_verts)
+            },
+            |(mut df, reachable_verts)| {
+                df.run_available_sync();
+                assert_eq!(&*reachable_verts.borrow(), &*REACHABLE);
+            },
+            criterion::BatchSize::LargeInput,
+        );
+    });
+}
+
 criterion_group!(
     reachability,
     benchmark_timely,
     benchmark_differential,
     benchmark_hydroflow_scheduled,
     benchmark_hydroflow,
-    benchmark_hydroflow_surface,
     benchmark_hydroflow_surface_cheating,
+    benchmark_hydroflow_surface,
+    benchmark_hydroflow_surface_tracing,
+    benchmark_hydroflow_surface_tracing_fractional,
+    benchmark_hydroflow_surface_spanned,
 );
 criterion_main!(reachability);
