@@ -121,6 +121,38 @@ Developers are responsible for the commutativity when they use a `ManualProof`. 
 
 :::
 
+### Observing Non-Deterministic Order
+Sometimes you may want to intentionally observe the non-deterministic order of a stream, accepting that the result may vary across runs. For example, you might want to take the first element that arrives from any cluster member, regardless of which one it is.
+
+To do this, you can use [`assume_ordering`](pathname:///rustdoc/hydro_lang/live_collections/struct.Stream#method.assume_ordering) to cast a `NoOrder` stream to `TotalOrder`. This requires a `nondet!` guard, which forces you to document _why_ the non-determinism is acceptable:
+
+```rust,no_run
+# use hydro_lang::prelude::*;
+# let mut flow = FlowBuilder::new();
+use hydro_lang::live_collections::stream::{NoOrder, TotalOrder};
+let workers: Cluster<()> = flow.cluster::<()>();
+let process: Process<()> = flow.process::<()>();
+let unordered: Stream<_, Process<_>, Unbounded, NoOrder> = workers
+    .source_iter(q!(vec![1, 2, 3]))
+    .send(&process, TCP.fail_stop().bincode())
+    .values();
+
+let first_arrival = unordered
+    .assume_ordering::<TotalOrder>(nondet!(
+        /// We only care about the first value to arrive, regardless of which
+        /// cluster member sent it.
+    ))
+    .first();
+```
+
+The `nondet!` macro takes a doc comment explaining why the non-determinism is tolerable. This serves as inline documentation for anyone reading the code later, making it clear that the non-determinism is a deliberate choice rather than an oversight.
+
+:::caution
+
+Use `assume_ordering` sparingly. Once you cast a stream to `TotalOrder`, the type system can no longer protect you from order-dependent bugs. When writing code that involves such non-deterministic APIs, you should use the [Hydro simulator](../simulation/index.mdx) to test potential edge cases. When it encounters an `assume_ordering`, the simulator will test all possible element orders that could appear in the output.
+
+:::
+
 ## Bounded and Unbounded Streams
 
 :::caution
