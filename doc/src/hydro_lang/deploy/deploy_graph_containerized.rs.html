@@ -111,7 +111,7 @@
 <a href=#111 id=111 data-nosnippet>111</a>            LinkingMode::Static,
 <a href=#112 id=112 data-nosnippet>112</a>        );
 <a href=#113 id=113 data-nosnippet>113</a>
-<a href=#114 id=114 data-nosnippet>114</a>        <span class="kw">let </span><span class="kw-2">mut </span>ret = RustCrate::new(config.project_dir)
+<a href=#114 id=114 data-nosnippet>114</a>        <span class="kw">let </span><span class="kw-2">mut </span>ret = RustCrate::new(<span class="kw-2">&amp;</span>config.project_dir, <span class="kw-2">&amp;</span>config.project_dir)
 <a href=#115 id=115 data-nosnippet>115</a>            .target_dir(config.target_dir)
 <a href=#116 id=116 data-nosnippet>116</a>            .example(bin_name)
 <a href=#117 id=117 data-nosnippet>117</a>            .no_default_features();
@@ -186,7 +186,7 @@
 <a href=#186 id=186 data-nosnippet>186</a>            LinkingMode::Static,
 <a href=#187 id=187 data-nosnippet>187</a>        );
 <a href=#188 id=188 data-nosnippet>188</a>
-<a href=#189 id=189 data-nosnippet>189</a>        <span class="kw">let </span><span class="kw-2">mut </span>ret = RustCrate::new(config.project_dir)
+<a href=#189 id=189 data-nosnippet>189</a>        <span class="kw">let </span><span class="kw-2">mut </span>ret = RustCrate::new(<span class="kw-2">&amp;</span>config.project_dir, <span class="kw-2">&amp;</span>config.project_dir)
 <a href=#190 id=190 data-nosnippet>190</a>            .target_dir(config.target_dir)
 <a href=#191 id=191 data-nosnippet>191</a>            .example(bin_name)
 <a href=#192 id=192 data-nosnippet>192</a>            .no_default_features();
