@@ -1143,10 +1143,6 @@ impl HydroNode {
                 input: inner,
                 metadata,
             }
-            | HydroNode::UniqueKeyed {
-                input: inner,
-                metadata,
-            }
             | HydroNode::ResolveFutures {
                 input: inner,
                 metadata,

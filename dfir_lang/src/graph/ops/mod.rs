@@ -342,7 +342,6 @@ declare_ops![
     state_by::STATE_BY,
     tee::TEE,
     unique::UNIQUE,
-    unique_keyed::UNIQUE_KEYED,
     unzip::UNZIP,
     zip::ZIP,
     zip_longest::ZIP_LONGEST,

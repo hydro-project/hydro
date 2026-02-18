@@ -1991,11 +1991,9 @@ where
     {
         self.entries().join(other.entries()).into_keyed()
     }
+
     /// Deduplicates values within each key group, emitting each unique value per key
     /// exactly once.
-    ///
-    /// The output keyed stream has an [`ExactlyOnce`] guarantee on the values within
-    /// each group. This is a streaming operator that processes elements as they arrive.
     ///
     /// # Example
     /// ```rust
@@ -2023,21 +2021,12 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn unique(self) -> KeyedStream<K, V, L, B, O, ExactlyOnce>
+    pub fn unique(self) -> KeyedStream<K, V, L, B, NoOrder, ExactlyOnce>
     where
         K: Eq + Hash + Clone,
         V: Eq + Hash + Clone,
     {
-        KeyedStream::new(
-            self.location.clone(),
-            HydroNode::UniqueKeyed {
-                input: Box::new(self.ir_node.into_inner()),
-                metadata:
-                    self.location.new_node_metadata(
-                        KeyedStream::<K, V, L, B, O, ExactlyOnce>::collection_kind(),
-                    ),
-            },
-        )
+        self.entries().unique().into_keyed()
     }
 }
 
