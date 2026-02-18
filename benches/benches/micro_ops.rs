@@ -353,6 +353,46 @@ fn ops(c: &mut Criterion) {
         })
     });
 
+    c.bench_function("micro/ops/enumerate_keyed", |b| {
+        b.iter_batched_ref(
+            || {
+                const NUM_INTS: usize = 10_000;
+                let dist = Uniform::new(0, 100);
+                let data: Vec<(usize, usize)> = (0..NUM_INTS)
+                    .map(|_| (dist.sample(&mut rng), dist.sample(&mut rng)))
+                    .collect();
+
+                dfir_syntax! {
+                    source_iter(black_box(data)) -> enumerate_keyed() -> for_each(|x| { black_box(x); });
+                }
+            },
+            |df| {
+                df.run_available_sync();
+            },
+            BatchSize::LargeInput,
+        )
+    });
+
+    c.bench_function("micro/ops/sort_keyed", |b| {
+        b.iter_batched_ref(
+            || {
+                const NUM_INTS: usize = 10_000;
+                let dist = Uniform::new(0, 100);
+                let data: Vec<(usize, usize)> = (0..NUM_INTS)
+                    .map(|_| (dist.sample(&mut rng), dist.sample(&mut rng)))
+                    .collect();
+
+                dfir_syntax! {
+                    source_iter(black_box(data)) -> sort_keyed() -> for_each(|x| { black_box(x); });
+                }
+            },
+            |df| {
+                df.run_available_sync();
+            },
+            BatchSize::LargeInput,
+        )
+    });
+
     // TODO(mingwei): rename to `fold_keyed`
     c.bench_function("micro/ops/group_by", |b| {
         b.iter_batched_ref(
