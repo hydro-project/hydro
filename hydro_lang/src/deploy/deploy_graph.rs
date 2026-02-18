@@ -1092,7 +1092,7 @@ fn create_trybuild_service(
         LinkingMode::Static => dir.to_path_buf(),
     };
 
-    let mut ret = RustCrate::new(&crate_dir)
+    let mut ret = RustCrate::new(&crate_dir, dir)
         .target_dir(target_dir)
         .example(bin_name)
         .no_default_features();

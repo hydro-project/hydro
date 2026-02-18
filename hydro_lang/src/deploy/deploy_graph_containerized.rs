@@ -111,7 +111,7 @@ impl Node for DockerDeployProcess {
             LinkingMode::Static,
         );
 
-        let mut ret = RustCrate::new(config.project_dir)
+        let mut ret = RustCrate::new(&config.project_dir, &config.project_dir)
             .target_dir(config.target_dir)
             .example(bin_name)
             .no_default_features();
@@ -186,7 +186,7 @@ impl Node for DockerDeployCluster {
             LinkingMode::Static,
         );
 
-        let mut ret = RustCrate::new(config.project_dir)
+        let mut ret = RustCrate::new(&config.project_dir, &config.project_dir)
             .target_dir(config.target_dir)
             .example(bin_name)
             .no_default_features();

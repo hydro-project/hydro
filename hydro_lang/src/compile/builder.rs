@@ -31,6 +31,7 @@ crate::newtype_counter! {
 }
 
 impl CycleId {
+    #[cfg(feature = "build")]
     pub(crate) fn as_ident(&self) -> syn::Ident {
         syn::Ident::new(&format!("cycle_{}", self), proc_macro2::Span::call_site())
     }
