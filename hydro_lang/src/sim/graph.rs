@@ -176,10 +176,12 @@ impl<'a> Deploy<'a> for SimDeploy {
     type External = SimExternal;
 
     fn o2o_sink_source(
+        _env: &mut Self::InstantiateEnv,
         _p1: &Self::Process,
         p1_port: &<Self::Process as Node>::Port,
         _p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
+        _name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_o2o_sink_{}", p1_port), Span::call_site());

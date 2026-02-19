@@ -7,6 +7,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::LocationKey;
+use crate::compile::builder::ClockId;
 #[cfg(stageleft_runtime)]
 use crate::compile::{
     builder::FlowState,
@@ -27,7 +28,7 @@ pub enum LocationId {
         Box<LocationId>,
     ),
     /// A tick within a location.
-    Tick(usize, Box<LocationId>),
+    Tick(ClockId, Box<LocationId>),
 }
 
 /// Implement Debug to Display-print the key, reduces snapshot verbosity.

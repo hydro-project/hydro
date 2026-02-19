@@ -23,10 +23,12 @@ pub trait Deploy<'a> {
         + RegisterPort<'a, Self>;
 
     fn o2o_sink_source(
+        env: &mut Self::InstantiateEnv,
         p1: &Self::Process,
         p1_port: &<Self::Process as Node>::Port,
         p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
+        name: Option<&str>,
     ) -> (syn::Expr, syn::Expr);
     fn o2o_connect(
         p1: &Self::Process,

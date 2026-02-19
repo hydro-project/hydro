@@ -32,6 +32,10 @@ name = "arithmetic"
 harness = false
 
 [[bench]]
+name = "cross_join_multiset"
+harness = false
+
+[[bench]]
 name = "fan_in"
 harness = false
 

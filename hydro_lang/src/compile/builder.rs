@@ -18,9 +18,23 @@ use crate::location::{Cluster, External, LocationKey, LocationType, Process};
 use crate::sim::flow::SimFlow;
 use crate::staging_util::Invariant;
 
+#[stageleft::export(ExternalPortId, CycleId, ClockId)]
 crate::newtype_counter! {
-    /// Counter for generating unique external output identifiers.
+    /// ID for an external output.
     pub struct ExternalPortId(usize);
+
+    /// ID for a [`crate::location::Location::forward_ref`] cycle.
+    pub struct CycleId(usize);
+
+    /// ID for clocks (ticks).
+    pub struct ClockId(usize);
+}
+
+impl CycleId {
+    #[cfg(feature = "build")]
+    pub(crate) fn as_ident(&self) -> syn::Ident {
+        syn::Ident::new(&format!("cycle_{}", self), proc_macro2::Span::call_site())
+    }
 }
 
 pub(crate) type FlowState = Rc<RefCell<FlowStateInner>>;
@@ -29,23 +43,29 @@ pub(crate) struct FlowStateInner {
     /// Tracks the roots of the dataflow IR. This is referenced by
     /// `Stream` and `HfCycle` to build the IR. The inner option will
     /// be set to `None` when this builder is finalized.
-    pub(crate) roots: Option<Vec<HydroRoot>>,
+    roots: Option<Vec<HydroRoot>>,
 
     /// Counter for generating unique external output identifiers.
-    pub(crate) next_external_port: ExternalPortId,
+    next_external_port: ExternalPortId,
 
     /// Counters for generating identifiers for cycles.
-    pub(crate) cycle_counts: usize,
+    next_cycle_id: CycleId,
 
     /// Counters for clock IDs.
-    pub(crate) next_clock_id: usize,
+    next_clock_id: ClockId,
 }
 
 impl FlowStateInner {
-    pub fn next_cycle_id(&mut self) -> usize {
-        let id = self.cycle_counts;
-        self.cycle_counts += 1;
-        id
+    pub fn next_external_port(&mut self) -> ExternalPortId {
+        self.next_external_port.get_and_increment()
+    }
+
+    pub fn next_cycle_id(&mut self) -> CycleId {
+        self.next_cycle_id.get_and_increment()
+    }
+
+    pub fn next_clock_id(&mut self) -> ClockId {
+        self.next_clock_id.get_and_increment()
     }
 
     pub fn push_root(&mut self, root: HydroRoot) {
@@ -115,9 +135,9 @@ impl<'a> FlowBuilder<'a> {
         Self {
             flow_state: Rc::new(RefCell::new(FlowStateInner {
                 roots: Some(vec![]),
-                next_external_port: ExternalPortId(0),
-                cycle_counts: 0,
-                next_clock_id: 0,
+                next_external_port: ExternalPortId::default(),
+                next_cycle_id: CycleId::default(),
+                next_clock_id: ClockId::default(),
             })),
             locations: SlotMap::with_key(),
             location_names: SecondaryMap::new(),
@@ -250,9 +270,9 @@ impl<'a> FlowBuilder<'a> {
         FlowBuilder {
             flow_state: Rc::new(RefCell::new(FlowStateInner {
                 roots: None,
-                next_external_port: ExternalPortId(0),
-                cycle_counts: 0,
-                next_clock_id: 0,
+                next_external_port: ExternalPortId::default(),
+                next_cycle_id: CycleId::default(),
+                next_clock_id: ClockId::default(),
             })),
             locations: built.locations.clone(),
             location_names: built.location_names.clone(),

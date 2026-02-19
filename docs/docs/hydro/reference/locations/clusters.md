@@ -149,7 +149,9 @@ let cluster_members = p1.source_cluster_members(&workers);
 ```
 
 ## Self-Identification
-In some programs, it may be necessary for cluster members to know their own ID (for example, to construct a ballot in Paxos). In Hydro, this can be achieved by using the `CLUSTER_SELF_ID` constant, which can be used inside `q!(...)` blocks to get the current cluster member's ID:
+In some programs, it may be necessary for cluster members to know their own ID (for example, to construct a ballot in Paxos). In Hydro, this can be achieved by using the `CLUSTER_SELF_ID` constant, which can be used inside `q!(...)` blocks to get the current cluster member's ID. Note that if used inside a closure, you will need to use the `move` keyword to work around borrow-checking limitations.
+
+Cluster IDs support the `Display` trait to be formatted as strings. In deployments using [Hydro Deploy](../deploy/rust.mdx), you can use `get_raw_id` to get an integer ID, but note that this API is not supported on other deployment backends so should be avoided when possible.
 
 ```rust
 # use hydro_lang::prelude::*;
@@ -161,7 +163,7 @@ let workers: Cluster<()> = flow.cluster::<()>();
 let self_id_stream = workers.source_iter(q!([CLUSTER_SELF_ID]));
 self_id_stream
     .filter(q!(|x| x.get_raw_id() % 2 == 0))
-    .map(q!(|x| format!("hello from {}", x.get_raw_id())))
+    .map(q!(|x| format!("hello from {}", x)))
     .send(&process, TCP.fail_stop().bincode())
     .values()
 // if there are 4 members in the cluster, we should receive 2 elements
@@ -172,7 +174,7 @@ self_id_stream
 #     results.push(stream.next().await.unwrap());
 # }
 # results.sort();
-# assert_eq!(results, vec!["hello from 0", "hello from 2"]);
+# assert_eq!(results, vec!["hello from MemberId::<()>(0)", "hello from MemberId::<()>(2)"]);
 # }));
 ```
 

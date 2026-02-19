@@ -18,6 +18,9 @@ pub struct BuildParams {
     /// The working directory for the build, where the `cargo build` command will be run. Crate root.
     /// [`Self::new`] canonicalizes this path.
     src: PathBuf,
+    /// The workspace root encompassing the build, which may be a parent of `src` in a multi-crate
+    /// workspace.
+    workspace_root: PathBuf,
     /// `--bin` binary name parameter.
     bin: Option<String>,
     /// `--example` parameter.
@@ -43,6 +46,7 @@ impl BuildParams {
     #[expect(clippy::too_many_arguments, reason = "internal code")]
     pub fn new(
         src: impl AsRef<Path>,
+        workspace_root: impl AsRef<Path>,
         bin: Option<String>,
         example: Option<String>,
         profile: Option<String>,
@@ -68,8 +72,16 @@ impl BuildParams {
             )
         });
 
+        let workspace_root = dunce::canonicalize(workspace_root.as_ref()).unwrap_or_else(|e| {
+            panic!(
+                "Failed to canonicalize path `{}` for build: {e}.",
+                workspace_root.as_ref().display(),
+            )
+        });
+
         BuildParams {
             src,
+            workspace_root,
             bin,
             example,
             profile,
@@ -231,13 +243,15 @@ pub async fn build_crate_memoized(params: BuildParams) -> Result<&'static BuildO
                                         .map(|s| &s.file_name)
                                         .collect::<std::collections::BTreeSet<_>>();
                                     for file_name in file_names {
-                                        *rendered = rendered.replace(
-                                            file_name,
-                                            &format!(
-                                                "(full path) {}/{file_name}",
-                                                params.src.display(),
-                                            ),
-                                        )
+                                        if Path::new(file_name).is_relative() {
+                                            *rendered = rendered.replace(
+                                                file_name,
+                                                &format!(
+                                                    "(full path) {}/{file_name}",
+                                                    params.workspace_root.display(),
+                                                ),
+                                            )
+                                        }
                                     }
                                 }
                                 ProgressTracker::println(msg.message.to_string());

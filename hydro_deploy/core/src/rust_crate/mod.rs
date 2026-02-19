@@ -34,6 +34,7 @@ pub enum CrateTarget {
 #[derive(Clone)]
 pub struct RustCrate {
     src: PathBuf,
+    workspace_root: PathBuf,
     target: CrateTarget,
     profile: Option<String>,
     rustflags: Option<String>,
@@ -52,9 +53,12 @@ impl RustCrate {
     /// Creates a new `RustCrate`.
     ///
     /// The `src` argument is the path to the package's directory.
-    pub fn new(src: impl Into<PathBuf>) -> Self {
+    /// The `crate_root` argument is a path to the package's workspace root, which may
+    /// be a parent of `src` in a multi-crate workspace.
+    pub fn new(src: impl Into<PathBuf>, workspace_root: impl Into<PathBuf>) -> Self {
         Self {
             src: src.into(),
+            workspace_root: workspace_root.into(),
             target: CrateTarget::Default,
             profile: None,
             rustflags: None,
@@ -188,6 +192,7 @@ impl RustCrate {
 
         BuildParams::new(
             self.src.clone(),
+            self.workspace_root.clone(),
             bin,
             example,
             self.profile.clone(),
