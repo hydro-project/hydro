@@ -41,22 +41,29 @@ impl LaunchedSshHost for LaunchedEc2Instance {
 }
 
 #[derive(Debug)]
+pub struct NetworkResources {
+    vpc: String,
+    subnet: String,
+    security_group: String,
+}
+
+#[derive(Debug)]
 pub struct AwsNetwork {
     pub region: String,
-    pub existing_vpc: OnceLock<String>,
+    pub existing_network: OnceLock<NetworkResources>,
     id: String,
 }
 
 impl AwsNetwork {
-    pub fn new(region: impl Into<String>, existing_vpc: Option<String>) -> Arc<Self> {
+    pub fn new(region: impl Into<String>, existing_vpc: Option<NetworkResources>) -> Arc<Self> {
         Arc::new(Self {
             region: region.into(),
-            existing_vpc: existing_vpc.map(From::from).unwrap_or_default(),
+            existing_network: existing_vpc.map(From::from).unwrap_or_default(),
             id: nanoid!(8, &TERRAFORM_ALPHABET),
         })
     }
 
-    fn collect_resources(&self, resource_batch: &mut ResourceBatch) -> String {
+    fn collect_resources(&self, resource_batch: &mut ResourceBatch) -> NetworkResources {
         resource_batch
             .terraform
             .terraform
@@ -77,29 +84,35 @@ impl AwsNetwork {
         );
 
         let vpc_network = format!("hydro-vpc-network-{}", self.id);
+        let subnet_key = format!("{vpc_network}-subnet");
+        let sg_key = format!("{vpc_network}-default-sg");
 
-        if let Some(existing) = self.existing_vpc.get() {
-            if resource_batch
-                .terraform
-                .resource
-                .get("aws_vpc")
-                .is_some_and(|map| map.contains_key(existing))
-            {
-                format!("aws_vpc.{existing}")
-            } else {
-                resource_batch
+        if let Some(existing) = self.existing_network.get() {
+            // Resolve an existing resource: reuse if already in terraform resources,
+            // otherwise create a data source lookup.
+            let mut resolve = |resource_type: &str, existing_id: &str, data_key: String| {
+                if resource_batch
                     .terraform
-                    .data
-                    .entry("aws_vpc".to_owned())
-                    .or_default()
-                    .insert(
-                        vpc_network.clone(),
-                        json!({
-                            "id": existing,
-                        }),
-                    );
+                    .resource
+                    .get(resource_type)
+                    .is_some_and(|map| map.contains_key(existing_id))
+                {
+                    format!("{resource_type}.{existing_id}")
+                } else {
+                    resource_batch
+                        .terraform
+                        .data
+                        .entry(resource_type.to_owned())
+                        .or_default()
+                        .insert(data_key.clone(), json!({ "id": existing_id }));
+                    format!("data.{resource_type}.{data_key}")
+                }
+            };
 
-                format!("data.aws_vpc.{vpc_network}")
+            NetworkResources {
+                vpc: resolve("aws_vpc", &existing.vpc, vpc_network),
+                subnet: resolve("aws_subnet", &existing.subnet, subnet_key),
+                security_group: resolve("aws_security_group", &existing.security_group, sg_key),
             }
         } else {
             resource_batch
@@ -137,7 +150,6 @@ impl AwsNetwork {
                 );
 
             // Create subnet
-            let subnet_key = format!("{vpc_network}-subnet");
             resource_batch
                 .terraform
                 .resource
@@ -202,14 +214,13 @@ impl AwsNetwork {
                 );
 
             // Create security group that allows internal communication
-            let sg_key = format!("{vpc_network}-default-sg");
             resource_batch
                 .terraform
                 .resource
                 .entry("aws_security_group".to_owned())
                 .or_default()
                 .insert(
-                    sg_key,
+                    sg_key.clone(),
                     json!({
                         "name": format!("{vpc_network}-default-allow-internal"),
                         "description": "Allow internal communication between instances",
@@ -265,9 +276,19 @@ impl AwsNetwork {
                     }),
                 );
 
-            let out = format!("aws_vpc.{vpc_network}");
-            self.existing_vpc.set(vpc_network).unwrap();
-            out
+            let resources = NetworkResources {
+                vpc: format!("aws_vpc.{vpc_network}"),
+                subnet: format!("aws_subnet.{subnet_key}"),
+                security_group: format!("aws_security_group.{sg_key}"),
+            };
+            self.existing_network
+                .set(NetworkResources {
+                    vpc: vpc_network,
+                    subnet: subnet_key,
+                    security_group: sg_key,
+                })
+                .unwrap();
+            resources
         }
     }
 }
@@ -612,7 +633,7 @@ impl Host for AwsEc2Host {
             return;
         }
 
-        let vpc_path = self.network.collect_resources(resource_batch);
+        let network_resources = self.network.collect_resources(resource_batch);
 
         let iam_instance_profile = self
             .iam_instance_profile
@@ -705,12 +726,8 @@ impl Host for AwsEc2Host {
             instance_name.push_str(&display_name);
         }
 
-        let network_id = self.network.id.clone();
-        let vpc_ref = format!("${{{}.id}}", vpc_path);
-        let default_sg_ref = format!(
-            "${{aws_security_group.hydro-vpc-network-{}-default-sg.id}}",
-            network_id
-        );
+        let vpc_ref = format!("${{{}.id}}", network_resources.vpc);
+        let default_sg_ref = format!("${{{}.id}}", network_resources.security_group);
 
         // Create additional security group for external ports if needed
         let mut security_groups = vec![default_sg_ref];
@@ -764,7 +781,7 @@ impl Host for AwsEc2Host {
         }
         drop(external_ports);
 
-        let subnet_ref = format!("${{aws_subnet.hydro-vpc-network-{}-subnet.id}}", network_id);
+        let subnet_ref = format!("${{{}.id}}", network_resources.subnet);
         let iam_instance_profile_ref = iam_instance_profile.map(|key| format!("${{{key}.name}}"));
 
         // Write the CloudWatch Agent config file.
