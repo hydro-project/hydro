@@ -472,7 +472,7 @@
 <a href=#472 id=472 data-nosnippet>472</a>
 <a href=#473 id=473 data-nosnippet>473</a>            <span class="kw">let </span><span class="kw-2">mut </span>diagnostics = Diagnostics::new();
 <a href=#474 id=474 data-nosnippet>474</a>            <span class="kw">let </span>dfir_tokens = graph
-<a href=#475 id=475 data-nosnippet>475</a>                .as_code(<span class="kw-2">&amp;</span><span class="macro">quote!</span> { __root_dfir_rs }, <span class="bool-val">false</span>, <span class="macro">quote!</span>(), <span class="kw-2">&amp;mut </span>diagnostics)
+<a href=#475 id=475 data-nosnippet>475</a>                .as_code(<span class="kw-2">&amp;</span><span class="macro">quote!</span> { __root_dfir_rs }, <span class="bool-val">true</span>, <span class="macro">quote!</span>(), <span class="kw-2">&amp;mut </span>diagnostics)
 <a href=#476 id=476 data-nosnippet>476</a>                .expect(<span class="string">"DFIR code generation failed with diagnostics."</span>);
 <a href=#477 id=477 data-nosnippet>477</a>
 <a href=#478 id=478 data-nosnippet>478</a>            <span class="comment">// Build the input parameters.

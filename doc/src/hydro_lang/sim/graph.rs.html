@@ -628,7 +628,7 @@
 <a href=#628 id=628 data-nosnippet>628</a>
 <a href=#629 id=629 data-nosnippet>629</a>    <span class="kw">let </span><span class="kw-2">mut </span>dfir_into_code = |g: <span class="kw-2">&amp;</span>DfirGraph| {
 <a href=#630 id=630 data-nosnippet>630</a>        <span class="kw">let </span><span class="kw-2">mut </span>dfir_expr: syn::Expr = syn::parse2(
-<a href=#631 id=631 data-nosnippet>631</a>            g.as_code(<span class="kw-2">&amp;</span><span class="macro">quote!</span> { __root_dfir_rs }, <span class="bool-val">false</span>, <span class="macro">quote!</span>(), <span class="kw-2">&amp;mut </span>diagnostics)
+<a href=#631 id=631 data-nosnippet>631</a>            g.as_code(<span class="kw-2">&amp;</span><span class="macro">quote!</span> { __root_dfir_rs }, <span class="bool-val">true</span>, <span class="macro">quote!</span>(), <span class="kw-2">&amp;mut </span>diagnostics)
 <a href=#632 id=632 data-nosnippet>632</a>                .expect(<span class="string">"DFIR code generation failed with diagnostics."</span>),
 <a href=#633 id=633 data-nosnippet>633</a>        )
 <a href=#634 id=634 data-nosnippet>634</a>        .unwrap();

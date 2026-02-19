@@ -237,7 +237,7 @@
 <a href=#237 id=237 data-nosnippet>237</a>    <span class="kw">let </span><span class="kw-2">mut </span>diagnostics = Diagnostics::new();
 <a href=#238 id=238 data-nosnippet>238</a>    <span class="kw">let </span><span class="kw-2">mut </span>dfir_expr: syn::Expr = syn::parse2(
 <a href=#239 id=239 data-nosnippet>239</a>        partitioned_graph
-<a href=#240 id=240 data-nosnippet>240</a>            .as_code(<span class="kw-2">&amp;</span><span class="macro">quote!</span> { __root_dfir_rs }, <span class="bool-val">false</span>, <span class="macro">quote!</span>(), <span class="kw-2">&amp;mut </span>diagnostics)
+<a href=#240 id=240 data-nosnippet>240</a>            .as_code(<span class="kw-2">&amp;</span><span class="macro">quote!</span> { __root_dfir_rs }, <span class="bool-val">true</span>, <span class="macro">quote!</span>(), <span class="kw-2">&amp;mut </span>diagnostics)
 <a href=#241 id=241 data-nosnippet>241</a>            .expect(<span class="string">"DFIR code generation failed with diagnostics."</span>),
 <a href=#242 id=242 data-nosnippet>242</a>    )
 <a href=#243 id=243 data-nosnippet>243</a>    .unwrap();
