@@ -237,7 +237,7 @@ pub fn compile_graph_trybuild(
     let mut diagnostics = Diagnostics::new();
     let mut dfir_expr: syn::Expr = syn::parse2(
         partitioned_graph
-            .as_code(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
+            .as_code(&quote! { __root_dfir_rs }, false, quote!(), &mut diagnostics)
             .expect("DFIR code generation failed with diagnostics."),
     )
     .unwrap();

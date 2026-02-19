@@ -435,7 +435,7 @@ pub fn build_dfir_code(
     };
 
     let code =
-        partitioned_graph.as_code(root, true, quote::quote! { #( #uses )* }, &mut diagnostics)?;
+        partitioned_graph.as_code(root, false, quote::quote! { #( #uses )* }, &mut diagnostics)?;
 
     // Success
     Ok(BuildDfirCodeOutput {
