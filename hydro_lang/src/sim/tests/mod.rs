@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use stageleft::q;
 
 use crate::live_collections::sliced::sliced;
@@ -256,4 +257,27 @@ fn trace_for_fuzzed_batching_sliced() {
 
     let log_str = String::from_utf8(log_out).unwrap();
     hydro_build_utils::assert_snapshot!(log_str);
+}
+
+#[derive(Serialize, Deserialize)]
+struct Test {}
+
+#[test]
+fn sim_batch_nondebuggable_type() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+
+    let (in_send, input) = node.sim_input::<_, TotalOrder, _>();
+
+    let tick = node.tick();
+    let _out_recv = input
+        .batch(&tick, nondet!(/** test */))
+        .count()
+        .all_ticks()
+        .sim_output();
+
+    flow.sim().exhaustive(async || {
+        in_send.send(Test {});
+        let _: Vec<_> = _out_recv.collect().await;
+    });
 }

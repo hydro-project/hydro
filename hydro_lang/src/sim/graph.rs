@@ -619,8 +619,8 @@ fn compile_sim_graph_trybuild(
     cluster_max_sizes: SparseSecondaryMap<LocationKey, usize>,
     process_tick_graphs: BTreeMap<LocationId, DfirGraph>,
     cluster_tick_graphs: BTreeMap<LocationId, DfirGraph>,
-    extra_stmts_global: Vec<syn::Stmt>,
-    extra_stmts_cluster: BTreeMap<LocationId, Vec<syn::Stmt>>,
+    mut extra_stmts_global: Vec<syn::Stmt>,
+    mut extra_stmts_cluster: BTreeMap<LocationId, Vec<syn::Stmt>>,
     crate_name: &str,
     is_test: bool,
 ) -> syn::File {
@@ -639,6 +639,18 @@ fn compile_sim_graph_trybuild(
 
         dfir_expr
     };
+
+    if is_test {
+        extra_stmts_global.iter_mut().for_each(|stmt| {
+            UseTestModeStaged { crate_name }.visit_stmt_mut(stmt);
+        });
+
+        extra_stmts_cluster.values_mut().for_each(|stmts| {
+            stmts.iter_mut().for_each(|stmt| {
+                UseTestModeStaged { crate_name }.visit_stmt_mut(stmt);
+            })
+        });
+    }
 
     let process_dfir_exprs = process_graphs
         .into_iter()

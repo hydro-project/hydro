@@ -15,24 +15,46 @@ use crate::live_collections::stream::{NoOrder, Ordering, TotalOrder};
 pub type Hooks<Key> = HashMap<(Key, Option<u32>), Vec<Box<dyn SimHook>>>;
 pub type InlineHooks<Key> = HashMap<(Key, Option<u32>), Vec<Box<dyn SimInlineHook>>>;
 
+#[doc(hidden)]
 #[macro_export]
 #[doc(hidden)]
 macro_rules! __maybe_debug__ {
-    () => {{
-        trait NotDebug {
-            fn format_debug(&self) -> Option<String> {
-                None
-            }
+    ($type:ty) => {{
+        // Inherent-shadows-trait trick (same as `impls` crate), but for
+        // a function pointer. The const is stored as a raw `*const ()` to
+        // avoid mentioning the type in the const type (which would force
+        // bound resolution and break the trick). We transmute back at the end.
+
+        #[expect(clippy::allow_attributes, reason = "macro codegen")]
+        #[allow(dead_code, reason = "shadowing trick")]
+        fn no_debug<T>(_: &T) -> Option<String> {
+            None
+        }
+        fn yes_debug<T: std::fmt::Debug>(v: &T) -> Option<String> {
+            Some(format!("{:?}", v))
         }
 
-        impl<T> NotDebug for T {}
-        struct IsDebug<T>(std::marker::PhantomData<T>);
-        impl<T: std::fmt::Debug> IsDebug<T> {
-            fn format_debug(v: &T) -> Option<String> {
-                Some(format!("{:?}", v))
-            }
+        trait __Fallback {
+            const MAYBE_DEBUG_FN: *const () = no_debug::<()> as *const ();
         }
-        IsDebug::format_debug
+        impl<T: ?Sized> __Fallback for T {}
+
+        struct __Wrap<T>(std::marker::PhantomData<T>);
+
+        #[expect(clippy::allow_attributes, reason = "macro codegen")]
+        #[allow(dead_code, reason = "shadowing trick")]
+        impl<T: std::fmt::Debug> __Wrap<T> {
+            const MAYBE_DEBUG_FN: *const () = yes_debug::<T> as *const ();
+        }
+
+        // SAFETY: The pointer is either `no_debug::<()>` or `yes_debug::<$type>`.
+        // `no_debug` ignores its argument entirely, so the ABI is compatible
+        // regardless of the concrete type.
+        unsafe {
+            std::mem::transmute::<*const (), fn(&$type) -> Option<String>>(
+                <__Wrap<$type>>::MAYBE_DEBUG_FN,
+            )
+        }
     }};
 }
 
@@ -1119,5 +1141,31 @@ impl<K: Hash + Eq + Clone, V> SimHook for TopLevelKeyedStreamOrderHook<K, V> {
         } else {
             panic!("No decision to release");
         }
+    }
+}
+
+#[cfg(test)]
+mod maybe_debug_tests {
+    struct NotDebuggable;
+
+    #[derive(Debug)]
+    struct Debuggable;
+
+    #[test]
+    fn test_non_debug_type_returns_none() {
+        let fmt_fn: fn(&NotDebuggable) -> Option<String> = crate::__maybe_debug__!(NotDebuggable);
+        assert_eq!(fmt_fn(&NotDebuggable), None);
+    }
+
+    #[test]
+    fn test_debug_type_returns_some() {
+        let fmt_fn: fn(&Debuggable) -> Option<String> = crate::__maybe_debug__!(Debuggable);
+        assert_eq!(fmt_fn(&Debuggable), Some("Debuggable".to_owned()));
+    }
+
+    #[test]
+    fn test_primitive_debug() {
+        let fmt_fn: fn(&i32) -> Option<String> = crate::__maybe_debug__!(i32);
+        assert_eq!(fmt_fn(&42), Some("42".to_owned()));
     }
 }
