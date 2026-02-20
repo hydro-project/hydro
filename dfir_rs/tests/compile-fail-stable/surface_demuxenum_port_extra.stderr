@@ -15,18 +15,10 @@ error[E0308]: mismatched types
    |               |
    |               expected a tuple with 3 elements, found one with 4 elements
    |               arguments to this function are incorrect
-18 |         my_demux[Rectangle] -> for_each(std::mem::drop);
-   |                                -------- one of the found opaque types
-19 |         my_demux[Circle] -> for_each(std::mem::drop);
-   |                             -------- one of the found opaque types
-20 |         my_demux[Square] -> for_each(std::mem::drop);
-   |                             -------- one of the found opaque types
-21 |         my_demux[Ellipse] -> for_each(std::mem::drop);
-   |                              -------- one of the found opaque types
    |
    = note: expected tuple `(Pin<&mut _>, Pin<&mut _>, Pin<&mut _>)`
-              found tuple `(Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>)`
-help: the return type of this call is `(Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>, Pin<&mut impl dfir_rs::futures::Sink<_, Error = Infallible>>)` due to the type of the argument passed
+              found tuple `(Pin<&mut dfir_rs::sinktools::for_each::ForEach<fn(_) {std::mem::drop::<_>}>>, Pin<&mut dfir_rs::sinktools::for_each::ForEach<fn(_) {std::mem::drop::<_>}>>, Pin<&mut dfir_rs::sinktools::for_each::ForEach<fn(_) {std::mem::drop::<_>}>>, Pin<&mut dfir_rs::sinktools::for_each::ForEach<fn(_) {std::mem::drop::<_>}>>)`
+help: the return type of this call is `(Pin<&mut dfir_rs::sinktools::for_each::ForEach<fn(_) {std::mem::drop::<_>}>>, Pin<&mut dfir_rs::sinktools::for_each::ForEach<fn(_) {std::mem::drop::<_>}>>, Pin<&mut dfir_rs::sinktools::for_each::ForEach<fn(_) {std::mem::drop::<_>}>>, Pin<&mut dfir_rs::sinktools::for_each::ForEach<fn(_) {std::mem::drop::<_>}>>)` due to the type of the argument passed
   --> tests/compile-fail-stable/surface_demuxenum_port_extra.rs:17:15
    |
 17 |         ]) -> demux_enum::<Shape>();

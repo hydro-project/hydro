@@ -628,8 +628,13 @@ fn compile_sim_graph_trybuild(
 
     let mut dfir_into_code = |g: &DfirGraph| {
         let mut dfir_expr: syn::Expr = syn::parse2(
-            g.as_code(&quote! { __root_dfir_rs }, false, quote!(), &mut diagnostics)
-                .expect("DFIR code generation failed with diagnostics."),
+            g.as_code(
+                &quote! { __root_dfir_rs },
+                false,
+                quote!(),
+                &mut diagnostics,
+            )
+            .expect("DFIR code generation failed with diagnostics."),
         )
         .unwrap();
 
