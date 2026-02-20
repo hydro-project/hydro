@@ -1,0 +1,16 @@
+error[E0277]: The input stream must be totally-ordered (`TotalOrder`), but has order `hydro_lang::live_collections::stream::NoOrder`. Strengthen the order upstream or consider a different API.
+ --> tests/compile-fail-stable/non_commutative_operator.rs:7:68
+  |
+7 |     let _ = p1.source_iter(q!(0..10)).weaken_ordering::<NoOrder>().enumerate();
+  |                                                                    ^^^^^^^^^ required for this call
+  |
+  = help: the trait `IsOrdered` is not implemented for `hydro_lang::live_collections::stream::NoOrder`
+  = note: To intentionally process the stream with a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This bypasses the safety guarantees so avoid unless necessary.
+note: required by a bound in `hydro_lang::prelude::Stream::<T, L, B, O, R>::enumerate`
+ --> src/live_collections/stream/mod.rs
+  |
+  |     pub fn enumerate(self) -> Stream<(usize, T), L, B, O, R>
+  |            --------- required by a bound in this associated function
+  |     where
+  |         O: IsOrdered,
+  |            ^^^^^^^^^ required by this bound in `Stream::<T, L, B, O, R>::enumerate`

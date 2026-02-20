@@ -4,6 +4,7 @@ error[E0277]: Because the input stream has ordering `hydro_lang::live_collection
 9 |         .fold(q!(|| 0), q!(|acc, x| *acc += x));
   |          ^^^^ required for this call
   |
+  = note: To intentionally process the stream with a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This bypasses the safety guarantees so avoid unless necessary.
   = help: the trait `ValidCommutativityFor<hydro_lang::live_collections::stream::NoOrder>` is not implemented for `NotProved`
           but trait `ValidCommutativityFor<hydro_lang::live_collections::stream::TotalOrder>` is implemented for it
   = help: for that trait implementation, expected `hydro_lang::live_collections::stream::TotalOrder`, found `hydro_lang::live_collections::stream::NoOrder`

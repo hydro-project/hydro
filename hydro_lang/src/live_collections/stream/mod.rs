@@ -143,6 +143,32 @@ impl<R: Retries> MinRetries<R> for AtLeastOnce {
     type Min = AtLeastOnce;
 }
 
+#[sealed::sealed]
+#[diagnostic::on_unimplemented(
+    message = "The input stream must be totally-ordered (`TotalOrder`), but has order `{Self}`. Strengthen the order upstream or consider a different API.",
+    label = "required for this call",
+    note = "To intentionally process the stream with a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This bypasses the safety guarantees so avoid unless necessary."
+)]
+/// Marker trait that is implemented for the [`TotalOrder`] ordering guarantee.
+pub trait IsOrdered {}
+
+#[sealed::sealed]
+#[diagnostic::do_not_recommend]
+impl IsOrdered for TotalOrder {}
+
+#[sealed::sealed]
+#[diagnostic::on_unimplemented(
+    message = "The input stream must be exactly-once (`ExactlyOnce`), but has retries `{Self}`. Strengthen the retries guarantee upstream or consider a different API.",
+    label = "required for this call",
+    note = "To intentionally process the stream with non-deterministic (randomly duplicated) retries, use `.assume_retries`. This bypasses the safety guarantees so avoid unless necessary."
+)]
+/// Marker trait that is implemented for the [`ExactlyOnce`] retries guarantee.
+pub trait IsExactlyOnce {}
+
+#[sealed::sealed]
+#[diagnostic::do_not_recommend]
+impl IsExactlyOnce for ExactlyOnce {}
+
 /// Streaming sequence of elements with type `Type`.
 ///
 /// This live collection represents a growing sequence of elements, with new elements being
@@ -1094,6 +1120,45 @@ where
         let nondet = nondet!(/** this is a weaker retry guarantee, so it is safe to assume */);
         self.assume_retries::<R2>(nondet)
     }
+
+    /// Maps each element `x` of the stream to `(i, x)`, where `i` is the index of the element.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::{prelude::*, live_collections::stream::{TotalOrder, ExactlyOnce}};
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, _, TotalOrder, ExactlyOnce>(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
+    /// numbers.enumerate()
+    /// # }, |mut stream| async move {
+    /// // (0, 1), (1, 2), (2, 3), (3, 4)
+    /// # for w in vec![(0, 1), (1, 2), (2, 3), (3, 4)] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn enumerate(self) -> Stream<(usize, T), L, B, O, R>
+    where
+        O: IsOrdered,
+        R: IsExactlyOnce,
+    {
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Enumerate {
+                input: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata(Stream::<
+                    (usize, T),
+                    L,
+                    B,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        )
+    }
 }
 
 impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<&T, L, B, O, R>
@@ -1392,41 +1457,6 @@ impl<'a, T, L, B: Boundedness> Stream<T, L, B, TotalOrder, ExactlyOnce>
 where
     L: Location<'a>,
 {
-    /// Maps each element `x` of the stream to `(i, x)`, where `i` is the index of the element.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::{prelude::*, live_collections::stream::{TotalOrder, ExactlyOnce}};
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, _, TotalOrder, ExactlyOnce>(|process| {
-    /// let tick = process.tick();
-    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// numbers.enumerate()
-    /// # }, |mut stream| async move {
-    /// // (0, 1), (1, 2), (2, 3), (3, 4)
-    /// # for w in vec![(0, 1), (1, 2), (2, 3), (3, 4)] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
-    /// # }
-    /// # }));
-    /// # }
-    /// ```
-    pub fn enumerate(self) -> Stream<(usize, T), L, B, TotalOrder, ExactlyOnce> {
-        Stream::new(
-            self.location.clone(),
-            HydroNode::Enumerate {
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata(Stream::<
-                    (usize, T),
-                    L,
-                    B,
-                    TotalOrder,
-                    ExactlyOnce,
-                >::collection_kind()),
-            },
-        )
-    }
-
     /// Collects all the elements of this stream into a single [`Vec`] element.
     ///
     /// If the input stream is [`Unbounded`], the output [`Singleton`] will be [`Unbounded`] as

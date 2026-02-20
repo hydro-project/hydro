@@ -98,7 +98,8 @@ impl<C, I> Property for AggFuncAlgebra<C, I> {
 /// Marker trait identifying that the commutativity property is valid for the given stream ordering.
 #[diagnostic::on_unimplemented(
     message = "Because the input stream has ordering `{O}`, the closure must demonstrate commutativity with a `commutative = ...` annotation.",
-    label = "required for this call"
+    label = "required for this call",
+    note = "To intentionally process the stream with a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This bypasses the safety guarantees so avoid unless necessary."
 )]
 #[sealed::sealed]
 pub trait ValidCommutativityFor<O: Ordering> {}
@@ -110,7 +111,8 @@ impl<O: Ordering> ValidCommutativityFor<O> for Proved {}
 /// Marker trait identifying that the idempotence property is valid for the given stream ordering.
 #[diagnostic::on_unimplemented(
     message = "Because the input stream has retries `{R}`, the closure must demonstrate idempotence with an `idempotent = ...` annotation.",
-    label = "required for this call"
+    label = "required for this call",
+    note = "To intentionally process the stream with non-deterministic (randomly duplicated) retries, use `.assume_retries`. This bypasses the safety guarantees so avoid unless necessary."
 )]
 #[sealed::sealed]
 pub trait ValidIdempotenceFor<R: Retries> {}
