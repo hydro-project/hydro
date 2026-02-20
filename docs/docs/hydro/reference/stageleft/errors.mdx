@@ -20,3 +20,17 @@ fn uses_foo_quoted() {
   q!(|| self::foo()) // works!
 }
 ```
+
+## References to Free Variables in Macros
+Quoted code can refer to special types of external variables called "free variables". These include primitives such as integers and strings, as well as special types such as `CLUSTER_SELF_ID`. Stageleft does not currently handle references to these variables directly inside macros with custom syntax. To work around this, you should first load the free variable into a local variable and then use it from the macro.
+
+```rust,ignore
+# use stageleft::*;
+fn uses_free_variable() {
+  q!(move || custom_macro!(abc = CLUSTER_SELF_ID)) // don't do this, compiler error
+  q!(move || {
+    let local = CLUSTER_SELF_ID;
+    custom_macro!(abc = local)
+  }) // works!
+}
+```
