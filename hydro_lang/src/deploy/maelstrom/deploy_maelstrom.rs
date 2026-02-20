@@ -64,10 +64,12 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
     }
 
     fn o2m_sink_source(
+        _env: &mut Self::InstantiateEnv,
         _p1: &Self::Process,
         _p1_port: &<Self::Process as Node>::Port,
         _c2: &Self::Cluster,
         _c2_port: &<Self::Cluster as Node>::Port,
+        _name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
         panic!("Maelstrom deployment does not support processes, only clusters")
     }
@@ -82,10 +84,12 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
     }
 
     fn m2o_sink_source(
+        _env: &mut Self::InstantiateEnv,
         _c1: &Self::Cluster,
         _c1_port: &<Self::Cluster as Node>::Port,
         _p2: &Self::Process,
         _p2_port: &<Self::Process as Node>::Port,
+        _name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
         panic!("Maelstrom deployment does not support processes, only clusters")
     }
@@ -100,10 +104,12 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
     }
 
     fn m2m_sink_source(
+        _env: &mut Self::InstantiateEnv,
         _c1: &Self::Cluster,
         _c1_port: &<Self::Cluster as Node>::Port,
         _c2: &Self::Cluster,
         _c2_port: &<Self::Cluster as Node>::Port,
+        _name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
         deploy_maelstrom_m2m(RuntimeData::new("__hydro_lang_maelstrom_meta"))
     }
@@ -176,6 +182,8 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
     }
 
     fn cluster_membership_stream(
+        _env: &mut Self::InstantiateEnv,
+        _at_location: &LocationId,
         location_id: &LocationId,
     ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
     {

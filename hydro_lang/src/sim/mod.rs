@@ -1,6 +1,6 @@
 //! Deterministic simulation testing support for Hydro programs.
 //!
-//! See [`crate::compile::builder::FlowBuilder::sim`] and [`flow::SimFlow`] for more details.
+//! See [`crate::compile::builder::FlowBuilder::sim`] and [`crate::sim::flow::SimFlow`] for more details.
 
 use std::marker::PhantomData;
 

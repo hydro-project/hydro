@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Error;
 use std::marker::PhantomData;
 use std::pin::Pin;
@@ -252,7 +252,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         // NOTE: `build_inner` does not actually mutate the IR, but `&mut` is required
         // only because the shared traversal logic requires it
         CompiledFlow {
-            dfir: build_inner::<D>(&mut self.ir),
+            dfir: build_inner(&mut self.ir),
             extra_stmts: SparseSecondaryMap::new(),
             sidecars: SparseSecondaryMap::new(),
             _phantom: PhantomData,
@@ -274,11 +274,13 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     /// Empties `self.sidecars` and modifies `self.ir`, leaving `self` in a partial state.
     pub(super) fn compile_internal(&mut self, env: &mut D::InstantiateEnv) -> CompiledFlow<'a> {
         let mut seen_tees: HashMap<_, _> = HashMap::new();
+        let mut seen_cluster_members = HashSet::new();
         let mut extra_stmts = SparseSecondaryMap::new();
         for leaf in self.ir.iter_mut() {
             leaf.compile_network::<D>(
                 &mut extra_stmts,
                 &mut seen_tees,
+                &mut seen_cluster_members,
                 &self.processes,
                 &self.clusters,
                 &self.externals,
@@ -287,7 +289,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         }
 
         CompiledFlow {
-            dfir: build_inner::<D>(&mut self.ir),
+            dfir: build_inner(&mut self.ir),
             extra_stmts,
             sidecars: std::mem::take(&mut self.sidecars),
             _phantom: PhantomData,

@@ -30,7 +30,9 @@ use stageleft::{QuotedWithContext, q, quote_type};
 use syn::parse_quote;
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
-use crate::compile::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource};
+use crate::compile::ir::{
+    ClusterMembersState, DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource,
+};
 use crate::forward_handle::ForwardRef;
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ForwardHandle};
@@ -424,7 +426,7 @@ pub trait Location<'a>: dynamic::DynLocation {
         Stream::new(
             self.clone(),
             HydroNode::Source {
-                source: HydroSource::ClusterMembers(cluster.id()),
+                source: HydroSource::ClusterMembers(cluster.id(), ClusterMembersState::Uninit),
                 metadata: self.new_node_metadata(Stream::<
                     (TaglessMemberId, MembershipEvent),
                     Self,

@@ -22,6 +22,11 @@ pub trait Deploy<'a> {
     type External: Node<Meta = Self::Meta, InstantiateEnv = Self::InstantiateEnv>
         + RegisterPort<'a, Self>;
 
+    /// Generates the source and sink expressions when connecting a [`Self::Process`] to another
+    /// [`Self::Process`].
+    ///
+    /// The [`Self::InstantiateEnv`] can be used to record metadata about the created channel. The
+    /// provided `name` is the user-configured channel name from the network IR node.
     fn o2o_sink_source(
         env: &mut Self::InstantiateEnv,
         p1: &Self::Process,
@@ -30,6 +35,11 @@ pub trait Deploy<'a> {
         p2_port: &<Self::Process as Node>::Port,
         name: Option<&str>,
     ) -> (syn::Expr, syn::Expr);
+
+    /// Performs any runtime wiring needed after code generation for a
+    /// [`Self::Process`]-to-[`Self::Process`] channel.
+    ///
+    /// The returned closure is executed once all locations have been instantiated.
     fn o2o_connect(
         p1: &Self::Process,
         p1_port: &<Self::Process as Node>::Port,
@@ -37,12 +47,26 @@ pub trait Deploy<'a> {
         p2_port: &<Self::Process as Node>::Port,
     ) -> Box<dyn FnOnce()>;
 
+    /// Generates the source and sink expressions when connecting a [`Self::Process`] to a
+    /// [`Self::Cluster`] (one-to-many).
+    ///
+    /// The sink expression is used on the sending process and the source expression on each
+    /// receiving cluster member. The [`Self::InstantiateEnv`] can be used to record metadata
+    /// about the created channel. The provided `name` is the user-configured channel name
+    /// from the network IR node.
     fn o2m_sink_source(
+        env: &mut Self::InstantiateEnv,
         p1: &Self::Process,
         p1_port: &<Self::Process as Node>::Port,
         c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
+        name: Option<&str>,
     ) -> (syn::Expr, syn::Expr);
+
+    /// Performs any runtime wiring needed after code generation for a
+    /// [`Self::Process`]-to-[`Self::Cluster`] channel.
+    ///
+    /// The returned closure is executed once all locations have been instantiated.
     fn o2m_connect(
         p1: &Self::Process,
         p1_port: &<Self::Process as Node>::Port,
@@ -50,12 +74,26 @@ pub trait Deploy<'a> {
         c2_port: &<Self::Cluster as Node>::Port,
     ) -> Box<dyn FnOnce()>;
 
+    /// Generates the source and sink expressions when connecting a [`Self::Cluster`] to a
+    /// [`Self::Process`] (many-to-one).
+    ///
+    /// The sink expression is used on each sending cluster member and the source expression
+    /// on the receiving process. The [`Self::InstantiateEnv`] can be used to record metadata
+    /// about the created channel. The provided `name` is the user-configured channel name
+    /// from the network IR node.
     fn m2o_sink_source(
+        env: &mut Self::InstantiateEnv,
         c1: &Self::Cluster,
         c1_port: &<Self::Cluster as Node>::Port,
         p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
+        name: Option<&str>,
     ) -> (syn::Expr, syn::Expr);
+
+    /// Performs any runtime wiring needed after code generation for a
+    /// [`Self::Cluster`]-to-[`Self::Process`] channel.
+    ///
+    /// The returned closure is executed once all locations have been instantiated.
     fn m2o_connect(
         c1: &Self::Cluster,
         c1_port: &<Self::Cluster as Node>::Port,
@@ -63,12 +101,26 @@ pub trait Deploy<'a> {
         p2_port: &<Self::Process as Node>::Port,
     ) -> Box<dyn FnOnce()>;
 
+    /// Generates the source and sink expressions when connecting a [`Self::Cluster`] to another
+    /// [`Self::Cluster`] (many-to-many).
+    ///
+    /// The sink expression is used on each sending cluster member and the source expression
+    /// on each receiving cluster member. The [`Self::InstantiateEnv`] can be used to record
+    /// metadata about the created channel. The provided `name` is the user-configured channel
+    /// name from the network IR node.
     fn m2m_sink_source(
+        env: &mut Self::InstantiateEnv,
         c1: &Self::Cluster,
         c1_port: &<Self::Cluster as Node>::Port,
         c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
+        name: Option<&str>,
     ) -> (syn::Expr, syn::Expr);
+
+    /// Performs any runtime wiring needed after code generation for a
+    /// [`Self::Cluster`]-to-[`Self::Cluster`] channel.
+    ///
+    /// The returned closure is executed once all locations have been instantiated.
     fn m2m_connect(
         c1: &Self::Cluster,
         c1_port: &<Self::Cluster as Node>::Port,
@@ -118,6 +170,8 @@ pub trait Deploy<'a> {
     fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a;
 
     fn cluster_membership_stream(
+        env: &mut Self::InstantiateEnv,
+        at_location: &LocationId,
         location_id: &LocationId,
     ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>;
 

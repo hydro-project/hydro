@@ -22,6 +22,8 @@ pub mod deploy;
 #[cfg_attr(docsrs, doc(cfg(feature = "build")))]
 pub mod embedded;
 
+pub mod embedded_runtime;
+
 #[cfg(feature = "build")]
 #[cfg_attr(docsrs, doc(cfg(feature = "build")))]
 #[expect(missing_docs, reason = "TODO")]

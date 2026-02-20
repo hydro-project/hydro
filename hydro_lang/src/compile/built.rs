@@ -29,10 +29,8 @@ pub struct BuiltFlow<'a> {
     pub(super) _phantom: Invariant<'a>,
 }
 
-pub(crate) fn build_inner<'a, D: Deploy<'a>>(
-    ir: &mut Vec<HydroRoot>,
-) -> SecondaryMap<LocationKey, DfirGraph> {
-    emit::<D>(ir)
+pub(crate) fn build_inner(ir: &mut Vec<HydroRoot>) -> SecondaryMap<LocationKey, DfirGraph> {
+    emit(ir)
         .into_iter()
         .map(|(k, v)| {
             let FlatGraphBuilderOutput { mut flat_graph, .. } =

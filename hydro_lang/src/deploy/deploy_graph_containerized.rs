@@ -936,10 +936,12 @@ impl<'a> Deploy<'a> for DockerDeploy {
 
     #[instrument(level = "trace", skip_all, fields(p1 = p1.name, %p1_port, c2 = c2.name, %c2_port))]
     fn o2m_sink_source(
+        _env: &mut Self::InstantiateEnv,
         p1: &Self::Process,
         p1_port: &<Self::Process as Node>::Port,
         c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
+        _name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
         deploy_containerized_o2m(*c2_port)
     }
@@ -960,10 +962,12 @@ impl<'a> Deploy<'a> for DockerDeploy {
 
     #[instrument(level = "trace", skip_all, fields(c1 = c1.name, %c1_port, p2 = p2.name, %p2_port))]
     fn m2o_sink_source(
+        _env: &mut Self::InstantiateEnv,
         c1: &Self::Cluster,
         c1_port: &<Self::Cluster as Node>::Port,
         p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
+        _name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
         deploy_containerized_m2o(*p2_port, &p2.name)
     }
@@ -984,10 +988,12 @@ impl<'a> Deploy<'a> for DockerDeploy {
 
     #[instrument(level = "trace", skip_all, fields(c1 = c1.name, %c1_port, c2 = c2.name, %c2_port))]
     fn m2m_sink_source(
+        _env: &mut Self::InstantiateEnv,
         c1: &Self::Cluster,
         c1_port: &<Self::Cluster as Node>::Port,
         c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
+        _name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
         deploy_containerized_m2m(*c2_port)
     }
@@ -1175,6 +1181,8 @@ impl<'a> Deploy<'a> for DockerDeploy {
 
     #[instrument(level = "trace", skip_all, fields(?location_id))]
     fn cluster_membership_stream(
+        _env: &mut Self::InstantiateEnv,
+        _at_location: &LocationId,
         location_id: &LocationId,
     ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
     {
