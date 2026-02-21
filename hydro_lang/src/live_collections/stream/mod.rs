@@ -2197,14 +2197,14 @@ where
     /// #   },
     /// # ));
     /// # }
-    pub fn resolve_futures(self) -> Stream<T, L, Unbounded, NoOrder, R> {
+    pub fn resolve_futures(self) -> Stream<T, L, B, NoOrder, R> {
         Stream::new(
             self.location.clone(),
             HydroNode::ResolveFutures {
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: self
                     .location
-                    .new_node_metadata(Stream::<T, L, Unbounded, NoOrder, R>::collection_kind()),
+                    .new_node_metadata(Stream::<T, L, B, NoOrder, R>::collection_kind()),
             },
         )
     }
@@ -2239,14 +2239,14 @@ where
     /// #   },
     /// # ));
     /// # }
-    pub fn resolve_futures_ordered(self) -> Stream<T, L, Unbounded, O, R> {
+    pub fn resolve_futures_ordered(self) -> Stream<T, L, B, O, R> {
         Stream::new(
             self.location.clone(),
             HydroNode::ResolveFuturesOrdered {
                 input: Box::new(self.ir_node.into_inner()),
                 metadata: self
                     .location
-                    .new_node_metadata(Stream::<T, L, Unbounded, O, R>::collection_kind()),
+                    .new_node_metadata(Stream::<T, L, B, O, R>::collection_kind()),
             },
         )
     }
