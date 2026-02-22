@@ -68,6 +68,22 @@ pub enum MetricEvent {
         req_id: u64,
         latency_ms: f64,
     },
+    #[serde(rename = "request_retried")]
+    RequestRetried {
+        timestamp: f64,
+        req_id: u64,
+        retry_count: u32,
+    },
+    #[serde(rename = "request_timeout")]
+    RequestTimeout {
+        timestamp: f64,
+        req_id: u64,
+    },
+    #[serde(rename = "request_failed")]
+    RequestFailed {
+        timestamp: f64,
+        req_id: u64,
+    },
 }
 
 /// Aggregated metrics computed from metric events
@@ -78,6 +94,8 @@ pub struct AggregatedMetrics {
     pub p99_latency_ms: f64,
     pub success_rate: f64,
     pub offered_rate: f64,
+    pub effective_rate: f64,
+    pub retry_amplification: f64,
 }
 
 /// Configuration for baseline test

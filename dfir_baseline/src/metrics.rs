@@ -270,6 +270,52 @@ impl MetricsReader {
         request_timestamps.len() as f64 / duration_secs
     }
     
+    /// Calculate effective arrival rate (requests + retries per second, with amplification)
+    pub fn effective_rate(&self) -> f64 {
+        if self.events.is_empty() {
+            return 0.0;
+        }
+        
+        // Count both initial requests and retries
+        let mut all_send_timestamps: Vec<f64> = Vec::new();
+        
+        for event in &self.events {
+            match event {
+                MetricEvent::RequestSent { timestamp, .. } => {
+                    all_send_timestamps.push(*timestamp);
+                }
+                MetricEvent::RequestRetried { timestamp, .. } => {
+                    all_send_timestamps.push(*timestamp);
+                }
+                _ => {}
+            }
+        }
+        
+        if all_send_timestamps.len() < 2 {
+            return 0.0;
+        }
+        
+        let min_time = all_send_timestamps.iter().cloned().fold(f64::INFINITY, f64::min);
+        let max_time = all_send_timestamps.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        
+        let duration_secs = (max_time - min_time) / 1000.0;
+        
+        if duration_secs <= 0.0 {
+            return 0.0;
+        }
+        
+        all_send_timestamps.len() as f64 / duration_secs
+    }
+    
+    /// Calculate retry amplification (effective_rate / offered_rate)
+    pub fn retry_amplification(&self) -> f64 {
+        let offered = self.offered_rate();
+        if offered == 0.0 {
+            return 1.0;
+        }
+        self.effective_rate() / offered
+    }
+    
     /// Export aggregated metrics as time-series data
     /// Groups events into time windows and calculates metrics for each window
     pub fn export_time_series(&self, window_size_ms: f64) -> Vec<AggregatedMetrics> {
@@ -282,6 +328,9 @@ impl MetricsReader {
             .map(|event| match event {
                 MetricEvent::RequestSent { timestamp, .. } => *timestamp,
                 MetricEvent::ResponseReceived { timestamp, .. } => *timestamp,
+                MetricEvent::RequestRetried { timestamp, .. } => *timestamp,
+                MetricEvent::RequestTimeout { timestamp, .. } => *timestamp,
+                MetricEvent::RequestFailed { timestamp, .. } => *timestamp,
             })
             .collect();
         
@@ -301,6 +350,9 @@ impl MetricsReader {
                     let timestamp = match event {
                         MetricEvent::RequestSent { timestamp, .. } => *timestamp,
                         MetricEvent::ResponseReceived { timestamp, .. } => *timestamp,
+                        MetricEvent::RequestRetried { timestamp, .. } => *timestamp,
+                        MetricEvent::RequestTimeout { timestamp, .. } => *timestamp,
+                        MetricEvent::RequestFailed { timestamp, .. } => *timestamp,
                     };
                     timestamp >= current_time && timestamp < window_end
                 })
@@ -317,6 +369,8 @@ impl MetricsReader {
                     p99_latency_ms: window_reader.p99_latency().unwrap_or(0.0),
                     success_rate: window_reader.success_rate(),
                     offered_rate: window_reader.offered_rate(),
+                    effective_rate: window_reader.effective_rate(),
+                    retry_amplification: window_reader.retry_amplification(),
                 };
                 
                 windows.push(metrics);
