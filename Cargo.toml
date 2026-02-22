@@ -4,8 +4,11 @@
 members = [
     "benches",
     "copy_span",
+    "dfir_baseline",
     "dfir_lang",
     "dfir_macro",
+    "dfir_meta",
+    "dfir_metastability_demo",
     "dfir_rs",
     "example_test",
     "hydro_deploy/core",
