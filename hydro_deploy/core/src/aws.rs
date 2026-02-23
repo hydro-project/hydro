@@ -40,8 +40,7 @@ impl LaunchedSshHost for LaunchedEc2Instance {
     }
 }
 
-#[derive(Debug)]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct NetworkResources {
     vpc: String,
     subnet: String,
@@ -286,15 +285,21 @@ impl AwsNetwork {
             // Add outputs so we can retrieve actual AWS IDs after apply
             resource_batch.terraform.output.insert(
                 format!("hydro-network-{}-vpc-id", self.id),
-                TerraformOutput { value: format!("${{aws_vpc.{vpc_network}.id}}") },
+                TerraformOutput {
+                    value: format!("${{aws_vpc.{vpc_network}.id}}"),
+                },
             );
             resource_batch.terraform.output.insert(
                 format!("hydro-network-{}-subnet-id", self.id),
-                TerraformOutput { value: format!("${{aws_subnet.{subnet_key}.id}}") },
+                TerraformOutput {
+                    value: format!("${{aws_subnet.{subnet_key}.id}}"),
+                },
             );
             resource_batch.terraform.output.insert(
                 format!("hydro-network-{}-sg-id", self.id),
-                TerraformOutput { value: format!("${{aws_security_group.{sg_key}.id}}") },
+                TerraformOutput {
+                    value: format!("${{aws_security_group.{sg_key}.id}}"),
+                },
             );
 
             *self.existing_network.lock().unwrap() = Some(NetworkResources {
