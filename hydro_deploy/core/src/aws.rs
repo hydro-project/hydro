@@ -41,6 +41,7 @@ impl LaunchedSshHost for LaunchedEc2Instance {
 }
 
 #[derive(Debug)]
+#[derive(Clone)]
 pub struct NetworkResources {
     vpc: String,
     subnet: String,
@@ -50,7 +51,7 @@ pub struct NetworkResources {
 #[derive(Debug)]
 pub struct AwsNetwork {
     pub region: String,
-    pub existing_network: OnceLock<NetworkResources>,
+    pub existing_network: Mutex<Option<NetworkResources>>,
     id: String,
 }
 
@@ -58,7 +59,7 @@ impl AwsNetwork {
     pub fn new(region: impl Into<String>, existing_vpc: Option<NetworkResources>) -> Arc<Self> {
         Arc::new(Self {
             region: region.into(),
-            existing_network: existing_vpc.map(From::from).unwrap_or_default(),
+            existing_network: Mutex::new(existing_vpc),
             id: nanoid!(8, &TERRAFORM_ALPHABET),
         })
     }
@@ -87,7 +88,7 @@ impl AwsNetwork {
         let subnet_key = format!("{vpc_network}-subnet");
         let sg_key = format!("{vpc_network}-default-sg");
 
-        if let Some(existing) = self.existing_network.get() {
+        if let Some(existing) = self.existing_network.lock().unwrap().clone() {
             // Resolve an existing resource: reuse if already in terraform resources,
             // otherwise create a data source lookup.
             let mut resolve = |resource_type: &str, existing_id: &str, data_key: String| {
@@ -281,14 +282,42 @@ impl AwsNetwork {
                 subnet: format!("aws_subnet.{subnet_key}"),
                 security_group: format!("aws_security_group.{sg_key}"),
             };
-            self.existing_network
-                .set(NetworkResources {
-                    vpc: vpc_network,
-                    subnet: subnet_key,
-                    security_group: sg_key,
-                })
-                .unwrap();
+
+            // Add outputs so we can retrieve actual AWS IDs after apply
+            resource_batch.terraform.output.insert(
+                format!("hydro-network-{}-vpc-id", self.id),
+                TerraformOutput { value: format!("${{aws_vpc.{vpc_network}.id}}") },
+            );
+            resource_batch.terraform.output.insert(
+                format!("hydro-network-{}-subnet-id", self.id),
+                TerraformOutput { value: format!("${{aws_subnet.{subnet_key}.id}}") },
+            );
+            resource_batch.terraform.output.insert(
+                format!("hydro-network-{}-sg-id", self.id),
+                TerraformOutput { value: format!("${{aws_security_group.{sg_key}.id}}") },
+            );
+
+            *self.existing_network.lock().unwrap() = Some(NetworkResources {
+                vpc: vpc_network,
+                subnet: subnet_key,
+                security_group: sg_key,
+            });
             resources
+        }
+    }
+
+    pub fn update_from_outputs(&self, resource_result: &ResourceResult) {
+        let outputs = &resource_result.terraform.outputs;
+        if let (Some(vpc), Some(subnet), Some(sg)) = (
+            outputs.get(&format!("hydro-network-{}-vpc-id", self.id)),
+            outputs.get(&format!("hydro-network-{}-subnet-id", self.id)),
+            outputs.get(&format!("hydro-network-{}-sg-id", self.id)),
+        ) {
+            *self.existing_network.lock().unwrap() = Some(NetworkResources {
+                vpc: vpc.value.clone(),
+                subnet: subnet.value.clone(),
+                security_group: sg.value.clone(),
+            });
         }
     }
 }
@@ -911,6 +940,7 @@ echo -e "{cwa_config_esc}" > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwa
             .get_or_init(|| {
                 let id = self.id;
 
+                self.network.update_from_outputs(resource_result);
                 let internal_ip = resource_result
                     .terraform
                     .outputs
