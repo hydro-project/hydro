@@ -10,7 +10,7 @@ use std::rc::Rc;
 use stageleft::{IntoQuotedMut, QuotedWithContext, QuotedWithContextWithProps, q, quote_type};
 use tokio::time::Instant;
 
-use super::boundedness::{Bounded, Boundedness, Unbounded};
+use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::keyed_singleton::KeyedSingleton;
 use super::keyed_stream::KeyedStream;
 use super::optional::Optional;
@@ -146,11 +146,11 @@ impl<R: Retries> MinRetries<R> for AtLeastOnce {
 #[sealed::sealed]
 #[diagnostic::on_unimplemented(
     message = "The input stream must be totally-ordered (`TotalOrder`), but has order `{Self}`. Strengthen the order upstream or consider a different API.",
-    label = "required for this call",
-    note = "To intentionally process the stream with a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This bypasses the safety guarantees so avoid unless necessary."
+    label = "required here",
+    note = "To intentionally process the stream with a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
 )]
 /// Marker trait that is implemented for the [`TotalOrder`] ordering guarantee.
-pub trait IsOrdered {}
+pub trait IsOrdered: Ordering {}
 
 #[sealed::sealed]
 #[diagnostic::do_not_recommend]
@@ -159,11 +159,11 @@ impl IsOrdered for TotalOrder {}
 #[sealed::sealed]
 #[diagnostic::on_unimplemented(
     message = "The input stream must be exactly-once (`ExactlyOnce`), but has retries `{Self}`. Strengthen the retries guarantee upstream or consider a different API.",
-    label = "required for this call",
-    note = "To intentionally process the stream with non-deterministic (randomly duplicated) retries, use `.assume_retries`. This bypasses the safety guarantees so avoid unless necessary."
+    label = "required here",
+    note = "To intentionally process the stream with non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
 )]
 /// Marker trait that is implemented for the [`ExactlyOnce`] retries guarantee.
-pub trait IsExactlyOnce {}
+pub trait IsExactlyOnce: Retries {}
 
 #[sealed::sealed]
 #[diagnostic::do_not_recommend]
@@ -880,9 +880,10 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn filter_not_in<O2: Ordering>(self, other: Stream<T, L, Bounded, O2, R>) -> Self
+    pub fn filter_not_in<O2: Ordering, B2>(self, other: Stream<T, L, B2, O2, R>) -> Self
     where
         T: Eq + Hash,
+        B2: IsBounded,
     {
         check_matching_location(&self.location, &other.location);
 
@@ -934,191 +935,47 @@ where
         )
     }
 
-    /// An operator which allows you to "name" a `HydroNode`.
-    /// This is only used for testing, to correlate certain `HydroNode`s with IDs.
-    pub fn ir_node_named(self, name: &str) -> Stream<T, L, B, O, R> {
-        {
-            let mut node = self.ir_node.borrow_mut();
-            let metadata = node.metadata_mut();
-            metadata.tag = Some(name.to_owned());
-        }
-        self
-    }
-
-    /// Explicitly "casts" the stream to a type with a different ordering
-    /// guarantee. Useful in unsafe code where the ordering cannot be proven
-    /// by the type-system.
+    /// Executes the provided closure for every element in this stream.
     ///
-    /// # Non-Determinism
-    /// This function is used as an escape hatch, and any mistakes in the
-    /// provided ordering guarantee will propagate into the guarantees
-    /// for the rest of the program.
-    pub fn assume_ordering<O2: Ordering>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
-        if O::ORDERING_KIND == O2::ORDERING_KIND {
-            Stream::new(self.location, self.ir_node.into_inner())
-        } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
-            // We can always weaken the ordering guarantee
-            Stream::new(
-                self.location.clone(),
-                HydroNode::Cast {
-                    inner: Box::new(self.ir_node.into_inner()),
-                    metadata: self
-                        .location
-                        .new_node_metadata(Stream::<T, L, B, O2, R>::collection_kind()),
-                },
-            )
-        } else {
-            Stream::new(
-                self.location.clone(),
-                HydroNode::ObserveNonDet {
-                    inner: Box::new(self.ir_node.into_inner()),
-                    trusted: false,
-                    metadata: self
-                        .location
-                        .new_node_metadata(Stream::<T, L, B, O2, R>::collection_kind()),
-                },
-            )
-        }
+    /// Because the closure may have side effects, the stream must have deterministic order
+    /// ([`TotalOrder`]) and no retries ([`ExactlyOnce`]). If the side effects can tolerate
+    /// out-of-order or duplicate execution, use [`Stream::assume_ordering`] and
+    /// [`Stream::assume_retries`] with an explanation for why this is the case.
+    pub fn for_each<F: Fn(T) + 'a>(self, f: impl IntoQuotedMut<'a, F, L>)
+    where
+        O: IsOrdered,
+        R: IsExactlyOnce,
+    {
+        let f = f.splice_fn1_ctx(&self.location).into();
+        self.location
+            .flow_state()
+            .borrow_mut()
+            .push_root(HydroRoot::ForEach {
+                input: Box::new(self.ir_node.into_inner()),
+                f,
+                op_metadata: HydroIrOpMetadata::new(),
+            });
     }
 
-    // like `assume_ordering_trusted`, but only if the input stream is bounded and therefore
-    // intermediate states will not be revealed
-    fn assume_ordering_trusted_bounded<O2: Ordering>(
-        self,
-        nondet: NonDet,
-    ) -> Stream<T, L, B, O2, R> {
-        if B::BOUNDED {
-            self.assume_ordering_trusted(nondet)
-        } else {
-            self.assume_ordering(nondet)
-        }
-    }
-
-    // only for internal APIs that have been carefully vetted to ensure that the non-determinism
-    // is not observable
-    pub(crate) fn assume_ordering_trusted<O2: Ordering>(
-        self,
-        _nondet: NonDet,
-    ) -> Stream<T, L, B, O2, R> {
-        if O::ORDERING_KIND == O2::ORDERING_KIND {
-            Stream::new(self.location, self.ir_node.into_inner())
-        } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
-            // We can always weaken the ordering guarantee
-            Stream::new(
-                self.location.clone(),
-                HydroNode::Cast {
-                    inner: Box::new(self.ir_node.into_inner()),
-                    metadata: self
-                        .location
-                        .new_node_metadata(Stream::<T, L, B, O2, R>::collection_kind()),
-                },
-            )
-        } else {
-            Stream::new(
-                self.location.clone(),
-                HydroNode::ObserveNonDet {
-                    inner: Box::new(self.ir_node.into_inner()),
-                    trusted: true,
-                    metadata: self
-                        .location
-                        .new_node_metadata(Stream::<T, L, B, O2, R>::collection_kind()),
-                },
-            )
-        }
-    }
-
-    #[deprecated = "use `weaken_ordering::<NoOrder>()` instead"]
-    /// Weakens the ordering guarantee provided by the stream to [`NoOrder`],
-    /// which is always safe because that is the weakest possible guarantee.
-    pub fn weakest_ordering(self) -> Stream<T, L, B, NoOrder, R> {
-        self.weaken_ordering::<NoOrder>()
-    }
-
-    /// Weakens the ordering guarantee provided by the stream to `O2`, with the type-system
-    /// enforcing that `O2` is weaker than the input ordering guarantee.
-    pub fn weaken_ordering<O2: WeakerOrderingThan<O>>(self) -> Stream<T, L, B, O2, R> {
-        let nondet = nondet!(/** this is a weaker ordering guarantee, so it is safe to assume */);
-        self.assume_ordering::<O2>(nondet)
-    }
-
-    /// Explicitly "casts" the stream to a type with a different retries
-    /// guarantee. Useful in unsafe code where the lack of retries cannot
-    /// be proven by the type-system.
-    ///
-    /// # Non-Determinism
-    /// This function is used as an escape hatch, and any mistakes in the
-    /// provided retries guarantee will propagate into the guarantees
-    /// for the rest of the program.
-    pub fn assume_retries<R2: Retries>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
-        if R::RETRIES_KIND == R2::RETRIES_KIND {
-            Stream::new(self.location, self.ir_node.into_inner())
-        } else if R2::RETRIES_KIND == StreamRetry::AtLeastOnce {
-            // We can always weaken the retries guarantee
-            Stream::new(
-                self.location.clone(),
-                HydroNode::Cast {
-                    inner: Box::new(self.ir_node.into_inner()),
-                    metadata: self
-                        .location
-                        .new_node_metadata(Stream::<T, L, B, O, R2>::collection_kind()),
-                },
-            )
-        } else {
-            Stream::new(
-                self.location.clone(),
-                HydroNode::ObserveNonDet {
-                    inner: Box::new(self.ir_node.into_inner()),
-                    trusted: false,
-                    metadata: self
-                        .location
-                        .new_node_metadata(Stream::<T, L, B, O, R2>::collection_kind()),
-                },
-            )
-        }
-    }
-
-    // only for internal APIs that have been carefully vetted to ensure that the non-determinism
-    // is not observable
-    fn assume_retries_trusted<R2: Retries>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
-        if R::RETRIES_KIND == R2::RETRIES_KIND {
-            Stream::new(self.location, self.ir_node.into_inner())
-        } else if R2::RETRIES_KIND == StreamRetry::AtLeastOnce {
-            // We can always weaken the retries guarantee
-            Stream::new(
-                self.location.clone(),
-                HydroNode::Cast {
-                    inner: Box::new(self.ir_node.into_inner()),
-                    metadata: self
-                        .location
-                        .new_node_metadata(Stream::<T, L, B, O, R2>::collection_kind()),
-                },
-            )
-        } else {
-            Stream::new(
-                self.location.clone(),
-                HydroNode::ObserveNonDet {
-                    inner: Box::new(self.ir_node.into_inner()),
-                    trusted: true,
-                    metadata: self
-                        .location
-                        .new_node_metadata(Stream::<T, L, B, O, R2>::collection_kind()),
-                },
-            )
-        }
-    }
-
-    #[deprecated = "use `weaken_retries::<AtLeastOnce>()` instead"]
-    /// Weakens the retries guarantee provided by the stream to [`AtLeastOnce`],
-    /// which is always safe because that is the weakest possible guarantee.
-    pub fn weakest_retries(self) -> Stream<T, L, B, O, AtLeastOnce> {
-        self.weaken_retries::<AtLeastOnce>()
-    }
-
-    /// Weakens the retries guarantee provided by the stream to `R2`, with the type-system
-    /// enforcing that `R2` is weaker than the input retries guarantee.
-    pub fn weaken_retries<R2: WeakerRetryThan<R>>(self) -> Stream<T, L, B, O, R2> {
-        let nondet = nondet!(/** this is a weaker retry guarantee, so it is safe to assume */);
-        self.assume_retries::<R2>(nondet)
+    /// Sends all elements of this stream to a provided [`futures::Sink`], such as an external
+    /// TCP socket to some other server. You should _not_ use this API for interacting with
+    /// external clients, instead see [`Location::bidi_external_many_bytes`] and
+    /// [`Location::bidi_external_many_bincode`]. This should be used for custom, low-level
+    /// interaction with asynchronous sinks.
+    pub fn dest_sink<S>(self, sink: impl QuotedWithContext<'a, S, L>)
+    where
+        O: IsOrdered,
+        R: IsExactlyOnce,
+        S: 'a + futures::Sink<T> + Unpin,
+    {
+        self.location
+            .flow_state()
+            .borrow_mut()
+            .push_root(HydroRoot::DestSink {
+                sink: sink.splice_typed_ctx(&self.location).into(),
+                input: Box::new(self.ir_node.into_inner()),
+                op_metadata: HydroIrOpMetadata::new(),
+            });
     }
 
     /// Maps each element `x` of the stream to `(i, x)`, where `i` is the index of the element.
@@ -1159,41 +1016,7 @@ where
             },
         )
     }
-}
 
-impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<&T, L, B, O, R>
-where
-    L: Location<'a>,
-{
-    /// Clone each element of the stream; akin to `map(q!(|d| d.clone()))`.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// process.source_iter(q!(&[1, 2, 3])).cloned()
-    /// # }, |mut stream| async move {
-    /// // 1, 2, 3
-    /// # for w in vec![1, 2, 3] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
-    /// # }
-    /// # }));
-    /// # }
-    /// ```
-    pub fn cloned(self) -> Stream<T, L, B, O, R>
-    where
-        T: Clone,
-    {
-        self.map(q!(|d| d.clone()))
-    }
-}
-
-impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, L, B, O, R>
-where
-    L: Location<'a>,
-{
     /// Combines elements of the stream into a [`Singleton`], by starting with an intitial value,
     /// generated by the `init` closure, and then applying the `comb` closure to each element in the stream.
     /// Unlike iterators, `comb` takes the accumulator by `&mut` reference, so that it can be modified in place.
@@ -1318,8 +1141,8 @@ where
     where
         T: Ord,
     {
-        self.assume_retries_trusted(nondet!(/** max is idempotent */))
-            .assume_ordering_trusted_bounded(
+        self.assume_retries_trusted::<ExactlyOnce>(nondet!(/** max is idempotent */))
+            .assume_ordering_trusted_bounded::<TotalOrder>(
                 nondet!(/** max is commutative, but order affects intermediates */),
             )
             .reduce(q!(|curr, new| {
@@ -1352,8 +1175,8 @@ where
     where
         T: Ord,
     {
-        self.assume_retries_trusted(nondet!(/** min is idempotent */))
-            .assume_ordering_trusted_bounded(
+        self.assume_retries_trusted::<ExactlyOnce>(nondet!(/** min is idempotent */))
+            .assume_ordering_trusted_bounded::<TotalOrder>(
                 nondet!(/** max is commutative, but order affects intermediates */),
             )
             .reduce(q!(|curr, new| {
@@ -1362,42 +1185,7 @@ where
                 }
             }))
     }
-}
 
-impl<'a, T, L, B: Boundedness, O: Ordering> Stream<T, L, B, O, ExactlyOnce>
-where
-    L: Location<'a>,
-{
-    /// Computes the number of elements in the stream as a [`Singleton`].
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
-    /// let batch = numbers.batch(&tick, nondet!(/** test */));
-    /// batch.count().all_ticks()
-    /// # }, |mut stream| async move {
-    /// // 4
-    /// # assert_eq!(stream.next().await.unwrap(), 4);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn count(self) -> Singleton<usize, L, B> {
-        self.assume_ordering_trusted(nondet!(
-            /// Order does not affect eventual count, and also does not affect intermediate states.
-        ))
-        .fold(q!(|| 0usize), q!(|count, _| *count += 1))
-    }
-}
-
-impl<'a, T, L, B: Boundedness, R: Retries> Stream<T, L, B, TotalOrder, R>
-where
-    L: Location<'a>,
-{
     /// Computes the first element in the stream as an [`Optional`], which
     /// will be empty until the first element in the input arrives.
     ///
@@ -1420,8 +1208,12 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn first(self) -> Optional<T, L, B> {
-        self.assume_retries_trusted(nondet!(/** first is idempotent */))
+    pub fn first(self) -> Optional<T, L, B>
+    where
+        O: IsOrdered,
+    {
+        self.make_totally_ordered()
+            .assume_retries_trusted::<ExactlyOnce>(nondet!(/** first is idempotent */))
             .reduce(q!(|_, _| {}))
     }
 
@@ -1447,16 +1239,15 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn last(self) -> Optional<T, L, B> {
-        self.assume_retries_trusted(nondet!(/** last is idempotent */))
+    pub fn last(self) -> Optional<T, L, B>
+    where
+        O: IsOrdered,
+    {
+        self.make_totally_ordered()
+            .assume_retries_trusted::<ExactlyOnce>(nondet!(/** last is idempotent */))
             .reduce(q!(|curr, new| *curr = new))
     }
-}
 
-impl<'a, T, L, B: Boundedness> Stream<T, L, B, TotalOrder, ExactlyOnce>
-where
-    L: Location<'a>,
-{
     /// Collects all the elements of this stream into a single [`Vec`] element.
     ///
     /// If the input stream is [`Unbounded`], the output [`Singleton`] will be [`Unbounded`] as
@@ -1482,8 +1273,12 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn collect_vec(self) -> Singleton<Vec<T>, L, B> {
-        self.fold(
+    pub fn collect_vec(self) -> Singleton<Vec<T>, L, B>
+    where
+        O: IsOrdered,
+        R: IsExactlyOnce,
+    {
+        self.make_totally_ordered().make_exactly_once().fold(
             q!(|| vec![]),
             q!(|acc, v| {
                 acc.push(v);
@@ -1557,6 +1352,8 @@ where
         f: impl IntoQuotedMut<'a, F, L>,
     ) -> Stream<U, L, B, TotalOrder, ExactlyOnce>
     where
+        O: IsOrdered,
+        R: IsExactlyOnce,
         I: Fn() -> A + 'a,
         F: Fn(&mut A, T) -> Option<U> + 'a,
     {
@@ -1574,6 +1371,388 @@ where
                 ),
             },
         )
+    }
+
+    /// Given a time interval, returns a stream corresponding to samples taken from the
+    /// stream roughly at that interval. The output will have elements in the same order
+    /// as the input, but with arbitrary elements skipped between samples. There is also
+    /// no guarantee on the exact timing of the samples.
+    ///
+    /// # Non-Determinism
+    /// The output stream is non-deterministic in which elements are sampled, since this
+    /// is controlled by a clock.
+    pub fn sample_every(
+        self,
+        interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
+        nondet: NonDet,
+    ) -> Stream<T, L, Unbounded, O, AtLeastOnce>
+    where
+        L: NoTick + NoAtomic,
+    {
+        let samples = self.location.source_interval(interval, nondet);
+
+        let tick = self.location.tick();
+        self.batch(&tick, nondet)
+            .filter_if_some(samples.batch(&tick, nondet).first())
+            .all_ticks()
+            .weaken_retries()
+    }
+
+    /// Given a timeout duration, returns an [`Optional`]  which will have a value if the
+    /// stream has not emitted a value since that duration.
+    ///
+    /// # Non-Determinism
+    /// Timeout relies on non-deterministic sampling of the stream, so depending on when
+    /// samples take place, timeouts may be non-deterministically generated or missed,
+    /// and the notification of the timeout may be delayed as well. There is also no
+    /// guarantee on how long the [`Optional`] will have a value after the timeout is
+    /// detected based on when the next sample is taken.
+    pub fn timeout(
+        self,
+        duration: impl QuotedWithContext<'a, std::time::Duration, Tick<L>> + Copy + 'a,
+        nondet: NonDet,
+    ) -> Optional<(), L, Unbounded>
+    where
+        L: NoTick + NoAtomic,
+    {
+        let tick = self.location.tick();
+
+        let latest_received = self.assume_retries::<ExactlyOnce>(nondet).fold(
+            q!(|| None),
+            q!(
+                |latest, _| {
+                    *latest = Some(Instant::now());
+                },
+                commutative = ManualProof(/* TODO */)
+            ),
+        );
+
+        latest_received
+            .snapshot(&tick, nondet)
+            .filter_map(q!(move |latest_received| {
+                if let Some(latest_received) = latest_received {
+                    if Instant::now().duration_since(latest_received) > duration {
+                        Some(())
+                    } else {
+                        None
+                    }
+                } else {
+                    Some(())
+                }
+            }))
+            .latest()
+    }
+
+    /// Shifts this stream into an atomic context, which guarantees that any downstream logic
+    /// will all be executed synchronously before any outputs are yielded (in [`Stream::end_atomic`]).
+    ///
+    /// This is useful to enforce local consistency constraints, such as ensuring that a write is
+    /// processed before an acknowledgement is emitted. Entering an atomic section requires a [`Tick`]
+    /// argument that declares where the stream will be atomically processed. Batching a stream into
+    /// the _same_ [`Tick`] will preserve the synchronous execution, while batching into a different
+    /// [`Tick`] will introduce asynchrony.
+    pub fn atomic(self, tick: &Tick<L>) -> Stream<T, Atomic<L>, B, O, R> {
+        let out_location = Atomic { tick: tick.clone() };
+        Stream::new(
+            out_location.clone(),
+            HydroNode::BeginAtomic {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: out_location
+                    .new_node_metadata(Stream::<T, Atomic<L>, B, O, R>::collection_kind()),
+            },
+        )
+    }
+
+    /// Given a tick, returns a stream corresponding to a batch of elements segmented by
+    /// that tick. These batches are guaranteed to be contiguous across ticks and preserve
+    /// the order of the input. The output stream will execute in the [`Tick`] that was
+    /// used to create the atomic section.
+    ///
+    /// # Non-Determinism
+    /// The batch boundaries are non-deterministic and may change across executions.
+    pub fn batch(self, tick: &Tick<L>, _nondet: NonDet) -> Stream<T, Tick<L>, Bounded, O, R> {
+        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        Stream::new(
+            tick.clone(),
+            HydroNode::Batch {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: tick
+                    .new_node_metadata(Stream::<T, Tick<L>, Bounded, O, R>::collection_kind()),
+            },
+        )
+    }
+
+    /// An operator which allows you to "name" a `HydroNode`.
+    /// This is only used for testing, to correlate certain `HydroNode`s with IDs.
+    pub fn ir_node_named(self, name: &str) -> Stream<T, L, B, O, R> {
+        {
+            let mut node = self.ir_node.borrow_mut();
+            let metadata = node.metadata_mut();
+            metadata.tag = Some(name.to_owned());
+        }
+        self
+    }
+
+    /// Explicitly "casts" the stream to a type with a different ordering
+    /// guarantee. Useful in unsafe code where the ordering cannot be proven
+    /// by the type-system.
+    ///
+    /// # Non-Determinism
+    /// This function is used as an escape hatch, and any mistakes in the
+    /// provided ordering guarantee will propagate into the guarantees
+    /// for the rest of the program.
+    pub fn assume_ordering<O2: Ordering>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
+        if O::ORDERING_KIND == O2::ORDERING_KIND {
+            Stream::new(self.location, self.ir_node.into_inner())
+        } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
+            // We can always weaken the ordering guarantee
+            Stream::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    metadata: self
+                        .location
+                        .new_node_metadata(Stream::<T, L, B, O2, R>::collection_kind()),
+                },
+            )
+        } else {
+            Stream::new(
+                self.location.clone(),
+                HydroNode::ObserveNonDet {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    trusted: false,
+                    metadata: self
+                        .location
+                        .new_node_metadata(Stream::<T, L, B, O2, R>::collection_kind()),
+                },
+            )
+        }
+    }
+
+    // like `assume_ordering_trusted`, but only if the input stream is bounded and therefore
+    // intermediate states will not be revealed
+    fn assume_ordering_trusted_bounded<O2: Ordering>(
+        self,
+        nondet: NonDet,
+    ) -> Stream<T, L, B, O2, R> {
+        if B::BOUNDED {
+            self.assume_ordering_trusted(nondet)
+        } else {
+            self.assume_ordering(nondet)
+        }
+    }
+
+    // only for internal APIs that have been carefully vetted to ensure that the non-determinism
+    // is not observable
+    pub(crate) fn assume_ordering_trusted<O2: Ordering>(
+        self,
+        _nondet: NonDet,
+    ) -> Stream<T, L, B, O2, R> {
+        if O::ORDERING_KIND == O2::ORDERING_KIND {
+            Stream::new(self.location, self.ir_node.into_inner())
+        } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
+            // We can always weaken the ordering guarantee
+            Stream::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    metadata: self
+                        .location
+                        .new_node_metadata(Stream::<T, L, B, O2, R>::collection_kind()),
+                },
+            )
+        } else {
+            Stream::new(
+                self.location.clone(),
+                HydroNode::ObserveNonDet {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    trusted: true,
+                    metadata: self
+                        .location
+                        .new_node_metadata(Stream::<T, L, B, O2, R>::collection_kind()),
+                },
+            )
+        }
+    }
+
+    #[deprecated = "use `weaken_ordering::<NoOrder>()` instead"]
+    /// Weakens the ordering guarantee provided by the stream to [`NoOrder`],
+    /// which is always safe because that is the weakest possible guarantee.
+    pub fn weakest_ordering(self) -> Stream<T, L, B, NoOrder, R> {
+        self.weaken_ordering::<NoOrder>()
+    }
+
+    /// Weakens the ordering guarantee provided by the stream to `O2`, with the type-system
+    /// enforcing that `O2` is weaker than the input ordering guarantee.
+    pub fn weaken_ordering<O2: WeakerOrderingThan<O>>(self) -> Stream<T, L, B, O2, R> {
+        let nondet = nondet!(/** this is a weaker ordering guarantee, so it is safe to assume */);
+        self.assume_ordering::<O2>(nondet)
+    }
+
+    /// Strengthens the ordering guarantee to `TotalOrder`, given that `O: IsOrdered`, which
+    /// implies that `O == TotalOrder`.
+    pub fn make_totally_ordered(self) -> Stream<T, L, B, TotalOrder, R>
+    where
+        O: IsOrdered,
+    {
+        self.assume_ordering(nondet!(/** no-op */))
+    }
+
+    /// Explicitly "casts" the stream to a type with a different retries
+    /// guarantee. Useful in unsafe code where the lack of retries cannot
+    /// be proven by the type-system.
+    ///
+    /// # Non-Determinism
+    /// This function is used as an escape hatch, and any mistakes in the
+    /// provided retries guarantee will propagate into the guarantees
+    /// for the rest of the program.
+    pub fn assume_retries<R2: Retries>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
+        if R::RETRIES_KIND == R2::RETRIES_KIND {
+            Stream::new(self.location, self.ir_node.into_inner())
+        } else if R2::RETRIES_KIND == StreamRetry::AtLeastOnce {
+            // We can always weaken the retries guarantee
+            Stream::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    metadata: self
+                        .location
+                        .new_node_metadata(Stream::<T, L, B, O, R2>::collection_kind()),
+                },
+            )
+        } else {
+            Stream::new(
+                self.location.clone(),
+                HydroNode::ObserveNonDet {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    trusted: false,
+                    metadata: self
+                        .location
+                        .new_node_metadata(Stream::<T, L, B, O, R2>::collection_kind()),
+                },
+            )
+        }
+    }
+
+    // only for internal APIs that have been carefully vetted to ensure that the non-determinism
+    // is not observable
+    fn assume_retries_trusted<R2: Retries>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
+        if R::RETRIES_KIND == R2::RETRIES_KIND {
+            Stream::new(self.location, self.ir_node.into_inner())
+        } else if R2::RETRIES_KIND == StreamRetry::AtLeastOnce {
+            // We can always weaken the retries guarantee
+            Stream::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    metadata: self
+                        .location
+                        .new_node_metadata(Stream::<T, L, B, O, R2>::collection_kind()),
+                },
+            )
+        } else {
+            Stream::new(
+                self.location.clone(),
+                HydroNode::ObserveNonDet {
+                    inner: Box::new(self.ir_node.into_inner()),
+                    trusted: true,
+                    metadata: self
+                        .location
+                        .new_node_metadata(Stream::<T, L, B, O, R2>::collection_kind()),
+                },
+            )
+        }
+    }
+
+    #[deprecated = "use `weaken_retries::<AtLeastOnce>()` instead"]
+    /// Weakens the retries guarantee provided by the stream to [`AtLeastOnce`],
+    /// which is always safe because that is the weakest possible guarantee.
+    pub fn weakest_retries(self) -> Stream<T, L, B, O, AtLeastOnce> {
+        self.weaken_retries::<AtLeastOnce>()
+    }
+
+    /// Weakens the retries guarantee provided by the stream to `R2`, with the type-system
+    /// enforcing that `R2` is weaker than the input retries guarantee.
+    pub fn weaken_retries<R2: WeakerRetryThan<R>>(self) -> Stream<T, L, B, O, R2> {
+        let nondet = nondet!(/** this is a weaker retry guarantee, so it is safe to assume */);
+        self.assume_retries::<R2>(nondet)
+    }
+
+    /// Strengthens the retry guarantee to `ExactlyOnce`, given that `R: IsExactlyOnce`, which
+    /// implies that `R == ExactlyOnce`.
+    pub fn make_exactly_once(self) -> Stream<T, L, B, O, ExactlyOnce>
+    where
+        R: IsExactlyOnce,
+    {
+        self.assume_retries(nondet!(/** no-op */))
+    }
+
+    /// Strengthens the boundedness guarantee to `Bounded`, given that `B: IsBounded`, which
+    /// implies that `B == Bounded`.
+    pub fn make_bounded(self) -> Stream<T, L, Bounded, O, R>
+    where
+        B: IsBounded,
+    {
+        Stream::new(self.location, self.ir_node.into_inner())
+    }
+}
+
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<&T, L, B, O, R>
+where
+    L: Location<'a>,
+{
+    /// Clone each element of the stream; akin to `map(q!(|d| d.clone()))`.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process.source_iter(q!(&[1, 2, 3])).cloned()
+    /// # }, |mut stream| async move {
+    /// // 1, 2, 3
+    /// # for w in vec![1, 2, 3] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn cloned(self) -> Stream<T, L, B, O, R>
+    where
+        T: Clone,
+    {
+        self.map(q!(|d| d.clone()))
+    }
+}
+
+impl<'a, T, L, B: Boundedness, O: Ordering> Stream<T, L, B, O, ExactlyOnce>
+where
+    L: Location<'a>,
+{
+    /// Computes the number of elements in the stream as a [`Singleton`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let numbers = process.source_iter(q!(vec![1, 2, 3, 4]));
+    /// let batch = numbers.batch(&tick, nondet!(/** test */));
+    /// batch.count().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 4
+    /// # assert_eq!(stream.next().await.unwrap(), 4);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn count(self) -> Singleton<usize, L, B> {
+        self.assume_ordering_trusted::<TotalOrder>(nondet!(
+            /// Order does not affect eventual count, and also does not affect intermediate states.
+        ))
+        .fold(q!(|| 0usize), q!(|count, _| *count += 1))
     }
 }
 
@@ -1680,7 +1859,7 @@ impl<'a, T, L: Location<'a> + NoTick, R: Retries> Stream<T, L, Unbounded, TotalO
     }
 }
 
-impl<'a, T, L, O: Ordering, R: Retries> Stream<T, L, Bounded, O, R>
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, L, B, O, R>
 where
     L: Location<'a>,
 {
@@ -1711,13 +1890,15 @@ where
     /// ```
     pub fn sort(self) -> Stream<T, L, Bounded, TotalOrder, R>
     where
+        B: IsBounded,
         T: Ord,
     {
+        let this = self.make_bounded();
         Stream::new(
-            self.location.clone(),
+            this.location.clone(),
             HydroNode::Sort {
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self
+                input: Box::new(this.ir_node.into_inner()),
+                metadata: this
                     .location
                     .new_node_metadata(Stream::<T, L, Bounded, TotalOrder, R>::collection_kind()),
             },
@@ -1756,6 +1937,7 @@ where
         other: Stream<T, L, B2, O2, R2>,
     ) -> Stream<T, L, B2, <O as MinOrder<O2>>::Min, <R as MinRetries<R2>>::Min>
     where
+        B: IsBounded,
         O: MinOrder<O2>,
         R: MinRetries<R2>,
     {
@@ -1785,17 +1967,19 @@ where
         other: Stream<T2, L, Bounded, O2, R>,
     ) -> Stream<(T, T2), L, Bounded, <O2 as MinOrder<O>>::Min, R>
     where
+        B: IsBounded,
         T: Clone,
         T2: Clone,
     {
-        check_matching_location(&self.location, &other.location);
+        let this = self.make_bounded();
+        check_matching_location(&this.location, &other.location);
 
         Stream::new(
-            self.location.clone(),
+            this.location.clone(),
             HydroNode::CrossProduct {
-                left: Box::new(self.ir_node.into_inner()),
+                left: Box::new(this.ir_node.into_inner()),
                 right: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata(Stream::<
+                metadata: this.location.new_node_metadata(Stream::<
                     (T, T2),
                     L,
                     Bounded,
@@ -1848,6 +2032,7 @@ where
         keys: KeyedSingleton<K, V2, L, Bounded>,
     ) -> KeyedStream<K, T, L, Bounded, O, R>
     where
+        B: IsBounded,
         K: Clone,
         T: Clone,
     {
@@ -1856,7 +2041,7 @@ where
             .assume_ordering_trusted::<TotalOrder>(
                 nondet!(/** keyed stream does not depend on ordering of keys */),
             )
-            .cross_product_nested_loop(self)
+            .cross_product_nested_loop(self.make_bounded())
             .into_keyed()
     }
 }
@@ -2078,120 +2263,6 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, L, B, O, R>
-where
-    L: Location<'a>,
-{
-    /// Shifts this stream into an atomic context, which guarantees that any downstream logic
-    /// will all be executed synchronously before any outputs are yielded (in [`Stream::end_atomic`]).
-    ///
-    /// This is useful to enforce local consistency constraints, such as ensuring that a write is
-    /// processed before an acknowledgement is emitted. Entering an atomic section requires a [`Tick`]
-    /// argument that declares where the stream will be atomically processed. Batching a stream into
-    /// the _same_ [`Tick`] will preserve the synchronous execution, while batching into a different
-    /// [`Tick`] will introduce asynchrony.
-    pub fn atomic(self, tick: &Tick<L>) -> Stream<T, Atomic<L>, B, O, R> {
-        let out_location = Atomic { tick: tick.clone() };
-        Stream::new(
-            out_location.clone(),
-            HydroNode::BeginAtomic {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: out_location
-                    .new_node_metadata(Stream::<T, Atomic<L>, B, O, R>::collection_kind()),
-            },
-        )
-    }
-
-    /// Given a tick, returns a stream corresponding to a batch of elements segmented by
-    /// that tick. These batches are guaranteed to be contiguous across ticks and preserve
-    /// the order of the input. The output stream will execute in the [`Tick`] that was
-    /// used to create the atomic section.
-    ///
-    /// # Non-Determinism
-    /// The batch boundaries are non-deterministic and may change across executions.
-    pub fn batch(self, tick: &Tick<L>, _nondet: NonDet) -> Stream<T, Tick<L>, Bounded, O, R> {
-        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
-        Stream::new(
-            tick.clone(),
-            HydroNode::Batch {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: tick
-                    .new_node_metadata(Stream::<T, Tick<L>, Bounded, O, R>::collection_kind()),
-            },
-        )
-    }
-
-    /// Given a time interval, returns a stream corresponding to samples taken from the
-    /// stream roughly at that interval. The output will have elements in the same order
-    /// as the input, but with arbitrary elements skipped between samples. There is also
-    /// no guarantee on the exact timing of the samples.
-    ///
-    /// # Non-Determinism
-    /// The output stream is non-deterministic in which elements are sampled, since this
-    /// is controlled by a clock.
-    pub fn sample_every(
-        self,
-        interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
-        nondet: NonDet,
-    ) -> Stream<T, L, Unbounded, O, AtLeastOnce>
-    where
-        L: NoTick + NoAtomic,
-    {
-        let samples = self.location.source_interval(interval, nondet);
-
-        let tick = self.location.tick();
-        self.batch(&tick, nondet)
-            .filter_if_some(samples.batch(&tick, nondet).first())
-            .all_ticks()
-            .weaken_retries()
-    }
-
-    /// Given a timeout duration, returns an [`Optional`]  which will have a value if the
-    /// stream has not emitted a value since that duration.
-    ///
-    /// # Non-Determinism
-    /// Timeout relies on non-deterministic sampling of the stream, so depending on when
-    /// samples take place, timeouts may be non-deterministically generated or missed,
-    /// and the notification of the timeout may be delayed as well. There is also no
-    /// guarantee on how long the [`Optional`] will have a value after the timeout is
-    /// detected based on when the next sample is taken.
-    pub fn timeout(
-        self,
-        duration: impl QuotedWithContext<'a, std::time::Duration, Tick<L>> + Copy + 'a,
-        nondet: NonDet,
-    ) -> Optional<(), L, Unbounded>
-    where
-        L: NoTick + NoAtomic,
-    {
-        let tick = self.location.tick();
-
-        let latest_received = self.assume_retries(nondet).fold(
-            q!(|| None),
-            q!(
-                |latest, _| {
-                    *latest = Some(Instant::now());
-                },
-                commutative = ManualProof(/* TODO */)
-            ),
-        );
-
-        latest_received
-            .snapshot(&tick, nondet)
-            .filter_map(q!(move |latest_received| {
-                if let Some(latest_received) = latest_received {
-                    if Instant::now().duration_since(latest_received) > duration {
-                        Some(())
-                    } else {
-                        None
-                    }
-                } else {
-                    Some(())
-                }
-            }))
-            .latest()
-    }
-}
-
 impl<'a, F, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<F, L, B, O, R>
 where
     L: Location<'a> + NoTick + NoAtomic,
@@ -2279,48 +2350,6 @@ where
                     .new_node_metadata(Stream::<T, L, Unbounded, O, R>::collection_kind()),
             },
         )
-    }
-}
-
-impl<'a, T, L, B: Boundedness> Stream<T, L, B, TotalOrder, ExactlyOnce>
-where
-    L: Location<'a> + NoTick,
-{
-    /// Executes the provided closure for every element in this stream.
-    ///
-    /// Because the closure may have side effects, the stream must have deterministic order
-    /// ([`TotalOrder`]) and no retries ([`ExactlyOnce`]). If the side effects can tolerate
-    /// out-of-order or duplicate execution, use [`Stream::assume_ordering`] and
-    /// [`Stream::assume_retries`] with an explanation for why this is the case.
-    pub fn for_each<F: Fn(T) + 'a>(self, f: impl IntoQuotedMut<'a, F, L>) {
-        let f = f.splice_fn1_ctx(&self.location).into();
-        self.location
-            .flow_state()
-            .borrow_mut()
-            .push_root(HydroRoot::ForEach {
-                input: Box::new(self.ir_node.into_inner()),
-                f,
-                op_metadata: HydroIrOpMetadata::new(),
-            });
-    }
-
-    /// Sends all elements of this stream to a provided [`futures::Sink`], such as an external
-    /// TCP socket to some other server. You should _not_ use this API for interacting with
-    /// external clients, instead see [`Location::bidi_external_many_bytes`] and
-    /// [`Location::bidi_external_many_bincode`]. This should be used for custom, low-level
-    /// interaction with asynchronous sinks.
-    pub fn dest_sink<S>(self, sink: impl QuotedWithContext<'a, S, L>)
-    where
-        S: 'a + futures::Sink<T> + Unpin,
-    {
-        self.location
-            .flow_state()
-            .borrow_mut()
-            .push_root(HydroRoot::DestSink {
-                sink: sink.splice_typed_ctx(&self.location).into(),
-                input: Box::new(self.ir_node.into_inner()),
-                op_metadata: HydroIrOpMetadata::new(),
-            });
     }
 }
 

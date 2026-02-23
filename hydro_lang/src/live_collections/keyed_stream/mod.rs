@@ -9,11 +9,13 @@ use std::rc::Rc;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, QuotedWithContextWithProps, q};
 
-use super::boundedness::{Bounded, Boundedness, Unbounded};
+use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::keyed_singleton::KeyedSingleton;
 use super::optional::Optional;
 use super::singleton::Singleton;
-use super::stream::{ExactlyOnce, MinOrder, MinRetries, NoOrder, Stream, TotalOrder};
+use super::stream::{
+    ExactlyOnce, IsExactlyOnce, IsOrdered, MinOrder, MinRetries, NoOrder, Stream, TotalOrder,
+};
 use crate::compile::builder::CycleId;
 use crate::compile::ir::{
     CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, StreamOrder, StreamRetry, TeeNode,
@@ -221,6 +223,19 @@ impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: Boundedness, Order: Order
     }
 }
 
+/// The output of a Hydro generator created with [`KeyedStream::generator`], which can yield elements and
+/// control the processing of future elements.
+pub enum Generate<T> {
+    /// Emit the provided element, and keep processing future inputs.
+    Yield(T),
+    /// Emit the provided element as the _final_ element, do not process future inputs.
+    Return(T),
+    /// Do not emit anything, but continue processing future inputs.
+    Continue,
+    /// Do not emit anything, and do not process further inputs.
+    Break,
+}
+
 impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     KeyedStream<K, V, L, B, O, R>
 {
@@ -380,6 +395,33 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     pub fn weaken_retries<R2: WeakerRetryThan<R>>(self) -> KeyedStream<K, V, L, B, O, R2> {
         let nondet = nondet!(/** this is a weaker retries guarantee, so it is safe to assume */);
         self.assume_retries::<R2>(nondet)
+    }
+
+    /// Strengthens the ordering guarantee to `TotalOrder`, given that `O: IsOrdered`, which
+    /// implies that `O == TotalOrder`.
+    pub fn make_totally_ordered(self) -> KeyedStream<K, V, L, B, TotalOrder, R>
+    where
+        O: IsOrdered,
+    {
+        self.assume_ordering(nondet!(/** no-op */))
+    }
+
+    /// Strengthens the retry guarantee to `ExactlyOnce`, given that `R: IsExactlyOnce`, which
+    /// implies that `R == ExactlyOnce`.
+    pub fn make_exactly_once(self) -> KeyedStream<K, V, L, B, O, ExactlyOnce>
+    where
+        R: IsExactlyOnce,
+    {
+        self.assume_retries(nondet!(/** no-op */))
+    }
+
+    /// Strengthens the boundedness guarantee to `Bounded`, given that `B: IsBounded`, which
+    /// implies that `B == Bounded`.
+    pub fn make_bounded(self) -> KeyedStream<K, V, L, Bounded, O, R>
+    where
+        B: IsBounded,
+    {
+        KeyedStream::new(self.location, self.ir_node.into_inner())
     }
 
     /// Flattens the keyed stream into an unordered stream of key-value pairs.
@@ -1191,121 +1233,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         }
         self
     }
-}
 
-impl<'a, K1, K2, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
-    KeyedStream<(K1, K2), V, L, B, O, R>
-{
-    /// Produces a new keyed stream by dropping the first element of the compound key.
-    ///
-    /// Because multiple keys may share the same suffix, this operation results in re-grouping
-    /// of the values under the new keys. The values across groups with the same new key
-    /// will be interleaved, so the resulting stream has [`NoOrder`] within each group.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// process
-    ///     .source_iter(q!(vec![((1, 10), 2), ((1, 10), 3), ((2, 20), 4)]))
-    ///     .into_keyed()
-    ///     .drop_key_prefix()
-    /// #   .entries()
-    /// # }, |mut stream| async move {
-    /// // { 10: [2, 3], 20: [4] }
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..3 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(10, 2), (10, 3), (20, 4)]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn drop_key_prefix(self) -> KeyedStream<K2, V, L, B, NoOrder, R> {
-        self.entries()
-            .map(q!(|((_k1, k2), v)| (k2, v)))
-            .into_keyed()
-    }
-}
-
-impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries>
-    KeyedStream<K, V, L, Unbounded, O, R>
-{
-    /// Produces a new keyed stream that "merges" the inputs by interleaving the elements
-    /// of any overlapping groups. The result has [`NoOrder`] on each group because the
-    /// order of interleaving is not guaranteed. If the keys across both inputs do not overlap,
-    /// the ordering will be deterministic and you can safely use [`Self::assume_ordering`].
-    ///
-    /// Currently, both input streams must be [`Unbounded`].
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let numbers1: KeyedStream<i32, i32, _> = // { 1: [2], 3: [4] }
-    /// # process.source_iter(q!(vec![(1, 2), (3, 4)])).into_keyed().into();
-    /// let numbers2: KeyedStream<i32, i32, _> = // { 1: [3], 3: [5] }
-    /// # process.source_iter(q!(vec![(1, 3), (3, 5)])).into_keyed().into();
-    /// numbers1.interleave(numbers2)
-    /// #   .entries()
-    /// # }, |mut stream| async move {
-    /// // { 1: [2, 3], 3: [4, 5] } with each group in unknown order
-    /// # let mut results = Vec::new();
-    /// # for _ in 0..4 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, 2), (1, 3), (3, 4), (3, 5)]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn interleave<O2: Ordering, R2: Retries>(
-        self,
-        other: KeyedStream<K, V, L, Unbounded, O2, R2>,
-    ) -> KeyedStream<K, V, L, Unbounded, NoOrder, <R as MinRetries<R2>>::Min>
-    where
-        R: MinRetries<R2>,
-    {
-        KeyedStream::new(
-            self.location.clone(),
-            HydroNode::Chain {
-                first: Box::new(self.ir_node.into_inner()),
-                second: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata(KeyedStream::<
-                    K,
-                    V,
-                    L,
-                    Unbounded,
-                    NoOrder,
-                    <R as MinRetries<R2>>::Min,
-                >::collection_kind()),
-            },
-        )
-    }
-}
-
-/// The output of a Hydro generator created with [`KeyedStream::generator`], which can yield elements and
-/// control the processing of future elements.
-pub enum Generate<T> {
-    /// Emit the provided element, and keep processing future inputs.
-    Yield(T),
-    /// Emit the provided element as the _final_ element, do not process future inputs.
-    Return(T),
-    /// Do not emit anything, but continue processing future inputs.
-    Continue,
-    /// Do not emit anything, and do not process further inputs.
-    Break,
-}
-
-impl<'a, K, V, L, B: Boundedness> KeyedStream<K, V, L, B, TotalOrder, ExactlyOnce>
-where
-    L: Location<'a>,
-{
     /// A special case of [`Stream::scan`] for keyed streams. For each key group the values are transformed via the `f` combinator.
     ///
     /// Unlike [`KeyedStream::fold`] which only returns the final accumulated value, `scan` produces a new stream
@@ -1350,12 +1278,14 @@ where
         f: impl IntoQuotedMut<'a, F, L> + Copy,
     ) -> KeyedStream<K, U, L, B, TotalOrder, ExactlyOnce>
     where
+        O: IsOrdered,
+        R: IsExactlyOnce,
         K: Clone + Eq + Hash,
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) -> Option<U> + 'a,
     {
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn2_borrow_mut_ctx(ctx));
-        self.generator(
+        self.make_totally_ordered().make_exactly_once().generator(
             init,
             q!({
                 let orig = f;
@@ -1424,6 +1354,8 @@ where
         f: impl IntoQuotedMut<'a, F, L> + Copy,
     ) -> KeyedStream<K, U, L, B, TotalOrder, ExactlyOnce>
     where
+        O: IsOrdered,
+        R: IsExactlyOnce,
         K: Clone + Eq + Hash,
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) -> Generate<U> + 'a,
@@ -1431,8 +1363,10 @@ where
         let init: ManualExpr<I, _> = ManualExpr::new(move |ctx: &L| init.splice_fn0_ctx(ctx));
         let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn2_borrow_mut_ctx(ctx));
 
+        let this = self.make_totally_ordered().make_exactly_once();
+
         let scan_init = q!(|| HashMap::new())
-            .splice_fn0_ctx::<HashMap<K, Option<A>>>(&self.location)
+            .splice_fn0_ctx::<HashMap<K, Option<A>>>(&this.location)
             .into();
         let scan_f = q!(move |acc: &mut HashMap<_, _>, (k, v)| {
             let existing_state = acc.entry(Clone::clone(&k)).or_insert_with(|| Some(init()));
@@ -1453,14 +1387,14 @@ where
                 Some(None)
             }
         })
-        .splice_fn2_borrow_mut_ctx::<HashMap<K, Option<A>>, (K, V), _>(&self.location)
+        .splice_fn2_borrow_mut_ctx::<HashMap<K, Option<A>>, (K, V), _>(&this.location)
         .into();
 
         let scan_node = HydroNode::Scan {
             init: scan_init,
             acc: scan_f,
-            input: Box::new(self.ir_node.into_inner()),
-            metadata: self.location.new_node_metadata(Stream::<
+            input: Box::new(this.ir_node.into_inner()),
+            metadata: this.location.new_node_metadata(Stream::<
                 Option<(K, U)>,
                 L,
                 B,
@@ -1470,12 +1404,12 @@ where
         };
 
         let flatten_f = q!(|d| d)
-            .splice_fn1_ctx::<Option<(K, U)>, _>(&self.location)
+            .splice_fn1_ctx::<Option<(K, U)>, _>(&this.location)
             .into();
         let flatten_node = HydroNode::FlatMap {
             f: flatten_f,
             input: Box::new(scan_node),
-            metadata: self.location.new_node_metadata(KeyedStream::<
+            metadata: this.location.new_node_metadata(KeyedStream::<
                 K,
                 U,
                 L,
@@ -1485,7 +1419,7 @@ where
             >::collection_kind()),
         };
 
-        KeyedStream::new(self.location, flatten_node)
+        KeyedStream::new(this.location, flatten_node)
     }
 
     /// A variant of [`Stream::fold`], intended for keyed streams. The aggregation is executed
@@ -1529,6 +1463,8 @@ where
         f: impl IntoQuotedMut<'a, F, L> + Copy,
     ) -> KeyedSingleton<K, A, L, B::WhenValueBounded>
     where
+        O: IsOrdered,
+        R: IsExactlyOnce,
         K: Clone + Eq + Hash,
         I: Fn() -> A + 'a,
         F: Fn(&mut A, V) -> bool + 'a,
@@ -1591,6 +1527,8 @@ where
     /// ```
     pub fn first(self) -> KeyedSingleton<K, V, L, B::WhenValueBounded>
     where
+        O: IsOrdered,
+        R: IsExactlyOnce,
         K: Clone + Eq + Hash,
     {
         self.fold_early_stop(
@@ -1602,12 +1540,7 @@ where
         )
         .map(q!(|v| v.unwrap()))
     }
-}
 
-impl<'a, K, V, L, B: Boundedness, O: Ordering> KeyedStream<K, V, L, B, O, ExactlyOnce>
-where
-    L: Location<'a>,
-{
     /// Counts the number of elements in each group, producing a [`KeyedSingleton`] with the counts.
     ///
     /// # Example
@@ -1638,19 +1571,16 @@ where
     /// ```
     pub fn value_counts(self) -> KeyedSingleton<K, usize, L, B::WhenValueUnbounded>
     where
+        R: IsExactlyOnce,
         K: Eq + Hash,
     {
-        self.assume_ordering_trusted(
-            nondet!(/** ordering within each group affects neither result nor intermediates */),
-        )
-        .fold(q!(|| 0), q!(|acc, _| *acc += 1))
+        self.make_exactly_once()
+            .assume_ordering_trusted(
+                nondet!(/** ordering within each group affects neither result nor intermediates */),
+            )
+            .fold(q!(|| 0), q!(|acc, _| *acc += 1))
     }
-}
 
-impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, L, B, O, R>
-where
-    L: Location<'a>,
-{
     /// Like [`Stream::fold`] but in the spirit of SQL `GROUP BY`, aggregates the values in each
     /// group via the `comb` closure.
     ///
@@ -1942,108 +1872,7 @@ where
     {
         self.entries().join(other.entries()).into_keyed()
     }
-}
 
-impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, L, B, O, R>
-where
-    L: Location<'a>,
-{
-    /// Shifts this keyed stream into an atomic context, which guarantees that any downstream logic
-    /// will all be executed synchronously before any outputs are yielded (in [`KeyedStream::end_atomic`]).
-    ///
-    /// This is useful to enforce local consistency constraints, such as ensuring that a write is
-    /// processed before an acknowledgement is emitted. Entering an atomic section requires a [`Tick`]
-    /// argument that declares where the stream will be atomically processed. Batching a stream into
-    /// the _same_ [`Tick`] will preserve the synchronous execution, while batching into a different
-    /// [`Tick`] will introduce asynchrony.
-    pub fn atomic(self, tick: &Tick<L>) -> KeyedStream<K, V, Atomic<L>, B, O, R> {
-        let out_location = Atomic { tick: tick.clone() };
-        KeyedStream::new(
-            out_location.clone(),
-            HydroNode::BeginAtomic {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: out_location
-                    .new_node_metadata(KeyedStream::<K, V, Atomic<L>, B, O, R>::collection_kind()),
-            },
-        )
-    }
-
-    /// Given a tick, returns a keyed stream corresponding to a batch of elements segmented by
-    /// that tick. These batches are guaranteed to be contiguous across ticks and preserve
-    /// the order of the input.
-    ///
-    /// # Non-Determinism
-    /// The batch boundaries are non-deterministic and may change across executions.
-    pub fn batch(
-        self,
-        tick: &Tick<L>,
-        nondet: NonDet,
-    ) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
-        let _ = nondet;
-        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
-        KeyedStream::new(
-            tick.clone(),
-            HydroNode::Batch {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: tick.new_node_metadata(
-                    KeyedStream::<K, V, Tick<L>, Bounded, O, R>::collection_kind(),
-                ),
-            },
-        )
-    }
-}
-
-impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, Atomic<L>, B, O, R>
-where
-    L: Location<'a> + NoTick,
-{
-    /// Returns a keyed stream corresponding to the latest batch of elements being atomically
-    /// processed. These batches are guaranteed to be contiguous across ticks and preserve
-    /// the order of the input. The output keyed stream will execute in the [`Tick`] that was
-    /// used to create the atomic section.
-    ///
-    /// # Non-Determinism
-    /// The batch boundaries are non-deterministic and may change across executions.
-    pub fn batch_atomic(self, nondet: NonDet) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
-        let _ = nondet;
-        KeyedStream::new(
-            self.location.clone().tick,
-            HydroNode::Batch {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.tick.new_node_metadata(KeyedStream::<
-                    K,
-                    V,
-                    Tick<L>,
-                    Bounded,
-                    O,
-                    R,
-                >::collection_kind(
-                )),
-            },
-        )
-    }
-
-    /// Yields the elements of this keyed stream back into a top-level, asynchronous execution context.
-    /// See [`KeyedStream::atomic`] for more details.
-    pub fn end_atomic(self) -> KeyedStream<K, V, L, B, O, R> {
-        KeyedStream::new(
-            self.location.tick.l.clone(),
-            HydroNode::EndAtomic {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self
-                    .location
-                    .tick
-                    .l
-                    .new_node_metadata(KeyedStream::<K, V, L, B, O, R>::collection_kind()),
-            },
-        )
-    }
-}
-
-impl<'a, K, V, L, O: Ordering, R: Retries> KeyedStream<K, V, L, Bounded, O, R>
-where
-    L: Location<'a>,
-{
     /// Produces a new keyed stream that combines the groups of the inputs by first emitting the
     /// elements of the `self` stream, and then emits the elements of the `other` stream (if a key
     /// is only present in one of the inputs, its values are passed through as-is). The output has
@@ -2080,17 +1909,19 @@ where
         other: KeyedStream<K, V, L, Bounded, O2, R2>,
     ) -> KeyedStream<K, V, L, Bounded, <O as MinOrder<O2>>::Min, <R as MinRetries<R2>>::Min>
     where
+        B: IsBounded,
         O: MinOrder<O2>,
         R: MinRetries<R2>,
     {
-        check_matching_location(&self.location, &other.location);
+        let this = self.make_bounded();
+        check_matching_location(&this.location, &other.location);
 
         KeyedStream::new(
-            self.location.clone(),
+            this.location.clone(),
             HydroNode::Chain {
-                first: Box::new(self.ir_node.into_inner()),
+                first: Box::new(this.ir_node.into_inner()),
                 second: Box::new(other.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata(KeyedStream::<
+                metadata: this.location.new_node_metadata(KeyedStream::<
                     K,
                     V,
                     L,
@@ -2139,10 +1970,11 @@ where
         keyed_singleton: KeyedSingleton<K, V2, L, Bounded>,
     ) -> KeyedStream<K, (V, V2), L, Bounded, NoOrder, R>
     where
+        B: IsBounded,
         K: Eq + Hash,
     {
         keyed_singleton
-            .join_keyed_stream(self)
+            .join_keyed_stream(self.make_bounded())
             .map(q!(|(v2, v)| (v, v2)))
     }
 
@@ -2174,9 +2006,11 @@ where
     /// ```
     pub fn get(self, key: Singleton<K, L, Bounded>) -> Stream<V, L, Bounded, NoOrder, R>
     where
+        B: IsBounded,
         K: Eq + Hash,
     {
-        self.entries()
+        self.make_bounded()
+            .entries()
             .join(key.into_stream().map(q!(|k| (k, ()))))
             .map(q!(|(_, (v, _))| v))
     }
@@ -2222,6 +2056,7 @@ where
         lookup: KeyedSingleton<V, V2, L, Bounded>,
     ) -> KeyedStream<K, (V, Option<V2>), L, Bounded, NoOrder, R>
     where
+        B: IsBounded,
         K: Eq + Hash + Clone,
         V: Eq + Hash + Clone,
         V2: Clone,
@@ -2274,12 +2109,14 @@ where
         lookup: KeyedStream<V, V2, L, Bounded, O2, R2>,
     ) -> KeyedStream<K, (V, Option<V2>), L, Bounded, NoOrder, <R as MinRetries<R2>>::Min>
     where
+        B: IsBounded,
         K: Eq + Hash + Clone,
         V: Eq + Hash + Clone,
         V2: Clone,
         R: MinRetries<R2>,
     {
         let inverted = self
+            .make_bounded()
             .entries()
             .map(q!(|(key, lookup_value)| (lookup_value, key)))
             .into_keyed();
@@ -2299,6 +2136,193 @@ where
             .into_keyed();
 
         found.chain(not_found.weaken_retries::<<R as MinRetries<R2>>::Min>())
+    }
+
+    /// Shifts this keyed stream into an atomic context, which guarantees that any downstream logic
+    /// will all be executed synchronously before any outputs are yielded (in [`KeyedStream::end_atomic`]).
+    ///
+    /// This is useful to enforce local consistency constraints, such as ensuring that a write is
+    /// processed before an acknowledgement is emitted. Entering an atomic section requires a [`Tick`]
+    /// argument that declares where the stream will be atomically processed. Batching a stream into
+    /// the _same_ [`Tick`] will preserve the synchronous execution, while batching into a different
+    /// [`Tick`] will introduce asynchrony.
+    pub fn atomic(self, tick: &Tick<L>) -> KeyedStream<K, V, Atomic<L>, B, O, R> {
+        let out_location = Atomic { tick: tick.clone() };
+        KeyedStream::new(
+            out_location.clone(),
+            HydroNode::BeginAtomic {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: out_location
+                    .new_node_metadata(KeyedStream::<K, V, Atomic<L>, B, O, R>::collection_kind()),
+            },
+        )
+    }
+
+    /// Given a tick, returns a keyed stream corresponding to a batch of elements segmented by
+    /// that tick. These batches are guaranteed to be contiguous across ticks and preserve
+    /// the order of the input.
+    ///
+    /// # Non-Determinism
+    /// The batch boundaries are non-deterministic and may change across executions.
+    pub fn batch(
+        self,
+        tick: &Tick<L>,
+        nondet: NonDet,
+    ) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
+        let _ = nondet;
+        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        KeyedStream::new(
+            tick.clone(),
+            HydroNode::Batch {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: tick.new_node_metadata(
+                    KeyedStream::<K, V, Tick<L>, Bounded, O, R>::collection_kind(),
+                ),
+            },
+        )
+    }
+}
+
+impl<'a, K1, K2, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    KeyedStream<(K1, K2), V, L, B, O, R>
+{
+    /// Produces a new keyed stream by dropping the first element of the compound key.
+    ///
+    /// Because multiple keys may share the same suffix, this operation results in re-grouping
+    /// of the values under the new keys. The values across groups with the same new key
+    /// will be interleaved, so the resulting stream has [`NoOrder`] within each group.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![((1, 10), 2), ((1, 10), 3), ((2, 20), 4)]))
+    ///     .into_keyed()
+    ///     .drop_key_prefix()
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 10: [2, 3], 20: [4] }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(10, 2), (10, 3), (20, 4)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn drop_key_prefix(self) -> KeyedStream<K2, V, L, B, NoOrder, R> {
+        self.entries()
+            .map(q!(|((_k1, k2), v)| (k2, v)))
+            .into_keyed()
+    }
+}
+
+impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries>
+    KeyedStream<K, V, L, Unbounded, O, R>
+{
+    /// Produces a new keyed stream that "merges" the inputs by interleaving the elements
+    /// of any overlapping groups. The result has [`NoOrder`] on each group because the
+    /// order of interleaving is not guaranteed. If the keys across both inputs do not overlap,
+    /// the ordering will be deterministic and you can safely use [`Self::assume_ordering`].
+    ///
+    /// Currently, both input streams must be [`Unbounded`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let numbers1: KeyedStream<i32, i32, _> = // { 1: [2], 3: [4] }
+    /// # process.source_iter(q!(vec![(1, 2), (3, 4)])).into_keyed().into();
+    /// let numbers2: KeyedStream<i32, i32, _> = // { 1: [3], 3: [5] }
+    /// # process.source_iter(q!(vec![(1, 3), (3, 5)])).into_keyed().into();
+    /// numbers1.interleave(numbers2)
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [2, 3], 3: [4, 5] } with each group in unknown order
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..4 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 2), (1, 3), (3, 4), (3, 5)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn interleave<O2: Ordering, R2: Retries>(
+        self,
+        other: KeyedStream<K, V, L, Unbounded, O2, R2>,
+    ) -> KeyedStream<K, V, L, Unbounded, NoOrder, <R as MinRetries<R2>>::Min>
+    where
+        R: MinRetries<R2>,
+    {
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::Chain {
+                first: Box::new(self.ir_node.into_inner()),
+                second: Box::new(other.ir_node.into_inner()),
+                metadata: self.location.new_node_metadata(KeyedStream::<
+                    K,
+                    V,
+                    L,
+                    Unbounded,
+                    NoOrder,
+                    <R as MinRetries<R2>>::Min,
+                >::collection_kind()),
+            },
+        )
+    }
+}
+
+impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, Atomic<L>, B, O, R>
+where
+    L: Location<'a> + NoTick,
+{
+    /// Returns a keyed stream corresponding to the latest batch of elements being atomically
+    /// processed. These batches are guaranteed to be contiguous across ticks and preserve
+    /// the order of the input. The output keyed stream will execute in the [`Tick`] that was
+    /// used to create the atomic section.
+    ///
+    /// # Non-Determinism
+    /// The batch boundaries are non-deterministic and may change across executions.
+    pub fn batch_atomic(self, nondet: NonDet) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
+        let _ = nondet;
+        KeyedStream::new(
+            self.location.clone().tick,
+            HydroNode::Batch {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self.location.tick.new_node_metadata(KeyedStream::<
+                    K,
+                    V,
+                    Tick<L>,
+                    Bounded,
+                    O,
+                    R,
+                >::collection_kind(
+                )),
+            },
+        )
+    }
+
+    /// Yields the elements of this keyed stream back into a top-level, asynchronous execution context.
+    /// See [`KeyedStream::atomic`] for more details.
+    pub fn end_atomic(self) -> KeyedStream<K, V, L, B, O, R> {
+        KeyedStream::new(
+            self.location.tick.l.clone(),
+            HydroNode::EndAtomic {
+                inner: Box::new(self.ir_node.into_inner()),
+                metadata: self
+                    .location
+                    .tick
+                    .l
+                    .new_node_metadata(KeyedStream::<K, V, L, B, O, R>::collection_kind()),
+            },
+        )
     }
 }
 

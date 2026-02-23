@@ -8,7 +8,7 @@ use std::rc::Rc;
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 use syn::parse_quote;
 
-use super::boundedness::{Bounded, Boundedness, Unbounded};
+use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::singleton::Singleton;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::builder::CycleId;
@@ -799,17 +799,22 @@ where
         }
         self
     }
-}
 
-impl<'a, T, L> Optional<T, L, Bounded>
-where
-    L: Location<'a>,
-{
+    /// Strengthens the boundedness guarantee to `Bounded`, given that `B: IsBounded`, which
+    /// implies that `B == Bounded`.
+    pub fn make_bounded(self) -> Optional<T, L, Bounded>
+    where
+        B: IsBounded,
+    {
+        Optional::new(self.location, self.ir_node.into_inner())
+    }
+
     /// Clones this bounded optional into a tick, returning a optional that has the
     /// same value as the outer optional. Because the outer optional is bounded, this
     /// is deterministic because there is only a single immutable version.
     pub fn clone_into_tick(self, tick: &Tick<L>) -> Optional<T, Tick<L>, Bounded>
     where
+        B: IsBounded,
         T: Clone,
     {
         // TODO(shadaj): avoid printing simulator logs for this snapshot
@@ -853,7 +858,10 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn into_stream(self) -> Stream<T, L, Bounded, TotalOrder, ExactlyOnce> {
+    pub fn into_stream(self) -> Stream<T, L, Bounded, TotalOrder, ExactlyOnce>
+    where
+        B: IsBounded,
+    {
         Stream::new(
             self.location.clone(),
             HydroNode::Cast {
@@ -905,7 +913,10 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn filter_if_some<U>(self, signal: Optional<U, L, Bounded>) -> Optional<T, L, Bounded> {
+    pub fn filter_if_some<U>(self, signal: Optional<U, L, B>) -> Optional<T, L, B>
+    where
+        B: IsBounded,
+    {
         self.zip(signal.map(q!(|_u| ()))).map(q!(|(d, _signal)| d))
     }
 
@@ -945,7 +956,10 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn filter_if_none<U>(self, other: Optional<U, L, Bounded>) -> Optional<T, L, Bounded> {
+    pub fn filter_if_none<U>(self, other: Optional<U, L, B>) -> Optional<T, L, B>
+    where
+        B: IsBounded,
+    {
         self.filter_if_some(
             other
                 .map(q!(|_| ()))
@@ -982,7 +996,10 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn if_some_then<U>(self, value: Singleton<U, L, Bounded>) -> Optional<U, L, Bounded> {
+    pub fn if_some_then<U>(self, value: Singleton<U, L, B>) -> Optional<U, L, B>
+    where
+        B: IsBounded,
+    {
         value.filter_if_some(self)
     }
 }

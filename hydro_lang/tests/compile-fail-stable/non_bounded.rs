@@ -1,0 +1,1 @@
+../compile-fail/non_bounded.rs

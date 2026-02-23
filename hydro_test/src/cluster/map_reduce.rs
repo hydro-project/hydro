@@ -1,3 +1,4 @@
+use hydro_lang::live_collections::stream::TotalOrder;
 use hydro_lang::prelude::*;
 
 pub struct Leader {}
@@ -40,7 +41,7 @@ pub fn map_reduce<'a>(flow: &mut FlowBuilder<'a>) -> (Process<'a, Leader>, Clust
         .snapshot(&process.tick(), nondet!(/** intentional output */))
         .entries()
         .all_ticks()
-        .assume_ordering(nondet!(/** unordered logs across keys are okay */))
+        .assume_ordering::<TotalOrder>(nondet!(/** unordered logs across keys are okay */))
         .for_each(q!(|(string, count)| println!("{}: {}", string, count)));
 
     (process, cluster)

@@ -40,6 +40,19 @@ impl Boundedness for Bounded {
     const BOUNDED: bool = true;
 }
 
+#[sealed]
+#[diagnostic::on_unimplemented(
+    message = "The input collection must be bounded (`Bounded`), but has bound `{Self}`. Strengthen the boundedness upstream or consider a different API.",
+    label = "required here",
+    note = "To intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region. This introduces non-determinism so avoid unless necessary."
+)]
+/// Marker trait that is implemented for the [`Bounded`] boundedness guarantee.
+pub trait IsBounded: Boundedness {}
+
+#[sealed]
+#[diagnostic::do_not_recommend]
+impl IsBounded for Bounded {}
+
 /// Helper trait that determines the boundedness for the result of keyed aggregations.
 #[sealed]
 pub trait KeyedBoundFoldLike {

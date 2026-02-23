@@ -1,3 +1,4 @@
+use hydro_lang::live_collections::stream::TotalOrder;
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 use hydro_lang::location::{MemberId, MembershipEvent};
 use hydro_lang::prelude::*;
@@ -13,7 +14,7 @@ pub fn partition<'a, F: Fn((MemberId<()>, String)) -> (MemberId<()>, String) + '
         .source_stream(q!(tokio_stream::iter(vec!(CLUSTER_SELF_ID))))
         .map(q!(move |id| (id.clone(), format!("Hello from {}", id))))
         .send_partitioned(&cluster2, dist_policy)
-        .assume_ordering(nondet!(/** testing, order does not matter */))
+        .assume_ordering::<TotalOrder>(nondet!(/** testing, order does not matter */))
         .for_each(q!(move |message| println!(
             "My self id is {}, my message is {:?}",
             CLUSTER_SELF_ID, message
@@ -68,7 +69,7 @@ pub fn simple_cluster<'a>(flow: &mut FlowBuilder<'a>) -> (Process<'a, ()>, Clust
         )))
         .send(&process, TCP.fail_stop().bincode())
         .entries()
-        .assume_ordering(nondet!(/** testing, order does not matter */))
+        .assume_ordering::<TotalOrder>(nondet!(/** testing, order does not matter */))
         .for_each(q!(|(id, d)| println!("node received: ({}, {:?})", id, d)));
 
     (process, cluster)

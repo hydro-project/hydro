@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use hydro_lang::live_collections::stream::ExactlyOnce;
 use hydro_lang::prelude::*;
 
 pub enum Worker {}
@@ -45,7 +46,7 @@ pub fn compute_pi<'a>(
             q!(Duration::from_secs(1)),
             nondet!(/** intentional output */),
         )
-        .assume_retries(nondet!(/** extra logs due to duplicate samples are okay */))
+        .assume_retries::<ExactlyOnce>(nondet!(/** extra logs due to duplicate samples are okay */))
         .for_each(q!(|(inside, total)| {
             println!(
                 "pi: {} ({} trials)",

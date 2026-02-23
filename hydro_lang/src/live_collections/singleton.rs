@@ -7,7 +7,7 @@ use std::rc::Rc;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
-use super::boundedness::{Bounded, Boundedness, Unbounded};
+use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::optional::Optional;
 use super::sliced::sliced;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
@@ -867,17 +867,22 @@ where
         }
         .weaken_retries()
     }
-}
 
-impl<'a, T, L> Singleton<T, L, Bounded>
-where
-    L: Location<'a>,
-{
+    /// Strengthens the boundedness guarantee to `Bounded`, given that `B: IsBounded`, which
+    /// implies that `B == Bounded`.
+    pub fn make_bounded(self) -> Singleton<T, L, Bounded>
+    where
+        B: IsBounded,
+    {
+        Singleton::new(self.location, self.ir_node.into_inner())
+    }
+
     /// Clones this bounded singleton into a tick, returning a singleton that has the
     /// same value as the outer singleton. Because the outer singleton is bounded, this
     /// is deterministic because there is only a single immutable version.
     pub fn clone_into_tick(self, tick: &Tick<L>) -> Singleton<T, Tick<L>, Bounded>
     where
+        B: IsBounded,
         T: Clone,
     {
         // TODO(shadaj): avoid printing simulator logs for this snapshot
@@ -910,7 +915,10 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn into_stream(self) -> Stream<T, L, Bounded, TotalOrder, ExactlyOnce> {
+    pub fn into_stream(self) -> Stream<T, L, Bounded, TotalOrder, ExactlyOnce>
+    where
+        B: IsBounded,
+    {
         Stream::new(
             self.location.clone(),
             HydroNode::Cast {
