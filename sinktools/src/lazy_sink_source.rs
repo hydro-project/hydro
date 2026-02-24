@@ -1,12 +1,12 @@
 //! [`LazySinkSource`], and related items.
+#![cfg(feature = "std")]
 
-use core::marker::PhantomData;
-use core::pin::Pin;
-use core::task::{Context, Poll, Waker};
 use std::cell::RefCell;
+use std::marker::PhantomData;
+use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
-use std::task::Wake;
+use std::task::{Context, Poll, Wake, Waker};
 
 use futures_util::{Sink, Stream, ready};
 

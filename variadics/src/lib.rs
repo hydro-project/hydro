@@ -287,7 +287,9 @@ where
         var_expr!(Some(item), ...rest.into_option())
     }
 
+    #[cfg(feature = "std")]
     type IntoVec = (Vec<Item>, Rest::IntoVec);
+    #[cfg(feature = "std")]
     fn into_singleton_vec(self) -> Self::IntoVec {
         let var_args!(item, ...rest) = self;
         var_expr!(vec!(item), ...rest.into_singleton_vec())
@@ -344,7 +346,9 @@ impl VariadicExt for () {
     type IntoOption = ();
     fn into_option(self) -> Self::IntoOption {}
 
+    #[cfg(feature = "std")]
     type IntoVec = ();
+    #[cfg(feature = "std")]
     fn into_singleton_vec(self) -> Self::IntoVec {}
 }
 
@@ -713,11 +717,11 @@ where
     }
 }
 
-#[sealed]
 /// Helper trait for splitting a variadic into two parts. `Prefix` is the first part, everything
 /// after is the `Suffix` or second part.
 ///
 /// This is a sealed trait.
+#[sealed]
 pub trait SplitBySuffix<Suffix>: VariadicExt
 where
     Suffix: VariadicExt,
@@ -766,7 +770,8 @@ where
     }
 }
 
-/// trait for Variadic of vecs, as formed by `VariadicExt::into_vec()`
+/// Trait for Variadic of vecs, as formed by `VariadicExt::into_vec()`.
+#[cfg(feature = "std")]
 #[sealed]
 pub trait VecVariadic: VariadicExt {
     /// Individual variadic items without the Vec wrapper
@@ -796,6 +801,7 @@ pub trait VecVariadic: VariadicExt {
         R: core::ops::RangeBounds<usize> + Clone;
 }
 
+#[cfg(feature = "std")]
 #[sealed]
 impl<Item, Rest> VecVariadic for (Vec<Item>, Rest)
 where
@@ -843,9 +849,10 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 #[sealed]
-impl VecVariadic for var_type!() {
-    type UnVec = var_type!();
+impl VecVariadic for () {
+    type UnVec = ();
 
     fn zip_vecs(&self) -> impl Iterator<Item = <Self::UnVec as VariadicExt>::AsRefVar<'_>> {
         core::iter::repeat(var_expr!())
@@ -966,6 +973,7 @@ mod test {
         }
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn test_into_vec() {
         use crate::VecVariadic;
