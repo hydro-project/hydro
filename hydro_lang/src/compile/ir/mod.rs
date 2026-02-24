@@ -2108,7 +2108,7 @@ impl HydroNode {
                     input: Box::new(input.deep_clone(seen_tees)),
                     metadata: metadata.clone(),
                 }
-            },
+            }
             HydroNode::Map { f, input, metadata } => HydroNode::Map {
                 f: f.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
