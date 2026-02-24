@@ -281,7 +281,6 @@ declare_ops![
     dest_sink_serde::DEST_SINK_SERDE,
     difference::DIFFERENCE,
     enumerate::ENUMERATE,
-    enumerate_keyed::ENUMERATE_KEYED,
     filter::FILTER,
     filter_map::FILTER_MAP,
     flat_map::FLAT_MAP,

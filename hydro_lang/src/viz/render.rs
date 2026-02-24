@@ -1137,10 +1137,6 @@ impl HydroNode {
                 metadata,
                 ..
             }
-            | HydroNode::EnumerateKeyed {
-                input: inner,
-                metadata,
-            }
             | HydroNode::Unique {
                 input: inner,
                 metadata,

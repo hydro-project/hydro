@@ -1573,21 +1573,17 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn enumerate(self) -> KeyedStream<K, (usize, V), L, B, TotalOrder, ExactlyOnce>
     where
+        O: IsOrdered,
+        R: IsExactlyOnce,
         K: Eq + Hash + Clone,
     {
-        KeyedStream::new(
-            self.location.clone(),
-            HydroNode::EnumerateKeyed {
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata(KeyedStream::<
-                    K,
-                    (usize, V),
-                    L,
-                    B,
-                    TotalOrder,
-                    ExactlyOnce,
-                >::collection_kind()),
-            },
+        self.scan(
+            q!(|| 0),
+            q!(|acc, next| {
+                let curr = *acc;
+                *acc += 1;
+                Some((curr, next))
+            }),
         )
     }
 
