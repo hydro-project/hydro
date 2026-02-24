@@ -1959,108 +1959,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     {
         self.entries().unique().into_keyed()
     }
-}
 
-impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, L, B, O, R>
-where
-    L: Location<'a>,
-{
-    /// Shifts this keyed stream into an atomic context, which guarantees that any downstream logic
-    /// will all be executed synchronously before any outputs are yielded (in [`KeyedStream::end_atomic`]).
-    ///
-    /// This is useful to enforce local consistency constraints, such as ensuring that a write is
-    /// processed before an acknowledgement is emitted. Entering an atomic section requires a [`Tick`]
-    /// argument that declares where the stream will be atomically processed. Batching a stream into
-    /// the _same_ [`Tick`] will preserve the synchronous execution, while batching into a different
-    /// [`Tick`] will introduce asynchrony.
-    pub fn atomic(self, tick: &Tick<L>) -> KeyedStream<K, V, Atomic<L>, B, O, R> {
-        let out_location = Atomic { tick: tick.clone() };
-        KeyedStream::new(
-            out_location.clone(),
-            HydroNode::BeginAtomic {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: out_location
-                    .new_node_metadata(KeyedStream::<K, V, Atomic<L>, B, O, R>::collection_kind()),
-            },
-        )
-    }
-
-    /// Given a tick, returns a keyed stream corresponding to a batch of elements segmented by
-    /// that tick. These batches are guaranteed to be contiguous across ticks and preserve
-    /// the order of the input.
-    ///
-    /// # Non-Determinism
-    /// The batch boundaries are non-deterministic and may change across executions.
-    pub fn batch(
-        self,
-        tick: &Tick<L>,
-        nondet: NonDet,
-    ) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
-        let _ = nondet;
-        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
-        KeyedStream::new(
-            tick.clone(),
-            HydroNode::Batch {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: tick.new_node_metadata(
-                    KeyedStream::<K, V, Tick<L>, Bounded, O, R>::collection_kind(),
-                ),
-            },
-        )
-    }
-}
-
-impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, Atomic<L>, B, O, R>
-where
-    L: Location<'a> + NoTick,
-{
-    /// Returns a keyed stream corresponding to the latest batch of elements being atomically
-    /// processed. These batches are guaranteed to be contiguous across ticks and preserve
-    /// the order of the input. The output keyed stream will execute in the [`Tick`] that was
-    /// used to create the atomic section.
-    ///
-    /// # Non-Determinism
-    /// The batch boundaries are non-deterministic and may change across executions.
-    pub fn batch_atomic(self, nondet: NonDet) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
-        let _ = nondet;
-        KeyedStream::new(
-            self.location.clone().tick,
-            HydroNode::Batch {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.tick.new_node_metadata(KeyedStream::<
-                    K,
-                    V,
-                    Tick<L>,
-                    Bounded,
-                    O,
-                    R,
-                >::collection_kind(
-                )),
-            },
-        )
-    }
-
-    /// Yields the elements of this keyed stream back into a top-level, asynchronous execution context.
-    /// See [`KeyedStream::atomic`] for more details.
-    pub fn end_atomic(self) -> KeyedStream<K, V, L, B, O, R> {
-        KeyedStream::new(
-            self.location.tick.l.clone(),
-            HydroNode::EndAtomic {
-                inner: Box::new(self.ir_node.into_inner()),
-                metadata: self
-                    .location
-                    .tick
-                    .l
-                    .new_node_metadata(KeyedStream::<K, V, L, B, O, R>::collection_kind()),
-            },
-        )
-    }
-}
-
-impl<'a, K, V, L, O: Ordering, R: Retries> KeyedStream<K, V, L, Bounded, O, R>
-where
-    L: Location<'a>,
-{
     /// Sorts the values within each key group in ascending order.
     ///
     /// The output keyed stream has a [`TotalOrder`] guarantee on the values within
@@ -2095,6 +1994,7 @@ where
     /// ```
     pub fn sort(self) -> KeyedStream<K, V, L, Bounded, TotalOrder, R>
     where
+        B: IsBounded,
         K: Ord,
         V: Ord,
     {
