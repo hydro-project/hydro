@@ -9,11 +9,12 @@ use std::rc::Rc;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
-use super::boundedness::{Bounded, Boundedness, Unbounded};
+use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::keyed_stream::KeyedStream;
 use super::optional::Optional;
 use super::singleton::Singleton;
 use super::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
+use crate::compile::builder::CycleId;
 use crate::compile::ir::{
     CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, KeyedSingletonBoundKind, TeeNode,
 };
@@ -162,11 +163,11 @@ where
 {
     type Location = L;
 
-    fn create_source(ident: syn::Ident, location: L) -> Self {
+    fn create_source(cycle_id: CycleId, location: L) -> Self {
         KeyedSingleton {
             location: location.clone(),
             ir_node: RefCell::new(HydroNode::CycleSource {
-                ident,
+                cycle_id,
                 metadata: location.new_node_metadata(Self::collection_kind()),
             }),
             _phantom: PhantomData,
@@ -180,11 +181,11 @@ where
 {
     type Location = Tick<L>;
 
-    fn create_source(ident: syn::Ident, location: Tick<L>) -> Self {
+    fn create_source(cycle_id: CycleId, location: Tick<L>) -> Self {
         KeyedSingleton::new(
             location.clone(),
             HydroNode::CycleSource {
-                ident,
+                cycle_id,
                 metadata: location.new_node_metadata(Self::collection_kind()),
             },
         )
@@ -205,7 +206,7 @@ impl<'a, K, V, L, B: KeyedSingletonBound> ReceiverComplete<'a, ForwardRef>
 where
     L: Location<'a> + NoTick,
 {
-    fn complete(self, ident: syn::Ident, expected_location: LocationId) {
+    fn complete(self, cycle_id: CycleId, expected_location: LocationId) {
         assert_eq!(
             Location::id(&self.location),
             expected_location,
@@ -215,7 +216,7 @@ where
             .flow_state()
             .borrow_mut()
             .push_root(HydroRoot::CycleSink {
-                ident,
+                cycle_id,
                 input: Box::new(self.ir_node.into_inner()),
                 op_metadata: HydroIrOpMetadata::new(),
             });
@@ -226,7 +227,7 @@ impl<'a, K, V, L> ReceiverComplete<'a, TickCycle> for KeyedSingleton<K, V, Tick<
 where
     L: Location<'a>,
 {
-    fn complete(self, ident: syn::Ident, expected_location: LocationId) {
+    fn complete(self, cycle_id: CycleId, expected_location: LocationId) {
         assert_eq!(
             Location::id(&self.location),
             expected_location,
@@ -236,7 +237,7 @@ where
             .flow_state()
             .borrow_mut()
             .push_root(HydroRoot::CycleSink {
-                ident,
+                cycle_id,
                 input: Box::new(self.ir_node.into_inner()),
                 op_metadata: HydroIrOpMetadata::new(),
             });
@@ -540,6 +541,283 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             metadata.tag = Some(name.to_owned());
         }
         self
+    }
+
+    /// Strengthens the boundedness guarantee to `Bounded`, given that `B: IsBounded`, which
+    /// implies that `B == Bounded`.
+    pub fn make_bounded(self) -> KeyedSingleton<K, V, L, Bounded>
+    where
+        B: IsBounded,
+    {
+        KeyedSingleton::new(self.location, self.ir_node.into_inner())
+    }
+
+    /// Gets the value associated with a specific key from the keyed singleton.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let keyed_data = process
+    ///     .source_iter(q!(vec![(1, 2), (2, 3)]))
+    ///     .into_keyed()
+    ///     .batch(&tick, nondet!(/** test */))
+    ///     .first();
+    /// let key = tick.singleton(q!(1));
+    /// keyed_data.get(key).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 2
+    /// # assert_eq!(stream.next().await.unwrap(), 2);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn get(self, key: Singleton<K, L, Bounded>) -> Optional<V, L, Bounded>
+    where
+        B: IsBounded,
+        K: Hash + Eq,
+    {
+        self.make_bounded()
+            .into_keyed_stream()
+            .get(key)
+            .assume_ordering::<TotalOrder>(nondet!(/** only a single key, so totally ordered */))
+            .first()
+    }
+
+    /// Emit a keyed stream containing keys shared between the keyed singleton and the
+    /// keyed stream, where each value in the output keyed stream is a tuple of
+    /// (the keyed singleton's value, the keyed stream's value).
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let keyed_data = process
+    ///     .source_iter(q!(vec![(1, 10), (2, 20)]))
+    ///     .into_keyed()
+    ///     .batch(&tick, nondet!(/** test */))
+    ///     .first();
+    /// let other_data = process
+    ///     .source_iter(q!(vec![(1, 100), (2, 200), (1, 101)]))
+    ///     .into_keyed()
+    ///     .batch(&tick, nondet!(/** test */));
+    /// keyed_data.join_keyed_stream(other_data).entries().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // { 1: [(10, 100), (10, 101)], 2: [(20, 200)] } in any order
+    /// # let mut results = vec![];
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, (10, 100)), (1, (10, 101)), (2, (20, 200))]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn join_keyed_stream<O2: Ordering, R2: Retries, V2>(
+        self,
+        keyed_stream: KeyedStream<K, V2, L, Bounded, O2, R2>,
+    ) -> KeyedStream<K, (V, V2), L, Bounded, NoOrder, R2>
+    where
+        B: IsBounded,
+        K: Eq + Hash,
+    {
+        self.make_bounded()
+            .entries()
+            .weaken_retries::<R2>()
+            .join(keyed_stream.entries())
+            .into_keyed()
+    }
+
+    /// Emit a keyed singleton containing all keys shared between two keyed singletons,
+    /// where each value in the output keyed singleton is a tuple of
+    /// (self.value, other.value).
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// # let tick = process.tick();
+    /// let requests = // { 1: 10, 2: 20, 3: 30 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 10), (2, 20), (3, 30)]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */))
+    /// #     .first();
+    /// let other = // { 1: 100, 2: 200, 4: 400 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 100), (2, 200), (4, 400)]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */))
+    /// #     .first();
+    /// requests.join_keyed_singleton(other)
+    /// # .entries().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // { 1: (10, 100), 2: (20, 200) }
+    /// # let mut results = vec![];
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, (10, 100)), (2, (20, 200))]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn join_keyed_singleton<V2: Clone>(
+        self,
+        other: KeyedSingleton<K, V2, L, Bounded>,
+    ) -> KeyedSingleton<K, (V, V2), L, Bounded>
+    where
+        B: IsBounded,
+        K: Eq + Hash,
+    {
+        let result_stream = self
+            .make_bounded()
+            .entries()
+            .join(other.entries())
+            .into_keyed();
+
+        // The cast is guaranteed to succeed, since each key (in both `self` and `other`) has at most one value.
+        KeyedSingleton::new(
+            result_stream.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(result_stream.ir_node.into_inner()),
+                metadata: result_stream.location.new_node_metadata(KeyedSingleton::<
+                    K,
+                    (V, V2),
+                    L,
+                    Bounded,
+                >::collection_kind(
+                )),
+            },
+        )
+    }
+
+    /// For each value in `self`, find the matching key in `lookup`.
+    /// The output is a keyed singleton with the key from `self`, and a value
+    /// that is a tuple of (`self`'s value, Option<`lookup`'s value>).
+    /// If the key is not present in `lookup`, the option will be [`None`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// # let tick = process.tick();
+    /// let requests = // { 1: 10, 2: 20 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 10), (2, 20)]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */))
+    /// #     .first();
+    /// let other_data = // { 10: 100, 11: 110 }
+    /// # process
+    /// #     .source_iter(q!(vec![(10, 100), (11, 110)]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */))
+    /// #     .first();
+    /// requests.lookup_keyed_singleton(other_data)
+    /// # .entries().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // { 1: (10, Some(100)), 2: (20, None) }
+    /// # let mut results = vec![];
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, (10, Some(100))), (2, (20, None))]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn lookup_keyed_singleton<V2>(
+        self,
+        lookup: KeyedSingleton<V, V2, L, Bounded>,
+    ) -> KeyedSingleton<K, (V, Option<V2>), L, Bounded>
+    where
+        B: IsBounded,
+        K: Eq + Hash + Clone,
+        V: Eq + Hash + Clone,
+        V2: Clone,
+    {
+        let result_stream = self
+            .make_bounded()
+            .into_keyed_stream()
+            .lookup_keyed_stream(lookup.into_keyed_stream());
+
+        // The cast is guaranteed to succeed since both lookup and self contain at most 1 value per key
+        KeyedSingleton::new(
+            result_stream.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(result_stream.ir_node.into_inner()),
+                metadata: result_stream.location.new_node_metadata(KeyedSingleton::<
+                    K,
+                    (V, Option<V2>),
+                    L,
+                    Bounded,
+                >::collection_kind(
+                )),
+            },
+        )
+    }
+
+    /// For each value in `self`, find the matching key in `lookup`.
+    /// The output is a keyed stream with the key from `self`, and a value
+    /// that is a tuple of (`self`'s value, Option<`lookup`'s value>).
+    /// If the key is not present in `lookup`, the option will be [`None`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// # let tick = process.tick();
+    /// let requests = // { 1: 10, 2: 20 }
+    /// # process
+    /// #     .source_iter(q!(vec![(1, 10), (2, 20)]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */))
+    /// #     .first();
+    /// let other_data = // { 10: 100, 10: 110 }
+    /// # process
+    /// #     .source_iter(q!(vec![(10, 100), (10, 110)]))
+    /// #     .into_keyed()
+    /// #     .batch(&tick, nondet!(/** test */));
+    /// requests.lookup_keyed_stream(other_data)
+    /// # .entries().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // { 1: [(10, Some(100)), (10, Some(110))], 2: (20, None) }
+    /// # let mut results = vec![];
+    /// # for _ in 0..3 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, (10, Some(100))), (1, (10, Some(110))), (2, (20, None))]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn lookup_keyed_stream<V2, O: Ordering, R: Retries>(
+        self,
+        lookup: KeyedStream<V, V2, L, Bounded, O, R>,
+    ) -> KeyedStream<K, (V, Option<V2>), L, Bounded, NoOrder, R>
+    where
+        B: IsBounded,
+        K: Eq + Hash + Clone,
+        V: Eq + Hash + Clone,
+        V2: Clone,
+    {
+        self.make_bounded()
+            .entries()
+            .weaken_retries::<R>() // TODO: Once weaken_retries() is implemented for KeyedSingleton, remove entries() and into_keyed()
+            .into_keyed()
+            .lookup_keyed_stream(lookup)
     }
 }
 
@@ -895,254 +1173,6 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
                 >::collection_kind()),
             },
         )
-    }
-}
-
-impl<'a, K: Hash + Eq, V, L: Location<'a>> KeyedSingleton<K, V, L, Bounded> {
-    /// Gets the value associated with a specific key from the keyed singleton.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let keyed_data = process
-    ///     .source_iter(q!(vec![(1, 2), (2, 3)]))
-    ///     .into_keyed()
-    ///     .batch(&tick, nondet!(/** test */))
-    ///     .first();
-    /// let key = tick.singleton(q!(1));
-    /// keyed_data.get(key).all_ticks()
-    /// # }, |mut stream| async move {
-    /// // 2
-    /// # assert_eq!(stream.next().await.unwrap(), 2);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn get(self, key: Singleton<K, L, Bounded>) -> Optional<V, L, Bounded> {
-        self.into_keyed_stream()
-            .get(key)
-            .assume_ordering::<TotalOrder>(nondet!(/** only a single key, so totally ordered */))
-            .first()
-    }
-
-    /// Emit a keyed stream containing keys shared between the keyed singleton and the
-    /// keyed stream, where each value in the output keyed stream is a tuple of
-    /// (the keyed singleton's value, the keyed stream's value).
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let keyed_data = process
-    ///     .source_iter(q!(vec![(1, 10), (2, 20)]))
-    ///     .into_keyed()
-    ///     .batch(&tick, nondet!(/** test */))
-    ///     .first();
-    /// let other_data = process
-    ///     .source_iter(q!(vec![(1, 100), (2, 200), (1, 101)]))
-    ///     .into_keyed()
-    ///     .batch(&tick, nondet!(/** test */));
-    /// keyed_data.join_keyed_stream(other_data).entries().all_ticks()
-    /// # }, |mut stream| async move {
-    /// // { 1: [(10, 100), (10, 101)], 2: [(20, 200)] } in any order
-    /// # let mut results = vec![];
-    /// # for _ in 0..3 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, (10, 100)), (1, (10, 101)), (2, (20, 200))]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn join_keyed_stream<O2: Ordering, R2: Retries, V2>(
-        self,
-        keyed_stream: KeyedStream<K, V2, L, Bounded, O2, R2>,
-    ) -> KeyedStream<K, (V, V2), L, Bounded, NoOrder, R2> {
-        self.entries()
-            .weaken_retries::<R2>()
-            .join(keyed_stream.entries())
-            .into_keyed()
-    }
-
-    /// Emit a keyed singleton containing all keys shared between two keyed singletons,
-    /// where each value in the output keyed singleton is a tuple of
-    /// (self.value, other.value).
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// # let tick = process.tick();
-    /// let requests = // { 1: 10, 2: 20, 3: 30 }
-    /// # process
-    /// #     .source_iter(q!(vec![(1, 10), (2, 20), (3, 30)]))
-    /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */))
-    /// #     .first();
-    /// let other = // { 1: 100, 2: 200, 4: 400 }
-    /// # process
-    /// #     .source_iter(q!(vec![(1, 100), (2, 200), (4, 400)]))
-    /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */))
-    /// #     .first();
-    /// requests.join_keyed_singleton(other)
-    /// # .entries().all_ticks()
-    /// # }, |mut stream| async move {
-    /// // { 1: (10, 100), 2: (20, 200) }
-    /// # let mut results = vec![];
-    /// # for _ in 0..2 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, (10, 100)), (2, (20, 200))]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn join_keyed_singleton<V2: Clone>(
-        self,
-        other: KeyedSingleton<K, V2, L, Bounded>,
-    ) -> KeyedSingleton<K, (V, V2), L, Bounded> {
-        let result_stream = self.entries().join(other.entries()).into_keyed();
-
-        // The cast is guaranteed to succeed, since each key (in both `self` and `other`) has at most one value.
-        KeyedSingleton::new(
-            result_stream.location.clone(),
-            HydroNode::Cast {
-                inner: Box::new(result_stream.ir_node.into_inner()),
-                metadata: result_stream.location.new_node_metadata(KeyedSingleton::<
-                    K,
-                    (V, V2),
-                    L,
-                    Bounded,
-                >::collection_kind(
-                )),
-            },
-        )
-    }
-
-    /// For each value in `self`, find the matching key in `lookup`.
-    /// The output is a keyed singleton with the key from `self`, and a value
-    /// that is a tuple of (`self`'s value, Option<`lookup`'s value>).
-    /// If the key is not present in `lookup`, the option will be [`None`].
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// # let tick = process.tick();
-    /// let requests = // { 1: 10, 2: 20 }
-    /// # process
-    /// #     .source_iter(q!(vec![(1, 10), (2, 20)]))
-    /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */))
-    /// #     .first();
-    /// let other_data = // { 10: 100, 11: 110 }
-    /// # process
-    /// #     .source_iter(q!(vec![(10, 100), (11, 110)]))
-    /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */))
-    /// #     .first();
-    /// requests.lookup_keyed_singleton(other_data)
-    /// # .entries().all_ticks()
-    /// # }, |mut stream| async move {
-    /// // { 1: (10, Some(100)), 2: (20, None) }
-    /// # let mut results = vec![];
-    /// # for _ in 0..2 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, (10, Some(100))), (2, (20, None))]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn lookup_keyed_singleton<V2>(
-        self,
-        lookup: KeyedSingleton<V, V2, L, Bounded>,
-    ) -> KeyedSingleton<K, (V, Option<V2>), L, Bounded>
-    where
-        K: Eq + Hash + Clone,
-        V: Eq + Hash + Clone,
-        V2: Clone,
-    {
-        let result_stream = self
-            .into_keyed_stream()
-            .lookup_keyed_stream(lookup.into_keyed_stream());
-
-        // The cast is guaranteed to succeed since both lookup and self contain at most 1 value per key
-        KeyedSingleton::new(
-            result_stream.location.clone(),
-            HydroNode::Cast {
-                inner: Box::new(result_stream.ir_node.into_inner()),
-                metadata: result_stream.location.new_node_metadata(KeyedSingleton::<
-                    K,
-                    (V, Option<V2>),
-                    L,
-                    Bounded,
-                >::collection_kind(
-                )),
-            },
-        )
-    }
-
-    /// For each value in `self`, find the matching key in `lookup`.
-    /// The output is a keyed stream with the key from `self`, and a value
-    /// that is a tuple of (`self`'s value, Option<`lookup`'s value>).
-    /// If the key is not present in `lookup`, the option will be [`None`].
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// # let tick = process.tick();
-    /// let requests = // { 1: 10, 2: 20 }
-    /// # process
-    /// #     .source_iter(q!(vec![(1, 10), (2, 20)]))
-    /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */))
-    /// #     .first();
-    /// let other_data = // { 10: 100, 10: 110 }
-    /// # process
-    /// #     .source_iter(q!(vec![(10, 100), (10, 110)]))
-    /// #     .into_keyed()
-    /// #     .batch(&tick, nondet!(/** test */));
-    /// requests.lookup_keyed_stream(other_data)
-    /// # .entries().all_ticks()
-    /// # }, |mut stream| async move {
-    /// // { 1: [(10, Some(100)), (10, Some(110))], 2: (20, None) }
-    /// # let mut results = vec![];
-    /// # for _ in 0..3 {
-    /// #     results.push(stream.next().await.unwrap());
-    /// # }
-    /// # results.sort();
-    /// # assert_eq!(results, vec![(1, (10, Some(100))), (1, (10, Some(110))), (2, (20, None))]);
-    /// # }));
-    /// # }
-    /// ```
-    pub fn lookup_keyed_stream<V2, O: Ordering, R: Retries>(
-        self,
-        lookup: KeyedStream<V, V2, L, Bounded, O, R>,
-    ) -> KeyedStream<K, (V, Option<V2>), L, Bounded, NoOrder, R>
-    where
-        K: Eq + Hash + Clone,
-        V: Eq + Hash + Clone,
-        V2: Clone,
-    {
-        self.entries()
-            .weaken_retries::<R>() // TODO: Once weaken_retries() is implemented for KeyedSingleton, remove entries() and into_keyed()
-            .into_keyed()
-            .lookup_keyed_stream(lookup)
     }
 }
 

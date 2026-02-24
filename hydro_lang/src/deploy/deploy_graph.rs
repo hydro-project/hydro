@@ -54,10 +54,12 @@ impl<'a> Deploy<'a> for HydroDeploy {
     type External = DeployExternal;
 
     fn o2o_sink_source(
+        _env: &mut Self::InstantiateEnv,
         _p1: &Self::Process,
         p1_port: &<Self::Process as Node>::Port,
         _p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
+        _name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
         let p1_port = p1_port.as_str();
         let p2_port = p2_port.as_str();
@@ -93,10 +95,12 @@ impl<'a> Deploy<'a> for HydroDeploy {
     }
 
     fn o2m_sink_source(
+        _env: &mut Self::InstantiateEnv,
         _p1: &Self::Process,
         p1_port: &<Self::Process as Node>::Port,
         _c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
+        _name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
         let p1_port = p1_port.as_str();
         let c2_port = c2_port.as_str();
@@ -144,10 +148,12 @@ impl<'a> Deploy<'a> for HydroDeploy {
     }
 
     fn m2o_sink_source(
+        _env: &mut Self::InstantiateEnv,
         _c1: &Self::Cluster,
         c1_port: &<Self::Cluster as Node>::Port,
         _p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
+        _name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
         let c1_port = c1_port.as_str();
         let p2_port = p2_port.as_str();
@@ -187,10 +193,12 @@ impl<'a> Deploy<'a> for HydroDeploy {
     }
 
     fn m2m_sink_source(
+        _env: &mut Self::InstantiateEnv,
         _c1: &Self::Cluster,
         c1_port: &<Self::Cluster as Node>::Port,
         _c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
+        _name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
         let c1_port = c1_port.as_str();
         let c2_port = c2_port.as_str();
@@ -398,6 +406,8 @@ impl<'a> Deploy<'a> for HydroDeploy {
     }
 
     fn cluster_membership_stream(
+        _env: &mut Self::InstantiateEnv,
+        _at_location: &LocationId,
         location_id: &LocationId,
     ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
     {
@@ -1090,7 +1100,7 @@ fn create_trybuild_service(
         LinkingMode::Static => dir.to_path_buf(),
     };
 
-    let mut ret = RustCrate::new(&crate_dir)
+    let mut ret = RustCrate::new(&crate_dir, dir)
         .target_dir(target_dir)
         .example(bin_name)
         .no_default_features();

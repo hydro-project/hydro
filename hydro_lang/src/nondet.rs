@@ -54,6 +54,8 @@ pub use crate::__nondet__ as nondet;
 /// Forwarded non-determinism:
 /// ```rust
 /// # use hydro_lang::prelude::*;
+/// use hydro_lang::live_collections::stream::ExactlyOnce;
+///
 /// use std::fmt::Debug;
 /// use std::time::Duration;
 ///
@@ -71,7 +73,7 @@ pub use crate::__nondet__ as nondet;
 ///       /// non-deterministic timing will result in non-determistic samples printed
 ///       nondet_samples
 ///     ))
-///     .assume_retries(nondet!(
+///     .assume_retries::<ExactlyOnce>(nondet!(
 ///         /// non-deterministic duplicated logs are okay
 ///         nondet_samples
 ///     ))

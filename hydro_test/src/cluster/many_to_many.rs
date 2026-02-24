@@ -1,3 +1,4 @@
+use hydro_lang::live_collections::stream::TotalOrder;
 use hydro_lang::prelude::*;
 
 pub fn many_to_many<'a>(flow: &mut FlowBuilder<'a>) -> Cluster<'a, ()> {
@@ -10,7 +11,7 @@ pub fn many_to_many<'a>(flow: &mut FlowBuilder<'a>) -> Cluster<'a, ()> {
             nondet!(/** test */),
         )
         .entries()
-        .assume_ordering(nondet!(/** intentionally unordered logs */))
+        .assume_ordering::<TotalOrder>(nondet!(/** intentionally unordered logs */))
         .for_each(q!(|n| println!("cluster received: {:?}", n)));
 
     cluster

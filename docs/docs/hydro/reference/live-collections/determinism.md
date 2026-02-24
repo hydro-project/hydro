@@ -43,6 +43,8 @@ If the outputs of your code are non-deterministic, you should take non-determini
 
 ```rust
 # use hydro_lang::prelude::*;
+use hydro_lang::live_collections::stream::ExactlyOnce;
+
 use std::fmt::Debug;
 use std::time::Duration;
 
@@ -60,7 +62,7 @@ fn print_samples<T: Debug, L>(
       /// non-deterministic timing will result in non-determistic samples printed
       nondet_samples
     ))
-    .assume_retries(nondet!(
+    .assume_retries::<ExactlyOnce>(nondet!(
       /// non-deterministic duplicated logs are okay
       nondet_samples
     ))

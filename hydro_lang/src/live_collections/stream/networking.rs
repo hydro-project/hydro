@@ -343,7 +343,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
 
         let mut flow_state_borrow = self.location.flow_state().borrow_mut();
 
-        let external_port_id = flow_state_borrow.next_external_port.get_and_increment();
+        let external_port_id = flow_state_borrow.next_external_port();
 
         flow_state_borrow.push_root(HydroRoot::SendExternal {
             to_external_key: other.key,
@@ -382,7 +382,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     }
 }
 
-impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyOnce> {
+impl<'a, T, L: Location<'a> + NoTick, B: Boundedness> Stream<T, L, B, TotalOrder, ExactlyOnce> {
     /// Creates an external output for embedded deployment mode.
     ///
     /// The `name` parameter specifies the name of the field in the generated
@@ -621,7 +621,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
             let current_members = members_snapshot
                 .filter(q!(|b| *b))
                 .keys()
-                .assume_ordering(nondet_membership)
+                .assume_ordering::<TotalOrder>(nondet_membership)
                 .collect_vec();
 
             elements
@@ -761,7 +761,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
             let current_members = members_snapshot
                 .filter(q!(|b| *b))
                 .keys()
-                .assume_ordering(nondet_membership)
+                .assume_ordering::<TotalOrder>(nondet_membership)
                 .collect_vec();
 
             elements

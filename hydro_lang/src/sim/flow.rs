@@ -1,7 +1,7 @@
 //! Entrypoint for compiling and running Hydro simulations.
 
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::panic::RefUnwindSafe;
 use std::rc::Rc;
 
@@ -103,10 +103,12 @@ impl<'a> SimFlow<'a> {
         );
 
         let mut seen_tees_instantiate: HashMap<_, _> = HashMap::new();
+        let mut seen_cluster_members = HashSet::new();
         self.ir.iter_mut().for_each(|leaf| {
             leaf.compile_network::<SimDeploy>(
                 &mut SparseSecondaryMap::new(),
                 &mut seen_tees_instantiate,
+                &mut seen_cluster_members,
                 &self.processes,
                 &self.clusters,
                 &self.externals,
@@ -118,7 +120,7 @@ impl<'a> SimFlow<'a> {
         let mut built_tees = HashMap::new();
         let mut next_stmt_id = 0;
         for leaf in &mut self.ir {
-            leaf.emit::<SimDeploy>(
+            leaf.emit(
                 &mut sim_emit,
                 &mut seen_tees,
                 &mut built_tees,

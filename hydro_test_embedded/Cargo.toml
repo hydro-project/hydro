@@ -17,7 +17,7 @@ test_embedded = [
 ]
 
 [dependencies]
-hydro_lang = { path = "../hydro_lang", version = "^0.15.0", features = ["runtime_support"], optional = true }
+hydro_lang = { path = "../hydro_lang", version = "^0.15.0", features = ["embedded_runtime"], optional = true }
 hydro_test = { path = "../hydro_test", version = "0.0.0", features = ["stageleft_macro_entrypoint"], optional = true }
 stageleft = { workspace = true, optional = true }
 

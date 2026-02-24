@@ -30,7 +30,9 @@ use stageleft::{QuotedWithContext, q, quote_type};
 use syn::parse_quote;
 use tokio_util::codec::{Decoder, Encoder, LengthDelimitedCodec};
 
-use crate::compile::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource};
+use crate::compile::ir::{
+    ClusterMembersState, DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot, HydroSource,
+};
 use crate::forward_handle::ForwardRef;
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ForwardHandle};
@@ -200,10 +202,9 @@ pub trait Location<'a>: dynamic::DynLocation {
     /// Prefer using [`Location::tick`] when you know the location is top-level.
     fn try_tick(&self) -> Option<Tick<Self>> {
         if Self::is_top_level() {
-            let next_id = self.flow_state().borrow_mut().next_clock_id;
-            self.flow_state().borrow_mut().next_clock_id += 1;
+            let id = self.flow_state().borrow_mut().next_clock_id();
             Some(Tick {
-                id: next_id,
+                id,
                 l: self.clone(),
             })
         } else {
@@ -245,10 +246,9 @@ pub trait Location<'a>: dynamic::DynLocation {
     where
         Self: NoTick,
     {
-        let next_id = self.flow_state().borrow_mut().next_clock_id;
-        self.flow_state().borrow_mut().next_clock_id += 1;
+        let id = self.flow_state().borrow_mut().next_clock_id();
         Tick {
-            id: next_id,
+            id,
             l: self.clone(),
         }
     }
@@ -426,7 +426,7 @@ pub trait Location<'a>: dynamic::DynLocation {
         Stream::new(
             self.clone(),
             HydroNode::Source {
-                source: HydroSource::ClusterMembers(cluster.id()),
+                source: HydroSource::ClusterMembers(cluster.id(), ClusterMembersState::Uninit),
                 metadata: self.new_node_metadata(Stream::<
                     (TaglessMemberId, MembershipEvent),
                     Self,
@@ -606,11 +606,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     where
         Self: Sized + NoTick,
     {
-        let next_external_port_id = from
-            .flow_state
-            .borrow_mut()
-            .next_external_port
-            .get_and_increment();
+        let next_external_port_id = from.flow_state.borrow_mut().next_external_port();
 
         let (fwd_ref, to_sink) =
             self.forward_ref::<Stream<T, Self, Unbounded, TotalOrder, ExactlyOnce>>();
@@ -685,11 +681,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     where
         Self: Sized + NoTick,
     {
-        let next_external_port_id = from
-            .flow_state
-            .borrow_mut()
-            .next_external_port
-            .get_and_increment();
+        let next_external_port_id = from.flow_state.borrow_mut().next_external_port();
 
         let (fwd_ref, to_sink) =
             self.forward_ref::<Stream<OutT, Self, Unbounded, TotalOrder, ExactlyOnce>>();
@@ -780,11 +772,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     where
         Self: Sized + NoTick,
     {
-        let next_external_port_id = from
-            .flow_state
-            .borrow_mut()
-            .next_external_port
-            .get_and_increment();
+        let next_external_port_id = from.flow_state.borrow_mut().next_external_port();
 
         let (fwd_ref, to_sink) =
             self.forward_ref::<KeyedStream<u64, T, Self, Unbounded, NoOrder, ExactlyOnce>>();
@@ -905,11 +893,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     where
         Self: Sized + NoTick,
     {
-        let next_external_port_id = from
-            .flow_state
-            .borrow_mut()
-            .next_external_port
-            .get_and_increment();
+        let next_external_port_id = from.flow_state.borrow_mut().next_external_port();
 
         let (fwd_ref, to_sink) =
             self.forward_ref::<KeyedStream<u64, OutT, Self, Unbounded, NoOrder, ExactlyOnce>>();
@@ -1130,17 +1114,10 @@ pub trait Location<'a>: dynamic::DynLocation {
     where
         S: CycleCollection<'a, ForwardRef, Location = Self>,
     {
-        let next_id = self.flow_state().borrow_mut().next_cycle_id();
-        let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
-
+        let cycle_id = self.flow_state().borrow_mut().next_cycle_id();
         (
-            ForwardHandle {
-                completed: false,
-                ident: ident.clone(),
-                expected_location: Location::id(self),
-                _phantom: PhantomData,
-            },
-            S::create_source(ident, self.clone()),
+            ForwardHandle::new(cycle_id, Location::id(self)),
+            S::create_source(cycle_id, self.clone()),
         )
     }
 }

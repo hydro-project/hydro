@@ -67,6 +67,7 @@ unsafe_attr_outside_unsafe = "deny"
 unused_qualifications = "warn"
 
 [workspace.lints.clippy]
+alloc_instead_of_core = "warn"
 allow_attributes = "warn"
 allow_attributes_without_reason = "warn"
 explicit_into_iter_loop = "warn"

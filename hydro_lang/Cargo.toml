@@ -13,6 +13,7 @@ workspace = true
 
 [features]
 default = []
+stageleft_macro_entrypoint = []
 viz = [
     "build",
     "dep:auto_impl",
@@ -92,6 +93,8 @@ maelstrom_runtime = [
     "tokio-stream/sync",
     "dep:serde_json",
 ]
+
+embedded_runtime = ["deploy_integration", "runtime_support"]
 
 deploy_integration = ["dep:hydro_deploy_integration"]
 build = ["dep:dfir_lang", "dep:backtrace", "dep:ctor"]

@@ -116,6 +116,10 @@ mod manual_expr;
 #[expect(missing_docs, reason = "TODO")]
 pub mod viz;
 
+#[cfg_attr(
+    feature = "stageleft_macro_entrypoint",
+    expect(missing_docs, reason = "staging internals")
+)]
 mod staging_util;
 
 #[cfg(feature = "deploy")]

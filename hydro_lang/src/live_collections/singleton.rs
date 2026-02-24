@@ -7,10 +7,11 @@ use std::rc::Rc;
 
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
-use super::boundedness::{Bounded, Boundedness, Unbounded};
+use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::optional::Optional;
 use super::sliced::sliced;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
+use crate::compile::builder::CycleId;
 use crate::compile::ir::{CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
@@ -59,12 +60,12 @@ where
 {
     type Location = Tick<L>;
 
-    fn create_source_with_initial(ident: syn::Ident, initial: Self, location: Tick<L>) -> Self {
+    fn create_source_with_initial(cycle_id: CycleId, initial: Self, location: Tick<L>) -> Self {
         let from_previous_tick: Optional<T, Tick<L>, Bounded> = Optional::new(
             location.clone(),
             HydroNode::DeferTick {
                 input: Box::new(HydroNode::CycleSource {
-                    ident,
+                    cycle_id,
                     metadata: location.new_node_metadata(Self::collection_kind()),
                 }),
                 metadata: location
@@ -80,7 +81,7 @@ impl<'a, T, L> ReceiverComplete<'a, TickCycle> for Singleton<T, Tick<L>, Bounded
 where
     L: Location<'a>,
 {
-    fn complete(self, ident: syn::Ident, expected_location: LocationId) {
+    fn complete(self, cycle_id: CycleId, expected_location: LocationId) {
         assert_eq!(
             Location::id(&self.location),
             expected_location,
@@ -90,7 +91,7 @@ where
             .flow_state()
             .borrow_mut()
             .push_root(HydroRoot::CycleSink {
-                ident,
+                cycle_id,
                 input: Box::new(self.ir_node.into_inner()),
                 op_metadata: HydroIrOpMetadata::new(),
             });
@@ -103,11 +104,11 @@ where
 {
     type Location = Tick<L>;
 
-    fn create_source(ident: syn::Ident, location: Tick<L>) -> Self {
+    fn create_source(cycle_id: CycleId, location: Tick<L>) -> Self {
         Singleton::new(
             location.clone(),
             HydroNode::CycleSource {
-                ident,
+                cycle_id,
                 metadata: location.new_node_metadata(Self::collection_kind()),
             },
         )
@@ -118,7 +119,7 @@ impl<'a, T, L> ReceiverComplete<'a, ForwardRef> for Singleton<T, Tick<L>, Bounde
 where
     L: Location<'a>,
 {
-    fn complete(self, ident: syn::Ident, expected_location: LocationId) {
+    fn complete(self, cycle_id: CycleId, expected_location: LocationId) {
         assert_eq!(
             Location::id(&self.location),
             expected_location,
@@ -128,7 +129,7 @@ where
             .flow_state()
             .borrow_mut()
             .push_root(HydroRoot::CycleSink {
-                ident,
+                cycle_id,
                 input: Box::new(self.ir_node.into_inner()),
                 op_metadata: HydroIrOpMetadata::new(),
             });
@@ -141,11 +142,11 @@ where
 {
     type Location = L;
 
-    fn create_source(ident: syn::Ident, location: L) -> Self {
+    fn create_source(cycle_id: CycleId, location: L) -> Self {
         Singleton::new(
             location.clone(),
             HydroNode::CycleSource {
-                ident,
+                cycle_id,
                 metadata: location.new_node_metadata(Self::collection_kind()),
             },
         )
@@ -156,7 +157,7 @@ impl<'a, T, L, B: Boundedness> ReceiverComplete<'a, ForwardRef> for Singleton<T,
 where
     L: Location<'a> + NoTick,
 {
-    fn complete(self, ident: syn::Ident, expected_location: LocationId) {
+    fn complete(self, cycle_id: CycleId, expected_location: LocationId) {
         assert_eq!(
             Location::id(&self.location),
             expected_location,
@@ -166,7 +167,7 @@ where
             .flow_state()
             .borrow_mut()
             .push_root(HydroRoot::CycleSink {
-                ident,
+                cycle_id,
                 input: Box::new(self.ir_node.into_inner()),
                 op_metadata: HydroIrOpMetadata::new(),
             });
@@ -866,17 +867,22 @@ where
         }
         .weaken_retries()
     }
-}
 
-impl<'a, T, L> Singleton<T, L, Bounded>
-where
-    L: Location<'a>,
-{
+    /// Strengthens the boundedness guarantee to `Bounded`, given that `B: IsBounded`, which
+    /// implies that `B == Bounded`.
+    pub fn make_bounded(self) -> Singleton<T, L, Bounded>
+    where
+        B: IsBounded,
+    {
+        Singleton::new(self.location, self.ir_node.into_inner())
+    }
+
     /// Clones this bounded singleton into a tick, returning a singleton that has the
     /// same value as the outer singleton. Because the outer singleton is bounded, this
     /// is deterministic because there is only a single immutable version.
     pub fn clone_into_tick(self, tick: &Tick<L>) -> Singleton<T, Tick<L>, Bounded>
     where
+        B: IsBounded,
         T: Clone,
     {
         // TODO(shadaj): avoid printing simulator logs for this snapshot
@@ -909,7 +915,10 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn into_stream(self) -> Stream<T, L, Bounded, TotalOrder, ExactlyOnce> {
+    pub fn into_stream(self) -> Stream<T, L, Bounded, TotalOrder, ExactlyOnce>
+    where
+        B: IsBounded,
+    {
         Stream::new(
             self.location.clone(),
             HydroNode::Cast {

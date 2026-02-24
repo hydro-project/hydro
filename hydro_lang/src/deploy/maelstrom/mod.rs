@@ -5,6 +5,7 @@ use serde::de::DeserializeOwned;
 
 use crate::forward_handle::ForwardHandle;
 use crate::live_collections::KeyedStream;
+use crate::live_collections::stream::TotalOrder;
 use crate::location::{Cluster, NoTick};
 use crate::nondet::nondet;
 
@@ -62,7 +63,7 @@ where
     // Set up the output sink to send responses back to clients
     output_stream
         .entries()
-        .assume_ordering(nondet!(/** maelstrom responses can be sent in any order */))
+        .assume_ordering::<TotalOrder>(nondet!(/** maelstrom responses can be sent in any order */))
         .for_each(q!(|(client_id, body)| {
             deploy_runtime_maelstrom::maelstrom_send_response(
                 &meta.node_id,

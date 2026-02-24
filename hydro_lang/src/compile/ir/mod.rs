@@ -1,6 +1,8 @@
 use core::panic;
 use std::cell::RefCell;
 use std::collections::HashMap;
+#[cfg(feature = "build")]
+use std::collections::HashSet;
 use std::fmt::{Debug, Display};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
@@ -21,7 +23,7 @@ use syn::parse_quote;
 use syn::visit::{self, Visit};
 use syn::visit_mut::VisitMut;
 
-use crate::compile::builder::ExternalPortId;
+use crate::compile::builder::{CycleId, ExternalPortId};
 #[cfg(feature = "build")]
 use crate::compile::deploy_provider::{Deploy, Node, RegisterPort};
 use crate::location::dynamic::LocationId;
@@ -298,6 +300,27 @@ impl Clone for DebugInstantiate {
     }
 }
 
+/// Tracks the instantiation state of a `ClusterMembers` source.
+///
+/// During `compile_network`, the first `ClusterMembers` node for a given
+/// `(at_location, target_cluster)` pair is promoted to [`Self::Stream`] and
+/// receives the expression returned by `Deploy::cluster_membership_stream`.
+/// All subsequent nodes for the same pair are set to [`Self::Tee`] so that
+/// during code-gen they simply reference the tee output of the first node
+/// instead of creating a redundant `source_stream`.
+#[derive(Debug, Hash, Clone)]
+pub enum ClusterMembersState {
+    /// Not yet instantiated.
+    Uninit,
+    /// The primary instance: holds the stream expression and will emit
+    /// `source_stream(expr) -> tee()` during code-gen.
+    Stream(DebugExpr),
+    /// A secondary instance that references the tee output of the primary.
+    /// Stores `(at_location_root, target_cluster_location)` so that `emit_core`
+    /// can derive the deterministic tee ident without extra state.
+    Tee(LocationId, LocationId),
+}
+
 /// A source in a Hydro graph, where data enters the graph.
 #[derive(Debug, Hash, Clone)]
 pub enum HydroSource {
@@ -305,7 +328,7 @@ pub enum HydroSource {
     ExternalNetwork(),
     Iter(DebugExpr),
     Spin(),
-    ClusterMembers(LocationId),
+    ClusterMembers(LocationId, ClusterMembersState),
     Embedded(syn::Ident),
 }
 
@@ -671,7 +694,7 @@ pub enum HydroRoot {
         op_metadata: HydroIrOpMetadata,
     },
     CycleSink {
-        ident: syn::Ident,
+        cycle_id: CycleId,
         input: Box<HydroNode>,
         op_metadata: HydroIrOpMetadata,
     },
@@ -684,10 +707,12 @@ pub enum HydroRoot {
 
 impl HydroRoot {
     #[cfg(feature = "build")]
+    #[expect(clippy::too_many_arguments, reason = "TODO(internal)")]
     pub fn compile_network<'a, D>(
         &mut self,
         extra_stmts: &mut SparseSecondaryMap<LocationKey, Vec<syn::Stmt>>,
         seen_tees: &mut SeenTees,
+        seen_cluster_members: &mut HashSet<(LocationId, LocationId)>,
         processes: &SparseSecondaryMap<LocationKey, D::Process>,
         clusters: &SparseSecondaryMap<LocationKey, D::Cluster>,
         externals: &SparseSecondaryMap<LocationKey, D::External>,
@@ -697,6 +722,7 @@ impl HydroRoot {
     {
         let refcell_extra_stmts = RefCell::new(extra_stmts);
         let refcell_env = RefCell::new(env);
+        let refcell_seen_cluster_members = RefCell::new(seen_cluster_members);
         self.transform_bottom_up(
             &mut |l| {
                 if let HydroRoot::SendExternal {
@@ -813,6 +839,7 @@ impl HydroRoot {
             },
             &mut |n| {
                 if let HydroNode::Network {
+                    name,
                     input,
                     instantiate_fn,
                     metadata,
@@ -821,10 +848,12 @@ impl HydroRoot {
                 {
                     let (sink_expr, source_expr, connect_fn) = match instantiate_fn {
                         DebugInstantiate::Building => instantiate_network::<D>(
+                            &mut refcell_env.borrow_mut(),
                             input.metadata().location_id.root(),
                             metadata.location_id.root(),
                             processes,
                             clusters,
+                            name.as_deref(),
                         ),
 
                         DebugInstantiate::Finalized(_) => panic!("network already finalized"),
@@ -925,6 +954,27 @@ impl HydroRoot {
                         ident,
                         &element_type,
                     );
+                } else if let HydroNode::Source { source: HydroSource::ClusterMembers(location_id, state), metadata } = n {
+                    match state {
+                        ClusterMembersState::Uninit => {
+                            let at_location = metadata.location_id.root().clone();
+                            let key = (at_location.clone(), LocationId::Cluster(location_id.key()));
+                            if refcell_seen_cluster_members.borrow_mut().insert(key) {
+                                // First occurrence: call cluster_membership_stream and mark as Stream.
+                                let expr = stageleft::QuotedWithContext::splice_untyped_ctx(
+                                    D::cluster_membership_stream(&mut refcell_env.borrow_mut(), &at_location, location_id),
+                                    &(),
+                                );
+                                *state = ClusterMembersState::Stream(expr.into());
+                            } else {
+                                // Already instantiated for this (at, target) pair: just tee.
+                                *state = ClusterMembersState::Tee(at_location, location_id.clone());
+                            }
+                        }
+                        ClusterMembersState::Stream(_) | ClusterMembersState::Tee(..) => {
+                            panic!("cluster members already finalized");
+                        }
+                    }
                 }
             },
             seen_tees,
@@ -1034,11 +1084,11 @@ impl HydroRoot {
                 op_metadata: op_metadata.clone(),
             },
             HydroRoot::CycleSink {
-                ident,
+                cycle_id,
                 input,
                 op_metadata,
             } => HydroRoot::CycleSink {
-                ident: ident.clone(),
+                cycle_id: *cycle_id,
                 input: Box::new(input.deep_clone(seen_tees)),
                 op_metadata: op_metadata.clone(),
             },
@@ -1055,14 +1105,14 @@ impl HydroRoot {
     }
 
     #[cfg(feature = "build")]
-    pub fn emit<'a, D: Deploy<'a>>(
+    pub fn emit(
         &mut self,
         graph_builders: &mut dyn DfirBuilder,
         seen_tees: &mut SeenTees,
         built_tees: &mut HashMap<*const RefCell<HydroNode>, syn::Ident>,
         next_stmt_id: &mut usize,
     ) {
-        self.emit_core::<D>(
+        self.emit_core(
             &mut BuildersOrCallback::<
                 fn(&mut HydroRoot, &mut usize),
                 fn(&mut HydroNode, &mut usize),
@@ -1074,7 +1124,7 @@ impl HydroRoot {
     }
 
     #[cfg(feature = "build")]
-    pub fn emit_core<'a, D: Deploy<'a>>(
+    pub fn emit_core(
         &mut self,
         builders_or_callback: &mut BuildersOrCallback<
             impl FnMut(&mut HydroRoot, &mut usize),
@@ -1087,7 +1137,7 @@ impl HydroRoot {
         match self {
             HydroRoot::ForEach { f, input, .. } => {
                 let input_ident =
-                    input.emit_core::<D>(builders_or_callback, seen_tees, built_tees, next_stmt_id);
+                    input.emit_core(builders_or_callback, seen_tees, built_tees, next_stmt_id);
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
@@ -1116,7 +1166,7 @@ impl HydroRoot {
                 ..
             } => {
                 let input_ident =
-                    input.emit_core::<D>(builders_or_callback, seen_tees, built_tees, next_stmt_id);
+                    input.emit_core(builders_or_callback, seen_tees, built_tees, next_stmt_id);
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
@@ -1149,7 +1199,7 @@ impl HydroRoot {
 
             HydroRoot::DestSink { sink, input, .. } => {
                 let input_ident =
-                    input.emit_core::<D>(builders_or_callback, seen_tees, built_tees, next_stmt_id);
+                    input.emit_core(builders_or_callback, seen_tees, built_tees, next_stmt_id);
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
@@ -1171,9 +1221,11 @@ impl HydroRoot {
                 *next_stmt_id += 1;
             }
 
-            HydroRoot::CycleSink { ident, input, .. } => {
+            HydroRoot::CycleSink {
+                cycle_id, input, ..
+            } => {
                 let input_ident =
-                    input.emit_core::<D>(builders_or_callback, seen_tees, built_tees, next_stmt_id);
+                    input.emit_core(builders_or_callback, seen_tees, built_tees, next_stmt_id);
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
@@ -1197,11 +1249,12 @@ impl HydroRoot {
                             }
                         };
 
+                        let cycle_id_ident = cycle_id.as_ident();
                         graph_builders
                             .get_dfir_mut(&input.metadata().location_id)
                             .add_dfir(
                                 parse_quote! {
-                                    #ident = #input_ident -> identity::<#elem_type>();
+                                    #cycle_id_ident = #input_ident -> identity::<#elem_type>();
                                 },
                                 None,
                                 None,
@@ -1214,7 +1267,7 @@ impl HydroRoot {
 
             HydroRoot::EmbeddedOutput { ident, input, .. } => {
                 let input_ident =
-                    input.emit_core::<D>(builders_or_callback, seen_tees, built_tees, next_stmt_id);
+                    input.emit_core(builders_or_callback, seen_tees, built_tees, next_stmt_id);
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
@@ -1277,7 +1330,7 @@ impl HydroRoot {
             HydroRoot::ForEach { f, .. } => format!("ForEach({:?})", f),
             HydroRoot::SendExternal { .. } => "SendExternal".to_owned(),
             HydroRoot::DestSink { sink, .. } => format!("DestSink({:?})", sink),
-            HydroRoot::CycleSink { ident, .. } => format!("CycleSink({:?})", ident),
+            HydroRoot::CycleSink { cycle_id, .. } => format!("CycleSink({})", cycle_id),
             HydroRoot::EmbeddedOutput { ident, .. } => {
                 format!("EmbeddedOutput({})", ident)
             }
@@ -1297,15 +1350,13 @@ impl HydroRoot {
 }
 
 #[cfg(feature = "build")]
-pub fn emit<'a, D: Deploy<'a>>(
-    ir: &mut Vec<HydroRoot>,
-) -> SecondaryMap<LocationKey, FlatGraphBuilder> {
+pub fn emit(ir: &mut Vec<HydroRoot>) -> SecondaryMap<LocationKey, FlatGraphBuilder> {
     let mut builders = SecondaryMap::new();
     let mut seen_tees = HashMap::new();
     let mut built_tees = HashMap::new();
     let mut next_stmt_id = 0;
     for leaf in ir {
-        leaf.emit::<D>(
+        leaf.emit(
             &mut builders,
             &mut seen_tees,
             &mut built_tees,
@@ -1316,7 +1367,7 @@ pub fn emit<'a, D: Deploy<'a>>(
 }
 
 #[cfg(feature = "build")]
-pub fn traverse_dfir<'a, D: Deploy<'a>>(
+pub fn traverse_dfir(
     ir: &mut [HydroRoot],
     transform_root: impl FnMut(&mut HydroRoot, &mut usize),
     transform_node: impl FnMut(&mut HydroNode, &mut usize),
@@ -1326,7 +1377,7 @@ pub fn traverse_dfir<'a, D: Deploy<'a>>(
     let mut next_stmt_id = 0;
     let mut callback = BuildersOrCallback::Callback(transform_root, transform_node);
     ir.iter_mut().for_each(|leaf| {
-        leaf.emit_core::<D>(
+        leaf.emit_core(
             &mut callback,
             &mut seen_tees,
             &mut built_tees,
@@ -1613,7 +1664,7 @@ pub enum HydroNode {
     },
 
     CycleSource {
-        ident: syn::Ident,
+        cycle_id: CycleId,
         metadata: HydroIrMetadata,
     },
 
@@ -1959,8 +2010,8 @@ impl HydroNode {
                 value: value.clone(),
                 metadata: metadata.clone(),
             },
-            HydroNode::CycleSource { ident, metadata } => HydroNode::CycleSource {
-                ident: ident.clone(),
+            HydroNode::CycleSource { cycle_id, metadata } => HydroNode::CycleSource {
+                cycle_id: *cycle_id,
                 metadata: metadata.clone(),
             },
             HydroNode::Tee { inner, metadata } => {
@@ -2211,7 +2262,7 @@ impl HydroNode {
     }
 
     #[cfg(feature = "build")]
-    pub fn emit_core<'a, D: Deploy<'a>>(
+    pub fn emit_core(
         &mut self,
         builders_or_callback: &mut BuildersOrCallback<
             impl FnMut(&mut HydroRoot, &mut usize),
@@ -2426,16 +2477,31 @@ impl HydroNode {
                                     }
                                 }
 
-                                HydroSource::ClusterMembers(location_id) => {
+                                HydroSource::ClusterMembers(target_loc, state) => {
                                     debug_assert!(metadata.location_id.is_top_level());
 
-                                    let expr = stageleft::QuotedWithContext::splice_untyped_ctx(
-                                        D::cluster_membership_stream(location_id),
-                                        &(),
+                                    let members_tee_ident = syn::Ident::new(
+                                        &format!(
+                                            "__cluster_members_tee_{}_{}",
+                                            metadata.location_id.root().key(),
+                                            target_loc.key(),
+                                        ),
+                                        Span::call_site(),
                                     );
 
-                                    parse_quote! {
-                                        #source_ident = source_stream(#expr);
+                                    match state {
+                                        ClusterMembersState::Stream(d) => {
+                                            parse_quote! {
+                                                #members_tee_ident = source_stream(#d) -> tee();
+                                                #source_ident = #members_tee_ident;
+                                            }
+                                        },
+                                        ClusterMembersState::Uninit => syn::parse_quote! {
+                                            #source_ident = source_stream(DUMMY);
+                                        },
+                                        ClusterMembersState::Tee(..) => parse_quote! {
+                                            #source_ident = #members_tee_ident;
+                                        },
                                     }
                                 }
 
@@ -2500,8 +2566,8 @@ impl HydroNode {
                         ident_stack.push(source_ident);
                     }
 
-                    HydroNode::CycleSource { ident, .. } => {
-                        let ident = ident.clone();
+                    HydroNode::CycleSource { cycle_id, .. } => {
+                        let ident = cycle_id.as_ident();
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(_) => {}
@@ -3577,7 +3643,7 @@ impl HydroNode {
                 HydroSource::Stream(expr) | HydroSource::Iter(expr) => transform(expr),
                 HydroSource::ExternalNetwork()
                 | HydroSource::Spin()
-                | HydroSource::ClusterMembers(_)
+                | HydroSource::ClusterMembers(_, _)
                 | HydroSource::Embedded(_) => {} // TODO: what goes here?
             },
             HydroNode::SingletonSource { value, .. } => {
@@ -3822,7 +3888,7 @@ impl HydroNode {
             HydroNode::ObserveNonDet { .. } => "ObserveNonDet()".to_owned(),
             HydroNode::Source { source, .. } => format!("Source({:?})", source),
             HydroNode::SingletonSource { value, .. } => format!("SingletonSource({:?})", value),
-            HydroNode::CycleSource { ident, .. } => format!("CycleSource({})", ident),
+            HydroNode::CycleSource { cycle_id, .. } => format!("CycleSource({})", cycle_id),
             HydroNode::Tee { inner, .. } => format!("Tee({})", inner.0.borrow().print_root()),
             HydroNode::YieldConcat { .. } => "YieldConcat()".to_owned(),
             HydroNode::BeginAtomic { .. } => "BeginAtomic()".to_owned(),
@@ -3890,10 +3956,12 @@ impl HydroNode {
 
 #[cfg(feature = "build")]
 fn instantiate_network<'a, D>(
+    env: &mut D::InstantiateEnv,
     from_location: &LocationId,
     to_location: &LocationId,
     processes: &SparseSecondaryMap<LocationKey, D::Process>,
     clusters: &SparseSecondaryMap<LocationKey, D::Cluster>,
+    name: Option<&str>,
 ) -> (syn::Expr, syn::Expr, Box<dyn FnOnce()>)
 where
     D: Deploy<'a>,
@@ -3917,7 +3985,7 @@ where
             let source_port = to_node.next_port();
 
             (
-                D::o2o_sink_source(&from_node, &sink_port, &to_node, &source_port),
+                D::o2o_sink_source(env, &from_node, &sink_port, &to_node, &source_port, name),
                 D::o2o_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
@@ -3939,7 +4007,7 @@ where
             let source_port = to_node.next_port();
 
             (
-                D::o2m_sink_source(&from_node, &sink_port, &to_node, &source_port),
+                D::o2m_sink_source(env, &from_node, &sink_port, &to_node, &source_port, name),
                 D::o2m_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
@@ -3961,7 +4029,7 @@ where
             let source_port = to_node.next_port();
 
             (
-                D::m2o_sink_source(&from_node, &sink_port, &to_node, &source_port),
+                D::m2o_sink_source(env, &from_node, &sink_port, &to_node, &source_port, name),
                 D::m2o_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
@@ -3983,7 +4051,7 @@ where
             let source_port = to_node.next_port();
 
             (
-                D::m2m_sink_source(&from_node, &sink_port, &to_node, &source_port),
+                D::m2m_sink_source(env, &from_node, &sink_port, &to_node, &source_port, name),
                 D::m2m_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
@@ -4009,7 +4077,7 @@ mod test {
         ignore = "expects inclusion of feature-gated fields"
     )]
     fn hydro_node_size() {
-        assert_eq!(size_of::<HydroNode>(), 240);
+        assert_eq!(size_of::<HydroNode>(), 248);
     }
 
     #[test]

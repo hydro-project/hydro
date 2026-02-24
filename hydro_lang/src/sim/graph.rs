@@ -176,10 +176,12 @@ impl<'a> Deploy<'a> for SimDeploy {
     type External = SimExternal;
 
     fn o2o_sink_source(
+        _env: &mut Self::InstantiateEnv,
         _p1: &Self::Process,
         p1_port: &<Self::Process as Node>::Port,
         _p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
+        _name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_o2o_sink_{}", p1_port), Span::call_site());
@@ -203,10 +205,12 @@ impl<'a> Deploy<'a> for SimDeploy {
     }
 
     fn o2m_sink_source(
+        _env: &mut Self::InstantiateEnv,
         _p1: &Self::Process,
         p1_port: &<Self::Process as Node>::Port,
         _c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
+        _name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_o2m_sink_{}", p1_port), Span::call_site());
@@ -230,10 +234,12 @@ impl<'a> Deploy<'a> for SimDeploy {
     }
 
     fn m2o_sink_source(
+        _env: &mut Self::InstantiateEnv,
         _c1: &Self::Cluster,
         c1_port: &<Self::Cluster as Node>::Port,
         _p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
+        _name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_m2o_sink_{}", c1_port), Span::call_site());
@@ -258,10 +264,12 @@ impl<'a> Deploy<'a> for SimDeploy {
     }
 
     fn m2m_sink_source(
+        _env: &mut Self::InstantiateEnv,
         _c1: &Self::Cluster,
         c1_port: &<Self::Cluster as Node>::Port,
         _c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
+        _name: Option<&str>,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_m2m_sink_{}", c1_port), Span::call_site());
@@ -354,6 +362,8 @@ impl<'a> Deploy<'a> for SimDeploy {
     }
 
     fn cluster_membership_stream(
+        _env: &mut Self::InstantiateEnv,
+        _at_location: &LocationId,
         location_id: &LocationId,
     ) -> impl QuotedWithContext<
         'a,
@@ -617,8 +627,8 @@ fn compile_sim_graph_trybuild(
     cluster_max_sizes: SparseSecondaryMap<LocationKey, usize>,
     process_tick_graphs: BTreeMap<LocationId, DfirGraph>,
     cluster_tick_graphs: BTreeMap<LocationId, DfirGraph>,
-    extra_stmts_global: Vec<syn::Stmt>,
-    extra_stmts_cluster: BTreeMap<LocationId, Vec<syn::Stmt>>,
+    mut extra_stmts_global: Vec<syn::Stmt>,
+    mut extra_stmts_cluster: BTreeMap<LocationId, Vec<syn::Stmt>>,
     crate_name: &str,
     is_test: bool,
 ) -> syn::File {
@@ -637,6 +647,18 @@ fn compile_sim_graph_trybuild(
 
         dfir_expr
     };
+
+    if is_test {
+        extra_stmts_global.iter_mut().for_each(|stmt| {
+            UseTestModeStaged { crate_name }.visit_stmt_mut(stmt);
+        });
+
+        extra_stmts_cluster.values_mut().for_each(|stmts| {
+            stmts.iter_mut().for_each(|stmt| {
+                UseTestModeStaged { crate_name }.visit_stmt_mut(stmt);
+            })
+        });
+    }
 
     let process_dfir_exprs = process_graphs
         .into_iter()

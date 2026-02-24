@@ -1,13 +1,10 @@
-use std::marker::PhantomData;
-
-use proc_macro2::Span;
 use sealed::sealed;
 use stageleft::{QuotedWithContext, q};
 
 #[cfg(stageleft_runtime)]
 use super::dynamic::DynLocation;
 use super::{Cluster, Location, LocationId, Process};
-use crate::compile::builder::FlowState;
+use crate::compile::builder::{ClockId, FlowState};
 use crate::compile::ir::{HydroNode, HydroSource};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial};
@@ -78,7 +75,8 @@ pub trait DeferTick {
 /// Marks the stream as being inside the single global clock domain.
 #[derive(Clone)]
 pub struct Tick<L> {
-    pub(crate) id: usize,
+    pub(crate) id: ClockId,
+    /// Location.
     pub(crate) l: L,
 }
 
@@ -241,17 +239,10 @@ where
         S: CycleCollection<'a, TickCycle, Location = Self> + DeferTick,
         L: NoTick,
     {
-        let next_id = self.flow_state().borrow_mut().next_cycle_id();
-        let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
-
+        let cycle_id = self.flow_state().borrow_mut().next_cycle_id();
         (
-            TickCycleHandle {
-                completed: false,
-                ident: ident.clone(),
-                expected_location: Location::id(self),
-                _phantom: PhantomData,
-            },
-            S::create_source(ident, self.clone()).defer_tick(),
+            TickCycleHandle::new(cycle_id, Location::id(self)),
+            S::create_source(cycle_id, self.clone()).defer_tick(),
         )
     }
 
@@ -263,18 +254,11 @@ where
     where
         S: CycleCollectionWithInitial<'a, TickCycle, Location = Self>,
     {
-        let next_id = self.flow_state().borrow_mut().next_cycle_id();
-        let ident = syn::Ident::new(&format!("cycle_{}", next_id), Span::call_site());
-
+        let cycle_id = self.flow_state().borrow_mut().next_cycle_id();
         (
-            TickCycleHandle {
-                completed: false,
-                ident: ident.clone(),
-                expected_location: Location::id(self),
-                _phantom: PhantomData,
-            },
+            TickCycleHandle::new(cycle_id, Location::id(self)),
             // no need to defer_tick, create_source_with_initial does it for us
-            S::create_source_with_initial(ident, initial, self.clone()),
+            S::create_source_with_initial(cycle_id, initial, self.clone()),
         )
     }
 }
