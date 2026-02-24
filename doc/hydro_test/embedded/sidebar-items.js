@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["echo_network"]};
+window.SIDEBAR_ITEMS = {"mod":["echo_network","m2m_broadcast","m2o_send","o2m_broadcast"]};

@@ -462,313 +462,321 @@
 <a href=#462 id=462 data-nosnippet>462</a>
 <a href=#463 id=463 data-nosnippet>463</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(p1 = p1.name, %p1_port, c2 = c2.name, %c2_port))]
 <a href=#464 id=464 data-nosnippet>464</a>    </span><span class="kw">fn </span>o2m_sink_source(
-<a href=#465 id=465 data-nosnippet>465</a>        p1: <span class="kw-2">&amp;</span><span class="self">Self</span>::Process,
-<a href=#466 id=466 data-nosnippet>466</a>        p1_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Process <span class="kw">as </span>Node&gt;::Port,
-<a href=#467 id=467 data-nosnippet>467</a>        c2: <span class="kw-2">&amp;</span><span class="self">Self</span>::Cluster,
-<a href=#468 id=468 data-nosnippet>468</a>        c2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Cluster <span class="kw">as </span>Node&gt;::Port,
-<a href=#469 id=469 data-nosnippet>469</a>    ) -&gt; (syn::Expr, syn::Expr) {
-<a href=#470 id=470 data-nosnippet>470</a>        deploy_containerized_o2m(<span class="kw-2">*</span>c2_port)
-<a href=#471 id=471 data-nosnippet>471</a>    }
-<a href=#472 id=472 data-nosnippet>472</a>
-<a href=#473 id=473 data-nosnippet>473</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(p1 = p1.name, %p1_port, c2 = c2.name, %c2_port))]
-<a href=#474 id=474 data-nosnippet>474</a>    </span><span class="kw">fn </span>o2m_connect(
-<a href=#475 id=475 data-nosnippet>475</a>        p1: <span class="kw-2">&amp;</span><span class="self">Self</span>::Process,
-<a href=#476 id=476 data-nosnippet>476</a>        p1_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Process <span class="kw">as </span>Node&gt;::Port,
-<a href=#477 id=477 data-nosnippet>477</a>        c2: <span class="kw-2">&amp;</span><span class="self">Self</span>::Cluster,
-<a href=#478 id=478 data-nosnippet>478</a>        c2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Cluster <span class="kw">as </span>Node&gt;::Port,
-<a href=#479 id=479 data-nosnippet>479</a>    ) -&gt; Box&lt;<span class="kw">dyn </span>FnOnce()&gt; {
-<a href=#480 id=480 data-nosnippet>480</a>        <span class="kw">let </span>serialized = <span class="macro">format!</span>(
-<a href=#481 id=481 data-nosnippet>481</a>            <span class="string">"o2m_connect {}:{p1_port:?} -&gt; {}:{c2_port:?}"</span>,
-<a href=#482 id=482 data-nosnippet>482</a>            p1.name, c2.name
-<a href=#483 id=483 data-nosnippet>483</a>        );
-<a href=#484 id=484 data-nosnippet>484</a>
-<a href=#485 id=485 data-nosnippet>485</a>        Box::new(<span class="kw">move </span>|| {
-<a href=#486 id=486 data-nosnippet>486</a>            <span class="macro">trace!</span>(name: <span class="string">"o2m_connect thunk"</span>, %serialized);
-<a href=#487 id=487 data-nosnippet>487</a>        })
-<a href=#488 id=488 data-nosnippet>488</a>    }
-<a href=#489 id=489 data-nosnippet>489</a>
-<a href=#490 id=490 data-nosnippet>490</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(c1 = c1.name, %c1_port, p2 = p2.name, %p2_port))]
-<a href=#491 id=491 data-nosnippet>491</a>    </span><span class="kw">fn </span>m2o_sink_source(
-<a href=#492 id=492 data-nosnippet>492</a>        c1: <span class="kw-2">&amp;</span><span class="self">Self</span>::Cluster,
-<a href=#493 id=493 data-nosnippet>493</a>        c1_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Cluster <span class="kw">as </span>Node&gt;::Port,
-<a href=#494 id=494 data-nosnippet>494</a>        p2: <span class="kw-2">&amp;</span><span class="self">Self</span>::Process,
-<a href=#495 id=495 data-nosnippet>495</a>        p2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Process <span class="kw">as </span>Node&gt;::Port,
-<a href=#496 id=496 data-nosnippet>496</a>    ) -&gt; (syn::Expr, syn::Expr) {
-<a href=#497 id=497 data-nosnippet>497</a>        deploy_containerized_m2o(<span class="kw-2">*</span>p2_port, <span class="kw-2">&amp;</span>p2.name)
-<a href=#498 id=498 data-nosnippet>498</a>    }
-<a href=#499 id=499 data-nosnippet>499</a>
-<a href=#500 id=500 data-nosnippet>500</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(c1 = c1.name, %c1_port, p2 = p2.name, %p2_port))]
-<a href=#501 id=501 data-nosnippet>501</a>    </span><span class="kw">fn </span>m2o_connect(
-<a href=#502 id=502 data-nosnippet>502</a>        c1: <span class="kw-2">&amp;</span><span class="self">Self</span>::Cluster,
-<a href=#503 id=503 data-nosnippet>503</a>        c1_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Cluster <span class="kw">as </span>Node&gt;::Port,
-<a href=#504 id=504 data-nosnippet>504</a>        p2: <span class="kw-2">&amp;</span><span class="self">Self</span>::Process,
-<a href=#505 id=505 data-nosnippet>505</a>        p2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Process <span class="kw">as </span>Node&gt;::Port,
-<a href=#506 id=506 data-nosnippet>506</a>    ) -&gt; Box&lt;<span class="kw">dyn </span>FnOnce()&gt; {
-<a href=#507 id=507 data-nosnippet>507</a>        <span class="kw">let </span>serialized = <span class="macro">format!</span>(
-<a href=#508 id=508 data-nosnippet>508</a>            <span class="string">"o2m_connect {}:{c1_port:?} -&gt; {}:{p2_port:?}"</span>,
-<a href=#509 id=509 data-nosnippet>509</a>            c1.name, p2.name
-<a href=#510 id=510 data-nosnippet>510</a>        );
-<a href=#511 id=511 data-nosnippet>511</a>
-<a href=#512 id=512 data-nosnippet>512</a>        Box::new(<span class="kw">move </span>|| {
-<a href=#513 id=513 data-nosnippet>513</a>            <span class="macro">trace!</span>(name: <span class="string">"m2o_connect thunk"</span>, %serialized);
-<a href=#514 id=514 data-nosnippet>514</a>        })
-<a href=#515 id=515 data-nosnippet>515</a>    }
-<a href=#516 id=516 data-nosnippet>516</a>
-<a href=#517 id=517 data-nosnippet>517</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(c1 = c1.name, %c1_port, c2 = c2.name, %c2_port))]
-<a href=#518 id=518 data-nosnippet>518</a>    </span><span class="kw">fn </span>m2m_sink_source(
-<a href=#519 id=519 data-nosnippet>519</a>        c1: <span class="kw-2">&amp;</span><span class="self">Self</span>::Cluster,
-<a href=#520 id=520 data-nosnippet>520</a>        c1_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Cluster <span class="kw">as </span>Node&gt;::Port,
-<a href=#521 id=521 data-nosnippet>521</a>        c2: <span class="kw-2">&amp;</span><span class="self">Self</span>::Cluster,
-<a href=#522 id=522 data-nosnippet>522</a>        c2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Cluster <span class="kw">as </span>Node&gt;::Port,
-<a href=#523 id=523 data-nosnippet>523</a>    ) -&gt; (syn::Expr, syn::Expr) {
-<a href=#524 id=524 data-nosnippet>524</a>        deploy_containerized_m2m(<span class="kw-2">*</span>c2_port)
-<a href=#525 id=525 data-nosnippet>525</a>    }
-<a href=#526 id=526 data-nosnippet>526</a>
-<a href=#527 id=527 data-nosnippet>527</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(c1 = c1.name, %c1_port, c2 = c2.name, %c2_port))]
-<a href=#528 id=528 data-nosnippet>528</a>    </span><span class="kw">fn </span>m2m_connect(
-<a href=#529 id=529 data-nosnippet>529</a>        c1: <span class="kw-2">&amp;</span><span class="self">Self</span>::Cluster,
-<a href=#530 id=530 data-nosnippet>530</a>        c1_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Cluster <span class="kw">as </span>Node&gt;::Port,
-<a href=#531 id=531 data-nosnippet>531</a>        c2: <span class="kw-2">&amp;</span><span class="self">Self</span>::Cluster,
-<a href=#532 id=532 data-nosnippet>532</a>        c2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Cluster <span class="kw">as </span>Node&gt;::Port,
-<a href=#533 id=533 data-nosnippet>533</a>    ) -&gt; Box&lt;<span class="kw">dyn </span>FnOnce()&gt; {
-<a href=#534 id=534 data-nosnippet>534</a>        <span class="kw">let </span>serialized = <span class="macro">format!</span>(
-<a href=#535 id=535 data-nosnippet>535</a>            <span class="string">"m2m_connect {}:{c1_port:?} -&gt; {}:{c2_port:?}"</span>,
-<a href=#536 id=536 data-nosnippet>536</a>            c1.name, c2.name
-<a href=#537 id=537 data-nosnippet>537</a>        );
-<a href=#538 id=538 data-nosnippet>538</a>
-<a href=#539 id=539 data-nosnippet>539</a>        Box::new(<span class="kw">move </span>|| {
-<a href=#540 id=540 data-nosnippet>540</a>            <span class="macro">trace!</span>(name: <span class="string">"m2m_connect thunk"</span>, %serialized);
-<a href=#541 id=541 data-nosnippet>541</a>        })
-<a href=#542 id=542 data-nosnippet>542</a>    }
-<a href=#543 id=543 data-nosnippet>543</a>
-<a href=#544 id=544 data-nosnippet>544</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(p2 = p2.name, %p2_port, %shared_handle, extra_stmts = extra_stmts.len()))]
-<a href=#545 id=545 data-nosnippet>545</a>    </span><span class="kw">fn </span>e2o_many_source(
-<a href=#546 id=546 data-nosnippet>546</a>        extra_stmts: <span class="kw-2">&amp;mut </span>Vec&lt;syn::Stmt&gt;,
-<a href=#547 id=547 data-nosnippet>547</a>        p2: <span class="kw-2">&amp;</span><span class="self">Self</span>::Process,
-<a href=#548 id=548 data-nosnippet>548</a>        p2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Process <span class="kw">as </span>Node&gt;::Port,
-<a href=#549 id=549 data-nosnippet>549</a>        codec_type: <span class="kw-2">&amp;</span>syn::Type,
-<a href=#550 id=550 data-nosnippet>550</a>        shared_handle: String,
-<a href=#551 id=551 data-nosnippet>551</a>    ) -&gt; syn::Expr {
-<a href=#552 id=552 data-nosnippet>552</a>        p2.exposed_ports
-<a href=#553 id=553 data-nosnippet>553</a>            .borrow_mut()
-<a href=#554 id=554 data-nosnippet>554</a>            .insert(shared_handle.clone(), PortInfo { port: <span class="kw-2">*</span>p2_port });
-<a href=#555 id=555 data-nosnippet>555</a>
-<a href=#556 id=556 data-nosnippet>556</a>        <span class="kw">let </span>socket_ident = syn::Ident::new(
-<a href=#557 id=557 data-nosnippet>557</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_socket"</span>, <span class="kw-2">&amp;</span>shared_handle),
-<a href=#558 id=558 data-nosnippet>558</a>            Span::call_site(),
-<a href=#559 id=559 data-nosnippet>559</a>        );
-<a href=#560 id=560 data-nosnippet>560</a>
-<a href=#561 id=561 data-nosnippet>561</a>        <span class="kw">let </span>source_ident = syn::Ident::new(
-<a href=#562 id=562 data-nosnippet>562</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_source"</span>, <span class="kw-2">&amp;</span>shared_handle),
-<a href=#563 id=563 data-nosnippet>563</a>            Span::call_site(),
-<a href=#564 id=564 data-nosnippet>564</a>        );
-<a href=#565 id=565 data-nosnippet>565</a>
-<a href=#566 id=566 data-nosnippet>566</a>        <span class="kw">let </span>sink_ident = syn::Ident::new(
-<a href=#567 id=567 data-nosnippet>567</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_sink"</span>, <span class="kw-2">&amp;</span>shared_handle),
-<a href=#568 id=568 data-nosnippet>568</a>            Span::call_site(),
-<a href=#569 id=569 data-nosnippet>569</a>        );
-<a href=#570 id=570 data-nosnippet>570</a>
-<a href=#571 id=571 data-nosnippet>571</a>        <span class="kw">let </span>membership_ident = syn::Ident::new(
-<a href=#572 id=572 data-nosnippet>572</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_membership"</span>, <span class="kw-2">&amp;</span>shared_handle),
-<a href=#573 id=573 data-nosnippet>573</a>            Span::call_site(),
-<a href=#574 id=574 data-nosnippet>574</a>        );
-<a href=#575 id=575 data-nosnippet>575</a>
-<a href=#576 id=576 data-nosnippet>576</a>        <span class="kw">let </span>bind_addr = <span class="macro">format!</span>(<span class="string">"0.0.0.0:{}"</span>, p2_port);
-<a href=#577 id=577 data-nosnippet>577</a>
-<a href=#578 id=578 data-nosnippet>578</a>        extra_stmts.push(<span class="macro">syn::parse_quote!</span> {
-<a href=#579 id=579 data-nosnippet>579</a>            <span class="kw">let </span>#socket_ident = tokio::net::TcpListener::bind(#bind_addr).<span class="kw">await</span>.unwrap();
-<a href=#580 id=580 data-nosnippet>580</a>        });
+<a href=#465 id=465 data-nosnippet>465</a>        _env: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::InstantiateEnv,
+<a href=#466 id=466 data-nosnippet>466</a>        p1: <span class="kw-2">&amp;</span><span class="self">Self</span>::Process,
+<a href=#467 id=467 data-nosnippet>467</a>        p1_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Process <span class="kw">as </span>Node&gt;::Port,
+<a href=#468 id=468 data-nosnippet>468</a>        c2: <span class="kw-2">&amp;</span><span class="self">Self</span>::Cluster,
+<a href=#469 id=469 data-nosnippet>469</a>        c2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Cluster <span class="kw">as </span>Node&gt;::Port,
+<a href=#470 id=470 data-nosnippet>470</a>        _name: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
+<a href=#471 id=471 data-nosnippet>471</a>    ) -&gt; (syn::Expr, syn::Expr) {
+<a href=#472 id=472 data-nosnippet>472</a>        deploy_containerized_o2m(<span class="kw-2">*</span>c2_port)
+<a href=#473 id=473 data-nosnippet>473</a>    }
+<a href=#474 id=474 data-nosnippet>474</a>
+<a href=#475 id=475 data-nosnippet>475</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(p1 = p1.name, %p1_port, c2 = c2.name, %c2_port))]
+<a href=#476 id=476 data-nosnippet>476</a>    </span><span class="kw">fn </span>o2m_connect(
+<a href=#477 id=477 data-nosnippet>477</a>        p1: <span class="kw-2">&amp;</span><span class="self">Self</span>::Process,
+<a href=#478 id=478 data-nosnippet>478</a>        p1_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Process <span class="kw">as </span>Node&gt;::Port,
+<a href=#479 id=479 data-nosnippet>479</a>        c2: <span class="kw-2">&amp;</span><span class="self">Self</span>::Cluster,
+<a href=#480 id=480 data-nosnippet>480</a>        c2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Cluster <span class="kw">as </span>Node&gt;::Port,
+<a href=#481 id=481 data-nosnippet>481</a>    ) -&gt; Box&lt;<span class="kw">dyn </span>FnOnce()&gt; {
+<a href=#482 id=482 data-nosnippet>482</a>        <span class="kw">let </span>serialized = <span class="macro">format!</span>(
+<a href=#483 id=483 data-nosnippet>483</a>            <span class="string">"o2m_connect {}:{p1_port:?} -&gt; {}:{c2_port:?}"</span>,
+<a href=#484 id=484 data-nosnippet>484</a>            p1.name, c2.name
+<a href=#485 id=485 data-nosnippet>485</a>        );
+<a href=#486 id=486 data-nosnippet>486</a>
+<a href=#487 id=487 data-nosnippet>487</a>        Box::new(<span class="kw">move </span>|| {
+<a href=#488 id=488 data-nosnippet>488</a>            <span class="macro">trace!</span>(name: <span class="string">"o2m_connect thunk"</span>, %serialized);
+<a href=#489 id=489 data-nosnippet>489</a>        })
+<a href=#490 id=490 data-nosnippet>490</a>    }
+<a href=#491 id=491 data-nosnippet>491</a>
+<a href=#492 id=492 data-nosnippet>492</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(c1 = c1.name, %c1_port, p2 = p2.name, %p2_port))]
+<a href=#493 id=493 data-nosnippet>493</a>    </span><span class="kw">fn </span>m2o_sink_source(
+<a href=#494 id=494 data-nosnippet>494</a>        _env: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::InstantiateEnv,
+<a href=#495 id=495 data-nosnippet>495</a>        c1: <span class="kw-2">&amp;</span><span class="self">Self</span>::Cluster,
+<a href=#496 id=496 data-nosnippet>496</a>        c1_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Cluster <span class="kw">as </span>Node&gt;::Port,
+<a href=#497 id=497 data-nosnippet>497</a>        p2: <span class="kw-2">&amp;</span><span class="self">Self</span>::Process,
+<a href=#498 id=498 data-nosnippet>498</a>        p2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Process <span class="kw">as </span>Node&gt;::Port,
+<a href=#499 id=499 data-nosnippet>499</a>        _name: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
+<a href=#500 id=500 data-nosnippet>500</a>    ) -&gt; (syn::Expr, syn::Expr) {
+<a href=#501 id=501 data-nosnippet>501</a>        deploy_containerized_m2o(<span class="kw-2">*</span>p2_port, <span class="kw-2">&amp;</span>p2.name)
+<a href=#502 id=502 data-nosnippet>502</a>    }
+<a href=#503 id=503 data-nosnippet>503</a>
+<a href=#504 id=504 data-nosnippet>504</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(c1 = c1.name, %c1_port, p2 = p2.name, %p2_port))]
+<a href=#505 id=505 data-nosnippet>505</a>    </span><span class="kw">fn </span>m2o_connect(
+<a href=#506 id=506 data-nosnippet>506</a>        c1: <span class="kw-2">&amp;</span><span class="self">Self</span>::Cluster,
+<a href=#507 id=507 data-nosnippet>507</a>        c1_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Cluster <span class="kw">as </span>Node&gt;::Port,
+<a href=#508 id=508 data-nosnippet>508</a>        p2: <span class="kw-2">&amp;</span><span class="self">Self</span>::Process,
+<a href=#509 id=509 data-nosnippet>509</a>        p2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Process <span class="kw">as </span>Node&gt;::Port,
+<a href=#510 id=510 data-nosnippet>510</a>    ) -&gt; Box&lt;<span class="kw">dyn </span>FnOnce()&gt; {
+<a href=#511 id=511 data-nosnippet>511</a>        <span class="kw">let </span>serialized = <span class="macro">format!</span>(
+<a href=#512 id=512 data-nosnippet>512</a>            <span class="string">"o2m_connect {}:{c1_port:?} -&gt; {}:{p2_port:?}"</span>,
+<a href=#513 id=513 data-nosnippet>513</a>            c1.name, p2.name
+<a href=#514 id=514 data-nosnippet>514</a>        );
+<a href=#515 id=515 data-nosnippet>515</a>
+<a href=#516 id=516 data-nosnippet>516</a>        Box::new(<span class="kw">move </span>|| {
+<a href=#517 id=517 data-nosnippet>517</a>            <span class="macro">trace!</span>(name: <span class="string">"m2o_connect thunk"</span>, %serialized);
+<a href=#518 id=518 data-nosnippet>518</a>        })
+<a href=#519 id=519 data-nosnippet>519</a>    }
+<a href=#520 id=520 data-nosnippet>520</a>
+<a href=#521 id=521 data-nosnippet>521</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(c1 = c1.name, %c1_port, c2 = c2.name, %c2_port))]
+<a href=#522 id=522 data-nosnippet>522</a>    </span><span class="kw">fn </span>m2m_sink_source(
+<a href=#523 id=523 data-nosnippet>523</a>        _env: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::InstantiateEnv,
+<a href=#524 id=524 data-nosnippet>524</a>        c1: <span class="kw-2">&amp;</span><span class="self">Self</span>::Cluster,
+<a href=#525 id=525 data-nosnippet>525</a>        c1_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Cluster <span class="kw">as </span>Node&gt;::Port,
+<a href=#526 id=526 data-nosnippet>526</a>        c2: <span class="kw-2">&amp;</span><span class="self">Self</span>::Cluster,
+<a href=#527 id=527 data-nosnippet>527</a>        c2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Cluster <span class="kw">as </span>Node&gt;::Port,
+<a href=#528 id=528 data-nosnippet>528</a>        _name: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
+<a href=#529 id=529 data-nosnippet>529</a>    ) -&gt; (syn::Expr, syn::Expr) {
+<a href=#530 id=530 data-nosnippet>530</a>        deploy_containerized_m2m(<span class="kw-2">*</span>c2_port)
+<a href=#531 id=531 data-nosnippet>531</a>    }
+<a href=#532 id=532 data-nosnippet>532</a>
+<a href=#533 id=533 data-nosnippet>533</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(c1 = c1.name, %c1_port, c2 = c2.name, %c2_port))]
+<a href=#534 id=534 data-nosnippet>534</a>    </span><span class="kw">fn </span>m2m_connect(
+<a href=#535 id=535 data-nosnippet>535</a>        c1: <span class="kw-2">&amp;</span><span class="self">Self</span>::Cluster,
+<a href=#536 id=536 data-nosnippet>536</a>        c1_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Cluster <span class="kw">as </span>Node&gt;::Port,
+<a href=#537 id=537 data-nosnippet>537</a>        c2: <span class="kw-2">&amp;</span><span class="self">Self</span>::Cluster,
+<a href=#538 id=538 data-nosnippet>538</a>        c2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Cluster <span class="kw">as </span>Node&gt;::Port,
+<a href=#539 id=539 data-nosnippet>539</a>    ) -&gt; Box&lt;<span class="kw">dyn </span>FnOnce()&gt; {
+<a href=#540 id=540 data-nosnippet>540</a>        <span class="kw">let </span>serialized = <span class="macro">format!</span>(
+<a href=#541 id=541 data-nosnippet>541</a>            <span class="string">"m2m_connect {}:{c1_port:?} -&gt; {}:{c2_port:?}"</span>,
+<a href=#542 id=542 data-nosnippet>542</a>            c1.name, c2.name
+<a href=#543 id=543 data-nosnippet>543</a>        );
+<a href=#544 id=544 data-nosnippet>544</a>
+<a href=#545 id=545 data-nosnippet>545</a>        Box::new(<span class="kw">move </span>|| {
+<a href=#546 id=546 data-nosnippet>546</a>            <span class="macro">trace!</span>(name: <span class="string">"m2m_connect thunk"</span>, %serialized);
+<a href=#547 id=547 data-nosnippet>547</a>        })
+<a href=#548 id=548 data-nosnippet>548</a>    }
+<a href=#549 id=549 data-nosnippet>549</a>
+<a href=#550 id=550 data-nosnippet>550</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(p2 = p2.name, %p2_port, %shared_handle, extra_stmts = extra_stmts.len()))]
+<a href=#551 id=551 data-nosnippet>551</a>    </span><span class="kw">fn </span>e2o_many_source(
+<a href=#552 id=552 data-nosnippet>552</a>        extra_stmts: <span class="kw-2">&amp;mut </span>Vec&lt;syn::Stmt&gt;,
+<a href=#553 id=553 data-nosnippet>553</a>        p2: <span class="kw-2">&amp;</span><span class="self">Self</span>::Process,
+<a href=#554 id=554 data-nosnippet>554</a>        p2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Process <span class="kw">as </span>Node&gt;::Port,
+<a href=#555 id=555 data-nosnippet>555</a>        codec_type: <span class="kw-2">&amp;</span>syn::Type,
+<a href=#556 id=556 data-nosnippet>556</a>        shared_handle: String,
+<a href=#557 id=557 data-nosnippet>557</a>    ) -&gt; syn::Expr {
+<a href=#558 id=558 data-nosnippet>558</a>        p2.exposed_ports
+<a href=#559 id=559 data-nosnippet>559</a>            .borrow_mut()
+<a href=#560 id=560 data-nosnippet>560</a>            .insert(shared_handle.clone(), PortInfo { port: <span class="kw-2">*</span>p2_port });
+<a href=#561 id=561 data-nosnippet>561</a>
+<a href=#562 id=562 data-nosnippet>562</a>        <span class="kw">let </span>socket_ident = syn::Ident::new(
+<a href=#563 id=563 data-nosnippet>563</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_socket"</span>, <span class="kw-2">&amp;</span>shared_handle),
+<a href=#564 id=564 data-nosnippet>564</a>            Span::call_site(),
+<a href=#565 id=565 data-nosnippet>565</a>        );
+<a href=#566 id=566 data-nosnippet>566</a>
+<a href=#567 id=567 data-nosnippet>567</a>        <span class="kw">let </span>source_ident = syn::Ident::new(
+<a href=#568 id=568 data-nosnippet>568</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_source"</span>, <span class="kw-2">&amp;</span>shared_handle),
+<a href=#569 id=569 data-nosnippet>569</a>            Span::call_site(),
+<a href=#570 id=570 data-nosnippet>570</a>        );
+<a href=#571 id=571 data-nosnippet>571</a>
+<a href=#572 id=572 data-nosnippet>572</a>        <span class="kw">let </span>sink_ident = syn::Ident::new(
+<a href=#573 id=573 data-nosnippet>573</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_sink"</span>, <span class="kw-2">&amp;</span>shared_handle),
+<a href=#574 id=574 data-nosnippet>574</a>            Span::call_site(),
+<a href=#575 id=575 data-nosnippet>575</a>        );
+<a href=#576 id=576 data-nosnippet>576</a>
+<a href=#577 id=577 data-nosnippet>577</a>        <span class="kw">let </span>membership_ident = syn::Ident::new(
+<a href=#578 id=578 data-nosnippet>578</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_membership"</span>, <span class="kw-2">&amp;</span>shared_handle),
+<a href=#579 id=579 data-nosnippet>579</a>            Span::call_site(),
+<a href=#580 id=580 data-nosnippet>580</a>        );
 <a href=#581 id=581 data-nosnippet>581</a>
-<a href=#582 id=582 data-nosnippet>582</a>        <span class="kw">let </span>root = <span class="kw">crate</span>::staging_util::get_this_crate();
+<a href=#582 id=582 data-nosnippet>582</a>        <span class="kw">let </span>bind_addr = <span class="macro">format!</span>(<span class="string">"0.0.0.0:{}"</span>, p2_port);
 <a href=#583 id=583 data-nosnippet>583</a>
 <a href=#584 id=584 data-nosnippet>584</a>        extra_stmts.push(<span class="macro">syn::parse_quote!</span> {
-<a href=#585 id=585 data-nosnippet>585</a>            <span class="kw">let </span>(#source_ident, #sink_ident, #membership_ident) = #root::runtime_support::hydro_deploy_integration::multi_connection::tcp_multi_connection::&lt;<span class="kw">_</span>, #codec_type&gt;(#socket_ident);
+<a href=#585 id=585 data-nosnippet>585</a>            <span class="kw">let </span>#socket_ident = tokio::net::TcpListener::bind(#bind_addr).<span class="kw">await</span>.unwrap();
 <a href=#586 id=586 data-nosnippet>586</a>        });
 <a href=#587 id=587 data-nosnippet>587</a>
-<a href=#588 id=588 data-nosnippet>588</a>        <span class="macro">parse_quote!</span>(#source_ident)
-<a href=#589 id=589 data-nosnippet>589</a>    }
-<a href=#590 id=590 data-nosnippet>590</a>
-<a href=#591 id=591 data-nosnippet>591</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%shared_handle))]
-<a href=#592 id=592 data-nosnippet>592</a>    </span><span class="kw">fn </span>e2o_many_sink(shared_handle: String) -&gt; syn::Expr {
-<a href=#593 id=593 data-nosnippet>593</a>        <span class="kw">let </span>sink_ident = syn::Ident::new(
-<a href=#594 id=594 data-nosnippet>594</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_sink"</span>, <span class="kw-2">&amp;</span>shared_handle),
-<a href=#595 id=595 data-nosnippet>595</a>            Span::call_site(),
-<a href=#596 id=596 data-nosnippet>596</a>        );
-<a href=#597 id=597 data-nosnippet>597</a>        <span class="macro">parse_quote!</span>(#sink_ident)
-<a href=#598 id=598 data-nosnippet>598</a>    }
-<a href=#599 id=599 data-nosnippet>599</a>
-<a href=#600 id=600 data-nosnippet>600</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, %p2_port, <span class="question-mark">?</span>codec_type, %shared_handle))]
-<a href=#601 id=601 data-nosnippet>601</a>    </span><span class="kw">fn </span>e2o_source(
-<a href=#602 id=602 data-nosnippet>602</a>        extra_stmts: <span class="kw-2">&amp;mut </span>Vec&lt;syn::Stmt&gt;,
-<a href=#603 id=603 data-nosnippet>603</a>        p1: <span class="kw-2">&amp;</span><span class="self">Self</span>::External,
-<a href=#604 id=604 data-nosnippet>604</a>        p1_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::External <span class="kw">as </span>Node&gt;::Port,
-<a href=#605 id=605 data-nosnippet>605</a>        p2: <span class="kw-2">&amp;</span><span class="self">Self</span>::Process,
-<a href=#606 id=606 data-nosnippet>606</a>        p2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Process <span class="kw">as </span>Node&gt;::Port,
-<a href=#607 id=607 data-nosnippet>607</a>        codec_type: <span class="kw-2">&amp;</span>syn::Type,
-<a href=#608 id=608 data-nosnippet>608</a>        shared_handle: String,
-<a href=#609 id=609 data-nosnippet>609</a>    ) -&gt; syn::Expr {
-<a href=#610 id=610 data-nosnippet>610</a>        <span class="comment">// Record the port for manifest export
-<a href=#611 id=611 data-nosnippet>611</a>        </span>p2.exposed_ports
-<a href=#612 id=612 data-nosnippet>612</a>            .borrow_mut()
-<a href=#613 id=613 data-nosnippet>613</a>            .insert(shared_handle.clone(), PortInfo { port: <span class="kw-2">*</span>p2_port });
-<a href=#614 id=614 data-nosnippet>614</a>
-<a href=#615 id=615 data-nosnippet>615</a>        <span class="kw">let </span>source_ident = syn::Ident::new(
-<a href=#616 id=616 data-nosnippet>616</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_{}_source"</span>, <span class="kw-2">&amp;</span>shared_handle),
-<a href=#617 id=617 data-nosnippet>617</a>            Span::call_site(),
-<a href=#618 id=618 data-nosnippet>618</a>        );
-<a href=#619 id=619 data-nosnippet>619</a>
-<a href=#620 id=620 data-nosnippet>620</a>        <span class="kw">let </span>bind_addr = <span class="macro">format!</span>(<span class="string">"0.0.0.0:{}"</span>, p2_port);
-<a href=#621 id=621 data-nosnippet>621</a>
-<a href=#622 id=622 data-nosnippet>622</a>        <span class="comment">// Always use LazySinkSource for external connections - it creates both sink and source
-<a href=#623 id=623 data-nosnippet>623</a>        // which is needed for bidirectional connections (unpaired: false)
-<a href=#624 id=624 data-nosnippet>624</a>        </span><span class="kw">let </span>socket_ident = syn::Ident::new(
-<a href=#625 id=625 data-nosnippet>625</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_{}_socket"</span>, <span class="kw-2">&amp;</span>shared_handle),
-<a href=#626 id=626 data-nosnippet>626</a>            Span::call_site(),
-<a href=#627 id=627 data-nosnippet>627</a>        );
-<a href=#628 id=628 data-nosnippet>628</a>
-<a href=#629 id=629 data-nosnippet>629</a>        <span class="kw">let </span>sink_ident = syn::Ident::new(
-<a href=#630 id=630 data-nosnippet>630</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_{}_sink"</span>, <span class="kw-2">&amp;</span>shared_handle),
-<a href=#631 id=631 data-nosnippet>631</a>            Span::call_site(),
-<a href=#632 id=632 data-nosnippet>632</a>        );
-<a href=#633 id=633 data-nosnippet>633</a>
-<a href=#634 id=634 data-nosnippet>634</a>        extra_stmts.push(<span class="macro">syn::parse_quote!</span> {
-<a href=#635 id=635 data-nosnippet>635</a>            <span class="kw">let </span>#socket_ident = tokio::net::TcpListener::bind(#bind_addr).<span class="kw">await</span>.unwrap();
-<a href=#636 id=636 data-nosnippet>636</a>        });
-<a href=#637 id=637 data-nosnippet>637</a>
-<a href=#638 id=638 data-nosnippet>638</a>        <span class="kw">let </span>create_expr = deploy_containerized_external_sink_source_ident(bind_addr, socket_ident);
+<a href=#588 id=588 data-nosnippet>588</a>        <span class="kw">let </span>root = <span class="kw">crate</span>::staging_util::get_this_crate();
+<a href=#589 id=589 data-nosnippet>589</a>
+<a href=#590 id=590 data-nosnippet>590</a>        extra_stmts.push(<span class="macro">syn::parse_quote!</span> {
+<a href=#591 id=591 data-nosnippet>591</a>            <span class="kw">let </span>(#source_ident, #sink_ident, #membership_ident) = #root::runtime_support::hydro_deploy_integration::multi_connection::tcp_multi_connection::&lt;<span class="kw">_</span>, #codec_type&gt;(#socket_ident);
+<a href=#592 id=592 data-nosnippet>592</a>        });
+<a href=#593 id=593 data-nosnippet>593</a>
+<a href=#594 id=594 data-nosnippet>594</a>        <span class="macro">parse_quote!</span>(#source_ident)
+<a href=#595 id=595 data-nosnippet>595</a>    }
+<a href=#596 id=596 data-nosnippet>596</a>
+<a href=#597 id=597 data-nosnippet>597</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%shared_handle))]
+<a href=#598 id=598 data-nosnippet>598</a>    </span><span class="kw">fn </span>e2o_many_sink(shared_handle: String) -&gt; syn::Expr {
+<a href=#599 id=599 data-nosnippet>599</a>        <span class="kw">let </span>sink_ident = syn::Ident::new(
+<a href=#600 id=600 data-nosnippet>600</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_many_{}_sink"</span>, <span class="kw-2">&amp;</span>shared_handle),
+<a href=#601 id=601 data-nosnippet>601</a>            Span::call_site(),
+<a href=#602 id=602 data-nosnippet>602</a>        );
+<a href=#603 id=603 data-nosnippet>603</a>        <span class="macro">parse_quote!</span>(#sink_ident)
+<a href=#604 id=604 data-nosnippet>604</a>    }
+<a href=#605 id=605 data-nosnippet>605</a>
+<a href=#606 id=606 data-nosnippet>606</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, %p2_port, <span class="question-mark">?</span>codec_type, %shared_handle))]
+<a href=#607 id=607 data-nosnippet>607</a>    </span><span class="kw">fn </span>e2o_source(
+<a href=#608 id=608 data-nosnippet>608</a>        extra_stmts: <span class="kw-2">&amp;mut </span>Vec&lt;syn::Stmt&gt;,
+<a href=#609 id=609 data-nosnippet>609</a>        p1: <span class="kw-2">&amp;</span><span class="self">Self</span>::External,
+<a href=#610 id=610 data-nosnippet>610</a>        p1_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::External <span class="kw">as </span>Node&gt;::Port,
+<a href=#611 id=611 data-nosnippet>611</a>        p2: <span class="kw-2">&amp;</span><span class="self">Self</span>::Process,
+<a href=#612 id=612 data-nosnippet>612</a>        p2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Process <span class="kw">as </span>Node&gt;::Port,
+<a href=#613 id=613 data-nosnippet>613</a>        codec_type: <span class="kw-2">&amp;</span>syn::Type,
+<a href=#614 id=614 data-nosnippet>614</a>        shared_handle: String,
+<a href=#615 id=615 data-nosnippet>615</a>    ) -&gt; syn::Expr {
+<a href=#616 id=616 data-nosnippet>616</a>        <span class="comment">// Record the port for manifest export
+<a href=#617 id=617 data-nosnippet>617</a>        </span>p2.exposed_ports
+<a href=#618 id=618 data-nosnippet>618</a>            .borrow_mut()
+<a href=#619 id=619 data-nosnippet>619</a>            .insert(shared_handle.clone(), PortInfo { port: <span class="kw-2">*</span>p2_port });
+<a href=#620 id=620 data-nosnippet>620</a>
+<a href=#621 id=621 data-nosnippet>621</a>        <span class="kw">let </span>source_ident = syn::Ident::new(
+<a href=#622 id=622 data-nosnippet>622</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_{}_source"</span>, <span class="kw-2">&amp;</span>shared_handle),
+<a href=#623 id=623 data-nosnippet>623</a>            Span::call_site(),
+<a href=#624 id=624 data-nosnippet>624</a>        );
+<a href=#625 id=625 data-nosnippet>625</a>
+<a href=#626 id=626 data-nosnippet>626</a>        <span class="kw">let </span>bind_addr = <span class="macro">format!</span>(<span class="string">"0.0.0.0:{}"</span>, p2_port);
+<a href=#627 id=627 data-nosnippet>627</a>
+<a href=#628 id=628 data-nosnippet>628</a>        <span class="comment">// Always use LazySinkSource for external connections - it creates both sink and source
+<a href=#629 id=629 data-nosnippet>629</a>        // which is needed for bidirectional connections (unpaired: false)
+<a href=#630 id=630 data-nosnippet>630</a>        </span><span class="kw">let </span>socket_ident = syn::Ident::new(
+<a href=#631 id=631 data-nosnippet>631</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_{}_socket"</span>, <span class="kw-2">&amp;</span>shared_handle),
+<a href=#632 id=632 data-nosnippet>632</a>            Span::call_site(),
+<a href=#633 id=633 data-nosnippet>633</a>        );
+<a href=#634 id=634 data-nosnippet>634</a>
+<a href=#635 id=635 data-nosnippet>635</a>        <span class="kw">let </span>sink_ident = syn::Ident::new(
+<a href=#636 id=636 data-nosnippet>636</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_{}_sink"</span>, <span class="kw-2">&amp;</span>shared_handle),
+<a href=#637 id=637 data-nosnippet>637</a>            Span::call_site(),
+<a href=#638 id=638 data-nosnippet>638</a>        );
 <a href=#639 id=639 data-nosnippet>639</a>
 <a href=#640 id=640 data-nosnippet>640</a>        extra_stmts.push(<span class="macro">syn::parse_quote!</span> {
-<a href=#641 id=641 data-nosnippet>641</a>            <span class="kw">let </span>(#sink_ident, #source_ident) = (#create_expr).split();
+<a href=#641 id=641 data-nosnippet>641</a>            <span class="kw">let </span>#socket_ident = tokio::net::TcpListener::bind(#bind_addr).<span class="kw">await</span>.unwrap();
 <a href=#642 id=642 data-nosnippet>642</a>        });
 <a href=#643 id=643 data-nosnippet>643</a>
-<a href=#644 id=644 data-nosnippet>644</a>        <span class="macro">parse_quote!</span>(#source_ident)
-<a href=#645 id=645 data-nosnippet>645</a>    }
-<a href=#646 id=646 data-nosnippet>646</a>
-<a href=#647 id=647 data-nosnippet>647</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, %p2_port, <span class="question-mark">?</span>many, <span class="question-mark">?</span>server_hint))]
-<a href=#648 id=648 data-nosnippet>648</a>    </span><span class="kw">fn </span>e2o_connect(
-<a href=#649 id=649 data-nosnippet>649</a>        p1: <span class="kw-2">&amp;</span><span class="self">Self</span>::External,
-<a href=#650 id=650 data-nosnippet>650</a>        p1_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::External <span class="kw">as </span>Node&gt;::Port,
-<a href=#651 id=651 data-nosnippet>651</a>        p2: <span class="kw-2">&amp;</span><span class="self">Self</span>::Process,
-<a href=#652 id=652 data-nosnippet>652</a>        p2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Process <span class="kw">as </span>Node&gt;::Port,
-<a href=#653 id=653 data-nosnippet>653</a>        many: bool,
-<a href=#654 id=654 data-nosnippet>654</a>        server_hint: NetworkHint,
-<a href=#655 id=655 data-nosnippet>655</a>    ) -&gt; Box&lt;<span class="kw">dyn </span>FnOnce()&gt; {
-<a href=#656 id=656 data-nosnippet>656</a>        <span class="kw">let </span>serialized = <span class="macro">format!</span>(
-<a href=#657 id=657 data-nosnippet>657</a>            <span class="string">"e2o_connect {}:{p1_port:?} -&gt; {}:{p2_port:?}"</span>,
-<a href=#658 id=658 data-nosnippet>658</a>            p1.name, p2.name
-<a href=#659 id=659 data-nosnippet>659</a>        );
-<a href=#660 id=660 data-nosnippet>660</a>
-<a href=#661 id=661 data-nosnippet>661</a>        Box::new(<span class="kw">move </span>|| {
-<a href=#662 id=662 data-nosnippet>662</a>            <span class="macro">trace!</span>(name: <span class="string">"e2o_connect thunk"</span>, %serialized);
-<a href=#663 id=663 data-nosnippet>663</a>        })
-<a href=#664 id=664 data-nosnippet>664</a>    }
-<a href=#665 id=665 data-nosnippet>665</a>
-<a href=#666 id=666 data-nosnippet>666</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, %p2_port, %shared_handle))]
-<a href=#667 id=667 data-nosnippet>667</a>    </span><span class="kw">fn </span>o2e_sink(
-<a href=#668 id=668 data-nosnippet>668</a>        p1: <span class="kw-2">&amp;</span><span class="self">Self</span>::Process,
-<a href=#669 id=669 data-nosnippet>669</a>        p1_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Process <span class="kw">as </span>Node&gt;::Port,
-<a href=#670 id=670 data-nosnippet>670</a>        p2: <span class="kw-2">&amp;</span><span class="self">Self</span>::External,
-<a href=#671 id=671 data-nosnippet>671</a>        p2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::External <span class="kw">as </span>Node&gt;::Port,
-<a href=#672 id=672 data-nosnippet>672</a>        shared_handle: String,
-<a href=#673 id=673 data-nosnippet>673</a>    ) -&gt; syn::Expr {
-<a href=#674 id=674 data-nosnippet>674</a>        <span class="kw">let </span>sink_ident = syn::Ident::new(
-<a href=#675 id=675 data-nosnippet>675</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_{}_sink"</span>, <span class="kw-2">&amp;</span>shared_handle),
-<a href=#676 id=676 data-nosnippet>676</a>            Span::call_site(),
-<a href=#677 id=677 data-nosnippet>677</a>        );
-<a href=#678 id=678 data-nosnippet>678</a>        <span class="macro">parse_quote!</span>(#sink_ident)
-<a href=#679 id=679 data-nosnippet>679</a>    }
-<a href=#680 id=680 data-nosnippet>680</a>
-<a href=#681 id=681 data-nosnippet>681</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%of_cluster))]
-<a href=#682 id=682 data-nosnippet>682</a>    </span><span class="kw">fn </span>cluster_ids(
-<a href=#683 id=683 data-nosnippet>683</a>        of_cluster: LocationKey,
-<a href=#684 id=684 data-nosnippet>684</a>    ) -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[TaglessMemberId], ()&gt; + Clone + <span class="lifetime">'a </span>{
-<a href=#685 id=685 data-nosnippet>685</a>        cluster_ids()
-<a href=#686 id=686 data-nosnippet>686</a>    }
-<a href=#687 id=687 data-nosnippet>687</a>
-<a href=#688 id=688 data-nosnippet>688</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all)]
-<a href=#689 id=689 data-nosnippet>689</a>    </span><span class="kw">fn </span>cluster_self_id() -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, TaglessMemberId, ()&gt; + Clone + <span class="lifetime">'a </span>{
-<a href=#690 id=690 data-nosnippet>690</a>        cluster_self_id()
-<a href=#691 id=691 data-nosnippet>691</a>    }
-<a href=#692 id=692 data-nosnippet>692</a>
-<a href=#693 id=693 data-nosnippet>693</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(<span class="question-mark">?</span>location_id))]
-<a href=#694 id=694 data-nosnippet>694</a>    </span><span class="kw">fn </span>cluster_membership_stream(
-<a href=#695 id=695 data-nosnippet>695</a>        location_id: <span class="kw-2">&amp;</span>LocationId,
-<a href=#696 id=696 data-nosnippet>696</a>    ) -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, Box&lt;<span class="kw">dyn </span>Stream&lt;Item = (TaglessMemberId, MembershipEvent)&gt; + Unpin&gt;, ()&gt;
-<a href=#697 id=697 data-nosnippet>697</a>    {
-<a href=#698 id=698 data-nosnippet>698</a>        cluster_membership_stream(location_id)
-<a href=#699 id=699 data-nosnippet>699</a>    }
-<a href=#700 id=700 data-nosnippet>700</a>}
-<a href=#701 id=701 data-nosnippet>701</a>
-<a href=#702 id=702 data-nosnippet>702</a><span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, ret, fields(%name_hint, %location))]
-<a href=#703 id=703 data-nosnippet>703</a></span><span class="kw">fn </span>get_ecs_image_name(name_hint: <span class="kw-2">&amp;</span>str, location: LocationKey) -&gt; String {
-<a href=#704 id=704 data-nosnippet>704</a>    <span class="kw">let </span>name_hint = name_hint
-<a href=#705 id=705 data-nosnippet>705</a>        .split(<span class="string">"::"</span>)
-<a href=#706 id=706 data-nosnippet>706</a>        .last()
-<a href=#707 id=707 data-nosnippet>707</a>        .unwrap()
-<a href=#708 id=708 data-nosnippet>708</a>        .to_ascii_lowercase()
-<a href=#709 id=709 data-nosnippet>709</a>        .replace(<span class="string">"."</span>, <span class="string">"-"</span>)
-<a href=#710 id=710 data-nosnippet>710</a>        .replace(<span class="string">"_"</span>, <span class="string">"-"</span>)
-<a href=#711 id=711 data-nosnippet>711</a>        .replace(<span class="string">"::"</span>, <span class="string">"-"</span>);
-<a href=#712 id=712 data-nosnippet>712</a>
-<a href=#713 id=713 data-nosnippet>713</a>    <span class="macro">format!</span>(<span class="string">"hy-{name_hint}-{location}"</span>)
-<a href=#714 id=714 data-nosnippet>714</a>}
-<a href=#715 id=715 data-nosnippet>715</a>
-<a href=#716 id=716 data-nosnippet>716</a><span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, ret, fields(%image_name, <span class="question-mark">?</span>instance))]
-<a href=#717 id=717 data-nosnippet>717</a></span><span class="kw">fn </span>get_ecs_container_name(image_name: <span class="kw-2">&amp;</span>str, instance: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; String {
-<a href=#718 id=718 data-nosnippet>718</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(instance) = instance {
-<a href=#719 id=719 data-nosnippet>719</a>        <span class="macro">format!</span>(<span class="string">"{image_name}-{instance}"</span>)
-<a href=#720 id=720 data-nosnippet>720</a>    } <span class="kw">else </span>{
-<a href=#721 id=721 data-nosnippet>721</a>        image_name.to_owned()
-<a href=#722 id=722 data-nosnippet>722</a>    }
-<a href=#723 id=723 data-nosnippet>723</a>}
-<a href=#724 id=724 data-nosnippet>724</a><span class="doccomment">/// Represents a Process running in an ecs deployment
-<a href=#725 id=725 data-nosnippet>725</a></span><span class="attr">#[derive(Clone)]
-<a href=#726 id=726 data-nosnippet>726</a></span><span class="kw">pub struct </span>EcsDeployProcessSpec;
-<a href=#727 id=727 data-nosnippet>727</a>
-<a href=#728 id=728 data-nosnippet>728</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; ProcessSpec&lt;<span class="lifetime">'a</span>, EcsDeploy&gt; <span class="kw">for </span>EcsDeployProcessSpec {
-<a href=#729 id=729 data-nosnippet>729</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%id, %name_hint))]
-<a href=#730 id=730 data-nosnippet>730</a>    </span><span class="kw">fn </span>build(<span class="self">self</span>, id: LocationKey, name_hint: <span class="kw-2">&amp;</span><span class="lifetime">'_ </span>str) -&gt; &lt;EcsDeploy <span class="kw">as </span>Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;::Process {
-<a href=#731 id=731 data-nosnippet>731</a>        EcsDeployProcess {
-<a href=#732 id=732 data-nosnippet>732</a>            id,
-<a href=#733 id=733 data-nosnippet>733</a>            name: get_ecs_image_name(name_hint, id),
-<a href=#734 id=734 data-nosnippet>734</a>            next_port: Rc::new(RefCell::new(<span class="number">1000</span>)),
-<a href=#735 id=735 data-nosnippet>735</a>            exposed_ports: Rc::new(RefCell::new(HashMap::new())),
-<a href=#736 id=736 data-nosnippet>736</a>            trybuild_config: Rc::new(RefCell::new(<span class="prelude-val">None</span>)),
-<a href=#737 id=737 data-nosnippet>737</a>        }
-<a href=#738 id=738 data-nosnippet>738</a>    }
-<a href=#739 id=739 data-nosnippet>739</a>}
-<a href=#740 id=740 data-nosnippet>740</a>
-<a href=#741 id=741 data-nosnippet>741</a><span class="doccomment">/// Represents a Cluster running across `count` ecs tasks.
-<a href=#742 id=742 data-nosnippet>742</a></span><span class="attr">#[derive(Clone)]
-<a href=#743 id=743 data-nosnippet>743</a></span><span class="kw">pub struct </span>EcsDeployClusterSpec {
-<a href=#744 id=744 data-nosnippet>744</a>    count: usize,
-<a href=#745 id=745 data-nosnippet>745</a>}
-<a href=#746 id=746 data-nosnippet>746</a>
-<a href=#747 id=747 data-nosnippet>747</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; ClusterSpec&lt;<span class="lifetime">'a</span>, EcsDeploy&gt; <span class="kw">for </span>EcsDeployClusterSpec {
-<a href=#748 id=748 data-nosnippet>748</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%id, %name_hint))]
-<a href=#749 id=749 data-nosnippet>749</a>    </span><span class="kw">fn </span>build(<span class="self">self</span>, id: LocationKey, name_hint: <span class="kw-2">&amp;</span>str) -&gt; &lt;EcsDeploy <span class="kw">as </span>Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;::Cluster {
-<a href=#750 id=750 data-nosnippet>750</a>        EcsDeployCluster {
-<a href=#751 id=751 data-nosnippet>751</a>            id,
-<a href=#752 id=752 data-nosnippet>752</a>            name: get_ecs_image_name(name_hint, id),
-<a href=#753 id=753 data-nosnippet>753</a>            next_port: Rc::new(RefCell::new(<span class="number">1000</span>)),
-<a href=#754 id=754 data-nosnippet>754</a>            count: <span class="self">self</span>.count,
-<a href=#755 id=755 data-nosnippet>755</a>            trybuild_config: Rc::new(RefCell::new(<span class="prelude-val">None</span>)),
-<a href=#756 id=756 data-nosnippet>756</a>        }
-<a href=#757 id=757 data-nosnippet>757</a>    }
-<a href=#758 id=758 data-nosnippet>758</a>}
-<a href=#759 id=759 data-nosnippet>759</a>
-<a href=#760 id=760 data-nosnippet>760</a><span class="doccomment">/// Represents an external process outside of the management of hydro deploy.
-<a href=#761 id=761 data-nosnippet>761</a></span><span class="kw">pub struct </span>EcsDeployExternalSpec {
-<a href=#762 id=762 data-nosnippet>762</a>    name: String,
-<a href=#763 id=763 data-nosnippet>763</a>}
-<a href=#764 id=764 data-nosnippet>764</a>
-<a href=#765 id=765 data-nosnippet>765</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; ExternalSpec&lt;<span class="lifetime">'a</span>, EcsDeploy&gt; <span class="kw">for </span>EcsDeployExternalSpec {
-<a href=#766 id=766 data-nosnippet>766</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%id, %name_hint))]
-<a href=#767 id=767 data-nosnippet>767</a>    </span><span class="kw">fn </span>build(<span class="self">self</span>, id: LocationKey, name_hint: <span class="kw-2">&amp;</span>str) -&gt; &lt;EcsDeploy <span class="kw">as </span>Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;::External {
-<a href=#768 id=768 data-nosnippet>768</a>        EcsDeployExternal {
-<a href=#769 id=769 data-nosnippet>769</a>            name: <span class="self">self</span>.name,
-<a href=#770 id=770 data-nosnippet>770</a>            next_port: Rc::new(RefCell::new(<span class="number">10000</span>)),
-<a href=#771 id=771 data-nosnippet>771</a>        }
-<a href=#772 id=772 data-nosnippet>772</a>    }
-<a href=#773 id=773 data-nosnippet>773</a>}
+<a href=#644 id=644 data-nosnippet>644</a>        <span class="kw">let </span>create_expr = deploy_containerized_external_sink_source_ident(bind_addr, socket_ident);
+<a href=#645 id=645 data-nosnippet>645</a>
+<a href=#646 id=646 data-nosnippet>646</a>        extra_stmts.push(<span class="macro">syn::parse_quote!</span> {
+<a href=#647 id=647 data-nosnippet>647</a>            <span class="kw">let </span>(#sink_ident, #source_ident) = (#create_expr).split();
+<a href=#648 id=648 data-nosnippet>648</a>        });
+<a href=#649 id=649 data-nosnippet>649</a>
+<a href=#650 id=650 data-nosnippet>650</a>        <span class="macro">parse_quote!</span>(#source_ident)
+<a href=#651 id=651 data-nosnippet>651</a>    }
+<a href=#652 id=652 data-nosnippet>652</a>
+<a href=#653 id=653 data-nosnippet>653</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, %p2_port, <span class="question-mark">?</span>many, <span class="question-mark">?</span>server_hint))]
+<a href=#654 id=654 data-nosnippet>654</a>    </span><span class="kw">fn </span>e2o_connect(
+<a href=#655 id=655 data-nosnippet>655</a>        p1: <span class="kw-2">&amp;</span><span class="self">Self</span>::External,
+<a href=#656 id=656 data-nosnippet>656</a>        p1_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::External <span class="kw">as </span>Node&gt;::Port,
+<a href=#657 id=657 data-nosnippet>657</a>        p2: <span class="kw-2">&amp;</span><span class="self">Self</span>::Process,
+<a href=#658 id=658 data-nosnippet>658</a>        p2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Process <span class="kw">as </span>Node&gt;::Port,
+<a href=#659 id=659 data-nosnippet>659</a>        many: bool,
+<a href=#660 id=660 data-nosnippet>660</a>        server_hint: NetworkHint,
+<a href=#661 id=661 data-nosnippet>661</a>    ) -&gt; Box&lt;<span class="kw">dyn </span>FnOnce()&gt; {
+<a href=#662 id=662 data-nosnippet>662</a>        <span class="kw">let </span>serialized = <span class="macro">format!</span>(
+<a href=#663 id=663 data-nosnippet>663</a>            <span class="string">"e2o_connect {}:{p1_port:?} -&gt; {}:{p2_port:?}"</span>,
+<a href=#664 id=664 data-nosnippet>664</a>            p1.name, p2.name
+<a href=#665 id=665 data-nosnippet>665</a>        );
+<a href=#666 id=666 data-nosnippet>666</a>
+<a href=#667 id=667 data-nosnippet>667</a>        Box::new(<span class="kw">move </span>|| {
+<a href=#668 id=668 data-nosnippet>668</a>            <span class="macro">trace!</span>(name: <span class="string">"e2o_connect thunk"</span>, %serialized);
+<a href=#669 id=669 data-nosnippet>669</a>        })
+<a href=#670 id=670 data-nosnippet>670</a>    }
+<a href=#671 id=671 data-nosnippet>671</a>
+<a href=#672 id=672 data-nosnippet>672</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, %p2_port, %shared_handle))]
+<a href=#673 id=673 data-nosnippet>673</a>    </span><span class="kw">fn </span>o2e_sink(
+<a href=#674 id=674 data-nosnippet>674</a>        p1: <span class="kw-2">&amp;</span><span class="self">Self</span>::Process,
+<a href=#675 id=675 data-nosnippet>675</a>        p1_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::Process <span class="kw">as </span>Node&gt;::Port,
+<a href=#676 id=676 data-nosnippet>676</a>        p2: <span class="kw-2">&amp;</span><span class="self">Self</span>::External,
+<a href=#677 id=677 data-nosnippet>677</a>        p2_port: <span class="kw-2">&amp;</span>&lt;<span class="self">Self</span>::External <span class="kw">as </span>Node&gt;::Port,
+<a href=#678 id=678 data-nosnippet>678</a>        shared_handle: String,
+<a href=#679 id=679 data-nosnippet>679</a>    ) -&gt; syn::Expr {
+<a href=#680 id=680 data-nosnippet>680</a>        <span class="kw">let </span>sink_ident = syn::Ident::new(
+<a href=#681 id=681 data-nosnippet>681</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"__hydro_deploy_{}_sink"</span>, <span class="kw-2">&amp;</span>shared_handle),
+<a href=#682 id=682 data-nosnippet>682</a>            Span::call_site(),
+<a href=#683 id=683 data-nosnippet>683</a>        );
+<a href=#684 id=684 data-nosnippet>684</a>        <span class="macro">parse_quote!</span>(#sink_ident)
+<a href=#685 id=685 data-nosnippet>685</a>    }
+<a href=#686 id=686 data-nosnippet>686</a>
+<a href=#687 id=687 data-nosnippet>687</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%of_cluster))]
+<a href=#688 id=688 data-nosnippet>688</a>    </span><span class="kw">fn </span>cluster_ids(
+<a href=#689 id=689 data-nosnippet>689</a>        of_cluster: LocationKey,
+<a href=#690 id=690 data-nosnippet>690</a>    ) -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[TaglessMemberId], ()&gt; + Clone + <span class="lifetime">'a </span>{
+<a href=#691 id=691 data-nosnippet>691</a>        cluster_ids()
+<a href=#692 id=692 data-nosnippet>692</a>    }
+<a href=#693 id=693 data-nosnippet>693</a>
+<a href=#694 id=694 data-nosnippet>694</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all)]
+<a href=#695 id=695 data-nosnippet>695</a>    </span><span class="kw">fn </span>cluster_self_id() -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, TaglessMemberId, ()&gt; + Clone + <span class="lifetime">'a </span>{
+<a href=#696 id=696 data-nosnippet>696</a>        cluster_self_id()
+<a href=#697 id=697 data-nosnippet>697</a>    }
+<a href=#698 id=698 data-nosnippet>698</a>
+<a href=#699 id=699 data-nosnippet>699</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(<span class="question-mark">?</span>location_id))]
+<a href=#700 id=700 data-nosnippet>700</a>    </span><span class="kw">fn </span>cluster_membership_stream(
+<a href=#701 id=701 data-nosnippet>701</a>        _env: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::InstantiateEnv,
+<a href=#702 id=702 data-nosnippet>702</a>        _at_location: <span class="kw-2">&amp;</span>LocationId,
+<a href=#703 id=703 data-nosnippet>703</a>        location_id: <span class="kw-2">&amp;</span>LocationId,
+<a href=#704 id=704 data-nosnippet>704</a>    ) -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, Box&lt;<span class="kw">dyn </span>Stream&lt;Item = (TaglessMemberId, MembershipEvent)&gt; + Unpin&gt;, ()&gt;
+<a href=#705 id=705 data-nosnippet>705</a>    {
+<a href=#706 id=706 data-nosnippet>706</a>        cluster_membership_stream(location_id)
+<a href=#707 id=707 data-nosnippet>707</a>    }
+<a href=#708 id=708 data-nosnippet>708</a>}
+<a href=#709 id=709 data-nosnippet>709</a>
+<a href=#710 id=710 data-nosnippet>710</a><span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, ret, fields(%name_hint, %location))]
+<a href=#711 id=711 data-nosnippet>711</a></span><span class="kw">fn </span>get_ecs_image_name(name_hint: <span class="kw-2">&amp;</span>str, location: LocationKey) -&gt; String {
+<a href=#712 id=712 data-nosnippet>712</a>    <span class="kw">let </span>name_hint = name_hint
+<a href=#713 id=713 data-nosnippet>713</a>        .split(<span class="string">"::"</span>)
+<a href=#714 id=714 data-nosnippet>714</a>        .last()
+<a href=#715 id=715 data-nosnippet>715</a>        .unwrap()
+<a href=#716 id=716 data-nosnippet>716</a>        .to_ascii_lowercase()
+<a href=#717 id=717 data-nosnippet>717</a>        .replace(<span class="string">"."</span>, <span class="string">"-"</span>)
+<a href=#718 id=718 data-nosnippet>718</a>        .replace(<span class="string">"_"</span>, <span class="string">"-"</span>)
+<a href=#719 id=719 data-nosnippet>719</a>        .replace(<span class="string">"::"</span>, <span class="string">"-"</span>);
+<a href=#720 id=720 data-nosnippet>720</a>
+<a href=#721 id=721 data-nosnippet>721</a>    <span class="macro">format!</span>(<span class="string">"hy-{name_hint}-{location}"</span>)
+<a href=#722 id=722 data-nosnippet>722</a>}
+<a href=#723 id=723 data-nosnippet>723</a>
+<a href=#724 id=724 data-nosnippet>724</a><span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, ret, fields(%image_name, <span class="question-mark">?</span>instance))]
+<a href=#725 id=725 data-nosnippet>725</a></span><span class="kw">fn </span>get_ecs_container_name(image_name: <span class="kw-2">&amp;</span>str, instance: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; String {
+<a href=#726 id=726 data-nosnippet>726</a>    <span class="kw">if let </span><span class="prelude-val">Some</span>(instance) = instance {
+<a href=#727 id=727 data-nosnippet>727</a>        <span class="macro">format!</span>(<span class="string">"{image_name}-{instance}"</span>)
+<a href=#728 id=728 data-nosnippet>728</a>    } <span class="kw">else </span>{
+<a href=#729 id=729 data-nosnippet>729</a>        image_name.to_owned()
+<a href=#730 id=730 data-nosnippet>730</a>    }
+<a href=#731 id=731 data-nosnippet>731</a>}
+<a href=#732 id=732 data-nosnippet>732</a><span class="doccomment">/// Represents a Process running in an ecs deployment
+<a href=#733 id=733 data-nosnippet>733</a></span><span class="attr">#[derive(Clone)]
+<a href=#734 id=734 data-nosnippet>734</a></span><span class="kw">pub struct </span>EcsDeployProcessSpec;
+<a href=#735 id=735 data-nosnippet>735</a>
+<a href=#736 id=736 data-nosnippet>736</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; ProcessSpec&lt;<span class="lifetime">'a</span>, EcsDeploy&gt; <span class="kw">for </span>EcsDeployProcessSpec {
+<a href=#737 id=737 data-nosnippet>737</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%id, %name_hint))]
+<a href=#738 id=738 data-nosnippet>738</a>    </span><span class="kw">fn </span>build(<span class="self">self</span>, id: LocationKey, name_hint: <span class="kw-2">&amp;</span><span class="lifetime">'_ </span>str) -&gt; &lt;EcsDeploy <span class="kw">as </span>Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;::Process {
+<a href=#739 id=739 data-nosnippet>739</a>        EcsDeployProcess {
+<a href=#740 id=740 data-nosnippet>740</a>            id,
+<a href=#741 id=741 data-nosnippet>741</a>            name: get_ecs_image_name(name_hint, id),
+<a href=#742 id=742 data-nosnippet>742</a>            next_port: Rc::new(RefCell::new(<span class="number">1000</span>)),
+<a href=#743 id=743 data-nosnippet>743</a>            exposed_ports: Rc::new(RefCell::new(HashMap::new())),
+<a href=#744 id=744 data-nosnippet>744</a>            trybuild_config: Rc::new(RefCell::new(<span class="prelude-val">None</span>)),
+<a href=#745 id=745 data-nosnippet>745</a>        }
+<a href=#746 id=746 data-nosnippet>746</a>    }
+<a href=#747 id=747 data-nosnippet>747</a>}
+<a href=#748 id=748 data-nosnippet>748</a>
+<a href=#749 id=749 data-nosnippet>749</a><span class="doccomment">/// Represents a Cluster running across `count` ecs tasks.
+<a href=#750 id=750 data-nosnippet>750</a></span><span class="attr">#[derive(Clone)]
+<a href=#751 id=751 data-nosnippet>751</a></span><span class="kw">pub struct </span>EcsDeployClusterSpec {
+<a href=#752 id=752 data-nosnippet>752</a>    count: usize,
+<a href=#753 id=753 data-nosnippet>753</a>}
+<a href=#754 id=754 data-nosnippet>754</a>
+<a href=#755 id=755 data-nosnippet>755</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; ClusterSpec&lt;<span class="lifetime">'a</span>, EcsDeploy&gt; <span class="kw">for </span>EcsDeployClusterSpec {
+<a href=#756 id=756 data-nosnippet>756</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%id, %name_hint))]
+<a href=#757 id=757 data-nosnippet>757</a>    </span><span class="kw">fn </span>build(<span class="self">self</span>, id: LocationKey, name_hint: <span class="kw-2">&amp;</span>str) -&gt; &lt;EcsDeploy <span class="kw">as </span>Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;::Cluster {
+<a href=#758 id=758 data-nosnippet>758</a>        EcsDeployCluster {
+<a href=#759 id=759 data-nosnippet>759</a>            id,
+<a href=#760 id=760 data-nosnippet>760</a>            name: get_ecs_image_name(name_hint, id),
+<a href=#761 id=761 data-nosnippet>761</a>            next_port: Rc::new(RefCell::new(<span class="number">1000</span>)),
+<a href=#762 id=762 data-nosnippet>762</a>            count: <span class="self">self</span>.count,
+<a href=#763 id=763 data-nosnippet>763</a>            trybuild_config: Rc::new(RefCell::new(<span class="prelude-val">None</span>)),
+<a href=#764 id=764 data-nosnippet>764</a>        }
+<a href=#765 id=765 data-nosnippet>765</a>    }
+<a href=#766 id=766 data-nosnippet>766</a>}
+<a href=#767 id=767 data-nosnippet>767</a>
+<a href=#768 id=768 data-nosnippet>768</a><span class="doccomment">/// Represents an external process outside of the management of hydro deploy.
+<a href=#769 id=769 data-nosnippet>769</a></span><span class="kw">pub struct </span>EcsDeployExternalSpec {
+<a href=#770 id=770 data-nosnippet>770</a>    name: String,
+<a href=#771 id=771 data-nosnippet>771</a>}
+<a href=#772 id=772 data-nosnippet>772</a>
+<a href=#773 id=773 data-nosnippet>773</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>&gt; ExternalSpec&lt;<span class="lifetime">'a</span>, EcsDeploy&gt; <span class="kw">for </span>EcsDeployExternalSpec {
+<a href=#774 id=774 data-nosnippet>774</a>    <span class="attr">#[instrument(level = <span class="string">"trace"</span>, skip_all, fields(%id, %name_hint))]
+<a href=#775 id=775 data-nosnippet>775</a>    </span><span class="kw">fn </span>build(<span class="self">self</span>, id: LocationKey, name_hint: <span class="kw-2">&amp;</span>str) -&gt; &lt;EcsDeploy <span class="kw">as </span>Deploy&lt;<span class="lifetime">'a</span>&gt;&gt;::External {
+<a href=#776 id=776 data-nosnippet>776</a>        EcsDeployExternal {
+<a href=#777 id=777 data-nosnippet>777</a>            name: <span class="self">self</span>.name,
+<a href=#778 id=778 data-nosnippet>778</a>            next_port: Rc::new(RefCell::new(<span class="number">10000</span>)),
+<a href=#779 id=779 data-nosnippet>779</a>        }
+<a href=#780 id=780 data-nosnippet>780</a>    }
+<a href=#781 id=781 data-nosnippet>781</a>}
 </code></pre></div></section></main></body></html>

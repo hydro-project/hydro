@@ -1046,7 +1046,7 @@
 <a href=#1046 id=1046 data-nosnippet>1046</a>                    HydroSource::ExternalNetwork() =&gt; <span class="string">"external_network()"</span>.to_owned(),
 <a href=#1047 id=1047 data-nosnippet>1047</a>                    HydroSource::Iter(expr) =&gt; <span class="macro">format!</span>(<span class="string">"source_iter({})"</span>, expr),
 <a href=#1048 id=1048 data-nosnippet>1048</a>                    HydroSource::Spin() =&gt; <span class="string">"spin()"</span>.to_owned(),
-<a href=#1049 id=1049 data-nosnippet>1049</a>                    HydroSource::ClusterMembers(location_id) =&gt; {
+<a href=#1049 id=1049 data-nosnippet>1049</a>                    HydroSource::ClusterMembers(location_id, <span class="kw">_</span>) =&gt; {
 <a href=#1050 id=1050 data-nosnippet>1050</a>                        <span class="macro">format!</span>(
 <a href=#1051 id=1051 data-nosnippet>1051</a>                            <span class="string">"source_stream(cluster_membership_stream({:?}))"</span>,
 <a href=#1052 id=1052 data-nosnippet>1052</a>                            location_id

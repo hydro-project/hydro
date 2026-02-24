@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["m2m_broadcast"],"struct":["Dst","Src"]};

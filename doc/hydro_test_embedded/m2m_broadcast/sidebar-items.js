@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["m2m_receiver","m2m_sender"],"mod":["m2m_receiver","m2m_sender"]};

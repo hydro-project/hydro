@@ -382,7 +382,7 @@
 <a href=#382 id=382 data-nosnippet>382</a>    }
 <a href=#383 id=383 data-nosnippet>383</a>}
 <a href=#384 id=384 data-nosnippet>384</a>
-<a href=#385 id=385 data-nosnippet>385</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L, B: Boundedness&gt; Stream&lt;T, Process&lt;<span class="lifetime">'a</span>, L&gt;, B, TotalOrder, ExactlyOnce&gt; {
+<a href=#385 id=385 data-nosnippet>385</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, L: Location&lt;<span class="lifetime">'a</span>&gt; + NoTick, B: Boundedness&gt; Stream&lt;T, L, B, TotalOrder, ExactlyOnce&gt; {
 <a href=#386 id=386 data-nosnippet>386</a>    <span class="doccomment">/// Creates an external output for embedded deployment mode.
 <a href=#387 id=387 data-nosnippet>387</a>    ///
 <a href=#388 id=388 data-nosnippet>388</a>    /// The `name` parameter specifies the name of the field in the generated

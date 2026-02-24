@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["m2o_send"],"struct":["Dst","Src"]};
