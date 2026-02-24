@@ -50,7 +50,8 @@ pub struct NetworkResources {
 #[derive(Debug)]
 pub struct AwsNetwork {
     pub region: String,
-    pub existing_network: Mutex<Option<NetworkResources>>,
+    pub existing_network_key: OnceLock<NetworkResources>,
+    pub existing_network_id: OnceLock<NetworkResources>,
     id: String,
 }
 
@@ -58,7 +59,8 @@ impl AwsNetwork {
     pub fn new(region: impl Into<String>, existing_vpc: Option<NetworkResources>) -> Arc<Self> {
         Arc::new(Self {
             region: region.into(),
-            existing_network: Mutex::new(existing_vpc),
+            existing_network_key: OnceLock::new(),
+            existing_network_id: existing_vpc.map(From::from).unwrap_or_default(),
             id: nanoid!(8, &TERRAFORM_ALPHABET),
         })
     }
@@ -87,32 +89,27 @@ impl AwsNetwork {
         let subnet_key = format!("{vpc_network}-subnet");
         let sg_key = format!("{vpc_network}-default-sg");
 
-        if let Some(existing) = self.existing_network.lock().unwrap().clone() {
-            // Resolve an existing resource: reuse if already in terraform resources,
-            // otherwise create a data source lookup.
+        if let Some(existing) = self.existing_network_id.get() {
             let mut resolve = |resource_type: &str, existing_id: &str, data_key: String| {
-                if resource_batch
+                resource_batch
                     .terraform
-                    .resource
-                    .get(resource_type)
-                    .is_some_and(|map| map.contains_key(existing_id))
-                {
-                    format!("{resource_type}.{existing_id}")
-                } else {
-                    resource_batch
-                        .terraform
-                        .data
-                        .entry(resource_type.to_owned())
-                        .or_default()
-                        .insert(data_key.clone(), json!({ "id": existing_id }));
-                    format!("data.{resource_type}.{data_key}")
-                }
+                    .data
+                    .entry(resource_type.to_owned())
+                    .or_default()
+                    .insert(data_key.clone(), json!({ "id": existing_id }));
+                format!("data.{resource_type}.{data_key}")
             };
 
             NetworkResources {
                 vpc: resolve("aws_vpc", &existing.vpc, vpc_network),
                 subnet: resolve("aws_subnet", &existing.subnet, subnet_key),
                 security_group: resolve("aws_security_group", &existing.security_group, sg_key),
+            }
+        } else if let Some(existing) = self.existing_network_key.get() {
+            NetworkResources {
+                vpc: format!("aws_vpc.{}", existing.vpc),
+                subnet: format!("aws_subnet.{}", existing.subnet),
+                security_group: format!("aws_security_group.{}", existing.security_group),
             }
         } else {
             resource_batch
@@ -302,7 +299,7 @@ impl AwsNetwork {
                 },
             );
 
-            *self.existing_network.lock().unwrap() = Some(NetworkResources {
+            let _ = self.existing_network_key.set(NetworkResources {
                 vpc: vpc_network,
                 subnet: subnet_key,
                 security_group: sg_key,
@@ -318,7 +315,7 @@ impl AwsNetwork {
             outputs.get(&format!("hydro-network-{}-subnet-id", self.id)),
             outputs.get(&format!("hydro-network-{}-sg-id", self.id)),
         ) {
-            *self.existing_network.lock().unwrap() = Some(NetworkResources {
+            let _ = self.existing_network_id.set(NetworkResources {
                 vpc: vpc.value.clone(),
                 subnet: subnet.value.clone(),
                 security_group: sg.value.clone(),
