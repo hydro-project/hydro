@@ -1164,10 +1164,6 @@ impl HydroNode {
             HydroNode::Sort {
                 input: inner,
                 metadata,
-            }
-            | HydroNode::SortKeyed {
-                input: inner,
-                metadata,
             } => build_simple_transform(TransformParams {
                 structure,
                 seen_tees,

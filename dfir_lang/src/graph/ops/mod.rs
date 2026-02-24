@@ -330,7 +330,6 @@ declare_ops![
     spin::SPIN,
     sort::SORT,
     sort_by_key::SORT_BY_KEY,
-    sort_keyed::SORT_KEYED,
     source_file::SOURCE_FILE,
     source_interval::SOURCE_INTERVAL,
     source_iter::SOURCE_ITER,

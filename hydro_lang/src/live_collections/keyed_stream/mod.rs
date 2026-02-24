@@ -2164,22 +2164,10 @@ where
     /// ```
     pub fn sort(self) -> KeyedStream<K, V, L, Bounded, TotalOrder, R>
     where
+        K: Ord,
         V: Ord,
     {
-        KeyedStream::new(
-            self.location.clone(),
-            HydroNode::SortKeyed {
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: self.location.new_node_metadata(KeyedStream::<
-                    K,
-                    V,
-                    L,
-                    Bounded,
-                    TotalOrder,
-                    R,
-                >::collection_kind()),
-            },
-        )
+        self.entries().sort().into_keyed()
     }
 
     /// Produces a new keyed stream that combines the groups of the inputs by first emitting the
