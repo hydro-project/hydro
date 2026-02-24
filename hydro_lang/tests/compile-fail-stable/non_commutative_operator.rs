@@ -1,0 +1,1 @@
+../compile-fail/non_commutative_operator.rs

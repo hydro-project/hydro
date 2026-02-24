@@ -150,6 +150,7 @@ impl DfirBuilder for SimBuilder {
                 CollectionKind::Stream {
                     order,
                     retry: StreamRetry::ExactlyOnce,
+                    element_type,
                     ..
                 } => {
                     debug_assert!(in_location.is_top_level());
@@ -188,7 +189,7 @@ impl DfirBuilder for SimBuilder {
                                 to_release: None,
                                 output: #hoff_send_ident,
                                 batch_location: (#batch_location, #line, #caret),
-                                format_item_debug: #root::__maybe_debug__!(),
+                                format_item_debug: #root::__maybe_debug__!(#element_type),
                                 _order: std::marker::PhantomData,
                             })
                         ),
@@ -213,6 +214,8 @@ impl DfirBuilder for SimBuilder {
                 CollectionKind::KeyedStream {
                     value_order,
                     value_retry: StreamRetry::ExactlyOnce,
+                    key_type,
+                    value_type,
                     ..
                 } => {
                     debug_assert!(in_location.is_top_level());
@@ -251,7 +254,7 @@ impl DfirBuilder for SimBuilder {
                                 to_release: None,
                                 output: #hoff_send_ident,
                                 batch_location: (#batch_location, #line, #caret),
-                                format_item_debug: #root::__maybe_debug__!(),
+                                format_item_debug: #root::__maybe_debug__!((#key_type, #value_type)),
                                 _order: std::marker::PhantomData,
                             })
                         ),
@@ -273,7 +276,7 @@ impl DfirBuilder for SimBuilder {
                         None,
                     );
                 }
-                CollectionKind::Singleton { .. } => {
+                CollectionKind::Singleton { element_type, .. } => {
                     debug_assert!(in_location.is_top_level());
 
                     let hoff_id = self.next_hoff_id;
@@ -300,7 +303,7 @@ impl DfirBuilder for SimBuilder {
                                 #buffered_ident.clone(),
                                 #hoff_send_ident,
                                 (#batch_location, #line, #caret),
-                                #root::__maybe_debug__!(),
+                                #root::__maybe_debug__!(#element_type),
                             ))
                         ),
                     );
@@ -321,7 +324,11 @@ impl DfirBuilder for SimBuilder {
                         None,
                     );
                 }
-                CollectionKind::KeyedSingleton { .. } => {
+                CollectionKind::KeyedSingleton {
+                    key_type,
+                    value_type,
+                    ..
+                } => {
                     debug_assert!(in_location.is_top_level());
 
                     let hoff_id = self.next_hoff_id;
@@ -348,8 +355,8 @@ impl DfirBuilder for SimBuilder {
                                 #buffered_ident.clone(),
                                 #hoff_send_ident,
                                 (#batch_location, #line, #caret),
-                                #root::__maybe_debug__!(),
-                                #root::__maybe_debug__!(),
+                                #root::__maybe_debug__!(#key_type),
+                                #root::__maybe_debug__!(#value_type),
                             ))
                         ),
                     );
@@ -533,6 +540,7 @@ impl DfirBuilder for SimBuilder {
                     CollectionKind::Stream {
                         order: StreamOrder::NoOrder,
                         retry: StreamRetry::ExactlyOnce,
+                        element_type,
                         ..
                     },
                     CollectionKind::Stream {
@@ -570,7 +578,7 @@ impl DfirBuilder for SimBuilder {
                                 #buffered_ident.clone(),
                                 #hoff_send_ident,
                                 (#assume_location, #line, #caret),
-                                #root::__maybe_debug__!(),
+                                #root::__maybe_debug__!(#element_type),
                             ))
                         ),
                     );
@@ -605,6 +613,8 @@ impl DfirBuilder for SimBuilder {
                     CollectionKind::KeyedStream {
                         value_order: StreamOrder::NoOrder,
                         value_retry: StreamRetry::ExactlyOnce,
+                        key_type,
+                        value_type,
                         ..
                     },
                     CollectionKind::KeyedStream {
@@ -642,8 +652,8 @@ impl DfirBuilder for SimBuilder {
                                 #buffered_ident.clone(),
                                 #hoff_send_ident,
                                 (#assume_location, #line, #caret),
-                                #root::__maybe_debug__!(),
-                                #root::__maybe_debug__!(),
+                                #root::__maybe_debug__!(#key_type),
+                                #root::__maybe_debug__!(#value_type),
                             ))
                         ),
                     );
@@ -691,6 +701,7 @@ impl DfirBuilder for SimBuilder {
                     CollectionKind::Stream {
                         order: StreamOrder::NoOrder,
                         retry: StreamRetry::ExactlyOnce,
+                        element_type,
                         ..
                     },
                     CollectionKind::Stream {
@@ -724,7 +735,7 @@ impl DfirBuilder for SimBuilder {
                                 to_release: None,
                                 output: #hoff_send_ident,
                                 location: (#assume_location, #line, #caret),
-                                format_item_debug: #root::__maybe_debug__!(),
+                                format_item_debug: #root::__maybe_debug__!(#element_type),
                             })
                         ),
                     );
@@ -749,6 +760,8 @@ impl DfirBuilder for SimBuilder {
                     CollectionKind::KeyedStream {
                         value_order: StreamOrder::NoOrder,
                         value_retry: StreamRetry::ExactlyOnce,
+                        key_type,
+                        value_type,
                         ..
                     },
                     CollectionKind::KeyedStream {
@@ -782,7 +795,7 @@ impl DfirBuilder for SimBuilder {
                                 to_release: None,
                                 output: #hoff_send_ident,
                                 location: (#assume_location, #line, #caret),
-                                format_item_debug: #root::__maybe_debug__!(),
+                                format_item_debug: #root::__maybe_debug__!((#key_type, #value_type)),
                             })
                         ),
                     );

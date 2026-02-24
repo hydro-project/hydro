@@ -13,8 +13,6 @@ Instead of producing self-contained binaries, embedded mode generates a Rust sou
 - **Custom I/O**: You need to connect Hydro to a transport or runtime that Hydro Deploy doesn't support (DPDK, shared memory, a game loop, etc.).
 - **Library use**: You want to ship a crate that uses Hydro internally but exposes a normal Rust API to consumers.
 
-Embedded mode only supports **local, single-process computation** and **process-to-process (o2o) networking**. Cluster networking, external ports, and other multi-node patterns are not yet available.
-
 When your Hydro program sends data between processes, the generated functions gain additional `network_out` and `network_in` parameters. You wire these up yourself — for example with in-memory channels, Unix sockets, or any transport you like. See [Networking](#networking) below for details.
 
 ## How It Works
@@ -144,9 +142,61 @@ async fn run() {
 The generated function accepts your input streams as `impl Stream<Item = T> + Unpin` parameters and a mutable reference to the `EmbeddedOutputs` struct. It returns a `Dfir` graph that you run with `run_available()` (or tick manually).
 
 
+## Clusters
+
+When a location is a cluster (registered with `with_cluster` in `build.rs`), the generated function receives additional parameters for the cluster's identity and membership information.
+
+### Self ID
+A function generated for a cluster location receives a `__cluster_self_id: &TaglessMemberId` parameter. This tells the running instance which member of the cluster it is. You provide this when you call the generated function:
+
+```rust,ignore
+let member_id = TaglessMemberId::from_raw_id(0);
+let mut flow = my_cluster_fn(&member_id, input, &mut outputs);
+```
+
+### Membership Streams
+When a location (process or cluster) needs to know the members of another cluster — for example, to broadcast to it — the generated function receives an `EmbeddedMembershipStreams` struct parameter. This struct has one field per cluster whose membership is needed, named after that cluster's function name. Each field is a `Stream<Item = (TaglessMemberId, MembershipEvent)>`:
+
+```rust,ignore
+pub mod my_sender {
+    pub struct EmbeddedMembershipStreams<S: Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin> {
+        pub my_receiver: S,
+    }
+}
+```
+
+You provide the membership stream when calling the function. For example, a process that sends to a cluster:
+
+```rust,ignore
+use hydro_lang::location::MembershipEvent;
+use hydro_lang::location::member_id::TaglessMemberId;
+
+let member_id = TaglessMemberId::from_raw_id(0);
+let membership = my_sender::EmbeddedMembershipStreams {
+    my_receiver: futures::stream::iter(vec![(member_id.clone(), MembershipEvent::Joined)]),
+};
+let mut flow = my_sender(membership, input, &mut net_out);
+```
+
+A cluster that sends to another cluster receives both `__cluster_self_id` and the membership struct:
+
+```rust,ignore
+let mut flow = m2m_sender(&src_id, membership, input, &mut net_out);
+```
+
+In `build.rs`, use `with_cluster` instead of `with_process` to register cluster locations:
+
+```rust,ignore
+let cluster = flow.cluster::<MyClusterTag>();
+// ...
+let code = flow
+    .with_cluster(&cluster, "my_cluster_fn")
+    .generate_embedded("my_crate");
+```
+
 ## Networking
 
-Embedded mode supports process-to-process (o2o) networking. When your Hydro program uses `.send()` between two processes, the generated functions get extra parameters so you can wire up the transport yourself.
+When your Hydro program uses `.send()` between locations, the generated functions get extra parameters so you can wire up the transport yourself. Hydro automatically handles serialization — just shuttle the raw bytes between sender and receiver. You must ensure that you are preserving any guarantees of the network protocol specified in the Hydro program. For example, if the channel uses `TCP`, you must ensure that your networking mechanism preserves ordering and exactly-once delivery.
 
 Network channels in embedded mode **must be named**. Use `.name()` on the networking config:
 
@@ -154,7 +204,11 @@ Network channels in embedded mode **must be named**. Use `.name()` on the networ
 input.send(receiver, TCP.fail_stop().bincode().name("messages"))
 ```
 
-The name becomes a field name in the generated structs, so it must be a valid Rust identifier. Consider a two-process program where `Sender` sends to `Receiver` over a channel named `"messages"`. `Sender` gets an `EmbeddedNetworkOut` struct parameter with an `FnMut(Bytes)` field per outgoing channel:
+The name becomes a field name in the generated structs, so it must be a valid Rust identifier.
+
+### Process-to-Process (o2o)
+
+Consider a two-process program where `Sender` sends to `Receiver` over a channel named `"messages"`. `Sender` gets an `EmbeddedNetworkOut` struct parameter with an `FnMut(Bytes)` field per outgoing channel:
 
 ```rust,ignore
 pub mod echo_sender {
@@ -184,4 +238,79 @@ pub fn echo_receiver<'a, S: Stream<Item = Result<BytesMut, io::Error>> + Unpin +
 ) -> Dfir<'a> { ... }
 ```
 
-Hydro automatically handles serialization — just shuttle the raw bytes between sender and receiver. You must ensure that you are preserving any guarantees of the network protocol specified in the Hydro program. For example, if the channel uses `TCP`, you must ensure that your networking mechanism preserves ordering and exactly-once delivery.
+### Cluster Networking
+
+When a cluster is involved in networking, the generated structs become **tagged** with `TaglessMemberId` so you can route messages to and from individual cluster members.
+
+#### Process → Cluster (o2m)
+
+When a process sends to a cluster, the sender's `EmbeddedNetworkOut` fields become `FnMut((TaglessMemberId, Bytes))` — each outgoing message is paired with the target member ID:
+
+```rust,ignore
+pub mod o2m_sender {
+    pub struct EmbeddedNetworkOut<F: FnMut((TaglessMemberId, Bytes))> {
+        pub data: F,
+    }
+}
+```
+
+The receiving cluster's `EmbeddedNetworkIn` fields use untagged `Stream<Item = Result<BytesMut, io::Error>>` since each cluster member only receives its own messages:
+
+```rust,ignore
+pub mod o2m_receiver {
+    pub struct EmbeddedNetworkIn<S: Stream<Item = Result<BytesMut, io::Error>> + Unpin> {
+        pub data: S,
+    }
+}
+```
+
+Your transport layer is responsible for routing: when the sender calls the `FnMut` with `(member_id, bytes)`, you deliver `bytes` to the instance running with that `__cluster_self_id`.
+
+#### Cluster → Process (m2o)
+
+When a cluster sends to a process, the sender's `EmbeddedNetworkOut` fields are untagged `FnMut(Bytes)` since each cluster member just sends its own data:
+
+```rust,ignore
+pub mod m2o_sender {
+    pub struct EmbeddedNetworkOut<F: FnMut(Bytes)> {
+        pub data: F,
+    }
+}
+```
+
+The receiving process's `EmbeddedNetworkIn` fields become `Stream<Item = Result<(TaglessMemberId, BytesMut), io::Error>>` — each incoming message is tagged with the sender's member ID:
+
+```rust,ignore
+pub mod m2o_receiver {
+    pub struct EmbeddedNetworkIn<S: Stream<Item = Result<(TaglessMemberId, BytesMut), io::Error>> + Unpin> {
+        pub data: S,
+    }
+}
+```
+
+Your transport layer must tag each incoming message with the `TaglessMemberId` of the cluster member that sent it.
+
+#### Cluster → Cluster (m2m)
+
+When a cluster sends to another cluster, both sides are tagged. The sender's `EmbeddedNetworkOut` fields are `FnMut((TaglessMemberId, Bytes))` (tagged with the target member ID):
+
+```rust,ignore
+pub mod m2m_sender {
+    pub struct EmbeddedNetworkOut<F: FnMut((TaglessMemberId, Bytes))> {
+        pub data: F,
+    }
+}
+```
+
+The receiver's `EmbeddedNetworkIn` fields are `Stream<Item = Result<(TaglessMemberId, BytesMut), io::Error>>` (tagged with the source member ID):
+
+```rust,ignore
+pub mod m2m_receiver {
+    pub struct EmbeddedNetworkIn<S: Stream<Item = Result<(TaglessMemberId, BytesMut), io::Error>> + Unpin> {
+        pub data: S,
+    }
+}
+```
+
+Your transport layer must handle both directions: route outgoing `(target_id, bytes)` to the correct destination member, and tag incoming messages with the `source_id` of the sender.
+

@@ -8,6 +8,9 @@ edition = { workspace = true }
 repository = { workspace = true }
 license = { workspace = true }
 
+[features]
+stageleft_macro_entrypoint = ["hydro_lang/stageleft_macro_entrypoint"]
+
 [lints]
 workspace = true
 

@@ -519,6 +519,7 @@ expression: built.ir()
                                                                                 input: Source {
                                                                                     source: ClusterMembers(
                                                                                         Cluster(loc1v1),
+                                                                                        Uninit,
                                                                                     ),
                                                                                     metadata: HydroIrMetadata {
                                                                                         location_id: Cluster(loc1v1),
@@ -1037,6 +1038,7 @@ expression: built.ir()
                                                                                                                                             input: Source {
                                                                                                                                                 source: ClusterMembers(
                                                                                                                                                     Cluster(loc2v1),
+                                                                                                                                                    Uninit,
                                                                                                                                                 ),
                                                                                                                                                 metadata: HydroIrMetadata {
                                                                                                                                                     location_id: Cluster(loc1v1),
@@ -2811,6 +2813,7 @@ expression: built.ir()
                                                                                                                                 input: Source {
                                                                                                                                     source: ClusterMembers(
                                                                                                                                         Cluster(loc3v1),
+                                                                                                                                        Uninit,
                                                                                                                                     ),
                                                                                                                                     metadata: HydroIrMetadata {
                                                                                                                                         location_id: Cluster(loc1v1),
@@ -4042,6 +4045,7 @@ expression: built.ir()
                                                                                                                                     input: Source {
                                                                                                                                         source: ClusterMembers(
                                                                                                                                             Cluster(loc2v1),
+                                                                                                                                            Uninit,
                                                                                                                                         ),
                                                                                                                                         metadata: HydroIrMetadata {
                                                                                                                                             location_id: Cluster(loc1v1),
@@ -5727,6 +5731,7 @@ expression: built.ir()
                                                                                                             input: Source {
                                                                                                                 source: ClusterMembers(
                                                                                                                     Cluster(loc5v1),
+                                                                                                                    Uninit,
                                                                                                                 ),
                                                                                                                 metadata: HydroIrMetadata {
                                                                                                                     location_id: Cluster(loc1v1),
@@ -6617,6 +6622,7 @@ expression: built.ir()
                                                                                                             input: Source {
                                                                                                                 source: ClusterMembers(
                                                                                                                     Cluster(loc2v1),
+                                                                                                                    Uninit,
                                                                                                                 ),
                                                                                                                 metadata: HydroIrMetadata {
                                                                                                                     location_id: Cluster(loc5v1),
