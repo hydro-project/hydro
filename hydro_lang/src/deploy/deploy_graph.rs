@@ -60,7 +60,14 @@ impl<'a> Deploy<'a> for HydroDeploy {
         _p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
         _name: Option<&str>,
+        networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
+        match networking_info {
+            crate::networking::NetworkingInfo::Tcp {
+                fault: crate::networking::TcpFault::FailStop,
+            } => {}
+            _ => panic!("Unsupported networking info: {:?}", networking_info),
+        }
         let p1_port = p1_port.as_str();
         let p2_port = p2_port.as_str();
         deploy_o2o(
@@ -101,7 +108,14 @@ impl<'a> Deploy<'a> for HydroDeploy {
         _c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
         _name: Option<&str>,
+        networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
+        match networking_info {
+            crate::networking::NetworkingInfo::Tcp {
+                fault: crate::networking::TcpFault::FailStop,
+            } => {}
+            _ => panic!("Unsupported networking info: {:?}", networking_info),
+        }
         let p1_port = p1_port.as_str();
         let c2_port = c2_port.as_str();
         deploy_o2m(
@@ -154,7 +168,14 @@ impl<'a> Deploy<'a> for HydroDeploy {
         _p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
         _name: Option<&str>,
+        networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
+        match networking_info {
+            crate::networking::NetworkingInfo::Tcp {
+                fault: crate::networking::TcpFault::FailStop,
+            } => {}
+            _ => panic!("Unsupported networking info: {:?}", networking_info),
+        }
         let c1_port = c1_port.as_str();
         let p2_port = p2_port.as_str();
         deploy_m2o(
@@ -199,7 +220,14 @@ impl<'a> Deploy<'a> for HydroDeploy {
         _c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
         _name: Option<&str>,
+        networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
+        match networking_info {
+            crate::networking::NetworkingInfo::Tcp {
+                fault: crate::networking::TcpFault::FailStop,
+            } => {}
+            _ => panic!("Unsupported networking info: {:?}", networking_info),
+        }
         let c1_port = c1_port.as_str();
         let c2_port = c2_port.as_str();
         deploy_m2m(

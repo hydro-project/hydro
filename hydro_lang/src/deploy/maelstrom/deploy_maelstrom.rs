@@ -50,6 +50,7 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
         _p2: &Self::Process,
         _p2_port: &<Self::Process as Node>::Port,
         _name: Option<&str>,
+        _networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         panic!("Maelstrom deployment does not support processes, only clusters")
     }
@@ -70,6 +71,7 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
         _c2: &Self::Cluster,
         _c2_port: &<Self::Cluster as Node>::Port,
         _name: Option<&str>,
+        _networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         panic!("Maelstrom deployment does not support processes, only clusters")
     }
@@ -90,6 +92,7 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
         _p2: &Self::Process,
         _p2_port: &<Self::Process as Node>::Port,
         _name: Option<&str>,
+        _networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         panic!("Maelstrom deployment does not support processes, only clusters")
     }
@@ -104,13 +107,28 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
     }
 
     fn m2m_sink_source(
-        _env: &mut Self::InstantiateEnv,
+        env: &mut Self::InstantiateEnv,
         _c1: &Self::Cluster,
         _c1_port: &<Self::Cluster as Node>::Port,
         _c2: &Self::Cluster,
         _c2_port: &<Self::Cluster as Node>::Port,
         _name: Option<&str>,
+        networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
+        use crate::networking::{NetworkingInfo, TcpFault};
+        match networking_info {
+            NetworkingInfo::Tcp { fault } => match (fault, env.nemesis.as_deref()) {
+                (TcpFault::Lossy, _) => {} // lossy is always allowed
+                (_, None) => {}            // no nemesis means any fault model is fine
+                (TcpFault::FailStop, Some("partition")) => {
+                    panic!(
+                        "Maelstrom partition nemesis requires lossy networking, but fail_stop was used. \
+                         Use `TCP.lossy().bincode()` instead of `TCP.fail_stop().bincode()`."
+                    );
+                }
+                (TcpFault::FailStop, Some(_)) => {} // other nemeses are fine with fail_stop
+            },
+        }
         deploy_maelstrom_m2m(RuntimeData::new("__hydro_lang_maelstrom_meta"))
     }
 

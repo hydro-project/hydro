@@ -838,7 +838,16 @@ impl DfirBuilder for SimBuilder {
         source: syn::Expr,
         deserialize: Option<&DebugExpr>,
         tag_id: usize,
+        networking_info: &crate::networking::NetworkingInfo,
     ) {
+        use crate::networking::{NetworkingInfo, TcpFault};
+        match networking_info {
+            NetworkingInfo::Tcp { fault } => match fault {
+                TcpFault::FailStop => {}
+                _ => todo!("SimBuilder only supports fail-stop TCP networking"),
+            },
+        }
+
         let root = get_this_crate();
 
         match (from, to) {

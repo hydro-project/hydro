@@ -6,6 +6,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::live_collections::stream::networking::{deserialize_bincode, serialize_bincode};
+use crate::nondet::NonDet;
 
 #[sealed::sealed]
 trait SerKind<T: ?Sized> {
@@ -32,18 +33,37 @@ impl<T: Serialize + DeserializeOwned> SerKind<T> for Bincode {
 pub enum NoSer {}
 
 #[sealed::sealed]
-trait TransportKind {}
+trait TransportKind {
+    /// Returns the [`NetworkingInfo`] describing this transport's configuration.
+    fn networking_info() -> NetworkingInfo;
+}
 
 #[sealed::sealed]
 #[diagnostic::on_unimplemented(
     message = "TCP transport requires a failure policy. For example, `TCP.fail_stop()` stops sending messages after a failed connection."
 )]
-trait TcpFailPolicy {}
+trait TcpFailPolicy {
+    /// Returns the [`TcpFault`] variant for this failure policy.
+    fn tcp_fault() -> TcpFault;
+}
 
 /// A TCP failure policy that stops sending messages after a failed connection.
 pub enum FailStop {}
 #[sealed::sealed]
-impl TcpFailPolicy for FailStop {}
+impl TcpFailPolicy for FailStop {
+    fn tcp_fault() -> TcpFault {
+        TcpFault::FailStop
+    }
+}
+
+/// A TCP failure policy that allows messages to be lost.
+pub enum Lossy {}
+#[sealed::sealed]
+impl TcpFailPolicy for Lossy {
+    fn tcp_fault() -> TcpFault {
+        TcpFault::Lossy
+    }
+}
 
 /// Send items across a length-delimited TCP channel.
 pub struct Tcp<F> {
@@ -51,7 +71,13 @@ pub struct Tcp<F> {
 }
 
 #[sealed::sealed]
-impl<F: TcpFailPolicy> TransportKind for Tcp<F> {}
+impl<F: TcpFailPolicy> TransportKind for Tcp<F> {
+    fn networking_info() -> NetworkingInfo {
+        NetworkingInfo::Tcp {
+            fault: F::tcp_fault(),
+        }
+    }
+}
 
 /// A networking backend implementation that supports items of type `T`.
 #[sealed::sealed]
@@ -64,6 +90,28 @@ pub trait NetworkFor<T: ?Sized> {
 
     /// Returns the optional name of the network channel.
     fn name(&self) -> Option<&str>;
+
+    /// Returns the [`NetworkingInfo`] describing this network channel's transport and fault model.
+    fn networking_info() -> NetworkingInfo;
+}
+
+/// The fault model for a TCP connection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TcpFault {
+    /// Stops sending messages after a failed connection.
+    FailStop,
+    /// Messages may be lost (e.g. due to network partitions).
+    Lossy,
+}
+
+/// Describes the networking configuration for a network channel at the IR level.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum NetworkingInfo {
+    /// A TCP-based network channel with a specific fault model.
+    Tcp {
+        /// The fault model for this TCP connection.
+        fault: TcpFault,
+    },
 }
 
 /// A network channel configuration with `T` as transport backend and `S` as the serialization
@@ -105,6 +153,22 @@ impl<S: ?Sized> NetworkingConfig<Tcp<()>, S> {
             _phantom: (PhantomData, PhantomData),
         }
     }
+
+    /// Configures the TCP transport to allow messages to be lost.
+    ///
+    /// This is appropriate for networks where messages may be dropped, such as when
+    /// running under a Maelstrom partition nemesis. Unlike `fail_stop`, which guarantees
+    /// a prefix of messages is delivered, `lossy` makes no such guarantee.
+    ///
+    /// # Non-Determinism
+    /// A lossy TCP channel will non-deterministically drop messages during execution.
+    pub const fn lossy(self, nondet: NonDet) -> NetworkingConfig<Tcp<Lossy>, S> {
+        let _ = nondet;
+        NetworkingConfig {
+            name: self.name,
+            _phantom: (PhantomData, PhantomData),
+        }
+    }
 }
 
 #[sealed::sealed]
@@ -124,6 +188,10 @@ where
     fn name(&self) -> Option<&str> {
         None
     }
+
+    fn networking_info() -> NetworkingInfo {
+        Tr::networking_info()
+    }
 }
 
 #[sealed::sealed]
@@ -142,6 +210,10 @@ where
 
     fn name(&self) -> Option<&str> {
         self.name.as_deref()
+    }
+
+    fn networking_info() -> NetworkingInfo {
+        Tr::networking_info()
     }
 }
 

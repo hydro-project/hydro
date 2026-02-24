@@ -404,6 +404,7 @@ pub trait DfirBuilder {
         source: syn::Expr,
         deserialize: Option<&DebugExpr>,
         tag_id: usize,
+        networking_info: &crate::networking::NetworkingInfo,
     );
 
     fn create_external_source(
@@ -559,6 +560,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         source: syn::Expr,
         deserialize: Option<&DebugExpr>,
         tag_id: usize,
+        _networking_info: &crate::networking::NetworkingInfo,
     ) {
         let sender_builder = self.get_dfir_mut(from);
         if let Some(serialize_pipeline) = serialize {
@@ -840,6 +842,7 @@ impl HydroRoot {
             &mut |n| {
                 if let HydroNode::Network {
                     name,
+                    networking_info,
                     input,
                     instantiate_fn,
                     metadata,
@@ -854,6 +857,7 @@ impl HydroRoot {
                             processes,
                             clusters,
                             name.as_deref(),
+                            networking_info,
                         ),
 
                         DebugInstantiate::Finalized(_) => panic!("network already finalized"),
@@ -1827,6 +1831,7 @@ pub enum HydroNode {
 
     Network {
         name: Option<String>,
+        networking_info: crate::networking::NetworkingInfo,
         serialize_fn: Option<DebugExpr>,
         instantiate_fn: DebugInstantiate,
         deserialize_fn: Option<DebugExpr>,
@@ -2206,6 +2211,7 @@ impl HydroNode {
             },
             HydroNode::Network {
                 name,
+                networking_info,
                 serialize_fn,
                 instantiate_fn,
                 deserialize_fn,
@@ -2213,6 +2219,7 @@ impl HydroNode {
                 metadata,
             } => HydroNode::Network {
                 name: name.clone(),
+                networking_info: networking_info.clone(),
                 serialize_fn: serialize_fn.clone(),
                 instantiate_fn: instantiate_fn.clone(),
                 deserialize_fn: deserialize_fn.clone(),
@@ -3466,6 +3473,7 @@ impl HydroNode {
                     }
 
                     HydroNode::Network {
+                        networking_info,
                         serialize_fn: serialize_pipeline,
                         instantiate_fn,
                         deserialize_fn: deserialize_pipeline,
@@ -3500,6 +3508,7 @@ impl HydroNode {
                                     source_expr,
                                     deserialize_pipeline.as_ref(),
                                     *next_stmt_id,
+                                    networking_info,
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
@@ -3918,6 +3927,7 @@ fn instantiate_network<'a, D>(
     processes: &SparseSecondaryMap<LocationKey, D::Process>,
     clusters: &SparseSecondaryMap<LocationKey, D::Cluster>,
     name: Option<&str>,
+    networking_info: &crate::networking::NetworkingInfo,
 ) -> (syn::Expr, syn::Expr, Box<dyn FnOnce()>)
 where
     D: Deploy<'a>,
@@ -3941,7 +3951,15 @@ where
             let source_port = to_node.next_port();
 
             (
-                D::o2o_sink_source(env, &from_node, &sink_port, &to_node, &source_port, name),
+                D::o2o_sink_source(
+                    env,
+                    &from_node,
+                    &sink_port,
+                    &to_node,
+                    &source_port,
+                    name,
+                    networking_info,
+                ),
                 D::o2o_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
@@ -3963,7 +3981,15 @@ where
             let source_port = to_node.next_port();
 
             (
-                D::o2m_sink_source(env, &from_node, &sink_port, &to_node, &source_port, name),
+                D::o2m_sink_source(
+                    env,
+                    &from_node,
+                    &sink_port,
+                    &to_node,
+                    &source_port,
+                    name,
+                    networking_info,
+                ),
                 D::o2m_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
@@ -3985,7 +4011,15 @@ where
             let source_port = to_node.next_port();
 
             (
-                D::m2o_sink_source(env, &from_node, &sink_port, &to_node, &source_port, name),
+                D::m2o_sink_source(
+                    env,
+                    &from_node,
+                    &sink_port,
+                    &to_node,
+                    &source_port,
+                    name,
+                    networking_info,
+                ),
                 D::m2o_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
@@ -4007,7 +4041,15 @@ where
             let source_port = to_node.next_port();
 
             (
-                D::m2m_sink_source(env, &from_node, &sink_port, &to_node, &source_port, name),
+                D::m2m_sink_source(
+                    env,
+                    &from_node,
+                    &sink_port,
+                    &to_node,
+                    &source_port,
+                    name,
+                    networking_info,
+                ),
                 D::m2m_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }

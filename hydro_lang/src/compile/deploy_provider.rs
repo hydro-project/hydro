@@ -34,6 +34,7 @@ pub trait Deploy<'a> {
         p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
         name: Option<&str>,
+        networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr);
 
     /// Performs any runtime wiring needed after code generation for a
@@ -61,6 +62,7 @@ pub trait Deploy<'a> {
         c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
         name: Option<&str>,
+        networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr);
 
     /// Performs any runtime wiring needed after code generation for a
@@ -88,6 +90,7 @@ pub trait Deploy<'a> {
         p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
         name: Option<&str>,
+        networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr);
 
     /// Performs any runtime wiring needed after code generation for a
@@ -115,6 +118,7 @@ pub trait Deploy<'a> {
         c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
         name: Option<&str>,
+        networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr);
 
     /// Performs any runtime wiring needed after code generation for a

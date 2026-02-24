@@ -439,7 +439,14 @@ impl<'a> Deploy<'a> for EcsDeploy {
         p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
         _name: Option<&str>,
+        networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
+        match networking_info {
+            crate::networking::NetworkingInfo::Tcp {
+                fault: crate::networking::TcpFault::FailStop,
+            } => {}
+            _ => panic!("Unsupported networking info: {:?}", networking_info),
+        }
         deploy_containerized_o2o(&p2.name, *p2_port)
     }
 
@@ -468,7 +475,14 @@ impl<'a> Deploy<'a> for EcsDeploy {
         c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
         _name: Option<&str>,
+        networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
+        match networking_info {
+            crate::networking::NetworkingInfo::Tcp {
+                fault: crate::networking::TcpFault::FailStop,
+            } => {}
+            _ => panic!("Unsupported networking info: {:?}", networking_info),
+        }
         deploy_containerized_o2m(*c2_port)
     }
 
@@ -497,7 +511,14 @@ impl<'a> Deploy<'a> for EcsDeploy {
         p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
         _name: Option<&str>,
+        networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
+        match networking_info {
+            crate::networking::NetworkingInfo::Tcp {
+                fault: crate::networking::TcpFault::FailStop,
+            } => {}
+            _ => panic!("Unsupported networking info: {:?}", networking_info),
+        }
         deploy_containerized_m2o(*p2_port, &p2.name)
     }
 
@@ -526,7 +547,14 @@ impl<'a> Deploy<'a> for EcsDeploy {
         c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
         _name: Option<&str>,
+        networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
+        match networking_info {
+            crate::networking::NetworkingInfo::Tcp {
+                fault: crate::networking::TcpFault::FailStop,
+            } => {}
+            _ => panic!("Unsupported networking info: {:?}", networking_info),
+        }
         deploy_containerized_m2m(*c2_port)
     }
 

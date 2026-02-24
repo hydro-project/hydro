@@ -179,6 +179,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
             to.clone(),
             HydroNode::Network {
                 name: name.map(ToOwned::to_owned),
+                networking_info: N::networking_info(),
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
@@ -917,6 +918,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
             to.clone(),
             HydroNode::Network {
                 name: name.map(ToOwned::to_owned),
+                networking_info: N::networking_info(),
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),

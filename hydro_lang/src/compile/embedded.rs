@@ -193,6 +193,7 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
         p2: &Self::Process,
         _p2_port: &(),
         name: Option<&str>,
+        _networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         let name = name.expect(
             "EmbeddedDeploy o2o networking requires a channel name. Use `TCP.name(\"my_channel\")` to provide one.",
@@ -234,6 +235,7 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
         c2: &Self::Cluster,
         _c2_port: &(),
         name: Option<&str>,
+        _networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         let name = name.expect("EmbeddedDeploy o2m networking requires a channel name.");
         let sink_ident = syn::Ident::new(&format!("__network_out_{name}"), Span::call_site());
@@ -270,6 +272,7 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
         p2: &Self::Process,
         _p2_port: &(),
         name: Option<&str>,
+        _networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         let name = name.expect("EmbeddedDeploy m2o networking requires a channel name.");
         let sink_ident = syn::Ident::new(&format!("__network_out_{name}"), Span::call_site());
@@ -306,6 +309,7 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
         c2: &Self::Cluster,
         _c2_port: &(),
         name: Option<&str>,
+        _networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         let name = name.expect("EmbeddedDeploy m2m networking requires a channel name.");
         let sink_ident = syn::Ident::new(&format!("__network_out_{name}"), Span::call_site());

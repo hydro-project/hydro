@@ -125,6 +125,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
             to.clone(),
             HydroNode::Network {
                 name: name.map(ToOwned::to_owned),
+                networking_info: N::networking_info(),
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
@@ -242,6 +243,7 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
             to.clone(),
             HydroNode::Network {
                 name: name.map(ToOwned::to_owned),
+                networking_info: N::networking_info(),
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
@@ -390,6 +392,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
             to.clone(),
             HydroNode::Network {
                 name: name.map(ToOwned::to_owned),
+                networking_info: N::networking_info(),
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
@@ -558,6 +561,7 @@ impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries>
                 to.clone(),
                 HydroNode::Network {
                     name: name.map(ToOwned::to_owned),
+                    networking_info: N::networking_info(),
                     serialize_fn: serialize_pipeline.map(|e| e.into()),
                     instantiate_fn: DebugInstantiate::Building,
                     deserialize_fn: deserialize_pipeline.map(|e| e.into()),

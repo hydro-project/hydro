@@ -182,6 +182,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         _p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
         _name: Option<&str>,
+        _networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_o2o_sink_{}", p1_port), Span::call_site());
@@ -211,6 +212,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         _c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
         _name: Option<&str>,
+        _networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_o2m_sink_{}", p1_port), Span::call_site());
@@ -240,6 +242,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         _p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
         _name: Option<&str>,
+        _networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_m2o_sink_{}", c1_port), Span::call_site());
@@ -270,6 +273,7 @@ impl<'a> Deploy<'a> for SimDeploy {
         _c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
         _name: Option<&str>,
+        _networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         let ident_sink =
             syn::Ident::new(&format!("__hydro_m2m_sink_{}", c1_port), Span::call_site());
