@@ -122,6 +122,7 @@ expression: built.ir()
                                                                                                                                                         input: Source {
                                                                                                                                                             source: ClusterMembers(
                                                                                                                                                                 Cluster(loc2v1),
+                                                                                                                                                                Uninit,
                                                                                                                                                             ),
                                                                                                                                                             metadata: HydroIrMetadata {
                                                                                                                                                                 location_id: Process(loc1v1),

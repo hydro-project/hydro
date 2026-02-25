@@ -1,0 +1,18 @@
+error[E0277]: The input collection must be bounded (`Bounded`), but has bound `hydro_lang::prelude::Unbounded`. Strengthen the boundedness upstream or consider a different API.
+ --> tests/compile-fail/non_bounded.rs:7:45
+  |
+7 |     let _ = unbounded.clone().filter_not_in(unbounded);
+  |                               ------------- ^^^^^^^^^ required here
+  |                               |
+  |                               required by a bound introduced by this call
+  |
+  = help: the trait `IsBounded` is not implemented for `hydro_lang::prelude::Unbounded`
+  = note: To intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region. This introduces non-determinism so avoid unless necessary.
+note: required by a bound in `hydro_lang::prelude::Stream::<T, L, B, O, R>::filter_not_in`
+ --> src/live_collections/stream/mod.rs
+  |
+  |     pub fn filter_not_in<O2: Ordering, B2>(self, other: Stream<T, L, B2, O2, R>) -> Self
+  |            ------------- required by a bound in this associated function
+...
+  |         B2: IsBounded,
+  |             ^^^^^^^^^ required by this bound in `Stream::<T, L, B, O, R>::filter_not_in`
