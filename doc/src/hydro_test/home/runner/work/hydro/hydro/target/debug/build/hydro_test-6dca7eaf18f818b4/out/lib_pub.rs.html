@@ -848,110 +848,132 @@
 <a href=#848 id=848 data-nosnippet>848</a>        <span class="doccomment">//! This implements the Maelstrom broadcast workload.
 <a href=#849 id=849 data-nosnippet>849</a>        //!
 <a href=#850 id=850 data-nosnippet>850</a>        //! See &lt;https://fly.io/dist-sys/3a/&gt; and &lt;https://fly.io/dist-sys/3b/&gt;
-<a href=#851 id=851 data-nosnippet>851</a>        </span><span class="kw">pub use </span>hydro_lang::live_collections::stream::NoOrder;
-<a href=#852 id=852 data-nosnippet>852</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
-<a href=#853 id=853 data-nosnippet>853</a>        <span class="kw">pub use </span>serde::{Deserialize, Serialize};
-<a href=#854 id=854 data-nosnippet>854</a>        <span class="kw">pub use </span><span class="kw">crate</span>::maelstrom::broadcast::Broadcast;
-<a href=#855 id=855 data-nosnippet>855</a>        <span class="kw">pub use </span><span class="kw">crate</span>::maelstrom::broadcast::Read;
-<a href=#856 id=856 data-nosnippet>856</a>        <span class="kw">pub use </span><span class="kw">crate</span>::maelstrom::broadcast::Topology;
-<a href=#857 id=857 data-nosnippet>857</a>        <span class="kw">pub use </span><span class="kw">crate</span>::maelstrom::broadcast::Request;
-<a href=#858 id=858 data-nosnippet>858</a>        <span class="kw">pub fn </span>broadcast_core&lt;<span class="lifetime">'a</span>, C: <span class="lifetime">'a</span>&gt;(
-<a href=#859 id=859 data-nosnippet>859</a>            cluster: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, C&gt;,
-<a href=#860 id=860 data-nosnippet>860</a>            writes: Stream&lt;u32, Cluster&lt;<span class="lifetime">'a</span>, C&gt;, Unbounded, NoOrder&gt;,
-<a href=#861 id=861 data-nosnippet>861</a>        ) -&gt; Stream&lt;u32, Cluster&lt;<span class="lifetime">'a</span>, C&gt;, Unbounded, NoOrder&gt; {
-<a href=#862 id=862 data-nosnippet>862</a>            writes
-<a href=#863 id=863 data-nosnippet>863</a>                .broadcast(
-<a href=#864 id=864 data-nosnippet>864</a>                    cluster,
-<a href=#865 id=865 data-nosnippet>865</a>                    TCP.fail_stop().bincode(),
-<a href=#866 id=866 data-nosnippet>866</a>                    <span class="macro">nondet!</span>(<span class="attr">#[doc = <span class="string">" TODO "</span>]</span>),
-<a href=#867 id=867 data-nosnippet>867</a>                )
-<a href=#868 id=868 data-nosnippet>868</a>                .values()
-<a href=#869 id=869 data-nosnippet>869</a>        }
-<a href=#870 id=870 data-nosnippet>870</a>        <span class="kw">pub use </span><span class="kw">crate</span>::maelstrom::broadcast::broadcast_server;
-<a href=#871 id=871 data-nosnippet>871</a>
-<a href=#872 id=872 data-nosnippet>872</a>    }
-<a href=#873 id=873 data-nosnippet>873</a>    <span class="kw">pub mod </span>echo {
-<a href=#874 id=874 data-nosnippet>874</a>        <span class="doccomment">//! This implements the Maelstrom echo workload.
-<a href=#875 id=875 data-nosnippet>875</a>        //!
-<a href=#876 id=876 data-nosnippet>876</a>        //! See &lt;https://fly.io/dist-sys/1/&gt;
-<a href=#877 id=877 data-nosnippet>877</a>        </span><span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
-<a href=#878 id=878 data-nosnippet>878</a>        <span class="kw">pub use </span>serde::{Deserialize, Serialize};
-<a href=#879 id=879 data-nosnippet>879</a>        <span class="kw">pub use </span><span class="kw">crate</span>::maelstrom::echo::EchoMessage;
-<a href=#880 id=880 data-nosnippet>880</a>        <span class="kw">pub use </span><span class="kw">crate</span>::maelstrom::echo::echo_server;
-<a href=#881 id=881 data-nosnippet>881</a>
-<a href=#882 id=882 data-nosnippet>882</a>    }
-<a href=#883 id=883 data-nosnippet>883</a>    <span class="kw">pub mod </span>unique_ids {
-<a href=#884 id=884 data-nosnippet>884</a>        <span class="doccomment">//! This implements the Maelstrom unique-ids workload.
-<a href=#885 id=885 data-nosnippet>885</a>        //!
-<a href=#886 id=886 data-nosnippet>886</a>        //! See &lt;https://fly.io/dist-sys/2/&gt;
-<a href=#887 id=887 data-nosnippet>887</a>        </span><span class="kw">pub use </span>hydro_lang::location::cluster::CLUSTER_SELF_ID;
-<a href=#888 id=888 data-nosnippet>888</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
-<a href=#889 id=889 data-nosnippet>889</a>        <span class="kw">pub use </span>serde::{Deserialize, Serialize};
-<a href=#890 id=890 data-nosnippet>890</a>        <span class="kw">pub use </span><span class="kw">crate</span>::maelstrom::unique_ids::GenerateMessage;
-<a href=#891 id=891 data-nosnippet>891</a>        <span class="kw">pub use </span><span class="kw">crate</span>::maelstrom::unique_ids::unique_id_server;
-<a href=#892 id=892 data-nosnippet>892</a>
-<a href=#893 id=893 data-nosnippet>893</a>    }
-<a href=#894 id=894 data-nosnippet>894</a>}
-<a href=#895 id=895 data-nosnippet>895</a><span class="kw">pub mod </span>tutorials {
-<a href=#896 id=896 data-nosnippet>896</a>    <span class="kw">pub mod </span>concurrent_clients {
-<a href=#897 id=897 data-nosnippet>897</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
-<a href=#898 id=898 data-nosnippet>898</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::concurrent_clients::CounterServer;
-<a href=#899 id=899 data-nosnippet>899</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::concurrent_clients::concurrent_counter_service;
-<a href=#900 id=900 data-nosnippet>900</a>
-<a href=#901 id=901 data-nosnippet>901</a>    }
-<a href=#902 id=902 data-nosnippet>902</a>    <span class="kw">pub mod </span>keyed_counter {
-<a href=#903 id=903 data-nosnippet>903</a>        <span class="kw">pub use </span>hydro_lang::live_collections::stream::NoOrder;
-<a href=#904 id=904 data-nosnippet>904</a>        <span class="kw">pub use </span>hydro_lang::location::{Location, NoTick};
-<a href=#905 id=905 data-nosnippet>905</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
-<a href=#906 id=906 data-nosnippet>906</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::keyed_counter::CounterServer;
-<a href=#907 id=907 data-nosnippet>907</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::keyed_counter::keyed_counter_service;
-<a href=#908 id=908 data-nosnippet>908</a>
-<a href=#909 id=909 data-nosnippet>909</a>    }
-<a href=#910 id=910 data-nosnippet>910</a>    <span class="kw">pub mod </span>keyed_counter_non_atomic {
-<a href=#911 id=911 data-nosnippet>911</a>        <span class="kw">pub use </span>hydro_lang::live_collections::stream::{NoOrder, Ordering};
-<a href=#912 id=912 data-nosnippet>912</a>        <span class="kw">pub use </span>hydro_lang::location::{Location, NoTick};
-<a href=#913 id=913 data-nosnippet>913</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
-<a href=#914 id=914 data-nosnippet>914</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::keyed_counter_non_atomic::CounterServer;
-<a href=#915 id=915 data-nosnippet>915</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::keyed_counter_non_atomic::keyed_counter_service_buggy;
-<a href=#916 id=916 data-nosnippet>916</a>
-<a href=#917 id=917 data-nosnippet>917</a>    }
-<a href=#918 id=918 data-nosnippet>918</a>    <span class="kw">pub mod </span>partitioned_counter {
-<a href=#919 id=919 data-nosnippet>919</a>        <span class="kw">pub use </span>std::hash::{DefaultHasher, Hash, Hasher};
-<a href=#920 id=920 data-nosnippet>920</a>        <span class="kw">pub use </span>hydro_lang::live_collections::stream::NoOrder;
-<a href=#921 id=921 data-nosnippet>921</a>        <span class="kw">pub use </span>hydro_lang::location::MemberId;
-<a href=#922 id=922 data-nosnippet>922</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
-<a href=#923 id=923 data-nosnippet>923</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::partitioned_counter::CounterServer;
-<a href=#924 id=924 data-nosnippet>924</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::partitioned_counter::CounterShard;
-<a href=#925 id=925 data-nosnippet>925</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::partitioned_counter::sharded_counter_service;
-<a href=#926 id=926 data-nosnippet>926</a>
-<a href=#927 id=927 data-nosnippet>927</a>    }
-<a href=#928 id=928 data-nosnippet>928</a>    <span class="kw">pub mod </span>single_client_counter {
-<a href=#929 id=929 data-nosnippet>929</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
-<a href=#930 id=930 data-nosnippet>930</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::single_client_counter::CounterServer;
-<a href=#931 id=931 data-nosnippet>931</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::single_client_counter::single_client_counter_service;
-<a href=#932 id=932 data-nosnippet>932</a>
-<a href=#933 id=933 data-nosnippet>933</a>    }
-<a href=#934 id=934 data-nosnippet>934</a>    <span class="kw">pub mod </span>single_client_counter_buggy {
+<a href=#851 id=851 data-nosnippet>851</a>        </span><span class="kw">pub use </span>std::collections::HashSet;
+<a href=#852 id=852 data-nosnippet>852</a>        <span class="kw">pub use </span>std::time::Duration;
+<a href=#853 id=853 data-nosnippet>853</a>        <span class="kw">pub use </span>hydro_lang::live_collections::stream::{AtLeastOnce, NoOrder};
+<a href=#854 id=854 data-nosnippet>854</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
+<a href=#855 id=855 data-nosnippet>855</a>        <span class="kw">pub use </span>serde::{Deserialize, Serialize};
+<a href=#856 id=856 data-nosnippet>856</a>        <span class="kw">pub use </span><span class="kw">crate</span>::maelstrom::broadcast::Broadcast;
+<a href=#857 id=857 data-nosnippet>857</a>        <span class="kw">pub use </span><span class="kw">crate</span>::maelstrom::broadcast::Read;
+<a href=#858 id=858 data-nosnippet>858</a>        <span class="kw">pub use </span><span class="kw">crate</span>::maelstrom::broadcast::Topology;
+<a href=#859 id=859 data-nosnippet>859</a>        <span class="kw">pub use </span><span class="kw">crate</span>::maelstrom::broadcast::Request;
+<a href=#860 id=860 data-nosnippet>860</a>        <span class="kw">pub fn </span>broadcast_core&lt;<span class="lifetime">'a</span>, C: <span class="lifetime">'a</span>&gt;(
+<a href=#861 id=861 data-nosnippet>861</a>            cluster: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, C&gt;,
+<a href=#862 id=862 data-nosnippet>862</a>            writes: Stream&lt;u32, Cluster&lt;<span class="lifetime">'a</span>, C&gt;, Unbounded, NoOrder&gt;,
+<a href=#863 id=863 data-nosnippet>863</a>        ) -&gt; Singleton&lt;HashSet&lt;u32&gt;, Cluster&lt;<span class="lifetime">'a</span>, C&gt;, Unbounded&gt; {
+<a href=#864 id=864 data-nosnippet>864</a>            <span class="kw">let </span>(broadcasted_forward, broadcasted) = cluster
+<a href=#865 id=865 data-nosnippet>865</a>                .forward_ref::&lt;Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, Unbounded, NoOrder, AtLeastOnce&gt;&gt;();
+<a href=#866 id=866 data-nosnippet>866</a>            <span class="kw">let </span>cur_state = <span class="macro">sliced!</span> {
+<a href=#867 id=867 data-nosnippet>867</a>                <span class="kw">let </span>new_writes = <span class="kw">use </span>(writes, <span class="macro">nondet!</span>(<span class="attr">#[doc = <span class="string">" TODO "</span>]</span>)); <span class="kw">let
+<a href=#868 id=868 data-nosnippet>868</a>                </span>recv_broadcast = <span class="kw">use </span>(broadcasted, <span class="macro">nondet!</span>(<span class="attr">#[doc = <span class="string">" TODO "</span>]</span>)); <span class="kw">let </span><span class="kw-2">mut
+<a href=#869 id=869 data-nosnippet>869</a>                </span>local_state = <span class="kw">use </span>::state_null::&lt; Stream &lt; <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, NoOrder &gt;&gt; ();
+<a href=#870 id=870 data-nosnippet>870</a>                local_state = local_state.chain(new_writes).weaken_retries::&lt; AtLeastOnce
+<a href=#871 id=871 data-nosnippet>871</a>                &gt; ().chain(recv_broadcast.flatten_unordered()).unique(); local_state
+<a href=#872 id=872 data-nosnippet>872</a>                .clone().fold(<span class="macro">q!</span>(|| HashSet::new()), <span class="macro">q!</span>(| set, v | { set.insert(v); },
+<a href=#873 id=873 data-nosnippet>873</a>                commutative = ManualProof()))
+<a href=#874 id=874 data-nosnippet>874</a>            };
+<a href=#875 id=875 data-nosnippet>875</a>            broadcasted_forward
+<a href=#876 id=876 data-nosnippet>876</a>                .complete(
+<a href=#877 id=877 data-nosnippet>877</a>                    cur_state
+<a href=#878 id=878 data-nosnippet>878</a>                        .clone()
+<a href=#879 id=879 data-nosnippet>879</a>                        .sample_every(
+<a href=#880 id=880 data-nosnippet>880</a>                            <span class="macro">q!</span>(Duration::from_millis(<span class="number">50</span>)),
+<a href=#881 id=881 data-nosnippet>881</a>                            <span class="macro">nondet!</span>(<span class="attr">#[doc = <span class="string">" TODO "</span>]</span>),
+<a href=#882 id=882 data-nosnippet>882</a>                        )
+<a href=#883 id=883 data-nosnippet>883</a>                        .broadcast(
+<a href=#884 id=884 data-nosnippet>884</a>                            cluster,
+<a href=#885 id=885 data-nosnippet>885</a>                            TCP.lossy(<span class="macro">nondet!</span>(<span class="attr">#[doc = <span class="string">" TODO "</span>]</span>)).bincode(),
+<a href=#886 id=886 data-nosnippet>886</a>                            <span class="macro">nondet!</span>(<span class="attr">#[doc = <span class="string">" TODO "</span>]</span>),
+<a href=#887 id=887 data-nosnippet>887</a>                        )
+<a href=#888 id=888 data-nosnippet>888</a>                        .values(),
+<a href=#889 id=889 data-nosnippet>889</a>                );
+<a href=#890 id=890 data-nosnippet>890</a>            cur_state
+<a href=#891 id=891 data-nosnippet>891</a>        }
+<a href=#892 id=892 data-nosnippet>892</a>        <span class="kw">pub use </span><span class="kw">crate</span>::maelstrom::broadcast::broadcast_server;
+<a href=#893 id=893 data-nosnippet>893</a>
+<a href=#894 id=894 data-nosnippet>894</a>    }
+<a href=#895 id=895 data-nosnippet>895</a>    <span class="kw">pub mod </span>echo {
+<a href=#896 id=896 data-nosnippet>896</a>        <span class="doccomment">//! This implements the Maelstrom echo workload.
+<a href=#897 id=897 data-nosnippet>897</a>        //!
+<a href=#898 id=898 data-nosnippet>898</a>        //! See &lt;https://fly.io/dist-sys/1/&gt;
+<a href=#899 id=899 data-nosnippet>899</a>        </span><span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
+<a href=#900 id=900 data-nosnippet>900</a>        <span class="kw">pub use </span>serde::{Deserialize, Serialize};
+<a href=#901 id=901 data-nosnippet>901</a>        <span class="kw">pub use </span><span class="kw">crate</span>::maelstrom::echo::EchoMessage;
+<a href=#902 id=902 data-nosnippet>902</a>        <span class="kw">pub use </span><span class="kw">crate</span>::maelstrom::echo::echo_server;
+<a href=#903 id=903 data-nosnippet>903</a>
+<a href=#904 id=904 data-nosnippet>904</a>    }
+<a href=#905 id=905 data-nosnippet>905</a>    <span class="kw">pub mod </span>unique_ids {
+<a href=#906 id=906 data-nosnippet>906</a>        <span class="doccomment">//! This implements the Maelstrom unique-ids workload.
+<a href=#907 id=907 data-nosnippet>907</a>        //!
+<a href=#908 id=908 data-nosnippet>908</a>        //! See &lt;https://fly.io/dist-sys/2/&gt;
+<a href=#909 id=909 data-nosnippet>909</a>        </span><span class="kw">pub use </span>hydro_lang::location::cluster::CLUSTER_SELF_ID;
+<a href=#910 id=910 data-nosnippet>910</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
+<a href=#911 id=911 data-nosnippet>911</a>        <span class="kw">pub use </span>serde::{Deserialize, Serialize};
+<a href=#912 id=912 data-nosnippet>912</a>        <span class="kw">pub use </span><span class="kw">crate</span>::maelstrom::unique_ids::GenerateMessage;
+<a href=#913 id=913 data-nosnippet>913</a>        <span class="kw">pub use </span><span class="kw">crate</span>::maelstrom::unique_ids::unique_id_server;
+<a href=#914 id=914 data-nosnippet>914</a>
+<a href=#915 id=915 data-nosnippet>915</a>    }
+<a href=#916 id=916 data-nosnippet>916</a>}
+<a href=#917 id=917 data-nosnippet>917</a><span class="kw">pub mod </span>tutorials {
+<a href=#918 id=918 data-nosnippet>918</a>    <span class="kw">pub mod </span>concurrent_clients {
+<a href=#919 id=919 data-nosnippet>919</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
+<a href=#920 id=920 data-nosnippet>920</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::concurrent_clients::CounterServer;
+<a href=#921 id=921 data-nosnippet>921</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::concurrent_clients::concurrent_counter_service;
+<a href=#922 id=922 data-nosnippet>922</a>
+<a href=#923 id=923 data-nosnippet>923</a>    }
+<a href=#924 id=924 data-nosnippet>924</a>    <span class="kw">pub mod </span>keyed_counter {
+<a href=#925 id=925 data-nosnippet>925</a>        <span class="kw">pub use </span>hydro_lang::live_collections::stream::NoOrder;
+<a href=#926 id=926 data-nosnippet>926</a>        <span class="kw">pub use </span>hydro_lang::location::{Location, NoTick};
+<a href=#927 id=927 data-nosnippet>927</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
+<a href=#928 id=928 data-nosnippet>928</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::keyed_counter::CounterServer;
+<a href=#929 id=929 data-nosnippet>929</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::keyed_counter::keyed_counter_service;
+<a href=#930 id=930 data-nosnippet>930</a>
+<a href=#931 id=931 data-nosnippet>931</a>    }
+<a href=#932 id=932 data-nosnippet>932</a>    <span class="kw">pub mod </span>keyed_counter_non_atomic {
+<a href=#933 id=933 data-nosnippet>933</a>        <span class="kw">pub use </span>hydro_lang::live_collections::stream::{NoOrder, Ordering};
+<a href=#934 id=934 data-nosnippet>934</a>        <span class="kw">pub use </span>hydro_lang::location::{Location, NoTick};
 <a href=#935 id=935 data-nosnippet>935</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
-<a href=#936 id=936 data-nosnippet>936</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::single_client_counter_buggy::CounterServer;
-<a href=#937 id=937 data-nosnippet>937</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::single_client_counter_buggy::single_client_counter_service_buggy;
-<a href=#938 id=938 data-nosnippet>938</a>    }
-<a href=#939 id=939 data-nosnippet>939</a>    <span class="kw">pub mod </span>single_counter {
-<a href=#940 id=940 data-nosnippet>940</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
-<a href=#941 id=941 data-nosnippet>941</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::single_counter::CounterServer;
-<a href=#942 id=942 data-nosnippet>942</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::single_counter::single_counter_service;
-<a href=#943 id=943 data-nosnippet>943</a>
-<a href=#944 id=944 data-nosnippet>944</a>    }
-<a href=#945 id=945 data-nosnippet>945</a>    <span class="kw">pub mod </span>single_counter_buggy {
-<a href=#946 id=946 data-nosnippet>946</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
-<a href=#947 id=947 data-nosnippet>947</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::single_counter_buggy::CounterServer;
-<a href=#948 id=948 data-nosnippet>948</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::single_counter_buggy::single_counter_service_buggy;
-<a href=#949 id=949 data-nosnippet>949</a>
-<a href=#950 id=950 data-nosnippet>950</a>    }
-<a href=#951 id=951 data-nosnippet>951</a>}
-<a href=#952 id=952 data-nosnippet>952</a><span class="attr">#[doc(hidden)]
-<a href=#953 id=953 data-nosnippet>953</a>#[cfg(doctest)]
-<a href=#954 id=954 data-nosnippet>954</a></span><span class="kw">pub mod </span>docs {
-<a href=#955 id=955 data-nosnippet>955</a>    <span class="macro">include_mdtests::include_mdtests!</span>(<span class="string">"docs/docs/hydro/**/*.md*"</span>);
-<a href=#956 id=956 data-nosnippet>956</a>}
+<a href=#936 id=936 data-nosnippet>936</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::keyed_counter_non_atomic::CounterServer;
+<a href=#937 id=937 data-nosnippet>937</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::keyed_counter_non_atomic::keyed_counter_service_buggy;
+<a href=#938 id=938 data-nosnippet>938</a>
+<a href=#939 id=939 data-nosnippet>939</a>    }
+<a href=#940 id=940 data-nosnippet>940</a>    <span class="kw">pub mod </span>partitioned_counter {
+<a href=#941 id=941 data-nosnippet>941</a>        <span class="kw">pub use </span>std::hash::{DefaultHasher, Hash, Hasher};
+<a href=#942 id=942 data-nosnippet>942</a>        <span class="kw">pub use </span>hydro_lang::live_collections::stream::NoOrder;
+<a href=#943 id=943 data-nosnippet>943</a>        <span class="kw">pub use </span>hydro_lang::location::MemberId;
+<a href=#944 id=944 data-nosnippet>944</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
+<a href=#945 id=945 data-nosnippet>945</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::partitioned_counter::CounterServer;
+<a href=#946 id=946 data-nosnippet>946</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::partitioned_counter::CounterShard;
+<a href=#947 id=947 data-nosnippet>947</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::partitioned_counter::sharded_counter_service;
+<a href=#948 id=948 data-nosnippet>948</a>
+<a href=#949 id=949 data-nosnippet>949</a>    }
+<a href=#950 id=950 data-nosnippet>950</a>    <span class="kw">pub mod </span>single_client_counter {
+<a href=#951 id=951 data-nosnippet>951</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
+<a href=#952 id=952 data-nosnippet>952</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::single_client_counter::CounterServer;
+<a href=#953 id=953 data-nosnippet>953</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::single_client_counter::single_client_counter_service;
+<a href=#954 id=954 data-nosnippet>954</a>
+<a href=#955 id=955 data-nosnippet>955</a>    }
+<a href=#956 id=956 data-nosnippet>956</a>    <span class="kw">pub mod </span>single_client_counter_buggy {
+<a href=#957 id=957 data-nosnippet>957</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
+<a href=#958 id=958 data-nosnippet>958</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::single_client_counter_buggy::CounterServer;
+<a href=#959 id=959 data-nosnippet>959</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::single_client_counter_buggy::single_client_counter_service_buggy;
+<a href=#960 id=960 data-nosnippet>960</a>    }
+<a href=#961 id=961 data-nosnippet>961</a>    <span class="kw">pub mod </span>single_counter {
+<a href=#962 id=962 data-nosnippet>962</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
+<a href=#963 id=963 data-nosnippet>963</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::single_counter::CounterServer;
+<a href=#964 id=964 data-nosnippet>964</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::single_counter::single_counter_service;
+<a href=#965 id=965 data-nosnippet>965</a>
+<a href=#966 id=966 data-nosnippet>966</a>    }
+<a href=#967 id=967 data-nosnippet>967</a>    <span class="kw">pub mod </span>single_counter_buggy {
+<a href=#968 id=968 data-nosnippet>968</a>        <span class="kw">pub use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
+<a href=#969 id=969 data-nosnippet>969</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::single_counter_buggy::CounterServer;
+<a href=#970 id=970 data-nosnippet>970</a>        <span class="kw">pub use </span><span class="kw">crate</span>::tutorials::single_counter_buggy::single_counter_service_buggy;
+<a href=#971 id=971 data-nosnippet>971</a>
+<a href=#972 id=972 data-nosnippet>972</a>    }
+<a href=#973 id=973 data-nosnippet>973</a>}
+<a href=#974 id=974 data-nosnippet>974</a><span class="attr">#[doc(hidden)]
+<a href=#975 id=975 data-nosnippet>975</a>#[cfg(doctest)]
+<a href=#976 id=976 data-nosnippet>976</a></span><span class="kw">pub mod </span>docs {
+<a href=#977 id=977 data-nosnippet>977</a>    <span class="macro">include_mdtests::include_mdtests!</span>(<span class="string">"docs/docs/hydro/**/*.md*"</span>);
+<a href=#978 id=978 data-nosnippet>978</a>}
 </code></pre></div></section></main></body></html>
