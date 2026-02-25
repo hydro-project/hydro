@@ -217,7 +217,7 @@ where
 }
 
 #[cfg(stageleft_runtime)]
-fn zip_inside_tick<'a, T, O, L: Location<'a>, B: Boundedness>(
+pub(super) fn zip_inside_tick<'a, T, O, L: Location<'a>, B: Boundedness>(
     me: Optional<T, L, B>,
     other: Optional<O, L, B>,
 ) -> Optional<(T, O), L, B> {
@@ -625,7 +625,7 @@ where
     /// ```
     pub fn zip<O>(self, other: impl Into<Optional<O, L, B>>) -> Optional<(T, O), L, B>
     where
-        O: Clone,
+        B: IsBounded,
     {
         let other: Optional<O, L, B> = other.into();
         check_matching_location(&self.location, &other.location);

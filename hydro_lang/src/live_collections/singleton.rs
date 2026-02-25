@@ -207,30 +207,10 @@ where
 #[cfg(stageleft_runtime)]
 fn zip_inside_tick<'a, T, L: Location<'a>, B: Boundedness, O>(
     me: Singleton<T, Tick<L>, B>,
-    other: O,
-) -> <Singleton<T, Tick<L>, B> as ZipResult<'a, O>>::Out
-where
-    Singleton<T, Tick<L>, B>: ZipResult<'a, O, Location = Tick<L>>,
-{
-    check_matching_location(
-        &me.location,
-        &Singleton::<T, Tick<L>, B>::other_location(&other),
-    );
-
-    Singleton::<T, Tick<L>, B>::make(
-        me.location.clone(),
-        HydroNode::CrossSingleton {
-            left: Box::new(me.ir_node.into_inner()),
-            right: Box::new(Singleton::<T, Tick<L>, B>::other_ir_node(other)),
-            metadata: me.location.new_node_metadata(CollectionKind::Singleton {
-                bound: B::BOUND_KIND,
-                element_type: stageleft::quote_type::<
-                    <Singleton<T, Tick<L>, B> as ZipResult<'a, O>>::ElementType,
-                >()
-                .into(),
-            }),
-        },
-    )
+    other: Optional<O, Tick<L>, B>,
+) -> Optional<(T, O), Tick<L>, B> {
+    let me_as_optional: Optional<T, Tick<L>, B> = me.into();
+    super::optional::zip_inside_tick(me_as_optional, other)
 }
 
 impl<'a, T, L, B: Boundedness> Singleton<T, L, B>
@@ -570,17 +550,27 @@ where
     pub fn zip<O>(self, other: O) -> <Self as ZipResult<'a, O>>::Out
     where
         Self: ZipResult<'a, O, Location = L>,
+        B: IsBounded,
     {
         check_matching_location(&self.location, &Self::other_location(&other));
 
         if L::is_top_level()
             && let Some(tick) = self.location.try_tick()
         {
+            let other_location = <Self as ZipResult<'a, O>>::other_location(&other);
             let out = zip_inside_tick(
                 self.snapshot(&tick, nondet!(/** eventually stabilizes */)),
                 Optional::<<Self as ZipResult<'a, O>>::OtherType, L, B>::new(
-                    Self::other_location(&other),
-                    Self::other_ir_node(other),
+                    other_location.clone(),
+                    HydroNode::Cast {
+                        inner: Box::new(Self::other_ir_node(other)),
+                        metadata: other_location.new_node_metadata(Optional::<
+                            <Self as ZipResult<'a, O>>::OtherType,
+                            Tick<L>,
+                            Bounded,
+                        >::collection_kind(
+                        )),
+                    },
                 )
                 .snapshot(&tick, nondet!(/** eventually stabilizes */)),
             )
@@ -640,7 +630,10 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn filter_if_some<U>(self, signal: Optional<U, L, B>) -> Optional<T, L, B> {
+    pub fn filter_if_some<U>(self, signal: Optional<U, L, B>) -> Optional<T, L, B>
+    where
+        B: IsBounded,
+    {
         self.zip::<Optional<(), L, B>>(signal.map(q!(|_u| ())))
             .map(q!(|(d, _signal)| d))
     }
@@ -680,7 +673,10 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn filter_if_none<U>(self, other: Optional<U, L, B>) -> Optional<T, L, B> {
+    pub fn filter_if_none<U>(self, other: Optional<U, L, B>) -> Optional<T, L, B>
+    where
+        B: IsBounded,
+    {
         self.filter_if_some(
             other
                 .map(q!(|_| ()))
@@ -1373,5 +1369,31 @@ mod tests {
         flow.sim().exhaustive(async || {
             out_recv.assert_yields_only([10]).await;
         });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn inside_tick_singleton_zip() {
+        use crate::live_collections::Stream;
+        use crate::live_collections::sliced::sliced;
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let source_iter: Stream<_, _> = node.source_iter(q!(vec![1, 2])).into();
+        let folded = source_iter.fold(q!(|| 0), q!(|a, b| *a += b));
+
+        let out_recv = sliced! {
+            let v = use(folded, nondet!(/** test */));
+            v.clone().zip(v).into_stream()
+        }
+        .sim_output();
+
+        let count = flow.sim().exhaustive(async || {
+            let out = out_recv.collect::<Vec<_>>().await;
+            assert_eq!(out.last(), Some(&(3, 3)));
+        });
+
+        assert_eq!(count, 4);
     }
 }
