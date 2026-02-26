@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_test/src/cluster/paxos.rs`."><title>paxos.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b7b9f40b.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_test" data-themes="" data-resource-suffix="" data-rustdoc-version="1.95.0-nightly (859951e3c 2026-02-24)" data-channel="nightly" data-search-js="search-63369b7b.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-5013f961.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_test/cluster/</div>paxos.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::HashMap;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_test/src/cluster/paxos.rs`."><title>paxos.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b7b9f40b.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_test" data-themes="" data-resource-suffix="" data-rustdoc-version="1.95.0-nightly (1ed488274 2026-02-25)" data-channel="nightly" data-search-js="search-63369b7b.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-5013f961.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_test/cluster/</div>paxos.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::HashMap;
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>std::fmt::Debug;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>std::hash::Hash;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>std::time::Duration;
@@ -613,7 +613,7 @@
 <a href=#613 id=613 data-nosnippet>613</a>            } <span class="kw">else </span>{
 <a href=#614 id=614 data-nosnippet>614</a>                <span class="kw-2">*</span>curr_entry = (<span class="number">1</span>, <span class="prelude-val">Some</span>(new_entry));
 <a href=#615 id=615 data-nosnippet>615</a>            }
-<a href=#616 id=616 data-nosnippet>616</a>        }, commutative = ManualProof(<span class="comment">/* TODO */</span>)))
+<a href=#616 id=616 data-nosnippet>616</a>        }, commutative = <span class="macro">manual_proof!</span>(<span class="doccomment">/** TODO */</span>)))
 <a href=#617 id=617 data-nosnippet>617</a>        .map(<span class="macro">q!</span>(|(count, entry)| (count, entry.unwrap())));
 <a href=#618 id=618 data-nosnippet>618</a>    <span class="kw">let </span>p_log_to_try_commit = p_p1b_highest_entries_and_count
 <a href=#619 id=619 data-nosnippet>619</a>        .clone()
@@ -840,7 +840,7 @@
 <a href=#840 id=840 data-nosnippet>840</a>                        value: entry.value,
 <a href=#841 id=841 data-nosnippet>841</a>                    };
 <a href=#842 id=842 data-nosnippet>842</a>                }
-<a href=#843 id=843 data-nosnippet>843</a>            }, commutative = ManualProof(<span class="comment">/* max by ballot (TODO: not if two entries with same ballot, need assume) */</span>)),
+<a href=#843 id=843 data-nosnippet>843</a>            }, commutative = <span class="macro">manual_proof!</span>(<span class="doccomment">/** max by ballot (TODO: not if two entries with same ballot, need assume) */</span>)),
 <a href=#844 id=844 data-nosnippet>844</a>        )
 <a href=#845 id=845 data-nosnippet>845</a>    });
 <a href=#846 id=846 data-nosnippet>846</a>    <span class="kw">let </span>a_log_snapshot = a_log.entries().fold(
@@ -849,108 +849,106 @@
 <a href=#849 id=849 data-nosnippet>849</a>            |map, (slot, entry)| {
 <a href=#850 id=850 data-nosnippet>850</a>                map.insert(slot, entry);
 <a href=#851 id=851 data-nosnippet>851</a>            },
-<a href=#852 id=852 data-nosnippet>852</a>            commutative = ManualProof(
-<a href=#853 id=853 data-nosnippet>853</a>                <span class="comment">/* inserting elements into map is commutative because no keys will overlap */
-<a href=#854 id=854 data-nosnippet>854</a>            </span>)
-<a href=#855 id=855 data-nosnippet>855</a>        ),
-<a href=#856 id=856 data-nosnippet>856</a>    );
-<a href=#857 id=857 data-nosnippet>857</a>
-<a href=#858 id=858 data-nosnippet>858</a>    <span class="kw">let </span>a_to_proposers_p2b = p_to_acceptors_p2a_batch
-<a href=#859 id=859 data-nosnippet>859</a>        .cross_singleton(a_max_ballot)
-<a href=#860 id=860 data-nosnippet>860</a>        .map(<span class="macro">q!</span>(|(p2a, max_ballot)| (
-<a href=#861 id=861 data-nosnippet>861</a>            p2a.sender,
-<a href=#862 id=862 data-nosnippet>862</a>            (
-<a href=#863 id=863 data-nosnippet>863</a>                (p2a.slot, p2a.ballot.clone()),
-<a href=#864 id=864 data-nosnippet>864</a>                <span class="kw">if </span>p2a.ballot == max_ballot {
-<a href=#865 id=865 data-nosnippet>865</a>                    <span class="prelude-val">Ok</span>(())
-<a href=#866 id=866 data-nosnippet>866</a>                } <span class="kw">else </span>{
-<a href=#867 id=867 data-nosnippet>867</a>                    <span class="prelude-val">Err</span>(max_ballot)
-<a href=#868 id=868 data-nosnippet>868</a>                }
-<a href=#869 id=869 data-nosnippet>869</a>            )
-<a href=#870 id=870 data-nosnippet>870</a>        )))
-<a href=#871 id=871 data-nosnippet>871</a>        .all_ticks()
-<a href=#872 id=872 data-nosnippet>872</a>        .demux(proposers, TCP.fail_stop().bincode())
-<a href=#873 id=873 data-nosnippet>873</a>        .values();
-<a href=#874 id=874 data-nosnippet>874</a>
-<a href=#875 id=875 data-nosnippet>875</a>    (
-<a href=#876 id=876 data-nosnippet>876</a>        a_checkpoint
-<a href=#877 id=877 data-nosnippet>877</a>            .into_singleton()
-<a href=#878 id=878 data-nosnippet>878</a>            .zip(a_log_snapshot)
-<a href=#879 id=879 data-nosnippet>879</a>            .latest_atomic(),
-<a href=#880 id=880 data-nosnippet>880</a>        a_to_proposers_p2b,
-<a href=#881 id=881 data-nosnippet>881</a>    )
-<a href=#882 id=882 data-nosnippet>882</a>}
-<a href=#883 id=883 data-nosnippet>883</a>
-<a href=#884 id=884 data-nosnippet>884</a><span class="attr">#[cfg(test)]
-<a href=#885 id=885 data-nosnippet>885</a></span><span class="kw">mod </span>tests {
-<a href=#886 id=886 data-nosnippet>886</a>    <span class="kw">use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
+<a href=#852 id=852 data-nosnippet>852</a>            commutative = <span class="macro">manual_proof!</span>(<span class="doccomment">/** inserting elements into map is commutative because no keys will overlap */</span>)
+<a href=#853 id=853 data-nosnippet>853</a>        ),
+<a href=#854 id=854 data-nosnippet>854</a>    );
+<a href=#855 id=855 data-nosnippet>855</a>
+<a href=#856 id=856 data-nosnippet>856</a>    <span class="kw">let </span>a_to_proposers_p2b = p_to_acceptors_p2a_batch
+<a href=#857 id=857 data-nosnippet>857</a>        .cross_singleton(a_max_ballot)
+<a href=#858 id=858 data-nosnippet>858</a>        .map(<span class="macro">q!</span>(|(p2a, max_ballot)| (
+<a href=#859 id=859 data-nosnippet>859</a>            p2a.sender,
+<a href=#860 id=860 data-nosnippet>860</a>            (
+<a href=#861 id=861 data-nosnippet>861</a>                (p2a.slot, p2a.ballot.clone()),
+<a href=#862 id=862 data-nosnippet>862</a>                <span class="kw">if </span>p2a.ballot == max_ballot {
+<a href=#863 id=863 data-nosnippet>863</a>                    <span class="prelude-val">Ok</span>(())
+<a href=#864 id=864 data-nosnippet>864</a>                } <span class="kw">else </span>{
+<a href=#865 id=865 data-nosnippet>865</a>                    <span class="prelude-val">Err</span>(max_ballot)
+<a href=#866 id=866 data-nosnippet>866</a>                }
+<a href=#867 id=867 data-nosnippet>867</a>            )
+<a href=#868 id=868 data-nosnippet>868</a>        )))
+<a href=#869 id=869 data-nosnippet>869</a>        .all_ticks()
+<a href=#870 id=870 data-nosnippet>870</a>        .demux(proposers, TCP.fail_stop().bincode())
+<a href=#871 id=871 data-nosnippet>871</a>        .values();
+<a href=#872 id=872 data-nosnippet>872</a>
+<a href=#873 id=873 data-nosnippet>873</a>    (
+<a href=#874 id=874 data-nosnippet>874</a>        a_checkpoint
+<a href=#875 id=875 data-nosnippet>875</a>            .into_singleton()
+<a href=#876 id=876 data-nosnippet>876</a>            .zip(a_log_snapshot)
+<a href=#877 id=877 data-nosnippet>877</a>            .latest_atomic(),
+<a href=#878 id=878 data-nosnippet>878</a>        a_to_proposers_p2b,
+<a href=#879 id=879 data-nosnippet>879</a>    )
+<a href=#880 id=880 data-nosnippet>880</a>}
+<a href=#881 id=881 data-nosnippet>881</a>
+<a href=#882 id=882 data-nosnippet>882</a><span class="attr">#[cfg(test)]
+<a href=#883 id=883 data-nosnippet>883</a></span><span class="kw">mod </span>tests {
+<a href=#884 id=884 data-nosnippet>884</a>    <span class="kw">use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
+<a href=#885 id=885 data-nosnippet>885</a>
+<a href=#886 id=886 data-nosnippet>886</a>    <span class="kw">use </span><span class="kw">super</span>::index_payloads;
 <a href=#887 id=887 data-nosnippet>887</a>
-<a href=#888 id=888 data-nosnippet>888</a>    <span class="kw">use </span><span class="kw">super</span>::index_payloads;
-<a href=#889 id=889 data-nosnippet>889</a>
-<a href=#890 id=890 data-nosnippet>890</a>    <span class="attr">#[test]
-<a href=#891 id=891 data-nosnippet>891</a>    </span><span class="kw">fn </span>proposer_indexes_payloads() {
-<a href=#892 id=892 data-nosnippet>892</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#893 id=893 data-nosnippet>893</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#894 id=894 data-nosnippet>894</a>        <span class="kw">let </span>tick = node.tick();
-<a href=#895 id=895 data-nosnippet>895</a>
-<a href=#896 id=896 data-nosnippet>896</a>        <span class="kw">let </span>(in_send, input_payloads) = node.sim_input();
-<a href=#897 id=897 data-nosnippet>897</a>        <span class="kw">let </span>indexed = index_payloads(
-<a href=#898 id=898 data-nosnippet>898</a>            tick.none(),
-<a href=#899 id=899 data-nosnippet>899</a>            input_payloads.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)),
-<a href=#900 id=900 data-nosnippet>900</a>        );
+<a href=#888 id=888 data-nosnippet>888</a>    <span class="attr">#[test]
+<a href=#889 id=889 data-nosnippet>889</a>    </span><span class="kw">fn </span>proposer_indexes_payloads() {
+<a href=#890 id=890 data-nosnippet>890</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#891 id=891 data-nosnippet>891</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#892 id=892 data-nosnippet>892</a>        <span class="kw">let </span>tick = node.tick();
+<a href=#893 id=893 data-nosnippet>893</a>
+<a href=#894 id=894 data-nosnippet>894</a>        <span class="kw">let </span>(in_send, input_payloads) = node.sim_input();
+<a href=#895 id=895 data-nosnippet>895</a>        <span class="kw">let </span>indexed = index_payloads(
+<a href=#896 id=896 data-nosnippet>896</a>            tick.none(),
+<a href=#897 id=897 data-nosnippet>897</a>            input_payloads.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)),
+<a href=#898 id=898 data-nosnippet>898</a>        );
+<a href=#899 id=899 data-nosnippet>899</a>
+<a href=#900 id=900 data-nosnippet>900</a>        <span class="kw">let </span>out_recv = indexed.all_ticks().sim_output();
 <a href=#901 id=901 data-nosnippet>901</a>
-<a href=#902 id=902 data-nosnippet>902</a>        <span class="kw">let </span>out_recv = indexed.all_ticks().sim_output();
-<a href=#903 id=903 data-nosnippet>903</a>
-<a href=#904 id=904 data-nosnippet>904</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#905 id=905 data-nosnippet>905</a>            in_send.send(<span class="number">1</span>);
-<a href=#906 id=906 data-nosnippet>906</a>            in_send.send(<span class="number">2</span>);
-<a href=#907 id=907 data-nosnippet>907</a>            in_send.send(<span class="number">3</span>);
-<a href=#908 id=908 data-nosnippet>908</a>            in_send.send(<span class="number">4</span>);
-<a href=#909 id=909 data-nosnippet>909</a>
-<a href=#910 id=910 data-nosnippet>910</a>            out_recv
-<a href=#911 id=911 data-nosnippet>911</a>                .assert_yields_only([(<span class="number">0</span>, <span class="number">1</span>), (<span class="number">1</span>, <span class="number">2</span>), (<span class="number">2</span>, <span class="number">3</span>), (<span class="number">3</span>, <span class="number">4</span>)])
-<a href=#912 id=912 data-nosnippet>912</a>                .<span class="kw">await</span>;
-<a href=#913 id=913 data-nosnippet>913</a>        });
-<a href=#914 id=914 data-nosnippet>914</a>    }
-<a href=#915 id=915 data-nosnippet>915</a>
-<a href=#916 id=916 data-nosnippet>916</a>    <span class="attr">#[test]
-<a href=#917 id=917 data-nosnippet>917</a>    </span><span class="kw">fn </span>proposer_indexes_payloads_jumps_on_new_max() {
-<a href=#918 id=918 data-nosnippet>918</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
-<a href=#919 id=919 data-nosnippet>919</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
-<a href=#920 id=920 data-nosnippet>920</a>        <span class="kw">let </span>tick = node.tick();
-<a href=#921 id=921 data-nosnippet>921</a>
-<a href=#922 id=922 data-nosnippet>922</a>        <span class="kw">let </span>(in_send, input_payloads) = node.sim_input();
-<a href=#923 id=923 data-nosnippet>923</a>        <span class="kw">let </span>release_new_base = node
-<a href=#924 id=924 data-nosnippet>924</a>            .source_iter(<span class="macro">q!</span>([<span class="number">123</span>]))
-<a href=#925 id=925 data-nosnippet>925</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
-<a href=#926 id=926 data-nosnippet>926</a>            .first();
-<a href=#927 id=927 data-nosnippet>927</a>        <span class="kw">let </span>indexed = index_payloads(
-<a href=#928 id=928 data-nosnippet>928</a>            release_new_base,
-<a href=#929 id=929 data-nosnippet>929</a>            input_payloads.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)),
-<a href=#930 id=930 data-nosnippet>930</a>        );
+<a href=#902 id=902 data-nosnippet>902</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#903 id=903 data-nosnippet>903</a>            in_send.send(<span class="number">1</span>);
+<a href=#904 id=904 data-nosnippet>904</a>            in_send.send(<span class="number">2</span>);
+<a href=#905 id=905 data-nosnippet>905</a>            in_send.send(<span class="number">3</span>);
+<a href=#906 id=906 data-nosnippet>906</a>            in_send.send(<span class="number">4</span>);
+<a href=#907 id=907 data-nosnippet>907</a>
+<a href=#908 id=908 data-nosnippet>908</a>            out_recv
+<a href=#909 id=909 data-nosnippet>909</a>                .assert_yields_only([(<span class="number">0</span>, <span class="number">1</span>), (<span class="number">1</span>, <span class="number">2</span>), (<span class="number">2</span>, <span class="number">3</span>), (<span class="number">3</span>, <span class="number">4</span>)])
+<a href=#910 id=910 data-nosnippet>910</a>                .<span class="kw">await</span>;
+<a href=#911 id=911 data-nosnippet>911</a>        });
+<a href=#912 id=912 data-nosnippet>912</a>    }
+<a href=#913 id=913 data-nosnippet>913</a>
+<a href=#914 id=914 data-nosnippet>914</a>    <span class="attr">#[test]
+<a href=#915 id=915 data-nosnippet>915</a>    </span><span class="kw">fn </span>proposer_indexes_payloads_jumps_on_new_max() {
+<a href=#916 id=916 data-nosnippet>916</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#917 id=917 data-nosnippet>917</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#918 id=918 data-nosnippet>918</a>        <span class="kw">let </span>tick = node.tick();
+<a href=#919 id=919 data-nosnippet>919</a>
+<a href=#920 id=920 data-nosnippet>920</a>        <span class="kw">let </span>(in_send, input_payloads) = node.sim_input();
+<a href=#921 id=921 data-nosnippet>921</a>        <span class="kw">let </span>release_new_base = node
+<a href=#922 id=922 data-nosnippet>922</a>            .source_iter(<span class="macro">q!</span>([<span class="number">123</span>]))
+<a href=#923 id=923 data-nosnippet>923</a>            .batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>))
+<a href=#924 id=924 data-nosnippet>924</a>            .first();
+<a href=#925 id=925 data-nosnippet>925</a>        <span class="kw">let </span>indexed = index_payloads(
+<a href=#926 id=926 data-nosnippet>926</a>            release_new_base,
+<a href=#927 id=927 data-nosnippet>927</a>            input_payloads.batch(<span class="kw-2">&amp;</span>tick, <span class="macro">nondet!</span>(<span class="doccomment">/** test */</span>)),
+<a href=#928 id=928 data-nosnippet>928</a>        );
+<a href=#929 id=929 data-nosnippet>929</a>
+<a href=#930 id=930 data-nosnippet>930</a>        <span class="kw">let </span>out_recv = indexed.all_ticks().sim_output();
 <a href=#931 id=931 data-nosnippet>931</a>
-<a href=#932 id=932 data-nosnippet>932</a>        <span class="kw">let </span>out_recv = indexed.all_ticks().sim_output();
-<a href=#933 id=933 data-nosnippet>933</a>
-<a href=#934 id=934 data-nosnippet>934</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
-<a href=#935 id=935 data-nosnippet>935</a>            in_send.send(<span class="number">1</span>);
-<a href=#936 id=936 data-nosnippet>936</a>            in_send.send(<span class="number">2</span>);
-<a href=#937 id=937 data-nosnippet>937</a>            in_send.send(<span class="number">3</span>);
-<a href=#938 id=938 data-nosnippet>938</a>            in_send.send(<span class="number">4</span>);
-<a href=#939 id=939 data-nosnippet>939</a>
-<a href=#940 id=940 data-nosnippet>940</a>            <span class="kw">let </span><span class="kw-2">mut </span>next_expected = <span class="number">0</span>;
-<a href=#941 id=941 data-nosnippet>941</a>            <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..=<span class="number">4 </span>{
-<a href=#942 id=942 data-nosnippet>942</a>                <span class="kw">let </span>(next_slot, v) = out_recv.next().<span class="kw">await</span>.unwrap();
-<a href=#943 id=943 data-nosnippet>943</a>                <span class="macro">assert_eq!</span>(v, i);
-<a href=#944 id=944 data-nosnippet>944</a>
-<a href=#945 id=945 data-nosnippet>945</a>                <span class="kw">if </span>next_expected &lt; <span class="number">123 </span>{
-<a href=#946 id=946 data-nosnippet>946</a>                    <span class="macro">assert!</span>(next_slot == next_expected || next_slot == <span class="number">124</span>);
-<a href=#947 id=947 data-nosnippet>947</a>                } <span class="kw">else </span>{
-<a href=#948 id=948 data-nosnippet>948</a>                    <span class="macro">assert!</span>(next_slot == next_expected);
-<a href=#949 id=949 data-nosnippet>949</a>                }
-<a href=#950 id=950 data-nosnippet>950</a>
-<a href=#951 id=951 data-nosnippet>951</a>                next_expected = next_slot + <span class="number">1</span>;
-<a href=#952 id=952 data-nosnippet>952</a>            }
-<a href=#953 id=953 data-nosnippet>953</a>        });
-<a href=#954 id=954 data-nosnippet>954</a>    }
-<a href=#955 id=955 data-nosnippet>955</a>}
+<a href=#932 id=932 data-nosnippet>932</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#933 id=933 data-nosnippet>933</a>            in_send.send(<span class="number">1</span>);
+<a href=#934 id=934 data-nosnippet>934</a>            in_send.send(<span class="number">2</span>);
+<a href=#935 id=935 data-nosnippet>935</a>            in_send.send(<span class="number">3</span>);
+<a href=#936 id=936 data-nosnippet>936</a>            in_send.send(<span class="number">4</span>);
+<a href=#937 id=937 data-nosnippet>937</a>
+<a href=#938 id=938 data-nosnippet>938</a>            <span class="kw">let </span><span class="kw-2">mut </span>next_expected = <span class="number">0</span>;
+<a href=#939 id=939 data-nosnippet>939</a>            <span class="kw">for </span>i <span class="kw">in </span><span class="number">1</span>..=<span class="number">4 </span>{
+<a href=#940 id=940 data-nosnippet>940</a>                <span class="kw">let </span>(next_slot, v) = out_recv.next().<span class="kw">await</span>.unwrap();
+<a href=#941 id=941 data-nosnippet>941</a>                <span class="macro">assert_eq!</span>(v, i);
+<a href=#942 id=942 data-nosnippet>942</a>
+<a href=#943 id=943 data-nosnippet>943</a>                <span class="kw">if </span>next_expected &lt; <span class="number">123 </span>{
+<a href=#944 id=944 data-nosnippet>944</a>                    <span class="macro">assert!</span>(next_slot == next_expected || next_slot == <span class="number">124</span>);
+<a href=#945 id=945 data-nosnippet>945</a>                } <span class="kw">else </span>{
+<a href=#946 id=946 data-nosnippet>946</a>                    <span class="macro">assert!</span>(next_slot == next_expected);
+<a href=#947 id=947 data-nosnippet>947</a>                }
+<a href=#948 id=948 data-nosnippet>948</a>
+<a href=#949 id=949 data-nosnippet>949</a>                next_expected = next_slot + <span class="number">1</span>;
+<a href=#950 id=950 data-nosnippet>950</a>            }
+<a href=#951 id=951 data-nosnippet>951</a>        });
+<a href=#952 id=952 data-nosnippet>952</a>    }
+<a href=#953 id=953 data-nosnippet>953</a>}
 </code></pre></div></section></main></body></html>
