@@ -32,21 +32,6 @@ impl PipelineConfig {
     }
 }
 
-/// Simulate work by busy-waiting for the specified duration
-/// This is used instead of sleep to avoid blocking the async runtime
-fn simulate_work(duration: Duration) {
-    let duration_ms = duration.as_millis() as u64;
-    // Calibrated: ~1000 iterations ≈ 1μs on typical hardware
-    // For N milliseconds, do N * 1000 iterations
-    let iterations = duration_ms * 1000;
-    let mut sum = 0u64;
-    for i in 0..iterations {
-        sum = sum.wrapping_add(i);
-    }
-    // Prevent optimization
-    std::hint::black_box(sum);
-}
-
 /// DFIR Pipeline that processes requests with handoff buffers
 /// 
 /// The pipeline has three strata:
@@ -66,6 +51,8 @@ impl DfirPipeline {
     /// Build and return a DFIR flow with the three-stratum pipeline
     /// 
     /// This creates a pipeline with explicit handoff buffers using `next_stratum()`.
+    /// The processing stage uses resolve_futures_blocking_ordered() to enforce
+    /// SERIAL execution - only one request is processed at a time.
     /// 
     /// # Arguments
     /// * `request_receiver` - Stream to receive requests from all clients
@@ -94,10 +81,16 @@ impl DfirPipeline {
             -> next_stratum()
             
             // Stage 2: Process with simulated think time
+            // CRITICAL: Use resolve_futures_blocking_ordered() for SERIAL processing
+            // This blocks on each future until it completes before starting the next one
+            // This creates the capacity bottleneck we need
             -> map(|request: Request| {
-                simulate_work(think_time);
-                request
+                async move {
+                    tokio::time::sleep(think_time).await;
+                    request
+                }
             })
+            -> resolve_futures_blocking_ordered()
             
             // Handoff Buffer 2: Explicit stratum boundary
             // This creates an unbounded buffer between stage 2 and stage 3

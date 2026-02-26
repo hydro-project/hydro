@@ -1,40 +1,40 @@
-/// DFIR Baseline Server
+/// Single-Stage DFIR Server (Control/Sanity Check)
 /// 
-/// A TCP server that processes requests through a DFIR pipeline using
-/// channel-based architecture. This follows the DFIR networking pattern
-/// where TCP I/O is completely decoupled from the pipeline via channels.
-///
-/// Architecture:
-/// - TCP task: Handles all connections in single event loop using select!
-/// - DFIR pipeline: Processes requests with handoff buffers between stages
-/// - Channels connect TCP → Pipeline → TCP with no blocking
+/// This is a DFIR server with NO handoff buffers - just one stage.
+/// TCP backpressure should prevent metastable collapse here.
+/// 
+/// If this server DOES NOT collapse with the same configuration that
+/// causes the multi-stage server to collapse, we've proven the failure
+/// is due to DFIR's handoff buffers, not our code or TCP.
 
-use dfir_baseline::pipeline::{DfirPipeline, PipelineConfig};
 use dfir_baseline::{BaselineConfig, MetricEvent, Request, Response};
 use dfir_baseline::metrics::MetricsWriter;
+use dfir_rs::dfir_syntax;
 use dfir_rs::tokio_stream::StreamExt;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::io::AsyncReadExt;
-use tokio::io::AsyncWriteExt;
+use std::sync::atomic::{AtomicUsize, AtomicU64, Ordering};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::net::TcpListener;
 use tokio::select;
 use dfir_rs::tokio_stream::StreamMap;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // Read configuration from environment variables or use defaults
     let server_address = std::env::var("SERVER_ADDRESS")
-        .unwrap_or_else(|_| "127.0.0.1:8080".to_string());
+        .unwrap_or_else(|_| "127.0.0.1:8081".to_string());
     let think_time_ms = std::env::var("THINK_TIME_MS")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(10);
+    let max_queue_depth = std::env::var("MAX_QUEUE_DEPTH")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(10);
     let metrics_path = std::env::var("METRICS_PATH")
-        .unwrap_or_else(|_| "/tmp/dfir_baseline_metrics/server_metrics.jsonl".to_string());
+        .unwrap_or_else(|_| "/tmp/dfir_baseline_metrics/server_single_stage_metrics.jsonl".to_string());
     
     let config = BaselineConfig {
         server_address: server_address.clone(),
@@ -45,95 +45,132 @@ async fn main() -> anyhow::Result<()> {
         ipc_directory: "/tmp/dfir_baseline_metrics".to_string(),
     };
 
-    println!("Starting DFIR baseline server on {}", config.server_address);
+    println!("Starting SINGLE-STAGE DFIR server (control) on {}", config.server_address);
     println!("Think time: {}ms", config.think_time_ms);
     println!("Expected capacity: {:.1} req/s", config.server_capacity());
-    println!("Writing buffer depth metrics to: {}", metrics_path);
+    println!("Max queue depth: {}", max_queue_depth);
+    println!("NO HANDOFF BUFFERS - single stage only");
+    println!("Writing metrics to: {}", metrics_path);
 
-    // Create channels connecting TCP <-> DFIR pipeline
     let (request_tx, request_rx) = dfir_rs::util::unbounded_channel::<Request>();
     let (response_tx, response_rx) = tokio::sync::mpsc::unbounded_channel::<Response>();
 
-    // Build DFIR pipeline
-    let pipeline_config = PipelineConfig::new(config.think_time_ms);
-    let pipeline = DfirPipeline::new(pipeline_config);
+    // Track channel depth with two separate atomic counters
+    // Depth = requests_sent - requests_received
+    let requests_sent = Arc::new(AtomicUsize::new(0));
+    let requests_received = Arc::new(AtomicUsize::new(0));
+    let stale_responses = Arc::new(AtomicU64::new(0));
+    let rejected_requests = Arc::new(AtomicU64::new(0));
     
-    let mut response_senders = HashMap::new();
-    response_senders.insert(0, response_tx);
-    
-    let mut flow = pipeline.build_flow(request_rx, response_senders);
+    // Create ALL clones upfront before any usage
+    let requests_received_for_flow = requests_received.clone();
+    let requests_sent_for_tcp = requests_sent.clone();
+    let requests_received_for_tcp = requests_received.clone();
+    let stale_responses_for_tcp = stale_responses.clone();
+    let rejected_requests_for_tcp = rejected_requests.clone();
+    let requests_sent_for_main = requests_sent.clone();
+    let requests_received_for_main = requests_received;
+    let stale_responses_for_main = stale_responses;
+    let rejected_requests_for_main = rejected_requests;
 
-    // Get metrics handle and create writer
+    // SINGLE STAGE - NO next_stratum() calls, NO handoff buffers
+    let think_time = Duration::from_millis(config.think_time_ms);
+    let mut flow = dfir_syntax! {
+        source_stream(request_rx)
+        -> inspect(|_| {
+            // Increment received counter when DFIR pipeline receives from channel
+            requests_received_for_flow.fetch_add(1, Ordering::Relaxed);
+        })
+        -> map(|request: Request| {
+            async move {
+                tokio::time::sleep(think_time).await;
+                request
+            }
+        })
+        -> resolve_futures_blocking_ordered()
+        -> for_each(|request: Request| {
+            let response = Response::new(request.id);
+            let _ = response_tx.send(response);
+        });
+    };
+
     let metrics_handle = flow.metrics();
     let mut metrics_writer = MetricsWriter::new(&metrics_path)?;
     let mut last_sample_time = std::time::Instant::now();
-    
-    // Track stale responses (responses that arrive after client disconnected)
-    let stale_responses = Arc::new(AtomicU64::new(0));
-    let stale_responses_for_tcp = stale_responses.clone();
 
-    // Spawn TCP server task (handles ALL connections in single event loop)
+    // Spawn TCP server with proper request/response handling
     let bind_address = config.server_address.clone();
     tokio::spawn(async move {
-        if let Err(e) = run_tcp_server(&bind_address, request_tx, response_rx, stale_responses_for_tcp).await {
+        if let Err(e) = run_tcp_server(&bind_address, request_tx, response_rx, requests_sent_for_tcp, max_queue_depth, requests_received_for_tcp, stale_responses_for_tcp, rejected_requests_for_tcp).await {
             eprintln!("TCP server error: {}", e);
         }
     });
 
-    // Run DFIR pipeline with periodic buffer depth sampling
-    println!("Starting DFIR pipeline...");
+    println!("Starting single-stage DFIR pipeline...");
     loop {
-        // Run one tick of the pipeline
         flow.run_tick().await;
         
-        // Sample buffer depths every 1 second
-        if last_sample_time.elapsed() >= std::time::Duration::from_secs(1) {
+        if last_sample_time.elapsed() >= Duration::from_secs(1) {
             let timestamp = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_secs_f64() * 1000.0;
             
-            // Sample all handoff buffer depths
-            let mut buffer_id = 0;
-            for (_handoff_id, handoff_metrics) in metrics_handle.handoffs.iter() {
-                let depth = handoff_metrics.curr_items_count();
-                
-                metrics_writer.write_event(MetricEvent::BufferDepth {
-                    timestamp,
-                    buffer_id,
-                    depth,
-                })?;
-                
-                buffer_id += 1;
-            }
+            // Calculate channel depth: sent - received
+            let sent = requests_sent_for_main.load(Ordering::Relaxed);
+            let received = requests_received_for_main.load(Ordering::Relaxed);
+            let depth = sent.saturating_sub(received);
+            
+            // Should be ZERO handoff buffers (no next_stratum() calls)
+            let num_handoff_buffers = metrics_handle.handoffs.len();
+            
+            // Log both measurements
+            println!("Channel depth: {} (sent: {}, received: {}), Handoff buffers: {}", 
+                     depth, sent, received, num_handoff_buffers);
             
             // Log stale responses (reset counter each interval)
-            let stale = stale_responses.swap(0, Ordering::Relaxed);
+            let stale = stale_responses_for_main.swap(0, Ordering::Relaxed);
             if stale > 0 {
                 println!("Stale responses this interval: {}", stale);
             }
+            
+            // Log rejected requests (reset counter each interval)
+            let rejected = rejected_requests_for_main.swap(0, Ordering::Relaxed);
+            if rejected > 0 {
+                println!("Rejected requests this interval: {}", rejected);
+            }
+            
+            metrics_writer.write_event(MetricEvent::BufferDepth {
+                timestamp,
+                buffer_id: 0,
+                depth,
+            })?;
             
             metrics_writer.flush()?;
             last_sample_time = std::time::Instant::now();
         }
         
-        // Sleep briefly to avoid tight loop CPU spinning
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        tokio::time::sleep(Duration::from_millis(10)).await;
     }
 }
 
-/// TCP server following DFIR networking pattern
+/// TCP server following DFIR networking pattern with admission control
 /// 
 /// Single event loop handles ALL connections using select!:
 /// - Accepts new connections
 /// - Reads from any peer (non-blocking, multiplexed via StreamMap)
 /// - Writes to any peer (non-blocking, triggered by pipeline responses)
 /// - No head-of-line blocking - can read/write to different peers concurrently
+/// - Rejects requests when queue depth exceeds MAX_QUEUE_DEPTH
 async fn run_tcp_server(
     bind_address: &str,
     request_tx: dfir_rs::tokio::sync::mpsc::UnboundedSender<Request>,
     mut response_rx: tokio::sync::mpsc::UnboundedReceiver<Response>,
+    requests_sent: Arc<AtomicUsize>,
+    max_queue_depth: usize,
+    requests_received: Arc<AtomicUsize>,
     stale_responses: Arc<AtomicU64>,
+    rejected_requests: Arc<AtomicU64>,
 ) -> anyhow::Result<()> {
     let listener = TcpListener::bind(bind_address).await?;
     let local_addr = listener.local_addr()?;
@@ -203,8 +240,35 @@ async fn run_tcp_server(
                 
                 match request_result {
                     Ok(request) => {
+                        // Check queue depth before accepting request
+                        let sent = requests_sent.load(Ordering::Relaxed);
+                        let received = requests_received.load(Ordering::Relaxed);
+                        let depth = sent.saturating_sub(received);
+                        
+                        if depth >= max_queue_depth {
+                            // Server overloaded - reject request
+                            let Some(write_half) = peers_send.get_mut(&peer_addr) else {
+                                continue;
+                            };
+                            
+                            let rejection = Response::rejected(request.id);
+                            let rejection_bytes = rejection.to_bytes();
+                            
+                            if let Err(e) = write_half.write_all(&rejection_bytes).await {
+                                eprintln!("Error writing rejection to {}: {}", peer_addr, e);
+                                peers_send.remove(&peer_addr);
+                            } else {
+                                // Count rejections instead of logging each one
+                                rejected_requests.fetch_add(1, Ordering::Relaxed);
+                            }
+                            continue;
+                        }
+                        
                         // Remember which peer sent this request
                         request_to_peer.insert(request.id, peer_addr);
+                        
+                        // Increment sent counter when TCP server sends to channel
+                        requests_sent.fetch_add(1, Ordering::Relaxed);
                         
                         // Send to DFIR pipeline
                         if request_tx.send(request).is_err() {

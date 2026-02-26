@@ -49,7 +49,7 @@ async fn test_basic_request_response() {
     println!("Client sent request {}", request.id);
     
     // Read response
-    let mut response_buffer = [0u8; 8];
+    let mut response_buffer = [0u8; 9];
     client.read_exact(&mut response_buffer).await.unwrap();
     let response = Response::from_bytes(response_buffer);
     println!("Client received response {}", response.id);
@@ -99,7 +99,7 @@ async fn test_multiple_requests() {
         client.write_all(&request.to_bytes()).await.unwrap();
         println!("Client sent request {}", request.id);
         
-        let mut response_buffer = [0u8; 8];
+        let mut response_buffer = [0u8; 9];
         client.read_exact(&mut response_buffer).await.unwrap();
         let response = Response::from_bytes(response_buffer);
         println!("Client received response {}", response.id);

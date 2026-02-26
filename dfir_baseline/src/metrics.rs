@@ -239,39 +239,66 @@ impl MetricsReader {
     }
     
     /// Calculate offered arrival rate (requests per second, without amplification)
-    pub fn offered_rate(&self) -> f64 {
+    /// This counts only NEW requests, not retries
+    /// 
+    /// If window_size_ms is provided, uses that as the denominator instead of
+    /// calculating from min/max timestamps. This gives accurate rates for time windows.
+    pub fn offered_rate_with_window(&self, window_size_ms: Option<f64>) -> f64 {
         if self.events.is_empty() {
             return 0.0;
         }
         
-        let request_timestamps: Vec<f64> = self.events.iter()
-            .filter_map(|event| {
-                if let MetricEvent::RequestSent { timestamp, .. } = event {
-                    Some(*timestamp)
-                } else {
-                    None
-                }
-            })
-            .collect();
+        // Track which request IDs we've seen to exclude retries
+        let mut seen_req_ids = std::collections::HashSet::new();
+        let mut first_send_timestamps: Vec<f64> = Vec::new();
         
-        if request_timestamps.len() < 2 {
+        for event in &self.events {
+            match event {
+                MetricEvent::RequestSent { timestamp, req_id } => {
+                    // Only count the first send of each request ID
+                    if seen_req_ids.insert(*req_id) {
+                        first_send_timestamps.push(*timestamp);
+                    }
+                }
+                _ => {}
+            }
+        }
+        
+        if first_send_timestamps.is_empty() {
             return 0.0;
         }
         
-        let min_time = request_timestamps.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max_time = request_timestamps.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-        
-        let duration_secs = (max_time - min_time) / 1000.0;
+        let duration_secs = if let Some(window_ms) = window_size_ms {
+            // Use provided window size
+            window_ms / 1000.0
+        } else {
+            // Calculate from timestamps (old behavior)
+            if first_send_timestamps.len() < 2 {
+                return 0.0;
+            }
+            let min_time = first_send_timestamps.iter().cloned().fold(f64::INFINITY, f64::min);
+            let max_time = first_send_timestamps.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            (max_time - min_time) / 1000.0
+        };
         
         if duration_secs <= 0.0 {
             return 0.0;
         }
         
-        request_timestamps.len() as f64 / duration_secs
+        first_send_timestamps.len() as f64 / duration_secs
+    }
+    
+    /// Calculate offered arrival rate (requests per second, without amplification)
+    /// This counts only NEW requests, not retries
+    pub fn offered_rate(&self) -> f64 {
+        self.offered_rate_with_window(None)
     }
     
     /// Calculate effective arrival rate (requests + retries per second, with amplification)
-    pub fn effective_rate(&self) -> f64 {
+    /// 
+    /// If window_size_ms is provided, uses that as the denominator instead of
+    /// calculating from min/max timestamps. This gives accurate rates for time windows.
+    pub fn effective_rate_with_window(&self, window_size_ms: Option<f64>) -> f64 {
         if self.events.is_empty() {
             return 0.0;
         }
@@ -291,20 +318,33 @@ impl MetricsReader {
             }
         }
         
-        if all_send_timestamps.len() < 2 {
+        if all_send_timestamps.is_empty() {
             return 0.0;
         }
         
-        let min_time = all_send_timestamps.iter().cloned().fold(f64::INFINITY, f64::min);
-        let max_time = all_send_timestamps.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-        
-        let duration_secs = (max_time - min_time) / 1000.0;
+        let duration_secs = if let Some(window_ms) = window_size_ms {
+            // Use provided window size
+            window_ms / 1000.0
+        } else {
+            // Calculate from timestamps (old behavior)
+            if all_send_timestamps.len() < 2 {
+                return 0.0;
+            }
+            let min_time = all_send_timestamps.iter().cloned().fold(f64::INFINITY, f64::min);
+            let max_time = all_send_timestamps.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            (max_time - min_time) / 1000.0
+        };
         
         if duration_secs <= 0.0 {
             return 0.0;
         }
         
         all_send_timestamps.len() as f64 / duration_secs
+    }
+    
+    /// Calculate effective arrival rate (requests + retries per second, with amplification)
+    pub fn effective_rate(&self) -> f64 {
+        self.effective_rate_with_window(None)
     }
     
     /// Calculate retry amplification (effective_rate / offered_rate)
@@ -328,9 +368,12 @@ impl MetricsReader {
             .map(|event| match event {
                 MetricEvent::RequestSent { timestamp, .. } => *timestamp,
                 MetricEvent::ResponseReceived { timestamp, .. } => *timestamp,
+                MetricEvent::RequestRejected { timestamp, .. } => *timestamp,
                 MetricEvent::RequestRetried { timestamp, .. } => *timestamp,
                 MetricEvent::RequestTimeout { timestamp, .. } => *timestamp,
                 MetricEvent::RequestFailed { timestamp, .. } => *timestamp,
+                MetricEvent::BufferDepth { timestamp, .. } => *timestamp,
+                MetricEvent::StaleResponse { timestamp, .. } => *timestamp,
             })
             .collect();
         
@@ -350,9 +393,12 @@ impl MetricsReader {
                     let timestamp = match event {
                         MetricEvent::RequestSent { timestamp, .. } => *timestamp,
                         MetricEvent::ResponseReceived { timestamp, .. } => *timestamp,
+                        MetricEvent::RequestRejected { timestamp, .. } => *timestamp,
                         MetricEvent::RequestRetried { timestamp, .. } => *timestamp,
                         MetricEvent::RequestTimeout { timestamp, .. } => *timestamp,
                         MetricEvent::RequestFailed { timestamp, .. } => *timestamp,
+                        MetricEvent::BufferDepth { timestamp, .. } => *timestamp,
+                        MetricEvent::StaleResponse { timestamp, .. } => *timestamp,
                     };
                     timestamp >= current_time && timestamp < window_end
                 })
@@ -368,12 +414,78 @@ impl MetricsReader {
                     p50_latency_ms: window_reader.p50_latency().unwrap_or(0.0),
                     p99_latency_ms: window_reader.p99_latency().unwrap_or(0.0),
                     success_rate: window_reader.success_rate(),
-                    offered_rate: window_reader.offered_rate(),
-                    effective_rate: window_reader.effective_rate(),
-                    retry_amplification: window_reader.retry_amplification(),
+                    offered_rate: window_reader.offered_rate_with_window(Some(window_size_ms)),
+                    effective_rate: window_reader.effective_rate_with_window(Some(window_size_ms)),
+                    retry_amplification: {
+                        let offered = window_reader.offered_rate_with_window(Some(window_size_ms));
+                        let effective = window_reader.effective_rate_with_window(Some(window_size_ms));
+                        if offered == 0.0 { 1.0 } else { effective / offered }
+                    },
                 };
                 
                 windows.push(metrics);
+            }
+            
+            current_time = window_end;
+        }
+        
+        windows
+    }
+    
+    /// Export buffer depth time-series data
+    /// Groups buffer depth events into time windows
+    pub fn export_buffer_depths(&self, window_size_ms: f64) -> Vec<(f64, Vec<(usize, f64)>)> {
+        if self.events.is_empty() {
+            return Vec::new();
+        }
+        
+        // Find time range
+        let all_timestamps: Vec<f64> = self.events.iter()
+            .map(|event| match event {
+                MetricEvent::RequestSent { timestamp, .. } => *timestamp,
+                MetricEvent::ResponseReceived { timestamp, .. } => *timestamp,
+                MetricEvent::RequestRejected { timestamp, .. } => *timestamp,
+                MetricEvent::RequestRetried { timestamp, .. } => *timestamp,
+                MetricEvent::RequestTimeout { timestamp, .. } => *timestamp,
+                MetricEvent::RequestFailed { timestamp, .. } => *timestamp,
+                MetricEvent::BufferDepth { timestamp, .. } => *timestamp,
+                MetricEvent::StaleResponse { timestamp, .. } => *timestamp,
+            })
+            .collect();
+        
+        let min_time = all_timestamps.iter().cloned().fold(f64::INFINITY, f64::min);
+        let max_time = all_timestamps.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        
+        // Create time windows
+        let mut windows = Vec::new();
+        let mut current_time = min_time;
+        
+        while current_time <= max_time {
+            let window_end = current_time + window_size_ms;
+            
+            // Filter buffer depth events in this window
+            let mut buffer_depths: std::collections::HashMap<usize, Vec<usize>> = std::collections::HashMap::new();
+            
+            for event in &self.events {
+                if let MetricEvent::BufferDepth { timestamp, buffer_id, depth } = event {
+                    if *timestamp >= current_time && *timestamp < window_end {
+                        buffer_depths.entry(*buffer_id).or_insert_with(Vec::new).push(*depth);
+                    }
+                }
+            }
+            
+            // Calculate average depth per buffer for this window
+            let mut avg_depths: Vec<(usize, f64)> = buffer_depths.iter()
+                .map(|(buffer_id, depths)| {
+                    let avg = depths.iter().sum::<usize>() as f64 / depths.len() as f64;
+                    (*buffer_id, avg)
+                })
+                .collect();
+            
+            avg_depths.sort_by_key(|(buffer_id, _)| *buffer_id);
+            
+            if !avg_depths.is_empty() {
+                windows.push((current_time, avg_depths));
             }
             
             current_time = window_end;

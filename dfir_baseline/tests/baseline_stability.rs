@@ -32,14 +32,18 @@ fn spawn_client(
     config: &BaselineConfig,
     workspace_root: &str,
 ) -> anyhow::Result<Child> {
-    let client_bin = format!("{}/target/debug/client", workspace_root);
+    let client_bin = format!("{}/target/debug/client_openloop", workspace_root);
     let metrics_file = format!("{}/client_{}.jsonl", config.ipc_directory, client_id);
     
     // Set environment variables for client configuration
+    // CRITICAL: Set timeout MUCH longer than think time to avoid retries in baseline
+    // With 20ms think time, use 100ms timeout (5× safety margin)
     let child = Command::new(&client_bin)
         .env("SERVER_ADDRESS", &config.server_address)
         .env("REQUESTS_PER_SECOND", config.requests_per_second.to_string())
         .env("DURATION_SECS", config.duration_secs.to_string())
+        .env("TIMEOUT_MS", "100") // 100ms timeout for 20ms think time
+        .env("MAX_RETRIES", "0") // NO retries in baseline test
         .env("METRICS_FILE", &metrics_file)
         .spawn()?;
     
@@ -84,6 +88,13 @@ fn coefficient_of_variation(values: &[f64]) -> f64 {
 #[test]
 #[ignore] // Run with: cargo test --test baseline_stability -- --ignored
 fn test_baseline_stability_at_55_percent() -> anyhow::Result<()> {
+    // Kill any zombie servers first
+    println!("Cleaning up zombie servers...");
+    let _ = Command::new("bash")
+        .arg("dfir_baseline/kill_servers.sh")
+        .output();
+    std::thread::sleep(Duration::from_secs(1));
+    
     // Get workspace root (assuming we're in dfir_baseline/)
     let workspace_root = std::env::current_dir()?
         .parent()
@@ -127,7 +138,7 @@ fn test_baseline_stability_at_55_percent() -> anyhow::Result<()> {
     // Build binaries first
     println!("\nBuilding binaries...");
     let build_status = Command::new("cargo")
-        .args(&["build", "--package", "dfir_baseline", "--bin", "server", "--bin", "client"])
+        .args(&["build", "--package", "dfir_baseline", "--bin", "server", "--bin", "client_openloop"])
         .current_dir(&workspace_root)
         .status()?;
     

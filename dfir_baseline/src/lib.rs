@@ -29,31 +29,64 @@ impl Request {
     }
 }
 
+/// Response status codes
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[repr(u8)]
+pub enum ResponseStatus {
+    Success = 0x00,
+    Rejected = 0x01,
+}
+
 /// Response sent from server to client
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Response {
     pub id: u64,
+    pub status: ResponseStatus,
 }
 
 impl Response {
     pub fn new(id: u64) -> Self {
-        Self { id }
-    }
-
-    /// Serialize to bytes (big-endian u64)
-    pub fn to_bytes(&self) -> [u8; 8] {
-        self.id.to_be_bytes()
-    }
-
-    /// Deserialize from bytes (big-endian u64)
-    pub fn from_bytes(bytes: [u8; 8]) -> Self {
-        Self {
-            id: u64::from_be_bytes(bytes),
+        Self { 
+            id,
+            status: ResponseStatus::Success,
         }
+    }
+
+    pub fn success(id: u64) -> Self {
+        Self {
+            id,
+            status: ResponseStatus::Success,
+        }
+    }
+
+    pub fn rejected(id: u64) -> Self {
+        Self {
+            id,
+            status: ResponseStatus::Rejected,
+        }
+    }
+
+    /// Serialize to bytes (1 byte status + 8 bytes big-endian u64)
+    pub fn to_bytes(&self) -> [u8; 9] {
+        let mut bytes = [0u8; 9];
+        bytes[0] = self.status as u8;
+        bytes[1..9].copy_from_slice(&self.id.to_be_bytes());
+        bytes
+    }
+
+    /// Deserialize from bytes (1 byte status + 8 bytes big-endian u64)
+    pub fn from_bytes(bytes: [u8; 9]) -> Self {
+        let status = match bytes[0] {
+            0x00 => ResponseStatus::Success,
+            0x01 => ResponseStatus::Rejected,
+            _ => ResponseStatus::Success, // Default to success for unknown status
+        };
+        let id = u64::from_be_bytes(bytes[1..9].try_into().unwrap());
+        Self { id, status }
     }
 }
 
-/// Metric event recorded by clients
+/// Metric event recorded by clients and server
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum MetricEvent {
@@ -68,6 +101,11 @@ pub enum MetricEvent {
         req_id: u64,
         latency_ms: f64,
     },
+    #[serde(rename = "request_rejected")]
+    RequestRejected {
+        timestamp: f64,
+        req_id: u64,
+    },
     #[serde(rename = "request_retried")]
     RequestRetried {
         timestamp: f64,
@@ -81,6 +119,17 @@ pub enum MetricEvent {
     },
     #[serde(rename = "request_failed")]
     RequestFailed {
+        timestamp: f64,
+        req_id: u64,
+    },
+    #[serde(rename = "buffer_depth")]
+    BufferDepth {
+        timestamp: f64,
+        buffer_id: usize,
+        depth: usize,
+    },
+    #[serde(rename = "stale_response")]
+    StaleResponse {
         timestamp: f64,
         req_id: u64,
     },
@@ -195,10 +244,17 @@ mod tests {
 
     #[test]
     fn test_response_serialization() {
-        let resp = Response::new(123);
+        let resp = Response::success(123);
         let bytes = resp.to_bytes();
         let decoded = Response::from_bytes(bytes);
         assert_eq!(resp, decoded);
+        assert_eq!(decoded.status, ResponseStatus::Success);
+
+        let rejected = Response::rejected(456);
+        let bytes = rejected.to_bytes();
+        let decoded = Response::from_bytes(bytes);
+        assert_eq!(decoded.id, 456);
+        assert_eq!(decoded.status, ResponseStatus::Rejected);
     }
 
     #[test]

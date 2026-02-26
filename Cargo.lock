@@ -1842,12 +1842,14 @@ name = "dfir_baseline"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bincode",
  "dfir_rs",
  "proptest",
  "serde",
  "serde_json",
  "tempfile",
  "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
