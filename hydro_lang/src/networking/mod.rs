@@ -122,18 +122,22 @@ pub struct NetworkingConfig<Tr: ?Sized, S: ?Sized, Name = ()> {
 }
 
 impl<Tr: ?Sized, S: ?Sized> NetworkingConfig<Tr, S> {
-    /// Configures the network channel to use [`bincode`] to serialize items.
-    pub const fn bincode(self) -> NetworkingConfig<Tr, Bincode> {
-        NetworkingConfig {
-            name: self.name,
-            _phantom: (PhantomData, PhantomData),
-        }
-    }
-
     /// Names the network channel and enables stable communication across multiple service versions.
     pub fn name(self, name: impl Into<String>) -> NetworkingConfig<Tr, S, String> {
         NetworkingConfig {
             name: Some(name.into()),
+            _phantom: (PhantomData, PhantomData),
+        }
+    }
+}
+
+impl<Tr: ?Sized, N> NetworkingConfig<Tr, NoSer, N> {
+    /// Configures the network channel to use [`bincode`] to serialize items.
+    pub const fn bincode(mut self) -> NetworkingConfig<Tr, Bincode, N> {
+        let taken_name = self.name.take();
+        std::mem::forget(self); // nothing else is stored
+        NetworkingConfig {
+            name: taken_name,
             _phantom: (PhantomData, PhantomData),
         }
     }
