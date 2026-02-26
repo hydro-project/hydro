@@ -75,7 +75,7 @@ pub fn paxos_bench<'a>(
                                 *curr_seq = seq;
                             }
                         },
-                        commutative = ManualProof(/* max is commutative */)
+                        commutative = manual_proof!(/** max is commutative */)
                     ));
 
                 sliced! {

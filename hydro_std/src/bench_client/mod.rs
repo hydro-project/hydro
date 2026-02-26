@@ -99,7 +99,7 @@ where
             |curr, new| {
                 *curr = new;
             },
-            commutative = ManualProof(/* The value will be thrown away */)
+            commutative = manual_proof!(/** The value will be thrown away */)
         ))
         .map(q!(|_input| SystemTime::now()));
 
@@ -157,9 +157,7 @@ pub fn compute_throughput_latency<'a, Client: 'a>(
                         .record(latency.as_nanos() as u64)
                         .unwrap();
                 },
-                commutative = ManualProof(
-                    /* adding elements to histogram is commutative */
-                )
+                commutative = manual_proof!(/** adding elements to histogram is commutative */)
             ),
         );
 
@@ -250,7 +248,7 @@ pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
             .fold(q!(|| 0usize), q!(|curr, new| {
                     *curr += new;
                 },
-                commutative = ManualProof(/* Addition is commutative */)
+                commutative = manual_proof!(/** Addition is commutative */)
             ));
 
         // Merge new values
@@ -259,7 +257,7 @@ pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
                 q!(|curr, new| {
                     curr.borrow_mut().add(&*new.borrow_mut()).expect("Error adding value to histogram");
                 },
-                commutative = ManualProof(/* Merge is commutative */)
+                commutative = manual_proof!(/** Merge is commutative */)
             ));
         // Clear every punctuation
         latency_histogram = latency_histogram

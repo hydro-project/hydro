@@ -112,7 +112,7 @@ To perform an aggregation with an unordered stream, you must add a **property an
 #     .send(&process, TCP.fail_stop().bincode())
 #     .values();
 let words_count = all_words
-    .fold(q!(|| 0), q!(|acc, _| *acc += 1, commutative = ManualProof(/* increment is commutative */)));
+    .fold(q!(|| 0), q!(|acc, _| *acc += 1, commutative = manual_proof!(/** increment is commutative */)));
 ```
 
 :::danger

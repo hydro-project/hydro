@@ -38,7 +38,7 @@ pub fn compute_pi<'a>(
                 *inside += inside_batch;
                 *total += total_batch;
             },
-            commutative = ManualProof(/* int addition is commutative */)
+            commutative = manual_proof!(/** int addition is commutative */)
         ));
 
     estimate

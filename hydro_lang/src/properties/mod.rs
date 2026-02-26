@@ -25,6 +25,9 @@ pub trait IdempotentProof {
 }
 
 /// A hand-written human proof of the correctness property.
+///
+/// To create a manual proof, use the [`manual_proof!`] macro, which takes in a doc comment
+/// explaining why the property holds.
 pub struct ManualProof();
 #[sealed::sealed]
 impl CommutativeProof for ManualProof {
@@ -33,6 +36,33 @@ impl CommutativeProof for ManualProof {
 #[sealed::sealed]
 impl IdempotentProof for ManualProof {
     fn register_proof(&self, _expr: &syn::Expr) {}
+}
+
+#[doc(inline)]
+pub use crate::__manual_proof__ as manual_proof;
+
+#[macro_export]
+/// Fulfills a proof parameter by declaring a human-written justification for why
+/// the algebraic property (e.g. commutativity, idempotence) holds.
+///
+/// The argument must be a doc comment explaining why the property is satisfied.
+///
+/// # Examples
+/// ```rust,ignore
+/// use hydro_lang::prelude::*;
+///
+/// stream.fold(
+///     q!(|| 0),
+///     q!(
+///         |acc, x| *acc += x,
+///         commutative = manual_proof!(/** integer addition is commutative */)
+///     )
+/// )
+/// ```
+macro_rules! __manual_proof__ {
+    ($(#[doc = $doc:expr])+) => {
+        $crate::properties::ManualProof()
+    };
 }
 
 /// Marks that the property is not proved.
