@@ -175,3 +175,45 @@ State variables (`use::state`) differ from sliced singletons (`use(singleton, no
 - **State variables** are internal to the slice and persist values you compute between iterations
 
 Just like slices in general, state variables should be used sparingly; they require careful human review due to the presence of non-deterministic inputs. Sliced singletons, on the other hand, can be created using strictly deterministic APIs and benefit from stronger type-system guarantees.
+
+## Scheduling and Timers
+
+Slices are **lazy**—a slice only re-runs when there is new input to process on at least one of its `use`d collections. If no new data arrives, the slice will not execute again. This means that if you need a slice to run on a regular schedule (e.g., to periodically emit a heartbeat or poll for changes), you must explicitly provide a time-based input.
+
+The simplest approach is to use `sample_every`, which produces a stream of periodic snapshots from a live collection. You can directly process this stream, or `use` this sampled stream inside a `sliced!` block to combine it with other inputs:
+
+```rust,ignore
+let sampled_state: Stream<...> = state.sample_every(
+    q!(Duration::from_secs(1)),
+    nondet!(/** sampling timing is non-deterministic */),
+);
+
+sampled_state.clone().for_each(q!(|sample| {
+    println!("Sampled state: {:?}", sample);
+}));
+
+let periodic_output = sliced! {
+    let sample_batch = use(sampled_state, nondet!(/** batch boundaries are non-deterministic */));
+    let other_state_snapshot = use(other_state, nondet!(/** snapshot timing is non-deterministic */));
+
+    sample_batch.cross_singleton(other_state_snapshot)
+        .map(q!(|(s1, s2)| process(s1, s2)))
+};
+```
+
+Alternatively, you can use `source_interval` to create a raw stream of timer ticks and `use` it directly in a slice. However, be careful: because slices can be triggered by *any* of their inputs, the slice may sometimes run when the interval stream has an **empty batch** (i.e., no new timer events since the last run). Your slice logic must handle this case, for example by using `first()` or `count()` to check whether any interval events are present before acting on them.
+
+```rust,ignore
+let ticks = process.source_interval(
+    q!(Duration::from_secs(1)),
+    nondet!(/** timer is non-deterministic */),
+);
+
+let periodic_output = sliced! {
+    let tick_batch = use(ticks, nondet!(/** batch boundaries are non-deterministic */));
+    let state = use(current_state, nondet!(/** snapshot timing is non-deterministic */));
+
+    // Only emit when there is at least one tick in this batch
+    state.filter_if_some(tick_batch.first()).into_stream()
+};
+```
