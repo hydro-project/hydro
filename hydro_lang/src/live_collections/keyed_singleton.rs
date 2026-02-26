@@ -28,7 +28,7 @@ use crate::location::tick::DeferTick;
 use crate::location::{Atomic, Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
-use crate::properties::ManualProof;
+use crate::properties::manual_proof;
 
 /// A marker trait indicating which components of a [`KeyedSingleton`] may change.
 ///
@@ -1122,7 +1122,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
                         *curr = new;
                     }
                 },
-                idempotent = ManualProof(/* repeated elements are ignored */)
+                idempotent = manual_proof!(/** repeated elements are ignored */)
             ))
     }
 

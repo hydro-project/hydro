@@ -28,7 +28,7 @@ use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::{Atomic, DeferTick, NoAtomic};
 use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::nondet::{NonDet, nondet};
-use crate::prelude::ManualProof;
+use crate::prelude::manual_proof;
 use crate::properties::{AggFuncAlgebra, ValidCommutativityFor, ValidIdempotenceFor};
 
 pub mod networking;
@@ -1423,7 +1423,7 @@ where
                 |latest, _| {
                     *latest = Some(Instant::now());
                 },
-                commutative = ManualProof(/* TODO */)
+                commutative = manual_proof!(/** TODO */)
             ),
         );
 
@@ -2215,8 +2215,8 @@ where
                 q!(|| ()),
                 q!(
                     |_, _| {},
-                    commutative = ManualProof(/* values are ignored */),
-                    idempotent = ManualProof(/* values are ignored */)
+                    commutative = manual_proof!(/** values are ignored */),
+                    idempotent = manual_proof!(/** values are ignored */)
                 ),
             )
             .keys()

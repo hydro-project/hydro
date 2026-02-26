@@ -2653,7 +2653,7 @@ mod tests {
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::nondet::nondet;
     #[cfg(feature = "deploy")]
-    use crate::properties::ManualProof;
+    use crate::properties::manual_proof;
 
     #[cfg(feature = "deploy")]
     #[tokio::test]
@@ -2781,7 +2781,7 @@ mod tests {
                     |acc, v| {
                         *acc += v;
                     },
-                    commutative = ManualProof(/* integer addition is commutative */)
+                    commutative = manual_proof!(/** integer addition is commutative */)
                 ),
             )
             .snapshot(&node_tick, nondet!(/** test */))

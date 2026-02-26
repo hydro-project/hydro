@@ -613,7 +613,7 @@ pub fn recommit_after_leader_election<'a, P: PaxosPayload>(
             } else {
                 *curr_entry = (1, Some(new_entry));
             }
-        }, commutative = ManualProof(/* TODO */)))
+        }, commutative = manual_proof!(/** TODO */)))
         .map(q!(|(count, entry)| (count, entry.unwrap())));
     let p_log_to_try_commit = p_p1b_highest_entries_and_count
         .clone()
@@ -840,7 +840,7 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
                         value: entry.value,
                     };
                 }
-            }, commutative = ManualProof(/* max by ballot (TODO: not if two entries with same ballot, need assume) */)),
+            }, commutative = manual_proof!(/** max by ballot (TODO: not if two entries with same ballot, need assume) */)),
         )
     });
     let a_log_snapshot = a_log.entries().fold(
@@ -849,9 +849,7 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
             |map, (slot, entry)| {
                 map.insert(slot, entry);
             },
-            commutative = ManualProof(
-                /* inserting elements into map is commutative because no keys will overlap */
-            )
+            commutative = manual_proof!(/** inserting elements into map is commutative because no keys will overlap */)
         ),
     );
 

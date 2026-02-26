@@ -167,8 +167,8 @@ health_checks.fold(
     q!(|| false), 
     q!(
         |acc, check| *acc |= check,
-        commutative = ManualProof(/* bool or is commutative */),
-        idempotent = ManualProof(/* bool or is idempotent */)
+        commutative = manual_proof!(/** bool or is commutative */),
+        idempotent = manual_proof!(/** bool or is idempotent */)
     )
 )
 # ;

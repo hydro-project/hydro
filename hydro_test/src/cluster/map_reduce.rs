@@ -34,7 +34,7 @@ pub fn map_reduce<'a>(flow: &mut FlowBuilder<'a>) -> (Process<'a, Leader>, Clust
 
     let reduced = batches.into_keyed().reduce(q!(
         |total, count| *total += count,
-        commutative = ManualProof(/* integer add is commutative */)
+        commutative = manual_proof!(/** integer add is commutative */)
     ));
 
     reduced
