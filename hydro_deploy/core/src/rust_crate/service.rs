@@ -29,6 +29,7 @@ pub struct RustCrateService {
     args: Option<Vec<String>>,
     display_id: Option<String>,
     external_ports: Vec<u16>,
+    env: HashMap<String, String>,
 
     meta: OnceLock<String>,
 
@@ -49,6 +50,7 @@ pub struct RustCrateService {
 }
 
 impl RustCrateService {
+    #[expect(clippy::too_many_arguments, reason = "internal use")]
     pub fn new(
         id: usize,
         on: Arc<dyn Host>,
@@ -57,6 +59,7 @@ impl RustCrateService {
         args: Option<Vec<String>>,
         display_id: Option<String>,
         external_ports: Vec<u16>,
+        env: HashMap<String, String>,
     ) -> Self {
         Self {
             id,
@@ -66,6 +69,7 @@ impl RustCrateService {
             args,
             display_id,
             external_ports,
+            env,
             meta: OnceLock::new(),
             port_to_server: MemoMap::new(),
             port_to_bind: MemoMap::new(),
@@ -210,6 +214,7 @@ impl Service for RustCrateService {
                                 built,
                                 &args,
                                 self.tracing.clone(),
+                                &self.env,
                             )
                             .await?;
 

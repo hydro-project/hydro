@@ -89,7 +89,6 @@ async fn main() {
     let replicas = builder.cluster();
 
     hydro_test::cluster::paxos_bench::paxos_bench(
-        num_clients_per_node,
         checkpoint_frequency,
         f,
         f + 1,
@@ -171,8 +170,10 @@ async fn main() {
         )
         .with_cluster(
             &clients,
-            (0..num_clients)
-                .map(|i| create_trybuild_host(create_host(&mut deployment), "clients", i)),
+            (0..num_clients).map(|i| {
+                create_trybuild_host(create_host(&mut deployment), "clients", i)
+                    .env("NUM_CLIENTS_PER_NODE", num_clients_per_node.to_string())
+            }),
         )
         .with_process(
             &client_aggregator,

@@ -481,6 +481,7 @@ pub struct TrybuildHost {
     features: Vec<String>,
     tracing: Option<TracingOptions>,
     build_envs: Vec<(String, String)>,
+    env: HashMap<String, String>,
     name_hint: Option<String>,
     cluster_idx: Option<usize>,
 }
@@ -496,6 +497,7 @@ impl From<Arc<dyn Host>> for TrybuildHost {
             features: vec![],
             tracing: None,
             build_envs: vec![],
+            env: HashMap::new(),
             name_hint: None,
             cluster_idx: None,
         }
@@ -513,6 +515,7 @@ impl<H: Host + 'static> From<Arc<H>> for TrybuildHost {
             features: vec![],
             tracing: None,
             build_envs: vec![],
+            env: HashMap::new(),
             name_hint: None,
             cluster_idx: None,
         }
@@ -531,6 +534,7 @@ impl TrybuildHost {
             features: vec![],
             tracing: None,
             build_envs: vec![],
+            env: HashMap::new(),
             name_hint: None,
             cluster_idx: None,
         }
@@ -604,6 +608,12 @@ impl TrybuildHost {
             ..self
         }
     }
+
+    pub fn env(self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        let mut env = self.env;
+        env.insert(key.into(), value.into());
+        Self { env, ..self }
+    }
 }
 
 impl IntoProcessSpec<'_, HydroDeploy> for Arc<dyn Host> {
@@ -618,6 +628,7 @@ impl IntoProcessSpec<'_, HydroDeploy> for Arc<dyn Host> {
             features: vec![],
             tracing: None,
             build_envs: vec![],
+            env: HashMap::new(),
             name_hint: None,
             cluster_idx: None,
         }
@@ -636,6 +647,7 @@ impl<H: Host + 'static> IntoProcessSpec<'_, HydroDeploy> for Arc<H> {
             features: vec![],
             tracing: None,
             build_envs: vec![],
+            env: HashMap::new(),
             name_hint: None,
             cluster_idx: None,
         }
@@ -1177,6 +1189,10 @@ fn create_trybuild_service(
 
     for (key, value) in trybuild.build_envs {
         ret = ret.build_env(key, value);
+    }
+
+    for (key, value) in trybuild.env {
+        ret = ret.env(key, value);
     }
 
     ret = ret.build_env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1");

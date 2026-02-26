@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -47,6 +48,7 @@ pub struct RustCrate {
     tracing: Option<TracingOptions>,
     args: Vec<String>,
     display_name: Option<String>,
+    env: HashMap<String, String>,
 }
 
 impl RustCrate {
@@ -71,6 +73,7 @@ impl RustCrate {
             tracing: None,
             args: vec![],
             display_name: None,
+            env: HashMap::new(),
         }
     }
 
@@ -183,6 +186,12 @@ impl RustCrate {
         self
     }
 
+    /// Sets an environment variable to be written to a .env file on the launched instance.
+    pub fn env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+        self.env.insert(key.into(), value.into());
+        self
+    }
+
     pub fn get_build_params(&self, target: HostTargetType) -> BuildParams {
         let (bin, example) = match &self.target {
             CrateTarget::Default => (None, None),
@@ -221,6 +230,7 @@ impl ServiceBuilder for RustCrate {
             Some(self.args),
             self.display_name,
             vec![],
+            self.env,
         )
     }
 }

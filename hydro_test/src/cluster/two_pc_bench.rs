@@ -12,7 +12,6 @@ pub struct Aggregator;
 
 #[expect(clippy::too_many_arguments, reason = "internal 2PC code // TODO")]
 pub fn two_pc_bench<'a>(
-    num_clients_per_node: usize,
     coordinator: &Process<'a, Coordinator>,
     participants: &Cluster<'a, Participant>,
     num_participants: usize,
@@ -22,24 +21,19 @@ pub fn two_pc_bench<'a>(
     aggregate_interval_millis: u64,
     print_results: impl FnOnce(BenchResult<Process<'a, Aggregator>>),
 ) {
-    let latencies = bench_client(
-        clients,
-        num_clients_per_node,
-        inc_i32_workload_generator,
-        |input| {
-            two_pc(
-                coordinator,
-                participants,
-                num_participants,
-                input
-                    .entries()
-                    .send(coordinator, TCP.fail_stop().bincode())
-                    .entries(),
-            )
-            .demux(clients, TCP.fail_stop().bincode())
-            .into_keyed()
-        },
-    )
+    let latencies = bench_client(clients, inc_i32_workload_generator, |input| {
+        two_pc(
+            coordinator,
+            participants,
+            num_participants,
+            input
+                .entries()
+                .send(coordinator, TCP.fail_stop().bincode())
+                .entries(),
+        )
+        .demux(clients, TCP.fail_stop().bincode())
+        .into_keyed()
+    })
     .entries()
     .map(q!(|(_virtual_client_id, (_output, latency))| latency));
 
@@ -81,7 +75,6 @@ mod tests {
         use hydro_std::bench_client::pretty_print_bench_results;
 
         super::two_pc_bench(
-            100,
             coordinator,
             participants,
             NUM_PARTICIPANTS,
@@ -156,7 +149,10 @@ mod tests {
                 &participants,
                 (0..NUM_PARTICIPANTS).map(|_| TrybuildHost::new(deployment.Localhost())),
             )
-            .with_cluster(&clients, vec![TrybuildHost::new(deployment.Localhost())])
+            .with_cluster(
+                &clients,
+                vec![TrybuildHost::new(deployment.Localhost()).env("NUM_CLIENTS_PER_NODE", "100")],
+            )
             .with_process(
                 &client_aggregator,
                 TrybuildHost::new(deployment.Localhost()),

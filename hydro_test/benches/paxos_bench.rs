@@ -36,7 +36,6 @@ async fn main() {
     let mut throughput_handle: Option<ExternalBincodeStream<usize>> = None;
 
     hydro_test::cluster::paxos_bench::paxos_bench(
-        num_clients_per_node,
         checkpoint_frequency,
         f,
         f + 1,
@@ -75,7 +74,11 @@ async fn main() {
         )
         .with_cluster(
             &clients,
-            (0..num_clients).map(|_| TrybuildHost::new(localhost.clone()).rustflags(rustflags)),
+            (0..num_clients).map(|_| {
+                TrybuildHost::new(localhost.clone())
+                    .rustflags(rustflags)
+                    .env("NUM_CLIENTS_PER_NODE", num_clients_per_node.to_string())
+            }),
         )
         .with_process(
             &client_aggregator,

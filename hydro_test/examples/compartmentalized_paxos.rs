@@ -92,7 +92,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let replicas = builder.cluster();
 
     hydro_test::cluster::paxos_bench::paxos_bench(
-        num_clients_per_node,
         checkpoint_frequency,
         f,
         num_replicas,
@@ -159,8 +158,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .with_cluster(
             &clients,
-            (0..num_clients)
-                .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
+            (0..num_clients).map(|_| {
+                TrybuildHost::new(create_host(&mut deployment))
+                    .rustflags(rustflags)
+                    .env("NUM_CLIENTS_PER_NODE", num_clients_per_node.to_string())
+            }),
         )
         .with_process(
             &client_aggregator,

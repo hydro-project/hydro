@@ -76,7 +76,6 @@ async fn main() {
     let client_aggregator = builder.process();
 
     hydro_test::cluster::two_pc_bench::two_pc_bench(
-        num_clients_per_node,
         &coordinator,
         &participants,
         num_participants,
@@ -121,8 +120,11 @@ async fn main() {
         )
         .with_cluster(
             &clients,
-            (0..num_clients)
-                .map(|_| TrybuildHost::new(create_host(&mut deployment)).rustflags(rustflags)),
+            (0..num_clients).map(|_| {
+                TrybuildHost::new(create_host(&mut deployment))
+                    .rustflags(rustflags)
+                    .env("NUM_CLIENTS_PER_NODE", num_clients_per_node.to_string())
+            }),
         )
         .with_process(
             &client_aggregator,
