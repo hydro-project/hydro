@@ -17,6 +17,10 @@ name = "server_tcp_unbounded"
 path = "src/bin/server_tcp_unbounded.rs"
 
 [[bin]]
+name = "server_tcp_blocking"
+path = "src/bin/server_tcp_blocking.rs"
+
+[[bin]]
 name = "server_single_stage"
 path = "src/bin/server_single_stage.rs"
 

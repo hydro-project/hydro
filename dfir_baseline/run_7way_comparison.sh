@@ -35,14 +35,14 @@ C=$!; sleep 137; kill $C $S 2>/dev/null || true
 "$SCRIPT_DIR/kill_servers.sh"
 echo "Events: $(wc -l < /tmp/dfir_comparison/dfir_unbounded.jsonl)"
 
-echo "=== 3/7: TCP Unbounded ==="
-QUIET=1 SERVER_ADDRESS=127.0.0.1:8082 THINK_TIME_MS=$THINK "$WORKSPACE_ROOT/target/release/server_tcp_unbounded" &
+echo "=== 3/7: TCP Blocking ==="
+QUIET=1 SERVER_ADDRESS=127.0.0.1:8082 THINK_TIME_MS=$THINK "$WORKSPACE_ROOT/target/release/server_tcp_blocking" &
 S=$!; sleep 2
 SERVER_ADDRESS=127.0.0.1:8082 RATE_SCHEDULE="$RATE" TIMEOUT_MS=$TIMEOUT_MS MAX_RETRIES=$RETRIES \
-    METRICS_FILE=/tmp/dfir_comparison/tcp_unbounded.jsonl "$WORKSPACE_ROOT/target/release/client_quiet" &
+    METRICS_FILE=/tmp/dfir_comparison/tcp_blocking.jsonl "$WORKSPACE_ROOT/target/release/client_quiet" &
 C=$!; sleep 137; kill $C $S 2>/dev/null || true
 "$SCRIPT_DIR/kill_servers.sh"
-echo "Events: $(wc -l < /tmp/dfir_comparison/tcp_unbounded.jsonl)"
+echo "Events: $(wc -l < /tmp/dfir_comparison/tcp_blocking.jsonl)"
 
 echo "=== 4/7: DFIR Single + Admission Control (polite) ==="
 QUIET=1 SERVER_ADDRESS=127.0.0.1:8083 MAX_QUEUE_DEPTH=$QUEUE THINK_TIME_MS=$THINK "$WORKSPACE_ROOT/target/release/server_single_stage" &

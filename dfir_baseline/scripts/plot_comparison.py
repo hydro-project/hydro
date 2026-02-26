@@ -212,7 +212,7 @@ def main():
     files = [
         (f"{base}/dfir_multistage.jsonl", "DFIR\nMulti-Stage"),
         (f"{base}/dfir_unbounded.jsonl", "DFIR\nSingle Unbnd"),
-        (f"{base}/tcp_unbounded.jsonl", "TCP\nUnbounded"),
+        (f"{base}/tcp_blocking.jsonl", "TCP\nBlocking"),
         (f"{base}/single_admission_polite.jsonl", "Single+AC\n(polite)"),
         (f"{base}/single_admission_rude.jsonl", "Single+AC\n(rude)"),
         (f"{base}/multi_admission_polite.jsonl", "Multi+AC\n(polite)"),

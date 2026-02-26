@@ -159,6 +159,9 @@ async fn main() -> anyhow::Result<()> {
         let mut read_half = read_half;
 
         loop {
+            // Check end_time at start of each iteration
+            if Instant::now() >= end_time + Duration::from_secs(2) { break; }
+            
             let mut buf = [0u8; 9];
             match tokio::time::timeout(Duration::from_millis(100), read_half.read_exact(&mut buf)).await {
                 Ok(Ok(_)) => {
@@ -184,7 +187,7 @@ async fn main() -> anyhow::Result<()> {
                 }
                 Ok(Err(_)) => break,
                 Err(_) => {
-                    if Instant::now() >= end_time + Duration::from_secs(2) { break; }
+                    // Timeout on read - continue loop, end_time check at top will handle termination
                 }
             }
         }
