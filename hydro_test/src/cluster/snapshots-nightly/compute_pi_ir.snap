@@ -22,6 +22,9 @@ expression: built.ir()
                                                     inner: Cast {
                                                         inner: Network {
                                                             name: None,
+                                                            networking_info: Tcp {
+                                                                fault: FailStop,
+                                                            },
                                                             serialize_fn: Some(
                                                                 hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (u64 , u64) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
                                                             ),

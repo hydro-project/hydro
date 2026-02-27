@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, OnceLock};
 
@@ -145,6 +146,7 @@ impl LaunchedHost for LaunchedLocalhost {
         binary: &BuildOutput,
         args: &[String],
         tracing: Option<TracingOptions>,
+        env: &HashMap<String, String>,
     ) -> Result<Box<dyn LaunchedBinary>> {
         let (maybe_perf_outfile, mut command) = if let Some(tracing) = tracing.as_ref() {
             if cfg!(any(target_os = "macos", target_family = "windows")) {
@@ -241,6 +243,8 @@ impl LaunchedHost for LaunchedLocalhost {
                 },
             ),
         );
+
+        command.envs(env);
 
         command
             .stdin(Stdio::piped())

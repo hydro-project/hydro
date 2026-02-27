@@ -3,8 +3,10 @@ use std::time::Instant;
 use futures::StreamExt;
 use hydro_deploy::Deployment;
 use hydro_lang::deploy::TrybuildHost;
+use hydro_lang::location::Location;
 use hydro_lang::location::external_process::ExternalBincodeStream;
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
+use stageleft::q;
 
 const BENCH_DURATION_SECS: u64 = 15;
 const TAIL_SAMPLES: usize = 5;
@@ -36,7 +38,6 @@ async fn main() {
     let mut throughput_handle: Option<ExternalBincodeStream<usize>> = None;
 
     hydro_test::cluster::paxos_bench::paxos_bench(
-        num_clients_per_node,
         checkpoint_frequency,
         f,
         f + 1,
@@ -51,6 +52,10 @@ async fn main() {
             },
         },
         &clients,
+        clients.singleton(q!(std::env::var("NUM_CLIENTS_PER_NODE")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap())),
         &client_aggregator,
         &replicas,
         print_result_frequency / 10,
@@ -75,7 +80,11 @@ async fn main() {
         )
         .with_cluster(
             &clients,
-            (0..num_clients).map(|_| TrybuildHost::new(localhost.clone()).rustflags(rustflags)),
+            (0..num_clients).map(|_| {
+                TrybuildHost::new(localhost.clone())
+                    .rustflags(rustflags)
+                    .env("NUM_CLIENTS_PER_NODE", num_clients_per_node.to_string())
+            }),
         )
         .with_process(
             &client_aggregator,

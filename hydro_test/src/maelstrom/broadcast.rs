@@ -53,7 +53,7 @@ fn broadcast_core<'a, C: 'a>(
             .unique();
         local_state.clone().fold(q!(|| HashSet::new()), q!(|set, v| {
             set.insert(v);
-        }, commutative = ManualProof(/* TODO */)))
+        }, commutative = manual_proof!(/** TODO */)))
     };
 
     broadcasted_forward.complete(

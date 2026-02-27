@@ -39,7 +39,7 @@ pub fn collect_quorum_with_response<
                 } else {
                     accum.1 += 1;
                 }
-            }, commutative = ManualProof(/* increment counters is commutative */)),
+            }, commutative = manual_proof!(/** increment counters is commutative */)),
         );
 
          let not_reached_min_count = count_per_key
@@ -121,7 +121,7 @@ pub fn collect_quorum<
                 } else {
                     accum.1 += 1;
                 }
-            }, commutative = ManualProof(/* increment counters is commutative */)),
+            }, commutative = manual_proof!(/** increment counters is commutative */)),
         );
 
         let reached_min_count = count_per_key

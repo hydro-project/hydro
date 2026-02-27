@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -377,13 +378,20 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
         binary: &BuildOutput,
         args: &[String],
         tracing: Option<TracingOptions>,
+        env: &HashMap<String, String>,
     ) -> Result<Box<dyn LaunchedBinary>> {
         let session = self.open_ssh_session().await?;
 
         let user = self.ssh_user();
         let binary_path = PathBuf::from(format!("/home/{user}/hydro-{}", binary.unique_id()));
 
-        let mut command = binary_path.to_str().unwrap().to_owned();
+        let mut command = String::new();
+        // Prepend env variables
+        for (k, v) in env {
+            command.push_str(&format!("{}={} ", k, shell_escape::unix::escape(v.into())));
+        }
+
+        command.push_str(binary_path.to_str().unwrap());
         for arg in args {
             command.push(' ');
             command.push_str(&shell_escape::unix::escape(arg.into()))

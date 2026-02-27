@@ -169,6 +169,9 @@ expression: built.ir()
                                         inner: Cast {
                                             inner: Network {
                                                 name: None,
+                                                networking_info: Tcp {
+                                                    fault: FailStop,
+                                                },
                                                 serialize_fn: Some(
                                                     hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
                                                 ),
@@ -178,6 +181,9 @@ expression: built.ir()
                                                 ),
                                                 input: Network {
                                                     name: None,
+                                                    networking_info: Tcp {
+                                                        fault: FailStop,
+                                                    },
                                                     serialize_fn: Some(
                                                         hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32))) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                                     ),
@@ -312,6 +318,9 @@ expression: built.ir()
                                                                         inner: Cast {
                                                                             inner: Network {
                                                                                 name: None,
+                                                                                networking_info: Tcp {
+                                                                                    fault: FailStop,
+                                                                                },
                                                                                 serialize_fn: Some(
                                                                                     hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , i32) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
                                                                                 ),
@@ -804,6 +813,9 @@ expression: built.ir()
                                         inner: Cast {
                                             inner: Network {
                                                 name: None,
+                                                networking_info: Tcp {
+                                                    fault: FailStop,
+                                                },
                                                 serialize_fn: Some(
                                                     hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
                                                 ),
@@ -813,6 +825,9 @@ expression: built.ir()
                                                 ),
                                                 input: Network {
                                                     name: None,
+                                                    networking_info: Tcp {
+                                                        fault: FailStop,
+                                                    },
                                                     serialize_fn: Some(
                                                         hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32))) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                                                     ),
@@ -1265,6 +1280,9 @@ expression: built.ir()
             inner: <tee 10>: Cast {
                 inner: Network {
                     name: None,
+                    networking_info: Tcp {
+                        fault: FailStop,
+                    },
                     serialize_fn: Some(
                         hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , (u32 , i32)) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
                     ),
@@ -2341,6 +2359,9 @@ expression: built.ir()
                                                                 inner: Cast {
                                                                     inner: Network {
                                                                         name: None,
+                                                                        networking_info: Tcp {
+                                                                            fault: FailStop,
+                                                                        },
                                                                         serialize_fn: Some(
                                                                             hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: SerializableHistogramWrapper , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
                                                                         ),
@@ -2703,6 +2724,9 @@ expression: built.ir()
                                 inner: Cast {
                                     inner: Network {
                                         name: None,
+                                        networking_info: Tcp {
+                                            fault: FailStop,
+                                        },
                                         serialize_fn: Some(
                                             hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < usize , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }),
                                         ),

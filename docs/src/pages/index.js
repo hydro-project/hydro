@@ -182,7 +182,7 @@ export default function Home() {
     .send(leader, TCP.fail_stop().bincode())
     // Stream<(MemberId<Worker>, usize), Process<Leader>, ..., NoOrder>
     .map(q!(|v| v.1)) // drop the ID
-    .fold(q!(0), q!(|acc, v| *acc += v, commutative = ManualProof(...)))
+    .fold(q!(0), q!(|acc, v| *acc += v, commutative = manual_proof!(...)))
 }`}
             </CodeBlock>
           </div>

@@ -12,11 +12,11 @@ pub struct Aggregator;
 
 #[expect(clippy::too_many_arguments, reason = "internal 2PC code // TODO")]
 pub fn two_pc_bench<'a>(
-    num_clients_per_node: usize,
     coordinator: &Process<'a, Coordinator>,
     participants: &Cluster<'a, Participant>,
     num_participants: usize,
     clients: &Cluster<'a, Client>,
+    num_clients_per_node: Singleton<usize, Cluster<'a, Client>, Bounded>,
     client_aggregator: &Process<'a, Aggregator>,
     client_interval_millis: u64,
     aggregate_interval_millis: u64,
@@ -78,14 +78,16 @@ mod tests {
         clients: &Cluster<'a, Client>,
         client_aggregator: &Process<'a, Aggregator>,
     ) {
+        use hydro_lang::location::Location;
         use hydro_std::bench_client::pretty_print_bench_results;
+        use stageleft::q;
 
         super::two_pc_bench(
-            100,
             coordinator,
             participants,
             NUM_PARTICIPANTS,
             clients,
+            clients.singleton(q!(100usize)),
             client_aggregator,
             100,
             1000,

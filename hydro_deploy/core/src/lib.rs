@@ -1,5 +1,5 @@
 use std::any::Any;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt::Debug;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -146,6 +146,7 @@ pub trait LaunchedHost: Send + Sync {
         binary: &BuildOutput,
         args: &[String],
         perf: Option<TracingOptions>,
+        env: &HashMap<String, String>,
     ) -> Result<Box<dyn LaunchedBinary>>;
 
     async fn forward_port(&self, addr: &SocketAddr) -> Result<SocketAddr>;

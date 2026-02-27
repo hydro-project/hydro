@@ -14,12 +14,12 @@ pub struct Aggregator;
 
 #[expect(clippy::too_many_arguments, reason = "internal paxos code // TODO")]
 pub fn paxos_bench<'a>(
-    num_clients_per_node: usize,
     checkpoint_frequency: usize, // How many sequence numbers to commit before checkpointing
     f: usize, /* Maximum number of faulty nodes. A payload has been processed once f+1 replicas have processed it. */
     num_replicas: usize,
     paxos: impl PaxosLike<'a>,
     clients: &Cluster<'a, Client>,
+    num_clients_per_node: Singleton<usize, Cluster<'a, Client>, Bounded>,
     client_aggregator: &Process<'a, Aggregator>,
     replicas: &Cluster<'a, Replica>,
     client_interval_millis: u64,
@@ -75,7 +75,7 @@ pub fn paxos_bench<'a>(
                                 *curr_seq = seq;
                             }
                         },
-                        commutative = ManualProof(/* max is commutative */)
+                        commutative = manual_proof!(/** max is commutative */)
                     ));
 
                 sliced! {
@@ -152,6 +152,7 @@ mod tests {
     use hydro_deploy::Deployment;
     use hydro_lang::deploy::{DeployCrateWrapper, HydroDeploy, TrybuildHost};
 
+    #[cfg(stageleft_runtime)]
     use crate::cluster::paxos::{CorePaxos, PaxosConfig};
 
     const PAXOS_F: usize = 1;
@@ -164,10 +165,11 @@ mod tests {
         client_aggregator: &hydro_lang::location::Process<'a, super::Aggregator>,
         replicas: &hydro_lang::location::Cluster<'a, crate::cluster::kv_replica::Replica>,
     ) {
+        use hydro_lang::location::Location;
         use hydro_std::bench_client::pretty_print_bench_results;
+        use stageleft::q;
 
         super::paxos_bench(
-            100,
             1000,
             PAXOS_F,
             PAXOS_F + 1,
@@ -182,6 +184,7 @@ mod tests {
                 },
             },
             clients,
+            clients.singleton(q!(100usize)),
             client_aggregator,
             replicas,
             100,
