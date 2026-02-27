@@ -57,7 +57,7 @@ pub const SOURCE_FILE: OperatorConstraints = OperatorConstraints {
                 let file = #root::tokio::fs::File::from_std(file);
                 let bufread = #root::tokio::io::BufReader::new(file);
                 let lines = #root::tokio::io::AsyncBufReadExt::lines(bufread);
-                #root::tokio_stream::wrappers::LinesStream::new(lines)
+                #root::futures::stream::StreamExt::fuse(#root::tokio_stream::wrappers::LinesStream::new(lines))
             };
         };
         let wc = WriteContextArgs {

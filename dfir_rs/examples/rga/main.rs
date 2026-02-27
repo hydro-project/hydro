@@ -108,8 +108,8 @@ fn keystroke(
 }
 
 async fn write_to_dot(
-    rga_recv: &mut UnboundedReceiverStream<(Token, Timestamp)>,
-    list_recv: &mut UnboundedReceiverStream<(Timestamp, Timestamp)>,
+    rga_recv: &mut futures::stream::Fuse<UnboundedReceiverStream<(Token, Timestamp)>>,
+    list_recv: &mut futures::stream::Fuse<UnboundedReceiverStream<(Timestamp, Timestamp)>>,
     w: &mut impl std::fmt::Write,
 ) {
     let tree_edges: BTreeSet<_> = collect_ready_async(rga_recv).await;

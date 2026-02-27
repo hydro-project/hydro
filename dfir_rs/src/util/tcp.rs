@@ -25,7 +25,7 @@ pub fn tcp_framed<Codec>(
     codec: Codec,
 ) -> (
     FramedWrite<OwnedWriteHalf, Codec>,
-    FramedRead<OwnedReadHalf, Codec>,
+    futures::stream::Fuse<FramedRead<OwnedReadHalf, Codec>>,
 )
 where
     Codec: Clone + Decoder,
@@ -33,7 +33,7 @@ where
     let (recv, send) = stream.into_split();
     let send = FramedWrite::new(send, codec.clone());
     let recv = FramedRead::new(recv, codec);
-    (send, recv)
+    (send, StreamExt::fuse(recv))
 }
 
 /// Helper creates a TCP `Stream` and `Sink` for `Bytes` strings where each string is
@@ -42,7 +42,7 @@ pub fn tcp_bytes(
     stream: TcpStream,
 ) -> (
     FramedWrite<OwnedWriteHalf, LengthDelimitedCodec>,
-    FramedRead<OwnedReadHalf, LengthDelimitedCodec>,
+    futures::stream::Fuse<FramedRead<OwnedReadHalf, LengthDelimitedCodec>>,
 ) {
     tcp_framed(stream, LengthDelimitedCodec::new())
 }
@@ -52,7 +52,7 @@ pub fn tcp_bytestream(
     stream: TcpStream,
 ) -> (
     FramedWrite<OwnedWriteHalf, BytesCodec>,
-    FramedRead<OwnedReadHalf, BytesCodec>,
+    futures::stream::Fuse<FramedRead<OwnedReadHalf, BytesCodec>>,
 ) {
     tcp_framed(stream, BytesCodec::new())
 }
@@ -62,7 +62,7 @@ pub fn tcp_lines(
     stream: TcpStream,
 ) -> (
     FramedWrite<OwnedWriteHalf, LinesCodec>,
-    FramedRead<OwnedReadHalf, LinesCodec>,
+    futures::stream::Fuse<FramedRead<OwnedReadHalf, LinesCodec>>,
 ) {
     tcp_framed(stream, LinesCodec::new())
 }
@@ -72,7 +72,7 @@ pub type TcpFramedSink<T> = Sender<(T, SocketAddr)>;
 /// A framed TCP `Stream` (receiving).
 #[expect(type_alias_bounds, reason = "code readability")]
 pub type TcpFramedStream<Codec: Decoder> =
-    Receiver<Result<(<Codec as Decoder>::Item, SocketAddr), <Codec as Decoder>::Error>>;
+    futures::stream::Fuse<Receiver<Result<(<Codec as Decoder>::Item, SocketAddr), <Codec as Decoder>::Error>>>;
 
 // TODO(mingwei): this temporary code should be replaced with a properly thought out networking system.
 /// Create a listening tcp socket, and then as new connections come in, receive their data and forward it to a queue.
@@ -98,7 +98,7 @@ where
         let mut peers_send = HashMap::new();
         // `StreamMap` of `addr -> peers`, to receive messages from. Automatically removes streams
         // when they disconnect.
-        let mut peers_recv = StreamMap::<SocketAddr, FramedRead<OwnedReadHalf, Codec>>::new();
+        let mut peers_recv = StreamMap::<SocketAddr, futures::stream::Fuse<FramedRead<OwnedReadHalf, Codec>>>::new();
 
         loop {
             // Calling methods in a loop, futures must be cancel-safe.

@@ -31,7 +31,7 @@ use std::net::SocketAddr;
 use std::num::NonZeroUsize;
 use std::task::{Context, Poll};
 
-use futures::Stream;
+use futures::{Stream, StreamExt};
 use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
 #[cfg(unix)]
@@ -56,18 +56,19 @@ pub enum PersistenceKeyed<K, V> {
 /// Returns a channel as a (1) unbounded sender and (2) unbounded receiver `Stream` for use in DFIR.
 pub fn unbounded_channel<T>() -> (
     tokio::sync::mpsc::UnboundedSender<T>,
-    tokio_stream::wrappers::UnboundedReceiverStream<T>,
+    futures::stream::Fuse<tokio_stream::wrappers::UnboundedReceiverStream<T>>,
 ) {
     let (send, recv) = tokio::sync::mpsc::unbounded_channel();
-    let recv = tokio_stream::wrappers::UnboundedReceiverStream::new(recv);
+    let recv = tokio_stream::wrappers::UnboundedReceiverStream::new(recv).fuse();
     (send, recv)
 }
 
 /// Returns an unsync channel as a (1) sender and (2) receiver `Stream` for use in DFIR.
 pub fn unsync_channel<T>(
     capacity: Option<NonZeroUsize>,
-) -> (unsync::mpsc::Sender<T>, unsync::mpsc::Receiver<T>) {
-    unsync::mpsc::channel(capacity)
+) -> (unsync::mpsc::Sender<T>, futures::stream::Fuse<unsync::mpsc::Receiver<T>>) {
+    let (sender, receiver) = unsync::mpsc::channel(capacity);
+    (sender, receiver.fuse())
 }
 
 /// Returns an [`Iterator`] of any immediately available items from the [`Stream`].
@@ -184,7 +185,7 @@ pub async fn bind_tcp_bytes(
     addr: SocketAddr,
 ) -> (
     unsync::mpsc::Sender<(bytes::Bytes, SocketAddr)>,
-    unsync::mpsc::Receiver<Result<(bytes::BytesMut, SocketAddr), std::io::Error>>,
+    futures::stream::Fuse<unsync::mpsc::Receiver<Result<(bytes::BytesMut, SocketAddr), std::io::Error>>>,
     SocketAddr,
 ) {
     bind_tcp(addr, tokio_util::codec::LengthDelimitedCodec::new())
@@ -198,7 +199,7 @@ pub async fn bind_tcp_lines(
     addr: SocketAddr,
 ) -> (
     unsync::mpsc::Sender<(String, SocketAddr)>,
-    unsync::mpsc::Receiver<Result<(String, SocketAddr), tokio_util::codec::LinesCodecError>>,
+    futures::stream::Fuse<unsync::mpsc::Receiver<Result<(String, SocketAddr), tokio_util::codec::LinesCodecError>>>,
     SocketAddr,
 ) {
     bind_tcp(addr, tokio_util::codec::LinesCodec::new())
@@ -248,7 +249,7 @@ where
 pub fn iter_batches_stream<I>(
     iter: I,
     n: usize,
-) -> futures::stream::PollFn<impl FnMut(&mut Context<'_>) -> Poll<Option<I::Item>>>
+) -> futures::stream::Fuse<futures::stream::PollFn<impl FnMut(&mut Context<'_>) -> Poll<Option<I::Item>>>>
 where
     I: IntoIterator + Unpin,
 {
@@ -264,6 +265,7 @@ where
             Poll::Ready(iter.next())
         }
     })
+    .fuse()
 }
 
 #[cfg(test)]
