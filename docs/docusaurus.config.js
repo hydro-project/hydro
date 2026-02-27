@@ -24,7 +24,6 @@ const config = {
   projectName: "hydroflow", // Usually your repo name.
 
   onBrokenLinks: "throw",
-  onBrokenMarkdownLinks: "throw",
 
   customFields: {
     LOAD_PLAYGROUND: process.env.LOAD_PLAYGROUND || false,
@@ -32,6 +31,9 @@ const config = {
 
   markdown: {
     mermaid: true,
+    hooks: {
+      onBrokenMarkdownLinks: "throw",
+    },
   },
 
   themes: ["@docusaurus/theme-mermaid"],
@@ -69,7 +71,7 @@ const config = {
           admonitions: {
             keywords: ["learn"],
             extendDefaults: true,
-          }
+          },
         },
         // blog: {
         //   showReadingTime: true,
@@ -99,18 +101,18 @@ const config = {
     require.resolve("./wasm-plugin.js"),
     function (context, options) {
       return {
-        name: 'webpack-process-polyfill',
+        name: "webpack-process-polyfill",
         configureWebpack(config, isServer, utils) {
-          const webpack = require('webpack');
+          const webpack = require("webpack");
           return {
             resolve: {
               fallback: {
-                process: require.resolve('process/browser.js'),
+                process: require.resolve("process/browser.js"),
               },
             },
             plugins: [
               new webpack.ProvidePlugin({
-                process: 'process/browser.js',
+                process: "process/browser.js",
               }),
             ],
           };
