@@ -117,10 +117,15 @@ def analyze_metrics(events):
 def plot_6way(datasets, output_file):
     """Plot 6 server implementations side by side."""
     n = len(datasets)
-    fig, axes = plt.subplots(3, n, figsize=(4*n, 10))
-    fig.suptitle('DFIR Metastability: 6-Way Server Comparison', fontsize=14, fontweight='bold')
+    fig, axes = plt.subplots(3, n, figsize=(4*n, 10), sharey='row')
+    fig.suptitle('DFIR Metastability: 7-Way Server Comparison', fontsize=14, fontweight='bold')
     
     baseline_end, trigger_end = 30, 45
+    
+    # Show tick labels on all subplots (sharey hides them by default)
+    for row in range(3):
+        for col in range(n):
+            axes[row, col].tick_params(labelleft=True)
     
     for col, (ts, title) in enumerate(datasets):
         if ts is None:
@@ -139,7 +144,7 @@ def plot_6way(datasets, output_file):
         ax.axvspan(0, baseline_end, alpha=0.1, color='green')
         ax.axvspan(baseline_end, trigger_end, alpha=0.1, color='red')
         ax.axvspan(trigger_end, max_t, alpha=0.1, color='blue')
-        ax.set_ylabel('Req/s' if col == 0 else '')
+        ax.set_ylabel('Req/s')
         ax.set_title(f'{title}\nOffered Load', fontsize=10)
         if col == 0:
             ax.legend(loc='upper right', fontsize=7)
@@ -154,7 +159,7 @@ def plot_6way(datasets, output_file):
         ax.axvspan(0, baseline_end, alpha=0.1, color='green')
         ax.axvspan(baseline_end, trigger_end, alpha=0.1, color='red')
         ax.axvspan(trigger_end, max_t, alpha=0.1, color='blue')
-        ax.set_ylabel('%' if col == 0 else '')
+        ax.set_ylabel('%')
         ax.set_title('Success Rate', fontsize=10)
         if col == n - 1:
             ax.legend(loc='lower right', fontsize=7)
@@ -170,7 +175,7 @@ def plot_6way(datasets, output_file):
         ax.axvspan(baseline_end, trigger_end, alpha=0.1, color='red')
         ax.axvspan(trigger_end, max_t, alpha=0.1, color='blue')
         ax.set_xlabel('Time (s)')
-        ax.set_ylabel('Latency (ms)' if col == 0 else '')
+        ax.set_ylabel('Latency (ms)')
         ax.set_title('Latency', fontsize=10)
         if col == n - 1:
             ax.legend(loc='upper right', fontsize=7)
