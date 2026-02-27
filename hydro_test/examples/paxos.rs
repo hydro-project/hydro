@@ -7,8 +7,10 @@ use hydro_deploy::rust_crate::tracing_options::{
 };
 use hydro_deploy::{AwsNetwork, Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
+use hydro_lang::location::Location;
 use hydro_lang::viz::config::GraphConfig;
 use hydro_test::cluster::paxos::{CorePaxos, PaxosConfig};
+use stageleft::q;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
@@ -103,6 +105,10 @@ async fn main() {
             },
         },
         &clients,
+        clients.singleton(q!(std::env::var("NUM_CLIENTS_PER_NODE")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap())),
         &client_aggregator,
         &replicas,
         print_result_frequency / 10,

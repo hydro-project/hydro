@@ -16,24 +16,30 @@ pub fn two_pc_bench<'a>(
     participants: &Cluster<'a, Participant>,
     num_participants: usize,
     clients: &Cluster<'a, Client>,
+    num_clients_per_node: Singleton<usize, Cluster<'a, Client>, Bounded>,
     client_aggregator: &Process<'a, Aggregator>,
     client_interval_millis: u64,
     aggregate_interval_millis: u64,
     print_results: impl FnOnce(BenchResult<Process<'a, Aggregator>>),
 ) {
-    let latencies = bench_client(clients, inc_i32_workload_generator, |input| {
-        two_pc(
-            coordinator,
-            participants,
-            num_participants,
-            input
-                .entries()
-                .send(coordinator, TCP.fail_stop().bincode())
-                .entries(),
-        )
-        .demux(clients, TCP.fail_stop().bincode())
-        .into_keyed()
-    })
+    let latencies = bench_client(
+        clients,
+        num_clients_per_node,
+        inc_i32_workload_generator,
+        |input| {
+            two_pc(
+                coordinator,
+                participants,
+                num_participants,
+                input
+                    .entries()
+                    .send(coordinator, TCP.fail_stop().bincode())
+                    .entries(),
+            )
+            .demux(clients, TCP.fail_stop().bincode())
+            .into_keyed()
+        },
+    )
     .entries()
     .map(q!(|(_virtual_client_id, (_output, latency))| latency));
 
@@ -72,13 +78,16 @@ mod tests {
         clients: &Cluster<'a, Client>,
         client_aggregator: &Process<'a, Aggregator>,
     ) {
+        use hydro_lang::location::Location;
         use hydro_std::bench_client::pretty_print_bench_results;
+        use stageleft::q;
 
         super::two_pc_bench(
             coordinator,
             participants,
             NUM_PARTICIPANTS,
             clients,
+            clients.singleton(q!(100usize)),
             client_aggregator,
             100,
             1000,
@@ -149,10 +158,7 @@ mod tests {
                 &participants,
                 (0..NUM_PARTICIPANTS).map(|_| TrybuildHost::new(deployment.Localhost())),
             )
-            .with_cluster(
-                &clients,
-                vec![TrybuildHost::new(deployment.Localhost()).env("NUM_CLIENTS_PER_NODE", "100")],
-            )
+            .with_cluster(&clients, vec![TrybuildHost::new(deployment.Localhost())])
             .with_process(
                 &client_aggregator,
                 TrybuildHost::new(deployment.Localhost()),

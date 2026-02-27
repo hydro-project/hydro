@@ -4,7 +4,9 @@ use clap::{ArgAction, Parser};
 use hydro_deploy::gcp::GcpNetwork;
 use hydro_deploy::{AwsNetwork, Deployment, Host};
 use hydro_lang::deploy::TrybuildHost;
+use hydro_lang::location::Location;
 use hydro_lang::viz::config::GraphConfig;
+use stageleft::q;
 
 type HostCreator = Box<dyn Fn(&mut Deployment) -> Arc<dyn Host>>;
 
@@ -80,6 +82,10 @@ async fn main() {
         &participants,
         num_participants,
         &clients,
+        clients.singleton(q!(std::env::var("NUM_CLIENTS_PER_NODE")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap())),
         &client_aggregator,
         print_result_frequency / 10,
         print_result_frequency,

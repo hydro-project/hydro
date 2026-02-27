@@ -121,7 +121,7 @@ expression: built.ir()
                 right: Cast {
                     inner: Batch {
                         inner: SingletonSource {
-                            value: { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; let NUM_CLIENTS_PER_NODE_ENV_KEY__free = "NUM_CLIENTS_PER_NODE" ; std :: env :: var (NUM_CLIENTS_PER_NODE_ENV_KEY__free) . expect ("NUM_CLIENTS_PER_NODE not found in env") . parse :: < usize > () . expect ("NUM_CLIENTS_PER_NODE var is not a usize") },
+                            value: { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_bench :: tests :: * ; 100usize },
                             metadata: HydroIrMetadata {
                                 location_id: Cluster(loc3v1),
                                 collection_kind: Singleton {

@@ -10,8 +10,6 @@ use serde::{Deserialize, Serialize};
 
 pub mod rolling_average;
 
-pub const NUM_CLIENTS_PER_NODE_ENV_KEY: &str = "NUM_CLIENTS_PER_NODE";
-
 pub struct SerializableHistogramWrapper {
     pub histogram: Rc<RefCell<Histogram<u64>>>,
 }
@@ -45,16 +43,15 @@ pub struct BenchResult<L> {
 
 /// Benchmarks transactional workloads by concurrently submitting workloads
 /// (up to `num_clients_per_node` per machine)
+/// * `num_clients_per_node`: Number of virtual clients per machine
 /// * `workload_generator`: Converts previous output (or None, for new virtual clients) into the next input payload
 /// * `protocol`: The protocol to benchmark
 ///
 /// ## Returns
 /// A stream of latencies per completed client request
-///
-/// ## Note
-/// Will crash unless `NUM_CLIENTS_PER_NODE` is set in the environment.
 pub fn bench_client<'a, Client, Input, Output>(
     clients: &Cluster<'a, Client>,
+    num_clients_per_node: Singleton<usize, Cluster<'a, Client>, Bounded>,
     workload_generator: impl FnOnce(
         KeyedStream<u32, Option<Output>, Cluster<'a, Client>, Unbounded, NoOrder>,
     )
@@ -67,11 +64,6 @@ where
     Input: Clone,
     Output: Clone,
 {
-    let num_clients_per_node = clients.singleton(q!(std::env::var(NUM_CLIENTS_PER_NODE_ENV_KEY)
-        .expect("NUM_CLIENTS_PER_NODE not found in env")
-        .parse::<usize>()
-        .expect("NUM_CLIENTS_PER_NODE var is not a usize")));
-
     let new_payload_ids = sliced! {
         let num_clients_per_node = use(num_clients_per_node, nondet!(/** This is a constant */));
         let mut next_virtual_client = use::state(|l| Optional::from(l.singleton(q!((0u32, None)))));
