@@ -1169,6 +1169,7 @@ where
     /// # }));
     /// # }
     /// ```
+    #[deprecated(note = "use `filter_if_true` with `Optional::is_some()` instead")]
     pub fn if_some_then<U>(self, value: Singleton<U, L, B>) -> Optional<U, L, B>
     where
         B: IsBounded,
