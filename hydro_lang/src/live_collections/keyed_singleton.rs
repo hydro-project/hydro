@@ -553,6 +553,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     }
 
     /// Gets the value associated with a specific key from the keyed singleton.
+    /// Returns `None` if the key is `None` or there is no associated value.
     ///
     /// # Example
     /// ```rust

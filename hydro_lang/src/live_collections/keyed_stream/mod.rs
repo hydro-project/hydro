@@ -2102,6 +2102,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     }
 
     /// Gets the values associated with a specific key from the keyed stream.
+    /// Returns an empty stream if the key is `None` or there are no associated values.
     ///
     /// # Example
     /// ```rust
