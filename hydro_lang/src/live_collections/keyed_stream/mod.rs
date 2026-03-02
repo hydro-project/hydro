@@ -2758,11 +2758,12 @@ mod tests {
         let tick_triggered_input = node_tick
             .singleton(q!((3, 103)))
             .into_stream()
-            .filter_if_some(
+            .filter_if_true(
                 tick_trigger
                     .clone()
                     .batch(&node_tick, nondet!(/** test */))
-                    .first(),
+                    .first()
+                    .is_some(),
             )
             .all_ticks();
 

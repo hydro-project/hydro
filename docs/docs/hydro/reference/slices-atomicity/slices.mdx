@@ -162,7 +162,7 @@ let payloads_with_leader = sliced! {
     let all_payloads = unsent_payloads.chain(payload_batch);
 
     // If no leader, buffer everything; otherwise clear the buffer
-    unsent_payloads = all_payloads.clone().filter_if_none(latest_leader.clone());
+    unsent_payloads = all_payloads.clone().filter_if_true(latest_leader.clone().is_none());
     all_payloads.cross_singleton(latest_leader)
 };
 ```
@@ -214,6 +214,6 @@ let periodic_output = sliced! {
     let state = use(current_state, nondet!(/** snapshot timing is non-deterministic */));
 
     // Only emit when there is at least one tick in this batch
-    state.filter_if_some(tick_batch.first()).into_stream()
+    state.filter_if_true(tick_batch.first().is_some()).into_stream()
 };
 ```

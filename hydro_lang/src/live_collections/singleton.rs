@@ -596,6 +596,84 @@ where
     }
 
     /// Filters this singleton into an [`Optional`], passing through the singleton value if the
+    /// boolean signal is `true`, otherwise the output is null.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let signal = tick.optional_first_tick(q!(())).is_some(); // true on tick 1, false on tick 2
+    /// let batch_first_tick = process
+    ///   .source_iter(q!(vec![1]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let batch_second_tick = process
+    ///   .source_iter(q!(vec![1, 2, 3]))
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .defer_tick();
+    /// batch_first_tick.chain(batch_second_tick).count()
+    ///   .filter_if_true(signal)
+    ///   .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [1]
+    /// # for w in vec![1] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn filter_if_true(self, signal: Singleton<bool, L, B>) -> Optional<T, L, B>
+    where
+        B: IsBounded,
+    {
+        self.zip(signal.filter(q!(|b| *b))).map(q!(|(d, _)| d))
+    }
+
+    /// Filters this singleton into an [`Optional`], passing through the singleton value if the
+    /// boolean signal is `false`, otherwise the output is null.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let signal = tick.optional_first_tick(q!(())).is_some(); // true on tick 1, false on tick 2
+    /// let batch_first_tick = process
+    ///   .source_iter(q!(vec![1]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let batch_second_tick = process
+    ///   .source_iter(q!(vec![1, 2, 3]))
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .defer_tick();
+    /// batch_first_tick.chain(batch_second_tick).count()
+    ///   .filter_if_false(signal)
+    ///   .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [3]
+    /// # for w in vec![3] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn filter_if_false(self, signal: Singleton<bool, L, B>) -> Optional<T, L, B>
+    where
+        B: IsBounded,
+    {
+        self.filter_if_true(signal.map(q!(|b| !b)))
+    }
+
+    /// Filters this singleton into an [`Optional`], passing through the singleton value if the
     /// argument (a [`Bounded`] [`Optional`]`) is non-null, otherwise the output is null.
     ///
     /// Useful for conditionally processing, such as only emitting a singleton's value outside
@@ -630,12 +708,12 @@ where
     /// # }));
     /// # }
     /// ```
+    #[deprecated(note = "use `filter_if_true` with `Optional::is_some()` instead")]
     pub fn filter_if_some<U>(self, signal: Optional<U, L, B>) -> Optional<T, L, B>
     where
         B: IsBounded,
     {
-        self.zip::<Optional<(), L, B>>(signal.map(q!(|_u| ())))
-            .map(q!(|(d, _signal)| d))
+        self.filter_if_true(signal.is_some())
     }
 
     /// Filters this singleton into an [`Optional`], passing through the singleton value if the
@@ -673,16 +751,38 @@ where
     /// # }));
     /// # }
     /// ```
+    #[deprecated(note = "use `filter_if_false` with `Optional::is_some()` instead")]
     pub fn filter_if_none<U>(self, other: Optional<U, L, B>) -> Optional<T, L, B>
     where
         B: IsBounded,
     {
-        self.filter_if_some(
-            other
-                .map(q!(|_| ()))
-                .into_singleton()
-                .filter(q!(|o| o.is_none())),
-        )
+        self.filter_if_true(other.is_none())
+    }
+
+    /// Returns a [`Singleton`] containing `true` if this singleton's value equals the other's.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let a = tick.singleton(q!(5));
+    /// let b = tick.singleton(q!(5));
+    /// a.equals(b).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [true]
+    /// # assert_eq!(stream.next().await.unwrap(), true);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn equals(self, other: Singleton<T, L, B>) -> Singleton<bool, L, B>
+    where
+        T: PartialEq,
+        B: IsBounded,
+    {
+        self.zip(other).map(q!(|(a, b)| a == b))
     }
 
     /// An operator which allows you to "name" a `HydroNode`.
@@ -725,6 +825,71 @@ where
     /// ```
     pub fn into_optional(self) -> Optional<T, L, B> {
         self.filter_map(q!(|v| v))
+    }
+}
+
+impl<'a, L, B: Boundedness> Singleton<bool, L, B>
+where
+    L: Location<'a>,
+{
+    /// Returns a [`Singleton`] containing the logical AND of this and another boolean singleton.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let a = tick.optional_first_tick(q!(())).is_some(); // true, false
+    /// let b = tick.singleton(q!(true)); // true, true
+    /// a.and(b).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [true, false]
+    /// # for w in vec![true, false] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn and(self, other: Singleton<bool, L, B>) -> Singleton<bool, L, B>
+    where
+        B: IsBounded,
+    {
+        self.zip(other).map(q!(|(a, b)| a && b))
+    }
+
+    /// Returns a [`Singleton`] containing the logical OR of this and another boolean singleton.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let a = tick.optional_first_tick(q!(())).is_some(); // true, false
+    /// let b = tick.singleton(q!(false)); // false, false
+    /// a.or(b).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [true, false]
+    /// # for w in vec![true, false] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn or(self, other: Singleton<bool, L, B>) -> Singleton<bool, L, B>
+    where
+        B: IsBounded,
+    {
+        self.zip(other).map(q!(|(a, b)| a || b))
     }
 }
 
@@ -859,7 +1024,7 @@ where
             let snapshot = use(self, nondet);
             let sample_batch = use(samples, nondet);
 
-            snapshot.filter_if_some(sample_batch.first()).into_stream()
+            snapshot.filter_if_true(sample_batch.first().is_some()).into_stream()
         }
         .weaken_retries()
     }
@@ -1166,7 +1331,12 @@ mod tests {
             .clone()
             .into_stream()
             .count()
-            .filter_if_some(input.batch(&node_tick, nondet!(/** testing */)).first())
+            .filter_if_true(
+                input
+                    .batch(&node_tick, nondet!(/** testing */))
+                    .first()
+                    .is_some(),
+            )
             .all_ticks()
             .send_bincode_external(&external);
         complete_cycle.complete_next_tick(singleton);

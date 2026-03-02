@@ -34,7 +34,7 @@ expression: built.ir()
                             },
                         },
                         second: Map {
-                            f: stageleft :: runtime_support :: fn1_type_hint :: < ((u32 , core :: option :: Option < i32 >) , ()) , (u32 , core :: option :: Option < i32 >) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | (d , _signal) | d }),
+                            f: stageleft :: runtime_support :: fn1_type_hint :: < ((u32 , core :: option :: Option < i32 >) , bool) , (u32 , core :: option :: Option < i32 >) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | (d , _) | d }),
                             input: CrossSingleton {
                                 left: Cast {
                                     inner: SingletonSource {
@@ -55,26 +55,93 @@ expression: built.ir()
                                         },
                                     },
                                 },
-                                right: Map {
-                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _u | () }),
-                                    input: Batch {
-                                        inner: Source {
-                                            source: Iter(
-                                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; let e__free = { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; () } ; [e__free] },
-                                            ),
+                                right: Filter {
+                                    f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | b | * b }),
+                                    input: Map {
+                                        f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_some () }),
+                                        input: Cast {
+                                            inner: ChainFirst {
+                                                first: Map {
+                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
+                                                    input: Map {
+                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
+                                                        input: Batch {
+                                                            inner: Source {
+                                                                source: Iter(
+                                                                    { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; let e__free = { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; () } ; [e__free] },
+                                                                ),
+                                                                metadata: HydroIrMetadata {
+                                                                    location_id: Cluster(loc3v1),
+                                                                    collection_kind: Optional {
+                                                                        bound: Unbounded,
+                                                                        element_type: (),
+                                                                    },
+                                                                },
+                                                            },
+                                                            metadata: HydroIrMetadata {
+                                                                location_id: Tick(0, Cluster(loc3v1)),
+                                                                collection_kind: Optional {
+                                                                    bound: Bounded,
+                                                                    element_type: (),
+                                                                },
+                                                            },
+                                                        },
+                                                        metadata: HydroIrMetadata {
+                                                            location_id: Tick(0, Cluster(loc3v1)),
+                                                            collection_kind: Optional {
+                                                                bound: Bounded,
+                                                                element_type: (),
+                                                            },
+                                                        },
+                                                    },
+                                                    metadata: HydroIrMetadata {
+                                                        location_id: Tick(0, Cluster(loc3v1)),
+                                                        collection_kind: Optional {
+                                                            bound: Bounded,
+                                                            element_type: core :: option :: Option < () >,
+                                                        },
+                                                    },
+                                                },
+                                                second: Cast {
+                                                    inner: SingletonSource {
+                                                        value: :: std :: option :: Option :: None,
+                                                        metadata: HydroIrMetadata {
+                                                            location_id: Tick(0, Cluster(loc3v1)),
+                                                            collection_kind: Singleton {
+                                                                bound: Bounded,
+                                                                element_type: core :: option :: Option < () >,
+                                                            },
+                                                        },
+                                                    },
+                                                    metadata: HydroIrMetadata {
+                                                        location_id: Tick(0, Cluster(loc3v1)),
+                                                        collection_kind: Optional {
+                                                            bound: Bounded,
+                                                            element_type: core :: option :: Option < () >,
+                                                        },
+                                                    },
+                                                },
+                                                metadata: HydroIrMetadata {
+                                                    location_id: Tick(0, Cluster(loc3v1)),
+                                                    collection_kind: Optional {
+                                                        bound: Bounded,
+                                                        element_type: core :: option :: Option < () >,
+                                                    },
+                                                },
+                                            },
                                             metadata: HydroIrMetadata {
-                                                location_id: Cluster(loc3v1),
-                                                collection_kind: Optional {
-                                                    bound: Unbounded,
-                                                    element_type: (),
+                                                location_id: Tick(0, Cluster(loc3v1)),
+                                                collection_kind: Singleton {
+                                                    bound: Bounded,
+                                                    element_type: core :: option :: Option < () >,
                                                 },
                                             },
                                         },
                                         metadata: HydroIrMetadata {
                                             location_id: Tick(0, Cluster(loc3v1)),
-                                            collection_kind: Optional {
+                                            collection_kind: Singleton {
                                                 bound: Bounded,
-                                                element_type: (),
+                                                element_type: bool,
                                             },
                                         },
                                     },
@@ -82,7 +149,7 @@ expression: built.ir()
                                         location_id: Tick(0, Cluster(loc3v1)),
                                         collection_kind: Optional {
                                             bound: Bounded,
-                                            element_type: (),
+                                            element_type: bool,
                                         },
                                     },
                                 },
@@ -90,7 +157,7 @@ expression: built.ir()
                                     location_id: Tick(0, Cluster(loc3v1)),
                                     collection_kind: Optional {
                                         bound: Bounded,
-                                        element_type: ((u32 , core :: option :: Option < i32 >) , ()),
+                                        element_type: ((u32 , core :: option :: Option < i32 >) , bool),
                                     },
                                 },
                             },
@@ -1738,7 +1805,7 @@ expression: built.ir()
                         },
                         right: Tee {
                             inner: <tee 13>: Map {
-                                f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , ()) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _signal) | d }),
+                                f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , bool) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _) | d }),
                                 input: CrossSingleton {
                                     left: Tee {
                                         inner: <tee 14>: Cast {
@@ -1807,16 +1874,16 @@ expression: built.ir()
                                             },
                                         },
                                     },
-                                    right: Map {
-                                        f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
-                                        input: Filter {
-                                            f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | o | o . is_none () }),
+                                    right: Filter {
+                                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | b | * b }),
+                                        input: Map {
+                                            f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_none () }),
                                             input: Cast {
                                                 inner: ChainFirst {
                                                     first: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
                                                         input: Map {
-                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _ | () }),
+                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
                                                             input: Tee {
                                                                 inner: <tee 15>: Reduce {
                                                                     f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ , _ | { } }),
@@ -1914,9 +1981,9 @@ expression: built.ir()
                                             },
                                             metadata: HydroIrMetadata {
                                                 location_id: Tick(6, Cluster(loc3v1)),
-                                                collection_kind: Optional {
+                                                collection_kind: Singleton {
                                                     bound: Bounded,
-                                                    element_type: core :: option :: Option < () >,
+                                                    element_type: bool,
                                                 },
                                             },
                                         },
@@ -1924,7 +1991,7 @@ expression: built.ir()
                                             location_id: Tick(6, Cluster(loc3v1)),
                                             collection_kind: Optional {
                                                 bound: Bounded,
-                                                element_type: (),
+                                                element_type: bool,
                                             },
                                         },
                                     },
@@ -1932,7 +1999,7 @@ expression: built.ir()
                                         location_id: Tick(6, Cluster(loc3v1)),
                                         collection_kind: Optional {
                                             bound: Bounded,
-                                            element_type: (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , ()),
+                                            element_type: (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , bool),
                                         },
                                     },
                                 },
@@ -2070,7 +2137,7 @@ expression: built.ir()
                         },
                         right: Tee {
                             inner: <tee 17>: Map {
-                                f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , ()) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _signal) | d }),
+                                f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , bool) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _) | d }),
                                 input: CrossSingleton {
                                     left: Tee {
                                         inner: <tee 18>: Cast {
@@ -2139,16 +2206,16 @@ expression: built.ir()
                                             },
                                         },
                                     },
-                                    right: Map {
-                                        f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
-                                        input: Filter {
-                                            f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | o | o . is_none () }),
+                                    right: Filter {
+                                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | b | * b }),
+                                        input: Map {
+                                            f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_none () }),
                                             input: Cast {
                                                 inner: ChainFirst {
                                                     first: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
                                                         input: Map {
-                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _ | () }),
+                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
                                                             input: Tee {
                                                                 inner: <tee 15>,
                                                                 metadata: HydroIrMetadata {
@@ -2212,9 +2279,9 @@ expression: built.ir()
                                             },
                                             metadata: HydroIrMetadata {
                                                 location_id: Tick(6, Cluster(loc3v1)),
-                                                collection_kind: Optional {
+                                                collection_kind: Singleton {
                                                     bound: Bounded,
-                                                    element_type: core :: option :: Option < () >,
+                                                    element_type: bool,
                                                 },
                                             },
                                         },
@@ -2222,7 +2289,7 @@ expression: built.ir()
                                             location_id: Tick(6, Cluster(loc3v1)),
                                             collection_kind: Optional {
                                                 bound: Bounded,
-                                                element_type: (),
+                                                element_type: bool,
                                             },
                                         },
                                     },
@@ -2230,7 +2297,7 @@ expression: built.ir()
                                         location_id: Tick(6, Cluster(loc3v1)),
                                         collection_kind: Optional {
                                             bound: Bounded,
-                                            element_type: (usize , ()),
+                                            element_type: (usize , bool),
                                         },
                                     },
                                 },
@@ -2411,7 +2478,7 @@ expression: built.ir()
                                                                             input: YieldConcat {
                                                                                 inner: Cast {
                                                                                     inner: Map {
-                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , ()) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _signal) | d }),
+                                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , bool) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _) | d }),
                                                                                         input: CrossSingleton {
                                                                                             left: Tee {
                                                                                                 inner: <tee 14>,
@@ -2423,15 +2490,82 @@ expression: built.ir()
                                                                                                     },
                                                                                                 },
                                                                                             },
-                                                                                            right: Map {
-                                                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
-                                                                                                input: Tee {
-                                                                                                    inner: <tee 15>,
+                                                                                            right: Filter {
+                                                                                                f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | b | * b }),
+                                                                                                input: Map {
+                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_some () }),
+                                                                                                    input: Cast {
+                                                                                                        inner: ChainFirst {
+                                                                                                            first: Map {
+                                                                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
+                                                                                                                input: Map {
+                                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
+                                                                                                                    input: Tee {
+                                                                                                                        inner: <tee 15>,
+                                                                                                                        metadata: HydroIrMetadata {
+                                                                                                                            location_id: Tick(6, Cluster(loc3v1)),
+                                                                                                                            collection_kind: Optional {
+                                                                                                                                bound: Bounded,
+                                                                                                                                element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                                                                                            },
+                                                                                                                        },
+                                                                                                                    },
+                                                                                                                    metadata: HydroIrMetadata {
+                                                                                                                        location_id: Tick(6, Cluster(loc3v1)),
+                                                                                                                        collection_kind: Optional {
+                                                                                                                            bound: Bounded,
+                                                                                                                            element_type: (),
+                                                                                                                        },
+                                                                                                                    },
+                                                                                                                },
+                                                                                                                metadata: HydroIrMetadata {
+                                                                                                                    location_id: Tick(6, Cluster(loc3v1)),
+                                                                                                                    collection_kind: Optional {
+                                                                                                                        bound: Bounded,
+                                                                                                                        element_type: core :: option :: Option < () >,
+                                                                                                                    },
+                                                                                                                },
+                                                                                                            },
+                                                                                                            second: Cast {
+                                                                                                                inner: SingletonSource {
+                                                                                                                    value: :: std :: option :: Option :: None,
+                                                                                                                    metadata: HydroIrMetadata {
+                                                                                                                        location_id: Tick(6, Cluster(loc3v1)),
+                                                                                                                        collection_kind: Singleton {
+                                                                                                                            bound: Bounded,
+                                                                                                                            element_type: core :: option :: Option < () >,
+                                                                                                                        },
+                                                                                                                    },
+                                                                                                                },
+                                                                                                                metadata: HydroIrMetadata {
+                                                                                                                    location_id: Tick(6, Cluster(loc3v1)),
+                                                                                                                    collection_kind: Optional {
+                                                                                                                        bound: Bounded,
+                                                                                                                        element_type: core :: option :: Option < () >,
+                                                                                                                    },
+                                                                                                                },
+                                                                                                            },
+                                                                                                            metadata: HydroIrMetadata {
+                                                                                                                location_id: Tick(6, Cluster(loc3v1)),
+                                                                                                                collection_kind: Optional {
+                                                                                                                    bound: Bounded,
+                                                                                                                    element_type: core :: option :: Option < () >,
+                                                                                                                },
+                                                                                                            },
+                                                                                                        },
+                                                                                                        metadata: HydroIrMetadata {
+                                                                                                            location_id: Tick(6, Cluster(loc3v1)),
+                                                                                                            collection_kind: Singleton {
+                                                                                                                bound: Bounded,
+                                                                                                                element_type: core :: option :: Option < () >,
+                                                                                                            },
+                                                                                                        },
+                                                                                                    },
                                                                                                     metadata: HydroIrMetadata {
                                                                                                         location_id: Tick(6, Cluster(loc3v1)),
-                                                                                                        collection_kind: Optional {
+                                                                                                        collection_kind: Singleton {
                                                                                                             bound: Bounded,
-                                                                                                            element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                                                                            element_type: bool,
                                                                                                         },
                                                                                                     },
                                                                                                 },
@@ -2439,7 +2573,7 @@ expression: built.ir()
                                                                                                     location_id: Tick(6, Cluster(loc3v1)),
                                                                                                     collection_kind: Optional {
                                                                                                         bound: Bounded,
-                                                                                                        element_type: (),
+                                                                                                        element_type: bool,
                                                                                                     },
                                                                                                 },
                                                                                             },
@@ -2447,7 +2581,7 @@ expression: built.ir()
                                                                                                 location_id: Tick(6, Cluster(loc3v1)),
                                                                                                 collection_kind: Optional {
                                                                                                     bound: Bounded,
-                                                                                                    element_type: (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , ()),
+                                                                                                    element_type: (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , bool),
                                                                                                 },
                                                                                             },
                                                                                         },
@@ -2774,7 +2908,7 @@ expression: built.ir()
                                         input: YieldConcat {
                                             inner: Cast {
                                                 inner: Map {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , ()) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _signal) | d }),
+                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , bool) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _) | d }),
                                                     input: CrossSingleton {
                                                         left: Tee {
                                                             inner: <tee 18>,
@@ -2786,15 +2920,82 @@ expression: built.ir()
                                                                 },
                                                             },
                                                         },
-                                                        right: Map {
-                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
-                                                            input: Tee {
-                                                                inner: <tee 15>,
+                                                        right: Filter {
+                                                            f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | b | * b }),
+                                                            input: Map {
+                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_some () }),
+                                                                input: Cast {
+                                                                    inner: ChainFirst {
+                                                                        first: Map {
+                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
+                                                                            input: Map {
+                                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
+                                                                                input: Tee {
+                                                                                    inner: <tee 15>,
+                                                                                    metadata: HydroIrMetadata {
+                                                                                        location_id: Tick(6, Cluster(loc3v1)),
+                                                                                        collection_kind: Optional {
+                                                                                            bound: Bounded,
+                                                                                            element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                                                        },
+                                                                                    },
+                                                                                },
+                                                                                metadata: HydroIrMetadata {
+                                                                                    location_id: Tick(6, Cluster(loc3v1)),
+                                                                                    collection_kind: Optional {
+                                                                                        bound: Bounded,
+                                                                                        element_type: (),
+                                                                                    },
+                                                                                },
+                                                                            },
+                                                                            metadata: HydroIrMetadata {
+                                                                                location_id: Tick(6, Cluster(loc3v1)),
+                                                                                collection_kind: Optional {
+                                                                                    bound: Bounded,
+                                                                                    element_type: core :: option :: Option < () >,
+                                                                                },
+                                                                            },
+                                                                        },
+                                                                        second: Cast {
+                                                                            inner: SingletonSource {
+                                                                                value: :: std :: option :: Option :: None,
+                                                                                metadata: HydroIrMetadata {
+                                                                                    location_id: Tick(6, Cluster(loc3v1)),
+                                                                                    collection_kind: Singleton {
+                                                                                        bound: Bounded,
+                                                                                        element_type: core :: option :: Option < () >,
+                                                                                    },
+                                                                                },
+                                                                            },
+                                                                            metadata: HydroIrMetadata {
+                                                                                location_id: Tick(6, Cluster(loc3v1)),
+                                                                                collection_kind: Optional {
+                                                                                    bound: Bounded,
+                                                                                    element_type: core :: option :: Option < () >,
+                                                                                },
+                                                                            },
+                                                                        },
+                                                                        metadata: HydroIrMetadata {
+                                                                            location_id: Tick(6, Cluster(loc3v1)),
+                                                                            collection_kind: Optional {
+                                                                                bound: Bounded,
+                                                                                element_type: core :: option :: Option < () >,
+                                                                            },
+                                                                        },
+                                                                    },
+                                                                    metadata: HydroIrMetadata {
+                                                                        location_id: Tick(6, Cluster(loc3v1)),
+                                                                        collection_kind: Singleton {
+                                                                            bound: Bounded,
+                                                                            element_type: core :: option :: Option < () >,
+                                                                        },
+                                                                    },
+                                                                },
                                                                 metadata: HydroIrMetadata {
                                                                     location_id: Tick(6, Cluster(loc3v1)),
-                                                                    collection_kind: Optional {
+                                                                    collection_kind: Singleton {
                                                                         bound: Bounded,
-                                                                        element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                                        element_type: bool,
                                                                     },
                                                                 },
                                                             },
@@ -2802,7 +3003,7 @@ expression: built.ir()
                                                                 location_id: Tick(6, Cluster(loc3v1)),
                                                                 collection_kind: Optional {
                                                                     bound: Bounded,
-                                                                    element_type: (),
+                                                                    element_type: bool,
                                                                 },
                                                             },
                                                         },
@@ -2810,7 +3011,7 @@ expression: built.ir()
                                                             location_id: Tick(6, Cluster(loc3v1)),
                                                             collection_kind: Optional {
                                                                 bound: Bounded,
-                                                                element_type: (usize , ()),
+                                                                element_type: (usize , bool),
                                                             },
                                                         },
                                                     },
@@ -2895,7 +3096,7 @@ expression: built.ir()
                     },
                     second: Cast {
                         inner: Map {
-                            f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , ()) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _signal) | d }),
+                            f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , bool) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _) | d }),
                             input: CrossSingleton {
                                 left: Tee {
                                     inner: <tee 21>: Cast {
@@ -2964,16 +3165,16 @@ expression: built.ir()
                                         },
                                     },
                                 },
-                                right: Map {
-                                    f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
-                                    input: Filter {
-                                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | o | o . is_none () }),
+                                right: Filter {
+                                    f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | b | * b }),
+                                    input: Map {
+                                        f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_none () }),
                                         input: Cast {
                                             inner: ChainFirst {
                                                 first: Map {
                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
                                                     input: Map {
-                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _ | () }),
+                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
                                                         input: Tee {
                                                             inner: <tee 20>,
                                                             metadata: HydroIrMetadata {
@@ -3037,9 +3238,9 @@ expression: built.ir()
                                         },
                                         metadata: HydroIrMetadata {
                                             location_id: Tick(7, Process(loc4v1)),
-                                            collection_kind: Optional {
+                                            collection_kind: Singleton {
                                                 bound: Bounded,
-                                                element_type: core :: option :: Option < () >,
+                                                element_type: bool,
                                             },
                                         },
                                     },
@@ -3047,7 +3248,7 @@ expression: built.ir()
                                         location_id: Tick(7, Process(loc4v1)),
                                         collection_kind: Optional {
                                             bound: Bounded,
-                                            element_type: (),
+                                            element_type: bool,
                                         },
                                     },
                                 },
@@ -3055,7 +3256,7 @@ expression: built.ir()
                                     location_id: Tick(7, Process(loc4v1)),
                                     collection_kind: Optional {
                                         bound: Bounded,
-                                        element_type: (usize , ()),
+                                        element_type: (usize , bool),
                                     },
                                 },
                             },
@@ -3113,7 +3314,7 @@ expression: built.ir()
         input: YieldConcat {
             inner: Cast {
                 inner: Map {
-                    f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , ()) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _signal) | d }),
+                    f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , bool) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _) | d }),
                     input: CrossSingleton {
                         left: Tee {
                             inner: <tee 21>,
@@ -3125,15 +3326,82 @@ expression: built.ir()
                                 },
                             },
                         },
-                        right: Map {
-                            f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
-                            input: Tee {
-                                inner: <tee 20>,
+                        right: Filter {
+                            f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | b | * b }),
+                            input: Map {
+                                f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_some () }),
+                                input: Cast {
+                                    inner: ChainFirst {
+                                        first: Map {
+                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
+                                            input: Map {
+                                                f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
+                                                input: Tee {
+                                                    inner: <tee 20>,
+                                                    metadata: HydroIrMetadata {
+                                                        location_id: Tick(7, Process(loc4v1)),
+                                                        collection_kind: Optional {
+                                                            bound: Bounded,
+                                                            element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                        },
+                                                    },
+                                                },
+                                                metadata: HydroIrMetadata {
+                                                    location_id: Tick(7, Process(loc4v1)),
+                                                    collection_kind: Optional {
+                                                        bound: Bounded,
+                                                        element_type: (),
+                                                    },
+                                                },
+                                            },
+                                            metadata: HydroIrMetadata {
+                                                location_id: Tick(7, Process(loc4v1)),
+                                                collection_kind: Optional {
+                                                    bound: Bounded,
+                                                    element_type: core :: option :: Option < () >,
+                                                },
+                                            },
+                                        },
+                                        second: Cast {
+                                            inner: SingletonSource {
+                                                value: :: std :: option :: Option :: None,
+                                                metadata: HydroIrMetadata {
+                                                    location_id: Tick(7, Process(loc4v1)),
+                                                    collection_kind: Singleton {
+                                                        bound: Bounded,
+                                                        element_type: core :: option :: Option < () >,
+                                                    },
+                                                },
+                                            },
+                                            metadata: HydroIrMetadata {
+                                                location_id: Tick(7, Process(loc4v1)),
+                                                collection_kind: Optional {
+                                                    bound: Bounded,
+                                                    element_type: core :: option :: Option < () >,
+                                                },
+                                            },
+                                        },
+                                        metadata: HydroIrMetadata {
+                                            location_id: Tick(7, Process(loc4v1)),
+                                            collection_kind: Optional {
+                                                bound: Bounded,
+                                                element_type: core :: option :: Option < () >,
+                                            },
+                                        },
+                                    },
+                                    metadata: HydroIrMetadata {
+                                        location_id: Tick(7, Process(loc4v1)),
+                                        collection_kind: Singleton {
+                                            bound: Bounded,
+                                            element_type: core :: option :: Option < () >,
+                                        },
+                                    },
+                                },
                                 metadata: HydroIrMetadata {
                                     location_id: Tick(7, Process(loc4v1)),
-                                    collection_kind: Optional {
+                                    collection_kind: Singleton {
                                         bound: Bounded,
-                                        element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                        element_type: bool,
                                     },
                                 },
                             },
@@ -3141,7 +3409,7 @@ expression: built.ir()
                                 location_id: Tick(7, Process(loc4v1)),
                                 collection_kind: Optional {
                                     bound: Bounded,
-                                    element_type: (),
+                                    element_type: bool,
                                 },
                             },
                         },
@@ -3149,7 +3417,7 @@ expression: built.ir()
                             location_id: Tick(7, Process(loc4v1)),
                             collection_kind: Optional {
                                 bound: Bounded,
-                                element_type: (usize , ()),
+                                element_type: (usize , bool),
                             },
                         },
                     },
@@ -3190,7 +3458,7 @@ expression: built.ir()
             input: YieldConcat {
                 inner: Cast {
                     inner: Map {
-                        f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , ()) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _signal) | d }),
+                        f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , bool) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _) | d }),
                         input: CrossSingleton {
                             left: Tee {
                                 inner: <tee 19>,
@@ -3202,15 +3470,82 @@ expression: built.ir()
                                     },
                                 },
                             },
-                            right: Map {
-                                f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | _u | () }),
-                                input: Tee {
-                                    inner: <tee 20>,
+                            right: Filter {
+                                f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | b | * b }),
+                                input: Map {
+                                    f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_some () }),
+                                    input: Cast {
+                                        inner: ChainFirst {
+                                            first: Map {
+                                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
+                                                input: Map {
+                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
+                                                    input: Tee {
+                                                        inner: <tee 20>,
+                                                        metadata: HydroIrMetadata {
+                                                            location_id: Tick(7, Process(loc4v1)),
+                                                            collection_kind: Optional {
+                                                                bound: Bounded,
+                                                                element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                            },
+                                                        },
+                                                    },
+                                                    metadata: HydroIrMetadata {
+                                                        location_id: Tick(7, Process(loc4v1)),
+                                                        collection_kind: Optional {
+                                                            bound: Bounded,
+                                                            element_type: (),
+                                                        },
+                                                    },
+                                                },
+                                                metadata: HydroIrMetadata {
+                                                    location_id: Tick(7, Process(loc4v1)),
+                                                    collection_kind: Optional {
+                                                        bound: Bounded,
+                                                        element_type: core :: option :: Option < () >,
+                                                    },
+                                                },
+                                            },
+                                            second: Cast {
+                                                inner: SingletonSource {
+                                                    value: :: std :: option :: Option :: None,
+                                                    metadata: HydroIrMetadata {
+                                                        location_id: Tick(7, Process(loc4v1)),
+                                                        collection_kind: Singleton {
+                                                            bound: Bounded,
+                                                            element_type: core :: option :: Option < () >,
+                                                        },
+                                                    },
+                                                },
+                                                metadata: HydroIrMetadata {
+                                                    location_id: Tick(7, Process(loc4v1)),
+                                                    collection_kind: Optional {
+                                                        bound: Bounded,
+                                                        element_type: core :: option :: Option < () >,
+                                                    },
+                                                },
+                                            },
+                                            metadata: HydroIrMetadata {
+                                                location_id: Tick(7, Process(loc4v1)),
+                                                collection_kind: Optional {
+                                                    bound: Bounded,
+                                                    element_type: core :: option :: Option < () >,
+                                                },
+                                            },
+                                        },
+                                        metadata: HydroIrMetadata {
+                                            location_id: Tick(7, Process(loc4v1)),
+                                            collection_kind: Singleton {
+                                                bound: Bounded,
+                                                element_type: core :: option :: Option < () >,
+                                            },
+                                        },
+                                    },
                                     metadata: HydroIrMetadata {
                                         location_id: Tick(7, Process(loc4v1)),
-                                        collection_kind: Optional {
+                                        collection_kind: Singleton {
                                             bound: Bounded,
-                                            element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                            element_type: bool,
                                         },
                                     },
                                 },
@@ -3218,7 +3553,7 @@ expression: built.ir()
                                     location_id: Tick(7, Process(loc4v1)),
                                     collection_kind: Optional {
                                         bound: Bounded,
-                                        element_type: (),
+                                        element_type: bool,
                                     },
                                 },
                             },
@@ -3226,7 +3561,7 @@ expression: built.ir()
                                 location_id: Tick(7, Process(loc4v1)),
                                 collection_kind: Optional {
                                     bound: Bounded,
-                                    element_type: (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , ()),
+                                    element_type: (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , bool),
                                 },
                             },
                         },
