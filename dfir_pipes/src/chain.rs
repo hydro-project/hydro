@@ -42,7 +42,7 @@ where
                 return Step::Ready(item, meta);
             }
             Step::Pending(can_pend) => {
-                return Step::Pending(Toggle::try_from(can_pend));
+                return Step::Pending(Toggle::convert_from(can_pend));
             }
             Step::Ended(_) => {
                 // First is fused, so it will keep returning Ended.
@@ -50,7 +50,10 @@ where
             }
         }
 
-        this.second.as_mut().pull(<A::Ctx<'_> as Context<'_>>::unmerge_other(ctx)).remap()
+        this.second
+            .as_mut()
+            .pull(<A::Ctx<'_> as Context<'_>>::unmerge_other(ctx))
+            .convert_into()
     }
 
     fn size_hint(self: Pin<&Self>) -> (usize, Option<usize>) {

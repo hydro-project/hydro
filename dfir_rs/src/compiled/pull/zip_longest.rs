@@ -2,8 +2,9 @@ use std::pin::Pin;
 use std::task::{Context, Poll, ready};
 
 use futures::stream::{FusedStream, Stream};
-use itertools::EitherOrBoth;
 use pin_project_lite::pin_project;
+
+use crate::itertools::EitherOrBoth;
 
 pin_project! {
     /// Special stream for the `zip_longest` operator.

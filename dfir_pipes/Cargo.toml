@@ -13,6 +13,7 @@ alloc = ["futures-core/alloc", "futures-sink/alloc"]
 [dependencies]
 futures-core = { version = "0.3.0", default-features = false }
 futures-sink = { version = "0.3.0", default-features = false }
+itertools = { version = "0.14", default-features = false }
 pin-project-lite = "0.2.16"
 sealed = "0.6.0"
 

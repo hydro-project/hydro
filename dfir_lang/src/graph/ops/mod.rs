@@ -166,7 +166,7 @@ pub fn identity_write_iterator_fn(
         let input = &inputs[0];
         quote_spanned! {op_span=>
             let #ident = {
-                fn check_input<Pull, Item>(pull: Pull) -> impl #root::dfir_pipes::Pull<Item = Item>
+                fn check_input<Pull, Item>(pull: Pull) -> impl #root::dfir_pipes::Pull<Item = Item, Meta = Pull::Meta>
                 where
                     Pull: #root::dfir_pipes::Pull<Item = Item>,
                 {
@@ -223,18 +223,13 @@ pub fn null_write_iterator_fn(
 
     if is_pull {
         quote_spanned! {op_span=>
-            let #ident = #root::dfir_pipes::pull_fn(move || {
-                // Make sure to poll all #inputs to completion.
-                // Note: We create a dummy context here since pull_fn closures don't receive one
-                let waker = #root::futures::task::noop_waker();
-                let mut _cx = ::std::task::Context::from_waker(&waker);
+            let #ident = #root::dfir_pipes::from_poll_fn(move |_cx| {
+                // Make sure to poll all `#inputs` to completion.
                 #(
                     let #inputs = #root::dfir_pipes::Pull::pull(::std::pin::pin!(#inputs), &mut _cx);
                 )*
                 #(
-                    let #root::dfir_pipes::Step::Ready(_, _) = #inputs else {
-                        return #root::dfir_pipes::Step::Ended(#root::dfir_pipes::Yes);
-                    };
+                    let _ = ::std::task::ready!(#root::dfir_pipes::Step::into_poll(#inputs));
                 )*
                 #root::dfir_pipes::Step::Ended(#root::dfir_pipes::Yes)
             });

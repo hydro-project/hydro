@@ -130,7 +130,7 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
             #write_iterator
 
             #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
-            let #ident = #root::dfir_pipes::map::Map::new(#ident, |(k, (v1, v2))| {
+            let #ident = #root::dfir_pipes::Pull::map(#ident, |(k, (v1, v2))| {
                 #root::lattices::map_union::MapUnionSingletonMap::new_from(
                     (
                         k,

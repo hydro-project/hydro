@@ -78,7 +78,7 @@ where
 
             // Both ended - return Ended
             if *this.lhs_ended && *this.rhs_ended {
-                return Step::Ended(Toggle::try_from(Yes));
+                return Step::Ended(Toggle::convert_from(Yes));
             }
 
             // Try to pull from lhs if not ended
@@ -97,7 +97,7 @@ where
                         continue;
                     }
                     Step::Pending(can_pend) => {
-                        return Step::Pending(Toggle::try_from(can_pend));
+                        return Step::Pending(Toggle::convert_from(can_pend));
                     }
                     Step::Ended(_) => {
                         *this.lhs_ended = true;
@@ -121,7 +121,7 @@ where
                         continue;
                     }
                     Step::Pending(can_pend) => {
-                        return Step::Pending(Toggle::try_from(can_pend));
+                        return Step::Pending(Toggle::convert_from(can_pend));
                     }
                     Step::Ended(_) => {
                         *this.rhs_ended = true;
@@ -131,7 +131,7 @@ where
 
             // If we get here, both sides have ended this iteration
             if *this.lhs_ended && *this.rhs_ended {
-                return Step::Ended(Toggle::try_from(Yes));
+                return Step::Ended(Toggle::convert_from(Yes));
             }
         }
     }
@@ -377,7 +377,7 @@ where
 
     type Item = (Key, (V1, V2));
     type Meta = ();
-    type CanPend = dfir_pipes::No;
+    type CanPend = <SymmetricHashJoin<'a, Lhs, Rhs, LhsState, RhsState> as Pull>::CanPend;
     type CanEnd = Yes;
 
     fn pull(
@@ -402,8 +402,8 @@ impl<Item, Meta, CanPend: Toggle, CanEnd: Toggle> StepRemap<Item, Meta, CanPend,
     fn remap<NewPend: Toggle, NewEnd: Toggle>(self) -> Step<Item, Meta, NewPend, NewEnd> {
         match self {
             Step::Ready(item, meta) => Step::Ready(item, meta),
-            Step::Pending(can_pend) => Step::Pending(Toggle::try_from(can_pend)),
-            Step::Ended(can_end) => Step::Ended(Toggle::try_from(can_end)),
+            Step::Pending(can_pend) => Step::Pending(Toggle::convert_from(can_pend)),
+            Step::Ended(can_end) => Step::Ended(Toggle::convert_from(can_end)),
         }
     }
 }

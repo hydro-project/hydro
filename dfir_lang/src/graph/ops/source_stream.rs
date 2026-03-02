@@ -52,7 +52,7 @@ pub const SOURCE_STREAM: OperatorConstraints = OperatorConstraints {
         let receiver = &arguments[0];
         let stream_ident = wc.make_ident("stream");
         let write_prologue = quote_spanned! {op_span=>
-            let #stream_ident = {
+            let mut #stream_ident = {
                 #[inline(always)]
                 fn check_stream<Stream: #root::futures::stream::Stream<Item = Item> + ::std::marker::Unpin, Item>(stream: Stream)
                     -> impl #root::futures::stream::Stream<Item = Item> + ::std::marker::Unpin
@@ -64,7 +64,7 @@ pub const SOURCE_STREAM: OperatorConstraints = OperatorConstraints {
         };
         let write_iterator = quote_spanned! {op_span=>
             let #ident = #root::dfir_pipes::from_stream_with_waker(
-                #stream_ident,
+                &mut #stream_ident,
                 #context.waker(),
             );
         };

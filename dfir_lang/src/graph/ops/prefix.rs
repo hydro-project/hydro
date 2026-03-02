@@ -58,7 +58,7 @@ pub const PREFIX: OperatorConstraints = OperatorConstraints {
             // The same as `persist()`, except always replays.
 
             let #ident = {
-                let fut = #root::compiled::pull::ForEach::new(#input, |item| {
+                let fut = #root::dfir_pipes::Pull::for_each(#input, |item| {
                     #vec_ident.push(item);
                 });
                 let () = #work_fn_async(fut).await;

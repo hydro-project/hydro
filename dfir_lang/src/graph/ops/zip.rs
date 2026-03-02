@@ -90,10 +90,10 @@ pub const ZIP: OperatorConstraints = OperatorConstraints {
 
             let #ident = {
                 // Consume input eagerly to avoid short-circuiting, update state.
-                let () = #work_fn_async(#root::compiled::pull::ForEach::new(#lhs_input, |item| {
+                let () = #work_fn_async(#root::dfir_pipes::Pull::for_each(#lhs_input, |item| {
                     ::std::collections::VecDeque::push_back(&mut *#lhs_borrow, item);
                 })).await;
-                let () = #work_fn_async(#root::compiled::pull::ForEach::new(#rhs_input, |item| {
+                let () = #work_fn_async(#root::dfir_pipes::Pull::for_each(#rhs_input, |item| {
                     ::std::collections::VecDeque::push_back(&mut *#rhs_borrow, item);
                 })).await;
 

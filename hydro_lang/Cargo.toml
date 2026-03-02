@@ -141,7 +141,7 @@ trybuild-internals-api = { version = "=1.0.114", optional = true }
 
 # Optional dependencies for graph rendering (now behind viz feature)
 auto_impl = { version = "1.2.0", optional = true }
-itertools = { version = "0.13.0", optional = true }
+itertools = { version = "0.14.0", optional = true }
 webbrowser = { version = "1.0.2", optional = true }
 data-encoding = { version = "2.6.0", optional = true }
 serde_json = { version = "1.0.132", optional = true }

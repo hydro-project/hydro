@@ -73,7 +73,7 @@ pub const ENUMERATE: OperatorConstraints = OperatorConstraints {
         };
         let write_iterator = if is_pull {
             quote_spanned! {op_span=>
-                let #ident = #root::dfir_pipes::map::Map::new(#input, #map_fn);
+                let #ident = #root::dfir_pipes::Pull::map(#input, #map_fn);
             }
         } else {
             quote_spanned! {op_span=>

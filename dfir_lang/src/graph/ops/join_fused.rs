@@ -145,15 +145,15 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
             #rhs_pre_write_iter
 
             let #ident = {
-                async fn __check_accum<Accumulator, Key, Accum, St, Hasher, Item>(accum: &mut Accumulator, borrow: &mut ::std::collections::HashMap<Key, Accum, Hasher>, st: St)
+                async fn __check_accum<Accumulator, Key, Accum, Prev, Hasher, Item>(accum: &mut Accumulator, borrow: &mut ::std::collections::HashMap<Key, Accum, Hasher>, prev: Prev)
                 where
                     Accumulator: #root::util::accumulator::Accumulator<Accum, Item>,
                     Key: ::std::cmp::Eq + ::std::hash::Hash + ::std::clone::Clone,
-                    St: #root::futures::stream::Stream<Item = (Key, Item)>,
+                    Prev: #root::dfir_pipes::Pull<Item = (Key, Item)>,
                     Hasher: ::std::hash::BuildHasher,
                     Item: ::std::clone::Clone,
                 {
-                    #root::compiled::pull::accumulate_all(accum, borrow, st).await;
+                    let () = #root::compiled::pull::accumulate_all_pull(accum, borrow, prev).await;
                 }
                 #work_fn_async(__check_accum(&mut #lhs_accum, &mut *#lhs_borrow, #lhs)).await;
                 #work_fn_async(__check_accum(&mut #rhs_accum, &mut *#rhs_borrow, #rhs)).await;

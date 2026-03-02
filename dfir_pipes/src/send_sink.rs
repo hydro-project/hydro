@@ -20,10 +20,7 @@ pin_project! {
 impl<Pul, Psh> SendSink<Pul, Psh> {
     /// Create a new [`SendSink`] from the given `pull` and `push` sides.
     pub fn new(pull: Pul, push: Psh) -> Self {
-        Self {
-            pull,
-            push,
-        }
+        Self { pull, push }
     }
 }
 

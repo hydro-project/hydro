@@ -90,7 +90,7 @@ pub const _LATTICE_FOLD_BATCH: OperatorConstraints = OperatorConstraints {
 
                 // Eagerly consume input to ensure updated state.
                 {
-                    let fut = #root::compiled::pull::ForEach::new(#input, |delta| {
+                    let fut = #root::dfir_pipes::Pull::for_each(#input, |delta| {
                         let _bool = #root::lattices::Merge::merge(&mut *#lattice_ident, delta);
                     });
                     let () = #work_fn_async(fut).await;
@@ -98,7 +98,7 @@ pub const _LATTICE_FOLD_BATCH: OperatorConstraints = OperatorConstraints {
 
                 let #signal_ident = {
                     // Short-circuit after first signal message.
-                    let fut = #root::compiled::pull::IntoNext::new(#signal);
+                    let fut = #root::compiled::pull::into_next_pull::IntoNextPull::new(#signal);
                     ::std::option::Option::is_some(&#work_fn_async(fut).await)
                 };
 

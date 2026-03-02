@@ -53,29 +53,37 @@ where
 
         // Both ended - return Ended
         if *this.first_ended && *this.second_ended {
-            return Step::Ended(Toggle::try_from(Yes));
+            return Step::Ended(Toggle::convert_from(Yes));
         }
 
         // Only first ended - pull from second
         if *this.first_ended {
-            return match this.second.as_mut().pull(<A::Ctx<'_> as Context<'_>>::unmerge_other(ctx)) {
+            return match this
+                .second
+                .as_mut()
+                .pull(<A::Ctx<'_> as Context<'_>>::unmerge_other(ctx))
+            {
                 Step::Ready(item, meta) => Step::Ready(item, meta),
-                Step::Pending(can_pend) => Step::Pending(Toggle::try_from(can_pend)),
+                Step::Pending(can_pend) => Step::Pending(Toggle::convert_from(can_pend)),
                 Step::Ended(can_end) => {
                     *this.second_ended = true;
-                    Step::Ended(Toggle::try_from(can_end))
+                    Step::Ended(Toggle::convert_from(can_end))
                 }
             };
         }
 
         // Only second ended - pull from first
         if *this.second_ended {
-            return match this.first.as_mut().pull(<A::Ctx<'_> as Context<'_>>::unmerge_self(ctx)) {
+            return match this
+                .first
+                .as_mut()
+                .pull(<A::Ctx<'_> as Context<'_>>::unmerge_self(ctx))
+            {
                 Step::Ready(item, meta) => Step::Ready(item, meta),
-                Step::Pending(can_pend) => Step::Pending(Toggle::try_from(can_pend)),
+                Step::Pending(can_pend) => Step::Pending(Toggle::convert_from(can_pend)),
                 Step::Ended(can_end) => {
                     *this.first_ended = true;
-                    Step::Ended(Toggle::try_from(can_end))
+                    Step::Ended(Toggle::convert_from(can_end))
                 }
             };
         }
@@ -83,36 +91,52 @@ where
         // Both active - alternate between them
         if *this.poll_first_next {
             *this.poll_first_next = false;
-            match this.first.as_mut().pull(<A::Ctx<'_> as Context<'_>>::unmerge_self(ctx)) {
+            match this
+                .first
+                .as_mut()
+                .pull(<A::Ctx<'_> as Context<'_>>::unmerge_self(ctx))
+            {
                 Step::Ready(item, meta) => Step::Ready(item, meta),
-                Step::Pending(can_pend) => Step::Pending(Toggle::try_from(can_pend)),
+                Step::Pending(can_pend) => Step::Pending(Toggle::convert_from(can_pend)),
                 Step::Ended(_) => {
                     *this.first_ended = true;
                     // Try second immediately
-                    match this.second.as_mut().pull(<A::Ctx<'_> as Context<'_>>::unmerge_other(ctx)) {
+                    match this
+                        .second
+                        .as_mut()
+                        .pull(<A::Ctx<'_> as Context<'_>>::unmerge_other(ctx))
+                    {
                         Step::Ready(item, meta) => Step::Ready(item, meta),
-                        Step::Pending(can_pend) => Step::Pending(Toggle::try_from(can_pend)),
+                        Step::Pending(can_pend) => Step::Pending(Toggle::convert_from(can_pend)),
                         Step::Ended(can_end) => {
                             *this.second_ended = true;
-                            Step::Ended(Toggle::try_from(can_end))
+                            Step::Ended(Toggle::convert_from(can_end))
                         }
                     }
                 }
             }
         } else {
             *this.poll_first_next = true;
-            match this.second.as_mut().pull(<A::Ctx<'_> as Context<'_>>::unmerge_other(ctx)) {
+            match this
+                .second
+                .as_mut()
+                .pull(<A::Ctx<'_> as Context<'_>>::unmerge_other(ctx))
+            {
                 Step::Ready(item, meta) => Step::Ready(item, meta),
-                Step::Pending(can_pend) => Step::Pending(Toggle::try_from(can_pend)),
+                Step::Pending(can_pend) => Step::Pending(Toggle::convert_from(can_pend)),
                 Step::Ended(_) => {
                     *this.second_ended = true;
                     // Try first immediately
-                    match this.first.as_mut().pull(<A::Ctx<'_> as Context<'_>>::unmerge_self(ctx)) {
+                    match this
+                        .first
+                        .as_mut()
+                        .pull(<A::Ctx<'_> as Context<'_>>::unmerge_self(ctx))
+                    {
                         Step::Ready(item, meta) => Step::Ready(item, meta),
-                        Step::Pending(can_pend) => Step::Pending(Toggle::try_from(can_pend)),
+                        Step::Pending(can_pend) => Step::Pending(Toggle::convert_from(can_pend)),
                         Step::Ended(can_end) => {
                             *this.first_ended = true;
-                            Step::Ended(Toggle::try_from(can_end))
+                            Step::Ended(Toggle::convert_from(can_end))
                         }
                     }
                 }
@@ -147,10 +171,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::test_utils::{assert_types, AsyncPull, InfinitePull, PendingPull, SyncPull};
-    use crate::{No, Yes};
-
     use super::Merge;
+    use crate::test_utils::{AsyncPull, InfinitePull, PendingPull, SyncPull, assert_types};
+    use crate::{No, Yes};
 
     // Merge allows both pulls to be infinite (unlike Chain).
     // CanPend = A::CanPend.or(B::CanPend), CanEnd = A::CanEnd.and(B::CanEnd)
@@ -187,8 +210,7 @@ mod tests {
     #[test]
     fn merge_nested_types() {
         // Merge<Merge<Sync, Async>, Infinite>: CanPend=Yes, CanEnd=No
-        let merge_ab: Merge<SyncPull, AsyncPull> =
-            Merge::new(SyncPull::new(1), AsyncPull::new(1));
+        let merge_ab: Merge<SyncPull, AsyncPull> = Merge::new(SyncPull::new(1), AsyncPull::new(1));
         assert_types::<Yes, Yes>(&merge_ab);
 
         let merge_abc: Merge<Merge<SyncPull, AsyncPull>, InfinitePull> =

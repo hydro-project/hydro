@@ -68,7 +68,7 @@ pub const SOURCE_STREAM_SERDE: OperatorConstraints = OperatorConstraints {
             let mut #stream_ident = Box::pin(#receiver);
         };
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = #root::dfir_pipes::pull_fn(|| {
+            let #ident = #root::dfir_pipes::from_fn(|| {
                 // Using the `tick_cx` will cause the tick to "block" (yield) until the stream is exhausted, which is not what we want.
                 // We want only the ready items, and will awaken this subgraph on a later tick when more items are available.
                 match #root::futures::stream::Stream::poll_next(#stream_ident.as_mut(), &mut ::std::task::Context::from_waker(&#context.waker())) {

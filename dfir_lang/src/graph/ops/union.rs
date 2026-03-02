@@ -56,12 +56,11 @@ pub const UNION: OperatorConstraints = OperatorConstraints {
                 let #ident = {
                     #[allow(unused)]
                     #[inline(always)]
-                    fn check_inputs<A, B, Item, Meta>(a: A, b: B)
-                        -> impl #root::dfir_pipes::Pull<Item = Item, Meta = Meta>
+                    fn check_inputs<A, B, Item>(a: A, b: B)
+                        -> impl #root::dfir_pipes::Pull<Item = Item, Meta = A::Meta>
                     where
-                        A: #root::dfir_pipes::Pull<Item = Item, Meta = Meta>,
-                        B: #root::dfir_pipes::Pull<Item = Item, Meta = Meta>,
-                        Meta: ::std::marker::Copy,
+                        A: #root::dfir_pipes::Pull<Item = Item>,
+                        B: #root::dfir_pipes::Pull<Item = Item, Meta = A::Meta>,
                     {
                         // NOTE(mingwei): `Pull::merge` equivalent may make more sense, but also
                         // might inline worse. Merge may have correctness implications.

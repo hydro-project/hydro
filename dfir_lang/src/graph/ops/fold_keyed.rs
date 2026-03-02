@@ -170,7 +170,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                         let () = (f)(a, t);
                     }
 
-                    let fut = #root::compiled::pull::ForEach::new(check_input(#input), |item| {
+                    let fut = #root::dfir_pipes::Pull::for_each(check_input(#input), |item| {
                         match item {
                             #root::util::PersistenceKeyed::Persist(k, v) => {
                                 let entry = #hashtable_ident.entry(k).or_insert_with(#initfn);

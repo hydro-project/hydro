@@ -79,20 +79,20 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
         let write_iterator = quote_spanned! {op_span=>
             let #ident = {
                 #[inline(always)]
-                fn check_inputs<'a, Func, LhsStream, RhsStream, LhsState, RhsState, Output>(
-                    lhs_stream: LhsStream,
-                    rhs_stream: RhsStream,
+                fn check_inputs<'a, Func, LhsPull, RhsPull, LhsState, RhsState, Output>(
+                    lhs_pull: LhsPull,
+                    rhs_pull: RhsPull,
                     func: Func,
                     lhs_state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<LhsState>>,
                     rhs_state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<RhsState>>,
                     context: &'a #root::scheduled::context::Context,
-                ) -> impl #root::futures::stream::Stream<Item = Output>
+                ) -> impl #root::dfir_pipes::Pull<Item = Output, Meta = ()>
                 where
                     Func: 'a
-                        + #root::lattices::LatticeBimorphism<LhsState, RhsStream::Item, Output = Output>
-                        + #root::lattices::LatticeBimorphism<LhsStream::Item, RhsState, Output = Output>,
-                    LhsStream: 'a + #root::futures::stream::Stream,
-                    RhsStream: 'a + #root::futures::stream::Stream,
+                        + #root::lattices::LatticeBimorphism<LhsState, RhsPull::Item, Output = Output>
+                        + #root::lattices::LatticeBimorphism<LhsPull::Item, RhsState, Output = Output>,
+                    LhsPull: 'a + #root::dfir_pipes::Pull,
+                    RhsPull: 'a + #root::dfir_pipes::Pull,
                     LhsState: 'static + ::std::clone::Clone,
                     RhsState: 'static + ::std::clone::Clone,
                     Output: #root::lattices::Merge<Output>,
@@ -105,9 +105,9 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
                         )
                     };
 
-                    #root::compiled::pull::LatticeBimorphismStream::new(
-                        #root::dfir_pipes::fuse::Fuse::new(lhs_stream),
-                        #root::dfir_pipes::fuse::Fuse::new(rhs_stream),
+                    #root::compiled::pull::lattice_bimorphism_pull::LatticeBimorphismPull::new(
+                        #root::dfir_pipes::Pull::fuse(lhs_pull),
+                        #root::dfir_pipes::Pull::fuse(rhs_pull),
                         func,
                         lhs_state,
                         rhs_state,

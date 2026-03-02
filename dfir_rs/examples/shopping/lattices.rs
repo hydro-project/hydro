@@ -1,8 +1,8 @@
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
+use dfir_rs::itertools::Itertools;
 use dfir_rs::lattices::{LatticeFrom, LatticeOrd, Merge};
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 /// SealedSetofIndexedValues represents a vector of values indexed by integers [0..len-1].

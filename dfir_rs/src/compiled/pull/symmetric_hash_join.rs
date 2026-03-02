@@ -4,10 +4,10 @@ use std::task::{Context, Poll, ready};
 
 use futures::future::Either as FutEither;
 use futures::stream::{FusedStream, Stream, StreamExt};
-use itertools::Either as IterEither;
 use pin_project_lite::pin_project;
 
 use super::{ForEach, HalfJoinState};
+use crate::itertools::Either as IterEither;
 
 pin_project! {
     /// Stream combinator for symmetric hash join operations.

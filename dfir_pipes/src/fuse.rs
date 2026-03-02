@@ -5,16 +5,16 @@ use pin_project_lite::pin_project;
 use crate::{FusedPull, Pull, Step, Yes};
 
 pin_project! {
+    #[project_replace = FuseReplace]
     pub struct Fuse<Prev> {
         #[pin]
-        prev: Prev,
-        done: bool,
+        prev: Option<Prev>,
     }
 }
 
 impl<Prev> Fuse<Prev> {
     pub fn new(prev: Prev) -> Self {
-        Self { prev, done: false }
+        Self { prev: Some(prev) }
     }
 }
 
@@ -30,31 +30,31 @@ where
     type CanEnd = Yes;
 
     fn pull(
-        self: Pin<&mut Self>,
+        mut self: Pin<&mut Self>,
         ctx: &mut Self::Ctx<'_>,
     ) -> Step<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
-        let this = self.project();
+        let this = self.as_mut().project();
 
-        if *this.done {
-            return Step::Ended(Yes);
-        }
-
-        match this.prev.pull(ctx) {
-            Step::Ready(item, meta) => Step::Ready(item, meta),
-            Step::Pending(can_pend) => Step::Pending(can_pend),
-            Step::Ended(_) => {
-                *this.done = true;
-                Step::Ended(Yes)
+        if let Some(prev) = this.prev.as_pin_mut() {
+            match prev.pull(ctx) {
+                Step::Ready(item, meta) => Step::Ready(item, meta),
+                Step::Pending(can_pend) => Step::Pending(can_pend),
+                Step::Ended(_) => {
+                    let _ = self.project_replace(Self { prev: None });
+                    Step::Ended(Yes)
+                }
             }
+        } else {
+            Step::Ended(Yes)
         }
     }
 
     fn size_hint(self: Pin<&Self>) -> (usize, Option<usize>) {
         let this = self.project_ref();
-        if *this.done {
-            (0, Some(0))
+        if let Some(prev) = this.prev.as_pin_ref() {
+            prev.size_hint()
         } else {
-            this.prev.size_hint()
+            (0, Some(0))
         }
     }
 }
