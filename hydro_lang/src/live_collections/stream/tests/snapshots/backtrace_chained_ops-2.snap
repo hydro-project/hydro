@@ -1,10 +1,10 @@
 ---
 source: hydro_lang/src/live_collections/stream/tests/backtrace_chained_ops.rs
-expression: "for_each_meta.backtrace.elements().collect::<Vec<_>>()"
+expression: for_each_meta.backtrace.elements()
 ---
 [
     BacktraceElement {
-        fn_name: "backtrace_chained_ops",
+        fn_name: "hydro_lang::live_collections::stream::tests::backtrace_chained_ops::backtrace_chained_ops",
         lineno: Some(
             20,
         ),
@@ -13,7 +13,7 @@ expression: "for_each_meta.backtrace.elements().collect::<Vec<_>>()"
         ),
     },
     BacktraceElement {
-        fn_name: "{closure#0}",
+        fn_name: "hydro_lang::live_collections::stream::tests::backtrace_chained_ops::backtrace_chained_ops::{{closure}}",
         lineno: Some(
             5,
         ),
@@ -22,7 +22,7 @@ expression: "for_each_meta.backtrace.elements().collect::<Vec<_>>()"
         ),
     },
     BacktraceElement {
-        fn_name: "call_once<hydro_lang::live_collections::stream::tests::backtrace_chained_ops::backtrace_chained_ops",
+        fn_name: "core::ops::function::FnOnce::call_once",
         lineno: Some(
             250,
         ),
