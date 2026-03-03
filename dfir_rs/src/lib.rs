@@ -21,14 +21,14 @@ pub mod compiled;
 pub mod scheduled;
 pub mod util;
 
+pub use ::{
+    bincode, bytes, futures, itertools, lattices, pin_project_lite, rustc_hash, serde, serde_json,
+    sinktools, tokio, tokio_stream, tokio_util, tracing, web_time,
+};
 #[cfg(feature = "meta")]
 #[cfg_attr(docsrs, doc(cfg(feature = "meta")))]
 pub use dfir_lang as lang;
 pub use variadics::{self, var_args, var_expr, var_type};
-pub use {
-    bincode, bytes, futures, itertools, lattices, pin_project_lite, rustc_hash, serde, serde_json,
-    sinktools, tokio, tokio_stream, tokio_util, tracing, web_time,
-};
 
 /// `#[macro_use]` automagically brings the declarative macro export to the crate-level.
 mod declarative_macro;
