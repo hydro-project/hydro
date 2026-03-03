@@ -3,8 +3,9 @@
 
 use std::cmp::Ordering::{self, *};
 
+pub use cc_traits;
 use sealed::sealed;
-pub use {cc_traits, variadics};
+pub use variadics;
 
 /// Module for definiting algebraic structures and properties.
 pub mod algebra;
