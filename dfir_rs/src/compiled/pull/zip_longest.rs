@@ -13,10 +13,10 @@ pin_project! {
         stream1: St1,
         #[pin]
         stream2: St2,
-        // Buffers the result of polling `stream1` so the item is not lost if `stream2` returns
-        // `Poll::Pending`. `None` = not yet polled (or result consumed); `Some(v)` = ready value
-        // (where the inner `None` indicates end-of-stream for stream1).
-        queued1: Option<Option<St1::Item>>,
+        // Buffers an item from `stream1` so it is not lost if `stream2` returns `Poll::Pending`.
+        // `None` = no buffered item (stream1 not yet polled, or result already consumed);
+        // `Some(item)` = item waiting to be paired with stream2's next value.
+        item1: Option<St1::Item>,
     }
 }
 
@@ -30,7 +30,7 @@ where
         Self {
             stream1,
             stream2,
-            queued1: None,
+            item1: None,
         }
     }
 }
@@ -45,24 +45,17 @@ where
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let mut this = self.project();
 
-        // Poll stream1 only if we don't already have a buffered result from a previous poll.
-        // This prevents the LHS item from being dropped if stream2 returns `Poll::Pending`.
-        if this.queued1.is_none() {
-            match this.stream1.as_mut().poll_next(cx) {
-                Poll::Ready(item) => *this.queued1 = Some(item),
-                Poll::Pending => return Poll::Pending,
-            }
+        // Store `item1` so it is not dropped if `stream2` returns `Poll::Pending`.
+        if this.item1.is_none() {
+            *this.item1 = ready!(this.stream1.as_mut().poll_next(cx));
         }
+        let item2 = ready!(this.stream2.as_mut().poll_next(cx));
 
-        let item_right = ready!(this.stream2.as_mut().poll_next(cx));
-        // `queued1` is guaranteed to be `Some` here (set above or already `Some`).
-        let item_left = this.queued1.take().unwrap();
-
-        Poll::Ready(match (item_left, item_right) {
+        Poll::Ready(match (this.item1.take(), item2) {
             (None, None) => None,
-            (Some(left), None) => Some(EitherOrBoth::Left(left)),
-            (None, Some(right)) => Some(EitherOrBoth::Right(right)),
-            (Some(left), Some(right)) => Some(EitherOrBoth::Both(left, right)),
+            (Some(item1), None) => Some(EitherOrBoth::Left(item1)),
+            (None, Some(item2)) => Some(EitherOrBoth::Right(item2)),
+            (Some(item1), Some(item2)) => Some(EitherOrBoth::Both(item1, item2)),
         })
     }
 }
@@ -70,10 +63,9 @@ where
 #[cfg(test)]
 mod tests {
     use std::pin::pin;
-    use std::task::{Context, Poll};
+    use std::task::{Context, Poll, Waker};
 
     use futures::stream::{FusedStream, Stream};
-    use futures::task::noop_waker_ref;
     use itertools::EitherOrBoth;
 
     use super::ZipLongest;
@@ -99,10 +91,7 @@ mod tests {
     impl<T: Unpin> Stream for PendingThenItems<T> {
         type Item = T;
 
-        fn poll_next(
-            mut self: std::pin::Pin<&mut Self>,
-            _cx: &mut Context<'_>,
-        ) -> Poll<Option<T>> {
+        fn poll_next(mut self: std::pin::Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<T>> {
             if self.pending_count > 0 {
                 self.pending_count -= 1;
                 return Poll::Pending;
@@ -130,8 +119,7 @@ mod tests {
         let rhs = PendingThenItems::new(1, vec![10_i32, 20]);
 
         let mut zip = pin!(ZipLongest::new(lhs, rhs));
-        let waker = noop_waker_ref();
-        let mut cx = Context::from_waker(waker);
+        let mut cx = Context::from_waker(Waker::noop());
 
         // First poll: LHS ready(1), RHS pending -> should return Pending (with LHS buffered)
         assert_eq!(Poll::Pending, zip.as_mut().poll_next(&mut cx));
