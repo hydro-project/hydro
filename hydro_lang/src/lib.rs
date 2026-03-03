@@ -18,11 +18,11 @@ stageleft::stageleft_no_entry_crate!();
 #[cfg_attr(docsrs, doc(cfg(feature = "runtime_support")))]
 #[doc(hidden)]
 pub mod runtime_support {
+    pub use ::{bincode, dfir_rs, slotmap, stageleft, tokio};
     #[cfg(feature = "sim")]
     pub use colored;
     #[cfg(feature = "deploy_integration")]
     pub use hydro_deploy_integration;
-    pub use {bincode, dfir_rs, slotmap, stageleft, tokio};
 
     #[cfg(any(feature = "deploy_integration", feature = "docker_runtime"))]
     pub mod launch;

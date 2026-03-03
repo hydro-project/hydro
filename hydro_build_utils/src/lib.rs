@@ -1,4 +1,4 @@
-pub use {insta, rustc_version};
+pub use ::{insta, rustc_version};
 
 #[macro_export]
 macro_rules! emit_nightly_configuration {
