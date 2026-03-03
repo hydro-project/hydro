@@ -1,3 +1,15 @@
+//! Definition of the [`Process`] location type, representing a single-node
+//! compute location in a distributed Hydro program.
+//!
+//! A [`Process`] is the simplest kind of location: it corresponds to exactly one
+//! machine (or OS process) and all live collections placed on it are materialized
+//! on that single node. Use a process when the computation does not need to be
+//! replicated or partitioned across multiple nodes.
+//!
+//! Processes are created via [`FlowBuilder::process`](crate::compile::builder::FlowBuilder::process)
+//! and are parameterized by a **tag type** (`ProcessTag`) that lets the type
+//! system distinguish different processes at compile time.
+
 use std::fmt::{Debug, Formatter};
 use std::marker::PhantomData;
 
@@ -6,6 +18,22 @@ use crate::compile::builder::FlowState;
 use crate::location::LocationKey;
 use crate::staging_util::Invariant;
 
+/// A single-node location in a distributed Hydro program.
+///
+/// `Process` represents exactly one machine (or OS process) and is one of the
+/// core location types that implements the [`Location`] trait. Live collections
+/// placed on a `Process` are materialized entirely on that single node.
+///
+/// The type parameter `ProcessTag` is a compile-time marker that differentiates
+/// distinct processes in the same dataflow graph (e.g. `Process<'a, Leader>` vs
+/// `Process<'a, Follower>`). It defaults to `()` when only one process is
+/// needed.
+///
+/// # Creating a Process
+/// ```rust,ignore
+/// let mut flow = FlowBuilder::new();
+/// let node = flow.process::<MyTag>();
+/// ```
 pub struct Process<'a, ProcessTag = ()> {
     pub(crate) key: LocationKey,
     pub(crate) flow_state: FlowState,
