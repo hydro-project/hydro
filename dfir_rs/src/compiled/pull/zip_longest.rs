@@ -91,9 +91,10 @@ mod tests {
     impl<T: Unpin> Stream for PendingThenItems<T> {
         type Item = T;
 
-        fn poll_next(mut self: std::pin::Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<T>> {
+        fn poll_next(mut self: std::pin::Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<T>> {
             if self.pending_count > 0 {
                 self.pending_count -= 1;
+                cx.waker().wake_by_ref();
                 return Poll::Pending;
             }
             let item = self.items.next();
