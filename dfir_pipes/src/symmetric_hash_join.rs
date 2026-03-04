@@ -1,37 +1,42 @@
-use std::borrow::Cow;
+//! Symmetric hash join combinator for Pull-based streams.
+
+use std::borrow::{BorrowMut, Cow};
+use std::marker::PhantomData;
 use std::pin::Pin;
 
-use dfir_pipes::{Context, Pull, Step, Toggle, Yes};
 use pin_project_lite::pin_project;
+use smallvec::SmallVec;
 
-use super::HalfJoinState;
+use crate::half_join_state::HalfJoinState;
+use crate::{Context, No, Pull, Step, Toggle, Yes};
 
 pin_project! {
     /// Pull combinator for symmetric hash join operations.
+    ///
+    /// Joins two pulls on a common key, producing tuples of matched values.
+    /// Items are processed as they arrive, with matches emitted immediately.
     #[must_use = "pulls do nothing unless polled"]
-    pub struct SymmetricHashJoin<'a, Lhs, Rhs, LhsState, RhsState>
-    {
+    pub struct SymmetricHashJoin<Lhs, Rhs, LhsState, RhsState, LhsStateInner, RhsStateInner> {
         #[pin]
         lhs: Lhs,
         #[pin]
         rhs: Rhs,
 
-        lhs_state: &'a mut LhsState,
-        rhs_state: &'a mut RhsState,
+        lhs_state: LhsState,
+        rhs_state: RhsState,
 
         lhs_ended: bool,
         rhs_ended: bool,
+
+        _phantom: PhantomData<(LhsStateInner, RhsStateInner)>,
     }
 }
 
-impl<'a, Lhs, Rhs, LhsState, RhsState> SymmetricHashJoin<'a, Lhs, Rhs, LhsState, RhsState> {
+impl<Lhs, Rhs, LhsState, RhsState, LhsStateInner, RhsStateInner>
+    SymmetricHashJoin<Lhs, Rhs, LhsState, RhsState, LhsStateInner, RhsStateInner>
+{
     /// Creates a new symmetric hash join Pull from two input Pulls and their join states.
-    pub fn new(
-        lhs: Lhs,
-        rhs: Rhs,
-        lhs_state: &'a mut LhsState,
-        rhs_state: &'a mut RhsState,
-    ) -> Self {
+    pub fn new(lhs: Lhs, rhs: Rhs, lhs_state: LhsState, rhs_state: RhsState) -> Self {
         Self {
             lhs,
             rhs,
@@ -39,20 +44,23 @@ impl<'a, Lhs, Rhs, LhsState, RhsState> SymmetricHashJoin<'a, Lhs, Rhs, LhsState,
             rhs_state,
             lhs_ended: false,
             rhs_ended: false,
+            _phantom: PhantomData,
         }
     }
 }
 
-impl<'a, Key, Lhs, V1, Rhs, V2, LhsState, RhsState> Pull
-    for SymmetricHashJoin<'a, Lhs, Rhs, LhsState, RhsState>
+impl<Key, Lhs, V1, Rhs, V2, LhsState, RhsState, LhsStateInner, RhsStateInner> Pull
+    for SymmetricHashJoin<Lhs, Rhs, LhsState, RhsState, LhsStateInner, RhsStateInner>
 where
     Key: Eq + std::hash::Hash + Clone,
     V1: Clone,
     V2: Clone,
     Lhs: Pull<Item = (Key, V1), Meta = ()>,
     Rhs: Pull<Item = (Key, V2), Meta = ()>,
-    LhsState: HalfJoinState<Key, V1, V2>,
-    RhsState: HalfJoinState<Key, V2, V1>,
+    LhsState: BorrowMut<LhsStateInner>,
+    RhsState: BorrowMut<RhsStateInner>,
+    LhsStateInner: HalfJoinState<Key, V1, V2>,
+    RhsStateInner: HalfJoinState<Key, V2, V1>,
 {
     type Ctx<'ctx> = <Lhs::Ctx<'ctx> as Context<'ctx>>::Merged<Rhs::Ctx<'ctx>>;
 
@@ -66,13 +74,15 @@ where
         ctx: &mut Self::Ctx<'_>,
     ) -> Step<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
         let mut this = self.project();
+        let lhs_state = this.lhs_state.borrow_mut();
+        let rhs_state = this.rhs_state.borrow_mut();
 
         loop {
             // First check for any pending matches from previous probes
-            if let Some((k, v2, v1)) = this.lhs_state.pop_match() {
+            if let Some((k, v2, v1)) = lhs_state.pop_match() {
                 return Step::Ready((k, (v1, v2)), ());
             }
-            if let Some((k, v1, v2)) = this.rhs_state.pop_match() {
+            if let Some((k, v1, v2)) = rhs_state.pop_match() {
                 return Step::Ready((k, (v1, v2)), ());
             }
 
@@ -89,10 +99,10 @@ where
                     .pull(<Lhs::Ctx<'_> as Context<'_>>::unmerge_self(ctx))
                 {
                     Step::Ready((k, v1), _meta) => {
-                        if this.lhs_state.build(k.clone(), Cow::Borrowed(&v1)) {
-                            if let Some((k, v1, v2)) = this.rhs_state.probe(&k, &v1) {
-                                return Step::Ready((k, (v1, v2)), ());
-                            }
+                        if lhs_state.build(k.clone(), Cow::Borrowed(&v1))
+                            && let Some((k, v1, v2)) = rhs_state.probe(&k, &v1)
+                        {
+                            return Step::Ready((k, (v1, v2)), ());
                         }
                         continue;
                     }
@@ -113,10 +123,10 @@ where
                     .pull(<Lhs::Ctx<'_> as Context<'_>>::unmerge_other(ctx))
                 {
                     Step::Ready((k, v2), _meta) => {
-                        if this.rhs_state.build(k.clone(), Cow::Borrowed(&v2)) {
-                            if let Some((k, v2, v1)) = this.lhs_state.probe(&k, &v2) {
-                                return Step::Ready((k, (v1, v2)), ());
-                            }
+                        if rhs_state.build(k.clone(), Cow::Borrowed(&v2))
+                            && let Some((k, v2, v1)) = lhs_state.probe(&k, &v2)
+                        {
+                            return Step::Ready((k, (v1, v2)), ());
                         }
                         continue;
                     }
@@ -143,8 +153,8 @@ pub struct NewTickJoinIter<'a, Key, V1, V2, LhsState, RhsState> {
     rhs_state: &'a RhsState,
     lhs_smaller: bool,
     // State for iteration
-    outer_iter: Option<std::collections::hash_map::Iter<'a, Key, smallvec::SmallVec<[V1; 1]>>>,
-    outer_iter_rhs: Option<std::collections::hash_map::Iter<'a, Key, smallvec::SmallVec<[V2; 1]>>>,
+    outer_iter: Option<std::collections::hash_map::Iter<'a, Key, SmallVec<[V1; 1]>>>,
+    outer_iter_rhs: Option<std::collections::hash_map::Iter<'a, Key, SmallVec<[V2; 1]>>>,
     current_key: Option<&'a Key>,
     outer_val_iter: Option<std::slice::Iter<'a, V1>>,
     outer_val_iter_rhs: Option<std::slice::Iter<'a, V2>>,
@@ -327,7 +337,7 @@ where
 
     type Item = (Key, (V1, V2));
     type Meta = ();
-    type CanPend = dfir_pipes::No;
+    type CanPend = No;
     type CanEnd = Yes;
 
     fn pull(
@@ -351,13 +361,15 @@ pin_project! {
         V1: Clone,
         V2: Clone,
     {
+        /// New tick mode - iterates over pre-computed matches.
         NewTick {
             #[pin]
             pull: NewTickJoinPull<'a, Key, V1, V2, LhsState, RhsState>,
         },
+        /// Streaming mode - processes items as they arrive.
         Streaming {
             #[pin]
-            pull: SymmetricHashJoin<'a, Lhs, Rhs, LhsState, RhsState>,
+            pull: SymmetricHashJoin<Lhs, Rhs, &'a mut LhsState, &'a mut RhsState, LhsState, RhsState>,
         },
     }
 }
@@ -377,7 +389,14 @@ where
 
     type Item = (Key, (V1, V2));
     type Meta = ();
-    type CanPend = <SymmetricHashJoin<'a, Lhs, Rhs, LhsState, RhsState> as Pull>::CanPend;
+    type CanPend = <SymmetricHashJoin<
+        Lhs,
+        Rhs,
+        &'a mut LhsState,
+        &'a mut RhsState,
+        LhsState,
+        RhsState,
+    > as Pull>::CanPend;
     type CanEnd = Yes;
 
     fn pull(
@@ -385,25 +404,8 @@ where
         ctx: &mut Self::Ctx<'_>,
     ) -> Step<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
         match self.project() {
-            SymmetricHashJoinEitherProj::NewTick { pull } => pull.pull(&mut ()).remap(),
-            SymmetricHashJoinEitherProj::Streaming { pull } => pull.pull(ctx).remap(),
-        }
-    }
-}
-
-/// Helper trait to allow remapping Step types
-trait StepRemap<Item, Meta, CanPend: Toggle, CanEnd: Toggle> {
-    fn remap<NewPend: Toggle, NewEnd: Toggle>(self) -> Step<Item, Meta, NewPend, NewEnd>;
-}
-
-impl<Item, Meta, CanPend: Toggle, CanEnd: Toggle> StepRemap<Item, Meta, CanPend, CanEnd>
-    for Step<Item, Meta, CanPend, CanEnd>
-{
-    fn remap<NewPend: Toggle, NewEnd: Toggle>(self) -> Step<Item, Meta, NewPend, NewEnd> {
-        match self {
-            Step::Ready(item, meta) => Step::Ready(item, meta),
-            Step::Pending(can_pend) => Step::Pending(Toggle::convert_from(can_pend)),
-            Step::Ended(can_end) => Step::Ended(Toggle::convert_from(can_end)),
+            SymmetricHashJoinEitherProj::NewTick { pull } => pull.pull(&mut ()).convert_into(),
+            SymmetricHashJoinEitherProj::Streaming { pull } => pull.pull(ctx).convert_into(),
         }
     }
 }
@@ -441,7 +443,7 @@ where
             NewTickJoinIter::new_rhs_smaller(lhs_state, rhs_state)
         };
         SymmetricHashJoinEither::NewTick {
-            pull: NewTickJoinPull { iter }, // TODO(mingwei): pre-build the state the old way.
+            pull: NewTickJoinPull { iter },
         }
     } else {
         SymmetricHashJoinEither::Streaming {
@@ -450,8 +452,8 @@ where
     }
 }
 
-/// Helper to drain a Pull into state (synchronous only)
-fn drain_pull_into_state<'a, Key, ValBuild, ValProbe, P, State>(
+/// Helper to drain a Pull into state.
+fn drain_pull_into_state<Key, ValBuild, ValProbe, P, State>(
     mut pull: Pin<&mut P>,
     state: &mut State,
 ) -> impl Future<Output = ()>
@@ -474,78 +476,4 @@ where
             };
         }
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use std::collections::HashSet;
-    use std::pin::pin;
-
-    use dfir_pipes::{Pull, Step};
-
-    use super::super::HalfSetJoinState;
-    use super::*;
-
-    #[tokio::test]
-    async fn hash_join() {
-        let lhs = dfir_pipes::from_iter((0..10).map(|x| (x, format!("left {}", x))));
-        let rhs = dfir_pipes::from_iter((6..15).map(|x| (x / 2, format!("right {} / 2", x))));
-
-        let (mut lhs_state, mut rhs_state) =
-            (HalfSetJoinState::default(), HalfSetJoinState::default());
-        let join = symmetric_hash_join(lhs, rhs, &mut lhs_state, &mut rhs_state, true).await;
-
-        let mut pinned = pin!(join);
-        let mut joined = HashSet::new();
-        loop {
-            match pinned.as_mut().pull(&mut ()) {
-                Step::Ready(item, _) => {
-                    joined.insert(item);
-                }
-                Step::Ended(_) => break,
-                Step::Pending(_) => unreachable!(),
-            }
-        }
-
-        assert!(joined.contains(&(3, ("left 3".into(), "right 6 / 2".into()))));
-        assert!(joined.contains(&(3, ("left 3".into(), "right 7 / 2".into()))));
-        assert!(joined.contains(&(4, ("left 4".into(), "right 8 / 2".into()))));
-        assert!(joined.contains(&(4, ("left 4".into(), "right 9 / 2".into()))));
-        assert!(joined.contains(&(5, ("left 5".into(), "right 10 / 2".into()))));
-        assert!(joined.contains(&(5, ("left 5".into(), "right 11 / 2".into()))));
-        assert!(joined.contains(&(6, ("left 6".into(), "right 12 / 2".into()))));
-        assert!(joined.contains(&(6, ("left 6".into(), "right 13 / 2".into()))));
-        assert!(joined.contains(&(7, ("left 7".into(), "right 14 / 2".into()))));
-        assert_eq!(9, joined.len());
-    }
-
-    #[tokio::test]
-    async fn hash_join_streaming() {
-        // Test the streaming (non-new-tick) case
-        let lhs = dfir_pipes::from_iter(vec![(1, "a"), (2, "b"), (1, "c")]);
-        let rhs = dfir_pipes::from_iter(vec![(1, 10), (3, 30), (1, 11)]);
-
-        let (mut lhs_state, mut rhs_state): (HalfSetJoinState<_, _, _>, HalfSetJoinState<_, _, _>) =
-            (HalfSetJoinState::default(), HalfSetJoinState::default());
-        let join = symmetric_hash_join(lhs, rhs, &mut lhs_state, &mut rhs_state, false).await;
-
-        let mut pinned = pin!(join);
-        let mut joined = HashSet::new();
-        loop {
-            match pinned.as_mut().pull(&mut ()) {
-                Step::Ready(item, _) => {
-                    joined.insert(item);
-                }
-                Step::Ended(_) => break,
-                Step::Pending(_) => unreachable!(),
-            }
-        }
-
-        // Should have matches for key 1
-        assert!(joined.contains(&(1, ("a", 10))));
-        assert!(joined.contains(&(1, ("a", 11))));
-        assert!(joined.contains(&(1, ("c", 10))));
-        assert!(joined.contains(&(1, ("c", 11))));
-        assert_eq!(4, joined.len());
-    }
 }

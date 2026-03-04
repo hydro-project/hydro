@@ -7,12 +7,13 @@ use crate::{Pull, Step, Toggle, Yes};
 /// A `Pull` implementation created from a closure.
 pub struct PollFn<F, Item, Meta, CanEnd> {
     func: F,
+    #[expect(clippy::type_complexity, reason = "phantom data")]
     _marker: core::marker::PhantomData<fn() -> (Item, Meta, CanEnd)>,
 }
 
 impl<F, Item, Meta, CanEnd> PollFn<F, Item, Meta, CanEnd> {
     /// Create a new `PollFn` from the given closure.
-    pub fn new(func: F) -> Self {
+    pub(crate) fn new(func: F) -> Self {
         Self {
             func,
             _marker: core::marker::PhantomData,

@@ -7,7 +7,7 @@ repository.workspace = true
 
 [features]
 default = ["std"]
-std = ["alloc", "futures-core/std", "futures-sink/std"]
+std = ["alloc", "futures-core/std", "futures-sink/std", "rustc-hash", "smallvec"]
 alloc = ["futures-core/alloc", "futures-sink/alloc"]
 
 [dependencies]
@@ -15,7 +15,9 @@ futures-core = { version = "0.3.0", default-features = false }
 futures-sink = { version = "0.3.0", default-features = false }
 itertools = { version = "0.14", default-features = false }
 pin-project-lite = "0.2.16"
+rustc-hash = { version = "2.0.0", optional = true }
 sealed = "0.6.0"
+smallvec = { version = "1.0", optional = true }
 
 [build-dependencies]
 hydro_build_utils = { path = "../hydro_build_utils" }

@@ -13,7 +13,7 @@ pin_project! {
 }
 
 impl<Prev> Fuse<Prev> {
-    pub fn new(prev: Prev) -> Self {
+    pub(crate) fn new(prev: Prev) -> Self {
         Self { prev: Some(prev) }
     }
 }

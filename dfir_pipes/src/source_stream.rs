@@ -21,7 +21,7 @@ pin_project! {
 
 impl<S> SourceStream<S> {
     /// Create a new `SourceStream` from the given stream and waker function.
-    pub fn new(stream: S, waker: Waker) -> Self {
+    pub(crate) fn new(stream: S, waker: Waker) -> Self {
         Self { stream, waker }
     }
 }
@@ -44,7 +44,7 @@ where
         _ctx: &mut Self::Ctx<'_>,
     ) -> Step<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
         let this = self.project();
-        let mut cx = core::task::Context::from_waker(&this.waker);
+        let mut cx = core::task::Context::from_waker(this.waker);
         match this.stream.poll_next(&mut cx) {
             Poll::Ready(Some(item)) => Step::Ready(item, ()),
             Poll::Ready(None) => Step::Ended(Yes),

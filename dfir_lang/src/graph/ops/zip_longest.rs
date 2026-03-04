@@ -14,13 +14,16 @@ use crate::diagnostic::{Diagnostic, Level};
 /// If you intead want to discard the excess, use [`zip`](#zip) instead.
 ///
 /// ```dfir
+/// use dfir_rs::itertools::EitherOrBoth;
+///
 /// source_iter(0..2) -> [0]my_zip_longest;
 /// source_iter(0..3) -> [1]my_zip_longest;
 /// my_zip_longest = zip_longest()
 ///     -> assert_eq([
-///         itertools::EitherOrBoth::Both(0, 0),
-///         itertools::EitherOrBoth::Both(1, 1),
-///         itertools::EitherOrBoth::Right(2)]);
+///         EitherOrBoth::Both(0, 0),
+///         EitherOrBoth::Both(1, 1),
+///         EitherOrBoth::Right(2),
+///     ]);
 /// ```
 pub const ZIP_LONGEST: OperatorConstraints = OperatorConstraints {
     name: "zip_longest",

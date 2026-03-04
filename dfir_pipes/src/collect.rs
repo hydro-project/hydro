@@ -18,7 +18,7 @@ where
     Prev: Pull,
     C: Default + Extend<Prev::Item>,
 {
-    pub fn new(prev: Prev) -> Self {
+    pub(crate) fn new(prev: Prev) -> Self {
         Self {
             prev,
             collect: C::default(),

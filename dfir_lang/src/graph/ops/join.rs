@@ -205,7 +205,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                     I1: 'a + #root::dfir_pipes::Pull<Item = (K, V1), Meta = ()>,
                     I2: 'a + #root::dfir_pipes::Pull<Item = (K, V2), Meta = ()>,
                 {
-                    #root::compiled::pull::symmetric_hash_join_pull::symmetric_hash_join(lhs, rhs, lhs_state, rhs_state, is_new_tick).await
+                    #root::dfir_pipes::symmetric_hash_join(lhs, rhs, lhs_state, rhs_state, is_new_tick).await
                 }
 
                 let fut = check_inputs(#lhs, #rhs, &mut *#lhs_borrow_ident, &mut *#rhs_borrow_ident, #context.is_first_run_this_tick());

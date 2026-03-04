@@ -28,7 +28,9 @@ pub async fn accumulate_all_pull<Key, ValAccum, ValIn>(
 ) where
     Key: Eq + Hash,
 {
-    let () = prev.for_each(|(key, item)| {
-        accum.accumulate(hash_map.entry(key), item);
-    }).await;
+    let () = prev
+        .for_each(|(key, item)| {
+            accum.accumulate(hash_map.entry(key), item);
+        })
+        .await;
 }

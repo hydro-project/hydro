@@ -9,7 +9,7 @@ pin_project! {
 }
 
 impl<Item> Once<Item> {
-    pub fn new(item: Item) -> Self {
+    pub(crate) fn new(item: Item) -> Self {
         Self { item: Some(item) }
     }
 }

@@ -67,9 +67,9 @@ mod tests {
     use std::task::{Context, Poll, Waker};
 
     use futures::stream::{FusedStream, Stream};
-    use itertools::EitherOrBoth;
 
     use super::ZipLongest;
+    use crate::itertools::EitherOrBoth;
 
     /// A stream that returns `Poll::Pending` for the first `pending_count` polls, then yields
     /// items from `items`, then returns `Poll::Ready(None)`.

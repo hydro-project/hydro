@@ -100,13 +100,13 @@ pub const REDUCE_NO_REPLAY: OperatorConstraints = OperatorConstraints {
 
                 let #ident = if __was_updated || (#context.current_tick().0 == 0 && #context.is_first_run_this_tick()) {
                     #work_fn(
-                        || #root::tokio_stream::iter(
+                        || #root::dfir_pipes::from_iter(
                             ::std::clone::Clone::clone(&*#accumulator_ident)
                         )
                     )
                 } else {
                     #work_fn(
-                        || #root::tokio_stream::iter(::std::option::Option::None)
+                        || #root::dfir_pipes::from_iter(::std::option::Option::None)
                     )
                 };
             }

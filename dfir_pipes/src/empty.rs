@@ -6,8 +6,8 @@ pub struct Empty<Item> {
     _phantom: PhantomData<Item>,
 }
 
-impl<Item> Empty<Item> {
-    pub fn new() -> Self {
+impl<Item> Default for Empty<Item> {
+    fn default() -> Self {
         Self {
             _phantom: PhantomData,
         }

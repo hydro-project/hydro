@@ -2,17 +2,18 @@
 
 use core::pin::Pin;
 
-use crate::{Pull, Step, Toggle, No};
+use crate::{No, Pull, Step, Toggle};
 
 /// A `Pull` implementation created from a closure.
 pub struct PullFn<F, Item, Meta, CanEnd> {
     func: F,
+    #[expect(clippy::type_complexity, reason = "phantom data")]
     _marker: core::marker::PhantomData<fn() -> (Item, Meta, CanEnd)>,
 }
 
 impl<F, Item, Meta, CanEnd> PullFn<F, Item, Meta, CanEnd> {
     /// Create a new `PullFn` from the given closure.
-    pub fn new(func: F) -> Self {
+    pub(crate) fn new(func: F) -> Self {
         Self {
             func,
             _marker: core::marker::PhantomData,

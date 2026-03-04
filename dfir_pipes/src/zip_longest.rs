@@ -32,7 +32,7 @@ where
     Prev1: Pull,
 {
     /// Create a new `ZipLongest` stream from two source streams.
-    pub fn new(prev1: Prev1, prev2: Prev2) -> Self {
+    pub(crate) fn new(prev1: Prev1, prev2: Prev2) -> Self {
         Self {
             prev1,
             prev2,

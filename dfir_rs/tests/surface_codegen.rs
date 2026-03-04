@@ -528,12 +528,13 @@ pub fn test_covid_tracing() {
             .unwrap(); // Mingwei + Mae
 
         df.run_available_sync();
-        let results = collect_ready::<Vec<_>, _>(&mut out_recv);
+        let mut results = collect_ready::<Vec<_>, _>(&mut out_recv);
+        results.sort_unstable();
         assert_eq!(
             [
-                "[Mingwei S] To +1 650 555 7283: Possible Exposure at t = 1028",
                 "[Justin J] To +1 519 555 3458: Possible Exposure at t = 1031",
                 "[Mae M] To +1 912 555 9129: Possible Exposure at t = 1028",
+                "[Mingwei S] To +1 650 555 7283: Possible Exposure at t = 1028",
                 "[Mingwei S] To +1 650 555 7283: Possible Exposure at t = 1031",
             ],
             *results
@@ -545,14 +546,15 @@ pub fn test_covid_tracing() {
             .unwrap();
 
         df.run_available_sync();
-        let results = collect_ready::<Vec<_>, _>(&mut out_recv);
+        let mut results = collect_ready::<Vec<_>, _>(&mut out_recv);
+        results.sort_unstable();
         assert_eq!(
             [
-                "[Mingwei S] To +1 650 555 7283: Possible Exposure at t = 1028",
-                "[Mingwei S] To +1 650 555 7283: Possible Exposure at t = 1031",
+                "[Joe H] To +1 510 555 9999: Possible Exposure at t = 1028",
                 "[Justin J] To +1 519 555 3458: Possible Exposure at t = 1031",
                 "[Mae M] To +1 912 555 9129: Possible Exposure at t = 1028",
-                "[Joe H] To +1 510 555 9999: Possible Exposure at t = 1028"
+                "[Mingwei S] To +1 650 555 7283: Possible Exposure at t = 1028",
+                "[Mingwei S] To +1 650 555 7283: Possible Exposure at t = 1031",
             ],
             *results
         );

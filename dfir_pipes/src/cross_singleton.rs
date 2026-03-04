@@ -1,31 +1,36 @@
-use std::pin::Pin;
+use core::borrow::BorrowMut;
+use core::pin::Pin;
 
-use dfir_pipes::{Context, Pull, Step, Toggle};
 use pin_project_lite::pin_project;
 
+use crate::{Context, Pull, Step, Toggle};
+
 pin_project! {
-    /// Stream combinator that crosses each item from `item_pull` with a singleton value from `singleton_pull`.
-    pub struct CrossSingletonPull<'a, ItemPull, SinglePull, Item> {
+    /// Pull combinator that crosses each item from `item_pull` with a singleton value from `singleton_pull`.
+    ///
+    /// The singleton value is obtained from the first item of `singleton_pull` and cached.
+    /// All subsequent items from `item_pull` are paired with this cached singleton value.
+    ///
+    /// If `singleton_pull` ends before yielding any items, the entire combinator ends immediately.
+    pub struct CrossSingleton<ItemPull, SinglePull, State> {
         #[pin]
         item_pull: ItemPull,
         #[pin]
         singleton_pull: SinglePull,
 
-        singleton_state: &'a mut Option<Item>,
+        singleton_state: State,
     }
 }
 
-impl<'a, ItemPull, SinglePull> CrossSingletonPull<'a, ItemPull, SinglePull, SinglePull::Item>
+impl<ItemPull, SinglePull, SingleState> CrossSingleton<ItemPull, SinglePull, SingleState>
 where
     ItemPull: Pull,
     SinglePull: Pull,
-    SinglePull::Item: Clone,
 {
-    /// Creates a new `CrossSingletonPull` stream combinator.
-    pub fn new(
+    pub(crate) fn new(
         item_pull: ItemPull,
         singleton_pull: SinglePull,
-        singleton_state: &'a mut Option<SinglePull::Item>,
+        singleton_state: SingleState,
     ) -> Self {
         Self {
             item_pull,
@@ -35,12 +40,12 @@ where
     }
 }
 
-impl<'a, ItemPull, SinglePull> Pull
-    for CrossSingletonPull<'a, ItemPull, SinglePull, SinglePull::Item>
+impl<ItemPull, SinglePull, SingleState> Pull for CrossSingleton<ItemPull, SinglePull, SingleState>
 where
     ItemPull: Pull,
     SinglePull: Pull,
     SinglePull::Item: Clone,
+    SingleState: BorrowMut<Option<SinglePull::Item>>,
 {
     type Ctx<'ctx> = <ItemPull::Ctx<'ctx> as Context<'ctx>>::Merged<SinglePull::Ctx<'ctx>>;
 
@@ -57,16 +62,15 @@ where
 
         // Set the singleton state only if it is not already set.
         // This short-circuits the `SinglePull` side to the first item only.
-        let singleton = match this.singleton_state {
+        let singleton_state = this.singleton_state.borrow_mut();
+        let singleton = match singleton_state {
             Some(singleton) => singleton,
             None => {
                 match this
                     .singleton_pull
                     .pull(<ItemPull::Ctx<'_> as Context<'_>>::unmerge_other(ctx))
                 {
-                    Step::Ready(item, _meta) => {
-                        this.singleton_state.insert(item)
-                    }
+                    Step::Ready(item, _meta) => singleton_state.insert(item),
                     Step::Pending(can_pend) => {
                         return Step::Pending(Toggle::convert_from(can_pend));
                     }
@@ -80,11 +84,14 @@ where
         };
 
         // Stream any items.
-        match this.item_pull.pull(<ItemPull::Ctx<'_> as Context<'_>>::unmerge_self(ctx)) {
+        match this
+            .item_pull
+            .pull(<ItemPull::Ctx<'_> as Context<'_>>::unmerge_self(ctx))
+        {
             Step::Ready(item, meta) => {
                 // TODO(mingwei): use meta of singleton too
                 Step::Ready((item, singleton.clone()), meta)
-            },
+            }
             Step::Pending(can_pend) => Step::Pending(Toggle::convert_from(can_pend)),
             // If `item_pull` returns EOS, we return EOS, no fused requirement.
             Step::Ended(can_end) => Step::Ended(Toggle::convert_from(can_end)),

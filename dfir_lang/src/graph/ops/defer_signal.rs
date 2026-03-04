@@ -81,7 +81,7 @@ pub const DEFER_SIGNAL: OperatorConstraints = OperatorConstraints {
 
                 let #signal_ident = {
                     // Short-circuit after first signal message.
-                    let fut = #root::compiled::pull::into_next_pull::IntoNextPull::new(#signal);
+                    let fut = #root::dfir_pipes::Pull::next(#signal);
                     #work_fn_async(fut).await.is_some()
                 };
 

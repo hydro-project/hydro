@@ -14,7 +14,7 @@ pin_project! {
 }
 
 impl<Prev, Func> ForEach<Prev, Func> {
-    pub fn new(prev: Prev, func: Func) -> Self {
+    pub(crate) fn new(prev: Prev, func: Func) -> Self {
         Self { prev, func }
     }
 }

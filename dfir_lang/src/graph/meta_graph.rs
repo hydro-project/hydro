@@ -1117,18 +1117,18 @@ impl DfirGraph {
                             op_prologue_after_code.push(write_prologue_after);
                             subgraph_op_iter_code.push(write_iterator);
 
-                            if include_type_guards && false {
+                            if include_type_guards {
                                 // Temporarily disabled
                                 let type_guard = if is_pull {
                                     quote_spanned! {op_span=>
                                         let #ident = {
                                             #[allow(non_snake_case)]
                                             #[inline(always)]
-                                            pub fn #work_fn<Item, Ctx, Input: #root::dfir_pipes::Pull<Ctx, Item = Item, Meta = ()>>(input: Input) -> Input
+                                            pub fn #work_fn<Item, Input: #root::dfir_pipes::Pull<Item = Item, Meta = ()>>(input: Input) -> Input
                                             {
                                                 input
                                             }
-                                            #work_fn::<_, ::std::task::Context<'_>, _>( #ident )
+                                            #work_fn::<_, _>( #ident )
                                         };
                                     }
                                 } else {

@@ -22,7 +22,7 @@ pin_project! {
 }
 
 impl<A, B> Merge<A, B> {
-    pub fn new(first: A, second: B) -> Self {
+    pub(crate) fn new(first: A, second: B) -> Self {
         Self {
             first,
             second,

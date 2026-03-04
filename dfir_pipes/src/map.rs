@@ -13,7 +13,7 @@ pin_project! {
 }
 
 impl<Prev, Func> Map<Prev, Func> {
-    pub fn new(prev: Prev, func: Func) -> Self {
+    pub(crate) fn new(prev: Prev, func: Func) -> Self {
         Self { prev, func }
     }
 }

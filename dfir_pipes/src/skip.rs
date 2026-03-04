@@ -13,7 +13,7 @@ pin_project! {
 }
 
 impl<Prev> Skip<Prev> {
-    pub fn new(prev: Prev, n: usize) -> Self {
+    pub(crate) fn new(prev: Prev, n: usize) -> Self {
         Self { prev, remaining: n }
     }
 }

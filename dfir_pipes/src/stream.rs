@@ -13,7 +13,7 @@ pin_project! {
 }
 
 impl<St> Stream<St> {
-    pub fn new(stream: St) -> Self {
+    pub(crate) fn new(stream: St) -> Self {
         Self { stream }
     }
 }

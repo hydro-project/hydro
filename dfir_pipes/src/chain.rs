@@ -14,7 +14,7 @@ pin_project! {
 }
 
 impl<A, B> Chain<A, B> {
-    pub fn new(first: A, second: B) -> Self {
+    pub(crate) fn new(first: A, second: B) -> Self {
         Self { first, second }
     }
 }

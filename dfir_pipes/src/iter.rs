@@ -12,7 +12,7 @@ pin_project! {
 }
 
 impl<I> Iter<I> {
-    pub fn new(iter: I) -> Self {
+    pub(crate) fn new(iter: I) -> Self {
         Self { iter }
     }
 }

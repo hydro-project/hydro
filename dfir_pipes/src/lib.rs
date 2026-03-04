@@ -6,37 +6,6 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
-pub use ::itertools;
-
-mod chain;
-mod collect;
-mod empty;
-mod enumerate;
-mod filter;
-mod filter_map;
-mod flat_map;
-mod flatten;
-mod for_each;
-mod fuse;
-mod inspect;
-mod iter;
-mod map;
-mod merge;
-mod once;
-mod poll_fn;
-mod pull_fn;
-mod scan;
-mod send_sink;
-mod skip;
-mod skip_while;
-mod source_stream;
-mod stream;
-mod take;
-mod take_while;
-#[cfg(test)]
-mod test_utils;
-mod zip_longest;
-
 /// Type-level `false` for [`Toggle`].
 ///
 /// Indicates that a capability is absent (e.g., the pull cannot pend or cannot end).
@@ -48,10 +17,78 @@ pub use core::convert::Infallible as No;
 use core::pin::Pin;
 use core::task::{Poll, Waker};
 
-use futures_core::stream::Stream;
 use futures_sink::Sink;
-pub use itertools::EitherOrBoth;
+pub use itertools::{self, EitherOrBoth};
 use sealed::sealed;
+
+mod chain;
+mod collect;
+mod cross_singleton;
+mod empty;
+mod enumerate;
+mod filter;
+mod filter_map;
+mod flat_map;
+mod flatten;
+mod for_each;
+mod fuse;
+#[cfg(feature = "std")]
+pub mod half_join_state;
+mod inspect;
+mod iter;
+mod map;
+mod merge;
+mod next;
+mod once;
+mod poll_fn;
+mod pull_fn;
+mod send_sink;
+mod skip;
+mod skip_while;
+mod source_stream;
+mod stream;
+#[cfg(feature = "std")]
+mod symmetric_hash_join;
+mod take;
+mod take_while;
+#[cfg(test)]
+mod test_utils;
+mod zip_longest;
+
+pub use chain::Chain;
+pub use collect::Collect;
+pub use cross_singleton::CrossSingleton;
+pub use empty::Empty;
+pub use enumerate::Enumerate;
+pub use filter::Filter;
+pub use filter_map::FilterMap;
+pub use flat_map::FlatMap;
+pub use flatten::Flatten;
+pub use for_each::ForEach;
+pub use fuse::Fuse;
+#[cfg(feature = "std")]
+pub use half_join_state::{HalfJoinState, HalfMultisetJoinState, HalfSetJoinState};
+pub use inspect::Inspect;
+pub use iter::Iter;
+pub use map::Map;
+pub use merge::Merge;
+pub use next::Next;
+pub use once::Once;
+pub use poll_fn::PollFn;
+pub use pull_fn::PullFn;
+pub use send_sink::SendSink;
+pub use skip::Skip;
+pub use skip_while::SkipWhile;
+pub use source_stream::SourceStream;
+pub use stream::Stream as StreamPull;
+#[cfg(feature = "std")]
+pub use symmetric_hash_join::{
+    NewTickJoinIter, NewTickJoinPull, SymmetricHashJoin, SymmetricHashJoinEither,
+    symmetric_hash_join,
+};
+pub use take::Take;
+pub use take_while::TakeWhile;
+pub use zip_longest::ZipLongest;
 
 /// A sealed trait for type-level booleans used to track pull capabilities.
 ///
@@ -61,7 +98,7 @@ use sealed::sealed;
 #[sealed]
 pub trait Toggle: Sized {
     /// Attempts to convert this type, returning `Err(())` if converting to `No`.
-    fn try_convert_from(other: impl Toggle) -> Result<Self, ()>;
+    fn try_convert_from(other: impl Toggle) -> Option<Self>;
 
     /// Attemps to convert this type, panicking if converting to `No`.
     fn convert_from(other: impl Toggle) -> Self {
@@ -80,8 +117,8 @@ pub trait Toggle: Sized {
 pub struct Yes;
 #[sealed]
 impl Toggle for Yes {
-    fn try_convert_from(_other: impl Toggle) -> Result<Self, ()> {
-        Ok(Yes)
+    fn try_convert_from(_other: impl Toggle) -> Option<Self> {
+        Some(Yes)
     }
 
     type Or<T: Toggle> = Yes;
@@ -89,8 +126,8 @@ impl Toggle for Yes {
 }
 #[sealed]
 impl Toggle for No {
-    fn try_convert_from(_other: impl Toggle) -> Result<Self, ()> {
-        Err(())
+    fn try_convert_from(_other: impl Toggle) -> Option<Self> {
+        None
     }
 
     type Or<T: Toggle> = T;
@@ -173,8 +210,8 @@ pub enum Step<Item, Meta, CanPend: Toggle, CanEnd: Toggle> {
 impl<Item, Meta, CanPend: Toggle, CanEnd: Toggle> Step<Item, Meta, CanPend, CanEnd> {
     pub fn try_convert_into<NewPend: Toggle, NewEnd: Toggle>(
         self,
-    ) -> Result<Step<Item, Meta, NewPend, NewEnd>, ()> {
-        Ok(match self {
+    ) -> Option<Step<Item, Meta, NewPend, NewEnd>> {
+        Some(match self {
             Self::Ready(item, meta) => Step::Ready(item, meta),
             Self::Pending(can_pend) => Step::Pending(Toggle::try_convert_from(can_pend)?),
             Self::Ended(can_end) => Step::Ended(Toggle::try_convert_from(can_end)?),
@@ -261,12 +298,12 @@ pub trait Pull {
     /// values from the first pull and then over values from the second pull.
     ///
     /// The first pull must be finite (`CanEnd = Yes`) and fused ([`FusedPull`]).
-    fn chain<U>(self, other: U) -> chain::Chain<Self, U>
+    fn chain<U>(self, other: U) -> Chain<Self, U>
     where
         Self: Sized,
         U: Pull<Item = Self::Item, Meta = Self::Meta>,
     {
-        chain::Chain::new(self, other)
+        Chain::new(self, other)
     }
 
     /// Asynchronously merges two pulls, interleaving their items.
@@ -274,47 +311,47 @@ pub trait Pull {
     /// Unlike [`chain`](Self::chain), `merge` does not require either pull to be
     /// finite. Items are pulled from both sources in a round-robin fashion, and
     /// the merged pull only ends when both upstream pulls have ended.
-    fn merge<U>(self, other: U) -> merge::Merge<Self, U>
+    fn merge<U>(self, other: U) -> Merge<Self, U>
     where
         Self: Sized,
         U: Pull<Item = Self::Item, Meta = Self::Meta>,
     {
-        merge::Merge::new(self, other)
+        Merge::new(self, other)
     }
 
     /// Creates a pull which gives the current iteration count as well as the next value.
     ///
     /// The pull returned yields pairs `(i, val)`, where `i` is the current index
     /// of iteration and `val` is the value returned by the pull.
-    fn enumerate(self) -> enumerate::Enumerate<Self>
+    fn enumerate(self) -> Enumerate<Self>
     where
         Self: Sized,
     {
-        enumerate::Enumerate::new(self)
+        Enumerate::new(self)
     }
 
     /// Creates a pull which uses a closure to determine if an element should be yielded.
     ///
     /// Given an element the closure must return `true` or `false`. The returned pull
     /// will yield only the elements for which the closure returns `true`.
-    fn filter<P>(self, predicate: P) -> filter::Filter<Self, P>
+    fn filter<P>(self, predicate: P) -> Filter<Self, P>
     where
         Self: Sized,
         P: FnMut(&Self::Item) -> bool,
     {
-        filter::Filter::new(self, predicate)
+        Filter::new(self, predicate)
     }
 
     /// Creates a pull that both filters and maps.
     ///
     /// The returned pull yields only the values for which the supplied closure
     /// returns `Some(value)`.
-    fn filter_map<B, F>(self, f: F) -> filter_map::FilterMap<Self, F>
+    fn filter_map<B, F>(self, f: F) -> FilterMap<Self, F>
     where
         Self: Sized,
         F: FnMut(Self::Item) -> Option<B>,
     {
-        filter_map::FilterMap::new(self, f)
+        FilterMap::new(self, f)
     }
 
     /// Creates a pull that works like map, but flattens nested structure.
@@ -322,45 +359,45 @@ pub trait Pull {
     /// The `flat_map()` method is useful when you have a pull of items, and you
     /// want to apply a function that returns an iterator for each item, then
     /// flatten all those iterators into a single pull.
-    fn flat_map<U, F>(self, f: F) -> flat_map::FlatMap<Self, F, U::IntoIter, Self::Meta>
+    fn flat_map<U, F>(self, f: F) -> FlatMap<Self, F, U::IntoIter, Self::Meta>
     where
         Self: Sized,
         F: FnMut(Self::Item) -> U,
         U: IntoIterator,
     {
-        flat_map::FlatMap::new(self, f)
+        FlatMap::new(self, f)
     }
 
     /// Creates a pull that flattens nested structure.
     ///
     /// This is useful when you have a pull of iterables, and you want to
     /// flatten them into a single pull.
-    fn flatten(self) -> flatten::Flatten<Self, <Self::Item as IntoIterator>::IntoIter, Self::Meta>
+    fn flatten(self) -> Flatten<Self, <Self::Item as IntoIterator>::IntoIter, Self::Meta>
     where
         Self: Sized,
         Self::Item: IntoIterator,
     {
-        flatten::Flatten::new(self)
+        Flatten::new(self)
     }
 
     /// Creates a future which runs the given function on each element of a pull.
-    fn for_each<F>(self, f: F) -> for_each::ForEach<Self, F>
+    fn for_each<F>(self, f: F) -> ForEach<Self, F>
     where
         Self: Sized,
         F: FnMut(Self::Item),
     {
-        for_each::ForEach::new(self, f)
+        ForEach::new(self, f)
     }
 
     /// Creates a future which collects all elements of a pull into a collection.
     ///
     /// The collection type `C` must implement `Default` and `Extend<Item>`.
-    fn collect<C>(self) -> collect::Collect<Self, C>
+    fn collect<C>(self) -> Collect<Self, C>
     where
         Self: Sized,
         C: Default + Extend<Self::Item>,
     {
-        collect::Collect::new(self)
+        Collect::new(self)
     }
 
     /// Creates a pull that ends after the first `None`.
@@ -369,11 +406,11 @@ pub trait Pull {
     /// `pull` again is implementation-defined. `fuse()` adapts any pull,
     /// ensuring that after `Ended` is given once, it will always return `Ended`
     /// forever.
-    fn fuse(self) -> fuse::Fuse<Self>
+    fn fuse(self) -> Fuse<Self>
     where
         Self: Sized,
     {
-        fuse::Fuse::new(self)
+        Fuse::new(self)
     }
 
     /// Does something with each element of a pull, passing the value on.
@@ -382,12 +419,12 @@ pub trait Pull {
     /// While working on such code, you might want to check out what's
     /// happening at various parts in the pipeline. To do that, insert
     /// a call to `inspect()`.
-    fn inspect<F>(self, f: F) -> inspect::Inspect<Self, F>
+    fn inspect<F>(self, f: F) -> Inspect<Self, F>
     where
         Self: Sized,
         F: FnMut(&Self::Item),
     {
-        inspect::Inspect::new(self, f)
+        Inspect::new(self, f)
     }
 
     /// Takes a closure and creates a pull that calls that closure on each element.
@@ -395,100 +432,166 @@ pub trait Pull {
     /// `map()` transforms one pull into another, by means of its argument: something
     /// that implements `FnMut`. It produces a new pull which calls this closure on
     /// each element of the original pull.
-    fn map<B, F>(self, f: F) -> map::Map<Self, F>
+    fn map<B, F>(self, f: F) -> Map<Self, F>
     where
         Self: Sized,
         F: FnMut(Self::Item) -> B,
     {
-        map::Map::new(self, f)
+        Map::new(self, f)
     }
 
-    /// A pull adapter similar to [`fold`] that holds internal state and
-    /// produces a new pull.
-    ///
-    /// `scan()` takes two arguments: an initial value which seeds the internal
-    /// state, and a closure with two arguments, the first being a mutable
-    /// reference to the internal state and the second a pull element.
-    /// The closure can assign to the internal state to share state between
-    /// iterations.
-    ///
-    /// On iteration, the closure will be applied to each element of the pull
-    /// and the return value from the closure, an `Option`, is returned by the
-    /// `next` method. Thus the closure can return `Some(value)` to yield `value`,
-    /// or `None` to end the iteration.
-    ///
-    /// [`fold`]: Iterator::fold
-    fn scan<St, B, F>(self, initial_state: St, f: F) -> scan::Scan<Self, St, F>
-    where
-        Self: Sized,
-        F: FnMut(&mut St, Self::Item) -> Option<B>,
-    {
-        scan::Scan::new(self, initial_state, f)
-    }
-
-    fn send_sink<Push>(self, push: Push) -> send_sink::SendSink<Self, Push>
+    fn send_sink<Push>(self, push: Push) -> SendSink<Self, Push>
     where
         Self: Sized,
         Push: Sink<Self::Item>,
     {
-        send_sink::SendSink::new(self, push)
+        SendSink::new(self, push)
     }
 
     /// Creates a pull that skips the first `n` elements.
-    fn skip(self, n: usize) -> skip::Skip<Self>
+    fn skip(self, n: usize) -> Skip<Self>
     where
         Self: Sized,
     {
-        skip::Skip::new(self, n)
+        Skip::new(self, n)
     }
 
     /// Creates a pull that skips elements based on a predicate.
     ///
     /// `skip_while()` takes a closure as an argument. It will call this closure
     /// on each element of the pull, and ignore elements until it returns `false`.
-    fn skip_while<P>(self, predicate: P) -> skip_while::SkipWhile<Self, P>
+    fn skip_while<P>(self, predicate: P) -> SkipWhile<Self, P>
     where
         Self: Sized,
         P: FnMut(&Self::Item) -> bool,
     {
-        skip_while::SkipWhile::new(self, predicate)
+        SkipWhile::new(self, predicate)
     }
 
     /// Creates a pull that yields the first `n` elements, or fewer if the
     /// underlying pull ends sooner.
-    fn take(self, n: usize) -> take::Take<Self>
+    fn take(self, n: usize) -> Take<Self>
     where
         Self: Sized,
     {
-        take::Take::new(self, n)
+        Take::new(self, n)
     }
 
     /// Creates a pull that yields elements based on a predicate.
     ///
     /// `take_while()` takes a closure as an argument. It will call this closure
     /// on each element of the pull, and yield elements while it returns `true`.
-    fn take_while<P>(self, predicate: P) -> take_while::TakeWhile<Self, P>
+    fn take_while<P>(self, predicate: P) -> TakeWhile<Self, P>
     where
         Self: Sized,
         P: FnMut(&Self::Item) -> bool,
     {
-        take_while::TakeWhile::new(self, predicate)
+        TakeWhile::new(self, predicate)
     }
 
     /// Zips two pulls together, continuing until both are exhausted.
     ///
     /// Unlike a regular zip which ends when either pull ends, `zip_longest`
-    /// continues until both pulls have ended, yielding [`EitherOrBoth`](zip_longest::EitherOrBoth)
+    /// continues until both pulls have ended, yielding [`EitherOrBoth`]
     /// values to indicate which pulls yielded items.
     ///
     /// Both pulls must be fused ([`FusedPull`]) to ensure correct behavior
     /// after one pull ends.
-    fn zip_longest<U>(self, other: U) -> zip_longest::ZipLongest<Self, U>
+    fn zip_longest<U>(self, other: U) -> ZipLongest<Self, U>
     where
         Self: Sized + FusedPull,
         U: FusedPull<Meta = Self::Meta>,
     {
-        zip_longest::ZipLongest::new(self, other)
+        ZipLongest::new(self, other)
+    }
+
+    /// Creates a future that resolves with the next item from this pull.
+    ///
+    /// This is the `Pull` equivalent of [`futures::StreamExt::next()`].
+    fn next(self) -> Next<Self>
+    where
+        Self: Sized,
+    {
+        Next::new(self)
+    }
+
+    /// Crosses each item from this pull with a singleton value from another pull.
+    ///
+    /// The singleton value is obtained from the first item of `singleton_pull` and cached.
+    /// All subsequent items from this pull are paired with this cached singleton value.
+    ///
+    /// If `singleton_pull` ends before yielding any items, the entire combinator ends immediately.
+    fn cross_singleton<SinglePull>(
+        self,
+        singleton_pull: SinglePull,
+    ) -> CrossSingleton<Self, SinglePull, Option<SinglePull::Item>>
+    where
+        Self: Sized,
+        SinglePull: Pull,
+        SinglePull::Item: Clone,
+    {
+        CrossSingleton::new(self, singleton_pull, None)
+    }
+
+    /// [Self::cross_singleton] with external state.
+    fn cross_singleton_state<SinglePull>(
+        self,
+        singleton_pull: SinglePull,
+        singleton_state: &mut Option<SinglePull::Item>,
+    ) -> CrossSingleton<Self, SinglePull, &mut Option<SinglePull::Item>>
+    where
+        Self: Sized,
+        SinglePull: Pull,
+        SinglePull::Item: Clone,
+    {
+        CrossSingleton::new(self, singleton_pull, singleton_state)
+    }
+
+    /// Performs a symmetric hash join with another pull.
+    ///
+    /// Joins items from this pull with items from `rhs` based on a common key.
+    /// Both pulls must yield `(Key, Value)` tuples. The result is a pull of
+    /// `(Key, (V1, V2))` tuples for each matching pair.
+    ///
+    /// The `lhs_state` and `rhs_state` parameters store the join state and must
+    /// implement [`HalfJoinState`].
+    #[cfg(feature = "std")]
+    fn symmetric_hash_join<Key, V1, Rhs, V2, LhsState, RhsState>(
+        self,
+        rhs: Rhs,
+        lhs_state: LhsState,
+        rhs_state: RhsState,
+    ) -> SymmetricHashJoin<Self, Rhs, LhsState, RhsState, LhsState, RhsState>
+    where
+        Self: Sized + Pull<Item = (Key, V1), Meta = ()>,
+        Key: Eq + std::hash::Hash + Clone,
+        V1: Clone,
+        V2: Clone,
+        Rhs: Pull<Item = (Key, V2), Meta = ()>,
+        LhsState: HalfJoinState<Key, V1, V2>,
+        RhsState: HalfJoinState<Key, V2, V1>,
+    {
+        SymmetricHashJoin::new(self, rhs, lhs_state, rhs_state)
+    }
+
+    /// [Self::symmetric_hash_join] with external state.
+    #[cfg(feature = "std")]
+    fn symmetric_hash_join_state<'a, Key, V1, Rhs, V2, LhsState, RhsState>(
+        self,
+        rhs: Rhs,
+        lhs_state: &'a mut LhsState,
+        rhs_state: &'a mut RhsState,
+    ) -> SymmetricHashJoin<Self, Rhs, &'a mut LhsState, &'a mut RhsState, LhsState, RhsState>
+    where
+        Self: Sized + Pull<Item = (Key, V1), Meta = ()>,
+        Key: Eq + std::hash::Hash + Clone,
+        V1: Clone,
+        V2: Clone,
+        Rhs: Pull<Item = (Key, V2), Meta = ()>,
+        LhsState: HalfJoinState<Key, V1, V2>,
+        RhsState: HalfJoinState<Key, V2, V1>,
+    {
+        SymmetricHashJoin::new(self, rhs, lhs_state, rhs_state)
     }
 }
 
@@ -515,10 +618,10 @@ where
 ///
 /// A fused pull guarantees that once it returns [`Step::Ended`], all subsequent
 /// calls to [`Pull::pull`] will also return [`Step::Ended`]. This property allows
-/// downstream operators like [`Chain`](chain::Chain) to avoid tracking whether
+/// downstream operators like [`Pull::chain`] to avoid tracking whether
 /// the upstream has ended.
 ///
-/// Implementors should ensure this invariant is upheld. The [`Fuse`](fuse::Fuse)
+/// Implementors should ensure this invariant is upheld. The [`Pull::fuse`]
 /// adapter can be used to make any pull fused.
 pub trait FusedPull: Pull {}
 
@@ -526,55 +629,55 @@ pub trait FusedPull: Pull {}
 ///
 /// This is the primary way to create a pull from synchronous data.
 /// The resulting pull will never pend and will end when the iterator is exhausted.
-pub fn from_iter<I: IntoIterator>(iter: I) -> iter::Iter<I::IntoIter> {
-    iter::Iter::new(iter.into_iter())
+pub fn from_iter<I: IntoIterator>(iter: I) -> Iter<I::IntoIter> {
+    Iter::new(iter.into_iter())
 }
 
 /// Creates a pull from a `futures::Stream`.
 ///
 /// The resulting pull requires `&mut Context<'_>` to be polled and can both
 /// pend and end.
-pub fn from_stream<S: Stream>(stream: S) -> stream::Stream<S> {
-    stream::Stream::new(stream)
+pub fn from_stream<S: futures_core::stream::Stream>(stream: S) -> StreamPull<S> {
+    StreamPull::new(stream)
 }
 
 /// Creates a pull from a `futures::Stream` with a custom waker.
 ///
 /// This variant uses a provided waker function instead of requiring a context.
 /// When the stream returns `Pending`, this pull treats it as ended (non-blocking).
-pub fn from_stream_with_waker<S>(stream: S, waker: Waker) -> source_stream::SourceStream<S>
+pub fn from_stream_with_waker<S>(stream: S, waker: Waker) -> SourceStream<S>
 where
-    S: Stream,
+    S: futures_core::stream::Stream,
 {
-    source_stream::SourceStream::new(stream, waker)
+    SourceStream::new(stream, waker)
 }
 
 /// Creates a pull from a closure.
 ///
 /// The closure is called each time the pull is polled and should return a `Step`.
-pub fn from_fn<F, Item, Meta, CanEnd>(func: F) -> pull_fn::PullFn<F, Item, Meta, CanEnd>
+pub fn from_fn<F, Item, Meta, CanEnd>(func: F) -> PullFn<F, Item, Meta, CanEnd>
 where
     F: FnMut() -> Step<Item, Meta, No, CanEnd>,
     CanEnd: Toggle,
 {
-    pull_fn::PullFn::new(func)
+    PullFn::new(func)
 }
 
 /// Creates a pull from a closure.
 ///
 /// The closure is called each time the pull is polled and should return a `Step`.
-pub fn from_poll_fn<F, Item, Meta, CanEnd>(func: F) -> poll_fn::PollFn<F, Item, Meta, CanEnd>
+pub fn from_poll_fn<F, Item, Meta, CanEnd>(func: F) -> PollFn<F, Item, Meta, CanEnd>
 where
     F: FnMut(&mut core::task::Context<'_>) -> Step<Item, Meta, Yes, CanEnd>,
     CanEnd: Toggle,
 {
-    poll_fn::PollFn::new(func)
+    PollFn::new(func)
 }
 
-pub fn empty<Item>() -> empty::Empty<Item> {
-    empty::Empty::new()
+pub fn empty<Item>() -> Empty<Item> {
+    Empty::default()
 }
 
-pub fn once<Item>(item: Item) -> once::Once<Item> {
-    once::Once::new(item)
+pub fn once<Item>(item: Item) -> Once<Item> {
+    Once::new(item)
 }
