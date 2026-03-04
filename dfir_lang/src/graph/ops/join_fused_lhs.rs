@@ -15,7 +15,7 @@ use super::{
 ///
 /// For example:
 /// ```dfir
-/// use dfir_rs::util::accumulator::Reduce;
+/// use dfir_rs::dfir_pipes::Reduce;
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> [0]my_join;
 /// source_iter(vec![("key", 2), ("key", 3)]) -> [1]my_join;
@@ -87,7 +87,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
 
                 let #ident = {
                     let () = #work_fn_async(
-                        #root::compiled::pull::accumulate_all_pull(&mut #lhs_accum, &mut *#lhs_borrow, #lhs),
+                        #root::compiled::pull::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs),
                     ).await;
 
                     #[allow(clippy::clone_on_copy)]
@@ -104,7 +104,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                 let #ident = {
                     // Accumulate LHS.
                     let () = #work_fn_async(
-                        #root::compiled::pull::accumulate_all_pull(&mut #lhs_accum, &mut *#lhs_borrow, #lhs),
+                        #root::compiled::pull::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs),
                     ).await;
 
                     // RHS replay index.

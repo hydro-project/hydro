@@ -4,8 +4,7 @@ use std::pin::pin;
 use std::task::{Context, Poll, Waker};
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use dfir_rs::compiled::pull::HalfSetJoinState;
-use dfir_rs::dfir_pipes::{self, Pull, Step, symmetric_hash_join as shj_fn};
+use dfir_rs::dfir_pipes::{self, HalfSetJoinState, Pull, Step, symmetric_hash_join as shj_fn};
 use rand::SeedableRng;
 use rand::distributions::Distribution;
 use rand::rngs::StdRng;

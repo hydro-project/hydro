@@ -1,8 +1,5 @@
 //! Pull-based operator helpers, i.e. [`futures::Stream`] helpers.
 
-mod accumulate_all;
-pub use accumulate_all::{accumulate_all, accumulate_all_pull};
-
 mod cross_singleton;
 pub use cross_singleton::CrossSingleton;
 
@@ -16,7 +13,10 @@ mod lattice_bimorphism;
 pub mod lattice_bimorphism_pull;
 mod zip_longest;
 // Re-export HalfJoinState types from dfir_pipes
-pub use dfir_pipes::{HalfJoinState, HalfMultisetJoinState, HalfSetJoinState, SymmetricHashJoin};
+pub use dfir_pipes::{
+    AccumulateAll, Accumulator, Fold, FoldFrom, HalfJoinState, HalfMultisetJoinState,
+    HalfSetJoinState, Reduce, SymmetricHashJoin, accumulate_all,
+};
 pub use flatten::Flatten;
 pub use for_each::ForEach;
 pub use lattice_bimorphism::LatticeBimorphismStream;

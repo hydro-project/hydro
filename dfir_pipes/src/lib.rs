@@ -21,6 +21,8 @@ use futures_sink::Sink;
 pub use itertools::{self, EitherOrBoth};
 use sealed::sealed;
 
+#[cfg(feature = "std")]
+mod accumulator;
 mod chain;
 mod collect;
 mod cross_singleton;
@@ -55,6 +57,8 @@ mod take_while;
 mod test_utils;
 mod zip_longest;
 
+#[cfg(feature = "std")]
+pub use accumulator::{AccumulateAll, Accumulator, Fold, FoldFrom, Reduce, accumulate_all};
 pub use chain::Chain;
 pub use collect::Collect;
 pub use cross_singleton::CrossSingleton;
