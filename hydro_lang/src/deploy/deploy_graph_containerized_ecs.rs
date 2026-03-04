@@ -431,14 +431,14 @@ impl<'a> Deploy<'a> for EcsDeploy {
     type External = EcsDeployExternal;
     type Meta = ();
 
-    #[instrument(level = "trace", skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, p2_port))]
+    #[instrument(level = "trace", skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, %p2_port))]
     fn o2o_sink_source(
         _env: &mut Self::InstantiateEnv,
         p1: &Self::Process,
         p1_port: &<Self::Process as Node>::Port,
         p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
-        _name: Option<&str>,
+        name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
@@ -447,10 +447,14 @@ impl<'a> Deploy<'a> for EcsDeploy {
             } => {}
             _ => panic!("Unsupported networking info: {:?}", networking_info),
         }
-        deploy_containerized_o2o(&p2.name, *p2_port)
+
+        deploy_containerized_o2o(
+            &p2.name,
+            name.expect("channel name is required for containerized deployment"),
+        )
     }
 
-    #[instrument(level = "trace", skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, p2_port))]
+    #[instrument(level = "trace", skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, %p2_port))]
     fn o2o_connect(
         p1: &Self::Process,
         p1_port: &<Self::Process as Node>::Port,
@@ -474,7 +478,7 @@ impl<'a> Deploy<'a> for EcsDeploy {
         p1_port: &<Self::Process as Node>::Port,
         c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
-        _name: Option<&str>,
+        name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
@@ -483,7 +487,10 @@ impl<'a> Deploy<'a> for EcsDeploy {
             } => {}
             _ => panic!("Unsupported networking info: {:?}", networking_info),
         }
-        deploy_containerized_o2m(*c2_port)
+
+        deploy_containerized_o2m(
+            name.expect("channel name is required for containerized deployment"),
+        )
     }
 
     #[instrument(level = "trace", skip_all, fields(p1 = p1.name, %p1_port, c2 = c2.name, %c2_port))]
@@ -510,7 +517,7 @@ impl<'a> Deploy<'a> for EcsDeploy {
         c1_port: &<Self::Cluster as Node>::Port,
         p2: &Self::Process,
         p2_port: &<Self::Process as Node>::Port,
-        _name: Option<&str>,
+        name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
@@ -519,7 +526,11 @@ impl<'a> Deploy<'a> for EcsDeploy {
             } => {}
             _ => panic!("Unsupported networking info: {:?}", networking_info),
         }
-        deploy_containerized_m2o(*p2_port, &p2.name)
+
+        deploy_containerized_m2o(
+            &p2.name,
+            name.expect("channel name is required for containerized deployment"),
+        )
     }
 
     #[instrument(level = "trace", skip_all, fields(c1 = c1.name, %c1_port, p2 = p2.name, %p2_port))]
@@ -546,7 +557,7 @@ impl<'a> Deploy<'a> for EcsDeploy {
         c1_port: &<Self::Cluster as Node>::Port,
         c2: &Self::Cluster,
         c2_port: &<Self::Cluster as Node>::Port,
-        _name: Option<&str>,
+        name: Option<&str>,
         networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
@@ -555,7 +566,10 @@ impl<'a> Deploy<'a> for EcsDeploy {
             } => {}
             _ => panic!("Unsupported networking info: {:?}", networking_info),
         }
-        deploy_containerized_m2m(*c2_port)
+
+        deploy_containerized_m2m(
+            name.expect("channel name is required for containerized deployment"),
+        )
     }
 
     #[instrument(level = "trace", skip_all, fields(c1 = c1.name, %c1_port, c2 = c2.name, %c2_port))]
