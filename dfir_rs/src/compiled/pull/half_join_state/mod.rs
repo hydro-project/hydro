@@ -37,4 +37,7 @@ where
 
     /// An iter over all the matches for a given key.
     fn full_probe(&self, k: &Key) -> std::slice::Iter<'_, ValBuild>;
+
+    /// Clear the state without de-allocating.
+    fn clear(&mut self);
 }
