@@ -3,7 +3,6 @@ use std::collections::VecDeque;
 use std::collections::hash_map::Entry;
 
 use super::HalfJoinState;
-use crate::util::clear::Clear;
 
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
@@ -23,6 +22,7 @@ pub struct HalfMultisetJoinState<Key, ValBuild, ValProbe> {
     current_matches: VecDeque<(Key, ValProbe, ValBuild)>,
     len: usize,
 }
+
 impl<Key, ValBuild, ValProbe> Default for HalfMultisetJoinState<Key, ValBuild, ValProbe> {
     fn default() -> Self {
         Self {
@@ -32,13 +32,7 @@ impl<Key, ValBuild, ValProbe> Default for HalfMultisetJoinState<Key, ValBuild, V
         }
     }
 }
-impl<Key, ValBuild, ValProbe> Clear for HalfMultisetJoinState<Key, ValBuild, ValProbe> {
-    fn clear(&mut self) {
-        self.table.clear();
-        self.current_matches.clear();
-        self.len = 0;
-    }
-}
+
 impl<Key, ValBuild, ValProbe> HalfJoinState<Key, ValBuild, ValProbe>
     for HalfMultisetJoinState<Key, ValBuild, ValProbe>
 where
@@ -97,8 +91,15 @@ where
     fn len(&self) -> usize {
         self.len
     }
+
     fn iter(&self) -> std::collections::hash_map::Iter<'_, Key, SmallVec<[ValBuild; 1]>> {
         #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
         self.table.iter()
+    }
+
+    fn clear(&mut self) {
+        self.table.clear();
+        self.current_matches.clear();
+        self.len = 0;
     }
 }
