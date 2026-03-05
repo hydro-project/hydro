@@ -2,19 +2,23 @@ use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::collections::hash_map::Entry;
 
+use rustc_hash::FxHashMap;
 use smallvec::{SmallVec, smallvec};
 
 use super::HalfJoinState;
-
-type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 
 /// [`HalfJoinState`] with set semantics.
 ///
 /// Duplicate key-value pairs are not stored; only unique pairs are kept.
 #[derive(Debug)]
 pub struct HalfSetJoinState<Key, ValBuild, ValProbe> {
+    // Here a smallvec with inline storage of 1 is chosen.
+    // The rationale for this decision is that, I speculate, that joins possibly have a bimodal distribution with regards to how much key contention they have.
+    // That is, I think that there are many joins that have 1 value per key on LHS/RHS, and there are also a large category of joins that have multiple values per key.
+    // For the category of joins that have multiple values per key, it's not clear why they would only have 2, 3, 4, or N specific number of values per key. So there's no good number to set the smallvec storage to.
+    // Instead we can just focus on the first group of joins that have 1 value per key and get benefit there without hurting the other group too much with excessive memory usage.
     /// Table to probe, vec val contains all matches.
-    table: HashMap<Key, SmallVec<[ValBuild; 1]>>,
+    table: FxHashMap<Key, SmallVec<[ValBuild; 1]>>,
     /// Not-yet emitted matches.
     current_matches: VecDeque<(Key, ValProbe, ValBuild)>,
     len: usize,
@@ -23,7 +27,7 @@ pub struct HalfSetJoinState<Key, ValBuild, ValProbe> {
 impl<Key, ValBuild, ValProbe> Default for HalfSetJoinState<Key, ValBuild, ValProbe> {
     fn default() -> Self {
         Self {
-            table: HashMap::default(),
+            table: FxHashMap::default(),
             current_matches: VecDeque::default(),
             len: 0,
         }
@@ -60,6 +64,9 @@ where
     }
 
     fn probe(&mut self, k: &Key, v: &ValProbe) -> Option<(Key, ValProbe, ValBuild)> {
+        // TODO: We currently don't free/shrink the self.current_matches vecdeque to save time.
+        // This mean it will grow to eventually become the largest number of matches in a single probe call.
+        // Maybe we should clear this memory at the beginning of every tick/periodically?
         let mut iter = self
             .table
             .get(k)?
@@ -72,7 +79,7 @@ where
     }
 
     fn full_probe(&self, k: &Key) -> std::slice::Iter<'_, ValBuild> {
-        self.table.get(k).map_or([].iter(), |sv| sv.iter())
+        self.table.get(k).map(|sv| sv.iter()).unwrap_or_default()
     }
 
     fn pop_match(&mut self) -> Option<(Key, ValProbe, ValBuild)> {
@@ -84,10 +91,7 @@ where
     }
 
     fn iter(&self) -> std::collections::hash_map::Iter<'_, Key, SmallVec<[ValBuild; 1]>> {
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "expect non-deterministic iteration order"
-        )]
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
         self.table.iter()
     }
 

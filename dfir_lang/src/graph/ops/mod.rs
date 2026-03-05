@@ -166,7 +166,7 @@ pub fn identity_write_iterator_fn(
         let input = &inputs[0];
         quote_spanned! {op_span=>
             let #ident = {
-                fn check_input<Pull, Item>(pull: Pull) -> impl #root::dfir_pipes::Pull<Item = Item, Meta = Pull::Meta>
+                fn check_input<Pull, Item>(pull: Pull) -> impl #root::dfir_pipes::Pull<Item = Item, Meta = Pull::Meta, CanPend = Pull::CanPend, CanEnd = Pull::CanEnd>
                 where
                     Pull: #root::dfir_pipes::Pull<Item = Item>,
                 {
@@ -223,7 +223,7 @@ pub fn null_write_iterator_fn(
 
     if is_pull {
         quote_spanned! {op_span=>
-            let #ident = #root::dfir_pipes::from_poll_fn(move |_cx| {
+            let #ident = #root::dfir_pipes::poll_fn(move |_cx| {
                 // Make sure to poll all `#inputs` to completion.
                 #(
                     let #inputs = #root::dfir_pipes::Pull::pull(::std::pin::pin!(#inputs), &mut _cx);

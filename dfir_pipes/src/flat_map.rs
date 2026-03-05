@@ -2,9 +2,12 @@ use core::pin::Pin;
 
 use pin_project_lite::pin_project;
 
-use crate::{Pull, Step};
+use crate::{FusedPull, Pull, Step};
 
 pin_project! {
+    /// Pull combinator that maps each item to an iterator and flattens the results.
+    #[must_use = "`Pull`s do nothing unless polled"]
+    #[derive(Clone, Debug)]
     pub struct FlatMap<Prev, Func, Iter, Meta> {
         #[pin]
         prev: Prev,
@@ -13,7 +16,10 @@ pin_project! {
     }
 }
 
-impl<Prev, Func, Iter, Meta> FlatMap<Prev, Func, Iter, Meta> {
+impl<Prev, Func, Iter, Meta> FlatMap<Prev, Func, Iter, Meta>
+where
+    Self: Pull,
+{
     pub(crate) fn new(prev: Prev, func: Func) -> Self {
         Self {
             prev,
@@ -70,4 +76,12 @@ where
         // We can't know the upper bound since each mapped iterator could have any size
         (current_len, None)
     }
+}
+
+impl<Prev, Func, IntoIter> FusedPull for FlatMap<Prev, Func, IntoIter::IntoIter, Prev::Meta>
+where
+    Prev: FusedPull,
+    Func: FnMut(Prev::Item) -> IntoIter,
+    IntoIter: IntoIterator,
+{
 }

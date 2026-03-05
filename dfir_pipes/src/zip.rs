@@ -1,21 +1,16 @@
 use core::pin::Pin;
 
-use itertools::EitherOrBoth;
 use pin_project_lite::pin_project;
 
-use crate::{Context, FusedPull, Pull, Step, Toggle, fuse_self};
+use crate::{Context, FusedPull, Pull, Step, Toggle};
 
 pin_project! {
-    /// A pull that zips two pulls together, continuing until both are exhausted.
+    /// A pull that zips two pulls together, ending when either is exhausted.
     ///
-    /// Unlike a regular zip which ends when either pull ends, `ZipLongest`
-    /// continues until both pulls have ended, yielding [`EitherOrBoth`] values.
-    ///
-    /// Both upstream pulls must be fused ([`FusedPull`]) to ensure correct
-    /// behavior after one pull ends.
+    /// Yields `(Item1, Item2)` pairs. Ends as soon as either upstream pull ends.
     #[must_use = "`Pull`s do nothing unless polled"]
     #[derive(Clone, Debug)]
-    pub struct ZipLongest<Prev1, Prev2>
+    pub struct Zip<Prev1, Prev2>
     where
         Prev1: Pull
     {
@@ -28,12 +23,12 @@ pin_project! {
     }
 }
 
-impl<Prev1, Prev2> ZipLongest<Prev1, Prev2>
+impl<Prev1, Prev2> Zip<Prev1, Prev2>
 where
     Prev1: Pull,
     Self: Pull,
 {
-    /// Create a new `ZipLongest` stream from two source streams.
+    /// Create a new `Zip` stream from two source streams.
     pub(crate) fn new(prev1: Prev1, prev2: Prev2) -> Self {
         Self {
             prev1,
@@ -43,17 +38,17 @@ where
     }
 }
 
-impl<Prev1, Prev2> Pull for ZipLongest<Prev1, Prev2>
+impl<Prev1, Prev2> Pull for Zip<Prev1, Prev2>
 where
-    Prev1: FusedPull,
-    Prev2: FusedPull<Meta = Prev1::Meta>,
+    Prev1: Pull,
+    Prev2: Pull<Meta = Prev1::Meta>,
 {
     type Ctx<'ctx> = <Prev1::Ctx<'ctx> as Context<'ctx>>::Merged<Prev2::Ctx<'ctx>>;
 
-    type Item = EitherOrBoth<Prev1::Item, Prev2::Item>;
+    type Item = (Prev1::Item, Prev2::Item);
     type Meta = Prev1::Meta;
     type CanPend = <Prev1::CanPend as Toggle>::Or<Prev2::CanPend>;
-    type CanEnd = <Prev1::CanEnd as Toggle>::And<Prev2::CanEnd>;
+    type CanEnd = <Prev1::CanEnd as Toggle>::Or<Prev2::CanEnd>;
 
     fn pull(
         self: Pin<&mut Self>,
@@ -61,7 +56,7 @@ where
     ) -> Step<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
         let mut this = self.project();
 
-        // Store `item1` so it is not dropped if `stream2` returns `Poll::Pending`.
+        // Store `item1` so it is not dropped if `prev2` returns `Pending`.
         if this.item1.is_none() {
             *this.item1 = match this
                 .prev1
@@ -72,25 +67,25 @@ where
                 Step::Pending(_) => {
                     return Step::pending();
                 }
-                Step::Ended(_) => None,
+                Step::Ended(_) => {
+                    return Step::ended();
+                }
             };
         }
         let item2 = this
             .prev2
             .as_mut()
             .pull(<Prev1::Ctx<'_> as Context<'_>>::unmerge_other(ctx));
-        if let Step::Pending(_) = item2 {
-            return Step::pending();
-        }
 
         match (this.item1.take(), item2) {
-            (_, Step::Pending(_)) => unreachable!(),
-            (None, Step::Ready(item2, meta2)) => Step::Ready(EitherOrBoth::Right(item2), meta2),
-            (None, Step::Ended(_)) => Step::ended(),
             (Some((item1, meta1)), Step::Ready(item2, _meta2)) => {
-                Step::Ready(EitherOrBoth::Both(item1, item2), meta1)
+                Step::Ready((item1, item2), meta1)
             } // TODO(mingwei): use _meta2
-            (Some((item1, meta1)), Step::Ended(_)) => Step::Ready(EitherOrBoth::Left(item1), meta1),
+            (_, Step::Pending(_)) => Step::pending(),
+            (_, Step::Ended(_)) => Step::ended(),
+            (None, Step::Ready(_, _)) => {
+                unreachable!("item1 is always Some when reaching this match")
+            }
         }
     }
 
@@ -100,18 +95,21 @@ where
         let (min1, max1) = this.prev1.size_hint();
         let (min2, max2) = this.prev2.size_hint();
 
-        // Lower bound is the max of the two (we continue until both end)
-        let lower = min1.max(min2);
-        // Upper bound is the max of the two (if both known)
-        let upper = max1.zip(max2).map(|(a, b)| a.max(b));
+        // Lower bound is the min of the two (we end when either ends)
+        let lower = min1.min(min2);
+        // Upper bound is the min of the two (if either known)
+        let upper = match (max1, max2) {
+            (Some(a), Some(b)) => Some(a.min(b)),
+            (Some(a), None) => Some(a),
+            (None, Some(b)) => Some(b),
+            (None, None) => None,
+        };
 
         (lower, upper)
     }
-
-    fuse_self!();
 }
 
-impl<A, B> FusedPull for ZipLongest<A, B>
+impl<A, B> FusedPull for Zip<A, B>
 where
     A: FusedPull,
     B: FusedPull<Meta = A::Meta>,
@@ -126,15 +124,13 @@ mod tests {
     use alloc::vec;
     use alloc::vec::Vec;
 
-    use itertools::EitherOrBoth;
-
-    use super::ZipLongest;
+    use super::Zip;
     use crate::test_utils::SyncPull;
     use crate::{Pull, Step};
 
     #[test]
-    fn zip_longest_functional_same_length() {
-        let mut zip = pin!(ZipLongest::new(SyncPull::new(2), SyncPull::new(2)));
+    fn zip_functional_same_length() {
+        let mut zip = pin!(Zip::new(SyncPull::new(2), SyncPull::new(2)));
         let mut results = Vec::new();
 
         loop {
@@ -145,15 +141,12 @@ mod tests {
             }
         }
 
-        assert_eq!(
-            results,
-            vec![EitherOrBoth::Both(0, 0), EitherOrBoth::Both(1, 1)]
-        );
+        assert_eq!(results, vec![(0, 0), (1, 1)]);
     }
 
     #[test]
-    fn zip_longest_functional_first_shorter() {
-        let mut zip = pin!(ZipLongest::new(SyncPull::new(1), SyncPull::new(3)));
+    fn zip_functional_first_shorter() {
+        let mut zip = pin!(Zip::new(SyncPull::new(1), SyncPull::new(3)));
         let mut results = Vec::new();
 
         loop {
@@ -164,19 +157,12 @@ mod tests {
             }
         }
 
-        assert_eq!(
-            results,
-            vec![
-                EitherOrBoth::Both(0, 0),
-                EitherOrBoth::Right(1),
-                EitherOrBoth::Right(2)
-            ]
-        );
+        assert_eq!(results, vec![(0, 0)]);
     }
 
     #[test]
-    fn zip_longest_functional_second_shorter() {
-        let mut zip = pin!(ZipLongest::new(SyncPull::new(3), SyncPull::new(1)));
+    fn zip_functional_second_shorter() {
+        let mut zip = pin!(Zip::new(SyncPull::new(3), SyncPull::new(1)));
         let mut results = Vec::new();
 
         loop {
@@ -187,13 +173,6 @@ mod tests {
             }
         }
 
-        assert_eq!(
-            results,
-            vec![
-                EitherOrBoth::Both(0, 0),
-                EitherOrBoth::Left(1),
-                EitherOrBoth::Left(2)
-            ]
-        );
+        assert_eq!(results, vec![(0, 0)]);
     }
 }

@@ -96,7 +96,7 @@ pub fn resolve_futures_writer(
                 }).await;
 
                 #root::dfir_pipes::Pull::chain(
-                    #root::dfir_pipes::from_iter(first_item_opt),
+                    #root::dfir_pipes::iter(first_item_opt),
                     #root::dfir_pipes::from_fn(|| {
                         match #root::futures::stream::Stream::poll_next(::std::pin::Pin::new(&mut *#queue_ident), #task_cx) {
                             ::std::task::Poll::Pending => #if_pending,

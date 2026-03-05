@@ -49,7 +49,7 @@ pub const SORT_BY_KEY: OperatorConstraints = OperatorConstraints {
             let #ident = {
                 let mut tmp = #work_fn_async(#root::dfir_pipes::Pull::collect::<::std::vec::Vec<_>>(#input)).await;
                 #root::util::sort_unstable_by_key_hrtb(&mut tmp, #arguments);
-                #root::dfir_pipes::from_iter(tmp)
+                #root::dfir_pipes::iter(tmp)
             };
         };
         Ok(OperatorWriteOutput {

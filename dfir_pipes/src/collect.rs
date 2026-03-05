@@ -6,6 +6,9 @@ use pin_project_lite::pin_project;
 use crate::{Context, Pull, Step};
 
 pin_project! {
+    /// Future that collects all items from a pull into a collection.
+    #[must_use = "futures do nothing unless polled"]
+    #[derive(Clone, Debug, Default)]
     pub struct Collect<Prev, C> {
         #[pin]
         prev: Prev,
@@ -15,8 +18,8 @@ pin_project! {
 
 impl<Prev, C> Collect<Prev, C>
 where
-    Prev: Pull,
-    C: Default + Extend<Prev::Item>,
+    Self: Future,
+    C: Default,
 {
     pub(crate) fn new(prev: Prev) -> Self {
         Self {

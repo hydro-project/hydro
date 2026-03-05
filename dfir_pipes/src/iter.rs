@@ -6,6 +6,9 @@ use pin_project_lite::pin_project;
 use crate::{FusedPull, No, Pull, Step, Yes};
 
 pin_project! {
+    /// A pull that wraps an iterator.
+    #[must_use = "`Pull`s do nothing unless polled"]
+    #[derive(Clone, Debug, Default)]
     pub struct Iter<I> {
         iter: I,
     }

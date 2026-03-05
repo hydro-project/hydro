@@ -2,9 +2,12 @@ use core::pin::Pin;
 
 use pin_project_lite::pin_project;
 
-use crate::{Pull, Step};
+use crate::{FusedPull, Pull, Step};
 
 pin_project! {
+    /// Pull combinator that skips the first `n` items.
+    #[must_use = "`Pull`s do nothing unless polled"]
+    #[derive(Clone, Debug, Default)]
     pub struct Skip<Prev> {
         #[pin]
         prev: Prev,
@@ -12,7 +15,10 @@ pin_project! {
     }
 }
 
-impl<Prev> Skip<Prev> {
+impl<Prev> Skip<Prev>
+where
+    Self: Pull,
+{
     pub(crate) fn new(prev: Prev, n: usize) -> Self {
         Self { prev, remaining: n }
     }
@@ -60,3 +66,5 @@ where
         )
     }
 }
+
+impl<Prev> FusedPull for Skip<Prev> where Prev: FusedPull {}

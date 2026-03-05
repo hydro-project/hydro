@@ -2,7 +2,7 @@ use core::pin::Pin;
 
 use pin_project_lite::pin_project;
 
-use crate::{Context, Pull, Step, Toggle, Yes};
+use crate::{Context, FusedPull, Pull, Step, Toggle};
 
 pin_project! {
     /// Asynchronously merges two upstream pulls, interleaving their items.
@@ -10,24 +10,28 @@ pin_project! {
     /// Unlike [`Chain`](super::chain::Chain), `Merge` does not require the first
     /// pull to be finite. Items are pulled from both sources in a round-robin
     /// fashion, and the merged pull only ends when both upstream pulls have ended.
+    ///
+    /// Both upstream pulls must be fused ([`FusedPull`]) to ensure correct
+    /// behavior after one pull ends.
+    #[must_use = "`Pull`s do nothing unless polled"]
+    #[derive(Clone, Debug, Default)]
     pub struct Merge<A, B> {
         #[pin]
         first: A,
         #[pin]
         second: B,
-        first_ended: bool,
-        second_ended: bool,
         poll_first_next: bool,
     }
 }
 
-impl<A, B> Merge<A, B> {
+impl<A, B> Merge<A, B>
+where
+    Self: Pull,
+{
     pub(crate) fn new(first: A, second: B) -> Self {
         Self {
             first,
             second,
-            first_ended: false,
-            second_ended: false,
             poll_first_next: true,
         }
     }
@@ -35,8 +39,8 @@ impl<A, B> Merge<A, B> {
 
 impl<A, B> Pull for Merge<A, B>
 where
-    A: Pull,
-    B: Pull<Item = A::Item, Meta = A::Meta>,
+    A: FusedPull,
+    B: FusedPull<Item = A::Item, Meta = A::Meta>,
 {
     type Ctx<'ctx> = <A::Ctx<'ctx> as Context<'ctx>>::Merged<B::Ctx<'ctx>>;
 
@@ -51,113 +55,63 @@ where
     ) -> Step<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
         let mut this = self.project();
 
-        // Both ended - return Ended
-        if *this.first_ended && *this.second_ended {
-            return Step::Ended(Toggle::convert_from(Yes));
-        }
-
-        // Only first ended - pull from second
-        if *this.first_ended {
-            return match this
+        let (first_result, second_result) = if *this.poll_first_next {
+            *this.poll_first_next = false;
+            let first = this
+                .first
+                .as_mut()
+                .pull(<A::Ctx<'_> as Context<'_>>::unmerge_self(ctx));
+            match first {
+                Step::Ready(item, meta) => return Step::Ready(item, meta),
+                Step::Pending(_) => return Step::pending(),
+                Step::Ended(_) => {}
+            }
+            let second = this
                 .second
                 .as_mut()
-                .pull(<A::Ctx<'_> as Context<'_>>::unmerge_other(ctx))
-            {
-                Step::Ready(item, meta) => Step::Ready(item, meta),
-                Step::Pending(can_pend) => Step::Pending(Toggle::convert_from(can_pend)),
-                Step::Ended(can_end) => {
-                    *this.second_ended = true;
-                    Step::Ended(Toggle::convert_from(can_end))
-                }
-            };
-        }
-
-        // Only second ended - pull from first
-        if *this.second_ended {
-            return match this
-                .first
-                .as_mut()
-                .pull(<A::Ctx<'_> as Context<'_>>::unmerge_self(ctx))
-            {
-                Step::Ready(item, meta) => Step::Ready(item, meta),
-                Step::Pending(can_pend) => Step::Pending(Toggle::convert_from(can_pend)),
-                Step::Ended(can_end) => {
-                    *this.first_ended = true;
-                    Step::Ended(Toggle::convert_from(can_end))
-                }
-            };
-        }
-
-        // Both active - alternate between them
-        if *this.poll_first_next {
-            *this.poll_first_next = false;
-            match this
-                .first
-                .as_mut()
-                .pull(<A::Ctx<'_> as Context<'_>>::unmerge_self(ctx))
-            {
-                Step::Ready(item, meta) => Step::Ready(item, meta),
-                Step::Pending(can_pend) => Step::Pending(Toggle::convert_from(can_pend)),
-                Step::Ended(_) => {
-                    *this.first_ended = true;
-                    // Try second immediately
-                    match this
-                        .second
-                        .as_mut()
-                        .pull(<A::Ctx<'_> as Context<'_>>::unmerge_other(ctx))
-                    {
-                        Step::Ready(item, meta) => Step::Ready(item, meta),
-                        Step::Pending(can_pend) => Step::Pending(Toggle::convert_from(can_pend)),
-                        Step::Ended(can_end) => {
-                            *this.second_ended = true;
-                            Step::Ended(Toggle::convert_from(can_end))
-                        }
-                    }
-                }
-            }
+                .pull(<A::Ctx<'_> as Context<'_>>::unmerge_other(ctx));
+            (None, Some(second))
         } else {
             *this.poll_first_next = true;
-            match this
+            let second = this
                 .second
                 .as_mut()
-                .pull(<A::Ctx<'_> as Context<'_>>::unmerge_other(ctx))
-            {
-                Step::Ready(item, meta) => Step::Ready(item, meta),
-                Step::Pending(can_pend) => Step::Pending(Toggle::convert_from(can_pend)),
-                Step::Ended(_) => {
-                    *this.second_ended = true;
-                    // Try first immediately
-                    match this
-                        .first
-                        .as_mut()
-                        .pull(<A::Ctx<'_> as Context<'_>>::unmerge_self(ctx))
-                    {
-                        Step::Ready(item, meta) => Step::Ready(item, meta),
-                        Step::Pending(can_pend) => Step::Pending(Toggle::convert_from(can_pend)),
-                        Step::Ended(can_end) => {
-                            *this.first_ended = true;
-                            Step::Ended(Toggle::convert_from(can_end))
-                        }
-                    }
-                }
+                .pull(<A::Ctx<'_> as Context<'_>>::unmerge_other(ctx));
+            match second {
+                Step::Ready(item, meta) => return Step::Ready(item, meta),
+                Step::Pending(_) => return Step::pending(),
+                Step::Ended(_) => {}
             }
+            let first = this
+                .first
+                .as_mut()
+                .pull(<A::Ctx<'_> as Context<'_>>::unmerge_self(ctx));
+            (Some(first), None)
+        };
+
+        // The preferred side ended, try the other side.
+        if let Some(second) = second_result {
+            match second {
+                Step::Ready(item, meta) => Step::Ready(item, meta),
+                Step::Pending(_) => Step::pending(),
+                Step::Ended(_) => Step::ended(),
+            }
+        } else if let Some(first) = first_result {
+            match first {
+                Step::Ready(item, meta) => Step::Ready(item, meta),
+                Step::Pending(_) => Step::pending(),
+                Step::Ended(_) => Step::ended(),
+            }
+        } else {
+            unreachable!()
         }
     }
 
     fn size_hint(self: Pin<&Self>) -> (usize, Option<usize>) {
         let this = self.project_ref();
 
-        let (a_lower, a_upper) = if *this.first_ended {
-            (0, Some(0))
-        } else {
-            this.first.size_hint()
-        };
-
-        let (b_lower, b_upper) = if *this.second_ended {
-            (0, Some(0))
-        } else {
-            this.second.size_hint()
-        };
+        let (a_lower, a_upper) = this.first.size_hint();
+        let (b_lower, b_upper) = this.second.size_hint();
 
         let lower = a_lower.saturating_add(b_lower);
         let upper = match (a_upper, b_upper) {
@@ -169,11 +123,18 @@ where
     }
 }
 
+impl<A, B> FusedPull for Merge<A, B>
+where
+    A: FusedPull,
+    B: FusedPull<Item = A::Item, Meta = A::Meta>,
+{
+}
+
 #[cfg(test)]
 mod tests {
     use super::Merge;
-    use crate::test_utils::{AsyncPull, InfinitePull, PendingPull, SyncPull, assert_types};
-    use crate::{No, Yes};
+    use crate::test_utils::{AsyncPull, SyncPull, assert_types};
+    use crate::{No, Pending, Repeat, Yes};
 
     // Merge allows both pulls to be infinite (unlike Chain).
     // CanPend = A::CanPend.or(B::CanPend), CanEnd = A::CanEnd.and(B::CanEnd)
@@ -192,18 +153,15 @@ mod tests {
     #[test]
     fn merge_with_infinite_pulls() {
         // Sync + Infinite: CanPend=No, CanEnd=No (Yes.and(No))
-        let merge: Merge<SyncPull, InfinitePull> =
-            Merge::new(SyncPull::new(1), InfinitePull::new(42));
+        let merge: Merge<SyncPull, Repeat<i32>> = Merge::new(SyncPull::new(1), Repeat::new(42));
         assert_types::<No, No>(&merge);
 
         // Infinite + Infinite: CanPend=No, CanEnd=No - key difference from Chain!
-        let merge: Merge<InfinitePull, InfinitePull> =
-            Merge::new(InfinitePull::new(1), InfinitePull::new(2));
+        let merge: Merge<Repeat<i32>, Repeat<i32>> = Merge::new(Repeat::new(1), Repeat::new(2));
         assert_types::<No, No>(&merge);
 
         // Pending + Infinite: CanPend=Yes, CanEnd=No
-        let merge: Merge<PendingPull<i32>, InfinitePull> =
-            Merge::new(PendingPull::new(), InfinitePull::new(42));
+        let merge: Merge<Pending<i32>, Repeat<i32>> = Merge::new(crate::pending(), Repeat::new(42));
         assert_types::<Yes, No>(&merge);
     }
 
@@ -213,8 +171,8 @@ mod tests {
         let merge_ab: Merge<SyncPull, AsyncPull> = Merge::new(SyncPull::new(1), AsyncPull::new(1));
         assert_types::<Yes, Yes>(&merge_ab);
 
-        let merge_abc: Merge<Merge<SyncPull, AsyncPull>, InfinitePull> =
-            Merge::new(merge_ab, InfinitePull::new(3));
+        let merge_abc: Merge<Merge<SyncPull, AsyncPull>, Repeat<i32>> =
+            Merge::new(merge_ab, Repeat::new(3));
         assert_types::<Yes, No>(&merge_abc);
     }
 }

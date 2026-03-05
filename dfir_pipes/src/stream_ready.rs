@@ -1,4 +1,4 @@
-//! [`SourceStream`] - a `Pull` that wraps a `Stream`.
+//! [`StreamReady`] - a non-blocking `Pull` that wraps a `Stream`.
 
 use core::pin::Pin;
 use core::task::{Poll, Waker};
@@ -11,24 +11,30 @@ use crate::{No, Pull, Step, Yes};
 pin_project! {
     /// A `Pull` implementation that wraps a `Stream` and a `Waker`.
     ///
-    /// This is used by the `source_stream` operator to convert a `Stream` into a `Pull`.
-    pub struct SourceStream<S> {
+    /// Converts a `Stream` into a non-blocking `Pull` by polling with the provided waker.
+    /// If the stream returns `Pending`, this pull treats it as ended (non-blocking).
+    #[must_use = "`Pull`s do nothing unless polled"]
+    #[derive(Clone, Debug)]
+    pub struct StreamReady<S> {
         #[pin]
         stream: S,
         waker: Waker,
     }
 }
 
-impl<S> SourceStream<S> {
-    /// Create a new `SourceStream` from the given stream and waker function.
+impl<S> StreamReady<S>
+where
+    Self: Pull,
+{
+    /// Create a new `StreamReady` from the given stream and waker function.
     pub(crate) fn new(stream: S, waker: Waker) -> Self {
         Self { stream, waker }
     }
 }
 
-/// SourceStream uses its own waker, so it ignores the context parameter.
+/// StreamReady uses its own waker, so it ignores the context parameter.
 /// It implements `Pull` with `Ctx = ()`.
-impl<S> Pull for SourceStream<S>
+impl<S> Pull for StreamReady<S>
 where
     S: Stream,
 {

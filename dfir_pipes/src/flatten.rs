@@ -2,9 +2,12 @@ use core::pin::Pin;
 
 use pin_project_lite::pin_project;
 
-use crate::{Pull, Step};
+use crate::{FusedPull, Pull, Step};
 
 pin_project! {
+    /// Pull combinator that flattens nested iterables.
+    #[must_use = "`Pull`s do nothing unless polled"]
+    #[derive(Clone, Debug, Default)]
     pub struct Flatten<Prev, Iter, Meta> {
         #[pin]
         prev: Prev,
@@ -12,7 +15,10 @@ pin_project! {
     }
 }
 
-impl<Prev, Iter, Meta> Flatten<Prev, Iter, Meta> {
+impl<Prev, Iter, Meta> Flatten<Prev, Iter, Meta>
+where
+    Self: Pull,
+{
     pub(crate) fn new(prev: Prev) -> Self {
         Self {
             prev,
@@ -67,4 +73,11 @@ where
         // We can't know the upper bound since each inner iterator could have any size
         (current_len, None)
     }
+}
+
+impl<Prev> FusedPull for Flatten<Prev, <Prev::Item as IntoIterator>::IntoIter, Prev::Meta>
+where
+    Prev: FusedPull,
+    Prev::Item: IntoIterator,
+{
 }

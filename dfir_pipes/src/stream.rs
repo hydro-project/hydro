@@ -6,13 +6,19 @@ use pin_project_lite::pin_project;
 use crate::{Pull, Step, Yes};
 
 pin_project! {
+    /// A pull that wraps a [`futures::Stream`](futures_core::stream::Stream).
+    #[must_use = "`Pull`s do nothing unless polled"]
+    #[derive(Clone, Debug, Default)]
     pub struct Stream<St> {
         #[pin]
         stream: St,
     }
 }
 
-impl<St> Stream<St> {
+impl<St> Stream<St>
+where
+    Self: Pull,
+{
     pub(crate) fn new(stream: St) -> Self {
         Self { stream }
     }

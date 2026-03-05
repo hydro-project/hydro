@@ -1,18 +1,20 @@
-//! [`PullFn`] - a `Pull` created from a closure.
+//! [`FromFn`] - a `Pull` created from a closure.
 
 use core::pin::Pin;
 
 use crate::{No, Pull, Step, Toggle};
 
 /// A `Pull` implementation created from a closure.
-pub struct PullFn<F, Item, Meta, CanEnd> {
+#[must_use = "`Pull`s do nothing unless polled"]
+#[derive(Clone, Debug)]
+pub struct FromFn<F, Item, Meta, CanEnd> {
     func: F,
     #[expect(clippy::type_complexity, reason = "phantom data")]
     _marker: core::marker::PhantomData<fn() -> (Item, Meta, CanEnd)>,
 }
 
-impl<F, Item, Meta, CanEnd> PullFn<F, Item, Meta, CanEnd> {
-    /// Create a new `PullFn` from the given closure.
+impl<F, Item, Meta, CanEnd> FromFn<F, Item, Meta, CanEnd> {
+    /// Create a new `FromFn` from the given closure.
     pub(crate) fn new(func: F) -> Self {
         Self {
             func,
@@ -21,9 +23,9 @@ impl<F, Item, Meta, CanEnd> PullFn<F, Item, Meta, CanEnd> {
     }
 }
 
-impl<F, Item, Meta, CanEnd> Unpin for PullFn<F, Item, Meta, CanEnd> {}
+impl<F, Item, Meta, CanEnd> Unpin for FromFn<F, Item, Meta, CanEnd> {}
 
-impl<F, Item, Meta, CanEnd> Pull for PullFn<F, Item, Meta, CanEnd>
+impl<F, Item, Meta, CanEnd> Pull for FromFn<F, Item, Meta, CanEnd>
 where
     F: FnMut() -> Step<Item, Meta, No, CanEnd>,
     Meta: Copy,

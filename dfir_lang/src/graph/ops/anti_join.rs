@@ -157,7 +157,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                         !#neg_borrow.contains(k)
                     });
                     let iter = ::std::iter::Iterator::cloned(iter);
-                    #root::dfir_pipes::from_iter(iter)
+                    #root::dfir_pipes::iter(iter)
                 };
             }
         };

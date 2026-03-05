@@ -4,18 +4,20 @@ use std::borrow::{BorrowMut, Cow};
 use std::marker::PhantomData;
 use std::pin::Pin;
 
+use itertools::Either;
 use pin_project_lite::pin_project;
 use smallvec::SmallVec;
 
 use crate::half_join_state::HalfJoinState;
-use crate::{Context, No, Pull, Step, Toggle, Yes};
+use crate::{Context, FusedPull, No, Pull, Step, Toggle, Yes};
 
 pin_project! {
     /// Pull combinator for symmetric hash join operations.
     ///
     /// Joins two pulls on a common key, producing tuples of matched values.
     /// Items are processed as they arrive, with matches emitted immediately.
-    #[must_use = "pulls do nothing unless polled"]
+    #[must_use = "`Pull`s do nothing unless polled"]
+    #[derive(Clone, Debug, Default)]
     pub struct SymmetricHashJoin<Lhs, Rhs, LhsState, RhsState, LhsStateInner, RhsStateInner> {
         #[pin]
         lhs: Lhs,
@@ -25,15 +27,14 @@ pin_project! {
         lhs_state: LhsState,
         rhs_state: RhsState,
 
-        lhs_ended: bool,
-        rhs_ended: bool,
-
         _phantom: PhantomData<(LhsStateInner, RhsStateInner)>,
     }
 }
 
 impl<Lhs, Rhs, LhsState, RhsState, LhsStateInner, RhsStateInner>
     SymmetricHashJoin<Lhs, Rhs, LhsState, RhsState, LhsStateInner, RhsStateInner>
+where
+    Self: Pull,
 {
     /// Creates a new symmetric hash join Pull from two input Pulls and their join states.
     pub fn new(lhs: Lhs, rhs: Rhs, lhs_state: LhsState, rhs_state: RhsState) -> Self {
@@ -42,8 +43,6 @@ impl<Lhs, Rhs, LhsState, RhsState, LhsStateInner, RhsStateInner>
             rhs,
             lhs_state,
             rhs_state,
-            lhs_ended: false,
-            rhs_ended: false,
             _phantom: PhantomData,
         }
     }
@@ -55,8 +54,8 @@ where
     Key: Eq + std::hash::Hash + Clone,
     V1: Clone,
     V2: Clone,
-    Lhs: Pull<Item = (Key, V1), Meta = ()>,
-    Rhs: Pull<Item = (Key, V2), Meta = ()>,
+    Lhs: FusedPull<Item = (Key, V1), Meta = ()>,
+    Rhs: FusedPull<Item = (Key, V2), Meta = ()>,
     LhsState: BorrowMut<LhsStateInner>,
     RhsState: BorrowMut<RhsStateInner>,
     LhsStateInner: HalfJoinState<Key, V1, V2>,
@@ -86,63 +85,42 @@ where
                 return Step::Ready((k, (v1, v2)), ());
             }
 
-            // Both ended - return Ended
-            if *this.lhs_ended && *this.rhs_ended {
-                return Step::Ended(Toggle::convert_from(Yes));
-            }
-
-            // Try to pull from lhs if not ended
-            if !*this.lhs_ended {
-                match this
-                    .lhs
-                    .as_mut()
-                    .pull(<Lhs::Ctx<'_> as Context<'_>>::unmerge_self(ctx))
+            // Try to pull from lhs
+            let lhs_step = this
+                .lhs
+                .as_mut()
+                .pull(<Lhs::Ctx<'_> as Context<'_>>::unmerge_self(ctx));
+            if let Step::Ready((k, v1), _meta) = lhs_step {
+                if lhs_state.build(k.clone(), Cow::Borrowed(&v1))
+                    && let Some((k, v1, v2)) = rhs_state.probe(&k, &v1)
                 {
-                    Step::Ready((k, v1), _meta) => {
-                        if lhs_state.build(k.clone(), Cow::Borrowed(&v1))
-                            && let Some((k, v1, v2)) = rhs_state.probe(&k, &v1)
-                        {
-                            return Step::Ready((k, (v1, v2)), ());
-                        }
-                        continue;
-                    }
-                    Step::Pending(can_pend) => {
-                        return Step::Pending(Toggle::convert_from(can_pend));
-                    }
-                    Step::Ended(_) => {
-                        *this.lhs_ended = true;
-                    }
+                    return Step::Ready((k, (v1, v2)), ());
                 }
+                continue;
             }
 
-            // Try to pull from rhs if not ended
-            if !*this.rhs_ended {
-                match this
-                    .rhs
-                    .as_mut()
-                    .pull(<Lhs::Ctx<'_> as Context<'_>>::unmerge_other(ctx))
+            // Try to pull from rhs
+            let rhs_step = this
+                .rhs
+                .as_mut()
+                .pull(<Lhs::Ctx<'_> as Context<'_>>::unmerge_other(ctx));
+            if let Step::Ready((k, v2), _meta) = rhs_step {
+                if rhs_state.build(k.clone(), Cow::Borrowed(&v2))
+                    && let Some((k, v2, v1)) = lhs_state.probe(&k, &v2)
                 {
-                    Step::Ready((k, v2), _meta) => {
-                        if rhs_state.build(k.clone(), Cow::Borrowed(&v2))
-                            && let Some((k, v2, v1)) = lhs_state.probe(&k, &v2)
-                        {
-                            return Step::Ready((k, (v1, v2)), ());
-                        }
-                        continue;
-                    }
-                    Step::Pending(can_pend) => {
-                        return Step::Pending(Toggle::convert_from(can_pend));
-                    }
-                    Step::Ended(_) => {
-                        *this.rhs_ended = true;
-                    }
+                    return Step::Ready((k, (v1, v2)), ());
                 }
+                continue;
             }
 
-            // If we get here, both sides have ended this iteration
-            if *this.lhs_ended && *this.rhs_ended {
-                return Step::Ended(Toggle::convert_from(Yes));
+            if lhs_step.is_pending() || rhs_step.is_pending() {
+                return Step::pending();
             }
+
+            // If we get here, both sides have ended.
+            debug_assert!(lhs_step.is_ended());
+            debug_assert!(rhs_step.is_ended());
+            return Step::ended();
         }
     }
 }
@@ -314,6 +292,7 @@ where
 
 pin_project! {
     /// Pull wrapper for the new tick iterator case.
+    #[must_use = "`Pull`s do nothing unless polled"]
     pub struct NewTickJoinPull<'a, Key, V1, V2, LhsState, RhsState>
     where
         Key: Clone,
@@ -352,63 +331,11 @@ where
     }
 }
 
-pin_project! {
-    #[project = SymmetricHashJoinEitherProj]
-    /// Enum to hold either the new-tick Pull or the streaming Pull.
-    pub enum SymmetricHashJoinEither<'a, Key, V1, V2, Lhs, Rhs, LhsState, RhsState>
-    where
-        Key: Clone,
-        V1: Clone,
-        V2: Clone,
-    {
-        /// New tick mode - iterates over pre-computed matches.
-        NewTick {
-            #[pin]
-            pull: NewTickJoinPull<'a, Key, V1, V2, LhsState, RhsState>,
-        },
-        /// Streaming mode - processes items as they arrive.
-        Streaming {
-            #[pin]
-            pull: SymmetricHashJoin<Lhs, Rhs, &'a mut LhsState, &'a mut RhsState, LhsState, RhsState>,
-        },
-    }
-}
-
-impl<'a, Key, V1, V2, Lhs, Rhs, LhsState, RhsState> Pull
-    for SymmetricHashJoinEither<'a, Key, V1, V2, Lhs, Rhs, LhsState, RhsState>
-where
-    Key: Eq + std::hash::Hash + Clone,
-    V1: Clone,
-    V2: Clone,
-    Lhs: Pull<Item = (Key, V1), Meta = ()>,
-    Rhs: Pull<Item = (Key, V2), Meta = ()>,
-    LhsState: HalfJoinState<Key, V1, V2>,
-    RhsState: HalfJoinState<Key, V2, V1>,
-{
-    type Ctx<'ctx> = <Lhs::Ctx<'ctx> as Context<'ctx>>::Merged<Rhs::Ctx<'ctx>>;
-
-    type Item = (Key, (V1, V2));
-    type Meta = ();
-    type CanPend = <SymmetricHashJoin<
-        Lhs,
-        Rhs,
-        &'a mut LhsState,
-        &'a mut RhsState,
-        LhsState,
-        RhsState,
-    > as Pull>::CanPend;
-    type CanEnd = Yes;
-
-    fn pull(
-        self: Pin<&mut Self>,
-        ctx: &mut Self::Ctx<'_>,
-    ) -> Step<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
-        match self.project() {
-            SymmetricHashJoinEitherProj::NewTick { pull } => pull.pull(&mut ()).convert_into(),
-            SymmetricHashJoinEitherProj::Streaming { pull } => pull.pull(ctx).convert_into(),
-        }
-    }
-}
+/// Type alias for the `Either` pull returned by [`symmetric_hash_join`].
+pub type SymmetricHashJoinEither<'a, Key, V1, V2, Lhs, Rhs, LhsState, RhsState> = Either<
+    NewTickJoinPull<'a, Key, V1, V2, LhsState, RhsState>,
+    SymmetricHashJoin<Lhs, Rhs, &'a mut LhsState, &'a mut RhsState, LhsState, RhsState>,
+>;
 
 /// Creates a symmetric hash join Pull from two input Pulls and their join states.
 ///
@@ -427,8 +354,8 @@ where
     Key: 'a + Eq + std::hash::Hash + Clone,
     V1: 'a + Clone,
     V2: 'a + Clone,
-    Lhs: 'a + Pull<Item = (Key, V1), Meta = ()>,
-    Rhs: 'a + Pull<Item = (Key, V2), Meta = ()>,
+    Lhs: 'a + FusedPull<Item = (Key, V1), Meta = ()>,
+    Rhs: 'a + FusedPull<Item = (Key, V2), Meta = ()>,
     LhsState: HalfJoinState<Key, V1, V2>,
     RhsState: HalfJoinState<Key, V2, V1>,
 {
@@ -442,13 +369,9 @@ where
         } else {
             NewTickJoinIter::new_rhs_smaller(lhs_state, rhs_state)
         };
-        SymmetricHashJoinEither::NewTick {
-            pull: NewTickJoinPull { iter },
-        }
+        SymmetricHashJoinEither::Left(NewTickJoinPull { iter })
     } else {
-        SymmetricHashJoinEither::Streaming {
-            pull: SymmetricHashJoin::new(lhs, rhs, lhs_state, rhs_state),
-        }
+        SymmetricHashJoinEither::Right(SymmetricHashJoin::new(lhs, rhs, lhs_state, rhs_state))
     }
 }
 

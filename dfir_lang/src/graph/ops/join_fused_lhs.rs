@@ -87,7 +87,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
 
                 let #ident = {
                     let () = #work_fn_async(
-                        #root::compiled::pull::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs),
+                        #root::dfir_pipes::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs),
                     ).await;
 
                     #[allow(clippy::clone_on_copy)]
@@ -104,7 +104,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                 let #ident = {
                     // Accumulate LHS.
                     let () = #work_fn_async(
-                        #root::compiled::pull::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs),
+                        #root::dfir_pipes::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs),
                     ).await;
 
                     // RHS replay index.
@@ -127,7 +127,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                     let iter = #rhs_borrow_ident[replay_idx..]
                         .iter()
                         .filter_map(|(k, v2)| #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))));
-                    #root::dfir_pipes::from_iter(iter)
+                    #root::dfir_pipes::iter(iter)
                 };
             },
             Persistence::Mutable => unreachable!(),

@@ -105,7 +105,7 @@ pub const CROSS_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
             // H +-----+-----+
             // S | New | New |
             //   +-----+-----+
-            let #ident = #root::dfir_pipes::from_iter(
+            let #ident = #root::dfir_pipes::iter(
                 #lhs_borrow
                     .iter()
                     .enumerate()

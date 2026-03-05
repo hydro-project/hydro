@@ -19,8 +19,8 @@ fn run_shj_cross_benchmark<V1, V2>(
         HalfMultisetJoinState::default(),
         HalfMultisetJoinState::default(),
     );
-    let lhs_pull = dfir_pipes::from_iter(lhs.into_iter().map(|x| ((), x)));
-    let rhs_pull = dfir_pipes::from_iter(rhs.into_iter().map(|x| ((), x)));
+    let lhs_pull = dfir_pipes::iter(lhs.into_iter().map(|x| ((), x))).fuse();
+    let rhs_pull = dfir_pipes::iter(rhs.into_iter().map(|x| ((), x))).fuse();
     let join = symmetric_hash_join(lhs_pull, rhs_pull, &mut lhs_state, &mut rhs_state, false);
     let join = pin!(join);
     let Poll::Ready(join) = Future::poll(join, &mut Context::from_waker(Waker::noop())) else {

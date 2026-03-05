@@ -2,9 +2,12 @@ use core::pin::Pin;
 
 use pin_project_lite::pin_project;
 
-use crate::{Pull, Step, Yes};
+use crate::{FusedPull, Pull, Step, Yes};
 
 pin_project! {
+    /// Pull combinator that yields items while a predicate returns `true`.
+    #[must_use = "`Pull`s do nothing unless polled"]
+    #[derive(Clone, Debug)]
     pub struct TakeWhile<Prev, Func> {
         #[pin]
         prev: Prev,
@@ -13,7 +16,10 @@ pin_project! {
     }
 }
 
-impl<Prev, Func> TakeWhile<Prev, Func> {
+impl<Prev, Func> TakeWhile<Prev, Func>
+where
+    Self: Pull,
+{
     pub(crate) fn new(prev: Prev, func: Func) -> Self {
         Self {
             prev,
@@ -68,4 +74,11 @@ where
             (0, upper)
         }
     }
+}
+
+impl<Prev, Func> FusedPull for TakeWhile<Prev, Func>
+where
+    Prev: FusedPull,
+    Func: FnMut(&Prev::Item) -> bool,
+{
 }

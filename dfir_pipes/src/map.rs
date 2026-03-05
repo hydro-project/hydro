@@ -2,9 +2,12 @@ use core::pin::Pin;
 
 use pin_project_lite::pin_project;
 
-use crate::{Pull, Step};
+use crate::{FusedPull, Pull, Step};
 
 pin_project! {
+    /// Pull combinator that transforms each item with a closure.
+    #[must_use = "`Pull`s do nothing unless polled"]
+    #[derive(Clone, Debug)]
     pub struct Map<Prev, Func> {
         #[pin]
         prev: Prev,
@@ -12,7 +15,10 @@ pin_project! {
     }
 }
 
-impl<Prev, Func> Map<Prev, Func> {
+impl<Prev, Func> Map<Prev, Func>
+where
+    Self: Pull,
+{
     pub(crate) fn new(prev: Prev, func: Func) -> Self {
         Self { prev, func }
     }
@@ -45,4 +51,11 @@ where
     fn size_hint(self: Pin<&Self>) -> (usize, Option<usize>) {
         self.project_ref().prev.size_hint()
     }
+}
+
+impl<Prev, Func, Item> FusedPull for Map<Prev, Func>
+where
+    Prev: FusedPull,
+    Func: FnMut(Prev::Item) -> Item,
+{
 }

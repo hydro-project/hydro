@@ -3,7 +3,7 @@ use core::pin::Pin;
 
 use pin_project_lite::pin_project;
 
-use crate::{Context, Pull, Step, Toggle};
+use crate::{Context, FusedPull, Pull, Step, Toggle};
 
 pin_project! {
     /// Pull combinator that crosses each item from `item_pull` with a singleton value from `singleton_pull`.
@@ -12,20 +12,21 @@ pin_project! {
     /// All subsequent items from `item_pull` are paired with this cached singleton value.
     ///
     /// If `singleton_pull` ends before yielding any items, the entire combinator ends immediately.
-    pub struct CrossSingleton<ItemPull, SinglePull, State> {
+    #[must_use = "`Pull`s do nothing unless polled"]
+    #[derive(Clone, Debug, Default)]
+    pub struct CrossSingleton<ItemPull, SinglePull, SingleState> {
         #[pin]
         item_pull: ItemPull,
         #[pin]
         singleton_pull: SinglePull,
 
-        singleton_state: State,
+        singleton_state: SingleState,
     }
 }
 
 impl<ItemPull, SinglePull, SingleState> CrossSingleton<ItemPull, SinglePull, SingleState>
 where
-    ItemPull: Pull,
-    SinglePull: Pull,
+    Self: Pull,
 {
     pub(crate) fn new(
         item_pull: ItemPull,
@@ -71,13 +72,13 @@ where
                     .pull(<ItemPull::Ctx<'_> as Context<'_>>::unmerge_other(ctx))
                 {
                     Step::Ready(item, _meta) => singleton_state.insert(item),
-                    Step::Pending(can_pend) => {
-                        return Step::Pending(Toggle::convert_from(can_pend));
+                    Step::Pending(_) => {
+                        return Step::pending();
                     }
-                    Step::Ended(can_end) => {
+                    Step::Ended(_) => {
                         // If `singleton_pull` returns EOS, we return EOS, no fused requirement.
                         // This short-circuits the `ItemPull` side, dropping them.
-                        return Step::Ended(Toggle::convert_from(can_end));
+                        return Step::ended();
                     }
                 }
             }
@@ -92,9 +93,19 @@ where
                 // TODO(mingwei): use meta of singleton too
                 Step::Ready((item, singleton.clone()), meta)
             }
-            Step::Pending(can_pend) => Step::Pending(Toggle::convert_from(can_pend)),
+            Step::Pending(_) => Step::pending(),
             // If `item_pull` returns EOS, we return EOS, no fused requirement.
-            Step::Ended(can_end) => Step::Ended(Toggle::convert_from(can_end)),
+            Step::Ended(_) => Step::ended(),
         }
     }
+}
+
+impl<ItemPull, SinglePull, SingleState> FusedPull
+    for CrossSingleton<ItemPull, SinglePull, SingleState>
+where
+    ItemPull: FusedPull,
+    SinglePull: FusedPull,
+    SinglePull::Item: Clone,
+    SingleState: BorrowMut<Option<SinglePull::Item>>,
+{
 }

@@ -102,7 +102,7 @@ pub const _LATTICE_FOLD_BATCH: OperatorConstraints = OperatorConstraints {
                     ::std::option::Option::is_some(&#work_fn_async(fut).await)
                 };
 
-                let #ident = #root::dfir_pipes::from_iter(
+                let #ident = #root::dfir_pipes::iter(
                     // `Some` if `true`
                     bool::then(#signal_ident, || ::std::mem::take(&mut *#lattice_ident))
                 );

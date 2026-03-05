@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use bincode::options;
 use bytes::{BufMut, Bytes, BytesMut};
 use dfir_lang::graph::{WriteConfig, WriteGraphType};
-use dfir_rs::compiled::pull::HalfMultisetJoinState;
+use dfir_pipes::HalfMultisetJoinState;
 use dfir_rs::dfir_syntax;
 use dfir_rs::scheduled::ticks::TickInstant;
 use futures::Stream;

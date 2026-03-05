@@ -49,7 +49,7 @@ pub const SORT: OperatorConstraints = OperatorConstraints {
             let #ident = {
                 let mut tmp = #work_fn_async(#root::dfir_pipes::Pull::collect::<::std::vec::Vec<_>>(#input)).await;
                 <[_]>::sort_unstable(&mut tmp);
-                #root::dfir_pipes::from_iter(tmp)
+                #root::dfir_pipes::iter(tmp)
             };
         };
         Ok(OperatorWriteOutput {

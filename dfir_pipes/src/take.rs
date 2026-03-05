@@ -2,9 +2,12 @@ use core::pin::Pin;
 
 use pin_project_lite::pin_project;
 
-use crate::{Pull, Step, Yes};
+use crate::{FusedPull, Pull, Step, Yes};
 
 pin_project! {
+    /// Pull combinator that yields the first `n` items.
+    #[must_use = "`Pull`s do nothing unless polled"]
+    #[derive(Clone, Debug, Default)]
     pub struct Take<Prev> {
         #[pin]
         prev: Prev,
@@ -12,7 +15,10 @@ pin_project! {
     }
 }
 
-impl<Prev> Take<Prev> {
+impl<Prev> Take<Prev>
+where
+    Self: Pull,
+{
     pub(crate) fn new(prev: Prev, n: usize) -> Self {
         Self { prev, remaining: n }
     }
@@ -59,3 +65,5 @@ where
         )
     }
 }
+
+impl<Prev> FusedPull for Take<Prev> where Prev: FusedPull {}

@@ -6,6 +6,9 @@ use pin_project_lite::pin_project;
 use crate::{Context, Pull, Step};
 
 pin_project! {
+    /// Future that runs a closure on each item from a pull.
+    #[must_use = "futures do nothing unless polled"]
+    #[derive(Clone, Debug)]
     pub struct ForEach<Prev, Func> {
         #[pin]
         prev: Prev,
@@ -13,7 +16,10 @@ pin_project! {
     }
 }
 
-impl<Prev, Func> ForEach<Prev, Func> {
+impl<Prev, Func> ForEach<Prev, Func>
+where
+    Self: Future,
+{
     pub(crate) fn new(prev: Prev, func: Func) -> Self {
         Self { prev, func }
     }

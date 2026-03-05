@@ -9,6 +9,7 @@ use crate::{Pull, Step};
 pin_project! {
     /// [`Future`] for pulling from a [`Pull`] and pushing to a [`Sink`].
     #[must_use = "futures do nothing unless polled"]
+    #[derive(Clone, Debug)]
     pub struct SendSink<Pul, Psh> {
         #[pin]
         pull: Pul,
@@ -17,7 +18,10 @@ pin_project! {
     }
 }
 
-impl<Pul, Psh> SendSink<Pul, Psh> {
+impl<Pul, Psh> SendSink<Pul, Psh>
+where
+    Self: Future,
+{
     /// Create a new [`SendSink`] from the given `pull` and `push` sides.
     pub(crate) fn new(pull: Pul, push: Psh) -> Self {
         Self { pull, push }

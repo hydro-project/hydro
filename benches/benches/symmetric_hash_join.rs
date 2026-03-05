@@ -21,8 +21,8 @@ fn run_join_benchmark<K, V1, V2>(
 {
     let (mut lhs_state, mut rhs_state) =
         black_box((HalfSetJoinState::default(), HalfSetJoinState::default()));
-    let lhs_pull = dfir_pipes::from_iter(lhs);
-    let rhs_pull = dfir_pipes::from_iter(rhs);
+    let lhs_pull = dfir_pipes::iter(lhs).fuse();
+    let rhs_pull = dfir_pipes::iter(rhs).fuse();
     let join = shj_fn(
         black_box(lhs_pull),
         black_box(rhs_pull),

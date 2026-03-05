@@ -5,6 +5,8 @@ use core::pin::Pin;
 use crate::{Pull, Step, Toggle, Yes};
 
 /// A `Pull` implementation created from a closure.
+#[must_use = "`Pull`s do nothing unless polled"]
+#[derive(Clone, Debug)]
 pub struct PollFn<F, Item, Meta, CanEnd> {
     func: F,
     #[expect(clippy::type_complexity, reason = "phantom data")]

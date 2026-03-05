@@ -3,9 +3,7 @@
 use core::future::Future;
 use core::pin::Pin;
 use core::task::Poll;
-#[cfg(feature = "std")]
 use std::collections::hash_map::Entry;
-#[cfg(feature = "std")]
 use std::hash::{BuildHasher, Hash};
 
 use pin_project_lite::pin_project;
@@ -13,20 +11,18 @@ use pin_project_lite::pin_project;
 use crate::{Context, Pull, Step};
 
 /// Generalization of fold, reduce, etc.
-#[cfg(feature = "std")]
 pub trait Accumulator<ValAccum, ValIn> {
     /// Accumulates a value into an either occupied or vacant table entry.
     fn accumulate<Key>(&mut self, entry: Entry<'_, Key, ValAccum>, item: ValIn);
 }
 
 /// Fold with an initialization and fold function.
-#[cfg(feature = "std")]
+#[derive(Clone, Debug)]
 pub struct Fold<InitFn, FoldFn> {
     init_fn: InitFn,
     fold_fn: FoldFn,
 }
 
-#[cfg(feature = "std")]
 impl<InitFn, FoldFn> Fold<InitFn, FoldFn> {
     /// Create a `Fold` [`Accumulator`] with the given `InitFn` and `FoldFn`.
     pub fn new<Accum, Item>(init_fn: InitFn, fold_fn: FoldFn) -> Self
@@ -37,7 +33,6 @@ impl<InitFn, FoldFn> Fold<InitFn, FoldFn> {
     }
 }
 
-#[cfg(feature = "std")]
 impl<InitFn, FoldFn, Accum, Item> Accumulator<Accum, Item> for Fold<InitFn, FoldFn>
 where
     InitFn: Fn() -> Accum,
@@ -50,12 +45,11 @@ where
 }
 
 /// Reduce with a reduce function.
-#[cfg(feature = "std")]
+#[derive(Clone, Debug)]
 pub struct Reduce<ReduceFn> {
     reduce_fn: ReduceFn,
 }
 
-#[cfg(feature = "std")]
 impl<ReduceFn> Reduce<ReduceFn> {
     /// Create a `Reduce` [`Accumulator`] with the given `ReduceFn`.
     pub fn new<Item>(reduce_fn: ReduceFn) -> Self
@@ -66,7 +60,6 @@ impl<ReduceFn> Reduce<ReduceFn> {
     }
 }
 
-#[cfg(feature = "std")]
 impl<ReduceFn, Item> Accumulator<Item, Item> for Reduce<ReduceFn>
 where
     ReduceFn: Fn(&mut Item, Item),
@@ -85,13 +78,12 @@ where
 }
 
 /// Fold but with initialization by converting the first received item.
-#[cfg(feature = "std")]
+#[derive(Clone, Debug)]
 pub struct FoldFrom<InitFn, FoldFn> {
     init_fn: InitFn,
     fold_fn: FoldFn,
 }
 
-#[cfg(feature = "std")]
 impl<InitFn, FoldFn> FoldFrom<InitFn, FoldFn> {
     /// Create a `FoldFrom` [`Accumulator`] with the given `InitFn` and `FoldFn`.
     pub fn new<Accum, Item>(init_fn: InitFn, fold_fn: FoldFn) -> Self
@@ -102,7 +94,6 @@ impl<InitFn, FoldFn> FoldFrom<InitFn, FoldFn> {
     }
 }
 
-#[cfg(feature = "std")]
 impl<InitFn, FoldFn, Accum, Item> Accumulator<Accum, Item> for FoldFrom<InitFn, FoldFn>
 where
     InitFn: Fn(Item) -> Accum,
@@ -123,8 +114,8 @@ where
 
 pin_project! {
     /// Future for [`accumulate_all`].
-    #[cfg(feature = "std")]
-    pub struct AccumulateAll<'a, Prev, Accum, Key, ValAccum, ValIn, S> {
+    #[must_use = "futures do nothing unless polled"]
+        pub struct AccumulateAll<'a, Prev, Accum, Key, ValAccum, ValIn, S> {
         #[pin]
         prev: Prev,
         accum: &'a mut Accum,
@@ -133,9 +124,10 @@ pin_project! {
     }
 }
 
-#[cfg(feature = "std")]
 impl<'a, Prev, Accum, Key, ValAccum, ValIn, S>
     AccumulateAll<'a, Prev, Accum, Key, ValAccum, ValIn, S>
+where
+    Self: Future,
 {
     pub(crate) fn new(
         prev: Prev,
@@ -151,7 +143,6 @@ impl<'a, Prev, Accum, Key, ValAccum, ValIn, S>
     }
 }
 
-#[cfg(feature = "std")]
 impl<'a, Prev, Accum, Key, ValAccum, ValIn, S> Future
     for AccumulateAll<'a, Prev, Accum, Key, ValAccum, ValIn, S>
 where
@@ -180,7 +171,6 @@ where
 }
 
 /// Use the accumulator `accum` to accumulate all entries in the `Pull` `prev` into the `hash_map`.
-#[cfg(feature = "std")]
 pub fn accumulate_all<'a, Key, ValAccum, ValIn, Accum, S, Prev>(
     accum: &'a mut Accum,
     hash_map: &'a mut std::collections::HashMap<Key, ValAccum, S>,

@@ -114,7 +114,7 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
                 }
 
                 let #ident = #work_fn(
-                    || #root::dfir_pipes::from_iter(
+                    || #root::dfir_pipes::iter(
                         // 1 or 0 items (`Some` or `None`).
                         ::std::clone::Clone::clone(&*#accumulator_ident)
                     )

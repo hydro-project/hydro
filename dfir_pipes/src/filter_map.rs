@@ -2,9 +2,12 @@ use core::pin::Pin;
 
 use pin_project_lite::pin_project;
 
-use crate::{Pull, Step};
+use crate::{FusedPull, Pull, Step};
 
 pin_project! {
+    /// Pull combinator that both filters and maps items.
+    #[must_use = "`Pull`s do nothing unless polled"]
+    #[derive(Clone, Debug)]
     pub struct FilterMap<Prev, Func> {
         #[pin]
         prev: Prev,
@@ -12,7 +15,10 @@ pin_project! {
     }
 }
 
-impl<Prev, Func> FilterMap<Prev, Func> {
+impl<Prev, Func> FilterMap<Prev, Func>
+where
+    Self: Pull,
+{
     pub(crate) fn new(prev: Prev, func: Func) -> Self {
         Self { prev, func }
     }
@@ -54,4 +60,11 @@ where
         let (_, upper) = self.project_ref().prev.size_hint();
         (0, upper)
     }
+}
+
+impl<Prev, Func, Item> FusedPull for FilterMap<Prev, Func>
+where
+    Prev: FusedPull,
+    Func: FnMut(Prev::Item) -> Option<Item>,
+{
 }

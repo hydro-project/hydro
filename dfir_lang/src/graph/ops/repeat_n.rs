@@ -61,7 +61,7 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
                     #root::dfir_pipes::Pull::collect::<::std::vec::Vec<_>>(#input),
                 ).await;
             }
-            let #ident = #root::dfir_pipes::from_iter(::std::clone::Clone::clone(&*#vec_ident));
+            let #ident = #root::dfir_pipes::iter(::std::clone::Clone::clone(&*#vec_ident));
         };
 
         // Reschedule, to repeat.

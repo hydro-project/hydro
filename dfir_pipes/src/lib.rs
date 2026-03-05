@@ -1,5 +1,12 @@
+//! Pull-based stream combinators for dataflow pipelines.
+//!
+//! This crate provides a [`Pull`] trait and a collection of composable operators
+//! for building pull-based data pipelines. Operators are chained via method calls
+//! on [`Pull`], similar to iterator adapters.
 #![no_std]
 #![cfg_attr(nightly, feature(extend_one))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
+#![warn(missing_docs)]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
@@ -18,7 +25,7 @@ use core::pin::Pin;
 use core::task::{Poll, Waker};
 
 use futures_sink::Sink;
-pub use itertools::{self, EitherOrBoth};
+pub use itertools::{self, Either, EitherOrBoth};
 use sealed::sealed;
 
 #[cfg(feature = "std")]
@@ -26,6 +33,7 @@ mod accumulator;
 mod chain;
 mod collect;
 mod cross_singleton;
+mod either;
 mod empty;
 mod enumerate;
 mod filter;
@@ -35,6 +43,7 @@ mod flatten;
 mod for_each;
 mod fuse;
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub mod half_join_state;
 mod inspect;
 mod iter;
@@ -42,22 +51,26 @@ mod map;
 mod merge;
 mod next;
 mod once;
+mod pending;
 mod poll_fn;
 mod pull_fn;
+mod repeat;
 mod send_sink;
 mod skip;
 mod skip_while;
-mod source_stream;
 mod stream;
+mod stream_ready;
 #[cfg(feature = "std")]
 mod symmetric_hash_join;
 mod take;
 mod take_while;
 #[cfg(test)]
 mod test_utils;
+mod zip;
 mod zip_longest;
 
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use accumulator::{AccumulateAll, Accumulator, Fold, FoldFrom, Reduce, accumulate_all};
 pub use chain::Chain;
 pub use collect::Collect;
@@ -71,6 +84,7 @@ pub use flatten::Flatten;
 pub use for_each::ForEach;
 pub use fuse::Fuse;
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use half_join_state::{HalfJoinState, HalfMultisetJoinState, HalfSetJoinState};
 pub use inspect::Inspect;
 pub use iter::Iter;
@@ -78,20 +92,24 @@ pub use map::Map;
 pub use merge::Merge;
 pub use next::Next;
 pub use once::Once;
+pub use pending::Pending;
 pub use poll_fn::PollFn;
-pub use pull_fn::PullFn;
+pub use pull_fn::FromFn;
+pub use repeat::Repeat;
 pub use send_sink::SendSink;
 pub use skip::Skip;
 pub use skip_while::SkipWhile;
-pub use source_stream::SourceStream;
-pub use stream::Stream as StreamPull;
+pub use stream::Stream;
+pub use stream_ready::StreamReady;
 #[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use symmetric_hash_join::{
     NewTickJoinIter, NewTickJoinPull, SymmetricHashJoin, SymmetricHashJoinEither,
     symmetric_hash_join,
 };
 pub use take::Take;
 pub use take_while::TakeWhile;
+pub use zip::Zip;
 pub use zip_longest::ZipLongest;
 
 /// A sealed trait for type-level booleans used to track pull capabilities.
@@ -101,12 +119,12 @@ pub use zip_longest::ZipLongest;
 /// optimize away impossible code paths.
 #[sealed]
 pub trait Toggle: Sized {
-    /// Attempts to convert this type, returning `Err(())` if converting to `No`.
-    fn try_convert_from(other: impl Toggle) -> Option<Self>;
+    /// Attempts to create this type, returning `Err(())` if `Self` is `No`.
+    fn try_create() -> Option<Self>;
 
-    /// Attemps to convert this type, panicking if converting to `No`.
-    fn convert_from(other: impl Toggle) -> Self {
-        Self::try_convert_from(other).unwrap()
+    /// Attempts to create this type, panicking if `Self` is `No`.
+    fn create() -> Self {
+        Self::try_create().unwrap()
     }
 
     /// The result of OR-ing two toggles. `Yes.or(T) = Yes`, `No.or(T) = T`.
@@ -118,19 +136,22 @@ pub trait Toggle: Sized {
 /// Type-level `true` for [`Toggle`].
 ///
 /// Indicates that a capability is present (e.g., the pull can pend or can end).
+#[derive(Default)]
 pub struct Yes;
+
 #[sealed]
 impl Toggle for Yes {
-    fn try_convert_from(_other: impl Toggle) -> Option<Self> {
+    fn try_create() -> Option<Self> {
         Some(Yes)
     }
 
     type Or<T: Toggle> = Yes;
     type And<T: Toggle> = T;
 }
+
 #[sealed]
 impl Toggle for No {
-    fn try_convert_from(_other: impl Toggle) -> Option<Self> {
+    fn try_create() -> Option<Self> {
         None
     }
 
@@ -144,17 +165,24 @@ fn mut_unit<'a>() -> &'a mut () {
     unsafe { core::ptr::NonNull::dangling().as_mut() }
 }
 
+/// Context trait for pull-based streams, allowing operators to be generic over
+/// synchronous (`()`) and asynchronous ([`core::task::Context`]) execution contexts.
 #[sealed]
 pub trait Context<'ctx>: Sized {
+    /// The merged context type when combining two pulls.
     type Merged<Other: Context<'ctx>>: Context<'ctx>;
 
+    /// Creates a context reference from a [`core::task::Context`].
     fn from_task<'s>(task_ctx: &'s mut core::task::Context<'ctx>) -> &'s mut Self;
 
+    /// Extracts the self-side context from a merged context.
     fn unmerge_self<'s, Other: Context<'ctx>>(merged: &'s mut Self::Merged<Other>) -> &'s mut Self;
+    /// Extracts the other-side context from a merged context.
     fn unmerge_other<'s, Other: Context<'ctx>>(
         merged: &'s mut Self::Merged<Other>,
     ) -> &'s mut Other;
 }
+
 #[sealed]
 impl<'ctx> Context<'ctx> for () {
     type Merged<Other: Context<'ctx>> = Other;
@@ -174,6 +202,7 @@ impl<'ctx> Context<'ctx> for () {
         merged
     }
 }
+
 #[sealed]
 impl<'ctx> Context<'ctx> for core::task::Context<'ctx> {
     type Merged<Other: Context<'ctx>> = core::task::Context<'ctx>;
@@ -212,26 +241,49 @@ pub enum Step<Item, Meta, CanPend: Toggle, CanEnd: Toggle> {
 }
 
 impl<Item, Meta, CanPend: Toggle, CanEnd: Toggle> Step<Item, Meta, CanPend, CanEnd> {
+    /// Creates a new `Step::Ended`, or panics if `CanEnd = No`.
+    pub fn ended() -> Self {
+        Step::Ended(Toggle::create())
+    }
+
+    /// Creates a new `Step::Pending`, or panics if `CanPend = No`.
+    pub fn pending() -> Self {
+        Step::Pending(Toggle::create())
+    }
+
+    /// Returns `true` if the step is a [`Step::Ended`].
+    pub fn is_ended(&self) -> bool {
+        matches!(self, Step::Ended(_))
+    }
+
+    /// Returns `true` if the step is a [`Step::Pending`].
+    pub fn is_pending(&self) -> bool {
+        matches!(self, Step::Pending(_))
+    }
+
+    /// Tries to convert the `CanPend` and `CanEnd` type parameters, returning `None` if the conversion is invalid.
     pub fn try_convert_into<NewPend: Toggle, NewEnd: Toggle>(
         self,
     ) -> Option<Step<Item, Meta, NewPend, NewEnd>> {
         Some(match self {
             Self::Ready(item, meta) => Step::Ready(item, meta),
-            Self::Pending(can_pend) => Step::Pending(Toggle::try_convert_from(can_pend)?),
-            Self::Ended(can_end) => Step::Ended(Toggle::try_convert_from(can_end)?),
+            Self::Pending(_) => Step::Pending(Toggle::try_create()?),
+            Self::Ended(_) => Step::Ended(Toggle::try_create()?),
         })
     }
 
+    /// Converts the `CanPend` and `CanEnd` type parameters, panicking if the conversion is invalid.
     pub fn convert_into<NewPend: Toggle, NewEnd: Toggle>(
         self,
     ) -> Step<Item, Meta, NewPend, NewEnd> {
         match self {
             Self::Ready(item, meta) => Step::Ready(item, meta),
-            Self::Pending(can_pend) => Step::Pending(Toggle::convert_from(can_pend)),
-            Self::Ended(can_end) => Step::Ended(Toggle::convert_from(can_end)),
+            Self::Pending(_) => Step::pending(),
+            Self::Ended(_) => Step::ended(),
         }
     }
 
+    /// Converts this `Step` into a [`Poll`]`<Option<(Item, Meta)>>`.
     pub fn into_poll(self) -> Poll<Option<(Item, Meta)>> {
         match self {
             Step::Ready(item, meta) => Poll::Ready(Some((item, meta))),
@@ -246,17 +298,23 @@ impl<Item, Meta, CanPend: Toggle, CanEnd: Toggle> Step<Item, Meta, CanPend, CanE
 /// The `Ctx` type parameter allows operators to be generic over the context type.
 /// Most operators don't use the context and just forward it to their predecessor,
 /// so they can be generic over `Ctx`. Operators that need `std::task::Context`
-/// (like `SourceStream`) will use `Ctx = &mut Context<'_>`.
+/// (like `StreamReady`) will use `Ctx = &mut Context<'_>`.
 ///
 /// Setting `Ctx = ()` allows most pull pipelines to be used without any context.
 pub trait Pull {
+    /// The context type required to poll this pull.
     type Ctx<'ctx>: Context<'ctx>;
 
+    /// The type of items yielded by this pull.
     type Item;
+    /// The metadata type associated with each item.
     type Meta: Copy;
+    /// Whether this pull can return [`Step::Pending`].
     type CanPend: Toggle;
+    /// Whether this pull can return [`Step::Ended`].
     type CanEnd: Toggle;
 
+    /// Attempts to pull the next item from this stream.
     fn pull(
         self: Pin<&mut Self>,
         ctx: &mut Self::Ctx<'_>,
@@ -292,6 +350,7 @@ pub trait Pull {
         (0, None)
     }
 
+    /// Borrows this pull, allowing it to be used by reference.
     fn by_ref(&mut self) -> &mut Self {
         self
     }
@@ -304,7 +363,7 @@ pub trait Pull {
     /// The first pull must be finite (`CanEnd = Yes`) and fused ([`FusedPull`]).
     fn chain<U>(self, other: U) -> Chain<Self, U>
     where
-        Self: Sized,
+        Self: Sized + FusedPull<CanEnd = Yes>,
         U: Pull<Item = Self::Item, Meta = Self::Meta>,
     {
         Chain::new(self, other)
@@ -317,8 +376,8 @@ pub trait Pull {
     /// the merged pull only ends when both upstream pulls have ended.
     fn merge<U>(self, other: U) -> Merge<Self, U>
     where
-        Self: Sized,
-        U: Pull<Item = Self::Item, Meta = Self::Meta>,
+        Self: Sized + FusedPull,
+        U: FusedPull<Item = Self::Item, Meta = Self::Meta>,
     {
         Merge::new(self, other)
     }
@@ -410,7 +469,15 @@ pub trait Pull {
     /// `pull` again is implementation-defined. `fuse()` adapts any pull,
     /// ensuring that after `Ended` is given once, it will always return `Ended`
     /// forever.
-    fn fuse(self) -> Fuse<Self>
+    fn fuse(
+        self,
+    ) -> impl for<'ctx> FusedPull<
+        Ctx<'ctx> = Self::Ctx<'ctx>,
+        Item = Self::Item,
+        Meta = Self::Meta,
+        CanPend = Self::CanPend,
+        CanEnd = Self::CanEnd,
+    >
     where
         Self: Sized,
     {
@@ -444,6 +511,7 @@ pub trait Pull {
         Map::new(self, f)
     }
 
+    /// Creates a future that pulls all items and sends them into a [`Sink`].
     fn send_sink<Push>(self, push: Push) -> SendSink<Self, Push>
     where
         Self: Sized,
@@ -493,6 +561,17 @@ pub trait Pull {
         TakeWhile::new(self, predicate)
     }
 
+    /// Zips two pulls together, ending when either is exhausted.
+    ///
+    /// Yields `(Self::Item, U::Item)` pairs. Ends as soon as either pull ends.
+    fn zip<U>(self, other: U) -> Zip<Self, U>
+    where
+        Self: Sized,
+        U: Pull<Meta = Self::Meta>,
+    {
+        Zip::new(self, other)
+    }
+
     /// Zips two pulls together, continuing until both are exhausted.
     ///
     /// Unlike a regular zip which ends when either pull ends, `zip_longest`
@@ -511,7 +590,7 @@ pub trait Pull {
 
     /// Creates a future that resolves with the next item from this pull.
     ///
-    /// This is the `Pull` equivalent of [`futures::StreamExt::next()`].
+    /// This is the `Pull` equivalent of the `StreamExt::next()` future.
     fn next(self) -> Next<Self>
     where
         Self: Sized,
@@ -560,6 +639,7 @@ pub trait Pull {
     /// The `lhs_state` and `rhs_state` parameters store the join state and must
     /// implement [`HalfJoinState`].
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn symmetric_hash_join<Key, V1, Rhs, V2, LhsState, RhsState>(
         self,
         rhs: Rhs,
@@ -567,11 +647,11 @@ pub trait Pull {
         rhs_state: RhsState,
     ) -> SymmetricHashJoin<Self, Rhs, LhsState, RhsState, LhsState, RhsState>
     where
-        Self: Sized + Pull<Item = (Key, V1), Meta = ()>,
+        Self: Sized + FusedPull<Item = (Key, V1), Meta = ()>,
         Key: Eq + std::hash::Hash + Clone,
         V1: Clone,
         V2: Clone,
-        Rhs: Pull<Item = (Key, V2), Meta = ()>,
+        Rhs: FusedPull<Item = (Key, V2), Meta = ()>,
         LhsState: HalfJoinState<Key, V1, V2>,
         RhsState: HalfJoinState<Key, V2, V1>,
     {
@@ -580,6 +660,7 @@ pub trait Pull {
 
     /// [Self::symmetric_hash_join] with external state.
     #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
     fn symmetric_hash_join_state<'a, Key, V1, Rhs, V2, LhsState, RhsState>(
         self,
         rhs: Rhs,
@@ -587,11 +668,11 @@ pub trait Pull {
         rhs_state: &'a mut RhsState,
     ) -> SymmetricHashJoin<Self, Rhs, &'a mut LhsState, &'a mut RhsState, LhsState, RhsState>
     where
-        Self: Sized + Pull<Item = (Key, V1), Meta = ()>,
+        Self: Sized + FusedPull<Item = (Key, V1), Meta = ()>,
         Key: Eq + std::hash::Hash + Clone,
         V1: Clone,
         V2: Clone,
-        Rhs: Pull<Item = (Key, V2), Meta = ()>,
+        Rhs: FusedPull<Item = (Key, V2), Meta = ()>,
         LhsState: HalfJoinState<Key, V1, V2>,
         RhsState: HalfJoinState<Key, V2, V1>,
     {
@@ -633,7 +714,7 @@ pub trait FusedPull: Pull {}
 ///
 /// This is the primary way to create a pull from synchronous data.
 /// The resulting pull will never pend and will end when the iterator is exhausted.
-pub fn from_iter<I: IntoIterator>(iter: I) -> Iter<I::IntoIter> {
+pub fn iter<I: IntoIterator>(iter: I) -> Iter<I::IntoIter> {
     Iter::new(iter.into_iter())
 }
 
@@ -641,36 +722,36 @@ pub fn from_iter<I: IntoIterator>(iter: I) -> Iter<I::IntoIter> {
 ///
 /// The resulting pull requires `&mut Context<'_>` to be polled and can both
 /// pend and end.
-pub fn from_stream<S: futures_core::stream::Stream>(stream: S) -> StreamPull<S> {
-    StreamPull::new(stream)
+pub fn stream<S: futures_core::stream::Stream>(stream: S) -> Stream<S> {
+    Stream::new(stream)
 }
 
 /// Creates a pull from a `futures::Stream` with a custom waker.
 ///
 /// This variant uses a provided waker function instead of requiring a context.
 /// When the stream returns `Pending`, this pull treats it as ended (non-blocking).
-pub fn from_stream_with_waker<S>(stream: S, waker: Waker) -> SourceStream<S>
+pub fn stream_ready<S>(stream: S, waker: Waker) -> StreamReady<S>
 where
     S: futures_core::stream::Stream,
 {
-    SourceStream::new(stream, waker)
+    StreamReady::new(stream, waker)
 }
 
 /// Creates a pull from a closure.
 ///
 /// The closure is called each time the pull is polled and should return a `Step`.
-pub fn from_fn<F, Item, Meta, CanEnd>(func: F) -> PullFn<F, Item, Meta, CanEnd>
+pub fn from_fn<F, Item, Meta, CanEnd>(func: F) -> FromFn<F, Item, Meta, CanEnd>
 where
     F: FnMut() -> Step<Item, Meta, No, CanEnd>,
     CanEnd: Toggle,
 {
-    PullFn::new(func)
+    FromFn::new(func)
 }
 
 /// Creates a pull from a closure.
 ///
 /// The closure is called each time the pull is polled and should return a `Step`.
-pub fn from_poll_fn<F, Item, Meta, CanEnd>(func: F) -> PollFn<F, Item, Meta, CanEnd>
+pub fn poll_fn<F, Item, Meta, CanEnd>(func: F) -> PollFn<F, Item, Meta, CanEnd>
 where
     F: FnMut(&mut core::task::Context<'_>) -> Step<Item, Meta, Yes, CanEnd>,
     CanEnd: Toggle,
@@ -678,10 +759,49 @@ where
     PollFn::new(func)
 }
 
+/// Creates an empty pull that immediately ends.
 pub fn empty<Item>() -> Empty<Item> {
     Empty::default()
 }
 
+/// Creates a pull that yields a single item.
 pub fn once<Item>(item: Item) -> Once<Item> {
     Once::new(item)
+}
+
+/// Creates a pull that yields clones of the given item forever.
+pub fn repeat<Item>(item: Item) -> Repeat<Item>
+where
+    Item: Clone,
+{
+    Repeat::new(item)
+}
+
+/// Creates a pull that is always pending and never yields items or ends.
+pub fn pending<Item>() -> Pending<Item> {
+    Pending::default()
+}
+
+/// A macro to override `Pull::fuse` for pulls that are already fused.
+///
+/// This macro should be used in the `impl` block for a pull type that is already fused.
+/// It provides a default implementation of `fuse` that simply returns `self`.
+#[macro_export]
+macro_rules! fuse_self {
+    () => {
+        fn fuse(
+            self,
+        ) -> impl for<'ctx> FusedPull<
+            Ctx<'ctx> = Self::Ctx<'ctx>,
+            Item = Self::Item,
+            Meta = Self::Meta,
+            CanPend = Self::CanPend,
+            CanEnd = Self::CanEnd,
+        >
+        where
+            Self: Sized,
+        {
+            self
+        }
+    };
 }

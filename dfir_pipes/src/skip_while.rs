@@ -2,9 +2,12 @@ use core::pin::Pin;
 
 use pin_project_lite::pin_project;
 
-use crate::{Pull, Step};
+use crate::{FusedPull, Pull, Step};
 
 pin_project! {
+    /// Pull combinator that skips items while a predicate returns `true`.
+    #[must_use = "`Pull`s do nothing unless polled"]
+    #[derive(Clone, Debug)]
     pub struct SkipWhile<Prev, Func> {
         #[pin]
         prev: Prev,
@@ -13,7 +16,10 @@ pin_project! {
     }
 }
 
-impl<Prev, Func> SkipWhile<Prev, Func> {
+impl<Prev, Func> SkipWhile<Prev, Func>
+where
+    Self: Pull,
+{
     pub(crate) fn new(prev: Prev, func: Func) -> Self {
         Self {
             prev,
@@ -67,4 +73,11 @@ where
             this.prev.size_hint()
         }
     }
+}
+
+impl<Prev, Func> FusedPull for SkipWhile<Prev, Func>
+where
+    Prev: FusedPull,
+    Func: FnMut(&Prev::Item) -> bool,
+{
 }

@@ -160,7 +160,8 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
 
                 {
                     #[inline(always)]
-                    fn check_input<Prev, K, V>(prev: Prev) -> impl #root::dfir_pipes::Pull<Item = (K, V), Meta = Prev::Meta>
+                    fn check_input<Prev, K, V>(prev: Prev)
+                        -> impl #root::dfir_pipes::Pull<Item = (K, V), Meta = Prev::Meta, CanPend = Prev::CanPend, CanEnd = Prev::CanEnd>
                     where
                         Prev: #root::dfir_pipes::Pull<Item = (K, V)>,
                         K: ::std::clone::Clone,
@@ -190,7 +191,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
 
                 #[allow(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
                 let #ident = #iter_expr;
-                let #ident = #root::dfir_pipes::from_iter(#ident);
+                let #ident = #root::dfir_pipes::iter(#ident);
             }
         };
 

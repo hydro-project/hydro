@@ -97,7 +97,7 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
                 let #ident = {
                     #[inline(always)]
                     fn check_pull<Prev, K, V>(prev: Prev)
-                        -> impl #root::dfir_pipes::Pull<Item = #root::util::PersistenceKeyed::<K, V>, Meta = Prev::Meta>
+                        -> impl #root::dfir_pipes::Pull<Item = #root::util::PersistenceKeyed::<K, V>, Meta = Prev::Meta, CanPend = Prev::CanPend, CanEnd = Prev::CanEnd>
                     where
                         Prev: #root::dfir_pipes::Pull<Item = #root::util::PersistenceKeyed::<K, V>>,
                     {
@@ -129,7 +129,7 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
                     } else {
                         None.into_iter().flatten()
                     };
-                    #root::dfir_pipes::from_iter(iter)
+                    #root::dfir_pipes::iter(iter)
                 };
             }
         };

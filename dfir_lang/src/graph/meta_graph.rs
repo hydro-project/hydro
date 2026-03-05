@@ -909,7 +909,7 @@ impl DfirGraph {
                 let recv_port_code = recv_ports.iter().map(|ident| {
                     quote_spanned! {ident.span()=>
                         let mut #ident = #ident.borrow_mut_swap();
-                        let #ident = #root::dfir_pipes::from_iter(#ident.drain(..));
+                        let #ident = #root::dfir_pipes::iter(#ident.drain(..));
                     }
                 });
                 let send_port_code = send_ports.iter().map(|ident| {
@@ -1124,9 +1124,47 @@ impl DfirGraph {
                                         let #ident = {
                                             #[allow(non_snake_case)]
                                             #[inline(always)]
-                                            pub fn #work_fn<Item, Input: #root::dfir_pipes::Pull<Item = Item, Meta = ()>>(input: Input) -> Input
+                                            pub fn #work_fn<Item, Input>(input: Input)
+                                                -> impl #root::dfir_pipes::Pull<Item = Item, Meta = (), CanPend = Input::CanPend, CanEnd = Input::CanEnd>
+                                            where
+                                                Input: #root::dfir_pipes::Pull<Item = Item, Meta = ()>,
                                             {
-                                                input
+                                                #root::pin_project_lite::pin_project! {
+                                                    #[repr(transparent)]
+                                                    struct Pull<Item, Input: #root::dfir_pipes::Pull<Item = Item>> {
+                                                        #[pin]
+                                                        inner: Input
+                                                    }
+                                                }
+
+                                                impl<Item, Input> #root::dfir_pipes::Pull for Pull<Item, Input>
+                                                where
+                                                    Input: #root::dfir_pipes::Pull<Item = Item>,
+                                                {
+                                                    type Ctx<'ctx> = Input::Ctx<'ctx>;
+
+                                                    type Item = Item;
+                                                    type Meta = Input::Meta;
+                                                    type CanPend = Input::CanPend;
+                                                    type CanEnd = Input::CanEnd;
+
+                                                    #[inline(always)]
+                                                    fn pull(
+                                                        self: ::std::pin::Pin<&mut Self>,
+                                                        ctx: &mut Self::Ctx<'_>,
+                                                    ) -> #root::dfir_pipes::Step<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
+                                                        #root::dfir_pipes::Pull::pull(self.project().inner, ctx)
+                                                    }
+
+                                                    #[inline(always)]
+                                                    fn size_hint(self: ::std::pin::Pin<&Self>) -> (usize, Option<usize>) {
+                                                        #root::dfir_pipes::Pull::size_hint(self.project_ref().inner)
+                                                    }
+                                                }
+
+                                                Pull {
+                                                    inner: input
+                                                }
                                             }
                                             #work_fn::<_, _>( #ident )
                                         };

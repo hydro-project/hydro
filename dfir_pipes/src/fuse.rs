@@ -2,9 +2,12 @@ use core::pin::Pin;
 
 use pin_project_lite::pin_project;
 
-use crate::{FusedPull, Pull, Step, Yes};
+use crate::{FusedPull, Pull, Step, fuse_self};
 
 pin_project! {
+    /// Pull combinator that guarantees [`Step::Ended`] is returned forever after the first end.
+    #[must_use = "`Pull`s do nothing unless polled"]
+    #[derive(Clone, Debug, Default)]
     #[project_replace = FuseReplace]
     pub struct Fuse<Prev> {
         #[pin]
@@ -12,7 +15,10 @@ pin_project! {
     }
 }
 
-impl<Prev> Fuse<Prev> {
+impl<Prev> Fuse<Prev>
+where
+    Self: Pull,
+{
     pub(crate) fn new(prev: Prev) -> Self {
         Self { prev: Some(prev) }
     }
@@ -27,7 +33,7 @@ where
     type Item = Prev::Item;
     type Meta = Prev::Meta;
     type CanPend = Prev::CanPend;
-    type CanEnd = Yes;
+    type CanEnd = Prev::CanEnd;
 
     fn pull(
         mut self: Pin<&mut Self>,
@@ -41,11 +47,11 @@ where
                 Step::Pending(can_pend) => Step::Pending(can_pend),
                 Step::Ended(_) => {
                     let _ = self.project_replace(Self { prev: None });
-                    Step::Ended(Yes)
+                    Step::ended()
                 }
             }
         } else {
-            Step::Ended(Yes)
+            Step::ended()
         }
     }
 
@@ -57,6 +63,8 @@ where
             (0, Some(0))
         }
     }
+
+    fuse_self!();
 }
 
 impl<Prev> FusedPull for Fuse<Prev> where Prev: Pull {}

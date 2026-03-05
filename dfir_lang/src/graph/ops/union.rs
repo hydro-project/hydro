@@ -56,13 +56,19 @@ pub const UNION: OperatorConstraints = OperatorConstraints {
                 let #ident = {
                     #[allow(unused)]
                     #[inline(always)]
-                    fn check_inputs<A, B, Item>(a: A, b: B)
-                        -> impl #root::dfir_pipes::Pull<Item = Item, Meta = A::Meta>
+                    fn check_inputs<A, B, Item>(
+                        a: A, b: B
+                    ) -> impl #root::dfir_pipes::Pull<
+                        Item = Item,
+                        Meta = A::Meta,
+                        CanPend = <A::CanPend as #root::dfir_pipes::Toggle>::Or<B::CanPend>,
+                        CanEnd = B::CanEnd,
+                    >
                     where
-                        A: #root::dfir_pipes::Pull<Item = Item>,
+                        A: #root::dfir_pipes::Pull<Item = Item, CanEnd = #root::dfir_pipes::Yes>,
                         B: #root::dfir_pipes::Pull<Item = Item, Meta = A::Meta>,
                     {
-                        // NOTE(mingwei): `Pull::merge` equivalent may make more sense, but also
+                        // NOTE(mingwei): `merge` (allowing async interleaving) may make more sense, but also
                         // might inline worse. Merge may have correctness implications.
                         #root::dfir_pipes::Pull::chain(
                             #root::dfir_pipes::Pull::fuse(a),

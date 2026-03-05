@@ -153,7 +153,7 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
                     Hasher: ::std::hash::BuildHasher,
                     Item: ::std::clone::Clone,
                 {
-                    let () = #root::compiled::pull::accumulate_all(accum, borrow, prev).await;
+                    let () = #root::dfir_pipes::accumulate_all(accum, borrow, prev).await;
                 }
                 #work_fn_async(__check_accum(&mut #lhs_accum, &mut *#lhs_borrow, #lhs)).await;
                 #work_fn_async(__check_accum(&mut #rhs_accum, &mut *#rhs_borrow, #rhs)).await;
@@ -166,7 +166,7 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
                     .filter_map(|(k, v2)| {
                         #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone())))
                     });
-                #root::dfir_pipes::from_iter(iter)
+                #root::dfir_pipes::iter(iter)
             };
         };
 

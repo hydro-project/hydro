@@ -2,9 +2,12 @@ use core::pin::Pin;
 
 use pin_project_lite::pin_project;
 
-use crate::{Pull, Step};
+use crate::{FusedPull, Pull, Step};
 
 pin_project! {
+    /// Pull combinator that pairs each item with its index.
+    #[must_use = "`Pull`s do nothing unless polled"]
+    #[derive(Clone, Debug, Default)]
     pub struct Enumerate<Prev> {
         #[pin]
         prev: Prev,
@@ -12,7 +15,10 @@ pin_project! {
     }
 }
 
-impl<Prev> Enumerate<Prev> {
+impl<Prev> Enumerate<Prev>
+where
+    Self: Pull,
+{
     pub(crate) fn new(prev: Prev) -> Self {
         Self { prev, index: 0 }
     }
@@ -49,3 +55,5 @@ where
         self.project_ref().prev.size_hint()
     }
 }
+
+impl<Prev> FusedPull for Enumerate<Prev> where Prev: FusedPull {}
