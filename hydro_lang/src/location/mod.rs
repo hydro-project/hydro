@@ -1033,6 +1033,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             self.clone(),
             HydroNode::SingletonSource {
                 value: e.into(),
+                first_tick_only: false,
                 metadata: self.new_node_metadata(Singleton::<T, Self, Bounded>::collection_kind()),
             },
         )

@@ -536,6 +536,46 @@ mod tests {
         });
     }
 
+    /// Test `use::state` with `source_iter` to initialize a stream state.
+    /// On the first tick, the state is the initial `[10, 20]` from `source_iter`.
+    /// On subsequent ticks, the state is the batch from the previous tick.
+    #[test]
+    fn sim_state_source_iter() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (input_send, input) = node.sim_input::<i32, _, _>();
+
+        let out_recv = sliced! {
+            let batch = use(input, nondet!(/** test */));
+            let mut items = use::state(|l| l.source_iter(q!([10, 20])));
+
+            // Output the current state, then replace it with the batch
+            let output = items.clone();
+            items = batch;
+            output
+        }
+        .sim_output();
+
+        flow.sim().exhaustive(async || {
+            input_send.send(3);
+            // First tick: items = initial [10, 20], output = [10, 20]
+            let mut results = vec![];
+            results.push(out_recv.next().await.unwrap());
+            results.push(out_recv.next().await.unwrap());
+            results.sort();
+            assert_eq!(results, vec![10, 20]);
+
+            input_send.send(4);
+            // Second tick: items = [3] (from previous batch), output = [3]
+            assert_eq!(out_recv.next().await.unwrap(), 3);
+
+            input_send.send(5);
+            // Third tick: items = [4] (from previous batch), output = [4]
+            assert_eq!(out_recv.next().await.unwrap(), 4);
+        });
+    }
+
     /// Test atomic slicing with keyed streams.
     #[test]
     fn sim_sliced_atomic_keyed_stream() {

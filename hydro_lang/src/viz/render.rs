@@ -1059,8 +1059,16 @@ impl HydroNode {
                 build_source_node(structure, metadata, label)
             }
 
-            HydroNode::SingletonSource { value, metadata } => {
-                let label = format!("singleton({})", value);
+            HydroNode::SingletonSource {
+                value,
+                first_tick_only,
+                metadata,
+            } => {
+                let label = if *first_tick_only {
+                    format!("singleton_first_tick({})", value)
+                } else {
+                    format!("singleton({})", value)
+                };
                 build_source_node(structure, metadata, label)
             }
 

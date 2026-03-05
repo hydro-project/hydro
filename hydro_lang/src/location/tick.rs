@@ -29,7 +29,7 @@ use crate::compile::ir::{HydroNode, HydroSource};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial};
 use crate::forward_handle::{TickCycle, TickCycleHandle};
-use crate::live_collections::boundedness::{Bounded, Unbounded};
+use crate::live_collections::boundedness::Bounded;
 use crate::live_collections::optional::Optional;
 use crate::live_collections::singleton::Singleton;
 use crate::live_collections::stream::{ExactlyOnce, Stream, TotalOrder};
@@ -206,6 +206,7 @@ where
             self.clone(),
             HydroNode::SingletonSource {
                 value: e.into(),
+                first_tick_only: false,
                 metadata: self.new_node_metadata(Singleton::<T, Self, Bounded>::collection_kind()),
             },
         )
@@ -273,19 +274,58 @@ where
         &self,
         e: impl QuotedWithContext<'a, T, Tick<L>>,
     ) -> Optional<T, Self, Bounded> {
-        let e_arr = q!([e]);
-        let e = e_arr.splice_untyped_ctx(self);
+        let e = e.splice_untyped_ctx(self);
 
         Optional::new(
             self.clone(),
-            HydroNode::Batch {
-                inner: Box::new(HydroNode::Source {
-                    source: HydroSource::Iter(e.into()),
-                    metadata: self
-                        .outer()
-                        .new_node_metadata(Optional::<T, L, Unbounded>::collection_kind()),
-                }),
+            HydroNode::SingletonSource {
+                value: e.into(),
+                first_tick_only: true,
                 metadata: self.new_node_metadata(Optional::<T, Self, Bounded>::collection_kind()),
+            },
+        )
+    }
+
+    /// Creates a [`Stream`] of elements from an iterator inside this tick.
+    ///
+    /// The stream will contain the elements from the iterator on every tick.
+    /// This is useful for providing constant collections of data inside a tick,
+    /// such as initial state for `use::state` in the `sliced!` macro.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    /// tick.source_iter(q!([1, 2, 3])).all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [1, 2, 3, 1, 2, 3, ...]
+    /// # for w in vec![1, 2, 3, 1, 2, 3] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn source_iter<T, E>(
+        &self,
+        e: impl QuotedWithContext<'a, E, Tick<L>>,
+    ) -> Stream<T, Self, Bounded, TotalOrder, ExactlyOnce>
+    where
+        E: IntoIterator<Item = T>,
+    {
+        let e = e.splice_typed_ctx(self);
+
+        Stream::new(
+            self.clone(),
+            HydroNode::Source {
+                source: HydroSource::Iter(e.into()),
+                metadata: self.new_node_metadata(
+                    Stream::<T, Self, Bounded, TotalOrder, ExactlyOnce>::collection_kind(),
+                ),
             },
         )
     }

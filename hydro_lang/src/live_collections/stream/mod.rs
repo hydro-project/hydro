@@ -20,7 +20,7 @@ use crate::compile::ir::{
     CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, StreamOrder, StreamRetry, TeeNode,
 };
 #[cfg(stageleft_runtime)]
-use crate::forward_handle::{CycleCollection, ReceiverComplete};
+use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::live_collections::batch_atomic::BatchAtomic;
 #[cfg(stageleft_runtime)]
@@ -266,6 +266,29 @@ where
                 metadata: location.new_node_metadata(Self::collection_kind()),
             },
         )
+    }
+}
+
+impl<'a, T, L, O: Ordering, R: Retries> CycleCollectionWithInitial<'a, TickCycle>
+    for Stream<T, Tick<L>, Bounded, O, R>
+where
+    L: Location<'a>,
+{
+    type Location = Tick<L>;
+
+    fn create_source_with_initial(cycle_id: CycleId, initial: Self, location: Tick<L>) -> Self {
+        let from_previous_tick: Stream<T, Tick<L>, Bounded, O, R> = Stream::new(
+            location.clone(),
+            HydroNode::DeferTick {
+                input: Box::new(HydroNode::CycleSource {
+                    cycle_id,
+                    metadata: location.new_node_metadata(Self::collection_kind()),
+                }),
+                metadata: location.new_node_metadata(Self::collection_kind()),
+            },
+        );
+
+        from_previous_tick.chain(initial.filter_if_some(location.optional_first_tick(q!(()))))
     }
 }
 
