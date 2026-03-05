@@ -780,6 +780,7 @@ where
             self.location.clone(),
             HydroNode::SingletonSource {
                 value: none.into(),
+                first_tick_only: false,
                 metadata: self
                     .location
                     .new_node_metadata(Singleton::<Option<T>, L, B>::collection_kind()),
