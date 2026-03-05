@@ -375,7 +375,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     ) -> Stream<T, Self, Bounded, TotalOrder, ExactlyOnce>
     where
         E: IntoIterator<Item = T>,
-        Self: Sized + NoTick,
+        Self: Sized,
     {
         let e = e.splice_typed_ctx(self);
 
