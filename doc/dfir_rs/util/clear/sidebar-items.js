@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"struct":["ClearDefault"],"trait":["Clear"]};
