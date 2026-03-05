@@ -2,8 +2,9 @@ use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::collections::hash_map::Entry;
 
+use cc_traits::Clear;
+
 use super::HalfJoinState;
-use crate::util::clear::Clear;
 
 type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 

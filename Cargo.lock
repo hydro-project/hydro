@@ -1803,6 +1803,7 @@ version = "0.15.0"
 dependencies = [
  "bincode",
  "bytes",
+ "cc-traits",
  "chrono",
  "clap",
  "colored 2.2.0",

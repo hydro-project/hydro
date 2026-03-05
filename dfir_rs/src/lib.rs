@@ -22,8 +22,8 @@ pub mod scheduled;
 pub mod util;
 
 pub use ::{
-    bincode, bytes, futures, itertools, lattices, pin_project_lite, rustc_hash, serde, serde_json,
-    sinktools, tokio, tokio_stream, tokio_util, tracing, web_time,
+    bincode, bytes, cc_traits, futures, itertools, lattices, pin_project_lite, rustc_hash, serde,
+    serde_json, sinktools, tokio, tokio_stream, tokio_util, tracing, web_time,
 };
 #[cfg(feature = "meta")]
 #[cfg_attr(docsrs, doc(cfg(feature = "meta")))]

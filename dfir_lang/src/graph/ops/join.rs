@@ -145,7 +145,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                 #df_ident.set_state_lifespan_hook(
                     #joindata_ident,
                     #lifespan,
-                    |rcell| (#work_fn)(|| #root::util::clear::Clear::clear(::std::cell::RefCell::get_mut(rcell)))
+                    |rcell| (#work_fn)(|| #root::cc_traits::Clear::clear(::std::cell::RefCell::get_mut(rcell)))
                 );
             }).unwrap_or_default();
 
