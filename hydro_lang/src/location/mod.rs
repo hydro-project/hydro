@@ -375,7 +375,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     ) -> Stream<T, Self, Bounded, TotalOrder, ExactlyOnce>
     where
         E: IntoIterator<Item = T>,
-        Self: Sized + NoTick,
+        Self: Sized,
     {
         let e = e.splice_typed_ctx(self);
 
@@ -1033,6 +1033,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             self.clone(),
             HydroNode::SingletonSource {
                 value: e.into(),
+                first_tick_only: false,
                 metadata: self.new_node_metadata(Singleton::<T, Self, Bounded>::collection_kind()),
             },
         )
