@@ -199,7 +199,7 @@ pub fn paxos_core<'a, P: PaxosPayload>(
     let c_to_proposers = c_to_proposers(
         p_ballot
             .clone()
-            .filter_if_true(just_became_leader.clone())
+            .filter_if(just_became_leader.clone())
             .all_ticks(),
     );
 
@@ -233,7 +233,7 @@ pub fn paxos_core<'a, P: PaxosPayload>(
 
     (
         // Only tell the clients once when leader election concludes
-        p_ballot.filter_if_true(just_became_leader).all_ticks(),
+        p_ballot.filter_if(just_became_leader).all_ticks(),
         p_to_replicas,
     )
 }
@@ -310,7 +310,7 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
 
     let p_to_acceptors_p1a = p_ballot
         .clone()
-        .filter_if_true(p_trigger_election)
+        .filter_if(p_trigger_election)
         .all_ticks()
         .inspect(q!(|_| println!("Proposer leader expired, sending P1a")))
         .broadcast(acceptors, TCP.fail_stop().bincode(), nondet!(/** TODO */))
@@ -412,7 +412,7 @@ fn p_leader_heartbeat<'a>(
         paxos_config.i_am_leader_check_timeout_delay_multiplier;
 
     let p_to_proposers_i_am_leader = p_ballot
-        .filter_if_true(p_is_leader.clone())
+        .filter_if(p_is_leader.clone())
         .latest()
         .sample_every(
             q!(Duration::from_secs(i_am_leader_send_timeout)),
@@ -438,7 +438,7 @@ fn p_leader_heartbeat<'a>(
             ),
         )
         .snapshot(proposer_tick, nondet!(/** absorbed into timeout */))
-        .filter_if_false(p_is_leader);
+        .filter_if(!p_is_leader);
 
     // Add random delay depending on node ID so not everyone sends p1a at the same time
     let p_trigger_election = p_leader_expired.is_some().and(
@@ -706,7 +706,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
                     nondet_commit
                 ),
             )
-            .filter_if_true(p_is_leader.clone()),
+            .filter_if(p_is_leader.clone()),
     );
 
     let payloads_to_send = indexed_payloads
@@ -716,7 +716,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
             Some(payload)
         )))
         .chain(p_log_to_recommit)
-        .filter_if_true(p_is_leader)
+        .filter_if(p_is_leader)
         .all_ticks_atomic();
 
     let (a_log, a_to_proposers_p2b) = acceptor_p2(

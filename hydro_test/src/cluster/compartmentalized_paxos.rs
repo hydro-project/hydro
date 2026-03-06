@@ -172,7 +172,7 @@ pub fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
     let c_to_proposers = c_to_proposers(
         p_ballot
             .clone()
-            .filter_if_true(just_became_leader.clone())
+            .filter_if(just_became_leader.clone())
             .all_ticks(),
     );
 
@@ -208,7 +208,7 @@ pub fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
 
     (
         // Only tell the clients once when leader election concludes
-        p_ballot.filter_if_true(just_became_leader).all_ticks(),
+        p_ballot.filter_if(just_became_leader).all_ticks(),
         p_to_replicas,
     )
 }
@@ -266,7 +266,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
                     nondet_commit_leader_change
                 ),
             )
-            .filter_if_true(p_is_leader.clone()),
+            .filter_if(p_is_leader.clone()),
     );
 
     let num_proxy_leaders = config.num_proxy_leaders;

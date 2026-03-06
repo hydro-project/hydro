@@ -98,8 +98,7 @@ where
             },
         );
 
-        from_previous_tick
-            .or(initial.filter_if_true(location.optional_first_tick(q!(())).is_some()))
+        from_previous_tick.or(initial.filter_if(location.optional_first_tick(q!(())).is_some()))
     }
 }
 
@@ -995,7 +994,7 @@ where
     ///   .batch(&tick, nondet!(/** test */))
     ///   .defer_tick();
     /// batch_first_tick.chain(batch_second_tick).first()
-    ///   .filter_if_true(signal)
+    ///   .filter_if(signal)
     ///   .unwrap_or(tick.singleton(q!(0)))
     ///   .all_ticks()
     /// # }, |mut stream| async move {
@@ -1006,52 +1005,11 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn filter_if_true(self, signal: Singleton<bool, L, B>) -> Optional<T, L, B>
+    pub fn filter_if(self, signal: Singleton<bool, L, B>) -> Optional<T, L, B>
     where
         B: IsBounded,
     {
         self.zip(signal.filter(q!(|b| *b))).map(q!(|(d, _)| d))
-    }
-
-    /// Filters this optional, passing through the value if the boolean signal is `false`,
-    /// otherwise the output is null.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// // ticks are lazy by default, forces the second tick to run
-    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
-    ///
-    /// let some_first_tick = tick.optional_first_tick(q!(()));
-    /// let signal = some_first_tick.is_some(); // true on first tick, false on second
-    /// let batch_first_tick = process
-    ///   .source_iter(q!(vec![456]))
-    ///   .batch(&tick, nondet!(/** test */));
-    /// let batch_second_tick = process
-    ///   .source_iter(q!(vec![789]))
-    ///   .batch(&tick, nondet!(/** test */))
-    ///   .defer_tick();
-    /// batch_first_tick.chain(batch_second_tick).first()
-    ///   .filter_if_false(signal)
-    ///   .unwrap_or(tick.singleton(q!(0)))
-    ///   .all_ticks()
-    /// # }, |mut stream| async move {
-    /// // [0, 789]
-    /// # for w in vec![0, 789] {
-    /// #     assert_eq!(stream.next().await.unwrap(), w);
-    /// # }
-    /// # }));
-    /// # }
-    /// ```
-    pub fn filter_if_false(self, signal: Singleton<bool, L, B>) -> Optional<T, L, B>
-    where
-        B: IsBounded,
-    {
-        self.filter_if_true(signal.map(q!(|b| !b)))
     }
 
     /// Filters this optional, passing through the optional value if it is non-null **and** the
@@ -1090,12 +1048,12 @@ where
     /// # }));
     /// # }
     /// ```
-    #[deprecated(note = "use `filter_if_true` with `Optional::is_some()` instead")]
+    #[deprecated(note = "use `filter_if` with `Optional::is_some()` instead")]
     pub fn filter_if_some<U>(self, signal: Optional<U, L, B>) -> Optional<T, L, B>
     where
         B: IsBounded,
     {
-        self.filter_if_true(signal.is_some())
+        self.filter_if(signal.is_some())
     }
 
     /// Filters this optional, passing through the optional value if it is non-null **and** the
@@ -1134,12 +1092,12 @@ where
     /// # }));
     /// # }
     /// ```
-    #[deprecated(note = "use `filter_if_false` with `Optional::is_some()` instead")]
+    #[deprecated(note = "use `filter_if` with `!Optional::is_some()` instead")]
     pub fn filter_if_none<U>(self, other: Optional<U, L, B>) -> Optional<T, L, B>
     where
         B: IsBounded,
     {
-        self.filter_if_true(other.is_none())
+        self.filter_if(other.is_none())
     }
 
     /// If `self` is null, emits a null optional, but if it non-null, emits `value`.
@@ -1170,12 +1128,12 @@ where
     /// # }));
     /// # }
     /// ```
-    #[deprecated(note = "use `filter_if_true` with `Optional::is_some()` instead")]
+    #[deprecated(note = "use `filter_if` with `Optional::is_some()` instead")]
     pub fn if_some_then<U>(self, value: Singleton<U, L, B>) -> Optional<U, L, B>
     where
         B: IsBounded,
     {
-        value.filter_if_true(self.is_some())
+        value.filter_if(self.is_some())
     }
 }
 
@@ -1306,7 +1264,7 @@ where
         let tick = self.location.tick();
 
         self.snapshot(&tick, nondet)
-            .filter_if_true(samples.batch(&tick, nondet).first().is_some())
+            .filter_if(samples.batch(&tick, nondet).first().is_some())
             .all_ticks()
             .weaken_retries()
     }

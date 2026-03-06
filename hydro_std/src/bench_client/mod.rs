@@ -164,12 +164,12 @@ pub fn compute_throughput_latency<'a, Client: 'a>(
         );
 
         // Output every punctuation
-        let interval_throughput = throughput.clone().filter_if_true(punctuation_option.clone().is_some());
-        let interval_latency = latency_histogram.clone().filter_if_true(punctuation_option.clone().is_some());
+        let interval_throughput = throughput.clone().filter_if(punctuation_option.clone().is_some());
+        let interval_latency = latency_histogram.clone().filter_if(punctuation_option.clone().is_some());
 
         let batched_throughput = latencies.count();
         // Clear every punctuation
-        let prev_throughput = throughput.filter_if_true(punctuation_option.clone().is_none());
+        let prev_throughput = throughput.filter_if(punctuation_option.clone().is_none());
         // Merge new values
         throughput = batched_throughput
             .clone()
@@ -178,7 +178,7 @@ pub fn compute_throughput_latency<'a, Client: 'a>(
             .unwrap_or(batched_throughput.clone());
 
         // Clear every punctuation
-        let prev_histogram = latency_histogram.filter_if_true(punctuation_option.is_none());
+        let prev_histogram = latency_histogram.filter_if(punctuation_option.is_none());
         // Merge new values
         latency_histogram = batched_latency_histogram
             .clone()
@@ -239,11 +239,11 @@ pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
         let punctuation_option = punctuation.first();
 
         // Output every punctuation
-        let interval_throughput = throughput.clone().filter_if_true(punctuation_option.clone().is_some());
-        let interval_latency = latency_histogram.clone().filter_if_true(punctuation_option.clone().is_some());
+        let interval_throughput = throughput.clone().filter_if(punctuation_option.clone().is_some());
+        let interval_latency = latency_histogram.clone().filter_if(punctuation_option.clone().is_some());
 
         // Clear every punctuation
-        let prev_throughput = throughput.filter_if_true(punctuation_option.clone().is_none()).into_stream();
+        let prev_throughput = throughput.filter_if(punctuation_option.clone().is_none()).into_stream();
         // Merge new values
         throughput = a_throughputs
             .chain(prev_throughput)
