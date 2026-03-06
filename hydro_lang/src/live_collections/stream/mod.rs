@@ -288,7 +288,7 @@ where
             },
         );
 
-        from_previous_tick.chain(initial.filter_if_some(location.optional_first_tick(q!(()))))
+        from_previous_tick.chain(initial.filter_if_true(location.optional_first_tick(q!(())).is_some()))
     }
 }
 
