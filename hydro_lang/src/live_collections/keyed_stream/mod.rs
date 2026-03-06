@@ -1774,7 +1774,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// let watermark = tick.singleton(q!(1));
+    /// let watermark = tick.singleton(q!(2));
     /// let numbers = process
     ///     .source_iter(q!([(0, false), (1, false), (2, false), (2, true)]))
     ///     .into_keyed();
@@ -2665,7 +2665,7 @@ mod tests {
         let external = flow.external::<()>();
 
         let node_tick = node.tick();
-        let watermark = node_tick.singleton(q!(1));
+        let watermark = node_tick.singleton(q!(2));
 
         let sum = node
             .source_stream(q!(tokio_stream::iter([
@@ -2710,7 +2710,7 @@ mod tests {
         let external = flow.external::<()>();
 
         let node_tick = node.tick();
-        let watermark = node_tick.singleton(q!(1));
+        let watermark = node_tick.singleton(q!(2));
 
         let sum = node
             .source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
@@ -2751,7 +2751,7 @@ mod tests {
 
         let node_tick = node.tick();
         let (watermark_complete_cycle, watermark) =
-            node_tick.cycle_with_initial(node_tick.singleton(q!(1)));
+            node_tick.cycle_with_initial(node_tick.singleton(q!(2)));
         let next_watermark = watermark.clone().map(q!(|v| v + 1));
         watermark_complete_cycle.complete_next_tick(next_watermark);
 
