@@ -16,7 +16,7 @@ use super::singleton::Singleton;
 use super::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::builder::CycleId;
 use crate::compile::ir::{
-    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, KeyedSingletonBoundKind, TeeNode,
+    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, KeyedSingletonBoundKind, SharedNode,
 };
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
@@ -135,7 +135,7 @@ impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: KeyedSingletonBound> Clon
         if !matches!(self.ir_node.borrow().deref(), HydroNode::Tee { .. }) {
             let orig_ir_node = self.ir_node.replace(HydroNode::Placeholder);
             *self.ir_node.borrow_mut() = HydroNode::Tee {
-                inner: TeeNode(Rc::new(RefCell::new(orig_ir_node))),
+                inner: SharedNode(Rc::new(RefCell::new(orig_ir_node))),
                 metadata: self.location.new_node_metadata(Self::collection_kind()),
             };
         }
@@ -144,7 +144,7 @@ impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: KeyedSingletonBound> Clon
             KeyedSingleton {
                 location: self.location.clone(),
                 ir_node: HydroNode::Tee {
-                    inner: TeeNode(inner.0.clone()),
+                    inner: SharedNode(inner.0.clone()),
                     metadata: metadata.clone(),
                 }
                 .into(),
