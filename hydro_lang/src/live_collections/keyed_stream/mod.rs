@@ -2665,7 +2665,7 @@ mod tests {
         let external = flow.external::<()>();
 
         let node_tick = node.tick();
-        let watermark = node_tick.singleton(q!(1));
+        let watermark = node_tick.singleton(q!(2));
 
         let sum = node
             .source_stream(q!(tokio_stream::iter([
@@ -2710,7 +2710,7 @@ mod tests {
         let external = flow.external::<()>();
 
         let node_tick = node.tick();
-        let watermark = node_tick.singleton(q!(1));
+        let watermark = node_tick.singleton(q!(2));
 
         let sum = node
             .source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
