@@ -264,7 +264,7 @@ pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
         // Clear every punctuation
         latency_histogram = latency_histogram
             .zip(merged_new_histograms.into_singleton())
-            .zip(punctuation_option.into_singleton())
+            .zip(punctuation_option.defer_tick().into_singleton())
             .map(q!(|((old, new), reset)| {
                 if reset.is_some() {
                     // Use replace instead of clear, since interval_latency is pointing to the Histogram too
