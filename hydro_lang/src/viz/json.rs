@@ -938,9 +938,8 @@ impl<W> HydroJson<'_, W> {
         parent_name: Option<&str>,
         id_remapping: &mut HashMap<String, String>,
     ) -> serde_json::Value {
-        let mut node_obj = match node {
-            serde_json::Value::Object(obj) => obj,
-            _ => return node,
+        let serde_json::Value::Object(mut node_obj) = node else {
+            return node;
         };
 
         let current_name = node_obj

@@ -982,7 +982,7 @@ fn run_hooks(tick_decision_writer: &mut impl std::fmt::Write, hooks: &mut Vec<Bo
 
     bolero::generator::bolero_generator::any::scope::borrow_with(|driver| {
         // first, scan manual decisions
-        hooks.iter_mut().for_each(|hook| {
+        for hook in hooks.iter_mut() {
             if let Some(is_nontrivial) = hook.current_decision() {
                 made_nontrivial_decision |= is_nontrivial;
                 remaining_decision_count -= 1;
@@ -993,9 +993,9 @@ fn run_hooks(tick_decision_writer: &mut impl std::fmt::Write, hooks: &mut Vec<Bo
                 hook.autonomous_decision(driver, false);
                 remaining_decision_count -= 1;
             }
-        });
+        }
 
-        hooks.iter_mut().for_each(|hook| {
+        for hook in hooks.iter_mut() {
             if hook.current_decision().is_none() {
                 made_nontrivial_decision |= hook.autonomous_decision(
                     driver,
@@ -1005,6 +1005,6 @@ fn run_hooks(tick_decision_writer: &mut impl std::fmt::Write, hooks: &mut Vec<Bo
             }
 
             hook.release_decision(tick_decision_writer);
-        });
+        }
     });
 }

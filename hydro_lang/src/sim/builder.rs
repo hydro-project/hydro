@@ -1175,5 +1175,5 @@ fn location_for_op(op_meta: &HydroIrOpMetadata) -> (String, String, String) {
                 format!("{:>1$}", "", (colno - 1).try_into().unwrap()),
             ))
         })
-        .unwrap_or_else(|| ("unknown location".to_owned(), "".to_owned(), "".to_owned()))
+        .unwrap_or_else(|| ("unknown location".to_owned(), String::new(), String::new()))
 }

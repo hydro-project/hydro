@@ -133,8 +133,8 @@ impl ChannelMux {
 
                 let magic_frame = match source.next().await {
                     Some(Ok(frame)) => frame,
-                    _ => {
-                        warn!(name: "magic_failed", ?peer, "no magic frame");
+                    result => {
+                        warn!(name: "magic_failed", ?peer, ?result, "no magic frame");
                         return;
                     }
                 };
@@ -154,8 +154,8 @@ impl ChannelMux {
 
                 let version_frame = match source.next().await {
                     Some(Ok(frame)) => frame,
-                    _ => {
-                        warn!(name: "version_failed", ?peer, "no version frame");
+                    result => {
+                        warn!(name: "version_failed", ?peer, ?result, "no version frame");
                         return;
                     }
                 };
@@ -175,8 +175,8 @@ impl ChannelMux {
 
                 let handshake_frame = match source.next().await {
                     Some(Ok(frame)) => frame,
-                    _ => {
-                        warn!(name: "handshake_failed", ?peer, "no handshake frame");
+                    result => {
+                        warn!(name: "handshake_failed", ?peer, ?result, "no handshake frame");
                         return;
                     }
                 };
