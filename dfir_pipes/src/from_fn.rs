@@ -13,7 +13,10 @@ pub struct FromFn<F, Item, Meta, CanEnd> {
     _marker: core::marker::PhantomData<fn() -> (Item, Meta, CanEnd)>,
 }
 
-impl<F, Item, Meta, CanEnd> FromFn<F, Item, Meta, CanEnd> {
+impl<F, Item, Meta, CanEnd> FromFn<F, Item, Meta, CanEnd>
+where
+    Self: Pull,
+{
     /// Create a new `FromFn` from the given closure.
     pub(crate) fn new(func: F) -> Self {
         Self {

@@ -225,13 +225,16 @@ pub fn null_write_iterator_fn(
         quote_spanned! {op_span=>
             let #ident = #root::dfir_pipes::poll_fn(move |_cx| {
                 // Make sure to poll all `#inputs` to completion.
+                // TODO(mingwei): Do we actually need to poll to completion or can we short-circuit?
                 #(
                     let #inputs = #root::dfir_pipes::Pull::pull(::std::pin::pin!(#inputs), &mut _cx);
                 )*
                 #(
-                    let _ = ::std::task::ready!(#root::dfir_pipes::Step::into_poll(#inputs));
+                    if let #root::dfir_pipes::Step::Pending(_) = #inputs {
+                        return #root::dfir_pipes::Step::Pending(#root::dfir_pipes::Yes);
+                    }
                 )*
-                #root::dfir_pipes::Step::Ended(#root::dfir_pipes::Yes)
+                #root::dfir_pipes::Step::<_, _, #root::dfir_pipes::Yes, _>::Ended(#root::dfir_pipes::Yes)
             });
         }
     } else {

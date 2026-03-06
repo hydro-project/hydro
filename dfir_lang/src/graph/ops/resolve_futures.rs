@@ -72,10 +72,10 @@ pub fn resolve_futures_writer(
 
         let if_pending = if blocking {
             // Wait for all items.
-            quote_spanned! {op_span=> #root::dfir_pipes::Step::<_, _, #root::dfir_pipes::Yes, _>::Pending(#root::dfir_pipes::Yes) }
+            quote_spanned! {op_span=> #root::dfir_pipes::Step::<_, _, #root::dfir_pipes::Yes, _>::pending() }
         } else {
             // EOS immediately, futures items will be in future ticks.
-            quote_spanned! {op_span=> #root::dfir_pipes::Step::<_, _, #root::dfir_pipes::No, _>::Ended(#root::dfir_pipes::Yes) }
+            quote_spanned! {op_span=> #root::dfir_pipes::Step::<_, _, #root::dfir_pipes::No, _>::ended() }
         };
 
         quote_spanned! {op_span=>
@@ -86,9 +86,11 @@ pub fn resolve_futures_writer(
                         ::std::iter::Extend::extend(&mut *#queue_ident, ::std::iter::once(fut));
                     }).await;
 
-                    // Ensure the queue starts, by polling it.
+                    // Ensure the queue starts, by polling it exactly once.
                     // This unfortunately means we also need to store the result of the first poll in `first_item_opt`.
-                    if let ::std::task::Poll::Ready(opt) = #root::futures::stream::Stream::poll_next(::std::pin::Pin::new(&mut *#queue_ident), #task_cx) {
+                    if let ::std::task::Poll::Ready(opt) = ::std::future::poll_fn(
+                        |_cx| ::std::task::Poll::Ready(#root::futures::stream::Stream::poll_next(::std::pin::Pin::new(&mut *#queue_ident), #task_cx))
+                    ).await {
                         opt
                     } else {
                         ::std::option::Option::None
@@ -97,7 +99,7 @@ pub fn resolve_futures_writer(
 
                 #root::dfir_pipes::Pull::chain(
                     #root::dfir_pipes::iter(first_item_opt),
-                    #root::dfir_pipes::from_fn(|| {
+                    #root::dfir_pipes::poll_fn(|_cx| {
                         match #root::futures::stream::Stream::poll_next(::std::pin::Pin::new(&mut *#queue_ident), #task_cx) {
                             ::std::task::Poll::Pending => #if_pending,
                             ::std::task::Poll::Ready(::std::option::Option::Some(item)) => #root::dfir_pipes::Step::Ready(item, ()),

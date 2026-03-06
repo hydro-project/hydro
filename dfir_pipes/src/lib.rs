@@ -41,6 +41,7 @@ mod filter_map;
 mod flat_map;
 mod flatten;
 mod for_each;
+mod from_fn;
 mod fuse;
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
@@ -53,7 +54,6 @@ mod next;
 mod once;
 mod pending;
 mod poll_fn;
-mod pull_fn;
 mod repeat;
 mod send_sink;
 mod skip;
@@ -82,6 +82,7 @@ pub use filter_map::FilterMap;
 pub use flat_map::FlatMap;
 pub use flatten::Flatten;
 pub use for_each::ForEach;
+pub use from_fn::FromFn;
 pub use fuse::Fuse;
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
@@ -94,7 +95,6 @@ pub use next::Next;
 pub use once::Once;
 pub use pending::Pending;
 pub use poll_fn::PollFn;
-pub use pull_fn::FromFn;
 pub use repeat::Repeat;
 pub use send_sink::SendSink;
 pub use skip::Skip;
@@ -737,23 +737,26 @@ where
     StreamReady::new(stream, waker)
 }
 
-/// Creates a pull from a closure.
+/// Creates a synchronous pull from a closure.
 ///
 /// The closure is called each time the pull is polled and should return a `Step`.
 pub fn from_fn<F, Item, Meta, CanEnd>(func: F) -> FromFn<F, Item, Meta, CanEnd>
 where
     F: FnMut() -> Step<Item, Meta, No, CanEnd>,
+    Meta: Copy,
     CanEnd: Toggle,
 {
     FromFn::new(func)
 }
 
-/// Creates a pull from a closure.
+/// Creates an asynchronous or synchronous pull from a closure.
 ///
 /// The closure is called each time the pull is polled and should return a `Step`.
-pub fn poll_fn<F, Item, Meta, CanEnd>(func: F) -> PollFn<F, Item, Meta, CanEnd>
+pub fn poll_fn<F, Item, Meta, CanPend, CanEnd>(func: F) -> PollFn<F, Item, Meta, CanPend, CanEnd>
 where
-    F: FnMut(&mut core::task::Context<'_>) -> Step<Item, Meta, Yes, CanEnd>,
+    F: FnMut(&mut core::task::Context<'_>) -> Step<Item, Meta, CanPend, CanEnd>,
+    Meta: Copy,
+    CanPend: Toggle,
     CanEnd: Toggle,
 {
     PollFn::new(func)
