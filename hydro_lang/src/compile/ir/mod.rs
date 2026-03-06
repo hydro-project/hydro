@@ -3445,7 +3445,7 @@ impl HydroNode {
                                                     move |(map, opt_curr_watermark), (opt_payload, opt_watermark)| {
                                                         if let Some((k, v)) = opt_payload {
                                                             if let Some(curr_watermark) = *opt_curr_watermark {
-                                                                if k <= curr_watermark {
+                                                                if k < curr_watermark {
                                                                     return;
                                                                 }
                                                             }
@@ -3465,7 +3465,7 @@ impl HydroNode {
                                                                 }
                                                             }
                                                             *opt_curr_watermark = opt_watermark;
-                                                            map.retain(|k, _| *k > watermark);
+                                                            map.retain(|k, _| *k >= watermark);
                                                         }
                                                     }
                                                 })
