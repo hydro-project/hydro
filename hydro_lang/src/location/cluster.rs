@@ -166,9 +166,7 @@ where
     where
         Self: Sized,
     {
-        let cluster_id = if let LocationId::Cluster(id) = ctx.root().id() {
-            id
-        } else {
+        let LocationId::Cluster(cluster_id) = ctx.root().id() else {
             unreachable!()
         };
 

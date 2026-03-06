@@ -653,15 +653,15 @@ fn compile_sim_graph_trybuild(
     };
 
     if is_test {
-        extra_stmts_global.iter_mut().for_each(|stmt| {
+        for stmt in extra_stmts_global.iter_mut() {
             UseTestModeStaged { crate_name }.visit_stmt_mut(stmt);
-        });
+        }
 
-        extra_stmts_cluster.values_mut().for_each(|stmts| {
-            stmts.iter_mut().for_each(|stmt| {
+        for stmts in extra_stmts_cluster.values_mut() {
+            for stmt in stmts.iter_mut() {
                 UseTestModeStaged { crate_name }.visit_stmt_mut(stmt);
-            })
-        });
+            }
+        }
     }
 
     let process_dfir_exprs = process_graphs

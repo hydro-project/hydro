@@ -1380,14 +1380,14 @@ pub fn traverse_dfir(
     let mut built_tees = HashMap::new();
     let mut next_stmt_id = 0;
     let mut callback = BuildersOrCallback::Callback(transform_root, transform_node);
-    ir.iter_mut().for_each(|leaf| {
+    for leaf in ir.iter_mut() {
         leaf.emit_core(
             &mut callback,
             &mut seen_tees,
             &mut built_tees,
             &mut next_stmt_id,
         );
-    });
+    }
 }
 
 pub fn transform_bottom_up(
@@ -1397,14 +1397,14 @@ pub fn transform_bottom_up(
     check_well_formed: bool,
 ) {
     let mut seen_tees = HashMap::new();
-    ir.iter_mut().for_each(|leaf| {
+    for leaf in ir.iter_mut() {
         leaf.transform_bottom_up(
             transform_root,
             transform_node,
             &mut seen_tees,
             check_well_formed,
         );
-    });
+    }
 }
 
 pub fn deep_clone(ir: &[HydroRoot]) -> Vec<HydroRoot> {

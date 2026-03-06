@@ -1049,7 +1049,7 @@ mod test {
             semiring(
                 &[
                     HashSet::from([]),
-                    HashSet::from(["".to_owned()]),
+                    HashSet::from([String::new()]),
                     HashSet::from(["a".to_owned()]),
                     HashSet::from(["aa".to_owned(), "bb".to_owned()]),
                     HashSet::from(["ab".to_owned(), "bb".to_owned(), "cc".to_owned()]),
@@ -1072,7 +1072,7 @@ mod test {
                     new_set
                 },
                 HashSet::from([]),
-                HashSet::from(["".to_owned()]),
+                HashSet::from([String::new()]),
             )
             .is_ok()
         );

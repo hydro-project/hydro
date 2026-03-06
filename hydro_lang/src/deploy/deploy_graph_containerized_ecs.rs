@@ -333,9 +333,8 @@ impl EcsDeploy {
         };
 
         for (location_id, name_hint, process) in nodes.get_all_processes() {
-            let raw_id = match location_id {
-                LocationId::Process(id) => id,
-                _ => unreachable!(),
+            let LocationId::Process(raw_id) = location_id else {
+                unreachable!();
             };
             let task_family = get_ecs_container_name(&process.name, None);
             let ports = process.exposed_ports.borrow().clone();
@@ -377,9 +376,8 @@ impl EcsDeploy {
         }
 
         for (location_id, name_hint, cluster) in nodes.get_all_clusters() {
-            let raw_id = match location_id {
-                LocationId::Cluster(id) => id,
-                _ => unreachable!(),
+            let LocationId::Cluster(raw_id) = location_id else {
+                unreachable!();
             };
             let task_family_prefix = cluster.name.clone();
 
