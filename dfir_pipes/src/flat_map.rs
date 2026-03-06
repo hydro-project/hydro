@@ -20,7 +20,7 @@ impl<Prev, Func, Iter, Meta> FlatMap<Prev, Func, Iter, Meta>
 where
     Self: Pull,
 {
-    pub(crate) fn new(prev: Prev, func: Func) -> Self {
+    pub(crate) const fn new(prev: Prev, func: Func) -> Self {
         Self {
             prev,
             func,

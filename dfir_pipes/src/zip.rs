@@ -29,7 +29,7 @@ where
     Self: Pull,
 {
     /// Create a new `Zip` stream from two source streams.
-    pub(crate) fn new(prev1: Prev1, prev2: Prev2) -> Self {
+    pub(crate) const fn new(prev1: Prev1, prev2: Prev2) -> Self {
         Self {
             prev1,
             prev2,

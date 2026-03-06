@@ -23,7 +23,7 @@ where
     Self: Future,
 {
     /// Create a new [`SendSink`] from the given `pull` and `push` sides.
-    pub(crate) fn new(pull: Pul, push: Psh) -> Self {
+    pub(crate) const fn new(pull: Pul, push: Psh) -> Self {
         Self { pull, push }
     }
 }

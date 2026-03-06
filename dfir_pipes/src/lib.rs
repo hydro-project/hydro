@@ -6,7 +6,7 @@
 #![no_std]
 #![cfg_attr(nightly, feature(extend_one))]
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![warn(missing_docs)]
+#![warn(missing_docs, clippy::missing_const_for_fn)]
 
 #[cfg(feature = "alloc")]
 extern crate alloc;
@@ -159,7 +159,7 @@ impl Toggle for No {
     type And<T: Toggle> = No;
 }
 
-fn mut_unit<'a>() -> &'a mut () {
+const fn mut_unit<'a>() -> &'a mut () {
     // SAFETY: `UNIT` is a zero-sized type (ZST), so its pointer cannot dangle.
     // https://doc.rust-lang.org/reference/behavior-considered-undefined.html#r-undefined.dangling.zero-size
     unsafe { core::ptr::NonNull::dangling().as_mut() }
@@ -252,12 +252,12 @@ impl<Item, Meta, CanPend: Toggle, CanEnd: Toggle> Step<Item, Meta, CanPend, CanE
     }
 
     /// Returns `true` if the step is a [`Step::Ended`].
-    pub fn is_ended(&self) -> bool {
+    pub const fn is_ended(&self) -> bool {
         matches!(self, Step::Ended(_))
     }
 
     /// Returns `true` if the step is a [`Step::Pending`].
-    pub fn is_pending(&self) -> bool {
+    pub const fn is_pending(&self) -> bool {
         matches!(self, Step::Pending(_))
     }
 
@@ -722,7 +722,7 @@ pub fn iter<I: IntoIterator>(iter: I) -> Iter<I::IntoIter> {
 ///
 /// The resulting pull requires `&mut Context<'_>` to be polled and can both
 /// pend and end.
-pub fn stream<S: futures_core::stream::Stream>(stream: S) -> Stream<S> {
+pub const fn stream<S: futures_core::stream::Stream>(stream: S) -> Stream<S> {
     Stream::new(stream)
 }
 
@@ -730,7 +730,7 @@ pub fn stream<S: futures_core::stream::Stream>(stream: S) -> Stream<S> {
 ///
 /// This variant uses a provided waker function instead of requiring a context.
 /// When the stream returns `Pending`, this pull treats it as ended (non-blocking).
-pub fn stream_ready<S>(stream: S, waker: Waker) -> StreamReady<S>
+pub const fn stream_ready<S>(stream: S, waker: Waker) -> StreamReady<S>
 where
     S: futures_core::stream::Stream,
 {
@@ -765,12 +765,12 @@ pub fn empty<Item>() -> Empty<Item> {
 }
 
 /// Creates a pull that yields a single item.
-pub fn once<Item>(item: Item) -> Once<Item> {
+pub const fn once<Item>(item: Item) -> Once<Item> {
     Once::new(item)
 }
 
 /// Creates a pull that yields clones of the given item forever.
-pub fn repeat<Item>(item: Item) -> Repeat<Item>
+pub const fn repeat<Item>(item: Item) -> Repeat<Item>
 where
     Item: Clone,
 {

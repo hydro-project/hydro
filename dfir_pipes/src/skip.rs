@@ -19,7 +19,7 @@ impl<Prev> Skip<Prev>
 where
     Self: Pull,
 {
-    pub(crate) fn new(prev: Prev, n: usize) -> Self {
+    pub(crate) const fn new(prev: Prev, n: usize) -> Self {
         Self { prev, remaining: n }
     }
 }

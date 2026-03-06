@@ -19,7 +19,7 @@ impl<Prev, Iter, Meta> Flatten<Prev, Iter, Meta>
 where
     Self: Pull,
 {
-    pub(crate) fn new(prev: Prev) -> Self {
+    pub(crate) const fn new(prev: Prev) -> Self {
         Self {
             prev,
             current: None,

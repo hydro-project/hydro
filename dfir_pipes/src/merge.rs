@@ -28,7 +28,7 @@ impl<A, B> Merge<A, B>
 where
     Self: Pull,
 {
-    pub(crate) fn new(first: A, second: B) -> Self {
+    pub(crate) const fn new(first: A, second: B) -> Self {
         Self {
             first,
             second,

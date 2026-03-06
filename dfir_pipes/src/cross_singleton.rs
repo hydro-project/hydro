@@ -28,7 +28,7 @@ impl<ItemPull, SinglePull, SingleState> CrossSingleton<ItemPull, SinglePull, Sin
 where
     Self: Pull,
 {
-    pub(crate) fn new(
+    pub(crate) const fn new(
         item_pull: ItemPull,
         singleton_pull: SinglePull,
         singleton_state: SingleState,

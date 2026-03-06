@@ -19,7 +19,7 @@ impl<Prev> Enumerate<Prev>
 where
     Self: Pull,
 {
-    pub(crate) fn new(prev: Prev) -> Self {
+    pub(crate) const fn new(prev: Prev) -> Self {
         Self { prev, index: 0 }
     }
 }

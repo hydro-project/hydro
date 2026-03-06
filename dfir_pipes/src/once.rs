@@ -11,7 +11,7 @@ impl<Item> Once<Item>
 where
     Self: Pull,
 {
-    pub(crate) fn new(item: Item) -> Self {
+    pub(crate) const fn new(item: Item) -> Self {
         Self { item: Some(item) }
     }
 }

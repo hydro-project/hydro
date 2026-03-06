@@ -25,7 +25,7 @@ pub struct Fold<InitFn, FoldFn> {
 
 impl<InitFn, FoldFn> Fold<InitFn, FoldFn> {
     /// Create a `Fold` [`Accumulator`] with the given `InitFn` and `FoldFn`.
-    pub fn new<Accum, Item>(init_fn: InitFn, fold_fn: FoldFn) -> Self
+    pub const fn new<Accum, Item>(init_fn: InitFn, fold_fn: FoldFn) -> Self
     where
         Self: Accumulator<Accum, Item>,
     {
@@ -52,7 +52,7 @@ pub struct Reduce<ReduceFn> {
 
 impl<ReduceFn> Reduce<ReduceFn> {
     /// Create a `Reduce` [`Accumulator`] with the given `ReduceFn`.
-    pub fn new<Item>(reduce_fn: ReduceFn) -> Self
+    pub const fn new<Item>(reduce_fn: ReduceFn) -> Self
     where
         Self: Accumulator<Item, Item>,
     {
@@ -86,7 +86,7 @@ pub struct FoldFrom<InitFn, FoldFn> {
 
 impl<InitFn, FoldFn> FoldFrom<InitFn, FoldFn> {
     /// Create a `FoldFrom` [`Accumulator`] with the given `InitFn` and `FoldFn`.
-    pub fn new<Accum, Item>(init_fn: InitFn, fold_fn: FoldFn) -> Self
+    pub const fn new<Accum, Item>(init_fn: InitFn, fold_fn: FoldFn) -> Self
     where
         Self: Accumulator<Accum, Item>,
     {
@@ -129,7 +129,7 @@ impl<'a, Prev, Accum, Key, ValAccum, ValIn, S>
 where
     Self: Future,
 {
-    pub(crate) fn new(
+    pub(crate) const fn new(
         prev: Prev,
         accum: &'a mut Accum,
         hash_map: &'a mut std::collections::HashMap<Key, ValAccum, S>,
@@ -171,7 +171,7 @@ where
 }
 
 /// Use the accumulator `accum` to accumulate all entries in the `Pull` `prev` into the `hash_map`.
-pub fn accumulate_all<'a, Key, ValAccum, ValIn, Accum, S, Prev>(
+pub const fn accumulate_all<'a, Key, ValAccum, ValIn, Accum, S, Prev>(
     accum: &'a mut Accum,
     hash_map: &'a mut std::collections::HashMap<Key, ValAccum, S>,
     prev: Prev,

@@ -19,7 +19,7 @@ impl<St> Stream<St>
 where
     Self: Pull,
 {
-    pub(crate) fn new(stream: St) -> Self {
+    pub(crate) const fn new(stream: St) -> Self {
         Self { stream }
     }
 }

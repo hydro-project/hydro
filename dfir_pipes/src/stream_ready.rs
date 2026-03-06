@@ -27,7 +27,7 @@ where
     Self: Pull,
 {
     /// Create a new `StreamReady` from the given stream and waker function.
-    pub(crate) fn new(stream: S, waker: Waker) -> Self {
+    pub(crate) const fn new(stream: S, waker: Waker) -> Self {
         Self { stream, waker }
     }
 }

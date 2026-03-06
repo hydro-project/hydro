@@ -37,7 +37,7 @@ where
     Self: Pull,
 {
     /// Creates a new symmetric hash join Pull from two input Pulls and their join states.
-    pub fn new(lhs: Lhs, rhs: Rhs, lhs_state: LhsState, rhs_state: RhsState) -> Self {
+    pub const fn new(lhs: Lhs, rhs: Rhs, lhs_state: LhsState, rhs_state: RhsState) -> Self {
         Self {
             lhs,
             rhs,
