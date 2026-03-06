@@ -1664,6 +1664,7 @@ pub enum HydroNode {
 
     SingletonSource {
         value: DebugExpr,
+        first_tick_only: bool,
         metadata: HydroIrMetadata,
     },
 
@@ -2008,8 +2009,13 @@ impl HydroNode {
                 source: source.clone(),
                 metadata: metadata.clone(),
             },
-            HydroNode::SingletonSource { value, metadata } => HydroNode::SingletonSource {
+            HydroNode::SingletonSource {
+                value,
+                first_tick_only,
+                metadata,
+            } => HydroNode::SingletonSource {
                 value: value.clone(),
+                first_tick_only: *first_tick_only,
                 metadata: metadata.clone(),
             },
             HydroNode::CycleSource { cycle_id, metadata } => HydroNode::CycleSource {
@@ -2528,7 +2534,7 @@ impl HydroNode {
                         }
                     }
 
-                    HydroNode::SingletonSource { value, metadata } => {
+                    HydroNode::SingletonSource { value, first_tick_only, metadata } => {
                         let source_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
 
@@ -2536,8 +2542,16 @@ impl HydroNode {
                             BuildersOrCallback::Builders(graph_builders) => {
                                 let builder = graph_builders.get_dfir_mut(&out_location);
 
-                                if metadata.location_id.is_top_level()
-                                    && metadata.collection_kind.is_bounded()
+                                if *first_tick_only {
+                                    assert!(
+                                        !metadata.location_id.is_top_level(),
+                                        "first_tick_only SingletonSource must be inside a tick"
+                                    );
+                                }
+
+                                if *first_tick_only
+                                    || (metadata.location_id.is_top_level()
+                                        && metadata.collection_kind.is_bounded())
                                 {
                                     builder.add_dfir(
                                         parse_quote! {
@@ -3431,7 +3445,7 @@ impl HydroNode {
                                                     move |(map, opt_curr_watermark), (opt_payload, opt_watermark)| {
                                                         if let Some((k, v)) = opt_payload {
                                                             if let Some(curr_watermark) = *opt_curr_watermark {
-                                                                if k <= curr_watermark {
+                                                                if k < curr_watermark {
                                                                     return;
                                                                 }
                                                             }
@@ -3451,7 +3465,7 @@ impl HydroNode {
                                                                 }
                                                             }
                                                             *opt_curr_watermark = opt_watermark;
-                                                            map.retain(|k, _| *k > watermark);
+                                                            map.retain(|k, _| *k >= watermark);
                                                         }
                                                     }
                                                 })
@@ -3853,7 +3867,14 @@ impl HydroNode {
             HydroNode::Cast { .. } => "Cast()".to_owned(),
             HydroNode::ObserveNonDet { .. } => "ObserveNonDet()".to_owned(),
             HydroNode::Source { source, .. } => format!("Source({:?})", source),
-            HydroNode::SingletonSource { value, .. } => format!("SingletonSource({:?})", value),
+            HydroNode::SingletonSource {
+                value,
+                first_tick_only,
+                ..
+            } => format!(
+                "SingletonSource({:?}, first_tick_only={})",
+                value, first_tick_only
+            ),
             HydroNode::CycleSource { cycle_id, .. } => format!("CycleSource({})", cycle_id),
             HydroNode::Tee { inner, .. } => format!("Tee({})", inner.0.borrow().print_root()),
             HydroNode::YieldConcat { .. } => "YieldConcat()".to_owned(),

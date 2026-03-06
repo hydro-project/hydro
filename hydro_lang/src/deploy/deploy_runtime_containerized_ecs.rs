@@ -4,248 +4,218 @@
 )]
 #![allow(missing_docs, reason = "used internally")]
 
-use std::collections::HashMap;
-use std::future::Future;
-use std::net::SocketAddr;
-use std::ops::{Deref, DerefMut};
-use std::pin::Pin;
-use std::sync::Arc;
-use std::task::{Context, Poll};
 use std::time::Duration;
 
-use bytes::BytesMut;
-use futures::{FutureExt, Sink, SinkExt, Stream, StreamExt};
-use proc_macro2::Span;
-use sinktools::demux_map_lazy::LazyDemuxSink;
+use futures::{SinkExt, Stream, StreamExt};
 use sinktools::lazy::{LazySink, LazySource};
 use sinktools::lazy_sink_source::LazySinkSource;
-use stageleft::runtime_support::{
-    FreeVariableWithContext, FreeVariableWithContextWithProps, QuoteTokens,
-};
 use stageleft::{QuotedWithContext, q};
+use tokio::net::TcpStream;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::net::{TcpListener, TcpStream};
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
-use tracing::{Instrument, debug, error, instrument, span, trace, trace_span};
+use tracing::{Instrument, debug, instrument, span, trace, trace_span};
 
+pub use super::deploy_runtime_containerized::{
+    CHANNEL_MAGIC, CHANNEL_MUX_PORT, CHANNEL_PROTOCOL_VERSION, ChannelHandshake, ChannelMagic,
+    ChannelMux, ChannelProtocolVersion, SocketIdent, cluster_ids, get_or_init_channel_mux,
+    send_handshake,
+};
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
-use crate::location::{LocationKey, MemberId, MembershipEvent};
+use crate::location::{LocationKey, MembershipEvent};
 
 pub fn deploy_containerized_o2o(
     target_task_family: &str,
-    bind_port: u16,
+    channel_name: &str,
 ) -> (syn::Expr, syn::Expr) {
     (
         q!(LazySink::<_, _, _, bytes::Bytes>::new(move || Box::pin(
             async move {
+                let channel_name = channel_name;
                 let target_task_family = target_task_family;
                 let task_id = self::resolve_task_family_to_task_id(target_task_family).await;
                 let ip = self::resolve_task_ip(&task_id).await;
-                let target = format!("{}:{}", ip, bind_port);
-                debug!(name: "connecting", %target, %target_task_family, %task_id);
+                let target = format!("{}:{}", ip, self::CHANNEL_MUX_PORT);
+                debug!(name: "connecting", %target, %target_task_family, %task_id, %channel_name);
 
                 let stream = TcpStream::connect(&target).await?;
+                let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
-                Result::<_, std::io::Error>::Ok(FramedWrite::new(
-                    stream,
-                    LengthDelimitedCodec::new(),
-                ))
+                self::send_handshake(&mut sink, channel_name, None).await?;
+
+                Result::<_, std::io::Error>::Ok(sink)
             }
         )))
         .splice_untyped_ctx(&()),
         q!(LazySource::new(move || Box::pin(async move {
-            let bind_addr = format!("0.0.0.0:{}", bind_port);
-            let listener = TcpListener::bind(bind_addr).await?;
-            let (stream, peer) = listener.accept().await?;
-            debug!(name: "accepting", ?peer);
-            Result::<_, std::io::Error>::Ok(FramedRead::new(stream, LengthDelimitedCodec::new()))
+            let channel_name = channel_name;
+            let mux = self::get_or_init_channel_mux();
+            let mut rx = mux.register(channel_name.to_owned());
+
+            let (_sender_id, source) = rx.recv().await.ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::ConnectionReset, "channel mux closed")
+            })?;
+
+            debug!(name: "o2o_channel_connected", %channel_name);
+
+            Result::<_, std::io::Error>::Ok(source)
         })))
         .splice_untyped_ctx(&()),
     )
 }
 
-pub fn deploy_containerized_o2m(port: u16) -> (syn::Expr, syn::Expr) {
+pub fn deploy_containerized_o2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
     (
-        QuotedWithContext::<'static, LazyDemuxSink<TaglessMemberId, _, _>, ()>::splice_untyped_ctx(
-            q!(sinktools::demux_map_lazy::<_, _, _, _>(
-                move |key: &TaglessMemberId| {
-                    let key = key.clone();
+        q!(sinktools::demux_map_lazy::<_, _, _, _>(
+            move |key: &TaglessMemberId| {
+                let key = key.clone();
+                let channel_name = channel_name.to_owned();
 
-                    LazySink::<_, _, _, bytes::Bytes>::new(move || {
-                        Box::pin(async move {
-                            let port = port;
-                            let task_id = key.get_container_name();
-                            let ip = self::resolve_task_ip(task_id).await;
-                            let target = format!("{}:{}", ip, port);
-                            debug!(name: "connecting", %target, %task_id);
+                LazySink::<_, _, _, bytes::Bytes>::new(move || {
+                    Box::pin(async move {
+                        let task_id = key.get_container_name();
+                        let ip = self::resolve_task_ip(task_id).await;
+                        let target = format!("{}:{}", ip, self::CHANNEL_MUX_PORT);
+                        debug!(name: "connecting", %target, %task_id, channel_name = %channel_name);
 
-                            let stream = TcpStream::connect(&target).await?;
+                        let stream = TcpStream::connect(&target).await?;
+                        let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
-                            let sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
-                            Result::<_, std::io::Error>::Ok(sink)
-                        })
+                        self::send_handshake(&mut sink, &channel_name, None).await?;
+
+                        Result::<_, std::io::Error>::Ok(sink)
                     })
-                }
-            )),
-            &(),
-        ),
+                })
+            }
+        ))
+        .splice_untyped_ctx(&()),
         q!(LazySource::new(move || Box::pin(async move {
-            let bind_addr = format!("0.0.0.0:{}", port);
-            debug!(name: "listening", %bind_addr);
-            let listener = TcpListener::bind(bind_addr).await?;
-            let (stream, peer) = listener.accept().await?;
-            debug!(name: "accepting", ?peer);
+            let channel_name = channel_name;
+            let mux = self::get_or_init_channel_mux();
+            let mut rx = mux.register(channel_name.to_owned());
 
-            Result::<_, std::io::Error>::Ok(FramedRead::new(stream, LengthDelimitedCodec::new()))
+            let (_sender_id, source) = rx.recv().await.ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::ConnectionReset, "channel mux closed")
+            })?;
+
+            debug!(name: "o2m_channel_connected", %channel_name);
+
+            Result::<_, std::io::Error>::Ok(source)
         })))
         .splice_untyped_ctx(&()),
     )
 }
 
-pub fn deploy_containerized_m2o(port: u16, target_task_family: &str) -> (syn::Expr, syn::Expr) {
+pub fn deploy_containerized_m2o(
+    target_task_family: &str,
+    channel_name: &str,
+) -> (syn::Expr, syn::Expr) {
     (
         q!(LazySink::<_, _, _, bytes::Bytes>::new(move || {
             Box::pin(async move {
+                let channel_name = channel_name;
                 let target_task_family = target_task_family;
                 let target_task_id = self::resolve_task_family_to_task_id(target_task_family).await;
                 let ip = self::resolve_task_ip(&target_task_id).await;
-                let target = format!("{}:{}", ip, port);
-                debug!(name: "connecting", %target, %target_task_family, %target_task_id);
+                let target = format!("{}:{}", ip, self::CHANNEL_MUX_PORT);
+                debug!(name: "connecting", %target, %target_task_family, %target_task_id, %channel_name);
 
                 let stream = TcpStream::connect(&target).await?;
-
                 let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
                 let self_task_id = self::get_self_task_id();
-                sink.send(bytes::Bytes::from(
-                    bincode::serialize(&self_task_id).unwrap(),
-                ))
-                .await?;
+                self::send_handshake(&mut sink, channel_name, Some(&self_task_id)).await?;
 
                 Result::<_, std::io::Error>::Ok(sink)
             })
         }))
         .splice_untyped_ctx(&()),
-        QuotedWithContext::<'static, LazySource<_, _, _, Result<(TaglessMemberId, BytesMut), _>>, ()>::splice_untyped_ctx(
-            q!(LazySource::new(move || Box::pin(async move {
-                let bind_addr = format!("0.0.0.0:{}", port);
-                debug!(name: "listening", %bind_addr);
-                let listener = TcpListener::bind(bind_addr).await?;
-                Result::<_, std::io::Error>::Ok(
-                    futures::stream::unfold(listener, |listener| {
-                        Box::pin(async move {
-                            let (stream, peer) = listener.accept().await.ok()?;
-                            let mut source = FramedRead::new(stream, LengthDelimitedCodec::new());
-                            let from_task_id =
-                                bincode::deserialize::<String>(&source.next().await?.ok()?[..])
-                                    .ok()?;
+        q!(LazySource::new(move || Box::pin(async move {
+            let channel_name = channel_name;
+            let mux = self::get_or_init_channel_mux();
+            let mut rx = mux.register(channel_name.to_owned());
 
-                            debug!(name: "accepting", endpoint = format!("{}:{}", peer, from_task_id));
+            Result::<_, std::io::Error>::Ok(
+                futures::stream::unfold(rx, |mut rx| {
+                    Box::pin(async move {
+                        let (sender_id, source) = rx.recv().await?;
+                        let from_task_id = sender_id
+                            .expect("m2o sender must provide task ID");
 
-                            Some((
-                                source.map(move |v| {
-                                    v.map(|v| (TaglessMemberId::from_container_name(from_task_id.clone()), v))
-                                }),
-                                listener,
-                            ))
-                        })
+                        debug!(name: "m2o_channel_connected", %from_task_id);
+
+                        Some((
+                            source.map(move |v| {
+                                v.map(|v| (TaglessMemberId::from_container_name(from_task_id.clone()), v))
+                            }),
+                            rx,
+                        ))
                     })
-                    .flatten_unordered(None),
-                )
-            }))),
-            &(),
-        ),
+                })
+                .flatten_unordered(None),
+            )
+        })))
+        .splice_untyped_ctx(&()),
     )
 }
 
-pub fn deploy_containerized_m2m(port: u16) -> (syn::Expr, syn::Expr) {
+pub fn deploy_containerized_m2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
     (
-        QuotedWithContext::<'static, LazyDemuxSink<TaglessMemberId, _, _>, ()>::splice_untyped_ctx(
-            q!(sinktools::demux_map_lazy::<_, _, _, _>(
-                move |key: &TaglessMemberId| {
-                    let key = key.clone();
+        q!(sinktools::demux_map_lazy::<_, _, _, _>(
+            move |key: &TaglessMemberId| {
+                let key = key.clone();
+                let channel_name = channel_name.to_owned();
 
-                    LazySink::<_, _, _, bytes::Bytes>::new(move || {
-                        Box::pin(async move {
-                            let port = port;
-                            let task_id = key.get_container_name();
-                            let ip = self::resolve_task_ip(task_id).await;
-                            let target = format!("{}:{}", ip, port);
-                            debug!(name: "connecting", %target, %task_id);
+                LazySink::<_, _, _, bytes::Bytes>::new(move || {
+                    Box::pin(async move {
+                        let task_id = key.get_container_name();
+                        let ip = self::resolve_task_ip(task_id).await;
+                        let target = format!("{}:{}", ip, self::CHANNEL_MUX_PORT);
+                        debug!(name: "connecting", %target, %task_id, channel_name = %channel_name);
 
-                            let stream = TcpStream::connect(&target).await?;
+                        let stream = TcpStream::connect(&target).await?;
+                        let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
-                            let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
-                            debug!(name: "connected", %target);
+                        let self_task_id = self::get_self_task_id();
+                        self::send_handshake(&mut sink, &channel_name, Some(&self_task_id)).await?;
 
-                            let self_task_id = self::get_self_task_id();
-                            sink.send(bytes::Bytes::from(
-                                bincode::serialize(&self_task_id).unwrap(),
-                            ))
-                            .await?;
-
-                            Result::<_, std::io::Error>::Ok(sink)
-                        })
+                        Result::<_, std::io::Error>::Ok(sink)
                     })
-                }
-            )),
-            &(),
-        ),
-        QuotedWithContext::<'static, LazySource<_, _, _, Result<(TaglessMemberId, BytesMut), _>>, ()>::splice_untyped_ctx(
-            q!(LazySource::new(move || Box::pin(async move {
-                let bind_addr = format!("0.0.0.0:{}", port);
-                debug!(name: "listening", %bind_addr);
-                let listener = TcpListener::bind(bind_addr).await?;
+                })
+            }
+        ))
+        .splice_untyped_ctx(&()),
+        q!(LazySource::new(move || Box::pin(async move {
+            let channel_name = channel_name;
+            let mux = self::get_or_init_channel_mux();
+            let mut rx = mux.register(channel_name.to_owned());
 
-                Result::<_, std::io::Error>::Ok(
-                    futures::stream::unfold(listener, |listener| {
-                        Box::pin(async move {
-                            let (stream, peer) = listener.accept().await.ok()?;
-                            let mut source = FramedRead::new(stream, LengthDelimitedCodec::new());
-                            let from_task_id =
-                                bincode::deserialize::<String>(&source.next().await?.ok()?[..])
-                                    .ok()?;
+            Result::<_, std::io::Error>::Ok(
+                futures::stream::unfold(rx, |mut rx| {
+                    Box::pin(async move {
+                        let (sender_id, source) = rx.recv().await?;
+                        let from_task_id = sender_id.expect("m2m sender must provide task ID");
 
-                            debug!(name: "accepting", endpoint = format!("{}:{}", peer, from_task_id));
+                        debug!(name: "m2m_channel_connected", %from_task_id);
 
-                            Some((
-                                source.map(move |v| {
-                                    v.map(|v| (TaglessMemberId::from_container_name(from_task_id.clone()), v))
-                                }),
-                                listener,
-                            ))
-                        })
+                        Some((
+                            source.map(move |v| {
+                                v.map(|v| {
+                                    (
+                                        TaglessMemberId::from_container_name(from_task_id.clone()),
+                                        v,
+                                    )
+                                })
+                            }),
+                            rx,
+                        ))
                     })
-                    .flatten_unordered(None),
-                )
-            }))),
-            &(),
-        ),
+                })
+                .flatten_unordered(None),
+            )
+        })))
+        .splice_untyped_ctx(&()),
     )
-}
-
-pub struct SocketIdent {
-    pub socket_ident: syn::Ident,
-}
-
-impl<Ctx> FreeVariableWithContextWithProps<Ctx, ()> for SocketIdent {
-    type O = TcpListener;
-
-    fn to_tokens(self, _ctx: &Ctx) -> (QuoteTokens, ())
-    where
-        Self: Sized,
-    {
-        let ident = self.socket_ident;
-
-        (
-            QuoteTokens {
-                prelude: None,
-                expr: Some(quote::quote! { #ident }),
-            },
-            (),
-        )
-    }
 }
 
 pub fn deploy_containerized_external_sink_source_ident(
@@ -259,7 +229,6 @@ pub fn deploy_containerized_external_sink_source_ident(
         FramedRead<OwnedReadHalf, LengthDelimitedCodec>,
         FramedWrite<OwnedWriteHalf, LengthDelimitedCodec>,
         bytes::Bytes,
-        // Result<bytes::BytesMut, std::io::Error>,
         std::io::Error,
     >::new(async move {
         let span = span!(tracing::Level::TRACE, "lazy_sink_source");
@@ -279,16 +248,6 @@ pub fn deploy_containerized_external_sink_source_ident(
         Result::<_, std::io::Error>::Ok((fr, fw))
     },))
     .splice_untyped_ctx(&())
-}
-
-pub fn cluster_ids<'a>() -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone {
-    // unimplemented!(); // this is unused.
-
-    // This is a dummy piece of code, since clusters are dynamic when containerized.
-    q!(Box::leak(Box::new([TaglessMemberId::from_container_name(
-        "INVALID CONTAINER NAME cluster_ids"
-    )]))
-    .as_slice())
 }
 
 pub fn cluster_self_id<'a>() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
@@ -560,7 +519,6 @@ async fn resolve_task_family_to_task_id(task_family: &str) -> String {
     }
 }
 
-/// Get the current task's ID from ECS metadata.
 fn get_self_task_id() -> String {
     let metadata_uri = std::env::var("ECS_CONTAINER_METADATA_URI_V4")
         .expect("ECS_CONTAINER_METADATA_URI_V4 not set - are we running in ECS?");

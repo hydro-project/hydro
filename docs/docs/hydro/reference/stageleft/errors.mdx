@@ -21,6 +21,22 @@ fn uses_foo_quoted() {
 }
 ```
 
+## Local Imports Inside Functions
+Imports (`use` statements) inside a function body are not visible to `q!`. Any symbols referenced inside `q!` must be imported at the module level.
+
+```rust,ignore
+# use stageleft::*;
+fn uses_local_import() {
+  use some_crate::MyType;
+  q!(|| MyType::new()) // don't do this, error during staged compilation
+}
+
+use some_crate::MyType; // import at module level instead
+fn uses_module_import() {
+  q!(|| MyType::new()) // works!
+}
+```
+
 ## References to Free Variables in Macros
 Quoted code can refer to special types of external variables called "free variables". These include primitives such as integers and strings, as well as special types such as `CLUSTER_SELF_ID`. Stageleft does not currently handle references to these variables directly inside macros with custom syntax. To work around this, you should first load the free variable into a local variable and then use it from the macro.
 

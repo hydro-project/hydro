@@ -26,195 +26,415 @@ use stageleft::{QuotedWithContext, q};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
-use tracing::{debug, instrument};
+use tracing::{debug, instrument, warn};
 
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
 use crate::location::{LocationKey, MemberId, MembershipEvent};
 
-pub fn deploy_containerized_o2o(target: &str, bind_addr: &str) -> (syn::Expr, syn::Expr) {
+/// The single well-known port that every node listens on.
+pub const CHANNEL_MUX_PORT: u16 = 10000;
+
+/// Magic constant embedded in every [`ChannelMagic`] header.
+pub const CHANNEL_MAGIC: u64 = 0x4859_4452_4f5f_4348;
+
+/// Magic header sent as the very first frame of every channel handshake.
+///
+/// This is a fixed value that never changes across versions, used to confirm
+/// both sides are speaking the same protocol family before anything else.
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct ChannelMagic {
+    pub magic: u64,
+}
+
+/// Current protocol version for the channel handshake.
+pub const CHANNEL_PROTOCOL_VERSION: u64 = 1;
+
+/// Protocol version sent as the second frame, after [`ChannelMagic`].
+///
+/// Incremented when the handshake format changes. The receiver checks this
+/// to decide how to deserialize the subsequent [`ChannelHandshake`] frame.
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct ChannelProtocolVersion {
+    pub version: u64,
+}
+
+/// Handshake message sent by the connecting side to identify the channel.
+///
+/// The receiver reads the third frame (after [`ChannelMagic`] and
+/// [`ChannelProtocolVersion`]) to know which logical channel the connection
+/// belongs to, and optionally which cluster member is connecting.
+/// cluster member is connecting.
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct ChannelHandshake {
+    /// The logical channel name for this connection.
+    pub channel_name: String,
+    /// If the sender is a cluster member, this is its identifier
+    /// (container name for Docker, task ID for ECS, etc.).
+    /// `None` for process-to-process connections.
+    pub sender_id: Option<String>,
+}
+
+/// A dispatched channel connection: optional sender ID and the read stream.
+type MuxConnection = (
+    Option<String>,
+    FramedRead<OwnedReadHalf, LengthDelimitedCodec>,
+);
+
+/// A shared accept loop that listens on a single port and dispatches
+/// incoming connections to the right consumer based on the channel name
+/// sent in the handshake.
+///
+/// Each node creates one of these at startup. Individual channels register
+/// themselves and receive their connection via a mpsc channel.
+pub struct ChannelMux {
+    /// Map from channel name to a sender that delivers accepted connections.
+    channels: std::sync::Mutex<HashMap<String, tokio::sync::mpsc::UnboundedSender<MuxConnection>>>,
+}
+
+impl Default for ChannelMux {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ChannelMux {
+    pub fn new() -> Self {
+        Self {
+            channels: std::sync::Mutex::new(HashMap::new()),
+        }
+    }
+
+    pub fn register(
+        &self,
+        channel_name: String,
+    ) -> tokio::sync::mpsc::UnboundedReceiver<MuxConnection> {
+        let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+        let mut channels = self.channels.lock().unwrap();
+        channels.insert(channel_name, tx);
+        rx
+    }
+
+    pub async fn run_accept_loop(self: Arc<Self>, listener: TcpListener) {
+        loop {
+            let (stream, peer) = match listener.accept().await {
+                Ok(v) => v,
+                Err(e) => {
+                    warn!(name: "accept_error", error = %e);
+                    continue;
+                }
+            };
+            debug!(name: "mux_accepting", ?peer);
+
+            let mux = self.clone();
+            tokio::spawn(async move {
+                let (rx, _tx) = stream.into_split();
+                let mut source = FramedRead::new(rx, LengthDelimitedCodec::new());
+
+                let magic_frame = match source.next().await {
+                    Some(Ok(frame)) => frame,
+                    _ => {
+                        warn!(name: "magic_failed", ?peer, "no magic frame");
+                        return;
+                    }
+                };
+
+                let magic: ChannelMagic = match bincode::deserialize(&magic_frame) {
+                    Ok(m) => m,
+                    Err(e) => {
+                        warn!(name: "magic_deserialize_failed", ?peer, error = %e);
+                        return;
+                    }
+                };
+
+                if magic.magic != CHANNEL_MAGIC {
+                    warn!(name: "bad_magic", ?peer, magic = magic.magic, expected = CHANNEL_MAGIC);
+                    return;
+                }
+
+                let version_frame = match source.next().await {
+                    Some(Ok(frame)) => frame,
+                    _ => {
+                        warn!(name: "version_failed", ?peer, "no version frame");
+                        return;
+                    }
+                };
+
+                let version: ChannelProtocolVersion = match bincode::deserialize(&version_frame) {
+                    Ok(v) => v,
+                    Err(e) => {
+                        warn!(name: "version_deserialize_failed", ?peer, error = %e);
+                        return;
+                    }
+                };
+
+                if version.version != CHANNEL_PROTOCOL_VERSION {
+                    warn!(name: "version_mismatch", ?peer, version = version.version, expected = CHANNEL_PROTOCOL_VERSION);
+                    return;
+                }
+
+                let handshake_frame = match source.next().await {
+                    Some(Ok(frame)) => frame,
+                    _ => {
+                        warn!(name: "handshake_failed", ?peer, "no handshake frame");
+                        return;
+                    }
+                };
+
+                let handshake: ChannelHandshake = match bincode::deserialize(&handshake_frame) {
+                    Ok(h) => h,
+                    Err(e) => {
+                        warn!(name: "handshake_deserialize_failed", ?peer, error = %e);
+                        return;
+                    }
+                };
+
+                debug!(name: "handshake_received", ?peer, ?handshake);
+
+                let channels = mux.channels.lock().unwrap();
+                if let Some(tx_chan) = channels.get(&handshake.channel_name) {
+                    let _ = tx_chan.send((handshake.sender_id, source));
+                } else {
+                    warn!(
+                        name: "unknown_channel",
+                        channel_name = %handshake.channel_name,
+                        ?peer,
+                        "no registered consumer for channel"
+                    );
+                }
+            });
+        }
+    }
+}
+
+/// Get or initialize the global ChannelMux for this process.
+///
+/// The first call creates the TcpListener and spawns the accept loop.
+/// Subsequent calls return the same `Arc<ChannelMux>`.
+pub fn get_or_init_channel_mux() -> Arc<ChannelMux> {
+    use std::sync::OnceLock;
+    static MUX: OnceLock<Arc<ChannelMux>> = OnceLock::new();
+
+    MUX.get_or_init(|| {
+        let mux = Arc::new(ChannelMux::new());
+        let mux_clone = mux.clone();
+
+        // Spawn the accept loop in a background task.
+        // We use tokio::spawn which requires a runtime to be active.
+        tokio::spawn(async move {
+            let bind_addr = format!("0.0.0.0:{}", CHANNEL_MUX_PORT);
+            debug!(name: "mux_listening", %bind_addr);
+            let listener = TcpListener::bind(&bind_addr)
+                .await
+                .expect("failed to bind channel mux listener");
+            mux_clone.run_accept_loop(listener).await;
+        });
+
+        mux
+    })
+    .clone()
+}
+
+/// Sends a [`ChannelMagic`], then a [`ChannelProtocolVersion`], then a
+/// [`ChannelHandshake`] as three separate frames over the given sink.
+pub async fn send_handshake(
+    sink: &mut FramedWrite<TcpStream, LengthDelimitedCodec>,
+    channel_name: &str,
+    sender_id: Option<&str>,
+) -> Result<(), std::io::Error> {
+    let magic = ChannelMagic {
+        magic: CHANNEL_MAGIC,
+    };
+    sink.send(bytes::Bytes::from(bincode::serialize(&magic).unwrap()))
+        .await?;
+
+    let version = ChannelProtocolVersion {
+        version: CHANNEL_PROTOCOL_VERSION,
+    };
+    sink.send(bytes::Bytes::from(bincode::serialize(&version).unwrap()))
+        .await?;
+
+    let handshake = ChannelHandshake {
+        channel_name: channel_name.to_owned(),
+        sender_id: sender_id.map(|s| s.to_owned()),
+    };
+    sink.send(bytes::Bytes::from(bincode::serialize(&handshake).unwrap()))
+        .await?;
+    Ok(())
+}
+
+pub fn deploy_containerized_o2o(target: &str, channel_name: &str) -> (syn::Expr, syn::Expr) {
     (
         q!(LazySink::<_, _, _, bytes::Bytes>::new(move || Box::pin(
             async move {
-                let target = target;
-                debug!(name: "connecting", %target);
-                Result::<_, std::io::Error>::Ok(FramedWrite::new(
-                    TcpStream::connect(target).await?,
-                    LengthDelimitedCodec::new(),
-                ))
+                let channel_name = channel_name;
+                let target = format!("{}:{}", target, self::CHANNEL_MUX_PORT);
+                debug!(name: "connecting", %target, %channel_name);
+
+                let stream = TcpStream::connect(&target).await?;
+                let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
+
+                self::send_handshake(&mut sink, channel_name, None).await?;
+
+                Result::<_, std::io::Error>::Ok(sink)
             }
         )))
         .splice_untyped_ctx(&()),
         q!(LazySource::new(move || Box::pin(async move {
-            let listener = TcpListener::bind(bind_addr).await?;
-            let (stream, peer) = listener.accept().await?;
-            debug!(name: "accepting", ?peer);
-            Result::<_, std::io::Error>::Ok(FramedRead::new(stream, LengthDelimitedCodec::new()))
+            let channel_name = channel_name;
+            let mux = self::get_or_init_channel_mux();
+            let mut rx = mux.register(channel_name.to_owned());
+
+            let (_sender_id, source) = rx.recv().await.ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::ConnectionReset, "channel mux closed")
+            })?;
+
+            debug!(name: "o2o_channel_connected", %channel_name);
+
+            Result::<_, std::io::Error>::Ok(source)
         })))
         .splice_untyped_ctx(&()),
     )
 }
 
-pub fn deploy_containerized_o2m(port: u16) -> (syn::Expr, syn::Expr) {
+pub fn deploy_containerized_o2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
     (
-        QuotedWithContext::<'static, LazyDemuxSink<TaglessMemberId, _, _>, ()>::splice_untyped_ctx(
-            q!(sinktools::demux_map_lazy::<_, _, _, _>(
-                move |key: &TaglessMemberId| {
-                    let key = key.clone();
+        q!(sinktools::demux_map_lazy::<_, _, _, _>(
+            move |key: &TaglessMemberId| {
+                let key = key.clone();
+                let channel_name = channel_name.to_owned();
 
-                    LazySink::<_, _, _, bytes::Bytes>::new(move || {
-                        Box::pin(async move {
-                            let port = port;
-                            debug!(name: "connecting", target = format!("{}:{}", key.get_container_name(), port));
-                            let mut sink = FramedWrite::new(
-                                TcpStream::connect(format!(
-                                    "{}:{}",
-                                    key.get_container_name(),
-                                    port
-                                ))
-                                .await?,
-                                LengthDelimitedCodec::new(),
-                            );
+                LazySink::<_, _, _, bytes::Bytes>::new(move || {
+                    Box::pin(async move {
+                        let target =
+                            format!("{}:{}", key.get_container_name(), self::CHANNEL_MUX_PORT);
+                        debug!(name: "connecting", %target, channel_name = %channel_name);
 
-                            Result::<_, std::io::Error>::Ok(sink)
-                        })
+                        let stream = TcpStream::connect(&target).await?;
+                        let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
+
+                        self::send_handshake(&mut sink, &channel_name, None).await?;
+
+                        Result::<_, std::io::Error>::Ok(sink)
                     })
-                }
-            )),
-            &(),
-        ),
+                })
+            }
+        ))
+        .splice_untyped_ctx(&()),
         q!(LazySource::new(move || Box::pin(async move {
-            let bind_addr = format!("0.0.0.0:{}", port);
-            debug!(name: "listening", %bind_addr);
-            let listener = TcpListener::bind(bind_addr).await?;
-            let (stream, peer) = listener.accept().await?;
-            debug!(name: "accepting", ?peer);
+            let channel_name = channel_name;
+            let mux = self::get_or_init_channel_mux();
+            let mut rx = mux.register(channel_name.to_owned());
 
-            Result::<_, std::io::Error>::Ok(FramedRead::new(stream, LengthDelimitedCodec::new()))
+            let (_sender_id, source) = rx.recv().await.ok_or_else(|| {
+                std::io::Error::new(std::io::ErrorKind::ConnectionReset, "channel mux closed")
+            })?;
+
+            debug!(name: "o2m_channel_connected", %channel_name);
+
+            Result::<_, std::io::Error>::Ok(source)
         })))
         .splice_untyped_ctx(&()),
     )
 }
 
-pub fn deploy_containerized_m2o(port: u16, target_host: &str) -> (syn::Expr, syn::Expr) {
+pub fn deploy_containerized_m2o(target_host: &str, channel_name: &str) -> (syn::Expr, syn::Expr) {
     (
         q!(LazySink::<_, _, _, bytes::Bytes>::new(move || {
             Box::pin(async move {
-                let target = format!("{}:{}", target_host, port);
-                debug!(name: "connecting", %target);
+                let channel_name = channel_name;
+                let target = format!("{}:{}", target_host, self::CHANNEL_MUX_PORT);
+                debug!(name: "connecting", %target, %channel_name);
 
-                let mut sink = FramedWrite::new(
-                    TcpStream::connect(target).await?,
-                    LengthDelimitedCodec::new(),
-                );
+                let stream = TcpStream::connect(&target).await?;
+                let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
 
-                sink.send(bytes::Bytes::from(
-                    bincode::serialize(&std::env::var("CONTAINER_NAME").unwrap())
-                        .unwrap(),
-                ))
-                .await?;
+                let container_name = std::env::var("CONTAINER_NAME").unwrap();
+                self::send_handshake(&mut sink, channel_name, Some(&container_name)).await?;
 
                 Result::<_, std::io::Error>::Ok(sink)
             })
         }))
         .splice_untyped_ctx(&()),
-        QuotedWithContext::<'static, LazySource<_, _, _, Result<(TaglessMemberId, BytesMut), _>>, ()>::splice_untyped_ctx(
-            q!(LazySource::new(move || Box::pin(async move {
-                let bind_addr = format!("0.0.0.0:{}", port);
-                debug!(name: "listening", %bind_addr);
-                let listener = TcpListener::bind(bind_addr).await?;
-                Result::<_, std::io::Error>::Ok(
-                    futures::stream::unfold(listener, |listener| {
-                        Box::pin(async move {
-                            let (stream, peer) = listener.accept().await.ok()?;
-                            let mut source = FramedRead::new(stream, LengthDelimitedCodec::new());
-                            let from =
-                                bincode::deserialize::<String>(&source.next().await?.ok()?[..])
-                                    .ok()?;
+        q!(LazySource::new(move || Box::pin(async move {
+            let channel_name = channel_name;
+            let mux = self::get_or_init_channel_mux();
+            let mut rx = mux.register(channel_name.to_owned());
 
-                            debug!(name: "accepting", endpoint = format!("{}:{}", peer, from));
+            Result::<_, std::io::Error>::Ok(
+                futures::stream::unfold(rx, |mut rx| {
+                    Box::pin(async move {
+                        let (sender_id, source) = rx.recv().await?;
+                        let from = sender_id.expect("m2o sender must provide container name");
 
-                            Some((
-                                source.map(move |v| {
-                                    v.map(|v| (TaglessMemberId::from_container_name(from.clone()), v))
-                                }),
-                                listener,
-                            ))
-                        })
+                        debug!(name: "m2o_channel_connected", %from);
+
+                        Some((
+                            source.map(move |v| {
+                                v.map(|v| (TaglessMemberId::from_container_name(from.clone()), v))
+                            }),
+                            rx,
+                        ))
                     })
-                    .flatten_unordered(None),
-                )
-            }))),
-            &(),
-        ),
+                })
+                .flatten_unordered(None),
+            )
+        })))
+        .splice_untyped_ctx(&()),
     )
 }
 
-pub fn deploy_containerized_m2m(port: u16) -> (syn::Expr, syn::Expr) {
+pub fn deploy_containerized_m2m(channel_name: &str) -> (syn::Expr, syn::Expr) {
     (
-        QuotedWithContext::<'static, LazyDemuxSink<TaglessMemberId, _, _>, ()>::splice_untyped_ctx(
-            q!(sinktools::demux_map_lazy::<_, _, _, _>(
-                move |key: &TaglessMemberId| {
-                    let key = key.clone();
+        q!(sinktools::demux_map_lazy::<_, _, _, _>(
+            move |key: &TaglessMemberId| {
+                let key = key.clone();
+                let channel_name = channel_name.to_owned();
 
-                    LazySink::<_, _, _, bytes::Bytes>::new(move || {
-                        Box::pin(async move {
-                            let port = port;
-                            debug!(name: "connecting", target = format!("{}:{}", key.get_container_name(), port));
-                            let mut sink = FramedWrite::new(
-                                TcpStream::connect(format!(
-                                    "{}:{}",
-                                    key.get_container_name(),
-                                    port
-                                ))
-                                .await?,
-                                LengthDelimitedCodec::new(),
-                            );
-                            debug!(name: "connected", target = format!("{}:{}", key.get_container_name(), port));
+                LazySink::<_, _, _, bytes::Bytes>::new(move || {
+                    Box::pin(async move {
+                        let target =
+                            format!("{}:{}", key.get_container_name(), self::CHANNEL_MUX_PORT);
+                        debug!(name: "connecting", %target, channel_name = %channel_name);
 
-                            sink.send(bytes::Bytes::from(
-                                bincode::serialize(&std::env::var("CONTAINER_NAME").unwrap())
-                                    .unwrap(),
-                            ))
+                        let stream = TcpStream::connect(&target).await?;
+                        let mut sink = FramedWrite::new(stream, LengthDelimitedCodec::new());
+
+                        let container_name = std::env::var("CONTAINER_NAME").unwrap();
+                        self::send_handshake(&mut sink, &channel_name, Some(&container_name))
                             .await?;
 
-                            Result::<_, std::io::Error>::Ok(sink)
-                        })
+                        Result::<_, std::io::Error>::Ok(sink)
                     })
-                }
-            )),
-            &(),
-        ),
-        QuotedWithContext::<'static, LazySource<_, _, _, Result<(TaglessMemberId, BytesMut), _>>, ()>::splice_untyped_ctx(
-            q!(LazySource::new(move || Box::pin(async move {
-                let bind_addr = format!("0.0.0.0:{}", port);
-                debug!(name: "listening", %bind_addr);
-                let listener = TcpListener::bind(bind_addr).await?;
+                })
+            }
+        ))
+        .splice_untyped_ctx(&()),
+        q!(LazySource::new(move || Box::pin(async move {
+            let channel_name = channel_name;
+            let mux = self::get_or_init_channel_mux();
+            let mut rx = mux.register(channel_name.to_owned());
 
-                Result::<_, std::io::Error>::Ok(
-                    futures::stream::unfold(listener, |listener| {
-                        Box::pin(async move {
-                            let (stream, peer) = listener.accept().await.ok()?;
-                            let mut source = FramedRead::new(stream, LengthDelimitedCodec::new());
-                            let from =
-                                bincode::deserialize::<String>(&source.next().await?.ok()?[..])
-                                    .ok()?;
+            Result::<_, std::io::Error>::Ok(
+                futures::stream::unfold(rx, |mut rx| {
+                    Box::pin(async move {
+                        let (sender_id, source) = rx.recv().await?;
+                        let from = sender_id.expect("m2m sender must provide container name");
 
-                            debug!(name: "accepting", endpoint = format!("{}:{}", peer, from));
+                        debug!(name: "m2m_channel_connected", %from);
 
-                            Some((
-                                source.map(move |v| {
-                                    v.map(|v| (TaglessMemberId::from_container_name(from.clone()), v))
-                                }),
-                                listener,
-                            ))
-                        })
+                        Some((
+                            source.map(move |v| {
+                                v.map(|v| (TaglessMemberId::from_container_name(from.clone()), v))
+                            }),
+                            rx,
+                        ))
                     })
-                    .flatten_unordered(None),
-                )
-            }))),
-            &(),
-        ),
+                })
+                .flatten_unordered(None),
+            )
+        })))
+        .splice_untyped_ctx(&()),
     )
 }
 
@@ -273,12 +493,14 @@ pub fn cluster_ids<'a>() -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()
     .as_slice())
 }
 
+#[cfg(feature = "docker_runtime")]
 pub fn cluster_self_id<'a>() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
     q!(TaglessMemberId::from_container_name(
         std::env::var("CONTAINER_NAME").unwrap()
     ))
 }
 
+#[cfg(feature = "docker_runtime")]
 pub fn cluster_membership_stream<'a>(
     location_id: &LocationId,
 ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>
@@ -294,6 +516,7 @@ pub fn cluster_membership_stream<'a>(
         >)
 }
 
+#[cfg(feature = "docker_runtime")]
 // There's a risk of race conditions here since all the containers will be starting up at the same time.
 // So we need to start listening for events and the take a snapshot of currently running containers, since they may have already started up before we started listening to events.
 // Then we need to turn that into a usable stream for the consumer in this current hydro program. The way you do that is by emitting from the snapshot first, and then start emitting from the stream. Keep a hash set around to track whether a container is up or down.

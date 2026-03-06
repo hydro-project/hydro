@@ -42,24 +42,24 @@ pub fn distributed_echo<'a>(
         .entries()
         .map(q!(|(client_id, n)| (client_id, n + 1)))
         .assume_ordering::<TotalOrder>(nondet!(/** external input order */))
-        .round_robin(c2, TCP.fail_stop().bincode(), nondet!(/** test */))
+        .round_robin(c2, TCP.fail_stop().bincode().name("p1_to_c2"), nondet!(/** test */))
         .inspect(q!(|(client_id, n)| println!(
             "[C2] received from client {client_id}: {n}"
         )))
         .map(q!(|(client_id, n)| (client_id, n + 1)))
-        .round_robin(c3, TCP.fail_stop().bincode(), nondet!(/** test */))
+        .round_robin(c3, TCP.fail_stop().bincode().name("c2_to_c3"), nondet!(/** test */))
         .inspect(q!(|(client_id, n)| println!(
             "[C3] received from client {client_id}: {n}"
         )))
         .map(q!(|(client_id, n)| (client_id, n + 1)))
         .values()
-        .send(p4, TCP.fail_stop().bincode())
+        .send(p4, TCP.fail_stop().bincode().name("c3_to_p4"))
         .inspect(q!(|(client_id, n)| println!(
             "[P4] received from client {client_id}: {n}"
         )))
         .map(q!(|(client_id, n)| (client_id, n + 1)))
         .values()
-        .send(p1, TCP.fail_stop().bincode());
+        .send(p1, TCP.fail_stop().bincode().name("p4_to_p1"));
 
     let tick = p1.tick();
 
