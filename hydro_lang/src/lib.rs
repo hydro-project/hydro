@@ -21,7 +21,6 @@ pub mod runtime_support {
     pub use ::{bincode, dfir_rs, slotmap, stageleft, tokio};
     #[cfg(feature = "sim")]
     pub use colored;
-    pub use dfir_rs;
     #[cfg(feature = "deploy_integration")]
     pub use hydro_deploy_integration;
 
