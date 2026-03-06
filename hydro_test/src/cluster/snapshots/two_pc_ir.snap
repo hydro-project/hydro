@@ -1411,7 +1411,7 @@ expression: built.ir()
                                                         inner: Cast {
                                                             inner: Cast {
                                                                 inner: Map {
-                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , (std :: time :: SystemTime , (std :: time :: SystemTime , i32))) , (u32 , (i32 , core :: time :: Duration)) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < (std :: time :: SystemTime , (std :: time :: SystemTime , i32)) , (i32 , core :: time :: Duration) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | (start_time , (end_time , output)) | (output , end_time . duration_since (start_time) . unwrap ()) }) ; { let orig = f__free ; move | (k , v) | (k , orig (v)) } }),
+                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , (std :: time :: Instant , (std :: time :: Instant , i32))) , (u32 , (i32 , core :: time :: Duration)) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < (std :: time :: Instant , (std :: time :: Instant , i32)) , (i32 , core :: time :: Duration) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | (start_time , (end_time , output)) | (output , end_time . duration_since (start_time)) }) ; { let orig = f__free ; move | (k , v) | (k , orig (v)) } }),
                                                                     input: Cast {
                                                                         inner: Cast {
                                                                             inner: Join {
@@ -1419,40 +1419,30 @@ expression: built.ir()
                                                                                     inner: Cast {
                                                                                         inner: DeferTick {
                                                                                             input: Batch {
-                                                                                                inner: Map {
-                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , i32) , (u32 , std :: time :: SystemTime) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < i32 , std :: time :: SystemTime > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | _input | SystemTime :: now () }) ; { let orig = f__free ; move | (k , v) | (k , orig (v)) } }),
-                                                                                                    input: ReduceKeyed {
-                                                                                                        f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , i32 , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | curr , new | { * curr = new ; } }),
-                                                                                                        input: ObserveNonDet {
-                                                                                                            inner: Tee {
-                                                                                                                inner: <tee 3>,
-                                                                                                                metadata: HydroIrMetadata {
-                                                                                                                    location_id: Cluster(loc3v1),
-                                                                                                                    collection_kind: KeyedStream {
-                                                                                                                        bound: Unbounded,
-                                                                                                                        value_order: NoOrder,
-                                                                                                                        value_retry: ExactlyOnce,
-                                                                                                                        key_type: u32,
-                                                                                                                        value_type: i32,
-                                                                                                                    },
-                                                                                                                },
-                                                                                                            },
-                                                                                                            trusted: false,
+                                                                                                inner: FoldKeyed {
+                                                                                                    init: stageleft :: runtime_support :: fn0_type_hint :: < std :: time :: Instant > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | | Instant :: now () }),
+                                                                                                    acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < std :: time :: Instant , i32 , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | curr , _new | { * curr = Instant :: now () ; } }),
+                                                                                                    input: ObserveNonDet {
+                                                                                                        inner: Tee {
+                                                                                                            inner: <tee 3>,
                                                                                                             metadata: HydroIrMetadata {
                                                                                                                 location_id: Cluster(loc3v1),
                                                                                                                 collection_kind: KeyedStream {
                                                                                                                     bound: Unbounded,
-                                                                                                                    value_order: TotalOrder,
+                                                                                                                    value_order: NoOrder,
                                                                                                                     value_retry: ExactlyOnce,
                                                                                                                     key_type: u32,
                                                                                                                     value_type: i32,
                                                                                                                 },
                                                                                                             },
                                                                                                         },
+                                                                                                        trusted: false,
                                                                                                         metadata: HydroIrMetadata {
                                                                                                             location_id: Cluster(loc3v1),
-                                                                                                            collection_kind: KeyedSingleton {
+                                                                                                            collection_kind: KeyedStream {
                                                                                                                 bound: Unbounded,
+                                                                                                                value_order: TotalOrder,
+                                                                                                                value_retry: ExactlyOnce,
                                                                                                                 key_type: u32,
                                                                                                                 value_type: i32,
                                                                                                             },
@@ -1463,7 +1453,7 @@ expression: built.ir()
                                                                                                         collection_kind: KeyedSingleton {
                                                                                                             bound: Unbounded,
                                                                                                             key_type: u32,
-                                                                                                            value_type: std :: time :: SystemTime,
+                                                                                                            value_type: std :: time :: Instant,
                                                                                                         },
                                                                                                     },
                                                                                                 },
@@ -1472,7 +1462,7 @@ expression: built.ir()
                                                                                                     collection_kind: KeyedSingleton {
                                                                                                         bound: Bounded,
                                                                                                         key_type: u32,
-                                                                                                        value_type: std :: time :: SystemTime,
+                                                                                                        value_type: std :: time :: Instant,
                                                                                                     },
                                                                                                 },
                                                                                             },
@@ -1481,7 +1471,7 @@ expression: built.ir()
                                                                                                 collection_kind: KeyedSingleton {
                                                                                                     bound: Bounded,
                                                                                                     key_type: u32,
-                                                                                                    value_type: std :: time :: SystemTime,
+                                                                                                    value_type: std :: time :: Instant,
                                                                                                 },
                                                                                             },
                                                                                         },
@@ -1492,7 +1482,7 @@ expression: built.ir()
                                                                                                 value_order: TotalOrder,
                                                                                                 value_retry: ExactlyOnce,
                                                                                                 key_type: u32,
-                                                                                                value_type: std :: time :: SystemTime,
+                                                                                                value_type: std :: time :: Instant,
                                                                                             },
                                                                                         },
                                                                                     },
@@ -1502,14 +1492,14 @@ expression: built.ir()
                                                                                             bound: Bounded,
                                                                                             order: NoOrder,
                                                                                             retry: ExactlyOnce,
-                                                                                            element_type: (u32 , std :: time :: SystemTime),
+                                                                                            element_type: (u32 , std :: time :: Instant),
                                                                                         },
                                                                                     },
                                                                                 },
                                                                                 right: Cast {
                                                                                     inner: Cast {
                                                                                         inner: Map {
-                                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , i32) , (u32 , (std :: time :: SystemTime , i32)) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < i32 , (std :: time :: SystemTime , i32) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | output | (SystemTime :: now () , output) }) ; { let orig = f__free ; move | (k , v) | (k , orig (v)) } }),
+                                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , i32) , (u32 , (std :: time :: Instant , i32)) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < i32 , (std :: time :: Instant , i32) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | output | (Instant :: now () , output) }) ; { let orig = f__free ; move | (k , v) | (k , orig (v)) } }),
                                                                                             input: ReduceKeyed {
                                                                                                 f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , i32 , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | curr , new | { * curr = new ; } }),
                                                                                                 input: ObserveNonDet {
@@ -1564,7 +1554,7 @@ expression: built.ir()
                                                                                                 collection_kind: KeyedSingleton {
                                                                                                     bound: Bounded,
                                                                                                     key_type: u32,
-                                                                                                    value_type: (std :: time :: SystemTime , i32),
+                                                                                                    value_type: (std :: time :: Instant , i32),
                                                                                                 },
                                                                                             },
                                                                                         },
@@ -1575,7 +1565,7 @@ expression: built.ir()
                                                                                                 value_order: TotalOrder,
                                                                                                 value_retry: ExactlyOnce,
                                                                                                 key_type: u32,
-                                                                                                value_type: (std :: time :: SystemTime , i32),
+                                                                                                value_type: (std :: time :: Instant , i32),
                                                                                             },
                                                                                         },
                                                                                     },
@@ -1585,7 +1575,7 @@ expression: built.ir()
                                                                                             bound: Bounded,
                                                                                             order: NoOrder,
                                                                                             retry: ExactlyOnce,
-                                                                                            element_type: (u32 , (std :: time :: SystemTime , i32)),
+                                                                                            element_type: (u32 , (std :: time :: Instant , i32)),
                                                                                         },
                                                                                     },
                                                                                 },
@@ -1595,7 +1585,7 @@ expression: built.ir()
                                                                                         bound: Bounded,
                                                                                         order: NoOrder,
                                                                                         retry: ExactlyOnce,
-                                                                                        element_type: (u32 , (std :: time :: SystemTime , (std :: time :: SystemTime , i32))),
+                                                                                        element_type: (u32 , (std :: time :: Instant , (std :: time :: Instant , i32))),
                                                                                     },
                                                                                 },
                                                                             },
@@ -1606,7 +1596,7 @@ expression: built.ir()
                                                                                     value_order: NoOrder,
                                                                                     value_retry: ExactlyOnce,
                                                                                     key_type: u32,
-                                                                                    value_type: (std :: time :: SystemTime , (std :: time :: SystemTime , i32)),
+                                                                                    value_type: (std :: time :: Instant , (std :: time :: Instant , i32)),
                                                                                 },
                                                                             },
                                                                         },
@@ -1615,7 +1605,7 @@ expression: built.ir()
                                                                             collection_kind: KeyedSingleton {
                                                                                 bound: Bounded,
                                                                                 key_type: u32,
-                                                                                value_type: (std :: time :: SystemTime , (std :: time :: SystemTime , i32)),
+                                                                                value_type: (std :: time :: Instant , (std :: time :: Instant , i32)),
                                                                             },
                                                                         },
                                                                     },
