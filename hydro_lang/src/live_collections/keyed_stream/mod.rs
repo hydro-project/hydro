@@ -12,7 +12,6 @@ use stageleft::{IntoQuotedMut, QuotedWithContext, QuotedWithContextWithProps, q}
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::keyed_singleton::KeyedSingleton;
 use super::optional::Optional;
-use super::singleton::Singleton;
 use super::stream::{
     ExactlyOnce, IsExactlyOnce, IsOrdered, MinOrder, MinRetries, NoOrder, Stream, TotalOrder,
 };
@@ -1774,7 +1773,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let tick = process.tick();
-    /// let watermark = tick.singleton(q!(1));
+    /// let watermark = tick.singleton(q!(2));
     /// let numbers = process
     ///     .source_iter(q!([(0, false), (1, false), (2, false), (2, true)]))
     ///     .into_keyed();
@@ -2103,6 +2102,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     }
 
     /// Gets the values associated with a specific key from the keyed stream.
+    /// Returns an empty stream if the key is `None` or there are no associated values.
     ///
     /// # Example
     /// ```rust
@@ -2128,14 +2128,14 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn get(self, key: Singleton<K, L, Bounded>) -> Stream<V, L, Bounded, NoOrder, R>
+    pub fn get(self, key: impl Into<Optional<K, L, Bounded>>) -> Stream<V, L, Bounded, NoOrder, R>
     where
         B: IsBounded,
         K: Eq + Hash,
     {
         self.make_bounded()
             .entries()
-            .join(key.into_stream().map(q!(|k| (k, ()))))
+            .join(key.into().into_stream().map(q!(|k| (k, ()))))
             .map(q!(|(_, (v, _))| v))
     }
 
@@ -2665,7 +2665,7 @@ mod tests {
         let external = flow.external::<()>();
 
         let node_tick = node.tick();
-        let watermark = node_tick.singleton(q!(1));
+        let watermark = node_tick.singleton(q!(2));
 
         let sum = node
             .source_stream(q!(tokio_stream::iter([
@@ -2710,7 +2710,7 @@ mod tests {
         let external = flow.external::<()>();
 
         let node_tick = node.tick();
-        let watermark = node_tick.singleton(q!(1));
+        let watermark = node_tick.singleton(q!(2));
 
         let sum = node
             .source_iter(q!([(0, 100), (1, 101), (2, 102), (2, 102)]))
@@ -2751,7 +2751,7 @@ mod tests {
 
         let node_tick = node.tick();
         let (watermark_complete_cycle, watermark) =
-            node_tick.cycle_with_initial(node_tick.singleton(q!(1)));
+            node_tick.cycle_with_initial(node_tick.singleton(q!(2)));
         let next_watermark = watermark.clone().map(q!(|v| v + 1));
         watermark_complete_cycle.complete_next_tick(next_watermark);
 

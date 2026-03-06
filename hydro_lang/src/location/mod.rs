@@ -53,37 +53,44 @@ use crate::staging_util::get_this_crate;
 
 pub mod dynamic;
 
-#[expect(missing_docs, reason = "TODO")]
 pub mod external_process;
 pub use external_process::External;
 
-#[expect(missing_docs, reason = "TODO")]
 pub mod process;
 pub use process::Process;
 
-#[expect(missing_docs, reason = "TODO")]
 pub mod cluster;
 pub use cluster::Cluster;
 
-#[expect(missing_docs, reason = "TODO")]
 pub mod member_id;
 pub use member_id::{MemberId, TaglessMemberId};
 
-#[expect(missing_docs, reason = "TODO")]
 pub mod tick;
 pub use tick::{Atomic, NoTick, Tick};
 
-#[expect(missing_docs, reason = "TODO")]
+/// An event indicating a change in membership status of a location in a group
+/// (e.g. a node in a [`Cluster`] or an external client connection).
 #[derive(PartialEq, Eq, Clone, Debug, Hash, Serialize, Deserialize)]
 pub enum MembershipEvent {
+    /// The member has joined the group and is now active.
     Joined,
+    /// The member has left the group and is no longer active.
     Left,
 }
 
-#[expect(missing_docs, reason = "TODO")]
+/// A hint for configuring the network transport used by an external connection.
+///
+/// This controls how the underlying TCP listener is set up when binding
+/// external client connections via methods like [`Location::bind_single_client`]
+/// or [`Location::bidi_external_many_bytes`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum NetworkHint {
+    /// Automatically select the network configuration (e.g. an ephemeral port).
     Auto,
+    /// Use a TCP port, optionally specifying a fixed port number.
+    ///
+    /// If `None`, an available port will be chosen automatically.
+    /// If `Some(port)`, the given port number will be used.
     TcpPort(Option<u16>),
 }
 
@@ -368,7 +375,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     ) -> Stream<T, Self, Bounded, TotalOrder, ExactlyOnce>
     where
         E: IntoIterator<Item = T>,
-        Self: Sized + NoTick,
+        Self: Sized,
     {
         let e = e.splice_typed_ctx(self);
 
@@ -1026,6 +1033,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             self.clone(),
             HydroNode::SingletonSource {
                 value: e.into(),
+                first_tick_only: false,
                 metadata: self.new_node_metadata(Singleton::<T, Self, Bounded>::collection_kind()),
             },
         )

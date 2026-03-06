@@ -3,7 +3,7 @@
 #[cfg(feature = "deploy_integration")]
 pub(crate) mod deploy_runtime;
 
-#[cfg(feature = "docker_runtime")]
+#[cfg(any(feature = "docker_runtime", feature = "ecs_runtime"))]
 pub mod deploy_runtime_containerized;
 
 #[cfg(feature = "ecs_runtime")]

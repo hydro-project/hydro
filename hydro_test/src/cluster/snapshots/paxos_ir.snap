@@ -39,6 +39,7 @@ expression: built.ir()
                                 left: Cast {
                                     inner: SingletonSource {
                                         value: { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; (0u32 , None) },
+                                        first_tick_only: false,
                                         metadata: HydroIrMetadata {
                                             location_id: Tick(0, Cluster(loc3v1)),
                                             collection_kind: Singleton {
@@ -55,6 +56,7 @@ expression: built.ir()
                                         },
                                     },
                                 },
+<<<<<<< HEAD
                                 right: Filter {
                                     f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | b | * b }),
                                     input: Map {
@@ -137,6 +139,13 @@ expression: built.ir()
                                                 },
                                             },
                                         },
+=======
+                                right: Map {
+                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _u | () }),
+                                    input: SingletonSource {
+                                        value: { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; () },
+                                        first_tick_only: true,
+>>>>>>> main
                                         metadata: HydroIrMetadata {
                                             location_id: Tick(0, Cluster(loc3v1)),
                                             collection_kind: Singleton {
@@ -189,6 +198,7 @@ expression: built.ir()
                     inner: Batch {
                         inner: SingletonSource {
                             value: { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_bench :: tests :: * ; 100usize },
+                            first_tick_only: false,
                             metadata: HydroIrMetadata {
                                 location_id: Cluster(loc3v1),
                                 collection_kind: Singleton {
@@ -396,6 +406,7 @@ expression: built.ir()
                                                                 inner: Batch {
                                                                     inner: SingletonSource {
                                                                         value: { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; Ballot { num : 0 , proposer_id : MemberId :: from_raw_id (0) } },
+                                                                        first_tick_only: false,
                                                                         metadata: HydroIrMetadata {
                                                                             location_id: Cluster(loc1v1),
                                                                             collection_kind: Singleton {
@@ -518,6 +529,7 @@ expression: built.ir()
                                 second: Cast {
                                     inner: SingletonSource {
                                         value: { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; 0 },
+                                        first_tick_only: false,
                                         metadata: HydroIrMetadata {
                                             location_id: Tick(1, Cluster(loc1v1)),
                                             collection_kind: Singleton {
@@ -1481,7 +1493,31 @@ expression: built.ir()
                                                                                                                                                                             location_id: Tick(1, Cluster(loc1v1)),
                                                                                                                                                                             collection_kind: Optional {
                                                                                                                                                                                 bound: Bounded,
+<<<<<<< HEAD
                                                                                                                                                                                 element_type: (),
+=======
+                                                                                                                                                                                element_type: core :: option :: Option < () >,
+                                                                                                                                                                            },
+                                                                                                                                                                        },
+                                                                                                                                                                    },
+                                                                                                                                                                    second: Cast {
+                                                                                                                                                                        inner: SingletonSource {
+                                                                                                                                                                            value: :: std :: option :: Option :: None,
+                                                                                                                                                                            first_tick_only: false,
+                                                                                                                                                                            metadata: HydroIrMetadata {
+                                                                                                                                                                                location_id: Tick(1, Cluster(loc1v1)),
+                                                                                                                                                                                collection_kind: Singleton {
+                                                                                                                                                                                    bound: Bounded,
+                                                                                                                                                                                    element_type: core :: option :: Option < () >,
+                                                                                                                                                                                },
+                                                                                                                                                                            },
+                                                                                                                                                                        },
+                                                                                                                                                                        metadata: HydroIrMetadata {
+                                                                                                                                                                            location_id: Tick(1, Cluster(loc1v1)),
+                                                                                                                                                                            collection_kind: Optional {
+                                                                                                                                                                                bound: Bounded,
+                                                                                                                                                                                element_type: core :: option :: Option < () >,
+>>>>>>> main
                                                                                                                                                                             },
                                                                                                                                                                         },
                                                                                                                                                                     },
@@ -1900,6 +1936,7 @@ expression: built.ir()
                                                                                     second: Cast {
                                                                                         inner: SingletonSource {
                                                                                             value: { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; Ballot { num : 0 , proposer_id : MemberId :: from_raw_id (0) } },
+                                                                                            first_tick_only: false,
                                                                                             metadata: HydroIrMetadata {
                                                                                                 location_id: Tick(2, Cluster(loc2v1)),
                                                                                                 collection_kind: Singleton {
@@ -3310,6 +3347,7 @@ expression: built.ir()
                                                                                                                                                 second: Cast {
                                                                                                                                                     inner: SingletonSource {
                                                                                                                                                         value: :: std :: option :: Option :: None,
+                                                                                                                                                        first_tick_only: false,
                                                                                                                                                         metadata: HydroIrMetadata {
                                                                                                                                                             location_id: Tick(1, Cluster(loc1v1)),
                                                                                                                                                             collection_kind: Singleton {
@@ -3581,6 +3619,7 @@ expression: built.ir()
                                 second: Cast {
                                     inner: SingletonSource {
                                         value: :: std :: option :: Option :: None,
+                                        first_tick_only: false,
                                         metadata: HydroIrMetadata {
                                             location_id: Tick(11, Cluster(loc3v1)),
                                             collection_kind: Singleton {
@@ -4130,6 +4169,7 @@ expression: built.ir()
                                                                 second: Cast {
                                                                     inner: SingletonSource {
                                                                         value: { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; 0 },
+                                                                        first_tick_only: false,
                                                                         metadata: HydroIrMetadata {
                                                                             location_id: Tick(1, Cluster(loc1v1)),
                                                                             collection_kind: Singleton {
@@ -4688,6 +4728,7 @@ expression: built.ir()
                                                                                                                                                             second: Cast {
                                                                                                                                                                 inner: SingletonSource {
                                                                                                                                                                     value: :: std :: option :: Option :: None,
+                                                                                                                                                                    first_tick_only: false,
                                                                                                                                                                     metadata: HydroIrMetadata {
                                                                                                                                                                         location_id: Tick(1, Cluster(loc1v1)),
                                                                                                                                                                         collection_kind: Singleton {
@@ -5730,6 +5771,7 @@ expression: built.ir()
                                 second: Cast {
                                     inner: SingletonSource {
                                         value: :: std :: option :: Option :: None,
+                                        first_tick_only: false,
                                         metadata: HydroIrMetadata {
                                             location_id: Tick(2, Cluster(loc2v1)),
                                             collection_kind: Singleton {
@@ -6444,6 +6486,7 @@ expression: built.ir()
                                                 second: Cast {
                                                     inner: SingletonSource {
                                                         value: { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: sequence_payloads :: * ; 0 },
+                                                        first_tick_only: false,
                                                         metadata: HydroIrMetadata {
                                                             location_id: Tick(15, Cluster(loc5v1)),
                                                             collection_kind: Singleton {
@@ -6769,6 +6812,7 @@ expression: built.ir()
                                 second: Cast {
                                     inner: SingletonSource {
                                         value: :: std :: option :: Option :: None,
+                                        first_tick_only: false,
                                         metadata: HydroIrMetadata {
                                             location_id: Tick(15, Cluster(loc5v1)),
                                             collection_kind: Singleton {
@@ -6834,6 +6878,7 @@ expression: built.ir()
                                 second: Cast {
                                     inner: SingletonSource {
                                         value: { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; 0 },
+                                        first_tick_only: false,
                                         metadata: HydroIrMetadata {
                                             location_id: Tick(15, Cluster(loc5v1)),
                                             collection_kind: Singleton {
@@ -8096,6 +8141,7 @@ expression: built.ir()
                                                 second: Cast {
                                                     inner: SingletonSource {
                                                         value: { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Rc :: new (RefCell :: new (Histogram :: < u64 > :: new (3) . unwrap ())) },
+                                                        first_tick_only: false,
                                                         metadata: HydroIrMetadata {
                                                             location_id: Tick(20, Cluster(loc3v1)),
                                                             collection_kind: Singleton {
@@ -8209,6 +8255,7 @@ expression: built.ir()
                                                     second: Cast {
                                                         inner: SingletonSource {
                                                             value: :: std :: option :: Option :: None,
+                                                            first_tick_only: false,
                                                             metadata: HydroIrMetadata {
                                                                 location_id: Tick(20, Cluster(loc3v1)),
                                                                 collection_kind: Singleton {
@@ -8428,6 +8475,7 @@ expression: built.ir()
                                                 second: Cast {
                                                     inner: SingletonSource {
                                                         value: { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; 0usize },
+                                                        first_tick_only: false,
                                                         metadata: HydroIrMetadata {
                                                             location_id: Tick(20, Cluster(loc3v1)),
                                                             collection_kind: Singleton {
@@ -8507,6 +8555,7 @@ expression: built.ir()
                                                     second: Cast {
                                                         inner: SingletonSource {
                                                             value: :: std :: option :: Option :: None,
+                                                            first_tick_only: false,
                                                             metadata: HydroIrMetadata {
                                                                 location_id: Tick(20, Cluster(loc3v1)),
                                                                 collection_kind: Singleton {
@@ -8669,6 +8718,7 @@ expression: built.ir()
                                         second: Cast {
                                             inner: SingletonSource {
                                                 value: { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; Rc :: new (RefCell :: new (Histogram :: < u64 > :: new (3) . unwrap ())) },
+                                                first_tick_only: false,
                                                 metadata: HydroIrMetadata {
                                                     location_id: Tick(21, Process(loc4v1)),
                                                     collection_kind: Singleton {
@@ -8976,6 +9026,7 @@ expression: built.ir()
                                     second: Cast {
                                         inner: SingletonSource {
                                             value: :: std :: option :: Option :: None,
+                                            first_tick_only: false,
                                             metadata: HydroIrMetadata {
                                                 location_id: Tick(21, Process(loc4v1)),
                                                 collection_kind: Singleton {
@@ -9083,6 +9134,7 @@ expression: built.ir()
                             second: Cast {
                                 inner: SingletonSource {
                                     value: :: std :: option :: Option :: None,
+                                    first_tick_only: false,
                                     metadata: HydroIrMetadata {
                                         location_id: Tick(21, Process(loc4v1)),
                                         collection_kind: Singleton {
@@ -9387,6 +9439,7 @@ expression: built.ir()
                                             second: Cast {
                                                 inner: SingletonSource {
                                                     value: { use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; 0usize },
+                                                    first_tick_only: false,
                                                     metadata: HydroIrMetadata {
                                                         location_id: Tick(21, Process(loc4v1)),
                                                         collection_kind: Singleton {
@@ -9466,6 +9519,7 @@ expression: built.ir()
                                                 second: Cast {
                                                     inner: SingletonSource {
                                                         value: :: std :: option :: Option :: None,
+                                                        first_tick_only: false,
                                                         metadata: HydroIrMetadata {
                                                             location_id: Tick(21, Process(loc4v1)),
                                                             collection_kind: Singleton {

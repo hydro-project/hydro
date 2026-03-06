@@ -1,3 +1,14 @@
+//! Definitions for clusters, which represent a group of identical processes.
+//!
+//! A [`Cluster`] is a multi-node location in the Hydro distributed programming model.
+//! Unlike a [`super::Process`], which maps to a single machine, a cluster represents
+//! a dynamically-sized set of machines that all run the same code. Each member of the
+//! cluster is assigned a unique [`super::MemberId`] that can be used to address it.
+//!
+//! Clusters are useful for parallelism, replication, and sharding patterns. Data can
+//! be broadcast to all members, sent to a specific member by ID, or scattered across
+//! members.
+
 use std::fmt::{Debug, Formatter};
 use std::marker::PhantomData;
 
@@ -13,6 +24,15 @@ use crate::location::LocationKey;
 use crate::location::member_id::TaglessMemberId;
 use crate::staging_util::{Invariant, get_this_crate};
 
+/// A multi-node location representing a group of identical processes.
+///
+/// Each member of the cluster runs the same dataflow program and is assigned a
+/// unique [`MemberId`] that can be used to address it. The number of members
+/// is determined at deployment time rather than at compile time.
+///
+/// The `ClusterTag` type parameter is a phantom tag used to distinguish between
+/// different clusters in the type system, preventing accidental mixing of
+/// member IDs across clusters.
 pub struct Cluster<'a, ClusterTag> {
     pub(crate) key: LocationKey,
     pub(crate) flow_state: FlowState,
@@ -68,8 +88,14 @@ impl<'a, C> Location<'a> for Cluster<'a, C> {
     }
 }
 
+/// A free variable that resolves to the list of member IDs in a cluster at runtime.
+///
+/// When spliced into a quoted snippet, this provides access to the set of
+/// [`TaglessMemberId`]s that belong to the cluster.
 pub struct ClusterIds<'a> {
+    /// The location key identifying which cluster this refers to.
     pub key: LocationKey,
+    /// Phantom data binding the lifetime.
     pub _phantom: PhantomData<&'a ()>,
 }
 
@@ -106,7 +132,9 @@ impl<'a, Ctx> FreeVariableWithContextWithProps<Ctx, ()> for ClusterIds<'a> {
 
 impl<'a, Ctx> QuotedWithContextWithProps<'a, &'a [TaglessMemberId], Ctx, ()> for ClusterIds<'a> {}
 
+/// Marker trait implemented by [`Cluster`] locations, providing access to the cluster tag type.
 pub trait IsCluster {
+    /// The phantom tag type that distinguishes this cluster from others.
     type Tag;
 }
 
@@ -118,6 +146,10 @@ impl<C> IsCluster for Cluster<'_, C> {
 /// a quoted snippet that will run on a cluster, this turns into a [`MemberId`].
 pub static CLUSTER_SELF_ID: ClusterSelfId = ClusterSelfId { _private: &() };
 
+/// The concrete type behind [`CLUSTER_SELF_ID`].
+///
+/// This is a compile-time variable that, when spliced into a quoted snippet running
+/// on a [`Cluster`], resolves to the [`MemberId`] of the current cluster member.
 #[derive(Clone, Copy)]
 pub struct ClusterSelfId<'a> {
     _private: &'a (),

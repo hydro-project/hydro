@@ -2,7 +2,6 @@
 #![warn(missing_docs)]
 
 pub mod accumulator;
-pub mod clear;
 #[cfg(feature = "dfir_macro")]
 #[cfg_attr(docsrs, doc(cfg(feature = "dfir_macro")))]
 pub mod demux_enum;
