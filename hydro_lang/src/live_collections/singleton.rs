@@ -12,7 +12,7 @@ use super::optional::Optional;
 use super::sliced::sliced;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::builder::CycleId;
-use crate::compile::ir::{CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
+use crate::compile::ir::{CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
@@ -183,7 +183,7 @@ where
         if !matches!(self.ir_node.borrow().deref(), HydroNode::Tee { .. }) {
             let orig_ir_node = self.ir_node.replace(HydroNode::Placeholder);
             *self.ir_node.borrow_mut() = HydroNode::Tee {
-                inner: TeeNode(Rc::new(RefCell::new(orig_ir_node))),
+                inner: SharedNode(Rc::new(RefCell::new(orig_ir_node))),
                 metadata: self.location.new_node_metadata(Self::collection_kind()),
             };
         }
@@ -192,7 +192,7 @@ where
             Singleton {
                 location: self.location.clone(),
                 ir_node: HydroNode::Tee {
-                    inner: TeeNode(inner.0.clone()),
+                    inner: SharedNode(inner.0.clone()),
                     metadata: metadata.clone(),
                 }
                 .into(),

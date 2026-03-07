@@ -17,7 +17,7 @@ use super::optional::Optional;
 use super::singleton::Singleton;
 use crate::compile::builder::CycleId;
 use crate::compile::ir::{
-    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, StreamOrder, StreamRetry, TeeNode,
+    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode, StreamOrder, StreamRetry,
 };
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
@@ -363,7 +363,7 @@ where
         if !matches!(self.ir_node.borrow().deref(), HydroNode::Tee { .. }) {
             let orig_ir_node = self.ir_node.replace(HydroNode::Placeholder);
             *self.ir_node.borrow_mut() = HydroNode::Tee {
-                inner: TeeNode(Rc::new(RefCell::new(orig_ir_node))),
+                inner: SharedNode(Rc::new(RefCell::new(orig_ir_node))),
                 metadata: self.location.new_node_metadata(Self::collection_kind()),
             };
         }
@@ -372,7 +372,7 @@ where
             Stream {
                 location: self.location.clone(),
                 ir_node: HydroNode::Tee {
-                    inner: TeeNode(inner.0.clone()),
+                    inner: SharedNode(inner.0.clone()),
                     metadata: metadata.clone(),
                 }
                 .into(),
@@ -637,6 +637,77 @@ where
                 metadata: self.location.new_node_metadata(Self::collection_kind()),
             },
         )
+    }
+
+    /// Splits the stream into two streams based on a predicate, without cloning elements.
+    ///
+    /// Elements for which `f` returns `true` are sent to the first output stream,
+    /// and elements for which `f` returns `false` are sent to the second output stream.
+    ///
+    /// Unlike using `filter` twice, this only evaluates the predicate once per element
+    /// and does not require `T: Clone`.
+    ///
+    /// The closure `f` receives a reference `&T` rather than an owned value `T` because
+    /// the predicate is only used for routing; the element itself is moved to the
+    /// appropriate output stream.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use hydro_lang::live_collections::stream::{NoOrder, ExactlyOnce};
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test::<_, _, _, NoOrder, ExactlyOnce>(|process| {
+    /// let numbers: Stream<_, _, Unbounded> = process.source_iter(q!(vec![1, 2, 3, 4, 5, 6])).into();
+    /// let (evens, odds) = numbers.partition(q!(|&x| x % 2 == 0));
+    /// // evens: 2, 4, 6 tagged with true; odds: 1, 3, 5 tagged with false
+    /// evens.map(q!(|x| (x, true)))
+    ///     .interleave(odds.map(q!(|x| (x, false))))
+    /// # }, |mut stream| async move {
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..6 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, false), (2, true), (3, false), (4, true), (5, false), (6, true)]);
+    /// # }));
+    /// # }
+    /// ```
+    #[expect(
+        clippy::type_complexity,
+        reason = "return type mirrors the input stream type"
+    )]
+    pub fn partition<F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L>,
+    ) -> (Stream<T, L, B, O, R>, Stream<T, L, B, O, R>)
+    where
+        F: Fn(&T) -> bool + 'a,
+    {
+        let f: crate::compile::ir::DebugExpr = f.splice_fn1_borrow_ctx(&self.location).into();
+        let shared = SharedNode(Rc::new(RefCell::new(self.ir_node.into_inner())));
+
+        let true_stream = Stream::new(
+            self.location.clone(),
+            HydroNode::Partition {
+                inner: SharedNode(shared.0.clone()),
+                f: f.clone(),
+                is_true: true,
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
+            },
+        );
+
+        let false_stream = Stream::new(
+            self.location.clone(),
+            HydroNode::Partition {
+                inner: SharedNode(shared.0),
+                f,
+                is_true: false,
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
+            },
+        );
+
+        (true_stream, false_stream)
     }
 
     /// An operator that both filters and maps. It yields only the items for which the supplied closure `f` returns `Some(value)`.
@@ -3253,5 +3324,46 @@ mod tests {
         });
 
         assert_eq!(instance_count, 22)
+    }
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn partition_evens_odds() {
+        let mut deployment = Deployment::new();
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let numbers = node.source_iter(q!(vec![1i32, 2, 3, 4, 5, 6]));
+        let (evens, odds) = numbers.partition(q!(|x: &i32| x % 2 == 0));
+        let evens_port = evens.send_bincode_external(&external);
+        let odds_port = odds.send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut evens_out = nodes.connect(evens_port).await;
+        let mut odds_out = nodes.connect(odds_port).await;
+
+        deployment.start().await.unwrap();
+
+        let mut even_results = Vec::new();
+        for _ in 0..3 {
+            even_results.push(evens_out.next().await.unwrap());
+        }
+        even_results.sort();
+        assert_eq!(even_results, vec![2, 4, 6]);
+
+        let mut odd_results = Vec::new();
+        for _ in 0..3 {
+            odd_results.push(odds_out.next().await.unwrap());
+        }
+        odd_results.sort();
+        assert_eq!(odd_results, vec![1, 3, 5]);
     }
 }
