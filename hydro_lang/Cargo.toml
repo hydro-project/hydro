@@ -130,7 +130,7 @@ sealed = "0.6.0"
 serde = { version = "1.0.197", features = ["derive"] }
 sha2 = { version = "0.10.0", optional = true }
 sinktools = { path = "../sinktools", version = "^0.0.1" }
-slotmap = { version = "1.0.0", features = ["serde"] }
+slotmap = { version = "1.1.0", features = ["serde"] }
 stageleft_tool = { workspace = true, optional = true }
 stageleft.workspace = true
 syn = { version = "2.0.46", features = [
