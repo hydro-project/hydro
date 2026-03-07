@@ -12,7 +12,7 @@
 <a href=#12 id=12 data-nosnippet>12</a><span class="kw">use </span><span class="kw">super</span>::singleton::Singleton;
 <a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span><span class="kw">super</span>::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 <a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span><span class="kw">crate</span>::compile::builder::CycleId;
-<a href=#15 id=15 data-nosnippet>15</a><span class="kw">use </span><span class="kw">crate</span>::compile::ir::{CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode};
+<a href=#15 id=15 data-nosnippet>15</a><span class="kw">use </span><span class="kw">crate</span>::compile::ir::{CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode};
 <a href=#16 id=16 data-nosnippet>16</a><span class="attr">#[cfg(stageleft_runtime)]
 <a href=#17 id=17 data-nosnippet>17</a></span><span class="kw">use </span><span class="kw">crate</span>::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
 <a href=#18 id=18 data-nosnippet>18</a><span class="kw">use </span><span class="kw">crate</span>::forward_handle::{ForwardRef, TickCycle};
@@ -263,7 +263,7 @@
 <a href=#263 id=263 data-nosnippet>263</a>        <span class="kw">if </span>!<span class="macro">matches!</span>(<span class="self">self</span>.ir_node.borrow().deref(), HydroNode::Tee { .. }) {
 <a href=#264 id=264 data-nosnippet>264</a>            <span class="kw">let </span>orig_ir_node = <span class="self">self</span>.ir_node.replace(HydroNode::Placeholder);
 <a href=#265 id=265 data-nosnippet>265</a>            <span class="kw-2">*</span><span class="self">self</span>.ir_node.borrow_mut() = HydroNode::Tee {
-<a href=#266 id=266 data-nosnippet>266</a>                inner: TeeNode(Rc::new(RefCell::new(orig_ir_node))),
+<a href=#266 id=266 data-nosnippet>266</a>                inner: SharedNode(Rc::new(RefCell::new(orig_ir_node))),
 <a href=#267 id=267 data-nosnippet>267</a>                metadata: <span class="self">self</span>.location.new_node_metadata(<span class="self">Self</span>::collection_kind()),
 <a href=#268 id=268 data-nosnippet>268</a>            };
 <a href=#269 id=269 data-nosnippet>269</a>        }
@@ -272,7 +272,7 @@
 <a href=#272 id=272 data-nosnippet>272</a>            Optional {
 <a href=#273 id=273 data-nosnippet>273</a>                location: <span class="self">self</span>.location.clone(),
 <a href=#274 id=274 data-nosnippet>274</a>                ir_node: HydroNode::Tee {
-<a href=#275 id=275 data-nosnippet>275</a>                    inner: TeeNode(inner.<span class="number">0</span>.clone()),
+<a href=#275 id=275 data-nosnippet>275</a>                    inner: SharedNode(inner.<span class="number">0</span>.clone()),
 <a href=#276 id=276 data-nosnippet>276</a>                    metadata: metadata.clone(),
 <a href=#277 id=277 data-nosnippet>277</a>                }
 <a href=#278 id=278 data-nosnippet>278</a>                .into(),

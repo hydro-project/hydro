@@ -141,7 +141,7 @@
 <a href=#141 id=141 data-nosnippet>141</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::compile::builder::CycleId;
 <a href=#142 id=142 data-nosnippet>142</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::compile::ir::{
 <a href=#143 id=143 data-nosnippet>143</a>            CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot,
-<a href=#144 id=144 data-nosnippet>144</a>            KeyedSingletonBoundKind, TeeNode,
+<a href=#144 id=144 data-nosnippet>144</a>            KeyedSingletonBoundKind, SharedNode,
 <a href=#145 id=145 data-nosnippet>145</a>        };
 <a href=#146 id=146 data-nosnippet>146</a>
 <a href=#147 id=147 data-nosnippet>147</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::forward_handle::{ForwardRef, TickCycle};
@@ -204,8 +204,8 @@
 <a href=#204 id=204 data-nosnippet>204</a>        };
 <a href=#205 id=205 data-nosnippet>205</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::compile::builder::CycleId;
 <a href=#206 id=206 data-nosnippet>206</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::compile::ir::{
-<a href=#207 id=207 data-nosnippet>207</a>            CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, StreamOrder,
-<a href=#208 id=208 data-nosnippet>208</a>            StreamRetry, TeeNode,
+<a href=#207 id=207 data-nosnippet>207</a>            CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode,
+<a href=#208 id=208 data-nosnippet>208</a>            StreamOrder, StreamRetry,
 <a href=#209 id=209 data-nosnippet>209</a>        };
 <a href=#210 id=210 data-nosnippet>210</a>
 <a href=#211 id=211 data-nosnippet>211</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::forward_handle::{ForwardRef, TickCycle};
@@ -276,7 +276,7 @@
 <a href=#276 id=276 data-nosnippet>276</a>        <span class="kw">pub use </span><span class="kw">super</span>::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 <a href=#277 id=277 data-nosnippet>277</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::compile::builder::CycleId;
 <a href=#278 id=278 data-nosnippet>278</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::compile::ir::{
-<a href=#279 id=279 data-nosnippet>279</a>            CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode,
+<a href=#279 id=279 data-nosnippet>279</a>            CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode,
 <a href=#280 id=280 data-nosnippet>280</a>        };
 <a href=#281 id=281 data-nosnippet>281</a>
 <a href=#282 id=282 data-nosnippet>282</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::forward_handle::{ForwardRef, TickCycle};
@@ -321,7 +321,7 @@
 <a href=#321 id=321 data-nosnippet>321</a>        <span class="kw">pub use </span><span class="kw">super</span>::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 <a href=#322 id=322 data-nosnippet>322</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::compile::builder::CycleId;
 <a href=#323 id=323 data-nosnippet>323</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::compile::ir::{
-<a href=#324 id=324 data-nosnippet>324</a>            CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, TeeNode,
+<a href=#324 id=324 data-nosnippet>324</a>            CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode,
 <a href=#325 id=325 data-nosnippet>325</a>        };
 <a href=#326 id=326 data-nosnippet>326</a>
 <a href=#327 id=327 data-nosnippet>327</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::forward_handle::{ForwardRef, TickCycle};
@@ -372,8 +372,8 @@
 <a href=#372 id=372 data-nosnippet>372</a>        <span class="kw">pub use </span><span class="kw">super</span>::singleton::Singleton;
 <a href=#373 id=373 data-nosnippet>373</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::compile::builder::CycleId;
 <a href=#374 id=374 data-nosnippet>374</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::compile::ir::{
-<a href=#375 id=375 data-nosnippet>375</a>            CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, StreamOrder,
-<a href=#376 id=376 data-nosnippet>376</a>            StreamRetry, TeeNode,
+<a href=#375 id=375 data-nosnippet>375</a>            CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode,
+<a href=#376 id=376 data-nosnippet>376</a>            StreamOrder, StreamRetry,
 <a href=#377 id=377 data-nosnippet>377</a>        };
 <a href=#378 id=378 data-nosnippet>378</a>
 <a href=#379 id=379 data-nosnippet>379</a>        <span class="kw">pub use </span><span class="kw">crate</span>::__staged::forward_handle::{ForwardRef, TickCycle};
@@ -2123,7 +2123,7 @@
 <a href=#2123 id=2123 data-nosnippet>2123</a>            <span class="kw">static </span>PRINTED_TEES: PrintedTees = <span class="kw">const </span>{ RefCell::new(<span class="prelude-val">None</span>) };
 <a href=#2124 id=2124 data-nosnippet>2124</a>        }
 <a href=#2125 id=2125 data-nosnippet>2125</a>        <span class="kw">pub use </span><span class="kw">crate</span>::compile::ir::dbg_dedup_tee;
-<a href=#2126 id=2126 data-nosnippet>2126</a>        <span class="kw">pub use </span><span class="kw">crate</span>::compile::ir::TeeNode;
+<a href=#2126 id=2126 data-nosnippet>2126</a>        <span class="kw">pub use </span><span class="kw">crate</span>::compile::ir::SharedNode;
 <a href=#2127 id=2127 data-nosnippet>2127</a>
 <a href=#2128 id=2128 data-nosnippet>2128</a>
 <a href=#2129 id=2129 data-nosnippet>2129</a>
@@ -2143,8 +2143,8 @@
 <a href=#2143 id=2143 data-nosnippet>2143</a>
 <a href=#2144 id=2144 data-nosnippet>2144</a>
 <a href=#2145 id=2145 data-nosnippet>2145</a>        <span class="kw">pub use </span><span class="kw">crate</span>::compile::ir::HydroNode;
-<a href=#2146 id=2146 data-nosnippet>2146</a>        <span class="kw">pub use </span><span class="kw">crate</span>::compile::ir::SeenTees;
-<a href=#2147 id=2147 data-nosnippet>2147</a>        <span class="kw">pub use </span><span class="kw">crate</span>::compile::ir::SeenTeeLocations;
+<a href=#2146 id=2146 data-nosnippet>2146</a>        <span class="kw">pub use </span><span class="kw">crate</span>::compile::ir::SeenSharedNodes;
+<a href=#2147 id=2147 data-nosnippet>2147</a>        <span class="kw">pub use </span><span class="kw">crate</span>::compile::ir::SeenSharedNodeLocations;
 <a href=#2148 id=2148 data-nosnippet>2148</a>
 <a href=#2149 id=2149 data-nosnippet>2149</a>        <span class="attr">#[cfg(feature = <span class="string">"build"</span>)]
 <a href=#2150 id=2150 data-nosnippet>2150</a>        </span><span class="kw">pub fn </span>instantiate_network&lt;<span class="lifetime">'a</span>, D&gt;(

@@ -16,7 +16,7 @@
 <a href=#16 id=16 data-nosnippet>16</a><span class="kw">use </span><span class="kw">super</span>::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
 <a href=#17 id=17 data-nosnippet>17</a><span class="kw">use </span><span class="kw">crate</span>::compile::builder::CycleId;
 <a href=#18 id=18 data-nosnippet>18</a><span class="kw">use </span><span class="kw">crate</span>::compile::ir::{
-<a href=#19 id=19 data-nosnippet>19</a>    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, KeyedSingletonBoundKind, TeeNode,
+<a href=#19 id=19 data-nosnippet>19</a>    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, KeyedSingletonBoundKind, SharedNode,
 <a href=#20 id=20 data-nosnippet>20</a>};
 <a href=#21 id=21 data-nosnippet>21</a><span class="attr">#[cfg(stageleft_runtime)]
 <a href=#22 id=22 data-nosnippet>22</a></span><span class="kw">use </span><span class="kw">crate</span>::forward_handle::{CycleCollection, ReceiverComplete};
@@ -135,7 +135,7 @@
 <a href=#135 id=135 data-nosnippet>135</a>        <span class="kw">if </span>!<span class="macro">matches!</span>(<span class="self">self</span>.ir_node.borrow().deref(), HydroNode::Tee { .. }) {
 <a href=#136 id=136 data-nosnippet>136</a>            <span class="kw">let </span>orig_ir_node = <span class="self">self</span>.ir_node.replace(HydroNode::Placeholder);
 <a href=#137 id=137 data-nosnippet>137</a>            <span class="kw-2">*</span><span class="self">self</span>.ir_node.borrow_mut() = HydroNode::Tee {
-<a href=#138 id=138 data-nosnippet>138</a>                inner: TeeNode(Rc::new(RefCell::new(orig_ir_node))),
+<a href=#138 id=138 data-nosnippet>138</a>                inner: SharedNode(Rc::new(RefCell::new(orig_ir_node))),
 <a href=#139 id=139 data-nosnippet>139</a>                metadata: <span class="self">self</span>.location.new_node_metadata(<span class="self">Self</span>::collection_kind()),
 <a href=#140 id=140 data-nosnippet>140</a>            };
 <a href=#141 id=141 data-nosnippet>141</a>        }
@@ -144,7 +144,7 @@
 <a href=#144 id=144 data-nosnippet>144</a>            KeyedSingleton {
 <a href=#145 id=145 data-nosnippet>145</a>                location: <span class="self">self</span>.location.clone(),
 <a href=#146 id=146 data-nosnippet>146</a>                ir_node: HydroNode::Tee {
-<a href=#147 id=147 data-nosnippet>147</a>                    inner: TeeNode(inner.<span class="number">0</span>.clone()),
+<a href=#147 id=147 data-nosnippet>147</a>                    inner: SharedNode(inner.<span class="number">0</span>.clone()),
 <a href=#148 id=148 data-nosnippet>148</a>                    metadata: metadata.clone(),
 <a href=#149 id=149 data-nosnippet>149</a>                }
 <a href=#150 id=150 data-nosnippet>150</a>                .into(),
