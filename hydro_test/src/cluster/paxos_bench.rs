@@ -87,16 +87,12 @@ pub fn paxos_bench<'a>(
                     let a_checkpoints_quorum_reached = snapshot
                         .clone()
                         .key_count()
-                        .filter_map(q!(move |num_received| if num_received == f + 1 {
-                            Some(true)
-                        } else {
-                            None
-                        }));
+                        .map(q!(move |num_received| num_received == f + 1));
 
                     // Find the smallest checkpoint seq that everyone agrees to
                     snapshot
                         .entries()
-                        .filter_if_some(a_checkpoints_quorum_reached)
+                        .filter_if(a_checkpoints_quorum_reached)
                         .map(q!(|(_sender, seq)| seq))
                         .min()
                 }

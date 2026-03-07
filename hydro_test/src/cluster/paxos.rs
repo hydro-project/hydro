@@ -188,14 +188,18 @@ pub fn paxos_core<'a, P: PaxosPayload>(
         ),
     );
 
-    let just_became_leader = p_is_leader
+    let was_not_leader = p_is_leader
         .clone()
-        .filter_if_none(p_is_leader.clone().defer_tick());
+        .map(q!(|is_leader| is_leader.then_some(())))
+        .into_optional()
+        .defer_tick()
+        .is_none();
+    let just_became_leader = p_is_leader.clone().and(was_not_leader);
 
     let c_to_proposers = c_to_proposers(
-        just_became_leader
+        p_ballot
             .clone()
-            .if_some_then(p_ballot.clone())
+            .filter_if(just_became_leader.clone())
             .all_ticks(),
     );
 
@@ -229,7 +233,7 @@ pub fn paxos_core<'a, P: PaxosPayload>(
 
     (
         // Only tell the clients once when leader election concludes
-        just_became_leader.if_some_then(p_ballot).all_ticks(),
+        p_ballot.filter_if(just_became_leader).all_ticks(),
         p_to_replicas,
     )
 }
@@ -253,7 +257,7 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
     nondet_acceptor_ballot: NonDet,
 ) -> (
     Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
-    Optional<(), Tick<Cluster<'a, Proposer>>, Bounded>,
+    Singleton<bool, Tick<Cluster<'a, Proposer>>, Bounded>,
     Stream<(Option<usize>, L), Tick<Cluster<'a, Proposer>>, Bounded, NoOrder>,
     Singleton<Ballot, Tick<Cluster<'a, Acceptor>>, Bounded>,
 ) {
@@ -262,7 +266,7 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
     let (p_to_proposers_i_am_leader_complete_cycle, p_to_proposers_i_am_leader_forward_ref) =
         proposers.forward_ref::<Stream<_, _, _, NoOrder, AtLeastOnce>>();
     let (p_is_leader_complete_cycle, p_is_leader_forward_ref) =
-        proposer_tick.forward_ref::<Optional<(), _, _>>();
+        proposer_tick.forward_ref::<Singleton<bool, _, _>>();
     // a_to_proposers_p2b.clone().for_each(q!(|(_, p2b): (u32, P2b)| println!("Proposer received P2b: {:?}", p2b)));
     // p_to_proposers_i_am_leader.clone().for_each(q!(|ballot: Ballot| println!("Proposer received I am leader: {:?}", ballot)));
     // c_to_proposers.clone().for_each(q!(|payload: ClientPayload| println!("Client sent proposer payload: {:?}", payload)));
@@ -304,8 +308,9 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
 
     p_to_proposers_i_am_leader_complete_cycle.complete(p_to_proposers_i_am_leader);
 
-    let p_to_acceptors_p1a = p_trigger_election
-        .if_some_then(p_ballot.clone())
+    let p_to_acceptors_p1a = p_ballot
+        .clone()
+        .filter_if(p_trigger_election)
         .all_ticks()
         .inspect(q!(|_| println!("Proposer leader expired, sending P1a")))
         .broadcast(acceptors, TCP.fail_stop().bincode(), nondet!(/** TODO */))
@@ -346,7 +351,7 @@ fn p_ballot_calc<'a>(
     p_received_max_ballot: Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
 ) -> (
     Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
-    Optional<(), Tick<Cluster<'a, Proposer>>, Bounded>,
+    Singleton<bool, Tick<Cluster<'a, Proposer>>, Bounded>,
 ) {
     let (p_ballot, p_has_largest_ballot) = sliced! {
         let p_received_max_ballot = use::atomic(p_received_max_ballot.latest_atomic(), nondet!(/** up to date with tick input */));
@@ -375,10 +380,9 @@ fn p_ballot_calc<'a>(
 
         let p_has_largest_ballot = p_received_max_ballot
             .zip(p_ballot.clone())
-            .filter(q!(
-                |(received_max_ballot, cur_ballot)| *received_max_ballot <= *cur_ballot
-            ))
-            .map(q!(|_| ()));
+            .map(q!(
+                |(received_max_ballot, cur_ballot)| received_max_ballot <= cur_ballot
+            ));
 
         (yield_atomic(p_ballot), yield_atomic(p_has_largest_ballot))
     };
@@ -394,22 +398,21 @@ fn p_ballot_calc<'a>(
 fn p_leader_heartbeat<'a>(
     proposers: &Cluster<'a, Proposer>,
     proposer_tick: &Tick<Cluster<'a, Proposer>>,
-    p_is_leader: Optional<(), Tick<Cluster<'a, Proposer>>, Bounded>,
+    p_is_leader: Singleton<bool, Tick<Cluster<'a, Proposer>>, Bounded>,
     p_ballot: Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
     paxos_config: PaxosConfig,
     nondet_reelection: NonDet,
 ) -> (
     Stream<Ballot, Cluster<'a, Proposer>, Unbounded, NoOrder, AtLeastOnce>,
-    Optional<(), Tick<Cluster<'a, Proposer>>, Bounded>,
+    Singleton<bool, Tick<Cluster<'a, Proposer>>, Bounded>,
 ) {
     let i_am_leader_send_timeout = paxos_config.i_am_leader_send_timeout;
     let i_am_leader_check_timeout = paxos_config.i_am_leader_check_timeout;
     let i_am_leader_check_timeout_delay_multiplier =
         paxos_config.i_am_leader_check_timeout_delay_multiplier;
 
-    let p_to_proposers_i_am_leader = p_is_leader
-        .clone()
-        .if_some_then(p_ballot)
+    let p_to_proposers_i_am_leader = p_ballot
+        .filter_if(p_is_leader.clone())
         .latest()
         .sample_every(
             q!(Duration::from_secs(i_am_leader_send_timeout)),
@@ -435,10 +438,10 @@ fn p_leader_heartbeat<'a>(
             ),
         )
         .snapshot(proposer_tick, nondet!(/** absorbed into timeout */))
-        .filter_if_none(p_is_leader);
+        .filter_if(!p_is_leader);
 
     // Add random delay depending on node ID so not everyone sends p1a at the same time
-    let p_trigger_election = p_leader_expired.filter_if_some(
+    let p_trigger_election = p_leader_expired.is_some().and(
         proposers
             .source_interval_delayed(
                 q!(Duration::from_secs(
@@ -455,7 +458,8 @@ fn p_leader_heartbeat<'a>(
                 ),
             )
             .batch(proposer_tick, nondet!(/** absorbed into interval */))
-            .first(),
+            .first()
+            .is_some(),
     );
     (p_to_proposers_i_am_leader, p_trigger_election)
 }
@@ -512,11 +516,11 @@ fn p_p1b<'a, P: Clone + Serialize + DeserializeOwned>(
         NoOrder,
     >,
     p_ballot: Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
-    p_has_largest_ballot: Optional<(), Tick<Cluster<'a, Proposer>>, Bounded>,
+    p_has_largest_ballot: Singleton<bool, Tick<Cluster<'a, Proposer>>, Bounded>,
     quorum_size: usize,
     num_quorum_participants: usize,
 ) -> (
-    Optional<(), Tick<Cluster<'a, Proposer>>, Bounded>,
+    Singleton<bool, Tick<Cluster<'a, Proposer>>, Bounded>,
     Stream<(Option<usize>, P), Tick<Cluster<'a, Proposer>>, Bounded, NoOrder>,
     Stream<Ballot, Cluster<'a, Proposer>, Unbounded, NoOrder>,
 ) {
@@ -559,8 +563,8 @@ fn p_p1b<'a, P: Clone + Serialize + DeserializeOwned>(
 
     let p_is_leader = p_received_quorum_of_p1bs
         .clone()
-        .map(q!(|_| ()))
-        .filter_if_some(p_has_largest_ballot.clone());
+        .is_some()
+        .and(p_has_largest_ballot);
 
     (
         p_is_leader,
@@ -663,7 +667,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
     a_checkpoint: Optional<usize, Cluster<'a, Acceptor>, Unbounded>,
 
     p_ballot: Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
-    p_is_leader: Optional<(), Tick<Cluster<'a, Proposer>>, Bounded>,
+    p_is_leader: Singleton<bool, Tick<Cluster<'a, Proposer>>, Bounded>,
 
     p_relevant_p1bs: Stream<
         (Option<usize>, HashMap<usize, LogValue<P>>),
@@ -702,7 +706,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
                     nondet_commit
                 ),
             )
-            .filter_if_some(p_is_leader.clone()),
+            .filter_if(p_is_leader.clone()),
     );
 
     let payloads_to_send = indexed_payloads
@@ -712,7 +716,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
             Some(payload)
         )))
         .chain(p_log_to_recommit)
-        .filter_if_some(p_is_leader)
+        .filter_if(p_is_leader)
         .all_ticks_atomic();
 
     let (a_log, a_to_proposers_p2b) = acceptor_p2(

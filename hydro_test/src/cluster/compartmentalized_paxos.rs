@@ -161,14 +161,18 @@ pub fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
         ),
     );
 
-    let just_became_leader = p_is_leader
+    let was_not_leader = p_is_leader
         .clone()
-        .filter_if_none(p_is_leader.clone().defer_tick());
+        .map(q!(|is_leader| is_leader.then_some(())))
+        .into_optional()
+        .defer_tick()
+        .is_none();
+    let just_became_leader = p_is_leader.clone().and(was_not_leader);
 
     let c_to_proposers = c_to_proposers(
-        just_became_leader
+        p_ballot
             .clone()
-            .if_some_then(p_ballot.clone())
+            .filter_if(just_became_leader.clone())
             .all_ticks(),
     );
 
@@ -204,7 +208,7 @@ pub fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
 
     (
         // Only tell the clients once when leader election concludes
-        just_became_leader.if_some_then(p_ballot).all_ticks(),
+        p_ballot.filter_if(just_became_leader).all_ticks(),
         p_to_replicas,
     )
 }
@@ -225,7 +229,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
     a_checkpoint: Optional<usize, Cluster<'a, Acceptor>, Unbounded>,
 
     p_ballot: Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
-    p_is_leader: Optional<(), Tick<Cluster<'a, Proposer>>, Bounded>,
+    p_is_leader: Singleton<bool, Tick<Cluster<'a, Proposer>>, Bounded>,
 
     p_relevant_p1bs: Stream<
         (Option<usize>, HashMap<usize, LogValue<P>>),
@@ -262,7 +266,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
                     nondet_commit_leader_change
                 ),
             )
-            .filter_if_some(p_is_leader.clone()),
+            .filter_if(p_is_leader.clone()),
     );
 
     let num_proxy_leaders = config.num_proxy_leaders;

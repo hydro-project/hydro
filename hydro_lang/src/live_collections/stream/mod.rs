@@ -288,7 +288,7 @@ where
             },
         );
 
-        from_previous_tick.chain(initial.filter_if_some(location.optional_first_tick(q!(()))))
+        from_previous_tick.chain(initial.filter_if(location.optional_first_tick(q!(())).is_some()))
     }
 }
 
@@ -721,6 +721,42 @@ where
         )
     }
 
+    /// Passes this stream through if the boolean signal is `true`, otherwise the output is empty.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the second tick to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let signal = tick.optional_first_tick(q!(())).is_some(); // true on tick 1, false on tick 2
+    /// let batch_first_tick = process
+    ///   .source_iter(q!(vec![1, 2, 3, 4]))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// let batch_second_tick = process
+    ///   .source_iter(q!(vec![5, 6, 7, 8]))
+    ///   .batch(&tick, nondet!(/** test */))
+    ///   .defer_tick();
+    /// batch_first_tick.chain(batch_second_tick)
+    ///   .filter_if(signal)
+    ///   .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [1, 2, 3, 4]
+    /// # for w in vec![1, 2, 3, 4] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn filter_if(self, signal: Singleton<bool, L, Bounded>) -> Stream<T, L, B, O, R> {
+        self.cross_singleton(signal.filter(q!(|b| *b)))
+            .map(q!(|(d, _)| d))
+    }
+
     /// Passes this stream through if the argument (a [`Bounded`] [`Optional`]`) is non-null, otherwise the output is empty.
     ///
     /// Useful for gating the release of elements based on a condition, such as only processing requests if you are the
@@ -755,9 +791,9 @@ where
     /// # }));
     /// # }
     /// ```
+    #[deprecated(note = "use `filter_if` with `Optional::is_some()` instead")]
     pub fn filter_if_some<U>(self, signal: Optional<U, L, Bounded>) -> Stream<T, L, B, O, R> {
-        self.cross_singleton(signal.map(q!(|_u| ())))
-            .map(q!(|(d, _signal)| d))
+        self.filter_if(signal.is_some())
     }
 
     /// Passes this stream through if the argument (a [`Bounded`] [`Optional`]`) is null, otherwise the output is empty.
@@ -794,13 +830,9 @@ where
     /// # }));
     /// # }
     /// ```
+    #[deprecated(note = "use `filter_if` with `!Optional::is_some()` instead")]
     pub fn filter_if_none<U>(self, other: Optional<U, L, Bounded>) -> Stream<T, L, B, O, R> {
-        self.filter_if_some(
-            other
-                .map(q!(|_| ()))
-                .into_singleton()
-                .filter(q!(|o| o.is_none())),
-        )
+        self.filter_if(other.is_none())
     }
 
     /// Forms the cross-product (Cartesian product, cross-join) of the items in the 2 input streams, returning all
@@ -1416,7 +1448,7 @@ where
 
         let tick = self.location.tick();
         self.batch(&tick, nondet)
-            .filter_if_some(samples.batch(&tick, nondet).first())
+            .filter_if(samples.batch(&tick, nondet).first().is_some())
             .all_ticks()
             .weaken_retries()
     }
