@@ -122,20 +122,20 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
             let input = &inputs[0];
             quote_spanned! {op_span=>
                 let #ident = {
-                    fn check_input<'a, Item, MappingFn, MappedItem, St, Lat>(
-                        stream: St,
+                    fn check_input<'a, Item, MappingFn, MappedItem, Prev, Lat>(
+                        prev: Prev,
                         mapfn: MappingFn,
                         state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<Lat>>,
                         context: &'a #root::scheduled::context::Context,
-                    ) -> impl 'a + #root::futures::stream::Stream<Item = Item>
+                    ) -> impl 'a + #root::dfir_pipes::Pull<Item = Item, Meta = Prev::Meta>
                     where
                         Item: ::std::clone::Clone,
                         MappingFn: 'a + Fn(Item) -> MappedItem,
-                        St: 'a + #root::futures::stream::Stream<Item = Item>,
+                        Prev: 'a + #root::dfir_pipes::Pull<Item = Item>,
                         Lat: 'static + #root::lattices::Merge<MappedItem>,
                     {
-                        #root::tokio_stream::StreamExt::filter(
-                            stream,
+                        #root::dfir_pipes::Pull::filter(
+                            prev,
                             move |item| {
                                 let state = unsafe {
                                     // SAFETY: handle from `#df_ident.add_state(..)`.

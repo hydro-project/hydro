@@ -40,7 +40,7 @@ use crate::diagnostic::Diagnostic;
 /// ```
 ///
 /// ```dfir
-/// use dfir_rs::util::accumulator::{Fold, Reduce};
+/// use dfir_rs::dfir_pipes::{Fold, Reduce};
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)])
 ///     -> [0]my_join;
@@ -53,7 +53,7 @@ use crate::diagnostic::Diagnostic;
 /// Here is an example of using `FoldFrom` to derive the accumulator from the first value:
 ///
 /// ```dfir
-/// use dfir_rs::util::accumulator::{Fold, FoldFrom};
+/// use dfir_rs::dfir_pipes::{Fold, FoldFrom};
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)])
 ///     -> [0]my_join;
@@ -73,7 +73,7 @@ use crate::diagnostic::Diagnostic;
 /// for example, the two following examples have identical behavior:
 ///
 /// ```dfir
-/// use dfir_rs::util::accumulator::{Fold, Reduce};
+/// use dfir_rs::dfir_pipes::{Fold, Reduce};
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> persist::<'static>() -> [0]my_join;
 /// source_iter(vec![("key", 2)]) -> my_union;
@@ -85,7 +85,7 @@ use crate::diagnostic::Diagnostic;
 /// ```
 ///
 /// ```dfir
-/// use dfir_rs::util::accumulator::{Fold, Reduce};
+/// use dfir_rs::dfir_pipes::{Fold, Reduce};
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> [0]my_join;
 /// source_iter(vec![("key", 2)]) -> my_union;
@@ -145,15 +145,15 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
             #rhs_pre_write_iter
 
             let #ident = {
-                async fn __check_accum<Accumulator, Key, Accum, St, Hasher, Item>(accum: &mut Accumulator, borrow: &mut ::std::collections::HashMap<Key, Accum, Hasher>, st: St)
+                async fn __check_accum<Accumulator, Key, Accum, Prev, Hasher, Item>(accum: &mut Accumulator, borrow: &mut ::std::collections::HashMap<Key, Accum, Hasher>, prev: Prev)
                 where
-                    Accumulator: #root::util::accumulator::Accumulator<Accum, Item>,
+                    Accumulator: #root::dfir_pipes::Accumulator<Accum, Item>,
                     Key: ::std::cmp::Eq + ::std::hash::Hash + ::std::clone::Clone,
-                    St: #root::futures::stream::Stream<Item = (Key, Item)>,
+                    Prev: #root::dfir_pipes::Pull<Item = (Key, Item)>,
                     Hasher: ::std::hash::BuildHasher,
                     Item: ::std::clone::Clone,
                 {
-                    #root::compiled::pull::accumulate_all(accum, borrow, st).await;
+                    let () = #root::dfir_pipes::accumulate_all(accum, borrow, prev).await;
                 }
                 #work_fn_async(__check_accum(&mut #lhs_accum, &mut *#lhs_borrow, #lhs)).await;
                 #work_fn_async(__check_accum(&mut #rhs_accum, &mut *#rhs_borrow, #rhs)).await;
@@ -166,7 +166,7 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
                     .filter_map(|(k, v2)| {
                         #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone())))
                     });
-                #root::futures::stream::iter(iter)
+                #root::dfir_pipes::iter(iter)
             };
         };
 

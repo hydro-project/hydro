@@ -70,7 +70,7 @@ pub const SOURCE_INTERVAL: OperatorConstraints = OperatorConstraints {
             let #ident_intervalstream =
                 #root::tokio_stream::StreamExt::map(
                     #root::tokio_stream::wrappers::IntervalStream::new(#root::tokio::time::interval(#arguments)),
-                    |_| {  }
+                    ::std::mem::drop,
                 );
         };
         let wc = WriteContextArgs {

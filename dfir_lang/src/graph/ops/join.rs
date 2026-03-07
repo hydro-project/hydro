@@ -122,7 +122,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                 .first()
                 .map(ToTokens::to_token_stream)
                 .unwrap_or(quote_spanned!(op_span=>
-                    #root::compiled::pull::HalfSetJoinState
+                    #root::dfir_pipes::HalfSetJoinState
                 ));
 
         // TODO: This is really bad.
@@ -145,7 +145,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                 #df_ident.set_state_lifespan_hook(
                     #joindata_ident,
                     #lifespan,
-                    |rcell| (#work_fn)(|| #root::compiled::pull::HalfJoinState::clear(::std::cell::RefCell::get_mut(rcell)))
+                    |rcell| (#work_fn)(|| #root::dfir_pipes::HalfJoinState::clear(::std::cell::RefCell::get_mut(rcell)))
                 );
             }).unwrap_or_default();
 
@@ -197,15 +197,26 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                     lhs_state: &'a mut #join_type<K, V1, V2>,
                     rhs_state: &'a mut #join_type<K, V2, V1>,
                     is_new_tick: bool,
-                ) -> impl 'a + #root::futures::stream::Stream<Item = (K, (V1, V2))>
+                ) -> impl 'a + #root::dfir_pipes::Pull<
+                    Item = (K, (V1, V2)),
+                    Meta = (),
+                    CanPend = <I1::CanPend as #root::dfir_pipes::Toggle>::Or<I2::CanPend>,
+                    CanEnd = #root::dfir_pipes::Yes,
+                >
                 where
-                    K: Eq + std::hash::Hash + Clone,
-                    V1: Clone #additional_trait_bounds,
-                    V2: Clone #additional_trait_bounds,
-                    I1: 'a + #root::futures::stream::Stream<Item = (K, V1)>,
-                    I2: 'a + #root::futures::stream::Stream<Item = (K, V2)>,
+                    K: ::std::cmp::Eq + std::hash::Hash + ::std::clone::Clone,
+                    V1: ::std::clone::Clone #additional_trait_bounds,
+                    V2: ::std::clone::Clone #additional_trait_bounds,
+                    I1: 'a + #root::dfir_pipes::Pull<Item = (K, V1), Meta = ()>,
+                    I2: 'a + #root::dfir_pipes::Pull<Item = (K, V2), Meta = ()>,
                 {
-                    #root::compiled::pull::symmetric_hash_join_into_stream(lhs, rhs, lhs_state, rhs_state, is_new_tick).await
+                    #root::dfir_pipes::symmetric_hash_join(
+                        #root::dfir_pipes::Pull::fuse(lhs),
+                        #root::dfir_pipes::Pull::fuse(rhs),
+                        lhs_state,
+                        rhs_state,
+                        is_new_tick,
+                    ).await
                 }
 
                 let fut = check_inputs(#lhs, #rhs, &mut *#lhs_borrow_ident, &mut *#rhs_borrow_ident, #context.is_first_run_this_tick());

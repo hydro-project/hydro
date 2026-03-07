@@ -67,7 +67,7 @@ fi
 TARGETS=""
 FEATURES=""
 if [ "$TEST_DFIR" = true ]; then
-    TARGETS="$TARGETS -p dfir_lang -p dfir_rs -p dfir_macro"
+    TARGETS="$TARGETS -p dfir_lang -p dfir_pipes -p dfir_rs -p dfir_macro"
 fi
 if [ "$TEST_HYDRO" = true ]; then
     TARGETS="$TARGETS -p hydro_lang -p hydro_std -p hydro_test -p hydro_deploy -p hydro_deploy_integration"

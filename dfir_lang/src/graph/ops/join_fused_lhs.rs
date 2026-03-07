@@ -15,7 +15,7 @@ use super::{
 ///
 /// For example:
 /// ```dfir
-/// use dfir_rs::util::accumulator::Reduce;
+/// use dfir_rs::dfir_pipes::Reduce;
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> [0]my_join;
 /// source_iter(vec![("key", 2), ("key", 3)]) -> [1]my_join;
@@ -87,11 +87,11 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
 
                 let #ident = {
                     let () = #work_fn_async(
-                        #root::compiled::pull::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs),
+                        #root::dfir_pipes::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs),
                     ).await;
 
                     #[allow(clippy::clone_on_copy)]
-                    #root::tokio_stream::StreamExt::filter_map(#rhs, |(k, v2)| #lhs_borrow.get(&k).map(|v1| (k, (v1.clone(), v2.clone()))))
+                    #root::dfir_pipes::Pull::filter_map(#rhs, |(k, v2)| #lhs_borrow.get(&k).map(|v1| (k, (v1.clone(), v2.clone()))))
                 };
             },
             Persistence::Static => quote_spanned! {op_span=>
@@ -104,7 +104,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                 let #ident = {
                     // Accumulate LHS.
                     let () = #work_fn_async(
-                        #root::compiled::pull::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs),
+                        #root::dfir_pipes::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs),
                     ).await;
 
                     // RHS replay index.
@@ -116,7 +116,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
 
                     // Accumulate RHS.
                     let () = #work_fn_async(
-                        #root::compiled::pull::ForEach::new(#rhs, |kv| {
+                        #root::dfir_pipes::Pull::for_each(#rhs, |kv| {
                             #rhs_borrow_ident.push(kv);
                         }),
                     ).await;
@@ -127,7 +127,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                     let iter = #rhs_borrow_ident[replay_idx..]
                         .iter()
                         .filter_map(|(k, v2)| #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))));
-                    #root::futures::stream::iter(iter)
+                    #root::dfir_pipes::iter(iter)
                 };
             },
             Persistence::Mutable => unreachable!(),

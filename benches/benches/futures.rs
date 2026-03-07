@@ -42,12 +42,12 @@ fn benchmark_immediately_available(c: &mut Criterion) {
             || {
                 let mut df = dfir_syntax! {
                     source_iter(0..NUM_ELEMS)
-                    -> map(|x| async move {
-                        x
-                    })
-                    -> defer_tick()
-                    -> resolve_futures()
-                    -> for_each(|_| {});
+                        -> map(|x| async move {
+                            x
+                        })
+                        -> defer_tick()
+                        -> resolve_futures()
+                        -> for_each(drop);
                 };
 
                 df.run_tick_sync(); // skip loading and mapping to future
@@ -85,8 +85,8 @@ fn benchmark_delayed(c: &mut Criterion) {
         let df = {
             dfir_syntax! {
                 source_iter(futs)
-                -> resolve_futures()
-                -> for_each(|_| {});
+                    -> resolve_futures()
+                    -> for_each(drop);
             }
         };
 

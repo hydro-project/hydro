@@ -51,9 +51,7 @@ pub const FLAT_MAP: OperatorConstraints = OperatorConstraints {
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::compiled::pull::Flatten::new(
-                    #root::futures::stream::StreamExt::map(#input, #func),
-                );
+                let #ident = #root::dfir_pipes::Pull::flat_map(#input, #func);
             }
         } else {
             let output = &outputs[0];

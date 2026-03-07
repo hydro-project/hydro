@@ -75,15 +75,16 @@ pub const LATTICE_REDUCE: OperatorConstraints = OperatorConstraints {
         let write_iterator = quote_spanned! {op_span=>
             let #input = {
                 #[inline(always)]
-                fn check_inputs<Lat>(
-                    input: impl #root::futures::stream::Stream<Item = Lat>
-                ) -> impl #root::futures::stream::Stream<Item = Lat>
+                fn check_inputs<Lat, Prev>(
+                    input: Prev,
+                ) -> impl #root::dfir_pipes::Pull<Item = Lat, Meta = Prev::Meta, CanPend = Prev::CanPend, CanEnd = Prev::CanEnd>
                 where
                     Lat: #root::lattices::Merge<Lat>,
+                    Prev: #root::dfir_pipes::Pull<Item = Lat>,
                 {
                     input
                 }
-                check_inputs::<_>(#input)
+                check_inputs(#input)
             };
             #write_iterator
         };

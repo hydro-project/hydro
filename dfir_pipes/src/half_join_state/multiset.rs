@@ -2,31 +2,32 @@ use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::collections::hash_map::Entry;
 
-use super::HalfJoinState;
-
-type HashMap<K, V> = rustc_hash::FxHashMap<K, V>;
-
+use rustc_hash::FxHashMap;
 use smallvec::{SmallVec, smallvec};
 
-/// [`HalfJoinState`] with set semantics.
+use super::HalfJoinState;
+
+/// [`HalfJoinState`] with multiset semantics.
+///
+/// Allows duplicate key-value pairs to be stored.
 #[derive(Debug)]
-pub struct HalfSetJoinState<Key, ValBuild, ValProbe> {
+pub struct HalfMultisetJoinState<Key, ValBuild, ValProbe> {
     // Here a smallvec with inline storage of 1 is chosen.
     // The rationale for this decision is that, I speculate, that joins possibly have a bimodal distribution with regards to how much key contention they have.
     // That is, I think that there are many joins that have 1 value per key on LHS/RHS, and there are also a large category of joins that have multiple values per key.
     // For the category of joins that have multiple values per key, it's not clear why they would only have 2, 3, 4, or N specific number of values per key. So there's no good number to set the smallvec storage to.
     // Instead we can just focus on the first group of joins that have 1 value per key and get benefit there without hurting the other group too much with excessive memory usage.
     /// Table to probe, vec val contains all matches.
-    table: HashMap<Key, SmallVec<[ValBuild; 1]>>,
+    table: FxHashMap<Key, SmallVec<[ValBuild; 1]>>,
     /// Not-yet emitted matches.
     current_matches: VecDeque<(Key, ValProbe, ValBuild)>,
     len: usize,
 }
 
-impl<Key, ValBuild, ValProbe> Default for HalfSetJoinState<Key, ValBuild, ValProbe> {
+impl<Key, ValBuild, ValProbe> Default for HalfMultisetJoinState<Key, ValBuild, ValProbe> {
     fn default() -> Self {
         Self {
-            table: HashMap::default(),
+            table: FxHashMap::default(),
             current_matches: VecDeque::default(),
             len: 0,
         }
@@ -34,10 +35,10 @@ impl<Key, ValBuild, ValProbe> Default for HalfSetJoinState<Key, ValBuild, ValPro
 }
 
 impl<Key, ValBuild, ValProbe> HalfJoinState<Key, ValBuild, ValProbe>
-    for HalfSetJoinState<Key, ValBuild, ValProbe>
+    for HalfMultisetJoinState<Key, ValBuild, ValProbe>
 where
     Key: Clone + Eq + std::hash::Hash,
-    ValBuild: Clone + Eq,
+    ValBuild: Clone,
     ValProbe: Clone,
 {
     fn build(&mut self, k: Key, v: Cow<'_, ValBuild>) -> bool {
@@ -45,22 +46,16 @@ where
 
         match entry {
             Entry::Occupied(mut e) => {
-                let vec = e.get_mut();
-
-                if !vec.contains(v.as_ref()) {
-                    vec.push(v.into_owned());
-                    self.len += 1;
-                    return true;
-                }
+                e.get_mut().push(v.into_owned());
+                self.len += 1;
             }
             Entry::Vacant(e) => {
                 e.insert(smallvec![v.into_owned()]);
                 self.len += 1;
-                return true;
             }
         };
 
-        false
+        true
     }
 
     fn probe(&mut self, k: &Key, v: &ValProbe) -> Option<(Key, ValProbe, ValBuild)> {
@@ -74,18 +69,12 @@ where
             .map(|valbuild| (k.clone(), v.clone(), valbuild.clone()));
 
         let first = iter.next();
-
         self.current_matches.extend(iter);
-
         first
     }
 
     fn full_probe(&self, k: &Key) -> std::slice::Iter<'_, ValBuild> {
-        let Some(sv) = self.table.get(k) else {
-            return [].iter();
-        };
-
-        sv.iter()
+        self.table.get(k).map(|sv| sv.iter()).unwrap_or_default()
     }
 
     fn pop_match(&mut self) -> Option<(Key, ValProbe, ValBuild)> {

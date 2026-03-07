@@ -868,6 +868,7 @@ impl Node for DeployNode {
                 // Determine linking mode based on host target type
                 let linking_mode = if !cfg!(target_os = "windows")
                     && trybuild.host.target_type() == hydro_deploy::HostTargetType::Local
+                    && trybuild.rustflags.is_none()
                 {
                     // When compiling for local, prefer dynamic linking to reduce binary size
                     // Windows is currently not supported due to https://github.com/bevyengine/bevy/pull/2016
@@ -971,6 +972,7 @@ impl Node for DeployCluster {
                     CrateOrTrybuild::Crate(_, _) => true, // crates handle their own linking
                     CrateOrTrybuild::Trybuild(t) => {
                         t.host.target_type() == hydro_deploy::HostTargetType::Local
+                            && t.rustflags.is_none()
                     }
                 }) {
             // See comment above for Windows exception

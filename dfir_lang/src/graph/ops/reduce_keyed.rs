@@ -160,13 +160,14 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
 
                 {
                     #[inline(always)]
-                    fn check_input<St, K, V>(st: St) -> impl #root::futures::stream::Stream<Item = (K, V)>
+                    fn check_input<Prev, K, V>(prev: Prev)
+                        -> impl #root::dfir_pipes::Pull<Item = (K, V), Meta = Prev::Meta, CanPend = Prev::CanPend, CanEnd = Prev::CanEnd>
                     where
-                        St: #root::futures::stream::Stream<Item = (K, V)>,
+                        Prev: #root::dfir_pipes::Pull<Item = (K, V)>,
                         K: ::std::clone::Clone,
                         V: ::std::clone::Clone
                     {
-                        st
+                        prev
                     }
 
                     /// A: accumulator/item type
@@ -175,7 +176,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                         let () = (f)(acc, item);
                     }
 
-                    let fut = #root::compiled::pull::ForEach::new(check_input(#input), |kv| {
+                    let fut = #root::dfir_pipes::Pull::for_each(check_input(#input), |kv| {
                         match #hashtable_ident.entry(kv.0) {
                             ::std::collections::hash_map::Entry::Vacant(vacant) => {
                                 vacant.insert(kv.1);
@@ -190,7 +191,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
 
                 #[allow(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
                 let #ident = #iter_expr;
-                let #ident = #root::futures::stream::iter(#ident);
+                let #ident = #root::dfir_pipes::iter(#ident);
             }
         };
 

@@ -68,17 +68,18 @@ pub const SOURCE_STREAM_SERDE: OperatorConstraints = OperatorConstraints {
             let mut #stream_ident = Box::pin(#receiver);
         };
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = #root::futures::stream::poll_fn(|_tick_cx| {
+            let #ident = #root::dfir_pipes::from_fn(|| {
                 // Using the `tick_cx` will cause the tick to "block" (yield) until the stream is exhausted, which is not what we want.
                 // We want only the ready items, and will awaken this subgraph on a later tick when more items are available.
                 match #root::futures::stream::Stream::poll_next(#stream_ident.as_mut(), &mut ::std::task::Context::from_waker(&#context.waker())) {
                     ::std::task::Poll::Ready(::std::option::Option::Some(::std::result::Result::Ok((payload, addr)))) =>
-                        ::std::task::Poll::Ready(::std::option::Option::Some(
-                            #root::util::deserialize_from_bytes::<#generic_type>(payload).map(|payload| (payload, addr))
-                        )),
+                        #root::dfir_pipes::Step::Ready(
+                            #root::util::deserialize_from_bytes::<#generic_type>(payload).map(|payload| (payload, addr)),
+                            ()
+                        ),
                     ::std::task::Poll::Ready(::std::option::Option::Some(::std::result::Result::Err(_)))
                         | ::std::task::Poll::Ready(::std::option::Option::None)
-                        | ::std::task::Poll::Pending => ::std::task::Poll::Ready(::std::option::Option::None),
+                        | ::std::task::Poll::Pending => #root::dfir_pipes::Step::Ended(#root::dfir_pipes::Yes),
                 }
             });
         };

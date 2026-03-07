@@ -47,9 +47,9 @@ pub const SORT: OperatorConstraints = OperatorConstraints {
         let write_iterator = quote_spanned! {op_span=>
             // TODO(mingwei): unnecessary extra handoff into_iter() then collect().
             let #ident = {
-                let mut tmp = #work_fn_async(#root::futures::stream::StreamExt::collect::<::std::vec::Vec<_>>(#input)).await;
+                let mut tmp = #work_fn_async(#root::dfir_pipes::Pull::collect::<::std::vec::Vec<_>>(#input)).await;
                 <[_]>::sort_unstable(&mut tmp);
-                #root::futures::stream::iter(tmp)
+                #root::dfir_pipes::iter(tmp)
             };
         };
         Ok(OperatorWriteOutput {

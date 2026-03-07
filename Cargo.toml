@@ -7,6 +7,7 @@ members = [
     "dfir_lang",
     "dfir_macro",
     "dfir_rs",
+    "dfir_pipes",
     "example_test",
     "hydro_deploy/core",
     "hydro_deploy/hydro_deploy_integration",

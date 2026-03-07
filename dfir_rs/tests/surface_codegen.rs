@@ -164,7 +164,7 @@ pub fn test_join_order() {
 pub fn test_multiset_join() {
     // HalfJoinStateSetUnion
     {
-        use dfir_rs::compiled::pull::HalfSetJoinState;
+        use dfir_pipes::HalfSetJoinState;
 
         let (out_tx, mut out_rx) = dfir_rs::util::unbounded_channel::<(usize, (usize, usize))>();
 
@@ -182,7 +182,7 @@ pub fn test_multiset_join() {
 
     // HalfMultisetJoinState lhs biased
     {
-        use dfir_rs::compiled::pull::HalfMultisetJoinState;
+        use dfir_pipes::HalfMultisetJoinState;
         let (out_tx, mut out_rx) = dfir_rs::util::unbounded_channel::<(usize, (usize, usize))>();
 
         let mut df = dfir_syntax! {
@@ -199,7 +199,7 @@ pub fn test_multiset_join() {
 
     // HalfMultisetJoinState rhs biased
     {
-        use dfir_rs::compiled::pull::HalfMultisetJoinState;
+        use dfir_pipes::HalfMultisetJoinState;
         let (out_tx, mut out_rx) = dfir_rs::util::unbounded_channel::<(usize, (usize, usize))>();
 
         let mut df = dfir_syntax! {
@@ -528,12 +528,13 @@ pub fn test_covid_tracing() {
             .unwrap(); // Mingwei + Mae
 
         df.run_available_sync();
-        let results = collect_ready::<Vec<_>, _>(&mut out_recv);
+        let mut results = collect_ready::<Vec<_>, _>(&mut out_recv);
+        results.sort_unstable();
         assert_eq!(
             [
-                "[Mingwei S] To +1 650 555 7283: Possible Exposure at t = 1028",
                 "[Justin J] To +1 519 555 3458: Possible Exposure at t = 1031",
                 "[Mae M] To +1 912 555 9129: Possible Exposure at t = 1028",
+                "[Mingwei S] To +1 650 555 7283: Possible Exposure at t = 1028",
                 "[Mingwei S] To +1 650 555 7283: Possible Exposure at t = 1031",
             ],
             *results
@@ -545,14 +546,15 @@ pub fn test_covid_tracing() {
             .unwrap();
 
         df.run_available_sync();
-        let results = collect_ready::<Vec<_>, _>(&mut out_recv);
+        let mut results = collect_ready::<Vec<_>, _>(&mut out_recv);
+        results.sort_unstable();
         assert_eq!(
             [
-                "[Mingwei S] To +1 650 555 7283: Possible Exposure at t = 1028",
-                "[Mingwei S] To +1 650 555 7283: Possible Exposure at t = 1031",
+                "[Joe H] To +1 510 555 9999: Possible Exposure at t = 1028",
                 "[Justin J] To +1 519 555 3458: Possible Exposure at t = 1031",
                 "[Mae M] To +1 912 555 9129: Possible Exposure at t = 1028",
-                "[Joe H] To +1 510 555 9999: Possible Exposure at t = 1028"
+                "[Mingwei S] To +1 650 555 7283: Possible Exposure at t = 1028",
+                "[Mingwei S] To +1 650 555 7283: Possible Exposure at t = 1031",
             ],
             *results
         );

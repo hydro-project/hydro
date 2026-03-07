@@ -51,14 +51,29 @@ pub const UNION: OperatorConstraints = OperatorConstraints {
                 .iter()
                 .map(|i| i.to_token_stream())
                 .reduce(|a, b| quote_spanned! {op_span=> check_inputs(#a, #b) })
-                .unwrap_or_else(|| quote_spanned! {op_span=> #root::futures::stream::empty() });
+                .unwrap_or_else(|| quote_spanned! {op_span=> #root::dfir_pipes::empty() });
             quote_spanned! {op_span=>
                 let #ident = {
                     #[allow(unused)]
                     #[inline(always)]
-                    fn check_inputs<A: #root::futures::stream::Stream<Item = Item>, B: #root::futures::stream::Stream<Item = Item>, Item>(a: A, b: B) -> impl #root::futures::stream::Stream<Item = Item> {
-                        // NOTE(mingwei): tokio `StreamExt::merge` may make more sense, but also might inline worse.
-                        #root::futures::stream::StreamExt::chain(a, b)
+                    fn check_inputs<A, B, Item>(
+                        a: A, b: B
+                    ) -> impl #root::dfir_pipes::Pull<
+                        Item = Item,
+                        Meta = A::Meta,
+                        CanPend = <A::CanPend as #root::dfir_pipes::Toggle>::Or<B::CanPend>,
+                        CanEnd = B::CanEnd,
+                    >
+                    where
+                        A: #root::dfir_pipes::Pull<Item = Item, CanEnd = #root::dfir_pipes::Yes>,
+                        B: #root::dfir_pipes::Pull<Item = Item, Meta = A::Meta>,
+                    {
+                        // NOTE(mingwei): `merge` (allowing async interleaving) may make more sense, but also
+                        // might inline worse. Merge may have correctness implications.
+                        #root::dfir_pipes::Pull::chain(
+                            #root::dfir_pipes::Pull::fuse(a),
+                            b,
+                        )
                     }
                     #chains
                 };

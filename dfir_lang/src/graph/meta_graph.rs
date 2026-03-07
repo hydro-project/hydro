@@ -909,7 +909,7 @@ impl DfirGraph {
                 let recv_port_code = recv_ports.iter().map(|ident| {
                     quote_spanned! {ident.span()=>
                         let mut #ident = #ident.borrow_mut_swap();
-                        let #ident = #root::futures::stream::iter(#ident.drain(..));
+                        let #ident = #root::dfir_pipes::iter(#ident.drain(..));
                     }
                 });
                 let send_port_code = send_ports.iter().map(|ident| {
@@ -1118,37 +1118,47 @@ impl DfirGraph {
                             subgraph_op_iter_code.push(write_iterator);
 
                             if include_type_guards {
+                                // Temporarily disabled
                                 let type_guard = if is_pull {
                                     quote_spanned! {op_span=>
                                         let #ident = {
                                             #[allow(non_snake_case)]
                                             #[inline(always)]
-                                            pub fn #work_fn<Item, Input: #root::futures::stream::Stream<Item = Item>>(input: Input) -> impl #root::futures::stream::Stream<Item = Item> {
+                                            pub fn #work_fn<Item, Input>(input: Input)
+                                                -> impl #root::dfir_pipes::Pull<Item = Item, Meta = (), CanPend = Input::CanPend, CanEnd = Input::CanEnd>
+                                            where
+                                                Input: #root::dfir_pipes::Pull<Item = Item, Meta = ()>,
+                                            {
                                                 #root::pin_project_lite::pin_project! {
                                                     #[repr(transparent)]
-                                                    struct Pull<Item, Input: #root::futures::stream::Stream<Item = Item>> {
+                                                    struct Pull<Item, Input: #root::dfir_pipes::Pull<Item = Item>> {
                                                         #[pin]
                                                         inner: Input
                                                     }
                                                 }
 
-                                                impl<Item, Input> #root::futures::stream::Stream for Pull<Item, Input>
+                                                impl<Item, Input> #root::dfir_pipes::Pull for Pull<Item, Input>
                                                 where
-                                                    Input: #root::futures::stream::Stream<Item = Item>,
+                                                    Input: #root::dfir_pipes::Pull<Item = Item>,
                                                 {
+                                                    type Ctx<'ctx> = Input::Ctx<'ctx>;
+
                                                     type Item = Item;
+                                                    type Meta = Input::Meta;
+                                                    type CanPend = Input::CanPend;
+                                                    type CanEnd = Input::CanEnd;
 
                                                     #[inline(always)]
-                                                    fn poll_next(
+                                                    fn pull(
                                                         self: ::std::pin::Pin<&mut Self>,
-                                                        cx: &mut ::std::task::Context<'_>,
-                                                    ) -> ::std::task::Poll<::std::option::Option<Self::Item>> {
-                                                        #root::futures::stream::Stream::poll_next(self.project().inner, cx)
+                                                        ctx: &mut Self::Ctx<'_>,
+                                                    ) -> #root::dfir_pipes::Step<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
+                                                        #root::dfir_pipes::Pull::pull(self.project().inner, ctx)
                                                     }
 
                                                     #[inline(always)]
-                                                    fn size_hint(&self) -> (usize, Option<usize>) {
-                                                        #root::futures::stream::Stream::size_hint(&self.inner)
+                                                    fn size_hint(self: ::std::pin::Pin<&Self>) -> (usize, Option<usize>) {
+                                                        #root::dfir_pipes::Pull::size_hint(self.project_ref().inner)
                                                     }
                                                 }
 
@@ -1156,7 +1166,7 @@ impl DfirGraph {
                                                     inner: input
                                                 }
                                             }
-                                            #work_fn( #ident )
+                                            #work_fn::<_, _>( #ident )
                                         };
                                     }
                                 } else {
@@ -1264,10 +1274,10 @@ impl DfirGraph {
                             fn #pivot_fn_ident<Pull, Push, Item>(pull: Pull, push: Push)
                                 -> impl ::std::future::Future<Output = ::std::result::Result<(), #root::Never>>
                             where
-                                Pull: #root::futures::stream::Stream<Item = Item>,
+                                Pull: #root::dfir_pipes::Pull<Item = Item>,
                                 Push: #root::futures::sink::Sink<Item, Error = #root::Never>,
                             {
-                                #root::sinktools::send_stream(pull, push)
+                                #root::dfir_pipes::Pull::send_sink(pull, push)
                             }
                             (#pivot_fn_ident)(#pull_ident, #push_ident).await.unwrap(/* Never */);
                         });
