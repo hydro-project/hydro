@@ -76,6 +76,9 @@ where
             .prev2
             .as_mut()
             .pull(<Prev1::Ctx<'_> as Context<'_>>::unmerge_other(ctx));
+        if let Step::Pending(_) = item2 {
+            return Step::pending();
+        }
 
         match (this.item1.take(), item2) {
             (Some((item1, meta1)), Step::Ready(item2, _meta2)) => {

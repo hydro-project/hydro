@@ -49,7 +49,6 @@ pub mod half_join_state;
 mod inspect;
 mod iter;
 mod map;
-mod merge;
 mod next;
 mod once;
 mod pending;
@@ -66,7 +65,6 @@ mod take;
 mod take_while;
 #[cfg(test)]
 mod test_utils;
-mod zip;
 mod zip_longest;
 
 #[cfg(feature = "std")]
@@ -90,7 +88,6 @@ pub use half_join_state::{HalfJoinState, HalfMultisetJoinState, HalfSetJoinState
 pub use inspect::Inspect;
 pub use iter::Iter;
 pub use map::Map;
-pub use merge::Merge;
 pub use next::Next;
 pub use once::Once;
 pub use pending::Pending;
@@ -109,7 +106,6 @@ pub use symmetric_hash_join::{
 };
 pub use take::Take;
 pub use take_while::TakeWhile;
-pub use zip::Zip;
 pub use zip_longest::ZipLongest;
 
 /// A sealed trait for type-level booleans used to track pull capabilities.
@@ -369,19 +365,6 @@ pub trait Pull {
         Chain::new(self, other)
     }
 
-    /// Asynchronously merges two pulls, interleaving their items.
-    ///
-    /// Unlike [`chain`](Self::chain), `merge` does not require either pull to be
-    /// finite. Items are pulled from both sources in a round-robin fashion, and
-    /// the merged pull only ends when both upstream pulls have ended.
-    fn merge<U>(self, other: U) -> Merge<Self, U>
-    where
-        Self: Sized + FusedPull,
-        U: FusedPull<Item = Self::Item, Meta = Self::Meta>,
-    {
-        Merge::new(self, other)
-    }
-
     /// Creates a pull which gives the current iteration count as well as the next value.
     ///
     /// The pull returned yields pairs `(i, val)`, where `i` is the current index
@@ -559,17 +542,6 @@ pub trait Pull {
         P: FnMut(&Self::Item) -> bool,
     {
         TakeWhile::new(self, predicate)
-    }
-
-    /// Zips two pulls together, ending when either is exhausted.
-    ///
-    /// Yields `(Self::Item, U::Item)` pairs. Ends as soon as either pull ends.
-    fn zip<U>(self, other: U) -> Zip<Self, U>
-    where
-        Self: Sized,
-        U: Pull<Meta = Self::Meta>,
-    {
-        Zip::new(self, other)
     }
 
     /// Zips two pulls together, continuing until both are exhausted.
