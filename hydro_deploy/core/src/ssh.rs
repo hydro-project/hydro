@@ -436,7 +436,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
             })
             .await?;
 
-            // Attach perf to the command.
+            // Attach perf to the command
             // Note: `LaunchedSshHost` assumes `perf` on linux.
             command = format!(
                 "perf record -F {frequency} -e cycles:u --call-graph dwarf,65528 -o {PERF_OUTFILE} {command}",
