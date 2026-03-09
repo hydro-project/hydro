@@ -744,6 +744,38 @@ where
         )
     }
 
+    /// Gets the contents of `self` when it has a value, otherwise returns the default value of `T`.
+    ///
+    /// Like [`Option::unwrap_or_default`], this is helpful for defining a fallback for an
+    /// [`Optional`] when the default value of the type is a suitable fallback.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// // ticks are lazy by default, forces the later ticks to run
+    /// tick.spin_batch(q!(1)).all_ticks().for_each(q!(|_| {}));
+    ///
+    /// let some_first_tick = tick.optional_first_tick(q!(123i32));
+    /// some_first_tick.unwrap_or_default().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // [123 /* first tick */, 0 /* second tick */, 0 /* third tick */, 0, ...]
+    /// # for w in vec![123, 0, 0, 0] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn unwrap_or_default(self) -> Singleton<T, L, B>
+    where
+        T: Default + Clone,
+    {
+        self.into_singleton().map(q!(|v| v.unwrap_or_default()))
+    }
+
     /// Converts this optional into a [`Singleton`] with a Rust [`Option`] as its contents.
     ///
     /// Useful for writing custom Rust code that needs to interact with both the null and non-null
