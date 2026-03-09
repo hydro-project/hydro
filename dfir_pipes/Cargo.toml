@@ -19,6 +19,11 @@ rustc-hash = { version = "2.0.0", optional = true }
 sealed = "0.6.0"
 smallvec = { version = "1.0", optional = true }
 
+# coax cargo-smart-release into publishing this crate.
+# https://github.com/hydro-project/hydro/blob/main/RELEASING.md#addendum-adding-new-crates
+# https://github.com/GitoxideLabs/cargo-smart-release/issues/36
+hydro_build_utils = { path = "../hydro_build_utils", optional = true }
+
 [build-dependencies]
 hydro_build_utils = { path = "../hydro_build_utils" }
 
