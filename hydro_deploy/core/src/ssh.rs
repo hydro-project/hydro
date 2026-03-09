@@ -379,6 +379,7 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
         args: &[String],
         tracing: Option<TracingOptions>,
         env: &HashMap<String, String>,
+        pin_to_core: Option<usize>,
     ) -> Result<Box<dyn LaunchedBinary>> {
         let session = self.open_ssh_session().await?;
 
@@ -391,8 +392,9 @@ impl<T: LaunchedSshHost> LaunchedHost for T {
             command.push_str(&format!("{}={} ", k, shell_escape::unix::escape(v.into())));
         }
 
-        // Pin the binary to core 0 so it doesn't hop around
-        command.push_str("taskset -c 0 ");
+        if let Some(core) = pin_to_core {
+            command.push_str(&format!("taskset -c {core} "));
+        }
         command.push_str(binary_path.to_str().unwrap());
         for arg in args {
             command.push(' ');

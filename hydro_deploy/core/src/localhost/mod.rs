@@ -147,7 +147,14 @@ impl LaunchedHost for LaunchedLocalhost {
         args: &[String],
         tracing: Option<TracingOptions>,
         env: &HashMap<String, String>,
+        pin_to_core: Option<usize>,
     ) -> Result<Box<dyn LaunchedBinary>> {
+        if pin_to_core.is_some() {
+            ProgressTracker::println(format!(
+                "[{id}] pin_to_core is not supported on localhost, ignoring"
+            ));
+        }
+
         let (maybe_perf_outfile, mut command) = if let Some(tracing) = tracing.as_ref() {
             if cfg!(any(target_os = "macos", target_family = "windows")) {
                 // samply

@@ -482,6 +482,7 @@ pub struct TrybuildHost {
     tracing: Option<TracingOptions>,
     build_envs: Vec<(String, String)>,
     env: HashMap<String, String>,
+    pin_to_core: Option<usize>,
     name_hint: Option<String>,
     cluster_idx: Option<usize>,
 }
@@ -498,6 +499,7 @@ impl From<Arc<dyn Host>> for TrybuildHost {
             tracing: None,
             build_envs: vec![],
             env: HashMap::new(),
+            pin_to_core: None,
             name_hint: None,
             cluster_idx: None,
         }
@@ -516,6 +518,7 @@ impl<H: Host + 'static> From<Arc<H>> for TrybuildHost {
             tracing: None,
             build_envs: vec![],
             env: HashMap::new(),
+            pin_to_core: None,
             name_hint: None,
             cluster_idx: None,
         }
@@ -535,6 +538,7 @@ impl TrybuildHost {
             tracing: None,
             build_envs: vec![],
             env: HashMap::new(),
+            pin_to_core: None,
             name_hint: None,
             cluster_idx: None,
         }
@@ -614,6 +618,13 @@ impl TrybuildHost {
         env.insert(key.into(), value.into());
         Self { env, ..self }
     }
+
+    pub fn pin_to_core(self, core: usize) -> Self {
+        Self {
+            pin_to_core: Some(core),
+            ..self
+        }
+    }
 }
 
 impl IntoProcessSpec<'_, HydroDeploy> for Arc<dyn Host> {
@@ -629,6 +640,7 @@ impl IntoProcessSpec<'_, HydroDeploy> for Arc<dyn Host> {
             tracing: None,
             build_envs: vec![],
             env: HashMap::new(),
+            pin_to_core: None,
             name_hint: None,
             cluster_idx: None,
         }
@@ -648,6 +660,7 @@ impl<H: Host + 'static> IntoProcessSpec<'_, HydroDeploy> for Arc<H> {
             tracing: None,
             build_envs: vec![],
             env: HashMap::new(),
+            pin_to_core: None,
             name_hint: None,
             cluster_idx: None,
         }
@@ -1167,6 +1180,10 @@ fn create_trybuild_service(
 
     if let Some(tracing) = trybuild.tracing {
         ret = ret.tracing(tracing);
+    }
+
+    if let Some(core) = trybuild.pin_to_core {
+        ret = ret.pin_to_core(core);
     }
 
     ret = ret.features(

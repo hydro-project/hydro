@@ -147,6 +147,7 @@ pub trait LaunchedHost: Send + Sync {
         args: &[String],
         perf: Option<TracingOptions>,
         env: &HashMap<String, String>,
+        pin_to_core: Option<usize>,
     ) -> Result<Box<dyn LaunchedBinary>>;
 
     async fn forward_port(&self, addr: &SocketAddr) -> Result<SocketAddr>;
