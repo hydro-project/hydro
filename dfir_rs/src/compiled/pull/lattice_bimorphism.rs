@@ -79,21 +79,22 @@ where
     ) -> Step<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
         let mut this = self.project();
 
+        // Both streams may continue to be polled EOS (`None`) on subsequent loops or calls, so they must be fused.
         loop {
+            let mut progress = false;
+
             let lhs_step = this
                 .lhs_prev
                 .as_mut()
                 .pull(<LhsPrev::Ctx<'_> as Context<'_>>::unmerge_self(ctx));
             let lhs_pending = matches!(lhs_step, Step::Pending(_));
-            let mut live = false;
-
             if let Step::Ready(lhs_item, _meta) = lhs_step {
-                live = true;
+                progress = true;
                 let delta = this.func.call(lhs_item, this.rhs_state.borrow().clone());
                 if let Some(output) = this.output.as_mut() {
                     output.merge(delta);
                 } else {
-                    this.output.replace(delta);
+                    *this.output = Some(delta);
                 }
             }
 
@@ -103,27 +104,33 @@ where
                 .pull(<LhsPrev::Ctx<'_> as Context<'_>>::unmerge_other(ctx));
             let rhs_pending = matches!(rhs_step, Step::Pending(_));
             if let Step::Ready(rhs_item, _meta) = rhs_step {
-                live = true;
+                progress = true;
                 let delta = this.func.call(this.lhs_state.borrow().clone(), rhs_item);
                 if let Some(output) = this.output.as_mut() {
                     output.merge(delta);
                 } else {
-                    this.output.replace(delta);
+                    *this.output = Some(delta);
                 }
             }
 
-            if rhs_pending && lhs_pending {
+            if lhs_pending && rhs_pending {
                 return Step::pending();
             }
 
-            if !live && !rhs_pending && !lhs_pending {
-                return if let Some(output) = this.output.take() {
-                    Step::Ready(output, ())
+            // Exit EOS condition.
+            if !progress {
+                // Never spin, always exit if no progress has been made.
+                return if lhs_pending || rhs_pending {
+                    Step::pending()
                 } else {
-                    Step::ended()
+                    // EXIT: Release output once, then EOS.
+                    if let Some(output) = this.output.take() {
+                        Step::Ready(output, ())
+                    } else {
+                        Step::ended()
+                    }
                 };
             }
-            // Both streams may continue to be polled EOS (`None`) on subsequent loops or calls, so they must be fused.
         }
     }
 }
