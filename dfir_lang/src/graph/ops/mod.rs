@@ -166,9 +166,9 @@ pub fn identity_write_iterator_fn(
         let input = &inputs[0];
         quote_spanned! {op_span=>
             let #ident = {
-                fn check_input<Pull, Item>(pull: Pull) -> impl #root::dfir_pipes::Pull<Item = Item, Meta = Pull::Meta, CanPend = Pull::CanPend, CanEnd = Pull::CanEnd>
+                fn check_input<Pull, Item>(pull: Pull) -> impl #root::dfir_pipes::pull::Pull<Item = Item, Meta = Pull::Meta, CanPend = Pull::CanPend, CanEnd = Pull::CanEnd>
                 where
-                    Pull: #root::dfir_pipes::Pull<Item = Item>,
+                    Pull: #root::dfir_pipes::pull::Pull<Item = Item>,
                 {
                     pull
                 }
@@ -179,11 +179,11 @@ pub fn identity_write_iterator_fn(
         let output = &outputs[0];
         quote_spanned! {op_span=>
             let #ident = {
-                fn check_output<Si, Item>(sink: Si) -> impl #root::futures::sink::Sink<Item, Error = #root::Never>
+                fn check_output<Psh, Item>(push: Psh) -> impl #root::dfir_pipes::push::Push<Item, (), CanPend = Psh::CanPend>
                 where
-                    Si: #root::futures::sink::Sink<Item, Error = #root::Never>,
+                    Psh: #root::dfir_pipes::push::Push<Item, ()>,
                 {
-                    sink
+                    push
                 }
                 check_output::<_, #generic_type>(#output)
             };
@@ -223,7 +223,7 @@ pub fn null_write_iterator_fn(
 
     if is_pull {
         quote_spanned! {op_span=>
-            let #ident = #root::dfir_pipes::poll_fn({
+            let #ident = #root::dfir_pipes::pull::poll_fn({
                 #(
                     let mut #inputs = ::std::boxed::Box::pin(#inputs);
                 )*
@@ -232,17 +232,17 @@ pub fn null_write_iterator_fn(
                     // NOTE(mingwei): `null()` can only have 0 or 1 inputs, though.
                     // TODO(mingwei): Do we actually need to poll to completion or can we short-circuit?
                     #(
-                        let #inputs = #root::dfir_pipes::Pull::pull(
+                        let #inputs = #root::dfir_pipes::pull::Pull::pull(
                             ::std::pin::Pin::as_mut(&mut #inputs),
                             <_ as #root::dfir_pipes::Context>::from_task(_cx),
                         );
                     )*
                     #(
-                        if let #root::dfir_pipes::Step::Pending(_) = #inputs {
-                            return #root::dfir_pipes::Step::Pending(#root::dfir_pipes::Yes);
+                        if let #root::dfir_pipes::pull::PullStep::Pending(_) = #inputs {
+                            return #root::dfir_pipes::pull::PullStep::Pending(#root::dfir_pipes::Yes);
                         }
                     )*
-                    #root::dfir_pipes::Step::<_, _, #root::dfir_pipes::Yes, _>::Ended(#root::dfir_pipes::Yes)
+                    #root::dfir_pipes::pull::PullStep::<_, _, #root::dfir_pipes::Yes, _>::Ended(#root::dfir_pipes::Yes)
                 }
             });
         }
@@ -250,7 +250,7 @@ pub fn null_write_iterator_fn(
         quote_spanned! {op_span=>
             #[allow(clippy::let_unit_value)]
             let _ = (#(#outputs),*);
-            let #ident = #root::sinktools::for_each::ForEach::new::<#iter_type>(::std::mem::drop::<#iter_type>);
+            let #ident = #root::dfir_pipes::push::ForEach::<_, #iter_type>::new(::std::mem::drop::<#iter_type>);
         }
     }
 }

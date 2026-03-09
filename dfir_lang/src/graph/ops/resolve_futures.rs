@@ -72,17 +72,17 @@ pub fn resolve_futures_writer(
 
         let if_pending = if blocking {
             // Wait for all items.
-            quote_spanned! {op_span=> #root::dfir_pipes::Step::<_, _, #root::dfir_pipes::Yes, _>::pending() }
+            quote_spanned! {op_span=> #root::dfir_pipes::pull::PullStep::<_, _, #root::dfir_pipes::Yes, _>::pending() }
         } else {
             // EOS immediately, futures items will be in future ticks.
-            quote_spanned! {op_span=> #root::dfir_pipes::Step::<_, _, #root::dfir_pipes::No, _>::ended() }
+            quote_spanned! {op_span=> #root::dfir_pipes::pull::PullStep::<_, _, #root::dfir_pipes::No, _>::ended() }
         };
 
         quote_spanned! {op_span=>
             {
                 let first_item_opt = #work_fn_async(async {
                     // Accumulate all futures.
-                    let () = #root::dfir_pipes::Pull::for_each(#input, |fut| {
+                    let () = #root::dfir_pipes::pull::Pull::for_each(#input, |fut| {
                         ::std::iter::Extend::extend(&mut *#queue_ident, ::std::iter::once(fut));
                     }).await;
 
@@ -97,13 +97,13 @@ pub fn resolve_futures_writer(
                     }
                 }).await;
 
-                #root::dfir_pipes::Pull::chain(
-                    #root::dfir_pipes::iter(first_item_opt),
-                    #root::dfir_pipes::poll_fn(|_cx| {
+                #root::dfir_pipes::pull::Pull::chain(
+                    #root::dfir_pipes::pull::iter(first_item_opt),
+                    #root::dfir_pipes::pull::poll_fn(|_cx| {
                         match #root::futures::stream::Stream::poll_next(::std::pin::Pin::new(&mut *#queue_ident), #task_cx) {
                             ::std::task::Poll::Pending => #if_pending,
-                            ::std::task::Poll::Ready(::std::option::Option::Some(item)) => #root::dfir_pipes::Step::Ready(item, ()),
-                            ::std::task::Poll::Ready(::std::option::Option::None) => #root::dfir_pipes::Step::Ended(#root::dfir_pipes::Yes),
+                            ::std::task::Poll::Ready(::std::option::Option::Some(item)) => #root::dfir_pipes::pull::PullStep::Ready(item, ()),
+                            ::std::task::Poll::Ready(::std::option::Option::None) => #root::dfir_pipes::pull::PullStep::Ended(#root::dfir_pipes::Yes),
                         }
                     }),
                 )
@@ -112,7 +112,7 @@ pub fn resolve_futures_writer(
     } else {
         let output = &outputs[0];
         quote_spanned! {op_span=>
-            #root::compiled::push::ResolveFutures::new(&mut *#queue_ident, #opt_waker, #output)
+            #root::dfir_pipes::push::resolve_futures_state(&mut *#queue_ident, #opt_waker, #output)
         }
     };
     let write_iterator = quote_spanned! {op_span=>

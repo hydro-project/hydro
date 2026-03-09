@@ -61,9 +61,9 @@ pub const DIFFERENCE: OperatorConstraints = OperatorConstraints {
 
         let pos = &inputs[1];
         let write_iterator = quote_spanned! {op_span=>
-            let #pos = #root::dfir_pipes::Pull::map(#pos, |k| (k, ()));
+            let #pos = #root::dfir_pipes::pull::Pull::map(#pos, |k| (k, ()));
             #write_iterator
-            let #ident = #root::dfir_pipes::Pull::map(#ident, |(k, ())| k);
+            let #ident = #root::dfir_pipes::pull::Pull::map(#ident, |(k, ())| k);
         };
 
         Ok(OperatorWriteOutput {

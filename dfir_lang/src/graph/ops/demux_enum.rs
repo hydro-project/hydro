@@ -134,12 +134,12 @@ pub const DEMUX_ENUM: OperatorConstraints = OperatorConstraints {
             if is_pull {
                 let input = &inputs[0];
                 quote_spanned! {op_span=>
-                    let #ident = #root::dfir_pipes::Pull::map(#input, #map_fn);
+                    let #ident = #root::dfir_pipes::pull::Pull::map(#input, #map_fn);
                 }
             } else {
                 let output = &outputs[0];
                 quote_spanned! {op_span=>
-                    let #ident = #root::sinktools::map(#map_fn, #output);
+                    let #ident = #root::dfir_pipes::push::map(#map_fn, #output);
                 }
             }
         } else {
@@ -158,11 +158,11 @@ pub const DEMUX_ENUM: OperatorConstraints = OperatorConstraints {
                     )*
                 );
                 let #ident = {
-                    fn demux_enum_guard<Item, Outputs>(outputs: Outputs) -> impl #root::futures::sink::Sink<Item, Error = #root::Never>
+                    fn demux_enum_guard<Item, Outputs>(outputs: Outputs) -> impl #root::dfir_pipes::push::Push<Item, ()>
                     where
-                        Item: #root::util::demux_enum::DemuxEnumSink<Outputs, Error = #root::Never>,
+                        Item: #root::util::demux_enum::DemuxEnumPush<Outputs, ()>,
                     {
-                        #root::compiled::push::DemuxEnum::new::<Item>(outputs)
+                        #root::compiled::push::DemuxEnum::<Outputs, Item>::new(outputs)
                     }
                     demux_enum_guard::<#enum_type, _>(#outputs_ident)
                 };

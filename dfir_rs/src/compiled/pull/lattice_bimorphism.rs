@@ -1,7 +1,8 @@
 use std::cell::RefCell;
 use std::pin::Pin;
 
-use dfir_pipes::{Context, FusedPull, Pull, Step, Toggle};
+use dfir_pipes::pull::{FusedPull, Pull, PullStep};
+use dfir_pipes::{Context, Toggle};
 use lattices::{LatticeBimorphism, Merge};
 use pin_project_lite::pin_project;
 
@@ -76,7 +77,7 @@ where
     fn pull(
         self: Pin<&mut Self>,
         ctx: &mut Self::Ctx<'_>,
-    ) -> Step<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
+    ) -> PullStep<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
         let mut this = self.project();
 
         // Both streams may continue to be polled EOS (`None`) on subsequent loops or calls, so they must be fused.
@@ -87,8 +88,8 @@ where
                 .lhs_prev
                 .as_mut()
                 .pull(<LhsPrev::Ctx<'_> as Context<'_>>::unmerge_self(ctx));
-            let lhs_pending = matches!(lhs_step, Step::Pending(_));
-            if let Step::Ready(lhs_item, _meta) = lhs_step {
+            let lhs_pending = matches!(lhs_step, PullStep::Pending(_));
+            if let PullStep::Ready(lhs_item, _meta) = lhs_step {
                 progress = true;
                 let delta = this.func.call(lhs_item, this.rhs_state.borrow().clone());
                 if let Some(output) = this.output.as_mut() {
@@ -102,8 +103,8 @@ where
                 .rhs_prev
                 .as_mut()
                 .pull(<LhsPrev::Ctx<'_> as Context<'_>>::unmerge_other(ctx));
-            let rhs_pending = matches!(rhs_step, Step::Pending(_));
-            if let Step::Ready(rhs_item, _meta) = rhs_step {
+            let rhs_pending = matches!(rhs_step, PullStep::Pending(_));
+            if let PullStep::Ready(rhs_item, _meta) = rhs_step {
                 progress = true;
                 let delta = this.func.call(this.lhs_state.borrow().clone(), rhs_item);
                 if let Some(output) = this.output.as_mut() {
@@ -114,20 +115,20 @@ where
             }
 
             if lhs_pending && rhs_pending {
-                return Step::pending();
+                return PullStep::pending();
             }
 
             // Exit EOS condition.
             if !progress {
                 // Never spin, always exit if no progress has been made.
                 return if lhs_pending || rhs_pending {
-                    Step::pending()
+                    PullStep::pending()
                 } else {
                     // EXIT: Release output once, then EOS.
                     if let Some(output) = this.output.take() {
-                        Step::Ready(output, ())
+                        PullStep::Ready(output, ())
                     } else {
-                        Step::ended()
+                        PullStep::ended()
                     }
                 };
             }

@@ -111,13 +111,13 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                         #vec_ident.len()
                     };
 
-                    let fut = #root::dfir_pipes::Pull::for_each(#input, |item| {
+                    let fut = #root::dfir_pipes::pull::Pull::for_each(#input, |item| {
                         #vec_ident.push(item);
                     });
                     let () = #work_fn_async(fut).await;
 
                     let iter = #vec_ident[replay_idx..].iter().cloned();
-                    #root::dfir_pipes::iter(iter)
+                    #root::dfir_pipes::pull::iter(iter)
                 };
             }
         } else {
@@ -129,17 +129,12 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                 }.borrow_mut();
 
                 let #ident = {
-                    fn constrain_types<'ctx, Push, Item>(vec: &'ctx mut Vec<Item>, output: Push, is_new_tick: bool) -> impl 'ctx + #root::futures::sink::Sink<Item, Error = #root::Never>
+                    fn constrain_types<'ctx, Psh, Item>(vec: &'ctx mut Vec<Item>, output: Psh, is_new_tick: bool) -> impl 'ctx + #root::dfir_pipes::push::Push<Item, ()>
                     where
-                        Push: 'ctx + #root::futures::sink::Sink<Item, Error = #root::Never>,
+                        Psh: 'ctx + #root::dfir_pipes::push::Push<Item, ()>,
                         Item: ::std::clone::Clone,
                     {
-                        let replay_idx = if is_new_tick {
-                            0
-                        } else {
-                            vec.len()
-                        };
-                        #root::compiled::push::Persist::new(vec, replay_idx, output)
+                        #root::dfir_pipes::push::persist_state(vec, is_new_tick, output)
                     }
                     constrain_types(&mut *#vec_ident, #output, #context.is_first_run_this_tick())
                 };

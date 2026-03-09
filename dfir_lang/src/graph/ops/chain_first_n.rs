@@ -66,7 +66,7 @@ pub const CHAIN_FIRST_N: OperatorConstraints = OperatorConstraints {
 
         let write_iterator = quote_spanned! {op_span=>
             #write_iterator
-            let #ident = #root::dfir_pipes::Pull::take(#ident, #arg_n);
+            let #ident = #root::dfir_pipes::pull::Pull::take(#ident, #arg_n);
         };
 
         Ok(OperatorWriteOutput {

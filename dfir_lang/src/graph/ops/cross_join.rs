@@ -63,10 +63,10 @@ pub const CROSS_JOIN: OperatorConstraints = OperatorConstraints {
         let rhs = &inputs[1];
         let write_iterator = output.write_iterator;
         output.write_iterator = quote_spanned!(op_span=>
-            let #lhs = #root::dfir_pipes::Pull::map(#lhs, |a| ((), a));
-            let #rhs = #root::dfir_pipes::Pull::map(#rhs, |b| ((), b));
+            let #lhs = #root::dfir_pipes::pull::Pull::map(#lhs, |a| ((), a));
+            let #rhs = #root::dfir_pipes::pull::Pull::map(#rhs, |b| ((), b));
             #write_iterator
-            let #ident = #root::dfir_pipes::Pull::map(#ident, |((), (a, b))| (a, b));
+            let #ident = #root::dfir_pipes::pull::Pull::map(#ident, |((), (a, b))| (a, b));
         );
 
         Ok(output)

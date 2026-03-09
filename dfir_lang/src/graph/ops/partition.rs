@@ -125,13 +125,13 @@ pub const PARTITION: OperatorConstraints = OperatorConstraints {
         let sorted_outputs = output_sort_permutation.into_iter().map(|i| &outputs[i]);
 
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = #root::sinktools::map(
+            let #ident = #root::dfir_pipes::push::map(
                 |__item| {
                     #[allow(clippy::redundant_closure_call)]
                     let __idx = (#func)(&__item, #arg2_val);
                     (__idx, __item)
                 },
-                #root::sinktools::demux_var(
+                #root::dfir_pipes::push::demux_var(
                     #root::var_expr!( #( #sorted_outputs ),* ),
                 ),
             );

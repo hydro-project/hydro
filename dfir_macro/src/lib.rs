@@ -10,6 +10,7 @@ use dfir_lang::graph::{
 use dfir_lang::parse::DfirCode;
 use proc_macro2::{Ident, Literal, Span};
 use quote::{format_ident, quote, quote_spanned};
+use syn::spanned::Spanned;
 use syn::{
     Attribute, Fields, GenericParam, ItemEnum, Variant, WherePredicate, parse_macro_input,
     parse_quote,
@@ -303,6 +304,127 @@ pub fn derive_demux_enum(item: proc_macro::TokenStream) -> proc_macro::TokenStre
     let (impl_generics_sink, _ty_generics_sink, where_clause_sink) =
         full_generics_sink.split_for_impl();
 
+    let variant_generics_push = variants
+        .iter()
+        .map(|variant| format_ident!("__Push{}", variant.ident))
+        .collect::<Vec<_>>();
+    let variant_generics_pinned_push = variant_generics_push.iter().map(|ident| {
+        quote_spanned! {ident.span()=>
+            ::std::pin::Pin::<&mut #ident>
+        }
+    });
+    let variant_generics_pinned_push_all = quote! {
+        ( #( #variant_generics_pinned_push, )* )
+    };
+    let variant_localvars_push = variants
+        .iter()
+        .map(|variant| {
+            format_ident!(
+                "__push_{}",
+                variant.ident.to_string().to_lowercase(),
+                span = variant.ident.span()
+            )
+        })
+        .collect::<Vec<_>>();
+
+    let mut full_generics_push = generics.clone();
+    full_generics_push.params.extend(
+        variant_generics_push
+            .iter()
+            .map::<GenericParam, _>(|ident| parse_quote!(#ident)),
+    );
+    // Each push just needs Push<Item = VariantOutput, Meta = ()>.
+    full_generics_push.make_where_clause().predicates.extend(
+        variant_generics_push
+            .iter()
+            .zip(variant_output_types.iter())
+            .map::<WherePredicate, _>(|(push_generic, output_type)| {
+                parse_quote! {
+                    #push_generic: #root::dfir_pipes::push::Push<#output_type, ()>
+                }
+            }),
+    );
+
+    // Build the recursive Merged Ctx type:
+    // For 0 pushes: `()
+    // For 1 push: `Push0::Ctx<'__ctx>`
+    // For 2 pushes: `<Push0::Ctx<'__ctx> as Context<'__ctx>>::Merged<Push1::Ctx<'__ctx>>`
+    // For 3 pushes: `<Push0::Ctx<'__ctx> as Context<'__ctx>>::Merged<<Push1::Ctx<'__ctx> as Context<'__ctx>>::Merged<Push2::Ctx<'__ctx>>>`
+    let ctx_type = variant_generics_push
+        .iter()
+        .zip(variant_output_types.iter())
+        .rev()
+        .map(|(push_generic, output_type)| {
+            quote_spanned! {push_generic.span()=>
+                <#push_generic as #root::dfir_pipes::push::Push<#output_type, ()>>::Ctx<'__ctx>
+            }
+        })
+        .reduce(|rest, next| {
+            quote_spanned! {next.span()=>
+                <#next as #root::dfir_pipes::Context<'__ctx>>::Merged<#rest>
+            }
+        })
+        .unwrap_or_else(|| quote!(()));
+
+    let can_pend = variant_generics_push
+        .iter()
+        .zip(variant_output_types.iter())
+        .rev()
+        .map(|(push_generic, output_type)| {
+            quote_spanned! {push_generic.span()=>
+                <#push_generic as #root::dfir_pipes::push::Push<#output_type, ()>>::CanPend
+            }
+        })
+        .reduce(|rest, next| {
+            quote_spanned! {next.span()=>
+                <#next as #root::dfir_pipes::Toggle>::Or<#rest>
+            }
+        })
+        .unwrap_or_else(|| quote!(#root::dfir_pipes::No));
+
+    // Generate `Ctx`: `unmerge_self` for each push, `unmerge_other` to get remaining `__ctx`.
+    // For the last push, just pass `__ctx` directly (no unmerge needed).
+    let push_poll_unwrap_context = |method_name: Ident| {
+        variant_localvars_push.split_last().map(|(lastvar, headvar)| {
+            // `#( ... )*` zips all iterators to shortest; `headvar` (all-but-last) is shortest, so
+            // `variant_generics_push` and `variant_output_types` are naturally truncated to match.
+            quote! {
+                #(
+                    let #headvar = {
+                        let __ctx = <<#variant_generics_push as #root::dfir_pipes::push::Push<#variant_output_types, ()>>::Ctx<'_> as #root::dfir_pipes::Context<'_>>::unmerge_self(__ctx);
+                        #root::dfir_pipes::push::Push::#method_name(#headvar.as_mut(), __ctx)
+                    };
+                    let __ctx = <<#variant_generics_push as #root::dfir_pipes::push::Push<#variant_output_types, ()>>::Ctx<'_> as #root::dfir_pipes::Context<'_>>::unmerge_other(__ctx);
+                )*
+                let #lastvar = #root::dfir_pipes::push::Push::#method_name(#lastvar.as_mut(), __ctx);
+                // If any are pending, return pending.
+                #(
+                    if #variant_localvars_push.is_pending() {
+                        return #root::dfir_pipes::push::PushStep::pending();
+                    }
+                )*
+                #root::dfir_pipes::push::PushStep::Done
+            }
+        })
+    };
+    let push_poll_ready_body = (push_poll_unwrap_context)(format_ident!("poll_ready"));
+    let push_poll_flush_body = (push_poll_unwrap_context)(format_ident!("poll_flush"));
+
+    let variant_pats_push_send =
+        variants
+            .iter()
+            .zip(variant_localvars_push.iter())
+            .map(|(variant, pushvar)| {
+                let Variant { ident, fields, .. } = variant;
+                let (fields_pat, push_item) = field_pattern_item(fields);
+                quote! {
+                    Self::#ident #fields_pat => { #root::dfir_pipes::push::Push::start_send(#pushvar.as_mut(), #push_item, __meta); }
+                }
+            });
+
+    let (impl_generics_push, _ty_generics_push, where_clause_push) =
+        full_generics_push.split_for_impl();
+
     let single_impl = (1 == variants.len()).then(|| {
         let Variant { ident, fields, .. } = variants.first().unwrap();
         let (fields_pat, push_item) = field_pattern_item(fields);
@@ -376,6 +498,37 @@ pub fn derive_demux_enum(item: proc_macro::TokenStream) -> proc_macro::TokenStre
                     ::std::task::ready!(#variant_localvars_sink);
                 )*
                 ::std::task::Poll::Ready(::std::result::Result::Ok(()))
+            }
+        }
+
+        impl #impl_generics_push #root::util::demux_enum::DemuxEnumPush<#variant_generics_pinned_push_all, ()>
+            for #item_ident #ty_generics #where_clause_push
+        {
+            type Ctx<'__ctx> = #ctx_type;
+            type CanPend = #can_pend;
+
+            fn poll_ready(
+                ( #( #variant_localvars_push, )* ): &mut #variant_generics_pinned_push_all,
+                __ctx: &mut Self::Ctx<'_>,
+            ) -> #root::dfir_pipes::push::PushStep<Self::CanPend> {
+                #push_poll_ready_body
+            }
+
+            fn start_send(
+                self,
+                __meta: (),
+                ( #( #variant_localvars_push, )* ): &mut #variant_generics_pinned_push_all,
+            ) {
+                match self {
+                    #( #variant_pats_push_send, )*
+                }
+            }
+
+            fn poll_flush(
+                ( #( #variant_localvars_push, )* ): &mut #variant_generics_pinned_push_all,
+                __ctx: &mut Self::Ctx<'_>,
+            ) -> #root::dfir_pipes::push::PushStep<Self::CanPend> {
+                #push_poll_flush_body
             }
         }
 

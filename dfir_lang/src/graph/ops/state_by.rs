@@ -127,14 +127,14 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         mapfn: MappingFn,
                         state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<Lat>>,
                         context: &'a #root::scheduled::context::Context,
-                    ) -> impl 'a + #root::dfir_pipes::Pull<Item = Item, Meta = Prev::Meta>
+                    ) -> impl 'a + #root::dfir_pipes::pull::Pull<Item = Item, Meta = Prev::Meta>
                     where
                         Item: ::std::clone::Clone,
                         MappingFn: 'a + Fn(Item) -> MappedItem,
-                        Prev: 'a + #root::dfir_pipes::Pull<Item = Item>,
+                        Prev: 'a + #root::dfir_pipes::pull::Pull<Item = Item>,
                         Lat: 'static + #root::lattices::Merge<MappedItem>,
                     {
-                        #root::dfir_pipes::Pull::filter(
+                        #root::dfir_pipes::pull::Pull::filter(
                             prev,
                             move |item| {
                                 let state = unsafe {
@@ -152,19 +152,19 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
         } else if let Some(output) = outputs.first() {
             quote_spanned! {op_span=>
                 let #ident = {
-                    fn check_output<'a, Item, MappingFn, MappedItem, Push, Lat>(
-                        push: Push,
+                    fn check_output<'a, Item, MappingFn, MappedItem, Psh, Lat>(
+                        push: Psh,
                         mapfn: MappingFn,
                         state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<Lat>>,
                         context: &'a #root::scheduled::context::Context,
-                    ) -> impl 'a + #root::futures::sink::Sink<Item, Error = Push::Error>
+                    ) -> impl 'a + #root::dfir_pipes::push::Push<Item, ()>
                     where
                         Item: 'a + ::std::clone::Clone,
                         MappingFn: 'a + Fn(Item) -> MappedItem,
-                        Push: 'a + #root::futures::sink::Sink<Item>,
+                        Psh: 'a + #root::dfir_pipes::push::Push<Item, ()>,
                         Lat: 'static + #root::lattices::Merge<MappedItem>,
                     {
-                        #root::sinktools::filter(move |item| {
+                        #root::dfir_pipes::push::filter(move |item| {
                             let state = unsafe {
                                 // SAFETY: handle from `#df_ident.add_state(..)`.
                                 context.state_ref_unchecked(state_handle)
@@ -183,14 +183,14 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<Lat>>,
                         mapfn: MappingFn,
                         context: &'a #root::scheduled::context::Context,
-                    ) -> impl 'a + #root::futures::sink::Sink<Item, Error = #root::Never>
+                    ) -> impl 'a + #root::dfir_pipes::push::Push<Item, ()>
                     where
                         Item: 'a,
                         MappedItem: 'a,
                         MappingFn: 'a + Fn(Item) -> MappedItem,
                         Lat: 'static + #root::lattices::Merge<MappedItem>,
                     {
-                        #root::sinktools::for_each::ForEach::new(move |item| {
+                        #root::dfir_pipes::push::ForEach::new(move |item| {
                             let state = unsafe {
                                 // SAFETY: handle from `#df_ident.add_state(..)`.
                                 context.state_ref_unchecked(state_handle)

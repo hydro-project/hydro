@@ -5,7 +5,7 @@ use std::pin::pin;
 use std::task::{Context, Poll, Waker};
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use dfir_rs::dfir_pipes::{self, HalfMultisetJoinState, Pull, Step, symmetric_hash_join};
+use dfir_rs::dfir_pipes::pull::{self, HalfMultisetJoinState, Pull, PullStep, symmetric_hash_join};
 use dfir_rs::dfir_syntax;
 
 fn run_shj_cross_benchmark<V1, V2>(
@@ -19,8 +19,8 @@ fn run_shj_cross_benchmark<V1, V2>(
         HalfMultisetJoinState::default(),
         HalfMultisetJoinState::default(),
     );
-    let lhs_pull = dfir_pipes::iter(lhs.into_iter().map(|x| ((), x))).fuse();
-    let rhs_pull = dfir_pipes::iter(rhs.into_iter().map(|x| ((), x))).fuse();
+    let lhs_pull = pull::iter(lhs.into_iter().map(|x| ((), x))).fuse();
+    let rhs_pull = pull::iter(rhs.into_iter().map(|x| ((), x))).fuse();
     let join = symmetric_hash_join(lhs_pull, rhs_pull, &mut lhs_state, &mut rhs_state, false);
     let join = pin!(join);
     let Poll::Ready(join) = Future::poll(join, &mut Context::from_waker(Waker::noop())) else {
@@ -30,11 +30,11 @@ fn run_shj_cross_benchmark<V1, V2>(
     let mut join = pin!(join);
     loop {
         match join.as_mut().pull(&mut ()) {
-            Step::Ready(item, _) => {
+            PullStep::Ready(item, _) => {
                 black_box(item);
             }
-            Step::Ended(_) => break,
-            Step::Pending(_) => unreachable!(),
+            PullStep::Ended(_) => break,
+            PullStep::Pending(_) => unreachable!(),
         }
     }
 }

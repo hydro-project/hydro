@@ -80,7 +80,7 @@ pub const CROSS_SINGLETON: OperatorConstraints = OperatorConstraints {
                 #context.state_ref_unchecked(#singleton_handle_ident)
             }.borrow_mut();
 
-            let #ident = #root::dfir_pipes::Pull::cross_singleton_state(#item_stream, #singleton_stream, &mut *#singleton_state_ident);
+            let #ident = #root::dfir_pipes::pull::Pull::cross_singleton_state(#item_stream, #singleton_stream, &mut *#singleton_state_ident);
         };
 
         Ok(OperatorWriteOutput {

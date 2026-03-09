@@ -909,12 +909,12 @@ impl DfirGraph {
                 let recv_port_code = recv_ports.iter().map(|ident| {
                     quote_spanned! {ident.span()=>
                         let mut #ident = #ident.borrow_mut_swap();
-                        let #ident = #root::dfir_pipes::iter(#ident.drain(..));
+                        let #ident = #root::dfir_pipes::pull::iter(#ident.drain(..));
                     }
                 });
                 let send_port_code = send_ports.iter().map(|ident| {
                     quote_spanned! {ident.span()=>
-                        let #ident = #root::sinktools::for_each(|v| {
+                        let #ident = #root::dfir_pipes::push::for_each(|v| {
                             #ident.give(Some(v));
                         });
                     }
@@ -1118,28 +1118,27 @@ impl DfirGraph {
                             subgraph_op_iter_code.push(write_iterator);
 
                             if include_type_guards {
-                                // Temporarily disabled
                                 let type_guard = if is_pull {
                                     quote_spanned! {op_span=>
                                         let #ident = {
                                             #[allow(non_snake_case)]
                                             #[inline(always)]
                                             pub fn #work_fn<Item, Input>(input: Input)
-                                                -> impl #root::dfir_pipes::Pull<Item = Item, Meta = (), CanPend = Input::CanPend, CanEnd = Input::CanEnd>
+                                                -> impl #root::dfir_pipes::pull::Pull<Item = Item, Meta = (), CanPend = Input::CanPend, CanEnd = Input::CanEnd>
                                             where
-                                                Input: #root::dfir_pipes::Pull<Item = Item, Meta = ()>,
+                                                Input: #root::dfir_pipes::pull::Pull<Item = Item, Meta = ()>,
                                             {
                                                 #root::pin_project_lite::pin_project! {
                                                     #[repr(transparent)]
-                                                    struct Pull<Item, Input: #root::dfir_pipes::Pull<Item = Item>> {
+                                                    struct Pull<Item, Input: #root::dfir_pipes::pull::Pull<Item = Item>> {
                                                         #[pin]
                                                         inner: Input
                                                     }
                                                 }
 
-                                                impl<Item, Input> #root::dfir_pipes::Pull for Pull<Item, Input>
+                                                impl<Item, Input> #root::dfir_pipes::pull::Pull for Pull<Item, Input>
                                                 where
-                                                    Input: #root::dfir_pipes::Pull<Item = Item>,
+                                                    Input: #root::dfir_pipes::pull::Pull<Item = Item>,
                                                 {
                                                     type Ctx<'ctx> = Input::Ctx<'ctx>;
 
@@ -1152,13 +1151,13 @@ impl DfirGraph {
                                                     fn pull(
                                                         self: ::std::pin::Pin<&mut Self>,
                                                         ctx: &mut Self::Ctx<'_>,
-                                                    ) -> #root::dfir_pipes::Step<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
-                                                        #root::dfir_pipes::Pull::pull(self.project().inner, ctx)
+                                                    ) -> #root::dfir_pipes::pull::PullStep<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
+                                                        #root::dfir_pipes::pull::Pull::pull(self.project().inner, ctx)
                                                     }
 
                                                     #[inline(always)]
                                                     fn size_hint(self: ::std::pin::Pin<&Self>) -> (usize, Option<usize>) {
-                                                        #root::dfir_pipes::Pull::size_hint(self.project_ref().inner)
+                                                        #root::dfir_pipes::pull::Pull::size_hint(self.project_ref().inner)
                                                     }
                                                 }
 
@@ -1174,55 +1173,54 @@ impl DfirGraph {
                                         let #ident = {
                                             #[allow(non_snake_case)]
                                             #[inline(always)]
-                                            pub fn #work_fn<Item, Si>(si: Si) -> impl #root::futures::sink::Sink<Item, Error = #root::Never>
+                                            pub fn #work_fn<Item, Psh>(psh: Psh) -> impl #root::dfir_pipes::push::Push<Item, (), CanPend = Psh::CanPend>
                                             where
-                                                Si: #root::futures::sink::Sink<Item, Error = #root::Never>
+                                                Psh: #root::dfir_pipes::push::Push<Item, ()>
                                             {
                                                 #root::pin_project_lite::pin_project! {
                                                     #[repr(transparent)]
-                                                    struct Push<Si> {
+                                                    struct PushGuard<Psh> {
                                                         #[pin]
-                                                        si: Si,
+                                                        inner: Psh,
                                                     }
                                                 }
 
-                                                impl<Item, Si> #root::futures::sink::Sink<Item> for Push<Si>
+                                                impl<Item, Psh> #root::dfir_pipes::push::Push<Item, ()> for PushGuard<Psh>
                                                 where
-                                                    Si: #root::futures::sink::Sink<Item>,
+                                                    Psh: #root::dfir_pipes::push::Push<Item, ()>,
                                                 {
-                                                    type Error = Si::Error;
+                                                    type Ctx<'ctx> = <Psh as #root::dfir_pipes::push::Push<Item, ()>>::Ctx<'ctx>;
 
+                                                    type CanPend = <Psh as #root::dfir_pipes::push::Push<Item, ()>>::CanPend;
+
+                                                    #[inline(always)]
                                                     fn poll_ready(
                                                         self: ::std::pin::Pin<&mut Self>,
-                                                        cx: &mut ::std::task::Context<'_>,
-                                                    ) -> ::std::task::Poll<::std::result::Result<(), Self::Error>> {
-                                                        self.project().si.poll_ready(cx)
+                                                        ctx: &mut Self::Ctx<'_>,
+                                                    ) -> #root::dfir_pipes::push::PushStep<Self::CanPend> {
+                                                        #root::dfir_pipes::push::Push::poll_ready(self.project().inner, ctx)
                                                     }
 
+                                                    #[inline(always)]
                                                     fn start_send(
                                                         self: ::std::pin::Pin<&mut Self>,
                                                         item: Item,
-                                                    ) -> ::std::result::Result<(), Self::Error> {
-                                                        self.project().si.start_send(item)
+                                                        meta: (),
+                                                    ) {
+                                                        #root::dfir_pipes::push::Push::start_send(self.project().inner, item, meta)
                                                     }
 
+                                                    #[inline(always)]
                                                     fn poll_flush(
                                                         self: ::std::pin::Pin<&mut Self>,
-                                                        cx: &mut ::std::task::Context<'_>,
-                                                    ) -> ::std::task::Poll<::std::result::Result<(), Self::Error>> {
-                                                        self.project().si.poll_flush(cx)
-                                                    }
-
-                                                    fn poll_close(
-                                                        self: ::std::pin::Pin<&mut Self>,
-                                                        cx: &mut ::std::task::Context<'_>,
-                                                    ) -> ::std::task::Poll<::std::result::Result<(), Self::Error>> {
-                                                        self.project().si.poll_close(cx)
+                                                        ctx: &mut Self::Ctx<'_>,
+                                                    ) -> #root::dfir_pipes::push::PushStep<Self::CanPend> {
+                                                        #root::dfir_pipes::push::Push::poll_flush(self.project().inner, ctx)
                                                     }
                                                 }
 
-                                                Push {
-                                                    si
+                                                PushGuard {
+                                                    inner: psh
                                                 }
                                             }
                                             #work_fn( #ident )
@@ -1271,15 +1269,15 @@ impl DfirGraph {
                         let root = change_spans(root.clone(), pivot_span);
                         subgraph_op_iter_code.push(quote_spanned! {pivot_span=>
                             #[inline(always)]
-                            fn #pivot_fn_ident<Pull, Push, Item>(pull: Pull, push: Push)
-                                -> impl ::std::future::Future<Output = ::std::result::Result<(), #root::Never>>
+                            fn #pivot_fn_ident<Pul, Psh, Item>(pull: Pul, push: Psh)
+                                -> impl ::std::future::Future<Output = ()>
                             where
-                                Pull: #root::dfir_pipes::Pull<Item = Item>,
-                                Push: #root::futures::sink::Sink<Item, Error = #root::Never>,
+                                Pul: #root::dfir_pipes::pull::Pull<Item = Item>,
+                                Psh: #root::dfir_pipes::push::Push<Item, Pul::Meta>,
                             {
-                                #root::dfir_pipes::Pull::send_sink(pull, push)
+                                #root::dfir_pipes::pull::Pull::send_push(pull, push)
                             }
-                            (#pivot_fn_ident)(#pull_ident, #push_ident).await.unwrap(/* Never */);
+                            (#pivot_fn_ident)(#pull_ident, #push_ident).await;
                         });
                     }
                 };

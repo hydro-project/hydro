@@ -78,9 +78,9 @@ pub const ZIP_LONGEST: OperatorConstraints = OperatorConstraints {
         let lhs = &inputs[0];
         let rhs = &inputs[1];
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = #root::dfir_pipes::Pull::zip_longest(
-                #root::dfir_pipes::Pull::fuse(#lhs),
-                #root::dfir_pipes::Pull::fuse(#rhs),
+            let #ident = #root::dfir_pipes::pull::Pull::zip_longest(
+                #root::dfir_pipes::pull::Pull::fuse(#lhs),
+                #root::dfir_pipes::pull::Pull::fuse(#rhs),
             );
         };
 

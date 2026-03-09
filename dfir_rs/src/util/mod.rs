@@ -1,7 +1,6 @@
 //! Helper utilities for the DFIR syntax.
 #![warn(missing_docs)]
 
-pub mod accumulator;
 #[cfg(feature = "dfir_macro")]
 #[cfg_attr(docsrs, doc(cfg(feature = "dfir_macro")))]
 pub mod demux_enum;

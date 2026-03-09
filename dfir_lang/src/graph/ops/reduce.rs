@@ -107,14 +107,14 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
 
                 // Eagerly consume input to ensure updated state.
                 {
-                    let __fut = #root::dfir_pipes::Pull::for_each(#input, |#item_ident| {
+                    let __fut = #root::dfir_pipes::pull::Pull::for_each(#input, |#item_ident| {
                         #foreach_body
                     });
                     let () = #work_fn_async(__fut).await;
                 }
 
                 let #ident = #work_fn(
-                    || #root::dfir_pipes::iter(
+                    || #root::dfir_pipes::pull::iter(
                         // 1 or 0 items (`Some` or `None`).
                         ::std::clone::Clone::clone(&*#accumulator_ident)
                     )
@@ -123,7 +123,7 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
         } else {
             // Is only push when used as a singleton, so no need to push to `outputs[0]`.
             quote_spanned! {op_span=>
-                let #ident = #root::sinktools::for_each::ForEach::new(|#item_ident| {
+                let #ident = #root::dfir_pipes::push::ForEach::new(|#item_ident| {
                     #assign_accum_ident
 
                     #foreach_body

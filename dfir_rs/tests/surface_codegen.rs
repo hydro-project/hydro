@@ -164,7 +164,7 @@ pub fn test_join_order() {
 pub fn test_multiset_join() {
     // HalfJoinStateSetUnion
     {
-        use dfir_pipes::HalfSetJoinState;
+        use dfir_pipes::pull::HalfSetJoinState;
 
         let (out_tx, mut out_rx) = dfir_rs::util::unbounded_channel::<(usize, (usize, usize))>();
 
@@ -182,7 +182,7 @@ pub fn test_multiset_join() {
 
     // HalfMultisetJoinState lhs biased
     {
-        use dfir_pipes::HalfMultisetJoinState;
+        use dfir_pipes::pull::HalfMultisetJoinState;
         let (out_tx, mut out_rx) = dfir_rs::util::unbounded_channel::<(usize, (usize, usize))>();
 
         let mut df = dfir_syntax! {
@@ -199,7 +199,7 @@ pub fn test_multiset_join() {
 
     // HalfMultisetJoinState rhs biased
     {
-        use dfir_pipes::HalfMultisetJoinState;
+        use dfir_pipes::pull::HalfMultisetJoinState;
         let (out_tx, mut out_rx) = dfir_rs::util::unbounded_channel::<(usize, (usize, usize))>();
 
         let mut df = dfir_syntax! {

@@ -77,10 +77,10 @@ pub const LATTICE_REDUCE: OperatorConstraints = OperatorConstraints {
                 #[inline(always)]
                 fn check_inputs<Lat, Prev>(
                     input: Prev,
-                ) -> impl #root::dfir_pipes::Pull<Item = Lat, Meta = Prev::Meta, CanPend = Prev::CanPend, CanEnd = Prev::CanEnd>
+                ) -> impl #root::dfir_pipes::pull::Pull<Item = Lat, Meta = Prev::Meta, CanPend = Prev::CanPend, CanEnd = Prev::CanEnd>
                 where
                     Lat: #root::lattices::Merge<Lat>,
-                    Prev: #root::dfir_pipes::Pull<Item = Lat>,
+                    Prev: #root::dfir_pipes::pull::Pull<Item = Lat>,
                 {
                     input
                 }

@@ -6,9 +6,10 @@ license.workspace = true
 repository.workspace = true
 
 [features]
-default = ["std"]
-std = ["alloc", "futures-core/std", "futures-sink/std", "rustc-hash", "smallvec"]
+default = ["std", "variadics"]
+std = ["alloc", "futures-core/std", "futures-sink/std", "rustc-hash", "smallvec", "variadics?/std"]
 alloc = ["futures-core/alloc", "futures-sink/alloc"]
+variadics = ["dep:variadics"]
 
 [dependencies]
 futures-core = { version = "0.3.0", default-features = false }
@@ -18,6 +19,7 @@ pin-project-lite = "0.2.16"
 rustc-hash = { version = "2.0.0", optional = true }
 sealed = "0.6.0"
 smallvec = { version = "1.0", optional = true }
+variadics = { optional = true, path = "../variadics", default-features = false, version = "^0.0.10" }
 
 # coax cargo-smart-release into publishing this crate.
 # https://github.com/hydro-project/hydro/blob/main/RELEASING.md#addendum-adding-new-crates
@@ -26,6 +28,9 @@ hydro_build_utils = { path = "../hydro_build_utils", optional = true }
 
 [build-dependencies]
 hydro_build_utils = { path = "../hydro_build_utils" }
+
+[dev-dependencies]
+futures-util = { version = "0.3.0", default-features = false, features = ["alloc"] }
 
 [lints]
 workspace = true

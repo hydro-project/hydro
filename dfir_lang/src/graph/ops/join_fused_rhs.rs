@@ -54,7 +54,7 @@ pub const JOIN_FUSED_RHS: OperatorConstraints = OperatorConstraints {
 
         let write_iterator = quote_spanned! {op_span=>
             #write_iterator
-            let #ident = #root::dfir_pipes::Pull::map(#ident, |(k, (v1, v2))| (k, (v2, v1)));
+            let #ident = #root::dfir_pipes::pull::Pull::map(#ident, |(k, (v1, v2))| (k, (v2, v1)));
         };
 
         Ok(OperatorWriteOutput {

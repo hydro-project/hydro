@@ -58,10 +58,10 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
 
             if 0 == #context.loop_iter_count() {
                 *#vec_ident = #work_fn_async(
-                    #root::dfir_pipes::Pull::collect::<::std::vec::Vec<_>>(#input),
+                    #root::dfir_pipes::pull::Pull::collect::<::std::vec::Vec<_>>(#input),
                 ).await;
             }
-            let #ident = #root::dfir_pipes::iter(::std::clone::Clone::clone(&*#vec_ident));
+            let #ident = #root::dfir_pipes::pull::iter(::std::clone::Clone::clone(&*#vec_ident));
         };
 
         // Reschedule, to repeat.

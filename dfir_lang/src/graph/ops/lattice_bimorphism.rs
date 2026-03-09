@@ -86,7 +86,7 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
                     lhs_state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<LhsState>>,
                     rhs_state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<RhsState>>,
                     context: &'a #root::scheduled::context::Context,
-                ) -> impl #root::dfir_pipes::Pull<
+                ) -> impl #root::dfir_pipes::pull::Pull<
                     Item = Output,
                     Meta = (),
                     CanPend = <LhsPull::CanPend as #root::dfir_pipes::Toggle>::Or<RhsPull::CanPend>,
@@ -96,8 +96,8 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
                     Func: 'a
                         + #root::lattices::LatticeBimorphism<LhsState, RhsPull::Item, Output = Output>
                         + #root::lattices::LatticeBimorphism<LhsPull::Item, RhsState, Output = Output>,
-                    LhsPull: 'a + #root::dfir_pipes::Pull,
-                    RhsPull: 'a + #root::dfir_pipes::Pull,
+                    LhsPull: 'a + #root::dfir_pipes::pull::Pull,
+                    RhsPull: 'a + #root::dfir_pipes::pull::Pull,
                     LhsState: 'static + ::std::clone::Clone,
                     RhsState: 'static + ::std::clone::Clone,
                     Output: #root::lattices::Merge<Output>,
@@ -111,8 +111,8 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
                     };
 
                     #root::compiled::pull::LatticeBimorphismPull::new(
-                        #root::dfir_pipes::Pull::fuse(lhs_pull),
-                        #root::dfir_pipes::Pull::fuse(rhs_pull),
+                        #root::dfir_pipes::pull::Pull::fuse(lhs_pull),
+                        #root::dfir_pipes::pull::Pull::fuse(rhs_pull),
                         func,
                         lhs_state,
                         rhs_state,

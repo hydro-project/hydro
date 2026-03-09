@@ -52,11 +52,11 @@ pub const SOURCE_STDIN: OperatorConstraints = OperatorConstraints {
             };
         };
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = #root::dfir_pipes::from_fn(|| {
+            let #ident = #root::dfir_pipes::pull::from_fn(|| {
                 match #root::futures::stream::Stream::poll_next(::std::pin::Pin::new(&mut #stream_ident), &mut ::std::task::Context::from_waker(&#context.waker())) {
-                    ::std::task::Poll::Ready(::std::option::Option::Some(item)) => #root::dfir_pipes::Step::Ready(item, ()),
-                    ::std::task::Poll::Ready(::std::option::Option::None) => #root::dfir_pipes::Step::Ended(#root::dfir_pipes::Yes),
-                    ::std::task::Poll::Pending => #root::dfir_pipes::Step::Ended(#root::dfir_pipes::Yes),
+                    ::std::task::Poll::Ready(::std::option::Option::Some(item)) => #root::dfir_pipes::pull::PullStep::Ready(item, ()),
+                    ::std::task::Poll::Ready(::std::option::Option::None) => #root::dfir_pipes::pull::PullStep::Ended(#root::dfir_pipes::Yes),
+                    ::std::task::Poll::Pending => #root::dfir_pipes::pull::PullStep::Ended(#root::dfir_pipes::Yes),
                 }
             });
         };

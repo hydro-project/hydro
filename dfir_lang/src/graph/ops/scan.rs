@@ -160,14 +160,14 @@ pub const SCAN: OperatorConstraints = OperatorConstraints {
 
         let write_iterator = if is_pull {
             quote_spanned! {op_span=>
-                let #ident = #root::dfir_pipes::Pull::filter_map(#input, |#iterator_item_ident| {
+                let #ident = #root::dfir_pipes::pull::Pull::filter_map(#input, |#iterator_item_ident| {
                     #filter_map_body
                 });
             }
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::sinktools::filter_map(|#iterator_item_ident| {
+                let #ident = #root::dfir_pipes::push::filter_map(|#iterator_item_ident| {
                     #filter_map_body
                 }, #output);
             }

@@ -51,12 +51,12 @@ pub const FLAT_MAP: OperatorConstraints = OperatorConstraints {
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::dfir_pipes::Pull::flat_map(#input, #func);
+                let #ident = #root::dfir_pipes::pull::Pull::flat_map(#input, #func);
             }
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::sinktools::flat_map(#func, #output);
+                let #ident = #root::dfir_pipes::push::flat_map(#func, #output);
             }
         };
         Ok(OperatorWriteOutput {

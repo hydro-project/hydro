@@ -1,9 +1,4 @@
-//! Push-based operator helpers, i.e. [`futures::sink::Sink`] helpers.
-
-mod persist;
-mod resolve_futures;
-pub use persist::Persist;
-pub use resolve_futures::ResolveFutures;
+//! Push-based operator helpers.
 
 #[cfg(feature = "dfir_macro")]
 #[cfg_attr(docsrs, doc(cfg(feature = "dfir_macro")))]

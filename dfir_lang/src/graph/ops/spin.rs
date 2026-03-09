@@ -43,7 +43,7 @@ pub const SPIN: OperatorConstraints = OperatorConstraints {
                _| {
         assert!(is_pull);
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = #root::dfir_pipes::once(());
+            let #ident = #root::dfir_pipes::pull::once(());
         };
         let write_iterator_after = quote_spanned! {op_span=>
             #context.schedule_subgraph(#context.current_subgraph(), true);

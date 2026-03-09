@@ -3,8 +3,10 @@
 use std::task::{Context, Poll};
 
 pub use dfir_macro::DemuxEnum;
+use dfir_pipes::Toggle;
+use dfir_pipes::push::PushStep;
 
-/// Trait for use with the `demux_enum` operator.
+/// Trait for use with the `demux_enum` operator (Sink-based version).
 ///
 /// This trait is meant to be derived: `#[derive(DemuxEnum)]`.
 ///
@@ -31,6 +33,33 @@ pub trait DemuxEnumSink<Outputs>: DemuxEnumBase {
     fn poll_close(outputs: &mut Outputs, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>>;
 }
 
+/// Trait for use with the `demux_enum` operator (Push-based version).
+///
+/// This trait is meant to be derived: `#[derive(DemuxEnum)]`.
+///
+/// The derive will implement this such that `Outputs` can be any tuple where each item is a
+/// `Push` that corresponds to each of the variants of the tuple, in alphabetic order.
+#[diagnostic::on_unimplemented(
+    note = "ensure there is exactly one output for each enum variant.",
+    note = "ensure that the type for each output is a tuple of the field for the variant: `()`, `(a,)`, or `(a, b, ...)`."
+)]
+pub trait DemuxEnumPush<Outputs, Meta: Copy>: DemuxEnumBase {
+    /// The context type, inherited from the downstream pushes.
+    type Ctx<'ctx>: dfir_pipes::Context<'ctx>;
+
+    /// Whether this push can return [`PushStep::Pending`], inherited from the
+    /// downstream pushes.
+    type CanPend: Toggle;
+
+    /// Poll readiness of all output pushes.
+    fn poll_ready(outputs: &mut Outputs, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend>;
+
+    /// Pushes `self` into the corresponding output push in `outputs`.
+    fn start_send(self, meta: Meta, outputs: &mut Outputs);
+
+    /// Flushes all output pushes.
+    fn poll_flush(outputs: &mut Outputs, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend>;
+}
 /// Special case of [`DemuxEnum`] for when there is only one variant.
 #[diagnostic::on_unimplemented(
     note = "requires that the enum have only one variant.",

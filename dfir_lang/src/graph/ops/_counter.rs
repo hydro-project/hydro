@@ -86,16 +86,16 @@ pub const _COUNTER: OperatorConstraints = OperatorConstraints {
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::dfir_pipes::Pull::inspect(#input, |_| { #count_ident += 1; });
+                let #ident = #root::dfir_pipes::pull::Pull::inspect(#input, |_| { #count_ident += 1; });
             }
         } else if outputs.is_empty() {
             quote_spanned! {op_span=>
-                let #ident = #root::sinktools::inspect(|_| { #count_ident += 1; }, #root::sinktools::for_each::ForEach::new(::std::mem::drop));
+                let #ident = #root::dfir_pipes::push::inspect(|_| { #count_ident += 1; }, #root::dfir_pipes::push::ForEach::new(::std::mem::drop));
             }
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::sinktools::inspect(|_| { #count_ident += 1; }, #output);
+                let #ident = #root::dfir_pipes::push::inspect(|_| { #count_ident += 1; }, #output);
             }
         };
         let write_iterator = quote_spanned! {op_span=>

@@ -57,7 +57,7 @@ pub const SOURCE_ITER: OperatorConstraints = OperatorConstraints {
             };
         };
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = #root::dfir_pipes::iter(&mut #iter_ident);
+            let #ident = #root::dfir_pipes::pull::iter(&mut #iter_ident);
         };
 
         // Ensure contents are always drained on the first tick.

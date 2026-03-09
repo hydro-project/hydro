@@ -13,7 +13,7 @@ use crate::location::member_id::TaglessMemberId;
     not(any(
         feature = "deploy_integration",
         feature = "docker_runtime",
-        feature = "maelstrom_runtime"
+        feature = "maelstrom_runtime",
     )),
     expect(
         unreachable_code,

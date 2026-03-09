@@ -4,6 +4,29 @@ use dfir_rs::util::demux_enum::DemuxEnum;
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
+pub fn test_demux_enum_basic() {
+    #[derive(DemuxEnum)]
+    enum Shape {
+        Square(f64),
+        Rectangle { w: f64, h: f64 },
+        Circle { r: f64 },
+    }
+
+    let mut df = dfir_syntax! {
+        my_demux = source_iter([
+            Shape::Square(9.0),
+            Shape::Rectangle { w: 10.0, h: 8.0 },
+            Shape::Circle { r: 5.0 },
+        ]) -> demux_enum::<Shape>();
+
+        my_demux[Square] -> for_each(drop);
+        my_demux[Circle] -> for_each(drop);
+        my_demux[Rectangle] -> for_each(drop);
+    };
+    df.run_available_sync();
+}
+
+#[multiplatform_test]
 pub fn test_demux_enum() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel();
 

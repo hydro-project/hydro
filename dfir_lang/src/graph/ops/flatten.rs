@@ -44,12 +44,12 @@ pub const FLATTEN: OperatorConstraints = OperatorConstraints {
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::dfir_pipes::Pull::flatten(#input);
+                let #ident = #root::dfir_pipes::pull::Pull::flatten(#input);
             }
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::sinktools::flatten::Flatten::new(#output);
+                let #ident = #root::dfir_pipes::push::flatten(#output);
             }
         };
         Ok(OperatorWriteOutput {

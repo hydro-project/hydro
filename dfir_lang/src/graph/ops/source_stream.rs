@@ -63,7 +63,7 @@ pub const SOURCE_STREAM: OperatorConstraints = OperatorConstraints {
             };
         };
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = #root::dfir_pipes::stream_ready(
+            let #ident = #root::dfir_pipes::pull::stream_ready(
                 &mut #stream_ident,
                 #context.waker(),
             );

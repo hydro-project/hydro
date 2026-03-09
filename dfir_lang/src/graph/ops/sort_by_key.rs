@@ -47,9 +47,9 @@ pub const SORT_BY_KEY: OperatorConstraints = OperatorConstraints {
         let write_iterator = quote_spanned! {op_span=>
             // TODO(mingwei): unnecessary extra handoff into_iter() then collect().
             let #ident = {
-                let mut tmp = #work_fn_async(#root::dfir_pipes::Pull::collect::<::std::vec::Vec<_>>(#input)).await;
+                let mut tmp = #work_fn_async(#root::dfir_pipes::pull::Pull::collect::<::std::vec::Vec<_>>(#input)).await;
                 #root::util::sort_unstable_by_key_hrtb(&mut tmp, #arguments);
-                #root::dfir_pipes::iter(tmp)
+                #root::dfir_pipes::pull::iter(tmp)
             };
         };
         Ok(OperatorWriteOutput {

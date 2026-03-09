@@ -1,0 +1,53 @@
+//! [`Filter`] push combinator.
+use core::pin::Pin;
+
+use pin_project_lite::pin_project;
+
+use crate::push::{Push, PushStep};
+
+pin_project! {
+    /// Push combinator that only pushes items matching a predicate.
+    #[must_use = "`Push`es do nothing unless items are pushed into them"]
+    #[derive(Clone, Debug)]
+    pub struct Filter<Next, Func> {
+        #[pin]
+        next: Next,
+        func: Func,
+    }
+}
+
+impl<Next, Func> Filter<Next, Func> {
+    /// Creates with filtering `func` and next `push`.
+    pub const fn new<Item, Meta: Copy>(func: Func, next: Next) -> Self
+    where
+        Next: Push<Item, Meta>,
+        Func: FnMut(&Item) -> bool,
+    {
+        Self { next, func }
+    }
+}
+
+impl<Next, Func, Item, Meta: Copy> Push<Item, Meta> for Filter<Next, Func>
+where
+    Next: Push<Item, Meta>,
+    Func: FnMut(&Item) -> bool,
+{
+    type Ctx<'ctx> = <Next as Push<Item, Meta>>::Ctx<'ctx>;
+
+    type CanPend = <Next as Push<Item, Meta>>::CanPend;
+
+    fn poll_ready(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
+        self.project().next.poll_ready(ctx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: Item, meta: Meta) {
+        let this = self.project();
+        if (this.func)(&item) {
+            this.next.start_send(item, meta)
+        }
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
+        self.project().next.poll_flush(ctx)
+    }
+}

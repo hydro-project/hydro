@@ -51,27 +51,27 @@ pub const UNION: OperatorConstraints = OperatorConstraints {
                 .iter()
                 .map(|i| i.to_token_stream())
                 .reduce(|a, b| quote_spanned! {op_span=> check_inputs(#a, #b) })
-                .unwrap_or_else(|| quote_spanned! {op_span=> #root::dfir_pipes::empty() });
+                .unwrap_or_else(|| quote_spanned! {op_span=> #root::dfir_pipes::pull::empty() });
             quote_spanned! {op_span=>
                 let #ident = {
                     #[allow(unused)]
                     #[inline(always)]
                     fn check_inputs<A, B, Item>(
                         a: A, b: B
-                    ) -> impl #root::dfir_pipes::Pull<
+                    ) -> impl #root::dfir_pipes::pull::Pull<
                         Item = Item,
                         Meta = A::Meta,
                         CanPend = <A::CanPend as #root::dfir_pipes::Toggle>::Or<B::CanPend>,
                         CanEnd = B::CanEnd,
                     >
                     where
-                        A: #root::dfir_pipes::Pull<Item = Item, CanEnd = #root::dfir_pipes::Yes>,
-                        B: #root::dfir_pipes::Pull<Item = Item, Meta = A::Meta>,
+                        A: #root::dfir_pipes::pull::Pull<Item = Item, CanEnd = #root::dfir_pipes::Yes>,
+                        B: #root::dfir_pipes::pull::Pull<Item = Item, Meta = A::Meta>,
                     {
                         // NOTE(mingwei): `merge` (allowing async interleaving) may make more sense, but also
                         // might inline worse. Merge may have correctness implications.
-                        #root::dfir_pipes::Pull::chain(
-                            #root::dfir_pipes::Pull::fuse(a),
+                        #root::dfir_pipes::pull::Pull::chain(
+                            #root::dfir_pipes::pull::Pull::fuse(a),
                             b,
                         )
                     }

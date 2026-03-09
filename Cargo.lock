@@ -1784,12 +1784,14 @@ version = "0.0.1"
 dependencies = [
  "futures-core",
  "futures-sink",
+ "futures-util",
  "hydro_build_utils",
  "itertools 0.14.0",
  "pin-project-lite",
  "rustc-hash 2.1.1",
  "sealed",
  "smallvec",
+ "variadics",
 ]
 
 [[package]]

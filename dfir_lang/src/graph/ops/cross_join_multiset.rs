@@ -96,8 +96,8 @@ pub const CROSS_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                 (#lhs_borrow.len(), #rhs_borrow.len())
             };
 
-            #work_fn_async(#root::dfir_pipes::Pull::for_each(#lhs, |x| #lhs_borrow.push(x))).await;
-            #work_fn_async(#root::dfir_pipes::Pull::for_each(#rhs, |x| #rhs_borrow.push(x))).await;
+            #work_fn_async(#root::dfir_pipes::pull::Pull::for_each(#lhs, |x| #lhs_borrow.push(x))).await;
+            #work_fn_async(#root::dfir_pipes::pull::Pull::for_each(#rhs, |x| #rhs_borrow.push(x))).await;
 
             //       RHS
             //   +-----+-----+
@@ -105,7 +105,7 @@ pub const CROSS_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
             // H +-----+-----+
             // S | New | New |
             //   +-----+-----+
-            let #ident = #root::dfir_pipes::iter(
+            let #ident = #root::dfir_pipes::pull::iter(
                 #lhs_borrow
                     .iter()
                     .enumerate()

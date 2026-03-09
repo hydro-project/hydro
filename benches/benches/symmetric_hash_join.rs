@@ -4,7 +4,9 @@ use std::pin::pin;
 use std::task::{Context, Poll, Waker};
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use dfir_rs::dfir_pipes::{self, HalfSetJoinState, Pull, Step, symmetric_hash_join as shj_fn};
+use dfir_rs::dfir_pipes::pull::{
+    self, HalfSetJoinState, Pull, PullStep, symmetric_hash_join as shj_fn,
+};
 use rand::SeedableRng;
 use rand::distributions::Distribution;
 use rand::rngs::StdRng;
@@ -21,8 +23,8 @@ fn run_join_benchmark<K, V1, V2>(
 {
     let (mut lhs_state, mut rhs_state) =
         black_box((HalfSetJoinState::default(), HalfSetJoinState::default()));
-    let lhs_pull = dfir_pipes::iter(lhs).fuse();
-    let rhs_pull = dfir_pipes::iter(rhs).fuse();
+    let lhs_pull = pull::iter(lhs).fuse();
+    let rhs_pull = pull::iter(rhs).fuse();
     let join = shj_fn(
         black_box(lhs_pull),
         black_box(rhs_pull),
@@ -38,11 +40,11 @@ fn run_join_benchmark<K, V1, V2>(
     let mut join = pin!(join);
     loop {
         match join.as_mut().pull(&mut ()) {
-            Step::Ready(item, _) => {
+            PullStep::Ready(item, _) => {
                 black_box(item);
             }
-            Step::Ended(_) => break,
-            Step::Pending(_) => unreachable!(),
+            PullStep::Ended(_) => break,
+            PullStep::Pending(_) => unreachable!(),
         }
     }
 }

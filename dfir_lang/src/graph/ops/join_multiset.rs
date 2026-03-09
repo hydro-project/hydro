@@ -49,7 +49,7 @@ pub const JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                },
                diagnostics| {
         let join_type = parse_quote_spanned! {op_span=> // Uses `lat_type.span()`!
-            #root::dfir_pipes::HalfMultisetJoinState
+            #root::dfir_pipes::pull::HalfMultisetJoinState
         };
 
         let wc = WriteContextArgs {
