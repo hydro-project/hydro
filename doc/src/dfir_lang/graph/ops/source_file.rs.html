@@ -80,7 +80,7 @@
 <a href=#80 id=80 data-nosnippet>80</a>            <span class="macro">::std::debug_assert!</span>(#root::tokio::runtime::Handle::try_current().is_ok(), #missing_runtime_msg);
 <a href=#81 id=81 data-nosnippet>81</a>            #write_iterator
 <a href=#82 id=82 data-nosnippet>82</a>            <span class="comment">// Unwrap each line. Will panic if invalid utf-8.
-<a href=#83 id=83 data-nosnippet>83</a>            </span><span class="kw">let </span>#ident = #root::futures::stream::StreamExt::map(#ident, ::std::result::Result::unwrap);
+<a href=#83 id=83 data-nosnippet>83</a>            </span><span class="kw">let </span>#ident = #root::dfir_pipes::Pull::map(#ident, ::std::result::Result::unwrap);
 <a href=#84 id=84 data-nosnippet>84</a>        };
 <a href=#85 id=85 data-nosnippet>85</a>
 <a href=#86 id=86 data-nosnippet>86</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {

@@ -80,7 +80,7 @@
 <a href=#80 id=80 data-nosnippet>80</a>                </span>#context.state_ref_unchecked(#singleton_handle_ident)
 <a href=#81 id=81 data-nosnippet>81</a>            }.borrow_mut();
 <a href=#82 id=82 data-nosnippet>82</a>
-<a href=#83 id=83 data-nosnippet>83</a>            <span class="kw">let </span>#ident = #root::compiled::pull::CrossSingleton::new(#item_stream, #singleton_stream, <span class="kw-2">&amp;mut *</span>#singleton_state_ident);
+<a href=#83 id=83 data-nosnippet>83</a>            <span class="kw">let </span>#ident = #root::dfir_pipes::Pull::cross_singleton_state(#item_stream, #singleton_stream, <span class="kw-2">&amp;mut *</span>#singleton_state_ident);
 <a href=#84 id=84 data-nosnippet>84</a>        };
 <a href=#85 id=85 data-nosnippet>85</a>
 <a href=#86 id=86 data-nosnippet>86</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {

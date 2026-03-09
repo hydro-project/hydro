@@ -122,7 +122,7 @@
 <a href=#122 id=122 data-nosnippet>122</a>                .first()
 <a href=#123 id=123 data-nosnippet>123</a>                .map(ToTokens::to_token_stream)
 <a href=#124 id=124 data-nosnippet>124</a>                .unwrap_or(<span class="macro">quote_spanned!</span>(op_span=&gt;
-<a href=#125 id=125 data-nosnippet>125</a>                    #root::compiled::pull::HalfSetJoinState
+<a href=#125 id=125 data-nosnippet>125</a>                    #root::dfir_pipes::HalfSetJoinState
 <a href=#126 id=126 data-nosnippet>126</a>                ));
 <a href=#127 id=127 data-nosnippet>127</a>
 <a href=#128 id=128 data-nosnippet>128</a>        <span class="comment">// TODO: This is really bad.
@@ -145,7 +145,7 @@
 <a href=#145 id=145 data-nosnippet>145</a>                #df_ident.set_state_lifespan_hook(
 <a href=#146 id=146 data-nosnippet>146</a>                    #joindata_ident,
 <a href=#147 id=147 data-nosnippet>147</a>                    #lifespan,
-<a href=#148 id=148 data-nosnippet>148</a>                    |rcell| (#work_fn)(|| #root::compiled::pull::HalfJoinState::clear(::std::cell::RefCell::get_mut(rcell)))
+<a href=#148 id=148 data-nosnippet>148</a>                    |rcell| (#work_fn)(|| #root::dfir_pipes::HalfJoinState::clear(::std::cell::RefCell::get_mut(rcell)))
 <a href=#149 id=149 data-nosnippet>149</a>                );
 <a href=#150 id=150 data-nosnippet>150</a>            }).unwrap_or_default();
 <a href=#151 id=151 data-nosnippet>151</a>
@@ -197,44 +197,55 @@
 <a href=#197 id=197 data-nosnippet>197</a>                    lhs_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>#join_type&lt;K, V1, V2&gt;,
 <a href=#198 id=198 data-nosnippet>198</a>                    rhs_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>#join_type&lt;K, V2, V1&gt;,
 <a href=#199 id=199 data-nosnippet>199</a>                    is_new_tick: bool,
-<a href=#200 id=200 data-nosnippet>200</a>                ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ #root::futures::stream::Stream&lt;Item = (K, (V1, V2))&gt;
-<a href=#201 id=201 data-nosnippet>201</a>                <span class="kw">where
-<a href=#202 id=202 data-nosnippet>202</a>                    </span>K: Eq + std::hash::Hash + Clone,
-<a href=#203 id=203 data-nosnippet>203</a>                    V1: Clone #additional_trait_bounds,
-<a href=#204 id=204 data-nosnippet>204</a>                    V2: Clone #additional_trait_bounds,
-<a href=#205 id=205 data-nosnippet>205</a>                    I1: <span class="lifetime">'a </span>+ #root::futures::stream::Stream&lt;Item = (K, V1)&gt;,
-<a href=#206 id=206 data-nosnippet>206</a>                    I2: <span class="lifetime">'a </span>+ #root::futures::stream::Stream&lt;Item = (K, V2)&gt;,
-<a href=#207 id=207 data-nosnippet>207</a>                {
-<a href=#208 id=208 data-nosnippet>208</a>                    #root::compiled::pull::symmetric_hash_join_into_stream(lhs, rhs, lhs_state, rhs_state, is_new_tick).<span class="kw">await
-<a href=#209 id=209 data-nosnippet>209</a>                </span>}
-<a href=#210 id=210 data-nosnippet>210</a>
-<a href=#211 id=211 data-nosnippet>211</a>                <span class="kw">let </span>fut = check_inputs(#lhs, #rhs, <span class="kw-2">&amp;mut *</span>#lhs_borrow_ident, <span class="kw-2">&amp;mut *</span>#rhs_borrow_ident, #context.is_first_run_this_tick());
-<a href=#212 id=212 data-nosnippet>212</a>                #work_fn_async(fut).<span class="kw">await
-<a href=#213 id=213 data-nosnippet>213</a>            </span>};
-<a href=#214 id=214 data-nosnippet>214</a>        };
-<a href=#215 id=215 data-nosnippet>215</a>
-<a href=#216 id=216 data-nosnippet>216</a>        <span class="kw">let </span>write_iterator_after =
-<a href=#217 id=217 data-nosnippet>217</a>            <span class="kw">if </span>persistences[<span class="number">0</span>] == Persistence::Static || persistences[<span class="number">1</span>] == Persistence::Static {
-<a href=#218 id=218 data-nosnippet>218</a>                <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#219 id=219 data-nosnippet>219</a>                    <span class="comment">// TODO: Probably only need to schedule if #*_borrow.len() &gt; 0?
-<a href=#220 id=220 data-nosnippet>220</a>                    </span>#context.schedule_subgraph(#context.current_subgraph(), <span class="bool-val">false</span>);
-<a href=#221 id=221 data-nosnippet>221</a>                }
-<a href=#222 id=222 data-nosnippet>222</a>            } <span class="kw">else </span>{
-<a href=#223 id=223 data-nosnippet>223</a>                <span class="macro">quote_spanned!</span> {op_span=&gt;}
-<a href=#224 id=224 data-nosnippet>224</a>            };
-<a href=#225 id=225 data-nosnippet>225</a>
-<a href=#226 id=226 data-nosnippet>226</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#227 id=227 data-nosnippet>227</a>            write_prologue: <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#228 id=228 data-nosnippet>228</a>                #lhs_prologue
-<a href=#229 id=229 data-nosnippet>229</a>                #rhs_prologue
-<a href=#230 id=230 data-nosnippet>230</a>            },
-<a href=#231 id=231 data-nosnippet>231</a>            write_prologue_after: <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#232 id=232 data-nosnippet>232</a>                #lhs_prologue_after
-<a href=#233 id=233 data-nosnippet>233</a>                #rhs_prologue_after
-<a href=#234 id=234 data-nosnippet>234</a>            },
-<a href=#235 id=235 data-nosnippet>235</a>            write_iterator,
-<a href=#236 id=236 data-nosnippet>236</a>            write_iterator_after,
-<a href=#237 id=237 data-nosnippet>237</a>        })
-<a href=#238 id=238 data-nosnippet>238</a>    },
-<a href=#239 id=239 data-nosnippet>239</a>};
+<a href=#200 id=200 data-nosnippet>200</a>                ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ #root::dfir_pipes::Pull&lt;
+<a href=#201 id=201 data-nosnippet>201</a>                    Item = (K, (V1, V2)),
+<a href=#202 id=202 data-nosnippet>202</a>                    Meta = (),
+<a href=#203 id=203 data-nosnippet>203</a>                    CanPend = &lt;I1::CanPend <span class="kw">as </span>#root::dfir_pipes::Toggle&gt;::Or&lt;I2::CanPend&gt;,
+<a href=#204 id=204 data-nosnippet>204</a>                    CanEnd = #root::dfir_pipes::Yes,
+<a href=#205 id=205 data-nosnippet>205</a>                &gt;
+<a href=#206 id=206 data-nosnippet>206</a>                <span class="kw">where
+<a href=#207 id=207 data-nosnippet>207</a>                    </span>K: ::std::cmp::Eq + std::hash::Hash + ::std::clone::Clone,
+<a href=#208 id=208 data-nosnippet>208</a>                    V1: ::std::clone::Clone #additional_trait_bounds,
+<a href=#209 id=209 data-nosnippet>209</a>                    V2: ::std::clone::Clone #additional_trait_bounds,
+<a href=#210 id=210 data-nosnippet>210</a>                    I1: <span class="lifetime">'a </span>+ #root::dfir_pipes::Pull&lt;Item = (K, V1), Meta = ()&gt;,
+<a href=#211 id=211 data-nosnippet>211</a>                    I2: <span class="lifetime">'a </span>+ #root::dfir_pipes::Pull&lt;Item = (K, V2), Meta = ()&gt;,
+<a href=#212 id=212 data-nosnippet>212</a>                {
+<a href=#213 id=213 data-nosnippet>213</a>                    #root::dfir_pipes::symmetric_hash_join(
+<a href=#214 id=214 data-nosnippet>214</a>                        #root::dfir_pipes::Pull::fuse(lhs),
+<a href=#215 id=215 data-nosnippet>215</a>                        #root::dfir_pipes::Pull::fuse(rhs),
+<a href=#216 id=216 data-nosnippet>216</a>                        lhs_state,
+<a href=#217 id=217 data-nosnippet>217</a>                        rhs_state,
+<a href=#218 id=218 data-nosnippet>218</a>                        is_new_tick,
+<a href=#219 id=219 data-nosnippet>219</a>                    ).<span class="kw">await
+<a href=#220 id=220 data-nosnippet>220</a>                </span>}
+<a href=#221 id=221 data-nosnippet>221</a>
+<a href=#222 id=222 data-nosnippet>222</a>                <span class="kw">let </span>fut = check_inputs(#lhs, #rhs, <span class="kw-2">&amp;mut *</span>#lhs_borrow_ident, <span class="kw-2">&amp;mut *</span>#rhs_borrow_ident, #context.is_first_run_this_tick());
+<a href=#223 id=223 data-nosnippet>223</a>                #work_fn_async(fut).<span class="kw">await
+<a href=#224 id=224 data-nosnippet>224</a>            </span>};
+<a href=#225 id=225 data-nosnippet>225</a>        };
+<a href=#226 id=226 data-nosnippet>226</a>
+<a href=#227 id=227 data-nosnippet>227</a>        <span class="kw">let </span>write_iterator_after =
+<a href=#228 id=228 data-nosnippet>228</a>            <span class="kw">if </span>persistences[<span class="number">0</span>] == Persistence::Static || persistences[<span class="number">1</span>] == Persistence::Static {
+<a href=#229 id=229 data-nosnippet>229</a>                <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#230 id=230 data-nosnippet>230</a>                    <span class="comment">// TODO: Probably only need to schedule if #*_borrow.len() &gt; 0?
+<a href=#231 id=231 data-nosnippet>231</a>                    </span>#context.schedule_subgraph(#context.current_subgraph(), <span class="bool-val">false</span>);
+<a href=#232 id=232 data-nosnippet>232</a>                }
+<a href=#233 id=233 data-nosnippet>233</a>            } <span class="kw">else </span>{
+<a href=#234 id=234 data-nosnippet>234</a>                <span class="macro">quote_spanned!</span> {op_span=&gt;}
+<a href=#235 id=235 data-nosnippet>235</a>            };
+<a href=#236 id=236 data-nosnippet>236</a>
+<a href=#237 id=237 data-nosnippet>237</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#238 id=238 data-nosnippet>238</a>            write_prologue: <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#239 id=239 data-nosnippet>239</a>                #lhs_prologue
+<a href=#240 id=240 data-nosnippet>240</a>                #rhs_prologue
+<a href=#241 id=241 data-nosnippet>241</a>            },
+<a href=#242 id=242 data-nosnippet>242</a>            write_prologue_after: <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#243 id=243 data-nosnippet>243</a>                #lhs_prologue_after
+<a href=#244 id=244 data-nosnippet>244</a>                #rhs_prologue_after
+<a href=#245 id=245 data-nosnippet>245</a>            },
+<a href=#246 id=246 data-nosnippet>246</a>            write_iterator,
+<a href=#247 id=247 data-nosnippet>247</a>            write_iterator_after,
+<a href=#248 id=248 data-nosnippet>248</a>        })
+<a href=#249 id=249 data-nosnippet>249</a>    },
+<a href=#250 id=250 data-nosnippet>250</a>};
 </code></pre></div></section></main></body></html>

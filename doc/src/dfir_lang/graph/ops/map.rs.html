@@ -52,7 +52,7 @@
 <a href=#52 id=52 data-nosnippet>52</a>            <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
 <a href=#53 id=53 data-nosnippet>53</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#54 id=54 data-nosnippet>54</a>                <span class="attr">#[allow(clippy::map_clone, reason = <span class="string">"dfir has no explicit `cloned`/`copied` operator"</span>)]
-<a href=#55 id=55 data-nosnippet>55</a>                </span><span class="kw">let </span>#ident = #root::futures::stream::StreamExt::map(#input, #func);
+<a href=#55 id=55 data-nosnippet>55</a>                </span><span class="kw">let </span>#ident = #root::dfir_pipes::Pull::map(#input, #func);
 <a href=#56 id=56 data-nosnippet>56</a>            }
 <a href=#57 id=57 data-nosnippet>57</a>        } <span class="kw">else </span>{
 <a href=#58 id=58 data-nosnippet>58</a>            <span class="kw">let </span>output = <span class="kw-2">&amp;</span>outputs[<span class="number">0</span>];

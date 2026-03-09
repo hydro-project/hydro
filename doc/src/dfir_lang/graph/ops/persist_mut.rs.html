@@ -96,38 +96,42 @@
 <a href=#96 id=96 data-nosnippet>96</a>
 <a href=#97 id=97 data-nosnippet>97</a>                <span class="kw">let </span>#ident = {
 <a href=#98 id=98 data-nosnippet>98</a>                    <span class="attr">#[inline(always)]
-<a href=#99 id=99 data-nosnippet>99</a>                    </span><span class="kw">fn </span>check_stream&lt;T: ::std::hash::Hash + ::std::cmp::Eq&gt;(st: <span class="kw">impl </span>#root::futures::stream::Stream&lt;Item = #root::util::Persistence::&lt;T&gt;&gt;) -&gt; <span class="kw">impl </span>#root::futures::stream::Stream&lt;Item = #root::util::Persistence::&lt;T&gt;&gt; {
-<a href=#100 id=100 data-nosnippet>100</a>                        st
-<a href=#101 id=101 data-nosnippet>101</a>                    }
-<a href=#102 id=102 data-nosnippet>102</a>
-<a href=#103 id=103 data-nosnippet>103</a>                    <span class="kw">let </span>iter = <span class="kw">if </span>context.is_first_run_this_tick() {
-<a href=#104 id=104 data-nosnippet>104</a>                        <span class="kw">let </span>fut = #root::compiled::pull::ForEach::new(check_stream(#input), |item| {
-<a href=#105 id=105 data-nosnippet>105</a>                            <span class="kw">match </span>item {
-<a href=#106 id=106 data-nosnippet>106</a>                                #root::util::Persistence::Persist(v) =&gt; #vec_ident.push(v),
-<a href=#107 id=107 data-nosnippet>107</a>                                #root::util::Persistence::Delete(v) =&gt; #vec_ident.delete(<span class="kw-2">&amp;</span>v),
-<a href=#108 id=108 data-nosnippet>108</a>                            }
-<a href=#109 id=109 data-nosnippet>109</a>                        });
-<a href=#110 id=110 data-nosnippet>110</a>                        <span class="kw">let </span>() = #work_fn_async(fut).<span class="kw">await</span>;
-<a href=#111 id=111 data-nosnippet>111</a>
-<a href=#112 id=112 data-nosnippet>112</a>                        <span class="prelude-val">Some</span>(#vec_ident.iter().cloned()).into_iter().flatten()
-<a href=#113 id=113 data-nosnippet>113</a>                    } <span class="kw">else </span>{
-<a href=#114 id=114 data-nosnippet>114</a>                        <span class="prelude-val">None</span>.into_iter().flatten()
-<a href=#115 id=115 data-nosnippet>115</a>                    };
-<a href=#116 id=116 data-nosnippet>116</a>                    #root::futures::stream::iter(iter)
-<a href=#117 id=117 data-nosnippet>117</a>                };
-<a href=#118 id=118 data-nosnippet>118</a>            }
-<a href=#119 id=119 data-nosnippet>119</a>        };
-<a href=#120 id=120 data-nosnippet>120</a>
-<a href=#121 id=121 data-nosnippet>121</a>        <span class="kw">let </span>write_iterator_after = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#122 id=122 data-nosnippet>122</a>            #context.schedule_subgraph(#context.current_subgraph(), <span class="bool-val">false</span>);
+<a href=#99 id=99 data-nosnippet>99</a>                    </span><span class="kw">fn </span>check_pull&lt;Prev, T: ::std::hash::Hash + ::std::cmp::Eq&gt;(prev: Prev)
+<a href=#100 id=100 data-nosnippet>100</a>                        -&gt; <span class="kw">impl </span>#root::dfir_pipes::Pull&lt;Item = #root::util::Persistence::&lt;T&gt;, Meta = Prev::Meta, CanPend = Prev::CanPend, CanEnd = Prev::CanEnd&gt;
+<a href=#101 id=101 data-nosnippet>101</a>                    <span class="kw">where
+<a href=#102 id=102 data-nosnippet>102</a>                        </span>Prev: #root::dfir_pipes::Pull&lt;Item = #root::util::Persistence::&lt;T&gt;&gt;
+<a href=#103 id=103 data-nosnippet>103</a>                    {
+<a href=#104 id=104 data-nosnippet>104</a>                        prev
+<a href=#105 id=105 data-nosnippet>105</a>                    }
+<a href=#106 id=106 data-nosnippet>106</a>
+<a href=#107 id=107 data-nosnippet>107</a>                    <span class="kw">let </span>iter = <span class="kw">if </span>context.is_first_run_this_tick() {
+<a href=#108 id=108 data-nosnippet>108</a>                        <span class="kw">let </span>fut = #root::dfir_pipes::Pull::for_each(check_pull(#input), |item| {
+<a href=#109 id=109 data-nosnippet>109</a>                            <span class="kw">match </span>item {
+<a href=#110 id=110 data-nosnippet>110</a>                                #root::util::Persistence::Persist(v) =&gt; #vec_ident.push(v),
+<a href=#111 id=111 data-nosnippet>111</a>                                #root::util::Persistence::Delete(v) =&gt; #vec_ident.delete(<span class="kw-2">&amp;</span>v),
+<a href=#112 id=112 data-nosnippet>112</a>                            }
+<a href=#113 id=113 data-nosnippet>113</a>                        });
+<a href=#114 id=114 data-nosnippet>114</a>                        <span class="kw">let </span>() = #work_fn_async(fut).<span class="kw">await</span>;
+<a href=#115 id=115 data-nosnippet>115</a>
+<a href=#116 id=116 data-nosnippet>116</a>                        <span class="prelude-val">Some</span>(#vec_ident.iter().cloned()).into_iter().flatten()
+<a href=#117 id=117 data-nosnippet>117</a>                    } <span class="kw">else </span>{
+<a href=#118 id=118 data-nosnippet>118</a>                        <span class="prelude-val">None</span>.into_iter().flatten()
+<a href=#119 id=119 data-nosnippet>119</a>                    };
+<a href=#120 id=120 data-nosnippet>120</a>                    #root::dfir_pipes::iter(iter)
+<a href=#121 id=121 data-nosnippet>121</a>                };
+<a href=#122 id=122 data-nosnippet>122</a>            }
 <a href=#123 id=123 data-nosnippet>123</a>        };
 <a href=#124 id=124 data-nosnippet>124</a>
-<a href=#125 id=125 data-nosnippet>125</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#126 id=126 data-nosnippet>126</a>            write_prologue,
-<a href=#127 id=127 data-nosnippet>127</a>            write_iterator,
-<a href=#128 id=128 data-nosnippet>128</a>            write_iterator_after,
-<a href=#129 id=129 data-nosnippet>129</a>            ..Default::default()
-<a href=#130 id=130 data-nosnippet>130</a>        })
-<a href=#131 id=131 data-nosnippet>131</a>    },
-<a href=#132 id=132 data-nosnippet>132</a>};
+<a href=#125 id=125 data-nosnippet>125</a>        <span class="kw">let </span>write_iterator_after = <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#126 id=126 data-nosnippet>126</a>            #context.schedule_subgraph(#context.current_subgraph(), <span class="bool-val">false</span>);
+<a href=#127 id=127 data-nosnippet>127</a>        };
+<a href=#128 id=128 data-nosnippet>128</a>
+<a href=#129 id=129 data-nosnippet>129</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#130 id=130 data-nosnippet>130</a>            write_prologue,
+<a href=#131 id=131 data-nosnippet>131</a>            write_iterator,
+<a href=#132 id=132 data-nosnippet>132</a>            write_iterator_after,
+<a href=#133 id=133 data-nosnippet>133</a>            ..Default::default()
+<a href=#134 id=134 data-nosnippet>134</a>        })
+<a href=#135 id=135 data-nosnippet>135</a>    },
+<a href=#136 id=136 data-nosnippet>136</a>};
 </code></pre></div></section></main></body></html>

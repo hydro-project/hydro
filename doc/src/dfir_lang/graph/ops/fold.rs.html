@@ -120,14 +120,14 @@
 <a href=#120 id=120 data-nosnippet>120</a>
 <a href=#121 id=121 data-nosnippet>121</a>                <span class="comment">// Eagerly consume input to ensure updated state.
 <a href=#122 id=122 data-nosnippet>122</a>                </span>{
-<a href=#123 id=123 data-nosnippet>123</a>                    <span class="kw">let </span>__fut = #root::compiled::pull::ForEach::new(#input, |#item_ident| {
+<a href=#123 id=123 data-nosnippet>123</a>                    <span class="kw">let </span>__fut = #root::dfir_pipes::Pull::for_each(#input, |#item_ident| {
 <a href=#124 id=124 data-nosnippet>124</a>                        #foreach_body
 <a href=#125 id=125 data-nosnippet>125</a>                    });
 <a href=#126 id=126 data-nosnippet>126</a>                    <span class="kw">let </span>() = #work_fn_async(__fut).<span class="kw">await</span>;
 <a href=#127 id=127 data-nosnippet>127</a>                }
 <a href=#128 id=128 data-nosnippet>128</a>
 <a href=#129 id=129 data-nosnippet>129</a>                <span class="kw">let </span>#ident = #work_fn(
-<a href=#130 id=130 data-nosnippet>130</a>                    || #root::tokio_stream::once(
+<a href=#130 id=130 data-nosnippet>130</a>                    || #root::dfir_pipes::once(
 <a href=#131 id=131 data-nosnippet>131</a>                        ::std::clone::Clone::clone(<span class="kw-2">&amp;*</span>#accumulator_ident)
 <a href=#132 id=132 data-nosnippet>132</a>                    )
 <a href=#133 id=133 data-nosnippet>133</a>                );

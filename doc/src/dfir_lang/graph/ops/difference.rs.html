@@ -61,9 +61,9 @@
 <a href=#61 id=61 data-nosnippet>61</a>
 <a href=#62 id=62 data-nosnippet>62</a>        <span class="kw">let </span>pos = <span class="kw-2">&amp;</span>inputs[<span class="number">1</span>];
 <a href=#63 id=63 data-nosnippet>63</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#64 id=64 data-nosnippet>64</a>            <span class="kw">let </span>#pos = #root::futures::stream::StreamExt::map(#pos, |k| (k, ()));
+<a href=#64 id=64 data-nosnippet>64</a>            <span class="kw">let </span>#pos = #root::dfir_pipes::Pull::map(#pos, |k| (k, ()));
 <a href=#65 id=65 data-nosnippet>65</a>            #write_iterator
-<a href=#66 id=66 data-nosnippet>66</a>            <span class="kw">let </span>#ident = #root::futures::stream::StreamExt::map(#ident, |(k, ())| k);
+<a href=#66 id=66 data-nosnippet>66</a>            <span class="kw">let </span>#ident = #root::dfir_pipes::Pull::map(#ident, |(k, ())| k);
 <a href=#67 id=67 data-nosnippet>67</a>        };
 <a href=#68 id=68 data-nosnippet>68</a>
 <a href=#69 id=69 data-nosnippet>69</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {

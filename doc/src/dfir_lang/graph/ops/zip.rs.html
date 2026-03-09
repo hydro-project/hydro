@@ -90,16 +90,16 @@
 <a href=#90 id=90 data-nosnippet>90</a>
 <a href=#91 id=91 data-nosnippet>91</a>            <span class="kw">let </span>#ident = {
 <a href=#92 id=92 data-nosnippet>92</a>                <span class="comment">// Consume input eagerly to avoid short-circuiting, update state.
-<a href=#93 id=93 data-nosnippet>93</a>                </span><span class="kw">let </span>() = #work_fn_async(#root::compiled::pull::ForEach::new(#lhs_input, |item| {
+<a href=#93 id=93 data-nosnippet>93</a>                </span><span class="kw">let </span>() = #work_fn_async(#root::dfir_pipes::Pull::for_each(#lhs_input, |item| {
 <a href=#94 id=94 data-nosnippet>94</a>                    ::std::collections::VecDeque::push_back(<span class="kw-2">&amp;mut *</span>#lhs_borrow, item);
 <a href=#95 id=95 data-nosnippet>95</a>                })).<span class="kw">await</span>;
-<a href=#96 id=96 data-nosnippet>96</a>                <span class="kw">let </span>() = #work_fn_async(#root::compiled::pull::ForEach::new(#rhs_input, |item| {
+<a href=#96 id=96 data-nosnippet>96</a>                <span class="kw">let </span>() = #work_fn_async(#root::dfir_pipes::Pull::for_each(#rhs_input, |item| {
 <a href=#97 id=97 data-nosnippet>97</a>                    ::std::collections::VecDeque::push_back(<span class="kw-2">&amp;mut *</span>#rhs_borrow, item);
 <a href=#98 id=98 data-nosnippet>98</a>                })).<span class="kw">await</span>;
 <a href=#99 id=99 data-nosnippet>99</a>
 <a href=#100 id=100 data-nosnippet>100</a>                <span class="kw">let </span>len = ::std::cmp::min(#lhs_borrow.len(), #rhs_borrow.len());
 <a href=#101 id=101 data-nosnippet>101</a>                <span class="kw">let </span>iter = #lhs_borrow.drain(..len).zip(#rhs_borrow.drain(..len));
-<a href=#102 id=102 data-nosnippet>102</a>                #root::futures::stream::iter(iter)
+<a href=#102 id=102 data-nosnippet>102</a>                #root::dfir_pipes::iter(iter)
 <a href=#103 id=103 data-nosnippet>103</a>            };
 <a href=#104 id=104 data-nosnippet>104</a>        };
 <a href=#105 id=105 data-nosnippet>105</a>

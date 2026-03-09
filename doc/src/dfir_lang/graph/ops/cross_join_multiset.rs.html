@@ -96,52 +96,50 @@
 <a href=#96 id=96 data-nosnippet>96</a>                (#lhs_borrow.len(), #rhs_borrow.len())
 <a href=#97 id=97 data-nosnippet>97</a>            };
 <a href=#98 id=98 data-nosnippet>98</a>
-<a href=#99 id=99 data-nosnippet>99</a>            #work_fn_async(#root::compiled::pull::ForEach::new(#lhs, |x| #lhs_borrow.push(x))).<span class="kw">await</span>;
-<a href=#100 id=100 data-nosnippet>100</a>            #work_fn_async(#root::compiled::pull::ForEach::new(#rhs, |x| #rhs_borrow.push(x))).<span class="kw">await</span>;
+<a href=#99 id=99 data-nosnippet>99</a>            #work_fn_async(#root::dfir_pipes::Pull::for_each(#lhs, |x| #lhs_borrow.push(x))).<span class="kw">await</span>;
+<a href=#100 id=100 data-nosnippet>100</a>            #work_fn_async(#root::dfir_pipes::Pull::for_each(#rhs, |x| #rhs_borrow.push(x))).<span class="kw">await</span>;
 <a href=#101 id=101 data-nosnippet>101</a>
-<a href=#102 id=102 data-nosnippet>102</a>            <span class="kw">let </span>#ident = {
-<a href=#103 id=103 data-nosnippet>103</a>                <span class="comment">//       RHS
-<a href=#104 id=104 data-nosnippet>104</a>                //   +-----+-----+
-<a href=#105 id=105 data-nosnippet>105</a>                // L | Old | New |
-<a href=#106 id=106 data-nosnippet>106</a>                // H +-----+-----+
-<a href=#107 id=107 data-nosnippet>107</a>                // S | New | New |
-<a href=#108 id=108 data-nosnippet>108</a>                //   +-----+-----+
-<a href=#109 id=109 data-nosnippet>109</a>                </span>#root::futures::stream::iter(
-<a href=#110 id=110 data-nosnippet>110</a>                    #lhs_borrow
-<a href=#111 id=111 data-nosnippet>111</a>                        .iter()
-<a href=#112 id=112 data-nosnippet>112</a>                        .enumerate()
-<a href=#113 id=113 data-nosnippet>113</a>                        .flat_map(|(i, lhs)| {
-<a href=#114 id=114 data-nosnippet>114</a>                            <span class="kw">let </span>j = <span class="kw">if </span>i &lt; #lhs_i { #rhs_i } <span class="kw">else </span>{ <span class="number">0 </span>};
-<a href=#115 id=115 data-nosnippet>115</a>                            #rhs_borrow[j..]
-<a href=#116 id=116 data-nosnippet>116</a>                                .iter()
-<a href=#117 id=117 data-nosnippet>117</a>                                .map(<span class="kw">move </span>|rhs| (::std::clone::Clone::clone(lhs), ::std::clone::Clone::clone(rhs)))
-<a href=#118 id=118 data-nosnippet>118</a>                        })
-<a href=#119 id=119 data-nosnippet>119</a>                )
-<a href=#120 id=120 data-nosnippet>120</a>            };
-<a href=#121 id=121 data-nosnippet>121</a>        };
-<a href=#122 id=122 data-nosnippet>122</a>
-<a href=#123 id=123 data-nosnippet>123</a>        <span class="kw">let </span>replay_code = <span class="macro">matches!</span>(
-<a href=#124 id=124 data-nosnippet>124</a>            (lhs_persistence, rhs_persistence),
-<a href=#125 id=125 data-nosnippet>125</a>            (Persistence::Static, Persistence::Static)
-<a href=#126 id=126 data-nosnippet>126</a>        )
-<a href=#127 id=127 data-nosnippet>127</a>        .then(|| {
-<a href=#128 id=128 data-nosnippet>128</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#129 id=129 data-nosnippet>129</a>                <span class="comment">// Reschedule the subgraph lazily to ensure replay on later ticks.
-<a href=#130 id=130 data-nosnippet>130</a>                </span>#context.schedule_subgraph(#context.current_subgraph(), <span class="bool-val">false</span>);
-<a href=#131 id=131 data-nosnippet>131</a>            }
-<a href=#132 id=132 data-nosnippet>132</a>        });
-<a href=#133 id=133 data-nosnippet>133</a>        <span class="kw">let </span>write_iterator_after = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#134 id=134 data-nosnippet>134</a>            #replay_code
-<a href=#135 id=135 data-nosnippet>135</a>        };
-<a href=#136 id=136 data-nosnippet>136</a>
-<a href=#137 id=137 data-nosnippet>137</a>        <span class="comment">// Ok(output)
-<a href=#138 id=138 data-nosnippet>138</a>        </span><span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#139 id=139 data-nosnippet>139</a>            write_prologue,
-<a href=#140 id=140 data-nosnippet>140</a>            write_prologue_after,
-<a href=#141 id=141 data-nosnippet>141</a>            write_iterator,
-<a href=#142 id=142 data-nosnippet>142</a>            write_iterator_after,
-<a href=#143 id=143 data-nosnippet>143</a>            ..Default::default()
-<a href=#144 id=144 data-nosnippet>144</a>        })
-<a href=#145 id=145 data-nosnippet>145</a>    },
-<a href=#146 id=146 data-nosnippet>146</a>};
+<a href=#102 id=102 data-nosnippet>102</a>            <span class="comment">//       RHS
+<a href=#103 id=103 data-nosnippet>103</a>            //   +-----+-----+
+<a href=#104 id=104 data-nosnippet>104</a>            // L | Old | New |
+<a href=#105 id=105 data-nosnippet>105</a>            // H +-----+-----+
+<a href=#106 id=106 data-nosnippet>106</a>            // S | New | New |
+<a href=#107 id=107 data-nosnippet>107</a>            //   +-----+-----+
+<a href=#108 id=108 data-nosnippet>108</a>            </span><span class="kw">let </span>#ident = #root::dfir_pipes::iter(
+<a href=#109 id=109 data-nosnippet>109</a>                #lhs_borrow
+<a href=#110 id=110 data-nosnippet>110</a>                    .iter()
+<a href=#111 id=111 data-nosnippet>111</a>                    .enumerate()
+<a href=#112 id=112 data-nosnippet>112</a>                    .flat_map(|(i, lhs)| {
+<a href=#113 id=113 data-nosnippet>113</a>                        <span class="kw">let </span>j = <span class="kw">if </span>i &lt; #lhs_i { #rhs_i } <span class="kw">else </span>{ <span class="number">0 </span>};
+<a href=#114 id=114 data-nosnippet>114</a>                        #rhs_borrow[j..]
+<a href=#115 id=115 data-nosnippet>115</a>                            .iter()
+<a href=#116 id=116 data-nosnippet>116</a>                            .map(<span class="kw">move </span>|rhs| (::std::clone::Clone::clone(lhs), ::std::clone::Clone::clone(rhs)))
+<a href=#117 id=117 data-nosnippet>117</a>                    })
+<a href=#118 id=118 data-nosnippet>118</a>            );
+<a href=#119 id=119 data-nosnippet>119</a>        };
+<a href=#120 id=120 data-nosnippet>120</a>
+<a href=#121 id=121 data-nosnippet>121</a>        <span class="kw">let </span>replay_code = <span class="macro">matches!</span>(
+<a href=#122 id=122 data-nosnippet>122</a>            (lhs_persistence, rhs_persistence),
+<a href=#123 id=123 data-nosnippet>123</a>            (Persistence::Static, Persistence::Static)
+<a href=#124 id=124 data-nosnippet>124</a>        )
+<a href=#125 id=125 data-nosnippet>125</a>        .then(|| {
+<a href=#126 id=126 data-nosnippet>126</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#127 id=127 data-nosnippet>127</a>                <span class="comment">// Reschedule the subgraph lazily to ensure replay on later ticks.
+<a href=#128 id=128 data-nosnippet>128</a>                </span>#context.schedule_subgraph(#context.current_subgraph(), <span class="bool-val">false</span>);
+<a href=#129 id=129 data-nosnippet>129</a>            }
+<a href=#130 id=130 data-nosnippet>130</a>        });
+<a href=#131 id=131 data-nosnippet>131</a>        <span class="kw">let </span>write_iterator_after = <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#132 id=132 data-nosnippet>132</a>            #replay_code
+<a href=#133 id=133 data-nosnippet>133</a>        };
+<a href=#134 id=134 data-nosnippet>134</a>
+<a href=#135 id=135 data-nosnippet>135</a>        <span class="comment">// Ok(output)
+<a href=#136 id=136 data-nosnippet>136</a>        </span><span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#137 id=137 data-nosnippet>137</a>            write_prologue,
+<a href=#138 id=138 data-nosnippet>138</a>            write_prologue_after,
+<a href=#139 id=139 data-nosnippet>139</a>            write_iterator,
+<a href=#140 id=140 data-nosnippet>140</a>            write_iterator_after,
+<a href=#141 id=141 data-nosnippet>141</a>            ..Default::default()
+<a href=#142 id=142 data-nosnippet>142</a>        })
+<a href=#143 id=143 data-nosnippet>143</a>    },
+<a href=#144 id=144 data-nosnippet>144</a>};
 </code></pre></div></section></main></body></html>

@@ -51,20 +51,18 @@
 <a href=#51 id=51 data-nosnippet>51</a>        <span class="kw">let </span>write_iterator = <span class="kw">if </span>is_pull {
 <a href=#52 id=52 data-nosnippet>52</a>            <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
 <a href=#53 id=53 data-nosnippet>53</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#54 id=54 data-nosnippet>54</a>                <span class="kw">let </span>#ident = #root::compiled::pull::Flatten::new(
-<a href=#55 id=55 data-nosnippet>55</a>                    #root::futures::stream::StreamExt::map(#input, #func),
-<a href=#56 id=56 data-nosnippet>56</a>                );
-<a href=#57 id=57 data-nosnippet>57</a>            }
-<a href=#58 id=58 data-nosnippet>58</a>        } <span class="kw">else </span>{
-<a href=#59 id=59 data-nosnippet>59</a>            <span class="kw">let </span>output = <span class="kw-2">&amp;</span>outputs[<span class="number">0</span>];
-<a href=#60 id=60 data-nosnippet>60</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#61 id=61 data-nosnippet>61</a>                <span class="kw">let </span>#ident = #root::sinktools::flat_map(#func, #output);
-<a href=#62 id=62 data-nosnippet>62</a>            }
-<a href=#63 id=63 data-nosnippet>63</a>        };
-<a href=#64 id=64 data-nosnippet>64</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#65 id=65 data-nosnippet>65</a>            write_iterator,
-<a href=#66 id=66 data-nosnippet>66</a>            ..Default::default()
-<a href=#67 id=67 data-nosnippet>67</a>        })
-<a href=#68 id=68 data-nosnippet>68</a>    },
-<a href=#69 id=69 data-nosnippet>69</a>};
+<a href=#54 id=54 data-nosnippet>54</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::Pull::flat_map(#input, #func);
+<a href=#55 id=55 data-nosnippet>55</a>            }
+<a href=#56 id=56 data-nosnippet>56</a>        } <span class="kw">else </span>{
+<a href=#57 id=57 data-nosnippet>57</a>            <span class="kw">let </span>output = <span class="kw-2">&amp;</span>outputs[<span class="number">0</span>];
+<a href=#58 id=58 data-nosnippet>58</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#59 id=59 data-nosnippet>59</a>                <span class="kw">let </span>#ident = #root::sinktools::flat_map(#func, #output);
+<a href=#60 id=60 data-nosnippet>60</a>            }
+<a href=#61 id=61 data-nosnippet>61</a>        };
+<a href=#62 id=62 data-nosnippet>62</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#63 id=63 data-nosnippet>63</a>            write_iterator,
+<a href=#64 id=64 data-nosnippet>64</a>            ..Default::default()
+<a href=#65 id=65 data-nosnippet>65</a>        })
+<a href=#66 id=66 data-nosnippet>66</a>    },
+<a href=#67 id=67 data-nosnippet>67</a>};
 </code></pre></div></section></main></body></html>

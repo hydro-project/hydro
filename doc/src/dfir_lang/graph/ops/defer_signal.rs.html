@@ -73,7 +73,7 @@
 <a href=#73 id=73 data-nosnippet>73</a>
 <a href=#74 id=74 data-nosnippet>74</a>                <span class="comment">// Eagerly consume input to ensure updated state.
 <a href=#75 id=75 data-nosnippet>75</a>                </span>{
-<a href=#76 id=76 data-nosnippet>76</a>                    <span class="kw">let </span>fut = #root::compiled::pull::ForEach::new(#input, |item| {
+<a href=#76 id=76 data-nosnippet>76</a>                    <span class="kw">let </span>fut = #root::dfir_pipes::Pull::for_each(#input, |item| {
 <a href=#77 id=77 data-nosnippet>77</a>                        ::std::vec::Vec::push(<span class="kw-2">&amp;mut *</span>#borrow_ident, item);
 <a href=#78 id=78 data-nosnippet>78</a>                    });
 <a href=#79 id=79 data-nosnippet>79</a>                    <span class="kw">let </span>() = #work_fn_async(fut).<span class="kw">await</span>;
@@ -81,11 +81,11 @@
 <a href=#81 id=81 data-nosnippet>81</a>
 <a href=#82 id=82 data-nosnippet>82</a>                <span class="kw">let </span>#signal_ident = {
 <a href=#83 id=83 data-nosnippet>83</a>                    <span class="comment">// Short-circuit after first signal message.
-<a href=#84 id=84 data-nosnippet>84</a>                    </span><span class="kw">let </span>fut = #root::compiled::pull::IntoNext::new(#signal);
+<a href=#84 id=84 data-nosnippet>84</a>                    </span><span class="kw">let </span>fut = #root::dfir_pipes::Pull::next(#signal);
 <a href=#85 id=85 data-nosnippet>85</a>                    #work_fn_async(fut).<span class="kw">await</span>.is_some()
 <a href=#86 id=86 data-nosnippet>86</a>                };
 <a href=#87 id=87 data-nosnippet>87</a>
-<a href=#88 id=88 data-nosnippet>88</a>                <span class="kw">let </span>#ident = #root::futures::stream::iter(<span class="kw">if </span>#signal_ident {
+<a href=#88 id=88 data-nosnippet>88</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::iter(<span class="kw">if </span>#signal_ident {
 <a href=#89 id=89 data-nosnippet>89</a>                    #borrow_ident.drain(..)
 <a href=#90 id=90 data-nosnippet>90</a>                } <span class="kw">else </span>{
 <a href=#91 id=91 data-nosnippet>91</a>                    #borrow_ident.drain(..<span class="number">0</span>) <span class="comment">// Hack for empty.

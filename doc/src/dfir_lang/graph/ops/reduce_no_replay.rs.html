@@ -91,7 +91,7 @@
 <a href=#91 id=91 data-nosnippet>91</a>                <span class="kw">let </span><span class="kw-2">mut </span>__was_updated = <span class="bool-val">false</span>;
 <a href=#92 id=92 data-nosnippet>92</a>                <span class="comment">// Eagerly consume input to ensure updated state.
 <a href=#93 id=93 data-nosnippet>93</a>                </span>{
-<a href=#94 id=94 data-nosnippet>94</a>                    <span class="kw">let </span>__fut = #root::compiled::pull::ForEach::new(#input, |#item_ident| {
+<a href=#94 id=94 data-nosnippet>94</a>                    <span class="kw">let </span>__fut = #root::dfir_pipes::Pull::for_each(#input, |#item_ident| {
 <a href=#95 id=95 data-nosnippet>95</a>                        #foreach_body
 <a href=#96 id=96 data-nosnippet>96</a>                        __was_updated = <span class="bool-val">true</span>;
 <a href=#97 id=97 data-nosnippet>97</a>                    });
@@ -100,13 +100,13 @@
 <a href=#100 id=100 data-nosnippet>100</a>
 <a href=#101 id=101 data-nosnippet>101</a>                <span class="kw">let </span>#ident = <span class="kw">if </span>__was_updated || (#context.current_tick().<span class="number">0 </span>== <span class="number">0 </span>&amp;&amp; #context.is_first_run_this_tick()) {
 <a href=#102 id=102 data-nosnippet>102</a>                    #work_fn(
-<a href=#103 id=103 data-nosnippet>103</a>                        || #root::tokio_stream::iter(
+<a href=#103 id=103 data-nosnippet>103</a>                        || #root::dfir_pipes::iter(
 <a href=#104 id=104 data-nosnippet>104</a>                            ::std::clone::Clone::clone(<span class="kw-2">&amp;*</span>#accumulator_ident)
 <a href=#105 id=105 data-nosnippet>105</a>                        )
 <a href=#106 id=106 data-nosnippet>106</a>                    )
 <a href=#107 id=107 data-nosnippet>107</a>                } <span class="kw">else </span>{
 <a href=#108 id=108 data-nosnippet>108</a>                    #work_fn(
-<a href=#109 id=109 data-nosnippet>109</a>                        || #root::tokio_stream::iter(::std::option::Option::None)
+<a href=#109 id=109 data-nosnippet>109</a>                        || #root::dfir_pipes::iter(::std::option::Option::None)
 <a href=#110 id=110 data-nosnippet>110</a>                    )
 <a href=#111 id=111 data-nosnippet>111</a>                };
 <a href=#112 id=112 data-nosnippet>112</a>            }

@@ -70,7 +70,7 @@
 <a href=#70 id=70 data-nosnippet>70</a>            <span class="kw">let </span>#ident_intervalstream =
 <a href=#71 id=71 data-nosnippet>71</a>                #root::tokio_stream::StreamExt::map(
 <a href=#72 id=72 data-nosnippet>72</a>                    #root::tokio_stream::wrappers::IntervalStream::new(#root::tokio::time::interval(#arguments)),
-<a href=#73 id=73 data-nosnippet>73</a>                    |<span class="kw">_</span>| {  }
+<a href=#73 id=73 data-nosnippet>73</a>                    ::std::mem::drop,
 <a href=#74 id=74 data-nosnippet>74</a>                );
 <a href=#75 id=75 data-nosnippet>75</a>        };
 <a href=#76 id=76 data-nosnippet>76</a>        <span class="kw">let </span>wc = WriteContextArgs {

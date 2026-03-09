@@ -90,7 +90,7 @@
 <a href=#90 id=90 data-nosnippet>90</a>
 <a href=#91 id=91 data-nosnippet>91</a>                <span class="comment">// Eagerly consume input to ensure updated state.
 <a href=#92 id=92 data-nosnippet>92</a>                </span>{
-<a href=#93 id=93 data-nosnippet>93</a>                    <span class="kw">let </span>fut = #root::compiled::pull::ForEach::new(#input, |delta| {
+<a href=#93 id=93 data-nosnippet>93</a>                    <span class="kw">let </span>fut = #root::dfir_pipes::Pull::for_each(#input, |delta| {
 <a href=#94 id=94 data-nosnippet>94</a>                        <span class="kw">let </span>_bool = #root::lattices::Merge::merge(<span class="kw-2">&amp;mut *</span>#lattice_ident, delta);
 <a href=#95 id=95 data-nosnippet>95</a>                    });
 <a href=#96 id=96 data-nosnippet>96</a>                    <span class="kw">let </span>() = #work_fn_async(fut).<span class="kw">await</span>;
@@ -98,11 +98,11 @@
 <a href=#98 id=98 data-nosnippet>98</a>
 <a href=#99 id=99 data-nosnippet>99</a>                <span class="kw">let </span>#signal_ident = {
 <a href=#100 id=100 data-nosnippet>100</a>                    <span class="comment">// Short-circuit after first signal message.
-<a href=#101 id=101 data-nosnippet>101</a>                    </span><span class="kw">let </span>fut = #root::compiled::pull::IntoNext::new(#signal);
+<a href=#101 id=101 data-nosnippet>101</a>                    </span><span class="kw">let </span>fut = #root::dfir_pipes::Pull::next(#signal);
 <a href=#102 id=102 data-nosnippet>102</a>                    ::std::option::Option::is_some(<span class="kw-2">&amp;</span>#work_fn_async(fut).<span class="kw">await</span>)
 <a href=#103 id=103 data-nosnippet>103</a>                };
 <a href=#104 id=104 data-nosnippet>104</a>
-<a href=#105 id=105 data-nosnippet>105</a>                <span class="kw">let </span>#ident = #root::futures::stream::iter(
+<a href=#105 id=105 data-nosnippet>105</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::iter(
 <a href=#106 id=106 data-nosnippet>106</a>                    <span class="comment">// `Some` if `true`
 <a href=#107 id=107 data-nosnippet>107</a>                    </span>bool::then(#signal_ident, || ::std::mem::take(<span class="kw-2">&amp;mut *</span>#lattice_ident))
 <a href=#108 id=108 data-nosnippet>108</a>                );

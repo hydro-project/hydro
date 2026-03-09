@@ -52,35 +52,27 @@
 <a href=#52 id=52 data-nosnippet>52</a>        <span class="kw">let </span>receiver = <span class="kw-2">&amp;</span>arguments[<span class="number">0</span>];
 <a href=#53 id=53 data-nosnippet>53</a>        <span class="kw">let </span>stream_ident = wc.make_ident(<span class="string">"stream"</span>);
 <a href=#54 id=54 data-nosnippet>54</a>        <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#55 id=55 data-nosnippet>55</a>            <span class="comment">// TODO(mingwei): use `::std::pin::pin!(..)`?
-<a href=#56 id=56 data-nosnippet>56</a>            </span><span class="kw">let </span><span class="kw-2">mut </span>#stream_ident = {
-<a href=#57 id=57 data-nosnippet>57</a>                <span class="attr">#[inline(always)]
-<a href=#58 id=58 data-nosnippet>58</a>                </span><span class="kw">fn </span>check_stream&lt;Stream: #root::futures::stream::Stream&lt;Item = Item&gt; + ::std::marker::Unpin, Item&gt;(stream: Stream)
-<a href=#59 id=59 data-nosnippet>59</a>                    -&gt; <span class="kw">impl </span>#root::futures::stream::Stream&lt;Item = Item&gt; + ::std::marker::Unpin
-<a href=#60 id=60 data-nosnippet>60</a>                {
-<a href=#61 id=61 data-nosnippet>61</a>                    stream
-<a href=#62 id=62 data-nosnippet>62</a>                }
-<a href=#63 id=63 data-nosnippet>63</a>                check_stream(#receiver)
-<a href=#64 id=64 data-nosnippet>64</a>            };
-<a href=#65 id=65 data-nosnippet>65</a>        };
-<a href=#66 id=66 data-nosnippet>66</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#67 id=67 data-nosnippet>67</a>            <span class="kw">let </span>#ident = #root::futures::stream::poll_fn(|_tick_cx| {
-<a href=#68 id=68 data-nosnippet>68</a>                <span class="comment">// Using the `tick_cx` will cause the tick to "block" (yield) until the stream is exhausted, which is not what we want.
-<a href=#69 id=69 data-nosnippet>69</a>                // We want only the ready items, and will awaken this subgraph on a later tick when more items are available.
-<a href=#70 id=70 data-nosnippet>70</a>                </span><span class="kw">match </span>#root::futures::stream::Stream::poll_next(
-<a href=#71 id=71 data-nosnippet>71</a>                    ::std::pin::Pin::new(<span class="kw-2">&amp;mut </span>#stream_ident),
-<a href=#72 id=72 data-nosnippet>72</a>                    <span class="kw-2">&amp;mut </span>::std::task::Context::from_waker(<span class="kw-2">&amp;</span>#context.waker()),
-<a href=#73 id=73 data-nosnippet>73</a>                ) {
-<a href=#74 id=74 data-nosnippet>74</a>                    ::std::task::Poll::Ready(maybe) =&gt; ::std::task::Poll::Ready(maybe),
-<a href=#75 id=75 data-nosnippet>75</a>                    ::std::task::Poll::Pending =&gt; ::std::task::Poll::Ready(::std::option::Option::None),
-<a href=#76 id=76 data-nosnippet>76</a>                }
-<a href=#77 id=77 data-nosnippet>77</a>            });
-<a href=#78 id=78 data-nosnippet>78</a>        };
-<a href=#79 id=79 data-nosnippet>79</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#80 id=80 data-nosnippet>80</a>            write_prologue,
-<a href=#81 id=81 data-nosnippet>81</a>            write_iterator,
-<a href=#82 id=82 data-nosnippet>82</a>            ..Default::default()
-<a href=#83 id=83 data-nosnippet>83</a>        })
-<a href=#84 id=84 data-nosnippet>84</a>    },
-<a href=#85 id=85 data-nosnippet>85</a>};
+<a href=#55 id=55 data-nosnippet>55</a>            <span class="kw">let </span><span class="kw-2">mut </span>#stream_ident = {
+<a href=#56 id=56 data-nosnippet>56</a>                <span class="attr">#[inline(always)]
+<a href=#57 id=57 data-nosnippet>57</a>                </span><span class="kw">fn </span>check_stream&lt;Stream: #root::futures::stream::Stream&lt;Item = Item&gt; + ::std::marker::Unpin, Item&gt;(stream: Stream)
+<a href=#58 id=58 data-nosnippet>58</a>                    -&gt; <span class="kw">impl </span>#root::futures::stream::Stream&lt;Item = Item&gt; + ::std::marker::Unpin
+<a href=#59 id=59 data-nosnippet>59</a>                {
+<a href=#60 id=60 data-nosnippet>60</a>                    stream
+<a href=#61 id=61 data-nosnippet>61</a>                }
+<a href=#62 id=62 data-nosnippet>62</a>                check_stream(#receiver)
+<a href=#63 id=63 data-nosnippet>63</a>            };
+<a href=#64 id=64 data-nosnippet>64</a>        };
+<a href=#65 id=65 data-nosnippet>65</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#66 id=66 data-nosnippet>66</a>            <span class="kw">let </span>#ident = #root::dfir_pipes::stream_ready(
+<a href=#67 id=67 data-nosnippet>67</a>                <span class="kw-2">&amp;mut </span>#stream_ident,
+<a href=#68 id=68 data-nosnippet>68</a>                #context.waker(),
+<a href=#69 id=69 data-nosnippet>69</a>            );
+<a href=#70 id=70 data-nosnippet>70</a>        };
+<a href=#71 id=71 data-nosnippet>71</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#72 id=72 data-nosnippet>72</a>            write_prologue,
+<a href=#73 id=73 data-nosnippet>73</a>            write_iterator,
+<a href=#74 id=74 data-nosnippet>74</a>            ..Default::default()
+<a href=#75 id=75 data-nosnippet>75</a>        })
+<a href=#76 id=76 data-nosnippet>76</a>    },
+<a href=#77 id=77 data-nosnippet>77</a>};
 </code></pre></div></section></main></body></html>

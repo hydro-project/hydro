@@ -37,7 +37,7 @@
 <a href=#37 id=37 data-nosnippet>37</a>        <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
 <a href=#38 id=38 data-nosnippet>38</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#39 id=39 data-nosnippet>39</a>            <span class="comment">// Discard items from previous loop executions.
-<a href=#40 id=40 data-nosnippet>40</a>            </span><span class="kw">let </span>#ident = #root::tokio_stream::StreamExt::filter(#input, |<span class="kw">_</span>| <span class="number">0 </span>!= #context.loop_iter_count());
+<a href=#40 id=40 data-nosnippet>40</a>            </span><span class="kw">let </span>#ident = #root::dfir_pipes::Pull::filter(#input, |<span class="kw">_</span>| <span class="number">0 </span>!= #context.loop_iter_count());
 <a href=#41 id=41 data-nosnippet>41</a>        };
 <a href=#42 id=42 data-nosnippet>42</a>
 <a href=#43 id=43 data-nosnippet>43</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {

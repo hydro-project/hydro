@@ -134,7 +134,7 @@
 <a href=#134 id=134 data-nosnippet>134</a>            <span class="kw">if </span>is_pull {
 <a href=#135 id=135 data-nosnippet>135</a>                <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
 <a href=#136 id=136 data-nosnippet>136</a>                <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#137 id=137 data-nosnippet>137</a>                    <span class="kw">let </span>#ident = #root::futures::stream::StreamExt::map(#input, #map_fn);
+<a href=#137 id=137 data-nosnippet>137</a>                    <span class="kw">let </span>#ident = #root::dfir_pipes::Pull::map(#input, #map_fn);
 <a href=#138 id=138 data-nosnippet>138</a>                }
 <a href=#139 id=139 data-nosnippet>139</a>            } <span class="kw">else </span>{
 <a href=#140 id=140 data-nosnippet>140</a>                <span class="kw">let </span>output = <span class="kw-2">&amp;</span>outputs[<span class="number">0</span>];

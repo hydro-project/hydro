@@ -52,18 +52,19 @@
 <a href=#52 id=52 data-nosnippet>52</a>            };
 <a href=#53 id=53 data-nosnippet>53</a>        };
 <a href=#54 id=54 data-nosnippet>54</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#55 id=55 data-nosnippet>55</a>            <span class="kw">let </span>#ident = #root::futures::stream::poll_fn(|_cx| {
+<a href=#55 id=55 data-nosnippet>55</a>            <span class="kw">let </span>#ident = #root::dfir_pipes::from_fn(|| {
 <a href=#56 id=56 data-nosnippet>56</a>                <span class="kw">match </span>#root::futures::stream::Stream::poll_next(::std::pin::Pin::new(<span class="kw-2">&amp;mut </span>#stream_ident), <span class="kw-2">&amp;mut </span>::std::task::Context::from_waker(<span class="kw-2">&amp;</span>#context.waker())) {
-<a href=#57 id=57 data-nosnippet>57</a>                    ::std::task::Poll::Ready(maybe) =&gt; ::std::task::Poll::Ready(maybe),
-<a href=#58 id=58 data-nosnippet>58</a>                    ::std::task::Poll::Pending =&gt; ::std::task::Poll::Ready(::std::option::Option::None),
-<a href=#59 id=59 data-nosnippet>59</a>                }
-<a href=#60 id=60 data-nosnippet>60</a>            });
-<a href=#61 id=61 data-nosnippet>61</a>        };
-<a href=#62 id=62 data-nosnippet>62</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#63 id=63 data-nosnippet>63</a>            write_prologue,
-<a href=#64 id=64 data-nosnippet>64</a>            write_iterator,
-<a href=#65 id=65 data-nosnippet>65</a>            ..Default::default()
-<a href=#66 id=66 data-nosnippet>66</a>        })
-<a href=#67 id=67 data-nosnippet>67</a>    },
-<a href=#68 id=68 data-nosnippet>68</a>};
+<a href=#57 id=57 data-nosnippet>57</a>                    ::std::task::Poll::Ready(::std::option::Option::Some(item)) =&gt; #root::dfir_pipes::Step::Ready(item, ()),
+<a href=#58 id=58 data-nosnippet>58</a>                    ::std::task::Poll::Ready(::std::option::Option::None) =&gt; #root::dfir_pipes::Step::Ended(#root::dfir_pipes::Yes),
+<a href=#59 id=59 data-nosnippet>59</a>                    ::std::task::Poll::Pending =&gt; #root::dfir_pipes::Step::Ended(#root::dfir_pipes::Yes),
+<a href=#60 id=60 data-nosnippet>60</a>                }
+<a href=#61 id=61 data-nosnippet>61</a>            });
+<a href=#62 id=62 data-nosnippet>62</a>        };
+<a href=#63 id=63 data-nosnippet>63</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#64 id=64 data-nosnippet>64</a>            write_prologue,
+<a href=#65 id=65 data-nosnippet>65</a>            write_iterator,
+<a href=#66 id=66 data-nosnippet>66</a>            ..Default::default()
+<a href=#67 id=67 data-nosnippet>67</a>        })
+<a href=#68 id=68 data-nosnippet>68</a>    },
+<a href=#69 id=69 data-nosnippet>69</a>};
 </code></pre></div></section></main></body></html>

@@ -106,11 +106,11 @@
 <a href=#106 id=106 data-nosnippet>106</a>
 <a href=#107 id=107 data-nosnippet>107</a>        <span class="kw">let </span>wc = WriteContextArgs {
 <a href=#108 id=108 data-nosnippet>108</a>            arguments: <span class="kw-2">&amp;</span><span class="macro">parse_quote_spanned!</span> {op_span=&gt;
-<a href=#109 id=109 data-nosnippet>109</a>                #root::util::accumulator::FoldFrom::new(
+<a href=#109 id=109 data-nosnippet>109</a>                #root::dfir_pipes::FoldFrom::new(
 <a href=#110 id=110 data-nosnippet>110</a>                    &lt;#lhs_type <span class="kw">as </span>#root::lattices::LatticeFrom::&lt;<span class="kw">_</span>&gt;&gt;::lattice_from,
 <a href=#111 id=111 data-nosnippet>111</a>                    |state, delta| { #root::lattices::Merge::merge(state, delta); },
 <a href=#112 id=112 data-nosnippet>112</a>                ),
-<a href=#113 id=113 data-nosnippet>113</a>                #root::util::accumulator::FoldFrom::new(
+<a href=#113 id=113 data-nosnippet>113</a>                #root::dfir_pipes::FoldFrom::new(
 <a href=#114 id=114 data-nosnippet>114</a>                    &lt;#rhs_type <span class="kw">as </span>#root::lattices::LatticeFrom::&lt;<span class="kw">_</span>&gt;&gt;::lattice_from,
 <a href=#115 id=115 data-nosnippet>115</a>                    |state, delta| { #root::lattices::Merge::merge(state, delta); },
 <a href=#116 id=116 data-nosnippet>116</a>                ),
@@ -130,7 +130,7 @@
 <a href=#130 id=130 data-nosnippet>130</a>            #write_iterator
 <a href=#131 id=131 data-nosnippet>131</a>
 <a href=#132 id=132 data-nosnippet>132</a>            <span class="attr">#[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
-<a href=#133 id=133 data-nosnippet>133</a>            </span><span class="kw">let </span>#ident = #root::futures::stream::StreamExt::map(#ident, |(k, (v1, v2))| {
+<a href=#133 id=133 data-nosnippet>133</a>            </span><span class="kw">let </span>#ident = #root::dfir_pipes::Pull::map(#ident, |(k, (v1, v2))| {
 <a href=#134 id=134 data-nosnippet>134</a>                #root::lattices::map_union::MapUnionSingletonMap::new_from(
 <a href=#135 id=135 data-nosnippet>135</a>                    (
 <a href=#136 id=136 data-nosnippet>136</a>                        k,
