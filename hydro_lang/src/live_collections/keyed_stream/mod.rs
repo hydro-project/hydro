@@ -17,7 +17,7 @@ use super::stream::{
 };
 use crate::compile::builder::CycleId;
 use crate::compile::ir::{
-    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, StreamOrder, StreamRetry, TeeNode,
+    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode, StreamOrder, StreamRetry,
 };
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
@@ -201,7 +201,7 @@ impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: Boundedness, Order: Order
         if !matches!(self.ir_node.borrow().deref(), HydroNode::Tee { .. }) {
             let orig_ir_node = self.ir_node.replace(HydroNode::Placeholder);
             *self.ir_node.borrow_mut() = HydroNode::Tee {
-                inner: TeeNode(Rc::new(RefCell::new(orig_ir_node))),
+                inner: SharedNode(Rc::new(RefCell::new(orig_ir_node))),
                 metadata: self.location.new_node_metadata(Self::collection_kind()),
             };
         }
@@ -210,7 +210,7 @@ impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: Boundedness, Order: Order
             KeyedStream {
                 location: self.location.clone(),
                 ir_node: HydroNode::Tee {
-                    inner: TeeNode(inner.0.clone()),
+                    inner: SharedNode(inner.0.clone()),
                     metadata: metadata.clone(),
                 }
                 .into(),

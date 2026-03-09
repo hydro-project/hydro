@@ -30,7 +30,7 @@ proc-macro2 = { version = "1.0.95", features = [ "span-locations" ] }
 quote = "1.0.35"
 serde = "1.0.197"
 serde_json = "1.0.115"
-slotmap = { version = "1.0.0", features = ["serde"] }
+slotmap = { version = "1.1.0", features = ["serde"] }
 syn = { version = "2.0.46", features = [ "extra-traits", "full", "parsing", "visit-mut" ] }
 webbrowser = { version = "1.0.3", optional = true }
 
