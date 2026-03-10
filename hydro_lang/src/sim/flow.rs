@@ -35,6 +35,9 @@ pub struct SimFlow<'a> {
     /// Handle to state handling `external`s' ports.
     pub(crate) externals_port_registry: Rc<RefCell<SimExternalPortRegistry>>,
 
+    /// When true, the simulator only tests safety properties (not liveness).
+    pub(crate) test_safety_only: bool,
+
     pub(crate) _phantom: Invariant<'a>,
 }
 
@@ -42,6 +45,19 @@ impl<'a> SimFlow<'a> {
     /// Sets the maximum size of the given cluster in the simulation.
     pub fn with_cluster_size<C>(mut self, cluster: &Cluster<'a, C>, max_size: usize) -> Self {
         self.cluster_max_sizes.insert(cluster.key, max_size);
+        self
+    }
+
+    /// Opts in to safety-only testing, which is required when using
+    /// [`lossy_delayed_forever`](crate::networking::NetworkingConfig::lossy_delayed_forever)
+    /// networking.
+    ///
+    /// The simulator models dropped messages as indefinitely delayed, which means
+    /// it only tests safety properties—not liveness—since messages may never arrive.
+    /// Calling this method acknowledges that the simulation will not verify that the
+    /// program eventually makes progress.
+    pub fn test_safety_only(mut self) -> Self {
+        self.test_safety_only = true;
         self
     }
 
@@ -92,6 +108,7 @@ impl<'a> SimFlow<'a> {
             extra_stmts_global: vec![],
             extra_stmts_cluster: BTreeMap::new(),
             next_hoff_id: 0,
+            test_safety_only: self.test_safety_only,
         };
 
         // Ensure the default (0) external is always present.

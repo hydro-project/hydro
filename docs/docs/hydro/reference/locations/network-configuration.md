@@ -38,7 +38,7 @@ The `.bincode()` API configures the channel to use the [`bincode`](https://docs.
 
 ## TCP
 
-TCP is currently the only transport backend. When using `TCP`, you **must** choose a fault tolerance policy before configuring serialization. Calling `TCP.bincode()` directly will result in a compile error—you need to first call either `.fail_stop()` or `.lossy()`.
+TCP is currently the only transport backend. When using `TCP`, you **must** choose a fault tolerance policy before configuring serialization. Calling `TCP.bincode()` directly will result in a compile error—you need to first call `.fail_stop()`, `.lossy_delayed_forever()`, or `.lossy()`.
 
 ### Fail-Stop
 
@@ -57,6 +57,41 @@ This is the most common choice and is appropriate when your application can tole
 The Hydro simulator will not simulate connection failures that block **liveness** (i.e., it won't cause a test to hang). However, it will still catch **safety** issues caused by connection failures, such as race conditions between a dropped connection and other messages.
 :::
 
+### Lossy Delayed Forever
+
+```rust,no_run
+# use hydro_lang::prelude::*;
+let config = TCP.lossy_delayed_forever().bincode();
+```
+
+With `lossy_delayed_forever`, messages may be **dropped**, but dropped messages are modeled as being **indefinitely delayed** rather than lost. This mode does **not** require a `nondet!` annotation because the output stream is unordered, so even if messages are lost the output will have a subset of the intended elements.
+
+The tradeoff is that the output stream has a [`NoOrder`](pathname:///rustdoc/hydro_lang/live_collections/stream/enum.NoOrder) guarantee, imposing stricter conditions on downstream consumers. For example, you cannot use order-dependent operators like `fold` without proving commutativity.
+
+This is the **preferred** mode for protocols that tolerate message loss, because:
+- It does not require `nondet!`, making it easier to reason about correctness.
+- It can be easily simulated in exhaustive mode without running into fairness issues, so you can write simulator tests for your protocol.
+
+:::note
+
+When using `lossy_delayed_forever` in the Hydro simulator, you must call `.test_safety_only()` on the simulation:
+
+```rust,ignore
+flow.sim().test_safety_only().exhaustive(async || { /* ... */ });
+```
+
+This is required because the simulator models dropped messages as delayed to after the undropped messages, which only tests **safety** (race-condition) properties (not **liveness**). A message that is "delayed forever" may never arrive, so the simulator cannot guarantee that your program will eventually make progress—only that it won't produce incorrect results.
+
+:::
+
+:::caution
+
+The `lossy_delayed_forever` fault model is currently only available for the Hydro simulator and Maelstrom testing. Support in Hydro Deploy will be available once TCP reconnect is implemented.
+
+:::
+
+This is appropriate for gossip protocols, retransmission-based protocols, or any system running under network partition testing (e.g. [Maelstrom](https://github.com/jepsen-io/maelstrom)).
+
 ### Lossy
 
 ```rust,no_run
@@ -65,6 +100,12 @@ let config = TCP.lossy(nondet!(/** messages may be dropped, explanation... */)).
 ```
 
 With `lossy`, messages may be **arbitrarily dropped**. Unlike `fail_stop`, there is no guarantee that a prefix of messages is delivered—any individual message may be lost. But the network connection can still be used to send future messages, even after a message loss.
+
+:::tip
+
+In most cases, prefer [`lossy_delayed_forever`](#lossy-delayed-forever) over `lossy`. The `lossy_delayed_forever` mode does not require `nondet!` and can be simulated in exhaustive mode, making it much easier to test. Use `lossy` only if you specifically need to preserve the ordering guarantee of the input stream (since `lossy` preserves `TotalOrder` while `lossy_delayed_forever` weakens to `NoOrder`).
+
+:::
 
 :::caution
 
