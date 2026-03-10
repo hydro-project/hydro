@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_deploy/core/src/ssh.rs`."><title>ssh.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-b7b9f40b.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="hydro_deploy" data-themes="" data-resource-suffix="" data-rustdoc-version="1.96.0-nightly (b41f22de2 2026-03-08)" data-channel="nightly" data-search-js="search-63369b7b.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-170eb4bf.js" ><script src="../../static.files/storage-41dd4d93.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-5013f961.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_deploy/</div>ssh.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::HashMap;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_deploy/core/src/ssh.rs`."><title>ssh.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-b7b9f40b.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="hydro_deploy" data-themes="" data-resource-suffix="" data-rustdoc-version="1.96.0-nightly (2d76d9bc7 2026-03-09)" data-channel="nightly" data-search-js="search-63369b7b.js" data-stringdex-js="stringdex-b897f86f.js" data-settings-js="settings-170eb4bf.js" ><script src="../../static.files/storage-41dd4d93.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-5013f961.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_deploy/</div>ssh.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::HashMap;
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>std::net::SocketAddr;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>std::path::PathBuf;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>std::sync::Arc;
@@ -379,140 +379,144 @@
 <a href=#379 id=379 data-nosnippet>379</a>        args: <span class="kw-2">&amp;</span>[String],
 <a href=#380 id=380 data-nosnippet>380</a>        tracing: <span class="prelude-ty">Option</span>&lt;TracingOptions&gt;,
 <a href=#381 id=381 data-nosnippet>381</a>        env: <span class="kw-2">&amp;</span>HashMap&lt;String, String&gt;,
-<a href=#382 id=382 data-nosnippet>382</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Box&lt;<span class="kw">dyn </span>LaunchedBinary&gt;&gt; {
-<a href=#383 id=383 data-nosnippet>383</a>        <span class="kw">let </span>session = <span class="self">self</span>.open_ssh_session().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#384 id=384 data-nosnippet>384</a>
-<a href=#385 id=385 data-nosnippet>385</a>        <span class="kw">let </span>user = <span class="self">self</span>.ssh_user();
-<a href=#386 id=386 data-nosnippet>386</a>        <span class="kw">let </span>binary_path = PathBuf::from(<span class="macro">format!</span>(<span class="string">"/home/{user}/hydro-{}"</span>, binary.unique_id()));
-<a href=#387 id=387 data-nosnippet>387</a>
-<a href=#388 id=388 data-nosnippet>388</a>        <span class="kw">let </span><span class="kw-2">mut </span>command = String::new();
-<a href=#389 id=389 data-nosnippet>389</a>        <span class="comment">// Prepend env variables
-<a href=#390 id=390 data-nosnippet>390</a>        </span><span class="kw">for </span>(k, v) <span class="kw">in </span>env {
-<a href=#391 id=391 data-nosnippet>391</a>            command.push_str(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{}={} "</span>, k, shell_escape::unix::escape(v.into())));
-<a href=#392 id=392 data-nosnippet>392</a>        }
-<a href=#393 id=393 data-nosnippet>393</a>
-<a href=#394 id=394 data-nosnippet>394</a>        command.push_str(binary_path.to_str().unwrap());
-<a href=#395 id=395 data-nosnippet>395</a>        <span class="kw">for </span>arg <span class="kw">in </span>args {
-<a href=#396 id=396 data-nosnippet>396</a>            command.push(<span class="string">' '</span>);
-<a href=#397 id=397 data-nosnippet>397</a>            command.push_str(<span class="kw-2">&amp;</span>shell_escape::unix::escape(arg.into()))
-<a href=#398 id=398 data-nosnippet>398</a>        }
-<a href=#399 id=399 data-nosnippet>399</a>
-<a href=#400 id=400 data-nosnippet>400</a>        <span class="comment">// Launch with tracing if specified.
-<a href=#401 id=401 data-nosnippet>401</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(TracingOptions {
-<a href=#402 id=402 data-nosnippet>402</a>            frequency,
-<a href=#403 id=403 data-nosnippet>403</a>            setup_command,
-<a href=#404 id=404 data-nosnippet>404</a>            ..
-<a href=#405 id=405 data-nosnippet>405</a>        }) = tracing.clone()
-<a href=#406 id=406 data-nosnippet>406</a>        {
-<a href=#407 id=407 data-nosnippet>407</a>            <span class="kw">let </span>id_clone = id.clone();
-<a href=#408 id=408 data-nosnippet>408</a>            ProgressTracker::leaf(<span class="string">"install perf"</span>, <span class="kw">async </span>{
-<a href=#409 id=409 data-nosnippet>409</a>                <span class="comment">// Run setup command
-<a href=#410 id=410 data-nosnippet>410</a>                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(setup_command) = setup_command {
-<a href=#411 id=411 data-nosnippet>411</a>                    <span class="kw">let </span>setup_channel = create_channel(<span class="kw-2">&amp;</span>session).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#412 id=412 data-nosnippet>412</a>                    <span class="kw">let </span>(setup_stdout, setup_stderr) =
-<a href=#413 id=413 data-nosnippet>413</a>                        (setup_channel.stdout(), setup_channel.stderr());
-<a href=#414 id=414 data-nosnippet>414</a>                    setup_channel.exec(<span class="bool-val">false</span>, <span class="kw-2">&amp;*</span>setup_command).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#415 id=415 data-nosnippet>415</a>
-<a href=#416 id=416 data-nosnippet>416</a>                    <span class="comment">// log outputs
-<a href=#417 id=417 data-nosnippet>417</a>                    </span><span class="kw">let </span><span class="kw-2">mut </span>output_lines = LinesStream::new(setup_stdout.lines())
-<a href=#418 id=418 data-nosnippet>418</a>                        .merge(LinesStream::new(setup_stderr.lines()));
-<a href=#419 id=419 data-nosnippet>419</a>                    <span class="kw">while let </span><span class="prelude-val">Some</span>(line) = output_lines.next().<span class="kw">await </span>{
-<a href=#420 id=420 data-nosnippet>420</a>                        ProgressTracker::eprintln(<span class="macro">format!</span>(
-<a href=#421 id=421 data-nosnippet>421</a>                            <span class="string">"[{} install perf] {}"</span>,
-<a href=#422 id=422 data-nosnippet>422</a>                            id_clone,
-<a href=#423 id=423 data-nosnippet>423</a>                            line.unwrap()
-<a href=#424 id=424 data-nosnippet>424</a>                        ));
-<a href=#425 id=425 data-nosnippet>425</a>                    }
-<a href=#426 id=426 data-nosnippet>426</a>
-<a href=#427 id=427 data-nosnippet>427</a>                    setup_channel.closed().wait().<span class="kw">await</span>;
-<a href=#428 id=428 data-nosnippet>428</a>                    <span class="kw">let </span>exit_code = setup_channel.recv_exit_status().try_get();
-<a href=#429 id=429 data-nosnippet>429</a>                    <span class="kw">if </span><span class="prelude-val">Ok</span>(<span class="kw-2">&amp;</span><span class="number">0</span>) != exit_code {
-<a href=#430 id=430 data-nosnippet>430</a>                        <span class="macro">anyhow::bail!</span>(<span class="string">"Failed to install perf on remote host"</span>);
-<a href=#431 id=431 data-nosnippet>431</a>                    }
-<a href=#432 id=432 data-nosnippet>432</a>                }
-<a href=#433 id=433 data-nosnippet>433</a>                <span class="prelude-val">Ok</span>(())
-<a href=#434 id=434 data-nosnippet>434</a>            })
-<a href=#435 id=435 data-nosnippet>435</a>            .<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#436 id=436 data-nosnippet>436</a>
-<a href=#437 id=437 data-nosnippet>437</a>            <span class="comment">// Attach perf to the command
-<a href=#438 id=438 data-nosnippet>438</a>            // Note: `LaunchedSshHost` assumes `perf` on linux.
-<a href=#439 id=439 data-nosnippet>439</a>            </span>command = <span class="macro">format!</span>(
-<a href=#440 id=440 data-nosnippet>440</a>                <span class="string">"perf record -F {frequency} -e cycles:u --call-graph dwarf,65528 -o {PERF_OUTFILE} {command}"</span>,
-<a href=#441 id=441 data-nosnippet>441</a>            );
-<a href=#442 id=442 data-nosnippet>442</a>        }
-<a href=#443 id=443 data-nosnippet>443</a>
-<a href=#444 id=444 data-nosnippet>444</a>        <span class="kw">let </span>(channel, stdout, stderr) = ProgressTracker::leaf(
-<a href=#445 id=445 data-nosnippet>445</a>            <span class="macro">format!</span>(<span class="string">"launching binary {}"</span>, binary_path.display()),
-<a href=#446 id=446 data-nosnippet>446</a>            <span class="kw">async </span>{
-<a href=#447 id=447 data-nosnippet>447</a>                <span class="kw">let </span>channel = create_channel(<span class="kw-2">&amp;</span>session).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#448 id=448 data-nosnippet>448</a>                <span class="comment">// Make sure to begin reading stdout/stderr before running the command.
-<a href=#449 id=449 data-nosnippet>449</a>                </span><span class="kw">let </span>(stdout, stderr) = (channel.stdout(), channel.stderr());
-<a href=#450 id=450 data-nosnippet>450</a>                channel.exec(<span class="bool-val">false</span>, command).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#451 id=451 data-nosnippet>451</a>                anyhow::Ok((channel, stdout, stderr))
-<a href=#452 id=452 data-nosnippet>452</a>            },
-<a href=#453 id=453 data-nosnippet>453</a>        )
-<a href=#454 id=454 data-nosnippet>454</a>        .<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#455 id=455 data-nosnippet>455</a>
-<a href=#456 id=456 data-nosnippet>456</a>        <span class="kw">let </span>(stdin_sender, <span class="kw-2">mut </span>stdin_receiver) = mpsc::unbounded_channel::&lt;String&gt;();
-<a href=#457 id=457 data-nosnippet>457</a>        <span class="kw">let </span><span class="kw-2">mut </span>stdin = channel.stdin();
-<a href=#458 id=458 data-nosnippet>458</a>
-<a href=#459 id=459 data-nosnippet>459</a>        tokio::spawn(<span class="kw">async move </span>{
-<a href=#460 id=460 data-nosnippet>460</a>            <span class="kw">while let </span><span class="prelude-val">Some</span>(line) = stdin_receiver.recv().<span class="kw">await </span>{
-<a href=#461 id=461 data-nosnippet>461</a>                <span class="kw">if </span>stdin.write_all(line.as_bytes()).<span class="kw">await</span>.is_err() {
-<a href=#462 id=462 data-nosnippet>462</a>                    <span class="kw">break</span>;
-<a href=#463 id=463 data-nosnippet>463</a>                }
-<a href=#464 id=464 data-nosnippet>464</a>                stdin.flush().<span class="kw">await</span>.unwrap();
-<a href=#465 id=465 data-nosnippet>465</a>            }
-<a href=#466 id=466 data-nosnippet>466</a>        });
-<a href=#467 id=467 data-nosnippet>467</a>
-<a href=#468 id=468 data-nosnippet>468</a>        <span class="kw">let </span>id_clone = id.clone();
-<a href=#469 id=469 data-nosnippet>469</a>        <span class="kw">let </span>stdout_broadcast = prioritized_broadcast(LinesStream::new(stdout.lines()), <span class="kw">move </span>|s| {
-<a href=#470 id=470 data-nosnippet>470</a>            ProgressTracker::println(<span class="macro">format!</span>(<span class="string">"[{id_clone}] {s}"</span>));
-<a href=#471 id=471 data-nosnippet>471</a>        });
-<a href=#472 id=472 data-nosnippet>472</a>        <span class="kw">let </span>stderr_broadcast = prioritized_broadcast(LinesStream::new(stderr.lines()), <span class="kw">move </span>|s| {
-<a href=#473 id=473 data-nosnippet>473</a>            ProgressTracker::println(<span class="macro">format!</span>(<span class="string">"[{id} stderr] {s}"</span>));
-<a href=#474 id=474 data-nosnippet>474</a>        });
-<a href=#475 id=475 data-nosnippet>475</a>
-<a href=#476 id=476 data-nosnippet>476</a>        <span class="prelude-val">Ok</span>(Box::new(LaunchedSshBinary {
-<a href=#477 id=477 data-nosnippet>477</a>            _resource_result: <span class="self">self</span>.resource_result().clone(),
-<a href=#478 id=478 data-nosnippet>478</a>            session: <span class="prelude-val">Some</span>(session),
-<a href=#479 id=479 data-nosnippet>479</a>            channel,
-<a href=#480 id=480 data-nosnippet>480</a>            stdin_sender,
-<a href=#481 id=481 data-nosnippet>481</a>            stdout_broadcast,
-<a href=#482 id=482 data-nosnippet>482</a>            stderr_broadcast,
-<a href=#483 id=483 data-nosnippet>483</a>            tracing,
-<a href=#484 id=484 data-nosnippet>484</a>            <span class="attr">#[cfg(feature = <span class="string">"profile-folding"</span>)]
-<a href=#485 id=485 data-nosnippet>485</a>            </span>tracing_results: OnceLock::new(),
-<a href=#486 id=486 data-nosnippet>486</a>        }))
-<a href=#487 id=487 data-nosnippet>487</a>    }
-<a href=#488 id=488 data-nosnippet>488</a>
-<a href=#489 id=489 data-nosnippet>489</a>    <span class="kw">async fn </span>forward_port(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; <span class="prelude-ty">Result</span>&lt;SocketAddr&gt; {
-<a href=#490 id=490 data-nosnippet>490</a>        <span class="kw">let </span>session = <span class="self">self</span>.open_ssh_session().<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#491 id=491 data-nosnippet>491</a>
-<a href=#492 id=492 data-nosnippet>492</a>        <span class="kw">let </span>local_port = TcpListener::bind(<span class="string">"127.0.0.1:0"</span>).<span class="kw">await</span><span class="question-mark">?</span>;
-<a href=#493 id=493 data-nosnippet>493</a>        <span class="kw">let </span>local_addr = local_port.local_addr()<span class="question-mark">?</span>;
-<a href=#494 id=494 data-nosnippet>494</a>
-<a href=#495 id=495 data-nosnippet>495</a>        <span class="kw">let </span>internal_ip = addr.ip().to_string();
-<a href=#496 id=496 data-nosnippet>496</a>        <span class="kw">let </span>port = addr.port();
-<a href=#497 id=497 data-nosnippet>497</a>
-<a href=#498 id=498 data-nosnippet>498</a>        tokio::spawn(<span class="kw">async move </span>{
-<a href=#499 id=499 data-nosnippet>499</a>            <span class="attr">#[expect(clippy::never_loop, reason = <span class="string">"tcp accept loop pattern"</span>)]
-<a href=#500 id=500 data-nosnippet>500</a>            </span><span class="kw">while let </span><span class="prelude-val">Ok</span>((<span class="kw-2">mut </span>local_stream, <span class="kw">_</span>)) = local_port.accept().<span class="kw">await </span>{
-<a href=#501 id=501 data-nosnippet>501</a>                <span class="kw">let </span><span class="kw-2">mut </span>channel = session
-<a href=#502 id=502 data-nosnippet>502</a>                    .channel_open_direct_tcpip(internal_ip, port.into(), <span class="string">"127.0.0.1"</span>, <span class="number">22</span>)
-<a href=#503 id=503 data-nosnippet>503</a>                    .<span class="kw">await
-<a href=#504 id=504 data-nosnippet>504</a>                    </span>.unwrap()
-<a href=#505 id=505 data-nosnippet>505</a>                    .into_stream();
-<a href=#506 id=506 data-nosnippet>506</a>                <span class="kw">let _ </span>= tokio::io::copy_bidirectional(<span class="kw-2">&amp;mut </span>local_stream, <span class="kw-2">&amp;mut </span>channel).<span class="kw">await</span>;
-<a href=#507 id=507 data-nosnippet>507</a>                <span class="kw">break</span>;
-<a href=#508 id=508 data-nosnippet>508</a>                <span class="comment">// TODO(shadaj): we should be returning an Arc so that we know
-<a href=#509 id=509 data-nosnippet>509</a>                // if anyone wants to connect to this forwarded port
-<a href=#510 id=510 data-nosnippet>510</a>            </span>}
-<a href=#511 id=511 data-nosnippet>511</a>
-<a href=#512 id=512 data-nosnippet>512</a>            ProgressTracker::println(<span class="string">"[hydro] closing forwarded port"</span>);
-<a href=#513 id=513 data-nosnippet>513</a>        });
-<a href=#514 id=514 data-nosnippet>514</a>
-<a href=#515 id=515 data-nosnippet>515</a>        <span class="prelude-val">Ok</span>(local_addr)
-<a href=#516 id=516 data-nosnippet>516</a>    }
-<a href=#517 id=517 data-nosnippet>517</a>}
+<a href=#382 id=382 data-nosnippet>382</a>        pin_to_core: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+<a href=#383 id=383 data-nosnippet>383</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;Box&lt;<span class="kw">dyn </span>LaunchedBinary&gt;&gt; {
+<a href=#384 id=384 data-nosnippet>384</a>        <span class="kw">let </span>session = <span class="self">self</span>.open_ssh_session().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#385 id=385 data-nosnippet>385</a>
+<a href=#386 id=386 data-nosnippet>386</a>        <span class="kw">let </span>user = <span class="self">self</span>.ssh_user();
+<a href=#387 id=387 data-nosnippet>387</a>        <span class="kw">let </span>binary_path = PathBuf::from(<span class="macro">format!</span>(<span class="string">"/home/{user}/hydro-{}"</span>, binary.unique_id()));
+<a href=#388 id=388 data-nosnippet>388</a>
+<a href=#389 id=389 data-nosnippet>389</a>        <span class="kw">let </span><span class="kw-2">mut </span>command = String::new();
+<a href=#390 id=390 data-nosnippet>390</a>        <span class="comment">// Prepend env variables
+<a href=#391 id=391 data-nosnippet>391</a>        </span><span class="kw">for </span>(k, v) <span class="kw">in </span>env {
+<a href=#392 id=392 data-nosnippet>392</a>            command.push_str(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"{}={} "</span>, k, shell_escape::unix::escape(v.into())));
+<a href=#393 id=393 data-nosnippet>393</a>        }
+<a href=#394 id=394 data-nosnippet>394</a>
+<a href=#395 id=395 data-nosnippet>395</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(core) = pin_to_core {
+<a href=#396 id=396 data-nosnippet>396</a>            command.push_str(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"taskset -c {core} "</span>));
+<a href=#397 id=397 data-nosnippet>397</a>        }
+<a href=#398 id=398 data-nosnippet>398</a>        command.push_str(binary_path.to_str().unwrap());
+<a href=#399 id=399 data-nosnippet>399</a>        <span class="kw">for </span>arg <span class="kw">in </span>args {
+<a href=#400 id=400 data-nosnippet>400</a>            command.push(<span class="string">' '</span>);
+<a href=#401 id=401 data-nosnippet>401</a>            command.push_str(<span class="kw-2">&amp;</span>shell_escape::unix::escape(arg.into()))
+<a href=#402 id=402 data-nosnippet>402</a>        }
+<a href=#403 id=403 data-nosnippet>403</a>
+<a href=#404 id=404 data-nosnippet>404</a>        <span class="comment">// Launch with tracing if specified.
+<a href=#405 id=405 data-nosnippet>405</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(TracingOptions {
+<a href=#406 id=406 data-nosnippet>406</a>            frequency,
+<a href=#407 id=407 data-nosnippet>407</a>            setup_command,
+<a href=#408 id=408 data-nosnippet>408</a>            ..
+<a href=#409 id=409 data-nosnippet>409</a>        }) = tracing.clone()
+<a href=#410 id=410 data-nosnippet>410</a>        {
+<a href=#411 id=411 data-nosnippet>411</a>            <span class="kw">let </span>id_clone = id.clone();
+<a href=#412 id=412 data-nosnippet>412</a>            ProgressTracker::leaf(<span class="string">"install perf"</span>, <span class="kw">async </span>{
+<a href=#413 id=413 data-nosnippet>413</a>                <span class="comment">// Run setup command
+<a href=#414 id=414 data-nosnippet>414</a>                </span><span class="kw">if let </span><span class="prelude-val">Some</span>(setup_command) = setup_command {
+<a href=#415 id=415 data-nosnippet>415</a>                    <span class="kw">let </span>setup_channel = create_channel(<span class="kw-2">&amp;</span>session).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#416 id=416 data-nosnippet>416</a>                    <span class="kw">let </span>(setup_stdout, setup_stderr) =
+<a href=#417 id=417 data-nosnippet>417</a>                        (setup_channel.stdout(), setup_channel.stderr());
+<a href=#418 id=418 data-nosnippet>418</a>                    setup_channel.exec(<span class="bool-val">false</span>, <span class="kw-2">&amp;*</span>setup_command).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#419 id=419 data-nosnippet>419</a>
+<a href=#420 id=420 data-nosnippet>420</a>                    <span class="comment">// log outputs
+<a href=#421 id=421 data-nosnippet>421</a>                    </span><span class="kw">let </span><span class="kw-2">mut </span>output_lines = LinesStream::new(setup_stdout.lines())
+<a href=#422 id=422 data-nosnippet>422</a>                        .merge(LinesStream::new(setup_stderr.lines()));
+<a href=#423 id=423 data-nosnippet>423</a>                    <span class="kw">while let </span><span class="prelude-val">Some</span>(line) = output_lines.next().<span class="kw">await </span>{
+<a href=#424 id=424 data-nosnippet>424</a>                        ProgressTracker::eprintln(<span class="macro">format!</span>(
+<a href=#425 id=425 data-nosnippet>425</a>                            <span class="string">"[{} install perf] {}"</span>,
+<a href=#426 id=426 data-nosnippet>426</a>                            id_clone,
+<a href=#427 id=427 data-nosnippet>427</a>                            line.unwrap()
+<a href=#428 id=428 data-nosnippet>428</a>                        ));
+<a href=#429 id=429 data-nosnippet>429</a>                    }
+<a href=#430 id=430 data-nosnippet>430</a>
+<a href=#431 id=431 data-nosnippet>431</a>                    setup_channel.closed().wait().<span class="kw">await</span>;
+<a href=#432 id=432 data-nosnippet>432</a>                    <span class="kw">let </span>exit_code = setup_channel.recv_exit_status().try_get();
+<a href=#433 id=433 data-nosnippet>433</a>                    <span class="kw">if </span><span class="prelude-val">Ok</span>(<span class="kw-2">&amp;</span><span class="number">0</span>) != exit_code {
+<a href=#434 id=434 data-nosnippet>434</a>                        <span class="macro">anyhow::bail!</span>(<span class="string">"Failed to install perf on remote host"</span>);
+<a href=#435 id=435 data-nosnippet>435</a>                    }
+<a href=#436 id=436 data-nosnippet>436</a>                }
+<a href=#437 id=437 data-nosnippet>437</a>                <span class="prelude-val">Ok</span>(())
+<a href=#438 id=438 data-nosnippet>438</a>            })
+<a href=#439 id=439 data-nosnippet>439</a>            .<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#440 id=440 data-nosnippet>440</a>
+<a href=#441 id=441 data-nosnippet>441</a>            <span class="comment">// Attach perf to the command
+<a href=#442 id=442 data-nosnippet>442</a>            // Note: `LaunchedSshHost` assumes `perf` on linux.
+<a href=#443 id=443 data-nosnippet>443</a>            </span>command = <span class="macro">format!</span>(
+<a href=#444 id=444 data-nosnippet>444</a>                <span class="string">"perf record -F {frequency} -e cycles:u --call-graph dwarf,65528 -o {PERF_OUTFILE} {command}"</span>,
+<a href=#445 id=445 data-nosnippet>445</a>            );
+<a href=#446 id=446 data-nosnippet>446</a>        }
+<a href=#447 id=447 data-nosnippet>447</a>
+<a href=#448 id=448 data-nosnippet>448</a>        <span class="kw">let </span>(channel, stdout, stderr) = ProgressTracker::leaf(
+<a href=#449 id=449 data-nosnippet>449</a>            <span class="macro">format!</span>(<span class="string">"launching binary {}"</span>, binary_path.display()),
+<a href=#450 id=450 data-nosnippet>450</a>            <span class="kw">async </span>{
+<a href=#451 id=451 data-nosnippet>451</a>                <span class="kw">let </span>channel = create_channel(<span class="kw-2">&amp;</span>session).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#452 id=452 data-nosnippet>452</a>                <span class="comment">// Make sure to begin reading stdout/stderr before running the command.
+<a href=#453 id=453 data-nosnippet>453</a>                </span><span class="kw">let </span>(stdout, stderr) = (channel.stdout(), channel.stderr());
+<a href=#454 id=454 data-nosnippet>454</a>                channel.exec(<span class="bool-val">false</span>, command).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#455 id=455 data-nosnippet>455</a>                anyhow::Ok((channel, stdout, stderr))
+<a href=#456 id=456 data-nosnippet>456</a>            },
+<a href=#457 id=457 data-nosnippet>457</a>        )
+<a href=#458 id=458 data-nosnippet>458</a>        .<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#459 id=459 data-nosnippet>459</a>
+<a href=#460 id=460 data-nosnippet>460</a>        <span class="kw">let </span>(stdin_sender, <span class="kw-2">mut </span>stdin_receiver) = mpsc::unbounded_channel::&lt;String&gt;();
+<a href=#461 id=461 data-nosnippet>461</a>        <span class="kw">let </span><span class="kw-2">mut </span>stdin = channel.stdin();
+<a href=#462 id=462 data-nosnippet>462</a>
+<a href=#463 id=463 data-nosnippet>463</a>        tokio::spawn(<span class="kw">async move </span>{
+<a href=#464 id=464 data-nosnippet>464</a>            <span class="kw">while let </span><span class="prelude-val">Some</span>(line) = stdin_receiver.recv().<span class="kw">await </span>{
+<a href=#465 id=465 data-nosnippet>465</a>                <span class="kw">if </span>stdin.write_all(line.as_bytes()).<span class="kw">await</span>.is_err() {
+<a href=#466 id=466 data-nosnippet>466</a>                    <span class="kw">break</span>;
+<a href=#467 id=467 data-nosnippet>467</a>                }
+<a href=#468 id=468 data-nosnippet>468</a>                stdin.flush().<span class="kw">await</span>.unwrap();
+<a href=#469 id=469 data-nosnippet>469</a>            }
+<a href=#470 id=470 data-nosnippet>470</a>        });
+<a href=#471 id=471 data-nosnippet>471</a>
+<a href=#472 id=472 data-nosnippet>472</a>        <span class="kw">let </span>id_clone = id.clone();
+<a href=#473 id=473 data-nosnippet>473</a>        <span class="kw">let </span>stdout_broadcast = prioritized_broadcast(LinesStream::new(stdout.lines()), <span class="kw">move </span>|s| {
+<a href=#474 id=474 data-nosnippet>474</a>            ProgressTracker::println(<span class="macro">format!</span>(<span class="string">"[{id_clone}] {s}"</span>));
+<a href=#475 id=475 data-nosnippet>475</a>        });
+<a href=#476 id=476 data-nosnippet>476</a>        <span class="kw">let </span>stderr_broadcast = prioritized_broadcast(LinesStream::new(stderr.lines()), <span class="kw">move </span>|s| {
+<a href=#477 id=477 data-nosnippet>477</a>            ProgressTracker::println(<span class="macro">format!</span>(<span class="string">"[{id} stderr] {s}"</span>));
+<a href=#478 id=478 data-nosnippet>478</a>        });
+<a href=#479 id=479 data-nosnippet>479</a>
+<a href=#480 id=480 data-nosnippet>480</a>        <span class="prelude-val">Ok</span>(Box::new(LaunchedSshBinary {
+<a href=#481 id=481 data-nosnippet>481</a>            _resource_result: <span class="self">self</span>.resource_result().clone(),
+<a href=#482 id=482 data-nosnippet>482</a>            session: <span class="prelude-val">Some</span>(session),
+<a href=#483 id=483 data-nosnippet>483</a>            channel,
+<a href=#484 id=484 data-nosnippet>484</a>            stdin_sender,
+<a href=#485 id=485 data-nosnippet>485</a>            stdout_broadcast,
+<a href=#486 id=486 data-nosnippet>486</a>            stderr_broadcast,
+<a href=#487 id=487 data-nosnippet>487</a>            tracing,
+<a href=#488 id=488 data-nosnippet>488</a>            <span class="attr">#[cfg(feature = <span class="string">"profile-folding"</span>)]
+<a href=#489 id=489 data-nosnippet>489</a>            </span>tracing_results: OnceLock::new(),
+<a href=#490 id=490 data-nosnippet>490</a>        }))
+<a href=#491 id=491 data-nosnippet>491</a>    }
+<a href=#492 id=492 data-nosnippet>492</a>
+<a href=#493 id=493 data-nosnippet>493</a>    <span class="kw">async fn </span>forward_port(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span>SocketAddr) -&gt; <span class="prelude-ty">Result</span>&lt;SocketAddr&gt; {
+<a href=#494 id=494 data-nosnippet>494</a>        <span class="kw">let </span>session = <span class="self">self</span>.open_ssh_session().<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#495 id=495 data-nosnippet>495</a>
+<a href=#496 id=496 data-nosnippet>496</a>        <span class="kw">let </span>local_port = TcpListener::bind(<span class="string">"127.0.0.1:0"</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+<a href=#497 id=497 data-nosnippet>497</a>        <span class="kw">let </span>local_addr = local_port.local_addr()<span class="question-mark">?</span>;
+<a href=#498 id=498 data-nosnippet>498</a>
+<a href=#499 id=499 data-nosnippet>499</a>        <span class="kw">let </span>internal_ip = addr.ip().to_string();
+<a href=#500 id=500 data-nosnippet>500</a>        <span class="kw">let </span>port = addr.port();
+<a href=#501 id=501 data-nosnippet>501</a>
+<a href=#502 id=502 data-nosnippet>502</a>        tokio::spawn(<span class="kw">async move </span>{
+<a href=#503 id=503 data-nosnippet>503</a>            <span class="attr">#[expect(clippy::never_loop, reason = <span class="string">"tcp accept loop pattern"</span>)]
+<a href=#504 id=504 data-nosnippet>504</a>            </span><span class="kw">while let </span><span class="prelude-val">Ok</span>((<span class="kw-2">mut </span>local_stream, <span class="kw">_</span>)) = local_port.accept().<span class="kw">await </span>{
+<a href=#505 id=505 data-nosnippet>505</a>                <span class="kw">let </span><span class="kw-2">mut </span>channel = session
+<a href=#506 id=506 data-nosnippet>506</a>                    .channel_open_direct_tcpip(internal_ip, port.into(), <span class="string">"127.0.0.1"</span>, <span class="number">22</span>)
+<a href=#507 id=507 data-nosnippet>507</a>                    .<span class="kw">await
+<a href=#508 id=508 data-nosnippet>508</a>                    </span>.unwrap()
+<a href=#509 id=509 data-nosnippet>509</a>                    .into_stream();
+<a href=#510 id=510 data-nosnippet>510</a>                <span class="kw">let _ </span>= tokio::io::copy_bidirectional(<span class="kw-2">&amp;mut </span>local_stream, <span class="kw-2">&amp;mut </span>channel).<span class="kw">await</span>;
+<a href=#511 id=511 data-nosnippet>511</a>                <span class="kw">break</span>;
+<a href=#512 id=512 data-nosnippet>512</a>                <span class="comment">// TODO(shadaj): we should be returning an Arc so that we know
+<a href=#513 id=513 data-nosnippet>513</a>                // if anyone wants to connect to this forwarded port
+<a href=#514 id=514 data-nosnippet>514</a>            </span>}
+<a href=#515 id=515 data-nosnippet>515</a>
+<a href=#516 id=516 data-nosnippet>516</a>            ProgressTracker::println(<span class="string">"[hydro] closing forwarded port"</span>);
+<a href=#517 id=517 data-nosnippet>517</a>        });
+<a href=#518 id=518 data-nosnippet>518</a>
+<a href=#519 id=519 data-nosnippet>519</a>        <span class="prelude-val">Ok</span>(local_addr)
+<a href=#520 id=520 data-nosnippet>520</a>    }
+<a href=#521 id=521 data-nosnippet>521</a>}
 </code></pre></div></section></main></body></html>
