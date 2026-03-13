@@ -68,3 +68,17 @@ where
 }
 
 impl<Prev> FusedPull for Fuse<Prev> where Prev: Pull {}
+
+#[cfg(test)]
+mod tests {
+    use core::pin::pin;
+
+    use crate::pull::Pull;
+    use crate::pull::test_utils::{PanicsAfterEndPull, assert_fused_runtime};
+
+    #[test]
+    fn fuse_shields_upstream() {
+        let p = pin!(PanicsAfterEndPull::new(2).fuse());
+        assert_fused_runtime(p);
+    }
+}

@@ -327,6 +327,9 @@ pub trait Pull {
     /// `pull` again is implementation-defined. `fuse()` adapts any pull,
     /// ensuring that after `Ended` is given once, it will always return `Ended`
     /// forever.
+    ///
+    /// Usually this method will simply return `Fuse<Self>`, but it may be
+    /// overridden for optimization.
     fn fuse(
         self,
     ) -> impl for<'ctx> FusedPull<
@@ -646,14 +649,14 @@ where
 }
 
 /// Creates a pull that is always pending and never yields items or ends.
-pub fn pending<Item>() -> Pending<Item> {
-    Pending::default()
+pub const fn pending<Item>() -> Pending<Item> {
+    Pending::new()
 }
 
-/// A macro to override `Pull::fuse` for pulls that are already fused.
+/// A macro to override [`Pull::fuse`] for pulls that are already fused.
 ///
 /// This macro should be used in the `impl` block for a pull type that is already fused.
-/// It provides a default implementation of `fuse` that simply returns `self`.\
+/// It provides a default implementation of `fuse` that simply returns `self`.
 macro_rules! fuse_self {
     () => {
         fn fuse(

@@ -250,7 +250,7 @@ pub fn null_write_iterator_fn(
         quote_spanned! {op_span=>
             #[allow(clippy::let_unit_value)]
             let _ = (#(#outputs),*);
-            let #ident = #root::dfir_pipes::push::ForEach::<_, #iter_type>::new(::std::mem::drop::<#iter_type>);
+            let #ident = #root::dfir_pipes::push::for_each::<_, #iter_type>(::std::mem::drop::<#iter_type>);
         }
     }
 }

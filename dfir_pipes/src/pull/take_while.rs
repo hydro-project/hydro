@@ -88,3 +88,17 @@ where
     Func: FnMut(&Prev::Item) -> bool,
 {
 }
+
+#[cfg(test)]
+mod tests {
+    use core::pin::pin;
+
+    use crate::pull::Pull;
+    use crate::pull::test_utils::{PanicsAfterEndPull, assert_fused_runtime};
+
+    #[test]
+    fn take_while_fused_shields_upstream() {
+        let p = pin!(PanicsAfterEndPull::new(2).take_while(|x| *x < 1));
+        assert_fused_runtime(p);
+    }
+}

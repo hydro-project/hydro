@@ -1,5 +1,4 @@
 // TODO(mingwei): Move this & derive macro to separate crate ([`sinktools`])
-use std::marker::PhantomData;
 use std::pin::Pin;
 
 use dfir_pipes::push::{Push, PushStep};
@@ -9,27 +8,20 @@ use crate::util::demux_enum::DemuxEnumPush;
 
 pin_project! {
     /// Special push operator for the `demux_enum` operator.
-    #[must_use = "pushes do nothing unless items are pushed into them"]
-    pub struct DemuxEnum<Outputs, Item> {
+    #[must_use = "`Push`es do nothing unless items are pushed into them"]
+    pub struct DemuxEnum<Outputs> {
         outputs: Outputs,
-        _phantom: PhantomData<fn(Item)>,
     }
 }
 
-impl<Outputs, Item> DemuxEnum<Outputs, Item> {
+impl<Outputs> DemuxEnum<Outputs> {
     /// Creates with the given `Outputs`.
-    pub fn new<Meta: Copy>(outputs: Outputs) -> Self
-    where
-        Item: DemuxEnumPush<Outputs, Meta>,
-    {
-        Self {
-            outputs,
-            _phantom: PhantomData,
-        }
+    pub const fn new(outputs: Outputs) -> Self {
+        Self { outputs }
     }
 }
 
-impl<Outputs, Item, Meta: Copy> Push<Item, Meta> for DemuxEnum<Outputs, Item>
+impl<Outputs, Item, Meta: Copy> Push<Item, Meta> for DemuxEnum<Outputs>
 where
     Item: DemuxEnumPush<Outputs, Meta>,
 {

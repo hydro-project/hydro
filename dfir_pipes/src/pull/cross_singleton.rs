@@ -54,7 +54,7 @@ where
     type Item = (ItemPull::Item, SinglePull::Item);
     type Meta = ItemPull::Meta;
     type CanPend = <ItemPull::CanPend as Toggle>::Or<SinglePull::CanPend>;
-    type CanEnd = <ItemPull::CanEnd as Toggle>::And<SinglePull::CanEnd>;
+    type CanEnd = <ItemPull::CanEnd as Toggle>::Or<SinglePull::CanEnd>;
 
     fn pull(
         self: Pin<&mut Self>,
@@ -109,4 +109,54 @@ where
     SinglePull::Item: Clone,
     SingleState: BorrowMut<Option<SinglePull::Item>>,
 {
+}
+
+#[cfg(test)]
+mod tests {
+    use core::pin::pin;
+
+    use super::*;
+    use crate::pull::test_utils::SyncPull;
+    use crate::pull::{Pull, Repeat};
+
+    /// When item_pull CanEnd=No and singleton_pull CanEnd=Yes,
+    /// CanEnd should allow ending when singleton_pull ends empty.
+    #[test]
+    fn cross_singleton_ends_when_singleton_ends_empty() {
+        // Repeat: CanEnd=No, SyncPull(0): CanEnd=Yes, ends immediately
+        // CanEnd = No.And(Yes) = No, but code tries PullStep::ended() → panic
+        let mut cs = pin!(CrossSingleton::new(
+            Repeat::new(1i32),
+            SyncPull::new(0),
+            None
+        ));
+        let _ = cs.as_mut().pull(&mut ());
+    }
+
+    /// When item_pull CanEnd=Yes and singleton_pull CanEnd=No,
+    /// CanEnd should allow ending when item_pull ends.
+    #[test]
+    fn cross_singleton_ends_when_item_pull_ends() {
+        // SyncPull(0): CanEnd=Yes, Repeat: CanEnd=No
+        // CanEnd = Yes.And(No) = No, but code tries PullStep::ended() → panic
+        let mut cs = pin!(CrossSingleton::new(
+            SyncPull::new(0),
+            Repeat::new(42i32),
+            None
+        ));
+        let _ = cs.as_mut().pull(&mut ());
+    }
+
+    #[test]
+    fn cross_singleton_fused_shields_upstream() {
+        use crate::pull;
+        use crate::pull::test_utils::{PanicsAfterEndPull, assert_fused_runtime};
+
+        let p = pin!(
+            PanicsAfterEndPull::new(2)
+                .fuse()
+                .cross_singleton(pull::once(42))
+        );
+        assert_fused_runtime(p);
+    }
 }

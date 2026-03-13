@@ -123,7 +123,7 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
         } else {
             // Is only push when used as a singleton, so no need to push to `outputs[0]`.
             quote_spanned! {op_span=>
-                let #ident = #root::dfir_pipes::push::ForEach::new(|#item_ident| {
+                let #ident = #root::dfir_pipes::push::for_each(|#item_ident| {
                     #assign_accum_ident
 
                     #foreach_body

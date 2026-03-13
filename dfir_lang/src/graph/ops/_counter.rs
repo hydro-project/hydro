@@ -90,7 +90,7 @@ pub const _COUNTER: OperatorConstraints = OperatorConstraints {
             }
         } else if outputs.is_empty() {
             quote_spanned! {op_span=>
-                let #ident = #root::dfir_pipes::push::inspect(|_| { #count_ident += 1; }, #root::dfir_pipes::push::ForEach::new(::std::mem::drop));
+                let #ident = #root::dfir_pipes::push::inspect(|_| { #count_ident += 1; }, #root::dfir_pipes::push::for_each(::std::mem::drop));
             }
         } else {
             let output = &outputs[0];

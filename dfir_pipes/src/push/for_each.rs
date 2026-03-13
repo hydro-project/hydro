@@ -1,5 +1,4 @@
 //! [`ForEach`] terminal push combinator.
-use core::marker::PhantomData;
 use core::pin::Pin;
 
 use pin_project_lite::pin_project;
@@ -14,41 +13,25 @@ pin_project! {
     /// It has no downstream push; items are consumed by `func`.
     #[must_use = "`Push`es do nothing unless items are pushed into them"]
     #[derive(Clone, Debug)]
-    pub struct ForEach<Func, Item, Meta = ()> {
+    pub struct ForEach<Func> {
         func: Func,
-        _phantom: PhantomData<fn(Item, Meta)>,
     }
 }
 
-impl<Func, Item> ForEach<Func, Item> {
+impl<Func> ForEach<Func> {
     /// Creates with consuming `func`.
-    pub fn new(func: Func) -> Self
+    pub(crate) const fn new<Item>(func: Func) -> Self
     where
         Func: FnMut(Item),
     {
-        Self {
-            func,
-            _phantom: PhantomData,
-        }
+        Self { func }
     }
 }
 
-impl<Func, Item, Meta> ForEach<Func, Item, Meta> {
-    /// Creates with consuming `func` and a specific metadata type.
-    pub fn new_with_meta(func: Func) -> Self
-    where
-        Func: FnMut(Item),
-    {
-        Self {
-            func,
-            _phantom: PhantomData,
-        }
-    }
-}
-
-impl<Func, Item, Meta: Copy> Push<Item, Meta> for ForEach<Func, Item, Meta>
+impl<Func, Item, Meta> Push<Item, Meta> for ForEach<Func>
 where
     Func: FnMut(Item),
+    Meta: Copy,
 {
     type Ctx<'ctx> = ();
 

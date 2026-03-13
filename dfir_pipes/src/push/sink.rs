@@ -1,5 +1,4 @@
 //! [`SinkPush`] adapter wrapping a [`futures_sink::Sink`] as a [`Push`].
-use core::marker::PhantomData;
 use core::pin::Pin;
 use core::task::Poll;
 
@@ -15,27 +14,24 @@ pin_project! {
     /// Since `Sink` is asynchronous, this push requires `core::task::Context`
     /// and can return `Pending`.
     #[must_use = "`Push`es do nothing unless items are pushed into them"]
-    pub struct SinkPush<Si, Item> {
+    pub struct SinkPush<Si> {
         #[pin]
         sink: Si,
-        _phantom: PhantomData<fn(Item)>,
     }
 }
 
-impl<Si, Item> SinkPush<Si, Item> {
+impl<Si> SinkPush<Si> {
     /// Creates a new [`SinkPush`] wrapping the given [`Sink`].
-    pub fn new(sink: Si) -> Self {
-        Self {
-            sink,
-            _phantom: PhantomData,
-        }
+    pub(crate) const fn new(sink: Si) -> Self {
+        Self { sink }
     }
 }
 
-impl<Si, Item> Push<Item, ()> for SinkPush<Si, Item>
+impl<Si, Item, Meta> Push<Item, Meta> for SinkPush<Si>
 where
     Si: Sink<Item>,
     Si::Error: core::fmt::Debug,
+    Meta: Copy,
 {
     type Ctx<'ctx> = core::task::Context<'ctx>;
 
@@ -49,7 +45,8 @@ where
         }
     }
 
-    fn start_send(self: Pin<&mut Self>, item: Item, _meta: ()) {
+    fn start_send(self: Pin<&mut Self>, item: Item, _meta: Meta) {
+        // Discard `_meta`.
         match self.project().sink.start_send(item) {
             Ok(()) => {}
             Err(err) => panic!("Sink error during start_send: {err:?}"),

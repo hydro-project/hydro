@@ -14,9 +14,10 @@ use crate::push::{Push, PushStep, ready};
 pin_project! {
     /// Push operator that receives futures, queues them, and pushes their resolved outputs downstream.
     ///
-    /// `Queue` is expected to be either [`futures_util::stream::FuturesOrdered`] or [`futures_util::stream::FuturesUnordered`].
-    #[must_use = "pushes do nothing unless items are pushed into them"]
-pub struct ResolveFutures<Psh, Queue, QueueInner, Fut> {
+    /// `Queue` is expected to be either [`futures_util::stream::FuturesOrdered`] or [`futures_util::stream::FuturesUnordered`]
+    /// (or a mutable reference thereof).
+    #[must_use = "`Push`es do nothing unless items are pushed into them"]
+pub struct ResolveFutures<Psh, Queue, QueueInner> {
         #[pin]
         push: Psh,
         queue: Queue,
@@ -24,22 +25,22 @@ pub struct ResolveFutures<Psh, Queue, QueueInner, Fut> {
         // by it. If `None`, the subgraph execution should block until all futures are resolved.
         subgraph_waker: Option<Waker>,
 
-        _phantom: PhantomData<(QueueInner, fn(Fut))>,
+        _phantom: PhantomData<QueueInner>,
     }
 }
 
-impl<Psh, Queue, QueueInner, Fut> ResolveFutures<Psh, Queue, QueueInner, Fut>
-where
-    Psh: Push<Fut::Output, ()>,
-    Queue: BorrowMut<QueueInner>,
-    QueueInner: Extend<Fut> + FusedStream<Item = Fut::Output> + Unpin,
-    Fut: Future,
-    for<'ctx> Psh::Ctx<'ctx>: crate::Context<'ctx>,
-{
+impl<Psh, Queue, QueueInner> ResolveFutures<Psh, Queue, QueueInner> {
     /// Create with the given queue and following push.
     ///
     /// If `subgraph_waker` is `Some`, the queue will be polled with this waker.
-    pub(crate) const fn new(queue: Queue, subgraph_waker: Option<Waker>, push: Psh) -> Self {
+    pub(crate) const fn new<Fut>(queue: Queue, subgraph_waker: Option<Waker>, push: Psh) -> Self
+    where
+        Psh: Push<Fut::Output, ()>,
+        Queue: BorrowMut<QueueInner>,
+        QueueInner: Extend<Fut> + FusedStream<Item = Fut::Output> + Unpin,
+        Fut: Future,
+        // for<'ctx> Psh::Ctx<'ctx>: crate::Context<'ctx>,
+    {
         Self {
             push,
             queue,
@@ -49,7 +50,13 @@ where
     }
 
     /// Empties any ready items from the queue into the following push, and readies for the next send.
-    fn empty_ready(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> PushStep<Yes> {
+    fn empty_ready<Fut>(self: Pin<&mut Self>, ctx: &mut Context<'_>) -> PushStep<Yes>
+    where
+        Psh: Push<Fut::Output, ()>,
+        Queue: BorrowMut<QueueInner>,
+        QueueInner: Extend<Fut> + FusedStream<Item = Fut::Output> + Unpin,
+        Fut: Future,
+    {
         let mut this = self.project();
 
         loop {
@@ -78,8 +85,10 @@ where
                 }
                 Poll::Pending => {
                     if this.subgraph_waker.is_some() {
-                        return PushStep::Done; // we will be re-woken on a future tick
+                        return PushStep::Done; // We will be re-woken on a future tick
                     } else {
+                        // We will pend until the queue is emptied.
+                        // TODO(mingwei): Does this mean only one item may be sent at a time?
                         return PushStep::Pending(Yes);
                     }
                 }
@@ -88,7 +97,8 @@ where
     }
 }
 
-impl<Psh, Queue, QueueInner, Fut> Push<Fut, ()> for ResolveFutures<Psh, Queue, QueueInner, Fut>
+// TODO(mingwei): support arbitrary metadata
+impl<Psh, Queue, QueueInner, Fut> Push<Fut, ()> for ResolveFutures<Psh, Queue, QueueInner>
 where
     Psh: Push<Fut::Output, ()>,
     Queue: BorrowMut<QueueInner>,
@@ -100,7 +110,7 @@ where
     type CanPend = Yes;
 
     fn poll_ready(mut self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
-        self.as_mut().empty_ready(ctx) // This includes readying `this.push`.
+        self.as_mut().empty_ready(ctx) // TODO(mingwei): see above
     }
 
     fn start_send(self: Pin<&mut Self>, item: Fut, _meta: ()) {
@@ -146,7 +156,7 @@ mod tests {
 
     use super::*;
     use crate::push::Push;
-    use crate::push::test_utils::AsyncMockPush;
+    use crate::push::test_utils::{AsyncMockPush, ReadyGuardPush};
 
     type Queue = FuturesUnordered<core::future::Ready<i32>>;
 
@@ -157,13 +167,11 @@ mod tests {
 
         let mock = AsyncMockPush::default();
         let mut queue: Queue = [1, 2, 3].into_iter().map(core::future::ready).collect();
-        let mut rf =
-            ResolveFutures::<_, _, Queue, core::future::Ready<i32>>::new(&mut queue, None, mock);
+        let mut rf = ResolveFutures::<_, _, Queue>::new(&mut queue, None, mock);
 
         let result = Push::<core::future::Ready<i32>, ()>::poll_ready(Pin::new(&mut rf), &mut cx);
         assert!(result.is_done());
 
-        // poll_ready on downstream should have been called (at least once per item + once final).
         assert!(
             rf.push.poll_ready_count > 0,
             "downstream poll_ready was not called"
@@ -181,16 +189,39 @@ mod tests {
 
         let mock = AsyncMockPush::default();
         let mut queue: Queue = FuturesUnordered::new();
-        let mut rf =
-            ResolveFutures::<_, _, Queue, core::future::Ready<i32>>::new(&mut queue, None, mock);
+        let mut rf = ResolveFutures::<_, _, Queue>::new(&mut queue, None, mock);
 
         let result = Push::<core::future::Ready<i32>, ()>::poll_flush(Pin::new(&mut rf), &mut cx);
         assert!(result.is_done());
 
-        // Verify downstream poll_flush was called.
         assert!(
             rf.push.poll_flush_count > 0,
             "downstream poll_flush was not called"
         );
+    }
+
+    #[test]
+    fn resolve_futures_readies_downstream_before_each_send() {
+        let waker = Waker::noop();
+        let mut cx = Context::from_waker(waker);
+
+        let guard = ReadyGuardPush::<i32>::new();
+        let mut queue: Queue = [1, 2, 3].into_iter().map(core::future::ready).collect();
+        let mut rf = ResolveFutures::<_, _, Queue>::new(&mut queue, None, guard);
+
+        // poll_ready drains resolved futures into downstream, each with poll_ready before start_send.
+        let result = Push::<core::future::Ready<i32>, ()>::poll_ready(Pin::new(&mut rf), &mut cx);
+        assert!(result.is_done());
+
+        // Send a new immediately-resolving future.
+        Push::<core::future::Ready<i32>, ()>::start_send(
+            Pin::new(&mut rf),
+            core::future::ready(4),
+            (),
+        );
+
+        // Flush should drain and flush without violating the ready guard.
+        let result = Push::<core::future::Ready<i32>, ()>::poll_flush(Pin::new(&mut rf), &mut cx);
+        assert!(result.is_done());
     }
 }

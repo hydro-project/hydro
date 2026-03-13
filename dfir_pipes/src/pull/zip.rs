@@ -2,7 +2,7 @@ use core::pin::Pin;
 
 use pin_project_lite::pin_project;
 
-use crate::pull::{FusedPull, Pull, PullStep};
+use crate::pull::{Pull, PullStep};
 use crate::{Context, Toggle};
 
 pin_project! {
@@ -111,13 +111,6 @@ where
 
         (lower, upper)
     }
-}
-
-impl<A, B> FusedPull for Zip<A, B>
-where
-    A: FusedPull,
-    B: FusedPull<Meta = A::Meta>,
-{
 }
 
 #[cfg(test)]

@@ -8,7 +8,7 @@ use crate::push::{Push, PushStep, ready};
 
 pin_project! {
     /// Special push operator for the `persist` operator.
-    #[must_use = "pushes do nothing unless items are pushed into them"]
+    #[must_use = "`Push`es do nothing unless items are pushed into them"]
     pub struct Persist<Psh, Buf> {
         #[pin]
         push: Psh,
@@ -51,15 +51,16 @@ impl<Psh, Buf> Persist<Psh, Buf> {
     }
 }
 
+// TODO(mingwei): support arbitrary metadata.
 impl<Psh, Item, Buf> Push<Item, ()> for Persist<Psh, Buf>
 where
     Psh: Push<Item, ()>,
     Item: Clone,
     Buf: BorrowMut<Vec<Item>>,
 {
-    type Ctx<'ctx> = <Psh as Push<Item, ()>>::Ctx<'ctx>;
+    type Ctx<'ctx> = Psh::Ctx<'ctx>;
 
-    type CanPend = <Psh as Push<Item, ()>>::CanPend;
+    type CanPend = Psh::CanPend;
 
     fn poll_ready(mut self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         // Drain any pending replay items first.
@@ -85,5 +86,39 @@ where
         ready!(self.as_mut().empty_replay(ctx));
         // Then flush the downstream push.
         self.project().push.poll_flush(ctx)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use core::pin::Pin;
+
+    extern crate alloc;
+    use alloc::vec::Vec;
+
+    use crate::push::Push;
+    use crate::push::test_utils::ReadyGuardPush;
+
+    #[test]
+    fn persist_readies_downstream_for_replay_and_new() {
+        let mut buf = Vec::new();
+        // First pass: persist items 1, 2.
+        {
+            let mut p = crate::push::persist_state(&mut buf, false, ReadyGuardPush::<i32>::new());
+            let mut p = Pin::new(&mut p);
+            p.as_mut().poll_ready(&mut ());
+            p.as_mut().start_send(1, ());
+            p.as_mut().poll_ready(&mut ());
+            p.as_mut().start_send(2, ());
+            p.as_mut().poll_flush(&mut ());
+        }
+        // Second pass: replay=true, should replay 1, 2 then accept new item 3.
+        {
+            let mut p = crate::push::persist_state(&mut buf, true, ReadyGuardPush::<i32>::new());
+            let mut p = Pin::new(&mut p);
+            p.as_mut().poll_ready(&mut ());
+            p.as_mut().start_send(3, ());
+            p.as_mut().poll_flush(&mut ());
+        }
     }
 }

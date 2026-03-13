@@ -85,7 +85,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::pull::test_utils::{AsyncPull, SyncPull, assert_types};
+    use crate::pull::test_utils::{AsyncPull, SyncPull, assert_is_fused, assert_types};
     use crate::pull::{No, Pending, Repeat, Yes, pending};
 
     #[test]
@@ -93,6 +93,7 @@ mod tests {
         // Sync + Sync: CanPend=No, CanEnd=Yes
         let chain: Chain<SyncPull, SyncPull> = Chain::new(SyncPull::new(1), SyncPull::new(1));
         assert_types::<No, Yes>(&chain);
+        assert_is_fused(&chain);
 
         // Sync + Infinite: CanPend=No, CanEnd=No
         let chain: Chain<SyncPull, Repeat<i32>> = Chain::new(SyncPull::new(1), Repeat::new(42));
@@ -108,6 +109,7 @@ mod tests {
         // Async + Async: CanPend=Yes, CanEnd=Yes
         let chain: Chain<AsyncPull, AsyncPull> = Chain::new(AsyncPull::new(1), AsyncPull::new(1));
         assert_types::<Yes, Yes>(&chain);
+        assert_is_fused(&chain);
 
         // Async + Infinite: CanPend=Yes, CanEnd=No
         let chain: Chain<AsyncPull, Repeat<i32>> = Chain::new(AsyncPull::new(1), Repeat::new(42));
@@ -123,5 +125,17 @@ mod tests {
         let chain_abc: Chain<Chain<SyncPull, AsyncPull>, Repeat<i32>> =
             Chain::new(chain_ab, Repeat::new(3));
         assert_types::<Yes, No>(&chain_abc);
+    }
+
+    #[test]
+    fn chain_fused_shields_upstream() {
+        use core::pin::pin;
+
+        use crate::pull::once;
+        use crate::pull::test_utils::assert_fused_runtime;
+
+        // TODO(mingwei): use upstream `Pull`s that pend sometimes.
+        let p = pin!(once(5).chain(once(6)));
+        assert_fused_runtime(p);
     }
 }

@@ -1,4 +1,4 @@
-//! Push-based operator helpers.
+//! [`dfir_pipes::push::Push`]-based operator helpers.
 
 #[cfg(feature = "dfir_macro")]
 #[cfg_attr(docsrs, doc(cfg(feature = "dfir_macro")))]

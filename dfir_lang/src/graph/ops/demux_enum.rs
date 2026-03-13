@@ -162,7 +162,7 @@ pub const DEMUX_ENUM: OperatorConstraints = OperatorConstraints {
                     where
                         Item: #root::util::demux_enum::DemuxEnumPush<Outputs, ()>,
                     {
-                        #root::compiled::push::DemuxEnum::<Outputs, Item>::new(outputs)
+                        #root::compiled::push::DemuxEnum::<Outputs>::new(outputs)
                     }
                     demux_enum_guard::<#enum_type, _>(#outputs_ident)
                 };

@@ -134,12 +134,13 @@ mod tests {
     use itertools::EitherOrBoth;
 
     use super::*;
-    use crate::pull::test_utils::SyncPull;
+    use crate::pull::test_utils::{SyncPull, assert_is_fused};
     use crate::pull::{Pull, PullStep};
 
     #[test]
     fn zip_longest_functional_same_length() {
         let mut zip = pin!(ZipLongest::new(SyncPull::new(2), SyncPull::new(2)));
+        assert_is_fused(&*zip);
         let mut results = Vec::new();
 
         loop {
@@ -200,5 +201,16 @@ mod tests {
                 EitherOrBoth::Left(2)
             ]
         );
+    }
+
+    #[test]
+    fn zip_longest_fused_shields_upstream() {
+        use crate::pull::test_utils::{PanicsAfterEndPull, assert_fused_runtime};
+
+        let p = pin!(ZipLongest::new(
+            PanicsAfterEndPull::new(1).fuse(),
+            PanicsAfterEndPull::new(2).fuse()
+        ));
+        assert_fused_runtime(p);
     }
 }

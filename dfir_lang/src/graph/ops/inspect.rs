@@ -53,7 +53,7 @@ pub const INSPECT: OperatorConstraints = OperatorConstraints {
             }
         } else if outputs.is_empty() {
             quote_spanned! {op_span=>
-                let #ident = #root::dfir_pipes::push::inspect(#func, #root::dfir_pipes::push::ForEach::new(::std::mem::drop));
+                let #ident = #root::dfir_pipes::push::inspect(#func, #root::dfir_pipes::push::for_each(::std::mem::drop));
             }
         } else {
             let output = &outputs[0];

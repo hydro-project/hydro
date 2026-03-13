@@ -18,23 +18,23 @@ pin_project! {
 
 impl<Next, Func> Filter<Next, Func> {
     /// Creates with filtering `func` and next `push`.
-    pub const fn new<Item, Meta: Copy>(func: Func, next: Next) -> Self
+    pub(crate) const fn new<Item>(func: Func, next: Next) -> Self
     where
-        Next: Push<Item, Meta>,
         Func: FnMut(&Item) -> bool,
     {
         Self { next, func }
     }
 }
 
-impl<Next, Func, Item, Meta: Copy> Push<Item, Meta> for Filter<Next, Func>
+impl<Next, Func, Item, Meta> Push<Item, Meta> for Filter<Next, Func>
 where
     Next: Push<Item, Meta>,
     Func: FnMut(&Item) -> bool,
+    Meta: Copy,
 {
-    type Ctx<'ctx> = <Next as Push<Item, Meta>>::Ctx<'ctx>;
+    type Ctx<'ctx> = Next::Ctx<'ctx>;
 
-    type CanPend = <Next as Push<Item, Meta>>::CanPend;
+    type CanPend = Next::CanPend;
 
     fn poll_ready(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         self.project().next.poll_ready(ctx)

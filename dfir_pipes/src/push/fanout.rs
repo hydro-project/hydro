@@ -23,19 +23,17 @@ pin_project! {
 
 impl<Push0, Push1> Fanout<Push0, Push1> {
     /// Creates with downstream pushes `push_0` and `push_1`.
-    pub const fn new<Item: Clone, Meta: Copy>(push_0: Push0, push_1: Push1) -> Self
-    where
-        Push0: Push<Item, Meta>,
-        Push1: Push<Item, Meta>,
-    {
+    pub(crate) const fn new(push_0: Push0, push_1: Push1) -> Self {
         Self { push_0, push_1 }
     }
 }
 
-impl<P0, P1, Item: Clone, Meta: Copy> Push<Item, Meta> for Fanout<P0, P1>
+impl<P0, P1, Item, Meta> Push<Item, Meta> for Fanout<P0, P1>
 where
     P0: Push<Item, Meta>,
     P1: Push<Item, Meta>,
+    Item: Clone,
+    Meta: Copy,
 {
     type Ctx<'ctx> = <P0::Ctx<'ctx> as Context<'ctx>>::Merged<P1::Ctx<'ctx>>;
 
@@ -68,5 +66,25 @@ where
                 .poll_flush(<P0::Ctx<'_> as Context<'_>>::unmerge_other(ctx)),
         );
         PushStep::Done
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use core::pin::Pin;
+
+    use super::Fanout;
+    use crate::push::Push;
+    use crate::push::test_utils::ReadyGuardPush;
+
+    #[test]
+    fn fanout_readies_both_before_send() {
+        let mut f = Fanout::new(ReadyGuardPush::new(), ReadyGuardPush::new());
+        let mut f = Pin::new(&mut f);
+        f.as_mut().poll_ready(&mut ());
+        f.as_mut().start_send(1, ());
+        f.as_mut().poll_ready(&mut ());
+        f.as_mut().start_send(2, ());
+        f.as_mut().poll_flush(&mut ());
     }
 }

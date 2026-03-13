@@ -13,7 +13,6 @@
 //! single merged context type, then [`Context::unmerge_self`] /
 //! [`Context::unmerge_other`] to extract each push's individual context.
 
-use core::marker::PhantomData;
 use core::pin::Pin;
 
 use pin_project_lite::pin_project;
@@ -34,7 +33,10 @@ use crate::{Context, No, Toggle};
 /// The [`CanPend`](PushVariadic::CanPend) type is built by recursively OR-ing
 /// each push's `CanPend` via [`Toggle::Or`].
 #[sealed]
-pub trait PushVariadic<Item, Meta: Copy>: variadics::Variadic {
+pub trait PushVariadic<Item, Meta>: variadics::Variadic
+where
+    Meta: Copy,
+{
     /// The merged context type for all pushes in this variadic.
     ///
     /// Built recursively via [`Context::Merged`] so that each downstream push's
@@ -110,7 +112,10 @@ where
 
 /// Base case: the empty variadic. Always ready, panics on send.
 #[sealed]
-impl<Item, Meta: Copy> PushVariadic<Item, Meta> for () {
+impl<Item, Meta> PushVariadic<Item, Meta> for ()
+where
+    Meta: Copy,
+{
     type Ctx<'ctx> = ();
     type CanPend = No;
 
@@ -158,30 +163,27 @@ pin_project! {
     ///
     /// [`Push::start_send`] panics if the index is out of bounds.
     #[must_use = "`Push`es do nothing unless items are pushed into them"]
-    pub struct DemuxVar<Pushes, Item, Meta = ()> {
+    pub struct DemuxVar<Pushes> {
         #[pin]
         pushes: Pushes,
-        _phantom: PhantomData<fn(Item, Meta)>,
     }
 }
 
-impl<Pushes, Item, Meta> DemuxVar<Pushes, Item, Meta> {
+impl<Pushes> DemuxVar<Pushes> {
     /// Creates a new [`DemuxVar`] with the given downstream pushes.
-    pub fn new(pushes: Pushes) -> Self
+    pub(crate) const fn new<Item, Meta>(pushes: Pushes) -> Self
     where
         Meta: Copy,
         Pushes: PushVariadic<Item, Meta>,
     {
-        Self {
-            pushes,
-            _phantom: PhantomData,
-        }
+        Self { pushes }
     }
 }
 
-impl<Pushes, Item, Meta: Copy> Push<(usize, Item), Meta> for DemuxVar<Pushes, Item, Meta>
+impl<Pushes, Item, Meta> Push<(usize, Item), Meta> for DemuxVar<Pushes>
 where
     Pushes: PushVariadic<Item, Meta>,
+    Meta: Copy,
 {
     type Ctx<'ctx> = Pushes::Ctx<'ctx>;
     type CanPend = Pushes::CanPend;
@@ -201,9 +203,10 @@ where
 
 /// Creates a [`DemuxVar`] push that dispatches each `(usize, Item)` pair to
 /// one of the downstream pushes in the given variadic, based on the index.
-pub fn demux_var<Pushes, Item, Meta: Copy>(pushes: Pushes) -> DemuxVar<Pushes, Item, Meta>
+pub const fn demux_var<Pushes, Item, Meta>(pushes: Pushes) -> DemuxVar<Pushes>
 where
     Pushes: PushVariadic<Item, Meta>,
+    Meta: Copy,
 {
     DemuxVar::new(pushes)
 }
@@ -214,7 +217,7 @@ mod tests {
     use core::pin::Pin;
 
     use super::*;
-    use crate::push::test_utils::CollectPush;
+    use crate::push::test_utils::{CollectPush, ReadyGuardPush, assert_can_pend_no};
 
     #[test]
     fn test_demux_var_basic_dispatch() {
@@ -246,13 +249,22 @@ mod tests {
 
     #[test]
     fn test_demux_var_canpend_is_no_for_sync_pushes() {
-        // Compile-time assertion: when all downstream pushes have CanPend=No,
-        // DemuxVar also has CanPend=No.
-        fn assert_can_pend_no<T, M: Copy>(_push: &impl Push<T, M, CanPend = No>) {}
-
         let pushes =
             variadics::var_expr!(CollectPush::<i32>::default(), CollectPush::<i32>::default(),);
-        let demux: DemuxVar<_, i32, ()> = demux_var(pushes);
+        let demux = demux_var(pushes);
         assert_can_pend_no(&demux);
+    }
+
+    #[test]
+    fn test_demux_var_readies_all_before_send() {
+        let pushes =
+            variadics::var_expr!(ReadyGuardPush::<i32>::new(), ReadyGuardPush::<i32>::new(),);
+        let mut demux = demux_var(pushes);
+        let mut demux = Pin::new(&mut demux);
+        demux.as_mut().poll_ready(&mut ());
+        demux.as_mut().start_send((0, 10), ());
+        demux.as_mut().poll_ready(&mut ());
+        demux.as_mut().start_send((1, 20), ());
+        demux.as_mut().poll_flush(&mut ());
     }
 }

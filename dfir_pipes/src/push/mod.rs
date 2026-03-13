@@ -58,14 +58,20 @@ pub use unzip::Unzip;
 /// The `CanPend` type parameter uses [`Toggle`] to statically encode whether pending
 /// is possible. When `CanPend = No`, the `Pending` variant cannot be constructed,
 /// and the push is guaranteed to always accept items immediately.
-pub enum PushStep<CanPend: Toggle> {
+pub enum PushStep<CanPend>
+where
+    CanPend: Toggle,
+{
     /// The item was successfully consumed.
     Done,
     /// The push is not ready yet (only possible when `CanPend = Yes`).
     Pending(CanPend),
 }
 
-impl<CanPend: Toggle> PushStep<CanPend> {
+impl<CanPend> PushStep<CanPend>
+where
+    CanPend: Toggle,
+{
     /// Creates a new `PushStep::Pending`, or panics if `CanPend = No`.
     pub fn pending() -> Self {
         PushStep::Pending(Toggle::create())
@@ -82,7 +88,10 @@ impl<CanPend: Toggle> PushStep<CanPend> {
     }
 
     /// Tries to convert the `CanPend` type parameter, returning `None` if the conversion is invalid.
-    pub fn try_convert_into<NewPend: Toggle>(self) -> Option<PushStep<NewPend>> {
+    pub fn try_convert_into<NewPend>(self) -> Option<PushStep<NewPend>>
+    where
+        NewPend: Toggle,
+    {
         Some(match self {
             PushStep::Done => PushStep::Done,
             PushStep::Pending(_) => PushStep::Pending(Toggle::try_create()?),
@@ -90,7 +99,10 @@ impl<CanPend: Toggle> PushStep<CanPend> {
     }
 
     /// Converts the `CanPend` type parameter, panicking if the conversion is invalid.
-    pub fn convert_into<NewPend: Toggle>(self) -> PushStep<NewPend> {
+    pub fn convert_into<NewPend>(self) -> PushStep<NewPend>
+    where
+        NewPend: Toggle,
+    {
         match self {
             PushStep::Done => PushStep::Done,
             PushStep::Pending(_) => PushStep::pending(),
@@ -108,7 +120,10 @@ impl<CanPend: Toggle> PushStep<CanPend> {
 /// 1. Call [`Push::poll_ready`] to check if the push can accept an item.
 /// 2. If ready, call [`Push::start_send`] to send the item.
 /// 3. Call [`Push::poll_flush`] to flush buffered items.
-pub trait Push<Item, Meta: Copy> {
+pub trait Push<Item, Meta>
+where
+    Meta: Copy,
+{
     /// The context type required to push into this pipeline.
     type Ctx<'ctx>: Context<'ctx>;
 
@@ -127,9 +142,10 @@ pub trait Push<Item, Meta: Copy> {
     fn poll_flush(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend>;
 }
 
-impl<P, Item, Meta: Copy> Push<Item, Meta> for &mut P
+impl<P, Item, Meta> Push<Item, Meta> for &mut P
 where
     P: Push<Item, Meta> + Unpin + ?Sized,
+    Meta: Copy,
 {
     type Ctx<'ctx> = P::Ctx<'ctx>;
 
@@ -173,59 +189,52 @@ macro_rules! ready_both {
 use ready_both;
 
 /// Creates a [`Fanout`] push that clones each item and sends to both downstream pushes.
-pub const fn fanout<P0, P1, Item: Clone, Meta: Copy>(push0: P0, push1: P1) -> Fanout<P0, P1>
-where
-    P0: Push<Item, Meta>,
-    P1: Push<Item, Meta>,
-{
+pub const fn fanout<P0, P1>(push0: P0, push1: P1) -> Fanout<P0, P1> {
     Fanout::new(push0, push1)
 }
 
 /// Creates a [`Filter`] push that filters items based on a predicate.
-pub const fn filter<Func, Item, Meta: Copy, Next>(func: Func, next: Next) -> Filter<Next, Func>
+pub const fn filter<Func, Item, Next>(func: Func, next: Next) -> Filter<Next, Func>
 where
-    Next: Push<Item, Meta>,
     Func: FnMut(&Item) -> bool,
 {
     Filter::new(func, next)
 }
 
 /// Creates a [`FilterMap`] push that filters and maps items in one step.
-pub fn filter_map<Func, In, Out, Meta: Copy, Next>(
-    func: Func,
-    next: Next,
-) -> FilterMap<Next, Func, In>
+pub const fn filter_map<Func, In, Out, Next>(func: Func, next: Next) -> FilterMap<Next, Func>
 where
     Func: FnMut(In) -> Option<Out>,
-    Next: Push<Out, Meta>,
 {
     FilterMap::new(func, next)
 }
 
 /// Creates a [`FlatMap`] push that maps each item to an iterator and flattens the results.
-pub fn flat_map<Func, In, IntoIter: IntoIterator, Meta: Copy, Next>(
+pub const fn flat_map<Func, In, IntoIter, Meta, Next>(
     func: Func,
     next: Next,
-) -> FlatMap<Next, Func, IntoIter, In>
+) -> FlatMap<Next, Func, IntoIter, Meta>
 where
-    Next: Push<IntoIter::Item, Meta>,
     Func: FnMut(In) -> IntoIter,
+    IntoIter: IntoIterator,
+    Meta: Copy,
+    Next: Push<IntoIter::Item, Meta>,
 {
     FlatMap::new(func, next)
 }
 
 /// Creates a [`Flatten`] push that flattens items that are iterators.
-pub const fn flatten<IntoIter: IntoIterator, Meta: Copy, Next>(
-    next: Next,
-) -> Flatten<Next, IntoIter>
+pub const fn flatten<IntoIter, Meta, Next>(next: Next) -> Flatten<Next, IntoIter, Meta>
 where
+    IntoIter: IntoIterator,
+    Meta: Copy,
     Next: Push<IntoIter::Item, Meta>,
 {
     Flatten::new(next)
 }
 
 /// Creates a [`ForEach`] terminal push that consumes each item with a function.
-pub fn for_each<Func, Item>(func: Func) -> ForEach<Func, Item>
+pub const fn for_each<Func, Item>(func: Func) -> ForEach<Func>
 where
     Func: FnMut(Item),
 {
@@ -233,19 +242,17 @@ where
 }
 
 /// Creates an [`Inspect`] push that inspects each item without modifying it.
-pub const fn inspect<Func, Item, Meta: Copy, Next>(func: Func, next: Next) -> Inspect<Next, Func>
+pub const fn inspect<Func, Item, Next>(func: Func, next: Next) -> Inspect<Next, Func>
 where
-    Next: Push<Item, Meta>,
     Func: FnMut(&Item),
 {
     Inspect::new(func, next)
 }
 
 /// Creates a [`Map`] push that applies a function to each item.
-pub fn map<Func, In, Out, Meta: Copy, Next>(func: Func, next: Next) -> Map<Next, Func, In>
+pub const fn map<Func, In, Out, Next>(func: Func, next: Next) -> Map<Next, Func>
 where
     Func: FnMut(In) -> Out,
-    Next: Push<Out, Meta>,
 {
     Map::new(func, next)
 }
@@ -275,7 +282,7 @@ pub const fn resolve_futures_state<Queue, Fut, Next>(
     queue: &mut Queue,
     subgraph_waker: Option<Waker>,
     next: Next,
-) -> ResolveFutures<Next, &mut Queue, Queue, Fut>
+) -> ResolveFutures<Next, &mut Queue, Queue>
 where
     Queue: Default + Extend<Fut> + FusedStream<Item = Fut::Output> + Unpin,
     Fut: Future,
@@ -285,16 +292,12 @@ where
 }
 
 /// Creates an [`Unzip`] push that splits tuple items into two separate pushes.
-pub const fn unzip<P0, P1, Item0, Item1, Meta: Copy>(push0: P0, push1: P1) -> Unzip<P0, P1>
-where
-    P0: Push<Item0, Meta>,
-    P1: Push<Item1, Meta>,
-{
+pub const fn unzip<P0, P1>(push0: P0, push1: P1) -> Unzip<P0, P1> {
     Unzip::new(push0, push1)
 }
 
 /// Creates a [`SinkPush`] push that wraps a [`futures_sink::Sink`].
-pub fn sink<Si, Item>(si: Si) -> SinkPush<Si, Item>
+pub const fn sink<Si, Item>(si: Si) -> SinkPush<Si>
 where
     Si: futures_sink::Sink<Item>,
 {

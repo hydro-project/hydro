@@ -1189,9 +1189,9 @@ impl DfirGraph {
                                                 where
                                                     Psh: #root::dfir_pipes::push::Push<Item, ()>,
                                                 {
-                                                    type Ctx<'ctx> = <Psh as #root::dfir_pipes::push::Push<Item, ()>>::Ctx<'ctx>;
+                                                    type Ctx<'ctx> = Psh::Ctx<'ctx>;
 
-                                                    type CanPend = <Psh as #root::dfir_pipes::push::Push<Item, ()>>::CanPend;
+                                                    type CanPend = Psh::CanPend;
 
                                                     #[inline(always)]
                                                     fn poll_ready(

@@ -11,11 +11,17 @@ pub struct Pending<Item> {
     _phantom: PhantomData<Item>,
 }
 
-impl<Item> Default for Pending<Item> {
-    fn default() -> Self {
+impl<Item> Pending<Item> {
+    pub(crate) const fn new() -> Self {
         Self {
             _phantom: PhantomData,
         }
+    }
+}
+
+impl<Item> Default for Pending<Item> {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

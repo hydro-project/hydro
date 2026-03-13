@@ -190,7 +190,7 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         MappingFn: 'a + Fn(Item) -> MappedItem,
                         Lat: 'static + #root::lattices::Merge<MappedItem>,
                     {
-                        #root::dfir_pipes::push::ForEach::new(move |item| {
+                        #root::dfir_pipes::push::for_each(move |item| {
                             let state = unsafe {
                                 // SAFETY: handle from `#df_ident.add_state(..)`.
                                 context.state_ref_unchecked(state_handle)

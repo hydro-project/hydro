@@ -125,7 +125,7 @@ pub const FOLD_NO_REPLAY: OperatorConstraints = OperatorConstraints {
         } else {
             assert_eq!(0, outputs.len());
             quote_spanned! {op_span=>
-                let #ident = #root::dfir_pipes::push::ForEach::new(|#item_ident| {
+                let #ident = #root::dfir_pipes::push::for_each(|#item_ident| {
                     #assign_accum_ident
 
                     #foreach_body
