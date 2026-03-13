@@ -54,10 +54,11 @@ where
 
         loop {
             // Ensure the following push is ready.
-            ready!(this
-                .push
-                .as_mut()
-                .poll_ready(crate::Context::from_task(ctx)));
+            ready!(
+                this.push
+                    .as_mut()
+                    .poll_ready(crate::Context::from_task(ctx))
+            );
 
             let poll_result = if let Some(w) = this.subgraph_waker.as_ref() {
                 Stream::poll_next(
@@ -156,9 +157,8 @@ mod tests {
 
         let mock = AsyncMockPush::default();
         let mut queue: Queue = [1, 2, 3].into_iter().map(core::future::ready).collect();
-        let mut rf = ResolveFutures::<_, _, Queue, core::future::Ready<i32>>::new(
-            &mut queue, None, mock,
-        );
+        let mut rf =
+            ResolveFutures::<_, _, Queue, core::future::Ready<i32>>::new(&mut queue, None, mock);
 
         let result = Push::<core::future::Ready<i32>, ()>::poll_ready(Pin::new(&mut rf), &mut cx);
         assert!(result.is_done());
@@ -181,9 +181,8 @@ mod tests {
 
         let mock = AsyncMockPush::default();
         let mut queue: Queue = FuturesUnordered::new();
-        let mut rf = ResolveFutures::<_, _, Queue, core::future::Ready<i32>>::new(
-            &mut queue, None, mock,
-        );
+        let mut rf =
+            ResolveFutures::<_, _, Queue, core::future::Ready<i32>>::new(&mut queue, None, mock);
 
         let result = Push::<core::future::Ready<i32>, ()>::poll_flush(Pin::new(&mut rf), &mut cx);
         assert!(result.is_done());

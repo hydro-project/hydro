@@ -166,14 +166,8 @@ macro_rules! ready_both {
     ($a:expr, $b:expr $(,)?) => {{
         let a = $a;
         let b = $b;
-        match a {
-            PushStep::Done => (),
-            PushStep::Pending(_) => return PushStep::pending(),
-        }
-        match b {
-            PushStep::Done => (),
-            PushStep::Pending(_) => return PushStep::pending(),
-        }
+        $crate::push::ready!(a);
+        $crate::push::ready!(b);
     }};
 }
 use ready_both;

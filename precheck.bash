@@ -5,7 +5,6 @@ HELP="Usage: $0 [TARGET]...
 Run pre-check tests for the given targets.
 
   --all           Run all tests
-  --most          Run most tests (DFIR, Hydro, Website)
   --dfir          Run DFIR tests
     --wasm        Run WASM tests (requires --dfir)
   --hydro         Run Hydro tests
@@ -42,12 +41,6 @@ while (( $# )); do
         ;;
         --wasm)
             TEST_WASM=true
-        ;;
-        --most)
-            TEST_DFIR=true
-            TEST_HYDRO=true
-            TEST_WEBSITE=true
-            TEST_ALL=true
         ;;
         --all)
             TEST_DFIR=true
