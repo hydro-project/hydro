@@ -800,6 +800,33 @@ expression: built.ir()
         },
         op_metadata: HydroIrOpMetadata,
     },
+    Null {
+        input: FilterMap {
+            f: stageleft :: runtime_support :: fn1_type_hint :: < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , core :: result :: Result < () , () >) , core :: option :: Option < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , ()) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | (key , res) | match res { Ok (_) => None , Err (e) => Some ((key , e)) , } }),
+            input: Tee {
+                inner: <shared 2>,
+                metadata: HydroIrMetadata {
+                    location_id: Process(loc1v1),
+                    collection_kind: Stream {
+                        bound: Unbounded,
+                        order: NoOrder,
+                        retry: ExactlyOnce,
+                        element_type: ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , core :: result :: Result < () , () >),
+                    },
+                },
+            },
+            metadata: HydroIrMetadata {
+                location_id: Process(loc1v1),
+                collection_kind: Stream {
+                    bound: Unbounded,
+                    order: NoOrder,
+                    retry: ExactlyOnce,
+                    element_type: ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , ()),
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
     CycleSink {
         cycle_id: CycleId(
             4,
@@ -1296,6 +1323,33 @@ expression: built.ir()
                     order: NoOrder,
                     retry: ExactlyOnce,
                     element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)),
+                },
+            },
+        },
+        op_metadata: HydroIrOpMetadata,
+    },
+    Null {
+        input: FilterMap {
+            f: stageleft :: runtime_support :: fn1_type_hint :: < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , core :: result :: Result < () , () >) , core :: option :: Option < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , ()) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | (key , res) | match res { Ok (_) => None , Err (e) => Some ((key , e)) , } }),
+            input: Tee {
+                inner: <shared 7>,
+                metadata: HydroIrMetadata {
+                    location_id: Process(loc1v1),
+                    collection_kind: Stream {
+                        bound: Unbounded,
+                        order: NoOrder,
+                        retry: ExactlyOnce,
+                        element_type: ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , core :: result :: Result < () , () >),
+                    },
+                },
+            },
+            metadata: HydroIrMetadata {
+                location_id: Process(loc1v1),
+                collection_kind: Stream {
+                    bound: Unbounded,
+                    order: NoOrder,
+                    retry: ExactlyOnce,
+                    element_type: ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: two_pc_bench :: Client > , (u32 , i32)) , ()),
                 },
             },
         },

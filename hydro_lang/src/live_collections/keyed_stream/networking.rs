@@ -129,7 +129,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
-                input: Box::new(self.ir_node.into_inner()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: to.new_node_metadata(
                     Stream::<T, Cluster<'a, L2>, Unbounded, O, R>::collection_kind(),
                 ),
@@ -251,7 +251,7 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
                     self.entries()
                         .map(q!(|((id, k), v)| (id, (k, v))))
                         .ir_node
-                        .into_inner(),
+                        .replace(HydroNode::Placeholder),
                 ),
                 metadata: to.new_node_metadata(
                     KeyedStream::<K, T, Cluster<'a, L2>, Unbounded, O, R>::collection_kind(),
@@ -396,7 +396,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
-                input: Box::new(self.ir_node.into_inner()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: to.new_node_metadata(Stream::<
                     (MemberId<L>, T),
                     Cluster<'a, L2>,
@@ -565,7 +565,7 @@ impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries>
                     serialize_fn: serialize_pipeline.map(|e| e.into()),
                     instantiate_fn: DebugInstantiate::Building,
                     deserialize_fn: deserialize_pipeline.map(|e| e.into()),
-                    input: Box::new(self.ir_node.into_inner()),
+                    input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                     metadata: to.new_node_metadata(Stream::<
                         (MemberId<L>, (K, V)),
                         Cluster<'a, L2>,

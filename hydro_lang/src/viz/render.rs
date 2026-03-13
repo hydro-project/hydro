@@ -905,6 +905,15 @@ impl HydroRoot {
                 None,
                 NodeLabel::static_label(format!("embedded_output({})", ident)),
             ),
+
+            HydroRoot::Null { input, .. } => build_sink_node(
+                structure,
+                seen_tees,
+                config,
+                input,
+                None,
+                NodeLabel::static_label("null".to_owned()),
+            ),
         }
     }
 }

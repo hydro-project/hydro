@@ -14,7 +14,7 @@ use super::keyed_stream::KeyedStream;
 use super::optional::Optional;
 use super::singleton::Singleton;
 use super::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
-use crate::compile::builder::CycleId;
+use crate::compile::builder::{CycleId, FlowState};
 use crate::compile::ir::{
     CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, KeyedSingletonBoundKind, SharedNode,
 };
@@ -124,8 +124,21 @@ impl KeyedSingletonBound for UnreachableBound {
 pub struct KeyedSingleton<K, V, Loc, Bound: KeyedSingletonBound> {
     pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,
+    pub(crate) flow_state: FlowState,
 
     _phantom: PhantomData<(K, V, Loc, Bound)>,
+}
+
+impl<K, V, L, B: KeyedSingletonBound> Drop for KeyedSingleton<K, V, L, B> {
+    fn drop(&mut self) {
+        let ir_node = self.ir_node.replace(HydroNode::Placeholder);
+        if !matches!(ir_node, HydroNode::Placeholder) && !ir_node.is_shared_with_others() {
+            self.flow_state.borrow_mut().try_push_root(HydroRoot::Null {
+                input: Box::new(ir_node),
+                op_metadata: HydroIrOpMetadata::new(),
+            });
+        }
+    }
 }
 
 impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: KeyedSingletonBound> Clone
@@ -143,6 +156,7 @@ impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: KeyedSingletonBound> Clon
         if let HydroNode::Tee { inner, metadata } = self.ir_node.borrow().deref() {
             KeyedSingleton {
                 location: self.location.clone(),
+                flow_state: self.flow_state.clone(),
                 ir_node: HydroNode::Tee {
                     inner: SharedNode(inner.0.clone()),
                     metadata: metadata.clone(),
@@ -165,6 +179,7 @@ where
 
     fn create_source(cycle_id: CycleId, location: L) -> Self {
         KeyedSingleton {
+            flow_state: location.flow_state().clone(),
             location: location.clone(),
             ir_node: RefCell::new(HydroNode::CycleSource {
                 cycle_id,
@@ -217,7 +232,7 @@ where
             .borrow_mut()
             .push_root(HydroRoot::CycleSink {
                 cycle_id,
-                input: Box::new(self.ir_node.into_inner()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }
@@ -238,7 +253,7 @@ where
             .borrow_mut()
             .push_root(HydroRoot::CycleSink {
                 cycle_id,
-                input: Box::new(self.ir_node.into_inner()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }
@@ -249,8 +264,10 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
         debug_assert_eq!(ir_node.metadata().location_id, Location::id(&location));
         debug_assert_eq!(ir_node.metadata().collection_kind, Self::collection_kind());
 
+        let flow_state = location.flow_state().clone();
         KeyedSingleton {
             location,
+            flow_state,
             ir_node: RefCell::new(ir_node),
             _phantom: PhantomData,
         }
@@ -343,7 +360,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             self.location.clone(),
             HydroNode::Map {
                 f: map_f,
-                input: Box::new(self.ir_node.into_inner()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
                     .new_node_metadata(KeyedSingleton::<K, U, L, B>::collection_kind()),
@@ -404,7 +421,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             self.location.clone(),
             HydroNode::Map {
                 f: map_f,
-                input: Box::new(self.ir_node.into_inner()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
                     .new_node_metadata(KeyedSingleton::<K, U, L, B>::collection_kind()),
@@ -442,8 +459,9 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     pub fn key_count(self) -> Singleton<usize, L, B::UnderlyingBound> {
         if B::ValueBound::BOUNDED {
             let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
-                location: self.location,
-                ir_node: self.ir_node,
+                location: self.location.clone(),
+                flow_state: self.flow_state.clone(),
+                ir_node: RefCell::new(self.ir_node.replace(HydroNode::Placeholder)),
                 _phantom: PhantomData,
             };
 
@@ -452,15 +470,19 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             && let Some(tick) = self.location.try_tick()
         {
             let me: KeyedSingleton<K, V, L, B::WithUnboundedValue> = KeyedSingleton {
-                location: self.location,
-                ir_node: self.ir_node,
+                location: self.location.clone(),
+                flow_state: self.flow_state.clone(),
+                ir_node: RefCell::new(self.ir_node.replace(HydroNode::Placeholder)),
                 _phantom: PhantomData,
             };
 
             let out =
                 key_count_inside_tick(me.snapshot(&tick, nondet!(/** eventually stabilizes */)))
                     .latest();
-            Singleton::new(out.location, out.ir_node.into_inner())
+            Singleton::new(
+                out.location.clone(),
+                out.ir_node.replace(HydroNode::Placeholder),
+            )
         } else {
             panic!("Unbounded KeyedSingleton inside a tick");
         }
@@ -497,8 +519,9 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     {
         if B::ValueBound::BOUNDED {
             let me: KeyedSingleton<K, V, L, B::WithBoundedValue> = KeyedSingleton {
-                location: self.location,
-                ir_node: self.ir_node,
+                location: self.location.clone(),
+                flow_state: self.flow_state.clone(),
+                ir_node: RefCell::new(self.ir_node.replace(HydroNode::Placeholder)),
                 _phantom: PhantomData,
             };
 
@@ -517,8 +540,9 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             && let Some(tick) = self.location.try_tick()
         {
             let me: KeyedSingleton<K, V, L, B::WithUnboundedValue> = KeyedSingleton {
-                location: self.location,
-                ir_node: self.ir_node,
+                location: self.location.clone(),
+                flow_state: self.flow_state.clone(),
+                ir_node: RefCell::new(self.ir_node.replace(HydroNode::Placeholder)),
                 _phantom: PhantomData,
             };
 
@@ -526,7 +550,10 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                 me.snapshot(&tick, nondet!(/** eventually stabilizes */)),
             )
             .latest();
-            Singleton::new(out.location, out.ir_node.into_inner())
+            Singleton::new(
+                out.location.clone(),
+                out.ir_node.replace(HydroNode::Placeholder),
+            )
         } else {
             panic!("Unbounded KeyedSingleton inside a tick");
         }
@@ -549,7 +576,10 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     where
         B: IsBounded,
     {
-        KeyedSingleton::new(self.location, self.ir_node.into_inner())
+        KeyedSingleton::new(
+            self.location.clone(),
+            self.ir_node.replace(HydroNode::Placeholder),
+        )
     }
 
     /// Gets the value associated with a specific key from the keyed singleton.
@@ -688,7 +718,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
         KeyedSingleton::new(
             result_stream.location.clone(),
             HydroNode::Cast {
-                inner: Box::new(result_stream.ir_node.into_inner()),
+                inner: Box::new(result_stream.ir_node.replace(HydroNode::Placeholder)),
                 metadata: result_stream.location.new_node_metadata(KeyedSingleton::<
                     K,
                     (V, V2),
@@ -756,7 +786,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
         KeyedSingleton::new(
             result_stream.location.clone(),
             HydroNode::Cast {
-                inner: Box::new(result_stream.ir_node.into_inner()),
+                inner: Box::new(result_stream.ir_node.replace(HydroNode::Placeholder)),
                 metadata: result_stream.location.new_node_metadata(KeyedSingleton::<
                     K,
                     (V, Option<V2>),
@@ -896,7 +926,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
             self.location.clone(),
             HydroNode::Map {
                 f: map_f,
-                input: Box::new(self.ir_node.into_inner()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self.location.new_node_metadata(Stream::<
                     V,
                     L,
@@ -982,8 +1012,8 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
         KeyedSingleton::new(
             self.location.clone(),
             HydroNode::AntiJoin {
-                pos: Box::new(self.ir_node.into_inner()),
-                neg: Box::new(other.ir_node.into_inner()),
+                pos: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                neg: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self.location.new_node_metadata(Self::collection_kind()),
             },
         )
@@ -1031,7 +1061,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
             self.location.clone(),
             HydroNode::Inspect {
                 f: inspect_f,
-                input: Box::new(self.ir_node.into_inner()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self.location.new_node_metadata(Self::collection_kind()),
             },
         )
@@ -1073,7 +1103,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
             self.location.clone(),
             HydroNode::Inspect {
                 f: inspect_f,
-                input: Box::new(self.ir_node.into_inner()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self.location.new_node_metadata(Self::collection_kind()),
             },
         )
@@ -1163,7 +1193,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
         KeyedStream::new(
             self.location.clone(),
             HydroNode::Cast {
-                inner: Box::new(self.ir_node.into_inner()),
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self.location.new_node_metadata(KeyedStream::<
                     K,
                     V,
@@ -1194,7 +1224,7 @@ where
         KeyedSingleton::new(
             out_location.clone(),
             HydroNode::BeginAtomic {
-                inner: Box::new(self.ir_node.into_inner()),
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: out_location
                     .new_node_metadata(KeyedSingleton::<K, V, Atomic<L>, B>::collection_kind()),
             },
@@ -1212,7 +1242,7 @@ where
         KeyedSingleton::new(
             self.location.tick.l.clone(),
             HydroNode::EndAtomic {
-                inner: Box::new(self.ir_node.into_inner()),
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
                     .tick
@@ -1268,7 +1298,7 @@ impl<'a, K, V, L: Location<'a>> KeyedSingleton<K, V, Tick<L>, Bounded> {
         KeyedSingleton::new(
             self.location.clone(),
             HydroNode::DeferTick {
-                input: Box::new(self.ir_node.into_inner()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
                     .new_node_metadata(KeyedSingleton::<K, V, Tick<L>, Bounded>::collection_kind()),
@@ -1296,7 +1326,7 @@ where
         KeyedSingleton::new(
             tick.clone(),
             HydroNode::Batch {
-                inner: Box::new(self.ir_node.into_inner()),
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: tick
                     .new_node_metadata(KeyedSingleton::<K, V, Tick<L>, Bounded>::collection_kind()),
             },
@@ -1318,7 +1348,7 @@ where
         KeyedSingleton::new(
             self.location.clone().tick,
             HydroNode::Batch {
-                inner: Box::new(self.ir_node.into_inner()),
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self.location.tick.new_node_metadata(KeyedSingleton::<
                     K,
                     V,
@@ -1385,7 +1415,7 @@ where
             self.location.clone(),
             HydroNode::Filter {
                 f: filter_f,
-                input: Box::new(self.ir_node.into_inner()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
                     .new_node_metadata(KeyedSingleton::<K, V, L, B>::collection_kind()),
@@ -1443,7 +1473,7 @@ where
             self.location.clone(),
             HydroNode::FilterMap {
                 f: filter_map_f,
-                input: Box::new(self.ir_node.into_inner()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
                     .new_node_metadata(KeyedSingleton::<K, U, L, B>::collection_kind()),
@@ -1486,7 +1516,7 @@ where
         KeyedSingleton::new(
             self.location.clone().tick,
             HydroNode::Batch {
-                inner: Box::new(self.ir_node.into_inner()),
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self.location.tick.new_node_metadata(KeyedSingleton::<
                     K,
                     V,

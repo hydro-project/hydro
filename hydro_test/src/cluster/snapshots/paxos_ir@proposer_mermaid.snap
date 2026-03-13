@@ -136,6 +136,7 @@ linkStyle default stroke:#aaa
 127v1["<div style=text-align:center>(127v1)</div> <code><br>map({<br>    |_u| ()<br>})</code>"]:::otherClass
 128v1["<div style=text-align:center>(128v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
 129v1["<div style=text-align:center>(129v1)</div> <code><br>map({<br>    |(d, _signal)| d<br>})</code>"]:::otherClass
+130v1["<div style=text-align:center>(130v1)</div> <code><br>tee()</code>"]:::otherClass
 131v1["<div style=text-align:center>(131v1)</div> <code><br>map({<br>    |_u| ()<br>})</code>"]:::otherClass
 132v1["<div style=text-align:center>(132v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
 133v1["<div style=text-align:center>(133v1)</div> <code><br>map({<br>    |(d, _signal)| d<br>})</code>"]:::otherClass
@@ -237,25 +238,29 @@ linkStyle default stroke:#aaa
 229v1["<div style=text-align:center>(229v1)</div> <code><br>filter_map({<br>    move |(key, res)| match res {<br>        Ok(_) =&gt; None,<br>        Err(e) =&gt; Some((key, e)),<br>    }<br>})</code>"]:::otherClass
 230v1["<div style=text-align:center>(230v1)</div> <code><br>map({<br>    |(_, ballot)| ballot<br>})</code>"]:::otherClass
 231v1["<div style=text-align:center>(231v1)</div> <code><br>identity::&lt;hydro_test::__staged::cluster::paxos::Ballot&gt;()</code>"]:::otherClass
-232v1["<div style=text-align:center>(232v1)</div> <code><br>source_stream(DUMMY)</code>"]:::otherClass
-233v1["<div style=text-align:center>(233v1)</div> <code><br>map({<br>    |(k, v)| (MemberId::from_tagless(k), v)<br>})</code>"]:::otherClass
-234v1["<div style=text-align:center>(234v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        || false<br>    },<br>    {<br>        |present, event| {<br>            match event {<br>                MembershipEvent::Joined =&gt; *present = true,<br>                MembershipEvent::Left =&gt; *present = false,<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
-235v1["<div style=text-align:center>(235v1)</div> <code><br>filter({<br>    let f__free = {<br>        |b| *b<br>    };<br>    {<br>        let orig = f__free;<br>        move |t: &amp;(_, _)| orig(&amp;t.1)<br>    }<br>})</code>"]:::otherClass
-236v1["<div style=text-align:center>(236v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
-237v1["<div style=text-align:center>(237v1)</div> <code><br>join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-238v1["<div style=text-align:center>(238v1)</div> <code><br>map({<br>    |(key, (meta, resp))| (key, (meta, resp))<br>})</code>"]:::otherClass
-239v1["<div style=text-align:center>(239v1)</div> <code><br>map({<br>    |((slot, _ballot), (value, _))| (slot, value)<br>})</code>"]:::otherClass
-240v1["<div style=text-align:center>(240v1)</div> <code><br>cross_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
-241v1["<div style=text-align:center>(241v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
-242v1["<div style=text-align:center>(242v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
-338v1["<div style=text-align:center>(338v1)</div> <code><br>identity()</code>"]:::otherClass
-340v1["<div style=text-align:center>(340v1)</div> <code><br>identity()</code>"]:::otherClass
-342v1["<div style=text-align:center>(342v1)</div> <code><br>identity()</code>"]:::otherClass
-344v1["<div style=text-align:center>(344v1)</div> <code><br>identity()</code>"]:::otherClass
-346v1["<div style=text-align:center>(346v1)</div> <code><br>identity()</code>"]:::otherClass
-348v1["<div style=text-align:center>(348v1)</div> <code><br>identity()</code>"]:::otherClass
-350v1["<div style=text-align:center>(350v1)</div> <code><br>identity()</code>"]:::otherClass
-352v1["<div style=text-align:center>(352v1)</div> <code><br>identity()</code>"]:::otherClass
+232v1["<div style=text-align:center>(232v1)</div> <code><br>map({<br>    |_u| ()<br>})</code>"]:::otherClass
+233v1["<div style=text-align:center>(233v1)</div> <code><br>cross_singleton()</code>"]:::otherClass
+234v1["<div style=text-align:center>(234v1)</div> <code><br>map({<br>    |(d, _signal)| d<br>})</code>"]:::otherClass
+235v1["<div style=text-align:center>(235v1)</div> <code><br>for_each(|_| {})</code>"]:::otherClass
+236v1["<div style=text-align:center>(236v1)</div> <code><br>source_stream(DUMMY)</code>"]:::otherClass
+237v1["<div style=text-align:center>(237v1)</div> <code><br>map({<br>    |(k, v)| (MemberId::from_tagless(k), v)<br>})</code>"]:::otherClass
+238v1["<div style=text-align:center>(238v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        || false<br>    },<br>    {<br>        |present, event| {<br>            match event {<br>                MembershipEvent::Joined =&gt; *present = true,<br>                MembershipEvent::Left =&gt; *present = false,<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
+239v1["<div style=text-align:center>(239v1)</div> <code><br>filter({<br>    let f__free = {<br>        |b| *b<br>    };<br>    {<br>        let orig = f__free;<br>        move |t: &amp;(_, _)| orig(&amp;t.1)<br>    }<br>})</code>"]:::otherClass
+240v1["<div style=text-align:center>(240v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
+241v1["<div style=text-align:center>(241v1)</div> <code><br>join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+242v1["<div style=text-align:center>(242v1)</div> <code><br>map({<br>    |(key, (meta, resp))| (key, (meta, resp))<br>})</code>"]:::otherClass
+243v1["<div style=text-align:center>(243v1)</div> <code><br>map({<br>    |((slot, _ballot), (value, _))| (slot, value)<br>})</code>"]:::otherClass
+244v1["<div style=text-align:center>(244v1)</div> <code><br>cross_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+245v1["<div style=text-align:center>(245v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
+246v1["<div style=text-align:center>(246v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
+345v1["<div style=text-align:center>(345v1)</div> <code><br>identity()</code>"]:::otherClass
+347v1["<div style=text-align:center>(347v1)</div> <code><br>identity()</code>"]:::otherClass
+349v1["<div style=text-align:center>(349v1)</div> <code><br>identity()</code>"]:::otherClass
+351v1["<div style=text-align:center>(351v1)</div> <code><br>identity()</code>"]:::otherClass
+353v1["<div style=text-align:center>(353v1)</div> <code><br>identity()</code>"]:::otherClass
+355v1["<div style=text-align:center>(355v1)</div> <code><br>identity()</code>"]:::otherClass
+357v1["<div style=text-align:center>(357v1)</div> <code><br>identity()</code>"]:::otherClass
+359v1["<div style=text-align:center>(359v1)</div> <code><br>identity()</code>"]:::otherClass
 1v1-->2v1
 114v1--x|0|3v1; linkStyle 1 stroke:red
 231v1-->|1|3v1
@@ -266,7 +271,7 @@ linkStyle default stroke:#aaa
 5v1--x|0|8v1; linkStyle 7 stroke:red
 7v1-->|1|8v1
 8v1-->9v1
-17v1-->338v1
+17v1-->345v1
 11v1-->12v1
 10v1--x|0|13v1; linkStyle 12 stroke:red
 12v1-->|1|13v1
@@ -300,7 +305,7 @@ linkStyle default stroke:#aaa
 39v1-->40v1
 40v1-->41v1
 41v1-->42v1
-85v1-->340v1
+85v1-->347v1
 44v1-->45v1
 45v1--x46v1; linkStyle 46 stroke:red
 46v1-->47v1
@@ -355,7 +360,7 @@ linkStyle default stroke:#aaa
 90v1-->91v1
 78v1-->|pos|92v1
 91v1--x|neg|92v1; linkStyle 98 stroke:red
-89v1-->342v1
+89v1-->349v1
 92v1-->|pos|94v1
 93v1--x|neg|94v1; linkStyle 101 stroke:red
 94v1-->95v1
@@ -384,7 +389,7 @@ linkStyle default stroke:#aaa
 116v1--x117v1; linkStyle 125 stroke:red
 117v1-->118v1
 118v1-->119v1
-110v1-->344v1
+110v1-->351v1
 120v1-->121v1
 121v1-->122v1
 123v1-->124v1
@@ -395,9 +400,10 @@ linkStyle default stroke:#aaa
 110v1-->|input|128v1
 127v1--x|single|128v1; linkStyle 137 stroke:red
 128v1-->129v1
-129v1-->131v1
+129v1-->130v1
+130v1-->131v1
 25v1-->|input|132v1
-131v1--x|single|132v1; linkStyle 141 stroke:red
+131v1--x|single|132v1; linkStyle 142 stroke:red
 132v1-->133v1
 119v1-->|0|134v1
 133v1-->|1|134v1
@@ -407,72 +413,72 @@ linkStyle default stroke:#aaa
 138v1-->139v1
 110v1-->140v1
 139v1-->|input|141v1
-140v1--x|single|141v1; linkStyle 151 stroke:red
+140v1--x|single|141v1; linkStyle 152 stroke:red
 141v1-->142v1
 142v1-->143v1
 101v1-->144v1
 144v1-->145v1
 145v1-->146v1
 146v1-->147v1
-147v1--x148v1; linkStyle 158 stroke:red
+147v1--x148v1; linkStyle 159 stroke:red
 148v1-->149v1
 149v1-->150v1
 150v1-->151v1
-151v1--x152v1; linkStyle 162 stroke:red
+151v1--x152v1; linkStyle 163 stroke:red
 152v1-->153v1
 153v1-->154v1
-167v1-->346v1
+167v1-->353v1
 156v1-->157v1
-155v1--x|0|158v1; linkStyle 167 stroke:red
+155v1--x|0|158v1; linkStyle 168 stroke:red
 157v1-->|1|158v1
-154v1--x|0|159v1; linkStyle 169 stroke:red
+154v1--x|0|159v1; linkStyle 170 stroke:red
 158v1-->|1|159v1
 159v1-->160v1
 143v1-->|input|161v1
-160v1--x|single|161v1; linkStyle 173 stroke:red
+160v1--x|single|161v1; linkStyle 174 stroke:red
 161v1-->162v1
 162v1-->163v1
-163v1--x164v1; linkStyle 176 stroke:red
+163v1--x164v1; linkStyle 177 stroke:red
 164v1-->|input|165v1
-160v1--x|single|165v1; linkStyle 178 stroke:red
+160v1--x|single|165v1; linkStyle 179 stroke:red
 165v1-->166v1
 166v1-->167v1
-214v1-->348v1
+214v1-->355v1
 169v1-->170v1
-170v1--x171v1; linkStyle 183 stroke:red
+170v1--x171v1; linkStyle 184 stroke:red
 171v1-->172v1
 172v1-->173v1
 163v1-->|input|174v1
-25v1--x|single|174v1; linkStyle 187 stroke:red
+25v1--x|single|174v1; linkStyle 188 stroke:red
 174v1-->175v1
 150v1-->|input|176v1
-25v1--x|single|176v1; linkStyle 190 stroke:red
+25v1--x|single|176v1; linkStyle 191 stroke:red
 145v1-->177v1
-177v1--x178v1; linkStyle 192 stroke:red
+177v1--x178v1; linkStyle 193 stroke:red
 178v1-->179v1
 180v1-->181v1
-179v1--x|0|182v1; linkStyle 195 stroke:red
+179v1--x|0|182v1; linkStyle 196 stroke:red
 181v1-->|1|182v1
 182v1-->183v1
 176v1-->|input|184v1
-183v1--x|single|184v1; linkStyle 199 stroke:red
+183v1--x|single|184v1; linkStyle 200 stroke:red
 184v1-->185v1
 153v1-->|input|186v1
-183v1--x|single|186v1; linkStyle 202 stroke:red
+183v1--x|single|186v1; linkStyle 203 stroke:red
 186v1-->187v1
 150v1-->188v1
 187v1-->|pos|189v1
-188v1--x|neg|189v1; linkStyle 206 stroke:red
+188v1--x|neg|189v1; linkStyle 207 stroke:red
 189v1-->|input|190v1
-25v1--x|single|190v1; linkStyle 208 stroke:red
+25v1--x|single|190v1; linkStyle 209 stroke:red
 190v1-->191v1
-185v1--x|0|192v1; linkStyle 210 stroke:red
+185v1--x|0|192v1; linkStyle 211 stroke:red
 191v1-->|1|192v1
-175v1--x|0|193v1; linkStyle 212 stroke:red
+175v1--x|0|193v1; linkStyle 213 stroke:red
 192v1-->|1|193v1
 110v1-->194v1
 193v1-->|input|195v1
-194v1--x|single|195v1; linkStyle 216 stroke:red
+194v1--x|single|195v1; linkStyle 217 stroke:red
 195v1-->196v1
 196v1-->197v1
 197v1-->198v1
@@ -483,58 +489,63 @@ linkStyle default stroke:#aaa
 202v1-->203v1
 203v1-->204v1
 204v1-->205v1
-168v1--x|0|206v1; linkStyle 227 stroke:red
+168v1--x|0|206v1; linkStyle 228 stroke:red
 205v1-->|1|206v1
 206v1-->207v1
-207v1--x208v1; linkStyle 230 stroke:red
+207v1--x208v1; linkStyle 231 stroke:red
 208v1-->209v1
 209v1-->210v1
 210v1-->211v1
 211v1-->212v1
 207v1-->|pos|213v1
-212v1--x|neg|213v1; linkStyle 236 stroke:red
+212v1--x|neg|213v1; linkStyle 237 stroke:red
 213v1-->214v1
 209v1-->215v1
 215v1-->216v1
 216v1-->|pos|217v1
-212v1--x|neg|217v1; linkStyle 241 stroke:red
+212v1--x|neg|217v1; linkStyle 242 stroke:red
 217v1-->218v1
-228v1-->350v1
-219v1--x|0|220v1; linkStyle 244 stroke:red
+228v1-->357v1
+219v1--x|0|220v1; linkStyle 245 stroke:red
 197v1-->|1|220v1
 220v1-->221v1
-218v1-->352v1
+218v1-->359v1
 216v1-->|pos|223v1
-222v1--x|neg|223v1; linkStyle 249 stroke:red
+222v1--x|neg|223v1; linkStyle 250 stroke:red
 223v1-->224v1
 224v1-->225v1
 225v1-->226v1
 221v1-->|pos|227v1
-226v1--x|neg|227v1; linkStyle 254 stroke:red
+226v1--x|neg|227v1; linkStyle 255 stroke:red
 227v1-->228v1
 205v1-->229v1
 229v1-->230v1
 230v1-->231v1
-232v1-->233v1
-233v1--x234v1; linkStyle 260 stroke:red
+130v1-->232v1
+25v1-->|input|233v1
+232v1--x|single|233v1; linkStyle 262 stroke:red
+233v1-->234v1
 234v1-->235v1
-235v1-->236v1
-221v1-->|0|237v1
-225v1-->|1|237v1
-237v1-->238v1
+236v1-->237v1
+237v1--x238v1; linkStyle 266 stroke:red
 238v1-->239v1
-236v1-->|0|240v1
-239v1-->|1|240v1
+239v1-->240v1
+221v1-->|0|241v1
+225v1-->|1|241v1
 241v1-->242v1
-240v1-->241v1
-338v1--o10v1; linkStyle 271 stroke:red
-340v1--o43v1; linkStyle 272 stroke:red
-342v1--o93v1; linkStyle 273 stroke:red
-344v1--o120v1; linkStyle 274 stroke:red
-346v1--o155v1; linkStyle 275 stroke:red
-348v1--o168v1; linkStyle 276 stroke:red
-350v1--o219v1; linkStyle 277 stroke:red
-352v1--o222v1; linkStyle 278 stroke:red
+242v1-->243v1
+240v1-->|0|244v1
+243v1-->|1|244v1
+245v1-->246v1
+244v1-->245v1
+345v1--o10v1; linkStyle 277 stroke:red
+347v1--o43v1; linkStyle 278 stroke:red
+349v1--o93v1; linkStyle 279 stroke:red
+351v1--o120v1; linkStyle 280 stroke:red
+353v1--o155v1; linkStyle 281 stroke:red
+355v1--o168v1; linkStyle 282 stroke:red
+357v1--o219v1; linkStyle 283 stroke:red
+359v1--o222v1; linkStyle 284 stroke:red
 2v1
 36v1
 37v1
@@ -544,16 +555,17 @@ linkStyle default stroke:#aaa
 136v1
 200v1
 201v1
-241v1
-242v1
-338v1
-340v1
-342v1
-344v1
-346v1
-348v1
-350v1
-352v1
+235v1
+245v1
+246v1
+345v1
+347v1
+349v1
+351v1
+353v1
+355v1
+357v1
+359v1
 subgraph var_cycle_10 ["var <tt>cycle_10</tt>"]
     style var_cycle_10 fill:transparent
     89v1
@@ -904,6 +916,10 @@ end
 subgraph var_stream_276 ["var <tt>stream_276</tt>"]
     style var_stream_276 fill:transparent
     129v1
+end
+subgraph var_stream_277 ["var <tt>stream_277</tt>"]
+    style var_stream_277 fill:transparent
+    130v1
 end
 subgraph var_stream_278 ["var <tt>stream_278</tt>"]
     style var_stream_278 fill:transparent
@@ -1310,45 +1326,57 @@ subgraph var_stream_515 ["var <tt>stream_515</tt>"]
     style var_stream_515 fill:transparent
     230v1
 end
-subgraph var_stream_516 ["var <tt>stream_516</tt>"]
-    style var_stream_516 fill:transparent
+subgraph var_stream_518 ["var <tt>stream_518</tt>"]
+    style var_stream_518 fill:transparent
     232v1
-end
-subgraph var_stream_517 ["var <tt>stream_517</tt>"]
-    style var_stream_517 fill:transparent
-    233v1
 end
 subgraph var_stream_519 ["var <tt>stream_519</tt>"]
     style var_stream_519 fill:transparent
-    234v1
+    233v1
 end
-subgraph var_stream_521 ["var <tt>stream_521</tt>"]
-    style var_stream_521 fill:transparent
-    235v1
+subgraph var_stream_520 ["var <tt>stream_520</tt>"]
+    style var_stream_520 fill:transparent
+    234v1
 end
 subgraph var_stream_524 ["var <tt>stream_524</tt>"]
     style var_stream_524 fill:transparent
     236v1
 end
-subgraph var_stream_528 ["var <tt>stream_528</tt>"]
-    style var_stream_528 fill:transparent
+subgraph var_stream_525 ["var <tt>stream_525</tt>"]
+    style var_stream_525 fill:transparent
     237v1
+end
+subgraph var_stream_527 ["var <tt>stream_527</tt>"]
+    style var_stream_527 fill:transparent
+    238v1
 end
 subgraph var_stream_529 ["var <tt>stream_529</tt>"]
     style var_stream_529 fill:transparent
-    238v1
+    239v1
 end
 subgraph var_stream_53 ["var <tt>stream_53</tt>"]
     style var_stream_53 fill:transparent
     20v1
 end
-subgraph var_stream_531 ["var <tt>stream_531</tt>"]
-    style var_stream_531 fill:transparent
-    239v1
-end
-subgraph var_stream_533 ["var <tt>stream_533</tt>"]
-    style var_stream_533 fill:transparent
+subgraph var_stream_532 ["var <tt>stream_532</tt>"]
+    style var_stream_532 fill:transparent
     240v1
+end
+subgraph var_stream_536 ["var <tt>stream_536</tt>"]
+    style var_stream_536 fill:transparent
+    241v1
+end
+subgraph var_stream_537 ["var <tt>stream_537</tt>"]
+    style var_stream_537 fill:transparent
+    242v1
+end
+subgraph var_stream_539 ["var <tt>stream_539</tt>"]
+    style var_stream_539 fill:transparent
+    243v1
+end
+subgraph var_stream_541 ["var <tt>stream_541</tt>"]
+    style var_stream_541 fill:transparent
+    244v1
 end
 subgraph var_stream_55 ["var <tt>stream_55</tt>"]
     style var_stream_55 fill:transparent

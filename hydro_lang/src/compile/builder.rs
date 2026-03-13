@@ -74,6 +74,12 @@ impl FlowStateInner {
             .expect("Attempted to add a root to a flow that has already been finalized. No roots can be added after the flow has been compiled.")
             .push(root);
     }
+
+    pub fn try_push_root(&mut self, root: HydroRoot) {
+        if let Some(roots) = self.roots.as_mut() {
+            roots.push(root);
+        }
+    }
 }
 
 pub struct FlowBuilder<'a> {

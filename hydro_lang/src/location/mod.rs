@@ -626,7 +626,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             unpaired: false,
             serialize_fn: None,
             instantiate_fn: DebugInstantiate::Building,
-            input: Box::new(to_sink.ir_node.into_inner()),
+            input: Box::new(to_sink.ir_node.replace(HydroNode::Placeholder)),
             op_metadata: HydroIrOpMetadata::new(),
         });
 
@@ -710,7 +710,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             unpaired: false,
             serialize_fn: Some(ser_fn.into()),
             instantiate_fn: DebugInstantiate::Building,
-            input: Box::new(to_sink.ir_node.into_inner()),
+            input: Box::new(to_sink.ir_node.replace(HydroNode::Placeholder)),
             op_metadata: HydroIrOpMetadata::new(),
         });
 
@@ -792,7 +792,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             unpaired: false,
             serialize_fn: None,
             instantiate_fn: DebugInstantiate::Building,
-            input: Box::new(to_sink.entries().ir_node.into_inner()),
+            input: Box::new(to_sink.entries().ir_node.replace(HydroNode::Placeholder)),
             op_metadata: HydroIrOpMetadata::new(),
         });
 
@@ -922,7 +922,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             unpaired: false,
             serialize_fn: Some(ser_fn.into()),
             instantiate_fn: DebugInstantiate::Building,
-            input: Box::new(to_sink.entries().ir_node.into_inner()),
+            input: Box::new(to_sink.entries().ir_node.replace(HydroNode::Placeholder)),
             op_metadata: HydroIrOpMetadata::new(),
         });
 
