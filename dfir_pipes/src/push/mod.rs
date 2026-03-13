@@ -148,6 +148,18 @@ where
     }
 }
 
+/// Evaluates a [`PushStep`] expression and returns [`PushStep::Pending`] if it is pending.
+/// Analogous to [`core::task::ready!`] but for [`PushStep`].
+macro_rules! ready {
+    ($e:expr $(,)?) => {
+        match $e {
+            PushStep::Done => (),
+            PushStep::Pending(_) => return PushStep::pending(),
+        }
+    };
+}
+use ready;
+
 /// Evaluates both [`PushStep`] expressions and returns [`PushStep::Pending`] if either is pending.
 /// Both expressions are always evaluated so that both sides can do work and/or register wakers.
 macro_rules! ready_both {

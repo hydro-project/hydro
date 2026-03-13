@@ -9,7 +9,7 @@ use futures_core::stream::{FusedStream, Stream};
 use pin_project_lite::pin_project;
 
 use crate::Yes;
-use crate::push::{Push, PushStep};
+use crate::push::{Push, PushStep, ready};
 
 pin_project! {
     /// Push operator that receives futures, queues them, and pushes their resolved outputs downstream.
@@ -54,14 +54,10 @@ where
 
         loop {
             // Ensure the following push is ready.
-            match this
+            ready!(this
                 .push
                 .as_mut()
-                .poll_ready(crate::Context::from_task(ctx))
-            {
-                PushStep::Done => {}
-                PushStep::Pending(_) => return PushStep::Pending(Yes),
-            }
+                .poll_ready(crate::Context::from_task(ctx)));
 
             let poll_result = if let Some(w) = this.subgraph_waker.as_ref() {
                 Stream::poll_next(
@@ -131,10 +127,7 @@ where
 
     fn poll_flush(mut self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         // First drain any ready items from the queue.
-        match self.as_mut().empty_ready(ctx) {
-            PushStep::Done => {}
-            PushStep::Pending(_) => return PushStep::pending(),
-        }
+        ready!(self.as_mut().empty_ready(ctx));
         // Then flush the downstream push.
         let this = self.project();
         this.push

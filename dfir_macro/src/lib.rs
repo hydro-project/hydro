@@ -405,7 +405,7 @@ pub fn derive_demux_enum(item: proc_macro::TokenStream) -> proc_macro::TokenStre
                 )*
                 #root::dfir_pipes::push::PushStep::Done
             }
-        })
+        }).unwrap_or_else(|| quote! { #root::dfir_pipes::push::PushStep::Done })
     };
     let push_poll_ready_body = (push_poll_unwrap_context)(format_ident!("poll_ready"));
     let push_poll_flush_body = (push_poll_unwrap_context)(format_ident!("poll_flush"));

@@ -4,7 +4,7 @@ use core::pin::Pin;
 
 use pin_project_lite::pin_project;
 
-use crate::push::{Push, PushStep};
+use crate::push::{Push, PushStep, ready};
 
 pin_project! {
     /// Special push operator for the `persist` operator.
@@ -42,10 +42,7 @@ impl<Psh, Buf> Persist<Psh, Buf> {
     {
         let mut this = self.project();
         while let Some(item) = this.buf.borrow().get(*this.replay_idx) {
-            match this.push.as_mut().poll_ready(ctx) {
-                PushStep::Done => {}
-                step @ PushStep::Pending(_) => return step,
-            }
+            ready!(this.push.as_mut().poll_ready(ctx));
             this.push.as_mut().start_send(item.clone(), ());
             *this.replay_idx += 1;
         }
@@ -66,10 +63,7 @@ where
 
     fn poll_ready(mut self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         // Drain any pending replay items first.
-        match self.as_mut().empty_replay(ctx) {
-            PushStep::Done => {}
-            PushStep::Pending(_) => return PushStep::pending(),
-        }
+        ready!(self.as_mut().empty_replay(ctx));
         // Then ready the downstream push.
         self.project().push.poll_ready(ctx)
     }
@@ -88,10 +82,7 @@ where
 
     fn poll_flush(mut self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         // Ensure all replayed items are sent before flushing the underlying sink.
-        match self.as_mut().empty_replay(ctx) {
-            PushStep::Done => {}
-            step @ PushStep::Pending(_) => return step,
-        }
+        ready!(self.as_mut().empty_replay(ctx));
         // Then flush the downstream push.
         self.project().push.poll_flush(ctx)
     }
