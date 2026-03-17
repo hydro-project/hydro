@@ -705,6 +705,10 @@ pub enum HydroRoot {
         input: Box<HydroNode>,
         op_metadata: HydroIrOpMetadata,
     },
+    Null {
+        input: Box<HydroNode>,
+        op_metadata: HydroIrOpMetadata,
+    },
 }
 
 impl HydroRoot {
@@ -713,7 +717,7 @@ impl HydroRoot {
     pub fn compile_network<'a, D>(
         &mut self,
         extra_stmts: &mut SparseSecondaryMap<LocationKey, Vec<syn::Stmt>>,
-        seen_tees: &mut SeenTees,
+        seen_tees: &mut SeenSharedNodes,
         seen_cluster_members: &mut HashSet<(LocationId, LocationId)>,
         processes: &SparseSecondaryMap<LocationKey, D::Process>,
         clusters: &SparseSecondaryMap<LocationKey, D::Cluster>,
@@ -986,7 +990,7 @@ impl HydroRoot {
         );
     }
 
-    pub fn connect_network(&mut self, seen_tees: &mut SeenTees) {
+    pub fn connect_network(&mut self, seen_tees: &mut SeenSharedNodes) {
         self.transform_bottom_up(
             &mut |l| {
                 if let HydroRoot::SendExternal { instantiate_fn, .. } = l {
@@ -1021,7 +1025,7 @@ impl HydroRoot {
         &mut self,
         transform_root: &mut impl FnMut(&mut HydroRoot),
         transform_node: &mut impl FnMut(&mut HydroNode),
-        seen_tees: &mut SeenTees,
+        seen_tees: &mut SeenSharedNodes,
         check_well_formed: bool,
     ) {
         self.transform_children(
@@ -1034,21 +1038,22 @@ impl HydroRoot {
 
     pub fn transform_children(
         &mut self,
-        mut transform: impl FnMut(&mut HydroNode, &mut SeenTees),
-        seen_tees: &mut SeenTees,
+        mut transform: impl FnMut(&mut HydroNode, &mut SeenSharedNodes),
+        seen_tees: &mut SeenSharedNodes,
     ) {
         match self {
             HydroRoot::ForEach { input, .. }
             | HydroRoot::SendExternal { input, .. }
             | HydroRoot::DestSink { input, .. }
             | HydroRoot::CycleSink { input, .. }
-            | HydroRoot::EmbeddedOutput { input, .. } => {
+            | HydroRoot::EmbeddedOutput { input, .. }
+            | HydroRoot::Null { input, .. } => {
                 transform(input, seen_tees);
             }
         }
     }
 
-    pub fn deep_clone(&self, seen_tees: &mut SeenTees) -> HydroRoot {
+    pub fn deep_clone(&self, seen_tees: &mut SeenSharedNodes) -> HydroRoot {
         match self {
             HydroRoot::ForEach {
                 f,
@@ -1105,6 +1110,10 @@ impl HydroRoot {
                 input: Box::new(input.deep_clone(seen_tees)),
                 op_metadata: op_metadata.clone(),
             },
+            HydroRoot::Null { input, op_metadata } => HydroRoot::Null {
+                input: Box::new(input.deep_clone(seen_tees)),
+                op_metadata: op_metadata.clone(),
+            },
         }
     }
 
@@ -1112,8 +1121,8 @@ impl HydroRoot {
     pub fn emit(
         &mut self,
         graph_builders: &mut dyn DfirBuilder,
-        seen_tees: &mut SeenTees,
-        built_tees: &mut HashMap<*const RefCell<HydroNode>, syn::Ident>,
+        seen_tees: &mut SeenSharedNodes,
+        built_tees: &mut HashMap<*const RefCell<HydroNode>, Vec<syn::Ident>>,
         next_stmt_id: &mut usize,
     ) {
         self.emit_core(
@@ -1134,8 +1143,8 @@ impl HydroRoot {
             impl FnMut(&mut HydroRoot, &mut usize),
             impl FnMut(&mut HydroNode, &mut usize),
         >,
-        seen_tees: &mut SeenTees,
-        built_tees: &mut HashMap<*const RefCell<HydroNode>, syn::Ident>,
+        seen_tees: &mut SeenSharedNodes,
+        built_tees: &mut HashMap<*const RefCell<HydroNode>, Vec<syn::Ident>>,
         next_stmt_id: &mut usize,
     ) {
         match self {
@@ -1292,6 +1301,30 @@ impl HydroRoot {
 
                 *next_stmt_id += 1;
             }
+
+            HydroRoot::Null { input, .. } => {
+                let input_ident =
+                    input.emit_core(builders_or_callback, seen_tees, built_tees, next_stmt_id);
+
+                match builders_or_callback {
+                    BuildersOrCallback::Builders(graph_builders) => {
+                        graph_builders
+                            .get_dfir_mut(&input.metadata().location_id)
+                            .add_dfir(
+                                parse_quote! {
+                                    #input_ident -> for_each(|_| {});
+                                },
+                                None,
+                                Some(&next_stmt_id.to_string()),
+                            );
+                    }
+                    BuildersOrCallback::Callback(leaf_callback, _) => {
+                        leaf_callback(self, next_stmt_id);
+                    }
+                }
+
+                *next_stmt_id += 1;
+            }
         }
     }
 
@@ -1301,7 +1334,8 @@ impl HydroRoot {
             | HydroRoot::SendExternal { op_metadata, .. }
             | HydroRoot::DestSink { op_metadata, .. }
             | HydroRoot::CycleSink { op_metadata, .. }
-            | HydroRoot::EmbeddedOutput { op_metadata, .. } => op_metadata,
+            | HydroRoot::EmbeddedOutput { op_metadata, .. }
+            | HydroRoot::Null { op_metadata, .. } => op_metadata,
         }
     }
 
@@ -1311,7 +1345,8 @@ impl HydroRoot {
             | HydroRoot::SendExternal { op_metadata, .. }
             | HydroRoot::DestSink { op_metadata, .. }
             | HydroRoot::CycleSink { op_metadata, .. }
-            | HydroRoot::EmbeddedOutput { op_metadata, .. } => op_metadata,
+            | HydroRoot::EmbeddedOutput { op_metadata, .. }
+            | HydroRoot::Null { op_metadata, .. } => op_metadata,
         }
     }
 
@@ -1321,7 +1356,8 @@ impl HydroRoot {
             | HydroRoot::SendExternal { input, .. }
             | HydroRoot::DestSink { input, .. }
             | HydroRoot::CycleSink { input, .. }
-            | HydroRoot::EmbeddedOutput { input, .. } => input,
+            | HydroRoot::EmbeddedOutput { input, .. }
+            | HydroRoot::Null { input, .. } => input,
         }
     }
 
@@ -1338,6 +1374,7 @@ impl HydroRoot {
             HydroRoot::EmbeddedOutput { ident, .. } => {
                 format!("EmbeddedOutput({})", ident)
             }
+            HydroRoot::Null { .. } => "Null".to_owned(),
         }
     }
 
@@ -1348,7 +1385,8 @@ impl HydroRoot {
             }
             HydroRoot::SendExternal { .. }
             | HydroRoot::CycleSink { .. }
-            | HydroRoot::EmbeddedOutput { .. } => {}
+            | HydroRoot::EmbeddedOutput { .. }
+            | HydroRoot::Null { .. } => {}
         }
     }
 }
@@ -1434,15 +1472,15 @@ pub fn dbg_dedup_tee<T>(f: impl FnOnce() -> T) -> T {
     })
 }
 
-pub struct TeeNode(pub Rc<RefCell<HydroNode>>);
+pub struct SharedNode(pub Rc<RefCell<HydroNode>>);
 
-impl TeeNode {
+impl SharedNode {
     pub fn as_ptr(&self) -> *const RefCell<HydroNode> {
         Rc::as_ptr(&self.0)
     }
 }
 
-impl Debug for TeeNode {
+impl Debug for SharedNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         PRINTED_TEES.with(|printed_tees| {
             let mut printed_tees_mut_borrow = printed_tees.borrow_mut();
@@ -1453,7 +1491,7 @@ impl Debug for TeeNode {
                     .1
                     .get(&(self.0.as_ref() as *const RefCell<HydroNode>))
                 {
-                    write!(f, "<tee {}>", existing)
+                    write!(f, "<shared {}>", existing)
                 } else {
                     let next_id = printed_tees_mut.0;
                     printed_tees_mut.0 += 1;
@@ -1461,19 +1499,19 @@ impl Debug for TeeNode {
                         .1
                         .insert(self.0.as_ref() as *const RefCell<HydroNode>, next_id);
                     drop(printed_tees_mut_borrow);
-                    write!(f, "<tee {}>: ", next_id)?;
+                    write!(f, "<shared {}>: ", next_id)?;
                     Debug::fmt(&self.0.borrow(), f)
                 }
             } else {
                 drop(printed_tees_mut_borrow);
-                write!(f, "<tee>: ")?;
+                write!(f, "<shared>: ")?;
                 Debug::fmt(&self.0.borrow(), f)
             }
         })
     }
 }
 
-impl Hash for TeeNode {
+impl Hash for SharedNode {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.borrow_mut().hash(state);
     }
@@ -1674,7 +1712,14 @@ pub enum HydroNode {
     },
 
     Tee {
-        inner: TeeNode,
+        inner: SharedNode,
+        metadata: HydroIrMetadata,
+    },
+
+    Partition {
+        inner: SharedNode,
+        f: DebugExpr,
+        is_true: bool,
         metadata: HydroIrMetadata,
     },
 
@@ -1860,14 +1905,14 @@ pub enum HydroNode {
     },
 }
 
-pub type SeenTees = HashMap<*const RefCell<HydroNode>, Rc<RefCell<HydroNode>>>;
-pub type SeenTeeLocations = HashMap<*const RefCell<HydroNode>, LocationId>;
+pub type SeenSharedNodes = HashMap<*const RefCell<HydroNode>, Rc<RefCell<HydroNode>>>;
+pub type SeenSharedNodeLocations = HashMap<*const RefCell<HydroNode>, LocationId>;
 
 impl HydroNode {
     pub fn transform_bottom_up(
         &mut self,
         transform: &mut impl FnMut(&mut HydroNode),
-        seen_tees: &mut SeenTees,
+        seen_tees: &mut SeenSharedNodes,
         check_well_formed: bool,
     ) {
         self.transform_children(
@@ -1902,8 +1947,8 @@ impl HydroNode {
     #[inline(always)]
     pub fn transform_children(
         &mut self,
-        mut transform: impl FnMut(&mut HydroNode, &mut SeenTees),
-        seen_tees: &mut SeenTees,
+        mut transform: impl FnMut(&mut HydroNode, &mut SeenSharedNodes),
+        seen_tees: &mut SeenSharedNodes,
     ) {
         match self {
             HydroNode::Placeholder => {
@@ -1917,14 +1962,27 @@ impl HydroNode {
 
             HydroNode::Tee { inner, .. } => {
                 if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
-                    *inner = TeeNode(transformed.clone());
+                    *inner = SharedNode(transformed.clone());
                 } else {
                     let transformed_cell = Rc::new(RefCell::new(HydroNode::Placeholder));
                     seen_tees.insert(inner.as_ptr(), transformed_cell.clone());
                     let mut orig = inner.0.replace(HydroNode::Placeholder);
                     transform(&mut orig, seen_tees);
                     *transformed_cell.borrow_mut() = orig;
-                    *inner = TeeNode(transformed_cell);
+                    *inner = SharedNode(transformed_cell);
+                }
+            }
+
+            HydroNode::Partition { inner, .. } => {
+                if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
+                    *inner = SharedNode(transformed.clone());
+                } else {
+                    let transformed_cell = Rc::new(RefCell::new(HydroNode::Placeholder));
+                    seen_tees.insert(inner.as_ptr(), transformed_cell.clone());
+                    let mut orig = inner.0.replace(HydroNode::Placeholder);
+                    transform(&mut orig, seen_tees);
+                    *transformed_cell.borrow_mut() = orig;
+                    *inner = SharedNode(transformed_cell);
                 }
             }
 
@@ -1989,7 +2047,7 @@ impl HydroNode {
         }
     }
 
-    pub fn deep_clone(&self, seen_tees: &mut SeenTees) -> HydroNode {
+    pub fn deep_clone(&self, seen_tees: &mut SeenSharedNodes) -> HydroNode {
         match self {
             HydroNode::Placeholder => HydroNode::Placeholder,
             HydroNode::Cast { inner, metadata } => HydroNode::Cast {
@@ -2025,7 +2083,7 @@ impl HydroNode {
             HydroNode::Tee { inner, metadata } => {
                 if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
                     HydroNode::Tee {
-                        inner: TeeNode(transformed.clone()),
+                        inner: SharedNode(transformed.clone()),
                         metadata: metadata.clone(),
                     }
                 } else {
@@ -2034,7 +2092,33 @@ impl HydroNode {
                     let cloned = inner.0.borrow().deep_clone(seen_tees);
                     *new_rc.borrow_mut() = cloned;
                     HydroNode::Tee {
-                        inner: TeeNode(new_rc),
+                        inner: SharedNode(new_rc),
+                        metadata: metadata.clone(),
+                    }
+                }
+            }
+            HydroNode::Partition {
+                inner,
+                f,
+                is_true,
+                metadata,
+            } => {
+                if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
+                    HydroNode::Partition {
+                        inner: SharedNode(transformed.clone()),
+                        f: f.clone(),
+                        is_true: *is_true,
+                        metadata: metadata.clone(),
+                    }
+                } else {
+                    let new_rc = Rc::new(RefCell::new(HydroNode::Placeholder));
+                    seen_tees.insert(inner.as_ptr(), new_rc.clone());
+                    let cloned = inner.0.borrow().deep_clone(seen_tees);
+                    *new_rc.borrow_mut() = cloned;
+                    HydroNode::Partition {
+                        inner: SharedNode(new_rc),
+                        f: f.clone(),
+                        is_true: *is_true,
                         metadata: metadata.clone(),
                     }
                 }
@@ -2274,8 +2358,8 @@ impl HydroNode {
             impl FnMut(&mut HydroRoot, &mut usize),
             impl FnMut(&mut HydroNode, &mut usize),
         >,
-        seen_tees: &mut SeenTees,
-        built_tees: &mut HashMap<*const RefCell<HydroNode>, syn::Ident>,
+        seen_tees: &mut SeenSharedNodes,
+        built_tees: &mut HashMap<*const RefCell<HydroNode>, Vec<syn::Ident>>,
         next_stmt_id: &mut usize,
     ) -> syn::Ident {
         let mut ident_stack: Vec<syn::Ident> = Vec::new();
@@ -2597,7 +2681,7 @@ impl HydroNode {
                     }
 
                     HydroNode::Tee { inner, .. } => {
-                        let ret_ident = if let Some(teed_from) =
+                        let ret_ident = if let Some(built_idents) =
                             built_tees.get(&(inner.0.as_ref() as *const RefCell<HydroNode>))
                         {
                             match builders_or_callback {
@@ -2607,7 +2691,7 @@ impl HydroNode {
                                 }
                             }
 
-                            teed_from.clone()
+                            built_idents[0].clone()
                         } else {
                             // The inner node was already processed by transform_bottom_up,
                             // so its ident is on the stack
@@ -2618,7 +2702,7 @@ impl HydroNode {
 
                             built_tees.insert(
                                 inner.0.as_ref() as *const RefCell<HydroNode>,
-                                tee_ident.clone(),
+                                vec![tee_ident.clone()],
                             );
 
                             match builders_or_callback {
@@ -2642,6 +2726,69 @@ impl HydroNode {
 
                         // we consume a stmt id regardless of if we emit the tee() operator,
                         // so that during rewrites we touch all recipients of the tee()
+
+                        *next_stmt_id += 1;
+                        ident_stack.push(ret_ident);
+                    }
+
+                    HydroNode::Partition {
+                        inner, f, is_true, ..
+                    } => {
+                        let is_true = *is_true; // need to copy early to avoid borrow checking issues with node
+                        let ptr = inner.0.as_ref() as *const RefCell<HydroNode>;
+                        let ret_ident = if let Some(built_idents) = built_tees.get(&ptr) {
+                            match builders_or_callback {
+                                BuildersOrCallback::Builders(_) => {}
+                                BuildersOrCallback::Callback(_, node_callback) => {
+                                    node_callback(node, next_stmt_id);
+                                }
+                            }
+
+                            let idx = if is_true { 0 } else { 1 };
+                            built_idents[idx].clone()
+                        } else {
+                            // The inner node was already processed by transform_bottom_up,
+                            // so its ident is on the stack
+                            let inner_ident = ident_stack.pop().unwrap();
+
+                            let partition_ident = syn::Ident::new(
+                                &format!("stream_{}_partition", *next_stmt_id),
+                                Span::call_site(),
+                            );
+                            let true_ident = syn::Ident::new(
+                                &format!("stream_{}_true", *next_stmt_id),
+                                Span::call_site(),
+                            );
+                            let false_ident = syn::Ident::new(
+                                &format!("stream_{}_false", *next_stmt_id),
+                                Span::call_site(),
+                            );
+
+                            built_tees.insert(
+                                ptr,
+                                vec![true_ident.clone(), false_ident.clone()],
+                            );
+
+                            match builders_or_callback {
+                                BuildersOrCallback::Builders(graph_builders) => {
+                                    let builder = graph_builders.get_dfir_mut(&out_location);
+                                    builder.add_dfir(
+                                        parse_quote! {
+                                            #partition_ident = #inner_ident -> partition(|__item, __num_outputs| if (#f)(__item) { 0_usize } else { 1_usize });
+                                            #true_ident = #partition_ident[0];
+                                            #false_ident = #partition_ident[1];
+                                        },
+                                        None,
+                                        Some(&next_stmt_id.to_string()),
+                                    );
+                                }
+                                BuildersOrCallback::Callback(_, node_callback) => {
+                                    node_callback(node, next_stmt_id);
+                                }
+                            }
+
+                            if is_true { true_ident } else { false_ident }
+                        };
 
                         *next_stmt_id += 1;
                         ident_stack.push(ret_ident);
@@ -3657,6 +3804,7 @@ impl HydroNode {
             | HydroNode::Filter { f, .. }
             | HydroNode::FilterMap { f, .. }
             | HydroNode::Inspect { f, .. }
+            | HydroNode::Partition { f, .. }
             | HydroNode::Reduce { f, .. }
             | HydroNode::ReduceKeyed { f, .. }
             | HydroNode::ReduceKeyedWatermark { f, .. } => {
@@ -3706,6 +3854,7 @@ impl HydroNode {
             HydroNode::SingletonSource { metadata, .. } => metadata,
             HydroNode::CycleSource { metadata, .. } => metadata,
             HydroNode::Tee { metadata, .. } => metadata,
+            HydroNode::Partition { metadata, .. } => metadata,
             HydroNode::YieldConcat { metadata, .. } => metadata,
             HydroNode::BeginAtomic { metadata, .. } => metadata,
             HydroNode::EndAtomic { metadata, .. } => metadata,
@@ -3755,6 +3904,7 @@ impl HydroNode {
             HydroNode::SingletonSource { metadata, .. } => metadata,
             HydroNode::CycleSource { metadata, .. } => metadata,
             HydroNode::Tee { metadata, .. } => metadata,
+            HydroNode::Partition { metadata, .. } => metadata,
             HydroNode::YieldConcat { metadata, .. } => metadata,
             HydroNode::BeginAtomic { metadata, .. } => metadata,
             HydroNode::EndAtomic { metadata, .. } => metadata,
@@ -3798,8 +3948,9 @@ impl HydroNode {
             | HydroNode::SingletonSource { .. }
             | HydroNode::ExternalInput { .. }
             | HydroNode::CycleSource { .. }
-            | HydroNode::Tee { .. } => {
-                // Tee should find its input in separate special ways
+            | HydroNode::Tee { .. }
+            | HydroNode::Partition { .. } => {
+                // Tee/Partition should find their input in separate special ways
                 vec![]
             }
             HydroNode::Cast { inner, .. }
@@ -3859,6 +4010,18 @@ impl HydroNode {
             .collect()
     }
 
+    /// Returns `true` if this node is a Tee or Partition whose inner Rc
+    /// has other live references, meaning the upstream is already driven
+    /// by another consumer and does not need a Null sink.
+    pub fn is_shared_with_others(&self) -> bool {
+        match self {
+            HydroNode::Tee { inner, .. } | HydroNode::Partition { inner, .. } => {
+                Rc::strong_count(&inner.0) > 1
+            }
+            _ => false,
+        }
+    }
+
     pub fn print_root(&self) -> String {
         match self {
             HydroNode::Placeholder => {
@@ -3877,6 +4040,9 @@ impl HydroNode {
             ),
             HydroNode::CycleSource { cycle_id, .. } => format!("CycleSource({})", cycle_id),
             HydroNode::Tee { inner, .. } => format!("Tee({})", inner.0.borrow().print_root()),
+            HydroNode::Partition { f, is_true, .. } => {
+                format!("Partition({:?}, is_true={})", f, is_true)
+            }
             HydroNode::YieldConcat { .. } => "YieldConcat()".to_owned(),
             HydroNode::BeginAtomic { .. } => "BeginAtomic()".to_owned(),
             HydroNode::EndAtomic { .. } => "EndAtomic()".to_owned(),

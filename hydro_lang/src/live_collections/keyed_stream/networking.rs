@@ -7,7 +7,7 @@ use stageleft::{q, quote_type};
 use super::KeyedStream;
 use crate::compile::ir::{DebugInstantiate, HydroNode};
 use crate::live_collections::boundedness::{Boundedness, Unbounded};
-use crate::live_collections::stream::{Ordering, Retries, Stream};
+use crate::live_collections::stream::{MinOrder, Ordering, Retries, Stream};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
 use crate::location::{Cluster, MemberId, Process};
@@ -106,9 +106,10 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         self,
         to: &Cluster<'a, L2>,
         via: N,
-    ) -> Stream<T, Cluster<'a, L2>, Unbounded, O, R>
+    ) -> Stream<T, Cluster<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
     where
         T: Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
     {
         let serialize_pipeline = Some(N::serialize_thunk(true));
 
@@ -129,10 +130,14 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: to.new_node_metadata(
-                    Stream::<T, Cluster<'a, L2>, Unbounded, O, R>::collection_kind(),
-                ),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: to.new_node_metadata(Stream::<
+                    T,
+                    Cluster<'a, L2>,
+                    Unbounded,
+                    <O as MinOrder<N::OrderingGuarantee>>::Min,
+                    R,
+                >::collection_kind()),
             },
         )
     }
@@ -219,14 +224,16 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
+    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
     pub fn demux<N: NetworkFor<(K, T)>>(
         self,
         to: &Cluster<'a, L2>,
         via: N,
-    ) -> KeyedStream<K, T, Cluster<'a, L2>, Unbounded, O, R>
+    ) -> KeyedStream<K, T, Cluster<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
     where
         K: Serialize + DeserializeOwned,
         T: Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
     {
         let serialize_pipeline = Some(N::serialize_thunk(true));
 
@@ -251,11 +258,16 @@ impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
                     self.entries()
                         .map(q!(|((id, k), v)| (id, (k, v))))
                         .ir_node
-                        .into_inner(),
+                        .replace(HydroNode::Placeholder),
                 ),
-                metadata: to.new_node_metadata(
-                    KeyedStream::<K, T, Cluster<'a, L2>, Unbounded, O, R>::collection_kind(),
-                ),
+                metadata: to.new_node_metadata(KeyedStream::<
+                    K,
+                    T,
+                    Cluster<'a, L2>,
+                    Unbounded,
+                    <O as MinOrder<N::OrderingGuarantee>>::Min,
+                    R,
+                >::collection_kind()),
             },
         )
     }
@@ -369,13 +381,22 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
+    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
     pub fn demux<N: NetworkFor<T>>(
         self,
         to: &Cluster<'a, L2>,
         via: N,
-    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
+    ) -> KeyedStream<
+        MemberId<L>,
+        T,
+        Cluster<'a, L2>,
+        Unbounded,
+        <O as MinOrder<N::OrderingGuarantee>>::Min,
+        R,
+    >
     where
         T: Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
     {
         let serialize_pipeline = Some(N::serialize_thunk(true));
 
@@ -388,7 +409,13 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
             );
         }
 
-        let raw_stream: Stream<(MemberId<L>, T), Cluster<'a, L2>, Unbounded, O, R> = Stream::new(
+        let raw_stream: Stream<
+            (MemberId<L>, T),
+            Cluster<'a, L2>,
+            Unbounded,
+            <O as MinOrder<N::OrderingGuarantee>>::Min,
+            R,
+        > = Stream::new(
             to.clone(),
             HydroNode::Network {
                 name: name.map(ToOwned::to_owned),
@@ -396,12 +423,12 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
-                input: Box::new(self.ir_node.into_inner()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: to.new_node_metadata(Stream::<
                     (MemberId<L>, T),
                     Cluster<'a, L2>,
                     Unbounded,
-                    O,
+                    <O as MinOrder<N::OrderingGuarantee>>::Min,
                     R,
                 >::collection_kind()),
             },
@@ -540,10 +567,18 @@ impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries>
         self,
         to: &Process<'a, L2>,
         via: N,
-    ) -> KeyedStream<(MemberId<L>, K), V, Process<'a, L2>, Unbounded, O, R>
+    ) -> KeyedStream<
+        (MemberId<L>, K),
+        V,
+        Process<'a, L2>,
+        Unbounded,
+        <O as MinOrder<N::OrderingGuarantee>>::Min,
+        R,
+    >
     where
         K: Serialize + DeserializeOwned,
         V: Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
     {
         let serialize_pipeline = Some(N::serialize_thunk(false));
 
@@ -556,25 +591,30 @@ impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries>
             );
         }
 
-        let raw_stream: Stream<(MemberId<L>, (K, V)), Process<'a, L2>, Unbounded, O, R> =
-            Stream::new(
-                to.clone(),
-                HydroNode::Network {
-                    name: name.map(ToOwned::to_owned),
-                    networking_info: N::networking_info(),
-                    serialize_fn: serialize_pipeline.map(|e| e.into()),
-                    instantiate_fn: DebugInstantiate::Building,
-                    deserialize_fn: deserialize_pipeline.map(|e| e.into()),
-                    input: Box::new(self.ir_node.into_inner()),
-                    metadata: to.new_node_metadata(Stream::<
-                        (MemberId<L>, (K, V)),
-                        Cluster<'a, L2>,
-                        Unbounded,
-                        O,
-                        R,
-                    >::collection_kind()),
-                },
-            );
+        let raw_stream: Stream<
+            (MemberId<L>, (K, V)),
+            Process<'a, L2>,
+            Unbounded,
+            <O as MinOrder<N::OrderingGuarantee>>::Min,
+            R,
+        > = Stream::new(
+            to.clone(),
+            HydroNode::Network {
+                name: name.map(ToOwned::to_owned),
+                networking_info: N::networking_info(),
+                serialize_fn: serialize_pipeline.map(|e| e.into()),
+                instantiate_fn: DebugInstantiate::Building,
+                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: to.new_node_metadata(Stream::<
+                    (MemberId<L>, (K, V)),
+                    Cluster<'a, L2>,
+                    Unbounded,
+                    <O as MinOrder<N::OrderingGuarantee>>::Min,
+                    R,
+                >::collection_kind()),
+            },
+        );
 
         raw_stream
             .map(q!(|(sender, (k, v))| ((sender, k), v)))

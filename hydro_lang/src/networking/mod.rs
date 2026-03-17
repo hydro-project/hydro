@@ -6,6 +6,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 
 use crate::live_collections::stream::networking::{deserialize_bincode, serialize_bincode};
+use crate::live_collections::stream::{NoOrder, TotalOrder};
 use crate::nondet::NonDet;
 
 #[sealed::sealed]
@@ -32,8 +33,12 @@ impl<T: Serialize + DeserializeOwned> SerKind<T> for Bincode {
 /// An unconfigured serialization backend.
 pub enum NoSer {}
 
+/// A transport backend for network channels.
 #[sealed::sealed]
-trait TransportKind {
+pub trait TransportKind {
+    /// The ordering guarantee provided by this transport.
+    type OrderingGuarantee: crate::live_collections::stream::Ordering;
+
     /// Returns the [`NetworkingInfo`] describing this transport's configuration.
     fn networking_info() -> NetworkingInfo;
 }
@@ -42,7 +47,12 @@ trait TransportKind {
 #[diagnostic::on_unimplemented(
     message = "TCP transport requires a failure policy. For example, `TCP.fail_stop()` stops sending messages after a failed connection."
 )]
-trait TcpFailPolicy {
+/// A failure policy for TCP connections, determining how the transport handles
+/// connection failures and what ordering guarantees the output stream provides.
+pub trait TcpFailPolicy {
+    /// The ordering guarantee provided by this failure policy.
+    type OrderingGuarantee: crate::live_collections::stream::Ordering;
+
     /// Returns the [`TcpFault`] variant for this failure policy.
     fn tcp_fault() -> TcpFault;
 }
@@ -51,6 +61,8 @@ trait TcpFailPolicy {
 pub enum FailStop {}
 #[sealed::sealed]
 impl TcpFailPolicy for FailStop {
+    type OrderingGuarantee = TotalOrder;
+
     fn tcp_fault() -> TcpFault {
         TcpFault::FailStop
     }
@@ -60,8 +72,31 @@ impl TcpFailPolicy for FailStop {
 pub enum Lossy {}
 #[sealed::sealed]
 impl TcpFailPolicy for Lossy {
+    type OrderingGuarantee = TotalOrder;
+
     fn tcp_fault() -> TcpFault {
         TcpFault::Lossy
+    }
+}
+
+/// A TCP failure policy that treats dropped messages as indefinitely delayed.
+///
+/// Unlike [`Lossy`], this does not require a [`NonDet`] annotation because the output
+/// stream is always lower in the partial order than the ideal stream (dropped messages
+/// are modeled as infinite delays). The tradeoff is that the output has [`NoOrder`]
+/// guarantees, imposing stricter conditions on downstream consumers.
+///
+/// When using this mode in the Hydro simulator, you must call
+/// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only) because the
+/// simulator models dropped messages as indefinitely delayed, which only tests safety
+/// properties (not liveness).
+pub enum LossyDelayedForever {}
+#[sealed::sealed]
+impl TcpFailPolicy for LossyDelayedForever {
+    type OrderingGuarantee = NoOrder;
+
+    fn tcp_fault() -> TcpFault {
+        TcpFault::LossyDelayedForever
     }
 }
 
@@ -72,6 +107,8 @@ pub struct Tcp<F> {
 
 #[sealed::sealed]
 impl<F: TcpFailPolicy> TransportKind for Tcp<F> {
+    type OrderingGuarantee = F::OrderingGuarantee;
+
     fn networking_info() -> NetworkingInfo {
         NetworkingInfo::Tcp {
             fault: F::tcp_fault(),
@@ -82,6 +119,11 @@ impl<F: TcpFailPolicy> TransportKind for Tcp<F> {
 /// A networking backend implementation that supports items of type `T`.
 #[sealed::sealed]
 pub trait NetworkFor<T: ?Sized> {
+    /// The ordering guarantee provided by this network configuration.
+    /// When combined with an input stream's ordering `O`, the output ordering
+    /// will be `<O as MinOrder<Self::OrderingGuarantee>>::Min`.
+    type OrderingGuarantee: crate::live_collections::stream::Ordering;
+
     /// Generates serialization logic for sending `T`.
     fn serialize_thunk(is_demux: bool) -> syn::Expr;
 
@@ -102,6 +144,8 @@ pub enum TcpFault {
     FailStop,
     /// Messages may be lost (e.g. due to network partitions).
     Lossy,
+    /// Dropped messages are treated as indefinitely delayed with no ordering guarantee.
+    LossyDelayedForever,
 }
 
 /// Describes the networking configuration for a network channel at the IR level.
@@ -173,6 +217,28 @@ impl<S: ?Sized> NetworkingConfig<Tcp<()>, S> {
             _phantom: (PhantomData, PhantomData),
         }
     }
+
+    /// Configures the TCP transport to treat dropped messages as indefinitely delayed.
+    ///
+    /// This is appropriate for networks where messages may be dropped, such as when
+    /// running under a Maelstrom partition nemesis. Unlike [`Self::lossy`], this does
+    /// *not* require a [`NonDet`] annotation because the output is always lower in the
+    /// partial order than the ideal stream. However, the output stream will have
+    /// [`NoOrder`] guarantees, imposing stricter conditions on downstream consumers.
+    ///
+    /// Unlike [`Self::lossy`], this mode can easily be simulated in exhaustive mode
+    /// without running into fairness issues.
+    ///
+    /// When using this mode in the Hydro simulator, you must call
+    /// [`.test_safety_only()`](crate::sim::flow::SimFlow::test_safety_only) to opt in,
+    /// because the simulator models dropped messages as indefinitely delayed, which only
+    /// tests safety properties (not liveness).
+    pub const fn lossy_delayed_forever(self) -> NetworkingConfig<Tcp<LossyDelayedForever>, S> {
+        NetworkingConfig {
+            name: self.name,
+            _phantom: (PhantomData, PhantomData),
+        }
+    }
 }
 
 #[sealed::sealed]
@@ -181,6 +247,8 @@ where
     Tr: TransportKind,
     S: SerKind<T>,
 {
+    type OrderingGuarantee = Tr::OrderingGuarantee;
+
     fn serialize_thunk(is_demux: bool) -> syn::Expr {
         S::serialize_thunk(is_demux)
     }
@@ -204,6 +272,8 @@ where
     Tr: TransportKind,
     S: SerKind<T>,
 {
+    type OrderingGuarantee = Tr::OrderingGuarantee;
+
     fn serialize_thunk(is_demux: bool) -> syn::Expr {
         S::serialize_thunk(is_demux)
     }

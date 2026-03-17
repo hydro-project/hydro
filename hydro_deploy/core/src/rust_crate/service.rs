@@ -30,6 +30,7 @@ pub struct RustCrateService {
     display_id: Option<String>,
     external_ports: Vec<u16>,
     env: HashMap<String, String>,
+    pin_to_core: Option<usize>,
 
     meta: OnceLock<String>,
 
@@ -60,6 +61,7 @@ impl RustCrateService {
         display_id: Option<String>,
         external_ports: Vec<u16>,
         env: HashMap<String, String>,
+        pin_to_core: Option<usize>,
     ) -> Self {
         Self {
             id,
@@ -70,6 +72,7 @@ impl RustCrateService {
             display_id,
             external_ports,
             env,
+            pin_to_core,
             meta: OnceLock::new(),
             port_to_server: MemoMap::new(),
             port_to_bind: MemoMap::new(),
@@ -215,6 +218,7 @@ impl Service for RustCrateService {
                                 &args,
                                 self.tracing.clone(),
                                 &self.env,
+                                self.pin_to_core,
                             )
                             .await?;
 

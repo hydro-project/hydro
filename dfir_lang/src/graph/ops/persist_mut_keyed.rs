@@ -96,12 +96,16 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
 
                 let #ident = {
                     #[inline(always)]
-                    fn check_stream<K, V>(st: impl #root::futures::stream::Stream<Item = #root::util::PersistenceKeyed::<K, V>>) -> impl #root::futures::stream::Stream<Item = #root::util::PersistenceKeyed::<K, V>> {
-                        st
+                    fn check_pull<Prev, K, V>(prev: Prev)
+                        -> impl #root::dfir_pipes::Pull<Item = #root::util::PersistenceKeyed::<K, V>, Meta = Prev::Meta, CanPend = Prev::CanPend, CanEnd = Prev::CanEnd>
+                    where
+                        Prev: #root::dfir_pipes::Pull<Item = #root::util::PersistenceKeyed::<K, V>>,
+                    {
+                        prev
                     }
 
                     let iter = if context.is_first_run_this_tick() {
-                        let fut = #root::compiled::pull::ForEach::new(check_stream(#input), |item| {
+                        let fut = #root::dfir_pipes::Pull::for_each(check_pull(#input), |item| {
                             match item {
                                 #root::util::PersistenceKeyed::Persist(k, v) => {
                                     #map_ident.entry(k).or_default().push(v);
@@ -125,7 +129,7 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
                     } else {
                         None.into_iter().flatten()
                     };
-                    #root::futures::stream::iter(iter)
+                    #root::dfir_pipes::iter(iter)
                 };
             }
         };

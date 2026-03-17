@@ -332,7 +332,41 @@ impl_slicable_for_tuple!(S1, S1_bt, 0, S2, S2_bt, 1, S3, S3_bt, 2, S4, S4_bt, 3)
 #[cfg(stageleft_runtime)]
 impl_slicable_for_tuple!(
     S1, S1_bt, 0, S2, S2_bt, 1, S3, S3_bt, 2, S4, S4_bt, 3, S5, S5_bt, 4
-); // 5 slices ought to be enough for anyone
+);
+#[cfg(stageleft_runtime)]
+impl_slicable_for_tuple!(
+    S1, S1_bt, 0, S2, S2_bt, 1, S3, S3_bt, 2, S4, S4_bt, 3, S5, S5_bt, 4, S6, S6_bt, 5
+);
+#[cfg(stageleft_runtime)]
+impl_slicable_for_tuple!(
+    S1, S1_bt, 0, S2, S2_bt, 1, S3, S3_bt, 2, S4, S4_bt, 3, S5, S5_bt, 4, S6, S6_bt, 5, S7, S7_bt,
+    6
+);
+#[cfg(stageleft_runtime)]
+impl_slicable_for_tuple!(
+    S1, S1_bt, 0, S2, S2_bt, 1, S3, S3_bt, 2, S4, S4_bt, 3, S5, S5_bt, 4, S6, S6_bt, 5, S7, S7_bt,
+    6, S8, S8_bt, 7
+);
+#[cfg(stageleft_runtime)]
+impl_slicable_for_tuple!(
+    S1, S1_bt, 0, S2, S2_bt, 1, S3, S3_bt, 2, S4, S4_bt, 3, S5, S5_bt, 4, S6, S6_bt, 5, S7, S7_bt,
+    6, S8, S8_bt, 7, S9, S9_bt, 8
+);
+#[cfg(stageleft_runtime)]
+impl_slicable_for_tuple!(
+    S1, S1_bt, 0, S2, S2_bt, 1, S3, S3_bt, 2, S4, S4_bt, 3, S5, S5_bt, 4, S6, S6_bt, 5, S7, S7_bt,
+    6, S8, S8_bt, 7, S9, S9_bt, 8, S10, S10_bt, 9
+);
+#[cfg(stageleft_runtime)]
+impl_slicable_for_tuple!(
+    S1, S1_bt, 0, S2, S2_bt, 1, S3, S3_bt, 2, S4, S4_bt, 3, S5, S5_bt, 4, S6, S6_bt, 5, S7, S7_bt,
+    6, S8, S8_bt, 7, S9, S9_bt, 8, S10, S10_bt, 9, S11, S11_bt, 10
+);
+#[cfg(stageleft_runtime)]
+impl_slicable_for_tuple!(
+    S1, S1_bt, 0, S2, S2_bt, 1, S3, S3_bt, 2, S4, S4_bt, 3, S5, S5_bt, 4, S6, S6_bt, 5, S7, S7_bt,
+    6, S8, S8_bt, 7, S9, S9_bt, 8, S10, S10_bt, 9, S11, S11_bt, 10, S12, S12_bt, 11
+);
 
 macro_rules! impl_cycles_for_tuple {
     ($($H:ident, $S:ident, $idx:tt),*) => {
@@ -375,6 +409,38 @@ impl_cycles_for_tuple!(H1, S1, 0, H2, S2, 1, H3, S3, 2);
 impl_cycles_for_tuple!(H1, S1, 0, H2, S2, 1, H3, S3, 2, H4, S4, 3);
 #[cfg(stageleft_runtime)]
 impl_cycles_for_tuple!(H1, S1, 0, H2, S2, 1, H3, S3, 2, H4, S4, 3, H5, S5, 4);
+#[cfg(stageleft_runtime)]
+impl_cycles_for_tuple!(
+    H1, S1, 0, H2, S2, 1, H3, S3, 2, H4, S4, 3, H5, S5, 4, H6, S6, 5
+);
+#[cfg(stageleft_runtime)]
+impl_cycles_for_tuple!(
+    H1, S1, 0, H2, S2, 1, H3, S3, 2, H4, S4, 3, H5, S5, 4, H6, S6, 5, H7, S7, 6
+);
+#[cfg(stageleft_runtime)]
+impl_cycles_for_tuple!(
+    H1, S1, 0, H2, S2, 1, H3, S3, 2, H4, S4, 3, H5, S5, 4, H6, S6, 5, H7, S7, 6, H8, S8, 7
+);
+#[cfg(stageleft_runtime)]
+impl_cycles_for_tuple!(
+    H1, S1, 0, H2, S2, 1, H3, S3, 2, H4, S4, 3, H5, S5, 4, H6, S6, 5, H7, S7, 6, H8, S8, 7, H9, S9,
+    8
+);
+#[cfg(stageleft_runtime)]
+impl_cycles_for_tuple!(
+    H1, S1, 0, H2, S2, 1, H3, S3, 2, H4, S4, 3, H5, S5, 4, H6, S6, 5, H7, S7, 6, H8, S8, 7, H9, S9,
+    8, H10, S10, 9
+);
+#[cfg(stageleft_runtime)]
+impl_cycles_for_tuple!(
+    H1, S1, 0, H2, S2, 1, H3, S3, 2, H4, S4, 3, H5, S5, 4, H6, S6, 5, H7, S7, 6, H8, S8, 7, H9, S9,
+    8, H10, S10, 9, H11, S11, 10
+);
+#[cfg(stageleft_runtime)]
+impl_cycles_for_tuple!(
+    H1, S1, 0, H2, S2, 1, H3, S3, 2, H4, S4, 3, H5, S5, 4, H6, S6, 5, H7, S7, 6, H8, S8, 7, H9, S9,
+    8, H10, S10, 9, H11, S11, 10, H12, S12, 11
+);
 
 // Unslicable implementations for plain collections (used when returning from sliced! body)
 impl<'a, T, L: Location<'a>, O: Ordering, R: Retries> Unslicable

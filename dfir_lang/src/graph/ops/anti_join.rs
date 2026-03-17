@@ -104,7 +104,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
         let input_pos = &inputs[1];
 
         let accum_neg = quote_spanned! {op_span=>
-            let fut = #root::compiled::pull::ForEach::new(#input_neg, |k| {
+            let fut = #root::dfir_pipes::Pull::for_each(#input_neg, |k| {
                 #neg_borrow.insert(k);
             });
             let () = #work_fn_async(fut).await;
@@ -120,7 +120,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                 let #ident = {
                     #accum_neg
 
-                    #root::tokio_stream::StreamExt::filter(#input_pos, |(k, _)| {
+                    #root::dfir_pipes::Pull::filter(#input_pos, |(k, _)| {
                         !#neg_borrow.contains(k)
                     })
                 };
@@ -146,7 +146,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                     };
 
                     // Accum into pos vec
-                    let fut = #root::compiled::pull::ForEach::new(#input_pos, |kv| {
+                    let fut = #root::dfir_pipes::Pull::for_each(#input_pos, |kv| {
                         #pos_borrow.push(kv);
                     });
                     let () = #work_fn_async(fut).await;
@@ -157,7 +157,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                         !#neg_borrow.contains(k)
                     });
                     let iter = ::std::iter::Iterator::cloned(iter);
-                    #root::futures::stream::iter(iter)
+                    #root::dfir_pipes::iter(iter)
                 };
             }
         };

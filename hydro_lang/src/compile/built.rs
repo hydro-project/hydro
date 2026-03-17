@@ -250,6 +250,7 @@ impl<'a> BuiltFlow<'a> {
             externals,
             cluster_max_sizes: SparseSecondaryMap::new(),
             externals_port_registry: Default::default(),
+            test_safety_only: false,
             _phantom: PhantomData,
         }
     }

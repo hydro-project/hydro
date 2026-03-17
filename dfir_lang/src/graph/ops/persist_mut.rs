@@ -96,12 +96,16 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
 
                 let #ident = {
                     #[inline(always)]
-                    fn check_stream<T: ::std::hash::Hash + ::std::cmp::Eq>(st: impl #root::futures::stream::Stream<Item = #root::util::Persistence::<T>>) -> impl #root::futures::stream::Stream<Item = #root::util::Persistence::<T>> {
-                        st
+                    fn check_pull<Prev, T: ::std::hash::Hash + ::std::cmp::Eq>(prev: Prev)
+                        -> impl #root::dfir_pipes::Pull<Item = #root::util::Persistence::<T>, Meta = Prev::Meta, CanPend = Prev::CanPend, CanEnd = Prev::CanEnd>
+                    where
+                        Prev: #root::dfir_pipes::Pull<Item = #root::util::Persistence::<T>>
+                    {
+                        prev
                     }
 
                     let iter = if context.is_first_run_this_tick() {
-                        let fut = #root::compiled::pull::ForEach::new(check_stream(#input), |item| {
+                        let fut = #root::dfir_pipes::Pull::for_each(check_pull(#input), |item| {
                             match item {
                                 #root::util::Persistence::Persist(v) => #vec_ident.push(v),
                                 #root::util::Persistence::Delete(v) => #vec_ident.delete(&v),
@@ -113,7 +117,7 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
                     } else {
                         None.into_iter().flatten()
                     };
-                    #root::futures::stream::iter(iter)
+                    #root::dfir_pipes::iter(iter)
                 };
             }
         };

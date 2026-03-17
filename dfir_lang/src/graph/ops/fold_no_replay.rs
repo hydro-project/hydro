@@ -103,7 +103,7 @@ pub const FOLD_NO_REPLAY: OperatorConstraints = OperatorConstraints {
                 let mut __was_updated = false;
                 // Eagerly consume input to ensure updated state.
                 {
-                    let __fut = #root::compiled::pull::ForEach::new(#input, |#item_ident| {
+                    let __fut = #root::dfir_pipes::Pull::for_each(#input, |#item_ident| {
                         #foreach_body
                         __was_updated = true;
                     });
@@ -112,13 +112,13 @@ pub const FOLD_NO_REPLAY: OperatorConstraints = OperatorConstraints {
 
                 let #ident = if __was_updated || (#context.current_tick().0 == 0 && #context.is_first_run_this_tick()) {
                     #work_fn(
-                        || #root::tokio_stream::iter(
+                        || #root::dfir_pipes::iter(
                             ::std::option::Option::Some(::std::clone::Clone::clone(&*#accumulator_ident))
                         )
                     )
                 } else {
                     #work_fn(
-                        || #root::tokio_stream::iter(::std::option::Option::None)
+                        || #root::dfir_pipes::iter(::std::option::Option::None)
                     )
                 };
             }

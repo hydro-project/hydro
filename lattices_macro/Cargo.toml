@@ -27,7 +27,7 @@ hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1", optiona
 
 [dev-dependencies]
 prettyplease = { version = "0.2.0", features = [ "verbatim" ] }
-hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1" }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1", features = [ "insta" ] }
 
 [build-dependencies]
 hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1" }

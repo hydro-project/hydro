@@ -37,7 +37,7 @@ pub const NEXT_ITERATION: OperatorConstraints = OperatorConstraints {
         let input = &inputs[0];
         let write_iterator = quote_spanned! {op_span=>
             // Discard items from previous loop executions.
-            let #ident = #root::tokio_stream::StreamExt::filter(#input, |_| 0 != #context.loop_iter_count());
+            let #ident = #root::dfir_pipes::Pull::filter(#input, |_| 0 != #context.loop_iter_count());
         };
 
         Ok(OperatorWriteOutput {

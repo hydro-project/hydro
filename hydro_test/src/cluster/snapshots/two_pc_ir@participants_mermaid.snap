@@ -1,6 +1,7 @@
 ---
 source: hydro_test/src/cluster/two_pc_bench.rs
 expression: "preview.dfir_for(&participants).to_mermaid(&WriteConfig\n{\n    no_subgraphs: true, no_pull_push: true, no_handoffs: true,\n    op_text_no_imports: true, ..WriteConfig::default()\n})"
+snapshot_kind: text
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
 flowchart TD
@@ -26,23 +27,13 @@ linkStyle default stroke:#aaa
 4v1
 7v1
 8v1
-<<<<<<< HEAD
-subgraph var_stream_52 ["var <tt>stream_52</tt>"]
-    style var_stream_52 fill:transparent
+subgraph var_stream_51 ["var <tt>stream_51</tt>"]
+    style var_stream_51 fill:transparent
     1v1
     2v1
 end
-subgraph var_stream_92 ["var <tt>stream_92</tt>"]
-    style var_stream_92 fill:transparent
-=======
-subgraph var_stream_44 ["var <tt>stream_44</tt>"]
-    style var_stream_44 fill:transparent
-    1v1
-    2v1
-end
-subgraph var_stream_84 ["var <tt>stream_84</tt>"]
-    style var_stream_84 fill:transparent
->>>>>>> main
+subgraph var_stream_94 ["var <tt>stream_94</tt>"]
+    style var_stream_94 fill:transparent
     5v1
     6v1
 end

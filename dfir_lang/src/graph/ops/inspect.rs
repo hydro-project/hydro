@@ -49,7 +49,7 @@ pub const INSPECT: OperatorConstraints = OperatorConstraints {
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::futures::stream::StreamExt::inspect(#input, #func);
+                let #ident = #root::dfir_pipes::Pull::inspect(#input, #func);
             }
         } else if outputs.is_empty() {
             quote_spanned! {op_span=>

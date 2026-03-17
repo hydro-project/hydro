@@ -170,7 +170,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                         let () = (f)(a, t);
                     }
 
-                    let fut = #root::compiled::pull::ForEach::new(check_input(#input), |item| {
+                    let fut = #root::dfir_pipes::Pull::for_each(check_input(#input), |item| {
                         match item {
                             #root::util::PersistenceKeyed::Persist(k, v) => {
                                 let entry = #hashtable_ident.entry(k).or_insert_with(#initfn);
@@ -188,7 +188,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                 let #ident = #hashtable_ident
                     .iter()
                     .map(#[allow(suspicious_double_ref_op, clippy::clone_on_copy)] |(k, v)| (k.clone(), v.clone()));
-                let #ident = #root::futures::stream::iter(#ident);
+                let #ident = #root::dfir_pipes::iter(#ident);
             }
         } else {
             let iter_expr = match persistence {
@@ -228,13 +228,14 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
 
                 {
                     #[inline(always)]
-                    fn check_input<St, K, V>(st: St) -> impl #root::futures::stream::Stream<Item = (K, V)>
+                    fn check_input<Prev, K, V>(prev: Prev)
+                        -> impl #root::dfir_pipes::Pull<Item = (K, V), Meta = Prev::Meta, CanPend = Prev::CanPend, CanEnd = Prev::CanEnd>
                     where
-                        St: #root::futures::stream::Stream<Item = (K, V)>,
+                        Prev: #root::dfir_pipes::Pull<Item = (K, V)>,
                         K: ::std::clone::Clone,
-                        V: ::std::clone::Clone
+                        V: ::std::clone::Clone,
                     {
-                        st
+                        prev
                     }
 
                     /// A: accumulator type
@@ -245,7 +246,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                     }
 
 
-                    let fut = #root::compiled::pull::ForEach::new(check_input(#input), |kv| {
+                    let fut = #root::dfir_pipes::Pull::for_each(check_input(#input), |kv| {
                         // TODO(mingwei): remove `unknown_lints` when `clippy::unwrap_or_default` is stabilized.
                         #[allow(unknown_lints, clippy::unwrap_or_default)]
                         let entry = #hashtable_ident.entry(kv.0).or_insert_with(#initfn);
@@ -256,7 +257,7 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
 
                 #[allow(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
                 let #ident = #iter_expr;
-                let #ident = #root::futures::stream::iter(#ident);
+                let #ident = #root::dfir_pipes::iter(#ident);
             }
         };
 

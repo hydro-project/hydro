@@ -7,7 +7,7 @@ use serde::de::DeserializeOwned;
 use stageleft::{q, quote_type};
 use syn::parse_quote;
 
-use super::{ExactlyOnce, Ordering, Stream, TotalOrder};
+use super::{ExactlyOnce, MinOrder, Ordering, Stream, TotalOrder};
 use crate::compile::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot};
 use crate::live_collections::boundedness::{Boundedness, Unbounded};
 use crate::live_collections::keyed_singleton::KeyedSingleton;
@@ -161,9 +161,10 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         self,
         to: &Process<'a, L2>,
         via: N,
-    ) -> Stream<T, Process<'a, L2>, Unbounded, O, R>
+    ) -> Stream<T, Process<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
     where
         T: Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
     {
         let serialize_pipeline = Some(N::serialize_thunk(false));
         let deserialize_pipeline = Some(N::deserialize_thunk(None));
@@ -183,10 +184,14 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
-                input: Box::new(self.ir_node.into_inner()),
-                metadata: to.new_node_metadata(
-                    Stream::<T, Process<'a, L2>, Unbounded, O, R>::collection_kind(),
-                ),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: to.new_node_metadata(Stream::<
+                    T,
+                    Process<'a, L2>,
+                    Unbounded,
+                    <O as MinOrder<N::OrderingGuarantee>>::Min,
+                    R,
+                >::collection_kind()),
             },
         )
     }
@@ -288,9 +293,10 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         to: &Cluster<'a, L2>,
         via: N,
         nondet_membership: NonDet,
-    ) -> Stream<T, Cluster<'a, L2>, Unbounded, O, R>
+    ) -> Stream<T, Cluster<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
     where
         T: Clone + Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
     {
         let ids = track_membership(self.location.source_cluster_members(to));
         sliced! {
@@ -353,7 +359,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
             unpaired: true,
             serialize_fn: serialize_pipeline.map(|e| e.into()),
             instantiate_fn: DebugInstantiate::Building,
-            input: Box::new(self.ir_node.into_inner()),
+            input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
             op_metadata: HydroIrOpMetadata::new(),
         });
 
@@ -398,7 +404,7 @@ impl<'a, T, L: Location<'a> + NoTick, B: Boundedness> Stream<T, L, B, TotalOrder
             .borrow_mut()
             .push_root(HydroRoot::EmbeddedOutput {
                 ident,
-                input: Box::new(self.ir_node.into_inner()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 op_metadata: HydroIrOpMetadata::new(),
             });
     }
@@ -494,9 +500,10 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         self,
         to: &Cluster<'a, L2>,
         via: N,
-    ) -> Stream<T, Cluster<'a, L2>, Unbounded, O, R>
+    ) -> Stream<T, Cluster<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
     where
         T: Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
     {
         self.into_keyed().demux(to, via)
     }
@@ -610,7 +617,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
         to: &Cluster<'a, L2>,
         via: N,
         nondet_membership: NonDet,
-    ) -> Stream<T, Cluster<'a, L2>, Unbounded, TotalOrder, ExactlyOnce>
+    ) -> Stream<T, Cluster<'a, L2>, Unbounded, N::OrderingGuarantee, ExactlyOnce>
     where
         T: Serialize + DeserializeOwned,
     {
@@ -750,7 +757,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
         to: &Cluster<'a, L2>,
         via: N,
         nondet_membership: NonDet,
-    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, TotalOrder, ExactlyOnce>
+    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, N::OrderingGuarantee, ExactlyOnce>
     where
         T: Serialize + DeserializeOwned,
     {
@@ -895,13 +902,22 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     /// # }));
     /// # }
     /// ```
+    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
     pub fn send<L2, N: NetworkFor<T>>(
         self,
         to: &Process<'a, L2>,
         via: N,
-    ) -> KeyedStream<MemberId<L>, T, Process<'a, L2>, Unbounded, O, R>
+    ) -> KeyedStream<
+        MemberId<L>,
+        T,
+        Process<'a, L2>,
+        Unbounded,
+        <O as MinOrder<N::OrderingGuarantee>>::Min,
+        R,
+    >
     where
         T: Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
     {
         let serialize_pipeline = Some(N::serialize_thunk(false));
 
@@ -914,7 +930,13 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
             );
         }
 
-        let raw_stream: Stream<(MemberId<L>, T), Process<'a, L2>, Unbounded, O, R> = Stream::new(
+        let raw_stream: Stream<
+            (MemberId<L>, T),
+            Process<'a, L2>,
+            Unbounded,
+            <O as MinOrder<N::OrderingGuarantee>>::Min,
+            R,
+        > = Stream::new(
             to.clone(),
             HydroNode::Network {
                 name: name.map(ToOwned::to_owned),
@@ -922,12 +944,12 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
                 serialize_fn: serialize_pipeline.map(|e| e.into()),
                 instantiate_fn: DebugInstantiate::Building,
                 deserialize_fn: deserialize_pipeline.map(|e| e.into()),
-                input: Box::new(self.ir_node.into_inner()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: to.new_node_metadata(Stream::<
                     (MemberId<L>, T),
                     Process<'a, L2>,
                     Unbounded,
-                    O,
+                    <O as MinOrder<N::OrderingGuarantee>>::Min,
                     R,
                 >::collection_kind()),
             },
@@ -1042,14 +1064,23 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     /// # }));
     /// # }
     /// ```
+    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
     pub fn broadcast<L2: 'a, N: NetworkFor<T>>(
         self,
         to: &Cluster<'a, L2>,
         via: N,
         nondet_membership: NonDet,
-    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
+    ) -> KeyedStream<
+        MemberId<L>,
+        T,
+        Cluster<'a, L2>,
+        Unbounded,
+        <O as MinOrder<N::OrderingGuarantee>>::Min,
+        R,
+    >
     where
         T: Clone + Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
     {
         let ids = track_membership(self.location.source_cluster_members(to));
         sliced! {
@@ -1168,13 +1199,22 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
+    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
     pub fn demux<N: NetworkFor<T>>(
         self,
         to: &Cluster<'a, L2>,
         via: N,
-    ) -> KeyedStream<MemberId<L>, T, Cluster<'a, L2>, Unbounded, O, R>
+    ) -> KeyedStream<
+        MemberId<L>,
+        T,
+        Cluster<'a, L2>,
+        Unbounded,
+        <O as MinOrder<N::OrderingGuarantee>>::Min,
+        R,
+    >
     where
         T: Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
     {
         self.into_keyed().demux(to, via)
     }
@@ -1185,6 +1225,8 @@ mod tests {
     #[cfg(feature = "sim")]
     use stageleft::q;
 
+    #[cfg(feature = "sim")]
+    use crate::live_collections::sliced::sliced;
     #[cfg(feature = "sim")]
     use crate::location::{Location, MemberId};
     #[cfg(feature = "sim")]
@@ -1410,5 +1452,59 @@ mod tests {
                     ])
                     .await
             });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_lossy_delayed_forever_o2o() {
+        use std::collections::HashSet;
+
+        use crate::properties::manual_proof;
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
+
+        let received = node
+            .source_iter(q!(0..3_u32))
+            .send(&node2, TCP.lossy_delayed_forever().bincode())
+            .fold(
+                q!(|| std::collections::HashSet::<u32>::new()),
+                q!(
+                    |set, v| {
+                        set.insert(v);
+                    },
+                    commutative = manual_proof!(/** set insert is commutative */)
+                ),
+            );
+
+        let out_recv = sliced! {
+            let snapshot = use(received, nondet!(/** test */));
+            snapshot.into_stream()
+        }
+        .sim_output();
+
+        let mut saw_non_contiguous = false;
+
+        flow.sim().test_safety_only().exhaustive(async || {
+            let snapshots = out_recv.collect::<Vec<HashSet<u32>>>().await;
+
+            // Check each individual snapshot for a non-contiguous subset.
+            for set in &snapshots {
+                #[expect(clippy::disallowed_methods, reason = "min / max are deterministic")]
+                if set.len() >= 2 && set.len() < 3 {
+                    let min = *set.iter().min().unwrap();
+                    let max = *set.iter().max().unwrap();
+                    if set.len() < (max - min + 1) as usize {
+                        saw_non_contiguous = true;
+                    }
+                }
+            }
+        });
+
+        assert!(
+            saw_non_contiguous,
+            "Expected at least one execution with a non-contiguous subset of inputs"
+        );
     }
 }

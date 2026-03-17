@@ -118,12 +118,12 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
         use crate::networking::{NetworkingInfo, TcpFault};
         match networking_info {
             NetworkingInfo::Tcp { fault } => match (fault, env.nemesis.as_deref()) {
-                (TcpFault::Lossy, _) => {} // lossy is always allowed
-                (_, None) => {}            // no nemesis means any fault model is fine
+                (TcpFault::Lossy | TcpFault::LossyDelayedForever, _) => {} /* lossy/delayed are always allowed */
+                (_, None) => {} // no nemesis means any fault model is fine
                 (TcpFault::FailStop, Some("partition")) => {
                     panic!(
                         "Maelstrom partition nemesis requires lossy networking, but fail_stop was used. \
-                         Use `TCP.lossy().bincode()` instead of `TCP.fail_stop().bincode()`."
+                         Use `TCP.lossy().bincode()` or `TCP.lossy_delayed_forever().bincode()` instead of `TCP.fail_stop().bincode()`."
                     );
                 }
                 (TcpFault::FailStop, Some(_)) => {} // other nemeses are fine with fail_stop

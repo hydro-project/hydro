@@ -147,9 +147,13 @@ async fn main() {
         ""
     };
     let create_trybuild_host = |host: Arc<dyn Host + 'static>, name: &str, i: usize| {
-        let tbh = TrybuildHost::new(host).rustflags(rustflags);
+        let mut tbh = TrybuildHost::new(host).rustflags(rustflags);
+        // Pin to core 0 on remote machines
+        if args.gcp.is_some() || args.aws {
+            tbh = tbh.pin_to_core(0);
+        }
         if args.tracing {
-            tbh.tracing(
+            tbh = tbh.tracing(
                 TracingOptions::builder()
                     .perf_raw_outfile(format!("{name}{i}.perf.data"))
                     .samply_outfile(format!("{name}{i}.profile"))
@@ -158,10 +162,9 @@ async fn main() {
                     .frequency(frequency)
                     .setup_command(setup_command)
                     .build(),
-            )
-        } else {
-            tbh
+            );
         }
+        tbh
     };
 
     let _nodes = optimized

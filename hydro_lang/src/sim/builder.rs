@@ -34,6 +34,7 @@ pub struct SimBuilder {
     pub process_tick_dfirs: BTreeMap<LocationId, FlatGraphBuilder>,
     pub cluster_tick_dfirs: BTreeMap<LocationId, FlatGraphBuilder>,
     pub next_hoff_id: usize,
+    pub test_safety_only: bool,
 }
 
 impl SimBuilder {
@@ -844,7 +845,18 @@ impl DfirBuilder for SimBuilder {
         match networking_info {
             NetworkingInfo::Tcp { fault } => match fault {
                 TcpFault::FailStop => {}
-                _ => todo!("SimBuilder only supports fail-stop TCP networking"),
+                TcpFault::LossyDelayedForever => {
+                    assert!(
+                        self.test_safety_only,
+                        "Simulating `lossy_delayed_forever` requires `.test_safety_only()` on the \
+                         SimFlow because the simulator models dropped messages as indefinitely \
+                         delayed, which only tests safety (not liveness). Call \
+                         `.sim().test_safety_only()` to opt in."
+                    );
+                }
+                _ => todo!(
+                    "SimBuilder only supports fail-stop and lossy-delayed-forever TCP networking"
+                ),
             },
         }
 

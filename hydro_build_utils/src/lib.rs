@@ -1,4 +1,6 @@
-pub use ::{insta, rustc_version};
+#[cfg(feature = "insta")]
+pub use insta;
+pub use rustc_version;
 
 #[macro_export]
 macro_rules! emit_nightly_configuration {
@@ -15,6 +17,7 @@ macro_rules! emit_nightly_configuration {
     };
 }
 
+#[cfg(feature = "insta")]
 #[macro_export]
 macro_rules! nightly_wrapper {
     ($statement:stmt) => {
@@ -27,6 +30,7 @@ macro_rules! nightly_wrapper {
     }
 }
 
+#[cfg(feature = "insta")]
 #[macro_export]
 macro_rules! assert_snapshot {
     ($($arg:tt)*) => {
@@ -34,6 +38,7 @@ macro_rules! assert_snapshot {
     };
 }
 
+#[cfg(feature = "insta")]
 #[macro_export]
 macro_rules! assert_debug_snapshot {
     ($($arg:tt)*) => {

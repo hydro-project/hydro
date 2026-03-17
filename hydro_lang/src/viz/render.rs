@@ -905,6 +905,15 @@ impl HydroRoot {
                 None,
                 NodeLabel::static_label(format!("embedded_output({})", ident)),
             ),
+
+            HydroRoot::Null { input, .. } => build_sink_node(
+                structure,
+                seen_tees,
+                config,
+                input,
+                None,
+                NodeLabel::static_label("null".to_owned()),
+            ),
         }
     }
 }
@@ -1119,6 +1128,42 @@ impl HydroNode {
                 drop(inner_borrow);
 
                 tee_id
+            }
+
+            HydroNode::Partition {
+                inner, metadata, ..
+            } => {
+                let ptr = inner.as_ptr();
+                if let Some(&existing_id) = seen_tees.get(&ptr) {
+                    return existing_id;
+                }
+
+                let input_id = inner
+                    .0
+                    .borrow()
+                    .build_graph_structure(structure, seen_tees, config);
+                let partition_id = structure.add_node_with_metadata(
+                    NodeLabel::Static(extract_op_name(self.print_root())),
+                    HydroNodeType::Tee,
+                    metadata,
+                );
+
+                seen_tees.insert(ptr, partition_id);
+
+                // Extract semantic tags from input
+                let inner_borrow = inner.0.borrow();
+                let input_metadata = inner_borrow.metadata();
+                add_edge_with_metadata(
+                    structure,
+                    input_id,
+                    partition_id,
+                    Some(input_metadata),
+                    Some(metadata),
+                    None,
+                );
+                drop(inner_borrow);
+
+                partition_id
             }
 
             // Non-deterministic operation

@@ -482,6 +482,7 @@ pub struct TrybuildHost {
     tracing: Option<TracingOptions>,
     build_envs: Vec<(String, String)>,
     env: HashMap<String, String>,
+    pin_to_core: Option<usize>,
     name_hint: Option<String>,
     cluster_idx: Option<usize>,
 }
@@ -498,6 +499,7 @@ impl From<Arc<dyn Host>> for TrybuildHost {
             tracing: None,
             build_envs: vec![],
             env: HashMap::new(),
+            pin_to_core: None,
             name_hint: None,
             cluster_idx: None,
         }
@@ -516,6 +518,7 @@ impl<H: Host + 'static> From<Arc<H>> for TrybuildHost {
             tracing: None,
             build_envs: vec![],
             env: HashMap::new(),
+            pin_to_core: None,
             name_hint: None,
             cluster_idx: None,
         }
@@ -535,6 +538,7 @@ impl TrybuildHost {
             tracing: None,
             build_envs: vec![],
             env: HashMap::new(),
+            pin_to_core: None,
             name_hint: None,
             cluster_idx: None,
         }
@@ -614,6 +618,13 @@ impl TrybuildHost {
         env.insert(key.into(), value.into());
         Self { env, ..self }
     }
+
+    pub fn pin_to_core(self, core: usize) -> Self {
+        Self {
+            pin_to_core: Some(core),
+            ..self
+        }
+    }
 }
 
 impl IntoProcessSpec<'_, HydroDeploy> for Arc<dyn Host> {
@@ -629,6 +640,7 @@ impl IntoProcessSpec<'_, HydroDeploy> for Arc<dyn Host> {
             tracing: None,
             build_envs: vec![],
             env: HashMap::new(),
+            pin_to_core: None,
             name_hint: None,
             cluster_idx: None,
         }
@@ -648,6 +660,7 @@ impl<H: Host + 'static> IntoProcessSpec<'_, HydroDeploy> for Arc<H> {
             tracing: None,
             build_envs: vec![],
             env: HashMap::new(),
+            pin_to_core: None,
             name_hint: None,
             cluster_idx: None,
         }
@@ -868,6 +881,7 @@ impl Node for DeployNode {
                 // Determine linking mode based on host target type
                 let linking_mode = if !cfg!(target_os = "windows")
                     && trybuild.host.target_type() == hydro_deploy::HostTargetType::Local
+                    && trybuild.rustflags.is_none()
                 {
                     // When compiling for local, prefer dynamic linking to reduce binary size
                     // Windows is currently not supported due to https://github.com/bevyengine/bevy/pull/2016
@@ -971,6 +985,7 @@ impl Node for DeployCluster {
                     CrateOrTrybuild::Crate(_, _) => true, // crates handle their own linking
                     CrateOrTrybuild::Trybuild(t) => {
                         t.host.target_type() == hydro_deploy::HostTargetType::Local
+                            && t.rustflags.is_none()
                     }
                 }) {
             // See comment above for Windows exception
@@ -1167,6 +1182,10 @@ fn create_trybuild_service(
 
     if let Some(tracing) = trybuild.tracing {
         ret = ret.tracing(tracing);
+    }
+
+    if let Some(core) = trybuild.pin_to_core {
+        ret = ret.pin_to_core(core);
     }
 
     ret = ret.features(
