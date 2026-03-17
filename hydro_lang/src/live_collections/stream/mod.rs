@@ -12,7 +12,7 @@ use tokio::time::Instant;
 
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::keyed_singleton::KeyedSingleton;
-use super::keyed_stream::KeyedStream;
+use super::keyed_stream::{Generate, KeyedStream};
 use super::optional::Optional;
 use super::singleton::Singleton;
 use crate::compile::builder::{CycleId, FlowState};
@@ -27,6 +27,7 @@ use crate::live_collections::batch_atomic::BatchAtomic;
 use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::{Atomic, DeferTick, NoAtomic};
 use crate::location::{Location, NoTick, Tick, check_matching_location};
+use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 use crate::prelude::manual_proof;
 use crate::properties::{AggFuncAlgebra, ValidCommutativityFor, ValidIdempotenceFor};
@@ -1484,6 +1485,119 @@ where
                 ),
             },
         )
+    }
+
+    /// Iteratively processes the elements of the stream using a state machine that can yield
+    /// elements as it processes its inputs. This is designed to mirror the unstable generator
+    /// syntax in Rust, without requiring special syntax.
+    ///
+    /// Like [`Stream::scan`], this function takes in an initializer that emits the initial
+    /// state. The second argument defines the processing logic, taking in a mutable reference
+    /// to the state and the value to be processed. It emits a [`Generate`] value, whose
+    /// variants define what is emitted and whether further inputs should be processed.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process.source_iter(q!(vec![1, 3, 100, 10])).generator(
+    ///     q!(|| 0),
+    ///     q!(|acc, x| {
+    ///         *acc += x;
+    ///         if *acc > 100 {
+    ///             hydro_lang::live_collections::keyed_stream::Generate::Return("done!".to_owned())
+    ///         } else if *acc % 2 == 0 {
+    ///             hydro_lang::live_collections::keyed_stream::Generate::Yield("even".to_owned())
+    ///         } else {
+    ///             hydro_lang::live_collections::keyed_stream::Generate::Continue
+    ///         }
+    ///     }),
+    /// )
+    /// # }, |mut stream| async move {
+    /// // Output: "even", "done!"
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..2 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec!["done!".to_owned(), "even".to_owned()]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn generator<A, U, I, F>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L> + Copy,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> Stream<U, L, B, TotalOrder, ExactlyOnce>
+    where
+        O: IsOrdered,
+        R: IsExactlyOnce,
+        I: Fn() -> A + 'a,
+        F: Fn(&mut A, T) -> Generate<U> + 'a,
+    {
+        let init: ManualExpr<I, _> = ManualExpr::new(move |ctx: &L| init.splice_fn0_ctx(ctx));
+        let f: ManualExpr<F, _> = ManualExpr::new(move |ctx: &L| f.splice_fn2_borrow_mut_ctx(ctx));
+
+        let this = self.make_totally_ordered().make_exactly_once();
+
+        // State is Option<Option<A>>:
+        //   None = not yet initialized
+        //   Some(Some(a)) = active with state a
+        //   Some(None) = terminated
+        let scan_init = q!(|| None)
+            .splice_fn0_ctx::<Option<Option<A>>>(&this.location)
+            .into();
+        let scan_f = q!(move |state: &mut Option<Option<_>>, v| {
+            if state.is_none() {
+                *state = Some(Some(init()));
+            }
+            match state {
+                Some(Some(state_value)) => match f(state_value, v) {
+                    Generate::Yield(out) => Some(Some(out)),
+                    Generate::Return(out) => {
+                        *state = Some(None);
+                        Some(Some(out))
+                    }
+                    // Unlike KeyedStream, we can terminate the scan directly on
+                    // Break/Return because there is only one state (no other keys
+                    // that still need processing).
+                    Generate::Break => None,
+                    Generate::Continue => Some(None),
+                },
+                // State is Some(None) after Return; terminate the scan.
+                _ => None,
+            }
+        })
+        .splice_fn2_borrow_mut_ctx::<Option<Option<A>>, T, _>(&this.location)
+        .into();
+
+        let scan_node = HydroNode::Scan {
+            init: scan_init,
+            acc: scan_f,
+            input: Box::new(this.ir_node.replace(HydroNode::Placeholder)),
+            metadata: this.location.new_node_metadata(Stream::<
+                Option<U>,
+                L,
+                B,
+                TotalOrder,
+                ExactlyOnce,
+            >::collection_kind()),
+        };
+
+        let flatten_f = q!(|d| d)
+            .splice_fn1_ctx::<Option<U>, _>(&this.location)
+            .into();
+        let flatten_node = HydroNode::FlatMap {
+            f: flatten_f,
+            input: Box::new(scan_node),
+            metadata: this
+                .location
+                .new_node_metadata(Stream::<U, L, B, TotalOrder, ExactlyOnce>::collection_kind()),
+        };
+
+        Stream::new(this.location.clone(), flatten_node)
     }
 
     /// Given a time interval, returns a stream corresponding to samples taken from the
