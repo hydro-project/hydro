@@ -118,12 +118,12 @@
 <a href=#118 id=118 data-nosnippet>118</a>        <span class="kw">use </span><span class="kw">crate</span>::networking::{NetworkingInfo, TcpFault};
 <a href=#119 id=119 data-nosnippet>119</a>        <span class="kw">match </span>networking_info {
 <a href=#120 id=120 data-nosnippet>120</a>            NetworkingInfo::Tcp { fault } =&gt; <span class="kw">match </span>(fault, env.nemesis.as_deref()) {
-<a href=#121 id=121 data-nosnippet>121</a>                (TcpFault::Lossy, <span class="kw">_</span>) =&gt; {} <span class="comment">// lossy is always allowed
-<a href=#122 id=122 data-nosnippet>122</a>                </span>(<span class="kw">_</span>, <span class="prelude-val">None</span>) =&gt; {}            <span class="comment">// no nemesis means any fault model is fine
+<a href=#121 id=121 data-nosnippet>121</a>                (TcpFault::Lossy | TcpFault::LossyDelayedForever, <span class="kw">_</span>) =&gt; {} <span class="comment">/* lossy/delayed are always allowed */
+<a href=#122 id=122 data-nosnippet>122</a>                </span>(<span class="kw">_</span>, <span class="prelude-val">None</span>) =&gt; {} <span class="comment">// no nemesis means any fault model is fine
 <a href=#123 id=123 data-nosnippet>123</a>                </span>(TcpFault::FailStop, <span class="prelude-val">Some</span>(<span class="string">"partition"</span>)) =&gt; {
 <a href=#124 id=124 data-nosnippet>124</a>                    <span class="macro">panic!</span>(
 <a href=#125 id=125 data-nosnippet>125</a>                        <span class="string">"Maelstrom partition nemesis requires lossy networking, but fail_stop was used. \
-<a href=#126 id=126 data-nosnippet>126</a>                         Use `TCP.lossy().bincode()` instead of `TCP.fail_stop().bincode()`."
+<a href=#126 id=126 data-nosnippet>126</a>                         Use `TCP.lossy().bincode()` or `TCP.lossy_delayed_forever().bincode()` instead of `TCP.fail_stop().bincode()`."
 <a href=#127 id=127 data-nosnippet>127</a>                    </span>);
 <a href=#128 id=128 data-nosnippet>128</a>                }
 <a href=#129 id=129 data-nosnippet>129</a>                (TcpFault::FailStop, <span class="prelude-val">Some</span>(<span class="kw">_</span>)) =&gt; {} <span class="comment">// other nemeses are fine with fail_stop
