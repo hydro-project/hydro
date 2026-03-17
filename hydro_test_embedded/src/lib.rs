@@ -16,6 +16,17 @@ pub mod embedded {
     reason = "generated code"
 )]
 #[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
+pub mod singleton_input {
+    include!(concat!(env!("OUT_DIR"), "/singleton_input.rs"));
+}
+
+#[cfg(feature = "test_embedded")]
+#[expect(
+    clippy::allow_attributes,
+    clippy::allow_attributes_without_reason,
+    reason = "generated code"
+)]
+#[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
 pub mod echo_network {
     include!(concat!(env!("OUT_DIR"), "/echo_network.rs"));
 }
@@ -82,6 +93,20 @@ mod tests {
         let flow = crate::embedded::capitalize(input, &mut outputs);
         run_dfir(flow).await;
         assert_eq!(collected, vec!["HELLO", "WORLD", "HYDRO"]);
+    }
+
+    // --- singleton_input (singleton + stream, no networking) ---
+    // Order: (singleton_inputs, inputs, outputs)
+    #[tokio::test]
+    async fn test_embedded_singleton_input() {
+        let names = stream::iter(vec!["Alice".to_owned(), "Bob".to_owned()]);
+        let mut collected = vec![];
+        let mut outputs = crate::singleton_input::prefix_names::EmbeddedOutputs {
+            output: |s: String| collected.push(s),
+        };
+        let flow = crate::singleton_input::prefix_names("Hello".to_owned(), names, &mut outputs);
+        run_dfir(flow).await;
+        assert_eq!(collected, vec!["Hello Alice", "Hello Bob"]);
     }
 
     // --- echo_network (o2o) ---

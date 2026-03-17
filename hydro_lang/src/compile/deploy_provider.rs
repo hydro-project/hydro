@@ -179,17 +179,30 @@ pub trait Deploy<'a> {
         location_id: &LocationId,
     ) -> impl QuotedWithContext<'a, Box<dyn Stream<Item = (TaglessMemberId, MembershipEvent)> + Unpin>, ()>;
 
-    /// Registers an embedded input for the given ident and element type.
+    /// Registers an embedded stream input for the given ident and element type.
     ///
     /// Only meaningful for the embedded deployment backend. The default
     /// implementation panics.
-    fn register_embedded_input(
+    fn register_embedded_stream_input(
         _env: &mut Self::InstantiateEnv,
         _location_key: LocationKey,
         _ident: &syn::Ident,
         _element_type: &syn::Type,
     ) {
-        panic!("register_embedded_input is only supported by EmbeddedDeploy");
+        panic!("register_embedded_stream_input is only supported by EmbeddedDeploy");
+    }
+
+    /// Registers an embedded singleton input for the given ident and element type.
+    ///
+    /// Only meaningful for the embedded deployment backend. The default
+    /// implementation panics.
+    fn register_embedded_singleton_input(
+        _env: &mut Self::InstantiateEnv,
+        _location_key: LocationKey,
+        _ident: &syn::Ident,
+        _element_type: &syn::Type,
+    ) {
+        panic!("register_embedded_singleton_input is only supported by EmbeddedDeploy");
     }
 
     /// Registers an embedded output for the given ident and element type.

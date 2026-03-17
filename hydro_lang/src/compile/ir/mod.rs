@@ -330,6 +330,7 @@ pub enum HydroSource {
     Spin(),
     ClusterMembers(LocationId, ClusterMembersState),
     Embedded(syn::Ident),
+    EmbeddedSingleton(syn::Ident),
 }
 
 #[cfg(feature = "build")]
@@ -956,7 +957,22 @@ impl HydroRoot {
                         LocationId::Process(key) | LocationId::Cluster(key) => *key,
                         _ => panic!("Embedded source must be on a process or cluster"),
                     };
-                    D::register_embedded_input(
+                    D::register_embedded_stream_input(
+                        &mut refcell_env.borrow_mut(),
+                        location_key,
+                        ident,
+                        &element_type,
+                    );
+                } else if let HydroNode::Source { source: HydroSource::EmbeddedSingleton(ident), metadata } = n {
+                    let element_type = match &metadata.collection_kind {
+                        CollectionKind::Singleton { element_type, .. } => element_type.0.as_ref().clone(),
+                        _ => panic!("EmbeddedSingleton source must have Singleton collection kind"),
+                    };
+                    let location_key = match metadata.location_id.root() {
+                        LocationId::Process(key) | LocationId::Cluster(key) => *key,
+                        _ => panic!("EmbeddedSingleton source must be on a process or cluster"),
+                    };
+                    D::register_embedded_singleton_input(
                         &mut refcell_env.borrow_mut(),
                         location_key,
                         ident,
@@ -2600,6 +2616,12 @@ impl HydroNode {
                                         #source_ident = source_stream(#ident);
                                     }
                                 }
+
+                                HydroSource::EmbeddedSingleton(ident) => {
+                                    parse_quote! {
+                                        #source_ident = source_iter([#ident]);
+                                    }
+                                }
                             };
 
                             match builders_or_callback {
@@ -3775,7 +3797,8 @@ impl HydroNode {
                 HydroSource::ExternalNetwork()
                 | HydroSource::Spin()
                 | HydroSource::ClusterMembers(_, _)
-                | HydroSource::Embedded(_) => {} // TODO: what goes here?
+                | HydroSource::Embedded(_)
+                | HydroSource::EmbeddedSingleton(_) => {} // TODO: what goes here?
             },
             HydroNode::SingletonSource { value, .. } => {
                 transform(value);

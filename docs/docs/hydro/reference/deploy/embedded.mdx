@@ -142,6 +142,59 @@ async fn run() {
 The generated function accepts your input streams as `impl Stream<Item = T> + Unpin` parameters and a mutable reference to the `EmbeddedOutputs` struct. It returns a `Dfir` graph that you run with `run_available()` (or tick manually).
 
 
+## Singleton Inputs
+
+In addition to stream inputs, you can pass singleton values into embedded mode. A **singleton input** becomes a plain `T` parameter on the generated function — no stream wrapping needed. This is useful for configuration values, thresholds, or any fixed data that the dataflow needs.
+
+Use `embedded_singleton_input` instead of `embedded_input`:
+
+```rust title="my_hydro_crate/src/lib.rs"
+use hydro_lang::prelude::*;
+
+pub fn greet<'a>(
+    names: Stream<String, Process<'a, ()>, Unbounded, TotalOrder, ExactlyOnce>,
+    greeting: Singleton<String, Process<'a, ()>, Bounded>,
+) {
+    names
+        .cross_singleton(greeting)
+        .map(q!(|(name, greeting)| format!("{greeting}, {name}!")))
+        .embedded_output("output");
+}
+```
+
+In `build.rs`, call `embedded_singleton_input` to create the singleton parameter:
+
+```rust title="my_wrapper_crate/build.rs"
+let process = flow.process::<()>();
+my_hydro_crate::greet(
+    process.embedded_input("names"),
+    process.embedded_singleton_input("greeting"),
+);
+```
+
+The generated function will accept `greeting` as a plain `String` parameter:
+
+```rust,ignore
+pub fn greet<'a, F: FnMut(String) + 'a>(
+    greeting: String,
+    names: impl Stream<Item = String> + Unpin + 'a,
+    __outputs: &'a mut greet::EmbeddedOutputs<F>,
+) -> Dfir<'a> { ... }
+```
+
+Call it like any other Rust function:
+
+```rust,ignore
+let input = futures::stream::iter(vec!["Alice".to_owned(), "Bob".to_owned()]);
+let mut results = vec![];
+let mut outputs = embedded::greet::EmbeddedOutputs {
+    output: |s: String| results.push(s),
+};
+let mut flow = embedded::greet("Hello".to_owned(), input, &mut outputs);
+```
+
+Singleton inputs appear before stream inputs in the generated function signature.
+
 ## Clusters
 
 When a location is a cluster (registered with `with_cluster` in `build.rs`), the generated function receives additional parameters for the cluster's identity and membership information.

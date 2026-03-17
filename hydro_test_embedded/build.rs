@@ -29,6 +29,26 @@ fn generate_embedded() {
         .unwrap();
     }
 
+    // --- singleton_input (local, singleton + stream) ---
+    {
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let process = flow.process::<()>();
+        hydro_test::local::singleton_input::prefix_names(
+            process.embedded_input("names"),
+            process.embedded_singleton_input("prefix"),
+        );
+
+        let code = flow
+            .with_process(&process, "prefix_names")
+            .generate_embedded("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/singleton_input.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
     // --- echo_network (o2o networking) ---
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();

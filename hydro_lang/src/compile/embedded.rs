@@ -165,6 +165,8 @@ impl<S: Into<String>> ExternalSpec<'_, EmbeddedDeploy> for S {
 pub struct EmbeddedInstantiateEnv {
     /// (ident name, element type) pairs per location key, for inputs.
     pub inputs: SparseSecondaryMap<LocationKey, Vec<(syn::Ident, syn::Type)>>,
+    /// (ident name, element type) pairs per location key, for singleton inputs.
+    pub singleton_inputs: SparseSecondaryMap<LocationKey, Vec<(syn::Ident, syn::Type)>>,
     /// (ident name, element type) pairs per location key, for outputs.
     pub outputs: SparseSecondaryMap<LocationKey, Vec<(syn::Ident, syn::Type)>>,
     /// Network output port names per location key (sender side of channels).
@@ -426,13 +428,26 @@ impl<'a> Deploy<'a> for EmbeddedDeploy {
         super::embedded_runtime::embedded_cluster_membership_stream(idx)
     }
 
-    fn register_embedded_input(
+    fn register_embedded_stream_input(
         env: &mut Self::InstantiateEnv,
         location_key: LocationKey,
         ident: &syn::Ident,
         element_type: &syn::Type,
     ) {
         env.inputs
+            .entry(location_key)
+            .unwrap()
+            .or_default()
+            .push((ident.clone(), element_type.clone()));
+    }
+
+    fn register_embedded_singleton_input(
+        env: &mut Self::InstantiateEnv,
+        location_key: LocationKey,
+        ident: &syn::Ident,
+        element_type: &syn::Type,
+    ) {
+        env.singleton_inputs
             .entry(location_key)
             .unwrap()
             .or_default()
@@ -620,6 +635,21 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                 .iter()
                 .map(|(ident, element_type)| {
                     quote! { #ident: impl __root_dfir_rs::futures::Stream<Item = #element_type> + Unpin + 'a }
+                })
+                .collect();
+
+            // Embedded singleton inputs (plain value parameters).
+            let mut loc_singleton_inputs = env
+                .singleton_inputs
+                .get(location_key)
+                .cloned()
+                .unwrap_or_default();
+            loc_singleton_inputs.sort_by(|a, b| a.0.to_string().cmp(&b.0.to_string()));
+
+            let singleton_input_params: Vec<proc_macro2::TokenStream> = loc_singleton_inputs
+                .iter()
+                .map(|(ident, element_type)| {
+                    quote! { #ident: #element_type }
                 })
                 .collect();
 
@@ -815,6 +845,7 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
             // Build the function.
             let all_params: Vec<proc_macro2::TokenStream> = cluster_params
                 .into_iter()
+                .chain(singleton_input_params)
                 .chain(input_params)
                 .chain(output_params)
                 .chain(net_in_params)

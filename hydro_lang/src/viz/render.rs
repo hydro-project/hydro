@@ -1064,6 +1064,9 @@ impl HydroNode {
                     HydroSource::Embedded(ident) => {
                         format!("embedded_input({})", ident)
                     }
+                    HydroSource::EmbeddedSingleton(ident) => {
+                        format!("embedded_singleton_input({})", ident)
+                    }
                 };
                 build_source_node(structure, metadata, label)
             }

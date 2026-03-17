@@ -556,6 +556,26 @@ pub trait Location<'a>: dynamic::DynLocation {
         )
     }
 
+    /// Creates an embedded singleton input for embedded deployment mode.
+    ///
+    /// The `name` parameter specifies the name of the generated function parameter
+    /// that will supply data to this singleton at runtime. The generated function will
+    /// accept a plain `T` parameter with this name.
+    fn embedded_singleton_input<T>(&self, name: impl Into<String>) -> Singleton<T, Self, Bounded>
+    where
+        Self: Sized + NoTick,
+    {
+        let ident = syn::Ident::new(&name.into(), Span::call_site());
+
+        Singleton::new(
+            self.clone(),
+            HydroNode::Source {
+                source: HydroSource::EmbeddedSingleton(ident),
+                metadata: self.new_node_metadata(Singleton::<T, Self, Bounded>::collection_kind()),
+            },
+        )
+    }
+
     /// Establishes a server on this location to receive a bidirectional connection from a single
     /// client, identified by the given `External` handle. Returns a port handle for the external
     /// process to connect to, a stream of incoming messages, and a handle to send outgoing
