@@ -183,7 +183,7 @@
 <a href=#183 id=183 data-nosnippet>183</a>                serialize_fn: serialize_pipeline.map(|e| e.into()),
 <a href=#184 id=184 data-nosnippet>184</a>                instantiate_fn: DebugInstantiate::Building,
 <a href=#185 id=185 data-nosnippet>185</a>                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
-<a href=#186 id=186 data-nosnippet>186</a>                input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+<a href=#186 id=186 data-nosnippet>186</a>                input: Box::new(<span class="self">self</span>.ir_node.replace(HydroNode::Placeholder)),
 <a href=#187 id=187 data-nosnippet>187</a>                metadata: to.new_node_metadata(
 <a href=#188 id=188 data-nosnippet>188</a>                    Stream::&lt;T, Process&lt;<span class="lifetime">'a</span>, L2&gt;, Unbounded, O, R&gt;::collection_kind(),
 <a href=#189 id=189 data-nosnippet>189</a>                ),
@@ -353,7 +353,7 @@
 <a href=#353 id=353 data-nosnippet>353</a>            unpaired: <span class="bool-val">true</span>,
 <a href=#354 id=354 data-nosnippet>354</a>            serialize_fn: serialize_pipeline.map(|e| e.into()),
 <a href=#355 id=355 data-nosnippet>355</a>            instantiate_fn: DebugInstantiate::Building,
-<a href=#356 id=356 data-nosnippet>356</a>            input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+<a href=#356 id=356 data-nosnippet>356</a>            input: Box::new(<span class="self">self</span>.ir_node.replace(HydroNode::Placeholder)),
 <a href=#357 id=357 data-nosnippet>357</a>            op_metadata: HydroIrOpMetadata::new(),
 <a href=#358 id=358 data-nosnippet>358</a>        });
 <a href=#359 id=359 data-nosnippet>359</a>
@@ -398,7 +398,7 @@
 <a href=#398 id=398 data-nosnippet>398</a>            .borrow_mut()
 <a href=#399 id=399 data-nosnippet>399</a>            .push_root(HydroRoot::EmbeddedOutput {
 <a href=#400 id=400 data-nosnippet>400</a>                ident,
-<a href=#401 id=401 data-nosnippet>401</a>                input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+<a href=#401 id=401 data-nosnippet>401</a>                input: Box::new(<span class="self">self</span>.ir_node.replace(HydroNode::Placeholder)),
 <a href=#402 id=402 data-nosnippet>402</a>                op_metadata: HydroIrOpMetadata::new(),
 <a href=#403 id=403 data-nosnippet>403</a>            });
 <a href=#404 id=404 data-nosnippet>404</a>    }
@@ -922,7 +922,7 @@
 <a href=#922 id=922 data-nosnippet>922</a>                serialize_fn: serialize_pipeline.map(|e| e.into()),
 <a href=#923 id=923 data-nosnippet>923</a>                instantiate_fn: DebugInstantiate::Building,
 <a href=#924 id=924 data-nosnippet>924</a>                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
-<a href=#925 id=925 data-nosnippet>925</a>                input: Box::new(<span class="self">self</span>.ir_node.into_inner()),
+<a href=#925 id=925 data-nosnippet>925</a>                input: Box::new(<span class="self">self</span>.ir_node.replace(HydroNode::Placeholder)),
 <a href=#926 id=926 data-nosnippet>926</a>                metadata: to.new_node_metadata(Stream::&lt;
 <a href=#927 id=927 data-nosnippet>927</a>                    (MemberId&lt;L&gt;, T),
 <a href=#928 id=928 data-nosnippet>928</a>                    Process&lt;<span class="lifetime">'a</span>, L2&gt;,
