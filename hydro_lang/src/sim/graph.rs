@@ -92,7 +92,7 @@ impl Node for SimExternal {
     }
 
     fn update_meta(&self, _meta: &Self::Meta) {
-        todo!()
+        todo!("SimExternal::update_meta is not yet implemented")
     }
 
     fn instantiate(
@@ -128,7 +128,7 @@ impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
             std::io::Error,
         >,
     > + 'a {
-        async { todo!() }
+        async { todo!("SimExternal::as_bytes_bidi is not yet supported in simulation") }
     }
 
     #[expect(clippy::manual_async_fn, reason = "false positive, involves lifetimes")]
@@ -140,7 +140,7 @@ impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
         InT: serde::Serialize + 'static,
         OutT: serde::de::DeserializeOwned + 'static,
     {
-        async { todo!() }
+        async { todo!("SimExternal::as_bincode_bidi is not yet supported in simulation") }
     }
 
     #[expect(clippy::manual_async_fn, reason = "false positive, involves lifetimes")]
@@ -151,7 +151,7 @@ impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
     where
         T: serde::Serialize + 'static,
     {
-        async { todo!() }
+        async { todo!("SimExternal::as_bincode_sink is not yet supported in simulation") }
     }
 
     #[expect(clippy::manual_async_fn, reason = "false positive, involves lifetimes")]
@@ -162,7 +162,7 @@ impl<'a> RegisterPort<'a, SimDeploy> for SimExternal {
     where
         T: serde::de::DeserializeOwned + 'static,
     {
-        async { todo!() }
+        async { todo!("SimExternal::as_bincode_source is not yet supported in simulation") }
     }
 }
 
@@ -303,11 +303,11 @@ impl<'a> Deploy<'a> for SimDeploy {
         _codec_type: &syn::Type,
         _shared_handle: String,
     ) -> syn::Expr {
-        todo!()
+        todo!("e2o_many_source is not yet supported in simulation")
     }
 
     fn e2o_many_sink(_shared_handle: String) -> syn::Expr {
-        todo!()
+        todo!("e2o_many_sink is not yet supported in simulation")
     }
 
     fn e2o_source(
@@ -355,13 +355,13 @@ impl<'a> Deploy<'a> for SimDeploy {
     fn cluster_ids(
         _of_cluster: LocationKey,
     ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a {
-        todo!();
+        todo!("cluster_ids is not yet supported in simulation");
         stageleft::q!(todo!())
     }
 
     #[expect(unreachable_code, reason = "todo!() is unreachable")]
     fn cluster_self_id() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a {
-        todo!();
+        todo!("cluster_self_id is not yet supported in simulation");
         stageleft::q!(todo!())
     }
 
