@@ -90,11 +90,11 @@ mod tests {
     use core::pin::pin;
 
     use crate::pull::Pull;
-    use crate::pull::test_utils::{PanicsAfterEndPull, assert_fused_runtime};
+    use crate::pull::test_utils::{TestPull, assert_fused_runtime};
 
     #[test]
     fn flatten_fused_shields_upstream() {
-        let p = pin!(PanicsAfterEndPull::new(5).fuse().map(|x| 0..x).flatten());
+        let p = pin!(TestPull::items(0..5).fuse().map(|x| 0..x).flatten());
         assert_fused_runtime(p);
     }
 }

@@ -120,12 +120,12 @@ mod tests {
     use alloc::vec::Vec;
 
     use super::*;
-    use crate::pull::test_utils::SyncPull;
+    use crate::pull::test_utils::TestPull;
     use crate::pull::{Pull, PullStep};
 
     #[test]
     fn zip_functional_same_length() {
-        let mut zip = pin!(Zip::new(SyncPull::new(2), SyncPull::new(2)));
+        let mut zip = pin!(Zip::new(TestPull::items(0..2), TestPull::items(0..2)));
         let mut results = Vec::new();
 
         loop {
@@ -141,7 +141,7 @@ mod tests {
 
     #[test]
     fn zip_functional_first_shorter() {
-        let mut zip = pin!(Zip::new(SyncPull::new(1), SyncPull::new(3)));
+        let mut zip = pin!(Zip::new(TestPull::items(0..1), TestPull::items(0..3)));
         let mut results = Vec::new();
 
         loop {
@@ -157,7 +157,7 @@ mod tests {
 
     #[test]
     fn zip_functional_second_shorter() {
-        let mut zip = pin!(Zip::new(SyncPull::new(3), SyncPull::new(1)));
+        let mut zip = pin!(Zip::new(TestPull::items(0..3), TestPull::items(0..1)));
         let mut results = Vec::new();
 
         loop {

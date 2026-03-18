@@ -1,175 +1,97 @@
 //! Shared test utilities for Pull type algebra tests.
 
+use alloc::collections::VecDeque;
 use core::pin::Pin;
 
 use crate::pull::{FusedPull, Pull, PullStep};
 use crate::{No, Toggle, Yes};
 
-/// Helper pull that can pend and can end (CanPend=Yes, CanEnd=Yes).
-/// This pull is fused - once ended, it stays ended.
-pub struct AsyncPull {
-    count: usize,
-    max: usize,
-    pending_next: bool,
-    ended: bool,
+/// A configurable test pull that replays a log of [`PullStep`]s in order.
+///
+/// Each call to [`Pull::pull`] pops the next step from the front of the log.
+/// Panics if the log is empty (to test fusing — the last step should typically be `Ended`).
+///
+/// Generic over `CanPend`, `CanEnd` (for type algebra tests), and `FUSED`
+/// (when `true`, implements [`FusedPull`]).
+pub struct TestPull<Item, Meta: Copy, CanPend: Toggle, CanEnd: Toggle, const FUSED: bool> {
+    steps: VecDeque<PullStep<Item, Meta, CanPend, CanEnd>>,
 }
 
-impl AsyncPull {
-    pub(crate) fn new(max: usize) -> Self {
+impl<Item, Meta: Copy, CanPend: Toggle, CanEnd: Toggle, const FUSED: bool>
+    TestPull<Item, Meta, CanPend, CanEnd, FUSED>
+{
+    /// Creates a new `TestPull` from the given sequence of steps.
+    pub(crate) fn new(
+        steps: impl IntoIterator<Item = PullStep<Item, Meta, CanPend, CanEnd>>,
+    ) -> Self {
         Self {
-            count: 0,
-            max,
-            pending_next: false,
-            ended: false,
+            steps: steps.into_iter().collect(),
         }
     }
 }
 
-impl Pull for AsyncPull {
-    type Ctx<'ctx> = ();
+impl<Item> TestPull<Item, (), No, Yes, false> {
+    /// Creates a non-fused `TestPull` that yields each item as `Ready`, then `Ended`.
+    /// Panics if polled again after the log is exhausted.
+    pub(crate) fn items(items: impl IntoIterator<Item = Item>) -> Self {
+        Self::new(
+            items
+                .into_iter()
+                .map(|item| PullStep::Ready(item, ()))
+                .chain(core::iter::once(PullStep::Ended(Yes))),
+        )
+    }
+}
 
-    type Item = i32;
-    type Meta = ();
-    type CanPend = Yes;
-    type CanEnd = Yes;
+impl<Item> TestPull<Item, (), No, Yes, true> {
+    /// Creates a fused `TestPull` that yields each item as `Ready`, then `Ended`.
+    /// Panics if polled again after the log is exhausted.
+    pub(crate) fn items_fused(items: impl IntoIterator<Item = Item>) -> Self {
+        Self::new(
+            items
+                .into_iter()
+                .map(|item| PullStep::Ready(item, ()))
+                .chain(core::iter::once(PullStep::Ended(Yes))),
+        )
+    }
+}
+
+impl<Item, Meta: Copy, CanPend: Toggle, CanEnd: Toggle, const FUSED: bool> Unpin
+    for TestPull<Item, Meta, CanPend, CanEnd, FUSED>
+{
+}
+
+impl<Item, Meta: Copy, CanPend: Toggle, CanEnd: Toggle, const FUSED: bool> Pull
+    for TestPull<Item, Meta, CanPend, CanEnd, FUSED>
+{
+    type Ctx<'ctx> = ();
+    type Item = Item;
+    type Meta = Meta;
+    type CanPend = CanPend;
+    type CanEnd = CanEnd;
 
     fn pull(
         self: Pin<&mut Self>,
         _ctx: &mut Self::Ctx<'_>,
     ) -> PullStep<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
-        let this = self.get_mut();
-        if this.ended {
-            return PullStep::Ended(Yes);
-        }
-        if this.pending_next {
-            this.pending_next = false;
-            PullStep::Pending(Yes)
-        } else if this.count < this.max {
-            let item = this.count as i32;
-            this.count += 1;
-            this.pending_next = true;
-            PullStep::Ready(item, ())
-        } else {
-            this.ended = true;
-            PullStep::Ended(Yes)
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.ended {
-            (0, Some(0))
-        } else {
-            let remaining = self.max.saturating_sub(self.count);
-            (remaining, Some(remaining))
+        match self.get_mut().steps.pop_front() {
+            Some(step) => step,
+            None if FUSED => PullStep::ended(),
+            None => panic!("TestPull: polled after log exhausted"),
         }
     }
 }
 
-impl FusedPull for AsyncPull {}
-
-/// Helper pull that never pends but can end (CanPend=No, CanEnd=Yes).
-/// This pull is fused - once ended, it stays ended.
-pub struct SyncPull {
-    count: usize,
-    max: usize,
-    ended: bool,
+impl<Item, Meta: Copy, CanPend: Toggle, CanEnd: Toggle> FusedPull
+    for TestPull<Item, Meta, CanPend, CanEnd, true>
+{
 }
-
-impl SyncPull {
-    pub(crate) fn new(max: usize) -> Self {
-        Self {
-            count: 0,
-            max,
-            ended: false,
-        }
-    }
-}
-
-impl Pull for SyncPull {
-    type Ctx<'ctx> = ();
-
-    type Item = i32;
-    type Meta = ();
-    type CanPend = No;
-    type CanEnd = Yes;
-
-    fn pull(
-        self: Pin<&mut Self>,
-        _ctx: &mut Self::Ctx<'_>,
-    ) -> PullStep<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
-        let this = self.get_mut();
-        if this.ended {
-            return PullStep::Ended(Yes);
-        }
-        if this.count < this.max {
-            let item = this.count as i32;
-            this.count += 1;
-            PullStep::Ready(item, ())
-        } else {
-            this.ended = true;
-            PullStep::Ended(Yes)
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.ended {
-            (0, Some(0))
-        } else {
-            let remaining = self.max.saturating_sub(self.count);
-            (remaining, Some(remaining))
-        }
-    }
-}
-
-impl FusedPull for SyncPull {}
 
 /// Compile-time assertion that a pull implements [`FusedPull`].
 pub fn assert_is_fused(_: &impl FusedPull) {}
 
-/// Helper pull that panics if polled after returning Ended.
-/// Use this as upstream for fused combinator tests — if the combinator
-/// correctly shields the upstream after ending, the panic is never hit.
-pub struct PanicsAfterEndPull {
-    count: usize,
-    max: usize,
-    ended: bool,
-}
-
-impl PanicsAfterEndPull {
-    pub(crate) fn new(max: usize) -> Self {
-        Self {
-            count: 0,
-            max,
-            ended: false,
-        }
-    }
-}
-
-impl Pull for PanicsAfterEndPull {
-    type Ctx<'ctx> = ();
-    type Item = i32;
-    type Meta = ();
-    type CanPend = No;
-    type CanEnd = Yes;
-
-    fn pull(self: Pin<&mut Self>, _ctx: &mut ()) -> PullStep<i32, (), No, Yes> {
-        let this = self.get_mut();
-        assert!(!this.ended, "PanicsAfterEndPull: polled after Ended");
-        if this.count < this.max {
-            let item = this.count as i32;
-            this.count += 1;
-            PullStep::Ready(item, ())
-        } else {
-            this.ended = true;
-            PullStep::Ended(Yes)
-        }
-    }
-}
-
-impl FusedPull for PanicsAfterEndPull {}
-
 /// Drains a fused pull to Ended, then polls once more to verify it returns Ended
-/// (and does not poll the upstream again, which would panic via [`PanicsAfterEndPull`]).
+/// (and does not poll the upstream again, which would panic via [`TestPull`]).
 pub fn assert_fused_runtime<P>(mut pull: Pin<&mut P>)
 where
     P: for<'ctx> FusedPull<CanEnd = Yes, Ctx<'ctx> = ()>,
@@ -193,38 +115,6 @@ where
 pub fn assert_types<CanPend: Toggle, CanEnd: Toggle>(
     _: &impl Pull<CanPend = CanPend, CanEnd = CanEnd>,
 ) {
-}
-
-/// A non-fused pull that yields items [0..max), then Ended, then re-yields items if polled again.
-pub struct NonFusedPull {
-    pub count: usize,
-    pub max: usize,
-}
-
-impl NonFusedPull {
-    pub(crate) fn new(max: usize) -> Self {
-        Self { count: 0, max }
-    }
-}
-
-impl Pull for NonFusedPull {
-    type Ctx<'ctx> = ();
-    type Item = i32;
-    type Meta = ();
-    type CanPend = Yes;
-    type CanEnd = Yes;
-
-    fn pull(self: Pin<&mut Self>, _ctx: &mut ()) -> PullStep<i32, (), Yes, Yes> {
-        let this = self.get_mut();
-        if this.count < this.max {
-            let item = this.count as i32;
-            this.count += 1;
-            PullStep::Ready(item, ())
-        } else {
-            this.count = 0;
-            PullStep::Ended(Yes)
-        }
-    }
 }
 
 /// A `futures_sink::Sink` that collects i32 items and returns Pending from poll_flush a configurable number of times.

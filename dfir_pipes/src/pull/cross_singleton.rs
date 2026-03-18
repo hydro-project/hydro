@@ -116,18 +116,16 @@ mod tests {
     use core::pin::pin;
 
     use super::*;
-    use crate::pull::test_utils::SyncPull;
+    use crate::pull::test_utils::TestPull;
     use crate::pull::{Pull, Repeat};
 
     /// When item_pull CanEnd=No and singleton_pull CanEnd=Yes,
     /// CanEnd should allow ending when singleton_pull ends empty.
     #[test]
     fn cross_singleton_ends_when_singleton_ends_empty() {
-        // Repeat: CanEnd=No, SyncPull(0): CanEnd=Yes, ends immediately
-        // CanEnd = No.And(Yes) = No, but code tries PullStep::ended() → panic
         let mut cs = pin!(CrossSingleton::new(
             Repeat::new(1i32),
-            SyncPull::new(0),
+            TestPull::items(0i32..0),
             None
         ));
         let _ = cs.as_mut().pull(&mut ());
@@ -137,10 +135,8 @@ mod tests {
     /// CanEnd should allow ending when item_pull ends.
     #[test]
     fn cross_singleton_ends_when_item_pull_ends() {
-        // SyncPull(0): CanEnd=Yes, Repeat: CanEnd=No
-        // CanEnd = Yes.And(No) = No, but code tries PullStep::ended() → panic
         let mut cs = pin!(CrossSingleton::new(
-            SyncPull::new(0),
+            TestPull::items(0i32..0),
             Repeat::new(42i32),
             None
         ));
@@ -150,13 +146,9 @@ mod tests {
     #[test]
     fn cross_singleton_fused_shields_upstream() {
         use crate::pull;
-        use crate::pull::test_utils::{PanicsAfterEndPull, assert_fused_runtime};
+        use crate::pull::test_utils::assert_fused_runtime;
 
-        let p = pin!(
-            PanicsAfterEndPull::new(2)
-                .fuse()
-                .cross_singleton(pull::once(42))
-        );
+        let p = pin!(TestPull::items(0..2).fuse().cross_singleton(pull::once(42)));
         assert_fused_runtime(p);
     }
 }

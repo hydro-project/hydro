@@ -78,11 +78,11 @@ mod tests {
     use core::pin::pin;
 
     use crate::pull::Pull;
-    use crate::pull::test_utils::{PanicsAfterEndPull, assert_fused_runtime};
+    use crate::pull::test_utils::{TestPull, assert_fused_runtime};
 
     #[test]
     fn take_fused_shields_upstream() {
-        let p = pin!(PanicsAfterEndPull::new(2).take(1));
+        let p = pin!(TestPull::items(0..2).take(1));
         assert_fused_runtime(p);
     }
 }

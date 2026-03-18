@@ -76,13 +76,13 @@ mod tests {
     use alloc::vec::Vec;
 
     use super::SendSink;
-    use crate::pull::test_utils::{NonFusedPull, PendingFlushSink};
+    use crate::pull::test_utils::{PendingFlushSink, TestPull};
 
     /// SendSink must not re-poll the pull after it returned Ended,
     /// even if poll_flush returns Pending.
     #[test]
     fn send_sink_no_repoll_after_ended_on_flush_pending() {
-        let pull = NonFusedPull::new(2);
+        let pull = TestPull::items(0..2);
         let sink = PendingFlushSink {
             items: Vec::new(),
             flush_pending_count: 1,

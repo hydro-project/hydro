@@ -94,14 +94,14 @@ mod tests {
     use alloc::vec::Vec;
 
     use super::SendPush;
-    use crate::pull::test_utils::NonFusedPull;
+    use crate::pull::test_utils::TestPull;
     use crate::push::test_utils::PendingFlushPush;
 
     /// SendPush must not re-poll the pull after it returned Ended,
     /// even if poll_flush returns Pending.
     #[test]
     fn send_push_no_repoll_after_ended_on_flush_pending() {
-        let pull = NonFusedPull::new(2);
+        let pull = TestPull::items(0..2);
         let push = PendingFlushPush {
             items: Vec::new(),
             flush_pending_count: 1,
