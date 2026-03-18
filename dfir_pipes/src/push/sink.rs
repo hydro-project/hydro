@@ -1,35 +1,34 @@
-//! [`SinkPush`] adapter wrapping a [`futures_sink::Sink`] as a [`Push`].
+//! [`Sink`] adapter wrapping a [`futures_sink::Sink`] into a [`Push`].
 use core::pin::Pin;
 use core::task::Poll;
 
-use futures_sink::Sink;
 use pin_project_lite::pin_project;
 
 use crate::Yes;
 use crate::push::{Push, PushStep};
 
 pin_project! {
-    /// Adapter that wraps a [`Sink`] to implement the [`Push`] trait.
+    /// Adapter that wraps a [`futures_sink::Sink`] to implement the [`Push`] trait.
     ///
     /// Since `Sink` is asynchronous, this push requires `core::task::Context`
     /// and can return `Pending`.
     #[must_use = "`Push`es do nothing unless items are pushed into them"]
-    pub struct SinkPush<Si> {
+    pub struct Sink<Si> {
         #[pin]
         sink: Si,
     }
 }
 
-impl<Si> SinkPush<Si> {
-    /// Creates a new [`SinkPush`] wrapping the given [`Sink`].
+impl<Si> Sink<Si> {
+    /// Creates a new [`Sink`] wrapping the given [`futures_sink::Sink`].
     pub(crate) const fn new(sink: Si) -> Self {
         Self { sink }
     }
 }
 
-impl<Si, Item, Meta> Push<Item, Meta> for SinkPush<Si>
+impl<Si, Item, Meta> Push<Item, Meta> for Sink<Si>
 where
-    Si: Sink<Item>,
+    Si: futures_sink::Sink<Item>,
     Si::Error: core::fmt::Debug,
     Meta: Copy,
 {

@@ -21,6 +21,7 @@ mod map;
 mod persist;
 mod resolve_futures;
 mod sink;
+mod sink_compat;
 mod unzip;
 
 #[cfg(test)]
@@ -46,7 +47,8 @@ pub use map::Map;
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub use persist::Persist;
 pub use resolve_futures::ResolveFutures;
-pub use sink::SinkPush;
+pub use sink::Sink;
+pub use sink_compat::SinkCompat;
 pub use unzip::Unzip;
 
 /// The result of pushing an item into a [`Push`].
@@ -291,15 +293,23 @@ where
     ResolveFutures::new(queue, subgraph_waker, next)
 }
 
-/// Creates an [`Unzip`] push that splits tuple items into two separate pushes.
-pub const fn unzip<P0, P1>(push0: P0, push1: P1) -> Unzip<P0, P1> {
-    Unzip::new(push0, push1)
-}
-
-/// Creates a [`SinkPush`] push that wraps a [`futures_sink::Sink`].
-pub const fn sink<Si, Item>(si: Si) -> SinkPush<Si>
+/// Creates a [`Sink`] push that wraps a [`futures_sink::Sink`].
+pub const fn sink<Si, Item>(si: Si) -> Sink<Si>
 where
     Si: futures_sink::Sink<Item>,
 {
-    SinkPush::new(si)
+    Sink::new(si)
+}
+
+/// Creates a [`SinkCompat`] adapter that wraps a [`Push`] and implements [`futures_sink::Sink`].
+pub const fn sink_compat<Psh, Item>(push: Psh) -> SinkCompat<Psh>
+where
+    Psh: Push<Item, ()>,
+{
+    SinkCompat::new(push)
+}
+
+/// Creates an [`Unzip`] push that splits tuple items into two separate pushes.
+pub const fn unzip<P0, P1>(push0: P0, push1: P1) -> Unzip<P0, P1> {
+    Unzip::new(push0, push1)
 }

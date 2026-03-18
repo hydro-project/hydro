@@ -61,3 +61,23 @@ where
         (0, upper)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use core::pin::pin;
+
+    use crate::pull::Pull;
+    use crate::pull::test_utils::TestPull;
+
+    #[test]
+    fn take_while_basic() {
+        let mut pull = TestPull::items_fused(0..5);
+        let mut p = pin!((&mut pull).take_while(|x| *x < 2));
+        let step = p.as_mut().pull(&mut ());
+        assert!(matches!(step, crate::pull::PullStep::Ready(0, _)));
+        let step = p.as_mut().pull(&mut ());
+        assert!(matches!(step, crate::pull::PullStep::Ready(1, _)));
+        let step = p.as_mut().pull(&mut ());
+        assert!(matches!(step, crate::pull::PullStep::Ended(_)));
+    }
+}

@@ -7,13 +7,13 @@ use crate::{No, Yes};
 #[must_use = "`Pull`s do nothing unless polled"]
 #[derive(Clone, Debug)]
 pub struct Empty<Item> {
-    _phantom: PhantomData<Item>,
+    _marker: PhantomData<Item>,
 }
 
 impl<Item> Default for Empty<Item> {
     fn default() -> Self {
         Self {
-            _phantom: PhantomData,
+            _marker: PhantomData,
         }
     }
 }

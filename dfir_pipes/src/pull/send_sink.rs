@@ -69,24 +69,23 @@ where
 
 #[cfg(test)]
 mod tests {
+    use alloc::vec;
     use core::task::{Poll, Waker};
 
-    extern crate alloc;
-    use alloc::vec;
-    use alloc::vec::Vec;
-
     use super::SendSink;
-    use crate::pull::test_utils::{PendingFlushSink, TestPull};
+    use crate::Yes;
+    use crate::pull::test_utils::TestPull;
+    use crate::push::test_utils::TestPush;
+    use crate::push::{PushStep, sink_compat};
 
     /// SendSink must not re-poll the pull after it returned Ended,
     /// even if poll_flush returns Pending.
     #[test]
     fn send_sink_no_repoll_after_ended_on_flush_pending() {
-        let pull = TestPull::items(0..2);
-        let sink = PendingFlushSink {
-            items: Vec::new(),
-            flush_pending_count: 1,
-        };
+        let pull = TestPull::items_fused(0..2);
+        let mut push: TestPush<_, _, true> = TestPush::new_fused([], [PushStep::Pending(Yes)]);
+        let sink = sink_compat(&mut push); // Re-use `TestPush` by converting into a sink.
+
         let mut send = core::pin::pin!(SendSink::new(pull, sink));
 
         let waker = Waker::noop();
@@ -98,7 +97,6 @@ mod tests {
         let result = send.as_mut().poll(&mut cx);
         assert!(result == Poll::Ready(Ok(())));
 
-        let items = &send.into_ref().get_ref().push.items;
-        assert_eq!(*items, vec![0, 1]);
+        assert_eq!(push.items(), vec![0, 1]);
     }
 }
