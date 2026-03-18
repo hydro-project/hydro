@@ -1,1 +1,0 @@
-../compile-fail/surface_demuxenum_wrongtype.rs

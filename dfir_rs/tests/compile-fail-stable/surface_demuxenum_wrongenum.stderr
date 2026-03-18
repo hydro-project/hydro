@@ -5,12 +5,17 @@ error[E0277]: the trait bound `std::option::Option<()>: DemuxEnumBase` is not sa
    |                            ^^^^^^ the trait `DemuxEnumBase` is not implemented for `std::option::Option<()>`
    |
    = note: use `#[derive(dfir_rs::DemuxEnum)]`
-   = help: the trait `DemuxEnumBase` is implemented for `Shape`
+help: the trait `DemuxEnumBase` is implemented for `Shape`
+  --> tests/compile-fail-stable/surface_demuxenum_wrongenum.rs:5:14
+   |
+ 5 |     #[derive(DemuxEnum)]
+   |              ^^^^^^^^^
 note: required by a bound in `check_impl_demux_enum`
   --> tests/compile-fail-stable/surface_demuxenum_wrongenum.rs:17:28
    |
 17 |         ]) -> demux_enum::<Option<()>>();
    |                            ^^^^^^ required by this bound in `check_impl_demux_enum`
+   = note: this error originates in the derive macro `DemuxEnum` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0599]: no variant named `Circle` found for enum `std::option::Option<()>`
   --> tests/compile-fail-stable/surface_demuxenum_wrongenum.rs:19:18
@@ -38,12 +43,17 @@ error[E0277]: the trait bound `std::option::Option<()>: DemuxEnumPush<_, ()>` is
    |
    = note: ensure there is exactly one output for each enum variant.
    = note: ensure that the type for each output is a tuple of the field for the variant: `()`, `(a,)`, or `(a, b, ...)`.
-   = help: the trait `DemuxEnumPush<(Pin<&mut __PushCircle>, Pin<&mut __PushRectangle>, Pin<&mut __PushSquare>), ()>` is implemented for `Shape`
+help: the trait `DemuxEnumPush<(Pin<&mut __PushCircle>, Pin<&mut __PushRectangle>, Pin<&mut __PushSquare>), ()>` is implemented for `Shape`
+  --> tests/compile-fail-stable/surface_demuxenum_wrongenum.rs:5:14
+   |
+ 5 |     #[derive(DemuxEnum)]
+   |              ^^^^^^^^^
 note: required by a bound in `demux_enum_guard`
   --> tests/compile-fail-stable/surface_demuxenum_wrongenum.rs:17:15
    |
 17 |         ]) -> demux_enum::<Option<()>>();
    |               ^^^^^^^^^^ required by this bound in `demux_enum_guard`
+   = note: this error originates in the derive macro `DemuxEnum` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `std::option::Option<()>: DemuxEnumPush<(Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>, Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>, Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>), ()>` is not satisfied
   --> tests/compile-fail-stable/surface_demuxenum_wrongenum.rs:17:15
@@ -54,12 +64,17 @@ error[E0277]: the trait bound `std::option::Option<()>: DemuxEnumPush<(Pin<&mut 
    = help: the trait `DemuxEnumPush<(Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>, Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>, Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>), ()>` is not implemented for `std::option::Option<()>`
    = note: ensure there is exactly one output for each enum variant.
    = note: ensure that the type for each output is a tuple of the field for the variant: `()`, `(a,)`, or `(a, b, ...)`.
-   = help: the trait `DemuxEnumPush<(Pin<&mut __PushCircle>, Pin<&mut __PushRectangle>, Pin<&mut __PushSquare>), ()>` is implemented for `Shape`
+help: the trait `DemuxEnumPush<(Pin<&mut __PushCircle>, Pin<&mut __PushRectangle>, Pin<&mut __PushSquare>), ()>` is implemented for `Shape`
+  --> tests/compile-fail-stable/surface_demuxenum_wrongenum.rs:5:14
+   |
+ 5 |     #[derive(DemuxEnum)]
+   |              ^^^^^^^^^
 note: required by a bound in `demux_enum_guard`
   --> tests/compile-fail-stable/surface_demuxenum_wrongenum.rs:17:15
    |
 17 |         ]) -> demux_enum::<Option<()>>();
    |               ^^^^^^^^^^ required by this bound in `demux_enum_guard`
+   = note: this error originates in the derive macro `DemuxEnum` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `impl dfir_rs::dfir_pipes::push::Push<std::option::Option<()>, (), CanPend = <impl dfir_rs::dfir_pipes::push::Push<std::option::Option<()>, ()> as dfir_rs::dfir_pipes::push::Push<std::option::Option<()>, ()>>::CanPend>: dfir_rs::dfir_pipes::push::Push<Shape, ()>` is not satisfied
   --> tests/compile-fail-stable/surface_demuxenum_wrongenum.rs:17:15
