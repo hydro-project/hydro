@@ -89,7 +89,7 @@ where
         clients.forward_ref::<KeyedStream<u32, Output, Cluster<'a, Client>, Unbounded, NoOrder>>();
     // Use new payload IDS and previous outputs to generate new payloads
     let protocol_inputs = workload_generator(
-        new_payload_ids.interleave(protocol_outputs.map(q!(|payload| Some(payload)))),
+        new_payload_ids.merge_unordered(protocol_outputs.map(q!(|payload| Some(payload)))),
     );
     // Feed new payloads to the protocol
     let protocol_outputs = protocol(protocol_inputs.clone());

@@ -151,6 +151,6 @@ pub fn http_counter_server<'a, P>(
     }));
 
     get_responses
-        .interleave(increment_responses.into_keyed_stream())
-        .interleave(invalid_responses.into_keyed_stream())
+        .merge_unordered(increment_responses.into_keyed_stream())
+        .merge_unordered(invalid_responses.into_keyed_stream())
 }

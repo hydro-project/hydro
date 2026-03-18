@@ -1105,7 +1105,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     ///
     /// // Combine initial input with feedback, then increment
     /// let input: Stream<_, _, Unbounded> = process.source_iter(q!([1])).into();
-    /// let output: Stream<_, _, _, NoOrder> = input.interleave(feedback).map(q!(|x| x + 1));
+    /// let output: Stream<_, _, _, NoOrder> = input.merge_unordered(feedback).map(q!(|x| x + 1));
     ///
     /// // Complete the forward reference with the output
     /// complete.complete(output.clone());

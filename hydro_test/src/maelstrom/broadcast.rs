@@ -133,8 +133,8 @@ pub fn broadcast_server<'a, C: 'a>(
     }));
 
     broadcast_response
-        .interleave(read_response)
-        .interleave(topology_response)
+        .merge_unordered(read_response)
+        .merge_unordered(topology_response)
 }
 
 #[cfg(test)]

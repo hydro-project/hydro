@@ -1175,7 +1175,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
     /// keyed_singleton
     ///     .clone()
     ///     .into_keyed_stream()
-    ///     .interleave(
+    ///     .merge_unordered(
     ///         keyed_singleton.into_keyed_stream()
     ///     )
     /// #   .entries()

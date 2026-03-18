@@ -679,7 +679,7 @@ where
     /// let (evens, odds) = numbers.partition(q!(|&x| x % 2 == 0));
     /// // evens: 2, 4, 6 tagged with true; odds: 1, 3, 5 tagged with false
     /// evens.map(q!(|x| (x, true)))
-    ///     .interleave(odds.map(q!(|x| (x, false))))
+    ///     .merge_unordered(odds.map(q!(|x| (x, false))))
     /// # }, |mut stream| async move {
     /// # let mut results = Vec::new();
     /// # for _ in 0..6 {
@@ -1885,8 +1885,8 @@ where
 }
 
 impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Stream<T, L, Unbounded, O, R> {
-    /// Produces a new stream that interleaves the elements of the two input streams.
-    /// The result has [`NoOrder`] because the order of interleaving is not guaranteed.
+    /// Produces a new stream that merges the elements of the two input streams.
+    /// The result has [`NoOrder`] because the order of merging is not guaranteed.
     ///
     /// Currently, both input streams must be [`Unbounded`]. When the streams are
     /// [`Bounded`], you can use [`Stream::chain`] instead.
@@ -1899,16 +1899,16 @@ impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Stream<T, L, Unbo
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
     /// let numbers: Stream<i32, _, Unbounded> = // 1, 2, 3, 4
     /// # process.source_iter(q!(vec![1, 2, 3, 4])).into();
-    /// numbers.clone().map(q!(|x| x + 1)).interleave(numbers)
+    /// numbers.clone().map(q!(|x| x + 1)).merge_unordered(numbers)
     /// # }, |mut stream| async move {
-    /// // 2, 3, 4, 5, and 1, 2, 3, 4 interleaved in unknown order
+    /// // 2, 3, 4, 5, and 1, 2, 3, 4 merged in unknown order
     /// # for w in vec![2, 3, 4, 5, 1, 2, 3, 4] {
     /// #     assert_eq!(stream.next().await.unwrap(), w);
     /// # }
     /// # }));
     /// # }
     /// ```
-    pub fn interleave<O2: Ordering, R2: Retries>(
+    pub fn merge_unordered<O2: Ordering, R2: Retries>(
         self,
         other: Stream<T, L, Unbounded, O2, R2>,
     ) -> Stream<T, L, Unbounded, NoOrder, <R as MinRetries<R2>>::Min>
@@ -1930,6 +1930,18 @@ impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Stream<T, L, Unbo
             },
         )
     }
+
+    /// Deprecated: use [`Stream::merge_unordered`] instead.
+    #[deprecated(note = "use `merge_unordered` instead")]
+    pub fn interleave<O2: Ordering, R2: Retries>(
+        self,
+        other: Stream<T, L, Unbounded, O2, R2>,
+    ) -> Stream<T, L, Unbounded, NoOrder, <R as MinRetries<R2>>::Min>
+    where
+        R: MinRetries<R2>,
+    {
+        self.merge_unordered(other)
+    }
 }
 
 impl<'a, T, L: Location<'a> + NoTick, R: Retries> Stream<T, L, Unbounded, TotalOrder, R> {
@@ -1942,7 +1954,7 @@ impl<'a, T, L: Location<'a> + NoTick, R: Retries> Stream<T, L, Unbounded, TotalO
     /// # Non-Determinism
     /// The order in which elements *across* the two streams will be interleaved is
     /// non-deterministic, so the order of elements will vary across runs. If the output order
-    /// is irrelevant, use [`Stream::interleave`] instead, which is deterministic but emits an
+    /// is irrelevant, use [`Stream::merge_unordered`] instead, which is deterministic but emits an
     /// unordered stream.
     ///
     /// # Example
@@ -3224,7 +3236,7 @@ mod tests {
         let (complete_cycle_back, cycle_back) =
             node.forward_ref::<super::Stream<_, _, _, NoOrder>>();
         let ordered = input
-            .interleave(cycle_back)
+            .merge_unordered(cycle_back)
             .assume_ordering::<TotalOrder>(nondet!(/** test */));
         complete_cycle_back.complete(
             ordered
@@ -3260,7 +3272,7 @@ mod tests {
         let (complete_cycle_back, cycle_back) =
             node.forward_ref::<super::Stream<_, _, _, NoOrder>>();
         let ordered = input
-            .interleave(cycle_back)
+            .merge_unordered(cycle_back)
             .assume_ordering::<TotalOrder>(nondet!(/** test */));
         complete_cycle_back.complete(
             ordered
@@ -3300,13 +3312,13 @@ mod tests {
             node.forward_ref::<super::Stream<_, _, _, NoOrder>>();
         let input1_ordered = input
             .clone()
-            .interleave(cycle_back)
+            .merge_unordered(cycle_back)
             .assume_ordering::<TotalOrder>(nondet!(/** test */));
         let foo = input1_ordered
             .clone()
             .map(q!(|v| v + 3))
             .weaken_ordering::<NoOrder>()
-            .interleave(input2)
+            .merge_unordered(input2)
             .assume_ordering::<TotalOrder>(nondet!(/** test */));
 
         complete_cycle_back.complete(foo.filter(q!(|v| *v == 3)));
@@ -3338,7 +3350,7 @@ mod tests {
         let (complete_cycle_back, cycle_back) =
             node.forward_ref::<super::Stream<_, _, _, NoOrder>>();
         let ordered = input
-            .interleave(cycle_back)
+            .merge_unordered(cycle_back)
             .atomic(&node.tick())
             .assume_ordering::<TotalOrder>(nondet!(/** test */))
             .end_atomic();

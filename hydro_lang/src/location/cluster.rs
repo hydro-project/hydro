@@ -229,7 +229,7 @@ mod tests {
             .source_iter(q!(vec![CLUSTER_SELF_ID]))
             .send(&node, TCP.fail_stop().bincode())
             .values()
-            .interleave(
+            .merge_unordered(
                 cluster2
                     .source_iter(q!(vec![CLUSTER_SELF_ID]))
                     .send(&node, TCP.fail_stop().bincode())

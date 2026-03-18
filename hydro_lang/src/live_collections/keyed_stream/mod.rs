@@ -2400,7 +2400,7 @@ impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries>
     /// # process.source_iter(q!(vec![(1, 2), (3, 4)])).into_keyed().into();
     /// let numbers2: KeyedStream<i32, i32, _> = // { 1: [3], 3: [5] }
     /// # process.source_iter(q!(vec![(1, 3), (3, 5)])).into_keyed().into();
-    /// numbers1.interleave(numbers2)
+    /// numbers1.merge_unordered(numbers2)
     /// #   .entries()
     /// # }, |mut stream| async move {
     /// // { 1: [2, 3], 3: [4, 5] } with each group in unknown order
@@ -2413,7 +2413,7 @@ impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn interleave<O2: Ordering, R2: Retries>(
+    pub fn merge_unordered<O2: Ordering, R2: Retries>(
         self,
         other: KeyedStream<K, V, L, Unbounded, O2, R2>,
     ) -> KeyedStream<K, V, L, Unbounded, NoOrder, <R as MinRetries<R2>>::Min>
@@ -2435,6 +2435,18 @@ impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries>
                 >::collection_kind()),
             },
         )
+    }
+
+    /// Deprecated: use [`KeyedStream::merge_unordered`] instead.
+    #[deprecated(note = "use `merge_unordered` instead")]
+    pub fn interleave<O2: Ordering, R2: Retries>(
+        self,
+        other: KeyedStream<K, V, L, Unbounded, O2, R2>,
+    ) -> KeyedStream<K, V, L, Unbounded, NoOrder, <R as MinRetries<R2>>::Min>
+    where
+        R: MinRetries<R2>,
+    {
+        self.merge_unordered(other)
     }
 }
 
@@ -2808,7 +2820,7 @@ mod tests {
                 (2, 102),
                 (2, 102)
             ])))
-            .interleave(tick_triggered_input)
+            .merge_unordered(tick_triggered_input)
             .into_keyed()
             .reduce_watermark(
                 watermark,
@@ -3035,7 +3047,7 @@ mod tests {
             node.forward_ref::<super::KeyedStream<_, _, _, _, NoOrder>>();
         let ordered = input
             .into_keyed()
-            .interleave(cycle_back)
+            .merge_unordered(cycle_back)
             .assume_ordering::<TotalOrder>(nondet!(/** test */));
         complete_cycle_back.complete(
             ordered
@@ -3099,7 +3111,7 @@ mod tests {
             node.forward_ref::<super::KeyedStream<_, _, _, _, NoOrder>>();
         let ordered = input
             .into_keyed()
-            .interleave(cycle_back)
+            .merge_unordered(cycle_back)
             .assume_ordering::<TotalOrder>(nondet!(/** test */));
 
         // Cycle back: when we see (1, 10), emit (2, 100) to key 2
@@ -3169,7 +3181,7 @@ mod tests {
             node.forward_ref::<super::KeyedStream<_, _, _, _, NoOrder>>();
         let ordered = input
             .into_keyed()
-            .interleave(cycle_back)
+            .merge_unordered(cycle_back)
             .assume_ordering::<TotalOrder>(nondet!(/** test */));
         complete_cycle_back.complete(
             ordered

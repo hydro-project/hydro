@@ -268,8 +268,8 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
     // c_to_proposers.clone().for_each(q!(|payload: ClientPayload| println!("Client sent proposer payload: {:?}", payload)));
 
     let p_received_max_ballot = p1b_fail
-        .interleave(p_received_p2b_ballots)
-        .interleave(p_to_proposers_i_am_leader_forward_ref)
+        .merge_unordered(p_received_p2b_ballots)
+        .merge_unordered(p_to_proposers_i_am_leader_forward_ref)
         .max()
         .unwrap_or(
             proposers
