@@ -56,8 +56,8 @@ where
         }
     }
 
-    fn size_hint(self: Pin<&Self>) -> (usize, Option<usize>) {
-        let (_, upper) = self.project_ref().prev.size_hint();
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (_, upper) = self.prev.size_hint();
         (0, upper)
     }
 }

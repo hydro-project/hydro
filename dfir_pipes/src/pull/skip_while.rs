@@ -62,15 +62,14 @@ where
         }
     }
 
-    fn size_hint(self: Pin<&Self>) -> (usize, Option<usize>) {
-        let this = self.project_ref();
-        let (_, upper) = this.prev.size_hint();
-        if *this.skipping {
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (_, upper) = self.prev.size_hint();
+        if self.skipping {
             // Still skipping, so lower bound is 0
             (0, upper)
         } else {
             // Done skipping, pass through
-            this.prev.size_hint()
+            self.prev.size_hint()
         }
     }
 }

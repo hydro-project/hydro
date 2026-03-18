@@ -93,11 +93,9 @@ where
         }
     }
 
-    fn size_hint(self: Pin<&Self>) -> (usize, Option<usize>) {
-        let this = self.project_ref();
-
-        let (min1, max1) = this.prev1.size_hint();
-        let (min2, max2) = this.prev2.size_hint();
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (min1, max1) = self.prev1.size_hint();
+        let (min2, max2) = self.prev2.size_hint();
 
         // Lower bound is the min of the two (we end when either ends)
         let lower = min1.min(min2);

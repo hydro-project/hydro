@@ -31,8 +31,8 @@ where
         }
     }
 
-    fn size_hint(self: Pin<&Self>) -> (usize, Option<usize>) {
-        match self.as_pin_ref() {
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self.as_ref() {
             Either::Left(left) => left.size_hint(),
             Either::Right(right) => right.size_hint(),
         }

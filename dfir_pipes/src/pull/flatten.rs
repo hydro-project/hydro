@@ -67,9 +67,8 @@ where
         }
     }
 
-    fn size_hint(self: Pin<&Self>) -> (usize, Option<usize>) {
-        let this = self.project_ref();
-        let current_len = this
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let current_len = self
             .current
             .as_ref()
             .map(|(iter, _)| iter.size_hint().0)

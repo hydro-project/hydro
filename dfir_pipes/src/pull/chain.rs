@@ -63,10 +63,9 @@ where
             .convert_into()
     }
 
-    fn size_hint(self: Pin<&Self>) -> (usize, Option<usize>) {
-        let this = self.project_ref();
-        let (a_lower, a_upper) = this.first.size_hint();
-        let (b_lower, b_upper) = this.second.size_hint();
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (a_lower, a_upper) = self.first.size_hint();
+        let (b_lower, b_upper) = self.second.size_hint();
 
         let lower = a_lower.saturating_add(b_lower);
         let upper = a_upper.zip(b_upper).and_then(|(a, b)| a.checked_add(b));

@@ -217,7 +217,7 @@ pub trait Pull {
     /// The default implementation returns `(0, None)` which is correct for any
     /// pull.
     #[inline]
-    fn size_hint(self: Pin<&Self>) -> (usize, Option<usize>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         (0, None)
     }
 

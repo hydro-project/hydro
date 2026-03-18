@@ -55,7 +55,7 @@ impl Pull for AsyncPull {
         }
     }
 
-    fn size_hint(self: Pin<&Self>) -> (usize, Option<usize>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         if self.ended {
             (0, Some(0))
         } else {
@@ -111,7 +111,7 @@ impl Pull for SyncPull {
         }
     }
 
-    fn size_hint(self: Pin<&Self>) -> (usize, Option<usize>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         if self.ended {
             (0, Some(0))
         } else {

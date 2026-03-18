@@ -59,10 +59,9 @@ where
         }
     }
 
-    fn size_hint(self: Pin<&Self>) -> (usize, Option<usize>) {
-        let this = self.project_ref();
-        let (lower, upper) = this.prev.size_hint();
-        let remaining = *this.remaining;
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (lower, upper) = self.prev.size_hint();
+        let remaining = self.remaining;
         (
             lower.min(remaining),
             upper.map(|u| u.min(remaining)).or(Some(remaining)),

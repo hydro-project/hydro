@@ -33,7 +33,7 @@ impl<Item> Pull for Empty<Item> {
         PullStep::Ended(Yes)
     }
 
-    fn size_hint(self: core::pin::Pin<&Self>) -> (usize, Option<usize>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         (0, Some(0))
     }
 

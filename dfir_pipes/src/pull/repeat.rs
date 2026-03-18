@@ -37,7 +37,7 @@ where
         PullStep::Ready(self.item.clone(), ())
     }
 
-    fn size_hint(self: core::pin::Pin<&Self>) -> (usize, Option<usize>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         (usize::MAX, None)
     }
 

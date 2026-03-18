@@ -37,7 +37,7 @@ impl<Item> Pull for Once<Item> {
         }
     }
 
-    fn size_hint(self: core::pin::Pin<&Self>) -> (usize, Option<usize>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let n = if self.item.is_some() { 1 } else { 0 };
         (n, Some(n))
     }

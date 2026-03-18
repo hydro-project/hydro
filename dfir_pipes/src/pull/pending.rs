@@ -42,7 +42,7 @@ impl<Item> Pull for Pending<Item> {
         PullStep::Pending(Yes)
     }
 
-    fn size_hint(self: Pin<&Self>) -> (usize, Option<usize>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         (0, Some(0))
     }
 

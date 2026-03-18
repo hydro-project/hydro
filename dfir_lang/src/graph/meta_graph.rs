@@ -1156,8 +1156,8 @@ impl DfirGraph {
                                                     }
 
                                                     #[inline(always)]
-                                                    fn size_hint(self: ::std::pin::Pin<&Self>) -> (usize, Option<usize>) {
-                                                        #root::dfir_pipes::pull::Pull::size_hint(self.project_ref().inner)
+                                                    fn size_hint(&self) -> (usize, Option<usize>) {
+                                                        #root::dfir_pipes::pull::Pull::size_hint(&self.inner)
                                                     }
                                                 }
 
