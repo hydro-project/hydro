@@ -63,80 +63,79 @@
 <a href=#63 id=63 data-nosnippet>63</a>            .convert_into()
 <a href=#64 id=64 data-nosnippet>64</a>    }
 <a href=#65 id=65 data-nosnippet>65</a>
-<a href=#66 id=66 data-nosnippet>66</a>    <span class="kw">fn </span>size_hint(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>&gt;) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
-<a href=#67 id=67 data-nosnippet>67</a>        <span class="kw">let </span>this = <span class="self">self</span>.project_ref();
-<a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">let </span>(a_lower, a_upper) = this.first.size_hint();
-<a href=#69 id=69 data-nosnippet>69</a>        <span class="kw">let </span>(b_lower, b_upper) = this.second.size_hint();
-<a href=#70 id=70 data-nosnippet>70</a>
-<a href=#71 id=71 data-nosnippet>71</a>        <span class="kw">let </span>lower = a_lower.saturating_add(b_lower);
-<a href=#72 id=72 data-nosnippet>72</a>        <span class="kw">let </span>upper = a_upper.zip(b_upper).and_then(|(a, b)| a.checked_add(b));
-<a href=#73 id=73 data-nosnippet>73</a>
-<a href=#74 id=74 data-nosnippet>74</a>        (lower, upper)
-<a href=#75 id=75 data-nosnippet>75</a>    }
-<a href=#76 id=76 data-nosnippet>76</a>}
-<a href=#77 id=77 data-nosnippet>77</a>
-<a href=#78 id=78 data-nosnippet>78</a><span class="kw">impl</span>&lt;A, B&gt; FusedPull <span class="kw">for </span>Chain&lt;A, B&gt;
-<a href=#79 id=79 data-nosnippet>79</a><span class="kw">where
-<a href=#80 id=80 data-nosnippet>80</a>    </span>A: FusedPull&lt;CanEnd = Yes&gt;,
-<a href=#81 id=81 data-nosnippet>81</a>    B: FusedPull&lt;Item = A::Item, Meta = A::Meta&gt;,
-<a href=#82 id=82 data-nosnippet>82</a>{
-<a href=#83 id=83 data-nosnippet>83</a>}
-<a href=#84 id=84 data-nosnippet>84</a>
-<a href=#85 id=85 data-nosnippet>85</a><span class="attr">#[cfg(test)]
-<a href=#86 id=86 data-nosnippet>86</a></span><span class="kw">mod </span>tests {
-<a href=#87 id=87 data-nosnippet>87</a>    <span class="kw">use </span>super::<span class="kw-2">*</span>;
-<a href=#88 id=88 data-nosnippet>88</a>    <span class="kw">use </span><span class="kw">crate</span>::pull::test_utils::{AsyncPull, SyncPull, assert_is_fused, assert_types};
-<a href=#89 id=89 data-nosnippet>89</a>    <span class="kw">use </span><span class="kw">crate</span>::pull::{No, Pending, Repeat, Yes, pending};
-<a href=#90 id=90 data-nosnippet>90</a>
-<a href=#91 id=91 data-nosnippet>91</a>    <span class="attr">#[test]
-<a href=#92 id=92 data-nosnippet>92</a>    </span><span class="kw">fn </span>chain_sync_with_various_second() {
-<a href=#93 id=93 data-nosnippet>93</a>        <span class="comment">// Sync + Sync: CanPend=No, CanEnd=Yes
-<a href=#94 id=94 data-nosnippet>94</a>        </span><span class="kw">let </span>chain: Chain&lt;SyncPull, SyncPull&gt; = Chain::new(SyncPull::new(<span class="number">1</span>), SyncPull::new(<span class="number">1</span>));
-<a href=#95 id=95 data-nosnippet>95</a>        assert_types::&lt;No, Yes&gt;(<span class="kw-2">&amp;</span>chain);
-<a href=#96 id=96 data-nosnippet>96</a>        assert_is_fused(<span class="kw-2">&amp;</span>chain);
-<a href=#97 id=97 data-nosnippet>97</a>
-<a href=#98 id=98 data-nosnippet>98</a>        <span class="comment">// Sync + Infinite: CanPend=No, CanEnd=No
-<a href=#99 id=99 data-nosnippet>99</a>        </span><span class="kw">let </span>chain: Chain&lt;SyncPull, Repeat&lt;i32&gt;&gt; = Chain::new(SyncPull::new(<span class="number">1</span>), Repeat::new(<span class="number">42</span>));
-<a href=#100 id=100 data-nosnippet>100</a>        assert_types::&lt;No, No&gt;(<span class="kw-2">&amp;</span>chain);
-<a href=#101 id=101 data-nosnippet>101</a>
-<a href=#102 id=102 data-nosnippet>102</a>        <span class="comment">// Sync + Pending: CanPend=Yes (No.or(Yes)), CanEnd=No
-<a href=#103 id=103 data-nosnippet>103</a>        </span><span class="kw">let </span>chain: Chain&lt;SyncPull, Pending&lt;i32&gt;&gt; = Chain::new(SyncPull::new(<span class="number">1</span>), pending());
-<a href=#104 id=104 data-nosnippet>104</a>        assert_types::&lt;Yes, No&gt;(<span class="kw-2">&amp;</span>chain);
-<a href=#105 id=105 data-nosnippet>105</a>    }
-<a href=#106 id=106 data-nosnippet>106</a>
-<a href=#107 id=107 data-nosnippet>107</a>    <span class="attr">#[test]
-<a href=#108 id=108 data-nosnippet>108</a>    </span><span class="kw">fn </span>chain_async_with_various_second() {
-<a href=#109 id=109 data-nosnippet>109</a>        <span class="comment">// Async + Async: CanPend=Yes, CanEnd=Yes
-<a href=#110 id=110 data-nosnippet>110</a>        </span><span class="kw">let </span>chain: Chain&lt;AsyncPull, AsyncPull&gt; = Chain::new(AsyncPull::new(<span class="number">1</span>), AsyncPull::new(<span class="number">1</span>));
-<a href=#111 id=111 data-nosnippet>111</a>        assert_types::&lt;Yes, Yes&gt;(<span class="kw-2">&amp;</span>chain);
-<a href=#112 id=112 data-nosnippet>112</a>        assert_is_fused(<span class="kw-2">&amp;</span>chain);
-<a href=#113 id=113 data-nosnippet>113</a>
-<a href=#114 id=114 data-nosnippet>114</a>        <span class="comment">// Async + Infinite: CanPend=Yes, CanEnd=No
-<a href=#115 id=115 data-nosnippet>115</a>        </span><span class="kw">let </span>chain: Chain&lt;AsyncPull, Repeat&lt;i32&gt;&gt; = Chain::new(AsyncPull::new(<span class="number">1</span>), Repeat::new(<span class="number">42</span>));
-<a href=#116 id=116 data-nosnippet>116</a>        assert_types::&lt;Yes, No&gt;(<span class="kw-2">&amp;</span>chain);
-<a href=#117 id=117 data-nosnippet>117</a>    }
-<a href=#118 id=118 data-nosnippet>118</a>
-<a href=#119 id=119 data-nosnippet>119</a>    <span class="attr">#[test]
-<a href=#120 id=120 data-nosnippet>120</a>    </span><span class="kw">fn </span>chain_nested_types() {
-<a href=#121 id=121 data-nosnippet>121</a>        <span class="comment">// Chain&lt;Chain&lt;Sync, Async&gt;, Infinite&gt;: CanPend=Yes, CanEnd=No
-<a href=#122 id=122 data-nosnippet>122</a>        </span><span class="kw">let </span>chain_ab: Chain&lt;SyncPull, AsyncPull&gt; = Chain::new(SyncPull::new(<span class="number">1</span>), AsyncPull::new(<span class="number">1</span>));
-<a href=#123 id=123 data-nosnippet>123</a>        assert_types::&lt;Yes, Yes&gt;(<span class="kw-2">&amp;</span>chain_ab);
-<a href=#124 id=124 data-nosnippet>124</a>
-<a href=#125 id=125 data-nosnippet>125</a>        <span class="kw">let </span>chain_abc: Chain&lt;Chain&lt;SyncPull, AsyncPull&gt;, Repeat&lt;i32&gt;&gt; =
-<a href=#126 id=126 data-nosnippet>126</a>            Chain::new(chain_ab, Repeat::new(<span class="number">3</span>));
-<a href=#127 id=127 data-nosnippet>127</a>        assert_types::&lt;Yes, No&gt;(<span class="kw-2">&amp;</span>chain_abc);
-<a href=#128 id=128 data-nosnippet>128</a>    }
-<a href=#129 id=129 data-nosnippet>129</a>
-<a href=#130 id=130 data-nosnippet>130</a>    <span class="attr">#[test]
-<a href=#131 id=131 data-nosnippet>131</a>    </span><span class="kw">fn </span>chain_fused_shields_upstream() {
-<a href=#132 id=132 data-nosnippet>132</a>        <span class="kw">use </span>core::pin::pin;
-<a href=#133 id=133 data-nosnippet>133</a>
-<a href=#134 id=134 data-nosnippet>134</a>        <span class="kw">use </span><span class="kw">crate</span>::pull::once;
-<a href=#135 id=135 data-nosnippet>135</a>        <span class="kw">use </span><span class="kw">crate</span>::pull::test_utils::assert_fused_runtime;
-<a href=#136 id=136 data-nosnippet>136</a>
-<a href=#137 id=137 data-nosnippet>137</a>        <span class="comment">// TODO(mingwei): use upstream `Pull`s that pend sometimes.
-<a href=#138 id=138 data-nosnippet>138</a>        </span><span class="kw">let </span>p = <span class="macro">pin!</span>(once(<span class="number">5</span>).chain(once(<span class="number">6</span>)));
-<a href=#139 id=139 data-nosnippet>139</a>        assert_fused_runtime(p);
-<a href=#140 id=140 data-nosnippet>140</a>    }
-<a href=#141 id=141 data-nosnippet>141</a>}
+<a href=#66 id=66 data-nosnippet>66</a>    <span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
+<a href=#67 id=67 data-nosnippet>67</a>        <span class="kw">let </span>(a_lower, a_upper) = <span class="self">self</span>.first.size_hint();
+<a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">let </span>(b_lower, b_upper) = <span class="self">self</span>.second.size_hint();
+<a href=#69 id=69 data-nosnippet>69</a>
+<a href=#70 id=70 data-nosnippet>70</a>        <span class="kw">let </span>lower = a_lower.saturating_add(b_lower);
+<a href=#71 id=71 data-nosnippet>71</a>        <span class="kw">let </span>upper = a_upper.zip(b_upper).and_then(|(a, b)| a.checked_add(b));
+<a href=#72 id=72 data-nosnippet>72</a>
+<a href=#73 id=73 data-nosnippet>73</a>        (lower, upper)
+<a href=#74 id=74 data-nosnippet>74</a>    }
+<a href=#75 id=75 data-nosnippet>75</a>}
+<a href=#76 id=76 data-nosnippet>76</a>
+<a href=#77 id=77 data-nosnippet>77</a><span class="kw">impl</span>&lt;A, B&gt; FusedPull <span class="kw">for </span>Chain&lt;A, B&gt;
+<a href=#78 id=78 data-nosnippet>78</a><span class="kw">where
+<a href=#79 id=79 data-nosnippet>79</a>    </span>A: FusedPull&lt;CanEnd = Yes&gt;,
+<a href=#80 id=80 data-nosnippet>80</a>    B: FusedPull&lt;Item = A::Item, Meta = A::Meta&gt;,
+<a href=#81 id=81 data-nosnippet>81</a>{
+<a href=#82 id=82 data-nosnippet>82</a>}
+<a href=#83 id=83 data-nosnippet>83</a>
+<a href=#84 id=84 data-nosnippet>84</a><span class="attr">#[cfg(test)]
+<a href=#85 id=85 data-nosnippet>85</a></span><span class="kw">mod </span>tests {
+<a href=#86 id=86 data-nosnippet>86</a>    <span class="kw">use </span>super::<span class="kw-2">*</span>;
+<a href=#87 id=87 data-nosnippet>87</a>    <span class="kw">use </span><span class="kw">crate</span>::pull::test_utils::{AsyncPull, SyncPull, assert_is_fused, assert_types};
+<a href=#88 id=88 data-nosnippet>88</a>    <span class="kw">use </span><span class="kw">crate</span>::pull::{No, Pending, Repeat, Yes, pending};
+<a href=#89 id=89 data-nosnippet>89</a>
+<a href=#90 id=90 data-nosnippet>90</a>    <span class="attr">#[test]
+<a href=#91 id=91 data-nosnippet>91</a>    </span><span class="kw">fn </span>chain_sync_with_various_second() {
+<a href=#92 id=92 data-nosnippet>92</a>        <span class="comment">// Sync + Sync: CanPend=No, CanEnd=Yes
+<a href=#93 id=93 data-nosnippet>93</a>        </span><span class="kw">let </span>chain: Chain&lt;SyncPull, SyncPull&gt; = Chain::new(SyncPull::new(<span class="number">1</span>), SyncPull::new(<span class="number">1</span>));
+<a href=#94 id=94 data-nosnippet>94</a>        assert_types::&lt;No, Yes&gt;(<span class="kw-2">&amp;</span>chain);
+<a href=#95 id=95 data-nosnippet>95</a>        assert_is_fused(<span class="kw-2">&amp;</span>chain);
+<a href=#96 id=96 data-nosnippet>96</a>
+<a href=#97 id=97 data-nosnippet>97</a>        <span class="comment">// Sync + Infinite: CanPend=No, CanEnd=No
+<a href=#98 id=98 data-nosnippet>98</a>        </span><span class="kw">let </span>chain: Chain&lt;SyncPull, Repeat&lt;i32&gt;&gt; = Chain::new(SyncPull::new(<span class="number">1</span>), Repeat::new(<span class="number">42</span>));
+<a href=#99 id=99 data-nosnippet>99</a>        assert_types::&lt;No, No&gt;(<span class="kw-2">&amp;</span>chain);
+<a href=#100 id=100 data-nosnippet>100</a>
+<a href=#101 id=101 data-nosnippet>101</a>        <span class="comment">// Sync + Pending: CanPend=Yes (No.or(Yes)), CanEnd=No
+<a href=#102 id=102 data-nosnippet>102</a>        </span><span class="kw">let </span>chain: Chain&lt;SyncPull, Pending&lt;i32&gt;&gt; = Chain::new(SyncPull::new(<span class="number">1</span>), pending());
+<a href=#103 id=103 data-nosnippet>103</a>        assert_types::&lt;Yes, No&gt;(<span class="kw-2">&amp;</span>chain);
+<a href=#104 id=104 data-nosnippet>104</a>    }
+<a href=#105 id=105 data-nosnippet>105</a>
+<a href=#106 id=106 data-nosnippet>106</a>    <span class="attr">#[test]
+<a href=#107 id=107 data-nosnippet>107</a>    </span><span class="kw">fn </span>chain_async_with_various_second() {
+<a href=#108 id=108 data-nosnippet>108</a>        <span class="comment">// Async + Async: CanPend=Yes, CanEnd=Yes
+<a href=#109 id=109 data-nosnippet>109</a>        </span><span class="kw">let </span>chain: Chain&lt;AsyncPull, AsyncPull&gt; = Chain::new(AsyncPull::new(<span class="number">1</span>), AsyncPull::new(<span class="number">1</span>));
+<a href=#110 id=110 data-nosnippet>110</a>        assert_types::&lt;Yes, Yes&gt;(<span class="kw-2">&amp;</span>chain);
+<a href=#111 id=111 data-nosnippet>111</a>        assert_is_fused(<span class="kw-2">&amp;</span>chain);
+<a href=#112 id=112 data-nosnippet>112</a>
+<a href=#113 id=113 data-nosnippet>113</a>        <span class="comment">// Async + Infinite: CanPend=Yes, CanEnd=No
+<a href=#114 id=114 data-nosnippet>114</a>        </span><span class="kw">let </span>chain: Chain&lt;AsyncPull, Repeat&lt;i32&gt;&gt; = Chain::new(AsyncPull::new(<span class="number">1</span>), Repeat::new(<span class="number">42</span>));
+<a href=#115 id=115 data-nosnippet>115</a>        assert_types::&lt;Yes, No&gt;(<span class="kw-2">&amp;</span>chain);
+<a href=#116 id=116 data-nosnippet>116</a>    }
+<a href=#117 id=117 data-nosnippet>117</a>
+<a href=#118 id=118 data-nosnippet>118</a>    <span class="attr">#[test]
+<a href=#119 id=119 data-nosnippet>119</a>    </span><span class="kw">fn </span>chain_nested_types() {
+<a href=#120 id=120 data-nosnippet>120</a>        <span class="comment">// Chain&lt;Chain&lt;Sync, Async&gt;, Infinite&gt;: CanPend=Yes, CanEnd=No
+<a href=#121 id=121 data-nosnippet>121</a>        </span><span class="kw">let </span>chain_ab: Chain&lt;SyncPull, AsyncPull&gt; = Chain::new(SyncPull::new(<span class="number">1</span>), AsyncPull::new(<span class="number">1</span>));
+<a href=#122 id=122 data-nosnippet>122</a>        assert_types::&lt;Yes, Yes&gt;(<span class="kw-2">&amp;</span>chain_ab);
+<a href=#123 id=123 data-nosnippet>123</a>
+<a href=#124 id=124 data-nosnippet>124</a>        <span class="kw">let </span>chain_abc: Chain&lt;Chain&lt;SyncPull, AsyncPull&gt;, Repeat&lt;i32&gt;&gt; =
+<a href=#125 id=125 data-nosnippet>125</a>            Chain::new(chain_ab, Repeat::new(<span class="number">3</span>));
+<a href=#126 id=126 data-nosnippet>126</a>        assert_types::&lt;Yes, No&gt;(<span class="kw-2">&amp;</span>chain_abc);
+<a href=#127 id=127 data-nosnippet>127</a>    }
+<a href=#128 id=128 data-nosnippet>128</a>
+<a href=#129 id=129 data-nosnippet>129</a>    <span class="attr">#[test]
+<a href=#130 id=130 data-nosnippet>130</a>    </span><span class="kw">fn </span>chain_fused_shields_upstream() {
+<a href=#131 id=131 data-nosnippet>131</a>        <span class="kw">use </span>core::pin::pin;
+<a href=#132 id=132 data-nosnippet>132</a>
+<a href=#133 id=133 data-nosnippet>133</a>        <span class="kw">use </span><span class="kw">crate</span>::pull::once;
+<a href=#134 id=134 data-nosnippet>134</a>        <span class="kw">use </span><span class="kw">crate</span>::pull::test_utils::assert_fused_runtime;
+<a href=#135 id=135 data-nosnippet>135</a>
+<a href=#136 id=136 data-nosnippet>136</a>        <span class="comment">// TODO(mingwei): use upstream `Pull`s that pend sometimes.
+<a href=#137 id=137 data-nosnippet>137</a>        </span><span class="kw">let </span>p = <span class="macro">pin!</span>(once(<span class="number">5</span>).chain(once(<span class="number">6</span>)));
+<a href=#138 id=138 data-nosnippet>138</a>        assert_fused_runtime(p);
+<a href=#139 id=139 data-nosnippet>139</a>    }
+<a href=#140 id=140 data-nosnippet>140</a>}
 </code></pre></div></section></main></body></html>

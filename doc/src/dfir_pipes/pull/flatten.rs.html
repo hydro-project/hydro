@@ -67,36 +67,35 @@
 <a href=#67 id=67 data-nosnippet>67</a>        }
 <a href=#68 id=68 data-nosnippet>68</a>    }
 <a href=#69 id=69 data-nosnippet>69</a>
-<a href=#70 id=70 data-nosnippet>70</a>    <span class="kw">fn </span>size_hint(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>&gt;) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
-<a href=#71 id=71 data-nosnippet>71</a>        <span class="kw">let </span>this = <span class="self">self</span>.project_ref();
-<a href=#72 id=72 data-nosnippet>72</a>        <span class="kw">let </span>current_len = this
-<a href=#73 id=73 data-nosnippet>73</a>            .current
-<a href=#74 id=74 data-nosnippet>74</a>            .as_ref()
-<a href=#75 id=75 data-nosnippet>75</a>            .map(|(iter, <span class="kw">_</span>)| iter.size_hint().<span class="number">0</span>)
-<a href=#76 id=76 data-nosnippet>76</a>            .unwrap_or_default();
-<a href=#77 id=77 data-nosnippet>77</a>        <span class="comment">// We can't know the upper bound since each inner iterator could have any size
-<a href=#78 id=78 data-nosnippet>78</a>        </span>(current_len, <span class="prelude-val">None</span>)
-<a href=#79 id=79 data-nosnippet>79</a>    }
-<a href=#80 id=80 data-nosnippet>80</a>}
-<a href=#81 id=81 data-nosnippet>81</a>
-<a href=#82 id=82 data-nosnippet>82</a><span class="kw">impl</span>&lt;Prev&gt; FusedPull <span class="kw">for </span>Flatten&lt;Prev, &lt;Prev::Item <span class="kw">as </span>IntoIterator&gt;::IntoIter, Prev::Meta&gt;
-<a href=#83 id=83 data-nosnippet>83</a><span class="kw">where
-<a href=#84 id=84 data-nosnippet>84</a>    </span>Prev: FusedPull,
-<a href=#85 id=85 data-nosnippet>85</a>    Prev::Item: IntoIterator,
-<a href=#86 id=86 data-nosnippet>86</a>{
-<a href=#87 id=87 data-nosnippet>87</a>}
-<a href=#88 id=88 data-nosnippet>88</a>
-<a href=#89 id=89 data-nosnippet>89</a><span class="attr">#[cfg(test)]
-<a href=#90 id=90 data-nosnippet>90</a></span><span class="kw">mod </span>tests {
-<a href=#91 id=91 data-nosnippet>91</a>    <span class="kw">use </span>core::pin::pin;
-<a href=#92 id=92 data-nosnippet>92</a>
-<a href=#93 id=93 data-nosnippet>93</a>    <span class="kw">use </span><span class="kw">crate</span>::pull::Pull;
-<a href=#94 id=94 data-nosnippet>94</a>    <span class="kw">use </span><span class="kw">crate</span>::pull::test_utils::{PanicsAfterEndPull, assert_fused_runtime};
-<a href=#95 id=95 data-nosnippet>95</a>
-<a href=#96 id=96 data-nosnippet>96</a>    <span class="attr">#[test]
-<a href=#97 id=97 data-nosnippet>97</a>    </span><span class="kw">fn </span>flatten_fused_shields_upstream() {
-<a href=#98 id=98 data-nosnippet>98</a>        <span class="kw">let </span>p = <span class="macro">pin!</span>(PanicsAfterEndPull::new(<span class="number">5</span>).fuse().map(|x| <span class="number">0</span>..x).flatten());
-<a href=#99 id=99 data-nosnippet>99</a>        assert_fused_runtime(p);
-<a href=#100 id=100 data-nosnippet>100</a>    }
-<a href=#101 id=101 data-nosnippet>101</a>}
+<a href=#70 id=70 data-nosnippet>70</a>    <span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
+<a href=#71 id=71 data-nosnippet>71</a>        <span class="kw">let </span>current_len = <span class="self">self
+<a href=#72 id=72 data-nosnippet>72</a>            </span>.current
+<a href=#73 id=73 data-nosnippet>73</a>            .as_ref()
+<a href=#74 id=74 data-nosnippet>74</a>            .map(|(iter, <span class="kw">_</span>)| iter.size_hint().<span class="number">0</span>)
+<a href=#75 id=75 data-nosnippet>75</a>            .unwrap_or_default();
+<a href=#76 id=76 data-nosnippet>76</a>        <span class="comment">// We can't know the upper bound since each inner iterator could have any size
+<a href=#77 id=77 data-nosnippet>77</a>        </span>(current_len, <span class="prelude-val">None</span>)
+<a href=#78 id=78 data-nosnippet>78</a>    }
+<a href=#79 id=79 data-nosnippet>79</a>}
+<a href=#80 id=80 data-nosnippet>80</a>
+<a href=#81 id=81 data-nosnippet>81</a><span class="kw">impl</span>&lt;Prev&gt; FusedPull <span class="kw">for </span>Flatten&lt;Prev, &lt;Prev::Item <span class="kw">as </span>IntoIterator&gt;::IntoIter, Prev::Meta&gt;
+<a href=#82 id=82 data-nosnippet>82</a><span class="kw">where
+<a href=#83 id=83 data-nosnippet>83</a>    </span>Prev: FusedPull,
+<a href=#84 id=84 data-nosnippet>84</a>    Prev::Item: IntoIterator,
+<a href=#85 id=85 data-nosnippet>85</a>{
+<a href=#86 id=86 data-nosnippet>86</a>}
+<a href=#87 id=87 data-nosnippet>87</a>
+<a href=#88 id=88 data-nosnippet>88</a><span class="attr">#[cfg(test)]
+<a href=#89 id=89 data-nosnippet>89</a></span><span class="kw">mod </span>tests {
+<a href=#90 id=90 data-nosnippet>90</a>    <span class="kw">use </span>core::pin::pin;
+<a href=#91 id=91 data-nosnippet>91</a>
+<a href=#92 id=92 data-nosnippet>92</a>    <span class="kw">use </span><span class="kw">crate</span>::pull::Pull;
+<a href=#93 id=93 data-nosnippet>93</a>    <span class="kw">use </span><span class="kw">crate</span>::pull::test_utils::{PanicsAfterEndPull, assert_fused_runtime};
+<a href=#94 id=94 data-nosnippet>94</a>
+<a href=#95 id=95 data-nosnippet>95</a>    <span class="attr">#[test]
+<a href=#96 id=96 data-nosnippet>96</a>    </span><span class="kw">fn </span>flatten_fused_shields_upstream() {
+<a href=#97 id=97 data-nosnippet>97</a>        <span class="kw">let </span>p = <span class="macro">pin!</span>(PanicsAfterEndPull::new(<span class="number">5</span>).fuse().map(|x| <span class="number">0</span>..x).flatten());
+<a href=#98 id=98 data-nosnippet>98</a>        assert_fused_runtime(p);
+<a href=#99 id=99 data-nosnippet>99</a>    }
+<a href=#100 id=100 data-nosnippet>100</a>}
 </code></pre></div></section></main></body></html>

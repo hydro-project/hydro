@@ -62,23 +62,22 @@
 <a href=#62 id=62 data-nosnippet>62</a>        }
 <a href=#63 id=63 data-nosnippet>63</a>    }
 <a href=#64 id=64 data-nosnippet>64</a>
-<a href=#65 id=65 data-nosnippet>65</a>    <span class="kw">fn </span>size_hint(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>&gt;) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
-<a href=#66 id=66 data-nosnippet>66</a>        <span class="kw">let </span>this = <span class="self">self</span>.project_ref();
-<a href=#67 id=67 data-nosnippet>67</a>        <span class="kw">let </span>(<span class="kw">_</span>, upper) = this.prev.size_hint();
-<a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">if </span><span class="kw-2">*</span>this.skipping {
-<a href=#69 id=69 data-nosnippet>69</a>            <span class="comment">// Still skipping, so lower bound is 0
-<a href=#70 id=70 data-nosnippet>70</a>            </span>(<span class="number">0</span>, upper)
-<a href=#71 id=71 data-nosnippet>71</a>        } <span class="kw">else </span>{
-<a href=#72 id=72 data-nosnippet>72</a>            <span class="comment">// Done skipping, pass through
-<a href=#73 id=73 data-nosnippet>73</a>            </span>this.prev.size_hint()
-<a href=#74 id=74 data-nosnippet>74</a>        }
-<a href=#75 id=75 data-nosnippet>75</a>    }
-<a href=#76 id=76 data-nosnippet>76</a>}
-<a href=#77 id=77 data-nosnippet>77</a>
-<a href=#78 id=78 data-nosnippet>78</a><span class="kw">impl</span>&lt;Prev, Func&gt; FusedPull <span class="kw">for </span>SkipWhile&lt;Prev, Func&gt;
-<a href=#79 id=79 data-nosnippet>79</a><span class="kw">where
-<a href=#80 id=80 data-nosnippet>80</a>    </span>Prev: FusedPull,
-<a href=#81 id=81 data-nosnippet>81</a>    Func: FnMut(<span class="kw-2">&amp;</span>Prev::Item) -&gt; bool,
-<a href=#82 id=82 data-nosnippet>82</a>{
-<a href=#83 id=83 data-nosnippet>83</a>}
+<a href=#65 id=65 data-nosnippet>65</a>    <span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
+<a href=#66 id=66 data-nosnippet>66</a>        <span class="kw">let </span>(<span class="kw">_</span>, upper) = <span class="self">self</span>.prev.size_hint();
+<a href=#67 id=67 data-nosnippet>67</a>        <span class="kw">if </span><span class="self">self</span>.skipping {
+<a href=#68 id=68 data-nosnippet>68</a>            <span class="comment">// Still skipping, so lower bound is 0
+<a href=#69 id=69 data-nosnippet>69</a>            </span>(<span class="number">0</span>, upper)
+<a href=#70 id=70 data-nosnippet>70</a>        } <span class="kw">else </span>{
+<a href=#71 id=71 data-nosnippet>71</a>            <span class="comment">// Done skipping, pass through
+<a href=#72 id=72 data-nosnippet>72</a>            </span><span class="self">self</span>.prev.size_hint()
+<a href=#73 id=73 data-nosnippet>73</a>        }
+<a href=#74 id=74 data-nosnippet>74</a>    }
+<a href=#75 id=75 data-nosnippet>75</a>}
+<a href=#76 id=76 data-nosnippet>76</a>
+<a href=#77 id=77 data-nosnippet>77</a><span class="kw">impl</span>&lt;Prev, Func&gt; FusedPull <span class="kw">for </span>SkipWhile&lt;Prev, Func&gt;
+<a href=#78 id=78 data-nosnippet>78</a><span class="kw">where
+<a href=#79 id=79 data-nosnippet>79</a>    </span>Prev: FusedPull,
+<a href=#80 id=80 data-nosnippet>80</a>    Func: FnMut(<span class="kw-2">&amp;</span>Prev::Item) -&gt; bool,
+<a href=#81 id=81 data-nosnippet>81</a>{
+<a href=#82 id=82 data-nosnippet>82</a>}
 </code></pre></div></section></main></body></html>

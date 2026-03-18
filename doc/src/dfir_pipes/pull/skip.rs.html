@@ -56,16 +56,15 @@
 <a href=#56 id=56 data-nosnippet>56</a>        }
 <a href=#57 id=57 data-nosnippet>57</a>    }
 <a href=#58 id=58 data-nosnippet>58</a>
-<a href=#59 id=59 data-nosnippet>59</a>    <span class="kw">fn </span>size_hint(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>&gt;) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
-<a href=#60 id=60 data-nosnippet>60</a>        <span class="kw">let </span>this = <span class="self">self</span>.project_ref();
-<a href=#61 id=61 data-nosnippet>61</a>        <span class="kw">let </span>(lower, upper) = this.prev.size_hint();
-<a href=#62 id=62 data-nosnippet>62</a>        <span class="kw">let </span>remaining = <span class="kw-2">*</span>this.remaining;
-<a href=#63 id=63 data-nosnippet>63</a>        (
-<a href=#64 id=64 data-nosnippet>64</a>            lower.saturating_sub(remaining),
-<a href=#65 id=65 data-nosnippet>65</a>            upper.map(|u| u.saturating_sub(remaining)),
-<a href=#66 id=66 data-nosnippet>66</a>        )
-<a href=#67 id=67 data-nosnippet>67</a>    }
-<a href=#68 id=68 data-nosnippet>68</a>}
-<a href=#69 id=69 data-nosnippet>69</a>
-<a href=#70 id=70 data-nosnippet>70</a><span class="kw">impl</span>&lt;Prev&gt; FusedPull <span class="kw">for </span>Skip&lt;Prev&gt; <span class="kw">where </span>Prev: FusedPull {}
+<a href=#59 id=59 data-nosnippet>59</a>    <span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
+<a href=#60 id=60 data-nosnippet>60</a>        <span class="kw">let </span>(lower, upper) = <span class="self">self</span>.prev.size_hint();
+<a href=#61 id=61 data-nosnippet>61</a>        <span class="kw">let </span>remaining = <span class="self">self</span>.remaining;
+<a href=#62 id=62 data-nosnippet>62</a>        (
+<a href=#63 id=63 data-nosnippet>63</a>            lower.saturating_sub(remaining),
+<a href=#64 id=64 data-nosnippet>64</a>            upper.map(|u| u.saturating_sub(remaining)),
+<a href=#65 id=65 data-nosnippet>65</a>        )
+<a href=#66 id=66 data-nosnippet>66</a>    }
+<a href=#67 id=67 data-nosnippet>67</a>}
+<a href=#68 id=68 data-nosnippet>68</a>
+<a href=#69 id=69 data-nosnippet>69</a><span class="kw">impl</span>&lt;Prev&gt; FusedPull <span class="kw">for </span>Skip&lt;Prev&gt; <span class="kw">where </span>Prev: FusedPull {}
 </code></pre></div></section></main></body></html>

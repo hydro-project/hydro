@@ -56,8 +56,8 @@
 <a href=#56 id=56 data-nosnippet>56</a>        }
 <a href=#57 id=57 data-nosnippet>57</a>    }
 <a href=#58 id=58 data-nosnippet>58</a>
-<a href=#59 id=59 data-nosnippet>59</a>    <span class="kw">fn </span>size_hint(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;</span><span class="self">Self</span>&gt;) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
-<a href=#60 id=60 data-nosnippet>60</a>        <span class="kw">let </span>(<span class="kw">_</span>, upper) = <span class="self">self</span>.project_ref().prev.size_hint();
+<a href=#59 id=59 data-nosnippet>59</a>    <span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
+<a href=#60 id=60 data-nosnippet>60</a>        <span class="kw">let </span>(<span class="kw">_</span>, upper) = <span class="self">self</span>.prev.size_hint();
 <a href=#61 id=61 data-nosnippet>61</a>        (<span class="number">0</span>, upper)
 <a href=#62 id=62 data-nosnippet>62</a>    }
 <a href=#63 id=63 data-nosnippet>63</a>}
