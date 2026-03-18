@@ -213,52 +213,57 @@ where
 
 #[cfg(test)]
 mod tests {
-    use alloc::rc::Rc;
     use core::pin::Pin;
 
+    extern crate alloc;
+    use alloc::vec;
+
     use super::*;
-    use crate::push::test_utils::{CollectPush, ReadyGuardPush, assert_can_pend_no};
+    use crate::push::test_utils::{TestPush, assert_can_pend_no};
 
     #[test]
     fn test_demux_var_basic_dispatch() {
-        let pushes = variadics::var_expr!(
-            CollectPush::default(),
-            CollectPush::default(),
-            CollectPush::default(),
-        );
+        let mut tp_a = TestPush::no_pend();
+        let mut tp_b = TestPush::no_pend();
+        let mut tp_c = TestPush::no_pend();
 
-        let items_a = Rc::clone(&pushes.0.items);
-        let items_b = Rc::clone(&pushes.1.0.items);
-        let items_c = Rc::clone(&pushes.1.1.0.items);
+        {
+            let pushes = variadics::var_expr!(&mut tp_a, &mut tp_b, &mut tp_c);
+            let mut demux = demux_var(pushes);
+            let mut demux = Pin::new(&mut demux);
 
-        let mut demux = demux_var(pushes);
-        let mut demux = Pin::new(&mut demux);
+            demux.as_mut().poll_ready(&mut ());
+            demux.as_mut().start_send((0, 10), ());
+            demux.as_mut().poll_ready(&mut ());
+            demux.as_mut().start_send((1, 20), ());
+            demux.as_mut().poll_ready(&mut ());
+            demux.as_mut().start_send((2, 30), ());
+            demux.as_mut().poll_ready(&mut ());
+            demux.as_mut().start_send((0, 40), ());
+            demux.as_mut().poll_ready(&mut ());
+            demux.as_mut().start_send((2, 50), ());
+            demux.as_mut().poll_flush(&mut ());
+        }
 
-        demux.as_mut().poll_ready(&mut ());
-        demux.as_mut().start_send((0, 10), ());
-        demux.as_mut().start_send((1, 20), ());
-        demux.as_mut().start_send((2, 30), ());
-        demux.as_mut().start_send((0, 40), ());
-        demux.as_mut().start_send((2, 50), ());
-        demux.as_mut().poll_flush(&mut ());
-
-        assert_eq!(&*items_a.borrow(), &[10, 40]);
-        assert_eq!(&*items_b.borrow(), &[20]);
-        assert_eq!(&*items_c.borrow(), &[30, 50]);
+        assert_eq!(tp_a.items(), vec![10, 40]);
+        assert_eq!(tp_b.items(), vec![20]);
+        assert_eq!(tp_c.items(), vec![30, 50]);
     }
 
     #[test]
     fn test_demux_var_canpend_is_no_for_sync_pushes() {
-        let pushes =
-            variadics::var_expr!(CollectPush::<i32>::default(), CollectPush::<i32>::default(),);
+        let mut tp_a: TestPush<i32, _, _> = TestPush::no_pend();
+        let mut tp_b: TestPush<i32, _, _> = TestPush::no_pend();
+        let pushes = variadics::var_expr!(&mut tp_a, &mut tp_b);
         let demux = demux_var(pushes);
         assert_can_pend_no(&demux);
     }
 
     #[test]
     fn test_demux_var_readies_all_before_send() {
-        let pushes =
-            variadics::var_expr!(ReadyGuardPush::<i32>::new(), ReadyGuardPush::<i32>::new(),);
+        let mut tp_a = TestPush::no_pend();
+        let mut tp_b = TestPush::no_pend();
+        let pushes = variadics::var_expr!(&mut tp_a, &mut tp_b);
         let mut demux = demux_var(pushes);
         let mut demux = Pin::new(&mut demux);
         demux.as_mut().poll_ready(&mut ());

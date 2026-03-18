@@ -71,11 +71,13 @@ mod tests {
 
     use super::Unzip;
     use crate::push::Push;
-    use crate::push::test_utils::ReadyGuardPush;
+    use crate::push::test_utils::TestPush;
 
     #[test]
     fn unzip_readies_both_before_send() {
-        let mut u = Unzip::new(ReadyGuardPush::new(), ReadyGuardPush::new());
+        let mut tp_a = TestPush::no_pend();
+        let mut tp_b = TestPush::no_pend();
+        let mut u = Unzip::new(&mut tp_a, &mut tp_b);
         let mut u = Pin::new(&mut u);
         u.as_mut().poll_ready(&mut ());
         u.as_mut().start_send((1, 2), ());

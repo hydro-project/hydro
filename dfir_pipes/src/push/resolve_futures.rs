@@ -156,7 +156,7 @@ mod tests {
 
     use super::*;
     use crate::push::Push;
-    use crate::push::test_utils::{AsyncMockPush, ReadyGuardPush};
+    use crate::push::test_utils::{PushCall, TestPush};
 
     type Queue = FuturesUnordered<core::future::Ready<i32>>;
 
@@ -165,19 +165,24 @@ mod tests {
         let waker = Waker::noop();
         let mut cx = Context::from_waker(waker);
 
-        let mock = AsyncMockPush::default();
+        let mut mock = TestPush::no_pend();
         let mut queue: Queue = [1, 2, 3].into_iter().map(core::future::ready).collect();
-        let mut rf = ResolveFutures::<_, _, Queue>::new(&mut queue, None, mock);
+        let mut rf = ResolveFutures::<_, _, Queue>::new(&mut queue, None, &mut mock);
 
         let result = Push::<core::future::Ready<i32>, ()>::poll_ready(Pin::new(&mut rf), &mut cx);
         assert!(result.is_done());
 
+        drop(rf);
         assert!(
-            rf.push.poll_ready_count > 0,
+            mock.history
+                .iter()
+                .any(|c| matches!(c, PushCall::PollReady)),
             "downstream poll_ready was not called"
         );
         assert!(
-            !rf.push.items.is_empty(),
+            mock.history
+                .iter()
+                .any(|c| matches!(c, PushCall::SendItem(_))),
             "downstream should have received items"
         );
     }
@@ -187,15 +192,18 @@ mod tests {
         let waker = Waker::noop();
         let mut cx = Context::from_waker(waker);
 
-        let mock = AsyncMockPush::default();
+        let mut mock = TestPush::no_pend();
         let mut queue: Queue = FuturesUnordered::new();
-        let mut rf = ResolveFutures::<_, _, Queue>::new(&mut queue, None, mock);
+        let mut rf = ResolveFutures::<_, _, Queue>::new(&mut queue, None, &mut mock);
 
         let result = Push::<core::future::Ready<i32>, ()>::poll_flush(Pin::new(&mut rf), &mut cx);
         assert!(result.is_done());
 
+        drop(rf);
         assert!(
-            rf.push.poll_flush_count > 0,
+            mock.history
+                .iter()
+                .any(|c| matches!(c, PushCall::PollFlush)),
             "downstream poll_flush was not called"
         );
     }
@@ -205,9 +213,9 @@ mod tests {
         let waker = Waker::noop();
         let mut cx = Context::from_waker(waker);
 
-        let guard = ReadyGuardPush::<i32>::new();
+        let mut guard = TestPush::no_pend();
         let mut queue: Queue = [1, 2, 3].into_iter().map(core::future::ready).collect();
-        let mut rf = ResolveFutures::<_, _, Queue>::new(&mut queue, None, guard);
+        let mut rf = ResolveFutures::<_, _, Queue>::new(&mut queue, None, &mut guard);
 
         // poll_ready drains resolved futures into downstream, each with poll_ready before start_send.
         let result = Push::<core::future::Ready<i32>, ()>::poll_ready(Pin::new(&mut rf), &mut cx);

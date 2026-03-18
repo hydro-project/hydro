@@ -90,11 +90,12 @@ mod tests {
     use alloc::vec::Vec;
 
     use crate::push::Push;
-    use crate::push::test_utils::ReadyGuardPush;
+    use crate::push::test_utils::TestPush;
 
     #[test]
     fn flatten_readies_downstream_before_each_send() {
-        let mut fl = crate::push::flatten::<Vec<i32>, (), _>(ReadyGuardPush::new());
+        let mut tp = TestPush::no_pend();
+        let mut fl = crate::push::flatten::<Vec<i32>, (), _>(&mut tp);
         let mut fl = Pin::new(&mut fl);
         fl.as_mut().poll_ready(&mut ());
         fl.as_mut().start_send(vec![1, 2], ());

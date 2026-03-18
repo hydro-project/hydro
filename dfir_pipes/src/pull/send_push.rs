@@ -94,18 +94,17 @@ mod tests {
     use alloc::vec::Vec;
 
     use super::SendPush;
+    use crate::Yes;
     use crate::pull::test_utils::TestPull;
-    use crate::push::test_utils::PendingFlushPush;
+    use crate::push::PushStep;
+    use crate::push::test_utils::TestPush;
 
     /// SendPush must not re-poll the pull after it returned Ended,
     /// even if poll_flush returns Pending.
     #[test]
     fn send_push_no_repoll_after_ended_on_flush_pending() {
         let pull = TestPull::items(0..2);
-        let push = PendingFlushPush {
-            items: Vec::new(),
-            flush_pending_count: 1,
-        };
+        let push = TestPush::<i32, _, _>::new_fused([], [PushStep::Pending(Yes), PushStep::Done]);
         let mut send = core::pin::pin!(SendPush::new(pull, push));
 
         let waker = Waker::noop();
@@ -117,7 +116,7 @@ mod tests {
         let result = send.as_mut().poll(&mut cx);
         assert!(result.is_ready(), "expected Ready from second poll");
 
-        let items = &send.into_ref().get_ref().push.items;
-        assert_eq!(*items, vec![0, 1]);
+        let items: Vec<i32> = send.into_ref().get_ref().push.items();
+        assert_eq!(items, vec![0, 1]);
     }
 }

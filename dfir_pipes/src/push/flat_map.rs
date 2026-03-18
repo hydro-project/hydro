@@ -92,11 +92,12 @@ mod tests {
     use core::pin::Pin;
 
     use crate::push::Push;
-    use crate::push::test_utils::ReadyGuardPush;
+    use crate::push::test_utils::TestPush;
 
     #[test]
     fn flat_map_readies_downstream_before_each_send() {
-        let mut fm = crate::push::flat_map(|x: i32| [x, x + 10], ReadyGuardPush::new());
+        let mut tp = TestPush::no_pend();
+        let mut fm = crate::push::flat_map(|x: i32| [x, x + 10], &mut tp);
         let mut fm = Pin::new(&mut fm);
         fm.as_mut().poll_ready(&mut ());
         fm.as_mut().start_send(1, ());

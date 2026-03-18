@@ -97,14 +97,15 @@ mod tests {
     use alloc::vec::Vec;
 
     use crate::push::Push;
-    use crate::push::test_utils::ReadyGuardPush;
+    use crate::push::test_utils::TestPush;
 
     #[test]
     fn persist_readies_downstream_for_replay_and_new() {
         let mut buf = Vec::new();
         // First pass: persist items 1, 2.
         {
-            let mut p = crate::push::persist_state(&mut buf, false, ReadyGuardPush::<i32>::new());
+            let mut tp = TestPush::no_pend();
+            let mut p = crate::push::persist_state(&mut buf, false, &mut tp);
             let mut p = Pin::new(&mut p);
             p.as_mut().poll_ready(&mut ());
             p.as_mut().start_send(1, ());
@@ -114,7 +115,8 @@ mod tests {
         }
         // Second pass: replay=true, should replay 1, 2 then accept new item 3.
         {
-            let mut p = crate::push::persist_state(&mut buf, true, ReadyGuardPush::<i32>::new());
+            let mut tp = TestPush::no_pend();
+            let mut p = crate::push::persist_state(&mut buf, true, &mut tp);
             let mut p = Pin::new(&mut p);
             p.as_mut().poll_ready(&mut ());
             p.as_mut().start_send(3, ());

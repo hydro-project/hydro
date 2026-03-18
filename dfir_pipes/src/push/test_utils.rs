@@ -1,130 +1,138 @@
 //! Shared test utilities for Push tests.
 
-use alloc::rc::Rc;
+use alloc::collections::VecDeque;
 use alloc::vec::Vec;
-use core::cell::RefCell;
 use core::pin::Pin;
 
-use crate::No;
 use crate::push::{Push, PushStep};
+use crate::{No, Toggle};
 
-/// Compile-time assertion that a push has `CanPend = No`.
-pub fn assert_can_pend_no<T, M: Copy>(_push: &impl Push<T, M, CanPend = No>) {}
+/// Records which method was called on a [`TestPush`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PushCall<Item> {
+    /// `poll_ready` was called.
+    PollReady,
+    /// `start_send` was called with the given item.
+    SendItem(Item),
+    /// `poll_flush` was called.
+    PollFlush,
+}
 
-/// A simple push that collects items into a shared `Vec`.
+/// A configurable test push that replays separate logs of [`PushStep`]s for
+/// `poll_ready` and `poll_flush`, records a history of all calls, and enforces
+/// Push protocol invariants.
 ///
-/// Useful for testing push pipelines by inspecting collected output.
-#[derive(Default)]
-pub struct CollectPush<T> {
-    /// Shared storage for collected items.
-    pub items: Rc<RefCell<Vec<T>>>,
-}
-
-impl<T> Push<T, ()> for CollectPush<T> {
-    type Ctx<'ctx> = ();
-    type CanPend = No;
-
-    fn poll_ready(self: Pin<&mut Self>, _ctx: &mut ()) -> PushStep<No> {
-        PushStep::Done
-    }
-    fn start_send(self: Pin<&mut Self>, item: T, _meta: ()) {
-        self.get_mut().items.borrow_mut().push(item);
-    }
-    fn poll_flush(self: Pin<&mut Self>, _ctx: &mut ()) -> PushStep<No> {
-        PushStep::Done
-    }
-}
-
-/// Mock push for testing async push operators.
-#[derive(Default)]
-pub struct AsyncMockPush<T> {
-    pub items: Vec<T>,
-    pub poll_ready_count: usize,
-    pub poll_flush_count: usize,
-}
-
-impl<T> Unpin for AsyncMockPush<T> {}
-
-impl<T> Push<T, ()> for AsyncMockPush<T> {
-    type Ctx<'ctx> = ();
-    type CanPend = No;
-
-    fn poll_ready(self: Pin<&mut Self>, _ctx: &mut Self::Ctx<'_>) -> PushStep<No> {
-        self.get_mut().poll_ready_count += 1;
-        PushStep::Done
-    }
-
-    fn start_send(self: Pin<&mut Self>, item: T, _meta: ()) {
-        self.get_mut().items.push(item);
-    }
-
-    fn poll_flush(self: Pin<&mut Self>, _ctx: &mut Self::Ctx<'_>) -> PushStep<No> {
-        self.get_mut().poll_flush_count += 1;
-        PushStep::Done
-    }
-}
-
-/// A push that collects i32 items and returns Pending from poll_flush a configurable number of times.
-pub struct PendingFlushPush {
-    pub items: Vec<i32>,
-    pub flush_pending_count: usize,
-}
-
-impl Push<i32, ()> for PendingFlushPush {
-    type Ctx<'ctx> = ();
-    type CanPend = crate::Yes;
-
-    fn poll_ready(self: Pin<&mut Self>, _ctx: &mut ()) -> PushStep<crate::Yes> {
-        PushStep::Done
-    }
-    fn start_send(self: Pin<&mut Self>, item: i32, _meta: ()) {
-        self.get_mut().items.push(item);
-    }
-    fn poll_flush(self: Pin<&mut Self>, _ctx: &mut ()) -> PushStep<crate::Yes> {
-        let this = self.get_mut();
-        if this.flush_pending_count > 0 {
-            this.flush_pending_count -= 1;
-            PushStep::Pending(crate::Yes)
-        } else {
-            PushStep::Done
-        }
-    }
-}
-
-/// A push that panics if `start_send` is called without a preceding `poll_ready` returning `Done`.
-/// Collects items for inspection.
-pub struct ReadyGuardPush<T> {
-    pub items: Vec<T>,
+/// # Generic Parameters
+///
+/// - `Item`: The type of items accepted by this push.
+/// - `CanPend`: A [`Toggle`] type (`Yes` or `No`) that statically encodes
+///   whether this push can return [`PushStep::Pending`]. When set to [`No`],
+///   the `Pending` variant cannot be constructed.
+/// - `FUSED`: When `true`, exhausted step logs return [`PushStep::Done`]
+///   instead of panicking. When `false`, polling after the log is exhausted
+///   will panic.
+///
+/// # Panics
+///
+/// - `start_send` is called without a preceding `poll_ready` returning `Done`.
+/// - When `FUSED` is `false`, `poll_ready` or `poll_flush` is called after
+///   the corresponding step log is exhausted.
+pub struct TestPush<Item, CanPend: Toggle, const FUSED: bool> {
+    /// Steps returned by `poll_ready`, consumed in order.
+    ready_steps: VecDeque<PushStep<CanPend>>,
+    /// Steps returned by `poll_flush`, consumed in order.
+    flush_steps: VecDeque<PushStep<CanPend>>,
+    /// Recorded history of calls.
+    pub history: Vec<PushCall<Item>>,
     ready: bool,
 }
 
-impl<T> ReadyGuardPush<T> {
-    pub(crate) fn new() -> Self {
+impl<Item, CanPend: Toggle, const FUSED: bool> TestPush<Item, CanPend, FUSED> {
+    /// Creates a new `TestPush` from separate step logs for `poll_ready` and `poll_flush`.
+    fn new(
+        ready_steps: impl IntoIterator<Item = PushStep<CanPend>>,
+        flush_steps: impl IntoIterator<Item = PushStep<CanPend>>,
+    ) -> Self {
         Self {
-            items: Vec::new(),
+            ready_steps: ready_steps.into_iter().collect(),
+            flush_steps: flush_steps.into_iter().collect(),
+            history: Vec::new(),
             ready: false,
+        }
+    }
+
+    /// Returns the items sent via `start_send`, extracted from the call history.
+    pub fn items(&self) -> Vec<Item>
+    where
+        Item: Clone,
+    {
+        self.history
+            .iter()
+            .filter_map(|c| match c {
+                PushCall::SendItem(x) => Some(x.clone()),
+                _ => None,
+            })
+            .collect()
+    }
+}
+
+impl<Item, CanPend: Toggle> TestPush<Item, CanPend, true> {
+    /// Creates a new `TestPush` from separate step logs for `poll_ready` and `poll_flush`.
+    pub(crate) fn new_fused(
+        ready_steps: impl IntoIterator<Item = PushStep<CanPend>>,
+        flush_steps: impl IntoIterator<Item = PushStep<CanPend>>,
+    ) -> Self {
+        Self::new(ready_steps, flush_steps)
+    }
+}
+
+impl<Item> TestPush<Item, No, true> {
+    /// Creates a `TestPush` with `CanPend = No` and empty step logs.
+    ///
+    /// Always returns `Done` for `poll_ready` and `poll_flush`.
+    pub(crate) fn no_pend() -> Self {
+        Self::new([], [])
+    }
+}
+
+impl<Item, CanPend: Toggle, const FUSED: bool> Unpin for TestPush<Item, CanPend, FUSED> {}
+
+impl<Item, CanPend: Toggle, const FUSED: bool> Push<Item, ()> for TestPush<Item, CanPend, FUSED> {
+    type Ctx<'ctx> = ();
+    type CanPend = CanPend;
+
+    fn poll_ready(self: Pin<&mut Self>, _ctx: &mut ()) -> PushStep<CanPend> {
+        let this = self.get_mut();
+        this.history.push(PushCall::PollReady);
+        let step = match this.ready_steps.pop_front() {
+            Some(step) => step,
+            None if FUSED => PushStep::Done,
+            None => panic!("TestPush: poll_ready after log exhausted",),
+        };
+        this.ready = step.is_done();
+        step
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: Item, _meta: ()) {
+        let this = self.get_mut();
+        assert!(
+            this.ready,
+            "TestPush: start_send called without poll_ready returning Done"
+        );
+        this.ready = false;
+        this.history.push(PushCall::SendItem(item));
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, _ctx: &mut ()) -> PushStep<CanPend> {
+        let this = self.get_mut();
+        this.history.push(PushCall::PollFlush);
+        match this.flush_steps.pop_front() {
+            Some(step) => step,
+            None if FUSED => PushStep::Done,
+            None => panic!("TestPush: poll_flush after log exhausted"),
         }
     }
 }
 
-impl<T: Unpin> Push<T, ()> for ReadyGuardPush<T> {
-    type Ctx<'ctx> = ();
-    type CanPend = No;
-
-    fn poll_ready(self: Pin<&mut Self>, _ctx: &mut ()) -> PushStep<No> {
-        self.get_mut().ready = true;
-        PushStep::Done
-    }
-    fn start_send(self: Pin<&mut Self>, item: T, _meta: ()) {
-        let this = self.get_mut();
-        assert!(
-            this.ready,
-            "ReadyGuardPush: start_send called without poll_ready"
-        );
-        this.ready = false;
-        this.items.push(item);
-    }
-    fn poll_flush(self: Pin<&mut Self>, _ctx: &mut ()) -> PushStep<No> {
-        PushStep::Done
-    }
-}
+/// Compile-time assertion that a push has `CanPend = No`.
+pub fn assert_can_pend_no<T, M: Copy>(_push: &impl Push<T, M, CanPend = No>) {}

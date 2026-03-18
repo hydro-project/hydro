@@ -75,11 +75,13 @@ mod tests {
 
     use super::Fanout;
     use crate::push::Push;
-    use crate::push::test_utils::ReadyGuardPush;
+    use crate::push::test_utils::TestPush;
 
     #[test]
     fn fanout_readies_both_before_send() {
-        let mut f = Fanout::new(ReadyGuardPush::new(), ReadyGuardPush::new());
+        let mut tp_a = TestPush::no_pend();
+        let mut tp_b = TestPush::no_pend();
+        let mut f = Fanout::new(&mut tp_a, &mut tp_b);
         let mut f = Pin::new(&mut f);
         f.as_mut().poll_ready(&mut ());
         f.as_mut().start_send(1, ());
