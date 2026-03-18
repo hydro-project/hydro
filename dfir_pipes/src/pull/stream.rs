@@ -54,4 +54,11 @@ where
     }
 }
 
-impl<St> FusedPull for Stream<St> where St: FusedStream {}
+impl<St> FusedPull for Stream<St>
+where
+    St: FusedStream,
+{
+    fn is_terminated(&self) -> bool {
+        self.stream.is_terminated()
+    }
+}

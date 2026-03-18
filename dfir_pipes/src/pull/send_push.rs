@@ -4,7 +4,7 @@ use core::task::Poll;
 use pin_project_lite::pin_project;
 
 use crate::Context;
-use crate::pull::{Pull, PullStep};
+use crate::pull::{FusedPull, PullStep};
 use crate::push::{Push, PushStep};
 
 pin_project! {
@@ -16,7 +16,6 @@ pin_project! {
         pull: Pul,
         #[pin]
         push: Psh,
-        pull_ended: bool,
     }
 }
 
@@ -26,17 +25,13 @@ where
 {
     /// Create a new [`SendPush`] from the given `pull` and `push` sides.
     pub(crate) const fn new(pull: Pul, push: Psh) -> Self {
-        Self {
-            pull,
-            push,
-            pull_ended: false,
-        }
+        Self { pull, push }
     }
 }
 
 impl<Pul, Psh, Item, Meta> Future for SendPush<Pul, Psh>
 where
-    Pul: Pull<Item = Item, Meta = Meta>,
+    Pul: FusedPull<Item = Item, Meta = Meta>,
     Meta: Copy,
     Psh: Push<Item, Meta>,
     for<'ctx> Pul::Ctx<'ctx>: Context<'ctx>,
@@ -46,7 +41,7 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut core::task::Context<'_>) -> Poll<Self::Output> {
         let mut this = self.project();
-        if !*this.pull_ended {
+        if !this.pull.as_ref().get_ref().is_terminated() {
             loop {
                 // Ensure push is ready before pulling.
                 match this
@@ -68,7 +63,6 @@ where
                     }
                     PullStep::Pending(_) => return Poll::Pending,
                     PullStep::Ended(_) => {
-                        *this.pull_ended = true;
                         break;
                     }
                 }
@@ -103,7 +97,7 @@ mod tests {
     /// even if poll_flush returns Pending.
     #[test]
     fn send_push_no_repoll_after_ended_on_flush_pending() {
-        let pull = TestPull::items(0..2);
+        let pull = TestPull::items_fused(0..2);
         let push = TestPush::<i32, _, _>::new_fused([], [PushStep::Pending(Yes), PushStep::Done]);
         let mut send = core::pin::pin!(SendPush::new(pull, push));
 

@@ -66,7 +66,14 @@ where
     fuse_self!();
 }
 
-impl<Prev> FusedPull for Fuse<Prev> where Prev: Pull {}
+impl<Prev> FusedPull for Fuse<Prev>
+where
+    Prev: Pull,
+{
+    fn is_terminated(&self) -> bool {
+        self.prev.is_none()
+    }
+}
 
 #[cfg(test)]
 mod tests {

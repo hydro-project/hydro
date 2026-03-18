@@ -1,4 +1,4 @@
-use core::borrow::BorrowMut;
+use core::borrow::{Borrow, BorrowMut};
 use core::pin::Pin;
 
 use pin_project_lite::pin_project;
@@ -107,8 +107,13 @@ where
     ItemPull: FusedPull,
     SinglePull: FusedPull,
     SinglePull::Item: Clone,
-    SingleState: BorrowMut<Option<SinglePull::Item>>,
+    SingleState: BorrowMut<Option<SinglePull::Item>> + Borrow<Option<SinglePull::Item>>,
 {
+    fn is_terminated(&self) -> bool {
+        // Terminated if item_pull is terminated, or if singleton_pull ended without yielding.
+        self.item_pull.is_terminated()
+            || (self.singleton_state.borrow().is_none() && self.singleton_pull.is_terminated())
+    }
 }
 
 #[cfg(test)]

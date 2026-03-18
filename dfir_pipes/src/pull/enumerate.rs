@@ -56,4 +56,11 @@ where
     }
 }
 
-impl<Prev> FusedPull for Enumerate<Prev> where Prev: FusedPull {}
+impl<Prev> FusedPull for Enumerate<Prev>
+where
+    Prev: FusedPull,
+{
+    fn is_terminated(&self) -> bool {
+        self.prev.is_terminated()
+    }
+}

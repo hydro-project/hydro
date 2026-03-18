@@ -87,6 +87,9 @@ where
     Func: FnMut(Prev::Item) -> IntoIter,
     IntoIter: IntoIterator,
 {
+    fn is_terminated(&self) -> bool {
+        self.prev.is_terminated()
+    }
 }
 
 #[cfg(test)]

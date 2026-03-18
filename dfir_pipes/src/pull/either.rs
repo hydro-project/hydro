@@ -44,4 +44,10 @@ where
     L: FusedPull,
     R: FusedPull<Item = L::Item, Meta = L::Meta>,
 {
+    fn is_terminated(&self) -> bool {
+        match self {
+            Either::Left(left) => left.is_terminated(),
+            Either::Right(right) => right.is_terminated(),
+        }
+    }
 }

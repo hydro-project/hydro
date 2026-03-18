@@ -71,7 +71,14 @@ where
     fuse_self!();
 }
 
-impl<Prev> FusedPull for Take<Prev> where Prev: Pull {}
+impl<Prev> FusedPull for Take<Prev>
+where
+    Prev: Pull,
+{
+    fn is_terminated(&self) -> bool {
+        self.remaining == 0
+    }
+}
 
 #[cfg(test)]
 mod tests {

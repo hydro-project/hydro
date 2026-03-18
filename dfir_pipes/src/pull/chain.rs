@@ -79,6 +79,9 @@ where
     A: FusedPull<CanEnd = Yes>,
     B: FusedPull<Item = A::Item, Meta = A::Meta>,
 {
+    fn is_terminated(&self) -> bool {
+        self.second.is_terminated()
+    }
 }
 
 #[cfg(test)]

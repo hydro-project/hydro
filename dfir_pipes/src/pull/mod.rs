@@ -375,7 +375,7 @@ pub trait Pull {
     /// Creates a future that pulls all items and sends them into a [`crate::Sink`].
     fn send_sink<Push>(self, push: Push) -> SendSink<Self, Push>
     where
-        Self: Sized,
+        Self: Sized + FusedPull,
         Push: futures_sink::Sink<Self::Item>,
     {
         SendSink::new(self, push)
@@ -384,7 +384,7 @@ pub trait Pull {
     /// Creates a future that pulls all items and pushes them into a [`crate::push::Push`].
     fn send_push<Psh>(self, push: Psh) -> SendPush<Self, Psh>
     where
-        Self: Sized,
+        Self: Sized + FusedPull,
         Psh: crate::push::Push<Self::Item, Self::Meta>,
     {
         SendPush::new(self, push)
@@ -567,7 +567,7 @@ where
     }
 }
 
-/// A marker trait for pulls that are "fused".
+/// A trait for pulls that are "fused".
 ///
 /// A fused pull guarantees that once it returns [`PullStep::Ended`], all subsequent
 /// calls to [`Pull::pull`] will also return [`PullStep::Ended`]. This property allows
@@ -576,7 +576,19 @@ where
 ///
 /// Implementors should ensure this invariant is upheld. The [`Pull::fuse`]
 /// adapter can be used to make any pull fused.
-pub trait FusedPull: Pull {}
+pub trait FusedPull: Pull {
+    /// Returns `true` if the pull has terminated (i.e., has returned [`PullStep::Ended`]).
+    fn is_terminated(&self) -> bool;
+}
+
+impl<P> FusedPull for &mut P
+where
+    P: FusedPull + Unpin + ?Sized,
+{
+    fn is_terminated(&self) -> bool {
+        (**self).is_terminated()
+    }
+}
 
 /// Creates a pull from an iterator.
 ///

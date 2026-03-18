@@ -12,12 +12,13 @@ pin_project! {
     #[derive(Clone, Debug, Default)]
     pub struct Iter<I> {
         iter: I,
+        ended: bool,
     }
 }
 
 impl<I> Iter<I> {
     pub(crate) const fn new(iter: I) -> Self {
-        Self { iter }
+        Self { iter, ended: false }
     }
 }
 
@@ -39,7 +40,10 @@ where
         let this = self.project();
         match this.iter.next() {
             Some(item) => PullStep::Ready(item, ()),
-            None => PullStep::Ended(Yes),
+            None => {
+                *this.ended = true;
+                PullStep::Ended(Yes)
+            }
         }
     }
 
@@ -48,4 +52,11 @@ where
     }
 }
 
-impl<I> FusedPull for Iter<I> where I: FusedIterator {}
+impl<I> FusedPull for Iter<I>
+where
+    I: FusedIterator,
+{
+    fn is_terminated(&self) -> bool {
+        self.ended
+    }
+}

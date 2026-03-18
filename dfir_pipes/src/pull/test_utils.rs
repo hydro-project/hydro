@@ -89,6 +89,9 @@ impl<Item, Meta: Copy, CanPend: Toggle, CanEnd: Toggle, const FUSED: bool> Pull
 impl<Item, Meta: Copy, CanPend: Toggle, CanEnd: Toggle> FusedPull
     for TestPull<Item, Meta, CanPend, CanEnd, true>
 {
+    fn is_terminated(&self) -> bool {
+        self.steps.is_empty()
+    }
 }
 
 /// Compile-time assertion that a pull implements [`FusedPull`].

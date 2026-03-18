@@ -119,6 +119,9 @@ where
     A: FusedPull,
     B: FusedPull<Meta = A::Meta>,
 {
+    fn is_terminated(&self) -> bool {
+        self.prev1.is_terminated() && self.prev2.is_terminated()
+    }
 }
 
 #[cfg(test)]

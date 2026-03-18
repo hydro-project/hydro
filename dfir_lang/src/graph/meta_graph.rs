@@ -1275,7 +1275,10 @@ impl DfirGraph {
                                 Pul: #root::dfir_pipes::pull::Pull<Item = Item>,
                                 Psh: #root::dfir_pipes::push::Push<Item, Pul::Meta>,
                             {
-                                #root::dfir_pipes::pull::Pull::send_push(pull, push)
+                                #root::dfir_pipes::pull::Pull::send_push(
+                                    #root::dfir_pipes::pull::Pull::fuse(pull),
+                                    push,
+                                )
                             }
                             (#pivot_fn_ident)(#pull_ident, #push_ident).await;
                         });

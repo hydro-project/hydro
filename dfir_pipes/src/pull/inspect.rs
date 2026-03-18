@@ -61,4 +61,7 @@ where
     Prev: FusedPull,
     Func: FnMut(&Prev::Item),
 {
+    fn is_terminated(&self) -> bool {
+        self.prev.is_terminated()
+    }
 }

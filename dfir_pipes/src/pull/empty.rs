@@ -40,4 +40,8 @@ impl<Item> Pull for Empty<Item> {
     fuse_self!();
 }
 
-impl<Item> FusedPull for Empty<Item> {}
+impl<Item> FusedPull for Empty<Item> {
+    fn is_terminated(&self) -> bool {
+        true
+    }
+}

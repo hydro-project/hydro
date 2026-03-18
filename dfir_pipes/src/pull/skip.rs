@@ -66,4 +66,11 @@ where
     }
 }
 
-impl<Prev> FusedPull for Skip<Prev> where Prev: FusedPull {}
+impl<Prev> FusedPull for Skip<Prev>
+where
+    Prev: FusedPull,
+{
+    fn is_terminated(&self) -> bool {
+        self.prev.is_terminated()
+    }
+}

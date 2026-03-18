@@ -83,6 +83,9 @@ where
     Prev: FusedPull,
     Prev::Item: IntoIterator,
 {
+    fn is_terminated(&self) -> bool {
+        self.prev.is_terminated()
+    }
 }
 
 #[cfg(test)]

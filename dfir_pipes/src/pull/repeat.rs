@@ -44,4 +44,11 @@ where
     fuse_self!();
 }
 
-impl<Item> FusedPull for Repeat<Item> where Item: Clone {}
+impl<Item> FusedPull for Repeat<Item>
+where
+    Item: Clone,
+{
+    fn is_terminated(&self) -> bool {
+        false
+    }
+}

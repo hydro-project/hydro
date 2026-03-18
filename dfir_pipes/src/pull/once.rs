@@ -45,4 +45,8 @@ impl<Item> Pull for Once<Item> {
     fuse_self!();
 }
 
-impl<Item> FusedPull for Once<Item> {}
+impl<Item> FusedPull for Once<Item> {
+    fn is_terminated(&self) -> bool {
+        self.item.is_none()
+    }
+}

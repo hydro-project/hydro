@@ -4,7 +4,7 @@ use core::task::{Context, Poll, ready};
 use futures_sink::Sink;
 use pin_project_lite::pin_project;
 
-use crate::pull::{Pull, PullStep};
+use crate::pull::{FusedPull, PullStep};
 
 pin_project! {
     /// [`Future`] for pulling from a [`Pull`] and pushing to a [`Sink`].
@@ -15,7 +15,6 @@ pin_project! {
         pull: Pul,
         #[pin]
         push: Psh,
-        pull_ended: bool,
     }
 }
 
@@ -25,17 +24,13 @@ where
 {
     /// Create a new [`SendSink`] from the given `pull` and `push` sides.
     pub(crate) const fn new(pull: Pul, push: Psh) -> Self {
-        Self {
-            pull,
-            push,
-            pull_ended: false,
-        }
+        Self { pull, push }
     }
 }
 
 impl<Pul, Psh, Item> Future for SendSink<Pul, Psh>
 where
-    Pul: Pull<Item = Item>,
+    Pul: FusedPull<Item = Item>,
     Psh: Sink<Item>,
     for<'ctx> Pul::Ctx<'ctx>: crate::Context<'ctx>,
 {
@@ -43,7 +38,7 @@ where
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let mut this = self.project();
-        if !*this.pull_ended {
+        if !this.pull.as_ref().get_ref().is_terminated() {
             loop {
                 ready!(this.push.as_mut().poll_ready(cx)?);
                 match this
@@ -57,7 +52,6 @@ where
                     }
                     PullStep::Pending(_) => return Poll::Pending,
                     PullStep::Ended(_) => {
-                        *this.pull_ended = true;
                         break;
                     }
                 }

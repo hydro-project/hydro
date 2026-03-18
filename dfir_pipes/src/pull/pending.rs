@@ -49,4 +49,8 @@ impl<Item> Pull for Pending<Item> {
     fuse_self!();
 }
 
-impl<Item> FusedPull for Pending<Item> {}
+impl<Item> FusedPull for Pending<Item> {
+    fn is_terminated(&self) -> bool {
+        false
+    }
+}
