@@ -50,4 +50,8 @@ where
     fn poll_flush(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         self.project().next.poll_flush(ctx)
     }
+
+    fn size_hint(self: Pin<&mut Self>, hint: (usize, Option<usize>)) {
+        self.project().next.size_hint((0, hint.1));
+    }
 }

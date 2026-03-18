@@ -288,17 +288,15 @@ pub fn derive_demux_enum(item: proc_macro::TokenStream) -> proc_macro::TokenStre
             }),
     );
 
-    let variant_pats_sink_start_send =
-        variants
-            .iter()
-            .zip(variant_localvars_sink.iter())
-            .map(|(variant, sinkvar)| {
-                let Variant { ident, fields, .. } = variant;
-                let (fields_pat, push_item) = field_pattern_item(fields);
-                quote! {
-                    Self::#ident #fields_pat => #sinkvar.as_mut().start_send(#push_item)
-                }
-            });
+    let variant_pats_sink_start_send = variants.iter().zip(variant_localvars_sink.iter()).map(
+        |(variant, sinkvar)| {
+            let Variant { ident, fields, .. } = variant;
+            let (fields_pat, push_item) = field_pattern_item(fields);
+            quote! {
+                Self::#ident #fields_pat => ::std::pin::Pin::as_mut(#sinkvar).start_send(#push_item)
+            }
+        },
+    );
 
     let (impl_generics_item, ty_generics, where_clause_item) = generics.split_for_impl();
     let (impl_generics_sink, _ty_generics_sink, where_clause_sink) =
@@ -392,11 +390,11 @@ pub fn derive_demux_enum(item: proc_macro::TokenStream) -> proc_macro::TokenStre
                 #(
                     let #headvar = {
                         let __ctx = <<#variant_generics_push as #root::dfir_pipes::push::Push<#variant_output_types, ()>>::Ctx<'_> as #root::dfir_pipes::Context<'_>>::unmerge_self(__ctx);
-                        #root::dfir_pipes::push::Push::#method_name(#headvar.as_mut(), __ctx)
+                        #root::dfir_pipes::push::Push::#method_name(::std::pin::Pin::as_mut(#headvar), __ctx)
                     };
                     let __ctx = <<#variant_generics_push as #root::dfir_pipes::push::Push<#variant_output_types, ()>>::Ctx<'_> as #root::dfir_pipes::Context<'_>>::unmerge_other(__ctx);
                 )*
-                let #lastvar = #root::dfir_pipes::push::Push::#method_name(#lastvar.as_mut(), __ctx);
+                let #lastvar = #root::dfir_pipes::push::Push::#method_name(::std::pin::Pin::as_mut(#lastvar), __ctx);
                 // If any are pending, return pending.
                 #(
                     if #variant_localvars_push.is_pending() {
@@ -530,6 +528,18 @@ pub fn derive_demux_enum(item: proc_macro::TokenStream) -> proc_macro::TokenStre
             ) -> #root::dfir_pipes::push::PushStep<Self::CanPend> {
                 #push_poll_flush_body
                 #root::dfir_pipes::push::PushStep::Done
+            }
+
+            fn size_hint(
+                ( #( #variant_localvars_push, )* ): &mut #variant_generics_pinned_push_all,
+                __size_hint: (usize, ::std::option::Option<usize>),
+            ) {
+                #(
+                    #root::dfir_pipes::push::Push::size_hint(
+                        ::std::pin::Pin::as_mut(#variant_localvars_push),
+                        __size_hint,
+                    );
+                )*
             }
         }
 

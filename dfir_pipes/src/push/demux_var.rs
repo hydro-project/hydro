@@ -70,6 +70,9 @@ where
     /// unmerged context slice. All pushes are flushed even if one returns
     /// pending, so that all wakers are registered.
     fn poll_flush(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend>;
+
+    /// Inform all downstream pushes that approximately `hint` items are about to be sent.
+    fn size_hint(self: Pin<&mut Self>, hint: (usize, Option<usize>));
 }
 
 /// Recursive case: a push `P` followed by the rest of the variadic `Rest`.
@@ -108,6 +111,12 @@ where
         );
         PushStep::Done
     }
+
+    fn size_hint(self: Pin<&mut Self>, hint: (usize, Option<usize>)) {
+        let (push, rest) = pin_project_pair(self);
+        push.size_hint(hint);
+        rest.size_hint(hint);
+    }
 }
 
 /// Base case: the empty variadic. Always ready, panics on send.
@@ -130,6 +139,8 @@ where
     fn poll_flush(self: Pin<&mut Self>, _ctx: &mut Self::Ctx<'_>) -> PushStep<No> {
         PushStep::Done
     }
+
+    fn size_hint(self: Pin<&mut Self>, _hint: (usize, Option<usize>)) {}
 }
 
 /// Pin-projects a pair `(A, B)` into its two pinned components.
@@ -198,6 +209,10 @@ where
 
     fn poll_flush(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         self.project().pushes.poll_flush(ctx)
+    }
+
+    fn size_hint(self: Pin<&mut Self>, hint: (usize, Option<usize>)) {
+        self.project().pushes.size_hint(hint);
     }
 }
 

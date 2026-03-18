@@ -914,9 +914,8 @@ impl DfirGraph {
                 });
                 let send_port_code = send_ports.iter().map(|ident| {
                     quote_spanned! {ident.span()=>
-                        let #ident = #root::dfir_pipes::push::for_each(|v| {
-                            #ident.give(Some(v));
-                        });
+                        let mut #ident = #ident.borrow_mut_give();
+                        let #ident = #root::dfir_pipes::push::vec_push(&mut *#ident);
                     }
                 });
 
@@ -1216,6 +1215,14 @@ impl DfirGraph {
                                                         ctx: &mut Self::Ctx<'_>,
                                                     ) -> #root::dfir_pipes::push::PushStep<Self::CanPend> {
                                                         #root::dfir_pipes::push::Push::poll_flush(self.project().inner, ctx)
+                                                    }
+
+                                                    #[inline(always)]
+                                                    fn size_hint(
+                                                        self: ::std::pin::Pin<&mut Self>,
+                                                        hint: (usize, Option<usize>),
+                                                    ) {
+                                                        #root::dfir_pipes::push::Push::size_hint(self.project().inner, hint)
                                                     }
                                                 }
 

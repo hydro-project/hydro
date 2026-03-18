@@ -134,4 +134,9 @@ where
             }
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // Depends on UDF.
+        (0, None)
+    }
 }

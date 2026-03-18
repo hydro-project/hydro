@@ -9,8 +9,8 @@ use pin_project_lite::pin_project;
 use smallvec::SmallVec;
 
 use crate::pull::half_join_state::HalfJoinState;
-use crate::pull::{FusedPull, Pull, PullStep};
-use crate::{Context, No, Toggle, Yes};
+use crate::pull::{self, FusedPull, Pull, PullStep};
+use crate::{Context, Toggle};
 
 pin_project! {
     /// Pull combinator for symmetric hash join operations.
@@ -124,6 +124,11 @@ where
             return PullStep::ended();
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // TODO(mingwei): actual estimate
+        (0, None)
+    }
 }
 
 /// Iterator for new tick - iterates over all matches after both sides are drained.
@@ -203,6 +208,11 @@ where
         } else {
             self.next_rhs_smaller()
         }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // TODO(mingwei): proper size hint estimate
+        (0, None)
     }
 }
 
@@ -291,50 +301,9 @@ where
     }
 }
 
-pin_project! {
-    /// Pull wrapper for the new tick iterator case.
-    #[must_use = "`Pull`s do nothing unless polled"]
-    pub struct NewTickJoinPull<'a, Key, V1, V2, LhsState, RhsState>
-    where
-        Key: Clone,
-        V1: Clone,
-        V2: Clone,
-    {
-        iter: NewTickJoinIter<'a, Key, V1, V2, LhsState, RhsState>,
-    }
-}
-
-impl<'a, Key, V1, V2, LhsState, RhsState> Pull
-    for NewTickJoinPull<'a, Key, V1, V2, LhsState, RhsState>
-where
-    Key: Eq + std::hash::Hash + Clone,
-    V1: Clone,
-    V2: Clone,
-    LhsState: HalfJoinState<Key, V1, V2>,
-    RhsState: HalfJoinState<Key, V2, V1>,
-{
-    type Ctx<'ctx> = ();
-
-    type Item = (Key, (V1, V2));
-    type Meta = ();
-    type CanPend = No;
-    type CanEnd = Yes;
-
-    fn pull(
-        self: Pin<&mut Self>,
-        _ctx: &mut Self::Ctx<'_>,
-    ) -> PullStep<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
-        let this = self.project();
-        match this.iter.next() {
-            Some(item) => PullStep::Ready(item, ()),
-            None => PullStep::Ended(Yes),
-        }
-    }
-}
-
 /// Type alias for the `Either` pull returned by [`symmetric_hash_join`].
 pub type SymmetricHashJoinEither<'a, Key, V1, V2, Lhs, Rhs, LhsState, RhsState> = Either<
-    NewTickJoinPull<'a, Key, V1, V2, LhsState, RhsState>,
+    pull::Iter<NewTickJoinIter<'a, Key, V1, V2, LhsState, RhsState>>,
     SymmetricHashJoin<Lhs, Rhs, &'a mut LhsState, &'a mut RhsState, LhsState, RhsState>,
 >;
 
@@ -370,7 +339,7 @@ where
         } else {
             NewTickJoinIter::new_rhs_smaller(lhs_state, rhs_state)
         };
-        SymmetricHashJoinEither::Left(NewTickJoinPull { iter })
+        SymmetricHashJoinEither::Left(pull::iter(iter))
     } else {
         SymmetricHashJoinEither::Right(SymmetricHashJoin::new(lhs, rhs, lhs_state, rhs_state))
     }

@@ -48,4 +48,8 @@ where
     fn poll_flush(self: Pin<&mut Self>, _ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         PushStep::Done
     }
+
+    fn size_hint(self: Pin<&mut Self>, _hint: (usize, Option<usize>)) {
+        // unused
+    }
 }

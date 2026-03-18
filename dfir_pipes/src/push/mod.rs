@@ -23,6 +23,9 @@ mod resolve_futures;
 mod sink;
 mod sink_compat;
 mod unzip;
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+mod vec_push;
 
 #[cfg(test)]
 pub(crate) mod test_utils;
@@ -50,6 +53,9 @@ pub use resolve_futures::ResolveFutures;
 pub use sink::Sink;
 pub use sink_compat::SinkCompat;
 pub use unzip::Unzip;
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+pub use vec_push::VecPush;
 
 /// The result of pushing an item into a [`Push`].
 ///
@@ -143,6 +149,20 @@ where
 
     /// Flushes any buffered items in this push pipeline.
     fn poll_flush(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend>;
+
+    /// Informs this push how many items are about to be sent.
+    ///
+    /// The semantics match [`crate::pull::Pull::size_hint`] / [`Iterator::size_hint`]:
+    /// the first element is a lower bound, the second is an optional upper bound.
+    ///
+    /// Combinators should propagate this downstream, adjusting bounds where
+    /// appropriate (e.g. [`Filter`] sets the lower bound to 0).
+    ///
+    /// Under normal usage expect this to be called once before items are pushed. However
+    /// this may be called multiple times or never at all. It is an error to call this multiple
+    /// times with size hints that conflict--each size hint should match or narrow the estimated
+    /// range (after accounting for already-sent items).
+    fn size_hint(self: Pin<&mut Self>, hint: (usize, Option<usize>));
 }
 
 impl<P, Item, Meta> Push<Item, Meta> for &mut P
@@ -164,6 +184,10 @@ where
 
     fn poll_flush(mut self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         Pin::new(&mut **self).poll_flush(ctx)
+    }
+
+    fn size_hint(mut self: Pin<&mut Self>, hint: (usize, Option<usize>)) {
+        Pin::new(&mut **self).size_hint(hint)
     }
 }
 
@@ -313,4 +337,13 @@ where
 /// Creates an [`Unzip`] push that splits tuple items into two separate pushes.
 pub const fn unzip<P0, P1>(push0: P0, push1: P1) -> Unzip<P0, P1> {
     Unzip::new(push0, push1)
+}
+
+/// Creates a [`VecPush`] that pushes items into the given `Vec`.
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+pub const fn vec_push<Item>(
+    buf: &mut alloc::vec::Vec<Item>,
+) -> VecPush<&mut alloc::vec::Vec<Item>> {
+    VecPush::new(buf)
 }

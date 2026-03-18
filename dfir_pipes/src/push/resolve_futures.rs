@@ -145,6 +145,11 @@ where
             .poll_flush(crate::Context::from_task(ctx))
             .convert_into()
     }
+
+    fn size_hint(self: Pin<&mut Self>, hint: (usize, Option<usize>)) {
+        // Each future input produces one value output.
+        self.project().push.size_hint(hint);
+    }
 }
 
 #[cfg(test)]

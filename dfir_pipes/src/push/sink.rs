@@ -59,4 +59,8 @@ where
             Poll::Pending => PushStep::Pending(Yes),
         }
     }
+
+    fn size_hint(self: Pin<&mut Self>, _hint: (usize, Option<usize>)) {
+        // unused
+    }
 }

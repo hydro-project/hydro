@@ -87,6 +87,12 @@ where
         // Then flush the downstream push.
         self.project().push.poll_flush(ctx)
     }
+
+    fn size_hint(self: Pin<&mut Self>, hint: (usize, Option<usize>)) {
+        let this = self.project();
+        this.buf.borrow_mut().reserve(hint.0);
+        this.push.size_hint(hint);
+    }
 }
 
 #[cfg(test)]

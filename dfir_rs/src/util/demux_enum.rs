@@ -59,6 +59,9 @@ pub trait DemuxEnumPush<Outputs, Meta: Copy>: DemuxEnumBase {
 
     /// Flushes all output pushes.
     fn poll_flush(outputs: &mut Outputs, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend>;
+
+    /// Supplies all outputs with bounds on the number of items about to be sent.
+    fn size_hint(outputs: &mut Outputs, hint: (usize, Option<usize>));
 }
 /// Special case of [`DemuxEnum`] for when there is only one variant.
 #[diagnostic::on_unimplemented(

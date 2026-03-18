@@ -94,6 +94,11 @@ impl<H: Handoff> SendCtx<H> {
     {
         <H as TryCanReceive<T>>::try_give(&self.handoff, item)
     }
+
+    /// See [`Handoff::borrow_mut_give`].
+    pub fn borrow_mut_give(&self) -> RefMut<'_, H::Inner> {
+        self.handoff.borrow_mut_give()
+    }
 }
 
 /// Context provided to a subgraph for reading from a handoff. Corresponds to a [`RecvPort`].

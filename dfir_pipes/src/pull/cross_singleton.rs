@@ -99,6 +99,14 @@ where
             PullStep::Ended(_) => PullStep::ended(),
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (mut lower, upper) = self.item_pull.size_hint();
+        if self.singleton_state.borrow().is_none() {
+            lower = 0;
+        }
+        (lower, upper)
+    }
 }
 
 impl<ItemPull, SinglePull, SingleState> FusedPull

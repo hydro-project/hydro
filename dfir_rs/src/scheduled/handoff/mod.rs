@@ -58,6 +58,9 @@ pub trait Handoff: Default + HandoffMeta {
     /// For better performance over [`Self::take_inner`].
     fn borrow_mut_swap(&self) -> RefMut<'_, Self::Inner>;
 
+    /// Borrow a mutable inner to give items to.
+    fn borrow_mut_give(&self) -> RefMut<'_, Self::Inner>;
+
     /// See [`CanReceive::give`].
     fn give<T>(&self, item: T) -> T
     where

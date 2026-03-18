@@ -11,6 +11,7 @@ where
     pub(crate) input: Rc<RefCell<Vec<T>>>,
     pub(crate) output: Rc<RefCell<Vec<T>>>,
 }
+
 impl<T> Default for VecHandoff<T>
 where
     T: 'static,
@@ -22,6 +23,7 @@ where
         }
     }
 }
+
 impl<T> Handoff for VecHandoff<T> {
     type Inner = Vec<T>;
 
@@ -36,6 +38,10 @@ impl<T> Handoff for VecHandoff<T> {
         std::mem::swap(&mut *input, &mut *output);
 
         output
+    }
+
+    fn borrow_mut_give(&self) -> RefMut<'_, Self::Inner> {
+        self.input.borrow_mut()
     }
 }
 

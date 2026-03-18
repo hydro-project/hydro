@@ -16,6 +16,8 @@ pub enum PushCall<Item> {
     SendItem(Item),
     /// `poll_flush` was called.
     PollFlush,
+    /// `size_hint` was called.
+    SizeHint(usize, Option<usize>),
 }
 
 /// A configurable test push that replays separate logs of [`PushStep`]s for
@@ -42,9 +44,10 @@ pub struct TestPush<Item, CanPend: Toggle, const FUSED: bool> {
     ready_steps: VecDeque<PushStep<CanPend>>,
     /// Steps returned by `poll_flush`, consumed in order.
     flush_steps: VecDeque<PushStep<CanPend>>,
+    /// Whether `poll_ready` has returned `Done`, indicating `start_send` may be called.
+    ready: bool,
     /// Recorded history of calls.
     pub history: Vec<PushCall<Item>>,
-    ready: bool,
 }
 
 impl<Item, CanPend: Toggle, const FUSED: bool> TestPush<Item, CanPend, FUSED> {
@@ -56,8 +59,8 @@ impl<Item, CanPend: Toggle, const FUSED: bool> TestPush<Item, CanPend, FUSED> {
         Self {
             ready_steps: ready_steps.into_iter().collect(),
             flush_steps: flush_steps.into_iter().collect(),
-            history: Vec::new(),
             ready: false,
+            history: Vec::new(),
         }
     }
 
@@ -131,6 +134,12 @@ impl<Item, CanPend: Toggle, const FUSED: bool> Push<Item, ()> for TestPush<Item,
             None if FUSED => PushStep::Done,
             None => panic!("TestPush: poll_flush after log exhausted"),
         }
+    }
+
+    fn size_hint(self: Pin<&mut Self>, hint: (usize, Option<usize>)) {
+        self.get_mut()
+            .history
+            .push(PushCall::SizeHint(hint.0, hint.1));
     }
 }
 

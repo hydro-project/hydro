@@ -85,6 +85,10 @@ where
         ready!(self.as_mut().poll_ready(ctx));
         self.project().next.poll_flush(ctx)
     }
+
+    fn size_hint(self: Pin<&mut Self>, _hint: (usize, Option<usize>)) {
+        self.project().next.size_hint((0, None));
+    }
 }
 
 #[cfg(test)]

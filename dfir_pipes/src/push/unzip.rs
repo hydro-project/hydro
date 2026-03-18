@@ -63,6 +63,12 @@ where
         );
         PushStep::Done
     }
+
+    fn size_hint(self: Pin<&mut Self>, hint: (usize, Option<usize>)) {
+        let this = self.project();
+        this.push_0.size_hint(hint);
+        this.push_1.size_hint(hint);
+    }
 }
 
 #[cfg(test)]

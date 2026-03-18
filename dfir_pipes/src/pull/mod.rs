@@ -84,8 +84,7 @@ pub use stream_ready::StreamReady;
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use symmetric_hash_join::{
-    NewTickJoinIter, NewTickJoinPull, SymmetricHashJoin, SymmetricHashJoinEither,
-    symmetric_hash_join,
+    NewTickJoinIter, SymmetricHashJoin, SymmetricHashJoinEither, symmetric_hash_join,
 };
 pub use take::Take;
 pub use take_while::TakeWhile;
@@ -220,12 +219,9 @@ pub trait Pull {
     /// That said, the implementation should provide a correct estimation,
     /// because otherwise it would be a violation of the trait's protocol.
     ///
-    /// The default implementation returns `(0, None)` which is correct for any
-    /// pull.
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (0, None)
-    }
+    /// A default implementation should return `(0, None)` which is correct for any
+    /// pull. However this is not provided, to prevent oversight.
+    fn size_hint(&self) -> (usize, Option<usize>);
 
     /// Borrows this pull, allowing it to be used by reference.
     fn by_ref(&mut self) -> &mut Self {

@@ -102,6 +102,10 @@ impl<T> Handoff for TeeingHandoff<T> {
     fn borrow_mut_swap(&self) -> std::cell::RefMut<'_, Self::Inner> {
         todo!()
     }
+
+    fn borrow_mut_give(&self) -> std::cell::RefMut<'_, Self::Inner> {
+        todo!()
+    }
 }
 
 impl<T> CanReceive<Vec<T>> for TeeingHandoff<T>
