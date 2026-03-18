@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_test/src/cluster/compartmentalized_paxos.rs`."><title>compartmentalized_paxos.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_test" data-themes="" data-resource-suffix="" data-rustdoc-version="1.96.0-nightly (3645249d7 2026-03-16)" data-channel="nightly" data-search-js="search-63369b7b.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-5013f961.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_test/cluster/</div>compartmentalized_paxos.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::HashMap;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_test/src/cluster/compartmentalized_paxos.rs`."><title>compartmentalized_paxos.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_test" data-themes="" data-resource-suffix="" data-rustdoc-version="1.96.0-nightly (91021ccc7 2026-03-17)" data-channel="nightly" data-search-js="search-63369b7b.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-5013f961.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_test/cluster/</div>compartmentalized_paxos.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::collections::HashMap;
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>hydro_lang::live_collections::stream::NoOrder;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">use </span>hydro_lang::location::{Atomic, Location, MemberId};
@@ -161,186 +161,190 @@
 <a href=#161 id=161 data-nosnippet>161</a>        </span>),
 <a href=#162 id=162 data-nosnippet>162</a>    );
 <a href=#163 id=163 data-nosnippet>163</a>
-<a href=#164 id=164 data-nosnippet>164</a>    <span class="kw">let </span>just_became_leader = p_is_leader
+<a href=#164 id=164 data-nosnippet>164</a>    <span class="kw">let </span>was_not_leader = p_is_leader
 <a href=#165 id=165 data-nosnippet>165</a>        .clone()
-<a href=#166 id=166 data-nosnippet>166</a>        .filter_if_none(p_is_leader.clone().defer_tick());
-<a href=#167 id=167 data-nosnippet>167</a>
-<a href=#168 id=168 data-nosnippet>168</a>    <span class="kw">let </span>c_to_proposers = c_to_proposers(
-<a href=#169 id=169 data-nosnippet>169</a>        just_became_leader
-<a href=#170 id=170 data-nosnippet>170</a>            .clone()
-<a href=#171 id=171 data-nosnippet>171</a>            .if_some_then(p_ballot.clone())
-<a href=#172 id=172 data-nosnippet>172</a>            .all_ticks(),
-<a href=#173 id=173 data-nosnippet>173</a>    );
-<a href=#174 id=174 data-nosnippet>174</a>
-<a href=#175 id=175 data-nosnippet>175</a>    <span class="kw">let </span>(p_to_replicas, a_log, sequencing_max_ballots) = sequence_payload(
-<a href=#176 id=176 data-nosnippet>176</a>        proposers,
-<a href=#177 id=177 data-nosnippet>177</a>        proxy_leaders,
-<a href=#178 id=178 data-nosnippet>178</a>        acceptors,
-<a href=#179 id=179 data-nosnippet>179</a>        <span class="kw-2">&amp;</span>proposer_tick,
-<a href=#180 id=180 data-nosnippet>180</a>        <span class="kw-2">&amp;</span>proxy_leader_tick,
-<a href=#181 id=181 data-nosnippet>181</a>        <span class="kw-2">&amp;</span>acceptor_tick,
-<a href=#182 id=182 data-nosnippet>182</a>        c_to_proposers,
-<a href=#183 id=183 data-nosnippet>183</a>        a_checkpoint,
-<a href=#184 id=184 data-nosnippet>184</a>        p_ballot.clone(),
-<a href=#185 id=185 data-nosnippet>185</a>        p_is_leader,
-<a href=#186 id=186 data-nosnippet>186</a>        p_relevant_p1bs,
-<a href=#187 id=187 data-nosnippet>187</a>        config,
-<a href=#188 id=188 data-nosnippet>188</a>        a_max_ballot,
-<a href=#189 id=189 data-nosnippet>189</a>        <span class="macro">nondet!</span>(
-<a href=#190 id=190 data-nosnippet>190</a>            <span class="doccomment">/// The relevant p1bs are non-deterministic because they come from a arbitrary quorum, but because
-<a href=#191 id=191 data-nosnippet>191</a>            /// we use a quorum, if we remain the leader there are no missing committed values when we combine the logs.
-<a href=#192 id=192 data-nosnippet>192</a>            /// The remaining non-determinism is in when incoming payloads are batched versus the leader flag and state
-<a href=#193 id=193 data-nosnippet>193</a>            /// of acceptors, which in the worst case will lead to dropped payloads as documented.
-<a href=#194 id=194 data-nosnippet>194</a>            </span>nondet_commit_leader_change
-<a href=#195 id=195 data-nosnippet>195</a>        ),
-<a href=#196 id=196 data-nosnippet>196</a>    );
-<a href=#197 id=197 data-nosnippet>197</a>
-<a href=#198 id=198 data-nosnippet>198</a>    a_log_complete_cycle.complete(a_log.snapshot_atomic(<span class="macro">nondet!</span>(
-<a href=#199 id=199 data-nosnippet>199</a>        <span class="doccomment">/// We will always write payloads to the log before acknowledging them to the proposers,
-<a href=#200 id=200 data-nosnippet>200</a>        /// which guarantees that if the leader changes the quorum overlap between sequencing and leader
-<a href=#201 id=201 data-nosnippet>201</a>        /// election will include the committed value.
-<a href=#202 id=202 data-nosnippet>202</a>    </span>)));
-<a href=#203 id=203 data-nosnippet>203</a>    sequencing_max_ballot_complete_cycle.complete(sequencing_max_ballots);
-<a href=#204 id=204 data-nosnippet>204</a>
-<a href=#205 id=205 data-nosnippet>205</a>    (
-<a href=#206 id=206 data-nosnippet>206</a>        <span class="comment">// Only tell the clients once when leader election concludes
-<a href=#207 id=207 data-nosnippet>207</a>        </span>just_became_leader.if_some_then(p_ballot).all_ticks(),
-<a href=#208 id=208 data-nosnippet>208</a>        p_to_replicas,
-<a href=#209 id=209 data-nosnippet>209</a>    )
-<a href=#210 id=210 data-nosnippet>210</a>}
-<a href=#211 id=211 data-nosnippet>211</a>
-<a href=#212 id=212 data-nosnippet>212</a><span class="attr">#[expect(
-<a href=#213 id=213 data-nosnippet>213</a>    clippy::type_complexity,
-<a href=#214 id=214 data-nosnippet>214</a>    clippy::too_many_arguments,
-<a href=#215 id=215 data-nosnippet>215</a>    reason = <span class="string">"internal paxos code // TODO"
-<a href=#216 id=216 data-nosnippet>216</a></span>)]
-<a href=#217 id=217 data-nosnippet>217</a></span><span class="kw">fn </span>sequence_payload&lt;<span class="lifetime">'a</span>, P: PaxosPayload&gt;(
-<a href=#218 id=218 data-nosnippet>218</a>    proposers: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;,
-<a href=#219 id=219 data-nosnippet>219</a>    proxy_leaders: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, ProxyLeader&gt;,
-<a href=#220 id=220 data-nosnippet>220</a>    acceptors: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;,
-<a href=#221 id=221 data-nosnippet>221</a>    proposer_tick: <span class="kw-2">&amp;</span>Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;,
-<a href=#222 id=222 data-nosnippet>222</a>    proxy_leader_tick: <span class="kw-2">&amp;</span>Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, ProxyLeader&gt;&gt;,
-<a href=#223 id=223 data-nosnippet>223</a>    acceptor_tick: <span class="kw-2">&amp;</span>Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;,
-<a href=#224 id=224 data-nosnippet>224</a>    c_to_proposers: Stream&lt;P, Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded&gt;,
-<a href=#225 id=225 data-nosnippet>225</a>    a_checkpoint: Optional&lt;usize, Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;, Unbounded&gt;,
-<a href=#226 id=226 data-nosnippet>226</a>
-<a href=#227 id=227 data-nosnippet>227</a>    p_ballot: Singleton&lt;Ballot, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded&gt;,
-<a href=#228 id=228 data-nosnippet>228</a>    p_is_leader: Optional&lt;(), Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded&gt;,
-<a href=#229 id=229 data-nosnippet>229</a>
-<a href=#230 id=230 data-nosnippet>230</a>    p_relevant_p1bs: Stream&lt;
-<a href=#231 id=231 data-nosnippet>231</a>        (<span class="prelude-ty">Option</span>&lt;usize&gt;, HashMap&lt;usize, LogValue&lt;P&gt;&gt;),
-<a href=#232 id=232 data-nosnippet>232</a>        Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;,
-<a href=#233 id=233 data-nosnippet>233</a>        Bounded,
-<a href=#234 id=234 data-nosnippet>234</a>        NoOrder,
-<a href=#235 id=235 data-nosnippet>235</a>    &gt;,
-<a href=#236 id=236 data-nosnippet>236</a>    config: CompartmentalizedPaxosConfig,
-<a href=#237 id=237 data-nosnippet>237</a>    a_max_ballot: Singleton&lt;Ballot, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;, Bounded&gt;,
-<a href=#238 id=238 data-nosnippet>238</a>    nondet_commit_leader_change: NonDet,
-<a href=#239 id=239 data-nosnippet>239</a>) -&gt; (
-<a href=#240 id=240 data-nosnippet>240</a>    Stream&lt;(usize, <span class="prelude-ty">Option</span>&lt;P&gt;), Cluster&lt;<span class="lifetime">'a</span>, ProxyLeader&gt;, Unbounded, NoOrder&gt;,
-<a href=#241 id=241 data-nosnippet>241</a>    Singleton&lt;
-<a href=#242 id=242 data-nosnippet>242</a>        (<span class="prelude-ty">Option</span>&lt;usize&gt;, HashMap&lt;usize, LogValue&lt;P&gt;&gt;),
-<a href=#243 id=243 data-nosnippet>243</a>        Atomic&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;,
-<a href=#244 id=244 data-nosnippet>244</a>        Unbounded,
-<a href=#245 id=245 data-nosnippet>245</a>    &gt;,
-<a href=#246 id=246 data-nosnippet>246</a>    Stream&lt;Ballot, Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded, NoOrder&gt;,
-<a href=#247 id=247 data-nosnippet>247</a>) {
-<a href=#248 id=248 data-nosnippet>248</a>    <span class="kw">let </span>(p_log_to_recommit, p_max_slot) =
-<a href=#249 id=249 data-nosnippet>249</a>        recommit_after_leader_election(p_relevant_p1bs, p_ballot.clone(), config.paxos_config.f);
-<a href=#250 id=250 data-nosnippet>250</a>
-<a href=#251 id=251 data-nosnippet>251</a>    <span class="kw">let </span>p_indexed_payloads = index_payloads(
-<a href=#252 id=252 data-nosnippet>252</a>        p_max_slot,
-<a href=#253 id=253 data-nosnippet>253</a>        c_to_proposers
-<a href=#254 id=254 data-nosnippet>254</a>            .batch(
-<a href=#255 id=255 data-nosnippet>255</a>                proposer_tick,
-<a href=#256 id=256 data-nosnippet>256</a>                <span class="macro">nondet!</span>(
-<a href=#257 id=257 data-nosnippet>257</a>                    <span class="doccomment">/// We batch payloads so that we can compute the correct slot based on
-<a href=#258 id=258 data-nosnippet>258</a>                    /// base slot. In the case of a leader re-election, the base slot is updated which
-<a href=#259 id=259 data-nosnippet>259</a>                    /// affects the computed payload slots. This non-determinism can lead to non-determinism
-<a href=#260 id=260 data-nosnippet>260</a>                    /// in which payloads are committed when the leader is changing, which is documented at
-<a href=#261 id=261 data-nosnippet>261</a>                    /// the function level.
-<a href=#262 id=262 data-nosnippet>262</a>                    </span>nondet_commit_leader_change
-<a href=#263 id=263 data-nosnippet>263</a>                ),
-<a href=#264 id=264 data-nosnippet>264</a>            )
-<a href=#265 id=265 data-nosnippet>265</a>            .filter_if_some(p_is_leader.clone()),
-<a href=#266 id=266 data-nosnippet>266</a>    );
-<a href=#267 id=267 data-nosnippet>267</a>
-<a href=#268 id=268 data-nosnippet>268</a>    <span class="kw">let </span>num_proxy_leaders = config.num_proxy_leaders;
-<a href=#269 id=269 data-nosnippet>269</a>    <span class="kw">let </span>p_to_proxy_leaders_p2a = p_indexed_payloads
-<a href=#270 id=270 data-nosnippet>270</a>        .cross_singleton(p_ballot.clone())
-<a href=#271 id=271 data-nosnippet>271</a>        .map(<span class="macro">q!</span>(<span class="kw">move </span>|((slot, payload), ballot)| (
-<a href=#272 id=272 data-nosnippet>272</a>            MemberId::&lt;ProxyLeader&gt;::from_raw_id((slot % num_proxy_leaders) <span class="kw">as </span>u32),
-<a href=#273 id=273 data-nosnippet>273</a>            ((slot, ballot), <span class="prelude-val">Some</span>(payload))
-<a href=#274 id=274 data-nosnippet>274</a>        )))
-<a href=#275 id=275 data-nosnippet>275</a>        .chain(p_log_to_recommit.map(<span class="macro">q!</span>(<span class="kw">move </span>|((slot, ballot), payload)| (
+<a href=#166 id=166 data-nosnippet>166</a>        .map(<span class="macro">q!</span>(|is_leader| is_leader.then_some(())))
+<a href=#167 id=167 data-nosnippet>167</a>        .into_optional()
+<a href=#168 id=168 data-nosnippet>168</a>        .defer_tick()
+<a href=#169 id=169 data-nosnippet>169</a>        .is_none();
+<a href=#170 id=170 data-nosnippet>170</a>    <span class="kw">let </span>just_became_leader = p_is_leader.clone().and(was_not_leader);
+<a href=#171 id=171 data-nosnippet>171</a>
+<a href=#172 id=172 data-nosnippet>172</a>    <span class="kw">let </span>c_to_proposers = c_to_proposers(
+<a href=#173 id=173 data-nosnippet>173</a>        p_ballot
+<a href=#174 id=174 data-nosnippet>174</a>            .clone()
+<a href=#175 id=175 data-nosnippet>175</a>            .filter_if(just_became_leader.clone())
+<a href=#176 id=176 data-nosnippet>176</a>            .all_ticks(),
+<a href=#177 id=177 data-nosnippet>177</a>    );
+<a href=#178 id=178 data-nosnippet>178</a>
+<a href=#179 id=179 data-nosnippet>179</a>    <span class="kw">let </span>(p_to_replicas, a_log, sequencing_max_ballots) = sequence_payload(
+<a href=#180 id=180 data-nosnippet>180</a>        proposers,
+<a href=#181 id=181 data-nosnippet>181</a>        proxy_leaders,
+<a href=#182 id=182 data-nosnippet>182</a>        acceptors,
+<a href=#183 id=183 data-nosnippet>183</a>        <span class="kw-2">&amp;</span>proposer_tick,
+<a href=#184 id=184 data-nosnippet>184</a>        <span class="kw-2">&amp;</span>proxy_leader_tick,
+<a href=#185 id=185 data-nosnippet>185</a>        <span class="kw-2">&amp;</span>acceptor_tick,
+<a href=#186 id=186 data-nosnippet>186</a>        c_to_proposers,
+<a href=#187 id=187 data-nosnippet>187</a>        a_checkpoint,
+<a href=#188 id=188 data-nosnippet>188</a>        p_ballot.clone(),
+<a href=#189 id=189 data-nosnippet>189</a>        p_is_leader,
+<a href=#190 id=190 data-nosnippet>190</a>        p_relevant_p1bs,
+<a href=#191 id=191 data-nosnippet>191</a>        config,
+<a href=#192 id=192 data-nosnippet>192</a>        a_max_ballot,
+<a href=#193 id=193 data-nosnippet>193</a>        <span class="macro">nondet!</span>(
+<a href=#194 id=194 data-nosnippet>194</a>            <span class="doccomment">/// The relevant p1bs are non-deterministic because they come from a arbitrary quorum, but because
+<a href=#195 id=195 data-nosnippet>195</a>            /// we use a quorum, if we remain the leader there are no missing committed values when we combine the logs.
+<a href=#196 id=196 data-nosnippet>196</a>            /// The remaining non-determinism is in when incoming payloads are batched versus the leader flag and state
+<a href=#197 id=197 data-nosnippet>197</a>            /// of acceptors, which in the worst case will lead to dropped payloads as documented.
+<a href=#198 id=198 data-nosnippet>198</a>            </span>nondet_commit_leader_change
+<a href=#199 id=199 data-nosnippet>199</a>        ),
+<a href=#200 id=200 data-nosnippet>200</a>    );
+<a href=#201 id=201 data-nosnippet>201</a>
+<a href=#202 id=202 data-nosnippet>202</a>    a_log_complete_cycle.complete(a_log.snapshot_atomic(<span class="macro">nondet!</span>(
+<a href=#203 id=203 data-nosnippet>203</a>        <span class="doccomment">/// We will always write payloads to the log before acknowledging them to the proposers,
+<a href=#204 id=204 data-nosnippet>204</a>        /// which guarantees that if the leader changes the quorum overlap between sequencing and leader
+<a href=#205 id=205 data-nosnippet>205</a>        /// election will include the committed value.
+<a href=#206 id=206 data-nosnippet>206</a>    </span>)));
+<a href=#207 id=207 data-nosnippet>207</a>    sequencing_max_ballot_complete_cycle.complete(sequencing_max_ballots);
+<a href=#208 id=208 data-nosnippet>208</a>
+<a href=#209 id=209 data-nosnippet>209</a>    (
+<a href=#210 id=210 data-nosnippet>210</a>        <span class="comment">// Only tell the clients once when leader election concludes
+<a href=#211 id=211 data-nosnippet>211</a>        </span>p_ballot.filter_if(just_became_leader).all_ticks(),
+<a href=#212 id=212 data-nosnippet>212</a>        p_to_replicas,
+<a href=#213 id=213 data-nosnippet>213</a>    )
+<a href=#214 id=214 data-nosnippet>214</a>}
+<a href=#215 id=215 data-nosnippet>215</a>
+<a href=#216 id=216 data-nosnippet>216</a><span class="attr">#[expect(
+<a href=#217 id=217 data-nosnippet>217</a>    clippy::type_complexity,
+<a href=#218 id=218 data-nosnippet>218</a>    clippy::too_many_arguments,
+<a href=#219 id=219 data-nosnippet>219</a>    reason = <span class="string">"internal paxos code // TODO"
+<a href=#220 id=220 data-nosnippet>220</a></span>)]
+<a href=#221 id=221 data-nosnippet>221</a></span><span class="kw">fn </span>sequence_payload&lt;<span class="lifetime">'a</span>, P: PaxosPayload&gt;(
+<a href=#222 id=222 data-nosnippet>222</a>    proposers: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;,
+<a href=#223 id=223 data-nosnippet>223</a>    proxy_leaders: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, ProxyLeader&gt;,
+<a href=#224 id=224 data-nosnippet>224</a>    acceptors: <span class="kw-2">&amp;</span>Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;,
+<a href=#225 id=225 data-nosnippet>225</a>    proposer_tick: <span class="kw-2">&amp;</span>Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;,
+<a href=#226 id=226 data-nosnippet>226</a>    proxy_leader_tick: <span class="kw-2">&amp;</span>Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, ProxyLeader&gt;&gt;,
+<a href=#227 id=227 data-nosnippet>227</a>    acceptor_tick: <span class="kw-2">&amp;</span>Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;,
+<a href=#228 id=228 data-nosnippet>228</a>    c_to_proposers: Stream&lt;P, Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded&gt;,
+<a href=#229 id=229 data-nosnippet>229</a>    a_checkpoint: Optional&lt;usize, Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;, Unbounded&gt;,
+<a href=#230 id=230 data-nosnippet>230</a>
+<a href=#231 id=231 data-nosnippet>231</a>    p_ballot: Singleton&lt;Ballot, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded&gt;,
+<a href=#232 id=232 data-nosnippet>232</a>    p_is_leader: Singleton&lt;bool, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;, Bounded&gt;,
+<a href=#233 id=233 data-nosnippet>233</a>
+<a href=#234 id=234 data-nosnippet>234</a>    p_relevant_p1bs: Stream&lt;
+<a href=#235 id=235 data-nosnippet>235</a>        (<span class="prelude-ty">Option</span>&lt;usize&gt;, HashMap&lt;usize, LogValue&lt;P&gt;&gt;),
+<a href=#236 id=236 data-nosnippet>236</a>        Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;&gt;,
+<a href=#237 id=237 data-nosnippet>237</a>        Bounded,
+<a href=#238 id=238 data-nosnippet>238</a>        NoOrder,
+<a href=#239 id=239 data-nosnippet>239</a>    &gt;,
+<a href=#240 id=240 data-nosnippet>240</a>    config: CompartmentalizedPaxosConfig,
+<a href=#241 id=241 data-nosnippet>241</a>    a_max_ballot: Singleton&lt;Ballot, Tick&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;, Bounded&gt;,
+<a href=#242 id=242 data-nosnippet>242</a>    nondet_commit_leader_change: NonDet,
+<a href=#243 id=243 data-nosnippet>243</a>) -&gt; (
+<a href=#244 id=244 data-nosnippet>244</a>    Stream&lt;(usize, <span class="prelude-ty">Option</span>&lt;P&gt;), Cluster&lt;<span class="lifetime">'a</span>, ProxyLeader&gt;, Unbounded, NoOrder&gt;,
+<a href=#245 id=245 data-nosnippet>245</a>    Singleton&lt;
+<a href=#246 id=246 data-nosnippet>246</a>        (<span class="prelude-ty">Option</span>&lt;usize&gt;, HashMap&lt;usize, LogValue&lt;P&gt;&gt;),
+<a href=#247 id=247 data-nosnippet>247</a>        Atomic&lt;Cluster&lt;<span class="lifetime">'a</span>, Acceptor&gt;&gt;,
+<a href=#248 id=248 data-nosnippet>248</a>        Unbounded,
+<a href=#249 id=249 data-nosnippet>249</a>    &gt;,
+<a href=#250 id=250 data-nosnippet>250</a>    Stream&lt;Ballot, Cluster&lt;<span class="lifetime">'a</span>, Proposer&gt;, Unbounded, NoOrder&gt;,
+<a href=#251 id=251 data-nosnippet>251</a>) {
+<a href=#252 id=252 data-nosnippet>252</a>    <span class="kw">let </span>(p_log_to_recommit, p_max_slot) =
+<a href=#253 id=253 data-nosnippet>253</a>        recommit_after_leader_election(p_relevant_p1bs, p_ballot.clone(), config.paxos_config.f);
+<a href=#254 id=254 data-nosnippet>254</a>
+<a href=#255 id=255 data-nosnippet>255</a>    <span class="kw">let </span>p_indexed_payloads = index_payloads(
+<a href=#256 id=256 data-nosnippet>256</a>        p_max_slot,
+<a href=#257 id=257 data-nosnippet>257</a>        c_to_proposers
+<a href=#258 id=258 data-nosnippet>258</a>            .batch(
+<a href=#259 id=259 data-nosnippet>259</a>                proposer_tick,
+<a href=#260 id=260 data-nosnippet>260</a>                <span class="macro">nondet!</span>(
+<a href=#261 id=261 data-nosnippet>261</a>                    <span class="doccomment">/// We batch payloads so that we can compute the correct slot based on
+<a href=#262 id=262 data-nosnippet>262</a>                    /// base slot. In the case of a leader re-election, the base slot is updated which
+<a href=#263 id=263 data-nosnippet>263</a>                    /// affects the computed payload slots. This non-determinism can lead to non-determinism
+<a href=#264 id=264 data-nosnippet>264</a>                    /// in which payloads are committed when the leader is changing, which is documented at
+<a href=#265 id=265 data-nosnippet>265</a>                    /// the function level.
+<a href=#266 id=266 data-nosnippet>266</a>                    </span>nondet_commit_leader_change
+<a href=#267 id=267 data-nosnippet>267</a>                ),
+<a href=#268 id=268 data-nosnippet>268</a>            )
+<a href=#269 id=269 data-nosnippet>269</a>            .filter_if(p_is_leader.clone()),
+<a href=#270 id=270 data-nosnippet>270</a>    );
+<a href=#271 id=271 data-nosnippet>271</a>
+<a href=#272 id=272 data-nosnippet>272</a>    <span class="kw">let </span>num_proxy_leaders = config.num_proxy_leaders;
+<a href=#273 id=273 data-nosnippet>273</a>    <span class="kw">let </span>p_to_proxy_leaders_p2a = p_indexed_payloads
+<a href=#274 id=274 data-nosnippet>274</a>        .cross_singleton(p_ballot.clone())
+<a href=#275 id=275 data-nosnippet>275</a>        .map(<span class="macro">q!</span>(<span class="kw">move </span>|((slot, payload), ballot)| (
 <a href=#276 id=276 data-nosnippet>276</a>            MemberId::&lt;ProxyLeader&gt;::from_raw_id((slot % num_proxy_leaders) <span class="kw">as </span>u32),
-<a href=#277 id=277 data-nosnippet>277</a>            ((slot, ballot), payload)
-<a href=#278 id=278 data-nosnippet>278</a>        ))))
-<a href=#279 id=279 data-nosnippet>279</a>        .all_ticks()
-<a href=#280 id=280 data-nosnippet>280</a>        .demux(proxy_leaders, TCP.fail_stop().bincode())
-<a href=#281 id=281 data-nosnippet>281</a>        .values()
-<a href=#282 id=282 data-nosnippet>282</a>        .atomic(proxy_leader_tick);
-<a href=#283 id=283 data-nosnippet>283</a>
-<a href=#284 id=284 data-nosnippet>284</a>    <span class="comment">// Send to a specific acceptor row
-<a href=#285 id=285 data-nosnippet>285</a>    </span><span class="kw">let </span>num_acceptor_rows = config.acceptor_grid_rows;
-<a href=#286 id=286 data-nosnippet>286</a>    <span class="kw">let </span>num_acceptor_cols = config.acceptor_grid_cols;
-<a href=#287 id=287 data-nosnippet>287</a>    <span class="kw">let </span>pl_to_acceptors_p2a_thrifty = p_to_proxy_leaders_p2a
-<a href=#288 id=288 data-nosnippet>288</a>        .clone()
-<a href=#289 id=289 data-nosnippet>289</a>        .flat_map_unordered(<span class="macro">q!</span>(<span class="kw">move </span>|((slot, ballot), payload)| {
-<a href=#290 id=290 data-nosnippet>290</a>            <span class="kw">let </span>row = slot % num_acceptor_rows;
-<a href=#291 id=291 data-nosnippet>291</a>            (<span class="number">0</span>..num_acceptor_cols).map(<span class="kw">move </span>|i| {
-<a href=#292 id=292 data-nosnippet>292</a>                (
-<a href=#293 id=293 data-nosnippet>293</a>                    MemberId::&lt;Acceptor&gt;::from_raw_id((row * num_acceptor_cols + i) <span class="kw">as </span>u32),
-<a href=#294 id=294 data-nosnippet>294</a>                    P2a {
-<a href=#295 id=295 data-nosnippet>295</a>                        sender: MemberId::&lt;ProxyLeader&gt;::from_raw_id(
-<a href=#296 id=296 data-nosnippet>296</a>                            (slot % num_proxy_leaders) <span class="kw">as </span>u32,
-<a href=#297 id=297 data-nosnippet>297</a>                        ),
-<a href=#298 id=298 data-nosnippet>298</a>                        slot,
-<a href=#299 id=299 data-nosnippet>299</a>                        ballot: ballot.clone(),
-<a href=#300 id=300 data-nosnippet>300</a>                        value: payload.clone(),
-<a href=#301 id=301 data-nosnippet>301</a>                    },
-<a href=#302 id=302 data-nosnippet>302</a>                )
-<a href=#303 id=303 data-nosnippet>303</a>            })
-<a href=#304 id=304 data-nosnippet>304</a>        }))
-<a href=#305 id=305 data-nosnippet>305</a>        .end_atomic()
-<a href=#306 id=306 data-nosnippet>306</a>        .demux(acceptors, TCP.fail_stop().bincode())
-<a href=#307 id=307 data-nosnippet>307</a>        .values();
-<a href=#308 id=308 data-nosnippet>308</a>
-<a href=#309 id=309 data-nosnippet>309</a>    <span class="kw">let </span>(a_log, a_to_proxy_leaders_p2b) = acceptor_p2(
-<a href=#310 id=310 data-nosnippet>310</a>        acceptor_tick,
-<a href=#311 id=311 data-nosnippet>311</a>        a_max_ballot.clone(),
-<a href=#312 id=312 data-nosnippet>312</a>        pl_to_acceptors_p2a_thrifty,
-<a href=#313 id=313 data-nosnippet>313</a>        a_checkpoint,
-<a href=#314 id=314 data-nosnippet>314</a>        proxy_leaders,
-<a href=#315 id=315 data-nosnippet>315</a>    );
-<a href=#316 id=316 data-nosnippet>316</a>
-<a href=#317 id=317 data-nosnippet>317</a>    <span class="comment">// TODO: This is a liveness problem if any node in the thrifty quorum fails
-<a href=#318 id=318 data-nosnippet>318</a>    // Need special operator for per-value timeout detection
-<a href=#319 id=319 data-nosnippet>319</a>    </span><span class="kw">let </span>(quorums, fails) = collect_quorum(
-<a href=#320 id=320 data-nosnippet>320</a>        a_to_proxy_leaders_p2b,
-<a href=#321 id=321 data-nosnippet>321</a>        config.acceptor_grid_cols,
-<a href=#322 id=322 data-nosnippet>322</a>        config.acceptor_grid_cols,
-<a href=#323 id=323 data-nosnippet>323</a>    );
-<a href=#324 id=324 data-nosnippet>324</a>
-<a href=#325 id=325 data-nosnippet>325</a>    <span class="kw">let </span>pl_to_replicas = join_responses(
-<a href=#326 id=326 data-nosnippet>326</a>        quorums.map(<span class="macro">q!</span>(|k| (k, ()))),
-<a href=#327 id=327 data-nosnippet>327</a>        p_to_proxy_leaders_p2a.batch_atomic(<span class="macro">nondet!</span>(
-<a href=#328 id=328 data-nosnippet>328</a>            <span class="doccomment">/// The metadata will always be generated before we get a quorum
-<a href=#329 id=329 data-nosnippet>329</a>            /// because our batch of `p_to_proxy_leaders_p2a` is at least after
-<a href=#330 id=330 data-nosnippet>330</a>            /// what we sent to the acceptors.
-<a href=#331 id=331 data-nosnippet>331</a>        </span>)),
-<a href=#332 id=332 data-nosnippet>332</a>    );
-<a href=#333 id=333 data-nosnippet>333</a>
-<a href=#334 id=334 data-nosnippet>334</a>    <span class="kw">let </span>pl_failed_p2b_to_proposer = fails
-<a href=#335 id=335 data-nosnippet>335</a>        .map(<span class="macro">q!</span>(|(<span class="kw">_</span>, ballot)| (ballot.proposer_id.clone(), ballot)))
-<a href=#336 id=336 data-nosnippet>336</a>        .inspect(<span class="macro">q!</span>(|(<span class="kw">_</span>, ballot)| <span class="macro">println!</span>(<span class="string">"Failed P2b: {:?}"</span>, ballot)))
-<a href=#337 id=337 data-nosnippet>337</a>        .demux(proposers, TCP.fail_stop().bincode())
-<a href=#338 id=338 data-nosnippet>338</a>        .values();
-<a href=#339 id=339 data-nosnippet>339</a>
-<a href=#340 id=340 data-nosnippet>340</a>    (
-<a href=#341 id=341 data-nosnippet>341</a>        pl_to_replicas.map(<span class="macro">q!</span>(|((slot, _ballot), (value, <span class="kw">_</span>))| (slot, value))),
-<a href=#342 id=342 data-nosnippet>342</a>        a_log,
-<a href=#343 id=343 data-nosnippet>343</a>        pl_failed_p2b_to_proposer,
-<a href=#344 id=344 data-nosnippet>344</a>    )
-<a href=#345 id=345 data-nosnippet>345</a>}
+<a href=#277 id=277 data-nosnippet>277</a>            ((slot, ballot), <span class="prelude-val">Some</span>(payload))
+<a href=#278 id=278 data-nosnippet>278</a>        )))
+<a href=#279 id=279 data-nosnippet>279</a>        .chain(p_log_to_recommit.map(<span class="macro">q!</span>(<span class="kw">move </span>|((slot, ballot), payload)| (
+<a href=#280 id=280 data-nosnippet>280</a>            MemberId::&lt;ProxyLeader&gt;::from_raw_id((slot % num_proxy_leaders) <span class="kw">as </span>u32),
+<a href=#281 id=281 data-nosnippet>281</a>            ((slot, ballot), payload)
+<a href=#282 id=282 data-nosnippet>282</a>        ))))
+<a href=#283 id=283 data-nosnippet>283</a>        .all_ticks()
+<a href=#284 id=284 data-nosnippet>284</a>        .demux(proxy_leaders, TCP.fail_stop().bincode())
+<a href=#285 id=285 data-nosnippet>285</a>        .values()
+<a href=#286 id=286 data-nosnippet>286</a>        .atomic(proxy_leader_tick);
+<a href=#287 id=287 data-nosnippet>287</a>
+<a href=#288 id=288 data-nosnippet>288</a>    <span class="comment">// Send to a specific acceptor row
+<a href=#289 id=289 data-nosnippet>289</a>    </span><span class="kw">let </span>num_acceptor_rows = config.acceptor_grid_rows;
+<a href=#290 id=290 data-nosnippet>290</a>    <span class="kw">let </span>num_acceptor_cols = config.acceptor_grid_cols;
+<a href=#291 id=291 data-nosnippet>291</a>    <span class="kw">let </span>pl_to_acceptors_p2a_thrifty = p_to_proxy_leaders_p2a
+<a href=#292 id=292 data-nosnippet>292</a>        .clone()
+<a href=#293 id=293 data-nosnippet>293</a>        .flat_map_unordered(<span class="macro">q!</span>(<span class="kw">move </span>|((slot, ballot), payload)| {
+<a href=#294 id=294 data-nosnippet>294</a>            <span class="kw">let </span>row = slot % num_acceptor_rows;
+<a href=#295 id=295 data-nosnippet>295</a>            (<span class="number">0</span>..num_acceptor_cols).map(<span class="kw">move </span>|i| {
+<a href=#296 id=296 data-nosnippet>296</a>                (
+<a href=#297 id=297 data-nosnippet>297</a>                    MemberId::&lt;Acceptor&gt;::from_raw_id((row * num_acceptor_cols + i) <span class="kw">as </span>u32),
+<a href=#298 id=298 data-nosnippet>298</a>                    P2a {
+<a href=#299 id=299 data-nosnippet>299</a>                        sender: MemberId::&lt;ProxyLeader&gt;::from_raw_id(
+<a href=#300 id=300 data-nosnippet>300</a>                            (slot % num_proxy_leaders) <span class="kw">as </span>u32,
+<a href=#301 id=301 data-nosnippet>301</a>                        ),
+<a href=#302 id=302 data-nosnippet>302</a>                        slot,
+<a href=#303 id=303 data-nosnippet>303</a>                        ballot: ballot.clone(),
+<a href=#304 id=304 data-nosnippet>304</a>                        value: payload.clone(),
+<a href=#305 id=305 data-nosnippet>305</a>                    },
+<a href=#306 id=306 data-nosnippet>306</a>                )
+<a href=#307 id=307 data-nosnippet>307</a>            })
+<a href=#308 id=308 data-nosnippet>308</a>        }))
+<a href=#309 id=309 data-nosnippet>309</a>        .end_atomic()
+<a href=#310 id=310 data-nosnippet>310</a>        .demux(acceptors, TCP.fail_stop().bincode())
+<a href=#311 id=311 data-nosnippet>311</a>        .values();
+<a href=#312 id=312 data-nosnippet>312</a>
+<a href=#313 id=313 data-nosnippet>313</a>    <span class="kw">let </span>(a_log, a_to_proxy_leaders_p2b) = acceptor_p2(
+<a href=#314 id=314 data-nosnippet>314</a>        acceptor_tick,
+<a href=#315 id=315 data-nosnippet>315</a>        a_max_ballot.clone(),
+<a href=#316 id=316 data-nosnippet>316</a>        pl_to_acceptors_p2a_thrifty,
+<a href=#317 id=317 data-nosnippet>317</a>        a_checkpoint,
+<a href=#318 id=318 data-nosnippet>318</a>        proxy_leaders,
+<a href=#319 id=319 data-nosnippet>319</a>    );
+<a href=#320 id=320 data-nosnippet>320</a>
+<a href=#321 id=321 data-nosnippet>321</a>    <span class="comment">// TODO: This is a liveness problem if any node in the thrifty quorum fails
+<a href=#322 id=322 data-nosnippet>322</a>    // Need special operator for per-value timeout detection
+<a href=#323 id=323 data-nosnippet>323</a>    </span><span class="kw">let </span>(quorums, fails) = collect_quorum(
+<a href=#324 id=324 data-nosnippet>324</a>        a_to_proxy_leaders_p2b,
+<a href=#325 id=325 data-nosnippet>325</a>        config.acceptor_grid_cols,
+<a href=#326 id=326 data-nosnippet>326</a>        config.acceptor_grid_cols,
+<a href=#327 id=327 data-nosnippet>327</a>    );
+<a href=#328 id=328 data-nosnippet>328</a>
+<a href=#329 id=329 data-nosnippet>329</a>    <span class="kw">let </span>pl_to_replicas = join_responses(
+<a href=#330 id=330 data-nosnippet>330</a>        quorums.map(<span class="macro">q!</span>(|k| (k, ()))),
+<a href=#331 id=331 data-nosnippet>331</a>        p_to_proxy_leaders_p2a.batch_atomic(<span class="macro">nondet!</span>(
+<a href=#332 id=332 data-nosnippet>332</a>            <span class="doccomment">/// The metadata will always be generated before we get a quorum
+<a href=#333 id=333 data-nosnippet>333</a>            /// because our batch of `p_to_proxy_leaders_p2a` is at least after
+<a href=#334 id=334 data-nosnippet>334</a>            /// what we sent to the acceptors.
+<a href=#335 id=335 data-nosnippet>335</a>        </span>)),
+<a href=#336 id=336 data-nosnippet>336</a>    );
+<a href=#337 id=337 data-nosnippet>337</a>
+<a href=#338 id=338 data-nosnippet>338</a>    <span class="kw">let </span>pl_failed_p2b_to_proposer = fails
+<a href=#339 id=339 data-nosnippet>339</a>        .map(<span class="macro">q!</span>(|(<span class="kw">_</span>, ballot)| (ballot.proposer_id.clone(), ballot)))
+<a href=#340 id=340 data-nosnippet>340</a>        .inspect(<span class="macro">q!</span>(|(<span class="kw">_</span>, ballot)| <span class="macro">println!</span>(<span class="string">"Failed P2b: {:?}"</span>, ballot)))
+<a href=#341 id=341 data-nosnippet>341</a>        .demux(proposers, TCP.fail_stop().bincode())
+<a href=#342 id=342 data-nosnippet>342</a>        .values();
+<a href=#343 id=343 data-nosnippet>343</a>
+<a href=#344 id=344 data-nosnippet>344</a>    (
+<a href=#345 id=345 data-nosnippet>345</a>        pl_to_replicas.map(<span class="macro">q!</span>(|((slot, _ballot), (value, <span class="kw">_</span>))| (slot, value))),
+<a href=#346 id=346 data-nosnippet>346</a>        a_log,
+<a href=#347 id=347 data-nosnippet>347</a>        pl_failed_p2b_to_proposer,
+<a href=#348 id=348 data-nosnippet>348</a>    )
+<a href=#349 id=349 data-nosnippet>349</a>}
 </code></pre></div></section></main></body></html>
