@@ -92,7 +92,7 @@
 <a href=#92 id=92 data-nosnippet>92</a>    }
 <a href=#93 id=93 data-nosnippet>93</a>
 <a href=#94 id=94 data-nosnippet>94</a>    <span class="kw">fn </span>update_meta(<span class="kw-2">&amp;</span><span class="self">self</span>, _meta: <span class="kw-2">&amp;</span><span class="self">Self</span>::Meta) {
-<a href=#95 id=95 data-nosnippet>95</a>        <span class="macro">todo!</span>()
+<a href=#95 id=95 data-nosnippet>95</a>        <span class="macro">todo!</span>(<span class="string">"SimExternal::update_meta is not yet implemented"</span>)
 <a href=#96 id=96 data-nosnippet>96</a>    }
 <a href=#97 id=97 data-nosnippet>97</a>
 <a href=#98 id=98 data-nosnippet>98</a>    <span class="kw">fn </span>instantiate(
@@ -128,7 +128,7 @@
 <a href=#128 id=128 data-nosnippet>128</a>            std::io::Error,
 <a href=#129 id=129 data-nosnippet>129</a>        &gt;,
 <a href=#130 id=130 data-nosnippet>130</a>    &gt; + <span class="lifetime">'a </span>{
-<a href=#131 id=131 data-nosnippet>131</a>        <span class="kw">async </span>{ <span class="macro">todo!</span>() }
+<a href=#131 id=131 data-nosnippet>131</a>        <span class="kw">async </span>{ <span class="macro">todo!</span>(<span class="string">"SimExternal::as_bytes_bidi is not yet supported in simulation"</span>) }
 <a href=#132 id=132 data-nosnippet>132</a>    }
 <a href=#133 id=133 data-nosnippet>133</a>
 <a href=#134 id=134 data-nosnippet>134</a>    <span class="attr">#[expect(clippy::manual_async_fn, reason = <span class="string">"false positive, involves lifetimes"</span>)]
@@ -140,7 +140,7 @@
 <a href=#140 id=140 data-nosnippet>140</a>        </span>InT: serde::Serialize + <span class="lifetime">'static</span>,
 <a href=#141 id=141 data-nosnippet>141</a>        OutT: serde::de::DeserializeOwned + <span class="lifetime">'static</span>,
 <a href=#142 id=142 data-nosnippet>142</a>    {
-<a href=#143 id=143 data-nosnippet>143</a>        <span class="kw">async </span>{ <span class="macro">todo!</span>() }
+<a href=#143 id=143 data-nosnippet>143</a>        <span class="kw">async </span>{ <span class="macro">todo!</span>(<span class="string">"SimExternal::as_bincode_bidi is not yet supported in simulation"</span>) }
 <a href=#144 id=144 data-nosnippet>144</a>    }
 <a href=#145 id=145 data-nosnippet>145</a>
 <a href=#146 id=146 data-nosnippet>146</a>    <span class="attr">#[expect(clippy::manual_async_fn, reason = <span class="string">"false positive, involves lifetimes"</span>)]
@@ -151,7 +151,7 @@
 <a href=#151 id=151 data-nosnippet>151</a>    </span><span class="kw">where
 <a href=#152 id=152 data-nosnippet>152</a>        </span>T: serde::Serialize + <span class="lifetime">'static</span>,
 <a href=#153 id=153 data-nosnippet>153</a>    {
-<a href=#154 id=154 data-nosnippet>154</a>        <span class="kw">async </span>{ <span class="macro">todo!</span>() }
+<a href=#154 id=154 data-nosnippet>154</a>        <span class="kw">async </span>{ <span class="macro">todo!</span>(<span class="string">"SimExternal::as_bincode_sink is not yet supported in simulation"</span>) }
 <a href=#155 id=155 data-nosnippet>155</a>    }
 <a href=#156 id=156 data-nosnippet>156</a>
 <a href=#157 id=157 data-nosnippet>157</a>    <span class="attr">#[expect(clippy::manual_async_fn, reason = <span class="string">"false positive, involves lifetimes"</span>)]
@@ -162,7 +162,7 @@
 <a href=#162 id=162 data-nosnippet>162</a>    </span><span class="kw">where
 <a href=#163 id=163 data-nosnippet>163</a>        </span>T: serde::de::DeserializeOwned + <span class="lifetime">'static</span>,
 <a href=#164 id=164 data-nosnippet>164</a>    {
-<a href=#165 id=165 data-nosnippet>165</a>        <span class="kw">async </span>{ <span class="macro">todo!</span>() }
+<a href=#165 id=165 data-nosnippet>165</a>        <span class="kw">async </span>{ <span class="macro">todo!</span>(<span class="string">"SimExternal::as_bincode_source is not yet supported in simulation"</span>) }
 <a href=#166 id=166 data-nosnippet>166</a>    }
 <a href=#167 id=167 data-nosnippet>167</a>}
 <a href=#168 id=168 data-nosnippet>168</a>
@@ -303,11 +303,11 @@
 <a href=#303 id=303 data-nosnippet>303</a>        _codec_type: <span class="kw-2">&amp;</span>syn::Type,
 <a href=#304 id=304 data-nosnippet>304</a>        _shared_handle: String,
 <a href=#305 id=305 data-nosnippet>305</a>    ) -&gt; syn::Expr {
-<a href=#306 id=306 data-nosnippet>306</a>        <span class="macro">todo!</span>()
+<a href=#306 id=306 data-nosnippet>306</a>        <span class="macro">todo!</span>(<span class="string">"e2o_many_source is not yet supported in simulation"</span>)
 <a href=#307 id=307 data-nosnippet>307</a>    }
 <a href=#308 id=308 data-nosnippet>308</a>
 <a href=#309 id=309 data-nosnippet>309</a>    <span class="kw">fn </span>e2o_many_sink(_shared_handle: String) -&gt; syn::Expr {
-<a href=#310 id=310 data-nosnippet>310</a>        <span class="macro">todo!</span>()
+<a href=#310 id=310 data-nosnippet>310</a>        <span class="macro">todo!</span>(<span class="string">"e2o_many_sink is not yet supported in simulation"</span>)
 <a href=#311 id=311 data-nosnippet>311</a>    }
 <a href=#312 id=312 data-nosnippet>312</a>
 <a href=#313 id=313 data-nosnippet>313</a>    <span class="kw">fn </span>e2o_source(
@@ -355,13 +355,13 @@
 <a href=#355 id=355 data-nosnippet>355</a>    </span><span class="kw">fn </span>cluster_ids(
 <a href=#356 id=356 data-nosnippet>356</a>        _of_cluster: LocationKey,
 <a href=#357 id=357 data-nosnippet>357</a>    ) -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[TaglessMemberId], ()&gt; + Clone + <span class="lifetime">'a </span>{
-<a href=#358 id=358 data-nosnippet>358</a>        <span class="macro">todo!</span>();
+<a href=#358 id=358 data-nosnippet>358</a>        <span class="macro">todo!</span>(<span class="string">"cluster_ids is not yet supported in simulation"</span>);
 <a href=#359 id=359 data-nosnippet>359</a>        <span class="macro">stageleft::q!</span>(<span class="macro">todo!</span>())
 <a href=#360 id=360 data-nosnippet>360</a>    }
 <a href=#361 id=361 data-nosnippet>361</a>
 <a href=#362 id=362 data-nosnippet>362</a>    <span class="attr">#[expect(unreachable_code, reason = <span class="string">"todo!() is unreachable"</span>)]
 <a href=#363 id=363 data-nosnippet>363</a>    </span><span class="kw">fn </span>cluster_self_id() -&gt; <span class="kw">impl </span>QuotedWithContext&lt;<span class="lifetime">'a</span>, TaglessMemberId, ()&gt; + Clone + <span class="lifetime">'a </span>{
-<a href=#364 id=364 data-nosnippet>364</a>        <span class="macro">todo!</span>();
+<a href=#364 id=364 data-nosnippet>364</a>        <span class="macro">todo!</span>(<span class="string">"cluster_self_id is not yet supported in simulation"</span>);
 <a href=#365 id=365 data-nosnippet>365</a>        <span class="macro">stageleft::q!</span>(<span class="macro">todo!</span>())
 <a href=#366 id=366 data-nosnippet>366</a>    }
 <a href=#367 id=367 data-nosnippet>367</a>
