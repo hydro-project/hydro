@@ -208,7 +208,7 @@ element, the value.</p>
 </span>keyed_singleton
     .clone()
     .into_keyed_stream()
-    .interleave(
+    .merge_unordered(
         keyed_singleton.into_keyed_stream()
     )
 <span class="doccomment">/// // { 1: [2, 2], 2: [4, 4] }</span></code></pre></div></div></details></div></details><details class="toggle implementors-toggle" open><summary><section id="impl-KeyedSingleton%3CK,+V,+L,+B%3E-3" class="impl"><a class="src rightside" href="../../../src/hydro_lang/live_collections/keyed_singleton.rs.html#1210-1233">Source</a><a href="#impl-KeyedSingleton%3CK,+V,+L,+B%3E-3" class="anchor">§</a><h3 class="code-header">impl&lt;'a, K, V, L, B: <a class="trait" href="trait.KeyedSingletonBound.html" title="trait hydro_lang::live_collections::keyed_singleton::KeyedSingletonBound">KeyedSingletonBound</a>&gt; <a class="struct" href="../struct.KeyedSingleton.html" title="struct hydro_lang::live_collections::KeyedSingleton">KeyedSingleton</a>&lt;K, V, L, B&gt;<div class="where">where

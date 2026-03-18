@@ -1125,7 +1125,7 @@
 <a href=#1125 id=1125 data-nosnippet>1125</a>    ///
 <a href=#1126 id=1126 data-nosnippet>1126</a>    /// // Combine initial input with feedback, then increment
 <a href=#1127 id=1127 data-nosnippet>1127</a>    /// let input: Stream&lt;_, _, Unbounded&gt; = process.source_iter(q!([1])).into();
-<a href=#1128 id=1128 data-nosnippet>1128</a>    /// let output: Stream&lt;_, _, _, NoOrder&gt; = input.interleave(feedback).map(q!(|x| x + 1));
+<a href=#1128 id=1128 data-nosnippet>1128</a>    /// let output: Stream&lt;_, _, _, NoOrder&gt; = input.merge_unordered(feedback).map(q!(|x| x + 1));
 <a href=#1129 id=1129 data-nosnippet>1129</a>    ///
 <a href=#1130 id=1130 data-nosnippet>1130</a>    /// // Complete the forward reference with the output
 <a href=#1131 id=1131 data-nosnippet>1131</a>    /// complete.complete(output.clone());

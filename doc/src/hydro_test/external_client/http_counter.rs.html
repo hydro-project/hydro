@@ -151,7 +151,7 @@
 <a href=#151 id=151 data-nosnippet>151</a>    }));
 <a href=#152 id=152 data-nosnippet>152</a>
 <a href=#153 id=153 data-nosnippet>153</a>    get_responses
-<a href=#154 id=154 data-nosnippet>154</a>        .interleave(increment_responses.into_keyed_stream())
-<a href=#155 id=155 data-nosnippet>155</a>        .interleave(invalid_responses.into_keyed_stream())
+<a href=#154 id=154 data-nosnippet>154</a>        .merge_unordered(increment_responses.into_keyed_stream())
+<a href=#155 id=155 data-nosnippet>155</a>        .merge_unordered(invalid_responses.into_keyed_stream())
 <a href=#156 id=156 data-nosnippet>156</a>}
 </code></pre></div></section></main></body></html>

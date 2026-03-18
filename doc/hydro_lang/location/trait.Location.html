@@ -342,7 +342,7 @@ a stream depends on its own output.</p>
 
 <span class="comment">// Combine initial input with feedback, then increment
 </span><span class="kw">let </span>input: Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, Unbounded&gt; = process.source_iter(<span class="macro">q!</span>([<span class="number">1</span>])).into();
-<span class="kw">let </span>output: Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, NoOrder&gt; = input.interleave(feedback).map(<span class="macro">q!</span>(|x| x + <span class="number">1</span>));
+<span class="kw">let </span>output: Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, NoOrder&gt; = input.merge_unordered(feedback).map(<span class="macro">q!</span>(|x| x + <span class="number">1</span>));
 
 <span class="comment">// Complete the forward reference with the output
 </span>complete.complete(output.clone());

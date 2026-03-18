@@ -89,7 +89,7 @@
 <a href=#89 id=89 data-nosnippet>89</a>        clients.forward_ref::&lt;KeyedStream&lt;u32, Output, Cluster&lt;<span class="lifetime">'a</span>, Client&gt;, Unbounded, NoOrder&gt;&gt;();
 <a href=#90 id=90 data-nosnippet>90</a>    <span class="comment">// Use new payload IDS and previous outputs to generate new payloads
 <a href=#91 id=91 data-nosnippet>91</a>    </span><span class="kw">let </span>protocol_inputs = workload_generator(
-<a href=#92 id=92 data-nosnippet>92</a>        new_payload_ids.interleave(protocol_outputs.map(<span class="macro">q!</span>(|payload| <span class="prelude-val">Some</span>(payload)))),
+<a href=#92 id=92 data-nosnippet>92</a>        new_payload_ids.merge_unordered(protocol_outputs.map(<span class="macro">q!</span>(|payload| <span class="prelude-val">Some</span>(payload)))),
 <a href=#93 id=93 data-nosnippet>93</a>    );
 <a href=#94 id=94 data-nosnippet>94</a>    <span class="comment">// Feed new payloads to the protocol
 <a href=#95 id=95 data-nosnippet>95</a>    </span><span class="kw">let </span>protocol_outputs = protocol(protocol_inputs.clone());

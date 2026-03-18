@@ -229,7 +229,7 @@
 <a href=#229 id=229 data-nosnippet>229</a>            .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[CLUSTER_SELF_ID]))
 <a href=#230 id=230 data-nosnippet>230</a>            .send(<span class="kw-2">&amp;</span>node, TCP.fail_stop().bincode())
 <a href=#231 id=231 data-nosnippet>231</a>            .values()
-<a href=#232 id=232 data-nosnippet>232</a>            .interleave(
+<a href=#232 id=232 data-nosnippet>232</a>            .merge_unordered(
 <a href=#233 id=233 data-nosnippet>233</a>                cluster2
 <a href=#234 id=234 data-nosnippet>234</a>                    .source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[CLUSTER_SELF_ID]))
 <a href=#235 id=235 data-nosnippet>235</a>                    .send(<span class="kw-2">&amp;</span>node, TCP.fail_stop().bincode())
