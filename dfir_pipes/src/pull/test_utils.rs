@@ -84,6 +84,11 @@ impl<Item, Meta: Copy, CanPend: Toggle, CanEnd: Toggle, const FUSED: bool> Pull
             None => panic!("TestPull: polled after log exhausted"),
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let size = self.steps.iter().filter(|step| step.is_ready()).count();
+        (size, Some(size))
+    }
 }
 
 impl<Item, Meta: Copy, CanPend: Toggle, CanEnd: Toggle> FusedPull

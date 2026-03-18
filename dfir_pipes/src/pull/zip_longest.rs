@@ -1,6 +1,6 @@
 use core::pin::Pin;
 
-use itertools::EitherOrBoth;
+use itertools::{Either, EitherOrBoth};
 use pin_project_lite::pin_project;
 
 use crate::pull::{FusedPull, Pull, PullStep, fuse_self};
@@ -18,20 +18,23 @@ pin_project! {
     #[derive(Clone, Debug)]
     pub struct ZipLongest<Prev1, Prev2>
     where
-        Prev1: Pull
+        Prev1: Pull,
+        Prev2: Pull,
     {
         #[pin]
         prev1: Prev1,
         #[pin]
         prev2: Prev2,
-        // Store the first stream's item when the second stream is not ready.
-        item1: Option<(Prev1::Item, Prev1::Meta)>,
+        // Store an item from whichever stream was ready first, while waiting for the other.
+        // `Left` = item from prev1, `Right` = item from prev2.
+        buffer: Option<Either<(Prev1::Item, Prev1::Meta), (Prev2::Item, Prev2::Meta)>>,
     }
 }
 
 impl<Prev1, Prev2> ZipLongest<Prev1, Prev2>
 where
     Prev1: Pull,
+    Prev2: Pull,
     Self: Pull,
 {
     /// Create a new `ZipLongest` stream from two source streams.
@@ -39,7 +42,7 @@ where
         Self {
             prev1,
             prev2,
-            item1: None,
+            buffer: None,
         }
     }
 }
@@ -62,46 +65,68 @@ where
     ) -> PullStep<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
         let mut this = self.project();
 
-        // Store `item1` so it is not dropped if `stream2` returns `Poll::Pending`.
-        if this.item1.is_none() {
-            *this.item1 = match this
-                .prev1
+        let (pull_left, pull_right) = match this.buffer.take() {
+            Some(Either::Left((left_item, left_meta))) => {
+                (Some(PullStep::Ready(left_item, left_meta)), None)
+            }
+            Some(Either::Right((right_item, right_meta))) => {
+                (None, Some(PullStep::Ready(right_item, right_meta)))
+            }
+            None => (None, None),
+        };
+
+        let pull_left = pull_left.unwrap_or_else(|| {
+            this.prev1
                 .as_mut()
                 .pull(<Prev1::Ctx<'_> as Context<'_>>::unmerge_self(ctx))
-            {
-                PullStep::Ready(item, meta) => Some((item, meta)),
-                PullStep::Pending(_) => {
-                    return PullStep::pending();
-                }
-                PullStep::Ended(_) => None,
-            };
-        }
-        let item2 = this
-            .prev2
-            .as_mut()
-            .pull(<Prev1::Ctx<'_> as Context<'_>>::unmerge_other(ctx));
-        if let PullStep::Pending(_) = item2 {
-            return PullStep::pending();
-        }
+        });
+        let pull_right = pull_right.unwrap_or_else(|| {
+            this.prev2
+                .as_mut()
+                .pull(<Prev1::Ctx<'_> as Context<'_>>::unmerge_other(ctx))
+        });
 
-        match (this.item1.take(), item2) {
-            (_, PullStep::Pending(_)) => unreachable!(),
-            (None, PullStep::Ready(item2, meta2)) => {
-                PullStep::Ready(EitherOrBoth::Right(item2), meta2)
+        match (pull_left, pull_right) {
+            (PullStep::Ready(left_item, left_meta), PullStep::Ready(right_item, _right_meta)) => {
+                PullStep::Ready(EitherOrBoth::Both(left_item, right_item), left_meta)
+            } // TODO(mingwei): use right_meta
+            (PullStep::Ready(left_item, left_meta), PullStep::Ended(_)) => {
+                PullStep::Ready(EitherOrBoth::Left(left_item), left_meta)
             }
-            (None, PullStep::Ended(_)) => PullStep::ended(),
-            (Some((item1, meta1)), PullStep::Ready(item2, _meta2)) => {
-                PullStep::Ready(EitherOrBoth::Both(item1, item2), meta1)
-            } // TODO(mingwei): use _meta2
-            (Some((item1, meta1)), PullStep::Ended(_)) => {
-                PullStep::Ready(EitherOrBoth::Left(item1), meta1)
+            (PullStep::Ended(_), PullStep::Ready(right_item, right_meta)) => {
+                PullStep::Ready(EitherOrBoth::Right(right_item), right_meta)
             }
+            (PullStep::Ready(left_item, left_meta), PullStep::Pending(_)) => {
+                *this.buffer = Some(Either::Left((left_item, left_meta)));
+                PullStep::pending()
+            }
+            (PullStep::Pending(_), PullStep::Ready(right_item, right_meta)) => {
+                *this.buffer = Some(Either::Right((right_item, right_meta)));
+                PullStep::pending()
+            }
+            (PullStep::Pending(_), PullStep::Pending(_)) => PullStep::pending(),
+            (PullStep::Pending(_), PullStep::Ended(_)) => PullStep::pending(),
+            (PullStep::Ended(_), PullStep::Pending(_)) => PullStep::pending(),
+            (PullStep::Ended(_), PullStep::Ended(_)) => PullStep::ended(),
         }
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (min1, max1) = self.prev1.size_hint();
-        let (min2, max2) = self.prev2.size_hint();
+        let (mut min1, mut max1) = self.prev1.size_hint();
+        let (mut min2, mut max2) = self.prev2.size_hint();
+
+        // Account for a buffered item: it adds 1 to the respective stream's remaining count.
+        match self.buffer {
+            Some(Either::Left(_)) => {
+                min1 = min1.saturating_add(1);
+                max1 = max1.and_then(|m| m.checked_add(1));
+            }
+            Some(Either::Right(_)) => {
+                min2 = min2.saturating_add(1);
+                max2 = max2.and_then(|m| m.checked_add(1));
+            }
+            None => {}
+        }
 
         // Lower bound is the max of the two (we continue until both end)
         let lower = min1.max(min2);
@@ -134,6 +159,7 @@ mod tests {
     use super::*;
     use crate::pull::test_utils::{TestPull, assert_is_fused};
     use crate::pull::{Pull, PullStep};
+    use crate::{No, Yes};
 
     #[test]
     fn zip_longest_functional_same_length() {
@@ -219,5 +245,113 @@ mod tests {
             TestPull::items(0..2).fuse()
         ));
         assert_fused_runtime(p);
+    }
+
+    #[test]
+    fn zip_longest_size_hint_basic() {
+        let mut prev1 = TestPull::<_, _, Yes, Yes, true>::new([
+            PullStep::Ready(0, ()),
+            PullStep::pending(),
+            PullStep::Ready(1, ()),
+            PullStep::pending(),
+            PullStep::ended(),
+        ]);
+        let mut prev2 = TestPull::<_, _, Yes, Yes, true>::new([
+            PullStep::Ready(0, ()),
+            PullStep::pending(),
+            PullStep::ended(),
+        ]);
+        let mut zip = pin!(ZipLongest::new(&mut prev1, &mut prev2));
+
+        assert_eq!(zip.size_hint(), (2, Some(2)));
+
+        // Both Ready → Both(0, 0)
+        assert!(matches!(zip.as_mut().pull(&mut ()), PullStep::Ready(..)));
+        assert_eq!(zip.size_hint(), (1, Some(1)));
+
+        // Both Pending
+        assert!(zip.as_mut().pull(&mut ()).is_pending());
+
+        // prev1 Ready(1), prev2 Ended → Left(1)
+        assert!(matches!(zip.as_mut().pull(&mut ()), PullStep::Ready(..)));
+
+        // prev1 Pending, prev2 Ended → Pending
+        assert!(zip.as_mut().pull(&mut ()).is_pending());
+
+        // Both Ended
+        assert!(zip.as_mut().pull(&mut ()).is_ended());
+    }
+
+    #[test]
+    fn zip_longest_size_hint_with_buffered_item() {
+        let mut prev1 = TestPull::<_, _, No, Yes, true>::new([
+            PullStep::Ready(0, ()),
+            PullStep::Ready(1, ()),
+            PullStep::Ready(2, ()),
+            PullStep::ended(),
+        ]);
+        let mut prev2 = TestPull::<_, _, Yes, Yes, true>::new([
+            PullStep::Ready(0, ()),
+            PullStep::pending(),
+            PullStep::Ready(1, ()),
+            PullStep::pending(),
+            PullStep::Ready(2, ()),
+            PullStep::pending(),
+            PullStep::ended(),
+        ]);
+        let mut zip = pin!(ZipLongest::new(&mut prev1, &mut prev2));
+
+        // Pull 1: prev1 Ready(0), prev2 Ready(0) => Both(0, 0)
+        assert!(matches!(
+            zip.as_mut().pull(&mut ()),
+            PullStep::Ready(EitherOrBoth::Both(0, 0), ())
+        ));
+
+        // Pull 2: prev1 Ready(1), prev2 Pending => buffer Left(1), Pending
+        assert!(zip.as_mut().pull(&mut ()).is_pending());
+
+        // Now buffer has Left(item1). prev1 reports (1, Some(1)), prev2 reports (2, Some(2)).
+        // With buffer: prev1 effective = (2, Some(2)), prev2 = (2, Some(2)) => (2, Some(2))
+        assert_eq!(zip.size_hint(), (2, Some(2)));
+    }
+
+    #[test]
+    fn zip_longest_no_starvation() {
+        // When prev1 is Pending, prev2 should still be polled and its item buffered.
+        let mut prev1 = TestPull::<_, _, Yes, Yes, true>::new([
+            PullStep::Ready(0, ()),
+            PullStep::pending(),
+            PullStep::Ready(1, ()),
+            PullStep::pending(),
+            PullStep::ended(),
+        ]);
+        let mut prev2 = TestPull::<_, _, No, Yes, true>::new([
+            PullStep::Ready(0, ()),
+            PullStep::Ready(1, ()),
+            PullStep::ended(),
+        ]);
+        let mut zip = pin!(ZipLongest::new(&mut prev1, &mut prev2));
+
+        // prev1 Ready(0), prev2 Ready(0) → Both(0, 0)
+        assert!(matches!(
+            zip.as_mut().pull(&mut ()),
+            PullStep::Ready(EitherOrBoth::Both(0, 0), _)
+        ));
+
+        // prev1 Pending, prev2 Ready(1) → buffer Right(1), Pending
+        // This proves prev2 was polled even though prev1 was Pending.
+        assert!(zip.as_mut().pull(&mut ()).is_pending());
+
+        // Buffered Right(1) pairs with prev1 Ready(1) → Both(1, 1)
+        assert!(matches!(
+            zip.as_mut().pull(&mut ()),
+            PullStep::Ready(EitherOrBoth::Both(1, 1), _)
+        ));
+
+        // prev1 Pending, prev2 Ended → Pending
+        assert!(zip.as_mut().pull(&mut ()).is_pending());
+
+        // prev1 Ended, prev2 Ended → Ended
+        assert!(zip.as_mut().pull(&mut ()).is_ended());
     }
 }

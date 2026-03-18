@@ -58,7 +58,7 @@ pub trait Toggle: Sized {
 /// Type-level `true` for [`Toggle`].
 ///
 /// Indicates that a capability is present (e.g., the pull can pend or can end).
-#[derive(Default)]
+#[derive(Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Yes;
 
 #[sealed]

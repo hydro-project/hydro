@@ -102,6 +102,7 @@ pub use zip_longest::ZipLongest;
 /// The `CanPend` and `CanEnd` type parameters use [`Toggle`] to statically encode
 /// which variants are possible. When a variant is impossible (e.g., `CanPend = No`),
 /// its payload type becomes [`No`], making it a compile error to construct.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum PullStep<Item, Meta, CanPend: Toggle, CanEnd: Toggle> {
     /// An item is ready with associated metadata.
     Ready(Item, Meta),
@@ -122,14 +123,19 @@ impl<Item, Meta, CanPend: Toggle, CanEnd: Toggle> PullStep<Item, Meta, CanPend, 
         PullStep::Pending(Toggle::create())
     }
 
-    /// Returns `true` if the step is a [`PullStep::Ended`].
-    pub const fn is_ended(&self) -> bool {
-        matches!(self, PullStep::Ended(_))
+    /// Returns `true` if the step is a [`PullStep::Ready`].
+    pub const fn is_ready(&self) -> bool {
+        matches!(self, PullStep::Ready(_, _))
     }
 
     /// Returns `true` if the step is a [`PullStep::Pending`].
     pub const fn is_pending(&self) -> bool {
         matches!(self, PullStep::Pending(_))
+    }
+
+    /// Returns `true` if the step is a [`PullStep::Ended`].
+    pub const fn is_ended(&self) -> bool {
+        matches!(self, PullStep::Ended(_))
     }
 
     /// Tries to convert the `CanPend` and `CanEnd` type parameters, returning `None` if the conversion is invalid.
@@ -565,6 +571,10 @@ where
     ) -> PullStep<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
         Pin::new(&mut **self).pull(ctx)
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (**self).size_hint()
+    }
 }
 
 /// A marker trait for pulls that are "fused".
@@ -577,6 +587,8 @@ where
 /// Implementors should ensure this invariant is upheld. The [`Pull::fuse`]
 /// adapter can be used to make any pull fused.
 pub trait FusedPull: Pull {}
+
+impl<P> FusedPull for &mut P where P: FusedPull + Unpin + ?Sized {}
 
 /// Creates a pull from an iterator.
 ///

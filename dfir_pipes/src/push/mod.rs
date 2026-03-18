@@ -58,6 +58,7 @@ pub use unzip::Unzip;
 /// The `CanPend` type parameter uses [`Toggle`] to statically encode whether pending
 /// is possible. When `CanPend = No`, the `Pending` variant cannot be constructed,
 /// and the push is guaranteed to always accept items immediately.
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum PushStep<CanPend>
 where
     CanPend: Toggle,

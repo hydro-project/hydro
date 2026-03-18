@@ -43,8 +43,7 @@ where
         let ctx = <Prev::Ctx<'_> as Context<'_>>::from_task(cx);
 
         #[cfg(nightly)]
-        this.collect
-            .extend_reserve(this.prev.as_ref().get_ref().size_hint().0);
+        this.collect.extend_reserve(this.prev.size_hint().0);
 
         loop {
             return match this.prev.as_mut().pull(ctx) {
