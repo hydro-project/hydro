@@ -87,8 +87,10 @@ impl<Psh, Queue, QueueInner> ResolveFutures<Psh, Queue, QueueInner> {
                     if this.subgraph_waker.is_some() {
                         return PushStep::Done; // We will be re-woken on a future tick
                     } else {
-                        // We will pend until the queue is emptied.
-                        // TODO(mingwei): Does this mean only one item may be sent at a time?
+                        // Pend until the queue is emptied. This is used by
+                        // poll_flush to block until all futures resolve.
+                        // poll_ready discards this result so callers can keep
+                        // adding futures (see #2662).
                         return PushStep::Pending(Yes);
                     }
                 }
@@ -110,7 +112,10 @@ where
     type CanPend = Yes;
 
     fn poll_ready(mut self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
-        self.as_mut().empty_ready(ctx) // TODO(mingwei): see above
+        // Opportunistically drain any ready futures from the queue, but don't
+        // block on pending ones. The queue can always accept new futures.
+        let _ = self.as_mut().empty_ready(ctx);
+        PushStep::Done
     }
 
     fn start_send(self: Pin<&mut Self>, item: Fut, _meta: ()) {
@@ -159,6 +164,71 @@ mod tests {
     use crate::push::test_utils::{AsyncMockPush, ReadyGuardPush};
 
     type Queue = FuturesUnordered<core::future::Ready<i32>>;
+
+    /// Regression test for https://github.com/hydro-project/hydro/issues/2662
+    ///
+    /// `poll_ready` in blocking mode (no subgraph_waker) must return `Done` even
+    /// when the queue contains pending futures, so that the caller can keep adding
+    /// new futures via `start_send`. Otherwise the queue effectively serialises to
+    /// one future at a time.
+    #[test]
+    fn poll_ready_allows_send_while_futures_pending() {
+        use core::task::Poll;
+
+        /// A future that is pending on the first poll and ready on the second.
+        struct TwoPollFuture(bool);
+        impl Future for TwoPollFuture {
+            type Output = i32;
+            fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+                if self.0 {
+                    Poll::Ready(42)
+                } else {
+                    self.0 = true;
+                    cx.waker().wake_by_ref();
+                    Poll::Pending
+                }
+            }
+        }
+
+        type PendQueue = FuturesUnordered<TwoPollFuture>;
+
+        let waker = Waker::noop();
+        let mut cx = Context::from_waker(waker);
+
+        let mock = AsyncMockPush::default();
+        let mut queue: PendQueue = FuturesUnordered::new();
+        queue.extend(core::iter::once(TwoPollFuture(false)));
+
+        let mut rf = ResolveFutures::<_, _, PendQueue>::new(&mut queue, None, mock);
+
+        // poll_ready should return Done so we can send more futures, even though
+        // the queue has a pending future.
+        let result = Push::<TwoPollFuture, ()>::poll_ready(Pin::new(&mut rf), &mut cx);
+        assert!(
+            result.is_done(),
+            "poll_ready must not block on pending futures in the queue"
+        );
+
+        // We should be able to add another future.
+        Push::<TwoPollFuture, ()>::start_send(Pin::new(&mut rf), TwoPollFuture(false), ());
+
+        // Now flush should eventually resolve everything.
+        // (May need multiple calls since futures need two polls each.)
+        let mut saw_done = false;
+        for _ in 0..4 {
+            let r = Push::<TwoPollFuture, ()>::poll_flush(Pin::new(&mut rf), &mut cx);
+            if r.is_done() {
+                saw_done = true;
+                break;
+            }
+        }
+        assert!(
+            saw_done,
+            "poll_flush did not complete within the expected number of polls"
+        );
+
+        assert_eq!(rf.push.items.len(), 2, "both futures should have resolved");
+    }
 
     #[test]
     fn test_poll_ready_readies_downstream() {
