@@ -86,7 +86,7 @@
 <a href=#86 id=86 data-nosnippet>86</a>                    lhs_state_handle: #root::scheduled::state::StateHandle&lt;::std::cell::RefCell&lt;LhsState&gt;&gt;,
 <a href=#87 id=87 data-nosnippet>87</a>                    rhs_state_handle: #root::scheduled::state::StateHandle&lt;::std::cell::RefCell&lt;RhsState&gt;&gt;,
 <a href=#88 id=88 data-nosnippet>88</a>                    context: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>#root::scheduled::context::Context,
-<a href=#89 id=89 data-nosnippet>89</a>                ) -&gt; <span class="kw">impl </span>#root::dfir_pipes::Pull&lt;
+<a href=#89 id=89 data-nosnippet>89</a>                ) -&gt; <span class="kw">impl </span>#root::dfir_pipes::pull::Pull&lt;
 <a href=#90 id=90 data-nosnippet>90</a>                    Item = Output,
 <a href=#91 id=91 data-nosnippet>91</a>                    Meta = (),
 <a href=#92 id=92 data-nosnippet>92</a>                    CanPend = &lt;LhsPull::CanPend <span class="kw">as </span>#root::dfir_pipes::Toggle&gt;::Or&lt;RhsPull::CanPend&gt;,
@@ -96,8 +96,8 @@
 <a href=#96 id=96 data-nosnippet>96</a>                    </span>Func: <span class="lifetime">'a
 <a href=#97 id=97 data-nosnippet>97</a>                        </span>+ #root::lattices::LatticeBimorphism&lt;LhsState, RhsPull::Item, Output = Output&gt;
 <a href=#98 id=98 data-nosnippet>98</a>                        + #root::lattices::LatticeBimorphism&lt;LhsPull::Item, RhsState, Output = Output&gt;,
-<a href=#99 id=99 data-nosnippet>99</a>                    LhsPull: <span class="lifetime">'a </span>+ #root::dfir_pipes::Pull,
-<a href=#100 id=100 data-nosnippet>100</a>                    RhsPull: <span class="lifetime">'a </span>+ #root::dfir_pipes::Pull,
+<a href=#99 id=99 data-nosnippet>99</a>                    LhsPull: <span class="lifetime">'a </span>+ #root::dfir_pipes::pull::Pull,
+<a href=#100 id=100 data-nosnippet>100</a>                    RhsPull: <span class="lifetime">'a </span>+ #root::dfir_pipes::pull::Pull,
 <a href=#101 id=101 data-nosnippet>101</a>                    LhsState: <span class="lifetime">'static </span>+ ::std::clone::Clone,
 <a href=#102 id=102 data-nosnippet>102</a>                    RhsState: <span class="lifetime">'static </span>+ ::std::clone::Clone,
 <a href=#103 id=103 data-nosnippet>103</a>                    Output: #root::lattices::Merge&lt;Output&gt;,
@@ -111,8 +111,8 @@
 <a href=#111 id=111 data-nosnippet>111</a>                    };
 <a href=#112 id=112 data-nosnippet>112</a>
 <a href=#113 id=113 data-nosnippet>113</a>                    #root::compiled::pull::LatticeBimorphismPull::new(
-<a href=#114 id=114 data-nosnippet>114</a>                        #root::dfir_pipes::Pull::fuse(lhs_pull),
-<a href=#115 id=115 data-nosnippet>115</a>                        #root::dfir_pipes::Pull::fuse(rhs_pull),
+<a href=#114 id=114 data-nosnippet>114</a>                        #root::dfir_pipes::pull::Pull::fuse(lhs_pull),
+<a href=#115 id=115 data-nosnippet>115</a>                        #root::dfir_pipes::pull::Pull::fuse(rhs_pull),
 <a href=#116 id=116 data-nosnippet>116</a>                        func,
 <a href=#117 id=117 data-nosnippet>117</a>                        lhs_state,
 <a href=#118 id=118 data-nosnippet>118</a>                        rhs_state,

@@ -122,7 +122,7 @@
 <a href=#122 id=122 data-nosnippet>122</a>                .first()
 <a href=#123 id=123 data-nosnippet>123</a>                .map(ToTokens::to_token_stream)
 <a href=#124 id=124 data-nosnippet>124</a>                .unwrap_or(<span class="macro">quote_spanned!</span>(op_span=&gt;
-<a href=#125 id=125 data-nosnippet>125</a>                    #root::dfir_pipes::HalfSetJoinState
+<a href=#125 id=125 data-nosnippet>125</a>                    #root::dfir_pipes::pull::HalfSetJoinState
 <a href=#126 id=126 data-nosnippet>126</a>                ));
 <a href=#127 id=127 data-nosnippet>127</a>
 <a href=#128 id=128 data-nosnippet>128</a>        <span class="comment">// TODO: This is really bad.
@@ -145,7 +145,7 @@
 <a href=#145 id=145 data-nosnippet>145</a>                #df_ident.set_state_lifespan_hook(
 <a href=#146 id=146 data-nosnippet>146</a>                    #joindata_ident,
 <a href=#147 id=147 data-nosnippet>147</a>                    #lifespan,
-<a href=#148 id=148 data-nosnippet>148</a>                    |rcell| (#work_fn)(|| #root::dfir_pipes::HalfJoinState::clear(::std::cell::RefCell::get_mut(rcell)))
+<a href=#148 id=148 data-nosnippet>148</a>                    |rcell| (#work_fn)(|| #root::dfir_pipes::pull::HalfJoinState::clear(::std::cell::RefCell::get_mut(rcell)))
 <a href=#149 id=149 data-nosnippet>149</a>                );
 <a href=#150 id=150 data-nosnippet>150</a>            }).unwrap_or_default();
 <a href=#151 id=151 data-nosnippet>151</a>
@@ -197,7 +197,7 @@
 <a href=#197 id=197 data-nosnippet>197</a>                    lhs_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>#join_type&lt;K, V1, V2&gt;,
 <a href=#198 id=198 data-nosnippet>198</a>                    rhs_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>#join_type&lt;K, V2, V1&gt;,
 <a href=#199 id=199 data-nosnippet>199</a>                    is_new_tick: bool,
-<a href=#200 id=200 data-nosnippet>200</a>                ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ #root::dfir_pipes::Pull&lt;
+<a href=#200 id=200 data-nosnippet>200</a>                ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ #root::dfir_pipes::pull::Pull&lt;
 <a href=#201 id=201 data-nosnippet>201</a>                    Item = (K, (V1, V2)),
 <a href=#202 id=202 data-nosnippet>202</a>                    Meta = (),
 <a href=#203 id=203 data-nosnippet>203</a>                    CanPend = &lt;I1::CanPend <span class="kw">as </span>#root::dfir_pipes::Toggle&gt;::Or&lt;I2::CanPend&gt;,
@@ -207,12 +207,12 @@
 <a href=#207 id=207 data-nosnippet>207</a>                    </span>K: ::std::cmp::Eq + std::hash::Hash + ::std::clone::Clone,
 <a href=#208 id=208 data-nosnippet>208</a>                    V1: ::std::clone::Clone #additional_trait_bounds,
 <a href=#209 id=209 data-nosnippet>209</a>                    V2: ::std::clone::Clone #additional_trait_bounds,
-<a href=#210 id=210 data-nosnippet>210</a>                    I1: <span class="lifetime">'a </span>+ #root::dfir_pipes::Pull&lt;Item = (K, V1), Meta = ()&gt;,
-<a href=#211 id=211 data-nosnippet>211</a>                    I2: <span class="lifetime">'a </span>+ #root::dfir_pipes::Pull&lt;Item = (K, V2), Meta = ()&gt;,
+<a href=#210 id=210 data-nosnippet>210</a>                    I1: <span class="lifetime">'a </span>+ #root::dfir_pipes::pull::Pull&lt;Item = (K, V1), Meta = ()&gt;,
+<a href=#211 id=211 data-nosnippet>211</a>                    I2: <span class="lifetime">'a </span>+ #root::dfir_pipes::pull::Pull&lt;Item = (K, V2), Meta = ()&gt;,
 <a href=#212 id=212 data-nosnippet>212</a>                {
-<a href=#213 id=213 data-nosnippet>213</a>                    #root::dfir_pipes::symmetric_hash_join(
-<a href=#214 id=214 data-nosnippet>214</a>                        #root::dfir_pipes::Pull::fuse(lhs),
-<a href=#215 id=215 data-nosnippet>215</a>                        #root::dfir_pipes::Pull::fuse(rhs),
+<a href=#213 id=213 data-nosnippet>213</a>                    #root::dfir_pipes::pull::symmetric_hash_join(
+<a href=#214 id=214 data-nosnippet>214</a>                        #root::dfir_pipes::pull::Pull::fuse(lhs),
+<a href=#215 id=215 data-nosnippet>215</a>                        #root::dfir_pipes::pull::Pull::fuse(rhs),
 <a href=#216 id=216 data-nosnippet>216</a>                        lhs_state,
 <a href=#217 id=217 data-nosnippet>217</a>                        rhs_state,
 <a href=#218 id=218 data-nosnippet>218</a>                        is_new_tick,

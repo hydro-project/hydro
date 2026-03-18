@@ -49,16 +49,16 @@
 <a href=#49 id=49 data-nosnippet>49</a>        <span class="kw">let </span>write_iterator = <span class="kw">if </span>is_pull {
 <a href=#50 id=50 data-nosnippet>50</a>            <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
 <a href=#51 id=51 data-nosnippet>51</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#52 id=52 data-nosnippet>52</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::Pull::inspect(#input, #func);
+<a href=#52 id=52 data-nosnippet>52</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::pull::Pull::inspect(#input, #func);
 <a href=#53 id=53 data-nosnippet>53</a>            }
 <a href=#54 id=54 data-nosnippet>54</a>        } <span class="kw">else if </span>outputs.is_empty() {
 <a href=#55 id=55 data-nosnippet>55</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#56 id=56 data-nosnippet>56</a>                <span class="kw">let </span>#ident = #root::sinktools::inspect(#func, #root::sinktools::for_each::ForEach::new(::std::mem::drop));
+<a href=#56 id=56 data-nosnippet>56</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::push::inspect(#func, #root::dfir_pipes::push::for_each(::std::mem::drop));
 <a href=#57 id=57 data-nosnippet>57</a>            }
 <a href=#58 id=58 data-nosnippet>58</a>        } <span class="kw">else </span>{
 <a href=#59 id=59 data-nosnippet>59</a>            <span class="kw">let </span>output = <span class="kw-2">&amp;</span>outputs[<span class="number">0</span>];
 <a href=#60 id=60 data-nosnippet>60</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#61 id=61 data-nosnippet>61</a>                <span class="kw">let </span>#ident = #root::sinktools::inspect(#func, #output);
+<a href=#61 id=61 data-nosnippet>61</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::push::inspect(#func, #output);
 <a href=#62 id=62 data-nosnippet>62</a>            }
 <a href=#63 id=63 data-nosnippet>63</a>        };
 <a href=#64 id=64 data-nosnippet>64</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {

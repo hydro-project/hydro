@@ -51,27 +51,27 @@
 <a href=#51 id=51 data-nosnippet>51</a>                .iter()
 <a href=#52 id=52 data-nosnippet>52</a>                .map(|i| i.to_token_stream())
 <a href=#53 id=53 data-nosnippet>53</a>                .reduce(|a, b| <span class="macro">quote_spanned!</span> {op_span=&gt; check_inputs(#a, #b) })
-<a href=#54 id=54 data-nosnippet>54</a>                .unwrap_or_else(|| <span class="macro">quote_spanned!</span> {op_span=&gt; #root::dfir_pipes::empty() });
+<a href=#54 id=54 data-nosnippet>54</a>                .unwrap_or_else(|| <span class="macro">quote_spanned!</span> {op_span=&gt; #root::dfir_pipes::pull::empty() });
 <a href=#55 id=55 data-nosnippet>55</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#56 id=56 data-nosnippet>56</a>                <span class="kw">let </span>#ident = {
 <a href=#57 id=57 data-nosnippet>57</a>                    <span class="attr">#[allow(unused)]
 <a href=#58 id=58 data-nosnippet>58</a>                    #[inline(always)]
 <a href=#59 id=59 data-nosnippet>59</a>                    </span><span class="kw">fn </span>check_inputs&lt;A, B, Item&gt;(
 <a href=#60 id=60 data-nosnippet>60</a>                        a: A, b: B
-<a href=#61 id=61 data-nosnippet>61</a>                    ) -&gt; <span class="kw">impl </span>#root::dfir_pipes::Pull&lt;
+<a href=#61 id=61 data-nosnippet>61</a>                    ) -&gt; <span class="kw">impl </span>#root::dfir_pipes::pull::Pull&lt;
 <a href=#62 id=62 data-nosnippet>62</a>                        Item = Item,
 <a href=#63 id=63 data-nosnippet>63</a>                        Meta = A::Meta,
 <a href=#64 id=64 data-nosnippet>64</a>                        CanPend = &lt;A::CanPend <span class="kw">as </span>#root::dfir_pipes::Toggle&gt;::Or&lt;B::CanPend&gt;,
 <a href=#65 id=65 data-nosnippet>65</a>                        CanEnd = B::CanEnd,
 <a href=#66 id=66 data-nosnippet>66</a>                    &gt;
 <a href=#67 id=67 data-nosnippet>67</a>                    <span class="kw">where
-<a href=#68 id=68 data-nosnippet>68</a>                        </span>A: #root::dfir_pipes::Pull&lt;Item = Item, CanEnd = #root::dfir_pipes::Yes&gt;,
-<a href=#69 id=69 data-nosnippet>69</a>                        B: #root::dfir_pipes::Pull&lt;Item = Item, Meta = A::Meta&gt;,
+<a href=#68 id=68 data-nosnippet>68</a>                        </span>A: #root::dfir_pipes::pull::Pull&lt;Item = Item, CanEnd = #root::dfir_pipes::Yes&gt;,
+<a href=#69 id=69 data-nosnippet>69</a>                        B: #root::dfir_pipes::pull::Pull&lt;Item = Item, Meta = A::Meta&gt;,
 <a href=#70 id=70 data-nosnippet>70</a>                    {
 <a href=#71 id=71 data-nosnippet>71</a>                        <span class="comment">// NOTE(mingwei): `merge` (allowing async interleaving) may make more sense, but also
 <a href=#72 id=72 data-nosnippet>72</a>                        // might inline worse. Merge may have correctness implications.
-<a href=#73 id=73 data-nosnippet>73</a>                        </span>#root::dfir_pipes::Pull::chain(
-<a href=#74 id=74 data-nosnippet>74</a>                            #root::dfir_pipes::Pull::fuse(a),
+<a href=#73 id=73 data-nosnippet>73</a>                        </span>#root::dfir_pipes::pull::Pull::chain(
+<a href=#74 id=74 data-nosnippet>74</a>                            #root::dfir_pipes::pull::Pull::fuse(a),
 <a href=#75 id=75 data-nosnippet>75</a>                            b,
 <a href=#76 id=76 data-nosnippet>76</a>                        )
 <a href=#77 id=77 data-nosnippet>77</a>                    }

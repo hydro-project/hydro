@@ -72,17 +72,17 @@
 <a href=#72 id=72 data-nosnippet>72</a>
 <a href=#73 id=73 data-nosnippet>73</a>        <span class="kw">let </span>if_pending = <span class="kw">if </span>blocking {
 <a href=#74 id=74 data-nosnippet>74</a>            <span class="comment">// Wait for all items.
-<a href=#75 id=75 data-nosnippet>75</a>            </span><span class="macro">quote_spanned!</span> {op_span=&gt; #root::dfir_pipes::Step::&lt;<span class="kw">_</span>, <span class="kw">_</span>, #root::dfir_pipes::Yes, <span class="kw">_</span>&gt;::pending() }
+<a href=#75 id=75 data-nosnippet>75</a>            </span><span class="macro">quote_spanned!</span> {op_span=&gt; #root::dfir_pipes::pull::PullStep::&lt;<span class="kw">_</span>, <span class="kw">_</span>, #root::dfir_pipes::Yes, <span class="kw">_</span>&gt;::pending() }
 <a href=#76 id=76 data-nosnippet>76</a>        } <span class="kw">else </span>{
 <a href=#77 id=77 data-nosnippet>77</a>            <span class="comment">// EOS immediately, futures items will be in future ticks.
-<a href=#78 id=78 data-nosnippet>78</a>            </span><span class="macro">quote_spanned!</span> {op_span=&gt; #root::dfir_pipes::Step::&lt;<span class="kw">_</span>, <span class="kw">_</span>, #root::dfir_pipes::No, <span class="kw">_</span>&gt;::ended() }
+<a href=#78 id=78 data-nosnippet>78</a>            </span><span class="macro">quote_spanned!</span> {op_span=&gt; #root::dfir_pipes::pull::PullStep::&lt;<span class="kw">_</span>, <span class="kw">_</span>, #root::dfir_pipes::No, <span class="kw">_</span>&gt;::ended() }
 <a href=#79 id=79 data-nosnippet>79</a>        };
 <a href=#80 id=80 data-nosnippet>80</a>
 <a href=#81 id=81 data-nosnippet>81</a>        <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#82 id=82 data-nosnippet>82</a>            {
 <a href=#83 id=83 data-nosnippet>83</a>                <span class="kw">let </span>first_item_opt = #work_fn_async(<span class="kw">async </span>{
 <a href=#84 id=84 data-nosnippet>84</a>                    <span class="comment">// Accumulate all futures.
-<a href=#85 id=85 data-nosnippet>85</a>                    </span><span class="kw">let </span>() = #root::dfir_pipes::Pull::for_each(#input, |fut| {
+<a href=#85 id=85 data-nosnippet>85</a>                    </span><span class="kw">let </span>() = #root::dfir_pipes::pull::Pull::for_each(#input, |fut| {
 <a href=#86 id=86 data-nosnippet>86</a>                        ::std::iter::Extend::extend(<span class="kw-2">&amp;mut *</span>#queue_ident, ::std::iter::once(fut));
 <a href=#87 id=87 data-nosnippet>87</a>                    }).<span class="kw">await</span>;
 <a href=#88 id=88 data-nosnippet>88</a>
@@ -97,13 +97,13 @@
 <a href=#97 id=97 data-nosnippet>97</a>                    }
 <a href=#98 id=98 data-nosnippet>98</a>                }).<span class="kw">await</span>;
 <a href=#99 id=99 data-nosnippet>99</a>
-<a href=#100 id=100 data-nosnippet>100</a>                #root::dfir_pipes::Pull::chain(
-<a href=#101 id=101 data-nosnippet>101</a>                    #root::dfir_pipes::iter(first_item_opt),
-<a href=#102 id=102 data-nosnippet>102</a>                    #root::dfir_pipes::poll_fn(|_cx| {
+<a href=#100 id=100 data-nosnippet>100</a>                #root::dfir_pipes::pull::Pull::chain(
+<a href=#101 id=101 data-nosnippet>101</a>                    #root::dfir_pipes::pull::iter(first_item_opt),
+<a href=#102 id=102 data-nosnippet>102</a>                    #root::dfir_pipes::pull::poll_fn(|_cx| {
 <a href=#103 id=103 data-nosnippet>103</a>                        <span class="kw">match </span>#root::futures::stream::Stream::poll_next(::std::pin::Pin::new(<span class="kw-2">&amp;mut *</span>#queue_ident), #task_cx) {
 <a href=#104 id=104 data-nosnippet>104</a>                            ::std::task::Poll::Pending =&gt; #if_pending,
-<a href=#105 id=105 data-nosnippet>105</a>                            ::std::task::Poll::Ready(::std::option::Option::Some(item)) =&gt; #root::dfir_pipes::Step::Ready(item, ()),
-<a href=#106 id=106 data-nosnippet>106</a>                            ::std::task::Poll::Ready(::std::option::Option::None) =&gt; #root::dfir_pipes::Step::Ended(#root::dfir_pipes::Yes),
+<a href=#105 id=105 data-nosnippet>105</a>                            ::std::task::Poll::Ready(::std::option::Option::Some(item)) =&gt; #root::dfir_pipes::pull::PullStep::Ready(item, ()),
+<a href=#106 id=106 data-nosnippet>106</a>                            ::std::task::Poll::Ready(::std::option::Option::None) =&gt; #root::dfir_pipes::pull::PullStep::Ended(#root::dfir_pipes::Yes),
 <a href=#107 id=107 data-nosnippet>107</a>                        }
 <a href=#108 id=108 data-nosnippet>108</a>                    }),
 <a href=#109 id=109 data-nosnippet>109</a>                )
@@ -112,7 +112,7 @@
 <a href=#112 id=112 data-nosnippet>112</a>    } <span class="kw">else </span>{
 <a href=#113 id=113 data-nosnippet>113</a>        <span class="kw">let </span>output = <span class="kw-2">&amp;</span>outputs[<span class="number">0</span>];
 <a href=#114 id=114 data-nosnippet>114</a>        <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#115 id=115 data-nosnippet>115</a>            #root::compiled::push::ResolveFutures::new(<span class="kw-2">&amp;mut *</span>#queue_ident, #opt_waker, #output)
+<a href=#115 id=115 data-nosnippet>115</a>            #root::dfir_pipes::push::resolve_futures_state(<span class="kw-2">&amp;mut *</span>#queue_ident, #opt_waker, #output)
 <a href=#116 id=116 data-nosnippet>116</a>        }
 <a href=#117 id=117 data-nosnippet>117</a>    };
 <a href=#118 id=118 data-nosnippet>118</a>    <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;

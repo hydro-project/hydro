@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"derive":["DemuxEnum"],"trait":["DemuxEnumBase","DemuxEnumSink","SingleVariant"]};
+window.SIDEBAR_ITEMS = {"derive":["DemuxEnum"],"trait":["DemuxEnumBase","DemuxEnumPush","DemuxEnumSink","SingleVariant"]};

@@ -101,11 +101,11 @@
 <a href=#101 id=101 data-nosnippet>101</a>        };
 <a href=#102 id=102 data-nosnippet>102</a>        <span class="kw">let </span>write_iterator = <span class="kw">if </span>is_pull {
 <a href=#103 id=103 data-nosnippet>103</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#104 id=104 data-nosnippet>104</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::Pull::filter(#input, #filter_fn);
+<a href=#104 id=104 data-nosnippet>104</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::pull::Pull::filter(#input, #filter_fn);
 <a href=#105 id=105 data-nosnippet>105</a>            }
 <a href=#106 id=106 data-nosnippet>106</a>        } <span class="kw">else </span>{
 <a href=#107 id=107 data-nosnippet>107</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#108 id=108 data-nosnippet>108</a>                <span class="kw">let </span>#ident = #root::sinktools::filter(#filter_fn, #output);
+<a href=#108 id=108 data-nosnippet>108</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::push::filter(#filter_fn, #output);
 <a href=#109 id=109 data-nosnippet>109</a>            }
 <a href=#110 id=110 data-nosnippet>110</a>        };
 <a href=#111 id=111 data-nosnippet>111</a>

@@ -170,7 +170,7 @@
 <a href=#170 id=170 data-nosnippet>170</a>                        <span class="kw">let </span>() = (f)(a, t);
 <a href=#171 id=171 data-nosnippet>171</a>                    }
 <a href=#172 id=172 data-nosnippet>172</a>
-<a href=#173 id=173 data-nosnippet>173</a>                    <span class="kw">let </span>fut = #root::dfir_pipes::Pull::for_each(check_input(#input), |item| {
+<a href=#173 id=173 data-nosnippet>173</a>                    <span class="kw">let </span>fut = #root::dfir_pipes::pull::Pull::for_each(check_input(#input), |item| {
 <a href=#174 id=174 data-nosnippet>174</a>                        <span class="kw">match </span>item {
 <a href=#175 id=175 data-nosnippet>175</a>                            #root::util::PersistenceKeyed::Persist(k, v) =&gt; {
 <a href=#176 id=176 data-nosnippet>176</a>                                <span class="kw">let </span>entry = #hashtable_ident.entry(k).or_insert_with(#initfn);
@@ -188,7 +188,7 @@
 <a href=#188 id=188 data-nosnippet>188</a>                </span><span class="kw">let </span>#ident = #hashtable_ident
 <a href=#189 id=189 data-nosnippet>189</a>                    .iter()
 <a href=#190 id=190 data-nosnippet>190</a>                    .map(<span class="attr">#[allow(suspicious_double_ref_op, clippy::clone_on_copy)] </span>|(k, v)| (k.clone(), v.clone()));
-<a href=#191 id=191 data-nosnippet>191</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::iter(#ident);
+<a href=#191 id=191 data-nosnippet>191</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::pull::iter(#ident);
 <a href=#192 id=192 data-nosnippet>192</a>            }
 <a href=#193 id=193 data-nosnippet>193</a>        } <span class="kw">else </span>{
 <a href=#194 id=194 data-nosnippet>194</a>            <span class="kw">let </span>iter_expr = <span class="kw">match </span>persistence {
@@ -229,9 +229,9 @@
 <a href=#229 id=229 data-nosnippet>229</a>                {
 <a href=#230 id=230 data-nosnippet>230</a>                    <span class="attr">#[inline(always)]
 <a href=#231 id=231 data-nosnippet>231</a>                    </span><span class="kw">fn </span>check_input&lt;Prev, K, V&gt;(prev: Prev)
-<a href=#232 id=232 data-nosnippet>232</a>                        -&gt; <span class="kw">impl </span>#root::dfir_pipes::Pull&lt;Item = (K, V), Meta = Prev::Meta, CanPend = Prev::CanPend, CanEnd = Prev::CanEnd&gt;
+<a href=#232 id=232 data-nosnippet>232</a>                        -&gt; <span class="kw">impl </span>#root::dfir_pipes::pull::Pull&lt;Item = (K, V), Meta = Prev::Meta, CanPend = Prev::CanPend, CanEnd = Prev::CanEnd&gt;
 <a href=#233 id=233 data-nosnippet>233</a>                    <span class="kw">where
-<a href=#234 id=234 data-nosnippet>234</a>                        </span>Prev: #root::dfir_pipes::Pull&lt;Item = (K, V)&gt;,
+<a href=#234 id=234 data-nosnippet>234</a>                        </span>Prev: #root::dfir_pipes::pull::Pull&lt;Item = (K, V)&gt;,
 <a href=#235 id=235 data-nosnippet>235</a>                        K: ::std::clone::Clone,
 <a href=#236 id=236 data-nosnippet>236</a>                        V: ::std::clone::Clone,
 <a href=#237 id=237 data-nosnippet>237</a>                    {
@@ -246,7 +246,7 @@
 <a href=#246 id=246 data-nosnippet>246</a>                    }
 <a href=#247 id=247 data-nosnippet>247</a>
 <a href=#248 id=248 data-nosnippet>248</a>
-<a href=#249 id=249 data-nosnippet>249</a>                    <span class="kw">let </span>fut = #root::dfir_pipes::Pull::for_each(check_input(#input), |kv| {
+<a href=#249 id=249 data-nosnippet>249</a>                    <span class="kw">let </span>fut = #root::dfir_pipes::pull::Pull::for_each(check_input(#input), |kv| {
 <a href=#250 id=250 data-nosnippet>250</a>                        <span class="comment">// TODO(mingwei): remove `unknown_lints` when `clippy::unwrap_or_default` is stabilized.
 <a href=#251 id=251 data-nosnippet>251</a>                        </span><span class="attr">#[allow(unknown_lints, clippy::unwrap_or_default)]
 <a href=#252 id=252 data-nosnippet>252</a>                        </span><span class="kw">let </span>entry = #hashtable_ident.entry(kv.<span class="number">0</span>).or_insert_with(#initfn);
@@ -257,7 +257,7 @@
 <a href=#257 id=257 data-nosnippet>257</a>
 <a href=#258 id=258 data-nosnippet>258</a>                <span class="attr">#[allow(clippy::disallowed_methods, reason = <span class="string">"FxHasher is deterministic"</span>)]
 <a href=#259 id=259 data-nosnippet>259</a>                </span><span class="kw">let </span>#ident = #iter_expr;
-<a href=#260 id=260 data-nosnippet>260</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::iter(#ident);
+<a href=#260 id=260 data-nosnippet>260</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::pull::iter(#ident);
 <a href=#261 id=261 data-nosnippet>261</a>            }
 <a href=#262 id=262 data-nosnippet>262</a>        };
 <a href=#263 id=263 data-nosnippet>263</a>

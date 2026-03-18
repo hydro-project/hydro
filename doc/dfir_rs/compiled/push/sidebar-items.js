@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["DemuxEnum","Persist","ResolveFutures"]};
+window.SIDEBAR_ITEMS = {"struct":["DemuxEnum"]};

@@ -97,15 +97,15 @@
 <a href=#97 id=97 data-nosnippet>97</a>                <span class="kw">let </span>#ident = {
 <a href=#98 id=98 data-nosnippet>98</a>                    <span class="attr">#[inline(always)]
 <a href=#99 id=99 data-nosnippet>99</a>                    </span><span class="kw">fn </span>check_pull&lt;Prev, K, V&gt;(prev: Prev)
-<a href=#100 id=100 data-nosnippet>100</a>                        -&gt; <span class="kw">impl </span>#root::dfir_pipes::Pull&lt;Item = #root::util::PersistenceKeyed::&lt;K, V&gt;, Meta = Prev::Meta, CanPend = Prev::CanPend, CanEnd = Prev::CanEnd&gt;
+<a href=#100 id=100 data-nosnippet>100</a>                        -&gt; <span class="kw">impl </span>#root::dfir_pipes::pull::Pull&lt;Item = #root::util::PersistenceKeyed::&lt;K, V&gt;, Meta = Prev::Meta, CanPend = Prev::CanPend, CanEnd = Prev::CanEnd&gt;
 <a href=#101 id=101 data-nosnippet>101</a>                    <span class="kw">where
-<a href=#102 id=102 data-nosnippet>102</a>                        </span>Prev: #root::dfir_pipes::Pull&lt;Item = #root::util::PersistenceKeyed::&lt;K, V&gt;&gt;,
+<a href=#102 id=102 data-nosnippet>102</a>                        </span>Prev: #root::dfir_pipes::pull::Pull&lt;Item = #root::util::PersistenceKeyed::&lt;K, V&gt;&gt;,
 <a href=#103 id=103 data-nosnippet>103</a>                    {
 <a href=#104 id=104 data-nosnippet>104</a>                        prev
 <a href=#105 id=105 data-nosnippet>105</a>                    }
 <a href=#106 id=106 data-nosnippet>106</a>
 <a href=#107 id=107 data-nosnippet>107</a>                    <span class="kw">let </span>iter = <span class="kw">if </span>context.is_first_run_this_tick() {
-<a href=#108 id=108 data-nosnippet>108</a>                        <span class="kw">let </span>fut = #root::dfir_pipes::Pull::for_each(check_pull(#input), |item| {
+<a href=#108 id=108 data-nosnippet>108</a>                        <span class="kw">let </span>fut = #root::dfir_pipes::pull::Pull::for_each(check_pull(#input), |item| {
 <a href=#109 id=109 data-nosnippet>109</a>                            <span class="kw">match </span>item {
 <a href=#110 id=110 data-nosnippet>110</a>                                #root::util::PersistenceKeyed::Persist(k, v) =&gt; {
 <a href=#111 id=111 data-nosnippet>111</a>                                    #map_ident.entry(k).or_default().push(v);
@@ -129,7 +129,7 @@
 <a href=#129 id=129 data-nosnippet>129</a>                    } <span class="kw">else </span>{
 <a href=#130 id=130 data-nosnippet>130</a>                        <span class="prelude-val">None</span>.into_iter().flatten()
 <a href=#131 id=131 data-nosnippet>131</a>                    };
-<a href=#132 id=132 data-nosnippet>132</a>                    #root::dfir_pipes::iter(iter)
+<a href=#132 id=132 data-nosnippet>132</a>                    #root::dfir_pipes::pull::iter(iter)
 <a href=#133 id=133 data-nosnippet>133</a>                };
 <a href=#134 id=134 data-nosnippet>134</a>            }
 <a href=#135 id=135 data-nosnippet>135</a>        };

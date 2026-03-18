@@ -73,11 +73,11 @@
 <a href=#73 id=73 data-nosnippet>73</a>        };
 <a href=#74 id=74 data-nosnippet>74</a>        <span class="kw">let </span>write_iterator = <span class="kw">if </span>is_pull {
 <a href=#75 id=75 data-nosnippet>75</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#76 id=76 data-nosnippet>76</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::Pull::map(#input, #map_fn);
+<a href=#76 id=76 data-nosnippet>76</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::pull::Pull::map(#input, #map_fn);
 <a href=#77 id=77 data-nosnippet>77</a>            }
 <a href=#78 id=78 data-nosnippet>78</a>        } <span class="kw">else </span>{
 <a href=#79 id=79 data-nosnippet>79</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#80 id=80 data-nosnippet>80</a>                <span class="kw">let </span>#ident = #root::sinktools::map(#map_fn, #output);
+<a href=#80 id=80 data-nosnippet>80</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::push::map(#map_fn, #output);
 <a href=#81 id=81 data-nosnippet>81</a>            }
 <a href=#82 id=82 data-nosnippet>82</a>        };
 <a href=#83 id=83 data-nosnippet>83</a>

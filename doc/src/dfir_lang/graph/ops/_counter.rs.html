@@ -86,16 +86,16 @@
 <a href=#86 id=86 data-nosnippet>86</a>        <span class="kw">let </span>write_iterator = <span class="kw">if </span>is_pull {
 <a href=#87 id=87 data-nosnippet>87</a>            <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
 <a href=#88 id=88 data-nosnippet>88</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#89 id=89 data-nosnippet>89</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::Pull::inspect(#input, |<span class="kw">_</span>| { #count_ident += <span class="number">1</span>; });
+<a href=#89 id=89 data-nosnippet>89</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::pull::Pull::inspect(#input, |<span class="kw">_</span>| { #count_ident += <span class="number">1</span>; });
 <a href=#90 id=90 data-nosnippet>90</a>            }
 <a href=#91 id=91 data-nosnippet>91</a>        } <span class="kw">else if </span>outputs.is_empty() {
 <a href=#92 id=92 data-nosnippet>92</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#93 id=93 data-nosnippet>93</a>                <span class="kw">let </span>#ident = #root::sinktools::inspect(|<span class="kw">_</span>| { #count_ident += <span class="number">1</span>; }, #root::sinktools::for_each::ForEach::new(::std::mem::drop));
+<a href=#93 id=93 data-nosnippet>93</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::push::inspect(|<span class="kw">_</span>| { #count_ident += <span class="number">1</span>; }, #root::dfir_pipes::push::for_each(::std::mem::drop));
 <a href=#94 id=94 data-nosnippet>94</a>            }
 <a href=#95 id=95 data-nosnippet>95</a>        } <span class="kw">else </span>{
 <a href=#96 id=96 data-nosnippet>96</a>            <span class="kw">let </span>output = <span class="kw-2">&amp;</span>outputs[<span class="number">0</span>];
 <a href=#97 id=97 data-nosnippet>97</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#98 id=98 data-nosnippet>98</a>                <span class="kw">let </span>#ident = #root::sinktools::inspect(|<span class="kw">_</span>| { #count_ident += <span class="number">1</span>; }, #output);
+<a href=#98 id=98 data-nosnippet>98</a>                <span class="kw">let </span>#ident = #root::dfir_pipes::push::inspect(|<span class="kw">_</span>| { #count_ident += <span class="number">1</span>; }, #output);
 <a href=#99 id=99 data-nosnippet>99</a>            }
 <a href=#100 id=100 data-nosnippet>100</a>        };
 <a href=#101 id=101 data-nosnippet>101</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
