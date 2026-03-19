@@ -76,13 +76,13 @@
 <a href=#76 id=76 data-nosnippet>76</a>    <span class="kw">use </span>alloc::vec::Vec;
 <a href=#77 id=77 data-nosnippet>77</a>
 <a href=#78 id=78 data-nosnippet>78</a>    <span class="kw">use </span><span class="kw">super</span>::SendSink;
-<a href=#79 id=79 data-nosnippet>79</a>    <span class="kw">use </span><span class="kw">crate</span>::pull::test_utils::{NonFusedPull, PendingFlushSink};
+<a href=#79 id=79 data-nosnippet>79</a>    <span class="kw">use </span><span class="kw">crate</span>::pull::test_utils::{PendingFlushSink, TestPull};
 <a href=#80 id=80 data-nosnippet>80</a>
 <a href=#81 id=81 data-nosnippet>81</a>    <span class="doccomment">/// SendSink must not re-poll the pull after it returned Ended,
 <a href=#82 id=82 data-nosnippet>82</a>    /// even if poll_flush returns Pending.
 <a href=#83 id=83 data-nosnippet>83</a>    </span><span class="attr">#[test]
 <a href=#84 id=84 data-nosnippet>84</a>    </span><span class="kw">fn </span>send_sink_no_repoll_after_ended_on_flush_pending() {
-<a href=#85 id=85 data-nosnippet>85</a>        <span class="kw">let </span>pull = NonFusedPull::new(<span class="number">2</span>);
+<a href=#85 id=85 data-nosnippet>85</a>        <span class="kw">let </span>pull = TestPull::items(<span class="number">0</span>..<span class="number">2</span>);
 <a href=#86 id=86 data-nosnippet>86</a>        <span class="kw">let </span>sink = PendingFlushSink {
 <a href=#87 id=87 data-nosnippet>87</a>            items: Vec::new(),
 <a href=#88 id=88 data-nosnippet>88</a>            flush_pending_count: <span class="number">1</span>,

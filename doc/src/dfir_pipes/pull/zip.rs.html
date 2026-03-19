@@ -120,12 +120,12 @@
 <a href=#120 id=120 data-nosnippet>120</a>    <span class="kw">use </span>alloc::vec::Vec;
 <a href=#121 id=121 data-nosnippet>121</a>
 <a href=#122 id=122 data-nosnippet>122</a>    <span class="kw">use </span>super::<span class="kw-2">*</span>;
-<a href=#123 id=123 data-nosnippet>123</a>    <span class="kw">use </span><span class="kw">crate</span>::pull::test_utils::SyncPull;
+<a href=#123 id=123 data-nosnippet>123</a>    <span class="kw">use </span><span class="kw">crate</span>::pull::test_utils::TestPull;
 <a href=#124 id=124 data-nosnippet>124</a>    <span class="kw">use </span><span class="kw">crate</span>::pull::{Pull, PullStep};
 <a href=#125 id=125 data-nosnippet>125</a>
 <a href=#126 id=126 data-nosnippet>126</a>    <span class="attr">#[test]
 <a href=#127 id=127 data-nosnippet>127</a>    </span><span class="kw">fn </span>zip_functional_same_length() {
-<a href=#128 id=128 data-nosnippet>128</a>        <span class="kw">let </span><span class="kw-2">mut </span>zip = <span class="macro">pin!</span>(Zip::new(SyncPull::new(<span class="number">2</span>), SyncPull::new(<span class="number">2</span>)));
+<a href=#128 id=128 data-nosnippet>128</a>        <span class="kw">let </span><span class="kw-2">mut </span>zip = <span class="macro">pin!</span>(Zip::new(TestPull::items(<span class="number">0</span>..<span class="number">2</span>), TestPull::items(<span class="number">0</span>..<span class="number">2</span>)));
 <a href=#129 id=129 data-nosnippet>129</a>        <span class="kw">let </span><span class="kw-2">mut </span>results = Vec::new();
 <a href=#130 id=130 data-nosnippet>130</a>
 <a href=#131 id=131 data-nosnippet>131</a>        <span class="kw">loop </span>{
@@ -141,7 +141,7 @@
 <a href=#141 id=141 data-nosnippet>141</a>
 <a href=#142 id=142 data-nosnippet>142</a>    <span class="attr">#[test]
 <a href=#143 id=143 data-nosnippet>143</a>    </span><span class="kw">fn </span>zip_functional_first_shorter() {
-<a href=#144 id=144 data-nosnippet>144</a>        <span class="kw">let </span><span class="kw-2">mut </span>zip = <span class="macro">pin!</span>(Zip::new(SyncPull::new(<span class="number">1</span>), SyncPull::new(<span class="number">3</span>)));
+<a href=#144 id=144 data-nosnippet>144</a>        <span class="kw">let </span><span class="kw-2">mut </span>zip = <span class="macro">pin!</span>(Zip::new(TestPull::items(<span class="number">0</span>..<span class="number">1</span>), TestPull::items(<span class="number">0</span>..<span class="number">3</span>)));
 <a href=#145 id=145 data-nosnippet>145</a>        <span class="kw">let </span><span class="kw-2">mut </span>results = Vec::new();
 <a href=#146 id=146 data-nosnippet>146</a>
 <a href=#147 id=147 data-nosnippet>147</a>        <span class="kw">loop </span>{
@@ -157,7 +157,7 @@
 <a href=#157 id=157 data-nosnippet>157</a>
 <a href=#158 id=158 data-nosnippet>158</a>    <span class="attr">#[test]
 <a href=#159 id=159 data-nosnippet>159</a>    </span><span class="kw">fn </span>zip_functional_second_shorter() {
-<a href=#160 id=160 data-nosnippet>160</a>        <span class="kw">let </span><span class="kw-2">mut </span>zip = <span class="macro">pin!</span>(Zip::new(SyncPull::new(<span class="number">3</span>), SyncPull::new(<span class="number">1</span>)));
+<a href=#160 id=160 data-nosnippet>160</a>        <span class="kw">let </span><span class="kw-2">mut </span>zip = <span class="macro">pin!</span>(Zip::new(TestPull::items(<span class="number">0</span>..<span class="number">3</span>), TestPull::items(<span class="number">0</span>..<span class="number">1</span>)));
 <a href=#161 id=161 data-nosnippet>161</a>        <span class="kw">let </span><span class="kw-2">mut </span>results = Vec::new();
 <a href=#162 id=162 data-nosnippet>162</a>
 <a href=#163 id=163 data-nosnippet>163</a>        <span class="kw">loop </span>{

@@ -73,11 +73,11 @@
 <a href=#73 id=73 data-nosnippet>73</a>    <span class="kw">use </span>core::pin::pin;
 <a href=#74 id=74 data-nosnippet>74</a>
 <a href=#75 id=75 data-nosnippet>75</a>    <span class="kw">use </span><span class="kw">crate</span>::pull::Pull;
-<a href=#76 id=76 data-nosnippet>76</a>    <span class="kw">use </span><span class="kw">crate</span>::pull::test_utils::{PanicsAfterEndPull, assert_fused_runtime};
+<a href=#76 id=76 data-nosnippet>76</a>    <span class="kw">use </span><span class="kw">crate</span>::pull::test_utils::{TestPull, assert_fused_runtime};
 <a href=#77 id=77 data-nosnippet>77</a>
 <a href=#78 id=78 data-nosnippet>78</a>    <span class="attr">#[test]
 <a href=#79 id=79 data-nosnippet>79</a>    </span><span class="kw">fn </span>fuse_shields_upstream() {
-<a href=#80 id=80 data-nosnippet>80</a>        <span class="kw">let </span>p = <span class="macro">pin!</span>(PanicsAfterEndPull::new(<span class="number">2</span>).fuse());
+<a href=#80 id=80 data-nosnippet>80</a>        <span class="kw">let </span>p = <span class="macro">pin!</span>(TestPull::items(<span class="number">0</span>..<span class="number">2</span>).fuse());
 <a href=#81 id=81 data-nosnippet>81</a>        assert_fused_runtime(p);
 <a href=#82 id=82 data-nosnippet>82</a>    }
 <a href=#83 id=83 data-nosnippet>83</a>}
