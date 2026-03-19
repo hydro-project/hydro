@@ -92,17 +92,18 @@
 <a href=#92 id=92 data-nosnippet>92</a>    <span class="kw">use </span>core::pin::Pin;
 <a href=#93 id=93 data-nosnippet>93</a>
 <a href=#94 id=94 data-nosnippet>94</a>    <span class="kw">use </span><span class="kw">crate</span>::push::Push;
-<a href=#95 id=95 data-nosnippet>95</a>    <span class="kw">use </span><span class="kw">crate</span>::push::test_utils::ReadyGuardPush;
+<a href=#95 id=95 data-nosnippet>95</a>    <span class="kw">use </span><span class="kw">crate</span>::push::test_utils::TestPush;
 <a href=#96 id=96 data-nosnippet>96</a>
 <a href=#97 id=97 data-nosnippet>97</a>    <span class="attr">#[test]
 <a href=#98 id=98 data-nosnippet>98</a>    </span><span class="kw">fn </span>flat_map_readies_downstream_before_each_send() {
-<a href=#99 id=99 data-nosnippet>99</a>        <span class="kw">let </span><span class="kw-2">mut </span>fm = <span class="kw">crate</span>::push::flat_map(|x: i32| [x, x + <span class="number">10</span>], ReadyGuardPush::new());
-<a href=#100 id=100 data-nosnippet>100</a>        <span class="kw">let </span><span class="kw-2">mut </span>fm = Pin::new(<span class="kw-2">&amp;mut </span>fm);
-<a href=#101 id=101 data-nosnippet>101</a>        fm.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
-<a href=#102 id=102 data-nosnippet>102</a>        fm.as_mut().start_send(<span class="number">1</span>, ());
-<a href=#103 id=103 data-nosnippet>103</a>        fm.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
-<a href=#104 id=104 data-nosnippet>104</a>        fm.as_mut().start_send(<span class="number">2</span>, ());
-<a href=#105 id=105 data-nosnippet>105</a>        fm.as_mut().poll_flush(<span class="kw-2">&amp;mut </span>());
-<a href=#106 id=106 data-nosnippet>106</a>    }
-<a href=#107 id=107 data-nosnippet>107</a>}
+<a href=#99 id=99 data-nosnippet>99</a>        <span class="kw">let </span><span class="kw-2">mut </span>tp = TestPush::no_pend();
+<a href=#100 id=100 data-nosnippet>100</a>        <span class="kw">let </span><span class="kw-2">mut </span>fm = <span class="kw">crate</span>::push::flat_map(|x: i32| [x, x + <span class="number">10</span>], <span class="kw-2">&amp;mut </span>tp);
+<a href=#101 id=101 data-nosnippet>101</a>        <span class="kw">let </span><span class="kw-2">mut </span>fm = Pin::new(<span class="kw-2">&amp;mut </span>fm);
+<a href=#102 id=102 data-nosnippet>102</a>        fm.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
+<a href=#103 id=103 data-nosnippet>103</a>        fm.as_mut().start_send(<span class="number">1</span>, ());
+<a href=#104 id=104 data-nosnippet>104</a>        fm.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
+<a href=#105 id=105 data-nosnippet>105</a>        fm.as_mut().start_send(<span class="number">2</span>, ());
+<a href=#106 id=106 data-nosnippet>106</a>        fm.as_mut().poll_flush(<span class="kw-2">&amp;mut </span>());
+<a href=#107 id=107 data-nosnippet>107</a>    }
+<a href=#108 id=108 data-nosnippet>108</a>}
 </code></pre></div></section></main></body></html>

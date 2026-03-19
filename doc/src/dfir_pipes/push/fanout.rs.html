@@ -75,17 +75,19 @@
 <a href=#75 id=75 data-nosnippet>75</a>
 <a href=#76 id=76 data-nosnippet>76</a>    <span class="kw">use </span><span class="kw">super</span>::Fanout;
 <a href=#77 id=77 data-nosnippet>77</a>    <span class="kw">use </span><span class="kw">crate</span>::push::Push;
-<a href=#78 id=78 data-nosnippet>78</a>    <span class="kw">use </span><span class="kw">crate</span>::push::test_utils::ReadyGuardPush;
+<a href=#78 id=78 data-nosnippet>78</a>    <span class="kw">use </span><span class="kw">crate</span>::push::test_utils::TestPush;
 <a href=#79 id=79 data-nosnippet>79</a>
 <a href=#80 id=80 data-nosnippet>80</a>    <span class="attr">#[test]
 <a href=#81 id=81 data-nosnippet>81</a>    </span><span class="kw">fn </span>fanout_readies_both_before_send() {
-<a href=#82 id=82 data-nosnippet>82</a>        <span class="kw">let </span><span class="kw-2">mut </span>f = Fanout::new(ReadyGuardPush::new(), ReadyGuardPush::new());
-<a href=#83 id=83 data-nosnippet>83</a>        <span class="kw">let </span><span class="kw-2">mut </span>f = Pin::new(<span class="kw-2">&amp;mut </span>f);
-<a href=#84 id=84 data-nosnippet>84</a>        f.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
-<a href=#85 id=85 data-nosnippet>85</a>        f.as_mut().start_send(<span class="number">1</span>, ());
+<a href=#82 id=82 data-nosnippet>82</a>        <span class="kw">let </span><span class="kw-2">mut </span>tp_a = TestPush::no_pend();
+<a href=#83 id=83 data-nosnippet>83</a>        <span class="kw">let </span><span class="kw-2">mut </span>tp_b = TestPush::no_pend();
+<a href=#84 id=84 data-nosnippet>84</a>        <span class="kw">let </span><span class="kw-2">mut </span>f = Fanout::new(<span class="kw-2">&amp;mut </span>tp_a, <span class="kw-2">&amp;mut </span>tp_b);
+<a href=#85 id=85 data-nosnippet>85</a>        <span class="kw">let </span><span class="kw-2">mut </span>f = Pin::new(<span class="kw-2">&amp;mut </span>f);
 <a href=#86 id=86 data-nosnippet>86</a>        f.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
-<a href=#87 id=87 data-nosnippet>87</a>        f.as_mut().start_send(<span class="number">2</span>, ());
-<a href=#88 id=88 data-nosnippet>88</a>        f.as_mut().poll_flush(<span class="kw-2">&amp;mut </span>());
-<a href=#89 id=89 data-nosnippet>89</a>    }
-<a href=#90 id=90 data-nosnippet>90</a>}
+<a href=#87 id=87 data-nosnippet>87</a>        f.as_mut().start_send(<span class="number">1</span>, ());
+<a href=#88 id=88 data-nosnippet>88</a>        f.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
+<a href=#89 id=89 data-nosnippet>89</a>        f.as_mut().start_send(<span class="number">2</span>, ());
+<a href=#90 id=90 data-nosnippet>90</a>        f.as_mut().poll_flush(<span class="kw-2">&amp;mut </span>());
+<a href=#91 id=91 data-nosnippet>91</a>    }
+<a href=#92 id=92 data-nosnippet>92</a>}
 </code></pre></div></section></main></body></html>

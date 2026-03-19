@@ -90,17 +90,18 @@
 <a href=#90 id=90 data-nosnippet>90</a>    <span class="kw">use </span>alloc::vec::Vec;
 <a href=#91 id=91 data-nosnippet>91</a>
 <a href=#92 id=92 data-nosnippet>92</a>    <span class="kw">use </span><span class="kw">crate</span>::push::Push;
-<a href=#93 id=93 data-nosnippet>93</a>    <span class="kw">use </span><span class="kw">crate</span>::push::test_utils::ReadyGuardPush;
+<a href=#93 id=93 data-nosnippet>93</a>    <span class="kw">use </span><span class="kw">crate</span>::push::test_utils::TestPush;
 <a href=#94 id=94 data-nosnippet>94</a>
 <a href=#95 id=95 data-nosnippet>95</a>    <span class="attr">#[test]
 <a href=#96 id=96 data-nosnippet>96</a>    </span><span class="kw">fn </span>flatten_readies_downstream_before_each_send() {
-<a href=#97 id=97 data-nosnippet>97</a>        <span class="kw">let </span><span class="kw-2">mut </span>fl = <span class="kw">crate</span>::push::flatten::&lt;Vec&lt;i32&gt;, (), <span class="kw">_</span>&gt;(ReadyGuardPush::new());
-<a href=#98 id=98 data-nosnippet>98</a>        <span class="kw">let </span><span class="kw-2">mut </span>fl = Pin::new(<span class="kw-2">&amp;mut </span>fl);
-<a href=#99 id=99 data-nosnippet>99</a>        fl.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
-<a href=#100 id=100 data-nosnippet>100</a>        fl.as_mut().start_send(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>], ());
-<a href=#101 id=101 data-nosnippet>101</a>        fl.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
-<a href=#102 id=102 data-nosnippet>102</a>        fl.as_mut().start_send(<span class="macro">vec!</span>[<span class="number">3</span>], ());
-<a href=#103 id=103 data-nosnippet>103</a>        fl.as_mut().poll_flush(<span class="kw-2">&amp;mut </span>());
-<a href=#104 id=104 data-nosnippet>104</a>    }
-<a href=#105 id=105 data-nosnippet>105</a>}
+<a href=#97 id=97 data-nosnippet>97</a>        <span class="kw">let </span><span class="kw-2">mut </span>tp = TestPush::no_pend();
+<a href=#98 id=98 data-nosnippet>98</a>        <span class="kw">let </span><span class="kw-2">mut </span>fl = <span class="kw">crate</span>::push::flatten::&lt;Vec&lt;i32&gt;, (), <span class="kw">_</span>&gt;(<span class="kw-2">&amp;mut </span>tp);
+<a href=#99 id=99 data-nosnippet>99</a>        <span class="kw">let </span><span class="kw-2">mut </span>fl = Pin::new(<span class="kw-2">&amp;mut </span>fl);
+<a href=#100 id=100 data-nosnippet>100</a>        fl.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
+<a href=#101 id=101 data-nosnippet>101</a>        fl.as_mut().start_send(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>], ());
+<a href=#102 id=102 data-nosnippet>102</a>        fl.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
+<a href=#103 id=103 data-nosnippet>103</a>        fl.as_mut().start_send(<span class="macro">vec!</span>[<span class="number">3</span>], ());
+<a href=#104 id=104 data-nosnippet>104</a>        fl.as_mut().poll_flush(<span class="kw-2">&amp;mut </span>());
+<a href=#105 id=105 data-nosnippet>105</a>    }
+<a href=#106 id=106 data-nosnippet>106</a>}
 </code></pre></div></section></main></body></html>

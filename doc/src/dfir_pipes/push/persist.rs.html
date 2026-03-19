@@ -97,29 +97,31 @@
 <a href=#97 id=97 data-nosnippet>97</a>    <span class="kw">use </span>alloc::vec::Vec;
 <a href=#98 id=98 data-nosnippet>98</a>
 <a href=#99 id=99 data-nosnippet>99</a>    <span class="kw">use </span><span class="kw">crate</span>::push::Push;
-<a href=#100 id=100 data-nosnippet>100</a>    <span class="kw">use </span><span class="kw">crate</span>::push::test_utils::ReadyGuardPush;
+<a href=#100 id=100 data-nosnippet>100</a>    <span class="kw">use </span><span class="kw">crate</span>::push::test_utils::TestPush;
 <a href=#101 id=101 data-nosnippet>101</a>
 <a href=#102 id=102 data-nosnippet>102</a>    <span class="attr">#[test]
 <a href=#103 id=103 data-nosnippet>103</a>    </span><span class="kw">fn </span>persist_readies_downstream_for_replay_and_new() {
 <a href=#104 id=104 data-nosnippet>104</a>        <span class="kw">let </span><span class="kw-2">mut </span>buf = Vec::new();
 <a href=#105 id=105 data-nosnippet>105</a>        <span class="comment">// First pass: persist items 1, 2.
 <a href=#106 id=106 data-nosnippet>106</a>        </span>{
-<a href=#107 id=107 data-nosnippet>107</a>            <span class="kw">let </span><span class="kw-2">mut </span>p = <span class="kw">crate</span>::push::persist_state(<span class="kw-2">&amp;mut </span>buf, <span class="bool-val">false</span>, ReadyGuardPush::&lt;i32&gt;::new());
-<a href=#108 id=108 data-nosnippet>108</a>            <span class="kw">let </span><span class="kw-2">mut </span>p = Pin::new(<span class="kw-2">&amp;mut </span>p);
-<a href=#109 id=109 data-nosnippet>109</a>            p.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
-<a href=#110 id=110 data-nosnippet>110</a>            p.as_mut().start_send(<span class="number">1</span>, ());
-<a href=#111 id=111 data-nosnippet>111</a>            p.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
-<a href=#112 id=112 data-nosnippet>112</a>            p.as_mut().start_send(<span class="number">2</span>, ());
-<a href=#113 id=113 data-nosnippet>113</a>            p.as_mut().poll_flush(<span class="kw-2">&amp;mut </span>());
-<a href=#114 id=114 data-nosnippet>114</a>        }
-<a href=#115 id=115 data-nosnippet>115</a>        <span class="comment">// Second pass: replay=true, should replay 1, 2 then accept new item 3.
-<a href=#116 id=116 data-nosnippet>116</a>        </span>{
-<a href=#117 id=117 data-nosnippet>117</a>            <span class="kw">let </span><span class="kw-2">mut </span>p = <span class="kw">crate</span>::push::persist_state(<span class="kw-2">&amp;mut </span>buf, <span class="bool-val">true</span>, ReadyGuardPush::&lt;i32&gt;::new());
-<a href=#118 id=118 data-nosnippet>118</a>            <span class="kw">let </span><span class="kw-2">mut </span>p = Pin::new(<span class="kw-2">&amp;mut </span>p);
-<a href=#119 id=119 data-nosnippet>119</a>            p.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
-<a href=#120 id=120 data-nosnippet>120</a>            p.as_mut().start_send(<span class="number">3</span>, ());
-<a href=#121 id=121 data-nosnippet>121</a>            p.as_mut().poll_flush(<span class="kw-2">&amp;mut </span>());
-<a href=#122 id=122 data-nosnippet>122</a>        }
-<a href=#123 id=123 data-nosnippet>123</a>    }
-<a href=#124 id=124 data-nosnippet>124</a>}
+<a href=#107 id=107 data-nosnippet>107</a>            <span class="kw">let </span><span class="kw-2">mut </span>tp = TestPush::no_pend();
+<a href=#108 id=108 data-nosnippet>108</a>            <span class="kw">let </span><span class="kw-2">mut </span>p = <span class="kw">crate</span>::push::persist_state(<span class="kw-2">&amp;mut </span>buf, <span class="bool-val">false</span>, <span class="kw-2">&amp;mut </span>tp);
+<a href=#109 id=109 data-nosnippet>109</a>            <span class="kw">let </span><span class="kw-2">mut </span>p = Pin::new(<span class="kw-2">&amp;mut </span>p);
+<a href=#110 id=110 data-nosnippet>110</a>            p.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
+<a href=#111 id=111 data-nosnippet>111</a>            p.as_mut().start_send(<span class="number">1</span>, ());
+<a href=#112 id=112 data-nosnippet>112</a>            p.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
+<a href=#113 id=113 data-nosnippet>113</a>            p.as_mut().start_send(<span class="number">2</span>, ());
+<a href=#114 id=114 data-nosnippet>114</a>            p.as_mut().poll_flush(<span class="kw-2">&amp;mut </span>());
+<a href=#115 id=115 data-nosnippet>115</a>        }
+<a href=#116 id=116 data-nosnippet>116</a>        <span class="comment">// Second pass: replay=true, should replay 1, 2 then accept new item 3.
+<a href=#117 id=117 data-nosnippet>117</a>        </span>{
+<a href=#118 id=118 data-nosnippet>118</a>            <span class="kw">let </span><span class="kw-2">mut </span>tp = TestPush::no_pend();
+<a href=#119 id=119 data-nosnippet>119</a>            <span class="kw">let </span><span class="kw-2">mut </span>p = <span class="kw">crate</span>::push::persist_state(<span class="kw-2">&amp;mut </span>buf, <span class="bool-val">true</span>, <span class="kw-2">&amp;mut </span>tp);
+<a href=#120 id=120 data-nosnippet>120</a>            <span class="kw">let </span><span class="kw-2">mut </span>p = Pin::new(<span class="kw-2">&amp;mut </span>p);
+<a href=#121 id=121 data-nosnippet>121</a>            p.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
+<a href=#122 id=122 data-nosnippet>122</a>            p.as_mut().start_send(<span class="number">3</span>, ());
+<a href=#123 id=123 data-nosnippet>123</a>            p.as_mut().poll_flush(<span class="kw-2">&amp;mut </span>());
+<a href=#124 id=124 data-nosnippet>124</a>        }
+<a href=#125 id=125 data-nosnippet>125</a>    }
+<a href=#126 id=126 data-nosnippet>126</a>}
 </code></pre></div></section></main></body></html>

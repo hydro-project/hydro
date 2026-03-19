@@ -94,31 +94,30 @@
 <a href=#94 id=94 data-nosnippet>94</a>    <span class="kw">use </span>alloc::vec::Vec;
 <a href=#95 id=95 data-nosnippet>95</a>
 <a href=#96 id=96 data-nosnippet>96</a>    <span class="kw">use </span><span class="kw">super</span>::SendPush;
-<a href=#97 id=97 data-nosnippet>97</a>    <span class="kw">use </span><span class="kw">crate</span>::pull::test_utils::TestPull;
-<a href=#98 id=98 data-nosnippet>98</a>    <span class="kw">use </span><span class="kw">crate</span>::push::test_utils::PendingFlushPush;
-<a href=#99 id=99 data-nosnippet>99</a>
-<a href=#100 id=100 data-nosnippet>100</a>    <span class="doccomment">/// SendPush must not re-poll the pull after it returned Ended,
-<a href=#101 id=101 data-nosnippet>101</a>    /// even if poll_flush returns Pending.
-<a href=#102 id=102 data-nosnippet>102</a>    </span><span class="attr">#[test]
-<a href=#103 id=103 data-nosnippet>103</a>    </span><span class="kw">fn </span>send_push_no_repoll_after_ended_on_flush_pending() {
-<a href=#104 id=104 data-nosnippet>104</a>        <span class="kw">let </span>pull = TestPull::items(<span class="number">0</span>..<span class="number">2</span>);
-<a href=#105 id=105 data-nosnippet>105</a>        <span class="kw">let </span>push = PendingFlushPush {
-<a href=#106 id=106 data-nosnippet>106</a>            items: Vec::new(),
-<a href=#107 id=107 data-nosnippet>107</a>            flush_pending_count: <span class="number">1</span>,
-<a href=#108 id=108 data-nosnippet>108</a>        };
-<a href=#109 id=109 data-nosnippet>109</a>        <span class="kw">let </span><span class="kw-2">mut </span>send = <span class="macro">core::pin::pin!</span>(SendPush::new(pull, push));
-<a href=#110 id=110 data-nosnippet>110</a>
-<a href=#111 id=111 data-nosnippet>111</a>        <span class="kw">let </span>waker = Waker::noop();
-<a href=#112 id=112 data-nosnippet>112</a>        <span class="kw">let </span><span class="kw-2">mut </span>cx = core::task::Context::from_waker(waker);
-<a href=#113 id=113 data-nosnippet>113</a>
-<a href=#114 id=114 data-nosnippet>114</a>        <span class="kw">let </span>result = send.as_mut().poll(<span class="kw-2">&amp;mut </span>cx);
-<a href=#115 id=115 data-nosnippet>115</a>        <span class="macro">assert!</span>(result.is_pending(), <span class="string">"expected Pending from first poll"</span>);
-<a href=#116 id=116 data-nosnippet>116</a>
-<a href=#117 id=117 data-nosnippet>117</a>        <span class="kw">let </span>result = send.as_mut().poll(<span class="kw-2">&amp;mut </span>cx);
-<a href=#118 id=118 data-nosnippet>118</a>        <span class="macro">assert!</span>(result.is_ready(), <span class="string">"expected Ready from second poll"</span>);
-<a href=#119 id=119 data-nosnippet>119</a>
-<a href=#120 id=120 data-nosnippet>120</a>        <span class="kw">let </span>items = <span class="kw-2">&amp;</span>send.into_ref().get_ref().push.items;
-<a href=#121 id=121 data-nosnippet>121</a>        <span class="macro">assert_eq!</span>(<span class="kw-2">*</span>items, <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>]);
-<a href=#122 id=122 data-nosnippet>122</a>    }
-<a href=#123 id=123 data-nosnippet>123</a>}
+<a href=#97 id=97 data-nosnippet>97</a>    <span class="kw">use </span><span class="kw">crate</span>::Yes;
+<a href=#98 id=98 data-nosnippet>98</a>    <span class="kw">use </span><span class="kw">crate</span>::pull::test_utils::TestPull;
+<a href=#99 id=99 data-nosnippet>99</a>    <span class="kw">use </span><span class="kw">crate</span>::push::PushStep;
+<a href=#100 id=100 data-nosnippet>100</a>    <span class="kw">use </span><span class="kw">crate</span>::push::test_utils::TestPush;
+<a href=#101 id=101 data-nosnippet>101</a>
+<a href=#102 id=102 data-nosnippet>102</a>    <span class="doccomment">/// SendPush must not re-poll the pull after it returned Ended,
+<a href=#103 id=103 data-nosnippet>103</a>    /// even if poll_flush returns Pending.
+<a href=#104 id=104 data-nosnippet>104</a>    </span><span class="attr">#[test]
+<a href=#105 id=105 data-nosnippet>105</a>    </span><span class="kw">fn </span>send_push_no_repoll_after_ended_on_flush_pending() {
+<a href=#106 id=106 data-nosnippet>106</a>        <span class="kw">let </span>pull = TestPull::items(<span class="number">0</span>..<span class="number">2</span>);
+<a href=#107 id=107 data-nosnippet>107</a>        <span class="kw">let </span>push = TestPush::&lt;i32, <span class="kw">_</span>, <span class="kw">_</span>&gt;::new_fused([], [PushStep::Pending(Yes), PushStep::Done]);
+<a href=#108 id=108 data-nosnippet>108</a>        <span class="kw">let </span><span class="kw-2">mut </span>send = <span class="macro">core::pin::pin!</span>(SendPush::new(pull, push));
+<a href=#109 id=109 data-nosnippet>109</a>
+<a href=#110 id=110 data-nosnippet>110</a>        <span class="kw">let </span>waker = Waker::noop();
+<a href=#111 id=111 data-nosnippet>111</a>        <span class="kw">let </span><span class="kw-2">mut </span>cx = core::task::Context::from_waker(waker);
+<a href=#112 id=112 data-nosnippet>112</a>
+<a href=#113 id=113 data-nosnippet>113</a>        <span class="kw">let </span>result = send.as_mut().poll(<span class="kw-2">&amp;mut </span>cx);
+<a href=#114 id=114 data-nosnippet>114</a>        <span class="macro">assert!</span>(result.is_pending(), <span class="string">"expected Pending from first poll"</span>);
+<a href=#115 id=115 data-nosnippet>115</a>
+<a href=#116 id=116 data-nosnippet>116</a>        <span class="kw">let </span>result = send.as_mut().poll(<span class="kw-2">&amp;mut </span>cx);
+<a href=#117 id=117 data-nosnippet>117</a>        <span class="macro">assert!</span>(result.is_ready(), <span class="string">"expected Ready from second poll"</span>);
+<a href=#118 id=118 data-nosnippet>118</a>
+<a href=#119 id=119 data-nosnippet>119</a>        <span class="kw">let </span>items: Vec&lt;i32&gt; = send.into_ref().get_ref().push.items();
+<a href=#120 id=120 data-nosnippet>120</a>        <span class="macro">assert_eq!</span>(items, <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>]);
+<a href=#121 id=121 data-nosnippet>121</a>    }
+<a href=#122 id=122 data-nosnippet>122</a>}
 </code></pre></div></section></main></body></html>
