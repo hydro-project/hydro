@@ -9,7 +9,11 @@ use crate::{No, Toggle, Yes};
 /// A configurable test pull that replays a log of [`PullStep`]s in order.
 ///
 /// Each call to [`Pull::pull`] pops the next step from the front of the log.
-/// Panics if the log is empty (to test fusing — the last step should typically be `Ended`).
+///
+/// When the log is empty:
+/// - For non-fused pulls (`FUSED = false`), this panics (to test fusing — the last
+///   step should typically be `Ended`).
+/// - For fused pulls (`FUSED = true`), this returns [`PullStep::ended`].
 ///
 /// Generic over `CanPend`, `CanEnd` (for type algebra tests), and `FUSED`
 /// (when `true`, implements [`FusedPull`]).
@@ -45,7 +49,7 @@ impl<Item> TestPull<Item, (), No, Yes, false> {
 
 impl<Item> TestPull<Item, (), No, Yes, true> {
     /// Creates a fused `TestPull` that yields each item as `Ready`, then `Ended`.
-    /// Panics if polled again after the log is exhausted.
+    /// After the log is exhausted, further polls return [`PullStep::ended`].
     pub(crate) fn items_fused(items: impl IntoIterator<Item = Item>) -> Self {
         Self::new(
             items
