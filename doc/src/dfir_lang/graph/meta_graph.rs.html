@@ -308,7 +308,7 @@
 <a href=#308 id=308 data-nosnippet>308</a>                    .contains(<span class="kw-2">&amp;</span>generics.persistence_args.len())
 <a href=#309 id=309 data-nosnippet>309</a>                {
 <a href=#310 id=310 data-nosnippet>310</a>                    diagnostics.push(Diagnostic::spanned(
-<a href=#311 id=311 data-nosnippet>311</a>                        generics_span,
+<a href=#311 id=311 data-nosnippet>311</a>                        generics.persistence_args_span().unwrap_or(generics_span),
 <a href=#312 id=312 data-nosnippet>312</a>                        Level::Error,
 <a href=#313 id=313 data-nosnippet>313</a>                        <span class="macro">format!</span>(
 <a href=#314 id=314 data-nosnippet>314</a>                            <span class="string">"`{}` should have {} persistence lifetime arguments, actually has {}."</span>,
@@ -320,7 +320,7 @@
 <a href=#320 id=320 data-nosnippet>320</a>                }
 <a href=#321 id=321 data-nosnippet>321</a>                <span class="kw">if </span>!op_constraints.type_args.contains(<span class="kw-2">&amp;</span>generics.type_args.len()) {
 <a href=#322 id=322 data-nosnippet>322</a>                    diagnostics.push(Diagnostic::spanned(
-<a href=#323 id=323 data-nosnippet>323</a>                        generics_span,
+<a href=#323 id=323 data-nosnippet>323</a>                        generics.type_args_span().unwrap_or(generics_span),
 <a href=#324 id=324 data-nosnippet>324</a>                        Level::Error,
 <a href=#325 id=325 data-nosnippet>325</a>                        <span class="macro">format!</span>(
 <a href=#326 id=326 data-nosnippet>326</a>                            <span class="string">"`{}` should have {} generic type arguments, actually has {}."</span>,
