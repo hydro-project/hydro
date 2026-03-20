@@ -308,7 +308,7 @@ impl DfirGraph {
                     .contains(&generics.persistence_args.len())
                 {
                     diagnostics.push(Diagnostic::spanned(
-                        generics_span,
+                        generics.persistence_args_span().unwrap_or(generics_span),
                         Level::Error,
                         format!(
                             "`{}` should have {} persistence lifetime arguments, actually has {}.",
@@ -320,7 +320,7 @@ impl DfirGraph {
                 }
                 if !op_constraints.type_args.contains(&generics.type_args.len()) {
                     diagnostics.push(Diagnostic::spanned(
-                        generics_span,
+                        generics.type_args_span().unwrap_or(generics_span),
                         Level::Error,
                         format!(
                             "`{}` should have {} generic type arguments, actually has {}.",

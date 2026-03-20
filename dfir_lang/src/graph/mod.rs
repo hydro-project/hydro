@@ -213,6 +213,45 @@ pub struct OpInstGenerics {
     pub type_args: Vec<Type>,
 }
 
+impl OpInstGenerics {
+    /// Helper to join a sequence of spans into a single span, if possible.
+    ///
+    /// Returns `None` if there are no spans or if any `Span::join` call fails
+    /// (for example, when spans are not contiguous).
+    fn join_spans<I>(mut spans: I) -> Option<Span>
+    where
+        I: Iterator<Item = Span>,
+    {
+        let mut span = spans.next()?;
+        for s in spans {
+            span = span.join(s)?;
+        }
+        Some(span)
+    }
+
+    /// Returns a [`Span`] containing all persistence (lifetime) args if possible.
+    pub fn persistence_args_span(&self) -> Option<Span> {
+        self.generic_args.as_ref().and_then(|args| {
+            Self::join_spans(
+                args.iter()
+                    .filter(|a| matches!(a, GenericArgument::Lifetime(_)))
+                    .map(|a| a.span()),
+            )
+        })
+    }
+
+    /// Returns a [`Span`] containing all type args if possible.
+    pub fn type_args_span(&self) -> Option<Span> {
+        self.generic_args.as_ref().and_then(|args| {
+            Self::join_spans(
+                args.iter()
+                    .filter(|a| matches!(a, GenericArgument::Type(_)))
+                    .map(|a| a.span()),
+            )
+        })
+    }
+}
+
 /// Gets the generic arguments for the operator.
 ///
 /// This helper method is useful due to the special handling of persistence lifetimes (`'static`,

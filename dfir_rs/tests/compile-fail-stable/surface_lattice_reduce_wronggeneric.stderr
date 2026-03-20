@@ -1,5 +1,13 @@
 error: `lattice_reduce` should have exactly 0 generic type arguments, actually has 1.
- --> tests/compile-fail-stable/surface_lattice_reduce_wronggeneric.rs:6:33
+ --> tests/compile-fail-stable/surface_lattice_reduce_wronggeneric.rs:7:42
   |
-6 |             -> lattice_reduce::<'static, dfir_rs::lattices::set_union::SetUnionHashSet<u32>>()
-  |                                 ^^^^^^^
+7 |             -> lattice_reduce::<'static, SetUnionHashSet<u32>>()
+  |                                          ^^^^^^^^^^^^^^^
+
+warning: unused import: `dfir_rs::lattices::set_union::SetUnionHashSet`
+ --> tests/compile-fail-stable/surface_lattice_reduce_wronggeneric.rs:2:5
+  |
+2 | use dfir_rs::lattices::set_union::SetUnionHashSet;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
