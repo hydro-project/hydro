@@ -7,13 +7,13 @@
 <a href=#7 id=7 data-nosnippet>7</a></span><span class="attr">#[must_use = <span class="string">"`Pull`s do nothing unless polled"</span>]
 <a href=#8 id=8 data-nosnippet>8</a>#[derive(Clone, Debug)]
 <a href=#9 id=9 data-nosnippet>9</a></span><span class="kw">pub struct </span>Empty&lt;Item&gt; {
-<a href=#10 id=10 data-nosnippet>10</a>    _phantom: PhantomData&lt;Item&gt;,
+<a href=#10 id=10 data-nosnippet>10</a>    _marker: PhantomData&lt;Item&gt;,
 <a href=#11 id=11 data-nosnippet>11</a>}
 <a href=#12 id=12 data-nosnippet>12</a>
 <a href=#13 id=13 data-nosnippet>13</a><span class="kw">impl</span>&lt;Item&gt; Default <span class="kw">for </span>Empty&lt;Item&gt; {
 <a href=#14 id=14 data-nosnippet>14</a>    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
 <a href=#15 id=15 data-nosnippet>15</a>        <span class="self">Self </span>{
-<a href=#16 id=16 data-nosnippet>16</a>            _phantom: PhantomData,
+<a href=#16 id=16 data-nosnippet>16</a>            _marker: PhantomData,
 <a href=#17 id=17 data-nosnippet>17</a>        }
 <a href=#18 id=18 data-nosnippet>18</a>    }
 <a href=#19 id=19 data-nosnippet>19</a>}
