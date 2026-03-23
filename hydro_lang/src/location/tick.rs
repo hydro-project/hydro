@@ -193,6 +193,8 @@ where
     ///
     /// The singleton will have the provided value on every tick. This is useful
     /// for providing constant values to computations inside a tick.
+    ///
+    /// See also: [`Location::singleton`], for creating a singleton _not_ inside a tick.
     pub fn singleton<T>(
         &self,
         e: impl QuotedWithContext<'a, T, Tick<L>>,

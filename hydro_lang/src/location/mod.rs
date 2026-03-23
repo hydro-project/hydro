@@ -1027,15 +1027,17 @@ pub trait Location<'a>: dynamic::DynLocation {
 
     /// Constructs a [`Singleton`] materialized at this location with the given static value.
     ///
+    /// See also: [`Tick::singleton`], for creating a singleton _within_ a tick, which requires
+    /// `T: Clone`.
+    ///
     /// # Example
     /// ```rust
     /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let singleton = tick.singleton(q!(5));
-    /// # singleton.all_ticks()
+    /// let singleton = process.singleton(q!(5));
+    /// # singleton.into_stream()
     /// # }, |mut stream| async move {
     /// // 5
     /// # assert_eq!(stream.next().await.unwrap(), 5);
@@ -1044,8 +1046,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     /// ```
     fn singleton<T>(&self, e: impl QuotedWithContext<'a, T, Self>) -> Singleton<T, Self, Bounded>
     where
-        T: Clone,
-        Self: Sized,
+        Self: Sized + NoTick,
     {
         let e = e.splice_untyped_ctx(self);
 
