@@ -1,0 +1,10 @@
+[package]
+name = "sqs_sandbox"
+edition.workspace = true
+publish = false
+
+[dependencies]
+aws-config = { version = "1", features = ["behavior-version-latest"] }
+aws-sdk-sqs = "1"
+futures = "0.3"
+tokio = { version = "1", features = ["full"] }

@@ -11,6 +11,9 @@
     "rust-analyzer.rustfmt.extraArgs": [
         "+nightly"
     ],
+    "rust-analyzer.cargo.features": [
+        "aws_sqs"
+    ],
     "editor.semanticTokenColorCustomizations": {
         "enabled": true,
         "rules": {

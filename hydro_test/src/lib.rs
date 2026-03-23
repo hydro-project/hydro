@@ -9,6 +9,9 @@ pub mod local;
 pub mod maelstrom;
 pub mod tutorials;
 
+#[cfg(feature = "aws")]
+mod aws;
+
 #[doc(hidden)]
 #[cfg(doctest)]
 mod docs {
