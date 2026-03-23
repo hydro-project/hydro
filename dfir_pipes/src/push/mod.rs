@@ -13,6 +13,7 @@ mod filter;
 mod filter_map;
 mod flat_map;
 mod flatten;
+mod flatten_stream;
 mod for_each;
 mod inspect;
 mod map;
@@ -42,6 +43,7 @@ pub use filter::Filter;
 pub use filter_map::FilterMap;
 pub use flat_map::FlatMap;
 pub use flatten::Flatten;
+pub use flatten_stream::FlattenStream;
 pub use for_each::ForEach;
 use futures_core::FusedStream;
 pub use inspect::Inspect;
@@ -258,6 +260,16 @@ where
     Next: Push<IntoIter::Item, Meta>,
 {
     Flatten::new(next)
+}
+
+/// Creates a [`FlattenStream`] push that flattens items that are streams.
+pub const fn flatten_stream<St, Meta, Next>(next: Next) -> FlattenStream<Next, St, Meta>
+where
+    St: futures_core::Stream,
+    Meta: Copy,
+    Next: Push<St::Item, Meta>,
+{
+    FlattenStream::new(next)
 }
 
 /// Creates a [`ForEach`] terminal push that consumes each item with a function.
