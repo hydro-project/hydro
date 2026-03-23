@@ -20,6 +20,7 @@ mod filter;
 mod filter_map;
 mod flat_map;
 mod flatten;
+mod flatten_stream;
 mod for_each;
 mod from_fn;
 mod fuse;
@@ -61,6 +62,7 @@ pub use filter::Filter;
 pub use filter_map::FilterMap;
 pub use flat_map::FlatMap;
 pub use flatten::Flatten;
+pub use flatten_stream::FlattenStream;
 pub use for_each::ForEach;
 pub use from_fn::FromFn;
 pub use fuse::Fuse;
@@ -301,6 +303,19 @@ pub trait Pull {
         Self::Item: IntoIterator,
     {
         Flatten::new(self)
+    }
+
+    /// Creates a pull that flattens items that are streams by polling each inner stream.
+    ///
+    /// This is useful when you have a pull of streams, and you want to
+    /// flatten them into a single pull. Requires an async context since
+    /// inner streams are polled.
+    fn flatten_stream(self) -> FlattenStream<Self, Self::Item, Self::Meta>
+    where
+        Self: Sized,
+        Self::Item: futures_core::Stream,
+    {
+        FlattenStream::new(self)
     }
 
     /// Creates a future which runs the given function on each element of a pull.
