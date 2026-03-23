@@ -1085,6 +1085,47 @@ where
             },
         )
     }
+
+    /// Resolves the singleton's [`Future`] value by blocking until it completes,
+    /// producing a singleton of the resolved output.
+    ///
+    /// This is useful when the singleton contains an async computation that must
+    /// be awaited before further processing. The future is polled to completion
+    /// before the output value is emitted.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let singleton = tick.singleton(q!(5));
+    /// singleton
+    ///     .map(q!(|v| async move { v * 2 }))
+    ///     .resolve_future_blocking()
+    ///     .all_ticks()
+    /// # }, |mut stream| async move {
+    /// // 10
+    /// # assert_eq!(stream.next().await.unwrap(), 10);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn resolve_future_blocking(self) -> Singleton<T::Output, L, B>
+    where
+        T: Future,
+        B: IsBounded,
+    {
+        Singleton::new(
+            self.location.clone(),
+            HydroNode::ResolveFuturesBlocking {
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(Singleton::<T::Output, L, B>::collection_kind()),
+            },
+        )
+    }
 }
 
 impl<'a, T, L> Singleton<T, Tick<L>, Bounded>

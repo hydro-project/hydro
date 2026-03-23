@@ -1805,6 +1805,10 @@ pub enum HydroNode {
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
+    ResolveFuturesBlocking {
+        input: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
     ResolveFuturesOrdered {
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
@@ -2042,6 +2046,7 @@ impl HydroNode {
 
             HydroNode::Map { input, .. }
             | HydroNode::ResolveFutures { input, .. }
+            | HydroNode::ResolveFuturesBlocking { input, .. }
             | HydroNode::ResolveFuturesOrdered { input, .. }
             | HydroNode::FlatMap { input, .. }
             | HydroNode::Filter { input, .. }
@@ -2214,6 +2219,12 @@ impl HydroNode {
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
+            HydroNode::ResolveFuturesBlocking { input, metadata } => {
+                HydroNode::ResolveFuturesBlocking {
+                    input: Box::new(input.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
             HydroNode::ResolveFuturesOrdered { input, metadata } => {
                 HydroNode::ResolveFuturesOrdered {
                     input: Box::new(input.deep_clone(seen_tees)),
@@ -3064,6 +3075,33 @@ impl HydroNode {
                         ident_stack.push(futures_ident);
                     }
 
+                    HydroNode::ResolveFuturesBlocking { .. } => {
+                        let input_ident = ident_stack.pop().unwrap();
+
+                        let futures_ident =
+                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(graph_builders) => {
+                                let builder = graph_builders.get_dfir_mut(&out_location);
+                                builder.add_dfir(
+                                    parse_quote! {
+                                        #futures_ident = #input_ident -> resolve_futures_blocking();
+                                    },
+                                    None,
+                                    Some(&next_stmt_id.to_string()),
+                                );
+                            }
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
+
+                        *next_stmt_id += 1;
+
+                        ident_stack.push(futures_ident);
+                    }
+
                     HydroNode::ResolveFuturesOrdered { .. } => {
                         let input_ident = ident_stack.pop().unwrap();
 
@@ -3814,6 +3852,7 @@ impl HydroNode {
             | HydroNode::CrossProduct { .. }
             | HydroNode::CrossSingleton { .. }
             | HydroNode::ResolveFutures { .. }
+            | HydroNode::ResolveFuturesBlocking { .. }
             | HydroNode::ResolveFuturesOrdered { .. }
             | HydroNode::Join { .. }
             | HydroNode::Difference { .. }
@@ -3890,6 +3929,7 @@ impl HydroNode {
             HydroNode::Difference { metadata, .. } => metadata,
             HydroNode::AntiJoin { metadata, .. } => metadata,
             HydroNode::ResolveFutures { metadata, .. } => metadata,
+            HydroNode::ResolveFuturesBlocking { metadata, .. } => metadata,
             HydroNode::ResolveFuturesOrdered { metadata, .. } => metadata,
             HydroNode::Map { metadata, .. } => metadata,
             HydroNode::FlatMap { metadata, .. } => metadata,
@@ -3940,6 +3980,7 @@ impl HydroNode {
             HydroNode::Difference { metadata, .. } => metadata,
             HydroNode::AntiJoin { metadata, .. } => metadata,
             HydroNode::ResolveFutures { metadata, .. } => metadata,
+            HydroNode::ResolveFuturesBlocking { metadata, .. } => metadata,
             HydroNode::ResolveFuturesOrdered { metadata, .. } => metadata,
             HydroNode::Map { metadata, .. } => metadata,
             HydroNode::FlatMap { metadata, .. } => metadata,
@@ -4010,6 +4051,7 @@ impl HydroNode {
             | HydroNode::Network { input, .. }
             | HydroNode::Counter { input, .. }
             | HydroNode::ResolveFutures { input, .. }
+            | HydroNode::ResolveFuturesBlocking { input, .. }
             | HydroNode::ResolveFuturesOrdered { input, .. }
             | HydroNode::Fold { input, .. }
             | HydroNode::FoldKeyed { input, .. }
@@ -4104,6 +4146,7 @@ impl HydroNode {
                 format!("AntiJoin({}, {})", pos.print_root(), neg.print_root())
             }
             HydroNode::ResolveFutures { .. } => "ResolveFutures()".to_owned(),
+            HydroNode::ResolveFuturesBlocking { .. } => "ResolveFuturesBlocking()".to_owned(),
             HydroNode::ResolveFuturesOrdered { .. } => "ResolveFuturesOrdered()".to_owned(),
             HydroNode::Map { f, .. } => format!("Map({:?})", f),
             HydroNode::FlatMap { f, .. } => format!("FlatMap({:?})", f),

@@ -1201,6 +1201,10 @@ impl HydroNode {
                 input: inner,
                 metadata,
             }
+            | HydroNode::ResolveFuturesBlocking {
+                input: inner,
+                metadata,
+            }
             | HydroNode::ResolveFuturesOrdered {
                 input: inner,
                 metadata,

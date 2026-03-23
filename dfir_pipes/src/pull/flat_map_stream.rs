@@ -166,8 +166,8 @@ mod tests {
         let mut cx = Context::from_waker(waker);
 
         // Use a simple, finite upstream and inner stream so we can reach `Ended`.
-        let mut p = crate::pull::iter(vec![1, 2, 3])
-            .flat_map_stream(|x| stream::iter(vec![x, x * 10]));
+        let mut p =
+            crate::pull::iter(vec![1, 2, 3]).flat_map_stream(|x| stream::iter(vec![x, x * 10]));
         let mut p = Pin::new(&mut p);
 
         // Drive the pull until we observe `Ended` once.

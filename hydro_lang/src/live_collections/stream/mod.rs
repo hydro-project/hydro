@@ -2330,6 +2330,57 @@ where
             .cross_product_nested_loop(self.make_bounded())
             .into_keyed()
     }
+
+    /// Consumes a stream of `Future<T>`, resolving each future while blocking subgraph
+    /// execution until all results are available. The output order is based on when futures
+    /// complete, and may be different than the input order.
+    ///
+    /// Unlike [`Stream::resolve_futures`], which allows the subgraph to continue executing
+    /// while futures are pending, this variant blocks until the futures resolve.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use std::collections::HashSet;
+    /// # use futures::StreamExt;
+    /// # use hydro_lang::prelude::*;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!([2, 3, 1, 9, 6, 5, 4, 7, 8]))
+    ///     .map(q!(|x| async move {
+    ///         tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    ///         x
+    ///     }))
+    ///     .resolve_futures_blocking()
+    /// #   },
+    /// #   |mut stream| async move {
+    /// // 1, 2, 3, 4, 5, 6, 7, 8, 9 (in any order)
+    /// #       let mut output = HashSet::new();
+    /// #       for _ in 1..10 {
+    /// #           output.insert(stream.next().await.unwrap());
+    /// #       }
+    /// #       assert_eq!(
+    /// #           output,
+    /// #           HashSet::<i32>::from_iter(1..10)
+    /// #       );
+    /// #   },
+    /// # ));
+    /// # }
+    /// ```
+    pub fn resolve_futures_blocking(self) -> Stream<T::Output, L, B, NoOrder, R>
+    where
+        T: Future,
+    {
+        Stream::new(
+            self.location.clone(),
+            HydroNode::ResolveFuturesBlocking {
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<T::Output, L, B, NoOrder, R>::collection_kind()),
+            },
+        )
+    }
 }
 
 impl<'a, K, V1, L, B: Boundedness, O: Ordering, R: Retries> Stream<(K, V1), L, B, O, R>
