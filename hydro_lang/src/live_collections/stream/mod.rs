@@ -618,6 +618,37 @@ where
         self.flat_map_unordered(q!(|d| d))
     }
 
+    /// For each item in the input stream, apply `f` to produce a [`futures::stream::Stream`],
+    /// then emit the elements of that stream one by one. When the inner stream yields
+    /// `Pending`, this operator yields as well.
+    pub fn flat_map_stream<U, S, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Stream<U, L, B, O, R>
+    where
+        S: futures::Stream<Item = U>,
+        F: Fn(T) -> S + 'a,
+    {
+        let f = f.splice_fn1_ctx(&self.location).into();
+        Stream::new(
+            self.location.clone(),
+            HydroNode::FlatMapStream {
+                f,
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<U, L, B, O, R>::collection_kind()),
+            },
+        )
+    }
+
+    /// For each item in the input stream, treat it as a [`futures::stream::Stream`] and
+    /// emit its elements one by one. When the inner stream yields `Pending`, this operator
+    /// yields as well.
+    pub fn flatten_stream<U>(self) -> Stream<U, L, B, O, R>
+    where
+        T: futures::Stream<Item = U>,
+    {
+        self.flat_map_stream(q!(|d| d))
+    }
+
     /// Creates a stream containing only the elements of the input stream that satisfy a predicate
     /// `f`, preserving the order of the elements.
     ///

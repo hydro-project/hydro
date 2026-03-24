@@ -1824,6 +1824,11 @@ pub enum HydroNode {
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
+    FlatMapStream {
+        f: DebugExpr,
+        input: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
     Filter {
         f: DebugExpr,
         input: Box<HydroNode>,
@@ -2049,6 +2054,7 @@ impl HydroNode {
             | HydroNode::ResolveFuturesBlocking { input, .. }
             | HydroNode::ResolveFuturesOrdered { input, .. }
             | HydroNode::FlatMap { input, .. }
+            | HydroNode::FlatMapStream { input, .. }
             | HydroNode::Filter { input, .. }
             | HydroNode::FilterMap { input, .. }
             | HydroNode::Sort { input, .. }
@@ -2237,6 +2243,11 @@ impl HydroNode {
                 metadata: metadata.clone(),
             },
             HydroNode::FlatMap { f, input, metadata } => HydroNode::FlatMap {
+                f: f.clone(),
+                input: Box::new(input.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::FlatMapStream { f, input, metadata } => HydroNode::FlatMapStream {
                 f: f.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
@@ -3183,6 +3194,33 @@ impl HydroNode {
                         ident_stack.push(flat_map_ident);
                     }
 
+                    HydroNode::FlatMapStream { f, .. } => {
+                        let input_ident = ident_stack.pop().unwrap();
+
+                        let flat_map_stream_ident =
+                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(graph_builders) => {
+                                let builder = graph_builders.get_dfir_mut(&out_location);
+                                builder.add_dfir(
+                                    parse_quote! {
+                                        #flat_map_stream_ident = #input_ident -> flat_map_stream(#f);
+                                    },
+                                    None,
+                                    Some(&next_stmt_id.to_string()),
+                                );
+                            }
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
+
+                        *next_stmt_id += 1;
+
+                        ident_stack.push(flat_map_stream_ident);
+                    }
+
                     HydroNode::Filter { f, .. } => {
                         let input_ident = ident_stack.pop().unwrap();
 
@@ -3863,6 +3901,7 @@ impl HydroNode {
             | HydroNode::Sort { .. } => {}
             HydroNode::Map { f, .. }
             | HydroNode::FlatMap { f, .. }
+            | HydroNode::FlatMapStream { f, .. }
             | HydroNode::Filter { f, .. }
             | HydroNode::FilterMap { f, .. }
             | HydroNode::Inspect { f, .. }
@@ -3933,6 +3972,7 @@ impl HydroNode {
             HydroNode::ResolveFuturesOrdered { metadata, .. } => metadata,
             HydroNode::Map { metadata, .. } => metadata,
             HydroNode::FlatMap { metadata, .. } => metadata,
+            HydroNode::FlatMapStream { metadata, .. } => metadata,
             HydroNode::Filter { metadata, .. } => metadata,
             HydroNode::FilterMap { metadata, .. } => metadata,
             HydroNode::DeferTick { metadata, .. } => metadata,
@@ -3984,6 +4024,7 @@ impl HydroNode {
             HydroNode::ResolveFuturesOrdered { metadata, .. } => metadata,
             HydroNode::Map { metadata, .. } => metadata,
             HydroNode::FlatMap { metadata, .. } => metadata,
+            HydroNode::FlatMapStream { metadata, .. } => metadata,
             HydroNode::Filter { metadata, .. } => metadata,
             HydroNode::FilterMap { metadata, .. } => metadata,
             HydroNode::DeferTick { metadata, .. } => metadata,
@@ -4041,6 +4082,7 @@ impl HydroNode {
             }
             HydroNode::Map { input, .. }
             | HydroNode::FlatMap { input, .. }
+            | HydroNode::FlatMapStream { input, .. }
             | HydroNode::Filter { input, .. }
             | HydroNode::FilterMap { input, .. }
             | HydroNode::Sort { input, .. }
@@ -4150,6 +4192,7 @@ impl HydroNode {
             HydroNode::ResolveFuturesOrdered { .. } => "ResolveFuturesOrdered()".to_owned(),
             HydroNode::Map { f, .. } => format!("Map({:?})", f),
             HydroNode::FlatMap { f, .. } => format!("FlatMap({:?})", f),
+            HydroNode::FlatMapStream { f, .. } => format!("FlatMapStream({:?})", f),
             HydroNode::Filter { f, .. } => format!("Filter({:?})", f),
             HydroNode::FilterMap { f, .. } => format!("FilterMap({:?})", f),
             HydroNode::DeferTick { .. } => "DeferTick()".to_owned(),
