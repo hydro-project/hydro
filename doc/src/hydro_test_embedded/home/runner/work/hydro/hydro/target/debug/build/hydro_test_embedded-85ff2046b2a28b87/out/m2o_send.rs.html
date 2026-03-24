@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/work/hydro/hydro/target/debug/build/hydro_test_embedded-85ff2046b2a28b87/out/m2o_send.rs`."><title>m2o_send.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../../../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../../../../../../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../../../../../../" data-static-root-path="../../../../../../../../../../../../static.files/" data-current-crate="hydro_test_embedded" data-themes="" data-resource-suffix="" data-rustdoc-version="1.96.0-nightly (562dee482 2026-03-21)" data-channel="nightly" data-search-js="search-63369b7b.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../../../../../../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../../../../../../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../../../../../../../../../src-files.js"></script><script defer src="../../../../../../../../../../../../static.files/main-5013f961.js"></script><noscript><link rel="stylesheet" href="../../../../../../../../../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../../../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_test_embedded/home/runner/work/hydro/hydro/target/debug/build/hydro_test_embedded-85ff2046b2a28b87/out/</div>m2o_send.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>hydro_test::__staged::__deps::<span class="kw-2">*</span>;
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/work/hydro/hydro/target/debug/build/hydro_test_embedded-85ff2046b2a28b87/out/m2o_send.rs`."><title>m2o_send.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../../../../../../../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../../../../../../../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../../../../../../../../../../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../../../../../../../../../../../../" data-static-root-path="../../../../../../../../../../../../static.files/" data-current-crate="hydro_test_embedded" data-themes="" data-resource-suffix="" data-rustdoc-version="1.96.0-nightly (f66622c7e 2026-03-23)" data-channel="nightly" data-search-js="search-63369b7b.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../../../../../../../../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../../../../../../../../../../static.files/src-script-813739b1.js"></script><script defer src="../../../../../../../../../../../../src-files.js"></script><script defer src="../../../../../../../../../../../../static.files/main-5013f961.js"></script><noscript><link rel="stylesheet" href="../../../../../../../../../../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../../../../../../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../../../../../../../../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_test_embedded/home/runner/work/hydro/hydro/target/debug/build/hydro_test_embedded-85ff2046b2a28b87/out/</div>m2o_send.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>hydro_test::__staged::__deps::<span class="kw-2">*</span>;
 <a href=#2 id=2 data-nosnippet>2</a><span class="kw">use </span>hydro_lang::prelude::<span class="kw-2">*</span>;
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use </span>hydro_lang::runtime_support::dfir_rs <span class="kw">as </span>__root_dfir_rs;
 <a href=#4 id=4 data-nosnippet>4</a><span class="kw">pub use </span>hydro_test::__staged;
@@ -307,488 +307,508 @@
 <a href=#307 id=307 data-nosnippet>307</a>                                            ctx,
 <a href=#308 id=308 data-nosnippet>308</a>                                        )
 <a href=#309 id=309 data-nosnippet>309</a>                                    }
-<a href=#310 id=310 data-nosnippet>310</a>                                }
-<a href=#311 id=311 data-nosnippet>311</a>                                PushGuard { inner: psh }
-<a href=#312 id=312 data-nosnippet>312</a>                            }
-<a href=#313 id=313 data-nosnippet>313</a>                            op_3v1__dest_sink__send1(op_3v1)
-<a href=#314 id=314 data-nosnippet>314</a>                        };
-<a href=#315 id=315 data-nosnippet>315</a>                        <span class="attr">#[inline(always)]
-<a href=#316 id=316 data-nosnippet>316</a>                        </span><span class="kw">fn </span>pivot_run_sg_1v1&lt;Pul, Psh, Item&gt;(
-<a href=#317 id=317 data-nosnippet>317</a>                            pull: Pul,
-<a href=#318 id=318 data-nosnippet>318</a>                            push: Psh,
-<a href=#319 id=319 data-nosnippet>319</a>                        ) -&gt; <span class="kw">impl </span>::std::future::Future&lt;Output = ()&gt;
-<a href=#320 id=320 data-nosnippet>320</a>                        <span class="kw">where
-<a href=#321 id=321 data-nosnippet>321</a>                            </span>Pul: __root_dfir_rs::dfir_pipes::pull::Pull&lt;Item = Item&gt;,
-<a href=#322 id=322 data-nosnippet>322</a>                            Psh: __root_dfir_rs::dfir_pipes::push::Push&lt;Item, Pul::Meta&gt;,
-<a href=#323 id=323 data-nosnippet>323</a>                        {
-<a href=#324 id=324 data-nosnippet>324</a>                            __root_dfir_rs::dfir_pipes::pull::Pull::send_push(pull, push)
-<a href=#325 id=325 data-nosnippet>325</a>                        }
-<a href=#326 id=326 data-nosnippet>326</a>                        (pivot_run_sg_1v1)(op_2v1, op_3v1).<span class="kw">await</span>;
-<a href=#327 id=327 data-nosnippet>327</a>                    },
-<a href=#328 id=328 data-nosnippet>328</a>                );
-<a href=#329 id=329 data-nosnippet>329</a>            df
-<a href=#330 id=330 data-nosnippet>330</a>        }
-<a href=#331 id=331 data-nosnippet>331</a>    }
-<a href=#332 id=332 data-nosnippet>332</a>}
-<a href=#333 id=333 data-nosnippet>333</a><span class="kw">pub mod </span>m2o_receiver {
-<a href=#334 id=334 data-nosnippet>334</a>    <span class="kw">use </span>super::<span class="kw-2">*</span>;
-<a href=#335 id=335 data-nosnippet>335</a>    <span class="kw">pub struct </span>EmbeddedOutputs&lt;
-<a href=#336 id=336 data-nosnippet>336</a>        __Out0: FnMut(
-<a href=#337 id=337 data-nosnippet>337</a>                (
-<a href=#338 id=338 data-nosnippet>338</a>                    hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;
-<a href=#339 id=339 data-nosnippet>339</a>                        hydro_test::__staged::embedded::m2o_send::Src,
-<a href=#340 id=340 data-nosnippet>340</a>                    &gt;,
-<a href=#341 id=341 data-nosnippet>341</a>                    std::string::String,
-<a href=#342 id=342 data-nosnippet>342</a>                ),
-<a href=#343 id=343 data-nosnippet>343</a>            ),
-<a href=#344 id=344 data-nosnippet>344</a>    &gt; {
-<a href=#345 id=345 data-nosnippet>345</a>        <span class="kw">pub </span>output: __Out0,
-<a href=#346 id=346 data-nosnippet>346</a>    }
-<a href=#347 id=347 data-nosnippet>347</a>    <span class="kw">pub struct </span>EmbeddedNetworkIn&lt;
-<a href=#348 id=348 data-nosnippet>348</a>        __NetIn0: __root_dfir_rs::futures::Stream&lt;
-<a href=#349 id=349 data-nosnippet>349</a>                Item = <span class="prelude-ty">Result</span>&lt;
-<a href=#350 id=350 data-nosnippet>350</a>                    (
-<a href=#351 id=351 data-nosnippet>351</a>                        hydro_lang::location::member_id::TaglessMemberId,
-<a href=#352 id=352 data-nosnippet>352</a>                        __root_dfir_rs::bytes::BytesMut,
-<a href=#353 id=353 data-nosnippet>353</a>                    ),
-<a href=#354 id=354 data-nosnippet>354</a>                    std::io::Error,
-<a href=#355 id=355 data-nosnippet>355</a>                &gt;,
-<a href=#356 id=356 data-nosnippet>356</a>            &gt; + Unpin,
-<a href=#357 id=357 data-nosnippet>357</a>    &gt; {
-<a href=#358 id=358 data-nosnippet>358</a>        <span class="kw">pub </span>m2o_data: __NetIn0,
-<a href=#359 id=359 data-nosnippet>359</a>    }
-<a href=#360 id=360 data-nosnippet>360</a>}
-<a href=#361 id=361 data-nosnippet>361</a><span class="attr">#[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
-<a href=#362 id=362 data-nosnippet>362</a></span><span class="kw">pub fn </span>m2o_receiver&lt;
-<a href=#363 id=363 data-nosnippet>363</a>    <span class="lifetime">'a</span>,
-<a href=#364 id=364 data-nosnippet>364</a>    __Out0: FnMut(
-<a href=#365 id=365 data-nosnippet>365</a>            (
-<a href=#366 id=366 data-nosnippet>366</a>                hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;
-<a href=#367 id=367 data-nosnippet>367</a>                    hydro_test::__staged::embedded::m2o_send::Src,
-<a href=#368 id=368 data-nosnippet>368</a>                &gt;,
-<a href=#369 id=369 data-nosnippet>369</a>                std::string::String,
-<a href=#370 id=370 data-nosnippet>370</a>            ),
-<a href=#371 id=371 data-nosnippet>371</a>        ) + <span class="lifetime">'a</span>,
-<a href=#372 id=372 data-nosnippet>372</a>    __NetIn0: __root_dfir_rs::futures::Stream&lt;
-<a href=#373 id=373 data-nosnippet>373</a>            Item = <span class="prelude-ty">Result</span>&lt;
-<a href=#374 id=374 data-nosnippet>374</a>                (
-<a href=#375 id=375 data-nosnippet>375</a>                    hydro_lang::location::member_id::TaglessMemberId,
-<a href=#376 id=376 data-nosnippet>376</a>                    __root_dfir_rs::bytes::BytesMut,
-<a href=#377 id=377 data-nosnippet>377</a>                ),
-<a href=#378 id=378 data-nosnippet>378</a>                std::io::Error,
-<a href=#379 id=379 data-nosnippet>379</a>            &gt;,
-<a href=#380 id=380 data-nosnippet>380</a>        &gt; + Unpin + <span class="lifetime">'a</span>,
-<a href=#381 id=381 data-nosnippet>381</a>&gt;(
-<a href=#382 id=382 data-nosnippet>382</a>    __outputs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>m2o_receiver::EmbeddedOutputs&lt;__Out0&gt;,
-<a href=#383 id=383 data-nosnippet>383</a>    __network_in: m2o_receiver::EmbeddedNetworkIn&lt;__NetIn0&gt;,
-<a href=#384 id=384 data-nosnippet>384</a>) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir&lt;<span class="lifetime">'a</span>&gt; {
-<a href=#385 id=385 data-nosnippet>385</a>    <span class="kw">let </span><span class="kw-2">mut </span>output = <span class="kw-2">&amp;mut </span>__outputs.output;
-<a href=#386 id=386 data-nosnippet>386</a>    <span class="kw">let </span>__network_in_m2o_data = __network_in.m2o_data;
-<a href=#387 id=387 data-nosnippet>387</a>    {
-<a href=#388 id=388 data-nosnippet>388</a>        <span class="attr">#[allow(unused_qualifications, clippy::await_holding_refcell_ref)]
-<a href=#389 id=389 data-nosnippet>389</a>        </span>{
-<a href=#390 id=390 data-nosnippet>390</a>            <span class="kw">use </span>__root_dfir_rs::{var_expr, var_args};
-<a href=#391 id=391 data-nosnippet>391</a>            <span class="kw">let </span><span class="kw-2">mut </span>df = __root_dfir_rs::scheduled::graph::Dfir::new();
-<a href=#392 id=392 data-nosnippet>392</a>            df.__assign_meta_graph(
-<a href=#393 id=393 data-nosnippet>393</a>                <span class="string">"{\"nodes\":[{\"value\":null,\"version\":0},{\"value\":{\"Operator\":\"source_stream (__network_in_m2o_data)\"},\"version\":1},{\"value\":{\"Operator\":\"map (| res | { let (id , b) = res . unwrap () ; (hydro_lang :: __staged :: location :: MemberId :: &lt; hydro_test :: __staged :: embedded :: m2o_send :: Src &gt; :: from_tagless (id as hydro_lang :: __staged :: location :: TaglessMemberId) , hydro_lang :: runtime_support :: bincode :: deserialize :: &lt; std :: string :: String &gt; (&amp; b) . unwrap ()) })\"},\"version\":1},{\"value\":{\"Operator\":\"map (stageleft :: runtime_support :: fn1_type_hint :: &lt; (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId &lt; hydro_test :: __staged :: embedded :: m2o_send :: Src &gt; , std :: string :: String) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId &lt; hydro_test :: __staged :: embedded :: m2o_send :: Src &gt; , std :: string :: String) &gt; ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: &lt; std :: string :: String , std :: string :: String &gt; ({ use hydro_test :: __staged :: __deps :: * ; use hydro_test :: __staged :: embedded :: m2o_send :: * ; | s | s . to_uppercase () }) ; { let orig = f__free ; move | (k , v) | (k , orig (v)) } }))\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (&amp; mut output)\"},\"version\":1}],\"operator_tag\":[{\"value\":null,\"version\":0},{\"value\":\"recv1\",\"version\":1},{\"value\":\"recv1\",\"version\":1},{\"value\":\"3\",\"version\":1},{\"value\":\"6\",\"version\":1}],\"graph\":[{\"value\":null,\"version\":0},{\"value\":[{\"idx\":1,\"version\":1},{\"idx\":2,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":2,\"version\":1},{\"idx\":3,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":3,\"version\":1},{\"idx\":4,\"version\":1}],\"version\":1}],\"ports\":[{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1}],\"node_loops\":[{\"value\":null,\"version\":0}],\"loop_nodes\":[{\"value\":null,\"version\":0}],\"loop_parent\":[{\"value\":null,\"version\":0}],\"root_loops\":[],\"loop_children\":[{\"value\":null,\"version\":0}],\"node_subgraph\":[{\"value\":null,\"version\":0},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1}],\"subgraph_nodes\":[{\"value\":null,\"version\":0},{\"value\":[{\"idx\":1,\"version\":1},{\"idx\":2,\"version\":1},{\"idx\":3,\"version\":1},{\"idx\":4,\"version\":1}],\"version\":1}],\"subgraph_stratum\":[{\"value\":null,\"version\":0},{\"value\":0,\"version\":1}],\"node_singleton_references\":[{\"value\":null,\"version\":0},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1}],\"node_varnames\":[{\"value\":null,\"version\":0},{\"value\":\"stream_1\",\"version\":1},{\"value\":\"stream_1\",\"version\":1},{\"value\":\"stream_3\",\"version\":1}],\"subgraph_laziness\":[{\"value\":null,\"version\":0}]}"</span>,
-<a href=#394 id=394 data-nosnippet>394</a>            );
-<a href=#395 id=395 data-nosnippet>395</a>            df.__assign_diagnostics(<span class="string">"[]"</span>);
-<a href=#396 id=396 data-nosnippet>396</a>            <span class="attr">#[allow(non_snake_case)]
-<a href=#397 id=397 data-nosnippet>397</a>            #[inline(always)]
-<a href=#398 id=398 data-nosnippet>398</a>            </span><span class="kw">fn </span>op_1v1__source_stream__recv1&lt;T&gt;(
-<a href=#399 id=399 data-nosnippet>399</a>                thunk: <span class="kw">impl </span>::std::ops::FnOnce() -&gt; T,
-<a href=#400 id=400 data-nosnippet>400</a>            ) -&gt; T {
-<a href=#401 id=401 data-nosnippet>401</a>                thunk()
-<a href=#402 id=402 data-nosnippet>402</a>            }
-<a href=#403 id=403 data-nosnippet>403</a>            <span class="attr">#[allow(non_snake_case)]
-<a href=#404 id=404 data-nosnippet>404</a>            #[inline(always)]
-<a href=#405 id=405 data-nosnippet>405</a>            </span><span class="kw">async fn </span>op_1v1__source_stream__recv1__async&lt;T&gt;(
-<a href=#406 id=406 data-nosnippet>406</a>                thunk: <span class="kw">impl </span>::std::future::Future&lt;Output = T&gt;,
-<a href=#407 id=407 data-nosnippet>407</a>            ) -&gt; T {
-<a href=#408 id=408 data-nosnippet>408</a>                thunk.<span class="kw">await
-<a href=#409 id=409 data-nosnippet>409</a>            </span>}
-<a href=#410 id=410 data-nosnippet>410</a>            <span class="kw">let </span><span class="kw-2">mut </span>sg_1v1_node_1v1_stream = {
-<a href=#411 id=411 data-nosnippet>411</a>                <span class="attr">#[inline(always)]
-<a href=#412 id=412 data-nosnippet>412</a>                </span><span class="kw">fn </span>check_stream&lt;
-<a href=#413 id=413 data-nosnippet>413</a>                    Stream: __root_dfir_rs::futures::stream::Stream&lt;Item = Item&gt;
-<a href=#414 id=414 data-nosnippet>414</a>                        + ::std::marker::Unpin,
-<a href=#415 id=415 data-nosnippet>415</a>                    Item,
-<a href=#416 id=416 data-nosnippet>416</a>                &gt;(
-<a href=#417 id=417 data-nosnippet>417</a>                    stream: Stream,
-<a href=#418 id=418 data-nosnippet>418</a>                ) -&gt; <span class="kw">impl </span>__root_dfir_rs::futures::stream::Stream&lt;
-<a href=#419 id=419 data-nosnippet>419</a>                    Item = Item,
-<a href=#420 id=420 data-nosnippet>420</a>                &gt; + ::std::marker::Unpin {
-<a href=#421 id=421 data-nosnippet>421</a>                    stream
-<a href=#422 id=422 data-nosnippet>422</a>                }
-<a href=#423 id=423 data-nosnippet>423</a>                check_stream(__network_in_m2o_data)
-<a href=#424 id=424 data-nosnippet>424</a>            };
-<a href=#425 id=425 data-nosnippet>425</a>            <span class="attr">#[allow(non_snake_case)]
-<a href=#426 id=426 data-nosnippet>426</a>            #[inline(always)]
-<a href=#427 id=427 data-nosnippet>427</a>            </span><span class="kw">fn </span>op_2v1__map__recv1&lt;T&gt;(thunk: <span class="kw">impl </span>::std::ops::FnOnce() -&gt; T) -&gt; T {
-<a href=#428 id=428 data-nosnippet>428</a>                thunk()
-<a href=#429 id=429 data-nosnippet>429</a>            }
-<a href=#430 id=430 data-nosnippet>430</a>            <span class="attr">#[allow(non_snake_case)]
-<a href=#431 id=431 data-nosnippet>431</a>            #[inline(always)]
-<a href=#432 id=432 data-nosnippet>432</a>            </span><span class="kw">async fn </span>op_2v1__map__recv1__async&lt;T&gt;(
-<a href=#433 id=433 data-nosnippet>433</a>                thunk: <span class="kw">impl </span>::std::future::Future&lt;Output = T&gt;,
-<a href=#434 id=434 data-nosnippet>434</a>            ) -&gt; T {
-<a href=#435 id=435 data-nosnippet>435</a>                thunk.<span class="kw">await
-<a href=#436 id=436 data-nosnippet>436</a>            </span>}
-<a href=#437 id=437 data-nosnippet>437</a>            <span class="attr">#[allow(non_snake_case)]
-<a href=#438 id=438 data-nosnippet>438</a>            #[inline(always)]
-<a href=#439 id=439 data-nosnippet>439</a>            </span><span class="kw">fn </span>op_3v1__map__3&lt;T&gt;(thunk: <span class="kw">impl </span>::std::ops::FnOnce() -&gt; T) -&gt; T {
-<a href=#440 id=440 data-nosnippet>440</a>                thunk()
-<a href=#441 id=441 data-nosnippet>441</a>            }
-<a href=#442 id=442 data-nosnippet>442</a>            <span class="attr">#[allow(non_snake_case)]
-<a href=#443 id=443 data-nosnippet>443</a>            #[inline(always)]
-<a href=#444 id=444 data-nosnippet>444</a>            </span><span class="kw">async fn </span>op_3v1__map__3__async&lt;T&gt;(
-<a href=#445 id=445 data-nosnippet>445</a>                thunk: <span class="kw">impl </span>::std::future::Future&lt;Output = T&gt;,
-<a href=#446 id=446 data-nosnippet>446</a>            ) -&gt; T {
-<a href=#447 id=447 data-nosnippet>447</a>                thunk.<span class="kw">await
-<a href=#448 id=448 data-nosnippet>448</a>            </span>}
-<a href=#449 id=449 data-nosnippet>449</a>            <span class="attr">#[allow(non_snake_case)]
-<a href=#450 id=450 data-nosnippet>450</a>            #[inline(always)]
-<a href=#451 id=451 data-nosnippet>451</a>            </span><span class="kw">fn </span>op_4v1__for_each__6&lt;T&gt;(thunk: <span class="kw">impl </span>::std::ops::FnOnce() -&gt; T) -&gt; T {
-<a href=#452 id=452 data-nosnippet>452</a>                thunk()
-<a href=#453 id=453 data-nosnippet>453</a>            }
-<a href=#454 id=454 data-nosnippet>454</a>            <span class="attr">#[allow(non_snake_case)]
-<a href=#455 id=455 data-nosnippet>455</a>            #[inline(always)]
-<a href=#456 id=456 data-nosnippet>456</a>            </span><span class="kw">async fn </span>op_4v1__for_each__6__async&lt;T&gt;(
-<a href=#457 id=457 data-nosnippet>457</a>                thunk: <span class="kw">impl </span>::std::future::Future&lt;Output = T&gt;,
-<a href=#458 id=458 data-nosnippet>458</a>            ) -&gt; T {
-<a href=#459 id=459 data-nosnippet>459</a>                thunk.<span class="kw">await
-<a href=#460 id=460 data-nosnippet>460</a>            </span>}
-<a href=#461 id=461 data-nosnippet>461</a>            <span class="kw">let </span>sgid_1v1 = df
-<a href=#462 id=462 data-nosnippet>462</a>                .add_subgraph_full(
-<a href=#463 id=463 data-nosnippet>463</a>                    <span class="string">"Subgraph GraphSubgraphId(1v1)"</span>,
-<a href=#464 id=464 data-nosnippet>464</a>                    <span class="number">0</span>,
-<a href=#465 id=465 data-nosnippet>465</a>                    <span class="macro">var_expr!</span>(),
-<a href=#466 id=466 data-nosnippet>466</a>                    <span class="macro">var_expr!</span>(),
-<a href=#467 id=467 data-nosnippet>467</a>                    <span class="bool-val">false</span>,
-<a href=#468 id=468 data-nosnippet>468</a>                    <span class="prelude-val">None</span>,
-<a href=#469 id=469 data-nosnippet>469</a>                    <span class="kw">async move </span>|context, <span class="macro">var_args!</span>(), <span class="macro">var_args!</span>()| {
-<a href=#470 id=470 data-nosnippet>470</a>                        <span class="kw">let </span>op_1v1 = __root_dfir_rs::dfir_pipes::pull::stream_ready(
-<a href=#471 id=471 data-nosnippet>471</a>                            <span class="kw-2">&amp;mut </span>sg_1v1_node_1v1_stream,
-<a href=#472 id=472 data-nosnippet>472</a>                            context.waker(),
-<a href=#473 id=473 data-nosnippet>473</a>                        );
-<a href=#474 id=474 data-nosnippet>474</a>                        <span class="kw">let </span>op_1v1 = {
-<a href=#475 id=475 data-nosnippet>475</a>                            <span class="attr">#[allow(non_snake_case)]
-<a href=#476 id=476 data-nosnippet>476</a>                            #[inline(always)]
-<a href=#477 id=477 data-nosnippet>477</a>                            </span><span class="kw">pub fn </span>op_1v1__source_stream__recv1&lt;Item, Input&gt;(
-<a href=#478 id=478 data-nosnippet>478</a>                                input: Input,
-<a href=#479 id=479 data-nosnippet>479</a>                            ) -&gt; <span class="kw">impl </span>__root_dfir_rs::dfir_pipes::pull::Pull&lt;
-<a href=#480 id=480 data-nosnippet>480</a>                                Item = Item,
-<a href=#481 id=481 data-nosnippet>481</a>                                Meta = (),
-<a href=#482 id=482 data-nosnippet>482</a>                                CanPend = Input::CanPend,
-<a href=#483 id=483 data-nosnippet>483</a>                                CanEnd = Input::CanEnd,
-<a href=#484 id=484 data-nosnippet>484</a>                            &gt;
-<a href=#485 id=485 data-nosnippet>485</a>                            <span class="kw">where
-<a href=#486 id=486 data-nosnippet>486</a>                                </span>Input: __root_dfir_rs::dfir_pipes::pull::Pull&lt;
-<a href=#487 id=487 data-nosnippet>487</a>                                    Item = Item,
-<a href=#488 id=488 data-nosnippet>488</a>                                    Meta = (),
-<a href=#489 id=489 data-nosnippet>489</a>                                &gt;,
-<a href=#490 id=490 data-nosnippet>490</a>                            {
-<a href=#491 id=491 data-nosnippet>491</a>                                <span class="macro">__root_dfir_rs::pin_project_lite::pin_project!</span> {
-<a href=#492 id=492 data-nosnippet>492</a>                                    <span class="attr">#[repr(transparent)] </span><span class="kw">struct </span>Pull &lt; Item, Input :
-<a href=#493 id=493 data-nosnippet>493</a>                                    __root_dfir_rs::dfir_pipes::pull::Pull &lt; Item = Item &gt;&gt; {
-<a href=#494 id=494 data-nosnippet>494</a>                                    <span class="attr">#[pin] </span>inner : Input }
-<a href=#495 id=495 data-nosnippet>495</a>                                }
-<a href=#496 id=496 data-nosnippet>496</a>                                <span class="kw">impl</span>&lt;Item, Input&gt; __root_dfir_rs::dfir_pipes::pull::Pull
-<a href=#497 id=497 data-nosnippet>497</a>                                <span class="kw">for </span>Pull&lt;Item, Input&gt;
-<a href=#498 id=498 data-nosnippet>498</a>                                <span class="kw">where
-<a href=#499 id=499 data-nosnippet>499</a>                                    </span>Input: __root_dfir_rs::dfir_pipes::pull::Pull&lt;Item = Item&gt;,
-<a href=#500 id=500 data-nosnippet>500</a>                                {
-<a href=#501 id=501 data-nosnippet>501</a>                                    <span class="kw">type </span>Ctx&lt;<span class="lifetime">'ctx</span>&gt; = Input::Ctx&lt;<span class="lifetime">'ctx</span>&gt;;
-<a href=#502 id=502 data-nosnippet>502</a>                                    <span class="kw">type </span>Item = Item;
-<a href=#503 id=503 data-nosnippet>503</a>                                    <span class="kw">type </span>Meta = Input::Meta;
-<a href=#504 id=504 data-nosnippet>504</a>                                    <span class="kw">type </span>CanPend = Input::CanPend;
-<a href=#505 id=505 data-nosnippet>505</a>                                    <span class="kw">type </span>CanEnd = Input::CanEnd;
-<a href=#506 id=506 data-nosnippet>506</a>                                    <span class="attr">#[inline(always)]
-<a href=#507 id=507 data-nosnippet>507</a>                                    </span><span class="kw">fn </span>pull(
-<a href=#508 id=508 data-nosnippet>508</a>                                        <span class="self">self</span>: ::std::pin::Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
-<a href=#509 id=509 data-nosnippet>509</a>                                        ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;,
-<a href=#510 id=510 data-nosnippet>510</a>                                    ) -&gt; __root_dfir_rs::dfir_pipes::pull::PullStep&lt;
-<a href=#511 id=511 data-nosnippet>511</a>                                        <span class="self">Self</span>::Item,
-<a href=#512 id=512 data-nosnippet>512</a>                                        <span class="self">Self</span>::Meta,
-<a href=#513 id=513 data-nosnippet>513</a>                                        <span class="self">Self</span>::CanPend,
-<a href=#514 id=514 data-nosnippet>514</a>                                        <span class="self">Self</span>::CanEnd,
-<a href=#515 id=515 data-nosnippet>515</a>                                    &gt; {
-<a href=#516 id=516 data-nosnippet>516</a>                                        __root_dfir_rs::dfir_pipes::pull::Pull::pull(
-<a href=#517 id=517 data-nosnippet>517</a>                                            <span class="self">self</span>.project().inner,
-<a href=#518 id=518 data-nosnippet>518</a>                                            ctx,
-<a href=#519 id=519 data-nosnippet>519</a>                                        )
-<a href=#520 id=520 data-nosnippet>520</a>                                    }
-<a href=#521 id=521 data-nosnippet>521</a>                                    <span class="attr">#[inline(always)]
-<a href=#522 id=522 data-nosnippet>522</a>                                    </span><span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
-<a href=#523 id=523 data-nosnippet>523</a>                                        __root_dfir_rs::dfir_pipes::pull::Pull::size_hint(
-<a href=#524 id=524 data-nosnippet>524</a>                                            <span class="kw-2">&amp;</span><span class="self">self</span>.inner,
-<a href=#525 id=525 data-nosnippet>525</a>                                        )
-<a href=#526 id=526 data-nosnippet>526</a>                                    }
-<a href=#527 id=527 data-nosnippet>527</a>                                }
-<a href=#528 id=528 data-nosnippet>528</a>                                Pull { inner: input }
-<a href=#529 id=529 data-nosnippet>529</a>                            }
-<a href=#530 id=530 data-nosnippet>530</a>                            op_1v1__source_stream__recv1::&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;(op_1v1)
-<a href=#531 id=531 data-nosnippet>531</a>                        };
-<a href=#532 id=532 data-nosnippet>532</a>                        <span class="attr">#[allow(
-<a href=#533 id=533 data-nosnippet>533</a>                            clippy::map_clone,
-<a href=#534 id=534 data-nosnippet>534</a>                            reason = <span class="string">"dfir has no explicit `cloned`/`copied` operator"
-<a href=#535 id=535 data-nosnippet>535</a>                        </span>)]
-<a href=#536 id=536 data-nosnippet>536</a>                        </span><span class="kw">let </span>op_2v1 = __root_dfir_rs::dfir_pipes::pull::Pull::map(
-<a href=#537 id=537 data-nosnippet>537</a>                            op_1v1,
-<a href=#538 id=538 data-nosnippet>538</a>                            |res| {
-<a href=#539 id=539 data-nosnippet>539</a>                                <span class="kw">let </span>(id, b) = res.unwrap();
-<a href=#540 id=540 data-nosnippet>540</a>                                (
-<a href=#541 id=541 data-nosnippet>541</a>                                    hydro_lang::__staged::location::MemberId::&lt;
-<a href=#542 id=542 data-nosnippet>542</a>                                        hydro_test::__staged::embedded::m2o_send::Src,
-<a href=#543 id=543 data-nosnippet>543</a>                                    &gt;::from_tagless(
-<a href=#544 id=544 data-nosnippet>544</a>                                        id <span class="kw">as </span>hydro_lang::__staged::location::TaglessMemberId,
-<a href=#545 id=545 data-nosnippet>545</a>                                    ),
-<a href=#546 id=546 data-nosnippet>546</a>                                    hydro_lang::runtime_support::bincode::deserialize::&lt;
-<a href=#547 id=547 data-nosnippet>547</a>                                        std::string::String,
-<a href=#548 id=548 data-nosnippet>548</a>                                    &gt;(<span class="kw-2">&amp;</span>b)
-<a href=#549 id=549 data-nosnippet>549</a>                                        .unwrap(),
-<a href=#550 id=550 data-nosnippet>550</a>                                )
-<a href=#551 id=551 data-nosnippet>551</a>                            },
-<a href=#552 id=552 data-nosnippet>552</a>                        );
-<a href=#553 id=553 data-nosnippet>553</a>                        <span class="kw">let </span>op_2v1 = {
-<a href=#554 id=554 data-nosnippet>554</a>                            <span class="attr">#[allow(non_snake_case)]
-<a href=#555 id=555 data-nosnippet>555</a>                            #[inline(always)]
-<a href=#556 id=556 data-nosnippet>556</a>                            </span><span class="kw">pub fn </span>op_2v1__map__recv1&lt;Item, Input&gt;(
-<a href=#557 id=557 data-nosnippet>557</a>                                input: Input,
-<a href=#558 id=558 data-nosnippet>558</a>                            ) -&gt; <span class="kw">impl </span>__root_dfir_rs::dfir_pipes::pull::Pull&lt;
-<a href=#559 id=559 data-nosnippet>559</a>                                Item = Item,
-<a href=#560 id=560 data-nosnippet>560</a>                                Meta = (),
-<a href=#561 id=561 data-nosnippet>561</a>                                CanPend = Input::CanPend,
-<a href=#562 id=562 data-nosnippet>562</a>                                CanEnd = Input::CanEnd,
-<a href=#563 id=563 data-nosnippet>563</a>                            &gt;
-<a href=#564 id=564 data-nosnippet>564</a>                            <span class="kw">where
-<a href=#565 id=565 data-nosnippet>565</a>                                </span>Input: __root_dfir_rs::dfir_pipes::pull::Pull&lt;
-<a href=#566 id=566 data-nosnippet>566</a>                                    Item = Item,
-<a href=#567 id=567 data-nosnippet>567</a>                                    Meta = (),
-<a href=#568 id=568 data-nosnippet>568</a>                                &gt;,
-<a href=#569 id=569 data-nosnippet>569</a>                            {
-<a href=#570 id=570 data-nosnippet>570</a>                                <span class="macro">__root_dfir_rs::pin_project_lite::pin_project!</span> {
-<a href=#571 id=571 data-nosnippet>571</a>                                    <span class="attr">#[repr(transparent)] </span><span class="kw">struct </span>Pull &lt; Item, Input :
-<a href=#572 id=572 data-nosnippet>572</a>                                    __root_dfir_rs::dfir_pipes::pull::Pull &lt; Item = Item &gt;&gt; {
-<a href=#573 id=573 data-nosnippet>573</a>                                    <span class="attr">#[pin] </span>inner : Input }
-<a href=#574 id=574 data-nosnippet>574</a>                                }
-<a href=#575 id=575 data-nosnippet>575</a>                                <span class="kw">impl</span>&lt;Item, Input&gt; __root_dfir_rs::dfir_pipes::pull::Pull
-<a href=#576 id=576 data-nosnippet>576</a>                                <span class="kw">for </span>Pull&lt;Item, Input&gt;
-<a href=#577 id=577 data-nosnippet>577</a>                                <span class="kw">where
-<a href=#578 id=578 data-nosnippet>578</a>                                    </span>Input: __root_dfir_rs::dfir_pipes::pull::Pull&lt;Item = Item&gt;,
-<a href=#579 id=579 data-nosnippet>579</a>                                {
-<a href=#580 id=580 data-nosnippet>580</a>                                    <span class="kw">type </span>Ctx&lt;<span class="lifetime">'ctx</span>&gt; = Input::Ctx&lt;<span class="lifetime">'ctx</span>&gt;;
-<a href=#581 id=581 data-nosnippet>581</a>                                    <span class="kw">type </span>Item = Item;
-<a href=#582 id=582 data-nosnippet>582</a>                                    <span class="kw">type </span>Meta = Input::Meta;
-<a href=#583 id=583 data-nosnippet>583</a>                                    <span class="kw">type </span>CanPend = Input::CanPend;
-<a href=#584 id=584 data-nosnippet>584</a>                                    <span class="kw">type </span>CanEnd = Input::CanEnd;
-<a href=#585 id=585 data-nosnippet>585</a>                                    <span class="attr">#[inline(always)]
-<a href=#586 id=586 data-nosnippet>586</a>                                    </span><span class="kw">fn </span>pull(
-<a href=#587 id=587 data-nosnippet>587</a>                                        <span class="self">self</span>: ::std::pin::Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
-<a href=#588 id=588 data-nosnippet>588</a>                                        ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;,
-<a href=#589 id=589 data-nosnippet>589</a>                                    ) -&gt; __root_dfir_rs::dfir_pipes::pull::PullStep&lt;
-<a href=#590 id=590 data-nosnippet>590</a>                                        <span class="self">Self</span>::Item,
-<a href=#591 id=591 data-nosnippet>591</a>                                        <span class="self">Self</span>::Meta,
-<a href=#592 id=592 data-nosnippet>592</a>                                        <span class="self">Self</span>::CanPend,
-<a href=#593 id=593 data-nosnippet>593</a>                                        <span class="self">Self</span>::CanEnd,
-<a href=#594 id=594 data-nosnippet>594</a>                                    &gt; {
-<a href=#595 id=595 data-nosnippet>595</a>                                        __root_dfir_rs::dfir_pipes::pull::Pull::pull(
-<a href=#596 id=596 data-nosnippet>596</a>                                            <span class="self">self</span>.project().inner,
-<a href=#597 id=597 data-nosnippet>597</a>                                            ctx,
-<a href=#598 id=598 data-nosnippet>598</a>                                        )
-<a href=#599 id=599 data-nosnippet>599</a>                                    }
-<a href=#600 id=600 data-nosnippet>600</a>                                    <span class="attr">#[inline(always)]
-<a href=#601 id=601 data-nosnippet>601</a>                                    </span><span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
-<a href=#602 id=602 data-nosnippet>602</a>                                        __root_dfir_rs::dfir_pipes::pull::Pull::size_hint(
-<a href=#603 id=603 data-nosnippet>603</a>                                            <span class="kw-2">&amp;</span><span class="self">self</span>.inner,
-<a href=#604 id=604 data-nosnippet>604</a>                                        )
-<a href=#605 id=605 data-nosnippet>605</a>                                    }
-<a href=#606 id=606 data-nosnippet>606</a>                                }
-<a href=#607 id=607 data-nosnippet>607</a>                                Pull { inner: input }
-<a href=#608 id=608 data-nosnippet>608</a>                            }
-<a href=#609 id=609 data-nosnippet>609</a>                            op_2v1__map__recv1::&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;(op_2v1)
-<a href=#610 id=610 data-nosnippet>610</a>                        };
-<a href=#611 id=611 data-nosnippet>611</a>                        <span class="attr">#[allow(
-<a href=#612 id=612 data-nosnippet>612</a>                            clippy::map_clone,
-<a href=#613 id=613 data-nosnippet>613</a>                            reason = <span class="string">"dfir has no explicit `cloned`/`copied` operator"
-<a href=#614 id=614 data-nosnippet>614</a>                        </span>)]
-<a href=#615 id=615 data-nosnippet>615</a>                        </span><span class="kw">let </span>op_3v1 = __root_dfir_rs::dfir_pipes::pull::Pull::map(
-<a href=#616 id=616 data-nosnippet>616</a>                            op_2v1,
-<a href=#617 id=617 data-nosnippet>617</a>                            stageleft::runtime_support::fn1_type_hint::&lt;
-<a href=#618 id=618 data-nosnippet>618</a>                                (
-<a href=#619 id=619 data-nosnippet>619</a>                                    hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;
-<a href=#620 id=620 data-nosnippet>620</a>                                        hydro_test::__staged::embedded::m2o_send::Src,
-<a href=#621 id=621 data-nosnippet>621</a>                                    &gt;,
-<a href=#622 id=622 data-nosnippet>622</a>                                    std::string::String,
-<a href=#623 id=623 data-nosnippet>623</a>                                ),
-<a href=#624 id=624 data-nosnippet>624</a>                                (
-<a href=#625 id=625 data-nosnippet>625</a>                                    hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;
-<a href=#626 id=626 data-nosnippet>626</a>                                        hydro_test::__staged::embedded::m2o_send::Src,
-<a href=#627 id=627 data-nosnippet>627</a>                                    &gt;,
-<a href=#628 id=628 data-nosnippet>628</a>                                    std::string::String,
-<a href=#629 id=629 data-nosnippet>629</a>                                ),
-<a href=#630 id=630 data-nosnippet>630</a>                            &gt;({
-<a href=#631 id=631 data-nosnippet>631</a>                                <span class="kw">use </span>hydro_lang::__staged::__deps::<span class="kw-2">*</span>;
-<a href=#632 id=632 data-nosnippet>632</a>                                <span class="kw">use </span>hydro_lang::__staged::live_collections::keyed_stream::<span class="kw-2">*</span>;
-<a href=#633 id=633 data-nosnippet>633</a>                                <span class="kw">let </span>f__free = stageleft::runtime_support::fn1_type_hint::&lt;
-<a href=#634 id=634 data-nosnippet>634</a>                                    std::string::String,
-<a href=#635 id=635 data-nosnippet>635</a>                                    std::string::String,
-<a href=#636 id=636 data-nosnippet>636</a>                                &gt;({
-<a href=#637 id=637 data-nosnippet>637</a>                                    <span class="kw">use </span>hydro_test::__staged::__deps::<span class="kw-2">*</span>;
-<a href=#638 id=638 data-nosnippet>638</a>                                    <span class="kw">use </span>hydro_test::__staged::embedded::m2o_send::<span class="kw-2">*</span>;
-<a href=#639 id=639 data-nosnippet>639</a>                                    |s| s.to_uppercase()
-<a href=#640 id=640 data-nosnippet>640</a>                                });
-<a href=#641 id=641 data-nosnippet>641</a>                                {
-<a href=#642 id=642 data-nosnippet>642</a>                                    <span class="kw">let </span>orig = f__free;
-<a href=#643 id=643 data-nosnippet>643</a>                                    <span class="kw">move </span>|(k, v)| (k, orig(v))
-<a href=#644 id=644 data-nosnippet>644</a>                                }
-<a href=#645 id=645 data-nosnippet>645</a>                            }),
-<a href=#646 id=646 data-nosnippet>646</a>                        );
-<a href=#647 id=647 data-nosnippet>647</a>                        <span class="kw">let </span>op_3v1 = {
-<a href=#648 id=648 data-nosnippet>648</a>                            <span class="attr">#[allow(non_snake_case)]
-<a href=#649 id=649 data-nosnippet>649</a>                            #[inline(always)]
-<a href=#650 id=650 data-nosnippet>650</a>                            </span><span class="kw">pub fn </span>op_3v1__map__3&lt;Item, Input&gt;(
-<a href=#651 id=651 data-nosnippet>651</a>                                input: Input,
-<a href=#652 id=652 data-nosnippet>652</a>                            ) -&gt; <span class="kw">impl </span>__root_dfir_rs::dfir_pipes::pull::Pull&lt;
-<a href=#653 id=653 data-nosnippet>653</a>                                Item = Item,
-<a href=#654 id=654 data-nosnippet>654</a>                                Meta = (),
-<a href=#655 id=655 data-nosnippet>655</a>                                CanPend = Input::CanPend,
-<a href=#656 id=656 data-nosnippet>656</a>                                CanEnd = Input::CanEnd,
-<a href=#657 id=657 data-nosnippet>657</a>                            &gt;
-<a href=#658 id=658 data-nosnippet>658</a>                            <span class="kw">where
-<a href=#659 id=659 data-nosnippet>659</a>                                </span>Input: __root_dfir_rs::dfir_pipes::pull::Pull&lt;
-<a href=#660 id=660 data-nosnippet>660</a>                                    Item = Item,
-<a href=#661 id=661 data-nosnippet>661</a>                                    Meta = (),
-<a href=#662 id=662 data-nosnippet>662</a>                                &gt;,
-<a href=#663 id=663 data-nosnippet>663</a>                            {
-<a href=#664 id=664 data-nosnippet>664</a>                                <span class="macro">__root_dfir_rs::pin_project_lite::pin_project!</span> {
-<a href=#665 id=665 data-nosnippet>665</a>                                    <span class="attr">#[repr(transparent)] </span><span class="kw">struct </span>Pull &lt; Item, Input :
-<a href=#666 id=666 data-nosnippet>666</a>                                    __root_dfir_rs::dfir_pipes::pull::Pull &lt; Item = Item &gt;&gt; {
-<a href=#667 id=667 data-nosnippet>667</a>                                    <span class="attr">#[pin] </span>inner : Input }
-<a href=#668 id=668 data-nosnippet>668</a>                                }
-<a href=#669 id=669 data-nosnippet>669</a>                                <span class="kw">impl</span>&lt;Item, Input&gt; __root_dfir_rs::dfir_pipes::pull::Pull
-<a href=#670 id=670 data-nosnippet>670</a>                                <span class="kw">for </span>Pull&lt;Item, Input&gt;
-<a href=#671 id=671 data-nosnippet>671</a>                                <span class="kw">where
-<a href=#672 id=672 data-nosnippet>672</a>                                    </span>Input: __root_dfir_rs::dfir_pipes::pull::Pull&lt;Item = Item&gt;,
-<a href=#673 id=673 data-nosnippet>673</a>                                {
-<a href=#674 id=674 data-nosnippet>674</a>                                    <span class="kw">type </span>Ctx&lt;<span class="lifetime">'ctx</span>&gt; = Input::Ctx&lt;<span class="lifetime">'ctx</span>&gt;;
-<a href=#675 id=675 data-nosnippet>675</a>                                    <span class="kw">type </span>Item = Item;
-<a href=#676 id=676 data-nosnippet>676</a>                                    <span class="kw">type </span>Meta = Input::Meta;
-<a href=#677 id=677 data-nosnippet>677</a>                                    <span class="kw">type </span>CanPend = Input::CanPend;
-<a href=#678 id=678 data-nosnippet>678</a>                                    <span class="kw">type </span>CanEnd = Input::CanEnd;
-<a href=#679 id=679 data-nosnippet>679</a>                                    <span class="attr">#[inline(always)]
-<a href=#680 id=680 data-nosnippet>680</a>                                    </span><span class="kw">fn </span>pull(
-<a href=#681 id=681 data-nosnippet>681</a>                                        <span class="self">self</span>: ::std::pin::Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
-<a href=#682 id=682 data-nosnippet>682</a>                                        ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;,
-<a href=#683 id=683 data-nosnippet>683</a>                                    ) -&gt; __root_dfir_rs::dfir_pipes::pull::PullStep&lt;
-<a href=#684 id=684 data-nosnippet>684</a>                                        <span class="self">Self</span>::Item,
-<a href=#685 id=685 data-nosnippet>685</a>                                        <span class="self">Self</span>::Meta,
-<a href=#686 id=686 data-nosnippet>686</a>                                        <span class="self">Self</span>::CanPend,
-<a href=#687 id=687 data-nosnippet>687</a>                                        <span class="self">Self</span>::CanEnd,
-<a href=#688 id=688 data-nosnippet>688</a>                                    &gt; {
-<a href=#689 id=689 data-nosnippet>689</a>                                        __root_dfir_rs::dfir_pipes::pull::Pull::pull(
-<a href=#690 id=690 data-nosnippet>690</a>                                            <span class="self">self</span>.project().inner,
-<a href=#691 id=691 data-nosnippet>691</a>                                            ctx,
-<a href=#692 id=692 data-nosnippet>692</a>                                        )
-<a href=#693 id=693 data-nosnippet>693</a>                                    }
-<a href=#694 id=694 data-nosnippet>694</a>                                    <span class="attr">#[inline(always)]
-<a href=#695 id=695 data-nosnippet>695</a>                                    </span><span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
-<a href=#696 id=696 data-nosnippet>696</a>                                        __root_dfir_rs::dfir_pipes::pull::Pull::size_hint(
-<a href=#697 id=697 data-nosnippet>697</a>                                            <span class="kw-2">&amp;</span><span class="self">self</span>.inner,
-<a href=#698 id=698 data-nosnippet>698</a>                                        )
-<a href=#699 id=699 data-nosnippet>699</a>                                    }
-<a href=#700 id=700 data-nosnippet>700</a>                                }
-<a href=#701 id=701 data-nosnippet>701</a>                                Pull { inner: input }
-<a href=#702 id=702 data-nosnippet>702</a>                            }
-<a href=#703 id=703 data-nosnippet>703</a>                            op_3v1__map__3::&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;(op_3v1)
-<a href=#704 id=704 data-nosnippet>704</a>                        };
-<a href=#705 id=705 data-nosnippet>705</a>                        <span class="kw">let </span>op_4v1 = __root_dfir_rs::dfir_pipes::push::for_each(
-<a href=#706 id=706 data-nosnippet>706</a>                            <span class="kw-2">&amp;mut </span>output,
-<a href=#707 id=707 data-nosnippet>707</a>                        );
-<a href=#708 id=708 data-nosnippet>708</a>                        <span class="kw">let </span>op_4v1 = {
-<a href=#709 id=709 data-nosnippet>709</a>                            <span class="attr">#[allow(non_snake_case)]
-<a href=#710 id=710 data-nosnippet>710</a>                            #[inline(always)]
-<a href=#711 id=711 data-nosnippet>711</a>                            </span><span class="kw">pub fn </span>op_4v1__for_each__6&lt;Item, Psh&gt;(
-<a href=#712 id=712 data-nosnippet>712</a>                                psh: Psh,
-<a href=#713 id=713 data-nosnippet>713</a>                            ) -&gt; <span class="kw">impl </span>__root_dfir_rs::dfir_pipes::push::Push&lt;
-<a href=#714 id=714 data-nosnippet>714</a>                                Item,
-<a href=#715 id=715 data-nosnippet>715</a>                                (),
-<a href=#716 id=716 data-nosnippet>716</a>                                CanPend = Psh::CanPend,
-<a href=#717 id=717 data-nosnippet>717</a>                            &gt;
-<a href=#718 id=718 data-nosnippet>718</a>                            <span class="kw">where
-<a href=#719 id=719 data-nosnippet>719</a>                                </span>Psh: __root_dfir_rs::dfir_pipes::push::Push&lt;Item, ()&gt;,
-<a href=#720 id=720 data-nosnippet>720</a>                            {
-<a href=#721 id=721 data-nosnippet>721</a>                                <span class="macro">__root_dfir_rs::pin_project_lite::pin_project!</span> {
-<a href=#722 id=722 data-nosnippet>722</a>                                    <span class="attr">#[repr(transparent)] </span><span class="kw">struct </span>PushGuard &lt; Psh &gt; { <span class="attr">#[pin] </span>inner
-<a href=#723 id=723 data-nosnippet>723</a>                                    : Psh, }
-<a href=#724 id=724 data-nosnippet>724</a>                                }
-<a href=#725 id=725 data-nosnippet>725</a>                                <span class="kw">impl</span>&lt;
-<a href=#726 id=726 data-nosnippet>726</a>                                    Item,
-<a href=#727 id=727 data-nosnippet>727</a>                                    Psh,
-<a href=#728 id=728 data-nosnippet>728</a>                                &gt; __root_dfir_rs::dfir_pipes::push::Push&lt;Item, ()&gt;
-<a href=#729 id=729 data-nosnippet>729</a>                                <span class="kw">for </span>PushGuard&lt;Psh&gt;
-<a href=#730 id=730 data-nosnippet>730</a>                                <span class="kw">where
-<a href=#731 id=731 data-nosnippet>731</a>                                    </span>Psh: __root_dfir_rs::dfir_pipes::push::Push&lt;Item, ()&gt;,
-<a href=#732 id=732 data-nosnippet>732</a>                                {
-<a href=#733 id=733 data-nosnippet>733</a>                                    <span class="kw">type </span>Ctx&lt;<span class="lifetime">'ctx</span>&gt; = Psh::Ctx&lt;<span class="lifetime">'ctx</span>&gt;;
-<a href=#734 id=734 data-nosnippet>734</a>                                    <span class="kw">type </span>CanPend = Psh::CanPend;
-<a href=#735 id=735 data-nosnippet>735</a>                                    <span class="attr">#[inline(always)]
-<a href=#736 id=736 data-nosnippet>736</a>                                    </span><span class="kw">fn </span>poll_ready(
-<a href=#737 id=737 data-nosnippet>737</a>                                        <span class="self">self</span>: ::std::pin::Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
-<a href=#738 id=738 data-nosnippet>738</a>                                        ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;,
-<a href=#739 id=739 data-nosnippet>739</a>                                    ) -&gt; __root_dfir_rs::dfir_pipes::push::PushStep&lt;
-<a href=#740 id=740 data-nosnippet>740</a>                                        <span class="self">Self</span>::CanPend,
-<a href=#741 id=741 data-nosnippet>741</a>                                    &gt; {
-<a href=#742 id=742 data-nosnippet>742</a>                                        __root_dfir_rs::dfir_pipes::push::Push::poll_ready(
-<a href=#743 id=743 data-nosnippet>743</a>                                            <span class="self">self</span>.project().inner,
-<a href=#744 id=744 data-nosnippet>744</a>                                            ctx,
-<a href=#745 id=745 data-nosnippet>745</a>                                        )
-<a href=#746 id=746 data-nosnippet>746</a>                                    }
-<a href=#747 id=747 data-nosnippet>747</a>                                    <span class="attr">#[inline(always)]
-<a href=#748 id=748 data-nosnippet>748</a>                                    </span><span class="kw">fn </span>start_send(
-<a href=#749 id=749 data-nosnippet>749</a>                                        <span class="self">self</span>: ::std::pin::Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
-<a href=#750 id=750 data-nosnippet>750</a>                                        item: Item,
-<a href=#751 id=751 data-nosnippet>751</a>                                        meta: (),
-<a href=#752 id=752 data-nosnippet>752</a>                                    ) {
-<a href=#753 id=753 data-nosnippet>753</a>                                        __root_dfir_rs::dfir_pipes::push::Push::start_send(
-<a href=#754 id=754 data-nosnippet>754</a>                                            <span class="self">self</span>.project().inner,
-<a href=#755 id=755 data-nosnippet>755</a>                                            item,
-<a href=#756 id=756 data-nosnippet>756</a>                                            meta,
-<a href=#757 id=757 data-nosnippet>757</a>                                        )
-<a href=#758 id=758 data-nosnippet>758</a>                                    }
-<a href=#759 id=759 data-nosnippet>759</a>                                    <span class="attr">#[inline(always)]
-<a href=#760 id=760 data-nosnippet>760</a>                                    </span><span class="kw">fn </span>poll_flush(
-<a href=#761 id=761 data-nosnippet>761</a>                                        <span class="self">self</span>: ::std::pin::Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
-<a href=#762 id=762 data-nosnippet>762</a>                                        ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;,
-<a href=#763 id=763 data-nosnippet>763</a>                                    ) -&gt; __root_dfir_rs::dfir_pipes::push::PushStep&lt;
-<a href=#764 id=764 data-nosnippet>764</a>                                        <span class="self">Self</span>::CanPend,
-<a href=#765 id=765 data-nosnippet>765</a>                                    &gt; {
-<a href=#766 id=766 data-nosnippet>766</a>                                        __root_dfir_rs::dfir_pipes::push::Push::poll_flush(
-<a href=#767 id=767 data-nosnippet>767</a>                                            <span class="self">self</span>.project().inner,
-<a href=#768 id=768 data-nosnippet>768</a>                                            ctx,
-<a href=#769 id=769 data-nosnippet>769</a>                                        )
-<a href=#770 id=770 data-nosnippet>770</a>                                    }
-<a href=#771 id=771 data-nosnippet>771</a>                                }
-<a href=#772 id=772 data-nosnippet>772</a>                                PushGuard { inner: psh }
-<a href=#773 id=773 data-nosnippet>773</a>                            }
-<a href=#774 id=774 data-nosnippet>774</a>                            op_4v1__for_each__6(op_4v1)
-<a href=#775 id=775 data-nosnippet>775</a>                        };
-<a href=#776 id=776 data-nosnippet>776</a>                        <span class="attr">#[inline(always)]
-<a href=#777 id=777 data-nosnippet>777</a>                        </span><span class="kw">fn </span>pivot_run_sg_1v1&lt;Pul, Psh, Item&gt;(
-<a href=#778 id=778 data-nosnippet>778</a>                            pull: Pul,
-<a href=#779 id=779 data-nosnippet>779</a>                            push: Psh,
-<a href=#780 id=780 data-nosnippet>780</a>                        ) -&gt; <span class="kw">impl </span>::std::future::Future&lt;Output = ()&gt;
-<a href=#781 id=781 data-nosnippet>781</a>                        <span class="kw">where
-<a href=#782 id=782 data-nosnippet>782</a>                            </span>Pul: __root_dfir_rs::dfir_pipes::pull::Pull&lt;Item = Item&gt;,
-<a href=#783 id=783 data-nosnippet>783</a>                            Psh: __root_dfir_rs::dfir_pipes::push::Push&lt;Item, Pul::Meta&gt;,
-<a href=#784 id=784 data-nosnippet>784</a>                        {
-<a href=#785 id=785 data-nosnippet>785</a>                            __root_dfir_rs::dfir_pipes::pull::Pull::send_push(pull, push)
-<a href=#786 id=786 data-nosnippet>786</a>                        }
-<a href=#787 id=787 data-nosnippet>787</a>                        (pivot_run_sg_1v1)(op_3v1, op_4v1).<span class="kw">await</span>;
-<a href=#788 id=788 data-nosnippet>788</a>                    },
-<a href=#789 id=789 data-nosnippet>789</a>                );
-<a href=#790 id=790 data-nosnippet>790</a>            df
-<a href=#791 id=791 data-nosnippet>791</a>        }
-<a href=#792 id=792 data-nosnippet>792</a>    }
-<a href=#793 id=793 data-nosnippet>793</a>}
+<a href=#310 id=310 data-nosnippet>310</a>                                    <span class="attr">#[inline(always)]
+<a href=#311 id=311 data-nosnippet>311</a>                                    </span><span class="kw">fn </span>size_hint(
+<a href=#312 id=312 data-nosnippet>312</a>                                        <span class="self">self</span>: ::std::pin::Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
+<a href=#313 id=313 data-nosnippet>313</a>                                        hint: (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;),
+<a href=#314 id=314 data-nosnippet>314</a>                                    ) {
+<a href=#315 id=315 data-nosnippet>315</a>                                        __root_dfir_rs::dfir_pipes::push::Push::size_hint(
+<a href=#316 id=316 data-nosnippet>316</a>                                            <span class="self">self</span>.project().inner,
+<a href=#317 id=317 data-nosnippet>317</a>                                            hint,
+<a href=#318 id=318 data-nosnippet>318</a>                                        )
+<a href=#319 id=319 data-nosnippet>319</a>                                    }
+<a href=#320 id=320 data-nosnippet>320</a>                                }
+<a href=#321 id=321 data-nosnippet>321</a>                                PushGuard { inner: psh }
+<a href=#322 id=322 data-nosnippet>322</a>                            }
+<a href=#323 id=323 data-nosnippet>323</a>                            op_3v1__dest_sink__send1(op_3v1)
+<a href=#324 id=324 data-nosnippet>324</a>                        };
+<a href=#325 id=325 data-nosnippet>325</a>                        <span class="attr">#[inline(always)]
+<a href=#326 id=326 data-nosnippet>326</a>                        </span><span class="kw">fn </span>pivot_run_sg_1v1&lt;Pul, Psh, Item&gt;(
+<a href=#327 id=327 data-nosnippet>327</a>                            pull: Pul,
+<a href=#328 id=328 data-nosnippet>328</a>                            push: Psh,
+<a href=#329 id=329 data-nosnippet>329</a>                        ) -&gt; <span class="kw">impl </span>::std::future::Future&lt;Output = ()&gt;
+<a href=#330 id=330 data-nosnippet>330</a>                        <span class="kw">where
+<a href=#331 id=331 data-nosnippet>331</a>                            </span>Pul: __root_dfir_rs::dfir_pipes::pull::Pull&lt;Item = Item&gt;,
+<a href=#332 id=332 data-nosnippet>332</a>                            Psh: __root_dfir_rs::dfir_pipes::push::Push&lt;Item, Pul::Meta&gt;,
+<a href=#333 id=333 data-nosnippet>333</a>                        {
+<a href=#334 id=334 data-nosnippet>334</a>                            __root_dfir_rs::dfir_pipes::pull::Pull::send_push(pull, push)
+<a href=#335 id=335 data-nosnippet>335</a>                        }
+<a href=#336 id=336 data-nosnippet>336</a>                        (pivot_run_sg_1v1)(op_2v1, op_3v1).<span class="kw">await</span>;
+<a href=#337 id=337 data-nosnippet>337</a>                    },
+<a href=#338 id=338 data-nosnippet>338</a>                );
+<a href=#339 id=339 data-nosnippet>339</a>            df
+<a href=#340 id=340 data-nosnippet>340</a>        }
+<a href=#341 id=341 data-nosnippet>341</a>    }
+<a href=#342 id=342 data-nosnippet>342</a>}
+<a href=#343 id=343 data-nosnippet>343</a><span class="kw">pub mod </span>m2o_receiver {
+<a href=#344 id=344 data-nosnippet>344</a>    <span class="kw">use </span>super::<span class="kw-2">*</span>;
+<a href=#345 id=345 data-nosnippet>345</a>    <span class="kw">pub struct </span>EmbeddedOutputs&lt;
+<a href=#346 id=346 data-nosnippet>346</a>        __Out0: FnMut(
+<a href=#347 id=347 data-nosnippet>347</a>                (
+<a href=#348 id=348 data-nosnippet>348</a>                    hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;
+<a href=#349 id=349 data-nosnippet>349</a>                        hydro_test::__staged::embedded::m2o_send::Src,
+<a href=#350 id=350 data-nosnippet>350</a>                    &gt;,
+<a href=#351 id=351 data-nosnippet>351</a>                    std::string::String,
+<a href=#352 id=352 data-nosnippet>352</a>                ),
+<a href=#353 id=353 data-nosnippet>353</a>            ),
+<a href=#354 id=354 data-nosnippet>354</a>    &gt; {
+<a href=#355 id=355 data-nosnippet>355</a>        <span class="kw">pub </span>output: __Out0,
+<a href=#356 id=356 data-nosnippet>356</a>    }
+<a href=#357 id=357 data-nosnippet>357</a>    <span class="kw">pub struct </span>EmbeddedNetworkIn&lt;
+<a href=#358 id=358 data-nosnippet>358</a>        __NetIn0: __root_dfir_rs::futures::Stream&lt;
+<a href=#359 id=359 data-nosnippet>359</a>                Item = <span class="prelude-ty">Result</span>&lt;
+<a href=#360 id=360 data-nosnippet>360</a>                    (
+<a href=#361 id=361 data-nosnippet>361</a>                        hydro_lang::location::member_id::TaglessMemberId,
+<a href=#362 id=362 data-nosnippet>362</a>                        __root_dfir_rs::bytes::BytesMut,
+<a href=#363 id=363 data-nosnippet>363</a>                    ),
+<a href=#364 id=364 data-nosnippet>364</a>                    std::io::Error,
+<a href=#365 id=365 data-nosnippet>365</a>                &gt;,
+<a href=#366 id=366 data-nosnippet>366</a>            &gt; + Unpin,
+<a href=#367 id=367 data-nosnippet>367</a>    &gt; {
+<a href=#368 id=368 data-nosnippet>368</a>        <span class="kw">pub </span>m2o_data: __NetIn0,
+<a href=#369 id=369 data-nosnippet>369</a>    }
+<a href=#370 id=370 data-nosnippet>370</a>}
+<a href=#371 id=371 data-nosnippet>371</a><span class="attr">#[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
+<a href=#372 id=372 data-nosnippet>372</a></span><span class="kw">pub fn </span>m2o_receiver&lt;
+<a href=#373 id=373 data-nosnippet>373</a>    <span class="lifetime">'a</span>,
+<a href=#374 id=374 data-nosnippet>374</a>    __Out0: FnMut(
+<a href=#375 id=375 data-nosnippet>375</a>            (
+<a href=#376 id=376 data-nosnippet>376</a>                hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;
+<a href=#377 id=377 data-nosnippet>377</a>                    hydro_test::__staged::embedded::m2o_send::Src,
+<a href=#378 id=378 data-nosnippet>378</a>                &gt;,
+<a href=#379 id=379 data-nosnippet>379</a>                std::string::String,
+<a href=#380 id=380 data-nosnippet>380</a>            ),
+<a href=#381 id=381 data-nosnippet>381</a>        ) + <span class="lifetime">'a</span>,
+<a href=#382 id=382 data-nosnippet>382</a>    __NetIn0: __root_dfir_rs::futures::Stream&lt;
+<a href=#383 id=383 data-nosnippet>383</a>            Item = <span class="prelude-ty">Result</span>&lt;
+<a href=#384 id=384 data-nosnippet>384</a>                (
+<a href=#385 id=385 data-nosnippet>385</a>                    hydro_lang::location::member_id::TaglessMemberId,
+<a href=#386 id=386 data-nosnippet>386</a>                    __root_dfir_rs::bytes::BytesMut,
+<a href=#387 id=387 data-nosnippet>387</a>                ),
+<a href=#388 id=388 data-nosnippet>388</a>                std::io::Error,
+<a href=#389 id=389 data-nosnippet>389</a>            &gt;,
+<a href=#390 id=390 data-nosnippet>390</a>        &gt; + Unpin + <span class="lifetime">'a</span>,
+<a href=#391 id=391 data-nosnippet>391</a>&gt;(
+<a href=#392 id=392 data-nosnippet>392</a>    __outputs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>m2o_receiver::EmbeddedOutputs&lt;__Out0&gt;,
+<a href=#393 id=393 data-nosnippet>393</a>    __network_in: m2o_receiver::EmbeddedNetworkIn&lt;__NetIn0&gt;,
+<a href=#394 id=394 data-nosnippet>394</a>) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::graph::Dfir&lt;<span class="lifetime">'a</span>&gt; {
+<a href=#395 id=395 data-nosnippet>395</a>    <span class="kw">let </span><span class="kw-2">mut </span>output = <span class="kw-2">&amp;mut </span>__outputs.output;
+<a href=#396 id=396 data-nosnippet>396</a>    <span class="kw">let </span>__network_in_m2o_data = __network_in.m2o_data;
+<a href=#397 id=397 data-nosnippet>397</a>    {
+<a href=#398 id=398 data-nosnippet>398</a>        <span class="attr">#[allow(unused_qualifications, clippy::await_holding_refcell_ref)]
+<a href=#399 id=399 data-nosnippet>399</a>        </span>{
+<a href=#400 id=400 data-nosnippet>400</a>            <span class="kw">use </span>__root_dfir_rs::{var_expr, var_args};
+<a href=#401 id=401 data-nosnippet>401</a>            <span class="kw">let </span><span class="kw-2">mut </span>df = __root_dfir_rs::scheduled::graph::Dfir::new();
+<a href=#402 id=402 data-nosnippet>402</a>            df.__assign_meta_graph(
+<a href=#403 id=403 data-nosnippet>403</a>                <span class="string">"{\"nodes\":[{\"value\":null,\"version\":0},{\"value\":{\"Operator\":\"source_stream (__network_in_m2o_data)\"},\"version\":1},{\"value\":{\"Operator\":\"map (| res | { let (id , b) = res . unwrap () ; (hydro_lang :: __staged :: location :: MemberId :: &lt; hydro_test :: __staged :: embedded :: m2o_send :: Src &gt; :: from_tagless (id as hydro_lang :: __staged :: location :: TaglessMemberId) , hydro_lang :: runtime_support :: bincode :: deserialize :: &lt; std :: string :: String &gt; (&amp; b) . unwrap ()) })\"},\"version\":1},{\"value\":{\"Operator\":\"map (stageleft :: runtime_support :: fn1_type_hint :: &lt; (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId &lt; hydro_test :: __staged :: embedded :: m2o_send :: Src &gt; , std :: string :: String) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId &lt; hydro_test :: __staged :: embedded :: m2o_send :: Src &gt; , std :: string :: String) &gt; ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: &lt; std :: string :: String , std :: string :: String &gt; ({ use hydro_test :: __staged :: __deps :: * ; use hydro_test :: __staged :: embedded :: m2o_send :: * ; | s | s . to_uppercase () }) ; { let orig = f__free ; move | (k , v) | (k , orig (v)) } }))\"},\"version\":1},{\"value\":{\"Operator\":\"for_each (&amp; mut output)\"},\"version\":1}],\"operator_tag\":[{\"value\":null,\"version\":0},{\"value\":\"recv1\",\"version\":1},{\"value\":\"recv1\",\"version\":1},{\"value\":\"3\",\"version\":1},{\"value\":\"6\",\"version\":1}],\"graph\":[{\"value\":null,\"version\":0},{\"value\":[{\"idx\":1,\"version\":1},{\"idx\":2,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":2,\"version\":1},{\"idx\":3,\"version\":1}],\"version\":1},{\"value\":[{\"idx\":3,\"version\":1},{\"idx\":4,\"version\":1}],\"version\":1}],\"ports\":[{\"value\":null,\"version\":0},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1},{\"value\":[\"Elided\",\"Elided\"],\"version\":1}],\"node_loops\":[{\"value\":null,\"version\":0}],\"loop_nodes\":[{\"value\":null,\"version\":0}],\"loop_parent\":[{\"value\":null,\"version\":0}],\"root_loops\":[],\"loop_children\":[{\"value\":null,\"version\":0}],\"node_subgraph\":[{\"value\":null,\"version\":0},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1},{\"value\":{\"idx\":1,\"version\":1},\"version\":1}],\"subgraph_nodes\":[{\"value\":null,\"version\":0},{\"value\":[{\"idx\":1,\"version\":1},{\"idx\":2,\"version\":1},{\"idx\":3,\"version\":1},{\"idx\":4,\"version\":1}],\"version\":1}],\"subgraph_stratum\":[{\"value\":null,\"version\":0},{\"value\":0,\"version\":1}],\"node_singleton_references\":[{\"value\":null,\"version\":0},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1},{\"value\":[],\"version\":1}],\"node_varnames\":[{\"value\":null,\"version\":0},{\"value\":\"stream_1\",\"version\":1},{\"value\":\"stream_1\",\"version\":1},{\"value\":\"stream_3\",\"version\":1}],\"subgraph_laziness\":[{\"value\":null,\"version\":0}]}"</span>,
+<a href=#404 id=404 data-nosnippet>404</a>            );
+<a href=#405 id=405 data-nosnippet>405</a>            df.__assign_diagnostics(<span class="string">"[]"</span>);
+<a href=#406 id=406 data-nosnippet>406</a>            <span class="attr">#[allow(non_snake_case)]
+<a href=#407 id=407 data-nosnippet>407</a>            #[inline(always)]
+<a href=#408 id=408 data-nosnippet>408</a>            </span><span class="kw">fn </span>op_1v1__source_stream__recv1&lt;T&gt;(
+<a href=#409 id=409 data-nosnippet>409</a>                thunk: <span class="kw">impl </span>::std::ops::FnOnce() -&gt; T,
+<a href=#410 id=410 data-nosnippet>410</a>            ) -&gt; T {
+<a href=#411 id=411 data-nosnippet>411</a>                thunk()
+<a href=#412 id=412 data-nosnippet>412</a>            }
+<a href=#413 id=413 data-nosnippet>413</a>            <span class="attr">#[allow(non_snake_case)]
+<a href=#414 id=414 data-nosnippet>414</a>            #[inline(always)]
+<a href=#415 id=415 data-nosnippet>415</a>            </span><span class="kw">async fn </span>op_1v1__source_stream__recv1__async&lt;T&gt;(
+<a href=#416 id=416 data-nosnippet>416</a>                thunk: <span class="kw">impl </span>::std::future::Future&lt;Output = T&gt;,
+<a href=#417 id=417 data-nosnippet>417</a>            ) -&gt; T {
+<a href=#418 id=418 data-nosnippet>418</a>                thunk.<span class="kw">await
+<a href=#419 id=419 data-nosnippet>419</a>            </span>}
+<a href=#420 id=420 data-nosnippet>420</a>            <span class="kw">let </span><span class="kw-2">mut </span>sg_1v1_node_1v1_stream = {
+<a href=#421 id=421 data-nosnippet>421</a>                <span class="attr">#[inline(always)]
+<a href=#422 id=422 data-nosnippet>422</a>                </span><span class="kw">fn </span>check_stream&lt;
+<a href=#423 id=423 data-nosnippet>423</a>                    Stream: __root_dfir_rs::futures::stream::Stream&lt;Item = Item&gt;
+<a href=#424 id=424 data-nosnippet>424</a>                        + ::std::marker::Unpin,
+<a href=#425 id=425 data-nosnippet>425</a>                    Item,
+<a href=#426 id=426 data-nosnippet>426</a>                &gt;(
+<a href=#427 id=427 data-nosnippet>427</a>                    stream: Stream,
+<a href=#428 id=428 data-nosnippet>428</a>                ) -&gt; <span class="kw">impl </span>__root_dfir_rs::futures::stream::Stream&lt;
+<a href=#429 id=429 data-nosnippet>429</a>                    Item = Item,
+<a href=#430 id=430 data-nosnippet>430</a>                &gt; + ::std::marker::Unpin {
+<a href=#431 id=431 data-nosnippet>431</a>                    stream
+<a href=#432 id=432 data-nosnippet>432</a>                }
+<a href=#433 id=433 data-nosnippet>433</a>                check_stream(__network_in_m2o_data)
+<a href=#434 id=434 data-nosnippet>434</a>            };
+<a href=#435 id=435 data-nosnippet>435</a>            <span class="attr">#[allow(non_snake_case)]
+<a href=#436 id=436 data-nosnippet>436</a>            #[inline(always)]
+<a href=#437 id=437 data-nosnippet>437</a>            </span><span class="kw">fn </span>op_2v1__map__recv1&lt;T&gt;(thunk: <span class="kw">impl </span>::std::ops::FnOnce() -&gt; T) -&gt; T {
+<a href=#438 id=438 data-nosnippet>438</a>                thunk()
+<a href=#439 id=439 data-nosnippet>439</a>            }
+<a href=#440 id=440 data-nosnippet>440</a>            <span class="attr">#[allow(non_snake_case)]
+<a href=#441 id=441 data-nosnippet>441</a>            #[inline(always)]
+<a href=#442 id=442 data-nosnippet>442</a>            </span><span class="kw">async fn </span>op_2v1__map__recv1__async&lt;T&gt;(
+<a href=#443 id=443 data-nosnippet>443</a>                thunk: <span class="kw">impl </span>::std::future::Future&lt;Output = T&gt;,
+<a href=#444 id=444 data-nosnippet>444</a>            ) -&gt; T {
+<a href=#445 id=445 data-nosnippet>445</a>                thunk.<span class="kw">await
+<a href=#446 id=446 data-nosnippet>446</a>            </span>}
+<a href=#447 id=447 data-nosnippet>447</a>            <span class="attr">#[allow(non_snake_case)]
+<a href=#448 id=448 data-nosnippet>448</a>            #[inline(always)]
+<a href=#449 id=449 data-nosnippet>449</a>            </span><span class="kw">fn </span>op_3v1__map__3&lt;T&gt;(thunk: <span class="kw">impl </span>::std::ops::FnOnce() -&gt; T) -&gt; T {
+<a href=#450 id=450 data-nosnippet>450</a>                thunk()
+<a href=#451 id=451 data-nosnippet>451</a>            }
+<a href=#452 id=452 data-nosnippet>452</a>            <span class="attr">#[allow(non_snake_case)]
+<a href=#453 id=453 data-nosnippet>453</a>            #[inline(always)]
+<a href=#454 id=454 data-nosnippet>454</a>            </span><span class="kw">async fn </span>op_3v1__map__3__async&lt;T&gt;(
+<a href=#455 id=455 data-nosnippet>455</a>                thunk: <span class="kw">impl </span>::std::future::Future&lt;Output = T&gt;,
+<a href=#456 id=456 data-nosnippet>456</a>            ) -&gt; T {
+<a href=#457 id=457 data-nosnippet>457</a>                thunk.<span class="kw">await
+<a href=#458 id=458 data-nosnippet>458</a>            </span>}
+<a href=#459 id=459 data-nosnippet>459</a>            <span class="attr">#[allow(non_snake_case)]
+<a href=#460 id=460 data-nosnippet>460</a>            #[inline(always)]
+<a href=#461 id=461 data-nosnippet>461</a>            </span><span class="kw">fn </span>op_4v1__for_each__6&lt;T&gt;(thunk: <span class="kw">impl </span>::std::ops::FnOnce() -&gt; T) -&gt; T {
+<a href=#462 id=462 data-nosnippet>462</a>                thunk()
+<a href=#463 id=463 data-nosnippet>463</a>            }
+<a href=#464 id=464 data-nosnippet>464</a>            <span class="attr">#[allow(non_snake_case)]
+<a href=#465 id=465 data-nosnippet>465</a>            #[inline(always)]
+<a href=#466 id=466 data-nosnippet>466</a>            </span><span class="kw">async fn </span>op_4v1__for_each__6__async&lt;T&gt;(
+<a href=#467 id=467 data-nosnippet>467</a>                thunk: <span class="kw">impl </span>::std::future::Future&lt;Output = T&gt;,
+<a href=#468 id=468 data-nosnippet>468</a>            ) -&gt; T {
+<a href=#469 id=469 data-nosnippet>469</a>                thunk.<span class="kw">await
+<a href=#470 id=470 data-nosnippet>470</a>            </span>}
+<a href=#471 id=471 data-nosnippet>471</a>            <span class="kw">let </span>sgid_1v1 = df
+<a href=#472 id=472 data-nosnippet>472</a>                .add_subgraph_full(
+<a href=#473 id=473 data-nosnippet>473</a>                    <span class="string">"Subgraph GraphSubgraphId(1v1)"</span>,
+<a href=#474 id=474 data-nosnippet>474</a>                    <span class="number">0</span>,
+<a href=#475 id=475 data-nosnippet>475</a>                    <span class="macro">var_expr!</span>(),
+<a href=#476 id=476 data-nosnippet>476</a>                    <span class="macro">var_expr!</span>(),
+<a href=#477 id=477 data-nosnippet>477</a>                    <span class="bool-val">false</span>,
+<a href=#478 id=478 data-nosnippet>478</a>                    <span class="prelude-val">None</span>,
+<a href=#479 id=479 data-nosnippet>479</a>                    <span class="kw">async move </span>|context, <span class="macro">var_args!</span>(), <span class="macro">var_args!</span>()| {
+<a href=#480 id=480 data-nosnippet>480</a>                        <span class="kw">let </span>op_1v1 = __root_dfir_rs::dfir_pipes::pull::stream_ready(
+<a href=#481 id=481 data-nosnippet>481</a>                            <span class="kw-2">&amp;mut </span>sg_1v1_node_1v1_stream,
+<a href=#482 id=482 data-nosnippet>482</a>                            context.waker(),
+<a href=#483 id=483 data-nosnippet>483</a>                        );
+<a href=#484 id=484 data-nosnippet>484</a>                        <span class="kw">let </span>op_1v1 = {
+<a href=#485 id=485 data-nosnippet>485</a>                            <span class="attr">#[allow(non_snake_case)]
+<a href=#486 id=486 data-nosnippet>486</a>                            #[inline(always)]
+<a href=#487 id=487 data-nosnippet>487</a>                            </span><span class="kw">pub fn </span>op_1v1__source_stream__recv1&lt;Item, Input&gt;(
+<a href=#488 id=488 data-nosnippet>488</a>                                input: Input,
+<a href=#489 id=489 data-nosnippet>489</a>                            ) -&gt; <span class="kw">impl </span>__root_dfir_rs::dfir_pipes::pull::Pull&lt;
+<a href=#490 id=490 data-nosnippet>490</a>                                Item = Item,
+<a href=#491 id=491 data-nosnippet>491</a>                                Meta = (),
+<a href=#492 id=492 data-nosnippet>492</a>                                CanPend = Input::CanPend,
+<a href=#493 id=493 data-nosnippet>493</a>                                CanEnd = Input::CanEnd,
+<a href=#494 id=494 data-nosnippet>494</a>                            &gt;
+<a href=#495 id=495 data-nosnippet>495</a>                            <span class="kw">where
+<a href=#496 id=496 data-nosnippet>496</a>                                </span>Input: __root_dfir_rs::dfir_pipes::pull::Pull&lt;
+<a href=#497 id=497 data-nosnippet>497</a>                                    Item = Item,
+<a href=#498 id=498 data-nosnippet>498</a>                                    Meta = (),
+<a href=#499 id=499 data-nosnippet>499</a>                                &gt;,
+<a href=#500 id=500 data-nosnippet>500</a>                            {
+<a href=#501 id=501 data-nosnippet>501</a>                                <span class="macro">__root_dfir_rs::pin_project_lite::pin_project!</span> {
+<a href=#502 id=502 data-nosnippet>502</a>                                    <span class="attr">#[repr(transparent)] </span><span class="kw">struct </span>Pull &lt; Item, Input :
+<a href=#503 id=503 data-nosnippet>503</a>                                    __root_dfir_rs::dfir_pipes::pull::Pull &lt; Item = Item &gt;&gt; {
+<a href=#504 id=504 data-nosnippet>504</a>                                    <span class="attr">#[pin] </span>inner : Input }
+<a href=#505 id=505 data-nosnippet>505</a>                                }
+<a href=#506 id=506 data-nosnippet>506</a>                                <span class="kw">impl</span>&lt;Item, Input&gt; __root_dfir_rs::dfir_pipes::pull::Pull
+<a href=#507 id=507 data-nosnippet>507</a>                                <span class="kw">for </span>Pull&lt;Item, Input&gt;
+<a href=#508 id=508 data-nosnippet>508</a>                                <span class="kw">where
+<a href=#509 id=509 data-nosnippet>509</a>                                    </span>Input: __root_dfir_rs::dfir_pipes::pull::Pull&lt;Item = Item&gt;,
+<a href=#510 id=510 data-nosnippet>510</a>                                {
+<a href=#511 id=511 data-nosnippet>511</a>                                    <span class="kw">type </span>Ctx&lt;<span class="lifetime">'ctx</span>&gt; = Input::Ctx&lt;<span class="lifetime">'ctx</span>&gt;;
+<a href=#512 id=512 data-nosnippet>512</a>                                    <span class="kw">type </span>Item = Item;
+<a href=#513 id=513 data-nosnippet>513</a>                                    <span class="kw">type </span>Meta = Input::Meta;
+<a href=#514 id=514 data-nosnippet>514</a>                                    <span class="kw">type </span>CanPend = Input::CanPend;
+<a href=#515 id=515 data-nosnippet>515</a>                                    <span class="kw">type </span>CanEnd = Input::CanEnd;
+<a href=#516 id=516 data-nosnippet>516</a>                                    <span class="attr">#[inline(always)]
+<a href=#517 id=517 data-nosnippet>517</a>                                    </span><span class="kw">fn </span>pull(
+<a href=#518 id=518 data-nosnippet>518</a>                                        <span class="self">self</span>: ::std::pin::Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
+<a href=#519 id=519 data-nosnippet>519</a>                                        ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#520 id=520 data-nosnippet>520</a>                                    ) -&gt; __root_dfir_rs::dfir_pipes::pull::PullStep&lt;
+<a href=#521 id=521 data-nosnippet>521</a>                                        <span class="self">Self</span>::Item,
+<a href=#522 id=522 data-nosnippet>522</a>                                        <span class="self">Self</span>::Meta,
+<a href=#523 id=523 data-nosnippet>523</a>                                        <span class="self">Self</span>::CanPend,
+<a href=#524 id=524 data-nosnippet>524</a>                                        <span class="self">Self</span>::CanEnd,
+<a href=#525 id=525 data-nosnippet>525</a>                                    &gt; {
+<a href=#526 id=526 data-nosnippet>526</a>                                        __root_dfir_rs::dfir_pipes::pull::Pull::pull(
+<a href=#527 id=527 data-nosnippet>527</a>                                            <span class="self">self</span>.project().inner,
+<a href=#528 id=528 data-nosnippet>528</a>                                            ctx,
+<a href=#529 id=529 data-nosnippet>529</a>                                        )
+<a href=#530 id=530 data-nosnippet>530</a>                                    }
+<a href=#531 id=531 data-nosnippet>531</a>                                    <span class="attr">#[inline(always)]
+<a href=#532 id=532 data-nosnippet>532</a>                                    </span><span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
+<a href=#533 id=533 data-nosnippet>533</a>                                        __root_dfir_rs::dfir_pipes::pull::Pull::size_hint(
+<a href=#534 id=534 data-nosnippet>534</a>                                            <span class="kw-2">&amp;</span><span class="self">self</span>.inner,
+<a href=#535 id=535 data-nosnippet>535</a>                                        )
+<a href=#536 id=536 data-nosnippet>536</a>                                    }
+<a href=#537 id=537 data-nosnippet>537</a>                                }
+<a href=#538 id=538 data-nosnippet>538</a>                                Pull { inner: input }
+<a href=#539 id=539 data-nosnippet>539</a>                            }
+<a href=#540 id=540 data-nosnippet>540</a>                            op_1v1__source_stream__recv1::&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;(op_1v1)
+<a href=#541 id=541 data-nosnippet>541</a>                        };
+<a href=#542 id=542 data-nosnippet>542</a>                        <span class="attr">#[allow(
+<a href=#543 id=543 data-nosnippet>543</a>                            clippy::map_clone,
+<a href=#544 id=544 data-nosnippet>544</a>                            reason = <span class="string">"dfir has no explicit `cloned`/`copied` operator"
+<a href=#545 id=545 data-nosnippet>545</a>                        </span>)]
+<a href=#546 id=546 data-nosnippet>546</a>                        </span><span class="kw">let </span>op_2v1 = __root_dfir_rs::dfir_pipes::pull::Pull::map(
+<a href=#547 id=547 data-nosnippet>547</a>                            op_1v1,
+<a href=#548 id=548 data-nosnippet>548</a>                            |res| {
+<a href=#549 id=549 data-nosnippet>549</a>                                <span class="kw">let </span>(id, b) = res.unwrap();
+<a href=#550 id=550 data-nosnippet>550</a>                                (
+<a href=#551 id=551 data-nosnippet>551</a>                                    hydro_lang::__staged::location::MemberId::&lt;
+<a href=#552 id=552 data-nosnippet>552</a>                                        hydro_test::__staged::embedded::m2o_send::Src,
+<a href=#553 id=553 data-nosnippet>553</a>                                    &gt;::from_tagless(
+<a href=#554 id=554 data-nosnippet>554</a>                                        id <span class="kw">as </span>hydro_lang::__staged::location::TaglessMemberId,
+<a href=#555 id=555 data-nosnippet>555</a>                                    ),
+<a href=#556 id=556 data-nosnippet>556</a>                                    hydro_lang::runtime_support::bincode::deserialize::&lt;
+<a href=#557 id=557 data-nosnippet>557</a>                                        std::string::String,
+<a href=#558 id=558 data-nosnippet>558</a>                                    &gt;(<span class="kw-2">&amp;</span>b)
+<a href=#559 id=559 data-nosnippet>559</a>                                        .unwrap(),
+<a href=#560 id=560 data-nosnippet>560</a>                                )
+<a href=#561 id=561 data-nosnippet>561</a>                            },
+<a href=#562 id=562 data-nosnippet>562</a>                        );
+<a href=#563 id=563 data-nosnippet>563</a>                        <span class="kw">let </span>op_2v1 = {
+<a href=#564 id=564 data-nosnippet>564</a>                            <span class="attr">#[allow(non_snake_case)]
+<a href=#565 id=565 data-nosnippet>565</a>                            #[inline(always)]
+<a href=#566 id=566 data-nosnippet>566</a>                            </span><span class="kw">pub fn </span>op_2v1__map__recv1&lt;Item, Input&gt;(
+<a href=#567 id=567 data-nosnippet>567</a>                                input: Input,
+<a href=#568 id=568 data-nosnippet>568</a>                            ) -&gt; <span class="kw">impl </span>__root_dfir_rs::dfir_pipes::pull::Pull&lt;
+<a href=#569 id=569 data-nosnippet>569</a>                                Item = Item,
+<a href=#570 id=570 data-nosnippet>570</a>                                Meta = (),
+<a href=#571 id=571 data-nosnippet>571</a>                                CanPend = Input::CanPend,
+<a href=#572 id=572 data-nosnippet>572</a>                                CanEnd = Input::CanEnd,
+<a href=#573 id=573 data-nosnippet>573</a>                            &gt;
+<a href=#574 id=574 data-nosnippet>574</a>                            <span class="kw">where
+<a href=#575 id=575 data-nosnippet>575</a>                                </span>Input: __root_dfir_rs::dfir_pipes::pull::Pull&lt;
+<a href=#576 id=576 data-nosnippet>576</a>                                    Item = Item,
+<a href=#577 id=577 data-nosnippet>577</a>                                    Meta = (),
+<a href=#578 id=578 data-nosnippet>578</a>                                &gt;,
+<a href=#579 id=579 data-nosnippet>579</a>                            {
+<a href=#580 id=580 data-nosnippet>580</a>                                <span class="macro">__root_dfir_rs::pin_project_lite::pin_project!</span> {
+<a href=#581 id=581 data-nosnippet>581</a>                                    <span class="attr">#[repr(transparent)] </span><span class="kw">struct </span>Pull &lt; Item, Input :
+<a href=#582 id=582 data-nosnippet>582</a>                                    __root_dfir_rs::dfir_pipes::pull::Pull &lt; Item = Item &gt;&gt; {
+<a href=#583 id=583 data-nosnippet>583</a>                                    <span class="attr">#[pin] </span>inner : Input }
+<a href=#584 id=584 data-nosnippet>584</a>                                }
+<a href=#585 id=585 data-nosnippet>585</a>                                <span class="kw">impl</span>&lt;Item, Input&gt; __root_dfir_rs::dfir_pipes::pull::Pull
+<a href=#586 id=586 data-nosnippet>586</a>                                <span class="kw">for </span>Pull&lt;Item, Input&gt;
+<a href=#587 id=587 data-nosnippet>587</a>                                <span class="kw">where
+<a href=#588 id=588 data-nosnippet>588</a>                                    </span>Input: __root_dfir_rs::dfir_pipes::pull::Pull&lt;Item = Item&gt;,
+<a href=#589 id=589 data-nosnippet>589</a>                                {
+<a href=#590 id=590 data-nosnippet>590</a>                                    <span class="kw">type </span>Ctx&lt;<span class="lifetime">'ctx</span>&gt; = Input::Ctx&lt;<span class="lifetime">'ctx</span>&gt;;
+<a href=#591 id=591 data-nosnippet>591</a>                                    <span class="kw">type </span>Item = Item;
+<a href=#592 id=592 data-nosnippet>592</a>                                    <span class="kw">type </span>Meta = Input::Meta;
+<a href=#593 id=593 data-nosnippet>593</a>                                    <span class="kw">type </span>CanPend = Input::CanPend;
+<a href=#594 id=594 data-nosnippet>594</a>                                    <span class="kw">type </span>CanEnd = Input::CanEnd;
+<a href=#595 id=595 data-nosnippet>595</a>                                    <span class="attr">#[inline(always)]
+<a href=#596 id=596 data-nosnippet>596</a>                                    </span><span class="kw">fn </span>pull(
+<a href=#597 id=597 data-nosnippet>597</a>                                        <span class="self">self</span>: ::std::pin::Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
+<a href=#598 id=598 data-nosnippet>598</a>                                        ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#599 id=599 data-nosnippet>599</a>                                    ) -&gt; __root_dfir_rs::dfir_pipes::pull::PullStep&lt;
+<a href=#600 id=600 data-nosnippet>600</a>                                        <span class="self">Self</span>::Item,
+<a href=#601 id=601 data-nosnippet>601</a>                                        <span class="self">Self</span>::Meta,
+<a href=#602 id=602 data-nosnippet>602</a>                                        <span class="self">Self</span>::CanPend,
+<a href=#603 id=603 data-nosnippet>603</a>                                        <span class="self">Self</span>::CanEnd,
+<a href=#604 id=604 data-nosnippet>604</a>                                    &gt; {
+<a href=#605 id=605 data-nosnippet>605</a>                                        __root_dfir_rs::dfir_pipes::pull::Pull::pull(
+<a href=#606 id=606 data-nosnippet>606</a>                                            <span class="self">self</span>.project().inner,
+<a href=#607 id=607 data-nosnippet>607</a>                                            ctx,
+<a href=#608 id=608 data-nosnippet>608</a>                                        )
+<a href=#609 id=609 data-nosnippet>609</a>                                    }
+<a href=#610 id=610 data-nosnippet>610</a>                                    <span class="attr">#[inline(always)]
+<a href=#611 id=611 data-nosnippet>611</a>                                    </span><span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
+<a href=#612 id=612 data-nosnippet>612</a>                                        __root_dfir_rs::dfir_pipes::pull::Pull::size_hint(
+<a href=#613 id=613 data-nosnippet>613</a>                                            <span class="kw-2">&amp;</span><span class="self">self</span>.inner,
+<a href=#614 id=614 data-nosnippet>614</a>                                        )
+<a href=#615 id=615 data-nosnippet>615</a>                                    }
+<a href=#616 id=616 data-nosnippet>616</a>                                }
+<a href=#617 id=617 data-nosnippet>617</a>                                Pull { inner: input }
+<a href=#618 id=618 data-nosnippet>618</a>                            }
+<a href=#619 id=619 data-nosnippet>619</a>                            op_2v1__map__recv1::&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;(op_2v1)
+<a href=#620 id=620 data-nosnippet>620</a>                        };
+<a href=#621 id=621 data-nosnippet>621</a>                        <span class="attr">#[allow(
+<a href=#622 id=622 data-nosnippet>622</a>                            clippy::map_clone,
+<a href=#623 id=623 data-nosnippet>623</a>                            reason = <span class="string">"dfir has no explicit `cloned`/`copied` operator"
+<a href=#624 id=624 data-nosnippet>624</a>                        </span>)]
+<a href=#625 id=625 data-nosnippet>625</a>                        </span><span class="kw">let </span>op_3v1 = __root_dfir_rs::dfir_pipes::pull::Pull::map(
+<a href=#626 id=626 data-nosnippet>626</a>                            op_2v1,
+<a href=#627 id=627 data-nosnippet>627</a>                            stageleft::runtime_support::fn1_type_hint::&lt;
+<a href=#628 id=628 data-nosnippet>628</a>                                (
+<a href=#629 id=629 data-nosnippet>629</a>                                    hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;
+<a href=#630 id=630 data-nosnippet>630</a>                                        hydro_test::__staged::embedded::m2o_send::Src,
+<a href=#631 id=631 data-nosnippet>631</a>                                    &gt;,
+<a href=#632 id=632 data-nosnippet>632</a>                                    std::string::String,
+<a href=#633 id=633 data-nosnippet>633</a>                                ),
+<a href=#634 id=634 data-nosnippet>634</a>                                (
+<a href=#635 id=635 data-nosnippet>635</a>                                    hydro_test::__staged::__deps::hydro_lang::location::member_id::MemberId&lt;
+<a href=#636 id=636 data-nosnippet>636</a>                                        hydro_test::__staged::embedded::m2o_send::Src,
+<a href=#637 id=637 data-nosnippet>637</a>                                    &gt;,
+<a href=#638 id=638 data-nosnippet>638</a>                                    std::string::String,
+<a href=#639 id=639 data-nosnippet>639</a>                                ),
+<a href=#640 id=640 data-nosnippet>640</a>                            &gt;({
+<a href=#641 id=641 data-nosnippet>641</a>                                <span class="kw">use </span>hydro_lang::__staged::__deps::<span class="kw-2">*</span>;
+<a href=#642 id=642 data-nosnippet>642</a>                                <span class="kw">use </span>hydro_lang::__staged::live_collections::keyed_stream::<span class="kw-2">*</span>;
+<a href=#643 id=643 data-nosnippet>643</a>                                <span class="kw">let </span>f__free = stageleft::runtime_support::fn1_type_hint::&lt;
+<a href=#644 id=644 data-nosnippet>644</a>                                    std::string::String,
+<a href=#645 id=645 data-nosnippet>645</a>                                    std::string::String,
+<a href=#646 id=646 data-nosnippet>646</a>                                &gt;({
+<a href=#647 id=647 data-nosnippet>647</a>                                    <span class="kw">use </span>hydro_test::__staged::__deps::<span class="kw-2">*</span>;
+<a href=#648 id=648 data-nosnippet>648</a>                                    <span class="kw">use </span>hydro_test::__staged::embedded::m2o_send::<span class="kw-2">*</span>;
+<a href=#649 id=649 data-nosnippet>649</a>                                    |s| s.to_uppercase()
+<a href=#650 id=650 data-nosnippet>650</a>                                });
+<a href=#651 id=651 data-nosnippet>651</a>                                {
+<a href=#652 id=652 data-nosnippet>652</a>                                    <span class="kw">let </span>orig = f__free;
+<a href=#653 id=653 data-nosnippet>653</a>                                    <span class="kw">move </span>|(k, v)| (k, orig(v))
+<a href=#654 id=654 data-nosnippet>654</a>                                }
+<a href=#655 id=655 data-nosnippet>655</a>                            }),
+<a href=#656 id=656 data-nosnippet>656</a>                        );
+<a href=#657 id=657 data-nosnippet>657</a>                        <span class="kw">let </span>op_3v1 = {
+<a href=#658 id=658 data-nosnippet>658</a>                            <span class="attr">#[allow(non_snake_case)]
+<a href=#659 id=659 data-nosnippet>659</a>                            #[inline(always)]
+<a href=#660 id=660 data-nosnippet>660</a>                            </span><span class="kw">pub fn </span>op_3v1__map__3&lt;Item, Input&gt;(
+<a href=#661 id=661 data-nosnippet>661</a>                                input: Input,
+<a href=#662 id=662 data-nosnippet>662</a>                            ) -&gt; <span class="kw">impl </span>__root_dfir_rs::dfir_pipes::pull::Pull&lt;
+<a href=#663 id=663 data-nosnippet>663</a>                                Item = Item,
+<a href=#664 id=664 data-nosnippet>664</a>                                Meta = (),
+<a href=#665 id=665 data-nosnippet>665</a>                                CanPend = Input::CanPend,
+<a href=#666 id=666 data-nosnippet>666</a>                                CanEnd = Input::CanEnd,
+<a href=#667 id=667 data-nosnippet>667</a>                            &gt;
+<a href=#668 id=668 data-nosnippet>668</a>                            <span class="kw">where
+<a href=#669 id=669 data-nosnippet>669</a>                                </span>Input: __root_dfir_rs::dfir_pipes::pull::Pull&lt;
+<a href=#670 id=670 data-nosnippet>670</a>                                    Item = Item,
+<a href=#671 id=671 data-nosnippet>671</a>                                    Meta = (),
+<a href=#672 id=672 data-nosnippet>672</a>                                &gt;,
+<a href=#673 id=673 data-nosnippet>673</a>                            {
+<a href=#674 id=674 data-nosnippet>674</a>                                <span class="macro">__root_dfir_rs::pin_project_lite::pin_project!</span> {
+<a href=#675 id=675 data-nosnippet>675</a>                                    <span class="attr">#[repr(transparent)] </span><span class="kw">struct </span>Pull &lt; Item, Input :
+<a href=#676 id=676 data-nosnippet>676</a>                                    __root_dfir_rs::dfir_pipes::pull::Pull &lt; Item = Item &gt;&gt; {
+<a href=#677 id=677 data-nosnippet>677</a>                                    <span class="attr">#[pin] </span>inner : Input }
+<a href=#678 id=678 data-nosnippet>678</a>                                }
+<a href=#679 id=679 data-nosnippet>679</a>                                <span class="kw">impl</span>&lt;Item, Input&gt; __root_dfir_rs::dfir_pipes::pull::Pull
+<a href=#680 id=680 data-nosnippet>680</a>                                <span class="kw">for </span>Pull&lt;Item, Input&gt;
+<a href=#681 id=681 data-nosnippet>681</a>                                <span class="kw">where
+<a href=#682 id=682 data-nosnippet>682</a>                                    </span>Input: __root_dfir_rs::dfir_pipes::pull::Pull&lt;Item = Item&gt;,
+<a href=#683 id=683 data-nosnippet>683</a>                                {
+<a href=#684 id=684 data-nosnippet>684</a>                                    <span class="kw">type </span>Ctx&lt;<span class="lifetime">'ctx</span>&gt; = Input::Ctx&lt;<span class="lifetime">'ctx</span>&gt;;
+<a href=#685 id=685 data-nosnippet>685</a>                                    <span class="kw">type </span>Item = Item;
+<a href=#686 id=686 data-nosnippet>686</a>                                    <span class="kw">type </span>Meta = Input::Meta;
+<a href=#687 id=687 data-nosnippet>687</a>                                    <span class="kw">type </span>CanPend = Input::CanPend;
+<a href=#688 id=688 data-nosnippet>688</a>                                    <span class="kw">type </span>CanEnd = Input::CanEnd;
+<a href=#689 id=689 data-nosnippet>689</a>                                    <span class="attr">#[inline(always)]
+<a href=#690 id=690 data-nosnippet>690</a>                                    </span><span class="kw">fn </span>pull(
+<a href=#691 id=691 data-nosnippet>691</a>                                        <span class="self">self</span>: ::std::pin::Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
+<a href=#692 id=692 data-nosnippet>692</a>                                        ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#693 id=693 data-nosnippet>693</a>                                    ) -&gt; __root_dfir_rs::dfir_pipes::pull::PullStep&lt;
+<a href=#694 id=694 data-nosnippet>694</a>                                        <span class="self">Self</span>::Item,
+<a href=#695 id=695 data-nosnippet>695</a>                                        <span class="self">Self</span>::Meta,
+<a href=#696 id=696 data-nosnippet>696</a>                                        <span class="self">Self</span>::CanPend,
+<a href=#697 id=697 data-nosnippet>697</a>                                        <span class="self">Self</span>::CanEnd,
+<a href=#698 id=698 data-nosnippet>698</a>                                    &gt; {
+<a href=#699 id=699 data-nosnippet>699</a>                                        __root_dfir_rs::dfir_pipes::pull::Pull::pull(
+<a href=#700 id=700 data-nosnippet>700</a>                                            <span class="self">self</span>.project().inner,
+<a href=#701 id=701 data-nosnippet>701</a>                                            ctx,
+<a href=#702 id=702 data-nosnippet>702</a>                                        )
+<a href=#703 id=703 data-nosnippet>703</a>                                    }
+<a href=#704 id=704 data-nosnippet>704</a>                                    <span class="attr">#[inline(always)]
+<a href=#705 id=705 data-nosnippet>705</a>                                    </span><span class="kw">fn </span>size_hint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;) {
+<a href=#706 id=706 data-nosnippet>706</a>                                        __root_dfir_rs::dfir_pipes::pull::Pull::size_hint(
+<a href=#707 id=707 data-nosnippet>707</a>                                            <span class="kw-2">&amp;</span><span class="self">self</span>.inner,
+<a href=#708 id=708 data-nosnippet>708</a>                                        )
+<a href=#709 id=709 data-nosnippet>709</a>                                    }
+<a href=#710 id=710 data-nosnippet>710</a>                                }
+<a href=#711 id=711 data-nosnippet>711</a>                                Pull { inner: input }
+<a href=#712 id=712 data-nosnippet>712</a>                            }
+<a href=#713 id=713 data-nosnippet>713</a>                            op_3v1__map__3::&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;(op_3v1)
+<a href=#714 id=714 data-nosnippet>714</a>                        };
+<a href=#715 id=715 data-nosnippet>715</a>                        <span class="kw">let </span>op_4v1 = __root_dfir_rs::dfir_pipes::push::for_each(
+<a href=#716 id=716 data-nosnippet>716</a>                            <span class="kw-2">&amp;mut </span>output,
+<a href=#717 id=717 data-nosnippet>717</a>                        );
+<a href=#718 id=718 data-nosnippet>718</a>                        <span class="kw">let </span>op_4v1 = {
+<a href=#719 id=719 data-nosnippet>719</a>                            <span class="attr">#[allow(non_snake_case)]
+<a href=#720 id=720 data-nosnippet>720</a>                            #[inline(always)]
+<a href=#721 id=721 data-nosnippet>721</a>                            </span><span class="kw">pub fn </span>op_4v1__for_each__6&lt;Item, Psh&gt;(
+<a href=#722 id=722 data-nosnippet>722</a>                                psh: Psh,
+<a href=#723 id=723 data-nosnippet>723</a>                            ) -&gt; <span class="kw">impl </span>__root_dfir_rs::dfir_pipes::push::Push&lt;
+<a href=#724 id=724 data-nosnippet>724</a>                                Item,
+<a href=#725 id=725 data-nosnippet>725</a>                                (),
+<a href=#726 id=726 data-nosnippet>726</a>                                CanPend = Psh::CanPend,
+<a href=#727 id=727 data-nosnippet>727</a>                            &gt;
+<a href=#728 id=728 data-nosnippet>728</a>                            <span class="kw">where
+<a href=#729 id=729 data-nosnippet>729</a>                                </span>Psh: __root_dfir_rs::dfir_pipes::push::Push&lt;Item, ()&gt;,
+<a href=#730 id=730 data-nosnippet>730</a>                            {
+<a href=#731 id=731 data-nosnippet>731</a>                                <span class="macro">__root_dfir_rs::pin_project_lite::pin_project!</span> {
+<a href=#732 id=732 data-nosnippet>732</a>                                    <span class="attr">#[repr(transparent)] </span><span class="kw">struct </span>PushGuard &lt; Psh &gt; { <span class="attr">#[pin] </span>inner
+<a href=#733 id=733 data-nosnippet>733</a>                                    : Psh, }
+<a href=#734 id=734 data-nosnippet>734</a>                                }
+<a href=#735 id=735 data-nosnippet>735</a>                                <span class="kw">impl</span>&lt;
+<a href=#736 id=736 data-nosnippet>736</a>                                    Item,
+<a href=#737 id=737 data-nosnippet>737</a>                                    Psh,
+<a href=#738 id=738 data-nosnippet>738</a>                                &gt; __root_dfir_rs::dfir_pipes::push::Push&lt;Item, ()&gt;
+<a href=#739 id=739 data-nosnippet>739</a>                                <span class="kw">for </span>PushGuard&lt;Psh&gt;
+<a href=#740 id=740 data-nosnippet>740</a>                                <span class="kw">where
+<a href=#741 id=741 data-nosnippet>741</a>                                    </span>Psh: __root_dfir_rs::dfir_pipes::push::Push&lt;Item, ()&gt;,
+<a href=#742 id=742 data-nosnippet>742</a>                                {
+<a href=#743 id=743 data-nosnippet>743</a>                                    <span class="kw">type </span>Ctx&lt;<span class="lifetime">'ctx</span>&gt; = Psh::Ctx&lt;<span class="lifetime">'ctx</span>&gt;;
+<a href=#744 id=744 data-nosnippet>744</a>                                    <span class="kw">type </span>CanPend = Psh::CanPend;
+<a href=#745 id=745 data-nosnippet>745</a>                                    <span class="attr">#[inline(always)]
+<a href=#746 id=746 data-nosnippet>746</a>                                    </span><span class="kw">fn </span>poll_ready(
+<a href=#747 id=747 data-nosnippet>747</a>                                        <span class="self">self</span>: ::std::pin::Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
+<a href=#748 id=748 data-nosnippet>748</a>                                        ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#749 id=749 data-nosnippet>749</a>                                    ) -&gt; __root_dfir_rs::dfir_pipes::push::PushStep&lt;
+<a href=#750 id=750 data-nosnippet>750</a>                                        <span class="self">Self</span>::CanPend,
+<a href=#751 id=751 data-nosnippet>751</a>                                    &gt; {
+<a href=#752 id=752 data-nosnippet>752</a>                                        __root_dfir_rs::dfir_pipes::push::Push::poll_ready(
+<a href=#753 id=753 data-nosnippet>753</a>                                            <span class="self">self</span>.project().inner,
+<a href=#754 id=754 data-nosnippet>754</a>                                            ctx,
+<a href=#755 id=755 data-nosnippet>755</a>                                        )
+<a href=#756 id=756 data-nosnippet>756</a>                                    }
+<a href=#757 id=757 data-nosnippet>757</a>                                    <span class="attr">#[inline(always)]
+<a href=#758 id=758 data-nosnippet>758</a>                                    </span><span class="kw">fn </span>start_send(
+<a href=#759 id=759 data-nosnippet>759</a>                                        <span class="self">self</span>: ::std::pin::Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
+<a href=#760 id=760 data-nosnippet>760</a>                                        item: Item,
+<a href=#761 id=761 data-nosnippet>761</a>                                        meta: (),
+<a href=#762 id=762 data-nosnippet>762</a>                                    ) {
+<a href=#763 id=763 data-nosnippet>763</a>                                        __root_dfir_rs::dfir_pipes::push::Push::start_send(
+<a href=#764 id=764 data-nosnippet>764</a>                                            <span class="self">self</span>.project().inner,
+<a href=#765 id=765 data-nosnippet>765</a>                                            item,
+<a href=#766 id=766 data-nosnippet>766</a>                                            meta,
+<a href=#767 id=767 data-nosnippet>767</a>                                        )
+<a href=#768 id=768 data-nosnippet>768</a>                                    }
+<a href=#769 id=769 data-nosnippet>769</a>                                    <span class="attr">#[inline(always)]
+<a href=#770 id=770 data-nosnippet>770</a>                                    </span><span class="kw">fn </span>poll_flush(
+<a href=#771 id=771 data-nosnippet>771</a>                                        <span class="self">self</span>: ::std::pin::Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
+<a href=#772 id=772 data-nosnippet>772</a>                                        ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;,
+<a href=#773 id=773 data-nosnippet>773</a>                                    ) -&gt; __root_dfir_rs::dfir_pipes::push::PushStep&lt;
+<a href=#774 id=774 data-nosnippet>774</a>                                        <span class="self">Self</span>::CanPend,
+<a href=#775 id=775 data-nosnippet>775</a>                                    &gt; {
+<a href=#776 id=776 data-nosnippet>776</a>                                        __root_dfir_rs::dfir_pipes::push::Push::poll_flush(
+<a href=#777 id=777 data-nosnippet>777</a>                                            <span class="self">self</span>.project().inner,
+<a href=#778 id=778 data-nosnippet>778</a>                                            ctx,
+<a href=#779 id=779 data-nosnippet>779</a>                                        )
+<a href=#780 id=780 data-nosnippet>780</a>                                    }
+<a href=#781 id=781 data-nosnippet>781</a>                                    <span class="attr">#[inline(always)]
+<a href=#782 id=782 data-nosnippet>782</a>                                    </span><span class="kw">fn </span>size_hint(
+<a href=#783 id=783 data-nosnippet>783</a>                                        <span class="self">self</span>: ::std::pin::Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
+<a href=#784 id=784 data-nosnippet>784</a>                                        hint: (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;),
+<a href=#785 id=785 data-nosnippet>785</a>                                    ) {
+<a href=#786 id=786 data-nosnippet>786</a>                                        __root_dfir_rs::dfir_pipes::push::Push::size_hint(
+<a href=#787 id=787 data-nosnippet>787</a>                                            <span class="self">self</span>.project().inner,
+<a href=#788 id=788 data-nosnippet>788</a>                                            hint,
+<a href=#789 id=789 data-nosnippet>789</a>                                        )
+<a href=#790 id=790 data-nosnippet>790</a>                                    }
+<a href=#791 id=791 data-nosnippet>791</a>                                }
+<a href=#792 id=792 data-nosnippet>792</a>                                PushGuard { inner: psh }
+<a href=#793 id=793 data-nosnippet>793</a>                            }
+<a href=#794 id=794 data-nosnippet>794</a>                            op_4v1__for_each__6(op_4v1)
+<a href=#795 id=795 data-nosnippet>795</a>                        };
+<a href=#796 id=796 data-nosnippet>796</a>                        <span class="attr">#[inline(always)]
+<a href=#797 id=797 data-nosnippet>797</a>                        </span><span class="kw">fn </span>pivot_run_sg_1v1&lt;Pul, Psh, Item&gt;(
+<a href=#798 id=798 data-nosnippet>798</a>                            pull: Pul,
+<a href=#799 id=799 data-nosnippet>799</a>                            push: Psh,
+<a href=#800 id=800 data-nosnippet>800</a>                        ) -&gt; <span class="kw">impl </span>::std::future::Future&lt;Output = ()&gt;
+<a href=#801 id=801 data-nosnippet>801</a>                        <span class="kw">where
+<a href=#802 id=802 data-nosnippet>802</a>                            </span>Pul: __root_dfir_rs::dfir_pipes::pull::Pull&lt;Item = Item&gt;,
+<a href=#803 id=803 data-nosnippet>803</a>                            Psh: __root_dfir_rs::dfir_pipes::push::Push&lt;Item, Pul::Meta&gt;,
+<a href=#804 id=804 data-nosnippet>804</a>                        {
+<a href=#805 id=805 data-nosnippet>805</a>                            __root_dfir_rs::dfir_pipes::pull::Pull::send_push(pull, push)
+<a href=#806 id=806 data-nosnippet>806</a>                        }
+<a href=#807 id=807 data-nosnippet>807</a>                        (pivot_run_sg_1v1)(op_3v1, op_4v1).<span class="kw">await</span>;
+<a href=#808 id=808 data-nosnippet>808</a>                    },
+<a href=#809 id=809 data-nosnippet>809</a>                );
+<a href=#810 id=810 data-nosnippet>810</a>            df
+<a href=#811 id=811 data-nosnippet>811</a>        }
+<a href=#812 id=812 data-nosnippet>812</a>    }
+<a href=#813 id=813 data-nosnippet>813</a>}
 </code></pre></div></section></main></body></html>
