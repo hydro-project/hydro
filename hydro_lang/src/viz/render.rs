@@ -1236,6 +1236,7 @@ impl HydroNode {
             HydroNode::Map { f, input, metadata }
             | HydroNode::Filter { f, input, metadata }
             | HydroNode::FlatMap { f, input, metadata }
+            | HydroNode::FlatMapStream { f, input, metadata }
             | HydroNode::FilterMap { f, input, metadata }
             | HydroNode::Inspect { f, input, metadata } => build_single_expr_transform(
                 TransformParams {
