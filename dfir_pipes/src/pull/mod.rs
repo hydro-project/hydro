@@ -39,6 +39,7 @@ mod send_sink;
 mod skip;
 mod skip_while;
 mod stream;
+mod stream_compat;
 mod stream_ready;
 #[cfg(feature = "std")]
 mod symmetric_hash_join;
@@ -80,6 +81,7 @@ pub use send_sink::SendSink;
 pub use skip::Skip;
 pub use skip_while::SkipWhile;
 pub use stream::Stream;
+pub use stream_compat::StreamCompat;
 pub use stream_ready::StreamReady;
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
@@ -604,6 +606,11 @@ pub fn iter<I: IntoIterator>(iter: I) -> Iter<I::IntoIter> {
 /// pend and end.
 pub const fn stream<S: futures_core::stream::Stream>(stream: S) -> Stream<S> {
     Stream::new(stream)
+}
+
+/// Creates a [`StreamCompat`] adapter that wraps a [`Pull`] and implements [`futures_core::stream::Stream`].
+pub const fn stream_compat<Pul: Pull>(pull: Pul) -> StreamCompat<Pul> {
+    StreamCompat::new(pull)
 }
 
 /// Creates a pull from a `futures::Stream` with a custom waker.
