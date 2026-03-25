@@ -1,7 +1,6 @@
 ---
 source: hydro_test/src/cluster/paxos_bench.rs
 expression: built.ir()
-snapshot_kind: text
 ---
 [
     CycleSink {
@@ -3924,12 +3923,23 @@ snapshot_kind: text
                                                                                                                     input: Tee {
                                                                                                                         inner: <shared 23>: FlatMap {
                                                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) > , std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | v }),
-                                                                                                                            input: Tee {
-                                                                                                                                inner: <shared 14>,
+                                                                                                                            input: Cast {
+                                                                                                                                inner: Tee {
+                                                                                                                                    inner: <shared 14>,
+                                                                                                                                    metadata: HydroIrMetadata {
+                                                                                                                                        location_id: Tick(1, Cluster(loc1v1)),
+                                                                                                                                        collection_kind: Optional {
+                                                                                                                                            bound: Bounded,
+                                                                                                                                            element_type: std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) >,
+                                                                                                                                        },
+                                                                                                                                    },
+                                                                                                                                },
                                                                                                                                 metadata: HydroIrMetadata {
                                                                                                                                     location_id: Tick(1, Cluster(loc1v1)),
-                                                                                                                                    collection_kind: Optional {
+                                                                                                                                    collection_kind: Stream {
                                                                                                                                         bound: Bounded,
+                                                                                                                                        order: TotalOrder,
+                                                                                                                                        retry: ExactlyOnce,
                                                                                                                                         element_type: std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) >,
                                                                                                                                     },
                                                                                                                                 },
@@ -4767,23 +4777,32 @@ snapshot_kind: text
                                                                                                                                             left: Difference {
                                                                                                                                                 pos: FlatMap {
                                                                                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , core :: option :: Option < usize >) , std :: ops :: Range < usize > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (max_slot , checkpoint) | { if let Some (checkpoint) = checkpoint { (checkpoint + 1) .. max_slot } else { 0 .. max_slot } } }),
-                                                                                                                                                    input: CrossSingleton {
-                                                                                                                                                        left: Tee {
-                                                                                                                                                            inner: <shared 21>,
-                                                                                                                                                            metadata: HydroIrMetadata {
-                                                                                                                                                                location_id: Tick(1, Cluster(loc1v1)),
-                                                                                                                                                                collection_kind: Optional {
-                                                                                                                                                                    bound: Bounded,
-                                                                                                                                                                    element_type: usize,
-                                                                                                                                                                },
-                                                                                                                                                            },
-                                                                                                                                                        },
-                                                                                                                                                        right: Cast {
-                                                                                                                                                            inner: Tee {
-                                                                                                                                                                inner: <shared 28>,
+                                                                                                                                                    input: Cast {
+                                                                                                                                                        inner: CrossSingleton {
+                                                                                                                                                            left: Tee {
+                                                                                                                                                                inner: <shared 21>,
                                                                                                                                                                 metadata: HydroIrMetadata {
                                                                                                                                                                     location_id: Tick(1, Cluster(loc1v1)),
-                                                                                                                                                                    collection_kind: Singleton {
+                                                                                                                                                                    collection_kind: Optional {
+                                                                                                                                                                        bound: Bounded,
+                                                                                                                                                                        element_type: usize,
+                                                                                                                                                                    },
+                                                                                                                                                                },
+                                                                                                                                                            },
+                                                                                                                                                            right: Cast {
+                                                                                                                                                                inner: Tee {
+                                                                                                                                                                    inner: <shared 28>,
+                                                                                                                                                                    metadata: HydroIrMetadata {
+                                                                                                                                                                        location_id: Tick(1, Cluster(loc1v1)),
+                                                                                                                                                                        collection_kind: Singleton {
+                                                                                                                                                                            bound: Bounded,
+                                                                                                                                                                            element_type: core :: option :: Option < usize >,
+                                                                                                                                                                        },
+                                                                                                                                                                    },
+                                                                                                                                                                },
+                                                                                                                                                                metadata: HydroIrMetadata {
+                                                                                                                                                                    location_id: Tick(1, Cluster(loc1v1)),
+                                                                                                                                                                    collection_kind: Optional {
                                                                                                                                                                         bound: Bounded,
                                                                                                                                                                         element_type: core :: option :: Option < usize >,
                                                                                                                                                                     },
@@ -4793,14 +4812,16 @@ snapshot_kind: text
                                                                                                                                                                 location_id: Tick(1, Cluster(loc1v1)),
                                                                                                                                                                 collection_kind: Optional {
                                                                                                                                                                     bound: Bounded,
-                                                                                                                                                                    element_type: core :: option :: Option < usize >,
+                                                                                                                                                                    element_type: (usize , core :: option :: Option < usize >),
                                                                                                                                                                 },
                                                                                                                                                             },
                                                                                                                                                         },
                                                                                                                                                         metadata: HydroIrMetadata {
                                                                                                                                                             location_id: Tick(1, Cluster(loc1v1)),
-                                                                                                                                                            collection_kind: Optional {
+                                                                                                                                                            collection_kind: Stream {
                                                                                                                                                                 bound: Bounded,
+                                                                                                                                                                order: TotalOrder,
+                                                                                                                                                                retry: ExactlyOnce,
                                                                                                                                                                 element_type: (usize , core :: option :: Option < usize >),
                                                                                                                                                             },
                                                                                                                                                         },

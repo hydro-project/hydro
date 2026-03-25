@@ -1,7 +1,6 @@
 ---
 source: hydro_test/src/cluster/paxos_bench.rs
 expression: "preview.dfir_for(&acceptors).to_mermaid(&WriteConfig\n{\n    no_subgraphs: true, no_pull_push: true, no_handoffs: true,\n    op_text_no_imports: true, ..WriteConfig::default()\n})"
-snapshot_kind: text
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
 flowchart TD
@@ -131,8 +130,8 @@ subgraph var_cycle_4 ["var <tt>cycle_4</tt>"]
     style var_cycle_4 fill:transparent
     40v1
 end
-subgraph var_reduce_keyed_watermark_chain_531 ["var <tt>reduce_keyed_watermark_chain_531</tt>"]
-    style var_reduce_keyed_watermark_chain_531 fill:transparent
+subgraph var_reduce_keyed_watermark_chain_533 ["var <tt>reduce_keyed_watermark_chain_533</tt>"]
+    style var_reduce_keyed_watermark_chain_533 fill:transparent
     33v1
 end
 subgraph var_stream_162 ["var <tt>stream_162</tt>"]
@@ -185,103 +184,103 @@ subgraph var_stream_24 ["var <tt>stream_24</tt>"]
     style var_stream_24 fill:transparent
     1v1
 end
-subgraph var_stream_458 ["var <tt>stream_458</tt>"]
-    style var_stream_458 fill:transparent
+subgraph var_stream_460 ["var <tt>stream_460</tt>"]
+    style var_stream_460 fill:transparent
     18v1
     19v1
 end
-subgraph var_stream_461 ["var <tt>stream_461</tt>"]
-    style var_stream_461 fill:transparent
-    20v1
-end
 subgraph var_stream_463 ["var <tt>stream_463</tt>"]
     style var_stream_463 fill:transparent
+    20v1
+end
+subgraph var_stream_465 ["var <tt>stream_465</tt>"]
+    style var_stream_465 fill:transparent
     21v1
 end
-subgraph var_stream_466 ["var <tt>stream_466</tt>"]
-    style var_stream_466 fill:transparent
+subgraph var_stream_468 ["var <tt>stream_468</tt>"]
+    style var_stream_468 fill:transparent
     22v1
 end
-subgraph var_stream_467 ["var <tt>stream_467</tt>"]
-    style var_stream_467 fill:transparent
+subgraph var_stream_469 ["var <tt>stream_469</tt>"]
+    style var_stream_469 fill:transparent
     23v1
-end
-subgraph var_stream_516 ["var <tt>stream_516</tt>"]
-    style var_stream_516 fill:transparent
-    26v1
-end
-subgraph var_stream_517 ["var <tt>stream_517</tt>"]
-    style var_stream_517 fill:transparent
-    27v1
 end
 subgraph var_stream_518 ["var <tt>stream_518</tt>"]
     style var_stream_518 fill:transparent
-    28v1
-    29v1
+    26v1
+end
+subgraph var_stream_519 ["var <tt>stream_519</tt>"]
+    style var_stream_519 fill:transparent
+    27v1
 end
 subgraph var_stream_520 ["var <tt>stream_520</tt>"]
     style var_stream_520 fill:transparent
+    28v1
+    29v1
+end
+subgraph var_stream_522 ["var <tt>stream_522</tt>"]
+    style var_stream_522 fill:transparent
     30v1
 end
-subgraph var_stream_525 ["var <tt>stream_525</tt>"]
-    style var_stream_525 fill:transparent
+subgraph var_stream_527 ["var <tt>stream_527</tt>"]
+    style var_stream_527 fill:transparent
     31v1
 end
-subgraph var_stream_526 ["var <tt>stream_526</tt>"]
-    style var_stream_526 fill:transparent
+subgraph var_stream_528 ["var <tt>stream_528</tt>"]
+    style var_stream_528 fill:transparent
     32v1
 end
-subgraph var_stream_531 ["var <tt>stream_531</tt>"]
-    style var_stream_531 fill:transparent
+subgraph var_stream_533 ["var <tt>stream_533</tt>"]
+    style var_stream_533 fill:transparent
     36v1
     37v1
 end
-subgraph var_stream_536 ["var <tt>stream_536</tt>"]
-    style var_stream_536 fill:transparent
+subgraph var_stream_538 ["var <tt>stream_538</tt>"]
+    style var_stream_538 fill:transparent
     38v1
 end
-subgraph var_stream_537 ["var <tt>stream_537</tt>"]
-    style var_stream_537 fill:transparent
+subgraph var_stream_539 ["var <tt>stream_539</tt>"]
+    style var_stream_539 fill:transparent
     39v1
-end
-subgraph var_stream_650 ["var <tt>stream_650</tt>"]
-    style var_stream_650 fill:transparent
-    41v1
-    42v1
 end
 subgraph var_stream_652 ["var <tt>stream_652</tt>"]
     style var_stream_652 fill:transparent
-    43v1
+    41v1
+    42v1
 end
 subgraph var_stream_654 ["var <tt>stream_654</tt>"]
     style var_stream_654 fill:transparent
+    43v1
+end
+subgraph var_stream_656 ["var <tt>stream_656</tt>"]
+    style var_stream_656 fill:transparent
     44v1
-end
-subgraph var_stream_661 ["var <tt>stream_661</tt>"]
-    style var_stream_661 fill:transparent
-    45v1
-end
-subgraph var_stream_662 ["var <tt>stream_662</tt>"]
-    style var_stream_662 fill:transparent
-    46v1
 end
 subgraph var_stream_663 ["var <tt>stream_663</tt>"]
     style var_stream_663 fill:transparent
-    47v1
+    45v1
 end
 subgraph var_stream_664 ["var <tt>stream_664</tt>"]
     style var_stream_664 fill:transparent
-    48v1
+    46v1
 end
 subgraph var_stream_665 ["var <tt>stream_665</tt>"]
     style var_stream_665 fill:transparent
-    49v1
+    47v1
 end
 subgraph var_stream_666 ["var <tt>stream_666</tt>"]
     style var_stream_666 fill:transparent
-    50v1
+    48v1
+end
+subgraph var_stream_667 ["var <tt>stream_667</tt>"]
+    style var_stream_667 fill:transparent
+    49v1
 end
 subgraph var_stream_668 ["var <tt>stream_668</tt>"]
     style var_stream_668 fill:transparent
+    50v1
+end
+subgraph var_stream_670 ["var <tt>stream_670</tt>"]
+    style var_stream_670 fill:transparent
     51v1
 end
