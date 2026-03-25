@@ -439,6 +439,62 @@ where
         self.flat_map_unordered(q!(|x| x))
     }
 
+    /// Transforms the singleton value by applying a function `f` to produce a
+    /// [`futures::Stream`], then emits the elements of that stream one by one.
+    /// When the inner stream yields `Pending`, this operator yields as well.
+    ///
+    /// The [`futures::Stream`] produced by `f` must yield items in a **deterministic** order.
+    /// If the order is not deterministic, use [`Singleton::flat_map_stream_unordered`] instead.
+    pub fn flat_map_stream_ordered<U, S, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L>,
+    ) -> Stream<U, L, Bounded, TotalOrder, ExactlyOnce>
+    where
+        B: IsBounded,
+        S: futures::Stream<Item = U>,
+        F: Fn(T) -> S + 'a,
+    {
+        self.into_stream().flat_map_stream_ordered(f)
+    }
+
+    /// Like [`Singleton::flat_map_stream_ordered`], but allows the [`futures::Stream`]
+    /// produced by `f` to yield items in any order.
+    pub fn flat_map_stream_unordered<U, S, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L>,
+    ) -> Stream<U, L, Bounded, NoOrder, ExactlyOnce>
+    where
+        B: IsBounded,
+        S: futures::Stream<Item = U>,
+        F: Fn(T) -> S + 'a,
+    {
+        self.into_stream().flat_map_stream_unordered(f)
+    }
+
+    /// Flattens the singleton value, which must be a [`futures::Stream`], emitting
+    /// its elements one by one. When the inner stream yields `Pending`, this operator
+    /// yields as well.
+    ///
+    /// The [`futures::Stream`] must yield items in a **deterministic** order.
+    /// If the order is not deterministic, use [`Singleton::flatten_stream_unordered`] instead.
+    pub fn flatten_stream_ordered<U>(self) -> Stream<U, L, Bounded, TotalOrder, ExactlyOnce>
+    where
+        B: IsBounded,
+        T: futures::Stream<Item = U>,
+    {
+        self.flat_map_stream_ordered(q!(|d| d))
+    }
+
+    /// Like [`Singleton::flatten_stream_ordered`], but allows the [`futures::Stream`]
+    /// to yield items in any order.
+    pub fn flatten_stream_unordered<U>(self) -> Stream<U, L, Bounded, NoOrder, ExactlyOnce>
+    where
+        B: IsBounded,
+        T: futures::Stream<Item = U>,
+    {
+        self.flat_map_stream_unordered(q!(|d| d))
+    }
+
     /// Creates an optional containing the singleton value if it satisfies a predicate `f`.
     ///
     /// If the predicate returns `true`, the output optional contains the same value.
