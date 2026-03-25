@@ -2301,12 +2301,15 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// will all be executed synchronously before any outputs are yielded (in [`KeyedStream::end_atomic`]).
     ///
     /// This is useful to enforce local consistency constraints, such as ensuring that a write is
-    /// processed before an acknowledgement is emitted. Entering an atomic section requires a [`Tick`]
-    /// argument that declares where the stream will be atomically processed. Batching a stream into
-    /// the _same_ [`Tick`] will preserve the synchronous execution, while batching into a different
-    /// [`Tick`] will introduce asynchrony.
-    pub fn atomic(self, tick: &Tick<L>) -> KeyedStream<K, V, Atomic<L>, B, O, R> {
-        let out_location = Atomic { tick: tick.clone() };
+    /// processed before an acknowledgement is emitted.
+    pub fn atomic(self) -> KeyedStream<K, V, Atomic<L>, B, O, R> {
+        let id = self.location.flow_state().borrow_mut().next_clock_id();
+        let out_location = Atomic {
+            tick: Tick {
+                id,
+                l: self.location.clone(),
+            },
+        };
         KeyedStream::new(
             out_location.clone(),
             HydroNode::BeginAtomic {
@@ -2461,21 +2464,19 @@ where
     ///
     /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
-    pub fn batch_atomic(self, nondet: NonDet) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
+    pub fn batch_atomic(
+        self,
+        tick: &Tick<L>,
+        nondet: NonDet,
+    ) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
         let _ = nondet;
         KeyedStream::new(
-            self.location.clone().tick,
+            tick.clone(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self.location.tick.new_node_metadata(KeyedStream::<
-                    K,
-                    V,
-                    Tick<L>,
-                    Bounded,
-                    O,
-                    R,
-                >::collection_kind(
-                )),
+                metadata: tick.new_node_metadata(
+                    KeyedStream::<K, V, Tick<L>, Bounded, O, R>::collection_kind(),
+                ),
             },
         )
     }

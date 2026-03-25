@@ -224,11 +224,14 @@ pub fn paxos_core<'a, P: PaxosPayload>(
         ),
     );
 
-    a_log_complete_cycle.complete(a_log.snapshot_atomic(nondet!(
-        /// We will always write payloads to the log before acknowledging them to the proposers,
-        /// which guarantees that if the leader changes the quorum overlap between sequencing and leader
-        /// election will include the committed value.
-    )));
+    a_log_complete_cycle.complete(a_log.snapshot_atomic(
+        &acceptor_tick,
+        nondet!(
+            /// We will always write payloads to the log before acknowledging them to the proposers,
+            /// which guarantees that if the leader changes the quorum overlap between sequencing and leader
+            /// election will include the committed value.
+        ),
+    ));
     sequencing_max_ballot_complete_cycle.complete(sequencing_max_ballots);
 
     (
@@ -353,6 +356,7 @@ fn p_ballot_calc<'a>(
     Singleton<Ballot, Tick<Cluster<'a, Proposer>>, Bounded>,
     Singleton<bool, Tick<Cluster<'a, Proposer>>, Bounded>,
 ) {
+    let tick = p_received_max_ballot.location().clone();
     let (p_ballot, p_has_largest_ballot) = sliced! {
         let p_received_max_ballot = use::atomic(p_received_max_ballot.latest_atomic(), nondet!(/** up to date with tick input */));
         let mut p_ballot_num = use::state(|l| l.singleton(q!(0)));
@@ -388,9 +392,14 @@ fn p_ballot_calc<'a>(
     };
 
     (
-        p_ballot.snapshot_atomic(nondet!(/** always up to date with received ballots */)),
-        p_has_largest_ballot
-            .snapshot_atomic(nondet!(/** always up to date with received ballots */)),
+        p_ballot.snapshot_atomic(
+            &tick,
+            nondet!(/** always up to date with received ballots */),
+        ),
+        p_has_largest_ballot.snapshot_atomic(
+            &tick,
+            nondet!(/** always up to date with received ballots */),
+        ),
     )
 }
 
@@ -742,11 +751,14 @@ fn sequence_payload<'a, P: PaxosPayload>(
 
     let p_to_replicas = join_responses(
         quorums.map(q!(|k| (k, ()))),
-        payloads_to_send.batch_atomic(nondet!(
-            /// The metadata will always be generated before we get a quorum
-            /// because our batch of `payloads_to_send` is at least after
-            /// what we sent to the acceptors.
-        )),
+        payloads_to_send.batch_atomic(
+            proposer_tick,
+            nondet!(
+                /// The metadata will always be generated before we get a quorum
+                /// because our batch of `payloads_to_send` is at least after
+                /// what we sent to the acceptors.
+            ),
+        ),
     );
 
     (
@@ -761,7 +773,8 @@ pub fn index_payloads<'a, L: Location<'a> + NoTick, P: PaxosPayload>(
     p_max_slot: Optional<usize, Tick<L>, Bounded>,
     c_to_proposers: Stream<P, Tick<L>, Bounded>,
 ) -> Stream<(usize, P), Tick<L>, Bounded> {
-    sliced! {
+    let tick = c_to_proposers.location().clone();
+    let sliced_result = sliced! {
         let mut next_slot = use::state(|l| l.singleton(q!(0)));
         let updated_max_slot = use::atomic(p_max_slot.latest_atomic(), nondet!(/** up to date with tick input */));
         let payload_batch = use::atomic(c_to_proposers.all_ticks_atomic(), nondet!(/** up to date with tick input */));
@@ -783,7 +796,8 @@ pub fn index_payloads<'a, L: Location<'a> + NoTick, P: PaxosPayload>(
             .map(q!(|(num_payloads, base_slot)| base_slot + num_payloads));
 
         yield_atomic(indexed_payloads)
-    }.batch_atomic(nondet!(/** up to date with tick input */))
+    };
+    sliced_result.batch_atomic(&tick, nondet!(/** up to date with tick input */))
 }
 
 #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]

@@ -1706,12 +1706,15 @@ where
     /// will all be executed synchronously before any outputs are yielded (in [`Stream::end_atomic`]).
     ///
     /// This is useful to enforce local consistency constraints, such as ensuring that a write is
-    /// processed before an acknowledgement is emitted. Entering an atomic section requires a [`Tick`]
-    /// argument that declares where the stream will be atomically processed. Batching a stream into
-    /// the _same_ [`Tick`] will preserve the synchronous execution, while batching into a different
-    /// [`Tick`] will introduce asynchrony.
-    pub fn atomic(self, tick: &Tick<L>) -> Stream<T, Atomic<L>, B, O, R> {
-        let out_location = Atomic { tick: tick.clone() };
+    /// processed before an acknowledgement is emitted.
+    pub fn atomic(self) -> Stream<T, Atomic<L>, B, O, R> {
+        let id = self.location.flow_state().borrow_mut().next_clock_id();
+        let out_location = Atomic {
+            tick: Tick {
+                id,
+                l: self.location.clone(),
+            },
+        };
         Stream::new(
             out_location.clone(),
             HydroNode::BeginAtomic {
@@ -2570,14 +2573,16 @@ where
     ///
     /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
-    pub fn batch_atomic(self, _nondet: NonDet) -> Stream<T, Tick<L>, Bounded, O, R> {
+    pub fn batch_atomic(
+        self,
+        tick: &Tick<L>,
+        _nondet: NonDet,
+    ) -> Stream<T, Tick<L>, Bounded, O, R> {
         Stream::new(
-            self.location.clone().tick,
+            tick.clone(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .tick
+                metadata: tick
                     .new_node_metadata(Stream::<T, Tick<L>, Bounded, O, R>::collection_kind()),
             },
         )
@@ -3096,9 +3101,9 @@ mod tests {
             .batch(&tick, nondet!(/** test */))
             .cross_singleton(
                 node.source_iter(q!(vec![1, 2, 3]))
-                    .atomic(&tick)
+                    .atomic()
                     .fold(q!(|| 0), q!(|acc, v| *acc += v))
-                    .snapshot_atomic(nondet!(/** test */)),
+                    .snapshot_atomic(&tick, nondet!(/** test */)),
             )
             .all_ticks()
             .send_bincode_external(&external);
@@ -3548,7 +3553,7 @@ mod tests {
             node.forward_ref::<super::Stream<_, _, _, NoOrder>>();
         let ordered = input
             .merge_unordered(cycle_back)
-            .atomic(&node.tick())
+            .atomic()
             .assume_ordering::<TotalOrder>(nondet!(/** test */))
             .end_atomic();
         complete_cycle_back.complete(

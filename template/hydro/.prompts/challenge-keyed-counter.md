@@ -47,8 +47,7 @@ pub fn keyed_counter_service<'a, L: Location<'a> + NoTick>(
     KeyedStream<u32, String, L, Unbounded>,
     KeyedStream<u32, (String, usize), L, Unbounded, NoOrder>,
 ) {
-    let atomic_tick = increment_requests.location().tick();
-    let increment_request_processing = increment_requests.atomic(&atomic_tick);
+    let increment_request_processing = increment_requests.atomic();
     let current_count = increment_request_processing
         .clone()
         .entries()

@@ -10,8 +10,7 @@ pub fn concurrent_counter_service<'a>(
     KeyedStream<u32, (), Process<'a, CounterServer>>, // increment acknowledgments
     KeyedStream<u32, usize, Process<'a, CounterServer>>, // get responses
 ) {
-    let atomic_tick = increment_requests.location().tick();
-    let increment_request_processing = increment_requests.atomic(&atomic_tick);
+    let increment_request_processing = increment_requests.atomic();
     let current_count = increment_request_processing.clone().values().count();
     let increment_ack = increment_request_processing.end_atomic();
 

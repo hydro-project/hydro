@@ -111,11 +111,6 @@ impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries> Slicable<'
     fn get_location(&self) -> &L {
         self.collection.location()
     }
-
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        None
-    }
-
     fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.batch(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
@@ -132,11 +127,6 @@ impl<'a, T, L: Location<'a>, B: Boundedness> Slicable<'a, L>
     fn get_location(&self) -> &L {
         self.collection.location()
     }
-
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        None
-    }
-
     fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.snapshot(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
@@ -153,11 +143,6 @@ impl<'a, T, L: Location<'a>, B: Boundedness> Slicable<'a, L>
     fn get_location(&self) -> &L {
         self.collection.location()
     }
-
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        None
-    }
-
     fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.snapshot(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
@@ -174,11 +159,6 @@ impl<'a, K, V, L: Location<'a>, O: Ordering, R: Retries> Slicable<'a, L>
     fn get_location(&self) -> &L {
         self.collection.location()
     }
-
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        None
-    }
-
     fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.batch(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
@@ -195,11 +175,6 @@ impl<'a, K, V, L: Location<'a>> Slicable<'a, L>
     fn get_location(&self) -> &L {
         self.collection.location()
     }
-
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        None
-    }
-
     fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.snapshot(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
@@ -216,11 +191,6 @@ impl<'a, K, V, L: Location<'a> + NoTick> Slicable<'a, L>
     fn get_location(&self) -> &L {
         self.collection.location()
     }
-
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        None
-    }
-
     fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.batch(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
@@ -237,23 +207,12 @@ impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Slicable<'a, L>
 {
     type Slice = crate::live_collections::Stream<T, Tick<L>, Bounded, O, R>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
-
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        Some(self.collection.location().tick.clone())
-    }
-
     fn get_location(&self) -> &L {
-        panic!("Atomic location has no accessible inner location")
+        &self.collection.location().tick.l
     }
 
     fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
-        assert_eq!(
-            self.collection.location().tick.id(),
-            tick.id(),
-            "Mismatched tick for atomic slicing"
-        );
-
-        let out = self.collection.batch_atomic(self.nondet);
+        let out = self.collection.batch_atomic(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
@@ -264,23 +223,12 @@ impl<'a, T, L: Location<'a> + NoTick> Slicable<'a, L>
 {
     type Slice = crate::live_collections::Singleton<T, Tick<L>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
-
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        Some(self.collection.location().tick.clone())
-    }
-
     fn get_location(&self) -> &L {
-        panic!("Atomic location has no accessible inner location")
+        &self.collection.location().tick.l
     }
 
     fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
-        assert_eq!(
-            self.collection.location().tick.id(),
-            tick.id(),
-            "Mismatched tick for atomic slicing"
-        );
-
-        let out = self.collection.snapshot_atomic(self.nondet);
+        let out = self.collection.snapshot_atomic(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
@@ -291,23 +239,12 @@ impl<'a, T, L: Location<'a> + NoTick> Slicable<'a, L>
 {
     type Slice = crate::live_collections::Optional<T, Tick<L>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
-
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        Some(self.collection.location().tick.clone())
-    }
-
     fn get_location(&self) -> &L {
-        panic!("Atomic location has no accessible inner location")
+        &self.collection.location().tick.l
     }
 
     fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
-        assert_eq!(
-            self.collection.location().tick.id(),
-            tick.id(),
-            "Mismatched tick for atomic slicing"
-        );
-
-        let out = self.collection.snapshot_atomic(self.nondet);
+        let out = self.collection.snapshot_atomic(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
@@ -320,23 +257,12 @@ impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries> Slicable<'a, L
 {
     type Slice = crate::live_collections::KeyedStream<K, V, Tick<L>, Bounded, O, R>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
-
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        Some(self.collection.location().tick.clone())
-    }
-
     fn get_location(&self) -> &L {
-        panic!("Atomic location has no accessible inner location")
+        &self.collection.location().tick.l
     }
 
     fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
-        assert_eq!(
-            self.collection.location().tick.id(),
-            tick.id(),
-            "Mismatched tick for atomic slicing"
-        );
-
-        let out = self.collection.batch_atomic(self.nondet);
+        let out = self.collection.batch_atomic(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
@@ -347,23 +273,12 @@ impl<'a, K, V, L: Location<'a> + NoTick> Slicable<'a, L>
 {
     type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
-
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        Some(self.collection.location().tick.clone())
-    }
-
     fn get_location(&self) -> &L {
-        panic!("Atomic location has no accessible inner location")
+        &self.collection.location().tick.l
     }
 
     fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
-        assert_eq!(
-            self.collection.location().tick.id(),
-            tick.id(),
-            "Mismatched tick for atomic slicing"
-        );
-
-        let out = self.collection.snapshot_atomic(self.nondet);
+        let out = self.collection.snapshot_atomic(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
@@ -376,23 +291,12 @@ impl<'a, K, V, L: Location<'a> + NoTick> Slicable<'a, L>
 {
     type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
-
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        Some(self.collection.location().tick.clone())
-    }
-
     fn get_location(&self) -> &L {
-        panic!("Atomic location has no accessible inner location")
+        &self.collection.location().tick.l
     }
 
     fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
-        assert_eq!(
-            self.collection.location().tick.id(),
-            tick.id(),
-            "Mismatched tick for atomic slicing"
-        );
-
-        let out = self.collection.batch_atomic(self.nondet);
+        let out = self.collection.batch_atomic(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }

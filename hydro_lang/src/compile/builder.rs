@@ -195,8 +195,11 @@ impl<'a> FlowBuilder<'a> {
     pub fn finalize(mut self) -> super::built::BuiltFlow<'a> {
         self.finalized = true;
 
+        let mut ir = self.flow_state.borrow_mut().roots.take().unwrap();
+        super::ir::unify_atomic_ticks(&mut ir);
+
         super::built::BuiltFlow {
-            ir: self.flow_state.borrow_mut().roots.take().unwrap(),
+            ir,
             locations: std::mem::take(&mut self.locations),
             location_names: std::mem::take(&mut self.location_names),
             flow_name: std::mem::take(&mut self.flow_name),

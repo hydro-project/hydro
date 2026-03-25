@@ -59,11 +59,10 @@ mod tests {
         let (metadata_send, metadata_input) = process.sim_input::<(u32, i32), _, _>();
 
         // Create an atomic tick for metadata processing
-        let atomic_tick = process.tick();
-        let metadata_processing = metadata_input.atomic(&atomic_tick);
+        let metadata_processing = metadata_input.atomic();
         let metadata_ack = metadata_processing.clone().end_atomic();
         let metadata = metadata_processing
-            .batch_atomic(nondet!(/** test */))
+            .batch_atomic(&process.tick(), nondet!(/** test */))
             .weaken_ordering();
 
         // Join responses with metadata (weaken ordering for join_responses)
@@ -97,11 +96,10 @@ mod tests {
         let (response_send, responses) = process.sim_input::<(u32, String), _, _>();
         let (metadata_send, metadata_input) = process.sim_input::<(u32, i32), _, _>();
 
-        let atomic_tick = process.tick();
-        let metadata_processing = metadata_input.atomic(&atomic_tick);
+        let metadata_processing = metadata_input.atomic();
         let metadata_ack = metadata_processing.clone().end_atomic();
         let metadata = metadata_processing
-            .batch_atomic(nondet!(/** test */))
+            .batch_atomic(&process.tick(), nondet!(/** test */))
             .weaken_ordering();
 
         let joined = join_responses(responses.weaken_ordering(), metadata);
@@ -134,11 +132,10 @@ mod tests {
         let (response_send, responses) = process.sim_input::<(u32, String), _, _>();
         let (metadata_send, metadata_input) = process.sim_input::<(u32, i32), _, _>();
 
-        let atomic_tick = process.tick();
-        let metadata_processing = metadata_input.atomic(&atomic_tick);
+        let metadata_processing = metadata_input.atomic();
         let metadata_ack = metadata_processing.clone().end_atomic();
         let metadata = metadata_processing
-            .batch_atomic(nondet!(/** test */))
+            .batch_atomic(&process.tick(), nondet!(/** test */))
             .weaken_ordering();
 
         let joined = join_responses(responses.weaken_ordering(), metadata);
@@ -170,11 +167,10 @@ mod tests {
         let (response_send, responses) = process.sim_input::<(u32, String), _, _>();
         let (metadata_send, metadata_input) = process.sim_input::<(u32, i32), _, _>();
 
-        let atomic_tick = process.tick();
-        let metadata_processing = metadata_input.atomic(&atomic_tick);
+        let metadata_processing = metadata_input.atomic();
         let metadata_ack = metadata_processing.clone().end_atomic();
         let metadata = metadata_processing
-            .batch_atomic(nondet!(/** test */))
+            .batch_atomic(&process.tick(), nondet!(/** test */))
             .weaken_ordering();
 
         let joined = join_responses(responses.weaken_ordering(), metadata);
