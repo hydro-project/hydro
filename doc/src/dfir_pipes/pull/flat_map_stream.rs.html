@@ -166,8 +166,8 @@
 <a href=#166 id=166 data-nosnippet>166</a>        <span class="kw">let </span><span class="kw-2">mut </span>cx = Context::from_waker(waker);
 <a href=#167 id=167 data-nosnippet>167</a>
 <a href=#168 id=168 data-nosnippet>168</a>        <span class="comment">// Use a simple, finite upstream and inner stream so we can reach `Ended`.
-<a href=#169 id=169 data-nosnippet>169</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>p = <span class="kw">crate</span>::pull::iter(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>])
-<a href=#170 id=170 data-nosnippet>170</a>            .flat_map_stream(|x| stream::iter(<span class="macro">vec!</span>[x, x * <span class="number">10</span>]));
+<a href=#169 id=169 data-nosnippet>169</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>p =
+<a href=#170 id=170 data-nosnippet>170</a>            <span class="kw">crate</span>::pull::iter(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]).flat_map_stream(|x| stream::iter(<span class="macro">vec!</span>[x, x * <span class="number">10</span>]));
 <a href=#171 id=171 data-nosnippet>171</a>        <span class="kw">let </span><span class="kw-2">mut </span>p = Pin::new(<span class="kw-2">&amp;mut </span>p);
 <a href=#172 id=172 data-nosnippet>172</a>
 <a href=#173 id=173 data-nosnippet>173</a>        <span class="comment">// Drive the pull until we observe `Ended` once.
