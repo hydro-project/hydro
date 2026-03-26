@@ -23,7 +23,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use super::runtime::{Hooks, InlineHooks};
-use super::{SimReceiver, SimSender};
+use super::{SimClusterReceiver, SimClusterSender, SimReceiver, SimSender};
 use crate::compile::builder::ExternalPortId;
 use crate::live_collections::stream::{ExactlyOnce, NoOrder, Ordering, Retries, TotalOrder};
 use crate::location::dynamic::LocationId;
@@ -33,6 +33,9 @@ use crate::sim::runtime::SimHook;
 struct SimConnections {
     input_senders: HashMap<SimExternalPort, Rc<UnboundedSender<Bytes>>>,
     output_receivers: HashMap<SimExternalPort, Rc<Mutex<UnboundedReceiverStream<Bytes>>>>,
+    cluster_input_senders: HashMap<SimExternalPort, Vec<Rc<UnboundedSender<Bytes>>>>,
+    cluster_output_receivers:
+        HashMap<SimExternalPort, Vec<Rc<Mutex<UnboundedReceiverStream<Bytes>>>>>,
     external_registered: HashMap<ExternalPortId, SimExternalPort>,
 }
 
@@ -74,10 +77,10 @@ type SimLoaded<'a> = libloading::Symbol<
     'a,
     unsafe extern "Rust" fn(
         should_color: bool,
-        // usize: SimExternalPort
-        external_out: HashMap<usize, UnboundedSender<Bytes>>,
-        // usize: SimExternalPort
-        external_in: HashMap<usize, UnboundedReceiverStream<Bytes>>,
+        external_out: &mut HashMap<usize, UnboundedReceiverStream<Bytes>>,
+        external_in: &mut HashMap<usize, UnboundedSender<Bytes>>,
+        cluster_external_out: &mut HashMap<usize, Vec<UnboundedReceiverStream<Bytes>>>,
+        cluster_external_in: &mut HashMap<usize, Vec<UnboundedSender<Bytes>>>,
         println_handler: fn(fmt::Arguments<'_>),
         eprintln_handler: fn(fmt::Arguments<'_>),
     ) -> (
@@ -112,8 +115,7 @@ impl CompiledSim {
             &(|| CompiledSimInstance {
                 func: func.clone(),
                 externals_port_registry: self.externals_port_registry.clone(),
-                input_ports: HashMap::new(),
-                output_ports: HashMap::new(),
+                dylib_result: None,
                 log,
             }),
         )
@@ -329,13 +331,20 @@ impl CompiledSim {
     }
 }
 
+// This must be a tuple because it is referenced from generated code in `graph.rs`.
+type DylibResult = (
+    Vec<(&'static str, Option<u32>, Dfir<'static>)>,
+    Vec<(&'static str, Option<u32>, Dfir<'static>)>,
+    Hooks<&'static str>,
+    InlineHooks<&'static str>,
+);
+
 /// A single instance of a compiled Hydro simulation, which provides methods to interactively
 /// execute the simulation, feed inputs, and receive outputs.
 pub struct CompiledSimInstance<'a> {
     func: SimLoaded<'a>,
     externals_port_registry: SimExternalPortRegistry,
-    output_ports: HashMap<SimExternalPort, UnboundedSender<Bytes>>,
-    input_ports: HashMap<SimExternalPort, UnboundedReceiverStream<Bytes>>,
+    dylib_result: Option<DylibResult>,
     log: bool,
 }
 
@@ -352,26 +361,62 @@ impl<'a> CompiledSimInstance<'a> {
         mut self,
         thunk: impl AsyncFnOnce(CompiledSimInstance) + RefUnwindSafe,
     ) {
+        let mut external_out: HashMap<usize, UnboundedReceiverStream<Bytes>> = HashMap::new();
+        let mut external_in: HashMap<usize, UnboundedSender<Bytes>> = HashMap::new();
+        let mut cluster_external_out: HashMap<usize, Vec<UnboundedReceiverStream<Bytes>>> =
+            HashMap::new();
+        let mut cluster_external_in: HashMap<usize, Vec<UnboundedSender<Bytes>>> = HashMap::new();
+
+        let dylib_result = unsafe {
+            (self.func)(
+                colored::control::SHOULD_COLORIZE.should_colorize(),
+                &mut external_out,
+                &mut external_in,
+                &mut cluster_external_out,
+                &mut cluster_external_in,
+                if self.log {
+                    println_handler
+                } else {
+                    null_handler
+                },
+                if self.log {
+                    eprintln_handler
+                } else {
+                    null_handler
+                },
+            )
+        };
+
+        let registered = &self.externals_port_registry.registered;
+
         let mut input_senders = HashMap::new();
         let mut output_receivers = HashMap::new();
-        for registered_port in self.externals_port_registry.port_counter.range_up_to() {
-            {
-                let (sender, receiver) = dfir_rs::util::unbounded_channel::<Bytes>();
-                self.output_ports.insert(registered_port, sender);
-                output_receivers.insert(
-                    registered_port,
-                    Rc::new(Mutex::new(UnboundedReceiverStream::new(
-                        receiver.into_inner(),
-                    ))),
+        let mut cluster_input_senders = HashMap::new();
+        let mut cluster_output_receivers = HashMap::new();
+
+        for sim_port in registered.values() {
+            let usize_key = sim_port.into_inner();
+            if let Some(sender) = external_in.remove(&usize_key) {
+                input_senders.insert(*sim_port, Rc::new(sender));
+            }
+            if let Some(receiver) = external_out.remove(&usize_key) {
+                output_receivers.insert(*sim_port, Rc::new(Mutex::new(receiver)));
+            }
+            if let Some(senders) = cluster_external_in.remove(&usize_key) {
+                cluster_input_senders.insert(*sim_port, senders.into_iter().map(Rc::new).collect());
+            }
+            if let Some(receivers) = cluster_external_out.remove(&usize_key) {
+                cluster_output_receivers.insert(
+                    *sim_port,
+                    receivers
+                        .into_iter()
+                        .map(|r| Rc::new(Mutex::new(r)))
+                        .collect(),
                 );
             }
-
-            {
-                let (sender, receiver) = dfir_rs::util::unbounded_channel::<Bytes>();
-                self.input_ports.insert(registered_port, receiver);
-                input_senders.insert(registered_port, Rc::new(sender));
-            }
         }
+
+        self.dylib_result = Some(dylib_result);
 
         let local_set = tokio::task::LocalSet::new();
         local_set
@@ -379,6 +424,8 @@ impl<'a> CompiledSimInstance<'a> {
                 RefCell::new(SimConnections {
                     input_senders,
                     output_receivers,
+                    cluster_input_senders,
+                    cluster_output_receivers,
                     external_registered: self.externals_port_registry.registered.clone(),
                 }),
                 async move {
@@ -404,32 +451,10 @@ impl<'a> CompiledSimInstance<'a> {
     }
 
     fn schedule_with_maybe_logger<W: std::io::Write>(
-        self,
+        mut self,
         log_override: Option<W>,
     ) -> impl use<W> + Future<Output = ()> {
-        let (async_dfirs, tick_dfirs, hooks, inline_hooks) = unsafe {
-            (self.func)(
-                colored::control::SHOULD_COLORIZE.should_colorize(),
-                self.output_ports
-                    .into_iter()
-                    .map(|(k, v)| (k.into_inner(), v))
-                    .collect(),
-                self.input_ports
-                    .into_iter()
-                    .map(|(k, v)| (k.into_inner(), v))
-                    .collect(),
-                if self.log {
-                    println_handler
-                } else {
-                    null_handler
-                },
-                if self.log {
-                    eprintln_handler
-                } else {
-                    null_handler
-                },
-            )
-        };
+        let (async_dfirs, tick_dfirs, hooks, inline_hooks) = self.dylib_result.take().unwrap();
 
         let not_ready_observation = async_dfirs
             .iter()
@@ -766,6 +791,110 @@ impl<T: Serialize + DeserializeOwned> SimSender<T, TotalOrder, ExactlyOnce> {
         self.with_sink(|send| {
             for t in iter {
                 send(t).unwrap();
+            }
+        })
+    }
+}
+
+impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> Clone
+    for SimClusterReceiver<T, O, R>
+{
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> Copy
+    for SimClusterReceiver<T, O, R>
+{
+}
+
+impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimClusterReceiver<T, O, R> {
+    async fn with_member_stream<Out>(
+        &self,
+        member_id: u32,
+        thunk: impl AsyncFnOnce(&mut Pin<&mut dyn Stream<Item = T>>) -> Out,
+    ) -> Out {
+        let receiver = CURRENT_SIM_CONNECTIONS.with(|connections| {
+            let connections = &mut *connections.borrow_mut();
+            let receivers = connections
+                .cluster_output_receivers
+                .get(connections.external_registered.get(&self.0).unwrap())
+                .unwrap();
+            receivers[member_id as usize].clone()
+        });
+
+        let mut lock = receiver.lock().await;
+        thunk(&mut pin!(
+            lock.by_ref().map(|b| bincode::deserialize(&b).unwrap())
+        ))
+        .await
+    }
+}
+
+impl<T: Serialize + DeserializeOwned> SimClusterReceiver<T, TotalOrder, ExactlyOnce> {
+    /// Receives the next value from a specific cluster member.
+    pub async fn next(&self, member_id: u32) -> Option<T> {
+        self.with_member_stream(member_id, async |stream| stream.next().await)
+            .await
+    }
+
+    /// Collects all remaining values from a specific cluster member into a collection.
+    pub async fn collect<C: Default + Extend<T>>(self, member_id: u32) -> C {
+        self.with_member_stream(member_id, async |stream| stream.collect().await)
+            .await
+    }
+}
+
+impl<T: Serialize + DeserializeOwned> SimClusterReceiver<T, NoOrder, ExactlyOnce> {
+    /// Collects all remaining values from a specific cluster member, sorted.
+    pub async fn collect_sorted<C: Default + Extend<T> + AsMut<[T]>>(self, member_id: u32) -> C
+    where
+        T: Ord,
+    {
+        self.with_member_stream(member_id, async |stream| {
+            let mut collected: C = stream.collect().await;
+            collected.as_mut().sort();
+            collected
+        })
+        .await
+    }
+}
+
+impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimClusterSender<T, O, R> {
+    fn with_sink<Out>(
+        &self,
+        thunk: impl FnOnce(
+            &dyn Fn(u32, T) -> Result<(), tokio::sync::mpsc::error::SendError<Bytes>>,
+        ) -> Out,
+    ) -> Out {
+        let senders = CURRENT_SIM_CONNECTIONS.with(|connections| {
+            let connections = &mut *connections.borrow_mut();
+            connections
+                .cluster_input_senders
+                .get(connections.external_registered.get(&self.0).unwrap())
+                .unwrap()
+                .clone()
+        });
+
+        thunk(&move |member_id: u32, t: T| {
+            let payload = bincode::serialize(&t).unwrap();
+            senders[member_id as usize].send(Bytes::from(payload))
+        })
+    }
+}
+
+impl<T: Serialize + DeserializeOwned> SimClusterSender<T, TotalOrder, ExactlyOnce> {
+    /// Sends a value to a specific cluster member.
+    pub fn send(&self, member_id: u32, t: T) {
+        self.with_sink(|send| send(member_id, t)).unwrap();
+    }
+
+    /// Sends multiple values to specific cluster members.
+    pub fn send_many<I: IntoIterator<Item = (u32, T)>>(&self, iter: I) {
+        self.with_sink(|send| {
+            for (member_id, t) in iter {
+                send(member_id, t).unwrap();
             }
         })
     }

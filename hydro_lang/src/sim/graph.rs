@@ -321,9 +321,11 @@ impl<'a> Deploy<'a> for SimDeploy {
     ) -> syn::Expr {
         let ident = syn::Ident::new("__hydro_external_in", Span::call_site());
         let p1_port_usize = p1_port.0;
-        syn::parse_quote!(
-            #ident.remove(&#p1_port_usize).unwrap()
-        )
+        syn::parse_quote!({
+            let (__sender, __receiver) = __root_dfir_rs::util::unbounded_channel::<__root_dfir_rs::bytes::Bytes>();
+            #ident.insert(#p1_port_usize, __sender);
+            __receiver
+        })
     }
 
     fn e2o_connect(
@@ -346,9 +348,55 @@ impl<'a> Deploy<'a> for SimDeploy {
     ) -> syn::Expr {
         let ident = syn::Ident::new("__hydro_external_out", Span::call_site());
         let p2_port_usize = p2_port.0;
-        syn::parse_quote!(
-            #ident.remove(&#p2_port_usize).unwrap()
-        )
+        syn::parse_quote!({
+            let (__sender, __receiver) = __root_dfir_rs::util::unbounded_channel::<__root_dfir_rs::bytes::Bytes>();
+            #ident.insert(#p2_port_usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream::new(__receiver.into_inner()));
+            __sender
+        })
+    }
+
+    fn e2m_source(
+        _extra_stmts: &mut Vec<syn::Stmt>,
+        _p1: &Self::External,
+        p1_port: &<Self::External as Node>::Port,
+        _c2: &Self::Cluster,
+        _c2_port: &<Self::Cluster as Node>::Port,
+        _codec_type: &syn::Type,
+        _shared_handle: String,
+    ) -> syn::Expr {
+        let ident = syn::Ident::new("__hydro_cluster_external_in", Span::call_site());
+        let p1_port_usize = p1_port.0;
+        syn::parse_quote!({
+            let (__sender, __receiver) = __root_dfir_rs::util::unbounded_channel::<__root_dfir_rs::bytes::Bytes>();
+            #ident.entry(#p1_port_usize).or_insert_with(Vec::new).push(__sender);
+            __receiver
+        })
+    }
+
+    fn e2m_connect(
+        _p1: &Self::External,
+        _p1_port: &<Self::External as Node>::Port,
+        _c2: &Self::Cluster,
+        _c2_port: &<Self::Cluster as Node>::Port,
+        _server_hint: crate::location::NetworkHint,
+    ) -> Box<dyn FnOnce()> {
+        Box::new(|| {})
+    }
+
+    fn m2e_sink(
+        _c1: &Self::Cluster,
+        _c1_port: &<Self::Cluster as Node>::Port,
+        _p2: &Self::External,
+        p2_port: &<Self::External as Node>::Port,
+        _shared_handle: String,
+    ) -> syn::Expr {
+        let ident = syn::Ident::new("__hydro_cluster_external_out", Span::call_site());
+        let p2_port_usize = p2_port.0;
+        syn::parse_quote!({
+            let (__sender, __receiver) = __root_dfir_rs::util::unbounded_channel::<__root_dfir_rs::bytes::Bytes>();
+            #ident.entry(#p2_port_usize).or_insert_with(Vec::new).push(__root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream::new(__receiver.into_inner()));
+            __sender
+        })
     }
 
     #[expect(unreachable_code, reason = "todo!() is unreachable")]
@@ -788,8 +836,10 @@ fn compile_sim_graph_trybuild(
         /// TODO(mingwei): enforce/check this, somehow
         #[allow(unused)]
         fn __hydro_runtime_core<'a>(
-            mut __hydro_external_out: ::std::collections::HashMap<usize, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>,
-            mut __hydro_external_in: ::std::collections::HashMap<usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>,
+            __hydro_external_out: &mut ::std::collections::HashMap<usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>,
+            __hydro_external_in: &mut ::std::collections::HashMap<usize, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>,
+            __hydro_cluster_external_out: &mut ::std::collections::HashMap<usize, Vec<__root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>>,
+            __hydro_cluster_external_in: &mut ::std::collections::HashMap<usize, Vec<__root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>>,
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
@@ -856,8 +906,10 @@ fn compile_sim_graph_trybuild(
         #[unsafe(no_mangle)]
         unsafe extern "Rust" fn __hydro_runtime(
             should_color: bool,
-            __hydro_external_out: ::std::collections::HashMap<usize, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>,
-            __hydro_external_in: ::std::collections::HashMap<usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>,
+            __hydro_external_out: &mut ::std::collections::HashMap<usize, __root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>,
+            __hydro_external_in: &mut ::std::collections::HashMap<usize, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>,
+            __hydro_cluster_external_out: &mut ::std::collections::HashMap<usize, Vec<__root_dfir_rs::tokio_stream::wrappers::UnboundedReceiverStream<__root_dfir_rs::bytes::Bytes>>>,
+            __hydro_cluster_external_in: &mut ::std::collections::HashMap<usize, Vec<__root_dfir_rs::tokio::sync::mpsc::UnboundedSender<__root_dfir_rs::bytes::Bytes>>>,
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
@@ -867,7 +919,7 @@ fn compile_sim_graph_trybuild(
             #root::sim::runtime::InlineHooks<&'static str>,
         ) {
             #root::runtime_support::colored::control::set_override(should_color);
-            __hydro_runtime_core(__hydro_external_out, __hydro_external_in, __println_handler, __eprintln_handler)
+            __hydro_runtime_core(__hydro_external_out, __hydro_external_in, __hydro_cluster_external_out, __hydro_cluster_external_in, __println_handler, __eprintln_handler)
         }
     };
     source_ast

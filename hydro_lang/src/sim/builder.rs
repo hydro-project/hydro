@@ -1124,9 +1124,12 @@ impl DfirBuilder for SimBuilder {
         tag_id: usize,
     ) {
         let grabbed_ident = syn::Ident::new(&format!("__sink_{tag_id}"), Span::call_site());
-        self.extra_stmts_global.push(syn::parse_quote! {
-            let #grabbed_ident = #sink_expr;
-        });
+        self.add_extra_stmt_internal(
+            on,
+            syn::parse_quote! {
+                let #grabbed_ident = #sink_expr;
+            },
+        );
 
         if let Some(serialize_pipeline) = serialize {
             self.get_dfir_mut(on).add_dfir(

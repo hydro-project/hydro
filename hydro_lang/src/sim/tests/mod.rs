@@ -281,3 +281,26 @@ fn sim_batch_nondebuggable_type() {
         let _: Vec<_> = _out_recv.collect().await;
     });
 }
+
+#[test]
+fn sim_cluster_e2m_m2e() {
+    let mut flow = FlowBuilder::new();
+    let cluster = flow.cluster::<()>();
+
+    let (in_send, input) = cluster.sim_input::<i32>();
+    let out_recv = input.map(q!(|x| x * 10)).sim_cluster_output();
+
+    flow.sim()
+        .with_cluster_size(&cluster, 3)
+        .exhaustive(async || {
+            // Send values to specific cluster members
+            in_send.send(0, 1); // member 0 gets 1
+            in_send.send(1, 2); // member 1 gets 2
+            in_send.send(2, 3); // member 2 gets 3
+
+            // Each member multiplies by 10
+            assert_eq!(out_recv.next(0).await, Some(10));
+            assert_eq!(out_recv.next(1).await, Some(20));
+            assert_eq!(out_recv.next(2).await, Some(30));
+        });
+}

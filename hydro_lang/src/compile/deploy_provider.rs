@@ -167,6 +167,49 @@ pub trait Deploy<'a> {
         shared_handle: String,
     ) -> syn::Expr;
 
+    fn e2m_source(
+        extra_stmts: &mut Vec<syn::Stmt>,
+        p1: &Self::External,
+        p1_port: &<Self::External as Node>::Port,
+        c2: &Self::Cluster,
+        c2_port: &<Self::Cluster as Node>::Port,
+        codec_type: &syn::Type,
+        shared_handle: String,
+    ) -> syn::Expr {
+        let _ = (
+            extra_stmts,
+            p1,
+            p1_port,
+            c2,
+            c2_port,
+            codec_type,
+            shared_handle,
+        );
+        todo!("e2m_source is not yet supported for this deploy backend")
+    }
+
+    fn e2m_connect(
+        p1: &Self::External,
+        p1_port: &<Self::External as Node>::Port,
+        c2: &Self::Cluster,
+        c2_port: &<Self::Cluster as Node>::Port,
+        server_hint: NetworkHint,
+    ) -> Box<dyn FnOnce()> {
+        let _ = (p1, p1_port, c2, c2_port, server_hint);
+        todo!("e2m_connect is not yet supported for this deploy backend")
+    }
+
+    fn m2e_sink(
+        c1: &Self::Cluster,
+        c1_port: &<Self::Cluster as Node>::Port,
+        p2: &Self::External,
+        p2_port: &<Self::External as Node>::Port,
+        shared_handle: String,
+    ) -> syn::Expr {
+        let _ = (c1, c1_port, p2, p2_port, shared_handle);
+        todo!("m2e_sink is not yet supported for this deploy backend")
+    }
+
     fn cluster_ids(
         of_cluster: LocationKey,
     ) -> impl QuotedWithContext<'a, &'a [TaglessMemberId], ()> + Clone + 'a;

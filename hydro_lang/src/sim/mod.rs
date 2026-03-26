@@ -22,6 +22,24 @@ pub struct SimSender<T: Serialize + DeserializeOwned, O: Ordering, R: Retries>(
     pub(crate) PhantomData<(T, O, R)>,
 );
 
+/// A receiver for an external cluster stream in a simulation.
+///
+/// Each received value is a `(u32, T)` tuple where the `u32` is the raw
+/// cluster member ID that produced the value.
+pub struct SimClusterReceiver<T: Serialize + DeserializeOwned, O: Ordering, R: Retries>(
+    pub(crate) ExternalPortId,
+    pub(crate) PhantomData<(T, O, R)>,
+);
+
+/// A sender to an external cluster sink in a simulation.
+///
+/// Each sent value is a `(u32, T)` tuple where the `u32` is the raw
+/// cluster member ID that should receive the value.
+pub struct SimClusterSender<T: Serialize + DeserializeOwned, O: Ordering, R: Retries>(
+    pub(crate) ExternalPortId,
+    pub(crate) PhantomData<(T, O, R)>,
+);
+
 #[cfg(stageleft_runtime)]
 mod builder;
 

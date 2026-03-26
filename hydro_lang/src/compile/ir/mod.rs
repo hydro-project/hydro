@@ -815,7 +815,35 @@ impl HydroRoot {
                                         )
                                     }
                                 }
-                                LocationId::Cluster(_) => todo!("SendExternal from a cluster location is not yet supported"),
+                                LocationId::Cluster(cluster_key) => {
+                                    let from_node = clusters
+                                        .get(*cluster_key)
+                                        .unwrap_or_else(|| {
+                                            panic!("A cluster used in the graph was not instantiated: {}", cluster_key)
+                                        })
+                                        .clone();
+
+                                    let sink_port = from_node.next_port();
+                                    let source_port = to_node.next_port();
+
+                                    if *unpaired {
+                                        to_node.register(*to_port_id, source_port.clone());
+                                    }
+
+                                    (
+                                        (
+                                            D::m2e_sink(
+                                                &from_node,
+                                                &sink_port,
+                                                &to_node,
+                                                &source_port,
+                                                format!("{}_{}", *to_external_key, *to_port_id)
+                                            ),
+                                            parse_quote!(DUMMY),
+                                        ),
+                                        Box::new(|| {}) as Box<dyn FnOnce()>,
+                                    )
+                                }
                                 _ => panic!()
                             }
                         },
@@ -936,7 +964,33 @@ impl HydroRoot {
                                         D::e2o_connect(&from_node, &sink_port, &to_node, &source_port, *from_many, *port_hint),
                                     )
                                 }
-                                LocationId::Cluster(_) => todo!("ExternalInput to a cluster location is not yet supported"),
+                                LocationId::Cluster(cluster_key) => {
+                                    let to_node = clusters
+                                        .get(*cluster_key)
+                                        .unwrap_or_else(|| {
+                                            panic!("A cluster used in the graph was not instantiated: {}", cluster_key)
+                                        })
+                                        .clone();
+
+                                    let sink_port = from_node.next_port();
+                                    let source_port = to_node.next_port();
+
+                                    from_node.register(*from_port_id, sink_port.clone());
+
+                                    (
+                                        (
+                                            parse_quote!(DUMMY),
+                                            D::e2m_source(
+                                                refcell_extra_stmts.borrow_mut().entry(*cluster_key).expect("location was removed").or_default(),
+                                                &from_node, &sink_port,
+                                                &to_node, &source_port,
+                                                codec_type.0.as_ref(),
+                                                format!("{}_{}", *from_external_key, *from_port_id)
+                                            ),
+                                        ),
+                                        D::e2m_connect(&from_node, &sink_port, &to_node, &source_port, *port_hint),
+                                    )
+                                }
                                 _ => panic!()
                             }
                         },

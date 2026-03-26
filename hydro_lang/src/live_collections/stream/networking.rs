@@ -1092,6 +1092,54 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
         }
         .demux(to, via)
     }
+
+    #[cfg(feature = "sim")]
+    /// Sends elements of this cluster stream to an external location using bincode serialization.
+    fn send_bincode_external<L2>(self, other: &External<L2>) -> ExternalBincodeStream<T, O, R>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        let serialize_pipeline = Some(serialize_bincode::<T>(false));
+
+        let mut flow_state_borrow = self.location.flow_state().borrow_mut();
+
+        let external_port_id = flow_state_borrow.next_external_port();
+
+        flow_state_borrow.push_root(HydroRoot::SendExternal {
+            to_external_key: other.key,
+            to_port_id: external_port_id,
+            to_many: false,
+            unpaired: true,
+            serialize_fn: serialize_pipeline.map(|e| e.into()),
+            instantiate_fn: DebugInstantiate::Building,
+            input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+            op_metadata: HydroIrOpMetadata::new(),
+        });
+
+        ExternalBincodeStream {
+            process_key: other.key,
+            port_id: external_port_id,
+            _phantom: PhantomData,
+        }
+    }
+
+    #[cfg(feature = "sim")]
+    /// Sets up a simulation output port for this cluster stream, allowing test code
+    /// to receive `(member_id, T)` pairs during simulation.
+    pub fn sim_cluster_output(self) -> crate::sim::SimClusterReceiver<T, O, R>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        let external_location: External<'a, ()> = External {
+            key: LocationKey::FIRST,
+            flow_state: self.location.flow_state().clone(),
+            _phantom: PhantomData,
+        };
+
+        let external = self.send_bincode_external(&external_location);
+
+        crate::sim::SimClusterReceiver(external.port_id, PhantomData)
+    }
 }
 
 impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>

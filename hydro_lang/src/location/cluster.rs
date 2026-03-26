@@ -88,6 +88,49 @@ impl<'a, C> Location<'a> for Cluster<'a, C> {
     }
 }
 
+#[cfg(feature = "sim")]
+impl<'a, C> Cluster<'a, C> {
+    /// Sets up a simulated input port on this cluster for testing.
+    ///
+    /// Returns a `SimClusterSender` that sends `(member_id, T)` messages targeting
+    /// specific cluster members, and a `Stream<T>` received by each member.
+    #[expect(clippy::type_complexity, reason = "stream markers")]
+    pub fn sim_input<T>(
+        &self,
+    ) -> (
+        crate::sim::SimClusterSender<
+            T,
+            crate::live_collections::stream::TotalOrder,
+            crate::live_collections::stream::ExactlyOnce,
+        >,
+        crate::live_collections::Stream<
+            T,
+            Self,
+            crate::live_collections::boundedness::Unbounded,
+            crate::live_collections::stream::TotalOrder,
+            crate::live_collections::stream::ExactlyOnce,
+        >,
+    )
+    where
+        T: serde::Serialize + serde::de::DeserializeOwned,
+    {
+        use crate::location::Location;
+
+        let external_location: crate::location::External<'a, ()> = crate::location::External {
+            key: LocationKey::FIRST,
+            flow_state: self.flow_state.clone(),
+            _phantom: PhantomData,
+        };
+
+        let (external, stream) = self.source_external_bincode(&external_location);
+
+        (
+            crate::sim::SimClusterSender(external.port_id, PhantomData),
+            stream,
+        )
+    }
+}
+
 /// A free variable that resolves to the list of member IDs in a cluster at runtime.
 ///
 /// When spliced into a quoted snippet, this provides access to the set of
