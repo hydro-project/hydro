@@ -2841,6 +2841,7 @@ where
     /// # }));
     /// # }
     /// ```
+    #[expect(clippy::wrong_self_convention, reason = "stream function naming")]
     pub fn is_empty(self) -> Singleton<bool, Tick<L>, Bounded> {
         self.fold(
             q!(|| true),
