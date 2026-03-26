@@ -577,18 +577,37 @@ impl TrybuildHost {
         }
     }
 
-    pub fn additional_hydro_features(self, additional_hydro_features: Vec<String>) -> Self {
+    pub fn additional_hydro_features(
+        self,
+        additional_hydro_features: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
         Self {
-            additional_hydro_features,
+            additional_hydro_features: self
+                .additional_hydro_features
+                .into_iter()
+                .chain(additional_hydro_features.into_iter().map(Into::into))
+                .collect(),
             ..self
         }
     }
 
-    pub fn features(self, features: Vec<String>) -> Self {
+    pub fn additional_hydro_feature(self, feature: impl Into<String>) -> Self {
+        self.additional_hydro_features(std::iter::once(feature.into()))
+    }
+
+    pub fn features(self, features: impl IntoIterator<Item = impl Into<String>>) -> Self {
         Self {
-            features: self.features.into_iter().chain(features).collect(),
+            features: self
+                .features
+                .into_iter()
+                .chain(features.into_iter().map(Into::into))
+                .collect(),
             ..self
         }
+    }
+
+    pub fn feature(self, feature: impl Into<String>) -> Self {
+        self.features(std::iter::once(feature.into()))
     }
 
     pub fn tracing(self, tracing: TracingOptions) -> Self {
