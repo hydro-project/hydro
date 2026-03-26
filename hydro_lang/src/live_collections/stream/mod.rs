@@ -2821,6 +2821,36 @@ where
             },
         )
     }
+
+    /// Returns a [`Singleton`] containing `true` if the stream has no elements, or `false` otherwise.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let empty: Stream<i32, _, Bounded> = process
+    ///   .source_iter(q!(Vec::<i32>::new()))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// empty.is_empty().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // true
+    /// # assert_eq!(stream.next().await.unwrap(), true);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn is_empty(self) -> Singleton<bool, Tick<L>, Bounded> {
+        self.fold(
+            q!(|| true),
+            q!(
+                |empty, _| { *empty = false },
+                idempotent = manual_proof!(/** values are ignored */),
+                commutative = manual_proof!(/** values are ignored */),
+            ),
+        )
+    }
 }
 
 #[cfg(test)]
