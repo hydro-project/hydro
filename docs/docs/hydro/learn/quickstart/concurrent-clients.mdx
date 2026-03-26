@@ -83,7 +83,6 @@ And get responses use `cross_singleton` which pairs the count with each client's
 let get_response = sliced! {
     let request_batch = use(get_requests, nondet!(/** we never observe batch boundaries */));
     let count_snapshot = use::atomic(current_count, nondet!(/** atomicity guarantees consistency wrt increments */));
-
     request_batch.cross_singleton(count_snapshot).map(q!(|(_, count)| count))
 };
 `)}</CodeBlock>
