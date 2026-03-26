@@ -85,6 +85,8 @@ fn clean_bin_name_prefix(bin_name_prefix: &str) -> String {
         .replace(">", "")
         .replace("(", "")
         .replace(")", "")
+        .replace("{", "_")
+        .replace("}", "_")
 }
 
 #[derive(Debug, Clone)]

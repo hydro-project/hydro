@@ -1490,4 +1490,34 @@ mod tests {
         assert_eq!(external_out_1.next().await.unwrap(), "HI");
         assert_eq!(external_out_2.next().await.unwrap(), "HELLO");
     }
+
+    #[tokio::test]
+    async fn closure_location_name() {
+        let mut deployment = Deployment::new();
+        let mut flow = FlowBuilder::new();
+
+        enum ClosureProcess {}
+
+        let node = flow.process::<ClosureProcess>();
+        let external = flow.external::<()>();
+
+        let (in_port, input) =
+            node.source_external_bincode::<_, i32, TotalOrder, ExactlyOnce>(&external);
+        let out = input.send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect(in_port).await;
+        let mut external_out = nodes.connect(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in.send(42).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 42);
+    }
 }
