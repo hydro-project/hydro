@@ -74,7 +74,8 @@ where
             .clone()
             .zip(num_clients_per_node)
             .filter_map(q!(move |((virtual_id, _), num_clients_per_node)| {
-                if virtual_id < num_clients_per_node as u32 {
+                assert!(num_clients_per_node > 0, "Must have at least 1 virtual client per node");
+                if virtual_id + 1 < num_clients_per_node as u32 {
                     Some((virtual_id + 1, None))
                 } else {
                     None
