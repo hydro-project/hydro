@@ -2843,14 +2843,11 @@ where
     /// ```
     #[expect(clippy::wrong_self_convention, reason = "stream function naming")]
     pub fn is_empty(self) -> Singleton<bool, Tick<L>, Bounded> {
-        self.fold(
-            q!(|| true),
-            q!(
-                |empty, _| { *empty = false },
-                idempotent = manual_proof!(/** values are ignored */),
-                commutative = manual_proof!(/** values are ignored */),
-            ),
+        self.assume_ordering_trusted::<TotalOrder>(
+            nondet!(/** is_empty intermediates unaffected by order */),
         )
+        .assume_retries_trusted::<ExactlyOnce>(nondet!(/** is_empty is idempotent */))
+        .fold(q!(|| true), q!(|empty, _| { *empty = false },))
     }
 }
 
