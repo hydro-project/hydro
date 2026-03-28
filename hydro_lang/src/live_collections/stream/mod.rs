@@ -2381,6 +2381,38 @@ where
             },
         )
     }
+
+    /// Returns a [`Singleton`] containing `true` if the stream has no elements, or `false` otherwise.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let empty: Stream<i32, _, Bounded> = process
+    ///   .source_iter(q!(Vec::<i32>::new()))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// empty.is_empty().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // true
+    /// # assert_eq!(stream.next().await.unwrap(), true);
+    /// # }));
+    /// # }
+    /// ```
+    #[expect(clippy::wrong_self_convention, reason = "stream function naming")]
+    pub fn is_empty(self) -> Singleton<bool, L, Bounded>
+    where
+        B: IsBounded,
+    {
+        self.make_bounded()
+            .assume_ordering_trusted::<TotalOrder>(
+                nondet!(/** is_empty intermediates unaffected by order */),
+            )
+            .assume_retries_trusted::<ExactlyOnce>(nondet!(/** is_empty is idempotent */))
+            .fold(q!(|| true), q!(|empty, _| { *empty = false },))
+    }
 }
 
 impl<'a, K, V1, L, B: Boundedness, O: Ordering, R: Retries> Stream<(K, V1), L, B, O, R>
@@ -2820,34 +2852,6 @@ where
                     .new_node_metadata(Stream::<T, Tick<L>, Bounded, O, R>::collection_kind()),
             },
         )
-    }
-
-    /// Returns a [`Singleton`] containing `true` if the stream has no elements, or `false` otherwise.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let empty: Stream<i32, _, Bounded> = process
-    ///   .source_iter(q!(Vec::<i32>::new()))
-    ///   .batch(&tick, nondet!(/** test */));
-    /// empty.is_empty().all_ticks()
-    /// # }, |mut stream| async move {
-    /// // true
-    /// # assert_eq!(stream.next().await.unwrap(), true);
-    /// # }));
-    /// # }
-    /// ```
-    #[expect(clippy::wrong_self_convention, reason = "stream function naming")]
-    pub fn is_empty(self) -> Singleton<bool, Tick<L>, Bounded> {
-        self.assume_ordering_trusted::<TotalOrder>(
-            nondet!(/** is_empty intermediates unaffected by order */),
-        )
-        .assume_retries_trusted::<ExactlyOnce>(nondet!(/** is_empty is idempotent */))
-        .fold(q!(|| true), q!(|empty, _| { *empty = false },))
     }
 }
 
