@@ -578,36 +578,27 @@ impl TrybuildHost {
     }
 
     pub fn additional_hydro_features(
-        self,
+        mut self,
         additional_hydro_features: impl IntoIterator<Item = impl Into<String>>,
     ) -> Self {
-        Self {
-            additional_hydro_features: self
-                .additional_hydro_features
-                .into_iter()
-                .chain(additional_hydro_features.into_iter().map(Into::into))
-                .collect(),
-            ..self
-        }
+        self.additional_hydro_features
+            .extend(additional_hydro_features.into_iter().map(Into::into));
+        self
     }
 
-    pub fn additional_hydro_feature(self, feature: impl Into<String>) -> Self {
-        self.additional_hydro_features(std::iter::once(feature.into()))
+    pub fn additional_hydro_feature(mut self, feature: impl Into<String>) -> Self {
+        self.additional_hydro_features.push(feature.into());
+        self
     }
 
-    pub fn features(self, features: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        Self {
-            features: self
-                .features
-                .into_iter()
-                .chain(features.into_iter().map(Into::into))
-                .collect(),
-            ..self
-        }
+    pub fn features(mut self, features: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.features.extend(features.into_iter().map(Into::into));
+        self
     }
 
-    pub fn feature(self, feature: impl Into<String>) -> Self {
-        self.features(std::iter::once(feature.into()))
+    pub fn feature(mut self, feature: impl Into<String>) -> Self {
+        self.features.push(feature.into());
+        self
     }
 
     pub fn tracing(self, tracing: TracingOptions) -> Self {
