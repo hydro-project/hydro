@@ -113,9 +113,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     deployment.start().await.unwrap();
 
-    let port = if let ServerPort::TcpPort(p) = server_port {
-        p
-    } else {
+    let ServerPort::TcpPort(port) = server_port else {
         panic!("Expected a TCP port");
     };
     println!("HTTP server listening on: http://{:?}", port);

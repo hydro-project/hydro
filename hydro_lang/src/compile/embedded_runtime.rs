@@ -9,17 +9,6 @@ use stageleft::{QuotedWithContext, RuntimeData, q};
 use crate::location::MembershipEvent;
 use crate::location::member_id::TaglessMemberId;
 
-#[cfg_attr(
-    not(any(
-        feature = "deploy_integration",
-        feature = "docker_runtime",
-        feature = "maelstrom_runtime",
-    )),
-    expect(
-        unreachable_code,
-        reason = "uninhabited but deploy_integration required at embedded runtime"
-    )
-)]
 /// Returns a [`QuotedWithContext`] that references the `__cluster_self_id` runtime variable.
 pub fn embedded_cluster_self_id<'a>() -> impl QuotedWithContext<'a, TaglessMemberId, ()> + Clone + 'a
 {
