@@ -1215,12 +1215,15 @@ where
     /// will all be executed synchronously before any outputs are yielded (in [`KeyedSingleton::end_atomic`]).
     ///
     /// This is useful to enforce local consistency constraints, such as ensuring that a write is
-    /// processed before an acknowledgement is emitted. Entering an atomic section requires a [`Tick`]
-    /// argument that declares where the keyed singleton will be atomically processed. Batching a
-    /// keyed singleton into the _same_ [`Tick`] will preserve the synchronous execution, while
-    /// batching into a different [`Tick`] will introduce asynchrony.
-    pub fn atomic(self, tick: &Tick<L>) -> KeyedSingleton<K, V, Atomic<L>, B> {
-        let out_location = Atomic { tick: tick.clone() };
+    /// processed before an acknowledgement is emitted.
+    pub fn atomic(self) -> KeyedSingleton<K, V, Atomic<L>, B> {
+        let id = self.location.flow_state().borrow_mut().next_clock_id();
+        let out_location = Atomic {
+            tick: Tick {
+                id,
+                l: self.location.clone(),
+            },
+        };
         KeyedSingleton::new(
             out_location.clone(),
             HydroNode::BeginAtomic {
@@ -1344,18 +1347,17 @@ where
     /// # Non-Determinism
     /// Because this picks a snapshot of each entry, which is continuously changing, each output has a
     /// non-deterministic set of entries since each snapshot can be at an arbitrary point in time.
-    pub fn snapshot_atomic(self, _nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
+    pub fn snapshot_atomic(
+        self,
+        tick: &Tick<L>,
+        _nondet: NonDet,
+    ) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
         KeyedSingleton::new(
-            self.location.clone().tick,
+            tick.clone(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self.location.tick.new_node_metadata(KeyedSingleton::<
-                    K,
-                    V,
-                    Tick<L>,
-                    Bounded,
-                >::collection_kind(
-                )),
+                metadata: tick
+                    .new_node_metadata(KeyedSingleton::<K, V, Tick<L>, Bounded>::collection_kind()),
             },
         )
     }
@@ -1490,11 +1492,19 @@ where
     /// # Non-Determinism
     /// Because this picks a batch of asynchronously added entries, each output keyed singleton
     /// has a non-deterministic set of key-value pairs.
-    pub fn batch(self, tick: &Tick<L>, nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, Bounded>
+    pub fn batch(self, tick: &Tick<L>, _nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, Bounded>
     where
         L: NoTick,
     {
-        self.atomic(tick).batch_atomic(nondet)
+        assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        KeyedSingleton::new(
+            tick.clone(),
+            HydroNode::Batch {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: tick
+                    .new_node_metadata(KeyedSingleton::<K, V, Tick<L>, Bounded>::collection_kind()),
+            },
+        )
     }
 }
 
@@ -1511,19 +1521,18 @@ where
     /// # Non-Determinism
     /// Because this picks a batch of asynchronously added entries, each output keyed singleton
     /// has a non-deterministic set of key-value pairs.
-    pub fn batch_atomic(self, nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
+    pub fn batch_atomic(
+        self,
+        tick: &Tick<L>,
+        nondet: NonDet,
+    ) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
         let _ = nondet;
         KeyedSingleton::new(
-            self.location.clone().tick,
+            tick.clone(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self.location.tick.new_node_metadata(KeyedSingleton::<
-                    K,
-                    V,
-                    Tick<L>,
-                    Bounded,
-                >::collection_kind(
-                )),
+                metadata: tick
+                    .new_node_metadata(KeyedSingleton::<K, V, Tick<L>, Bounded>::collection_kind()),
             },
         )
     }

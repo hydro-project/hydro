@@ -94,7 +94,8 @@ export function getLines(
       console.error("Got:\n", normalizedResult);
       throw new Error(
         `getLines content mismatch. The inlined code snippet does not match the source file. ` +
-          `Update the expected string or check if the source file has changed.`,
+          `Update the expected string or check if the source file has changed.\n` +
+          `Expected:\n${normalizedExpected}\nFound:\n${normalizedResult}`,
       );
     }
   }

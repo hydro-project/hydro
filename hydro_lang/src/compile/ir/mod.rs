@@ -23,6 +23,8 @@ use syn::parse_quote;
 use syn::visit::{self, Visit};
 use syn::visit_mut::VisitMut;
 
+#[cfg(feature = "build")]
+use crate::compile::builder::ClockId;
 use crate::compile::builder::{CycleId, ExternalPortId};
 #[cfg(feature = "build")]
 use crate::compile::deploy_provider::{Deploy, Node, RegisterPort};
@@ -1405,6 +1407,85 @@ impl HydroRoot {
             | HydroRoot::Null { .. } => {}
         }
     }
+}
+
+#[cfg(feature = "build")]
+fn tick_of(loc: &LocationId) -> Option<ClockId> {
+    match loc {
+        LocationId::Tick(id, _) => Some(*id),
+        LocationId::Atomic(inner) => tick_of(inner),
+        _ => None,
+    }
+}
+
+#[cfg(feature = "build")]
+fn remap_location(loc: &mut LocationId, uf: &mut HashMap<ClockId, ClockId>) {
+    match loc {
+        LocationId::Tick(id, inner) => {
+            *id = uf_find(uf, *id);
+            remap_location(inner, uf);
+        }
+        LocationId::Atomic(inner) => {
+            remap_location(inner, uf);
+        }
+        LocationId::Process(_) | LocationId::Cluster(_) => {}
+    }
+}
+
+#[cfg(feature = "build")]
+fn uf_find(parent: &mut HashMap<ClockId, ClockId>, x: ClockId) -> ClockId {
+    let p = *parent.get(&x).unwrap_or(&x);
+    if p == x {
+        return x;
+    }
+    let root = uf_find(parent, p);
+    parent.insert(x, root);
+    root
+}
+
+#[cfg(feature = "build")]
+fn uf_union(parent: &mut HashMap<ClockId, ClockId>, a: ClockId, b: ClockId) {
+    let ra = uf_find(parent, a);
+    let rb = uf_find(parent, b);
+    if ra != rb {
+        parent.insert(ra, rb);
+    }
+}
+
+/// Traverse the IR to build a union-find that unifies tick IDs connected
+/// through `Batch` and `YieldConcat` nodes at atomic boundaries, then
+/// rewrite all `LocationId`s to use the representative tick ID.
+#[cfg(feature = "build")]
+pub fn unify_atomic_ticks(ir: &mut [HydroRoot]) {
+    let mut uf: HashMap<ClockId, ClockId> = HashMap::new();
+
+    // Pass 1: collect unifications.
+    transform_bottom_up(
+        ir,
+        &mut |_| {},
+        &mut |node: &mut HydroNode| {
+            if let HydroNode::Batch { inner, metadata } | HydroNode::YieldConcat { inner, metadata } =
+                node
+                && let (Some(a), Some(b)) = (
+                    tick_of(&inner.metadata().location_id),
+                    tick_of(&metadata.location_id),
+                )
+            {
+                uf_union(&mut uf, a, b);
+            }
+        },
+        false,
+    );
+
+    // Pass 2: rewrite all LocationIds.
+    transform_bottom_up(
+        ir,
+        &mut |_| {},
+        &mut |node: &mut HydroNode| {
+            remap_location(&mut node.metadata_mut().location_id, &mut uf);
+        },
+        false,
+    );
 }
 
 #[cfg(feature = "build")]

@@ -9,8 +9,7 @@ pub fn single_client_counter_service<'a>(
     Stream<(), Process<'a, CounterServer>>, // increment acknowledgments
     Stream<usize, Process<'a, CounterServer>>, // get responses
 ) {
-    let atomic_tick = increment_requests.location().tick();
-    let increment_request_processing = increment_requests.atomic(&atomic_tick);
+    let increment_request_processing = increment_requests.atomic();
     let current_count = increment_request_processing.clone().count();
     let increment_ack = increment_request_processing.end_atomic();
 

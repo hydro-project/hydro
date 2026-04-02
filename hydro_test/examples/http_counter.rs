@@ -81,8 +81,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (port, input, _membership, output_ref) = process
         .bidi_external_many_bytes::<_, _, LinesCodec>(&external, NetworkHint::TcpPort(Some(4001)));
 
-    output_ref
-        .complete(hydro_test::external_client::http_counter::http_counter_server(input, &process));
+    output_ref.complete(hydro_test::external_client::http_counter::http_counter_server(input));
 
     // Extract the IR BEFORE the builder is consumed by deployment methods
     let built = flow.finalize();

@@ -199,11 +199,14 @@ pub fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
         ),
     );
 
-    a_log_complete_cycle.complete(a_log.snapshot_atomic(nondet!(
-        /// We will always write payloads to the log before acknowledging them to the proposers,
-        /// which guarantees that if the leader changes the quorum overlap between sequencing and leader
-        /// election will include the committed value.
-    )));
+    a_log_complete_cycle.complete(a_log.snapshot_atomic(
+        &acceptor_tick,
+        nondet!(
+            /// We will always write payloads to the log before acknowledging them to the proposers,
+            /// which guarantees that if the leader changes the quorum overlap between sequencing and leader
+            /// election will include the committed value.
+        ),
+    ));
     sequencing_max_ballot_complete_cycle.complete(sequencing_max_ballots);
 
     (
@@ -283,7 +286,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
         .all_ticks()
         .demux(proxy_leaders, TCP.fail_stop().bincode())
         .values()
-        .atomic(proxy_leader_tick);
+        .atomic();
 
     // Send to a specific acceptor row
     let num_acceptor_rows = config.acceptor_grid_rows;
@@ -328,11 +331,14 @@ fn sequence_payload<'a, P: PaxosPayload>(
 
     let pl_to_replicas = join_responses(
         quorums.map(q!(|k| (k, ()))),
-        p_to_proxy_leaders_p2a.batch_atomic(nondet!(
-            /// The metadata will always be generated before we get a quorum
-            /// because our batch of `p_to_proxy_leaders_p2a` is at least after
-            /// what we sent to the acceptors.
-        )),
+        p_to_proxy_leaders_p2a.batch_atomic(
+            proxy_leader_tick,
+            nondet!(
+                /// The metadata will always be generated before we get a quorum
+                /// because our batch of `p_to_proxy_leaders_p2a` is at least after
+                /// what we sent to the acceptors.
+            ),
+        ),
     );
 
     let pl_failed_p2b_to_proposer = fails

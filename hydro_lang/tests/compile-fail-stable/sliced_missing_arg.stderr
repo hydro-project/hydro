@@ -16,7 +16,7 @@ error[E0061]: this function takes 2 arguments but 1 argument was supplied
  6 | /     sliced! {
  7 | |         let a = use(input);
    | |                     ^^^^^
- 8 | |         let b = use::atomic(input.atomic(&input.location().tick()));
+ 8 | |         let b = use::atomic(input.atomic());
  9 | |         let c = use(input, 123);
 ...  |
 13 | |         let g = use::foobar();
@@ -38,8 +38,8 @@ help: provide the argument
 error[E0061]: this function takes 2 arguments but 1 argument was supplied
  --> tests/compile-fail-stable/sliced_missing_arg.rs:8:22
   |
-8 |         let b = use::atomic(input.atomic(&input.location().tick()));
-  |                      ^^^^^^---------------------------------------- argument #2 of type `NonDet` is missing
+8 |         let b = use::atomic(input.atomic());
+  |                      ^^^^^^---------------- argument #2 of type `NonDet` is missing
   |
 note: function defined here
  --> src/live_collections/sliced/style.rs
@@ -48,8 +48,8 @@ note: function defined here
   |        ^^^^^^
 help: provide the argument
   |
-8 |         let b = use::atomic(input.atomic(&input.location().tick()), /* NonDet */);
-  |                                                                   ++++++++++++++
+8 |         let b = use::atomic(input.atomic(), /* NonDet */);
+  |                                           ++++++++++++++
 
 error[E0308]: mismatched types
  --> tests/compile-fail-stable/sliced_missing_arg.rs:9:28
@@ -66,10 +66,10 @@ note: function defined here
   |        ^^^^^^^
 
 error[E0308]: mismatched types
-  --> tests/compile-fail-stable/sliced_missing_arg.rs:10:69
+  --> tests/compile-fail-stable/sliced_missing_arg.rs:10:45
    |
-10 |         let d = use::atomic(input.atomic(&input.location().tick()), 123);
-   |                      ------                                         ^^^ expected `NonDet`, found integer
+10 |         let d = use::atomic(input.atomic(), 123);
+   |                      ------                 ^^^ expected `NonDet`, found integer
    |                      |
    |                      arguments to this function are incorrect
    |

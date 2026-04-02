@@ -38,7 +38,7 @@ Hydro provides **atomic collections** to establish consistency relationships bet
 
 Atomic collections work by establishing a **happens-before** relationship:
 
-1. When you call `atomic(&tick)` on a live collection, all downstream computations are associated with that tick
+1. When you call `atomic()` on a live collection, all downstream computations are associated with an internal tick
 2. When you call `end_atomic()`, the outputs are held until all computations in the tick complete
 3. When you use `use::atomic` in a `sliced!` block, the snapshot is guaranteed to reflect all updates from associated `end_atomic`
 
@@ -47,14 +47,13 @@ This means:
 - Any subsequent `use::atomic` snapshot will include the effects of that acknowledged operation
 
 ```rust,ignore
-let atomic_tick = process.tick();
-let increment_request_processing = increment_requests.atomic(&atomic_tick);
+let increment_request_processing = increment_requests.atomic();
 let current_count = increment_request_processing.clone().count();
 let increment_ack = increment_request_processing.end_atomic();
 ```
 
 The key changes are:
-1. **`atomic(&tick)`**: Marks the live collection as atomic, associating it with a tick
+1. **`atomic()`**: Marks the live collection as atomic, associating it with an internal tick
 2. **`end_atomic()`**: Releases the acknowledgements and establishes a consistency boundary
 
 Now, when you snapshot the count with `use::atomic`, you're guaranteed to observe a version that's consistent with the released acknowledgements:

@@ -64,7 +64,7 @@ impl<'a, L> NoAtomic for Tick<L> where L: Location<'a> {}
 /// A location wrapper that provides atomicity guarantees within a [`Tick`].
 ///
 /// An `Atomic` context establishes a happens-before relationship between operations:
-/// - Downstream computations from `atomic(&tick)` are associated with that tick
+/// - Downstream computations from `atomic()` are associated with an internal tick
 /// - Outputs from `end_atomic()` are held until all computations in the tick complete
 /// - Snapshots via `use::atomic` are guaranteed to reflect all updates from associated `end_atomic()`
 ///
@@ -358,8 +358,7 @@ mod tests {
         let (write_send, write_req) = node.sim_input();
         let (read_send, read_req) = node.sim_input::<(), _, _>();
 
-        let tick = node.tick();
-        let atomic_write = write_req.atomic(&tick);
+        let atomic_write = write_req.atomic();
         let current_state = atomic_write.clone().fold(
             q!(|| 0),
             q!(|state: &mut i32, v: i32| {

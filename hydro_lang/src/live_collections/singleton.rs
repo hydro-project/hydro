@@ -879,14 +879,16 @@ where
     /// Because this picks a snapshot of a singleton whose value is continuously changing,
     /// the output singleton has a non-deterministic value since the snapshot can be at an
     /// arbitrary point in time.
-    pub fn snapshot_atomic(self, _nondet: NonDet) -> Singleton<T, Tick<L>, Bounded> {
+    pub fn snapshot_atomic(
+        self,
+        tick: &Tick<L>,
+        _nondet: NonDet,
+    ) -> Singleton<T, Tick<L>, Bounded> {
         Singleton::new(
-            self.location.clone().tick,
+            tick.clone(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .tick
+                metadata: tick
                     .new_node_metadata(Singleton::<T, Tick<L>, Bounded>::collection_kind()),
             },
         )
@@ -920,12 +922,14 @@ where
     /// This is useful to enforce local consistency constraints, such as ensuring that several readers
     /// see a consistent version of local state (since otherwise each [`Singleton::snapshot`] may pick
     /// a different version).
-    ///
-    /// Entering an atomic section requires a [`Tick`] argument that declares where the singleton will
-    /// be atomically processed. Snapshotting an singleton into the _same_ [`Tick`] will preserve the
-    /// synchronous execution, and all such snapshots in the same [`Tick`] will have the same value.
-    pub fn atomic(self, tick: &Tick<L>) -> Singleton<T, Atomic<L>, B> {
-        let out_location = Atomic { tick: tick.clone() };
+    pub fn atomic(self) -> Singleton<T, Atomic<L>, B> {
+        let id = self.location.flow_state().borrow_mut().next_clock_id();
+        let out_location = Atomic {
+            tick: Tick {
+                id,
+                l: self.location.clone(),
+            },
+        };
         Singleton::new(
             out_location.clone(),
             HydroNode::BeginAtomic {

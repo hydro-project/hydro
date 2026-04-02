@@ -72,7 +72,7 @@ macro_rules! __sliced_parse_uses__ {
                 $($invocation,)+
             );
 
-            let __tick = $crate::live_collections::sliced::Slicable::preferred_tick(&__styled).unwrap_or_else(|| $crate::live_collections::sliced::Slicable::create_tick(&__styled.0));
+            let __tick = $crate::live_collections::sliced::Slicable::create_tick(&__styled.0);
             let __backtraces = {
                 use $crate::compile::ir::backtrace::__macro_get_backtrace;
                 (
@@ -189,9 +189,6 @@ pub trait Slicable<'a, L: Location<'a>> {
     /// The type of backtrace associated with this slice.
     type Backtrace;
 
-    /// Gets the preferred tick to slice at. Used for atomic slicing.
-    fn preferred_tick(&self) -> Option<Tick<L>>;
-
     /// Gets the location associated with this live collection.
     fn get_location(&self) -> &L;
 
@@ -259,10 +256,6 @@ impl<'a, L: Location<'a>> Slicable<'a, L> for () {
         unreachable!()
     }
 
-    fn preferred_tick(&self) -> Option<Tick<L>> {
-        None
-    }
-
     fn slice(self, _tick: &Tick<L>, _backtrace: Self::Backtrace) -> Self::Slice {}
 }
 
@@ -280,25 +273,6 @@ macro_rules! impl_slicable_for_tuple {
 
             fn get_location(&self) -> &L {
                 self.0.get_location()
-            }
-
-            fn preferred_tick(&self) -> Option<Tick<L>> {
-                let mut preferred: Option<Tick<L>> = None;
-                $(
-                    if let Some(tick) = self.$idx.preferred_tick() {
-                        preferred = Some(match preferred {
-                            Some(current) => {
-                                if $crate::location::Location::id(&current) == $crate::location::Location::id(&tick) {
-                                    current
-                                } else {
-                                    panic!("Mismatched preferred ticks for sliced collections")
-                                }
-                            },
-                            None => tick,
-                        });
-                    }
-                )+
-                preferred
             }
 
             #[expect(non_snake_case, reason = "macro codegen")]
@@ -649,8 +623,7 @@ mod tests {
         let node = flow.process::<()>();
 
         let (input_send, input) = node.sim_input::<(i32, i32), _, _>();
-        let tick = node.tick();
-        let atomic_keyed_input = input.into_keyed().atomic(&tick);
+        let atomic_keyed_input = input.into_keyed().atomic();
         let accumulated_inputs = atomic_keyed_input
             .clone()
             .assume_ordering(nondet!(/** Test */))

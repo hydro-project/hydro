@@ -17,7 +17,6 @@ pub struct ParsedRequest {
 
 pub fn http_counter_server<'a, P>(
     in_stream: KeyedStream<u64, String, Process<'a, P>, Unbounded, TotalOrder>,
-    process: &Process<'a, P>,
 ) -> KeyedStream<u64, String, Process<'a, P>, Unbounded, NoOrder> {
     let parsed_requests = in_stream
         .fold_early_stop(
@@ -59,14 +58,13 @@ pub fn http_counter_server<'a, P>(
             }
         }));
 
-    let increment_lookup_tick = process.tick();
     let increment_stream = parsed_requests
         .clone()
         .filter_map(q!(|req| match req.request_type {
             RequestType::Increment { key } => Some(key),
             _ => None,
         }))
-        .atomic(&increment_lookup_tick);
+        .atomic();
 
     let get_stream = parsed_requests
         .clone()

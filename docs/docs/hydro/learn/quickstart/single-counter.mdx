@@ -117,7 +117,7 @@ Especially in code that involves `nondet!`, it is important to write simulation 
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_client_counter.rs">src/single_client_counter.rs</Link>
-} showLineNumbers={33}>{getLines(singleClientCounterSrc, 33, 52, `
+} showLineNumbers={32}>{getLines(singleClientCounterSrc, 32, 51, `
 #[test]
 fn test_counter_read_after_write() {
     let mut flow = FlowBuilder::new();
@@ -165,20 +165,19 @@ When slicing a `Singleton` with `use`, the only guarantee is that each snapshot 
 
 To fix this bug, you need to establish a consistency relationship between the acknowledgements and count snapshots. The problem is that when a client receives an acknowledgement, there's no guarantee about what count snapshot a subsequent get request will observe.
 
-Calling `atomic()` on a stream (which requires a `Tick` parameter) enables downstream operations to establish consistency guarantees:
+Calling `atomic()` on a stream enables downstream operations to establish consistency guarantees:
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_client_counter.rs">src/single_client_counter.rs</Link>
-} showLineNumbers={12}>{getLines(singleClientCounterSrc, 12, 13, `
-let atomic_tick = increment_requests.location().tick();
-let increment_request_processing = increment_requests.atomic(&atomic_tick);
+} showLineNumbers={12}>{getLines(singleClientCounterSrc, 12, 12, `
+let increment_request_processing = increment_requests.atomic();
 `)}</CodeBlock>
 
 Instead of counting the original stream, you now count using the atomic stream. This produces an atomic singleton that will allow you to take consistent snapshots later. The APIs on an atomic live collection are the same as on a regular live collection, so the counter code is unchanged:
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_client_counter.rs">src/single_client_counter.rs</Link>
-} showLineNumbers={14}>{getLines(singleClientCounterSrc, 14, 14, `
+} showLineNumbers={13}>{getLines(singleClientCounterSrc, 13, 13, `
 let current_count = increment_request_processing.clone().count();
 `)}</CodeBlock>
 
@@ -186,7 +185,7 @@ Now, let's focus on the outputs of the counter service. It needs to release ackn
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/single_client_counter.rs">src/single_client_counter.rs</Link>
-} showLineNumbers={15}>{getLines(singleClientCounterSrc, 15, 22, `
+} showLineNumbers={14}>{getLines(singleClientCounterSrc, 14, 21, `
 let increment_ack = increment_request_processing.end_atomic();
 
 let get_response = sliced! {

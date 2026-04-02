@@ -52,9 +52,8 @@ The counter still maintains a single global count across all clients. Since the 
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs">src/concurrent_clients.rs</Link>
-} showLineNumbers={13}>{getLines(concurrentClientsSrc, 13, 15, `
-let atomic_tick = increment_requests.location().tick();
-let increment_request_processing = increment_requests.atomic(&atomic_tick);
+} showLineNumbers={13}>{getLines(concurrentClientsSrc, 13, 14, `
+let increment_request_processing = increment_requests.atomic();
 let current_count = increment_request_processing.clone().values().count();
 `)}</CodeBlock>
 
@@ -72,7 +71,7 @@ The rest of the implementation follows the same pattern as the single client cou
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs">src/concurrent_clients.rs</Link>
-} showLineNumbers={16}>{getLines(concurrentClientsSrc, 16, 16, `
+} showLineNumbers={15}>{getLines(concurrentClientsSrc, 15, 15, `
 let increment_ack = increment_request_processing.end_atomic();
 `)}</CodeBlock>
 
@@ -80,7 +79,7 @@ And get responses use `cross_singleton` which pairs the count with each client's
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs">src/concurrent_clients.rs</Link>
-} showLineNumbers={18}>{getLines(concurrentClientsSrc, 18, 23, `
+} showLineNumbers={17}>{getLines(concurrentClientsSrc, 17, 22, `
 let get_response = sliced! {
     let request_batch = use(get_requests, nondet!(/** we never observe batch boundaries */));
     let count_snapshot = use::atomic(current_count, nondet!(/** atomicity guarantees consistency wrt increments */));
@@ -94,7 +93,7 @@ Let's write a test where two different clients increment the counter and both re
 
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/concurrent_clients.rs">src/concurrent_clients.rs</Link>
-} showLineNumbers={34}>{getLines(concurrentClientsSrc, 34, 67, `
+} showLineNumbers={33}>{getLines(concurrentClientsSrc, 33, 66, `
 #[test]
 fn test_concurrent_clients() {
     let mut flow = FlowBuilder::new();

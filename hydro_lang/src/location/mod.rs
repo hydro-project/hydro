@@ -14,6 +14,7 @@
 //! See [the Hydro docs](https://hydro.run/docs/hydro/reference/locations/) for more information.
 
 use std::fmt::Debug;
+use std::future::Future;
 use std::marker::PhantomData;
 use std::num::ParseIntError;
 use std::time::Duration;
@@ -1060,6 +1061,39 @@ pub trait Location<'a>: dynamic::DynLocation {
         )
     }
 
+    /// Constructs a [`Singleton`] by resolving an async [`Future`] to completion.
+    ///
+    /// This is a convenience method equivalent to
+    /// `self.singleton(future_expr).resolve_future_blocking()`, which is a common
+    /// pattern when initializing a singleton from an async computation.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let singleton = process.singleton_future(q!(async { 42 }));
+    /// singleton.into_stream()
+    /// # }, |mut stream| async move {
+    /// // 42
+    /// # assert_eq!(stream.next().await.unwrap(), 42);
+    /// # }));
+    /// # }
+    /// ```
+    ///
+    /// [`Future`]: std::future::Future
+    fn singleton_future<F>(
+        &self,
+        e: impl QuotedWithContext<'a, F, Self>,
+    ) -> Singleton<F::Output, Self, Bounded>
+    where
+        F: Future,
+        Self: Sized + NoTick,
+    {
+        self.singleton(e).resolve_future_blocking()
+    }
+
     /// Generates a stream with values emitted at a fixed interval, with
     /// each value being the current time (as an [`tokio::time::Instant`]).
     ///
@@ -1489,5 +1523,35 @@ mod tests {
 
         assert_eq!(external_out_1.next().await.unwrap(), "HI");
         assert_eq!(external_out_2.next().await.unwrap(), "HELLO");
+    }
+
+    #[tokio::test]
+    async fn closure_location_name() {
+        let mut deployment = Deployment::new();
+        let mut flow = FlowBuilder::new();
+
+        enum ClosureProcess {}
+
+        let node = flow.process::<ClosureProcess>();
+        let external = flow.external::<()>();
+
+        let (in_port, input) =
+            node.source_external_bincode::<_, i32, TotalOrder, ExactlyOnce>(&external);
+        let out = input.send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut external_in = nodes.connect(in_port).await;
+        let mut external_out = nodes.connect(out).await;
+
+        deployment.start().await.unwrap();
+
+        external_in.send(42).await.unwrap();
+        assert_eq!(external_out.next().await.unwrap(), 42);
     }
 }

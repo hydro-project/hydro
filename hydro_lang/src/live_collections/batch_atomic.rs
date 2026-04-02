@@ -21,7 +21,8 @@ impl<'a, L: Location<'a> + NoTick, T, O: Ordering, R: Retries> BatchAtomic
     type Batched = super::Stream<T, Tick<L>, Bounded, O, R>;
 
     fn batched_atomic(self) -> Self::Batched {
-        self.batch_atomic(nondet!(/** internal */))
+        let tick = self.location.tick.clone();
+        self.batch_atomic(&tick, nondet!(/** internal */))
     }
 }
 
@@ -29,7 +30,8 @@ impl<'a, L: Location<'a> + NoTick, T> BatchAtomic for super::Singleton<T, Atomic
     type Batched = super::Singleton<T, Tick<L>, Bounded>;
 
     fn batched_atomic(self) -> Self::Batched {
-        self.snapshot_atomic(nondet!(/** internal */))
+        let tick = self.location.tick.clone();
+        self.snapshot_atomic(&tick, nondet!(/** internal */))
     }
 }
 
@@ -37,7 +39,8 @@ impl<'a, L: Location<'a> + NoTick, T> BatchAtomic for super::Optional<T, Atomic<
     type Batched = super::Optional<T, Tick<L>, Bounded>;
 
     fn batched_atomic(self) -> Self::Batched {
-        self.snapshot_atomic(nondet!(/** internal */))
+        let tick = self.location.tick.clone();
+        self.snapshot_atomic(&tick, nondet!(/** internal */))
     }
 }
 
@@ -47,6 +50,7 @@ impl<'a, L: Location<'a> + NoTick, K, V, B: KeyedSingletonBound<ValueBound = Unb
     type Batched = super::KeyedSingleton<K, V, Tick<L>, Bounded>;
 
     fn batched_atomic(self) -> Self::Batched {
-        self.snapshot_atomic(nondet!(/** internal */))
+        let tick = self.location.tick.clone();
+        self.snapshot_atomic(&tick, nondet!(/** internal */))
     }
 }

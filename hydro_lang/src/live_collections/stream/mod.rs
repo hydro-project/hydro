@@ -1706,12 +1706,15 @@ where
     /// will all be executed synchronously before any outputs are yielded (in [`Stream::end_atomic`]).
     ///
     /// This is useful to enforce local consistency constraints, such as ensuring that a write is
-    /// processed before an acknowledgement is emitted. Entering an atomic section requires a [`Tick`]
-    /// argument that declares where the stream will be atomically processed. Batching a stream into
-    /// the _same_ [`Tick`] will preserve the synchronous execution, while batching into a different
-    /// [`Tick`] will introduce asynchrony.
-    pub fn atomic(self, tick: &Tick<L>) -> Stream<T, Atomic<L>, B, O, R> {
-        let out_location = Atomic { tick: tick.clone() };
+    /// processed before an acknowledgement is emitted.
+    pub fn atomic(self) -> Stream<T, Atomic<L>, B, O, R> {
+        let id = self.location.flow_state().borrow_mut().next_clock_id();
+        let out_location = Atomic {
+            tick: Tick {
+                id,
+                l: self.location.clone(),
+            },
+        };
         Stream::new(
             out_location.clone(),
             HydroNode::BeginAtomic {
@@ -2381,6 +2384,38 @@ where
             },
         )
     }
+
+    /// Returns a [`Singleton`] containing `true` if the stream has no elements, or `false` otherwise.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let empty: Stream<i32, _, Bounded> = process
+    ///   .source_iter(q!(Vec::<i32>::new()))
+    ///   .batch(&tick, nondet!(/** test */));
+    /// empty.is_empty().all_ticks()
+    /// # }, |mut stream| async move {
+    /// // true
+    /// # assert_eq!(stream.next().await.unwrap(), true);
+    /// # }));
+    /// # }
+    /// ```
+    #[expect(clippy::wrong_self_convention, reason = "stream function naming")]
+    pub fn is_empty(self) -> Singleton<bool, L, Bounded>
+    where
+        B: IsBounded,
+    {
+        self.make_bounded()
+            .assume_ordering_trusted::<TotalOrder>(
+                nondet!(/** is_empty intermediates unaffected by order */),
+            )
+            .assume_retries_trusted::<ExactlyOnce>(nondet!(/** is_empty is idempotent */))
+            .fold(q!(|| true), q!(|empty, _| { *empty = false },))
+    }
 }
 
 impl<'a, K, V1, L, B: Boundedness, O: Ordering, R: Retries> Stream<(K, V1), L, B, O, R>
@@ -2570,14 +2605,16 @@ where
     ///
     /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
-    pub fn batch_atomic(self, _nondet: NonDet) -> Stream<T, Tick<L>, Bounded, O, R> {
+    pub fn batch_atomic(
+        self,
+        tick: &Tick<L>,
+        _nondet: NonDet,
+    ) -> Stream<T, Tick<L>, Bounded, O, R> {
         Stream::new(
-            self.location.clone().tick,
+            tick.clone(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .tick
+                metadata: tick
                     .new_node_metadata(Stream::<T, Tick<L>, Bounded, O, R>::collection_kind()),
             },
         )
@@ -3127,9 +3164,9 @@ mod tests {
             .batch(&tick, nondet!(/** test */))
             .cross_singleton(
                 node.source_iter(q!(vec![1, 2, 3]))
-                    .atomic(&tick)
+                    .atomic()
                     .fold(q!(|| 0), q!(|acc, v| *acc += v))
-                    .snapshot_atomic(nondet!(/** test */)),
+                    .snapshot_atomic(&tick, nondet!(/** test */)),
             )
             .all_ticks()
             .send_bincode_external(&external);
@@ -3579,7 +3616,7 @@ mod tests {
             node.forward_ref::<super::Stream<_, _, _, NoOrder>>();
         let ordered = input
             .merge_unordered(cycle_back)
-            .atomic(&node.tick())
+            .atomic()
             .assume_ordering::<TotalOrder>(nondet!(/** test */))
             .end_atomic();
         complete_cycle_back.complete(
