@@ -3,7 +3,7 @@ use dfir_rs::util::collect_ready;
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
-pub fn test_flatten_stream() {
+pub fn test_flatten_stream_blocking() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
     let mut df = dfir_syntax! {
@@ -11,7 +11,7 @@ pub fn test_flatten_stream() {
             futures::stream::iter(vec![1, 2]),
             futures::stream::iter(vec![3]),
         ])
-            -> flatten_stream()
+            -> flatten_stream_blocking()
             -> for_each(|x| result_send.send(x).unwrap());
     };
     df.run_available_sync();
@@ -20,12 +20,12 @@ pub fn test_flatten_stream() {
 }
 
 #[multiplatform_test]
-pub fn test_flat_map_stream() {
+pub fn test_flat_map_stream_blocking() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
     let mut df = dfir_syntax! {
         source_iter(vec![1, 2, 3])
-            -> flat_map_stream(|x| futures::stream::iter(vec![x, x * 10]))
+            -> flat_map_stream_blocking(|x| futures::stream::iter(vec![x, x * 10]))
             -> for_each(|x| result_send.send(x).unwrap());
     };
     df.run_available_sync();
@@ -37,12 +37,12 @@ pub fn test_flat_map_stream() {
 }
 
 #[multiplatform_test]
-pub fn test_flat_map_stream_empty() {
+pub fn test_flat_map_stream_blocking_empty() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
     let mut df = dfir_syntax! {
         source_iter(vec![1, 2, 3])
-            -> flat_map_stream(|_| futures::stream::empty::<i32>())
+            -> flat_map_stream_blocking(|_| futures::stream::empty::<i32>())
             -> for_each(|x| result_send.send(x).unwrap());
     };
     df.run_available_sync();
@@ -54,7 +54,7 @@ pub fn test_flat_map_stream_empty() {
 }
 
 #[multiplatform_test]
-pub fn test_flatten_stream_empty() {
+pub fn test_flatten_stream_blocking_empty() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
     let mut df = dfir_syntax! {
@@ -63,7 +63,7 @@ pub fn test_flatten_stream_empty() {
             futures::stream::iter(vec![1]),
             futures::stream::iter(Vec::<i32>::new()),
         ])
-            -> flatten_stream()
+            -> flatten_stream_blocking()
             -> for_each(|x| result_send.send(x).unwrap());
     };
     df.run_available_sync();
