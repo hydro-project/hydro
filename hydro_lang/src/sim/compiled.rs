@@ -394,6 +394,10 @@ impl<'a> CompiledSimInstance<'a> {
         let mut cluster_input_senders = HashMap::new();
         let mut cluster_output_receivers = HashMap::new();
 
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "inserts into maps also unordered"
+        )]
         for sim_port in registered.values() {
             let usize_key = sim_port.into_inner();
             if let Some(sender) = external_in.remove(&usize_key) {
