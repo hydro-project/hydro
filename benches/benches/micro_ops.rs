@@ -78,6 +78,43 @@ fn ops(c: &mut Criterion) {
             BatchSize::LargeInput,
         )
     });
+    c.bench_function("micro/ops/flat_map/tracing", |b| {
+        b.iter_batched_ref(
+            || {
+                #[derive(Debug, Copy, Clone, Eq)]
+                #[expect(dead_code, reason = "id for testing")]
+                struct SpanId(u64);
+                // Hack to make the flow reach fixpoint.
+                impl PartialOrd for SpanId {
+                    fn partial_cmp(&self, _: &Self) -> Option<std::cmp::Ordering> {
+                        Some(std::cmp::Ordering::Equal)
+                    }
+                }
+                impl Ord for SpanId {
+                    fn cmp(&self, _: &Self) -> std::cmp::Ordering {
+                        std::cmp::Ordering::Equal
+                    }
+                }
+                impl PartialEq for SpanId {
+                    fn eq(&self, _: &Self) -> bool {
+                        true
+                    }
+                }
+
+                const NUM_INTS: usize = 10_000;
+                let dist = Uniform::new(0, 100);
+                let data: Vec<(usize, SpanId)> = (0..NUM_INTS).map(|_| dist.sample(&mut rng)).map(|x| (x, SpanId(1))).collect();
+
+                dfir_syntax! {
+                    source_iter(black_box(data)) -> flat_map(|(x, span_id)| [(x, span_id)]) -> for_each(|(x, span_id)| { black_box((x, span_id)); });
+                }
+            },
+            |df| {
+                df.run_available_sync();
+            },
+            BatchSize::LargeInput,
+        )
+    });
 
     c.bench_function("micro/ops/flat_map2", |b| {
         b.iter_batched_ref(

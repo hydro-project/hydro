@@ -800,6 +800,7 @@ dependencies = [
  "static_assertions",
  "timely-master",
  "tokio",
+ "tracing-subscriber",
 ]
 
 [[package]]
