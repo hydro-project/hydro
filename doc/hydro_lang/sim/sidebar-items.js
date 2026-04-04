@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["compiled","flow"],"struct":["SimReceiver","SimSender"]};
+window.SIDEBAR_ITEMS = {"mod":["compiled","flow"],"struct":["SimClusterReceiver","SimClusterSender","SimReceiver","SimSender"]};
