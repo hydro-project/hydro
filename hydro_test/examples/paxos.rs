@@ -119,6 +119,10 @@ async fn main() {
     // Extract the IR for graph visualization
     let built = builder.finalize();
 
+    // Coordination Criterion analysis
+    let report = built.check_coordination();
+    println!("{report}");
+
     // Generate graph visualizations based on command line arguments
     if let Err(e) = built.generate_graph_with_config(&args.graph, None) {
         eprintln!("Error generating graph: {}", e);
