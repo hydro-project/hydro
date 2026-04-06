@@ -2019,6 +2019,12 @@ pub enum HydroNode {
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
+    ScanAsyncBlocking {
+        init: DebugExpr,
+        acc: DebugExpr,
+        input: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
     FoldKeyed {
         init: DebugExpr,
         acc: DebugExpr,
@@ -2208,6 +2214,7 @@ impl HydroNode {
             | HydroNode::Network { input, .. }
             | HydroNode::Fold { input, .. }
             | HydroNode::Scan { input, .. }
+            | HydroNode::ScanAsyncBlocking { input, .. }
             | HydroNode::FoldKeyed { input, .. }
             | HydroNode::Reduce { input, .. }
             | HydroNode::ReduceKeyed { input, .. }
@@ -2445,6 +2452,17 @@ impl HydroNode {
                 input,
                 metadata,
             } => HydroNode::Scan {
+                init: init.clone(),
+                acc: acc.clone(),
+                input: Box::new(input.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::ScanAsyncBlocking {
+                init,
+                acc,
+                input,
+                metadata,
+            } => HydroNode::ScanAsyncBlocking {
                 init: init.clone(),
                 acc: acc.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
@@ -3566,7 +3584,7 @@ impl HydroNode {
                         ident_stack.push(unique_ident);
                     }
 
-                    HydroNode::Fold { .. } | HydroNode::FoldKeyed { .. } | HydroNode::Scan { .. } => {
+                    HydroNode::Fold { .. } | HydroNode::FoldKeyed { .. } | HydroNode::Scan { .. } | HydroNode::ScanAsyncBlocking { .. } => {
                         let operator: syn::Ident = if let HydroNode::Fold { input, .. } = node {
                             if input.metadata().location_id.is_top_level()
                                 && input.metadata().collection_kind.is_bounded()
@@ -3577,6 +3595,8 @@ impl HydroNode {
                             }
                         } else if matches!(node, HydroNode::Scan { .. }) {
                             parse_quote!(scan)
+                        } else if matches!(node, HydroNode::ScanAsyncBlocking { .. }) {
+                            parse_quote!(scan_async_blocking)
                         } else if let HydroNode::FoldKeyed { input, .. } = node {
                             if input.metadata().location_id.is_top_level()
                                 && input.metadata().collection_kind.is_bounded()
@@ -3591,7 +3611,8 @@ impl HydroNode {
 
                         let (HydroNode::Fold { input, .. }
                         | HydroNode::FoldKeyed { input, .. }
-                        | HydroNode::Scan { input, .. }) = node
+                        | HydroNode::Scan { input, .. }
+                        | HydroNode::ScanAsyncBlocking { input, .. }) = node
                         else {
                             unreachable!()
                         };
@@ -3606,7 +3627,8 @@ impl HydroNode {
 
                         let (HydroNode::Fold { init, acc, .. }
                         | HydroNode::FoldKeyed { init, acc, .. }
-                        | HydroNode::Scan { init, acc, .. }) = &*node
+                        | HydroNode::Scan { init, acc, .. }
+                        | HydroNode::ScanAsyncBlocking { init, acc, .. }) = &*node
                         else {
                             unreachable!()
                         };
@@ -4058,6 +4080,7 @@ impl HydroNode {
             }
             HydroNode::Fold { init, acc, .. }
             | HydroNode::Scan { init, acc, .. }
+            | HydroNode::ScanAsyncBlocking { init, acc, .. }
             | HydroNode::FoldKeyed { init, acc, .. } => {
                 transform(init);
                 transform(acc);
@@ -4126,6 +4149,7 @@ impl HydroNode {
             HydroNode::Unique { metadata, .. } => metadata,
             HydroNode::Sort { metadata, .. } => metadata,
             HydroNode::Scan { metadata, .. } => metadata,
+            HydroNode::ScanAsyncBlocking { metadata, .. } => metadata,
             HydroNode::Fold { metadata, .. } => metadata,
             HydroNode::FoldKeyed { metadata, .. } => metadata,
             HydroNode::Reduce { metadata, .. } => metadata,
@@ -4178,6 +4202,7 @@ impl HydroNode {
             HydroNode::Unique { metadata, .. } => metadata,
             HydroNode::Sort { metadata, .. } => metadata,
             HydroNode::Scan { metadata, .. } => metadata,
+            HydroNode::ScanAsyncBlocking { metadata, .. } => metadata,
             HydroNode::Fold { metadata, .. } => metadata,
             HydroNode::FoldKeyed { metadata, .. } => metadata,
             HydroNode::Reduce { metadata, .. } => metadata,
@@ -4244,7 +4269,8 @@ impl HydroNode {
             | HydroNode::FoldKeyed { input, .. }
             | HydroNode::Reduce { input, .. }
             | HydroNode::ReduceKeyed { input, .. }
-            | HydroNode::Scan { input, .. } => {
+            | HydroNode::Scan { input, .. }
+            | HydroNode::ScanAsyncBlocking { input, .. } => {
                 vec![input]
             }
             HydroNode::ReduceKeyedWatermark {
@@ -4347,6 +4373,9 @@ impl HydroNode {
             HydroNode::Sort { .. } => "Sort()".to_owned(),
             HydroNode::Fold { init, acc, .. } => format!("Fold({:?}, {:?})", init, acc),
             HydroNode::Scan { init, acc, .. } => format!("Scan({:?}, {:?})", init, acc),
+            HydroNode::ScanAsyncBlocking { init, acc, .. } => {
+                format!("ScanAsyncBlocking({:?}, {:?})", init, acc)
+            }
             HydroNode::FoldKeyed { init, acc, .. } => format!("FoldKeyed({:?}, {:?})", init, acc),
             HydroNode::Reduce { f, .. } => format!("Reduce({:?})", f),
             HydroNode::ReduceKeyed { f, .. } => format!("ReduceKeyed({:?})", f),

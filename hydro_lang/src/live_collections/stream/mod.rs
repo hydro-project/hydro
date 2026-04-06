@@ -1605,6 +1605,67 @@ where
         )
     }
 
+    /// Async version of [`Stream::scan`]. Applies an async function to each element of the
+    /// stream, maintaining an internal state (accumulator) and emitting the values returned
+    /// by the function.
+    ///
+    /// The closure runs synchronously (so it can mutate the accumulator), then returns a
+    /// future. The future is polled to completion. If it resolves to `Some`, the value is
+    /// emitted. If it resolves to `None`, the item is filtered out.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![1, 2, 3, 4]))
+    ///     .scan_async_blocking(
+    ///         q!(|| 0),
+    ///         q!(|acc, x| {
+    ///             *acc += x;
+    ///             let val = *acc;
+    ///             async move { Some(val) }
+    ///         }),
+    ///     )
+    /// # }, |mut stream| async move {
+    /// // Output: 1, 3, 6, 10
+    /// # for w in vec![1, 3, 6, 10] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn scan_async_blocking<A, U, I, F, Fut>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L>,
+        f: impl IntoQuotedMut<'a, F, L>,
+    ) -> Stream<U, L, B, TotalOrder, ExactlyOnce>
+    where
+        O: IsOrdered,
+        R: IsExactlyOnce,
+        I: Fn() -> A + 'a,
+        F: Fn(&mut A, T) -> Fut + 'a,
+        Fut: Future<Output = Option<U>> + 'a,
+    {
+        let init = init.splice_fn0_ctx(&self.location).into();
+        let f = f.splice_fn2_borrow_mut_ctx(&self.location).into();
+
+        Stream::new(
+            self.location.clone(),
+            HydroNode::ScanAsyncBlocking {
+                init,
+                acc: f,
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self.location.new_node_metadata(
+                    Stream::<U, L, B, TotalOrder, ExactlyOnce>::collection_kind(),
+                ),
+            },
+        )
+    }
+
     /// Iteratively processes the elements of the stream using a state machine that can yield
     /// elements as it processes its inputs. This is designed to mirror the unstable generator
     /// syntax in Rust, without requiring special syntax.

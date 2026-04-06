@@ -1396,6 +1396,12 @@ impl HydroNode {
                 acc,
                 input,
                 metadata,
+            }
+            | HydroNode::ScanAsyncBlocking {
+                init,
+                acc,
+                input,
+                metadata,
             } => {
                 let node_type = HydroNodeType::Aggregation; // All are aggregation operations
 

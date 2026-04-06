@@ -340,6 +340,7 @@ declare_ops![
     reduce::REDUCE,
     reduce_no_replay::REDUCE_NO_REPLAY,
     scan::SCAN,
+    scan_async_blocking::SCAN_ASYNC_BLOCKING,
     spin::SPIN,
     sort::SORT,
     sort_by_key::SORT_BY_KEY,
