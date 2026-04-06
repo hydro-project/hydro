@@ -200,6 +200,8 @@ pub enum HydroEdgeProp {
     Optional,
     Network,
     Cycle,
+    /// Edge carries non-monotone data (Coordination Criterion analysis).
+    NonMonotone,
 }
 
 /// Unified edge style representation for all graph formats.
@@ -348,6 +350,12 @@ pub fn get_unified_edge_style(
         style.waviness = WavinessStyle::Wavy;
     } else if edge_properties.contains(&HydroEdgeProp::TotalOrder) {
         style.waviness = WavinessStyle::None;
+    }
+
+    // Coordination Criterion overlay — applied last to override other colors
+    if edge_properties.contains(&HydroEdgeProp::NonMonotone) {
+        style.color = "#dc2626"; // Red for non-monotone
+        style.line_width = 3;
     }
 
     style
@@ -649,6 +657,46 @@ impl HydroGraphStructure {
 
     pub fn add_location(&mut self, location_key: LocationKey, location_type: LocationType) {
         self.locations.insert(location_key, location_type);
+    }
+
+    /// Overlay coordination analysis results onto the graph structure.
+    ///
+    /// Marks outgoing edges of non-monotone nodes with [`HydroEdgeProp::NonMonotone`],
+    /// causing them to render in red in all graph formats.
+    pub fn annotate_coordination(
+        &mut self,
+        report: &crate::compile::coordination::CoordinationReport,
+    ) {
+        // Collect short names of non-monotone operators for matching.
+        let non_monotone_short: HashSet<String> = report
+            .non_monotone_edges()
+            .map(|e| {
+                e.operator
+                    .split('(')
+                    .next()
+                    .unwrap_or("")
+                    .to_lowercase()
+            })
+            .collect();
+
+        // Build set of viz node keys whose label matches a non-monotone operator.
+        let non_mono_nodes: HashSet<VizNodeKey> = self
+            .nodes
+            .iter()
+            .filter(|(_, node)| {
+                let label = node.label.to_string();
+                let short = label.split('(').next().unwrap_or("").to_lowercase();
+                non_monotone_short.contains(&short)
+            })
+            .map(|(key, _)| key)
+            .collect();
+
+        // Mark outgoing edges from non-monotone nodes.
+        for edge in &mut self.edges {
+            if non_mono_nodes.contains(&edge.src) {
+                edge.edge_properties.insert(HydroEdgeProp::NonMonotone);
+            }
+        }
     }
 }
 
@@ -1705,13 +1753,19 @@ fn write_hydro_ir_graph<W>(
 where
     W: HydroGraphWrite,
 {
+    let structure = build_hydro_graph_structure(roots, config);
+    write_graph_structure(&structure, graph_write, config)
+}
+
+/// Build the graph structure from IR roots.
+pub fn build_hydro_graph_structure(
+    roots: &[HydroRoot],
+    config: HydroWriteConfig<'_>,
+) -> HydroGraphStructure {
     let mut structure = HydroGraphStructure::new();
     let mut seen_tees = HashMap::new();
-
-    // Build the graph structure for all roots
     for leaf in roots {
         leaf.build_graph_structure(&mut structure, &mut seen_tees, config);
     }
-
-    write_graph_structure(&structure, graph_write, config)
+    structure
 }
