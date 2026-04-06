@@ -968,4 +968,48 @@ mod tests {
             }
         });
     }
+
+    #[test]
+    fn coordination_analysis_index_payloads() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let tick = node.tick();
+
+        let (_in_send, input_payloads) = node.sim_input::<i32, _, _>();
+        let indexed = index_payloads(
+            tick.none(),
+            input_payloads.batch(&tick, nondet!(/** test */)),
+        );
+        indexed.all_ticks().for_each(q!(|_| {}));
+
+        let built = flow.finalize();
+        let report = built.check_coordination();
+
+        // Print the report with blame chains
+        println!("{report}");
+
+        // index_payloads uses defer_tick for slot state, so it requires coordination
+        assert!(
+            !report.is_coordination_free(),
+            "index_payloads should require coordination due to defer_tick state"
+        );
+
+        // The non-monotonicity should trace back to defer_tick
+        assert!(report.non_monotone_edges().any(|e| e.operator.contains("DeferTick")));
+
+        // Non-monotone sinks should have blame chains ending at defer_tick
+        for sink in report.sinks() {
+            if !sink.monotonicity.is_monotone() {
+                assert!(
+                    !sink.blame_chain.is_empty(),
+                    "non-monotone sink should have a blame chain"
+                );
+                assert!(
+                    sink.blame_chain.last().unwrap().contains("defertick"),
+                    "blame chain should trace back to defer_tick, got: {:?}",
+                    sink.blame_chain
+                );
+            }
+        }
+    }
 }

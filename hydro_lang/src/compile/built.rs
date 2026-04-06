@@ -49,6 +49,14 @@ impl<'a> BuiltFlow<'a> {
         &self.ir
     }
 
+    /// Analyze the program for the Coordination Criterion (Hellerstein 2026).
+    ///
+    /// Returns a report indicating whether each edge and observable output is
+    /// future-monotone (coordination-free) or requires coordination.
+    pub fn check_coordination(&self) -> super::coordination::CoordinationReport {
+        super::coordination::analyze_coordination(&self.ir)
+    }
+
     /// Returns all raw location ID -> location name mappings.
     pub fn location_names(&self) -> &SecondaryMap<LocationKey, String> {
         &self.location_names

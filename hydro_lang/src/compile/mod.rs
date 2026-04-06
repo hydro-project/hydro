@@ -3,6 +3,12 @@
 #[expect(missing_docs, reason = "TODO")]
 pub mod ir;
 
+/// Static analysis for the Coordination Criterion (Hellerstein 2026).
+///
+/// Checks whether each edge in a Hydro IR graph is future-monotone, identifying
+/// where coordination is intrinsically required.
+pub mod coordination;
+
 #[cfg(feature = "build")]
 #[cfg_attr(docsrs, doc(cfg(feature = "build")))]
 #[expect(missing_docs, reason = "TODO")]
