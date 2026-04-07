@@ -7,8 +7,8 @@ pub mod ir;
 ///
 /// Checks whether each edge in a Hydro IR graph is future-monotone, identifying
 /// where coordination is intrinsically required.
+
 pub mod coordination;
-pub mod coordination_v2;
 
 #[cfg(feature = "build")]
 #[cfg_attr(docsrs, doc(cfg(feature = "build")))]

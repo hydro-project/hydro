@@ -53,8 +53,8 @@ impl<'a> BuiltFlow<'a> {
     ///
     /// Returns a report indicating whether each edge and observable output is
     /// future-monotone (coordination-free) or requires coordination.
-    pub fn check_coordination(&self) -> super::coordination_v2::CoordinationReport {
-        super::coordination_v2::analyze_coordination_default(&self.ir)
+    pub fn check_coordination(&self) -> super::coordination::CoordinationReport {
+        super::coordination::analyze_coordination_default(&self.ir)
     }
 
     /// Emit coordination analysis results as compiler diagnostics.
@@ -76,9 +76,9 @@ impl<'a> BuiltFlow<'a> {
     /// Check coordination with custom goal overrides for specific sinks.
     pub fn check_coordination_with_goals(
         &self,
-        goal_overrides: &std::collections::HashMap<usize, super::coordination_v2::OrderGoal>,
-    ) -> super::coordination_v2::CoordinationReport {
-        super::coordination_v2::analyze_coordination(&self.ir, goal_overrides)
+        goal_overrides: &std::collections::HashMap<usize, super::coordination::OrderGoal>,
+    ) -> super::coordination::CoordinationReport {
+        super::coordination::analyze_coordination(&self.ir, goal_overrides)
     }
 
     /// Returns all raw location ID -> location name mappings.
