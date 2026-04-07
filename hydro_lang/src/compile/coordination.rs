@@ -1311,4 +1311,66 @@ mod tests {
         // This is correct — the snapshot is a stable view within the tick.
         assert!(r.all_monotone(), "cross_singleton with bounded snapshot passes even with non-lattice fold:\n{r}");
     }
+
+    // -----------------------------------------------------------------------
+    // Multi-cycle fixpoint test
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn multi_cycle_fixpoint_monotone() {
+        // Two chained cycles: source -> cycle_a -> cycle_b -> sink
+        // Both carry monotone data (source only grows).
+        // The fixpoint must resolve both cycles regardless of IR order.
+        let r = check_set_inclusion(|flow| {
+            let p = flow.process::<()>();
+
+            let (handle_a, cycle_a_out) =
+                p.forward_ref::<Stream<i32, Process<()>, Unbounded, TotalOrder>>();
+            let (handle_b, cycle_b_out) =
+                p.forward_ref::<Stream<i32, Process<()>, Unbounded, TotalOrder>>();
+
+            let source = p.source_iter(q!([1i32, 2, 3]));
+            handle_a.complete(source.map(q!(|x: i32| x + 1)));
+            handle_b.complete(cycle_a_out.map(q!(|x: i32| x * 2)));
+
+            cycle_b_out.for_each(q!(|_: i32| {}));
+        });
+        assert!(r.all_monotone(), "chained cycles with monotone source should pass:\n{r}");
+    }
+
+    #[test]
+    fn multi_cycle_fixpoint_non_monotone() {
+        // Two chained cycles: A feeds B, A contains a non-commutative
+        // keyed fold. Non-monotonicity in A should propagate to B.
+        let r = check_set_inclusion(|flow| {
+            let p = flow.process::<()>();
+            let tick = p.tick();
+
+            let (handle_a, cycle_a_out) =
+                p.forward_ref::<Stream<(i32, i32), Process<()>, Unbounded, TotalOrder>>();
+            let (handle_b, cycle_b_out) =
+                p.forward_ref::<Stream<(i32, i32), Process<()>, Unbounded, TotalOrder>>();
+
+            // Cycle A: non-commutative keyed fold (overwrite)
+            let storage = p.source_iter(q!(vec![(1i32, 10i32)]))
+                .batch(&tick, nondet!(/** test */))
+                .all_ticks()
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .into_keyed()
+                .fold(q!(|| 0i32), q!(|acc, x| { *acc = x; }));
+            handle_a.complete(
+                storage.snapshot(&tick, nondet!(/** test */))
+                    .entries()
+                    .all_ticks()
+                    .assume_ordering::<TotalOrder>(nondet!(/** test */))
+            );
+
+            // Cycle B: depends on cycle A
+            handle_b.complete(cycle_a_out.map(q!(|(k, v): (i32, i32)| (k, v + 1))));
+
+            // Observe cycle B
+            cycle_b_out.for_each(q!(|_: (i32, i32)| {}));
+        });
+        assert!(!r.all_monotone(), "chained cycles with non-monotone fold should fail:\n{r}");
+    }
 }
