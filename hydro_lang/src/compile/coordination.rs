@@ -489,10 +489,8 @@ fn prove(
         }
 
         // --- Tee: shared node ---
-        HydroNode::Tee { inner, .. } => {
-            prove_shared(inner, goal, cycle_proofs, seen_tees).prepend_preserved(&name, span, pm_span)
-        }
-        HydroNode::Partition { inner, .. } => {
+        HydroNode::Tee { inner, .. }
+        | HydroNode::Partition { inner, .. } => {
             prove_shared(inner, goal, cycle_proofs, seen_tees).prepend_preserved(&name, span, pm_span)
         }
 
@@ -517,15 +515,10 @@ fn prove(
             &name, span, pm_span, cycle_proofs, seen_tees,
         ),
 
-        HydroNode::Enumerate { input, .. } => preserve_or_fail(
+        HydroNode::Enumerate { input, .. }
+        | HydroNode::Unique { input, .. } => preserve_or_fail(
             input, goal, &[OrderGoal::SetInclusion],
-            "enumerate breaks prefix/lattice order",
-            &name, span, pm_span, cycle_proofs, seen_tees,
-        ),
-
-        HydroNode::Unique { input, .. } => preserve_or_fail(
-            input, goal, &[OrderGoal::SetInclusion],
-            "unique breaks prefix/lattice order",
+            "breaks prefix/lattice order",
             &name, span, pm_span, cycle_proofs, seen_tees,
         ),
 
@@ -598,31 +591,21 @@ fn prove(
         },
 
         // --- Difference / AntiJoin ---
-        HydroNode::Difference { pos, neg, .. } => difference_logic(
+        HydroNode::Difference { pos, neg, .. }
+        | HydroNode::AntiJoin { pos, neg, .. } => difference_logic(
             pos, neg, goal, &name, span, pm_span,
-            "difference breaks prefix/lattice order",
-            cycle_proofs, seen_tees,
-        ),
-        HydroNode::AntiJoin { pos, neg, .. } => difference_logic(
-            pos, neg, goal, &name, span, pm_span,
-            "anti_join breaks prefix/lattice order",
+            "breaks prefix/lattice order",
             cycle_proofs, seen_tees,
         ),
 
         // --- Fold / FoldKeyed ---
         HydroNode::Fold { is_commutative, is_idempotent, input, .. }
-        | HydroNode::FoldKeyed { is_commutative, is_idempotent, input, .. } => aggregation_discharge(
-            *is_commutative, *is_idempotent, input, goal,
-            &name, span, pm_span,
-            "fold over unbounded input without commutativity+idempotency proof",
-        ),
-
-        // --- Reduce / ReduceKeyed ---
-        HydroNode::Reduce { is_commutative, is_idempotent, input, .. }
+        | HydroNode::FoldKeyed { is_commutative, is_idempotent, input, .. }
+        | HydroNode::Reduce { is_commutative, is_idempotent, input, .. }
         | HydroNode::ReduceKeyed { is_commutative, is_idempotent, input, .. } => aggregation_discharge(
             *is_commutative, *is_idempotent, input, goal,
             &name, span, pm_span,
-            "reduce over unbounded input without commutativity+idempotency proof",
+            "unbounded input without commutativity+idempotency proof",
         ),
 
         HydroNode::ReduceKeyedWatermark { is_commutative, input, .. } => aggregation_discharge(
