@@ -149,9 +149,9 @@ impl ProofResult {
         }])
     }
 
-    /// Prepend a "preserved" step from the current operator.
+    /// Append a "preserved" step (trace is built back-to-front, reversed at display time).
     pub(crate) fn prepend_preserved(mut self, operator: &str, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
-        self.trace.insert(0, ProofStep {
+        self.trace.push(ProofStep {
             operator: operator.to_string(),
             action: ProofAction::Preserved,
             span,
@@ -160,9 +160,9 @@ impl ProofResult {
         self
     }
 
-    /// Prepend a "goal changed" step.
+    /// Append a "goal changed" step (trace is built back-to-front, reversed at display time).
     pub(crate) fn prepend_goal_changed(mut self, operator: &str, new_goal: &OrderGoal, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
-        self.trace.insert(0, ProofStep {
+        self.trace.push(ProofStep {
             operator: operator.to_string(),
             action: ProofAction::GoalChanged { new_goal: new_goal.clone() },
             span,
@@ -556,8 +556,10 @@ fn prove(
             }
         }
 
-        HydroNode::ReduceKeyedWatermark { input, .. } => {
-            if input.metadata().collection_kind.is_bounded() {
+        HydroNode::ReduceKeyedWatermark { is_commutative, input, .. } => {
+            if *is_commutative && *goal != OrderGoal::Prefix {
+                ProofResult::discharged(&name, "commutative watermark reduce (lattice join)", span, pm_span)
+            } else if input.metadata().collection_kind.is_bounded() {
                 ProofResult::discharged(&name, "watermark reduce over bounded input", span, pm_span)
             } else {
                 ProofResult::fail(&name, "watermark-based reduce may retract above watermark", span, pm_span)
@@ -636,8 +638,13 @@ fn prove_shared(
 /// output collection kind, then walks backward to prove or disprove it.
 ///
 /// The `goal_overrides` parameter allows overriding the default goal for
-/// specific sinks (identified by index in the IR root list). Pass an empty
-/// map to use all defaults.
+/// specific sinks, keyed by their index in the IR root list. Note that
+/// indices include non-observable roots (CycleSink, Null); only indices
+/// corresponding to observable sinks (ForEach, SendExternal, etc.) are
+/// used. Pass an empty map to use all defaults.
+///
+/// Future: a more robust sink identifier (name or span-based) would be
+/// preferable to raw indices.
 pub fn analyze_coordination(
     ir: &[HydroRoot],
     goal_overrides: &HashMap<usize, OrderGoal>,
@@ -670,6 +677,8 @@ pub fn analyze_coordination(
 
         let result = prove(root.input(), &goal, &cycle_proofs, &mut seen_tees);
 
+        let mut result = result;
+        result.trace.reverse();
         sinks.push(SinkResult {
             name: short_name_root(root),
             goal,

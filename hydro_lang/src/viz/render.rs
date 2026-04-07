@@ -1429,7 +1429,7 @@ impl HydroNode {
                 f,
                 input,
                 watermark,
-                metadata,
+                metadata, ..
             } => {
                 let input_id = input.build_graph_structure(structure, seen_tees, config);
                 let watermark_id = watermark.build_graph_structure(structure, seen_tees, config);
