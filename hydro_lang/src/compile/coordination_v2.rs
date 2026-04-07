@@ -392,66 +392,29 @@ fn prove(
 
         // --- Fold / FoldKeyed: can DISCHARGE lattice goal if commutative+idempotent ---
         HydroNode::Fold { is_commutative, is_idempotent, input, .. } => {
-            match goal {
-                OrderGoal::Lattice if *is_commutative && *is_idempotent => {
-                    // Commutative+idempotent fold is a lattice join.
-                    // The accumulated value only grows — proof discharged.
-                    ProofResult::Proved
-                }
-                OrderGoal::SetInclusion => {
-                    // Fold collapses a stream to a singleton — not set inclusion.
-                    ProofResult::Broken {
-                        reason: "fold collapses stream to singleton, breaking set inclusion".into(),
-                        blame: vec![short_name(node)],
-                    }
-                }
-                _ => {
-                    // Non-commutative fold, or goal is Prefix
-                    if input.metadata().collection_kind.is_bounded() {
-                        // Bounded input: fold is deterministic, output is stable
-                        ProofResult::Proved
-                    } else {
-                        ProofResult::Broken {
-                            reason: format!("fold over unbounded input without commutativity+idempotency proof"),
-                            blame: vec![short_name(node)],
-                        }
-                    }
+            if *is_commutative && *is_idempotent {
+                // Commutative+idempotent fold is a lattice join.
+                // Discharges both Lattice (value grows) and SetInclusion
+                // (downstream conversions to stream produce growing sets).
+                ProofResult::Proved
+            } else if input.metadata().collection_kind.is_bounded() {
+                ProofResult::Proved
+            } else {
+                ProofResult::Broken {
+                    reason: "fold over unbounded input without commutativity+idempotency proof".into(),
+                    blame: vec![short_name(node)],
                 }
             }
         }
         HydroNode::FoldKeyed { is_commutative, is_idempotent, input, .. } => {
-            match goal {
-                OrderGoal::Lattice if *is_commutative && *is_idempotent => {
-                    ProofResult::Proved
-                }
-                OrderGoal::SetInclusion if *is_commutative && *is_idempotent => {
-                    // Keyed fold with lattice semantics: new keys appear, existing keys'
-                    // values only grow. The set of (key, value) pairs grows under set inclusion
-                    // IF we consider the keyed singleton as a growing map.
-                    // Actually, the output is a KeyedSingleton, not a Stream — set inclusion
-                    // doesn't directly apply. But downstream operators (snapshot, join) convert
-                    // it to a stream. Conservatively: prove lattice on the keyed singleton.
-                    ProofResult::Proved
-                }
-                OrderGoal::SetInclusion => {
-                    if input.metadata().collection_kind.is_bounded() {
-                        ProofResult::Proved
-                    } else {
-                        ProofResult::Broken {
-                            reason: "fold_keyed over unbounded input without commutativity proof".into(),
-                            blame: vec![short_name(node)],
-                        }
-                    }
-                }
-                _ => {
-                    if input.metadata().collection_kind.is_bounded() {
-                        ProofResult::Proved
-                    } else {
-                        ProofResult::Broken {
-                            reason: "fold_keyed over unbounded input without commutativity+idempotency proof".into(),
-                            blame: vec![short_name(node)],
-                        }
-                    }
+            if *is_commutative && *is_idempotent {
+                ProofResult::Proved
+            } else if input.metadata().collection_kind.is_bounded() {
+                ProofResult::Proved
+            } else {
+                ProofResult::Broken {
+                    reason: "fold_keyed over unbounded input without commutativity+idempotency proof".into(),
+                    blame: vec![short_name(node)],
                 }
             }
         }
