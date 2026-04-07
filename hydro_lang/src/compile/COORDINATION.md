@@ -40,8 +40,8 @@ The analysis walks **backward** from each observable sink, carrying a proof goal
   - Element-wise transforms under Lattice goal (closure not proven order-preserving)
 
 Special handling:
-- **`CrossSingleton`**: the stream side needs SetInclusion; the singleton side needs Lattice (unless bounded, in which case it's stable)
-- **`CycleSource`**: inherits the proof result from its matching `CycleSink` (two-pass analysis for inter-cycle dependencies)
+- **`CrossSingleton`**: the stream side preserves SetInclusion and Prefix; the singleton side needs Lattice (unless bounded, in which case it's stable)
+- **`CycleSource`**: inherits the proof result from its matching `CycleSink` (fixpoint analysis for inter-cycle dependencies)
 
 The analysis produces a trace for each sink showing every operator visited, whether it preserved/discharged/broke the proof, and the source span pointing to user code.
 
@@ -72,6 +72,6 @@ These are captured at IR construction time from the `commutative = manual_proof!
 
 **Network ordering is transport-aware.** The analysis checks the `Network` node's IR metadata for the output ordering, which reflects the transport's guarantee (e.g., TCP FailStop preserves `TotalOrder` for point-to-point sends). Multi-sender scenarios (e.g., cluster-to-cluster demux) correctly produce `NoOrder` due to receiver-side interleaving.
 
-**Cycle analysis is not a full fixpoint.** Inter-cycle dependencies are handled by running the cycle analysis twice. This handles one level of nesting (cycle A depends on cycle B) but not deeper chains. A true fixpoint iteration would be more robust, though deeper cycle nesting is rare in practice.
+**Cycle analysis is not a full fixpoint.** Inter-cycle dependencies are handled by iterating the cycle analysis to fixpoint. This handles one level of nesting (cycle A depends on cycle B) but not deeper chains. A true fixpoint iteration would be more robust, though deeper cycle nesting is rare in practice.
 
 **Bounded vs. unbounded is structural.** The analysis uses Hydro's `Bounded`/`Unbounded` distinction to determine whether aggregation results are stable. `Bounded` means "within a tick" — the fold sees complete input and produces a deterministic result. Cross-tick accumulation is handled by `YieldConcat` (which preserves set inclusion) and `DeferTick` (which preserves set inclusion and lattice order). This structural approach is sound for Hydro's tick-based execution model but would need revisiting if Hydro added non-tick-based windowing.
