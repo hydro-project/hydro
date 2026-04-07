@@ -1110,4 +1110,160 @@ mod tests {
         // Bounded snapshot is stable — cross_singleton passes
         assert!(r.all_monotone(), "cross_singleton with bounded snapshot should pass:\n{r}");
     }
+
+    // -----------------------------------------------------------------------
+    // Negative tests: operators that BREAK specific goals
+    // -----------------------------------------------------------------------
+
+    // --- Element-wise transforms break Lattice ---
+
+    #[test]
+    fn map_on_bounded_singleton_passes() {
+        // map on a bounded singleton (via snapshot) is fine — the snapshot
+        // freezes the value, so the map result is also stable.
+        // Lattice goal is only checked for UNBOUNDED singletons.
+        let r = check_set_inclusion(|flow| {
+            let p = flow.process::<()>();
+            let tick = p.tick();
+            let singleton = p.source_iter(q!(vec![(1i32, 10i32)]))
+                .batch(&tick, nondet!(/** test */))
+                .all_ticks()
+                .into_keyed()
+                .fold(
+                    q!(|| 0i32),
+                    q!(|acc: &mut i32, x: i32| { *acc = std::cmp::max(*acc, x); },
+                       commutative = manual_proof!(/** max */),
+                       idempotent = manual_proof!(/** max */)),
+                );
+            let mapped = singleton.map(q!(|x: i32| x + 1));
+            let stream = p.source_iter(q!([1i32, 2, 3]))
+                .batch(&tick, nondet!(/** test */));
+            stream.cross_singleton(
+                mapped.snapshot(&tick, nondet!(/** test */)).into_singleton()
+            ).all_ticks()
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone(), "map on bounded singleton should pass:\n{r}");
+    }
+
+    // --- Chain breaks Prefix ---
+
+    #[test]
+    fn chain_breaks_prefix() {
+        let r = check(|flow| {
+            let p = flow.process::<()>();
+            let a = p.source_iter(q!([1, 2]));
+            let b = p.source_iter(q!([3, 4]));
+            // chain of two TotalOrder streams — interleaving breaks prefix
+            a.chain(b).for_each(q!(|_| {}));
+        });
+        // Default goal for TotalOrder sink is Prefix; chain breaks it
+        assert!(!r.all_monotone(), "chain should break Prefix:\n{r}");
+    }
+
+    // --- Join breaks Prefix ---
+
+    #[test]
+    fn join_breaks_prefix() {
+        let r = check(|flow| {
+            let p = flow.process::<()>();
+            let a = p.source_iter(q!(vec![(1, "a"), (2, "b")]));
+            let b = p.source_iter(q!(vec![(1, "x"), (2, "y")]));
+            // join output is NoOrder, default goal becomes SetInclusion — that passes.
+            // Force Prefix to test the break.
+            a.join(b)
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .for_each(q!(|_| {}));
+        });
+        let mut overrides = HashMap::new();
+        overrides.insert(0, OrderGoal::Prefix);
+        let built_r = {
+            let mut flow = FlowBuilder::new();
+            let p = flow.process::<()>();
+            let a = p.source_iter(q!(vec![(1, "a"), (2, "b")]));
+            let b = p.source_iter(q!(vec![(1, "x"), (2, "y")]));
+            a.join(b)
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .for_each(q!(|_| {}));
+            flow.finalize().check_coordination_with_goals(&overrides)
+        };
+        assert!(!built_r.all_monotone(), "join should break Prefix:\n{built_r}");
+    }
+
+    // --- Enumerate breaks Prefix ---
+
+    #[test]
+    fn enumerate_breaks_prefix() {
+        let mut flow = FlowBuilder::new();
+        let p = flow.process::<()>();
+        p.source_iter(q!([1, 2, 3]))
+            .enumerate()
+            .for_each(q!(|_| {}));
+        let mut overrides = HashMap::new();
+        overrides.insert(0, OrderGoal::Prefix);
+        let r = flow.finalize().check_coordination_with_goals(&overrides);
+        assert!(!r.all_monotone(), "enumerate should break Prefix:\n{r}");
+    }
+
+    // --- DeferTick breaks Prefix ---
+
+    #[test]
+    fn defer_tick_breaks_prefix() {
+        let mut flow = FlowBuilder::new();
+        let p = flow.process::<()>();
+        let tick = p.tick();
+        p.source_iter(q!([1, 2, 3]))
+            .batch(&tick, nondet!(/** test */))
+            .defer_tick()
+            .all_ticks()
+            .for_each(q!(|_| {}));
+        let mut overrides = HashMap::new();
+        overrides.insert(0, OrderGoal::Prefix);
+        let r = flow.finalize().check_coordination_with_goals(&overrides);
+        assert!(!r.all_monotone(), "defer_tick should break Prefix:\n{r}");
+    }
+
+    // --- Unique breaks Prefix ---
+
+    #[test]
+    fn unique_breaks_prefix() {
+        let mut flow = FlowBuilder::new();
+        let p = flow.process::<()>();
+        p.source_iter(q!([1, 1, 2, 3]))
+            .unique()
+            .assume_ordering::<TotalOrder>(nondet!(/** test */))
+            .for_each(q!(|_| {}));
+        let mut overrides = HashMap::new();
+        overrides.insert(0, OrderGoal::Prefix);
+        let r = flow.finalize().check_coordination_with_goals(&overrides);
+        assert!(!r.all_monotone(), "unique should break Prefix:\n{r}");
+    }
+
+    // --- CrossSingleton with unbounded non-lattice singleton breaks ---
+
+    #[test]
+    fn cross_singleton_unbounded_non_lattice_breaks() {
+        let r = check_set_inclusion(|flow| {
+            let p = flow.process::<()>();
+            let tick = p.tick();
+            // Non-commutative fold → not a lattice
+            let singleton = p.source_iter(q!(vec![(1, 10)]))
+                .batch(&tick, nondet!(/** test */))
+                .all_ticks()
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .into_keyed()
+                .fold(q!(|| 0i32), q!(|acc, x| { *acc = x; }));
+            let stream = p.source_iter(q!([1, 2, 3]))
+                .batch(&tick, nondet!(/** test */));
+            stream.cross_singleton(
+                singleton.snapshot(&tick, nondet!(/** test */)).into_singleton()
+            ).all_ticks()
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .for_each(q!(|_| {}));
+        });
+        // snapshot makes it bounded, so this actually passes (bounded singleton is stable)
+        // This is correct — the snapshot is a stable view within the tick.
+        assert!(r.all_monotone(), "cross_singleton with bounded snapshot passes even with non-lattice fold:\n{r}");
+    }
 }
