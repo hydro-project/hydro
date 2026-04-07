@@ -606,17 +606,17 @@ fn prove(
             }
         }
 
-        // --- Scan ---
+        // --- Scan: preserves Prefix and SetInclusion on TotalOrder input ---
         HydroNode::Scan { input, .. } => match &input.metadata().collection_kind {
             super::ir::CollectionKind::Stream { order: StreamOrder::TotalOrder, .. } => match goal {
                 OrderGoal::Prefix | OrderGoal::SetInclusion => {
-                    ProofResult::discharged(&name, "scan on TotalOrder input (deterministic prefix)", span, pm_span)
+                    prove(input, goal, cycle_proofs, seen_tees).prepend_preserved(&name, span, pm_span)
                 }
                 OrderGoal::Lattice => ProofResult::fail(&name, "scan produces a stream, not a lattice singleton", span, pm_span),
             },
             _ => {
                 if input.metadata().collection_kind.is_bounded() {
-                    ProofResult::discharged(&name, "scan over bounded input", span, pm_span)
+                    prove(input, goal, cycle_proofs, seen_tees).prepend_preserved(&name, span, pm_span)
                 } else {
                     ProofResult::fail(&name, "scan on non-TotalOrder unbounded input is non-deterministic", span, pm_span)
                 }

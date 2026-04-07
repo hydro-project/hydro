@@ -23,7 +23,7 @@ The analysis walks **backward** from each observable sink, carrying a proof goal
 - **Discharged**: the operator establishes monotonicity. Proof complete — don't look upstream.
   - `Source` / `ExternalInput`: data only arrives (base case)
   - `Fold`/`FoldKeyed` with `commutative + idempotent`: lattice join — value only grows
-  - `Scan` on `TotalOrder` input: deterministic prefix — discharges both Prefix and SetInclusion
+  - `Scan` on `TotalOrder` input: deterministic stateful transform — preserves Prefix and SetInclusion
   - Bounded input to any aggregation: complete data, deterministic result
 
 - **Preserved**: the operator transparently maintains the order. Walk continues to inputs.
