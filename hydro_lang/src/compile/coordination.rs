@@ -689,3 +689,344 @@ fn short_name_root(root: &HydroRoot) -> String {
 pub fn analyze_coordination_default(ir: &[HydroRoot]) -> CoordinationReport {
     analyze_coordination(ir, &HashMap::new())
 }
+
+#[cfg(test)]
+#[cfg(feature = "build")]
+mod tests {
+    use super::*;
+    use crate::compile::builder::FlowBuilder;
+    use crate::live_collections::stream::TotalOrder;
+    use crate::nondet::nondet;
+    use crate::prelude::*;
+    use crate::properties::manual_proof;
+
+    fn check(build: impl FnOnce(&mut FlowBuilder<'_>)) -> CoordinationReport {
+        let mut flow = FlowBuilder::new();
+        build(&mut flow);
+        flow.finalize().check_coordination()
+    }
+
+    fn check_set_inclusion(build: impl FnOnce(&mut FlowBuilder<'_>)) -> CoordinationReport {
+        let mut flow = FlowBuilder::new();
+        build(&mut flow);
+        let built = flow.finalize();
+        let overrides: HashMap<usize, OrderGoal> = (0..built.ir().len())
+            .map(|i| (i, OrderGoal::SetInclusion))
+            .collect();
+        built.check_coordination_with_goals(&overrides)
+    }
+
+    // --- Element-wise transforms preserve SetInclusion ---
+
+    #[test]
+    fn map_preserves_set_inclusion() {
+        let r = check(|flow| {
+            let p = flow.process::<()>();
+            p.source_iter(q!([1, 2, 3])).map(q!(|x| x * 2)).for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone(), "map:\n{r}");
+    }
+
+    #[test]
+    fn filter_preserves_set_inclusion() {
+        let r = check(|flow| {
+            let p = flow.process::<()>();
+            p.source_iter(q!([1, 2, 3])).filter(q!(|x| *x > 1)).for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone(), "filter:\n{r}");
+    }
+
+    #[test]
+    fn filter_map_preserves_set_inclusion() {
+        let r = check(|flow| {
+            let p = flow.process::<()>();
+            p.source_iter(q!([1, 2, 3]))
+                .filter_map(q!(|x| if x > 1 { Some(x) } else { None }))
+                .for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone(), "filter_map:\n{r}");
+    }
+
+    #[test]
+    fn inspect_preserves_set_inclusion() {
+        let r = check(|flow| {
+            let p = flow.process::<()>();
+            p.source_iter(q!([1, 2, 3])).inspect(q!(|_| {})).for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone(), "inspect:\n{r}");
+    }
+
+    // --- Chain preserves SetInclusion ---
+
+    #[test]
+    fn chain_preserves_set_inclusion() {
+        let r = check_set_inclusion(|flow| {
+            let p = flow.process::<()>();
+            let a = p.source_iter(q!([1, 2]));
+            let b = p.source_iter(q!([3, 4]));
+            a.chain(b)
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone(), "chain:\n{r}");
+    }
+
+    // --- Join preserves SetInclusion ---
+
+    #[test]
+    fn join_preserves_set_inclusion() {
+        let r = check_set_inclusion(|flow| {
+            let p = flow.process::<()>();
+            let a = p.source_iter(q!(vec![(1, "a"), (2, "b")]));
+            let b = p.source_iter(q!(vec![(1, "x"), (2, "y")]));
+            a.join(b)
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone(), "join:\n{r}");
+    }
+
+    // --- Fold: bounded always discharges ---
+
+    #[test]
+    fn fold_keyed_on_bounded_discharges() {
+        let r = check_set_inclusion(|flow| {
+            let p = flow.process::<()>();
+            p.source_iter(q!(vec![(1, 10), (2, 20)]))
+                .into_keyed()
+                .fold(q!(|| 0), q!(|acc, x| { *acc = x; }))
+                .entries()
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone(), "fold_keyed bounded:\n{r}");
+    }
+
+    // --- Fold: commutative+idempotent on unbounded discharges ---
+
+    #[test]
+    fn commutative_fold_keyed_on_unbounded_discharges() {
+        let r = check_set_inclusion(|flow| {
+            let p = flow.process::<()>();
+            let tick = p.tick();
+            let storage = p.source_iter(q!(vec![(1, 10), (2, 20)]))
+                .batch(&tick, nondet!(/** test */))
+                .all_ticks()
+                .into_keyed()
+                .fold(
+                    q!(|| 0i32),
+                    q!(|acc, x| { *acc = std::cmp::max(*acc, x); },
+                       commutative = manual_proof!(/** max */),
+                       idempotent = manual_proof!(/** max */)),
+                );
+            storage.snapshot(&tick, nondet!(/** test */))
+                .entries().all_ticks()
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone(), "commutative fold_keyed unbounded:\n{r}");
+    }
+
+    // --- Fold: non-commutative on unbounded breaks ---
+
+    #[test]
+    fn non_commutative_fold_keyed_on_unbounded_breaks() {
+        let r = check_set_inclusion(|flow| {
+            let p = flow.process::<()>();
+            let tick = p.tick();
+            let storage = p.source_iter(q!(vec![(1, 10), (2, 20)]))
+                .batch(&tick, nondet!(/** test */))
+                .all_ticks()
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .into_keyed()
+                .fold(q!(|| 0i32), q!(|acc, x| { *acc = x; }));
+            storage.snapshot(&tick, nondet!(/** test */))
+                .entries().all_ticks()
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .for_each(q!(|_| {}));
+        });
+        assert!(!r.all_monotone(), "non-commutative fold_keyed unbounded:\n{r}");
+    }
+
+    // --- Scan: TotalOrder discharges Prefix and SetInclusion ---
+
+    #[test]
+    fn scan_on_total_order_discharges_prefix() {
+        let r = check(|flow| {
+            let p = flow.process::<()>();
+            p.source_iter(q!([1, 2, 3]))
+                .scan(q!(|| 0i32), q!(|s, x| { *s += x; Some(*s) }))
+                .for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone(), "scan prefix:\n{r}");
+        assert_eq!(r.sinks[0].goal, OrderGoal::Prefix);
+    }
+
+    #[test]
+    fn scan_on_total_order_discharges_set_inclusion() {
+        let r = check_set_inclusion(|flow| {
+            let p = flow.process::<()>();
+            p.source_iter(q!([1, 2, 3]))
+                .scan(q!(|| 0i32), q!(|s, x| { *s += x; Some(*s) }))
+                .for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone(), "scan set inclusion:\n{r}");
+    }
+
+    // --- Unique preserves SetInclusion ---
+
+    #[test]
+    fn unique_preserves_set_inclusion() {
+        let r = check_set_inclusion(|flow| {
+            let p = flow.process::<()>();
+            p.source_iter(q!([1, 1, 2, 3]))
+                .unique()
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone(), "unique:\n{r}");
+    }
+
+    // --- Enumerate preserves SetInclusion ---
+
+    #[test]
+    fn enumerate_preserves_set_inclusion() {
+        let r = check_set_inclusion(|flow| {
+            let p = flow.process::<()>();
+            p.source_iter(q!([1, 2, 3]))
+                .enumerate()
+                .for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone(), "enumerate:\n{r}");
+    }
+
+    // --- DeferTick preserves SetInclusion ---
+
+    #[test]
+    fn defer_tick_preserves_set_inclusion() {
+        let r = check_set_inclusion(|flow| {
+            let p = flow.process::<()>();
+            let tick = p.tick();
+            p.source_iter(q!([1, 2, 3]))
+                .batch(&tick, nondet!(/** test */))
+                .defer_tick()
+                .all_ticks()
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone(), "defer_tick:\n{r}");
+    }
+
+    // --- Sort on bounded discharges ---
+
+    #[test]
+    fn sort_bounded_discharges() {
+        let r = check(|flow| {
+            let p = flow.process::<()>();
+            let tick = p.tick();
+            p.source_iter(q!([3, 1, 2]))
+                .batch(&tick, nondet!(/** test */))
+                .sort()
+                .all_ticks()
+                .for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone(), "sort bounded:\n{r}");
+    }
+
+    // --- AntiJoin with bounded neg preserves ---
+
+    #[test]
+    fn anti_join_bounded_neg_preserves() {
+        let r = check_set_inclusion(|flow| {
+            let p = flow.process::<()>();
+            let tick = p.tick();
+            let stream = p.source_iter(q!(vec![(1, "a"), (2, "b"), (3, "c")]))
+                .batch(&tick, nondet!(/** test */));
+            let neg = p.source_iter(q!(vec![2]))
+                .batch(&tick, nondet!(/** test */));
+            stream.anti_join(neg)
+                .all_ticks()
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone(), "anti_join bounded neg:\n{r}");
+    }
+
+    // --- ReduceKeyed commutative discharges ---
+
+    #[test]
+    fn commutative_reduce_keyed_discharges() {
+        let r = check_set_inclusion(|flow| {
+            let p = flow.process::<()>();
+            let tick = p.tick();
+            let storage = p.source_iter(q!(vec![(1, 10i32), (2, 20)]))
+                .batch(&tick, nondet!(/** test */))
+                .all_ticks()
+                .into_keyed()
+                .reduce(q!(|acc, x| { *acc = std::cmp::max(*acc, x); },
+                    commutative = manual_proof!(/** max */),
+                    idempotent = manual_proof!(/** max */)));
+            storage.snapshot(&tick, nondet!(/** test */))
+                .entries().all_ticks()
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone(), "commutative reduce_keyed:\n{r}");
+    }
+
+    // --- Goal override ---
+
+    #[test]
+    fn goal_override_set_inclusion_on_total_order() {
+        let mut flow = FlowBuilder::new();
+        let p = flow.process::<()>();
+        p.source_iter(q!([1, 2, 3]))
+            .assume_ordering::<TotalOrder>(nondet!(/** test */))
+            .for_each(q!(|_| {}));
+        let built = flow.finalize();
+
+        let default_report = built.check_coordination();
+        assert!(default_report.all_monotone());
+        assert_eq!(default_report.sinks[0].goal, OrderGoal::Prefix);
+
+        let mut overrides = HashMap::new();
+        overrides.insert(0, OrderGoal::SetInclusion);
+        let override_report = built.check_coordination_with_goals(&overrides);
+        assert!(override_report.all_monotone());
+        assert_eq!(override_report.sinks[0].goal, OrderGoal::SetInclusion);
+    }
+
+    // --- Trace quality ---
+
+    #[test]
+    fn failing_trace_ends_with_broken() {
+        let r = check_set_inclusion(|flow| {
+            let p = flow.process::<()>();
+            let tick = p.tick();
+            let storage = p.source_iter(q!(vec![(1, 10)]))
+                .batch(&tick, nondet!(/** test */))
+                .all_ticks()
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .into_keyed()
+                .fold(q!(|| 0i32), q!(|acc, x| { *acc = x; }));
+            storage.snapshot(&tick, nondet!(/** test */))
+                .entries().all_ticks()
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .for_each(q!(|_| {}));
+        });
+        assert!(!r.all_monotone());
+        let last = r.sinks[0].result.trace.last().unwrap();
+        assert!(matches!(last.action, ProofAction::Broken { .. }), "last step should be Broken");
+    }
+
+    #[test]
+    fn passing_trace_ends_with_discharged() {
+        let r = check(|flow| {
+            let p = flow.process::<()>();
+            p.source_iter(q!([1, 2, 3])).for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone());
+        let last = r.sinks[0].result.trace.last().unwrap();
+        assert!(matches!(last.action, ProofAction::Discharged { .. }), "last step should be Discharged");
+    }
+}
