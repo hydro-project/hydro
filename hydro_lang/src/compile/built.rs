@@ -75,7 +75,7 @@ impl<'a> BuiltFlow<'a> {
     /// Check coordination with custom goal overrides for specific sinks.
     pub fn check_coordination_with_goals(
         &self,
-        goal_overrides: &std::collections::HashMap<usize, super::coordination::OrderGoal>,
+        goal_overrides: &std::collections::HashMap<String, super::coordination::OrderGoal>,
     ) -> super::coordination::CoordinationReport {
         super::coordination::analyze_coordination(&self.ir, goal_overrides)
     }
