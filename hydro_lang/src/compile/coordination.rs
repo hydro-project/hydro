@@ -514,8 +514,8 @@ fn prove(
 
         // --- CrossSingleton ---
         HydroNode::CrossSingleton { left, right, .. } => match goal {
-            OrderGoal::SetInclusion => {
-                let a = prove(left, &OrderGoal::SetInclusion, cycle_proofs, seen_tees);
+            OrderGoal::SetInclusion | OrderGoal::Prefix => {
+                let a = prove(left, goal, cycle_proofs, seen_tees);
                 if !a.is_proved() { return a.prepend_preserved(&name, span.clone(), pm_span.clone()); }
                 // Bounded singleton is stable — no lattice proof needed
                 if right.metadata().collection_kind.is_bounded() {
@@ -525,7 +525,7 @@ fn prove(
                         .prepend_goal_changed(&name, &OrderGoal::Lattice, span, pm_span)
                 }
             }
-            _ => ProofResult::fail(&name, "cross_singleton breaks prefix/lattice order", span, pm_span),
+            _ => ProofResult::fail(&name, "cross_singleton breaks lattice order", span, pm_span),
         },
 
         // --- Difference / AntiJoin ---
