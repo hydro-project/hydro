@@ -30,7 +30,7 @@ The analysis walks **backward** from each observable sink, carrying a proof goal
   - `Scan` on `TotalOrder` input: deterministic stateful transform — preserves Prefix and SetInclusion
   - `Chain` / union: preserves SetInclusion (both branches must prove it)
   - `Join`, `CrossProduct`: preserves SetInclusion (both inputs must prove it)
-  - `Network`: preserves SetInclusion (elements arrive, may reorder)
+  - `Network`: preserves SetInclusion (elements arrive, may reorder). Preserves Prefix when the transport guarantees ordering (e.g., TCP FailStop point-to-point), as reflected in the IR metadata.
   - `DeferTick`: preserves SetInclusion and Lattice
 
 - **Broken**: the operator violates the order. Proof fails here.
@@ -70,7 +70,7 @@ These are captured at IR construction time from the `commutative = manual_proof!
 
 **Gyatso's trivial monotonicity.** As noted by Laddad, Flo/Gyatso semantics guarantee that *every* program is monotone under the trivial order induced by each collection type's concatenation operator. Our analysis is meaningful only because it checks monotonicity under *non-trivial* orders (set inclusion, prefix, lattice). If the default order inference picks the wrong order, the analysis may give vacuously true results. The `goal_overrides` API mitigates this by letting users specify the order they care about.
 
-**Network ordering assumptions.** The analysis treats `Network` as preserving SetInclusion but breaking Prefix. In practice, some network transports (e.g., TCP with a single connection) preserve ordering, but the analysis conservatively assumes reordering. This may produce false negatives for programs that rely on transport-level ordering guarantees.
+**Network ordering is transport-aware.** The analysis checks the `Network` node's IR metadata for the output ordering, which reflects the transport's guarantee (e.g., TCP FailStop preserves `TotalOrder` for point-to-point sends). Multi-sender scenarios (e.g., cluster-to-cluster demux) correctly produce `NoOrder` due to receiver-side interleaving.
 
 **Cycle analysis is not a full fixpoint.** Inter-cycle dependencies are handled by running the cycle analysis twice. This handles one level of nesting (cycle A depends on cycle B) but not deeper chains. A true fixpoint iteration would be more robust, though deeper cycle nesting is rare in practice.
 
