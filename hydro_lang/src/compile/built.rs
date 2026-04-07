@@ -51,7 +51,7 @@ impl<'a> BuiltFlow<'a> {
 
     /// Analyze the program for the Coordination Criterion (Hellerstein 2026).
     ///
-    /// Returns a report indicating whether each edge and observable output is
+    /// Returns a report indicating whether each observable sink is
     /// future-monotone (coordination-free) or requires coordination.
     pub fn check_coordination(&self) -> super::coordination::CoordinationReport {
         super::coordination::analyze_coordination_default(&self.ir)

@@ -34,9 +34,9 @@ use dfir_lang::diagnostic::{Diagnostic, Level};
 /// grow. "Growth" is defined by a partial order on the output type:
 ///
 /// - **Prefix**: output is a growing deterministic sequence. Each observation
-///   is a prefix of all future observations. Applies to  streams.
+///   is a prefix of all future observations. Applies to streams.
 /// - **SetInclusion**: output elements only accumulate. New elements may appear
-///   but none are retracted. Applies to  streams.
+///   but none are retracted. Applies to streams.
 /// - **Lattice**: output value only grows under a join-semilattice order.
 ///   Applies to singletons produced by commutative+idempotent aggregation.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -60,7 +60,6 @@ impl fmt::Display for OrderGoal {
     }
 }
 
-/// Determine the default proof goal for a sink based on its input's collection kind.
 /// This can be overridden by the user (future API).
 /// Infer the default proof goal from a collection kind.
 fn goal_for_collection_kind(kind: &super::ir::CollectionKind) -> OrderGoal {
@@ -620,9 +619,9 @@ fn prove(
         }
         MonotoneBehavior::PreserveIfOrdered { input, output_is_total_order } => {
             let allowed: &[OrderGoal] = if output_is_total_order {
-                &[OrderGoal::SetInclusion, OrderGoal::Prefix, OrderGoal::Lattice]
+                &[OrderGoal::SetInclusion, OrderGoal::Prefix]
             } else {
-                &[OrderGoal::SetInclusion, OrderGoal::Lattice]
+                &[OrderGoal::SetInclusion]
             };
             return preserve_or_fail(
                 input, goal, allowed,
@@ -745,7 +744,7 @@ pub fn analyze_coordination(
 
     // Pass 2: analyze observable sinks.
     let mut sinks = Vec::new();
-    for (i, root) in ir.iter().enumerate() {
+    for root in ir.iter() {
         if !is_observable_sink(root) {
             continue;
         }
@@ -754,8 +753,8 @@ pub fn analyze_coordination(
         let sink_span = root.op_metadata().backtrace.format_span().unwrap_or_default();
         let sink_id = format!("{sink_name}@{sink_span}");
         let goal = goal_overrides
-            .get(&sink_id)
-            .or_else(|| goal_overrides.get(&sink_name))
+            .get(sink_id.as_str())
+            .or_else(|| goal_overrides.get(sink_name))
             .cloned()
             .unwrap_or_else(|| default_goal_for_sink(root));
 
@@ -764,7 +763,7 @@ pub fn analyze_coordination(
         let mut result = result;
         result.trace.reverse();
         sinks.push(SinkResult {
-            name: short_name_root(root),
+            name: short_name_root(root).to_string(),
             goal,
             result,
             location: root.input_metadata().location_id.clone(),
@@ -774,9 +773,15 @@ pub fn analyze_coordination(
     CoordinationReport { sinks }
 }
 
-fn short_name_root(root: &HydroRoot) -> String {
-    let full = root.print_root();
-    full.split('(').next().unwrap_or(&full).to_lowercase()
+fn short_name_root(root: &HydroRoot) -> &'static str {
+    match root {
+        HydroRoot::ForEach { .. } => "foreach",
+        HydroRoot::SendExternal { .. } => "sendexternal",
+        HydroRoot::EmbeddedOutput { .. } => "embeddedoutput",
+        HydroRoot::DestSink { .. } => "destsink",
+        HydroRoot::CycleSink { .. } => "cyclesink",
+        HydroRoot::Null { .. } => "null",
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1211,29 +1216,17 @@ mod tests {
 
     #[test]
     fn join_breaks_prefix() {
-        let r = check(|flow| {
-            let p = flow.process::<()>();
-            let a = p.source_iter(q!(vec![(1, "a"), (2, "b")]));
-            let b = p.source_iter(q!(vec![(1, "x"), (2, "y")]));
-            // join output is NoOrder, default goal becomes SetInclusion — that passes.
-            // Force Prefix to test the break.
-            a.join(b)
-                .assume_ordering::<TotalOrder>(nondet!(/** test */))
-                .for_each(q!(|_| {}));
-        });
+        let mut flow = FlowBuilder::new();
+        let p = flow.process::<()>();
+        let a = p.source_iter(q!(vec![(1, "a"), (2, "b")]));
+        let b = p.source_iter(q!(vec![(1, "x"), (2, "y")]));
+        a.join(b)
+            .assume_ordering::<TotalOrder>(nondet!(/** test */))
+            .for_each(q!(|_| {}));
         let mut overrides = HashMap::new();
         overrides.insert("foreach".to_string(), OrderGoal::Prefix);
-        let built_r = {
-            let mut flow = FlowBuilder::new();
-            let p = flow.process::<()>();
-            let a = p.source_iter(q!(vec![(1, "a"), (2, "b")]));
-            let b = p.source_iter(q!(vec![(1, "x"), (2, "y")]));
-            a.join(b)
-                .assume_ordering::<TotalOrder>(nondet!(/** test */))
-                .for_each(q!(|_| {}));
-            flow.finalize().check_coordination_with_goals(&overrides)
-        };
-        assert!(!built_r.all_monotone(), "join should break Prefix:\n{built_r}");
+        let r = flow.finalize().check_coordination_with_goals(&overrides);
+        assert!(!r.all_monotone(), "join should break Prefix:\n{r}");
     }
 
     // --- Enumerate breaks Prefix ---
