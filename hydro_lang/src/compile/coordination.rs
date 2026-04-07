@@ -16,7 +16,6 @@ use std::collections::HashMap;
 use std::fmt;
 
 use super::builder::CycleId;
-use super::ir::backtrace::Backtrace;
 use super::ir::{HydroNode, HydroRoot, SharedNode, StreamOrder};
 use crate::location::dynamic::LocationId;
 
@@ -176,20 +175,6 @@ impl ProofResult {
 // Span formatting
 // ---------------------------------------------------------------------------
 
-#[cfg(feature = "build")]
-fn format_span(bt: &Backtrace) -> Option<String> {
-    let elem = bt.elements().next()?;
-    let file = elem.filename.as_ref()?;
-    let line = elem.lineno?;
-    let col = elem.colno.unwrap_or(0);
-    Some(format!("{file}:{line}:{col}"))
-}
-
-#[cfg(not(feature = "build"))]
-fn format_span(_bt: &Backtrace) -> Option<String> {
-    None
-}
-
 fn node_proc_macro_span(node: &HydroNode) -> Option<proc_macro2::Span> {
     use syn::spanned::Spanned;
     // Try to get the span from the node's expression (acc/f for folds/reduces)
@@ -209,7 +194,7 @@ fn node_proc_macro_span(node: &HydroNode) -> Option<proc_macro2::Span> {
 }
 
 fn node_span(node: &HydroNode) -> Option<String> {
-    format_span(&node.metadata().op.backtrace)
+    node.metadata().op.backtrace.format_span()
 }
 
 // ---------------------------------------------------------------------------
