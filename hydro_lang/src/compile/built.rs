@@ -57,7 +57,10 @@ impl<'a> BuiltFlow<'a> {
         super::coordination::analyze_coordination_default(&self.ir)
     }
 
-    /// Generate compiler diagnostic tokens for rust-analyzer integration.
+    /// Generate compiler diagnostic tokens for future rust-analyzer integration.
+    ///
+    /// NOTE: Not yet integrated into the stageleft/trybuild pipeline.
+    /// Call this manually and include the tokens in generated code.
     ///
     /// Returns a `TokenStream` containing `#[deprecated]` warnings that
     /// rust-analyzer will display at the relevant source spans.
