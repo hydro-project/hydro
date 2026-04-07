@@ -57,6 +57,22 @@ impl<'a> BuiltFlow<'a> {
         super::coordination_v2::analyze_coordination_default(&self.ir)
     }
 
+    /// Emit coordination analysis results as compiler diagnostics.
+    ///
+    /// Failing sinks produce warnings at the break point's source span,
+    /// visible in rust-analyzer and `cargo build` output.
+    /// Generate compiler diagnostic tokens for rust-analyzer integration.
+    ///
+    /// Returns a `TokenStream` containing `#[deprecated]` warnings that
+    /// rust-analyzer will display at the relevant source spans.
+    /// Include the returned tokens in generated code (e.g., in a build script
+    /// or stageleft code generation pass).
+    #[cfg(feature = "build")]
+    pub fn coordination_diagnostics_tokens(&self) -> proc_macro2::TokenStream {
+        let report = self.check_coordination();
+        report.diagnostics().into_iter().map(|d| d.to_tokens()).collect()
+    }
+
     /// Check coordination with custom goal overrides for specific sinks.
     pub fn check_coordination_with_goals(
         &self,
