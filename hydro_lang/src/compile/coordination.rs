@@ -414,7 +414,11 @@ fn prove(
         HydroNode::CycleSource { cycle_id, .. } => {
             match cycle_proofs.get(cycle_id) {
                 Some(r) => r.clone().prepend_preserved(&name, span, pm_span),
-                None => ProofResult::discharged(&name, "cycle source (no matching sink)", span, pm_span),
+                None => {
+                    // This should not happen in well-formed IR — ForwardHandle panics
+                    // if not completed, guaranteeing a matching CycleSink exists.
+                    ProofResult::fail(&name, "BUG: CycleSource with no matching CycleSink", span, pm_span)
+                }
             }
         }
 
