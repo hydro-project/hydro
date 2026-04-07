@@ -34,8 +34,8 @@ use crate::location::{Atomic, Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 use crate::properties::{
-    AggFuncAlgebra, ApplyMonotoneKeyedStream, ValidCommutativityFor, ValidIdempotenceFor,
-    manual_proof,
+    AggFuncAlgebra, ApplyMonotoneKeyedStream, IsProved, ValidCommutativityFor,
+    ValidIdempotenceFor, manual_proof,
 };
 
 pub mod networking;
@@ -1771,8 +1771,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ) -> KeyedSingleton<K, A, L, B2>
     where
         K: Eq + Hash,
-        C: ValidCommutativityFor<O>,
-        Idemp: ValidIdempotenceFor<R>,
+        C: ValidCommutativityFor<O> + IsProved,
+        Idemp: ValidIdempotenceFor<R> + IsProved,
         B: ApplyMonotoneKeyedStream<M, B2>,
     {
         let init = init.splice_fn0_ctx(&self.location).into();
@@ -1789,6 +1789,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 init,
                 acc: comb.into(),
                 input: Box::new(ordered.ir_node.replace(HydroNode::Placeholder)),
+                is_commutative: C::IS_PROVED,
+                is_idempotent: Idemp::IS_PROVED,
                 metadata: ordered
                     .location
                     .new_node_metadata(KeyedSingleton::<K, A, L, B2>::collection_kind()),
@@ -1836,8 +1838,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ) -> KeyedSingleton<K, V, L, B>
     where
         K: Eq + Hash,
-        C: ValidCommutativityFor<O>,
-        Idemp: ValidIdempotenceFor<R>,
+        C: ValidCommutativityFor<O> + IsProved,
+        Idemp: ValidIdempotenceFor<R> + IsProved,
     {
         let (f, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
         proof.register_proof(&f);
@@ -1851,6 +1853,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
             HydroNode::ReduceKeyed {
                 f: f.into(),
                 input: Box::new(ordered.ir_node.replace(HydroNode::Placeholder)),
+                is_commutative: C::IS_PROVED,
                 metadata: ordered
                     .location
                     .new_node_metadata(KeyedSingleton::<K, V, L, B>::collection_kind()),
@@ -1895,8 +1898,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         K: Eq + Hash,
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
-        C: ValidCommutativityFor<O>,
-        Idemp: ValidIdempotenceFor<R>,
+        C: ValidCommutativityFor<O> + IsProved,
+        Idemp: ValidIdempotenceFor<R> + IsProved,
     {
         let other: Optional<O2, Tick<L::Root>, Bounded> = other.into();
         check_matching_location(&self.location.root(), other.location.outer());

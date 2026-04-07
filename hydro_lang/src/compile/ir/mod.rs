@@ -2010,6 +2010,10 @@ pub enum HydroNode {
         init: DebugExpr,
         acc: DebugExpr,
         input: Box<HydroNode>,
+        /// Whether the accumulator was proven commutative (via `manual_proof!` or similar).
+        is_commutative: bool,
+        /// Whether the accumulator was proven idempotent.
+        is_idempotent: bool,
         metadata: HydroIrMetadata,
     },
 
@@ -2029,17 +2033,21 @@ pub enum HydroNode {
         init: DebugExpr,
         acc: DebugExpr,
         input: Box<HydroNode>,
+        is_commutative: bool,
+        is_idempotent: bool,
         metadata: HydroIrMetadata,
     },
 
     Reduce {
         f: DebugExpr,
         input: Box<HydroNode>,
+        is_commutative: bool,
         metadata: HydroIrMetadata,
     },
     ReduceKeyed {
         f: DebugExpr,
         input: Box<HydroNode>,
+        is_commutative: bool,
         metadata: HydroIrMetadata,
     },
     ReduceKeyedWatermark {
@@ -2439,11 +2447,15 @@ impl HydroNode {
                 init,
                 acc,
                 input,
+                is_commutative,
+                is_idempotent,
                 metadata,
             } => HydroNode::Fold {
                 init: init.clone(),
                 acc: acc.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
+                is_commutative: *is_commutative,
+                is_idempotent: *is_idempotent,
                 metadata: metadata.clone(),
             },
             HydroNode::Scan {
@@ -2472,11 +2484,15 @@ impl HydroNode {
                 init,
                 acc,
                 input,
+                is_commutative,
+                is_idempotent,
                 metadata,
             } => HydroNode::FoldKeyed {
                 init: init.clone(),
                 acc: acc.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
+                is_commutative: *is_commutative,
+                is_idempotent: *is_idempotent,
                 metadata: metadata.clone(),
             },
             HydroNode::ReduceKeyedWatermark {
@@ -2490,14 +2506,16 @@ impl HydroNode {
                 watermark: Box::new(watermark.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
-            HydroNode::Reduce { f, input, metadata } => HydroNode::Reduce {
+            HydroNode::Reduce { f, input, is_commutative, metadata } => HydroNode::Reduce {
                 f: f.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
+                is_commutative: *is_commutative,
                 metadata: metadata.clone(),
             },
-            HydroNode::ReduceKeyed { f, input, metadata } => HydroNode::ReduceKeyed {
+            HydroNode::ReduceKeyed { f, input, is_commutative, metadata } => HydroNode::ReduceKeyed {
                 f: f.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
+                is_commutative: *is_commutative,
                 metadata: metadata.clone(),
             },
             HydroNode::Network {
