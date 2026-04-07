@@ -45,7 +45,8 @@ pub enum OrderGoal {
     Prefix,
     /// Elements only accumulate; no retractions (NoOrder streams).
     SetInclusion,
-    /// Value only grows under lattice join (singletons from commutative+idempotent fold).
+    /// Value only grows under lattice join. Applies to singletons from
+    /// aggregations proven to be lattice joins (commutative + idempotent).
     Lattice,
     // Future: UserDefined { type_name: String }
 }
@@ -408,7 +409,8 @@ fn preserve_or_fail(
     }
 }
 
-/// Helper: commutative+idempotent aggregation discharge logic.
+/// Helper: aggregation discharge logic. A lattice join (commutative+idempotent)
+/// discharges the proof; bounded input also discharges.
 fn aggregation_discharge(
     is_commutative: bool,
     is_idempotent: bool,
@@ -420,7 +422,7 @@ fn aggregation_discharge(
     fail_msg: &str,
 ) -> ProofResult {
     if is_commutative && is_idempotent && *goal != OrderGoal::Prefix {
-        ProofResult::discharged(name, "commutative + idempotent (lattice join)", span, pm_span)
+        ProofResult::discharged(name, "lattice join (proven commutative + idempotent)", span, pm_span)
     } else if input.metadata().collection_kind.is_bounded() {
         ProofResult::discharged(name, "bounded input", span, pm_span)
     } else {
@@ -463,7 +465,7 @@ enum MonotoneBehavior<'a> {
     Passthrough(&'a HydroNode),
     /// Preserves the listed goals, breaks all others. Recurse into input.
     PreserveGoals { input: &'a HydroNode, goals: &'static [OrderGoal] },
-    /// Commutative+idempotent aggregation discharge logic.
+    /// Aggregation that may be a lattice join (discharges if proven commutative+idempotent).
     Aggregation { is_commutative: bool, is_idempotent: bool, input: &'a HydroNode },
     /// Preserves any goal via prove_shared (Tee, Partition).
     SharedPassthrough(&'a SharedNode),
@@ -478,8 +480,9 @@ enum MonotoneBehavior<'a> {
     Custom,
 }
 
-/// Classify a node's monotonicity behavior. Most operators fall into a
-/// standard category; only a few need custom logic in `prove()`.
+/// Classify a node's monotonicity behavior for the coordination analysis.
+/// Most operators fall into a standard category; only a few need custom
+/// logic in `prove()`. New operators should add an entry here.
 fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
     use MonotoneBehavior::*;
     const SET: &[OrderGoal] = &[OrderGoal::SetInclusion];
@@ -604,7 +607,7 @@ fn prove(
             return aggregation_discharge(
                 is_commutative, is_idempotent, input, goal,
                 &name, span, pm_span,
-                "unbounded input without commutativity+idempotency proof",
+                "unbounded input without lattice join proof (requires commutative + idempotent)",
             );
         }
         MonotoneBehavior::SharedPassthrough(inner) => {
