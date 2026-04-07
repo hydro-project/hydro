@@ -1917,6 +1917,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 f: f.into(),
                 input: Box::new(ordered.ir_node.replace(HydroNode::Placeholder)),
                 watermark: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
+                is_commutative: C::IS_PROVED,
+                is_idempotent: false,
                 metadata: ordered
                     .location
                     .new_node_metadata(KeyedSingleton::<K, V, L, B>::collection_kind()),
