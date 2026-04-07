@@ -123,7 +123,6 @@ impl<'a, W> HydroJson<'a, W> {
             HydroEdgeProp::Optional => "Optional".to_owned(),
             HydroEdgeProp::Network => "Network".to_owned(),
             HydroEdgeProp::Cycle => "Cycle".to_owned(),
-            HydroEdgeProp::NonMonotone => "NonMonotone".to_owned(),
         }
     }
 
