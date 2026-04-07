@@ -57,10 +57,6 @@ impl<'a> BuiltFlow<'a> {
         super::coordination::analyze_coordination_default(&self.ir)
     }
 
-    /// Emit coordination analysis results as compiler diagnostics.
-    ///
-    /// Failing sinks produce warnings at the break point's source span,
-    /// visible in rust-analyzer and `cargo build` output.
     /// Generate compiler diagnostic tokens for rust-analyzer integration.
     ///
     /// Returns a `TokenStream` containing `#[deprecated]` warnings that

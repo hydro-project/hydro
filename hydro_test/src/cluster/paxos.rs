@@ -991,7 +991,7 @@ mod tests {
         // index_payloads uses defer_tick inside a bounded tick context,
         // so the analysis correctly identifies it as coordination-free.
         assert!(
-            report.is_coordination_free(),
+            report.all_monotone(),
             "index_payloads defer_tick is bounded (inside tick), should be coordination-free:\n{report}"
         );
     }
@@ -1010,9 +1010,8 @@ mod tests {
         let report = built.check_coordination();
 
         assert!(
-            report.is_coordination_free(),
+            report.all_monotone(),
             "pure map/filter pipeline should be coordination-free:\n{report}"
         );
-        assert_eq!(report.non_monotone_edges().count(), 0);
     }
 }
