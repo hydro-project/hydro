@@ -389,6 +389,72 @@ fn short_name(node: &HydroNode) -> &'static str {
 // Core backward walk
 // ---------------------------------------------------------------------------
 
+
+/// Helper: preserve goal on a single input, or fail with a message.
+fn preserve_or_fail(
+    input: &HydroNode,
+    goal: &OrderGoal,
+    allowed: &[OrderGoal],
+    fail_msg: &str,
+    name: &str,
+    span: Option<String>,
+    pm_span: Option<proc_macro2::Span>,
+    cycle_proofs: &CycleProofs,
+    seen_tees: &mut SeenTees,
+) -> ProofResult {
+    if allowed.contains(goal) {
+        prove(input, goal, cycle_proofs, seen_tees).prepend_preserved(name, span, pm_span)
+    } else {
+        ProofResult::fail(name, fail_msg, span, pm_span)
+    }
+}
+
+/// Helper: commutative+idempotent aggregation discharge logic.
+fn aggregation_discharge(
+    is_commutative: bool,
+    is_idempotent: bool,
+    input: &HydroNode,
+    goal: &OrderGoal,
+    name: &str,
+    span: Option<String>,
+    pm_span: Option<proc_macro2::Span>,
+    fail_msg: &str,
+) -> ProofResult {
+    if is_commutative && is_idempotent && *goal != OrderGoal::Prefix {
+        ProofResult::discharged(name, "commutative + idempotent (lattice join)", span, pm_span)
+    } else if input.metadata().collection_kind.is_bounded() {
+        ProofResult::discharged(name, "bounded input", span, pm_span)
+    } else {
+        ProofResult::fail(name, fail_msg, span, pm_span)
+    }
+}
+
+/// Helper: difference/anti-join logic.
+fn difference_logic(
+    pos: &HydroNode,
+    neg: &HydroNode,
+    goal: &OrderGoal,
+    name: &str,
+    span: Option<String>,
+    pm_span: Option<proc_macro2::Span>,
+    fail_msg: &str,
+    cycle_proofs: &CycleProofs,
+    seen_tees: &mut SeenTees,
+) -> ProofResult {
+    match goal {
+        OrderGoal::SetInclusion => {
+            let p = prove(pos, &OrderGoal::SetInclusion, cycle_proofs, seen_tees);
+            if !p.is_proved() { return p.prepend_preserved(name, span.clone(), pm_span.clone()); }
+            if neg.metadata().collection_kind.is_bounded() {
+                ProofResult::discharged(name, "neg input is bounded", span, pm_span)
+            } else {
+                ProofResult::fail(name, "unbounded neg input can retract output elements", span, pm_span)
+            }
+        }
+        _ => ProofResult::fail(name, fail_msg, span, pm_span),
+    }
+}
+
 /// Walk backward from `node`, trying to prove `goal`. Returns the proof result with trace.
 fn prove(
     node: &HydroNode,
@@ -444,22 +510,24 @@ fn prove(
         | HydroNode::FlatMap { input, .. }
         | HydroNode::Filter { input, .. }
         | HydroNode::FilterMap { input, .. }
-        | HydroNode::Inspect { input, .. } => match goal {
-            OrderGoal::SetInclusion | OrderGoal::Prefix => {
-                prove(input, goal, cycle_proofs, seen_tees).prepend_preserved(&name, span, pm_span)
-            }
-            OrderGoal::Lattice => ProofResult::fail(&name, "may not preserve lattice order (closure not annotated)", span, pm_span),
-        },
+        | HydroNode::Inspect { input, .. } => preserve_or_fail(
+            input, goal,
+            &[OrderGoal::SetInclusion, OrderGoal::Prefix],
+            "may not preserve lattice order (closure not annotated)",
+            &name, span, pm_span, cycle_proofs, seen_tees,
+        ),
 
-        HydroNode::Enumerate { input, .. } => match goal {
-            OrderGoal::SetInclusion => prove(input, goal, cycle_proofs, seen_tees).prepend_preserved(&name, span, pm_span),
-            _ => ProofResult::fail(&name, "enumerate breaks prefix/lattice order", span, pm_span),
-        },
+        HydroNode::Enumerate { input, .. } => preserve_or_fail(
+            input, goal, &[OrderGoal::SetInclusion],
+            "enumerate breaks prefix/lattice order",
+            &name, span, pm_span, cycle_proofs, seen_tees,
+        ),
 
-        HydroNode::Unique { input, .. } => match goal {
-            OrderGoal::SetInclusion => prove(input, goal, cycle_proofs, seen_tees).prepend_preserved(&name, span, pm_span),
-            _ => ProofResult::fail(&name, "unique breaks prefix/lattice order", span, pm_span),
-        },
+        HydroNode::Unique { input, .. } => preserve_or_fail(
+            input, goal, &[OrderGoal::SetInclusion],
+            "unique breaks prefix/lattice order",
+            &name, span, pm_span, cycle_proofs, seen_tees,
+        ),
 
         HydroNode::Network { input, metadata, .. } => match goal {
             OrderGoal::SetInclusion | OrderGoal::Lattice => {
@@ -479,10 +547,11 @@ fn prove(
 
         HydroNode::Counter { .. } => ProofResult::discharged(&name, "count only grows", span, pm_span),
 
-        HydroNode::Batch { inner, .. } => match goal {
-            OrderGoal::SetInclusion => prove(inner, goal, cycle_proofs, seen_tees).prepend_preserved(&name, span, pm_span),
-            _ => ProofResult::fail(&name, "batch windowing breaks prefix/lattice order", span, pm_span),
-        },
+        HydroNode::Batch { inner, .. } => preserve_or_fail(
+            inner, goal, &[OrderGoal::SetInclusion],
+            "batch windowing breaks prefix/lattice order",
+            &name, span, pm_span, cycle_proofs, seen_tees,
+        ),
 
         // --- Chain ---
         HydroNode::Chain { first, second, .. }
@@ -529,80 +598,38 @@ fn prove(
         },
 
         // --- Difference / AntiJoin ---
-        HydroNode::Difference { pos, neg, .. } => match goal {
-            OrderGoal::SetInclusion => {
-                let p = prove(pos, &OrderGoal::SetInclusion, cycle_proofs, seen_tees);
-                if !p.is_proved() { return p.prepend_preserved(&name, span.clone(), pm_span.clone()); }
-                if neg.metadata().collection_kind.is_bounded() {
-                    ProofResult::discharged(&name, "neg input is bounded", span, pm_span)
-                } else {
-                    ProofResult::fail(&name, "unbounded neg input can retract output elements", span, pm_span)
-                }
-            }
-            _ => ProofResult::fail(&name, "difference breaks prefix/lattice order", span, pm_span),
-        },
-        HydroNode::AntiJoin { pos, neg, .. } => match goal {
-            OrderGoal::SetInclusion => {
-                let p = prove(pos, &OrderGoal::SetInclusion, cycle_proofs, seen_tees);
-                if !p.is_proved() { return p.prepend_preserved(&name, span.clone(), pm_span.clone()); }
-                if neg.metadata().collection_kind.is_bounded() {
-                    ProofResult::discharged(&name, "neg input is bounded", span, pm_span)
-                } else {
-                    ProofResult::fail(&name, "unbounded neg input can retract output elements", span, pm_span)
-                }
-            }
-            _ => ProofResult::fail(&name, "anti_join breaks prefix/lattice order", span, pm_span),
-        },
+        HydroNode::Difference { pos, neg, .. } => difference_logic(
+            pos, neg, goal, &name, span, pm_span,
+            "difference breaks prefix/lattice order",
+            cycle_proofs, seen_tees,
+        ),
+        HydroNode::AntiJoin { pos, neg, .. } => difference_logic(
+            pos, neg, goal, &name, span, pm_span,
+            "anti_join breaks prefix/lattice order",
+            cycle_proofs, seen_tees,
+        ),
 
         // --- Fold / FoldKeyed ---
-        HydroNode::Fold { is_commutative, is_idempotent, input, .. } => {
-            if *is_commutative && *is_idempotent && *goal != OrderGoal::Prefix {
-                ProofResult::discharged(&name, "commutative + idempotent fold (lattice join)", span, pm_span)
-            } else if input.metadata().collection_kind.is_bounded() {
-                ProofResult::discharged(&name, "fold over bounded input", span, pm_span)
-            } else {
-                ProofResult::fail(&name, "fold over unbounded input without commutativity+idempotency proof", span, pm_span)
-            }
-        }
-        HydroNode::FoldKeyed { is_commutative, is_idempotent, input, .. } => {
-            if *is_commutative && *is_idempotent && *goal != OrderGoal::Prefix {
-                ProofResult::discharged(&name, "commutative + idempotent fold (lattice join)", span, pm_span)
-            } else if input.metadata().collection_kind.is_bounded() {
-                ProofResult::discharged(&name, "fold over bounded input", span, pm_span)
-            } else {
-                ProofResult::fail(&name, "fold_keyed over unbounded input without commutativity+idempotency proof", span, pm_span)
-            }
-        }
+        HydroNode::Fold { is_commutative, is_idempotent, input, .. }
+        | HydroNode::FoldKeyed { is_commutative, is_idempotent, input, .. } => aggregation_discharge(
+            *is_commutative, *is_idempotent, input, goal,
+            &name, span, pm_span,
+            "fold over unbounded input without commutativity+idempotency proof",
+        ),
 
         // --- Reduce / ReduceKeyed ---
-        HydroNode::Reduce { is_commutative, is_idempotent, input, .. } => {
-            if *is_commutative && *is_idempotent && *goal != OrderGoal::Prefix {
-                ProofResult::discharged(&name, "commutative + idempotent reduce (lattice join)", span, pm_span)
-            } else if input.metadata().collection_kind.is_bounded() {
-                ProofResult::discharged(&name, "reduce over bounded input", span, pm_span)
-            } else {
-                ProofResult::fail(&name, "reduce over unbounded input without commutativity proof", span, pm_span)
-            }
-        }
-        HydroNode::ReduceKeyed { is_commutative, is_idempotent, input, .. } => {
-            if *is_commutative && *is_idempotent && *goal != OrderGoal::Prefix {
-                ProofResult::discharged(&name, "commutative + idempotent reduce (lattice join)", span, pm_span)
-            } else if input.metadata().collection_kind.is_bounded() {
-                ProofResult::discharged(&name, "reduce over bounded input", span, pm_span)
-            } else {
-                ProofResult::fail(&name, "reduce_keyed over unbounded input without commutativity proof", span, pm_span)
-            }
-        }
+        HydroNode::Reduce { is_commutative, is_idempotent, input, .. }
+        | HydroNode::ReduceKeyed { is_commutative, is_idempotent, input, .. } => aggregation_discharge(
+            *is_commutative, *is_idempotent, input, goal,
+            &name, span, pm_span,
+            "reduce over unbounded input without commutativity+idempotency proof",
+        ),
 
-        HydroNode::ReduceKeyedWatermark { is_commutative, input, .. } => {
-            if *is_commutative && *goal != OrderGoal::Prefix {
-                ProofResult::discharged(&name, "commutative watermark reduce (lattice join)", span, pm_span)
-            } else if input.metadata().collection_kind.is_bounded() {
-                ProofResult::discharged(&name, "watermark reduce over bounded input", span, pm_span)
-            } else {
-                ProofResult::fail(&name, "watermark-based reduce may retract above watermark", span, pm_span)
-            }
-        }
+        HydroNode::ReduceKeyedWatermark { is_commutative, input, .. } => aggregation_discharge(
+            *is_commutative, false, input, goal,
+            &name, span, pm_span,
+            "watermark-based reduce may retract above watermark",
+        ),
 
         // --- Scan: preserves Prefix and SetInclusion on TotalOrder input ---
         HydroNode::Scan { input, .. } => match &input.metadata().collection_kind {
@@ -631,20 +658,21 @@ fn prove(
         }
 
         // --- DeferTick ---
-        HydroNode::DeferTick { input, .. } => match goal {
-            OrderGoal::SetInclusion | OrderGoal::Lattice => {
-                prove(input, goal, cycle_proofs, seen_tees).prepend_preserved(&name, span, pm_span)
-            }
-            OrderGoal::Prefix => ProofResult::fail(&name, "defer_tick breaks prefix order", span, pm_span),
-        },
+        HydroNode::DeferTick { input, .. } => preserve_or_fail(
+            input, goal,
+            &[OrderGoal::SetInclusion, OrderGoal::Lattice],
+            "defer_tick breaks prefix order",
+            &name, span, pm_span, cycle_proofs, seen_tees,
+        ),
 
         // --- Futures ---
         HydroNode::ResolveFutures { input, .. }
         | HydroNode::ResolveFuturesBlocking { input, .. }
-        | HydroNode::ResolveFuturesOrdered { input, .. } => match goal {
-            OrderGoal::SetInclusion => prove(input, goal, cycle_proofs, seen_tees).prepend_preserved(&name, span, pm_span),
-            _ => ProofResult::fail(&name, "future resolution may reorder", span, pm_span),
-        },
+        | HydroNode::ResolveFuturesOrdered { input, .. } => preserve_or_fail(
+            input, goal, &[OrderGoal::SetInclusion],
+            "future resolution may reorder",
+            &name, span, pm_span, cycle_proofs, seen_tees,
+        ),
     }
 }
 
