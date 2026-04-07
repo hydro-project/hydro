@@ -243,13 +243,13 @@ where
 }
 
 /// Creates a [`FilterMapAsync`] push that applies an async filter-map function.
-pub const fn filter_map_async<Func, In, Fut, Next>(
+pub const fn filter_map_async<Func, In, Out, Fut, Next>(
     func: Func,
     next: Next,
-) -> FilterMapAsync<Next, Func, Fut, ()>
+) -> FilterMapAsync<Next, Func, Fut, Out, ()>
 where
     Func: FnMut(In) -> Fut,
-    Fut: Future<Output = Option<In>>,
+    Fut: Future<Output = Option<Out>>,
 {
     FilterMapAsync::new(func, next)
 }
