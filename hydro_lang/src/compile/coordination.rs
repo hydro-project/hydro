@@ -28,6 +28,18 @@ use dfir_lang::diagnostic::{Diagnostic, Level};
 // ---------------------------------------------------------------------------
 
 /// The partial order under which we're trying to prove monotonicity.
+///
+/// The Coordination Criterion (Hellerstein 2026) states that a program admits
+/// a coordination-free implementation iff its observable outputs are
+/// future-monotone — meaning outputs only grow (never contradict) as inputs
+/// grow. "Growth" is defined by a partial order on the output type:
+///
+/// - **Prefix**: output is a growing deterministic sequence. Each observation
+///   is a prefix of all future observations. Applies to  streams.
+/// - **SetInclusion**: output elements only accumulate. New elements may appear
+///   but none are retracted. Applies to  streams.
+/// - **Lattice**: output value only grows under a join-semilattice order.
+///   Applies to singletons produced by commutative+idempotent aggregation.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum OrderGoal {
     /// Growing prefix of a deterministic sequence (TotalOrder streams).
@@ -82,7 +94,6 @@ pub struct ProofStep {
     /// Source location of the operator in user code (for text display).
     pub span: Option<String>,
     /// proc_macro2 span for compiler diagnostic integration (IDE warnings).
-    #[cfg(feature = "build")]
     pub proc_macro_span: Option<proc_macro2::Span>,
 }
 
@@ -125,7 +136,6 @@ impl ProofResult {
             operator: operator.to_string(),
             action: ProofAction::Discharged { reason: reason.into() },
             span,
-            #[cfg(feature = "build")]
             proc_macro_span: pm_span,
         }])
     }
@@ -135,7 +145,6 @@ impl ProofResult {
             operator: operator.to_string(),
             action: ProofAction::Broken { reason: reason.into() },
             span,
-            #[cfg(feature = "build")]
             proc_macro_span: pm_span,
         }])
     }
@@ -146,7 +155,6 @@ impl ProofResult {
             operator: operator.to_string(),
             action: ProofAction::Preserved,
             span,
-            #[cfg(feature = "build")]
             proc_macro_span: pm_span,
         });
         self
@@ -158,7 +166,6 @@ impl ProofResult {
             operator: operator.to_string(),
             action: ProofAction::GoalChanged { new_goal: new_goal.clone() },
             span,
-            #[cfg(feature = "build")]
             proc_macro_span: pm_span,
         });
         self
@@ -183,7 +190,6 @@ fn format_span(_bt: &Backtrace) -> Option<String> {
     None
 }
 
-#[cfg(feature = "build")]
 fn node_proc_macro_span(node: &HydroNode) -> Option<proc_macro2::Span> {
     use syn::spanned::Spanned;
     // Try to get the span from the node's expression (acc/f for folds/reduces)
@@ -202,11 +208,6 @@ fn node_proc_macro_span(node: &HydroNode) -> Option<proc_macro2::Span> {
     }
 }
 
-#[cfg(not(feature = "build"))]
-fn node_proc_macro_span(_node: &HydroNode) -> Option<proc_macro2::Span> {
-    None
-}
-
 fn node_span(node: &HydroNode) -> Option<String> {
     format_span(&node.metadata().op.backtrace)
 }
@@ -221,7 +222,6 @@ pub struct SinkResult {
     pub name: String,
     pub goal: OrderGoal,
     pub result: ProofResult,
-    pub backtrace: Backtrace,
     pub location: LocationId,
 }
 
@@ -479,8 +479,13 @@ fn prove(
             OrderGoal::SetInclusion => {
                 let a = prove(left, &OrderGoal::SetInclusion, cycle_proofs, seen_tees);
                 if !a.is_proved() { return a.prepend_preserved(&name, span.clone(), pm_span.clone()); }
-                prove(right, &OrderGoal::Lattice, cycle_proofs, seen_tees)
-                    .prepend_goal_changed(&name, &OrderGoal::Lattice, span, pm_span)
+                // Bounded singleton is stable — no lattice proof needed
+                if right.metadata().collection_kind.is_bounded() {
+                    a.prepend_preserved(&name, span, pm_span)
+                } else {
+                    prove(right, &OrderGoal::Lattice, cycle_proofs, seen_tees)
+                        .prepend_goal_changed(&name, &OrderGoal::Lattice, span, pm_span)
+                }
             }
             _ => ProofResult::fail(&name, "cross_singleton breaks prefix/lattice order", span, pm_span),
         },
@@ -513,7 +518,7 @@ fn prove(
 
         // --- Fold / FoldKeyed ---
         HydroNode::Fold { is_commutative, is_idempotent, input, .. } => {
-            if *is_commutative && *is_idempotent {
+            if *is_commutative && *is_idempotent && *goal != OrderGoal::Prefix {
                 ProofResult::discharged(&name, "commutative + idempotent fold (lattice join)", span, pm_span)
             } else if input.metadata().collection_kind.is_bounded() {
                 ProofResult::discharged(&name, "fold over bounded input", span, pm_span)
@@ -522,7 +527,7 @@ fn prove(
             }
         }
         HydroNode::FoldKeyed { is_commutative, is_idempotent, input, .. } => {
-            if *is_commutative && *is_idempotent {
+            if *is_commutative && *is_idempotent && *goal != OrderGoal::Prefix {
                 ProofResult::discharged(&name, "commutative + idempotent fold (lattice join)", span, pm_span)
             } else if input.metadata().collection_kind.is_bounded() {
                 ProofResult::discharged(&name, "fold over bounded input", span, pm_span)
@@ -532,18 +537,18 @@ fn prove(
         }
 
         // --- Reduce / ReduceKeyed ---
-        HydroNode::Reduce { is_commutative, input, .. } => {
-            if *is_commutative {
-                ProofResult::discharged(&name, "commutative reduce (lattice join)", span, pm_span)
+        HydroNode::Reduce { is_commutative, is_idempotent, input, .. } => {
+            if *is_commutative && *is_idempotent && *goal != OrderGoal::Prefix {
+                ProofResult::discharged(&name, "commutative + idempotent reduce (lattice join)", span, pm_span)
             } else if input.metadata().collection_kind.is_bounded() {
                 ProofResult::discharged(&name, "reduce over bounded input", span, pm_span)
             } else {
                 ProofResult::fail(&name, "reduce over unbounded input without commutativity proof", span, pm_span)
             }
         }
-        HydroNode::ReduceKeyed { is_commutative, input, .. } => {
-            if *is_commutative {
-                ProofResult::discharged(&name, "commutative reduce (lattice join)", span, pm_span)
+        HydroNode::ReduceKeyed { is_commutative, is_idempotent, input, .. } => {
+            if *is_commutative && *is_idempotent && *goal != OrderGoal::Prefix {
+                ProofResult::discharged(&name, "commutative + idempotent reduce (lattice join)", span, pm_span)
             } else if input.metadata().collection_kind.is_bounded() {
                 ProofResult::discharged(&name, "reduce over bounded input", span, pm_span)
             } else {
@@ -638,15 +643,16 @@ pub fn analyze_coordination(
     goal_overrides: &HashMap<usize, OrderGoal>,
 ) -> CoordinationReport {
     // Pass 1: analyze CycleSink roots to determine cycle monotonicity.
+    // Run twice to handle inter-cycle dependencies (cycle A depends on cycle B).
     let mut cycle_proofs = CycleProofs::new();
     let mut seen_tees = SeenTees::new();
-    for root in ir {
-        if let HydroRoot::CycleSink { cycle_id, input, .. } = root {
-            // For cycle sinks, we try SetInclusion as the default goal
-            // since cycles typically carry streams.
-            let cycle_goal = goal_for_collection_kind(&input.metadata().collection_kind);
-            let result = prove(input, &cycle_goal, &cycle_proofs, &mut seen_tees);
-            cycle_proofs.insert(*cycle_id, result);
+    for _pass in 0..2 {
+        for root in ir {
+            if let HydroRoot::CycleSink { cycle_id, input, .. } = root {
+                let cycle_goal = goal_for_collection_kind(&input.metadata().collection_kind);
+                let result = prove(input, &cycle_goal, &cycle_proofs, &mut seen_tees);
+                cycle_proofs.insert(*cycle_id, result);
+            }
         }
     }
 
@@ -668,7 +674,6 @@ pub fn analyze_coordination(
             name: short_name_root(root),
             goal,
             result,
-            backtrace: root.op_metadata().backtrace.clone(),
             location: root.input_metadata().location_id.clone(),
         });
     }
@@ -710,8 +715,10 @@ mod tests {
         let mut flow = FlowBuilder::new();
         build(&mut flow);
         let built = flow.finalize();
-        let overrides: HashMap<usize, OrderGoal> = (0..built.ir().len())
-            .map(|i| (i, OrderGoal::SetInclusion))
+        // Only override observable sinks, not CycleSink/Null
+        let overrides: HashMap<usize, OrderGoal> = built.ir().iter().enumerate()
+            .filter(|(_, root)| is_observable_sink(root))
+            .map(|(i, _)| (i, OrderGoal::SetInclusion))
             .collect();
         built.check_coordination_with_goals(&overrides)
     }
@@ -1028,5 +1035,32 @@ mod tests {
         assert!(r.all_monotone());
         let last = r.sinks[0].result.trace.last().unwrap();
         assert!(matches!(last.action, ProofAction::Discharged { .. }), "last step should be Discharged");
+    }
+
+    // --- CrossSingleton: bounded right side passes (snapshot is stable) ---
+
+    #[test]
+    fn cross_singleton_bounded_right_passes() {
+        // snapshot creates a bounded view — stable within a tick
+        let r = check_set_inclusion(|flow| {
+            let p = flow.process::<()>();
+            let tick = p.tick();
+            let singleton = p.source_iter(q!(vec![(1, 10)]))
+                .batch(&tick, nondet!(/** test */))
+                .all_ticks()
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .into_keyed()
+                .fold(q!(|| 0i32), q!(|acc, x| { *acc = x; }));
+            let stream = p.source_iter(q!([1, 2, 3]))
+                .batch(&tick, nondet!(/** test */));
+            stream.cross_singleton(
+                singleton.snapshot(&tick, nondet!(/** test */))
+                    .into_singleton()
+            ).all_ticks()
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .for_each(q!(|_| {}));
+        });
+        // Bounded snapshot is stable — cross_singleton passes
+        assert!(r.all_monotone(), "cross_singleton with bounded snapshot should pass:\n{r}");
     }
 }

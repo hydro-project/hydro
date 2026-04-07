@@ -5,8 +5,8 @@ pub mod ir;
 
 /// Static analysis for the Coordination Criterion (Hellerstein 2026).
 ///
-/// Checks whether each edge in a Hydro IR graph is future-monotone, identifying
-/// where coordination is intrinsically required.
+/// Checks whether each observable sink is future-monotone under an appropriate
+/// partial order, identifying where coordination is intrinsically required.
 
 pub mod coordination;
 

@@ -1297,6 +1297,7 @@ where
             f: f.into(),
             input: Box::new(ordered_etc.ir_node.replace(HydroNode::Placeholder)),
             is_commutative: C::IS_PROVED,
+            is_idempotent: Idemp::IS_PROVED,
             metadata: ordered_etc
                 .location
                 .new_node_metadata(Optional::<T, L, B>::collection_kind()),
