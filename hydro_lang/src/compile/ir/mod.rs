@@ -2057,6 +2057,7 @@ pub enum HydroNode {
         input: Box<HydroNode>,
         watermark: Box<HydroNode>,
         is_commutative: bool,
+        is_idempotent: bool,
         metadata: HydroIrMetadata,
     },
 
@@ -2503,12 +2504,14 @@ impl HydroNode {
                 input,
                 watermark,
                 is_commutative,
+                is_idempotent,
                 metadata,
             } => HydroNode::ReduceKeyedWatermark {
                 f: f.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
                 watermark: Box::new(watermark.deep_clone(seen_tees)),
                 is_commutative: *is_commutative,
+                is_idempotent: *is_idempotent,
                 metadata: metadata.clone(),
             },
             HydroNode::Reduce { f, input, is_commutative, is_idempotent, metadata } => HydroNode::Reduce {

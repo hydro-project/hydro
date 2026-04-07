@@ -533,8 +533,8 @@ fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
             Aggregation { is_commutative: *is_commutative, is_idempotent: *is_idempotent, input }
         }
 
-        HydroNode::ReduceKeyedWatermark { is_commutative, input, .. } => {
-            Aggregation { is_commutative: *is_commutative, is_idempotent: false, input }
+        HydroNode::ReduceKeyedWatermark { is_commutative, is_idempotent, input, .. } => {
+            Aggregation { is_commutative: *is_commutative, is_idempotent: *is_idempotent, input }
         }
 
         // Difference / AntiJoin
