@@ -1319,8 +1319,8 @@ impl HydroNode {
             ),
 
             // Single-expression Aggregation operations - grouped by node type
-            HydroNode::Reduce { f, input, metadata }
-            | HydroNode::ReduceKeyed { f, input, metadata } => build_single_expr_transform(
+            HydroNode::Reduce { f, input, metadata, .. }
+            | HydroNode::ReduceKeyed { f, input, metadata, .. } => build_single_expr_transform(
                 TransformParams {
                     structure,
                     seen_tees,
@@ -1436,13 +1436,12 @@ impl HydroNode {
                 init,
                 acc,
                 input,
-                metadata,
-            }
+                metadata, .. }
             | HydroNode::FoldKeyed {
                 init,
                 acc,
                 input,
-                metadata,
+                metadata, ..
             }
             | HydroNode::Scan {
                 init,
