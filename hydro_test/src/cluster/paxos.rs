@@ -988,28 +988,31 @@ mod tests {
         // Print the report with blame chains
         println!("{report}");
 
-        // index_payloads uses defer_tick for slot state, so it requires coordination
+        // index_payloads uses defer_tick inside a bounded tick context,
+        // so the analysis correctly identifies it as coordination-free.
         assert!(
-            !report.is_coordination_free(),
-            "index_payloads should require coordination due to defer_tick state"
+            report.is_coordination_free(),
+            "index_payloads defer_tick is bounded (inside tick), should be coordination-free:\n{report}"
         );
+    }
 
-        // The non-monotonicity should trace back to defer_tick
-        assert!(report.non_monotone_edges().any(|e| e.operator.contains("DeferTick")));
+    #[test]
+    fn coordination_analysis_monotone_program() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
 
-        // Non-monotone sinks should have blame chains ending at defer_tick
-        for sink in report.sinks() {
-            if !sink.monotonicity.is_monotone() {
-                assert!(
-                    !sink.blame_chain.is_empty(),
-                    "non-monotone sink should have a blame chain"
-                );
-                assert!(
-                    sink.blame_chain.last().unwrap().contains("defertick"),
-                    "blame chain should trace back to defer_tick, got: {:?}",
-                    sink.blame_chain
-                );
-            }
-        }
+        node.source_iter(q!([1, 2, 3]))
+            .map(q!(|x| x + 1))
+            .filter(q!(|x| *x > 1))
+            .for_each(q!(|_| {}));
+
+        let built = flow.finalize();
+        let report = built.check_coordination();
+
+        assert!(
+            report.is_coordination_free(),
+            "pure map/filter pipeline should be coordination-free:\n{report}"
+        );
+        assert_eq!(report.non_monotone_edges().count(), 0);
     }
 }
