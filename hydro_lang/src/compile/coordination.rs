@@ -720,8 +720,15 @@ pub fn analyze_coordination(
     goal_overrides: &HashMap<String, OrderGoal>,
 ) -> CoordinationReport {
     // Pass 1: analyze CycleSink roots to determine cycle monotonicity.
-    // Iterate to fixpoint since cycles may depend on each other.
+    // Seed all cycles with optimistic placeholders so self-recursive cycles
+    // (where CycleSink input depends on its own CycleSource) don't fail.
+    // Then iterate to fixpoint.
     let mut cycle_proofs = CycleProofs::new();
+    for root in ir {
+        if let HydroRoot::CycleSink { cycle_id, .. } = root {
+            cycle_proofs.insert(*cycle_id, ProofResult::proved(vec![]));
+        }
+    }
     let mut seen_tees = SeenTees::new();
     loop {
         let mut changed = false;
