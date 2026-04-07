@@ -22,7 +22,7 @@ The analysis walks **backward** from each observable sink, carrying a proof goal
 
 - **Discharged**: the operator establishes monotonicity. Proof complete — don't look upstream.
   - `Source` / `ExternalInput`: data only arrives (base case)
-  - `Fold`/`FoldKeyed` with `commutative + idempotent`: lattice join — value only grows
+  - `Fold`/`FoldKeyed` proven to be a lattice join (via `commutative + idempotent` annotations): value only grows
   - Bounded input to any aggregation: complete data, deterministic result
 
 - **Preserved**: the operator transparently maintains the order. Walk continues to inputs.
@@ -52,7 +52,7 @@ The analysis depends on proof annotations surviving into the IR:
 - `Fold`, `FoldKeyed`: `is_commutative: bool`, `is_idempotent: bool`
 - `Reduce`, `ReduceKeyed`, `ReduceKeyedWatermark`: `is_commutative: bool`, `is_idempotent: bool`
 
-These are captured at IR construction time from the `commutative = manual_proof!(...)` and `idempotent = manual_proof!(...)` annotations on fold/reduce closures, via the `IsProved` trait in `properties/mod.rs`.
+These capture whether the aggregation has been proven to be a lattice join, via the `commutative = manual_proof!(...)` and `idempotent = manual_proof!(...)` annotations on fold/reduce closures. The `IsProved` trait in `properties/mod.rs` bridges the compile-time proof to the IR boolean.
 
 ## Unfinished goals
 
@@ -66,7 +66,7 @@ These are captured at IR construction time from the `commutative = manual_proof!
 
 ## Potential weaknesses
 
-**Commutativity proofs are trusted, not verified.** The `manual_proof!` macro accepts a doc comment as justification but performs no actual verification. A user who incorrectly claims commutativity (e.g., on a non-commutative fold) will get a false "coordination-free" result. This is by design — the same trust model as Rust's `unsafe` — but it means the analysis is only as sound as the user's proofs.
+**Lattice join proofs are trusted, not verified.** The `manual_proof!` macro accepts a doc comment as justification but performs no actual verification. A user who incorrectly claims their fold is a lattice join (via `commutative + idempotent` annotations) will get a false "coordination-free" result. This is by design — the same trust model as Rust's `unsafe` — but it means the analysis is only as sound as the user's proofs.
 
 **Gyatso's trivial monotonicity.** As noted by Laddad, Flo/Gyatso semantics guarantee that *every* program is monotone under the trivial order induced by each collection type's concatenation operator. Our analysis is meaningful only because it checks monotonicity under *non-trivial* orders (set inclusion, prefix, lattice). If the default order inference picks the wrong order, the analysis may give vacuously true results. The `goal_overrides` API mitigates this by letting users specify the order they care about.
 
