@@ -28,7 +28,7 @@ use dfir_lang::diagnostic::{Diagnostic, Level};
 // ---------------------------------------------------------------------------
 
 /// The partial order under which we're trying to prove monotonicity.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum OrderGoal {
     /// Growing prefix of a deterministic sequence (TotalOrder streams).
     Prefix,
@@ -51,9 +51,9 @@ impl fmt::Display for OrderGoal {
 
 /// Determine the default proof goal for a sink based on its input's collection kind.
 /// This can be overridden by the user (future API).
-fn default_goal_for_sink(root: &HydroRoot) -> OrderGoal {
-    let meta = root.input_metadata();
-    match &meta.collection_kind {
+/// Infer the default proof goal from a collection kind.
+fn goal_for_collection_kind(kind: &super::ir::CollectionKind) -> OrderGoal {
+    match kind {
         super::ir::CollectionKind::Stream { order: StreamOrder::TotalOrder, .. } => OrderGoal::Prefix,
         super::ir::CollectionKind::Stream { .. } => OrderGoal::SetInclusion,
         super::ir::CollectionKind::KeyedStream { value_order: StreamOrder::TotalOrder, .. } => OrderGoal::Prefix,
@@ -62,6 +62,10 @@ fn default_goal_for_sink(root: &HydroRoot) -> OrderGoal {
         | super::ir::CollectionKind::Optional { .. }
         | super::ir::CollectionKind::KeyedSingleton { .. } => OrderGoal::Lattice,
     }
+}
+
+fn default_goal_for_sink(root: &HydroRoot) -> OrderGoal {
+    goal_for_collection_kind(&root.input_metadata().collection_kind)
 }
 
 // ---------------------------------------------------------------------------
@@ -108,15 +112,15 @@ impl ProofResult {
         self.success
     }
 
-    pub fn proved(trace: Vec<ProofStep>) -> Self {
+    pub(crate) fn proved(trace: Vec<ProofStep>) -> Self {
         Self { success: true, trace }
     }
 
-    pub fn broken(trace: Vec<ProofStep>) -> Self {
+    pub(crate) fn broken(trace: Vec<ProofStep>) -> Self {
         Self { success: false, trace }
     }
 
-    pub fn discharged(operator: &str, reason: impl Into<String>, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
+    pub(crate) fn discharged(operator: &str, reason: impl Into<String>, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
         Self::proved(vec![ProofStep {
             operator: operator.to_string(),
             action: ProofAction::Discharged { reason: reason.into() },
@@ -126,7 +130,7 @@ impl ProofResult {
         }])
     }
 
-    pub fn fail(operator: &str, reason: impl Into<String>, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
+    pub(crate) fn fail(operator: &str, reason: impl Into<String>, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
         Self::broken(vec![ProofStep {
             operator: operator.to_string(),
             action: ProofAction::Broken { reason: reason.into() },
@@ -137,7 +141,7 @@ impl ProofResult {
     }
 
     /// Prepend a "preserved" step from the current operator.
-    pub fn prepend_preserved(mut self, operator: &str, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
+    pub(crate) fn prepend_preserved(mut self, operator: &str, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
         self.trace.insert(0, ProofStep {
             operator: operator.to_string(),
             action: ProofAction::Preserved,
@@ -149,7 +153,7 @@ impl ProofResult {
     }
 
     /// Prepend a "goal changed" step.
-    pub fn prepend_goal_changed(mut self, operator: &str, new_goal: &OrderGoal, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
+    pub(crate) fn prepend_goal_changed(mut self, operator: &str, new_goal: &OrderGoal, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
         self.trace.insert(0, ProofStep {
             operator: operator.to_string(),
             action: ProofAction::GoalChanged { new_goal: new_goal.clone() },
@@ -329,7 +333,7 @@ impl fmt::Display for CoordinationReport {
 // Analysis state
 // ---------------------------------------------------------------------------
 
-type SeenTees = HashMap<*const RefCell<HydroNode>, ProofResult>;
+type SeenTees = HashMap<(*const RefCell<HydroNode>, OrderGoal), ProofResult>;
 type CycleProofs = HashMap<CycleId, ProofResult>;
 
 // ---------------------------------------------------------------------------
@@ -447,8 +451,14 @@ fn prove(
         | HydroNode::ChainFirst { first, second, .. } => match goal {
             OrderGoal::SetInclusion => {
                 let a = prove(first, goal, cycle_proofs, seen_tees);
-                if !a.is_proved() { return a.prepend_preserved(&name, span.clone(), pm_span.clone()); }
-                prove(second, goal, cycle_proofs, seen_tees).prepend_preserved(&name, span, pm_span)
+                if !a.is_proved() {
+                    return a.prepend_preserved(&format!("{name} (1st branch)"), span.clone(), pm_span.clone());
+                }
+                let b = prove(second, goal, cycle_proofs, seen_tees);
+                if !b.is_proved() {
+                    return b.prepend_preserved(&format!("{name} (2nd branch)"), span.clone(), pm_span.clone());
+                }
+                b.prepend_preserved(&name, span, pm_span)
             }
             _ => ProofResult::fail(&name, "union/chain breaks prefix/lattice order", span, pm_span),
         },
@@ -600,14 +610,14 @@ fn prove_shared(
     cycle_proofs: &CycleProofs,
     seen_tees: &mut SeenTees,
 ) -> ProofResult {
-    let ptr = inner.as_ptr();
-    if let Some(result) = seen_tees.get(&ptr) {
+    let key = (inner.as_ptr(), goal.clone());
+    if let Some(result) = seen_tees.get(&key) {
         return result.clone();
     }
     // Placeholder to break cycles
-    seen_tees.insert(ptr, ProofResult::proved(vec![]));
+    seen_tees.insert(key.clone(), ProofResult::proved(vec![]));
     let result = prove(&inner.0.borrow(), goal, cycle_proofs, seen_tees);
-    seen_tees.insert(ptr, result.clone());
+    seen_tees.insert(key, result.clone());
     result
 }
 
@@ -634,7 +644,8 @@ pub fn analyze_coordination(
         if let HydroRoot::CycleSink { cycle_id, input, .. } = root {
             // For cycle sinks, we try SetInclusion as the default goal
             // since cycles typically carry streams.
-            let result = prove(input, &OrderGoal::SetInclusion, &cycle_proofs, &mut seen_tees);
+            let cycle_goal = goal_for_collection_kind(&input.metadata().collection_kind);
+            let result = prove(input, &cycle_goal, &cycle_proofs, &mut seen_tees);
             cycle_proofs.insert(*cycle_id, result);
         }
     }

@@ -200,8 +200,6 @@ pub enum HydroEdgeProp {
     Optional,
     Network,
     Cycle,
-    /// Edge carries non-monotone data (Coordination Criterion analysis).
-    NonMonotone,
 }
 
 /// Unified edge style representation for all graph formats.
@@ -350,12 +348,6 @@ pub fn get_unified_edge_style(
         style.waviness = WavinessStyle::Wavy;
     } else if edge_properties.contains(&HydroEdgeProp::TotalOrder) {
         style.waviness = WavinessStyle::None;
-    }
-
-    // Coordination Criterion overlay — applied last to override other colors
-    if edge_properties.contains(&HydroEdgeProp::NonMonotone) {
-        style.color = "#dc2626"; // Red for non-monotone
-        style.line_width = 3;
     }
 
     style
