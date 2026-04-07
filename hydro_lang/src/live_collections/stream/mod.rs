@@ -1394,6 +1394,53 @@ where
             .reduce(q!(|curr, new| *curr = new))
     }
 
+    /// Returns a stream containing at most the first `n` elements of the input stream,
+    /// preserving the original order. Similar to `LIMIT` in SQL.
+    ///
+    /// This requires the stream to have a [`TotalOrder`] guarantee and [`ExactlyOnce`]
+    /// retries, since the result depends on the order and cardinality of elements.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let numbers = process.source_iter(q!(vec![10, 20, 30, 40, 50]));
+    /// numbers.limit(q!(3))
+    /// # }, |mut stream| async move {
+    /// // 10, 20, 30
+    /// # for w in vec![10, 20, 30] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn limit(
+        self,
+        n: impl QuotedWithContext<'a, usize, L> + Copy + 'a,
+    ) -> Stream<T, L, B, TotalOrder, ExactlyOnce>
+    where
+        O: IsOrdered,
+        R: IsExactlyOnce,
+    {
+        self.generator(
+            q!(|| 0usize),
+            q!(move |count, item| {
+                if *count == n {
+                    Generate::Break
+                } else {
+                    *count += 1;
+                    if *count == n {
+                        Generate::Return(item)
+                    } else {
+                        Generate::Yield(item)
+                    }
+                }
+            }),
+        )
+    }
+
     /// Collects all the elements of this stream into a single [`Vec`] element.
     ///
     /// If the input stream is [`Unbounded`], the output [`Singleton`] will be [`Unbounded`] as
@@ -3687,5 +3734,44 @@ mod tests {
                 "inspect: 4",
             ]
         );
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_limit() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input();
+
+        let out_recv = input.limit(q!(3)).sim_output();
+
+        flow.sim().exhaustive(async || {
+            in_send.send(1);
+            in_send.send(2);
+            in_send.send(3);
+            in_send.send(4);
+            in_send.send(5);
+
+            out_recv.assert_yields_only([1, 2, 3]).await;
+        });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_limit_zero() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input();
+
+        let out_recv = input.limit(q!(0)).sim_output();
+
+        flow.sim().exhaustive(async || {
+            in_send.send(1);
+            in_send.send(2);
+
+            out_recv.assert_yields_only::<i32, _>([]).await;
+        });
     }
 }

@@ -1575,6 +1575,62 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         .map(q!(|v| v.unwrap()))
     }
 
+    /// Returns a keyed stream containing at most the first `n` values per key,
+    /// preserving the original order within each group. Similar to SQL `LIMIT`
+    /// applied per group.
+    ///
+    /// This requires the stream to have a [`TotalOrder`] guarantee and [`ExactlyOnce`]
+    /// retries, since the result depends on the order and cardinality of elements
+    /// within each group.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, 10), (1, 20), (1, 30), (2, 40), (2, 50)]))
+    ///     .into_keyed()
+    ///     .limit(q!(2))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [10, 20], 2: [40, 50] }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..4 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 10), (1, 20), (2, 40), (2, 50)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn limit(
+        self,
+        n: impl QuotedWithContext<'a, usize, L> + Copy + 'a,
+    ) -> KeyedStream<K, V, L, B, TotalOrder, ExactlyOnce>
+    where
+        O: IsOrdered,
+        R: IsExactlyOnce,
+        K: Clone + Eq + Hash,
+    {
+        self.generator(
+            q!(|| 0usize),
+            q!(move |count, item| {
+                if *count == n {
+                    Generate::Break
+                } else {
+                    *count += 1;
+                    if *count == n {
+                        Generate::Return(item)
+                    } else {
+                        Generate::Yield(item)
+                    }
+                }
+            }),
+        )
+    }
+
     /// Assigns a zero-based index to each value within each key group, emitting
     /// `(K, (index, V))` tuples with per-key sequential indices.
     ///
