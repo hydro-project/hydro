@@ -379,7 +379,7 @@ pub fn extract_edge_properties_from_collection_kind(
         }
         CollectionKind::Singleton { bound, .. } => {
             properties.insert(HydroEdgeProp::Singleton);
-            add_bound_property(&mut properties, bound);
+            add_singleton_bound_property(&mut properties, bound);
             // Singletons have implicit TotalOrder
             properties.insert(HydroEdgeProp::TotalOrder);
         }
@@ -418,6 +418,23 @@ fn add_bound_property(
     }
 }
 
+/// Helper function to add bound property for Singleton based on SingletonBoundKind.
+fn add_singleton_bound_property(
+    properties: &mut HashSet<HydroEdgeProp>,
+    bound: &crate::compile::ir::SingletonBoundKind,
+) {
+    use crate::compile::ir::SingletonBoundKind;
+
+    match bound {
+        SingletonBoundKind::Bounded => {
+            properties.insert(HydroEdgeProp::Bounded);
+        }
+        SingletonBoundKind::Monotonic | SingletonBoundKind::Unbounded => {
+            properties.insert(HydroEdgeProp::Unbounded);
+        }
+    }
+}
+
 /// Helper function to add bound property for KeyedSingleton based on KeyedSingletonBoundKind.
 fn add_keyed_singleton_bound_property(
     properties: &mut HashSet<HydroEdgeProp>,
@@ -426,10 +443,12 @@ fn add_keyed_singleton_bound_property(
     use crate::compile::ir::KeyedSingletonBoundKind;
 
     match bound {
-        KeyedSingletonBoundKind::Bounded | KeyedSingletonBoundKind::BoundedValue => {
+        KeyedSingletonBoundKind::Bounded => {
             properties.insert(HydroEdgeProp::Bounded);
         }
-        KeyedSingletonBoundKind::Unbounded => {
+        KeyedSingletonBoundKind::BoundedValue
+        | KeyedSingletonBoundKind::MonotonicValue
+        | KeyedSingletonBoundKind::Unbounded => {
             properties.insert(HydroEdgeProp::Unbounded);
         }
     }

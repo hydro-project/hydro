@@ -1,5 +1,6 @@
 use super::boundedness::{Bounded, Unbounded};
 use crate::live_collections::keyed_singleton::KeyedSingletonBound;
+use crate::live_collections::singleton::SingletonBound;
 use crate::live_collections::stream::{Ordering, Retries};
 use crate::location::tick::Tick;
 use crate::location::{Atomic, Location, NoTick};
@@ -26,7 +27,9 @@ impl<'a, L: Location<'a> + NoTick, T, O: Ordering, R: Retries> BatchAtomic
     }
 }
 
-impl<'a, L: Location<'a> + NoTick, T> BatchAtomic for super::Singleton<T, Atomic<L>, Unbounded> {
+impl<'a, L: Location<'a> + NoTick, T, B: SingletonBound> BatchAtomic
+    for super::Singleton<T, Atomic<L>, B>
+{
     type Batched = super::Singleton<T, Tick<L>, Bounded>;
 
     fn batched_atomic(self) -> Self::Batched {

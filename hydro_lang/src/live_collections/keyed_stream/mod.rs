@@ -23,6 +23,7 @@ use crate::compile::ir::{
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::live_collections::batch_atomic::BatchAtomic;
+use crate::live_collections::keyed_singleton::KeyedSingletonBound;
 use crate::live_collections::stream::{
     AtLeastOnce, Ordering, Retries, WeakerOrderingThan, WeakerRetryThan,
 };
@@ -32,7 +33,10 @@ use crate::location::tick::DeferTick;
 use crate::location::{Atomic, Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
-use crate::properties::{AggFuncAlgebra, ValidCommutativityFor, ValidIdempotenceFor};
+use crate::properties::{
+    AggFuncAlgebra, ApplyMonotoneKeyedStream, ValidCommutativityFor, ValidIdempotenceFor,
+    manual_proof,
+};
 
 pub mod networking;
 
@@ -1491,7 +1495,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         self,
         init: impl IntoQuotedMut<'a, I, L> + Copy,
         f: impl IntoQuotedMut<'a, F, L> + Copy,
-    ) -> KeyedSingleton<K, A, L, B::WhenValueBounded>
+    ) -> KeyedSingleton<K, A, L, B::WithBoundedValue>
     where
         O: IsOrdered,
         R: IsExactlyOnce,
@@ -1527,7 +1531,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 metadata: out_without_bound_cast
                     .location
                     .new_node_metadata(
-                        KeyedSingleton::<K, A, L, B::WhenValueBounded>::collection_kind(),
+                        KeyedSingleton::<K, A, L, B::WithBoundedValue>::collection_kind(),
                     ),
             },
         )
@@ -1559,7 +1563,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn first(self) -> KeyedSingleton<K, V, L, B::WhenValueBounded>
+    pub fn first(self) -> KeyedSingleton<K, V, L, B::WithBoundedValue>
     where
         O: IsOrdered,
         R: IsExactlyOnce,
@@ -1649,7 +1653,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn value_counts(self) -> KeyedSingleton<K, usize, L, B::WhenValueUnbounded>
+    pub fn value_counts(
+        self,
+    ) -> KeyedSingleton<K, usize, L, <B as KeyedSingletonBound>::KeyedStreamToMonotone>
     where
         R: IsExactlyOnce,
         K: Eq + Hash,
@@ -1658,7 +1664,13 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
             .assume_ordering_trusted(
                 nondet!(/** ordering within each group affects neither result nor intermediates */),
             )
-            .fold(q!(|| 0), q!(|acc, _| *acc += 1))
+            .fold(
+                q!(|| 0),
+                q!(
+                    |acc, _| *acc += 1,
+                    monotone = manual_proof!(/** += 1 is monotonic */)
+                ),
+            )
     }
 
     /// Like [`Stream::fold`] but in the spirit of SQL `GROUP BY`, aggregates the values in each
@@ -1696,15 +1708,16 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn fold<A, I: Fn() -> A + 'a, F: Fn(&mut A, V), C, Idemp>(
+    pub fn fold<A, I: Fn() -> A + 'a, F: Fn(&mut A, V), C, Idemp, M, B2: KeyedSingletonBound>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
-        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp>>,
-    ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded>
+        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp, M>>,
+    ) -> KeyedSingleton<K, A, L, B2>
     where
         K: Eq + Hash,
         C: ValidCommutativityFor<O>,
         Idemp: ValidIdempotenceFor<R>,
+        B: ApplyMonotoneKeyedStream<M, B2>,
     {
         let init = init.splice_fn0_ctx(&self.location).into();
         let (comb, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
@@ -1720,12 +1733,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 init,
                 acc: comb.into(),
                 input: Box::new(ordered.ir_node.replace(HydroNode::Placeholder)),
-                metadata: ordered.location.new_node_metadata(KeyedSingleton::<
-                    K,
-                    A,
-                    L,
-                    B::WhenValueUnbounded,
-                >::collection_kind()),
+                metadata: ordered
+                    .location
+                    .new_node_metadata(KeyedSingleton::<K, A, L, B2>::collection_kind()),
             },
         )
     }
@@ -1767,7 +1777,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     pub fn reduce<F: Fn(&mut V, V) + 'a, C, Idemp>(
         self,
         comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp>>,
-    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
+    ) -> KeyedSingleton<K, V, L, B>
     where
         K: Eq + Hash,
         C: ValidCommutativityFor<O>,
@@ -1785,12 +1795,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
             HydroNode::ReduceKeyed {
                 f: f.into(),
                 input: Box::new(ordered.ir_node.replace(HydroNode::Placeholder)),
-                metadata: ordered.location.new_node_metadata(KeyedSingleton::<
-                    K,
-                    V,
-                    L,
-                    B::WhenValueUnbounded,
-                >::collection_kind()),
+                metadata: ordered
+                    .location
+                    .new_node_metadata(KeyedSingleton::<K, V, L, B>::collection_kind()),
             },
         )
     }
@@ -1827,7 +1834,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         self,
         other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
         comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp>>,
-    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
+    ) -> KeyedSingleton<K, V, L, B>
     where
         K: Eq + Hash,
         O2: Clone,
@@ -1850,12 +1857,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 f: f.into(),
                 input: Box::new(ordered.ir_node.replace(HydroNode::Placeholder)),
                 watermark: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
-                metadata: ordered.location.new_node_metadata(KeyedSingleton::<
-                    K,
-                    V,
-                    L,
-                    B::WhenValueUnbounded,
-                >::collection_kind()),
+                metadata: ordered
+                    .location
+                    .new_node_metadata(KeyedSingleton::<K, V, L, B>::collection_kind()),
             },
         )
     }

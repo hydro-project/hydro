@@ -1689,7 +1689,15 @@ pub enum StreamRetry {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum KeyedSingletonBoundKind {
     Unbounded,
+    MonotonicValue,
     BoundedValue,
+    Bounded,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum SingletonBoundKind {
+    Unbounded,
+    Monotonic,
     Bounded,
 }
 
@@ -1702,7 +1710,7 @@ pub enum CollectionKind {
         element_type: DebugType,
     },
     Singleton {
-        bound: BoundKind,
+        bound: SingletonBoundKind,
         element_type: DebugType,
     },
     Optional {
@@ -1731,7 +1739,7 @@ impl CollectionKind {
                 bound: BoundKind::Bounded,
                 ..
             } | CollectionKind::Singleton {
-                bound: BoundKind::Bounded,
+                bound: SingletonBoundKind::Bounded,
                 ..
             } | CollectionKind::Optional {
                 bound: BoundKind::Bounded,

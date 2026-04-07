@@ -4,6 +4,9 @@ use std::marker::PhantomData;
 
 use stageleft::properties::Property;
 
+use crate::live_collections::boundedness::Boundedness;
+use crate::live_collections::keyed_singleton::KeyedSingletonBound;
+use crate::live_collections::singleton::SingletonBound;
 use crate::live_collections::stream::{ExactlyOnce, Ordering, Retries, TotalOrder};
 
 /// A trait for proof mechanisms that can validate commutativity.
@@ -24,6 +27,15 @@ pub trait IdempotentProof {
     fn register_proof(&self, expr: &syn::Expr);
 }
 
+/// A trait for proof mechanisms that can validate monotonicity.
+#[sealed::sealed]
+pub trait MonotoneProof {
+    /// Registers the expression with the proof mechanism.
+    ///
+    /// This should not perform any blocking analysis; it is only intended to record the expression for later processing.
+    fn register_proof(&self, expr: &syn::Expr);
+}
+
 /// A hand-written human proof of the correctness property.
 ///
 /// To create a manual proof, use the [`manual_proof!`] macro, which takes in a doc comment
@@ -35,6 +47,10 @@ impl CommutativeProof for ManualProof {
 }
 #[sealed::sealed]
 impl IdempotentProof for ManualProof {
+    fn register_proof(&self, _expr: &syn::Expr) {}
+}
+#[sealed::sealed]
+impl MonotoneProof for ManualProof {
     fn register_proof(&self, _expr: &syn::Expr) {}
 }
 
@@ -88,21 +104,30 @@ pub enum Proved {}
 /// f(a, &mut state);
 /// // state1 must be equal to state
 /// ```
-pub struct AggFuncAlgebra<Commutative = NotProved, Idempotent = NotProved>(
+pub struct AggFuncAlgebra<Commutative = NotProved, Idempotent = NotProved, Monotone = NotProved>(
     Option<Box<dyn CommutativeProof>>,
     Option<Box<dyn IdempotentProof>>,
-    PhantomData<(Commutative, Idempotent)>,
+    Option<Box<dyn MonotoneProof>>,
+    PhantomData<(Commutative, Idempotent, Monotone)>,
 );
 
-impl<C, I> AggFuncAlgebra<C, I> {
+impl<C, I, M> AggFuncAlgebra<C, I, M> {
     /// Marks the function as being commutative, with the given proof mechanism.
-    pub fn commutative(self, proof: impl CommutativeProof + 'static) -> AggFuncAlgebra<Proved, I> {
-        AggFuncAlgebra(Some(Box::new(proof)), self.1, PhantomData)
+    pub fn commutative(
+        self,
+        proof: impl CommutativeProof + 'static,
+    ) -> AggFuncAlgebra<Proved, I, M> {
+        AggFuncAlgebra(Some(Box::new(proof)), self.1, self.2, PhantomData)
     }
 
     /// Marks the function as being idempotent, with the given proof mechanism.
-    pub fn idempotent(self, proof: impl IdempotentProof + 'static) -> AggFuncAlgebra<C, Proved> {
-        AggFuncAlgebra(self.0, Some(Box::new(proof)), PhantomData)
+    pub fn idempotent(self, proof: impl IdempotentProof + 'static) -> AggFuncAlgebra<C, Proved, M> {
+        AggFuncAlgebra(self.0, Some(Box::new(proof)), self.2, PhantomData)
+    }
+
+    /// Marks the function as being monotone, with the given proof mechanism.
+    pub fn monotone(self, proof: impl MonotoneProof + 'static) -> AggFuncAlgebra<C, I, Proved> {
+        AggFuncAlgebra(self.0, self.1, Some(Box::new(proof)), PhantomData)
     }
 
     /// Registers the expression with the underlying proof mechanisms.
@@ -114,14 +139,18 @@ impl<C, I> AggFuncAlgebra<C, I> {
         if let Some(idem_proof) = self.1 {
             idem_proof.register_proof(expr);
         }
+
+        if let Some(monotone_proof) = self.2 {
+            monotone_proof.register_proof(expr);
+        }
     }
 }
 
-impl<C, I> Property for AggFuncAlgebra<C, I> {
+impl<C, I, M> Property for AggFuncAlgebra<C, I, M> {
     type Root = AggFuncAlgebra;
 
     fn make_root(_target: &mut Option<Self>) -> Self::Root {
-        AggFuncAlgebra(None, None, PhantomData)
+        AggFuncAlgebra(None, None, None, PhantomData)
     }
 }
 
@@ -150,3 +179,25 @@ pub trait ValidIdempotenceFor<R: Retries> {}
 impl ValidIdempotenceFor<ExactlyOnce> for NotProved {}
 #[sealed::sealed]
 impl<R: Retries> ValidIdempotenceFor<R> for Proved {}
+
+/// Marker trait identifying the boundedness of a singleton given a monotonicity property of
+/// an aggregation on a stream.
+#[sealed::sealed]
+pub trait ApplyMonotoneStream<P, B2: SingletonBound> {}
+
+#[sealed::sealed]
+impl<B: Boundedness> ApplyMonotoneStream<NotProved, B> for B {}
+
+#[sealed::sealed]
+impl<B: Boundedness> ApplyMonotoneStream<Proved, B::StreamToMonotone> for B {}
+
+/// Marker trait identifying the boundedness of a singleton given a monotonicity property of
+/// an aggregation on a keyed stream.
+#[sealed::sealed]
+pub trait ApplyMonotoneKeyedStream<P, B2: KeyedSingletonBound> {}
+
+#[sealed::sealed]
+impl<B: Boundedness> ApplyMonotoneKeyedStream<NotProved, B> for B {}
+
+#[sealed::sealed]
+impl<B: Boundedness> ApplyMonotoneKeyedStream<Proved, B::KeyedStreamToMonotone> for B {}
