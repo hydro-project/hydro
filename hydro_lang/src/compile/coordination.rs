@@ -461,11 +461,20 @@ fn prove(
             _ => ProofResult::fail(&name, "unique breaks prefix/lattice order", span, pm_span),
         },
 
-        HydroNode::Network { input, .. } => match goal {
+        HydroNode::Network { input, metadata, .. } => match goal {
             OrderGoal::SetInclusion | OrderGoal::Lattice => {
                 prove(input, goal, cycle_proofs, seen_tees).prepend_preserved(&name, span, pm_span)
             }
-            OrderGoal::Prefix => ProofResult::fail(&name, "network may reorder elements", span, pm_span),
+            OrderGoal::Prefix => {
+                // TCP point-to-point preserves prefix order; check the IR metadata
+                match &metadata.collection_kind {
+                    super::ir::CollectionKind::Stream { order: StreamOrder::TotalOrder, .. }
+                    | super::ir::CollectionKind::KeyedStream { value_order: StreamOrder::TotalOrder, .. } => {
+                        prove(input, goal, cycle_proofs, seen_tees).prepend_preserved(&name, span, pm_span)
+                    }
+                    _ => ProofResult::fail(&name, "network with NoOrder output breaks prefix order", span, pm_span),
+                }
+            }
         },
 
         HydroNode::Counter { .. } => ProofResult::discharged(&name, "count only grows", span, pm_span),
