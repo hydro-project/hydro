@@ -465,16 +465,14 @@ fn prove(
 
         // --- Scan: discharges Prefix on TotalOrder input ---
         HydroNode::Scan { input, .. } => {
-            match goal {
-                OrderGoal::Prefix => {
-                    // Scan on TotalOrder input produces a deterministic prefix.
-                    // Check if input is TotalOrder.
-                    match &input.metadata().collection_kind {
-                        super::ir::CollectionKind::Stream { order: StreamOrder::TotalOrder, .. } => {
-                            ProofResult::Proved
-                        }
-                        _ => ProofResult::Broken {
-                            reason: "scan on non-TotalOrder input cannot prove prefix order".into(),
+            // Scan on TotalOrder input produces a deterministic growing prefix.
+            // Prefix order implies set inclusion (growing prefix = growing set).
+            match &input.metadata().collection_kind {
+                super::ir::CollectionKind::Stream { order: StreamOrder::TotalOrder, .. } => {
+                    match goal {
+                        OrderGoal::Prefix | OrderGoal::SetInclusion => ProofResult::Proved,
+                        OrderGoal::Lattice => ProofResult::Broken {
+                            reason: "scan produces a stream, not a lattice singleton".into(),
                             blame: vec![short_name(node)],
                         },
                     }
@@ -484,7 +482,7 @@ fn prove(
                         ProofResult::Proved
                     } else {
                         ProofResult::Broken {
-                            reason: "scan is stateful; cannot prove set inclusion or lattice order".into(),
+                            reason: "scan on non-TotalOrder unbounded input is non-deterministic".into(),
                             blame: vec![short_name(node)],
                         }
                     }
