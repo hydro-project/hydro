@@ -729,8 +729,8 @@ pub fn analyze_coordination(
             cycle_proofs.insert(*cycle_id, ProofResult::proved(vec![]));
         }
     }
-    let mut seen_tees = SeenTees::new();
     loop {
+        let mut seen_tees = SeenTees::new();
         let mut changed = false;
         for root in ir {
             if let HydroRoot::CycleSink { cycle_id, input, .. } = root {
@@ -749,7 +749,8 @@ pub fn analyze_coordination(
         if !changed { break; }
     }
 
-    // Pass 2: analyze observable sinks.
+    // Pass 2: analyze observable sinks with fresh cache.
+    let mut seen_tees = SeenTees::new();
     let mut sinks = Vec::new();
     for root in ir.iter() {
         if !is_observable_sink(root) {
