@@ -721,17 +721,26 @@ pub fn analyze_coordination(
     goal_overrides: &HashMap<String, OrderGoal>,
 ) -> CoordinationReport {
     // Pass 1: analyze CycleSink roots to determine cycle monotonicity.
-    // Run twice to handle inter-cycle dependencies (cycle A depends on cycle B).
+    // Iterate to fixpoint since cycles may depend on each other.
     let mut cycle_proofs = CycleProofs::new();
     let mut seen_tees = SeenTees::new();
-    for _pass in 0..2 {
+    loop {
+        let mut changed = false;
         for root in ir {
             if let HydroRoot::CycleSink { cycle_id, input, .. } = root {
                 let cycle_goal = goal_for_collection_kind(&input.metadata().collection_kind);
                 let result = prove(input, &cycle_goal, &cycle_proofs, &mut seen_tees);
-                cycle_proofs.insert(*cycle_id, result);
+                let is_new = match cycle_proofs.get(cycle_id) {
+                    Some(prev) => prev.success != result.success,
+                    None => true,
+                };
+                if is_new {
+                    cycle_proofs.insert(*cycle_id, result);
+                    changed = true;
+                }
             }
         }
+        if !changed { break; }
     }
 
     // Pass 2: analyze observable sinks.
