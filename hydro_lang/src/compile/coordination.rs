@@ -736,14 +736,11 @@ pub fn analyze_coordination(
             if let HydroRoot::CycleSink { cycle_id, input, .. } = root {
                 let cycle_goal = goal_for_collection_kind(&input.metadata().collection_kind);
                 let result = prove(input, &cycle_goal, &cycle_proofs, &mut seen_tees);
-                let is_new = match cycle_proofs.get(cycle_id) {
-                    Some(prev) => prev.success != result.success,
-                    None => true,
-                };
-                if is_new {
-                    cycle_proofs.insert(*cycle_id, result);
+                let prev_success = cycle_proofs.get(cycle_id).map(|p| p.success);
+                if prev_success != Some(result.success) {
                     changed = true;
                 }
+                cycle_proofs.insert(*cycle_id, result);
             }
         }
         if !changed { break; }
