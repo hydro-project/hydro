@@ -713,16 +713,12 @@ fn prove_shared(
 /// output collection kind, then walks backward to prove or disprove it.
 ///
 /// The `goal_overrides` parameter allows overriding the default goal for
-/// specific sinks, keyed by their index in the IR root list. Note that
-/// indices include non-observable roots (CycleSink, Null); only indices
-/// corresponding to observable sinks (ForEach, SendExternal, etc.) are
-/// used. Pass an empty map to use all defaults.
-///
-/// Future: a more robust sink identifier (name or span-based) would be
-/// preferable to raw indices.
+/// specific sinks. Keys are sink identifiers in the format `"name@file:line:col"`
+/// (e.g. `"sendexternal@src/plumbing.rs:73:20"`), matching the name and span
+/// shown in the analysis report. Pass an empty map to use all defaults.
 pub fn analyze_coordination(
     ir: &[HydroRoot],
-    goal_overrides: &HashMap<usize, OrderGoal>,
+    goal_overrides: &HashMap<String, OrderGoal>,
 ) -> CoordinationReport {
     // Pass 1: analyze CycleSink roots to determine cycle monotonicity.
     // Run twice to handle inter-cycle dependencies (cycle A depends on cycle B).
@@ -745,8 +741,12 @@ pub fn analyze_coordination(
             continue;
         }
 
+        let sink_name = short_name_root(root);
+        let sink_span = root.op_metadata().backtrace.format_span().unwrap_or_default();
+        let sink_id = format!("{sink_name}@{sink_span}");
         let goal = goal_overrides
-            .get(&i)
+            .get(&sink_id)
+            .or_else(|| goal_overrides.get(&sink_name))
             .cloned()
             .unwrap_or_else(|| default_goal_for_sink(root));
 
@@ -799,10 +799,9 @@ mod tests {
         let mut flow = FlowBuilder::new();
         build(&mut flow);
         let built = flow.finalize();
-        // Only override observable sinks, not CycleSink/Null
-        let overrides: HashMap<usize, OrderGoal> = built.ir().iter().enumerate()
-            .filter(|(_, root)| is_observable_sink(root))
-            .map(|(i, _)| (i, OrderGoal::SetInclusion))
+        let overrides: HashMap<String, OrderGoal> = built.ir().iter()
+            .filter(|root| is_observable_sink(root))
+            .map(|root| (short_name_root(root).to_string(), OrderGoal::SetInclusion))
             .collect();
         built.check_coordination_with_goals(&overrides)
     }
@@ -1081,7 +1080,7 @@ mod tests {
         assert_eq!(default_report.sinks[0].goal, OrderGoal::Prefix);
 
         let mut overrides = HashMap::new();
-        overrides.insert(0, OrderGoal::SetInclusion);
+        overrides.insert("foreach".to_string(), OrderGoal::SetInclusion);
         let override_report = built.check_coordination_with_goals(&overrides);
         assert!(override_report.all_monotone());
         assert_eq!(override_report.sinks[0].goal, OrderGoal::SetInclusion);
@@ -1214,7 +1213,7 @@ mod tests {
                 .for_each(q!(|_| {}));
         });
         let mut overrides = HashMap::new();
-        overrides.insert(0, OrderGoal::Prefix);
+        overrides.insert("foreach".to_string(), OrderGoal::Prefix);
         let built_r = {
             let mut flow = FlowBuilder::new();
             let p = flow.process::<()>();
@@ -1238,7 +1237,7 @@ mod tests {
             .enumerate()
             .for_each(q!(|_| {}));
         let mut overrides = HashMap::new();
-        overrides.insert(0, OrderGoal::Prefix);
+        overrides.insert("foreach".to_string(), OrderGoal::Prefix);
         let r = flow.finalize().check_coordination_with_goals(&overrides);
         assert!(!r.all_monotone(), "enumerate should break Prefix:\n{r}");
     }
@@ -1256,7 +1255,7 @@ mod tests {
             .all_ticks()
             .for_each(q!(|_| {}));
         let mut overrides = HashMap::new();
-        overrides.insert(0, OrderGoal::Prefix);
+        overrides.insert("foreach".to_string(), OrderGoal::Prefix);
         let r = flow.finalize().check_coordination_with_goals(&overrides);
         assert!(!r.all_monotone(), "defer_tick should break Prefix:\n{r}");
     }
@@ -1272,7 +1271,7 @@ mod tests {
             .assume_ordering::<TotalOrder>(nondet!(/** test */))
             .for_each(q!(|_| {}));
         let mut overrides = HashMap::new();
-        overrides.insert(0, OrderGoal::Prefix);
+        overrides.insert("foreach".to_string(), OrderGoal::Prefix);
         let r = flow.finalize().check_coordination_with_goals(&overrides);
         assert!(!r.all_monotone(), "unique should break Prefix:\n{r}");
     }
