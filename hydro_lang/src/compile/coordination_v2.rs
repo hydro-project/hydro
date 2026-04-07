@@ -108,15 +108,15 @@ impl ProofResult {
         self.success
     }
 
-    fn proved(trace: Vec<ProofStep>) -> Self {
+    pub fn proved(trace: Vec<ProofStep>) -> Self {
         Self { success: true, trace }
     }
 
-    fn broken(trace: Vec<ProofStep>) -> Self {
+    pub fn broken(trace: Vec<ProofStep>) -> Self {
         Self { success: false, trace }
     }
 
-    fn discharged(operator: &str, reason: impl Into<String>, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
+    pub fn discharged(operator: &str, reason: impl Into<String>, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
         Self::proved(vec![ProofStep {
             operator: operator.to_string(),
             action: ProofAction::Discharged { reason: reason.into() },
@@ -126,7 +126,7 @@ impl ProofResult {
         }])
     }
 
-    fn fail(operator: &str, reason: impl Into<String>, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
+    pub fn fail(operator: &str, reason: impl Into<String>, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
         Self::broken(vec![ProofStep {
             operator: operator.to_string(),
             action: ProofAction::Broken { reason: reason.into() },
@@ -137,7 +137,7 @@ impl ProofResult {
     }
 
     /// Prepend a "preserved" step from the current operator.
-    fn prepend_preserved(mut self, operator: &str, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
+    pub fn prepend_preserved(mut self, operator: &str, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
         self.trace.insert(0, ProofStep {
             operator: operator.to_string(),
             action: ProofAction::Preserved,
@@ -149,7 +149,7 @@ impl ProofResult {
     }
 
     /// Prepend a "goal changed" step.
-    fn prepend_goal_changed(mut self, operator: &str, new_goal: &OrderGoal, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
+    pub fn prepend_goal_changed(mut self, operator: &str, new_goal: &OrderGoal, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
         self.trace.insert(0, ProofStep {
             operator: operator.to_string(),
             action: ProofAction::GoalChanged { new_goal: new_goal.clone() },
