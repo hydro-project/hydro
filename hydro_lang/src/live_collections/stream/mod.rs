@@ -30,7 +30,7 @@ use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 use crate::prelude::manual_proof;
-use crate::properties::{AggFuncAlgebra, ValidCommutativityFor, ValidIdempotenceFor};
+use crate::properties::{AggFuncAlgebra, IsProved, ValidCommutativityFor, ValidIdempotenceFor};
 
 pub mod networking;
 
@@ -1194,8 +1194,8 @@ where
     where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, T),
-        C: ValidCommutativityFor<O>,
-        Idemp: ValidIdempotenceFor<R>,
+        C: ValidCommutativityFor<O> + IsProved,
+        Idemp: ValidIdempotenceFor<R> + IsProved,
     {
         let init = init.splice_fn0_ctx(&self.location).into();
         let (comb, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
@@ -1208,6 +1208,8 @@ where
             init,
             acc: comb.into(),
             input: Box::new(ordered_etc.ir_node.replace(HydroNode::Placeholder)),
+            is_commutative: C::IS_PROVED,
+            is_idempotent: Idemp::IS_PROVED,
             metadata: ordered_etc
                 .location
                 .new_node_metadata(Singleton::<A, L, B>::collection_kind()),
@@ -1244,8 +1246,8 @@ where
     ) -> Optional<T, L, B>
     where
         F: Fn(&mut T, T) + 'a,
-        C: ValidCommutativityFor<O>,
-        Idemp: ValidIdempotenceFor<R>,
+        C: ValidCommutativityFor<O> + IsProved,
+        Idemp: ValidIdempotenceFor<R> + IsProved,
     {
         let (f, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
         proof.register_proof(&f);
@@ -1256,6 +1258,7 @@ where
         let core = HydroNode::Reduce {
             f: f.into(),
             input: Box::new(ordered_etc.ir_node.replace(HydroNode::Placeholder)),
+            is_commutative: C::IS_PROVED,
             metadata: ordered_etc
                 .location
                 .new_node_metadata(Optional::<T, L, B>::collection_kind()),

@@ -71,6 +71,17 @@ pub enum NotProved {}
 /// Marks that the property is proven.
 pub enum Proved {}
 
+/// Query whether a proof marker is `Proved`.
+pub trait IsProved {
+    const IS_PROVED: bool;
+}
+impl IsProved for NotProved {
+    const IS_PROVED: bool = false;
+}
+impl IsProved for Proved {
+    const IS_PROVED: bool = true;
+}
+
 /// Algebraic properties for an aggregation function of type (T, &mut A) -> ().
 ///
 /// Commutativity:
