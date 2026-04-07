@@ -355,9 +355,49 @@ fn is_observable_sink(root: &HydroRoot) -> bool {
 // Short name helper
 // ---------------------------------------------------------------------------
 
-fn short_name(node: &HydroNode) -> String {
-    let full = node.print_root();
-    full.split('(').next().unwrap_or(&full).to_lowercase()
+fn short_name(node: &HydroNode) -> &'static str {
+    match node {
+        HydroNode::Placeholder => "placeholder",
+        HydroNode::Source { .. } => "source",
+        HydroNode::SingletonSource { .. } => "singletonsource",
+        HydroNode::CycleSource { .. } => "cyclesource",
+        HydroNode::ExternalInput { .. } => "externalinput",
+        HydroNode::Tee { .. } => "tee",
+        HydroNode::Partition { .. } => "partition",
+        HydroNode::Cast { .. } => "cast",
+        HydroNode::ObserveNonDet { .. } => "observenondet",
+        HydroNode::BeginAtomic { .. } => "beginatomic",
+        HydroNode::EndAtomic { .. } => "endatomic",
+        HydroNode::YieldConcat { .. } => "yieldconcat",
+        HydroNode::Map { .. } => "map",
+        HydroNode::FlatMap { .. } => "flatmap",
+        HydroNode::Filter { .. } => "filter",
+        HydroNode::FilterMap { .. } => "filtermap",
+        HydroNode::Inspect { .. } => "inspect",
+        HydroNode::Enumerate { .. } => "enumerate",
+        HydroNode::Unique { .. } => "unique",
+        HydroNode::Network { .. } => "network",
+        HydroNode::Counter { .. } => "counter",
+        HydroNode::Batch { .. } => "batch",
+        HydroNode::Chain { .. } => "chain",
+        HydroNode::ChainFirst { .. } => "chainfirst",
+        HydroNode::Join { .. } => "join",
+        HydroNode::CrossProduct { .. } => "crossproduct",
+        HydroNode::CrossSingleton { .. } => "crosssingleton",
+        HydroNode::Difference { .. } => "difference",
+        HydroNode::AntiJoin { .. } => "antijoin",
+        HydroNode::Fold { .. } => "fold",
+        HydroNode::FoldKeyed { .. } => "foldkeyed",
+        HydroNode::Reduce { .. } => "reduce",
+        HydroNode::ReduceKeyed { .. } => "reducekeyed",
+        HydroNode::ReduceKeyedWatermark { .. } => "reducekeyedwatermark",
+        HydroNode::Scan { .. } => "scan",
+        HydroNode::Sort { .. } => "sort",
+        HydroNode::DeferTick { .. } => "defertick",
+        HydroNode::ResolveFutures { .. } => "resolvefutures",
+        HydroNode::ResolveFuturesBlocking { .. } => "resolvefuturesblocking",
+        HydroNode::ResolveFuturesOrdered { .. } => "resolvefuturesordered",
+    }
 }
 
 // ---------------------------------------------------------------------------
