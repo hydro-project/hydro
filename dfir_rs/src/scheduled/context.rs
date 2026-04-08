@@ -536,12 +536,7 @@ impl InlineContext {
     {
     }
 
-    // --- Methods called by __end_tick / __context ---
-
-    /// Returns `&Self` (for binding `context` in generated code).
-    pub fn __context(&self) -> &Self {
-        self
-    }
+    // --- Methods called by __end_tick ---
 
     /// Runs end-of-tick state hooks and increments the tick counter.
     pub fn __end_tick(&mut self) {

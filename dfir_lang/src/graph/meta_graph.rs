@@ -841,7 +841,10 @@ impl DfirGraph {
         out
     }
 
-    /// Emit this graph as runnable Rust source code tokens.
+    /// Emit this graph as a `Dfir` instance with handoffs, subgraph closures, and a
+    /// runtime scheduler that drives execution.
+    ///
+    /// See also [`Self::as_code_inline`] for the experimental inline codegen path.
     ///
     /// Returns all diagnostics as `Err(diagnostics)` if any are errors (leaving `&mut diagnostics` empty).
     pub fn as_code(
@@ -1369,8 +1372,14 @@ impl DfirGraph {
     }
 
     /// Emit this graph as runnable Rust source code tokens that execute inline,
-    /// without the `Dfir` runtime scheduler. Subgraphs run in topological (stratum)
-    /// order using local `Vec<T>` buffers instead of handoffs.
+    /// without the `Dfir` runtime scheduler.
+    ///
+    /// Unlike [`Self::as_code`], which builds a `Dfir` graph object with handoffs,
+    /// subgraph closures, and a scheduler that drives execution, this method generates
+    /// a flat async closure where subgraph blocks are inlined in stratum order using
+    /// local `Vec<T>` buffers instead of handoffs. Each call to the closure runs one
+    /// tick. State is managed by a lightweight `InlineContext` instead of the full
+    /// `Dfir` runtime.
     ///
     /// This is an experimental codegen path for the S3+Ref3 inline DAG design.
     pub fn as_code_inline(
@@ -1404,24 +1413,15 @@ impl DfirGraph {
         // 2. Collect subgraph handoffs (same as as_code).
         let subgraph_handoffs = self.helper_collect_subgraph_handoffs();
 
-        // 3. Sort subgraphs by stratum, then no-preds first (for type inference).
-        let (subgraphs_without_preds, subgraphs_with_preds) = self
-            .subgraph_nodes
-            .iter()
-            .partition::<Vec<_>, _>(|(_, nodes)| {
-                nodes
-                    .iter()
-                    .any(|&node_id| self.node_degree_in(node_id) == 0)
-            });
-
-        // Sort each group by stratum.
-        let mut all_subgraphs: Vec<_> = subgraphs_without_preds
-            .iter()
-            .chain(subgraphs_with_preds.iter())
-            .copied()
-            .collect();
-        all_subgraphs
-            .sort_by_key(|&(sg_id, _)| self.subgraph_stratum.get(sg_id).copied().unwrap_or(0));
+        // 3. Sort subgraphs by stratum, then sources (no-preds) first (for type inference).
+        let mut all_subgraphs: Vec<_> = self.subgraph_nodes.iter().collect();
+        all_subgraphs.sort_by_key(|&(sg_id, nodes)| {
+            let stratum = self.subgraph_stratum.get(sg_id).copied().unwrap_or(0);
+            let is_source = nodes
+                .iter()
+                .any(|&node_id| self.node_degree_in(node_id) == 0);
+            (stratum, !is_source)
+        });
 
         let mut op_prologue_code = Vec::new();
         let mut op_prologue_after_code = Vec::new();
@@ -1478,6 +1478,7 @@ impl DfirGraph {
                     })
                     .collect();
 
+                // All nodes in a subgraph should be in the same loop.
                 let loop_id = self.node_loop(subgraph_nodes[0]);
 
                 let mut subgraph_op_iter_code = Vec::new();
@@ -1498,6 +1499,7 @@ impl DfirGraph {
 
                         let op_span = node.span();
                         let op_name = op_inst.op_constraints.name;
+                        // Use op's span for root. #root is expected to be correct, any errors should span back to the op gen.
                         let root = change_spans(root.clone(), op_span);
                         let op_constraints = OPERATORS
                             .iter()
@@ -1507,11 +1509,14 @@ impl DfirGraph {
                         let ident = self.node_as_ident(node_id, false);
 
                         {
+                            // TODO clean this up.
+                            // Collect input arguments (predecessors).
                             let mut input_edges = self
                                 .graph
                                 .predecessor_edges(node_id)
                                 .map(|edge_id| (self.edge_ports(edge_id).1, edge_id))
                                 .collect::<Vec<_>>();
+                            // Ensure sorted by port index.
                             input_edges.sort();
 
                             let inputs = input_edges
@@ -1522,11 +1527,13 @@ impl DfirGraph {
                                 })
                                 .collect::<Vec<_>>();
 
+                            // Collect output arguments (successors).
                             let mut output_edges = self
                                 .graph
                                 .successor_edges(node_id)
                                 .map(|edge_id| (&self.ports[edge_id].0, edge_id))
                                 .collect::<Vec<_>>();
+                            // Ensure sorted by port index.
                             output_edges.sort();
 
                             let outputs = output_edges
@@ -1542,9 +1549,18 @@ impl DfirGraph {
                             let singleton_output_ident = &if op_constraints.has_singleton_output {
                                 self.node_as_singleton_ident(node_id, op_span)
                             } else {
+                                // This ident *should* go unused.
                                 Ident::new(&format!("{}_has_no_singleton_output", op_name), op_span)
                             };
 
+                            // There's a bit of dark magic hidden in `Span`s... you'd think it's just a `file:line:column`,
+                            // but it has one extra bit of info for _name resolution_, used for `Ident`s. `Span::call_site()`
+                            // has the (unhygienic) resolution we want, an ident is just solely determined by its string name,
+                            // which is what you'd expect out of unhygienic proc macros like this. Meanwhile, declarative macros
+                            // use `Span::mixed_site()` which is weird and I don't understand it. It turns out that if you call
+                            // the dfir syntax proc macro from _within_ a declarative macro then `op_span` will have the
+                            // bad `Span::mixed_site()` name resolution and cause "Cannot find value `df/context`" errors. So
+                            // we call `.resolved_at()` to fix resolution back to `Span::call_site()`. -Mingwei
                             let df_local = &Ident::new(GRAPH, op_span.resolved_at(df.span()));
                             let context = &Ident::new(CONTEXT, op_span.resolved_at(context.span()));
 
@@ -1791,6 +1807,7 @@ impl DfirGraph {
                         let pull_ident = if 0 < pull_to_push_idx {
                             self.node_as_ident(subgraph_nodes[pull_to_push_idx - 1], false)
                         } else {
+                            // Entire subgraph is push (with a single recv/pull handoff input).
                             recv_port_idents[0].clone()
                         };
 
@@ -1800,6 +1817,7 @@ impl DfirGraph {
                         {
                             self.node_as_ident(node_id, false)
                         } else if 1 == send_port_idents.len() {
+                            // Entire subgraph is pull (with a single send/push handoff output).
                             send_port_idents[0].clone()
                         } else {
                             diagnostics.push(Diagnostic::spanned(
@@ -1810,6 +1828,7 @@ impl DfirGraph {
                             continue;
                         };
 
+                        // Pivot span is combination of pull and push spans (or if not possible, just take the push).
                         let pivot_span = pull_ident
                             .span()
                             .join(push_ident.span())
@@ -1839,7 +1858,7 @@ impl DfirGraph {
                 subgraph_blocks.push(quote! {
                     let #sg_ident: #root::scheduled::SubgraphId = #root::util::slot_vec::Key::from_raw(0);
                     {
-                        let #context = #df.__context();
+                        let #context = &#df;;
                         #( #recv_port_code )*
                         #( #send_port_code )*
                         #( #subgraph_op_iter_code )*
@@ -1855,8 +1874,7 @@ impl DfirGraph {
         if diagnostics.has_error() {
             return Err(std::mem::take(diagnostics));
         }
-        let _ = diagnostics;
-
+        let _ = diagnostics; // Ensure no more diagnostics may be added after checking for errors.
         // Prologues and buffer declarations persist across ticks (outside the closure).
         // Subgraph blocks run each tick (inside the closure).
         Ok(quote! {
