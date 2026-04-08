@@ -131,13 +131,13 @@ fn dfir_syntax_inline_internal(
         diagnostics.try_emit_all().err()
     });
 
-    quote! {
+    let out = quote! {
         {
             #diagnostic_tokens
             #code
         }
-    }
-    .into()
+    };
+    out.into()
 }
 
 /// Parse DFIR syntax without emitting code.

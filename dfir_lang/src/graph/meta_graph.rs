@@ -1869,28 +1869,28 @@ impl DfirGraph {
         }
         let _ = diagnostics;
 
-        // Put ALL prologues and subgraph blocks together.
-        // Prologues must come before subgraph blocks because they define state handles
-        // and variables that subgraph code references.
-        let code = quote! {
-            #( #buffer_code )*
-            #( #op_prologue_code )*
-            #( #subgraph_blocks )*
-            #( #op_prologue_after_code )*
-        };
-
+        // Prologues and buffer declarations persist across ticks (outside the closure).
+        // Subgraph blocks run each tick (inside the closure).
         Ok(quote! {
-            async {
+            {
+                #prefix
+
+                use #root::{var_expr, var_args};
+
+                #[allow(unused_mut)]
+                let mut #df = #root::scheduled::graph::Dfir::new();
+
+                #( #buffer_code )*
+                #( #op_prologue_code )*
+                #( #op_prologue_after_code )*
+
                 #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref)]
-                {
-                    #prefix
+                let mut __dfir_inline_closure = async move || {
+                    #( #subgraph_blocks )*
 
-                    use #root::{var_expr, var_args};
-
-                    let mut #df = #root::scheduled::graph::Dfir::new();
-
-                    #code
-                }
+                    #df.__end_tick();
+                };
+                __dfir_inline_closure
             }
         })
     }

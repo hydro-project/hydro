@@ -203,6 +203,13 @@ impl<'a> Dfir<'a> {
         &self.context
     }
 
+    /// Runs end-of-tick state hooks and increments the tick counter. Used by inline codegen.
+    #[doc(hidden)]
+    pub fn __end_tick(&mut self) {
+        self.context.run_state_hooks_tick();
+        self.context.current_tick += TickDuration::SINGLE_TICK;
+    }
+
     /// Runs a future synchronously, panicking if it does not resolve immediately.
     /// Used by inline codegen.
     #[doc(hidden)]
