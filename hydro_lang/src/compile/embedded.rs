@@ -499,7 +499,17 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
     /// ```ignore
     /// include!(concat!(env!("OUT_DIR"), "/embedded.rs"));
     /// ```
-    pub fn generate_embedded(mut self, crate_name: &str) -> syn::File {
+    pub fn generate_embedded(self, crate_name: &str) -> syn::File {
+        self.generate_embedded_inner(crate_name, false)
+    }
+
+    /// Like [`Self::generate_embedded`], but generates inline codegen (async closure per tick)
+    /// instead of a `Dfir` instance. Experimental.
+    pub fn generate_embedded_inline(self, crate_name: &str) -> syn::File {
+        self.generate_embedded_inner(crate_name, true)
+    }
+
+    fn generate_embedded_inner(mut self, crate_name: &str, inline: bool) -> syn::File {
         let mut env = EmbeddedInstantiateEnv::default();
         let compiled = self.compile_internal(&mut env);
 
@@ -543,9 +553,15 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
             loc_outputs.sort_by(|a, b| a.0.to_string().cmp(&b.0.to_string()));
 
             let mut diagnostics = Diagnostics::new();
-            let dfir_tokens = graph
-                .as_code(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
-                .expect("DFIR code generation failed with diagnostics.");
+            let dfir_tokens = if inline {
+                graph
+                    .as_code_inline(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
+                    .expect("DFIR inline code generation failed with diagnostics.")
+            } else {
+                graph
+                    .as_code(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
+                    .expect("DFIR code generation failed with diagnostics.")
+            };
 
             // --- Build module items (cluster info, output struct, network structs) ---
             let mut mod_items: Vec<proc_macro2::TokenStream> = Vec::new();
@@ -852,10 +868,16 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                 .chain(net_out_params)
                 .collect();
 
+            let ret_type: syn::Type = if inline {
+                syn::parse_quote! { impl ::std::ops::AsyncFnMut() + 'a }
+            } else {
+                syn::parse_quote! { #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> }
+            };
+
             let func = if !extra_fn_generics.is_empty() {
                 syn::parse_quote! {
                     #[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
-                    pub fn #fn_ident<'a, #(#extra_fn_generics),*>(#(#all_params),*) -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
+                    pub fn #fn_ident<'a, #(#extra_fn_generics),*>(#(#all_params),*) -> #ret_type {
                         #(#extra_destructure)*
                         #dfir_tokens
                     }
@@ -863,170 +885,7 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
             } else {
                 syn::parse_quote! {
                     #[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
-                    pub fn #fn_ident<'a>(#(#all_params),*) -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
-                        #dfir_tokens
-                    }
-                }
-            };
-
-            items.push(func);
-        }
-
-        syn::parse_quote! {
-            use #orig_crate_name::__staged::__deps::*;
-            use #root::prelude::*;
-            use #root::runtime_support::dfir_rs as __root_dfir_rs;
-            pub use #orig_crate_name::__staged;
-
-            #( #items )*
-        }
-    }
-
-    /// Like [`Self::generate_embedded`], but generates inline codegen (async closure per tick)
-    /// instead of a `Dfir` instance. Experimental.
-    ///
-    /// Currently only supports single-process flows with no networking, clusters, or external ports.
-    pub fn generate_embedded_inline(mut self, crate_name: &str) -> syn::File {
-        let mut env = EmbeddedInstantiateEnv::default();
-        let compiled = self.compile_internal(&mut env);
-
-        let root = crate::staging_util::get_this_crate();
-        let orig_crate_name = quote::format_ident!("{}", crate_name.replace('-', "_"));
-
-        let mut items: Vec<syn::Item> = Vec::new();
-
-        let mut location_keys: Vec<_> = compiled.all_dfir().keys().collect();
-        location_keys.sort();
-
-        let fn_names: SparseSecondaryMap<LocationKey, &str> = location_keys
-            .iter()
-            .map(|&k| {
-                let name = self
-                    .processes
-                    .get(k)
-                    .map(|n| n.fn_name.as_str())
-                    .expect("generate_embedded_inline only supports processes");
-                (k, name)
-            })
-            .collect();
-
-        for location_key in location_keys {
-            let graph = &compiled.all_dfir()[location_key];
-            let fn_name = fn_names[location_key];
-            let fn_ident = syn::Ident::new(fn_name, Span::call_site());
-
-            let mut diagnostics = Diagnostics::new();
-            let dfir_tokens = graph
-                .as_code_inline(
-                    &quote! { __root_dfir_rs },
-                    true,
-                    quote!(),
-                    &mut diagnostics,
-                )
-                .expect("DFIR inline code generation failed with diagnostics.");
-
-            let mut loc_inputs = env.inputs.get(location_key).cloned().unwrap_or_default();
-            loc_inputs.sort_by(|a, b| a.0.to_string().cmp(&b.0.to_string()));
-            let mut loc_outputs = env.outputs.get(location_key).cloned().unwrap_or_default();
-            loc_outputs.sort_by(|a, b| a.0.to_string().cmp(&b.0.to_string()));
-
-            let mut extra_fn_generics: Vec<proc_macro2::TokenStream> = Vec::new();
-            let mut all_params: Vec<proc_macro2::TokenStream> = Vec::new();
-            let mut extra_destructure: Vec<proc_macro2::TokenStream> = Vec::new();
-
-            // Singleton inputs.
-            if let Some(mut loc_singleton_inputs) =
-                env.singleton_inputs.remove(location_key)
-            {
-                loc_singleton_inputs.sort_by(|a, b| a.0.to_string().cmp(&b.0.to_string()));
-                for (ident, element_type) in &loc_singleton_inputs {
-                    all_params.push(quote! { #ident: #element_type });
-                }
-            }
-
-            // Stream inputs.
-            if !loc_inputs.is_empty() {
-                let input_generic_idents: Vec<syn::Ident> = loc_inputs
-                    .iter()
-                    .enumerate()
-                    .map(|(i, _)| quote::format_ident!("__In{}", i))
-                    .collect();
-
-                for ((_, element_type), generic) in
-                    loc_inputs.iter().zip(input_generic_idents.iter())
-                {
-                    extra_fn_generics.push(
-                        quote! { #generic: __root_dfir_rs::futures::Stream<Item = #element_type> + Unpin + 'a },
-                    );
-                }
-
-                for ((ident, _), generic) in loc_inputs.iter().zip(input_generic_idents.iter()) {
-                    all_params.push(quote! { #ident: #generic });
-                }
-            }
-
-            // Outputs.
-            if !loc_outputs.is_empty() {
-                let output_struct_ident =
-                    syn::Ident::new("EmbeddedOutputs", Span::call_site());
-                let output_generic_idents: Vec<syn::Ident> = loc_outputs
-                    .iter()
-                    .enumerate()
-                    .map(|(i, _)| quote::format_ident!("__Out{}", i))
-                    .collect();
-
-                let struct_fields: Vec<proc_macro2::TokenStream> = loc_outputs
-                    .iter()
-                    .zip(output_generic_idents.iter())
-                    .map(|((ident, _), generic)| quote! { pub #ident: #generic })
-                    .collect();
-
-                let struct_generics: Vec<proc_macro2::TokenStream> = loc_outputs
-                    .iter()
-                    .zip(output_generic_idents.iter())
-                    .map(|((_, element_type), generic)| {
-                        quote! { #generic: FnMut(#element_type) }
-                    })
-                    .collect();
-
-                for ((_, element_type), generic) in
-                    loc_outputs.iter().zip(output_generic_idents.iter())
-                {
-                    extra_fn_generics.push(quote! { #generic: FnMut(#element_type) + 'a });
-                }
-
-                all_params.push(quote! {
-                    __outputs: &'a mut #fn_ident::#output_struct_ident<#(#output_generic_idents),*>
-                });
-
-                for (ident, _) in &loc_outputs {
-                    extra_destructure
-                        .push(quote! { let mut #ident = &mut __outputs.#ident; });
-                }
-
-                let output_mod: syn::Item = syn::parse_quote! {
-                    pub mod #fn_ident {
-                        use super::*;
-                        pub struct #output_struct_ident<#(#struct_generics),*> {
-                            #(#struct_fields),*
-                        }
-                    }
-                };
-                items.push(output_mod);
-            }
-
-            let func: syn::Item = if !extra_fn_generics.is_empty() {
-                syn::parse_quote! {
-                    #[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
-                    pub fn #fn_ident<'a, #(#extra_fn_generics),*>(#(#all_params),*) -> impl ::std::ops::AsyncFnMut() + 'a {
-                        #(#extra_destructure)*
-                        #dfir_tokens
-                    }
-                }
-            } else {
-                syn::parse_quote! {
-                    #[allow(unused, non_snake_case, clippy::suspicious_else_formatting)]
-                    pub fn #fn_ident<'a>(#(#all_params),*) -> impl ::std::ops::AsyncFnMut() + 'a {
+                    pub fn #fn_ident<'a>(#(#all_params),*) -> #ret_type {
                         #dfir_tokens
                     }
                 }
