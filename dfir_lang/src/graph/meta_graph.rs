@@ -1389,9 +1389,7 @@ impl DfirGraph {
             .iter()
             .filter_map(|(node_id, node)| match node {
                 GraphNode::Operator(_) => None,
-                &GraphNode::Handoff { src_span, dst_span } => {
-                    Some((node_id, (src_span, dst_span)))
-                }
+                &GraphNode::Handoff { src_span, dst_span } => Some((node_id, (src_span, dst_span))),
                 GraphNode::ModuleBoundary { .. } => panic!(),
             })
             .map(|(node_id, (src_span, dst_span))| {
@@ -1422,9 +1420,8 @@ impl DfirGraph {
             .chain(subgraphs_with_preds.iter())
             .copied()
             .collect();
-        all_subgraphs.sort_by_key(|&(sg_id, _)| {
-            self.subgraph_stratum.get(sg_id).copied().unwrap_or(0)
-        });
+        all_subgraphs
+            .sort_by_key(|&(sg_id, _)| self.subgraph_stratum.get(sg_id).copied().unwrap_or(0));
 
         let mut op_prologue_code = Vec::new();
         let mut op_prologue_after_code = Vec::new();
@@ -1542,20 +1539,14 @@ impl DfirGraph {
 
                             let is_pull = idx < pull_to_push_idx;
 
-                            let singleton_output_ident =
-                                &if op_constraints.has_singleton_output {
-                                    self.node_as_singleton_ident(node_id, op_span)
-                                } else {
-                                    Ident::new(
-                                        &format!("{}_has_no_singleton_output", op_name),
-                                        op_span,
-                                    )
-                                };
+                            let singleton_output_ident = &if op_constraints.has_singleton_output {
+                                self.node_as_singleton_ident(node_id, op_span)
+                            } else {
+                                Ident::new(&format!("{}_has_no_singleton_output", op_name), op_span)
+                            };
 
-                            let df_local =
-                                &Ident::new(GRAPH, op_span.resolved_at(df.span()));
-                            let context =
-                                &Ident::new(CONTEXT, op_span.resolved_at(context.span()));
+                            let df_local = &Ident::new(GRAPH, op_span.resolved_at(df.span()));
+                            let context = &Ident::new(CONTEXT, op_span.resolved_at(context.span()));
 
                             let singletons_resolved =
                                 self.helper_resolve_singletons(node_id, op_span);
@@ -1609,8 +1600,7 @@ impl DfirGraph {
                                 source_tag,
                                 span = op_span
                             );
-                            let work_fn_async =
-                                format_ident!("{}__async", work_fn, span = op_span);
+                            let work_fn_async = format_ident!("{}__async", work_fn, span = op_span);
 
                             let context_args = WriteContextArgs {
                                 root: &root,
@@ -1824,10 +1814,8 @@ impl DfirGraph {
                             .span()
                             .join(push_ident.span())
                             .unwrap_or_else(|| push_ident.span());
-                        let pivot_fn_ident = Ident::new(
-                            &format!("pivot_run_sg_{:?}", subgraph_id.0),
-                            pivot_span,
-                        );
+                        let pivot_fn_ident =
+                            Ident::new(&format!("pivot_run_sg_{:?}", subgraph_id.0), pivot_span);
                         let root = change_spans(root.clone(), pivot_span);
                         subgraph_op_iter_code.push(quote_spanned! {pivot_span=>
                             #[inline(always)]
@@ -1878,7 +1866,7 @@ impl DfirGraph {
                 use #root::{var_expr, var_args};
 
                 #[allow(unused_mut)]
-                let mut #df = #root::scheduled::graph::Dfir::new();
+                let mut #df = #root::scheduled::context::InlineContext::new();
 
                 #( #buffer_code )*
                 #( #op_prologue_code )*

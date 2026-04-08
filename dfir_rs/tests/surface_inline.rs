@@ -90,7 +90,10 @@ pub async fn test_inline_join() {
     tick().await;
     drop(tick);
     output.sort();
-    assert_eq!(vec![("a".to_string(), 1, 20), ("b".to_string(), 2, 10)], output);
+    assert_eq!(
+        vec![("a".to_owned(), 1, 20), ("b".to_owned(), 2, 10)],
+        output
+    );
 }
 
 /// Test 6: Multi-stratum cascade
@@ -185,11 +188,17 @@ pub async fn test_inline_multi_tick_source_stream() {
     send.send(1).unwrap();
     send.send(2).unwrap();
     tick().await;
-    assert_eq!(&[1, 2], &*dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await);
+    assert_eq!(
+        &[1, 2],
+        &*dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
 
     send.send(3).unwrap();
     tick().await;
-    assert_eq!(&[3], &*dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await);
+    assert_eq!(
+        &[3],
+        &*dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
 }
 
 /// Test 11: Multi-tick with fold::<'static> — accumulator persists across ticks.
@@ -205,15 +214,24 @@ pub async fn test_inline_multi_tick_fold_static() {
 
     send.send(1).unwrap();
     tick().await;
-    assert_eq!(&[1], &*dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await);
+    assert_eq!(
+        &[1],
+        &*dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
 
     send.send(2).unwrap();
     tick().await;
-    assert_eq!(&[3], &*dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await);
+    assert_eq!(
+        &[3],
+        &*dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
 
     send.send(10).unwrap();
     tick().await;
-    assert_eq!(&[13], &*dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await);
+    assert_eq!(
+        &[13],
+        &*dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
 }
 
 /// Test 12: Multi-tick with fold::<'tick> — accumulator resets each tick.
@@ -230,11 +248,17 @@ pub async fn test_inline_multi_tick_fold_tick() {
     send.send(1).unwrap();
     send.send(2).unwrap();
     tick().await;
-    assert_eq!(&[3], &*dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await);
+    assert_eq!(
+        &[3],
+        &*dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
 
     send.send(10).unwrap();
     tick().await;
-    assert_eq!(&[10], &*dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await);
+    assert_eq!(
+        &[10],
+        &*dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
 }
 
 /// Test 13: defer_tick — data from tick N appears in tick N+1.
@@ -250,16 +274,25 @@ pub async fn test_inline_defer_tick() {
     send.send(2).unwrap();
     tick().await;
     // Tick 0: data is deferred, nothing comes out yet.
-    assert_eq!(Vec::<i32>::new(), dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await);
+    assert_eq!(
+        Vec::<i32>::new(),
+        dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
 
     send.send(3).unwrap();
     tick().await;
     // Tick 1: data from tick 0 appears. Data sent this tick is deferred.
-    assert_eq!(vec![1, 2], dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await);
+    assert_eq!(
+        vec![1, 2],
+        dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
 
     tick().await;
     // Tick 2: data from tick 1 appears.
-    assert_eq!(vec![3], dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await);
+    assert_eq!(
+        vec![3],
+        dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
 }
 
 /// Test 14: defer_tick flip-flop — a cycle through defer_tick toggles a boolean.
@@ -277,14 +310,26 @@ pub async fn test_inline_defer_tick_flipflop() {
     };
 
     tick().await;
-    assert_eq!(vec![true], dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await);
+    assert_eq!(
+        vec![true],
+        dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
 
     tick().await;
-    assert_eq!(vec![false], dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await);
+    assert_eq!(
+        vec![false],
+        dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
 
     tick().await;
-    assert_eq!(vec![true], dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await);
+    assert_eq!(
+        vec![true],
+        dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
 
     tick().await;
-    assert_eq!(vec![false], dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await);
+    assert_eq!(
+        vec![false],
+        dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
 }

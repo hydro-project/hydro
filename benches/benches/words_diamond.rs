@@ -3,10 +3,8 @@ use std::path::PathBuf;
 use std::sync::LazyLock;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use dfir_rs::dfir_syntax;
-use dfir_rs::dfir_syntax_inline;
 use dfir_rs::itertools::Itertools;
-use dfir_rs::scheduled::graph::Dfir;
+use dfir_rs::{dfir_syntax, dfir_syntax_inline};
 use nameof::name_of;
 
 const OUTPUT: usize = 5_123_595;
@@ -66,7 +64,7 @@ fn dfir_rs_diamond_inline(c: &mut Criterion) {
                     *n += s.len();
                 }) -> for_each(|n: usize| { *count_ref = n; });
             };
-            Dfir::__run_future_sync(tick());
+            dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
             drop(tick);
             assert_eq!(OUTPUT, count);
         })

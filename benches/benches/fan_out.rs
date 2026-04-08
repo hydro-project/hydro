@@ -1,6 +1,5 @@
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use dfir_rs::dfir_syntax;
-use dfir_rs::dfir_syntax_inline;
+use dfir_rs::{dfir_syntax, dfir_syntax_inline};
 use static_assertions::const_assert;
 use timely::dataflow::operators::{Map, ToStream};
 
@@ -78,7 +77,7 @@ fn benchmark_hydroflow_surface_inline(c: &mut Criterion) {
                 my_tee -> for_each(|x| { black_box(x); });
                 my_tee -> for_each(|x| { black_box(x); });
             };
-            dfir_rs::scheduled::graph::Dfir::__run_future_sync(tick());
+            dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
         })
     });
 }

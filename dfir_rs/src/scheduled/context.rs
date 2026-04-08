@@ -418,3 +418,156 @@ struct StateData {
     lifespan: Option<StateLifespan>,
 }
 type LifespanResetFn = Box<dyn FnMut(&mut dyn Any)>;
+
+/// A lightweight context for inline codegen that avoids the overhead of the full
+/// [`Context`] (no tokio channels, no scheduler queues, no loop machinery).
+///
+/// Exposes the same method names that operator-generated code calls on both
+/// `df` (for prologues: `add_state`, `set_state_lifespan_hook`) and
+/// `context` (for iterators: `state_ref_unchecked`, `is_first_run_this_tick`, etc.).
+#[doc(hidden)]
+pub struct InlineContext {
+    states: SlotVec<StateTag, StateData>,
+    current_tick: TickInstant,
+    is_first_run_this_tick: bool,
+}
+
+impl Default for InlineContext {
+    fn default() -> Self {
+        Self {
+            states: SlotVec::new(),
+            current_tick: TickInstant::default(),
+            is_first_run_this_tick: true,
+        }
+    }
+}
+
+impl InlineContext {
+    /// Create a new inline context.
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    // --- Methods called as `df.xxx()` in operator prologues ---
+
+    /// Adds state and returns a handle.
+    pub fn add_state<T>(&mut self, state: T) -> StateHandle<T>
+    where
+        T: Any,
+    {
+        let state_data = StateData {
+            state: Box::new(state),
+            lifespan_hook_fn: None,
+            lifespan: None,
+        };
+        let state_id = self.states.insert(state_data);
+        StateHandle {
+            state_id,
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Sets a hook to modify state at the end of each tick.
+    pub fn set_state_lifespan_hook<T>(
+        &mut self,
+        handle: StateHandle<T>,
+        _lifespan: StateLifespan,
+        mut hook_fn: impl 'static + FnMut(&mut T),
+    ) where
+        T: Any,
+    {
+        let state_data = self
+            .states
+            .get_mut(handle.state_id)
+            .expect("Failed to find state with given handle.");
+        state_data.lifespan_hook_fn = Some(Box::new(move |state| {
+            (hook_fn)(state.downcast_mut::<T>().unwrap());
+        }));
+        state_data.lifespan = Some(_lifespan);
+    }
+
+    // --- Methods called as `context.xxx()` in operator iterators ---
+
+    /// Returns a shared reference to the state.
+    ///
+    /// # Safety
+    /// `StateHandle<T>` must be from _this_ instance.
+    pub unsafe fn state_ref_unchecked<T>(&self, handle: StateHandle<T>) -> &'_ T
+    where
+        T: Any,
+    {
+        let state = self
+            .states
+            .get(handle.state_id)
+            .expect("Failed to find state with given handle.")
+            .state
+            .as_ref();
+        debug_assert!(state.is::<T>());
+        unsafe { &*(state as *const dyn Any as *const T) }
+    }
+
+    /// Gets whether this is the first time running this tick.
+    pub fn is_first_run_this_tick(&self) -> bool {
+        self.is_first_run_this_tick
+    }
+
+    /// Gets the current tick count.
+    pub fn current_tick(&self) -> TickInstant {
+        self.current_tick
+    }
+
+    /// No-op: inline mode has no subgraph scheduling.
+    pub fn current_subgraph(&self) -> SubgraphId {
+        SubgraphId::from_raw(0)
+    }
+
+    /// No-op: inline mode has no subgraph scheduling.
+    pub fn schedule_subgraph(&self, _sg_id: SubgraphId, _is_external: bool) {}
+
+    /// Returns a no-op waker. In inline mode, streams are polled once per tick.
+    pub fn waker(&self) -> std::task::Waker {
+        std::task::Waker::noop().clone()
+    }
+
+    /// No-op for inline mode.
+    pub fn request_task<Fut>(&mut self, _future: Fut)
+    where
+        Fut: Future<Output = ()> + 'static,
+    {
+    }
+
+    // --- Methods called by __end_tick / __context ---
+
+    /// Returns `&Self` (for binding `context` in generated code).
+    pub fn __context(&self) -> &Self {
+        self
+    }
+
+    /// Runs end-of-tick state hooks and increments the tick counter.
+    pub fn __end_tick(&mut self) {
+        for state_data in self.states.values_mut() {
+            let StateData {
+                state,
+                lifespan_hook_fn: Some(lifespan_hook_fn),
+                lifespan: Some(StateLifespan::Tick),
+            } = state_data
+            else {
+                continue;
+            };
+            (lifespan_hook_fn)(Box::deref_mut(state));
+        }
+        self.current_tick += crate::scheduled::ticks::TickDuration::SINGLE_TICK;
+        self.is_first_run_this_tick = true;
+    }
+
+    /// Runs a future synchronously, panicking if it does not resolve immediately.
+    #[doc(hidden)]
+    pub fn __run_future_sync<Fut: std::future::Future>(fut: Fut) -> Fut::Output {
+        let mut fut = std::pin::pin!(fut);
+        let mut ctx = std::task::Context::from_waker(std::task::Waker::noop());
+        match fut.as_mut().poll(&mut ctx) {
+            std::task::Poll::Ready(out) => out,
+            std::task::Poll::Pending => panic!("Future did not resolve immediately."),
+        }
+    }
+}

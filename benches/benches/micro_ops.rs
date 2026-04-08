@@ -1,7 +1,5 @@
 use criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main};
-use dfir_rs::dfir_syntax;
-use dfir_rs::dfir_syntax_inline;
-use dfir_rs::scheduled::graph::Dfir;
+use dfir_rs::{dfir_syntax, dfir_syntax_inline};
 use rand::SeedableRng;
 use rand::distributions::{Distribution, Uniform};
 use rand::rngs::StdRng;
@@ -387,13 +385,18 @@ fn ops_inline(c: &mut Criterion) {
     c.bench_function("micro/ops_inline/identity", |b| {
         let dist = Uniform::new(0, 100);
         let data: Vec<usize> = (0..10_000).map(|_| dist.sample(&mut rng)).collect();
-        b.iter(|| {
-            let data = black_box(data.clone());
-            let mut tick = dfir_syntax_inline! {
-                source_iter(data) -> identity() -> for_each(|x| { black_box(x); });
-            };
-            Dfir::__run_future_sync(tick());
-        })
+        b.iter_batched(
+            || {
+                let data = black_box(data.clone());
+                dfir_syntax_inline! {
+                    source_iter(data) -> identity() -> for_each(|x| { black_box(x); });
+                }
+            },
+            |mut tick| {
+                dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
+            },
+            BatchSize::LargeInput,
+        )
     });
 
     c.bench_function("micro/ops_inline/map", |b| {
@@ -404,7 +407,7 @@ fn ops_inline(c: &mut Criterion) {
             let mut tick = dfir_syntax_inline! {
                 source_iter(data) -> map(|x| x + 1) -> for_each(|x| { black_box(x); });
             };
-            Dfir::__run_future_sync(tick());
+            dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
         })
     });
 
@@ -416,7 +419,7 @@ fn ops_inline(c: &mut Criterion) {
             let mut tick = dfir_syntax_inline! {
                 source_iter(data) -> fold::<'tick>(|| 0, |accum: &mut _, elem| { *accum += elem }) -> for_each(|x| { black_box(x); });
             };
-            Dfir::__run_future_sync(tick());
+            dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
         })
     });
 
@@ -433,7 +436,7 @@ fn ops_inline(c: &mut Criterion) {
                 source_iter(i1) -> [1]my_join;
                 my_join -> for_each(|x| { black_box(x); });
             };
-            Dfir::__run_future_sync(tick());
+            dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
         })
     });
 
@@ -448,7 +451,7 @@ fn ops_inline(c: &mut Criterion) {
                 my_tee -> for_each(|x| { black_box(x); });
                 my_tee -> for_each(|x| { black_box(x); });
             };
-            Dfir::__run_future_sync(tick());
+            dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
         })
     });
 
@@ -465,7 +468,7 @@ fn ops_inline(c: &mut Criterion) {
                 source_iter(i1) -> my_union;
                 my_union -> for_each(|x| { black_box(x); });
             };
-            Dfir::__run_future_sync(tick());
+            dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
         })
     });
 
@@ -499,7 +502,7 @@ fn ops_inline(c: &mut Criterion) {
         };
 
         b.iter(|| {
-            Dfir::__run_future_sync(tick());
+            dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
         })
     });
 }
