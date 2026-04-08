@@ -402,74 +402,99 @@ fn ops_inline(c: &mut Criterion) {
     c.bench_function("micro/ops_inline/map", |b| {
         let dist = Uniform::new(0, 100);
         let data: Vec<usize> = (0..10_000).map(|_| dist.sample(&mut rng)).collect();
-        b.iter(|| {
-            let data = black_box(data.clone());
-            let mut tick = dfir_syntax_inline! {
-                source_iter(data) -> map(|x| x + 1) -> for_each(|x| { black_box(x); });
-            };
-            dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
-        })
+        b.iter_batched(
+            || {
+                let data = black_box(data.clone());
+                dfir_syntax_inline! {
+                    source_iter(data) -> map(|x| x + 1) -> for_each(|x| { black_box(x); });
+                }
+            },
+            |mut tick| {
+                dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
+            },
+            BatchSize::LargeInput,
+        )
     });
 
     c.bench_function("micro/ops_inline/fold", |b| {
         let dist = Uniform::new(0, 100);
         let data: Vec<usize> = (0..10_000).map(|_| dist.sample(&mut rng)).collect();
-        b.iter(|| {
-            let data = black_box(data.clone());
-            let mut tick = dfir_syntax_inline! {
-                source_iter(data) -> fold::<'tick>(|| 0, |accum: &mut _, elem| { *accum += elem }) -> for_each(|x| { black_box(x); });
-            };
-            dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
-        })
+        b.iter_batched(
+            || {
+                let data = black_box(data.clone());
+                dfir_syntax_inline! {
+                    source_iter(data) -> fold::<'tick>(|| 0, |accum: &mut _, elem| { *accum += elem }) -> for_each(|x| { black_box(x); });
+                }
+            },
+            |mut tick| {
+                dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
+            },
+            BatchSize::LargeInput,
+        )
     });
 
     c.bench_function("micro/ops_inline/join", |b| {
         let dist = Uniform::new(0, 100);
         let input0: Vec<(usize, ())> = (0..10_000).map(|_| (dist.sample(&mut rng), ())).collect();
         let input1: Vec<(usize, ())> = (0..10_000).map(|_| (dist.sample(&mut rng), ())).collect();
-        b.iter(|| {
-            let i0 = black_box(input0.clone());
-            let i1 = black_box(input1.clone());
-            let mut tick = dfir_syntax_inline! {
-                my_join = join();
-                source_iter(i0) -> [0]my_join;
-                source_iter(i1) -> [1]my_join;
-                my_join -> for_each(|x| { black_box(x); });
-            };
-            dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
-        })
+        b.iter_batched(
+            || {
+                let i0 = black_box(input0.clone());
+                let i1 = black_box(input1.clone());
+                dfir_syntax_inline! {
+                    my_join = join();
+                    source_iter(i0) -> [0]my_join;
+                    source_iter(i1) -> [1]my_join;
+                    my_join -> for_each(|x| { black_box(x); });
+                }
+            },
+            |mut tick| {
+                dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
+            },
+            BatchSize::LargeInput,
+        )
     });
 
     c.bench_function("micro/ops_inline/tee", |b| {
         let dist = Uniform::new(0, 100);
         let data: Vec<usize> = (0..10_000).map(|_| dist.sample(&mut rng)).collect();
-        b.iter(|| {
-            let data = black_box(data.clone());
-            let mut tick = dfir_syntax_inline! {
-                my_tee = tee();
-                source_iter(data) -> my_tee;
-                my_tee -> for_each(|x| { black_box(x); });
-                my_tee -> for_each(|x| { black_box(x); });
-            };
-            dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
-        })
+        b.iter_batched(
+            || {
+                let data = black_box(data.clone());
+                dfir_syntax_inline! {
+                    my_tee = tee();
+                    source_iter(data) -> my_tee;
+                    my_tee -> for_each(|x| { black_box(x); });
+                    my_tee -> for_each(|x| { black_box(x); });
+                }
+            },
+            |mut tick| {
+                dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
+            },
+            BatchSize::LargeInput,
+        )
     });
 
     c.bench_function("micro/ops_inline/union", |b| {
         let dist = Uniform::new(0, 100);
         let input0: Vec<usize> = (0..10_000).map(|_| dist.sample(&mut rng)).collect();
         let input1: Vec<usize> = (0..10_000).map(|_| dist.sample(&mut rng)).collect();
-        b.iter(|| {
-            let i0 = black_box(input0.clone());
-            let i1 = black_box(input1.clone());
-            let mut tick = dfir_syntax_inline! {
-                my_union = union();
-                source_iter(i0) -> my_union;
-                source_iter(i1) -> my_union;
-                my_union -> for_each(|x| { black_box(x); });
-            };
-            dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
-        })
+        b.iter_batched(
+            || {
+                let i0 = black_box(input0.clone());
+                let i1 = black_box(input1.clone());
+                dfir_syntax_inline! {
+                    my_union = union();
+                    source_iter(i0) -> my_union;
+                    source_iter(i1) -> my_union;
+                    my_union -> for_each(|x| { black_box(x); });
+                }
+            },
+            |mut tick| {
+                dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
+            },
+            BatchSize::LargeInput,
+        )
     });
 
     c.bench_function("micro/ops_inline/next_tick/small", |b| {
