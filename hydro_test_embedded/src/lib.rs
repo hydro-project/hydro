@@ -16,6 +16,17 @@ pub mod embedded {
     reason = "generated code"
 )]
 #[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
+pub mod embedded_inline {
+    include!(concat!(env!("OUT_DIR"), "/embedded_inline.rs"));
+}
+
+#[cfg(feature = "test_embedded")]
+#[expect(
+    clippy::allow_attributes,
+    clippy::allow_attributes_without_reason,
+    reason = "generated code"
+)]
+#[allow(unused_imports, unused_qualifications, missing_docs, non_snake_case)]
 pub mod singleton_input {
     include!(concat!(env!("OUT_DIR"), "/singleton_input.rs"));
 }
@@ -92,6 +103,26 @@ mod tests {
         };
         let flow = crate::embedded::capitalize(input, &mut outputs);
         run_dfir(flow).await;
+        assert_eq!(collected, vec!["HELLO", "WORLD", "HYDRO"]);
+    }
+
+    // --- capitalize_inline (no networking, inline codegen) ---
+    #[tokio::test]
+    async fn test_embedded_capitalize_inline() {
+        let input = stream::iter(vec![
+            "hello".to_owned(),
+            "world".to_owned(),
+            "hydro".to_owned(),
+        ]);
+        let mut collected = vec![];
+        let mut outputs = crate::embedded_inline::capitalize_inline::EmbeddedOutputs {
+            output: |s: String| collected.push(s),
+        };
+        let mut tick = crate::embedded_inline::capitalize_inline(input, &mut outputs);
+        tokio::task::LocalSet::new()
+            .run_until(async { tick().await })
+            .await;
+        drop(tick);
         assert_eq!(collected, vec!["HELLO", "WORLD", "HYDRO"]);
     }
 

@@ -29,6 +29,23 @@ fn generate_embedded() {
         .unwrap();
     }
 
+    // --- capitalize_inline (local, no networking, inline codegen) ---
+    {
+        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
+        let process = flow.process::<()>();
+        hydro_test::local::capitalize::capitalize(process.embedded_input("input"));
+
+        let code = flow
+            .with_process(&process, "capitalize_inline")
+            .generate_embedded_inline("hydro_test");
+
+        std::fs::write(
+            format!("{out_dir}/embedded_inline.rs"),
+            prettyplease::unparse(&code),
+        )
+        .unwrap();
+    }
+
     // --- singleton_input (local, singleton + stream) ---
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();

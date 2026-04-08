@@ -333,3 +333,69 @@ pub async fn test_inline_defer_tick_flipflop() {
         dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
     );
 }
+
+/// Test 15: cross_singleton — the pattern Hydro generates for combining streams with singletons.
+/// This mimics what Hydro's `stream.cross_singleton(singleton)` compiles to.
+#[dfir_rs::test]
+pub async fn test_inline_cross_singleton() {
+    let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<(i32, i32)>();
+    let mut tick = dfir_rs::dfir_syntax_inline! {
+        // A stream of values
+        items = source_stream(recv);
+        // A singleton: sum of a fixed set
+        total = source_iter(1..=3_i32) -> fold::<'tick>(|| 0_i32, |a: &mut i32, x: i32| *a += x);
+        // Cross the stream with the singleton
+        cross = cross_singleton();
+        items -> [input]cross;
+        total -> [single]cross;
+        cross -> for_each(|(item, total): (i32, i32)| out_send.send((item, total)).unwrap());
+    };
+
+    send.send(10).unwrap();
+    send.send(20).unwrap();
+    tick().await;
+    // Each stream item is paired with the singleton value (6 = 1+2+3)
+    let mut result = dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await;
+    result.sort();
+    assert_eq!(vec![(10, 6), (20, 6)], result);
+}
+
+/// Test 16: Multi-tick Hydro-like pattern — source_stream → fold::<'static> → cross_singleton with
+/// another stream, simulating a running total joined with incoming data.
+#[dfir_rs::test]
+pub async fn test_inline_hydro_pattern_multi_tick() {
+    let (data_send, data_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (count_send, count_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<(i32, i32)>();
+    let mut tick = dfir_rs::dfir_syntax_inline! {
+        // Running count across ticks
+        running_count = source_stream(count_recv)
+            -> fold::<'static>(|| 0_i32, |a: &mut i32, x: i32| *a += x);
+        // Data stream
+        data = source_stream(data_recv);
+        // Cross data with running count
+        cross = cross_singleton();
+        data -> [input]cross;
+        running_count -> [single]cross;
+        cross -> for_each(|(d, c): (i32, i32)| out_send.send((d, c)).unwrap());
+    };
+
+    // Tick 0: count=5, data=[100]
+    count_send.send(5).unwrap();
+    data_send.send(100).unwrap();
+    tick().await;
+    assert_eq!(
+        vec![(100, 5)],
+        dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
+
+    // Tick 1: count accumulates to 5+3=8, data=[200,300]
+    count_send.send(3).unwrap();
+    data_send.send(200).unwrap();
+    data_send.send(300).unwrap();
+    tick().await;
+    let mut result = dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await;
+    result.sort();
+    assert_eq!(vec![(200, 8), (300, 8)], result);
+}
