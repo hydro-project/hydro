@@ -197,6 +197,24 @@ impl<'a> Dfir<'a> {
         self.diagnostics.as_deref()
     }
 
+    /// Returns a reference to the internal context. Used by inline codegen.
+    #[doc(hidden)]
+    pub fn __context(&self) -> &Context {
+        &self.context
+    }
+
+    /// Runs a future synchronously, panicking if it does not resolve immediately.
+    /// Used by inline codegen.
+    #[doc(hidden)]
+    pub fn __run_future_sync<Fut: std::future::Future>(fut: Fut) -> Fut::Output {
+        let mut fut = std::pin::pin!(fut);
+        let mut ctx = std::task::Context::from_waker(std::task::Waker::noop());
+        match fut.as_mut().poll(&mut ctx) {
+            std::task::Poll::Ready(out) => out,
+            std::task::Poll::Pending => panic!("Future did not resolve immediately."),
+        }
+    }
+
     /// Returns a reactor for externally scheduling subgraphs, possibly from another thread.
     /// Reactor events are considered to be external events.
     pub fn reactor(&self) -> Reactor {

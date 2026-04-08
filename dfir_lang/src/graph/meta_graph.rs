@@ -1368,6 +1368,533 @@ impl DfirGraph {
         })
     }
 
+    /// Emit this graph as runnable Rust source code tokens that execute inline,
+    /// without the `Dfir` runtime scheduler. Subgraphs run in topological (stratum)
+    /// order using local `Vec<T>` buffers instead of handoffs.
+    ///
+    /// This is an experimental codegen path for the S3+Ref3 inline DAG design.
+    pub fn as_code_inline(
+        &self,
+        root: &TokenStream,
+        include_type_guards: bool,
+        prefix: TokenStream,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<TokenStream, Diagnostics> {
+        let df = Ident::new(GRAPH, Span::call_site());
+        let context = Ident::new(CONTEXT, Span::call_site());
+
+        // 1. Generate local Vec buffers for each handoff node.
+        let buffer_code: Vec<TokenStream> = self
+            .nodes
+            .iter()
+            .filter_map(|(node_id, node)| match node {
+                GraphNode::Operator(_) => None,
+                &GraphNode::Handoff { src_span, dst_span } => {
+                    Some((node_id, (src_span, dst_span)))
+                }
+                GraphNode::ModuleBoundary { .. } => panic!(),
+            })
+            .map(|(node_id, (src_span, dst_span))| {
+                let span = src_span.join(dst_span).unwrap_or(src_span);
+                let buf_ident = Ident::new(&format!("hoff_{:?}_buf", node_id.data()), span);
+                quote_spanned! {span=>
+                    let mut #buf_ident: Vec<_> = Vec::new();
+                }
+            })
+            .collect();
+
+        // 2. Collect subgraph handoffs (same as as_code).
+        let subgraph_handoffs = self.helper_collect_subgraph_handoffs();
+
+        // 3. Sort subgraphs by stratum, then no-preds first (for type inference).
+        let (subgraphs_without_preds, subgraphs_with_preds) = self
+            .subgraph_nodes
+            .iter()
+            .partition::<Vec<_>, _>(|(_, nodes)| {
+                nodes
+                    .iter()
+                    .any(|&node_id| self.node_degree_in(node_id) == 0)
+            });
+
+        // Sort each group by stratum.
+        let mut all_subgraphs: Vec<_> = subgraphs_without_preds
+            .iter()
+            .chain(subgraphs_with_preds.iter())
+            .copied()
+            .collect();
+        all_subgraphs.sort_by_key(|&(sg_id, _)| {
+            self.subgraph_stratum.get(sg_id).copied().unwrap_or(0)
+        });
+
+        let mut op_prologue_code = Vec::new();
+        let mut op_prologue_after_code = Vec::new();
+        let mut subgraph_blocks = Vec::new();
+        {
+            for &(subgraph_id, subgraph_nodes) in all_subgraphs.iter() {
+                let (recv_hoffs, send_hoffs) = &subgraph_handoffs[subgraph_id];
+
+                // Generate buffer ident helpers for this subgraph's handoffs.
+                let recv_port_idents: Vec<Ident> = recv_hoffs
+                    .iter()
+                    .map(|&hoff_id| self.node_as_ident(hoff_id, true))
+                    .collect();
+                let send_port_idents: Vec<Ident> = send_hoffs
+                    .iter()
+                    .map(|&hoff_id| self.node_as_ident(hoff_id, false))
+                    .collect();
+
+                // Map handoff node IDs to buffer idents.
+                let recv_buf_idents: Vec<Ident> = recv_hoffs
+                    .iter()
+                    .map(|&hoff_id| {
+                        let span = self.nodes[hoff_id].span();
+                        Ident::new(&format!("hoff_{:?}_buf", hoff_id.data()), span)
+                    })
+                    .collect();
+                let send_buf_idents: Vec<Ident> = send_hoffs
+                    .iter()
+                    .map(|&hoff_id| {
+                        let span = self.nodes[hoff_id].span();
+                        Ident::new(&format!("hoff_{:?}_buf", hoff_id.data()), span)
+                    })
+                    .collect();
+
+                // Recv port code: drain from buffer into iterator.
+                let recv_port_code: Vec<TokenStream> = recv_port_idents
+                    .iter()
+                    .zip(recv_buf_idents.iter())
+                    .map(|(port_ident, buf_ident)| {
+                        quote_spanned! {port_ident.span()=>
+                            let #port_ident = #root::dfir_pipes::pull::iter(#buf_ident.drain(..));
+                        }
+                    })
+                    .collect();
+
+                // Send port code: push into buffer.
+                let send_port_code: Vec<TokenStream> = send_port_idents
+                    .iter()
+                    .zip(send_buf_idents.iter())
+                    .map(|(port_ident, buf_ident)| {
+                        quote_spanned! {port_ident.span()=>
+                            let #port_ident = #root::dfir_pipes::push::vec_push(&mut #buf_ident);
+                        }
+                    })
+                    .collect();
+
+                let loop_id = self.node_loop(subgraph_nodes[0]);
+
+                let mut subgraph_op_iter_code = Vec::new();
+                let mut subgraph_op_iter_after_code = Vec::new();
+                {
+                    let pull_to_push_idx = self.find_pull_to_push_idx(subgraph_nodes);
+
+                    let (pull_half, push_half) = subgraph_nodes.split_at(pull_to_push_idx);
+                    let nodes_iter = pull_half.iter().chain(push_half.iter().rev());
+
+                    for (idx, &node_id) in nodes_iter.enumerate() {
+                        let node = &self.nodes[node_id];
+                        assert!(
+                            matches!(node, GraphNode::Operator(_)),
+                            "Handoffs are not part of subgraphs."
+                        );
+                        let op_inst = &self.operator_instances[node_id];
+
+                        let op_span = node.span();
+                        let op_name = op_inst.op_constraints.name;
+                        let root = change_spans(root.clone(), op_span);
+                        let op_constraints = OPERATORS
+                            .iter()
+                            .find(|op| op_name == op.name)
+                            .unwrap_or_else(|| panic!("Failed to find op: {}", op_name));
+
+                        let ident = self.node_as_ident(node_id, false);
+
+                        {
+                            let mut input_edges = self
+                                .graph
+                                .predecessor_edges(node_id)
+                                .map(|edge_id| (self.edge_ports(edge_id).1, edge_id))
+                                .collect::<Vec<_>>();
+                            input_edges.sort();
+
+                            let inputs = input_edges
+                                .iter()
+                                .map(|&(_port, edge_id)| {
+                                    let (pred, _) = self.edge(edge_id);
+                                    self.node_as_ident(pred, true)
+                                })
+                                .collect::<Vec<_>>();
+
+                            let mut output_edges = self
+                                .graph
+                                .successor_edges(node_id)
+                                .map(|edge_id| (&self.ports[edge_id].0, edge_id))
+                                .collect::<Vec<_>>();
+                            output_edges.sort();
+
+                            let outputs = output_edges
+                                .iter()
+                                .map(|&(_port, edge_id)| {
+                                    let (_, succ) = self.edge(edge_id);
+                                    self.node_as_ident(succ, false)
+                                })
+                                .collect::<Vec<_>>();
+
+                            let is_pull = idx < pull_to_push_idx;
+
+                            let singleton_output_ident =
+                                &if op_constraints.has_singleton_output {
+                                    self.node_as_singleton_ident(node_id, op_span)
+                                } else {
+                                    Ident::new(
+                                        &format!("{}_has_no_singleton_output", op_name),
+                                        op_span,
+                                    )
+                                };
+
+                            let df_local =
+                                &Ident::new(GRAPH, op_span.resolved_at(df.span()));
+                            let context =
+                                &Ident::new(CONTEXT, op_span.resolved_at(context.span()));
+
+                            let singletons_resolved =
+                                self.helper_resolve_singletons(node_id, op_span);
+                            let arguments = &process_singletons::postprocess_singletons(
+                                op_inst.arguments_raw.clone(),
+                                singletons_resolved.clone(),
+                                context,
+                            );
+                            let arguments_handles =
+                                &process_singletons::postprocess_singletons_handles(
+                                    op_inst.arguments_raw.clone(),
+                                    singletons_resolved.clone(),
+                                );
+
+                            let source_tag = 'a: {
+                                if let Some(tag) = self.operator_tag.get(node_id).cloned() {
+                                    break 'a tag;
+                                }
+
+                                #[cfg(nightly)]
+                                if proc_macro::is_available() {
+                                    let op_span = op_span.unwrap();
+                                    break 'a format!(
+                                        "loc_{}_{}_{}_{}_{}",
+                                        crate::pretty_span::make_source_path_relative(
+                                            &op_span.file()
+                                        )
+                                        .display()
+                                        .to_string()
+                                        .replace(|x: char| !x.is_ascii_alphanumeric(), "_"),
+                                        op_span.start().line(),
+                                        op_span.start().column(),
+                                        op_span.end().line(),
+                                        op_span.end().column(),
+                                    );
+                                }
+
+                                format!(
+                                    "loc_nopath_{}_{}_{}_{}",
+                                    op_span.start().line,
+                                    op_span.start().column,
+                                    op_span.end().line,
+                                    op_span.end().column
+                                )
+                            };
+
+                            let work_fn = format_ident!(
+                                "{}__{}__{}",
+                                ident,
+                                op_name,
+                                source_tag,
+                                span = op_span
+                            );
+                            let work_fn_async =
+                                format_ident!("{}__async", work_fn, span = op_span);
+
+                            let context_args = WriteContextArgs {
+                                root: &root,
+                                df_ident: df_local,
+                                context,
+                                subgraph_id,
+                                node_id,
+                                loop_id,
+                                op_span,
+                                op_tag: self.operator_tag.get(node_id).cloned(),
+                                work_fn: &work_fn,
+                                work_fn_async: &work_fn_async,
+                                ident: &ident,
+                                is_pull,
+                                inputs: &inputs,
+                                outputs: &outputs,
+                                singleton_output_ident,
+                                op_name,
+                                op_inst,
+                                arguments,
+                                arguments_handles,
+                            };
+
+                            let write_result =
+                                (op_constraints.write_fn)(&context_args, diagnostics);
+                            let OperatorWriteOutput {
+                                write_prologue,
+                                write_prologue_after,
+                                write_iterator,
+                                write_iterator_after,
+                            } = write_result.unwrap_or_else(|()| {
+                                assert!(
+                                    diagnostics.has_error(),
+                                    "Operator `{}` returned `Err` but emitted no diagnostics, this is a bug.",
+                                    op_name,
+                                );
+                                OperatorWriteOutput {
+                                    write_iterator: null_write_iterator_fn(&context_args),
+                                    ..Default::default()
+                                }
+                            });
+
+                            op_prologue_code.push(syn::parse_quote! {
+                                #[allow(non_snake_case)]
+                                #[inline(always)]
+                                fn #work_fn<T>(thunk: impl ::std::ops::FnOnce() -> T) -> T {
+                                    thunk()
+                                }
+
+                                #[allow(non_snake_case)]
+                                #[inline(always)]
+                                async fn #work_fn_async<T>(
+                                    thunk: impl ::std::future::Future<Output = T>,
+                                ) -> T {
+                                    thunk.await
+                                }
+                            });
+                            op_prologue_code.push(write_prologue);
+                            op_prologue_after_code.push(write_prologue_after);
+                            subgraph_op_iter_code.push(write_iterator);
+
+                            if include_type_guards {
+                                let type_guard = if is_pull {
+                                    quote_spanned! {op_span=>
+                                        let #ident = {
+                                            #[allow(non_snake_case)]
+                                            #[inline(always)]
+                                            pub fn #work_fn<Item, Input>(input: Input)
+                                                -> impl #root::dfir_pipes::pull::Pull<Item = Item, Meta = (), CanPend = Input::CanPend, CanEnd = Input::CanEnd>
+                                            where
+                                                Input: #root::dfir_pipes::pull::Pull<Item = Item, Meta = ()>,
+                                            {
+                                                #root::pin_project_lite::pin_project! {
+                                                    #[repr(transparent)]
+                                                    struct Pull<Item, Input: #root::dfir_pipes::pull::Pull<Item = Item>> {
+                                                        #[pin]
+                                                        inner: Input
+                                                    }
+                                                }
+
+                                                impl<Item, Input> #root::dfir_pipes::pull::Pull for Pull<Item, Input>
+                                                where
+                                                    Input: #root::dfir_pipes::pull::Pull<Item = Item>,
+                                                {
+                                                    type Ctx<'ctx> = Input::Ctx<'ctx>;
+
+                                                    type Item = Item;
+                                                    type Meta = Input::Meta;
+                                                    type CanPend = Input::CanPend;
+                                                    type CanEnd = Input::CanEnd;
+
+                                                    #[inline(always)]
+                                                    fn pull(
+                                                        self: ::std::pin::Pin<&mut Self>,
+                                                        ctx: &mut Self::Ctx<'_>,
+                                                    ) -> #root::dfir_pipes::pull::PullStep<Self::Item, Self::Meta, Self::CanPend, Self::CanEnd> {
+                                                        #root::dfir_pipes::pull::Pull::pull(self.project().inner, ctx)
+                                                    }
+
+                                                    #[inline(always)]
+                                                    fn size_hint(&self) -> (usize, Option<usize>) {
+                                                        #root::dfir_pipes::pull::Pull::size_hint(&self.inner)
+                                                    }
+                                                }
+
+                                                Pull {
+                                                    inner: input
+                                                }
+                                            }
+                                            #work_fn::<_, _>( #ident )
+                                        };
+                                    }
+                                } else {
+                                    quote_spanned! {op_span=>
+                                        let #ident = {
+                                            #[allow(non_snake_case)]
+                                            #[inline(always)]
+                                            pub fn #work_fn<Item, Psh>(psh: Psh) -> impl #root::dfir_pipes::push::Push<Item, (), CanPend = Psh::CanPend>
+                                            where
+                                                Psh: #root::dfir_pipes::push::Push<Item, ()>
+                                            {
+                                                #root::pin_project_lite::pin_project! {
+                                                    #[repr(transparent)]
+                                                    struct PushGuard<Psh> {
+                                                        #[pin]
+                                                        inner: Psh,
+                                                    }
+                                                }
+
+                                                impl<Item, Psh> #root::dfir_pipes::push::Push<Item, ()> for PushGuard<Psh>
+                                                where
+                                                    Psh: #root::dfir_pipes::push::Push<Item, ()>,
+                                                {
+                                                    type Ctx<'ctx> = Psh::Ctx<'ctx>;
+
+                                                    type CanPend = Psh::CanPend;
+
+                                                    #[inline(always)]
+                                                    fn poll_ready(
+                                                        self: ::std::pin::Pin<&mut Self>,
+                                                        ctx: &mut Self::Ctx<'_>,
+                                                    ) -> #root::dfir_pipes::push::PushStep<Self::CanPend> {
+                                                        #root::dfir_pipes::push::Push::poll_ready(self.project().inner, ctx)
+                                                    }
+
+                                                    #[inline(always)]
+                                                    fn start_send(
+                                                        self: ::std::pin::Pin<&mut Self>,
+                                                        item: Item,
+                                                        meta: (),
+                                                    ) {
+                                                        #root::dfir_pipes::push::Push::start_send(self.project().inner, item, meta)
+                                                    }
+
+                                                    #[inline(always)]
+                                                    fn poll_flush(
+                                                        self: ::std::pin::Pin<&mut Self>,
+                                                        ctx: &mut Self::Ctx<'_>,
+                                                    ) -> #root::dfir_pipes::push::PushStep<Self::CanPend> {
+                                                        #root::dfir_pipes::push::Push::poll_flush(self.project().inner, ctx)
+                                                    }
+
+                                                    #[inline(always)]
+                                                    fn size_hint(
+                                                        self: ::std::pin::Pin<&mut Self>,
+                                                        hint: (usize, Option<usize>),
+                                                    ) {
+                                                        #root::dfir_pipes::push::Push::size_hint(self.project().inner, hint)
+                                                    }
+                                                }
+
+                                                PushGuard {
+                                                    inner: psh
+                                                }
+                                            }
+                                            #work_fn( #ident )
+                                        };
+                                    }
+                                };
+                                subgraph_op_iter_code.push(type_guard);
+                            }
+                            subgraph_op_iter_after_code.push(write_iterator_after);
+                        }
+                    }
+
+                    {
+                        // Determine pull and push halves of the `Pivot`.
+                        let pull_ident = if 0 < pull_to_push_idx {
+                            self.node_as_ident(subgraph_nodes[pull_to_push_idx - 1], false)
+                        } else {
+                            recv_port_idents[0].clone()
+                        };
+
+                        #[rustfmt::skip]
+                        let push_ident = if let Some(&node_id) =
+                            subgraph_nodes.get(pull_to_push_idx)
+                        {
+                            self.node_as_ident(node_id, false)
+                        } else if 1 == send_port_idents.len() {
+                            send_port_idents[0].clone()
+                        } else {
+                            diagnostics.push(Diagnostic::spanned(
+                                pull_ident.span(),
+                                Level::Error,
+                                "Degenerate subgraph detected, is there a disconnected `null()` or other degenerate pipeline somewhere?",
+                            ));
+                            continue;
+                        };
+
+                        let pivot_span = pull_ident
+                            .span()
+                            .join(push_ident.span())
+                            .unwrap_or_else(|| push_ident.span());
+                        let pivot_fn_ident = Ident::new(
+                            &format!("pivot_run_sg_{:?}", subgraph_id.0),
+                            pivot_span,
+                        );
+                        let root = change_spans(root.clone(), pivot_span);
+                        subgraph_op_iter_code.push(quote_spanned! {pivot_span=>
+                            #[inline(always)]
+                            fn #pivot_fn_ident<Pul, Psh, Item>(pull: Pul, push: Psh)
+                                -> impl ::std::future::Future<Output = ()>
+                            where
+                                Pul: #root::dfir_pipes::pull::Pull<Item = Item>,
+                                Psh: #root::dfir_pipes::push::Push<Item, Pul::Meta>,
+                            {
+                                #root::dfir_pipes::pull::Pull::send_push(pull, push)
+                            }
+                            (#pivot_fn_ident)(#pull_ident, #push_ident).await;
+                        });
+                    }
+                };
+
+                // Generate a dummy subgraph ID for state lifespan hooks.
+                let sg_ident = subgraph_id.as_ident(Span::call_site());
+
+                // Each subgraph block runs inside an async block resolved synchronously.
+                subgraph_blocks.push(quote! {
+                    let #sg_ident: #root::scheduled::SubgraphId = #root::util::slot_vec::Key::from_raw(0);
+                    #root::scheduled::graph::Dfir::__run_future_sync(async {
+                        let #context = #df.__context();
+                        #( #recv_port_code )*
+                        #( #send_port_code )*
+                        #( #subgraph_op_iter_code )*
+                        #( #subgraph_op_iter_after_code )*
+                    });
+                });
+
+                // Collect per-subgraph prologues into the main prologue lists.
+                // (They are already pushed above in the operator loop.)
+            }
+        }
+
+        if diagnostics.has_error() {
+            return Err(std::mem::take(diagnostics));
+        }
+        let _ = diagnostics;
+
+        // Put ALL prologues and subgraph blocks together.
+        // Prologues must come before subgraph blocks because they define state handles
+        // and variables that subgraph code references.
+        let code = quote! {
+            #( #buffer_code )*
+            #( #op_prologue_code )*
+            #( #subgraph_blocks )*
+            #( #op_prologue_after_code )*
+        };
+
+        Ok(quote! {
+            {
+                #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref)]
+                {
+                    #prefix
+
+                    use #root::{var_expr, var_args};
+
+                    let mut #df = #root::scheduled::graph::Dfir::new();
+
+                    #code
+                }
+            }
+        })
+    }
+
     /// Color mode (pull vs. push, handoff vs. comp) for nodes. Some nodes can be push *OR* pull;
     /// those nodes will not be set in the returned map.
     pub fn node_color_map(&self) -> SparseSecondaryMap<GraphNodeId, Color> {

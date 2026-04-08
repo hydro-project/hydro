@@ -484,6 +484,51 @@ pub fn build_dfir_code(
     })
 }
 
+/// Compiles a [`DfirCode`] AST into inline source code that runs the dataflow
+/// without the `Dfir` runtime scheduler. Experimental S3+Ref3 codegen path.
+pub fn build_dfir_code_inline(
+    dfir_code: DfirCode,
+    root: &TokenStream,
+) -> Result<BuildDfirCodeOutput, Diagnostics> {
+    let flat_graph_builder = FlatGraphBuilder::from_dfir(dfir_code);
+
+    let FlatGraphBuilderOutput {
+        mut flat_graph,
+        uses,
+        mut diagnostics,
+    } = flat_graph_builder.build()?;
+
+    let () = match flat_graph.merge_modules() {
+        Ok(()) => (),
+        Err(d) => {
+            diagnostics.push(d);
+            return Err(diagnostics);
+        }
+    };
+
+    eliminate_extra_unions_tees(&mut flat_graph);
+    let partitioned_graph = match partition_graph(flat_graph) {
+        Ok(partitioned_graph) => partitioned_graph,
+        Err(d) => {
+            diagnostics.push(d);
+            return Err(diagnostics);
+        }
+    };
+
+    let code = partitioned_graph.as_code_inline(
+        root,
+        true,
+        quote::quote! { #( #uses )* },
+        &mut diagnostics,
+    )?;
+
+    Ok(BuildDfirCodeOutput {
+        partitioned_graph,
+        code,
+        diagnostics,
+    })
+}
+
 /// Changes all of token's spans to `span`, recursing into groups.
 fn change_spans(tokens: TokenStream, span: Span) -> TokenStream {
     use proc_macro2::{Group, TokenTree};

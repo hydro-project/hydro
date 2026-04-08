@@ -36,8 +36,8 @@ mod declarative_macro;
 #[cfg_attr(docsrs, doc(cfg(feature = "dfir_macro")))]
 #[cfg(feature = "dfir_macro")]
 pub use dfir_macro::{
-    DemuxEnum, dfir_main as main, dfir_parser, dfir_syntax, dfir_syntax_noemit, dfir_test as test,
-    monotonic_fn, morphism,
+    DemuxEnum, dfir_main as main, dfir_parser, dfir_syntax, dfir_syntax_inline,
+    dfir_syntax_inline_noemit, dfir_syntax_noemit, dfir_test as test, monotonic_fn, morphism,
 };
 pub use futures::never::Never;
 
