@@ -1847,16 +1847,16 @@ impl DfirGraph {
                 // Generate a dummy subgraph ID for state lifespan hooks.
                 let sg_ident = subgraph_id.as_ident(Span::call_site());
 
-                // Each subgraph block runs inside an async block resolved synchronously.
+                // Each subgraph block — .await works because the whole output is async.
                 subgraph_blocks.push(quote! {
                     let #sg_ident: #root::scheduled::SubgraphId = #root::util::slot_vec::Key::from_raw(0);
-                    #root::scheduled::graph::Dfir::__run_future_sync(async {
+                    {
                         let #context = #df.__context();
                         #( #recv_port_code )*
                         #( #send_port_code )*
                         #( #subgraph_op_iter_code )*
                         #( #subgraph_op_iter_after_code )*
-                    });
+                    }
                 });
 
                 // Collect per-subgraph prologues into the main prologue lists.
@@ -1880,7 +1880,7 @@ impl DfirGraph {
         };
 
         Ok(quote! {
-            {
+            async {
                 #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref)]
                 {
                     #prefix

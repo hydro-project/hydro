@@ -2,35 +2,34 @@
 //! This runs the dataflow inline using local Vec buffers instead of the Dfir scheduler.
 
 /// Test 1: Simple linear pipeline: source_iter -> map -> for_each
-#[test]
-pub fn test_inline_linear() {
+#[dfir_rs::test]
+pub async fn test_inline_linear() {
     let output = std::cell::RefCell::new(Vec::new());
 
     dfir_rs::dfir_syntax_inline_noemit! {
         source_iter(0..5_i32) -> map(|x: i32| x * 10) -> for_each(|v: i32| output.borrow_mut().push(v));
-    };
+    }.await;
 
     assert_eq!(&[0, 10, 20, 30, 40][..], &*output.borrow());
 }
 
-/// Test 2: Pipeline with fold (uses state API, crosses stratum boundary):
-/// source_iter -> fold -> for_each
-#[test]
-pub fn test_inline_fold() {
+/// Test 2: Pipeline with fold (uses state API, crosses stratum boundary)
+#[dfir_rs::test]
+pub async fn test_inline_fold() {
     let output = std::cell::RefCell::new(Vec::new());
 
     dfir_rs::dfir_syntax_inline_noemit! {
         source_iter(0..5_i32)
             -> fold(|| 0_i32, |acc: &mut i32, x: i32| *acc += x)
             -> for_each(|v: i32| output.borrow_mut().push(v));
-    };
+    }.await;
 
     assert_eq!(&[10][..], &*output.borrow());
 }
 
 /// Test 3: Diamond DAG: source -> tee -> (branch_a, branch_b) -> union -> for_each
-#[test]
-pub fn test_inline_diamond() {
+#[dfir_rs::test]
+pub async fn test_inline_diamond() {
     let output = std::cell::RefCell::new(Vec::new());
 
     dfir_rs::dfir_syntax_inline_noemit! {
@@ -38,7 +37,7 @@ pub fn test_inline_diamond() {
         my_tee -> map(|x: i32| x * 10) -> my_union;
         my_tee -> map(|x: i32| x * 100) -> my_union;
         my_union = union() -> for_each(|v: i32| output.borrow_mut().push(v));
-    };
+    }.await;
 
     let mut result = output.borrow().clone();
     result.sort();
@@ -46,11 +45,8 @@ pub fn test_inline_diamond() {
 }
 
 /// Test 4: Intertwined diamonds — two diamonds sharing internal branches.
-///   src → tee → (*2 → tee_a, *3 → tee_b)
-///   tee_a → union_sum, tee_b → union_sum   (diamond 1)
-///   tee_a → union_prod, tee_b → union_prod  (diamond 2)
-#[test]
-pub fn test_inline_intertwined_diamonds() {
+#[dfir_rs::test]
+pub async fn test_inline_intertwined_diamonds() {
     let sums = std::cell::RefCell::new(Vec::new());
     let prods = std::cell::RefCell::new(Vec::new());
 
@@ -70,18 +66,15 @@ pub fn test_inline_intertwined_diamonds() {
         union_prod = union()
             -> fold(|| 1_i64, |a: &mut i64, x: i64| *a *= x)
             -> for_each(|v: i64| prods.borrow_mut().push(v));
-    };
+    }.await;
 
-    // *2 produces [2,4,6], *3 produces [3,6,9]
-    // sum = 2+4+6+3+6+9 = 30
     assert_eq!(&[30][..], &*sums.borrow());
-    // prod = 2*4*6*3*6*9 = 7776
     assert_eq!(&[7776][..], &*prods.borrow());
 }
 
 /// Test 5: Join — two independent sources joined by key.
-#[test]
-pub fn test_inline_join() {
+#[dfir_rs::test]
+pub async fn test_inline_join() {
     let output = std::cell::RefCell::new(Vec::new());
 
     dfir_rs::dfir_syntax_inline_noemit! {
@@ -89,7 +82,7 @@ pub fn test_inline_join() {
         source_iter(vec![("b", 10_i32), ("a", 20)]) -> [1]my_join;
         my_join = join::<'tick, 'tick>()
             -> for_each(|(k, (v1, v2)): (&str, (i32, i32))| output.borrow_mut().push((k.to_string(), v1, v2)));
-    };
+    }.await;
 
     let mut result = output.borrow().clone();
     result.sort();
@@ -97,9 +90,8 @@ pub fn test_inline_join() {
 }
 
 /// Test 6: Multi-stratum cascade — source → fold → map → fold → for_each
-/// Each fold creates a stratum boundary, so data flows through 3 strata.
-#[test]
-pub fn test_inline_multi_stratum() {
+#[dfir_rs::test]
+pub async fn test_inline_multi_stratum() {
     let output = std::cell::RefCell::new(Vec::new());
 
     dfir_rs::dfir_syntax_inline_noemit! {
@@ -108,17 +100,14 @@ pub fn test_inline_multi_stratum() {
             -> map(|sum: i32| sum * 2)
             -> fold(|| 0_i32, |a: &mut i32, x: i32| *a += x)
             -> for_each(|v: i32| output.borrow_mut().push(v));
-    };
+    }.await;
 
-    // 1+2+3+4 = 10, *2 = 20, second fold sees just [20], so result = 20
     assert_eq!(&[20][..], &*output.borrow());
 }
 
 /// Test 7: W-shape mesh — two sources each tee into two shared sinks.
-///   src_a → tee → (sink_x, sink_y)
-///   src_b → tee → (sink_x, sink_y)
-#[test]
-pub fn test_inline_w_mesh() {
+#[dfir_rs::test]
+pub async fn test_inline_w_mesh() {
     let xs = std::cell::RefCell::new(Vec::new());
     let ys = std::cell::RefCell::new(Vec::new());
 
@@ -131,13 +120,54 @@ pub fn test_inline_w_mesh() {
         src_b -> sink_y;
         sink_x = union() -> for_each(|v: i32| xs.borrow_mut().push(v));
         sink_y = union() -> for_each(|v: i32| ys.borrow_mut().push(v));
-    };
+    }.await;
 
     let mut rx = xs.borrow().clone();
     rx.sort();
     let mut ry = ys.borrow().clone();
     ry.sort();
-    // Both sinks see all 4 items
     assert_eq!(vec![1, 2, 10, 20], rx);
     assert_eq!(vec![1, 2, 10, 20], ry);
+}
+
+/// Test 8: source_stream — async channel input.
+#[dfir_rs::test]
+pub async fn test_inline_source_stream() {
+    let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
+    send.send(1).unwrap();
+    send.send(2).unwrap();
+    send.send(3).unwrap();
+
+    let output = std::cell::RefCell::new(Vec::new());
+
+    dfir_rs::dfir_syntax_inline_noemit! {
+        source_stream(recv) -> for_each(|v: i32| output.borrow_mut().push(v));
+    }.await;
+
+    assert_eq!(&[1, 2, 3][..], &*output.borrow());
+}
+
+/// Test 9: resolve_futures — async futures resolved concurrently via tokio.
+/// A spawned task sends a value through a oneshot after yielding, proving
+/// the inline future actually suspends and resumes via the async runtime.
+#[dfir_rs::test]
+pub async fn test_inline_resolve_futures() {
+    let output = std::cell::RefCell::new(Vec::new());
+
+    let (tx, rx) = dfir_rs::tokio::sync::oneshot::channel::<i32>();
+
+    // Spawn a task that sends after yielding — forces the inline future to suspend.
+    dfir_rs::tokio::task::spawn_local(async move {
+        dfir_rs::tokio::task::yield_now().await;
+        tx.send(42).unwrap();
+    });
+
+    dfir_rs::dfir_syntax_inline_noemit! {
+        source_iter([rx])
+            -> resolve_futures_blocking()
+            -> map(|v: Result<i32, _>| v.unwrap())
+            -> for_each(|v: i32| output.borrow_mut().push(v));
+    }.await;
+
+    assert_eq!(&[42][..], &*output.borrow());
 }
