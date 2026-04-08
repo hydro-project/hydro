@@ -1,5 +1,7 @@
 use criterion::{BatchSize, Criterion, black_box, criterion_group, criterion_main};
 use dfir_rs::dfir_syntax;
+use dfir_rs::dfir_syntax_inline;
+use dfir_rs::scheduled::graph::Dfir;
 use rand::SeedableRng;
 use rand::distributions::{Distribution, Uniform};
 use rand::rngs::StdRng;
@@ -379,5 +381,128 @@ fn ops(c: &mut Criterion) {
     });
 }
 
-criterion_group!(micro_ops, ops);
+fn ops_inline(c: &mut Criterion) {
+    let mut rng = StdRng::from_entropy();
+
+    c.bench_function("micro/ops_inline/identity", |b| {
+        let dist = Uniform::new(0, 100);
+        let data: Vec<usize> = (0..10_000).map(|_| dist.sample(&mut rng)).collect();
+        b.iter(|| {
+            let data = black_box(data.clone());
+            let mut tick = dfir_syntax_inline! {
+                source_iter(data) -> identity() -> for_each(|x| { black_box(x); });
+            };
+            Dfir::__run_future_sync(tick());
+        })
+    });
+
+    c.bench_function("micro/ops_inline/map", |b| {
+        let dist = Uniform::new(0, 100);
+        let data: Vec<usize> = (0..10_000).map(|_| dist.sample(&mut rng)).collect();
+        b.iter(|| {
+            let data = black_box(data.clone());
+            let mut tick = dfir_syntax_inline! {
+                source_iter(data) -> map(|x| x + 1) -> for_each(|x| { black_box(x); });
+            };
+            Dfir::__run_future_sync(tick());
+        })
+    });
+
+    c.bench_function("micro/ops_inline/fold", |b| {
+        let dist = Uniform::new(0, 100);
+        let data: Vec<usize> = (0..10_000).map(|_| dist.sample(&mut rng)).collect();
+        b.iter(|| {
+            let data = black_box(data.clone());
+            let mut tick = dfir_syntax_inline! {
+                source_iter(data) -> fold::<'tick>(|| 0, |accum: &mut _, elem| { *accum += elem }) -> for_each(|x| { black_box(x); });
+            };
+            Dfir::__run_future_sync(tick());
+        })
+    });
+
+    c.bench_function("micro/ops_inline/join", |b| {
+        let dist = Uniform::new(0, 100);
+        let input0: Vec<(usize, ())> = (0..10_000).map(|_| (dist.sample(&mut rng), ())).collect();
+        let input1: Vec<(usize, ())> = (0..10_000).map(|_| (dist.sample(&mut rng), ())).collect();
+        b.iter(|| {
+            let i0 = black_box(input0.clone());
+            let i1 = black_box(input1.clone());
+            let mut tick = dfir_syntax_inline! {
+                my_join = join();
+                source_iter(i0) -> [0]my_join;
+                source_iter(i1) -> [1]my_join;
+                my_join -> for_each(|x| { black_box(x); });
+            };
+            Dfir::__run_future_sync(tick());
+        })
+    });
+
+    c.bench_function("micro/ops_inline/tee", |b| {
+        let dist = Uniform::new(0, 100);
+        let data: Vec<usize> = (0..10_000).map(|_| dist.sample(&mut rng)).collect();
+        b.iter(|| {
+            let data = black_box(data.clone());
+            let mut tick = dfir_syntax_inline! {
+                my_tee = tee();
+                source_iter(data) -> my_tee;
+                my_tee -> for_each(|x| { black_box(x); });
+                my_tee -> for_each(|x| { black_box(x); });
+            };
+            Dfir::__run_future_sync(tick());
+        })
+    });
+
+    c.bench_function("micro/ops_inline/union", |b| {
+        let dist = Uniform::new(0, 100);
+        let input0: Vec<usize> = (0..10_000).map(|_| dist.sample(&mut rng)).collect();
+        let input1: Vec<usize> = (0..10_000).map(|_| dist.sample(&mut rng)).collect();
+        b.iter(|| {
+            let i0 = black_box(input0.clone());
+            let i1 = black_box(input1.clone());
+            let mut tick = dfir_syntax_inline! {
+                my_union = union();
+                source_iter(i0) -> my_union;
+                source_iter(i1) -> my_union;
+                my_union -> for_each(|x| { black_box(x); });
+            };
+            Dfir::__run_future_sync(tick());
+        })
+    });
+
+    c.bench_function("micro/ops_inline/next_tick/small", |b| {
+        const DATA: [u64; 1024] = [0; 1024];
+
+        let mut tick = dfir_syntax_inline! {
+            source_iter(black_box(DATA)) -> persist::<'static>()
+                -> map(black_box)
+                -> defer_tick()
+                -> map(black_box)
+                -> defer_tick()
+                -> map(black_box)
+                -> defer_tick()
+                -> map(black_box)
+                -> defer_tick()
+                -> map(black_box)
+                -> defer_tick()
+                -> map(black_box)
+                -> defer_tick()
+                -> map(black_box)
+                -> defer_tick()
+                -> map(black_box)
+                -> defer_tick()
+                -> map(black_box)
+                -> defer_tick()
+                -> map(black_box)
+                -> defer_tick()
+                -> map(black_box)
+                -> for_each(|x| { black_box(x); });
+        };
+
+        b.iter(|| {
+            Dfir::__run_future_sync(tick());
+        })
+    });
+}
+
+criterion_group!(micro_ops, ops, ops_inline);
 criterion_main!(micro_ops);
