@@ -20,6 +20,8 @@ on:
         type: boolean
         default: false
 
+permissions: {}
+
 jobs:
   release_job:
     name: Release Job

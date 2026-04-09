@@ -15,9 +15,7 @@ on:
         required: true
         default: "false"
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.pull_request.base.sha }}-${{ github.event_name }}
@@ -51,6 +49,9 @@ jobs:
         )
       )
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     env:
       WWW_DIR: target
     steps:

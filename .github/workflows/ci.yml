@@ -9,6 +9,8 @@ on:
     - cron: "35 03 * * *" # Daily at 8:35 PM PDT, 7:35 PM PST.
   workflow_dispatch:
 
+permissions: {}
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event.pull_request.base.sha }}-${{ github.event_name }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -75,6 +77,8 @@ jobs:
     timeout-minutes: 90
     needs: pre_job
     runs-on: ${{ matrix.os }}
+    permissions:
+      issues: write
     env:
       RUSTUP_TOOLCHAIN: ${{ matrix.rust_release == 'latest-nightly' && 'nightly' || '' }}
     strategy:
