@@ -3817,6 +3817,7 @@ mod tests {
 
             out_recv.assert_yields_only::<i32, _>([]).await;
         });
+    }
 
     #[cfg(feature = "deploy")]
     #[tokio::test]
