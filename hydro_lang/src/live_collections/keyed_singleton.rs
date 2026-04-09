@@ -43,10 +43,17 @@ pub trait KeyedSingletonBound {
     type ValueBound: Boundedness;
 
     /// The type of the keyed singleton if the value for each key is immutable.
-    type WithBoundedValue: KeyedSingletonBound<UnderlyingBound = Self::UnderlyingBound, ValueBound = Bounded>;
+    type WithBoundedValue: KeyedSingletonBound<
+            UnderlyingBound = Self::UnderlyingBound,
+            ValueBound = Bounded,
+            EraseMonotonic = Self::WithBoundedValue,
+        >;
 
-    /// The type of the keyed singleton if the value for each key may change asynchronously.
-    type WithUnboundedValue: KeyedSingletonBound<UnderlyingBound = Self::UnderlyingBound, ValueBound = Unbounded>;
+    /// The [`Boundedness`] of this [`Singleton`] if it is produced from a [`KeyedStream`] with [`Self`] boundedness.
+    type KeyedStreamToMonotone: KeyedSingletonBound<UnderlyingBound = Self::UnderlyingBound, ValueBound = Self::ValueBound>;
+
+    /// The type of the keyed singleton if the value for each key is no longer monotonic.
+    type EraseMonotonic: KeyedSingletonBound<UnderlyingBound = Self::UnderlyingBound, ValueBound = Self::ValueBound>;
 
     /// Returns the [`KeyedSingletonBoundKind`] corresponding to this type.
     fn bound_kind() -> KeyedSingletonBoundKind;
@@ -56,7 +63,8 @@ impl KeyedSingletonBound for Unbounded {
     type UnderlyingBound = Unbounded;
     type ValueBound = Unbounded;
     type WithBoundedValue = BoundedValue;
-    type WithUnboundedValue = Unbounded;
+    type KeyedStreamToMonotone = MonotonicValue;
+    type EraseMonotonic = Unbounded;
 
     fn bound_kind() -> KeyedSingletonBoundKind {
         KeyedSingletonBoundKind::Unbounded
@@ -67,7 +75,8 @@ impl KeyedSingletonBound for Bounded {
     type UnderlyingBound = Bounded;
     type ValueBound = Bounded;
     type WithBoundedValue = Bounded;
-    type WithUnboundedValue = UnreachableBound;
+    type KeyedStreamToMonotone = Bounded;
+    type EraseMonotonic = Bounded;
 
     fn bound_kind() -> KeyedSingletonBoundKind {
         KeyedSingletonBoundKind::Bounded
@@ -75,33 +84,34 @@ impl KeyedSingletonBound for Bounded {
 }
 
 /// A variation of boundedness specific to [`KeyedSingleton`], which indicates that once a key appears,
-/// its value is bounded and will never change. If the `KeyBound` is [`Bounded`], then the entire set of entries
-/// is bounded, but if it is [`Unbounded`], then new entries may appear asynchronously.
+/// its value is bounded and will never change, but new entries may appear asynchronously
 pub struct BoundedValue;
 
 impl KeyedSingletonBound for BoundedValue {
     type UnderlyingBound = Unbounded;
     type ValueBound = Bounded;
     type WithBoundedValue = BoundedValue;
-    type WithUnboundedValue = Unbounded;
+    type KeyedStreamToMonotone = BoundedValue;
+    type EraseMonotonic = BoundedValue;
 
     fn bound_kind() -> KeyedSingletonBoundKind {
         KeyedSingletonBoundKind::BoundedValue
     }
 }
 
-#[doc(hidden)]
-pub struct UnreachableBound;
+/// A variation of boundedness specific to [`KeyedSingleton`], which indicates that once a key appears,
+/// it will never be removed, and the corresponding value will only increase monotonically.
+pub struct MonotonicValue;
 
-impl KeyedSingletonBound for UnreachableBound {
-    type UnderlyingBound = Bounded;
+impl KeyedSingletonBound for MonotonicValue {
+    type UnderlyingBound = Unbounded;
     type ValueBound = Unbounded;
-
-    type WithBoundedValue = Bounded;
-    type WithUnboundedValue = UnreachableBound;
+    type WithBoundedValue = BoundedValue;
+    type KeyedStreamToMonotone = MonotonicValue;
+    type EraseMonotonic = Unbounded;
 
     fn bound_kind() -> KeyedSingletonBoundKind {
-        unreachable!("UnreachableBound cannot be instantiated")
+        KeyedSingletonBoundKind::MonotonicValue
     }
 }
 
@@ -344,7 +354,10 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// # }));
     /// # }
     /// ```
-    pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> KeyedSingleton<K, U, L, B>
+    pub fn map<U, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> KeyedSingleton<K, U, L, B::EraseMonotonic>
     where
         F: Fn(V) -> U + 'a,
     {
@@ -361,9 +374,12 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             HydroNode::Map {
                 f: map_f,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .new_node_metadata(KeyedSingleton::<K, U, L, B>::collection_kind()),
+                metadata: self.location.new_node_metadata(KeyedSingleton::<
+                    K,
+                    U,
+                    L,
+                    B::EraseMonotonic,
+                >::collection_kind()),
             },
         )
     }
@@ -401,7 +417,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     pub fn map_with_key<U, F>(
         self,
         f: impl IntoQuotedMut<'a, F, L> + Copy,
-    ) -> KeyedSingleton<K, U, L, B>
+    ) -> KeyedSingleton<K, U, L, B::EraseMonotonic>
     where
         F: Fn((K, V)) -> U + 'a,
         K: Clone,
@@ -422,9 +438,12 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             HydroNode::Map {
                 f: map_f,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .new_node_metadata(KeyedSingleton::<K, U, L, B>::collection_kind()),
+                metadata: self.location.new_node_metadata(KeyedSingleton::<
+                    K,
+                    U,
+                    L,
+                    B::EraseMonotonic,
+                >::collection_kind()),
             },
         )
     }
@@ -465,16 +484,15 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                 _phantom: PhantomData,
             };
 
-            me.entries().count()
+            me.entries().count().ignore_monotonic()
         } else if L::is_top_level()
             && let Some(tick) = self.location.try_tick()
+            && B::bound_kind() == KeyedSingletonBoundKind::Unbounded
         {
-            let me: KeyedSingleton<K, V, L, B::WithUnboundedValue> = KeyedSingleton {
-                location: self.location.clone(),
-                flow_state: self.flow_state.clone(),
-                ir_node: RefCell::new(self.ir_node.replace(HydroNode::Placeholder)),
-                _phantom: PhantomData,
-            };
+            let me: KeyedSingleton<K, V, L, Unbounded> = KeyedSingleton::new(
+                self.location.clone(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            );
 
             let out =
                 key_count_inside_tick(me.snapshot(&tick, nondet!(/** eventually stabilizes */)))
@@ -484,7 +502,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                 out.ir_node.replace(HydroNode::Placeholder),
             )
         } else {
-            panic!("Unbounded KeyedSingleton inside a tick");
+            panic!("BoundedValue or Unbounded KeyedSingleton inside a tick, not supported");
         }
     }
 
@@ -538,13 +556,12 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                 )
         } else if L::is_top_level()
             && let Some(tick) = self.location.try_tick()
+            && B::bound_kind() == KeyedSingletonBoundKind::Unbounded
         {
-            let me: KeyedSingleton<K, V, L, B::WithUnboundedValue> = KeyedSingleton {
-                location: self.location.clone(),
-                flow_state: self.flow_state.clone(),
-                ir_node: RefCell::new(self.ir_node.replace(HydroNode::Placeholder)),
-                _phantom: PhantomData,
-            };
+            let me: KeyedSingleton<K, V, L, Unbounded> = KeyedSingleton::new(
+                self.location.clone(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            );
 
             let out = into_singleton_inside_tick(
                 me.snapshot(&tick, nondet!(/** eventually stabilizes */)),
@@ -555,7 +572,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                 out.ir_node.replace(HydroNode::Placeholder),
             )
         } else {
-            panic!("Unbounded KeyedSingleton inside a tick");
+            panic!("BoundedValue or Unbounded KeyedSingleton inside a tick, not supported");
         }
     }
 
@@ -1459,7 +1476,7 @@ where
     pub fn filter_map<F, U>(
         self,
         f: impl IntoQuotedMut<'a, F, L> + Copy,
-    ) -> KeyedSingleton<K, U, L, B>
+    ) -> KeyedSingleton<K, U, L, B::EraseMonotonic>
     where
         F: Fn(V) -> Option<U> + 'a,
     {
@@ -1476,9 +1493,12 @@ where
             HydroNode::FilterMap {
                 f: filter_map_f,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .new_node_metadata(KeyedSingleton::<K, U, L, B>::collection_kind()),
+                metadata: self.location.new_node_metadata(KeyedSingleton::<
+                    K,
+                    U,
+                    L,
+                    B::EraseMonotonic,
+                >::collection_kind()),
             },
         )
     }

@@ -16,6 +16,7 @@ use crate::compile::ir::{CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
+use crate::live_collections::singleton::SingletonBound;
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::{Atomic, DeferTick, NoAtomic};
@@ -212,7 +213,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness> From<Singleton<T, L, B>> for Optional<T, L, B>
+impl<'a, T, L, B: SingletonBound> From<Singleton<T, L, B>> for Optional<T, L, B::UnderlyingBound>
 where
     L: Location<'a>,
 {

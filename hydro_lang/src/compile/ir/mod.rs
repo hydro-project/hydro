@@ -1689,7 +1689,15 @@ pub enum StreamRetry {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum KeyedSingletonBoundKind {
     Unbounded,
+    MonotonicValue,
     BoundedValue,
+    Bounded,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum SingletonBoundKind {
+    Unbounded,
+    Monotonic,
     Bounded,
 }
 
@@ -1702,7 +1710,7 @@ pub enum CollectionKind {
         element_type: DebugType,
     },
     Singleton {
-        bound: BoundKind,
+        bound: SingletonBoundKind,
         element_type: DebugType,
     },
     Optional {
@@ -1731,7 +1739,7 @@ impl CollectionKind {
                 bound: BoundKind::Bounded,
                 ..
             } | CollectionKind::Singleton {
-                bound: BoundKind::Bounded,
+                bound: SingletonBoundKind::Bounded,
                 ..
             } | CollectionKind::Optional {
                 bound: BoundKind::Bounded,
@@ -1955,6 +1963,11 @@ pub enum HydroNode {
         metadata: HydroIrMetadata,
     },
     FlatMap {
+        f: DebugExpr,
+        input: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
+    FlatMapStreamBlocking {
         f: DebugExpr,
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
@@ -2184,6 +2197,7 @@ impl HydroNode {
             | HydroNode::ResolveFuturesBlocking { input, .. }
             | HydroNode::ResolveFuturesOrdered { input, .. }
             | HydroNode::FlatMap { input, .. }
+            | HydroNode::FlatMapStreamBlocking { input, .. }
             | HydroNode::Filter { input, .. }
             | HydroNode::FilterMap { input, .. }
             | HydroNode::Sort { input, .. }
@@ -2376,6 +2390,13 @@ impl HydroNode {
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
+            HydroNode::FlatMapStreamBlocking { f, input, metadata } => {
+                HydroNode::FlatMapStreamBlocking {
+                    f: f.clone(),
+                    input: Box::new(input.deep_clone(seen_tees)),
+                    metadata: metadata.clone(),
+                }
+            }
             HydroNode::Filter { f, input, metadata } => HydroNode::Filter {
                 f: f.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
@@ -3318,6 +3339,33 @@ impl HydroNode {
                         ident_stack.push(flat_map_ident);
                     }
 
+                    HydroNode::FlatMapStreamBlocking { f, .. } => {
+                        let input_ident = ident_stack.pop().unwrap();
+
+                        let flat_map_stream_blocking_ident =
+                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(graph_builders) => {
+                                let builder = graph_builders.get_dfir_mut(&out_location);
+                                builder.add_dfir(
+                                    parse_quote! {
+                                        #flat_map_stream_blocking_ident = #input_ident -> flat_map_stream_blocking(#f);
+                                    },
+                                    None,
+                                    Some(&next_stmt_id.to_string()),
+                                );
+                            }
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
+
+                        *next_stmt_id += 1;
+
+                        ident_stack.push(flat_map_stream_blocking_ident);
+                    }
+
                     HydroNode::Filter { f, .. } => {
                         let input_ident = ident_stack.pop().unwrap();
 
@@ -3998,6 +4046,7 @@ impl HydroNode {
             | HydroNode::Sort { .. } => {}
             HydroNode::Map { f, .. }
             | HydroNode::FlatMap { f, .. }
+            | HydroNode::FlatMapStreamBlocking { f, .. }
             | HydroNode::Filter { f, .. }
             | HydroNode::FilterMap { f, .. }
             | HydroNode::Inspect { f, .. }
@@ -4068,6 +4117,7 @@ impl HydroNode {
             HydroNode::ResolveFuturesOrdered { metadata, .. } => metadata,
             HydroNode::Map { metadata, .. } => metadata,
             HydroNode::FlatMap { metadata, .. } => metadata,
+            HydroNode::FlatMapStreamBlocking { metadata, .. } => metadata,
             HydroNode::Filter { metadata, .. } => metadata,
             HydroNode::FilterMap { metadata, .. } => metadata,
             HydroNode::DeferTick { metadata, .. } => metadata,
@@ -4119,6 +4169,7 @@ impl HydroNode {
             HydroNode::ResolveFuturesOrdered { metadata, .. } => metadata,
             HydroNode::Map { metadata, .. } => metadata,
             HydroNode::FlatMap { metadata, .. } => metadata,
+            HydroNode::FlatMapStreamBlocking { metadata, .. } => metadata,
             HydroNode::Filter { metadata, .. } => metadata,
             HydroNode::FilterMap { metadata, .. } => metadata,
             HydroNode::DeferTick { metadata, .. } => metadata,
@@ -4176,6 +4227,7 @@ impl HydroNode {
             }
             HydroNode::Map { input, .. }
             | HydroNode::FlatMap { input, .. }
+            | HydroNode::FlatMapStreamBlocking { input, .. }
             | HydroNode::Filter { input, .. }
             | HydroNode::FilterMap { input, .. }
             | HydroNode::Sort { input, .. }
@@ -4285,6 +4337,7 @@ impl HydroNode {
             HydroNode::ResolveFuturesOrdered { .. } => "ResolveFuturesOrdered()".to_owned(),
             HydroNode::Map { f, .. } => format!("Map({:?})", f),
             HydroNode::FlatMap { f, .. } => format!("FlatMap({:?})", f),
+            HydroNode::FlatMapStreamBlocking { f, .. } => format!("FlatMapStreamBlocking({:?})", f),
             HydroNode::Filter { f, .. } => format!("Filter({:?})", f),
             HydroNode::FilterMap { f, .. } => format!("FilterMap({:?})", f),
             HydroNode::DeferTick { .. } => "DeferTick()".to_owned(),

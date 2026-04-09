@@ -1,17 +1,17 @@
 error[E0425]: cannot find value `fake` in this scope
-  --> tests/compile-fail-stable/sliced_missing_arg.rs:11:21
+  --> tests/compile-fail/sliced_missing_arg.rs:11:21
    |
 11 |         let e = use(fake, nondet!(/** test */));
    |                     ^^^^ not found in this scope
 
 error[E0425]: cannot find value `fake` in this scope
-  --> tests/compile-fail-stable/sliced_missing_arg.rs:12:29
+  --> tests/compile-fail/sliced_missing_arg.rs:12:29
    |
 12 |         let f = use::atomic(fake, nondet!(/** test */));
    |                             ^^^^ not found in this scope
 
 error[E0061]: this function takes 2 arguments but 1 argument was supplied
-  --> tests/compile-fail-stable/sliced_missing_arg.rs:7:21
+  --> tests/compile-fail/sliced_missing_arg.rs:7:21
    |
  6 | /     sliced! {
  7 | |         let a = use(input);
@@ -36,7 +36,7 @@ help: provide the argument
    |
 
 error[E0061]: this function takes 2 arguments but 1 argument was supplied
- --> tests/compile-fail-stable/sliced_missing_arg.rs:8:22
+ --> tests/compile-fail/sliced_missing_arg.rs:8:22
   |
 8 |         let b = use::atomic(input.atomic());
   |                      ^^^^^^---------------- argument #2 of type `NonDet` is missing
@@ -52,11 +52,12 @@ help: provide the argument
   |                                           ++++++++++++++
 
 error[E0308]: mismatched types
- --> tests/compile-fail-stable/sliced_missing_arg.rs:9:28
+ --> tests/compile-fail/sliced_missing_arg.rs:9:28
   |
 9 |         let c = use(input, 123);
-  |                     -----  ^^^ expected `NonDet`, found integer
-  |                     |
+  |                     -------^^^
+  |                     |      |
+  |                     |      expected `NonDet`, found integer
   |                     arguments to this function are incorrect
   |
 note: function defined here
@@ -66,7 +67,7 @@ note: function defined here
   |        ^^^^^^^
 
 error[E0308]: mismatched types
-  --> tests/compile-fail-stable/sliced_missing_arg.rs:10:45
+  --> tests/compile-fail/sliced_missing_arg.rs:10:45
    |
 10 |         let d = use::atomic(input.atomic(), 123);
    |                      ------                 ^^^ expected `NonDet`, found integer
@@ -80,7 +81,7 @@ note: function defined here
    |        ^^^^^^
 
 error[E0425]: cannot find function `foobar` in this scope
-  --> tests/compile-fail-stable/sliced_missing_arg.rs:13:22
+  --> tests/compile-fail/sliced_missing_arg.rs:13:22
    |
 13 |         let g = use::foobar();
    |                      ^^^^^^ not found in this scope

@@ -23,6 +23,7 @@ use crate::compile::ir::{
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::live_collections::batch_atomic::BatchAtomic;
+use crate::live_collections::singleton::SingletonBound;
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::{Atomic, DeferTick, NoAtomic};
@@ -30,7 +31,9 @@ use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 use crate::prelude::manual_proof;
-use crate::properties::{AggFuncAlgebra, ValidCommutativityFor, ValidIdempotenceFor};
+use crate::properties::{
+    AggFuncAlgebra, ApplyMonotoneStream, ValidCommutativityFor, ValidIdempotenceFor,
+};
 
 pub mod networking;
 
@@ -618,6 +621,40 @@ where
         self.flat_map_unordered(q!(|d| d))
     }
 
+    /// For each item in the input stream, apply `f` to produce a [`futures::stream::Stream`],
+    /// then emit the elements of that stream one by one. When the inner stream yields
+    /// `Pending`, this operator yields as well.
+    pub fn flat_map_stream_blocking<U, S, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L>,
+    ) -> Stream<U, L, B, O, R>
+    where
+        S: futures::Stream<Item = U>,
+        F: Fn(T) -> S + 'a,
+    {
+        let f = f.splice_fn1_ctx(&self.location).into();
+        Stream::new(
+            self.location.clone(),
+            HydroNode::FlatMapStreamBlocking {
+                f,
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<U, L, B, O, R>::collection_kind()),
+            },
+        )
+    }
+
+    /// For each item in the input stream, treat it as a [`futures::stream::Stream`] and
+    /// emit its elements one by one. When the inner stream yields `Pending`, this operator
+    /// yields as well.
+    pub fn flatten_stream_blocking<U>(self) -> Stream<U, L, B, O, R>
+    where
+        T: futures::Stream<Item = U>,
+    {
+        self.flat_map_stream_blocking(q!(|d| d))
+    }
+
     /// Creates a stream containing only the elements of the input stream that satisfy a predicate
     /// `f`, preserving the order of the elements.
     ///
@@ -1186,16 +1223,17 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn fold<A, I, F, C, Idemp>(
+    pub fn fold<A, I, F, C, Idemp, M, B2: SingletonBound>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
-        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp>>,
-    ) -> Singleton<A, L, B>
+        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp, M>>,
+    ) -> Singleton<A, L, B2>
     where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, T),
         C: ValidCommutativityFor<O>,
         Idemp: ValidIdempotenceFor<R>,
+        B: ApplyMonotoneStream<M, B2>,
     {
         let init = init.splice_fn0_ctx(&self.location).into();
         let (comb, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
@@ -1210,7 +1248,7 @@ where
             input: Box::new(ordered_etc.ir_node.replace(HydroNode::Placeholder)),
             metadata: ordered_etc
                 .location
-                .new_node_metadata(Singleton::<A, L, B>::collection_kind()),
+                .new_node_metadata(Singleton::<A, L, B2>::collection_kind()),
         };
 
         Singleton::new(ordered_etc.location.clone(), core)
@@ -2072,11 +2110,17 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn count(self) -> Singleton<usize, L, B> {
+    pub fn count(self) -> Singleton<usize, L, B::StreamToMonotone> {
         self.assume_ordering_trusted::<TotalOrder>(nondet!(
             /// Order does not affect eventual count, and also does not affect intermediate states.
         ))
-        .fold(q!(|| 0usize), q!(|count, _| *count += 1))
+        .fold(
+            q!(|| 0usize),
+            q!(
+                |count, _| *count += 1,
+                monotone = manual_proof!(/** += 1 is monotone */)
+            ),
+        )
     }
 }
 
@@ -3773,5 +3817,76 @@ mod tests {
 
             out_recv.assert_yields_only::<i32, _>([]).await;
         });
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn monotone_fold_threshold() {
+        use crate::properties::manual_proof;
+
+        let mut deployment = Deployment::new();
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let in_unbounded: super::Stream<_, _> =
+            node.source_iter(q!(vec![1i32, 2, 3, 4, 5, 6])).into();
+        let sum = in_unbounded.fold(
+            q!(|| 0),
+            q!(
+                |sum, v| {
+                    *sum += v;
+                },
+                monotone = manual_proof!(/** test */)
+            ),
+        );
+
+        let threshold_out = sum
+            .threshold_greater_or_equal(node.singleton(q!(7)))
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut threshold_out = nodes.connect(threshold_out).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(threshold_out.next().await.unwrap(), 7);
+    }
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn monotone_count_threshold() {
+        let mut deployment = Deployment::new();
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let in_unbounded: super::Stream<_, _> =
+            node.source_iter(q!(vec![1i32, 2, 3, 4, 5, 6])).into();
+        let sum = in_unbounded.count();
+
+        let threshold_out = sum
+            .threshold_greater_or_equal(node.singleton(q!(3)))
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut threshold_out = nodes.connect(threshold_out).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(threshold_out.next().await.unwrap(), 3);
     }
 }

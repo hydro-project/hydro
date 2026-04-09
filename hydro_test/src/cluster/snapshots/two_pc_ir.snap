@@ -1,7 +1,6 @@
 ---
 source: hydro_test/src/cluster/two_pc_bench.rs
 expression: built.ir()
-snapshot_kind: text
 ---
 [
     CycleSink {
@@ -9,7 +8,7 @@ snapshot_kind: text
             0,
         ),
         input: FilterMap {
-            f: stageleft :: runtime_support :: fn1_type_hint :: < ((u32 , core :: option :: Option < i32 >) , usize) , core :: option :: Option < (u32 , core :: option :: Option < i32 >) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; move | ((virtual_id , _) , num_clients_per_node) | { if virtual_id < num_clients_per_node as u32 { Some ((virtual_id + 1 , None)) } else { None } } }),
+            f: stageleft :: runtime_support :: fn1_type_hint :: < ((u32 , core :: option :: Option < i32 >) , usize) , core :: option :: Option < (u32 , core :: option :: Option < i32 >) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; move | ((virtual_id , _) , num_clients_per_node) | { assert ! (num_clients_per_node > 0 , "Must have at least 1 virtual client per node") ; if virtual_id + 1 < num_clients_per_node as u32 { Some ((virtual_id + 1 , None)) } else { None } } }),
             input: CrossSingleton {
                 left: Tee {
                     inner: <shared 0>: ChainFirst {

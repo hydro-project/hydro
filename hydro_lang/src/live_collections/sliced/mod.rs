@@ -193,11 +193,8 @@ pub trait Slicable<'a, L: Location<'a>> {
     fn get_location(&self) -> &L;
 
     /// Creates a tick that is appropriate for the collection's location.
-    fn create_tick(&self) -> Tick<L>
-    where
-        L: NoTick,
-    {
-        self.get_location().tick()
+    fn create_tick(&self) -> Tick<L> {
+        self.get_location().try_tick().unwrap()
     }
 
     /// Slices this live collection at the given tick.
