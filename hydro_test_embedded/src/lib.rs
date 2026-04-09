@@ -173,11 +173,11 @@ mod tests {
         let mut outputs = crate::embedded_inline::capitalize_inline::EmbeddedOutputs {
             output: |s: String| collected.push(s),
         };
-        let mut tick = crate::embedded_inline::capitalize_inline(input, &mut outputs);
+        let mut flow = crate::embedded_inline::capitalize_inline(input, &mut outputs);
         tokio::task::LocalSet::new()
-            .run_until(async { tick().await })
+            .run_until(flow.run_tick())
             .await;
-        drop(tick);
+        drop(flow);
         assert_eq!(collected, vec!["HELLO", "WORLD", "HYDRO"]);
     }
 
@@ -189,12 +189,12 @@ mod tests {
         let mut outputs = crate::singleton_input_inline::prefix_names_inline::EmbeddedOutputs {
             output: |s: String| collected.push(s),
         };
-        let mut tick =
+        let mut flow =
             crate::singleton_input_inline::prefix_names_inline("Hello".to_owned(), names, &mut outputs);
         tokio::task::LocalSet::new()
-            .run_until(async { tick().await })
+            .run_until(flow.run_tick())
             .await;
-        drop(tick);
+        drop(flow);
         assert_eq!(collected, vec!["Hello Alice", "Hello Bob"]);
     }
 
@@ -210,12 +210,12 @@ mod tests {
                 tx.send(bytes).unwrap();
             },
         };
-        let mut tick_sender =
+        let mut flow_sender =
             crate::echo_network_inline::echo_sender_inline(input, &mut net_out);
         tokio::task::LocalSet::new()
-            .run_until(async { tick_sender().await })
+            .run_until(flow_sender.run_tick())
             .await;
-        drop(tick_sender);
+        drop(flow_sender);
 
         let mut bytes_vec = vec![];
         while let Ok(b) = rx.try_recv() {
@@ -231,19 +231,19 @@ mod tests {
         let mut outputs = crate::echo_network_inline::echo_receiver_inline::EmbeddedOutputs {
             output: |s: String| received.push(s),
         };
-        let mut tick_receiver =
+        let mut flow_receiver =
             crate::echo_network_inline::echo_receiver_inline(&mut outputs, net_in);
         tokio::task::LocalSet::new()
-            .run_until(async { tick_receiver().await })
+            .run_until(flow_receiver.run_tick())
             .await;
-        drop(tick_receiver);
+        drop(flow_receiver);
         assert_eq!(received, vec!["HELLO", "WORLD"]);
     }
 
     // Helper to run an inline tick closure in a LocalSet.
-    async fn run_inline(mut tick: impl std::ops::AsyncFnMut()) {
+    async fn run_inline(flow: &mut dfir_rs::scheduled::context::InlineFlow<impl std::ops::AsyncFnMut()>) {
         tokio::task::LocalSet::new()
-            .run_until(async { tick().await })
+            .run_until(flow.run_tick())
             .await;
     }
 
@@ -262,10 +262,10 @@ mod tests {
                 tx.send(item).unwrap();
             },
         };
-        let mut tick_sender =
+        let mut flow_sender =
             crate::o2m_broadcast_inline::o2m_sender_inline(membership, input, &mut net_out);
-        run_inline(&mut tick_sender).await;
-        drop(tick_sender);
+        run_inline(&mut flow_sender).await;
+        drop(flow_sender);
 
         let mut tagged_bytes = vec![];
         while let Ok((id, b)) = rx.try_recv() {
@@ -281,10 +281,10 @@ mod tests {
         let mut outputs = crate::o2m_broadcast_inline::o2m_receiver_inline::EmbeddedOutputs {
             output: |s: String| received.push(s),
         };
-        let mut tick_receiver =
+        let mut flow_receiver =
             crate::o2m_broadcast_inline::o2m_receiver_inline(&member_id, &mut outputs, net_in);
-        run_inline(&mut tick_receiver).await;
-        drop(tick_receiver);
+        run_inline(&mut flow_receiver).await;
+        drop(flow_receiver);
         assert_eq!(received, vec!["HELLO", "WORLD"]);
     }
 
@@ -300,10 +300,10 @@ mod tests {
                 tx.send(bytes).unwrap();
             },
         };
-        let mut tick_sender =
+        let mut flow_sender =
             crate::m2o_send_inline::m2o_sender_inline(&member_id, input, &mut net_out);
-        run_inline(&mut tick_sender).await;
-        drop(tick_sender);
+        run_inline(&mut flow_sender).await;
+        drop(flow_sender);
 
         let mut tagged_bytes = vec![];
         while let Ok(b) = rx.try_recv() {
@@ -318,10 +318,10 @@ mod tests {
         let mut outputs = crate::m2o_send_inline::m2o_receiver_inline::EmbeddedOutputs {
             output: |s| received.push(s),
         };
-        let mut tick_receiver =
+        let mut flow_receiver =
             crate::m2o_send_inline::m2o_receiver_inline(&mut outputs, net_in);
-        run_inline(&mut tick_receiver).await;
-        drop(tick_receiver);
+        run_inline(&mut flow_receiver).await;
+        drop(flow_receiver);
         assert_eq!(received.len(), 2);
         assert_eq!(received[0].1, "FOO");
         assert_eq!(received[1].1, "BAR");
@@ -343,10 +343,10 @@ mod tests {
                 tx.send(item).unwrap();
             },
         };
-        let mut tick_sender =
+        let mut flow_sender =
             crate::m2m_broadcast_inline::m2m_sender_inline(&src_id, membership, input, &mut net_out);
-        run_inline(&mut tick_sender).await;
-        drop(tick_sender);
+        run_inline(&mut flow_sender).await;
+        drop(flow_sender);
 
         let mut tagged_bytes = vec![];
         while let Ok((id, b)) = rx.try_recv() {
@@ -362,10 +362,10 @@ mod tests {
         let mut outputs = crate::m2m_broadcast_inline::m2m_receiver_inline::EmbeddedOutputs {
             output: |s| received.push(s),
         };
-        let mut tick_receiver =
+        let mut flow_receiver =
             crate::m2m_broadcast_inline::m2m_receiver_inline(&dst_id, &mut outputs, net_in);
-        run_inline(&mut tick_receiver).await;
-        drop(tick_receiver);
+        run_inline(&mut flow_receiver).await;
+        drop(flow_receiver);
         assert_eq!(received.len(), 1);
         assert_eq!(received[0].1, "PING");
     }

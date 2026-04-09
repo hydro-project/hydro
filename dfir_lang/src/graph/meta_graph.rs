@@ -1883,20 +1883,29 @@ impl DfirGraph {
 
                 use #root::{var_expr, var_args};
 
+                let __dfir_flow_state = ::std::rc::Rc::new(
+                    #root::scheduled::context::InlineFlowState::default()
+                );
+
                 #[allow(unused_mut)]
-                let mut #df = #root::scheduled::context::InlineContext::new();
+                let mut #df = #root::scheduled::context::InlineContext::new(
+                    ::std::clone::Clone::clone(&__dfir_flow_state)
+                );
 
                 #( #buffer_code )*
                 #( #op_prologue_code )*
                 #( #op_prologue_after_code )*
 
                 #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref)]
-                let mut __dfir_inline_closure = async move || {
+                let __dfir_inline_tick = async move || {
                     #( #subgraph_blocks )*
 
                     #df.__end_tick();
                 };
-                __dfir_inline_closure
+                #root::scheduled::context::InlineFlow::new(
+                    __dfir_inline_tick,
+                    __dfir_flow_state,
+                )
             }
         })
     }
