@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["NotProved","Proved"],"macro":["manual_proof"],"struct":["AggFuncAlgebra","ManualProof"],"trait":["CommutativeProof","IdempotentProof","ValidCommutativityFor","ValidIdempotenceFor"]};
+window.SIDEBAR_ITEMS = {"enum":["NotProved","Proved"],"macro":["manual_proof"],"struct":["AggFuncAlgebra","ManualProof"],"trait":["ApplyMonotoneKeyedStream","ApplyMonotoneStream","CommutativeProof","IdempotentProof","MonotoneProof","ValidCommutativityFor","ValidIdempotenceFor"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Singleton"]};
+window.SIDEBAR_ITEMS = {"struct":["Monotonic","Singleton"],"trait":["IsMonotonic","SingletonBound"]};
