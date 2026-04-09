@@ -122,6 +122,7 @@ jobs:
         run: |
           MAELSTROM_DIR=$(mktemp -d)
           curl -L -o "$MAELSTROM_DIR/maelstrom.tar.bz2" https://github.com/jepsen-io/maelstrom/releases/download/v0.2.4/maelstrom.tar.bz2
+          echo "301ec71d6b12af0d765edb413f5cf5aa1046b5609bd4e31376a0b549548e5799  $MAELSTROM_DIR/maelstrom.tar.bz2" | sha256sum -c -
           tar -xjf "$MAELSTROM_DIR/maelstrom.tar.bz2" -C "$MAELSTROM_DIR"
           echo "MAELSTROM_PATH=$MAELSTROM_DIR/maelstrom/maelstrom" >> $GITHUB_ENV
 
