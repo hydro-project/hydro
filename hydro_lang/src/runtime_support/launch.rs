@@ -12,13 +12,31 @@ pub use hydro_deploy_integration::*;
 use procfs::WithCurrentSystemInfo;
 use serde::de::DeserializeOwned;
 
+/// Trait for types that can be run as a dataflow (both `Dfir` and `InlineFlow`).
+pub trait Runnable {
+    /// Run the dataflow forever (never returns in practice).
+    fn run(&mut self) -> impl std::future::Future<Output: Send>;
+}
+
+impl Runnable for Dfir<'_> {
+    fn run(&mut self) -> impl std::future::Future<Output = Option<dfir_rs::Never>> {
+        Dfir::run(self)
+    }
+}
+
+impl<Tick: AsyncFnMut()> Runnable for dfir_rs::scheduled::context::InlineFlow<Tick> {
+    fn run(&mut self) -> impl std::future::Future<Output = dfir_rs::Never> {
+        dfir_rs::scheduled::context::InlineFlow::run(self)
+    }
+}
+
 #[cfg(not(feature = "runtime_measure"))]
-pub async fn run_stdin_commands(flow: Dfir<'_>) {
+pub async fn run_stdin_commands(flow: impl Runnable) {
     launch_flow_stdin_commands(flow).await;
 }
 
 #[cfg(feature = "runtime_measure")]
-pub async fn run_stdin_commands(flow: Dfir<'_>) {
+pub async fn run_stdin_commands(flow: impl Runnable) {
     // Make sure to print CPU even if we crash
     let res = std::panic::AssertUnwindSafe(launch_flow_stdin_commands(flow))
         .catch_unwind()
@@ -81,7 +99,7 @@ pub async fn run_stdin_commands(flow: Dfir<'_>) {
     res.unwrap();
 }
 
-pub async fn launch_flow_stdin_commands(mut flow: Dfir<'_>) {
+pub async fn launch_flow_stdin_commands(mut flow: impl Runnable) {
     // TODO(mingwei): convert to use CancellationToken at some point
     // Not trivial: https://github.com/hydro-project/hydro/pull/2495/changes#r2733428502
     let stop = tokio::sync::oneshot::channel();

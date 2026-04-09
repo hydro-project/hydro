@@ -239,7 +239,7 @@ pub fn compile_graph_trybuild(
     let mut diagnostics = Diagnostics::new();
     let mut dfir_expr: syn::Expr = syn::parse2(
         partitioned_graph
-            .as_code(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
+            .as_code_inline(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
             .expect("DFIR code generation failed with diagnostics."),
     )
     .unwrap();
@@ -266,7 +266,7 @@ pub fn compile_graph_trybuild(
                 pub use #trybuild_crate_name_ident::__staged;
 
                 #[allow(unused)]
-                async fn __hydro_runtime<'a>() -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> {
+                async fn __hydro_runtime<'a>() -> #root::runtime_support::dfir_rs::scheduled::context::InlineFlow<impl ::std::ops::AsyncFnMut() + 'a> {
                     /// extra_stmts
                     #( #extra_stmts )*
 
@@ -303,7 +303,7 @@ pub fn compile_graph_trybuild(
                 fn __hydro_runtime<'a>(
                     __hydro_lang_trybuild_cli: &'a #root::runtime_support::hydro_deploy_integration::DeployPorts<#root::__staged::deploy::deploy_runtime::HydroMeta>
                 )
-                    -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a>
+                    -> #root::runtime_support::dfir_rs::scheduled::context::InlineFlow<impl ::std::ops::AsyncFnMut() + 'a>
                 {
                     #( #extra_stmts )*
 
@@ -342,7 +342,7 @@ pub fn compile_graph_trybuild(
                 fn __hydro_runtime<'a>(
                     __hydro_lang_maelstrom_meta: &'a #root::__staged::deploy::maelstrom::deploy_runtime_maelstrom::MaelstromMeta
                 )
-                    -> #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a>
+                    -> #root::runtime_support::dfir_rs::scheduled::context::InlineFlow<impl ::std::ops::AsyncFnMut() + 'a>
                 {
                     #( #extra_stmts )*
 

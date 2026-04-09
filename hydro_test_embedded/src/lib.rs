@@ -189,8 +189,11 @@ mod tests {
         let mut outputs = crate::singleton_input_inline::prefix_names_inline::EmbeddedOutputs {
             output: |s: String| collected.push(s),
         };
-        let mut flow =
-            crate::singleton_input_inline::prefix_names_inline("Hello".to_owned(), names, &mut outputs);
+        let mut flow = crate::singleton_input_inline::prefix_names_inline(
+            "Hello".to_owned(),
+            names,
+            &mut outputs,
+        );
         tokio::task::LocalSet::new()
             .run_until(flow.run_tick())
             .await;
@@ -210,8 +213,7 @@ mod tests {
                 tx.send(bytes).unwrap();
             },
         };
-        let mut flow_sender =
-            crate::echo_network_inline::echo_sender_inline(input, &mut net_out);
+        let mut flow_sender = crate::echo_network_inline::echo_sender_inline(input, &mut net_out);
         tokio::task::LocalSet::new()
             .run_until(flow_sender.run_tick())
             .await;
@@ -241,7 +243,9 @@ mod tests {
     }
 
     // Helper to run an inline tick closure in a LocalSet.
-    async fn run_inline(flow: &mut dfir_rs::scheduled::context::InlineFlow<impl std::ops::AsyncFnMut()>) {
+    async fn run_inline(
+        flow: &mut dfir_rs::scheduled::context::InlineFlow<impl std::ops::AsyncFnMut()>,
+    ) {
         tokio::task::LocalSet::new()
             .run_until(flow.run_tick())
             .await;
@@ -254,9 +258,13 @@ mod tests {
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<(TaglessMemberId, Bytes)>();
 
         let input = stream::iter(vec!["hello".to_owned(), "world".to_owned()]);
-        let membership = crate::o2m_broadcast_inline::o2m_sender_inline::EmbeddedMembershipStreams {
-            o2m_receiver_inline: stream::iter(vec![(member_id.clone(), MembershipEvent::Joined)]),
-        };
+        let membership =
+            crate::o2m_broadcast_inline::o2m_sender_inline::EmbeddedMembershipStreams {
+                o2m_receiver_inline: stream::iter(vec![(
+                    member_id.clone(),
+                    MembershipEvent::Joined,
+                )]),
+            };
         let mut net_out = crate::o2m_broadcast_inline::o2m_sender_inline::EmbeddedNetworkOut {
             o2m_data: move |item: (TaglessMemberId, Bytes)| {
                 tx.send(item).unwrap();
@@ -318,8 +326,7 @@ mod tests {
         let mut outputs = crate::m2o_send_inline::m2o_receiver_inline::EmbeddedOutputs {
             output: |s| received.push(s),
         };
-        let mut flow_receiver =
-            crate::m2o_send_inline::m2o_receiver_inline(&mut outputs, net_in);
+        let mut flow_receiver = crate::m2o_send_inline::m2o_receiver_inline(&mut outputs, net_in);
         run_inline(&mut flow_receiver).await;
         drop(flow_receiver);
         assert_eq!(received.len(), 2);
@@ -335,16 +342,21 @@ mod tests {
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<(TaglessMemberId, Bytes)>();
 
         let input = stream::iter(vec!["ping".to_owned()]);
-        let membership = crate::m2m_broadcast_inline::m2m_sender_inline::EmbeddedMembershipStreams {
-            m2m_receiver_inline: stream::iter(vec![(dst_id.clone(), MembershipEvent::Joined)]),
-        };
+        let membership =
+            crate::m2m_broadcast_inline::m2m_sender_inline::EmbeddedMembershipStreams {
+                m2m_receiver_inline: stream::iter(vec![(dst_id.clone(), MembershipEvent::Joined)]),
+            };
         let mut net_out = crate::m2m_broadcast_inline::m2m_sender_inline::EmbeddedNetworkOut {
             m2m_data: move |item: (TaglessMemberId, Bytes)| {
                 tx.send(item).unwrap();
             },
         };
-        let mut flow_sender =
-            crate::m2m_broadcast_inline::m2m_sender_inline(&src_id, membership, input, &mut net_out);
+        let mut flow_sender = crate::m2m_broadcast_inline::m2m_sender_inline(
+            &src_id,
+            membership,
+            input,
+            &mut net_out,
+        );
         run_inline(&mut flow_sender).await;
         drop(flow_sender);
 
