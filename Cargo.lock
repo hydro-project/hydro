@@ -5418,9 +5418,9 @@ checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 
 [[package]]
 name = "stageleft"
-version = "0.13.2"
+version = "0.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "521c5e11bfcf98006adfab702dc048d6fd7049f108f0e3b3bbcca622a056e7d8"
+checksum = "fea3f615eabfc6690d2f4b0361aa8ffafcdaf88322203d32145af4665364bae4"
 dependencies = [
  "ctor 0.4.3",
  "proc-macro-crate 3.4.0",
@@ -5432,9 +5432,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_macro"
-version = "0.13.2"
+version = "0.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "616e7c2e092531cc6d08c25d9e2657feb5eadf974c06516cf1104f0adb79680c"
+checksum = "ed941c646496893b92d151d54e761b9e103510948b1feae90b82d92e92625743"
 dependencies = [
  "proc-macro-crate 3.4.0",
  "proc-macro2",
@@ -5445,9 +5445,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_tool"
-version = "0.13.2"
+version = "0.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2adcc38087be1a0155a9e0469ed43a928ca75f9a1ebdabde28a012a3a74f2004"
+checksum = "e465ace0492b6cbd4dd1b3ab3376b4cc13034ee453d6175e86989bafc1f40d00"
 dependencies = [
  "prettyplease",
  "proc-macro-crate 3.4.0",
