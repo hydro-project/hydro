@@ -4,10 +4,10 @@ runs:
   using: "composite"
   steps:
     - name: Run sccache-cache
-      uses: mozilla-actions/sccache-action@v0.0.8
+      uses: mozilla-actions/sccache-action@65101d47ea8028ed0c98a1cdea8dd9182e9b5133 # v0.0.8
 
     - name: Set Rust caching env vars
-      uses: actions/github-script@v6
+      uses: actions/github-script@d7906e4ad0b1822421a7e6a35d5ca353c962f410 # v6
       with:
         script: |
           core.exportVariable('SCCACHE_GHA_ENABLED', 'true');

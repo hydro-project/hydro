@@ -16,7 +16,7 @@ jobs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
     steps:
       - id: skip_check
-        uses: fkirc/skip-duplicate-actions@v5.3.1
+        uses: fkirc/skip-duplicate-actions@f75f66ce1886f00957d99748a42c724f4330bdcf # v5.3.1
 
   test_dfir:
     name: Test dfir
@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Verify generated template files are up to date
         run: |
@@ -39,7 +39,7 @@ jobs:
           fi
 
       - name: Action cargo-generate
-        uses: cargo-generate/cargo-generate-action@v0.20.0
+        uses: cargo-generate/cargo-generate-action@9e8ae0970a7c96c4e50a562fe5f355432eba11fa # v0.20.0
         with:
           name: generated
           template: template/dfir
@@ -82,7 +82,7 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Verify generated template files are up to date
         run: |
@@ -94,7 +94,7 @@ jobs:
           fi
 
       - name: Action cargo-generate
-        uses: cargo-generate/cargo-generate-action@v0.20.0
+        uses: cargo-generate/cargo-generate-action@9e8ae0970a7c96c4e50a562fe5f355432eba11fa # v0.20.0
         with:
           name: generated
           template: template/hydro
@@ -121,7 +121,7 @@ jobs:
     steps:
       - name: Generate token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
@@ -131,7 +131,7 @@ jobs:
             ${{ env.REPO }}
 
       - name: Checkout main repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           token: ${{ steps.app-token.outputs.token }}
 
@@ -164,7 +164,7 @@ jobs:
     steps:
       - name: Generate token
         id: app-token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
@@ -174,7 +174,7 @@ jobs:
             ${{ env.REPO }}
 
       - name: Checkout main repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           token: ${{ steps.app-token.outputs.token }}
 

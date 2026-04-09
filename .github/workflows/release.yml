@@ -36,7 +36,7 @@ jobs:
       # `APP_PRIVATE_KEY` ("Generate a private key").
       - name: Generate token
         id: generate_token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@d72941d797fd3113feb6b93fd0dec494b13a2547 # v1
         with:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
@@ -55,7 +55,7 @@ jobs:
           git config --global user.email "132423234+hydro-project-bot[bot]@users.noreply.github.com"
 
       - name: Checkout sources
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
           # Fetch all commit history so smart-release can generate changelogs.
           fetch-depth: 0
