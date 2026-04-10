@@ -295,5 +295,15 @@
 <a href=#295 id=295 data-nosnippet>295</a>    </span><span class="kw">pub fn </span>replace_ir(<span class="kw-2">&amp;mut </span><span class="self">self</span>, roots: Vec&lt;HydroRoot&gt;) {
 <a href=#296 id=296 data-nosnippet>296</a>        <span class="self">self</span>.flow_state.borrow_mut().roots = <span class="prelude-val">Some</span>(roots);
 <a href=#297 id=297 data-nosnippet>297</a>    }
-<a href=#298 id=298 data-nosnippet>298</a>}
+<a href=#298 id=298 data-nosnippet>298</a>
+<a href=#299 id=299 data-nosnippet>299</a>    <span class="attr">#[doc(hidden)] </span><span class="comment">// TODO(mingwei): This is an unstable API for now
+<a href=#300 id=300 data-nosnippet>300</a>    </span><span class="kw">pub fn </span>next_clock_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; ClockId {
+<a href=#301 id=301 data-nosnippet>301</a>        <span class="self">self</span>.flow_state.borrow_mut().next_clock_id()
+<a href=#302 id=302 data-nosnippet>302</a>    }
+<a href=#303 id=303 data-nosnippet>303</a>
+<a href=#304 id=304 data-nosnippet>304</a>    <span class="attr">#[doc(hidden)] </span><span class="comment">// TODO(mingwei): This is an unstable API for now
+<a href=#305 id=305 data-nosnippet>305</a>    </span><span class="kw">pub fn </span>next_cycle_id(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; CycleId {
+<a href=#306 id=306 data-nosnippet>306</a>        <span class="self">self</span>.flow_state.borrow_mut().next_cycle_id()
+<a href=#307 id=307 data-nosnippet>307</a>    }
+<a href=#308 id=308 data-nosnippet>308</a>}
 </code></pre></div></section></main></body></html>
