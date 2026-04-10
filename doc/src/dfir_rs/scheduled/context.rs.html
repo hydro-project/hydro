@@ -418,4 +418,152 @@
 <a href=#418 id=418 data-nosnippet>418</a>    </span>lifespan: <span class="prelude-ty">Option</span>&lt;StateLifespan&gt;,
 <a href=#419 id=419 data-nosnippet>419</a>}
 <a href=#420 id=420 data-nosnippet>420</a><span class="kw">type </span>LifespanResetFn = Box&lt;<span class="kw">dyn </span>FnMut(<span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Any)&gt;;
+<a href=#421 id=421 data-nosnippet>421</a>
+<a href=#422 id=422 data-nosnippet>422</a><span class="doccomment">/// A lightweight context for inline codegen that avoids the overhead of the full
+<a href=#423 id=423 data-nosnippet>423</a>/// [`Context`] (no tokio channels, no scheduler queues, no loop machinery).
+<a href=#424 id=424 data-nosnippet>424</a>///
+<a href=#425 id=425 data-nosnippet>425</a>/// Exposes the same method names that operator-generated code calls on both
+<a href=#426 id=426 data-nosnippet>426</a>/// `df` (for prologues: `add_state`, `set_state_lifespan_hook`) and
+<a href=#427 id=427 data-nosnippet>427</a>/// `context` (for iterators: `state_ref_unchecked`, `is_first_run_this_tick`, etc.).
+<a href=#428 id=428 data-nosnippet>428</a></span><span class="attr">#[doc(hidden)]
+<a href=#429 id=429 data-nosnippet>429</a></span><span class="kw">pub struct </span>InlineContext {
+<a href=#430 id=430 data-nosnippet>430</a>    states: SlotVec&lt;StateTag, StateData&gt;,
+<a href=#431 id=431 data-nosnippet>431</a>    current_tick: TickInstant,
+<a href=#432 id=432 data-nosnippet>432</a>    is_first_run_this_tick: bool,
+<a href=#433 id=433 data-nosnippet>433</a>}
+<a href=#434 id=434 data-nosnippet>434</a>
+<a href=#435 id=435 data-nosnippet>435</a><span class="kw">impl </span>Default <span class="kw">for </span>InlineContext {
+<a href=#436 id=436 data-nosnippet>436</a>    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+<a href=#437 id=437 data-nosnippet>437</a>        <span class="self">Self </span>{
+<a href=#438 id=438 data-nosnippet>438</a>            states: SlotVec::new(),
+<a href=#439 id=439 data-nosnippet>439</a>            current_tick: TickInstant::default(),
+<a href=#440 id=440 data-nosnippet>440</a>            is_first_run_this_tick: <span class="bool-val">true</span>,
+<a href=#441 id=441 data-nosnippet>441</a>        }
+<a href=#442 id=442 data-nosnippet>442</a>    }
+<a href=#443 id=443 data-nosnippet>443</a>}
+<a href=#444 id=444 data-nosnippet>444</a>
+<a href=#445 id=445 data-nosnippet>445</a><span class="kw">impl </span>InlineContext {
+<a href=#446 id=446 data-nosnippet>446</a>    <span class="doccomment">/// Create a new inline context.
+<a href=#447 id=447 data-nosnippet>447</a>    </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+<a href=#448 id=448 data-nosnippet>448</a>        Default::default()
+<a href=#449 id=449 data-nosnippet>449</a>    }
+<a href=#450 id=450 data-nosnippet>450</a>
+<a href=#451 id=451 data-nosnippet>451</a>    <span class="comment">// --- Methods called as `df.xxx()` in operator prologues ---
+<a href=#452 id=452 data-nosnippet>452</a>
+<a href=#453 id=453 data-nosnippet>453</a>    </span><span class="doccomment">/// Adds state and returns a handle.
+<a href=#454 id=454 data-nosnippet>454</a>    </span><span class="kw">pub fn </span>add_state&lt;T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, state: T) -&gt; StateHandle&lt;T&gt;
+<a href=#455 id=455 data-nosnippet>455</a>    <span class="kw">where
+<a href=#456 id=456 data-nosnippet>456</a>        </span>T: Any,
+<a href=#457 id=457 data-nosnippet>457</a>    {
+<a href=#458 id=458 data-nosnippet>458</a>        <span class="kw">let </span>state_data = StateData {
+<a href=#459 id=459 data-nosnippet>459</a>            state: Box::new(state),
+<a href=#460 id=460 data-nosnippet>460</a>            lifespan_hook_fn: <span class="prelude-val">None</span>,
+<a href=#461 id=461 data-nosnippet>461</a>            lifespan: <span class="prelude-val">None</span>,
+<a href=#462 id=462 data-nosnippet>462</a>        };
+<a href=#463 id=463 data-nosnippet>463</a>        <span class="kw">let </span>state_id = <span class="self">self</span>.states.insert(state_data);
+<a href=#464 id=464 data-nosnippet>464</a>        StateHandle {
+<a href=#465 id=465 data-nosnippet>465</a>            state_id,
+<a href=#466 id=466 data-nosnippet>466</a>            _phantom: PhantomData,
+<a href=#467 id=467 data-nosnippet>467</a>        }
+<a href=#468 id=468 data-nosnippet>468</a>    }
+<a href=#469 id=469 data-nosnippet>469</a>
+<a href=#470 id=470 data-nosnippet>470</a>    <span class="doccomment">/// Sets a hook to modify state at the end of each tick.
+<a href=#471 id=471 data-nosnippet>471</a>    </span><span class="kw">pub fn </span>set_state_lifespan_hook&lt;T&gt;(
+<a href=#472 id=472 data-nosnippet>472</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#473 id=473 data-nosnippet>473</a>        handle: StateHandle&lt;T&gt;,
+<a href=#474 id=474 data-nosnippet>474</a>        _lifespan: StateLifespan,
+<a href=#475 id=475 data-nosnippet>475</a>        <span class="kw-2">mut </span>hook_fn: <span class="kw">impl </span><span class="lifetime">'static </span>+ FnMut(<span class="kw-2">&amp;mut </span>T),
+<a href=#476 id=476 data-nosnippet>476</a>    ) <span class="kw">where
+<a href=#477 id=477 data-nosnippet>477</a>        </span>T: Any,
+<a href=#478 id=478 data-nosnippet>478</a>    {
+<a href=#479 id=479 data-nosnippet>479</a>        <span class="kw">let </span>state_data = <span class="self">self
+<a href=#480 id=480 data-nosnippet>480</a>            </span>.states
+<a href=#481 id=481 data-nosnippet>481</a>            .get_mut(handle.state_id)
+<a href=#482 id=482 data-nosnippet>482</a>            .expect(<span class="string">"Failed to find state with given handle."</span>);
+<a href=#483 id=483 data-nosnippet>483</a>        state_data.lifespan_hook_fn = <span class="prelude-val">Some</span>(Box::new(<span class="kw">move </span>|state| {
+<a href=#484 id=484 data-nosnippet>484</a>            (hook_fn)(state.downcast_mut::&lt;T&gt;().unwrap());
+<a href=#485 id=485 data-nosnippet>485</a>        }));
+<a href=#486 id=486 data-nosnippet>486</a>        state_data.lifespan = <span class="prelude-val">Some</span>(_lifespan);
+<a href=#487 id=487 data-nosnippet>487</a>    }
+<a href=#488 id=488 data-nosnippet>488</a>
+<a href=#489 id=489 data-nosnippet>489</a>    <span class="comment">// --- Methods called as `context.xxx()` in operator iterators ---
+<a href=#490 id=490 data-nosnippet>490</a>
+<a href=#491 id=491 data-nosnippet>491</a>    </span><span class="doccomment">/// Returns a shared reference to the state.
+<a href=#492 id=492 data-nosnippet>492</a>    ///
+<a href=#493 id=493 data-nosnippet>493</a>    /// # Safety
+<a href=#494 id=494 data-nosnippet>494</a>    /// `StateHandle&lt;T&gt;` must be from _this_ instance.
+<a href=#495 id=495 data-nosnippet>495</a>    </span><span class="kw">pub unsafe fn </span>state_ref_unchecked&lt;T&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, handle: StateHandle&lt;T&gt;) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'_ </span>T
+<a href=#496 id=496 data-nosnippet>496</a>    <span class="kw">where
+<a href=#497 id=497 data-nosnippet>497</a>        </span>T: Any,
+<a href=#498 id=498 data-nosnippet>498</a>    {
+<a href=#499 id=499 data-nosnippet>499</a>        <span class="kw">let </span>state = <span class="self">self
+<a href=#500 id=500 data-nosnippet>500</a>            </span>.states
+<a href=#501 id=501 data-nosnippet>501</a>            .get(handle.state_id)
+<a href=#502 id=502 data-nosnippet>502</a>            .expect(<span class="string">"Failed to find state with given handle."</span>)
+<a href=#503 id=503 data-nosnippet>503</a>            .state
+<a href=#504 id=504 data-nosnippet>504</a>            .as_ref();
+<a href=#505 id=505 data-nosnippet>505</a>        <span class="macro">debug_assert!</span>(state.is::&lt;T&gt;());
+<a href=#506 id=506 data-nosnippet>506</a>        <span class="kw">unsafe </span>{ <span class="kw-2">&amp;*</span>(state <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">dyn </span>Any <span class="kw">as </span><span class="kw-2">*const </span>T) }
+<a href=#507 id=507 data-nosnippet>507</a>    }
+<a href=#508 id=508 data-nosnippet>508</a>
+<a href=#509 id=509 data-nosnippet>509</a>    <span class="doccomment">/// Gets whether this is the first time running this tick.
+<a href=#510 id=510 data-nosnippet>510</a>    </span><span class="kw">pub fn </span>is_first_run_this_tick(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+<a href=#511 id=511 data-nosnippet>511</a>        <span class="self">self</span>.is_first_run_this_tick
+<a href=#512 id=512 data-nosnippet>512</a>    }
+<a href=#513 id=513 data-nosnippet>513</a>
+<a href=#514 id=514 data-nosnippet>514</a>    <span class="doccomment">/// Gets the current tick count.
+<a href=#515 id=515 data-nosnippet>515</a>    </span><span class="kw">pub fn </span>current_tick(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TickInstant {
+<a href=#516 id=516 data-nosnippet>516</a>        <span class="self">self</span>.current_tick
+<a href=#517 id=517 data-nosnippet>517</a>    }
+<a href=#518 id=518 data-nosnippet>518</a>
+<a href=#519 id=519 data-nosnippet>519</a>    <span class="doccomment">/// No-op: inline mode has no subgraph scheduling.
+<a href=#520 id=520 data-nosnippet>520</a>    </span><span class="kw">pub fn </span>current_subgraph(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SubgraphId {
+<a href=#521 id=521 data-nosnippet>521</a>        SubgraphId::from_raw(<span class="number">0</span>)
+<a href=#522 id=522 data-nosnippet>522</a>    }
+<a href=#523 id=523 data-nosnippet>523</a>
+<a href=#524 id=524 data-nosnippet>524</a>    <span class="doccomment">/// No-op: inline mode has no subgraph scheduling.
+<a href=#525 id=525 data-nosnippet>525</a>    </span><span class="kw">pub fn </span>schedule_subgraph(<span class="kw-2">&amp;</span><span class="self">self</span>, _sg_id: SubgraphId, _is_external: bool) {}
+<a href=#526 id=526 data-nosnippet>526</a>
+<a href=#527 id=527 data-nosnippet>527</a>    <span class="doccomment">/// Returns a no-op waker. In inline mode, streams are polled once per tick.
+<a href=#528 id=528 data-nosnippet>528</a>    </span><span class="kw">pub fn </span>waker(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; std::task::Waker {
+<a href=#529 id=529 data-nosnippet>529</a>        std::task::Waker::noop().clone()
+<a href=#530 id=530 data-nosnippet>530</a>    }
+<a href=#531 id=531 data-nosnippet>531</a>
+<a href=#532 id=532 data-nosnippet>532</a>    <span class="doccomment">/// No-op for inline mode.
+<a href=#533 id=533 data-nosnippet>533</a>    </span><span class="kw">pub fn </span>request_task&lt;Fut&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _future: Fut)
+<a href=#534 id=534 data-nosnippet>534</a>    <span class="kw">where
+<a href=#535 id=535 data-nosnippet>535</a>        </span>Fut: Future&lt;Output = ()&gt; + <span class="lifetime">'static</span>,
+<a href=#536 id=536 data-nosnippet>536</a>    {
+<a href=#537 id=537 data-nosnippet>537</a>    }
+<a href=#538 id=538 data-nosnippet>538</a>
+<a href=#539 id=539 data-nosnippet>539</a>    <span class="comment">// --- Methods called by __end_tick ---
+<a href=#540 id=540 data-nosnippet>540</a>
+<a href=#541 id=541 data-nosnippet>541</a>    </span><span class="doccomment">/// Runs end-of-tick state hooks and increments the tick counter.
+<a href=#542 id=542 data-nosnippet>542</a>    </span><span class="kw">pub fn </span>__end_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#543 id=543 data-nosnippet>543</a>        <span class="kw">for </span>state_data <span class="kw">in </span><span class="self">self</span>.states.values_mut() {
+<a href=#544 id=544 data-nosnippet>544</a>            <span class="kw">let </span>StateData {
+<a href=#545 id=545 data-nosnippet>545</a>                state,
+<a href=#546 id=546 data-nosnippet>546</a>                lifespan_hook_fn: <span class="prelude-val">Some</span>(lifespan_hook_fn),
+<a href=#547 id=547 data-nosnippet>547</a>                lifespan: <span class="prelude-val">Some</span>(StateLifespan::Tick),
+<a href=#548 id=548 data-nosnippet>548</a>            } = state_data
+<a href=#549 id=549 data-nosnippet>549</a>            <span class="kw">else </span>{
+<a href=#550 id=550 data-nosnippet>550</a>                <span class="kw">continue</span>;
+<a href=#551 id=551 data-nosnippet>551</a>            };
+<a href=#552 id=552 data-nosnippet>552</a>            (lifespan_hook_fn)(Box::deref_mut(state));
+<a href=#553 id=553 data-nosnippet>553</a>        }
+<a href=#554 id=554 data-nosnippet>554</a>        <span class="self">self</span>.current_tick += <span class="kw">crate</span>::scheduled::ticks::TickDuration::SINGLE_TICK;
+<a href=#555 id=555 data-nosnippet>555</a>        <span class="self">self</span>.is_first_run_this_tick = <span class="bool-val">true</span>;
+<a href=#556 id=556 data-nosnippet>556</a>    }
+<a href=#557 id=557 data-nosnippet>557</a>
+<a href=#558 id=558 data-nosnippet>558</a>    <span class="doccomment">/// Runs a future synchronously, panicking if it does not resolve immediately.
+<a href=#559 id=559 data-nosnippet>559</a>    </span><span class="attr">#[doc(hidden)]
+<a href=#560 id=560 data-nosnippet>560</a>    </span><span class="kw">pub fn </span>__run_future_sync&lt;Fut: std::future::Future&gt;(fut: Fut) -&gt; Fut::Output {
+<a href=#561 id=561 data-nosnippet>561</a>        <span class="kw">let </span><span class="kw-2">mut </span>fut = <span class="macro">std::pin::pin!</span>(fut);
+<a href=#562 id=562 data-nosnippet>562</a>        <span class="kw">let </span><span class="kw-2">mut </span>ctx = std::task::Context::from_waker(std::task::Waker::noop());
+<a href=#563 id=563 data-nosnippet>563</a>        <span class="kw">match </span>fut.as_mut().poll(<span class="kw-2">&amp;mut </span>ctx) {
+<a href=#564 id=564 data-nosnippet>564</a>            std::task::Poll::Ready(out) =&gt; out,
+<a href=#565 id=565 data-nosnippet>565</a>            std::task::Poll::Pending =&gt; <span class="macro">panic!</span>(<span class="string">"Future did not resolve immediately."</span>),
+<a href=#566 id=566 data-nosnippet>566</a>        }
+<a href=#567 id=567 data-nosnippet>567</a>    }
+<a href=#568 id=568 data-nosnippet>568</a>}
 </code></pre></div></section></main></body></html>
