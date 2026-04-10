@@ -631,6 +631,18 @@ impl<Tick: AsyncFnMut()> InlineFlow<Tick> {
         (self.tick)().await;
     }
 
+    /// Run a single tick synchronously. Panics if the tick yields (async suspension).
+    pub fn run_tick_sync(&mut self) {
+        let mut fut = std::pin::pin!(self.run_tick());
+        let mut ctx = std::task::Context::from_waker(std::task::Waker::noop());
+        match fut.as_mut().poll(&mut ctx) {
+            std::task::Poll::Ready(()) => {}
+            std::task::Poll::Pending => {
+                panic!("InlineFlow::run_tick_sync: tick yielded asynchronously.")
+            }
+        }
+    }
+
     /// Run ticks as long as work is available, then return.
     pub async fn run_available(&mut self) {
         // Always run at least one tick.

@@ -500,7 +500,7 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
     /// include!(concat!(env!("OUT_DIR"), "/embedded.rs"));
     /// ```
     pub fn generate_embedded(self, crate_name: &str) -> syn::File {
-        self.generate_embedded_inner(crate_name, false)
+        self.generate_embedded_inner(crate_name, true)
     }
 
     /// Like [`Self::generate_embedded`], but generates inline codegen (async closure per tick)

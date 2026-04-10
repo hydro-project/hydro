@@ -48,7 +48,7 @@ fn benchmark_hydroflow_surface(c: &mut Criterion) {
 fn benchmark_hydroflow_surface_inline(c: &mut Criterion) {
     c.bench_function("fan_out/dfir_rs/surface_inline", |b| {
         b.iter(|| {
-            let mut tick = dfir_syntax_inline! {
+            let mut flow = dfir_syntax_inline! {
                 my_tee = tee();
 
                 source_iter(black_box(0..NUM_INTS)) -> my_tee;
@@ -77,7 +77,7 @@ fn benchmark_hydroflow_surface_inline(c: &mut Criterion) {
                 my_tee -> for_each(|x| { black_box(x); });
                 my_tee -> for_each(|x| { black_box(x); });
             };
-            dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
+            flow.run_tick_sync();
         })
     });
 }

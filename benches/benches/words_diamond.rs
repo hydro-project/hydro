@@ -56,7 +56,7 @@ fn dfir_rs_diamond_inline(c: &mut Criterion) {
             let words = words();
             let mut count: usize = 0;
             let count_ref = &mut count;
-            let mut tick = dfir_syntax_inline! {
+            let mut flow = dfir_syntax_inline! {
                 my_tee = source_iter(words) -> tee();
                 my_tee -> flat_map(|s| [format!("hi {}", s), format!("bye {}", s)]) -> my_union;
                 my_tee -> filter(|s| 0 == s.len() % 5) -> my_union;
@@ -64,8 +64,8 @@ fn dfir_rs_diamond_inline(c: &mut Criterion) {
                     *n += s.len();
                 }) -> for_each(|n: usize| { *count_ref = n; });
             };
-            dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
-            drop(tick);
+            flow.run_tick_sync();
+            drop(flow);
             assert_eq!(OUTPUT, count);
         })
     });

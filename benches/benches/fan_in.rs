@@ -84,8 +84,8 @@ fn benchmark_hydroflow_surface_inline(c: &mut Criterion) {
                     my_union -> for_each(|x| { black_box(x); });
                 }
             },
-            |mut tick| {
-                dfir_rs::scheduled::context::InlineContext::__run_future_sync(tick());
+            |mut flow| {
+                flow.run_tick_sync();
             },
             criterion::BatchSize::LargeInput,
         )

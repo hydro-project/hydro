@@ -29,43 +29,6 @@ fn generate_embedded() {
         .unwrap();
     }
 
-    // --- capitalize_inline (local, no networking, inline codegen) ---
-    {
-        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
-        let process = flow.process::<()>();
-        hydro_test::local::capitalize::capitalize(process.embedded_input("input"));
-
-        let code = flow
-            .with_process(&process, "capitalize_inline")
-            .generate_embedded_inline("hydro_test");
-
-        std::fs::write(
-            format!("{out_dir}/embedded_inline.rs"),
-            prettyplease::unparse(&code),
-        )
-        .unwrap();
-    }
-
-    // --- singleton_input_inline (local, singleton + stream, inline codegen) ---
-    {
-        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
-        let process = flow.process::<()>();
-        hydro_test::local::singleton_input::prefix_names(
-            process.embedded_input("names"),
-            process.embedded_singleton_input("prefix"),
-        );
-
-        let code = flow
-            .with_process(&process, "prefix_names_inline")
-            .generate_embedded_inline("hydro_test");
-
-        std::fs::write(
-            format!("{out_dir}/singleton_input_inline.rs"),
-            prettyplease::unparse(&code),
-        )
-        .unwrap();
-    }
-
     // --- singleton_input (local, singleton + stream) ---
     {
         let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
@@ -167,92 +130,6 @@ fn generate_embedded() {
 
         std::fs::write(
             format!("{out_dir}/m2m_broadcast.rs"),
-            prettyplease::unparse(&code),
-        )
-        .unwrap();
-    }
-
-    // --- echo_network_inline (o2o networking, inline) ---
-    {
-        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
-        let sender = flow.process::<hydro_test::embedded::echo_network::Sender>();
-        let receiver = flow.process::<hydro_test::embedded::echo_network::Receiver>();
-        hydro_test::embedded::echo_network::echo_network(&receiver, sender.embedded_input("input"))
-            .embedded_output("output");
-
-        let code = flow
-            .with_process(&sender, "echo_sender_inline")
-            .with_process(&receiver, "echo_receiver_inline")
-            .generate_embedded_inline("hydro_test");
-
-        std::fs::write(
-            format!("{out_dir}/echo_network_inline.rs"),
-            prettyplease::unparse(&code),
-        )
-        .unwrap();
-    }
-
-    // --- o2m_broadcast_inline (process -> cluster, inline) ---
-    {
-        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
-        let process = flow.process::<hydro_test::embedded::o2m_broadcast::Src>();
-        let cluster = flow.cluster::<hydro_test::embedded::o2m_broadcast::Dst>();
-        hydro_test::embedded::o2m_broadcast::o2m_broadcast(
-            &cluster,
-            process.embedded_input("input"),
-        )
-        .assume_ordering(nondet!(/** test */))
-        .embedded_output("output");
-
-        let code = flow
-            .with_process(&process, "o2m_sender_inline")
-            .with_cluster(&cluster, "o2m_receiver_inline")
-            .generate_embedded_inline("hydro_test");
-
-        std::fs::write(
-            format!("{out_dir}/o2m_broadcast_inline.rs"),
-            prettyplease::unparse(&code),
-        )
-        .unwrap();
-    }
-
-    // --- m2o_send_inline (cluster -> process, inline) ---
-    {
-        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
-        let cluster = flow.cluster::<hydro_test::embedded::m2o_send::Src>();
-        let process = flow.process::<hydro_test::embedded::m2o_send::Dst>();
-        hydro_test::embedded::m2o_send::m2o_send(&process, cluster.embedded_input("input"))
-            .assume_ordering(nondet!(/** test */))
-            .embedded_output("output");
-
-        let code = flow
-            .with_cluster(&cluster, "m2o_sender_inline")
-            .with_process(&process, "m2o_receiver_inline")
-            .generate_embedded_inline("hydro_test");
-
-        std::fs::write(
-            format!("{out_dir}/m2o_send_inline.rs"),
-            prettyplease::unparse(&code),
-        )
-        .unwrap();
-    }
-
-    // --- m2m_broadcast_inline (cluster -> cluster, inline) ---
-    {
-        let mut flow = hydro_lang::compile::builder::FlowBuilder::new();
-        let src = flow.cluster::<hydro_test::embedded::m2m_broadcast::Src>();
-        let dst = flow.cluster::<hydro_test::embedded::m2m_broadcast::Dst>();
-        hydro_test::embedded::m2m_broadcast::m2m_broadcast(&dst, src.embedded_input("input"))
-            .assume_ordering(nondet!(/** test */))
-            .embedded_output("output");
-
-        let code = flow
-            .with_cluster(&src, "m2m_sender_inline")
-            .with_cluster(&dst, "m2m_receiver_inline")
-            .generate_embedded_inline("hydro_test");
-
-        std::fs::write(
-            format!("{out_dir}/m2m_broadcast_inline.rs"),
             prettyplease::unparse(&code),
         )
         .unwrap();
