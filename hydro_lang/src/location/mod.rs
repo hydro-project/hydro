@@ -1151,7 +1151,8 @@ pub trait Location<'a>: dynamic::DynLocation {
     ///
     /// # Panics
     /// Panics if the forward reference creates a synchronous cycle (i.e., the completed
-    /// stream transitively depends on the placeholder without a `defer_tick` in between).
+    /// stream transitively depends on the placeholder without a `defer_tick` or network
+    /// hop in between).
     ///
     /// # Example
     /// ```rust

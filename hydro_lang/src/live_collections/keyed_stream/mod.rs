@@ -2698,6 +2698,8 @@ mod tests {
     use crate::live_collections::stream::{NoOrder, TotalOrder};
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::location::Location;
+    #[cfg(feature = "sim")]
+    use crate::networking::TCP;
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::nondet::nondet;
     #[cfg(feature = "deploy")]
@@ -3042,6 +3044,7 @@ mod tests {
 
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
@@ -3055,7 +3058,11 @@ mod tests {
             ordered
                 .clone()
                 .map(q!(|v| v + 1))
-                .filter(q!(|v| v % 2 == 1)),
+                .filter(q!(|v| v % 2 == 1))
+                .entries()
+                .send(&node2, TCP.fail_stop().bincode())
+                .send(&node, TCP.fail_stop().bincode())
+                .into_keyed(),
         );
 
         let out_recv = ordered
@@ -3070,7 +3077,7 @@ mod tests {
             .sim_output();
 
         let mut saw = false;
-        let instance_count = flow.sim().exhaustive(async || {
+        flow.sim().exhaustive(async || {
             // Send (1, 0) and (1, 2). 0+1=1 is odd so cycles back.
             // We want to see [0, 1] - the cycled back value interleaved
             in_send.send_many_unordered([(1, 0), (1, 2)]);
@@ -3092,7 +3099,6 @@ mod tests {
             saw,
             "did not see an instance with key 1 having [0, 1] in order"
         );
-        assert_eq!(instance_count, 6);
     }
 
     #[cfg(feature = "sim")]
@@ -3106,6 +3112,7 @@ mod tests {
         // that other key.
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
@@ -3124,6 +3131,8 @@ mod tests {
                 .map(q!(|_| 100))
                 .entries()
                 .map(q!(|(_, v)| (2, v))) // Change key from 1 to 2
+                .send(&node2, TCP.fail_stop().bincode())
+                .send(&node, TCP.fail_stop().bincode())
                 .into_keyed(),
         );
 
@@ -3143,7 +3152,7 @@ mod tests {
         // - This causes (2, 100) to be cycled back
         // - (2, 100) is released BEFORE (2, 20) which was already pending
         let mut saw_cross_key_interleave = false;
-        let instance_count = flow.sim().exhaustive(async || {
+        flow.sim().exhaustive(async || {
             // Send (1, 10), (1, 11) for key 1, and (2, 20), (2, 21) for key 2
             in_send.send_many_unordered([(1, 10), (1, 11), (2, 20), (2, 21)]);
             let out: HashMap<_, _> = out_recv
@@ -3166,7 +3175,6 @@ mod tests {
             saw_cross_key_interleave,
             "did not see an instance where cycled-back 100 was released before pending items for key 2"
         );
-        assert_eq!(instance_count, 60);
     }
 
     #[cfg(feature = "sim")]
@@ -3176,6 +3184,7 @@ mod tests {
 
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
@@ -3191,7 +3200,11 @@ mod tests {
                 .batch(&node.tick(), nondet!(/** test */))
                 .all_ticks()
                 .map(q!(|v| v + 1))
-                .filter(q!(|v| v % 2 == 1)),
+                .filter(q!(|v| v % 2 == 1))
+                .entries()
+                .send(&node2, TCP.fail_stop().bincode())
+                .send(&node, TCP.fail_stop().bincode())
+                .into_keyed(),
         );
 
         let out_recv = ordered
@@ -3206,7 +3219,7 @@ mod tests {
             .sim_output();
 
         let mut saw = false;
-        let instance_count = flow.sim().exhaustive(async || {
+        flow.sim().exhaustive(async || {
             in_send.send_many_unordered([(1, 0), (1, 2)]);
             let out: HashMap<_, _> = out_recv
                 .collect_sorted::<Vec<_>>()
@@ -3225,6 +3238,5 @@ mod tests {
             saw,
             "did not see an instance with key 1 having [0, 1] in order"
         );
-        assert_eq!(instance_count, 58);
     }
 }

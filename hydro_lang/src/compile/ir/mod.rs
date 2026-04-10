@@ -1506,6 +1506,109 @@ fn uf_union(parent: &mut HashMap<ClockId, ClockId>, a: ClockId, b: ClockId) {
     }
 }
 
+/// Returns `true` if the given `HydroNode` can synchronously reach a
+/// `CycleSource` with the specified `cycle_id` (i.e. without passing
+/// through a `DeferTick` or `Network`).
+#[cfg(feature = "build")]
+fn reaches_cycle_source(
+    node: &HydroNode,
+    target: CycleId,
+    visited: &mut HashSet<*const RefCell<HydroNode>>,
+) -> bool {
+    match node {
+        HydroNode::DeferTick { .. } | HydroNode::Network { .. } => false,
+
+        HydroNode::CycleSource { cycle_id, .. } => *cycle_id == target,
+
+        HydroNode::Placeholder
+        | HydroNode::Source { .. }
+        | HydroNode::SingletonSource { .. }
+        | HydroNode::ExternalInput { .. } => false,
+
+        HydroNode::Tee { inner, .. } | HydroNode::Partition { inner, .. } => {
+            if !visited.insert(inner.as_ptr()) {
+                return false;
+            }
+            reaches_cycle_source(&inner.0.borrow(), target, visited)
+        }
+
+        HydroNode::Cast { inner, .. }
+        | HydroNode::ObserveNonDet { inner, .. }
+        | HydroNode::BeginAtomic { inner, .. }
+        | HydroNode::EndAtomic { inner, .. }
+        | HydroNode::Batch { inner, .. }
+        | HydroNode::YieldConcat { inner, .. } => {
+            reaches_cycle_source(inner, target, visited)
+        }
+
+        HydroNode::Chain { first, second, .. } | HydroNode::ChainFirst { first, second, .. } => {
+            reaches_cycle_source(first, target, visited)
+                || reaches_cycle_source(second, target, visited)
+        }
+
+        HydroNode::CrossSingleton { left, right, .. }
+        | HydroNode::CrossProduct { left, right, .. }
+        | HydroNode::Join { left, right, .. } => {
+            reaches_cycle_source(left, target, visited)
+                || reaches_cycle_source(right, target, visited)
+        }
+
+        HydroNode::Difference { pos, neg, .. } | HydroNode::AntiJoin { pos, neg, .. } => {
+            reaches_cycle_source(pos, target, visited)
+                || reaches_cycle_source(neg, target, visited)
+        }
+
+        HydroNode::ReduceKeyedWatermark {
+            input, watermark, ..
+        } => {
+            reaches_cycle_source(input, target, visited)
+                || reaches_cycle_source(watermark, target, visited)
+        }
+
+        HydroNode::Map { input, .. }
+        | HydroNode::ResolveFutures { input, .. }
+        | HydroNode::ResolveFuturesBlocking { input, .. }
+        | HydroNode::ResolveFuturesOrdered { input, .. }
+        | HydroNode::FlatMap { input, .. }
+        | HydroNode::FlatMapStreamBlocking { input, .. }
+        | HydroNode::Filter { input, .. }
+        | HydroNode::FilterMap { input, .. }
+        | HydroNode::Sort { input, .. }
+        | HydroNode::Enumerate { input, .. }
+        | HydroNode::Inspect { input, .. }
+        | HydroNode::Unique { input, .. }
+        | HydroNode::Fold { input, .. }
+        | HydroNode::Scan { input, .. }
+        | HydroNode::FoldKeyed { input, .. }
+        | HydroNode::Reduce { input, .. }
+        | HydroNode::ReduceKeyed { input, .. }
+        | HydroNode::Counter { input, .. } => reaches_cycle_source(input, target, visited),
+    }
+}
+
+/// Checks that no `forward_ref` cycle is synchronous (i.e. the path from
+/// `CycleSink` back to its `CycleSource` must pass through a `DeferTick`
+/// or `Network`). Panics with a descriptive message if a synchronous cycle
+/// is detected.
+#[cfg(feature = "build")]
+pub fn check_no_synchronous_cycles(ir: &[HydroRoot]) {
+    for root in ir {
+        if let HydroRoot::CycleSink {
+            cycle_id, input, ..
+        } = root
+        {
+            let mut visited = HashSet::new();
+            if reaches_cycle_source(input, *cycle_id, &mut visited) {
+                panic!(
+                    "forward_ref creates a synchronous cycle (cycle_id: {cycle_id:?}). \
+                     Use Tick::cycle() with defer_tick() instead, or restructure \
+                     the dataflow to avoid the cycle."
+                );
+            }
+        }
+    }
+}
+
 /// Traverse the IR to build a union-find that unifies tick IDs connected
 /// through `Batch` and `YieldConcat` nodes at atomic boundaries, then
 /// rewrite all `LocationId`s to use the representative tick ID.

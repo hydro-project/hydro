@@ -196,6 +196,7 @@ impl<'a> FlowBuilder<'a> {
         self.finalized = true;
 
         let mut ir = self.flow_state.borrow_mut().roots.take().unwrap();
+        super::ir::check_no_synchronous_cycles(&ir);
         super::ir::unify_atomic_ticks(&mut ir);
 
         super::built::BuiltFlow {
