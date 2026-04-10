@@ -3521,7 +3521,7 @@ mod tests {
         let out_recv = ordered.sim_output();
 
         let mut saw = false;
-        flow.sim().exhaustive(async || {
+        let instance_count = flow.sim().exhaustive(async || {
             in_send.send_many_unordered([0, 2]);
             let out = out_recv.collect::<Vec<_>>().await;
 
@@ -3531,6 +3531,7 @@ mod tests {
         });
 
         assert!(saw, "did not see an instance with 0, 1, 2 in order");
+        assert_eq!(instance_count, 6);
     }
 
     #[cfg(feature = "sim")]
@@ -3561,7 +3562,7 @@ mod tests {
         let out_recv = ordered.sim_output();
 
         let mut saw = false;
-        flow.sim().exhaustive(async || {
+        let instance_count = flow.sim().exhaustive(async || {
             in_send.send_many_unordered([0, 2]);
             let out = out_recv.collect::<Vec<_>>().await;
 
@@ -3571,6 +3572,7 @@ mod tests {
         });
 
         assert!(saw, "did not see an instance with 0, 1, 2 in order");
+        assert_eq!(instance_count, 58);
     }
 
     #[cfg(feature = "sim")]
@@ -3605,7 +3607,7 @@ mod tests {
         let out_recv = input1_ordered.sim_output();
 
         let mut saw = false;
-        flow.sim().exhaustive(async || {
+        let instance_count = flow.sim().exhaustive(async || {
             in_send.send_many_unordered([0, 1]);
             let out = out_recv.collect::<Vec<_>>().await;
 
@@ -3615,6 +3617,7 @@ mod tests {
         });
 
         assert!(saw, "did not see an instance with 0, 3, 1 in order");
+        assert_eq!(instance_count, 24);
     }
 
     #[cfg(feature = "sim")]
@@ -3644,11 +3647,12 @@ mod tests {
 
         let out_recv = ordered.sim_output();
 
-        flow.sim().exhaustive(async || {
+        let instance_count = flow.sim().exhaustive(async || {
             in_send.send_many_unordered([0, 2]);
             let out = out_recv.collect::<Vec<_>>().await;
             assert_eq!(out.len(), 4);
         });
+        assert_eq!(instance_count, 22);
     }
 
     #[cfg(feature = "deploy")]
