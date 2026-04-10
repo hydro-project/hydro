@@ -425,6 +425,8 @@ type LifespanResetFn = Box<dyn FnMut(&mut dyn Any)>;
 pub struct InlineFlowState {
     /// Whether the next tick should run.
     can_start_tick: Cell<bool>,
+    /// Whether any work was done during the current tick.
+    work_done: Cell<bool>,
     /// Waker to wake the [`InlineFlow::run`] task when external events arrive.
     task_waker: Cell<Option<std::task::Waker>>,
 }
@@ -527,8 +529,9 @@ impl InlineContext {
         SubgraphId::from_raw(0)
     }
 
-    /// Schedules a subgraph. In inline mode, only external events trigger a new tick.
+    /// Schedules a subgraph. External events trigger a new tick; all events mark work as done.
     pub fn schedule_subgraph(&self, _sg_id: SubgraphId, is_external: bool) {
+        self.flow_state.work_done.set(true);
         if is_external {
             self.flow_state.can_start_tick.set(true);
             if let Some(waker) = self.flow_state.task_waker.take() {
@@ -696,15 +699,14 @@ impl<Tick: TickClosure> InlineFlow<Tick> {
 
     /// Run a single tick. Returns `true` if work was done.
     ///
-    /// Currently always returns `true` because the inline model runs all subgraphs
-    /// unconditionally each tick. A more precise implementation would track whether
-    /// any source produced data or any operator processed items, but the overhead of
-    /// always returning `true` is minimal — callers just re-check one extra time
-    /// before concluding the system is idle.
+    /// Returns `true` if any operator signaled work via `schedule_subgraph`, or if
+    /// `can_start_tick` was set (external event arrived). This is a heuristic — not all
+    /// data flow is tracked, but it covers the cases the sim scheduler depends on.
     pub async fn run_tick(&mut self) -> bool {
+        self.flow_state.work_done.set(false);
+        let had_pending = self.flow_state.can_start_tick.replace(false);
         self.tick.call_tick().await;
-        // TODO: track actual data flow to return false when no work was done.
-        true
+        self.flow_state.work_done.get() || had_pending
     }
 
     /// Run a single tick synchronously. Panics if the tick yields (async suspension).
