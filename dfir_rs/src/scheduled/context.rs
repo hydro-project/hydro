@@ -424,8 +424,6 @@ type LifespanResetFn = Box<dyn FnMut(&mut dyn Any)>;
 pub struct InlineFlowState {
     /// Whether the next tick should run.
     can_start_tick: std::sync::atomic::AtomicBool,
-    /// Whether any work was done during the current tick.
-    work_done: std::sync::atomic::AtomicBool,
     /// Waker to wake the [`InlineFlow::run`] task when external events arrive.
     task_waker: futures::task::AtomicWaker,
 }
@@ -434,9 +432,6 @@ impl Default for InlineFlowState {
     fn default() -> Self {
         Self {
             can_start_tick: std::sync::atomic::AtomicBool::new(false),
-            // Pre-set to true so the first run_tick always returns true, matching
-            // Dfir behavior where all subgraphs are pre-scheduled on creation.
-            work_done: std::sync::atomic::AtomicBool::new(true),
             task_waker: futures::task::AtomicWaker::new(),
         }
     }
@@ -581,13 +576,6 @@ impl InlineContext {
         self
     }
 
-    /// Marks that work was done this tick (a handoff buffer had data).
-    pub fn __mark_work_done(&self) {
-        self.flow_state
-            .work_done
-            .store(true, std::sync::atomic::Ordering::Relaxed);
-    }
-
     /// Runs end-of-tick state hooks and increments the tick counter.
     pub fn __end_tick(&mut self) {
         for state_data in self.states.values_mut() {
@@ -634,47 +622,34 @@ pub struct InlineFlow<Tick> {
 
 /// Trait for tick closures — abstracts over both concrete async closures
 /// and type-erased boxed versions ([`ErasedTickFn`]).
-///
-/// This trait exists because `AsyncFnMut()` is not object-safe (due to its GAT return type),
-/// so we cannot use `dyn AsyncFnMut()`. Instead, concrete async closures implement `TickClosure`
-/// via a blanket impl, and [`ErasedTickFn`] implements it by delegating to an object-safe inner
-/// trait.
 #[doc(hidden)]
 pub trait TickClosure {
-    /// Call the tick closure, returning a future that completes when the tick is done.
-    fn call_tick(&mut self) -> impl std::future::Future<Output = ()>;
+    /// Call the tick closure. Returns `true` if any subgraph received input data.
+    fn call_tick(&mut self) -> impl Future<Output = bool>;
 }
 
-impl<F: AsyncFnMut()> TickClosure for F {
-    fn call_tick(&mut self) -> impl std::future::Future<Output = ()> {
+impl<F: AsyncFnMut() -> bool> TickClosure for F {
+    fn call_tick(&mut self) -> impl Future<Output = bool> {
         self()
     }
 }
 
 /// Type-erased tick function for use in heterogeneous collections (e.g., the sim runtime).
-///
-/// Wraps a `Box<dyn ErasedTickFnInner>` — an object-safe trait whose `call_tick` method
-/// returns `Pin<Box<dyn Future + '_>>`, borrowing from the trait object's own state.
-/// This avoids the `FnMut` borrow-escaping problem (see [`InlineFlow`] docs).
 #[doc(hidden)]
 pub struct ErasedTickFn(Box<dyn ErasedTickFnInner>);
 
-/// Object-safe inner trait for type-erased tick functions.
-/// The key insight: `call_tick(&mut self) -> Pin<Box<dyn Future + '_>>` borrows from
-/// `&mut self` (the trait object), which is allowed because the trait object owns the
-/// async closure. This sidesteps the `FnMut` borrow-escaping limitation.
 trait ErasedTickFnInner {
-    fn call_tick(&mut self) -> Pin<Box<dyn Future<Output = ()> + '_>>;
+    fn call_tick(&mut self) -> Pin<Box<dyn Future<Output = bool> + '_>>;
 }
 
-impl<F: AsyncFnMut()> ErasedTickFnInner for F {
-    fn call_tick(&mut self) -> Pin<Box<dyn Future<Output = ()> + '_>> {
+impl<F: AsyncFnMut() -> bool> ErasedTickFnInner for F {
+    fn call_tick(&mut self) -> Pin<Box<dyn Future<Output = bool> + '_>> {
         Box::pin(self())
     }
 }
 
 impl TickClosure for ErasedTickFn {
-    fn call_tick(&mut self) -> impl std::future::Future<Output = ()> {
+    fn call_tick(&mut self) -> impl Future<Output = bool> {
         self.0.call_tick()
     }
 }
@@ -694,19 +669,11 @@ impl<Tick: TickClosure> InlineFlow<Tick> {
     /// Checks both handoff buffers (via `work_done` flag set in generated recv port code)
     /// and external events (via `can_start_tick` set by wakers/schedule_subgraph),
     /// Run a single tick. Returns `true` if any subgraph received input data.
-    ///
-    /// Checks handoff buffers (via `work_done` flag, pre-set to true on creation so the first
-    /// tick always returns true) and external events (via `can_start_tick`), both before and
-    /// after the tick runs.
     pub async fn run_tick(&mut self) -> bool {
         use std::sync::atomic::Ordering::Relaxed;
         let had_external = self.flow_state.can_start_tick.swap(false, Relaxed);
-        let had_work = self.flow_state.work_done.swap(false, Relaxed);
-        self.tick.call_tick().await;
-        had_external
-            || had_work
-            || self.flow_state.work_done.load(Relaxed)
-            || self.flow_state.can_start_tick.load(Relaxed)
+        let tick_had_work = self.tick.call_tick().await;
+        had_external || tick_had_work || self.flow_state.can_start_tick.load(Relaxed)
     }
 
     /// Run a single tick synchronously. Panics if the tick yields (async suspension).
@@ -754,7 +721,7 @@ impl<Tick: TickClosure> InlineFlow<Tick> {
     }
 }
 
-impl<Tick: AsyncFnMut() + 'static> InlineFlow<Tick> {
+impl<Tick: AsyncFnMut() -> bool + 'static> InlineFlow<Tick> {
     /// Type-erase the tick closure for use in heterogeneous collections.
     ///
     /// Wraps the concrete async closure in [`ErasedTickFn`], which boxes the future

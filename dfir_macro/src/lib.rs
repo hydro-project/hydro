@@ -126,7 +126,7 @@ fn dfir_syntax_inline_internal(
         Err(diagnostics) => (
             quote! {
                 #root::scheduled::context::InlineFlow::new(
-                    async move || {},
+                    async move || -> bool { true },
                     ::std::sync::Arc::new(#root::scheduled::context::InlineFlowState::default()),
                 )
             },

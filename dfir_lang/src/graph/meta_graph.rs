@@ -1456,14 +1456,14 @@ impl DfirGraph {
                     })
                     .collect();
 
-                // Recv port code: drain from buffer into iterator, marking work done if non-empty.
+                // Recv port code: drain from buffer into iterator, tracking if non-empty.
                 let recv_port_code: Vec<TokenStream> = recv_port_idents
                     .iter()
                     .zip(recv_buf_idents.iter())
                     .map(|(port_ident, buf_ident)| {
                         quote_spanned! {port_ident.span()=>
                             if !#buf_ident.is_empty() {
-                                #context.__mark_work_done();
+                                __dfir_work_done = true;
                             }
                             let #port_ident = #root::dfir_pipes::pull::iter(#buf_ident.drain(..));
                         }
@@ -1899,11 +1899,17 @@ impl DfirGraph {
                 #( #op_prologue_code )*
                 #( #op_prologue_after_code )*
 
+                // Pre-set to true so the first tick always returns true
+                // (matching Dfir pre-scheduling behavior). Subsequent ticks
+                // start false (from take()) and are set true by recv port code
+                // if any handoff buffer has data.
+                let mut __dfir_work_done = true;
                 #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref)]
-                let __dfir_inline_tick = async move || {
+                let __dfir_inline_tick = async move || -> bool {
                     #( #subgraph_blocks )*
 
                     #df.__end_tick();
+                    ::std::mem::take(&mut __dfir_work_done)
                 };
                 #root::scheduled::context::InlineFlow::new(
                     __dfir_inline_tick,
