@@ -423,11 +423,13 @@ type LifespanResetFn = Box<dyn FnMut(&mut dyn Any)>;
 #[doc(hidden)]
 pub struct InlineFlowState {
     /// Whether the next tick should run.
-    can_start_tick: std::sync::atomic::AtomicBool,
+    pub can_start_tick: std::sync::atomic::AtomicBool,
     /// Whether any work was done during the current tick.
-    work_done: std::sync::atomic::AtomicBool,
+    pub work_done: std::sync::atomic::AtomicBool,
+    /// Whether this is the first tick (always returns true for work done).
+    first_tick: std::sync::atomic::AtomicBool,
     /// Waker to wake the [`InlineFlow::run`] task when external events arrive.
-    task_waker: futures::task::AtomicWaker,
+    pub task_waker: futures::task::AtomicWaker,
 }
 
 impl Default for InlineFlowState {
@@ -435,6 +437,7 @@ impl Default for InlineFlowState {
         Self {
             can_start_tick: std::sync::atomic::AtomicBool::new(false),
             work_done: std::sync::atomic::AtomicBool::new(false),
+            first_tick: std::sync::atomic::AtomicBool::new(true),
             task_waker: futures::task::AtomicWaker::new(),
         }
     }
@@ -551,6 +554,8 @@ impl InlineContext {
         use std::sync::Arc;
         use std::task::Wake;
 
+        eprintln!("[SIM DEBUG] waker() called, flow_state={:p}", &*self.flow_state);
+
         impl Wake for InlineFlowState {
             fn wake(self: Arc<Self>) {
                 self.wake_by_ref();
@@ -558,6 +563,7 @@ impl InlineContext {
 
             fn wake_by_ref(self: &Arc<Self>) {
                 self.can_start_tick.store(true, std::sync::atomic::Ordering::Relaxed);
+                eprintln!("[SIM DEBUG] waker fired! flow_state={:p} can_start_tick now={}", &**self, self.can_start_tick.load(std::sync::atomic::Ordering::Relaxed));
                 self.task_waker.wake();
             }
         }
@@ -636,7 +642,8 @@ impl InlineContext {
 #[doc(hidden)]
 pub struct InlineFlow<Tick> {
     tick: Tick,
-    flow_state: std::sync::Arc<InlineFlowState>,
+    /// Shared state for tick coordination. Public for debugging.
+    pub flow_state: std::sync::Arc<InlineFlowState>,
 }
 
 /// Trait for tick closures — abstracts over both concrete async closures
@@ -699,13 +706,20 @@ impl<Tick: TickClosure> InlineFlow<Tick> {
     /// Run a single tick. Returns `true` if any subgraph received input data.
     ///
     /// Checks both handoff buffers (via `work_done` flag set in generated recv port code)
-    /// and external events (via `can_start_tick` set by wakers/schedule_subgraph).
+    /// and external events (via `can_start_tick` set by wakers/schedule_subgraph),
+    /// both before and after the tick runs.
+    /// Run a single tick. Returns `true` if any subgraph received input data.
+    ///
+    /// Always returns `true` on the first tick (matching Dfir behavior where all subgraphs
+    /// are pre-scheduled on creation). Subsequent ticks check handoff buffers (via `work_done`)
+    /// and external events (via `can_start_tick`).
     pub async fn run_tick(&mut self) -> bool {
         use std::sync::atomic::Ordering::Relaxed;
+        let is_first = self.flow_state.first_tick.swap(false, Relaxed);
+        let had_external = self.flow_state.can_start_tick.swap(false, Relaxed);
         self.flow_state.work_done.store(false, Relaxed);
-        self.flow_state.can_start_tick.store(false, Relaxed);
         self.tick.call_tick().await;
-        self.flow_state.work_done.load(Relaxed) || self.flow_state.can_start_tick.load(Relaxed)
+        is_first || had_external || self.flow_state.work_done.load(Relaxed) || self.flow_state.can_start_tick.load(Relaxed)
     }
 
     /// Run a single tick synchronously. Panics if the tick yields (async suspension).

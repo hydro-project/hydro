@@ -939,11 +939,14 @@ struct LaunchedSim<W: std::io::Write> {
 
 impl<W: std::io::Write> LaunchedSim<W> {
     async fn scheduler(&mut self) {
+        eprintln!("[SIM DEBUG] scheduler started: async_dfirs={} possibly_ready_ticks={} not_ready_ticks={}", self.async_dfirs.len(), self.possibly_ready_ticks.len(), self.not_ready_ticks.len());
         loop {
             tokio::task::yield_now().await;
             let mut any_made_progress = false;
             for (loc, c_id, dfir) in &mut self.async_dfirs {
-                if dfir.run_tick().await {
+                let result = dfir.run_tick().await;
+                eprintln!("[SIM DEBUG] run_tick for {:?} c_id={:?} returned {}", loc, c_id, result);
+                if result {
                     any_made_progress = true;
                     let (now_ready, still_not_ready): (Vec<_>, Vec<_>) = self
                         .not_ready_ticks
@@ -969,8 +972,10 @@ impl<W: std::io::Write> LaunchedSim<W> {
             }
 
             if any_made_progress {
+                eprintln!("[SIM DEBUG] progress made, continuing");
                 continue;
             } else {
+                eprintln!("[SIM DEBUG] no progress, possibly_ready_ticks={} not_ready_ticks={}", self.possibly_ready_ticks.len(), self.not_ready_ticks.len());
                 use bolero::generator::*;
 
                 let (ready_tick, mut not_ready_tick): (Vec<_>, Vec<_>) = self
