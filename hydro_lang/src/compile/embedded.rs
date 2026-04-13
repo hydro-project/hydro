@@ -503,12 +503,6 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
         self.generate_embedded_inner(crate_name, true)
     }
 
-    /// Like [`Self::generate_embedded`], but generates inline codegen (async closure per tick)
-    /// instead of a `Dfir` instance. Experimental.
-    pub fn generate_embedded_inline(self, crate_name: &str) -> syn::File {
-        self.generate_embedded_inner(crate_name, true)
-    }
-
     fn generate_embedded_inner(mut self, crate_name: &str, inline: bool) -> syn::File {
         let mut env = EmbeddedInstantiateEnv::default();
         let compiled = self.compile_internal(&mut env);

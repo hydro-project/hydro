@@ -24,7 +24,9 @@ impl Runnable for Dfir<'_> {
     }
 }
 
-impl<Tick: dfir_rs::scheduled::context::TickClosure> Runnable for dfir_rs::scheduled::context::InlineFlow<Tick> {
+impl<Tick: dfir_rs::scheduled::context::TickClosure> Runnable
+    for dfir_rs::scheduled::context::InlineFlow<Tick>
+{
     fn run(&mut self) -> impl std::future::Future<Output = dfir_rs::Never> {
         dfir_rs::scheduled::context::InlineFlow::run(self)
     }

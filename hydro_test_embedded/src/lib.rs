@@ -71,7 +71,11 @@ mod tests {
     use hydro_lang::location::MembershipEvent;
     use hydro_lang::location::member_id::TaglessMemberId;
 
-    async fn run_flow(flow: &mut dfir_rs::scheduled::context::InlineFlow<impl dfir_rs::scheduled::context::TickClosure>) {
+    async fn run_flow(
+        flow: &mut dfir_rs::scheduled::context::InlineFlow<
+            impl dfir_rs::scheduled::context::TickClosure,
+        >,
+    ) {
         tokio::task::LocalSet::new()
             .run_until(flow.run_tick())
             .await;
@@ -79,7 +83,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_embedded_capitalize() {
-        let input = stream::iter(vec!["hello".to_owned(), "world".to_owned(), "hydro".to_owned()]);
+        let input = stream::iter(vec![
+            "hello".to_owned(),
+            "world".to_owned(),
+            "hydro".to_owned(),
+        ]);
         let mut collected = vec![];
         let mut outputs = crate::embedded::capitalize::EmbeddedOutputs {
             output: |s: String| collected.push(s),
@@ -97,7 +105,8 @@ mod tests {
         let mut outputs = crate::singleton_input::prefix_names::EmbeddedOutputs {
             output: |s: String| collected.push(s),
         };
-        let mut flow = crate::singleton_input::prefix_names("Hello".to_owned(), names, &mut outputs);
+        let mut flow =
+            crate::singleton_input::prefix_names("Hello".to_owned(), names, &mut outputs);
         run_flow(&mut flow).await;
         drop(flow);
         assert_eq!(collected, vec!["Hello Alice", "Hello Bob"]);
@@ -108,7 +117,9 @@ mod tests {
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Bytes>();
         let input = stream::iter(vec!["hello".to_owned(), "world".to_owned()]);
         let mut net_out = crate::echo_network::echo_sender::EmbeddedNetworkOut {
-            messages: move |bytes: Bytes| { tx.send(bytes).unwrap(); },
+            messages: move |bytes: Bytes| {
+                tx.send(bytes).unwrap();
+            },
         };
         let mut flow_sender = crate::echo_network::echo_sender(input, &mut net_out);
         run_flow(&mut flow_sender).await;
@@ -142,7 +153,9 @@ mod tests {
             o2m_receiver: stream::iter(vec![(member_id.clone(), MembershipEvent::Joined)]),
         };
         let mut net_out = crate::o2m_broadcast::o2m_sender::EmbeddedNetworkOut {
-            o2m_data: move |item: (TaglessMemberId, Bytes)| { tx.send(item).unwrap(); },
+            o2m_data: move |item: (TaglessMemberId, Bytes)| {
+                tx.send(item).unwrap();
+            },
         };
         let mut flow_sender = crate::o2m_broadcast::o2m_sender(membership, input, &mut net_out);
         run_flow(&mut flow_sender).await;
@@ -162,7 +175,8 @@ mod tests {
         let mut outputs = crate::o2m_broadcast::o2m_receiver::EmbeddedOutputs {
             output: |s: String| received.push(s),
         };
-        let mut flow_receiver = crate::o2m_broadcast::o2m_receiver(&member_id, &mut outputs, net_in);
+        let mut flow_receiver =
+            crate::o2m_broadcast::o2m_receiver(&member_id, &mut outputs, net_in);
         run_flow(&mut flow_receiver).await;
         drop(flow_receiver);
         assert_eq!(received, vec!["HELLO", "WORLD"]);
@@ -174,7 +188,9 @@ mod tests {
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<Bytes>();
         let input = stream::iter(vec!["foo".to_owned(), "bar".to_owned()]);
         let mut net_out = crate::m2o_send::m2o_sender::EmbeddedNetworkOut {
-            m2o_data: move |bytes: Bytes| { tx.send(bytes).unwrap(); },
+            m2o_data: move |bytes: Bytes| {
+                tx.send(bytes).unwrap();
+            },
         };
         let mut flow_sender = crate::m2o_send::m2o_sender(&member_id, input, &mut net_out);
         run_flow(&mut flow_sender).await;
@@ -211,9 +227,12 @@ mod tests {
             m2m_receiver: stream::iter(vec![(dst_id.clone(), MembershipEvent::Joined)]),
         };
         let mut net_out = crate::m2m_broadcast::m2m_sender::EmbeddedNetworkOut {
-            m2m_data: move |item: (TaglessMemberId, Bytes)| { tx.send(item).unwrap(); },
+            m2m_data: move |item: (TaglessMemberId, Bytes)| {
+                tx.send(item).unwrap();
+            },
         };
-        let mut flow_sender = crate::m2m_broadcast::m2m_sender(&src_id, membership, input, &mut net_out);
+        let mut flow_sender =
+            crate::m2m_broadcast::m2m_sender(&src_id, membership, input, &mut net_out);
         run_flow(&mut flow_sender).await;
         drop(flow_sender);
 

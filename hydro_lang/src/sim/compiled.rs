@@ -12,7 +12,6 @@ use std::task::ready;
 
 use bytes::Bytes;
 use colored::Colorize;
-
 use futures::{Stream, StreamExt};
 use libloading::Library;
 use serde::Serialize;
@@ -84,8 +83,16 @@ type SimLoaded<'a> = libloading::Symbol<
         println_handler: fn(fmt::Arguments<'_>),
         eprintln_handler: fn(fmt::Arguments<'_>),
     ) -> (
-        Vec<(&'static str, Option<u32>, dfir_rs::scheduled::context::ErasedInlineFlow)>,
-        Vec<(&'static str, Option<u32>, dfir_rs::scheduled::context::ErasedInlineFlow)>,
+        Vec<(
+            &'static str,
+            Option<u32>,
+            dfir_rs::scheduled::context::ErasedInlineFlow,
+        )>,
+        Vec<(
+            &'static str,
+            Option<u32>,
+            dfir_rs::scheduled::context::ErasedInlineFlow,
+        )>,
         Hooks<&'static str>,
         InlineHooks<&'static str>,
     ),
@@ -333,8 +340,16 @@ impl CompiledSim {
 
 // This must be a tuple because it is referenced from generated code in `graph.rs`.
 type DylibResult = (
-    Vec<(&'static str, Option<u32>, dfir_rs::scheduled::context::ErasedInlineFlow)>,
-    Vec<(&'static str, Option<u32>, dfir_rs::scheduled::context::ErasedInlineFlow)>,
+    Vec<(
+        &'static str,
+        Option<u32>,
+        dfir_rs::scheduled::context::ErasedInlineFlow,
+    )>,
+    Vec<(
+        &'static str,
+        Option<u32>,
+        dfir_rs::scheduled::context::ErasedInlineFlow,
+    )>,
     Hooks<&'static str>,
     InlineHooks<&'static str>,
 );
@@ -927,9 +942,21 @@ impl<W: std::io::Write> std::fmt::Write for LogKind<W> {
 /// A running simulation, which manages the async DFIR and tick DFIRs, and makes decisions
 /// about scheduling ticks and choices for non-deterministic operators like batch.
 struct LaunchedSim<W: std::io::Write> {
-    async_dfirs: Vec<(LocationId, Option<u32>, dfir_rs::scheduled::context::ErasedInlineFlow)>,
-    possibly_ready_ticks: Vec<(LocationId, Option<u32>, dfir_rs::scheduled::context::ErasedInlineFlow)>,
-    not_ready_ticks: Vec<(LocationId, Option<u32>, dfir_rs::scheduled::context::ErasedInlineFlow)>,
+    async_dfirs: Vec<(
+        LocationId,
+        Option<u32>,
+        dfir_rs::scheduled::context::ErasedInlineFlow,
+    )>,
+    possibly_ready_ticks: Vec<(
+        LocationId,
+        Option<u32>,
+        dfir_rs::scheduled::context::ErasedInlineFlow,
+    )>,
+    not_ready_ticks: Vec<(
+        LocationId,
+        Option<u32>,
+        dfir_rs::scheduled::context::ErasedInlineFlow,
+    )>,
     possibly_ready_observation: Vec<(LocationId, Option<u32>)>,
     not_ready_observation: Vec<(LocationId, Option<u32>)>,
     hooks: Hooks<LocationId>,
@@ -939,14 +966,11 @@ struct LaunchedSim<W: std::io::Write> {
 
 impl<W: std::io::Write> LaunchedSim<W> {
     async fn scheduler(&mut self) {
-        eprintln!("[SIM DEBUG] scheduler started: async_dfirs={} possibly_ready_ticks={} not_ready_ticks={}", self.async_dfirs.len(), self.possibly_ready_ticks.len(), self.not_ready_ticks.len());
         loop {
             tokio::task::yield_now().await;
             let mut any_made_progress = false;
             for (loc, c_id, dfir) in &mut self.async_dfirs {
-                let result = dfir.run_tick().await;
-                eprintln!("[SIM DEBUG] run_tick for {:?} c_id={:?} returned {}", loc, c_id, result);
-                if result {
+                if dfir.run_tick().await {
                     any_made_progress = true;
                     let (now_ready, still_not_ready): (Vec<_>, Vec<_>) = self
                         .not_ready_ticks
@@ -972,10 +996,8 @@ impl<W: std::io::Write> LaunchedSim<W> {
             }
 
             if any_made_progress {
-                eprintln!("[SIM DEBUG] progress made, continuing");
                 continue;
             } else {
-                eprintln!("[SIM DEBUG] no progress, possibly_ready_ticks={} not_ready_ticks={}", self.possibly_ready_ticks.len(), self.not_ready_ticks.len());
                 use bolero::generator::*;
 
                 let (ready_tick, mut not_ready_tick): (Vec<_>, Vec<_>) = self

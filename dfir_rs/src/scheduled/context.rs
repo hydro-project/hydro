@@ -423,13 +423,13 @@ type LifespanResetFn = Box<dyn FnMut(&mut dyn Any)>;
 #[doc(hidden)]
 pub struct InlineFlowState {
     /// Whether the next tick should run.
-    pub can_start_tick: std::sync::atomic::AtomicBool,
+    can_start_tick: std::sync::atomic::AtomicBool,
     /// Whether any work was done during the current tick.
-    pub work_done: std::sync::atomic::AtomicBool,
+    work_done: std::sync::atomic::AtomicBool,
     /// Whether this is the first tick (always returns true for work done).
     first_tick: std::sync::atomic::AtomicBool,
     /// Waker to wake the [`InlineFlow::run`] task when external events arrive.
-    pub task_waker: futures::task::AtomicWaker,
+    task_waker: futures::task::AtomicWaker,
 }
 
 impl Default for InlineFlowState {
@@ -440,6 +440,18 @@ impl Default for InlineFlowState {
             first_tick: std::sync::atomic::AtomicBool::new(true),
             task_waker: futures::task::AtomicWaker::new(),
         }
+    }
+}
+
+impl std::task::Wake for InlineFlowState {
+    fn wake(self: std::sync::Arc<Self>) {
+        self.wake_by_ref();
+    }
+
+    fn wake_by_ref(self: &std::sync::Arc<Self>) {
+        self.can_start_tick
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+        self.task_waker.wake();
     }
 }
 
@@ -544,30 +556,15 @@ impl InlineContext {
     /// Schedules a subgraph. In inline mode, only external events trigger a new tick.
     pub fn schedule_subgraph(&self, _sg_id: SubgraphId, is_external: bool) {
         if is_external {
-            self.flow_state.can_start_tick.store(true, std::sync::atomic::Ordering::Relaxed);
+            self.flow_state
+                .can_start_tick
+                .store(true, std::sync::atomic::Ordering::Relaxed);
             self.flow_state.task_waker.wake();
         }
     }
 
     /// Returns a waker that signals external data has arrived.
     pub fn waker(&self) -> std::task::Waker {
-        use std::sync::Arc;
-        use std::task::Wake;
-
-        eprintln!("[SIM DEBUG] waker() called, flow_state={:p}", &*self.flow_state);
-
-        impl Wake for InlineFlowState {
-            fn wake(self: Arc<Self>) {
-                self.wake_by_ref();
-            }
-
-            fn wake_by_ref(self: &Arc<Self>) {
-                self.can_start_tick.store(true, std::sync::atomic::Ordering::Relaxed);
-                eprintln!("[SIM DEBUG] waker fired! flow_state={:p} can_start_tick now={}", &**self, self.can_start_tick.load(std::sync::atomic::Ordering::Relaxed));
-                self.task_waker.wake();
-            }
-        }
-
         std::task::Waker::from(self.flow_state.clone())
     }
 
@@ -587,7 +584,9 @@ impl InlineContext {
 
     /// Marks that work was done this tick (a handoff buffer had data).
     pub fn __mark_work_done(&self) {
-        self.flow_state.work_done.store(true, std::sync::atomic::Ordering::Relaxed);
+        self.flow_state
+            .work_done
+            .store(true, std::sync::atomic::Ordering::Relaxed);
     }
 
     /// Runs end-of-tick state hooks and increments the tick counter.
@@ -605,17 +604,6 @@ impl InlineContext {
         }
         self.current_tick += crate::scheduled::ticks::TickDuration::SINGLE_TICK;
         self.is_first_run_this_tick = true;
-    }
-
-    /// Runs a future synchronously, panicking if it does not resolve immediately.
-    #[doc(hidden)]
-    pub fn __run_future_sync<Fut: std::future::Future>(fut: Fut) -> Fut::Output {
-        let mut fut = std::pin::pin!(fut);
-        let mut ctx = std::task::Context::from_waker(std::task::Waker::noop());
-        match fut.as_mut().poll(&mut ctx) {
-            std::task::Poll::Ready(out) => out,
-            std::task::Poll::Pending => panic!("Future did not resolve immediately."),
-        }
     }
 }
 
@@ -642,8 +630,7 @@ impl InlineContext {
 #[doc(hidden)]
 pub struct InlineFlow<Tick> {
     tick: Tick,
-    /// Shared state for tick coordination. Public for debugging.
-    pub flow_state: std::sync::Arc<InlineFlowState>,
+    flow_state: std::sync::Arc<InlineFlowState>,
 }
 
 /// Trait for tick closures — abstracts over both concrete async closures
@@ -678,11 +665,11 @@ pub struct ErasedTickFn(Box<dyn ErasedTickFnInner>);
 /// `&mut self` (the trait object), which is allowed because the trait object owns the
 /// async closure. This sidesteps the `FnMut` borrow-escaping limitation.
 trait ErasedTickFnInner {
-    fn call_tick(&mut self) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + '_>>;
+    fn call_tick(&mut self) -> Pin<Box<dyn Future<Output = ()> + '_>>;
 }
 
 impl<F: AsyncFnMut()> ErasedTickFnInner for F {
-    fn call_tick(&mut self) -> std::pin::Pin<Box<dyn std::future::Future<Output = ()> + '_>> {
+    fn call_tick(&mut self) -> Pin<Box<dyn Future<Output = ()> + '_>> {
         Box::pin(self())
     }
 }
@@ -719,7 +706,10 @@ impl<Tick: TickClosure> InlineFlow<Tick> {
         let had_external = self.flow_state.can_start_tick.swap(false, Relaxed);
         self.flow_state.work_done.store(false, Relaxed);
         self.tick.call_tick().await;
-        is_first || had_external || self.flow_state.work_done.load(Relaxed) || self.flow_state.can_start_tick.load(Relaxed)
+        is_first
+            || had_external
+            || self.flow_state.work_done.load(Relaxed)
+            || self.flow_state.can_start_tick.load(Relaxed)
     }
 
     /// Run a single tick synchronously. Panics if the tick yields (async suspension).
