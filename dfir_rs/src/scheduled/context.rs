@@ -426,8 +426,6 @@ pub struct InlineFlowState {
     can_start_tick: std::sync::atomic::AtomicBool,
     /// Whether any work was done during the current tick.
     work_done: std::sync::atomic::AtomicBool,
-    /// Whether this is the first tick (always returns true for work done).
-    first_tick: std::sync::atomic::AtomicBool,
     /// Waker to wake the [`InlineFlow::run`] task when external events arrive.
     task_waker: futures::task::AtomicWaker,
 }
@@ -436,8 +434,9 @@ impl Default for InlineFlowState {
     fn default() -> Self {
         Self {
             can_start_tick: std::sync::atomic::AtomicBool::new(false),
-            work_done: std::sync::atomic::AtomicBool::new(false),
-            first_tick: std::sync::atomic::AtomicBool::new(true),
+            // Pre-set to true so the first run_tick always returns true, matching
+            // Dfir behavior where all subgraphs are pre-scheduled on creation.
+            work_done: std::sync::atomic::AtomicBool::new(true),
             task_waker: futures::task::AtomicWaker::new(),
         }
     }
@@ -694,20 +693,18 @@ impl<Tick: TickClosure> InlineFlow<Tick> {
     ///
     /// Checks both handoff buffers (via `work_done` flag set in generated recv port code)
     /// and external events (via `can_start_tick` set by wakers/schedule_subgraph),
-    /// both before and after the tick runs.
     /// Run a single tick. Returns `true` if any subgraph received input data.
     ///
-    /// Always returns `true` on the first tick (matching Dfir behavior where all subgraphs
-    /// are pre-scheduled on creation). Subsequent ticks check handoff buffers (via `work_done`)
-    /// and external events (via `can_start_tick`).
+    /// Checks handoff buffers (via `work_done` flag, pre-set to true on creation so the first
+    /// tick always returns true) and external events (via `can_start_tick`), both before and
+    /// after the tick runs.
     pub async fn run_tick(&mut self) -> bool {
         use std::sync::atomic::Ordering::Relaxed;
-        let is_first = self.flow_state.first_tick.swap(false, Relaxed);
         let had_external = self.flow_state.can_start_tick.swap(false, Relaxed);
-        self.flow_state.work_done.store(false, Relaxed);
+        let had_work = self.flow_state.work_done.swap(false, Relaxed);
         self.tick.call_tick().await;
-        is_first
-            || had_external
+        had_external
+            || had_work
             || self.flow_state.work_done.load(Relaxed)
             || self.flow_state.can_start_tick.load(Relaxed)
     }
