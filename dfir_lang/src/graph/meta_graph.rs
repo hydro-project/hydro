@@ -1456,12 +1456,15 @@ impl DfirGraph {
                     })
                     .collect();
 
-                // Recv port code: drain from buffer into iterator.
+                // Recv port code: drain from buffer into iterator, marking work done if non-empty.
                 let recv_port_code: Vec<TokenStream> = recv_port_idents
                     .iter()
                     .zip(recv_buf_idents.iter())
                     .map(|(port_ident, buf_ident)| {
                         quote_spanned! {port_ident.span()=>
+                            if !#buf_ident.is_empty() {
+                                #context.__mark_work_done();
+                            }
                             let #port_ident = #root::dfir_pipes::pull::iter(#buf_ident.drain(..));
                         }
                     })
@@ -1883,7 +1886,7 @@ impl DfirGraph {
 
                 use #root::{var_expr, var_args};
 
-                let __dfir_flow_state = ::std::rc::Rc::new(
+                let __dfir_flow_state = ::std::sync::Arc::new(
                     #root::scheduled::context::InlineFlowState::default()
                 );
 

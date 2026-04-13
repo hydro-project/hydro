@@ -421,14 +421,23 @@ type LifespanResetFn = Box<dyn FnMut(&mut dyn Any)>;
 
 /// Shared state between [`InlineContext`] and [`InlineFlow`].
 #[doc(hidden)]
-#[derive(Default)]
 pub struct InlineFlowState {
     /// Whether the next tick should run.
-    can_start_tick: Cell<bool>,
+    can_start_tick: std::sync::atomic::AtomicBool,
     /// Whether any work was done during the current tick.
-    work_done: Cell<bool>,
+    work_done: std::sync::atomic::AtomicBool,
     /// Waker to wake the [`InlineFlow::run`] task when external events arrive.
-    task_waker: Cell<Option<std::task::Waker>>,
+    task_waker: futures::task::AtomicWaker,
+}
+
+impl Default for InlineFlowState {
+    fn default() -> Self {
+        Self {
+            can_start_tick: std::sync::atomic::AtomicBool::new(false),
+            work_done: std::sync::atomic::AtomicBool::new(false),
+            task_waker: futures::task::AtomicWaker::new(),
+        }
+    }
 }
 
 /// A lightweight context for inline codegen that avoids the overhead of the full
@@ -442,12 +451,12 @@ pub struct InlineContext {
     states: SlotVec<StateTag, StateData>,
     current_tick: TickInstant,
     is_first_run_this_tick: bool,
-    flow_state: std::rc::Rc<InlineFlowState>,
+    flow_state: std::sync::Arc<InlineFlowState>,
 }
 
 impl InlineContext {
     /// Create a new inline context with shared flow state.
-    pub fn new(flow_state: std::rc::Rc<InlineFlowState>) -> Self {
+    pub fn new(flow_state: std::sync::Arc<InlineFlowState>) -> Self {
         Self {
             states: SlotVec::new(),
             current_tick: TickInstant::default(),
@@ -529,14 +538,11 @@ impl InlineContext {
         SubgraphId::from_raw(0)
     }
 
-    /// Schedules a subgraph. External events trigger a new tick; all events mark work as done.
+    /// Schedules a subgraph. In inline mode, only external events trigger a new tick.
     pub fn schedule_subgraph(&self, _sg_id: SubgraphId, is_external: bool) {
-        self.flow_state.work_done.set(true);
         if is_external {
-            self.flow_state.can_start_tick.set(true);
-            if let Some(waker) = self.flow_state.task_waker.take() {
-                waker.wake();
-            }
+            self.flow_state.can_start_tick.store(true, std::sync::atomic::Ordering::Relaxed);
+            self.flow_state.task_waker.wake();
         }
     }
 
@@ -545,30 +551,18 @@ impl InlineContext {
         use std::sync::Arc;
         use std::task::Wake;
 
-        struct InlineWaker {
-            flow_state: std::rc::Rc<InlineFlowState>,
-        }
-
-        // SAFETY: InlineWaker is only used within a single-threaded LocalSet context.
-        unsafe impl Send for InlineWaker {}
-        unsafe impl Sync for InlineWaker {}
-
-        impl Wake for InlineWaker {
+        impl Wake for InlineFlowState {
             fn wake(self: Arc<Self>) {
                 self.wake_by_ref();
             }
 
             fn wake_by_ref(self: &Arc<Self>) {
-                self.flow_state.can_start_tick.set(true);
-                if let Some(waker) = self.flow_state.task_waker.take() {
-                    waker.wake();
-                }
+                self.can_start_tick.store(true, std::sync::atomic::Ordering::Relaxed);
+                self.task_waker.wake();
             }
         }
 
-        std::task::Waker::from(Arc::new(InlineWaker {
-            flow_state: self.flow_state.clone(),
-        }))
+        std::task::Waker::from(self.flow_state.clone())
     }
 
     /// No-op for inline mode.
@@ -583,6 +577,11 @@ impl InlineContext {
     /// Returns `&Self` (for binding `context` in generated code).
     pub fn __context(&self) -> &Self {
         self
+    }
+
+    /// Marks that work was done this tick (a handoff buffer had data).
+    pub fn __mark_work_done(&self) {
+        self.flow_state.work_done.store(true, std::sync::atomic::Ordering::Relaxed);
     }
 
     /// Runs end-of-tick state hooks and increments the tick counter.
@@ -637,7 +636,7 @@ impl InlineContext {
 #[doc(hidden)]
 pub struct InlineFlow<Tick> {
     tick: Tick,
-    flow_state: std::rc::Rc<InlineFlowState>,
+    flow_state: std::sync::Arc<InlineFlowState>,
 }
 
 /// Trait for tick closures — abstracts over both concrete async closures
@@ -693,20 +692,20 @@ pub type ErasedInlineFlow = InlineFlow<ErasedTickFn>;
 
 impl<Tick: TickClosure> InlineFlow<Tick> {
     /// Create a new `InlineFlow` from a tick closure and shared flow state.
-    pub fn new(tick: Tick, flow_state: std::rc::Rc<InlineFlowState>) -> Self {
+    pub fn new(tick: Tick, flow_state: std::sync::Arc<InlineFlowState>) -> Self {
         Self { tick, flow_state }
     }
 
-    /// Run a single tick. Returns `true` if work was done.
+    /// Run a single tick. Returns `true` if any subgraph received input data.
     ///
-    /// Returns `true` if any operator signaled work via `schedule_subgraph`, or if
-    /// `can_start_tick` was set (external event arrived). This is a heuristic — not all
-    /// data flow is tracked, but it covers the cases the sim scheduler depends on.
+    /// Checks both handoff buffers (via `work_done` flag set in generated recv port code)
+    /// and external events (via `can_start_tick` set by wakers/schedule_subgraph).
     pub async fn run_tick(&mut self) -> bool {
-        self.flow_state.work_done.set(false);
-        let had_pending = self.flow_state.can_start_tick.replace(false);
+        use std::sync::atomic::Ordering::Relaxed;
+        self.flow_state.work_done.store(false, Relaxed);
+        self.flow_state.can_start_tick.store(false, Relaxed);
         self.tick.call_tick().await;
-        self.flow_state.work_done.get() || had_pending
+        self.flow_state.work_done.load(Relaxed) || self.flow_state.can_start_tick.load(Relaxed)
     }
 
     /// Run a single tick synchronously. Panics if the tick yields (async suspension).
@@ -724,26 +723,28 @@ impl<Tick: TickClosure> InlineFlow<Tick> {
 
     /// Run ticks as long as work is available, then return.
     pub async fn run_available(&mut self) {
+        use std::sync::atomic::Ordering::Relaxed;
         // Always run at least one tick.
-        self.flow_state.can_start_tick.set(false);
+        self.flow_state.can_start_tick.store(false, Relaxed);
         self.run_tick().await;
 
         // Keep running while there's more work.
-        while self.flow_state.can_start_tick.replace(false) {
+        while self.flow_state.can_start_tick.swap(false, Relaxed) {
             self.run_tick().await;
         }
     }
 
     /// Run forever, processing ticks when work is available and yielding when idle.
     pub async fn run(&mut self) -> crate::Never {
+        use std::sync::atomic::Ordering::Relaxed;
         loop {
             self.run_available().await;
             // Wait for an external event to wake us.
             std::future::poll_fn(|cx| {
-                if self.flow_state.can_start_tick.get() {
+                if self.flow_state.can_start_tick.load(Relaxed) {
                     std::task::Poll::Ready(())
                 } else {
-                    self.flow_state.task_waker.set(Some(cx.waker().clone()));
+                    self.flow_state.task_waker.register(cx.waker());
                     std::task::Poll::Pending
                 }
             })

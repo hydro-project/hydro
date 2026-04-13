@@ -127,7 +127,7 @@ fn dfir_syntax_inline_internal(
             quote! {
                 #root::scheduled::context::InlineFlow::new(
                     async move || {},
-                    ::std::rc::Rc::new(#root::scheduled::context::InlineFlowState::default()),
+                    ::std::sync::Arc::new(#root::scheduled::context::InlineFlowState::default()),
                 )
             },
             diagnostics,
