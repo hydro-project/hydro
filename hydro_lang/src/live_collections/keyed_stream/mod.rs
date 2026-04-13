@@ -2758,6 +2758,8 @@ mod tests {
     use crate::live_collections::stream::{NoOrder, TotalOrder};
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::location::Location;
+    #[cfg(feature = "sim")]
+    use crate::networking::TCP;
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::nondet::nondet;
     #[cfg(feature = "deploy")]
@@ -3102,6 +3104,7 @@ mod tests {
 
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
@@ -3115,7 +3118,11 @@ mod tests {
             ordered
                 .clone()
                 .map(q!(|v| v + 1))
-                .filter(q!(|v| v % 2 == 1)),
+                .filter(q!(|v| v % 2 == 1))
+                .entries()
+                .send(&node2, TCP.fail_stop().bincode())
+                .send(&node, TCP.fail_stop().bincode())
+                .into_keyed(),
         );
 
         let out_recv = ordered
@@ -3166,6 +3173,7 @@ mod tests {
         // that other key.
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
@@ -3184,6 +3192,8 @@ mod tests {
                 .map(q!(|_| 100))
                 .entries()
                 .map(q!(|(_, v)| (2, v))) // Change key from 1 to 2
+                .send(&node2, TCP.fail_stop().bincode())
+                .send(&node, TCP.fail_stop().bincode())
                 .into_keyed(),
         );
 
@@ -3236,6 +3246,7 @@ mod tests {
 
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
@@ -3251,7 +3262,11 @@ mod tests {
                 .batch(&node.tick(), nondet!(/** test */))
                 .all_ticks()
                 .map(q!(|v| v + 1))
-                .filter(q!(|v| v % 2 == 1)),
+                .filter(q!(|v| v % 2 == 1))
+                .entries()
+                .send(&node2, TCP.fail_stop().bincode())
+                .send(&node, TCP.fail_stop().bincode())
+                .into_keyed(),
         );
 
         let out_recv = ordered

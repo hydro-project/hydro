@@ -2975,6 +2975,8 @@ mod tests {
     use crate::live_collections::stream::TotalOrder;
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::location::Location;
+    #[cfg(feature = "sim")]
+    use crate::networking::TCP;
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::nondet::nondet;
 
@@ -3556,6 +3558,7 @@ mod tests {
     fn sim_top_level_assume_ordering_cycle_back() {
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
@@ -3568,7 +3571,9 @@ mod tests {
             ordered
                 .clone()
                 .map(q!(|v| v + 1))
-                .filter(q!(|v| v % 2 == 1)),
+                .filter(q!(|v| v % 2 == 1))
+                .send(&node2, TCP.fail_stop().bincode())
+                .send(&node, TCP.fail_stop().bincode()),
         );
 
         let out_recv = ordered.sim_output();
@@ -3584,7 +3589,7 @@ mod tests {
         });
 
         assert!(saw, "did not see an instance with 0, 1, 2 in order");
-        assert_eq!(instance_count, 6)
+        assert_eq!(instance_count, 6);
     }
 
     #[cfg(feature = "sim")]
@@ -3592,6 +3597,7 @@ mod tests {
     fn sim_top_level_assume_ordering_cycle_back_tick() {
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
@@ -3606,7 +3612,9 @@ mod tests {
                 .batch(&node.tick(), nondet!(/** test */))
                 .all_ticks()
                 .map(q!(|v| v + 1))
-                .filter(q!(|v| v % 2 == 1)),
+                .filter(q!(|v| v % 2 == 1))
+                .send(&node2, TCP.fail_stop().bincode())
+                .send(&node, TCP.fail_stop().bincode()),
         );
 
         let out_recv = ordered.sim_output();
@@ -3622,7 +3630,7 @@ mod tests {
         });
 
         assert!(saw, "did not see an instance with 0, 1, 2 in order");
-        assert_eq!(instance_count, 58)
+        assert_eq!(instance_count, 58);
     }
 
     #[cfg(feature = "sim")]
@@ -3630,6 +3638,7 @@ mod tests {
     fn sim_top_level_assume_ordering_multiple() {
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
         let (_, input2) = node.sim_input::<_, NoOrder, _>();
@@ -3647,7 +3656,11 @@ mod tests {
             .merge_unordered(input2)
             .assume_ordering::<TotalOrder>(nondet!(/** test */));
 
-        complete_cycle_back.complete(foo.filter(q!(|v| *v == 3)));
+        complete_cycle_back.complete(
+            foo.filter(q!(|v| *v == 3))
+                .send(&node2, TCP.fail_stop().bincode())
+                .send(&node, TCP.fail_stop().bincode()),
+        );
 
         let out_recv = input1_ordered.sim_output();
 
@@ -3662,7 +3675,7 @@ mod tests {
         });
 
         assert!(saw, "did not see an instance with 0, 3, 1 in order");
-        assert_eq!(instance_count, 24)
+        assert_eq!(instance_count, 24);
     }
 
     #[cfg(feature = "sim")]
@@ -3670,6 +3683,7 @@ mod tests {
     fn sim_atomic_assume_ordering_cycle_back() {
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
@@ -3684,7 +3698,9 @@ mod tests {
             ordered
                 .clone()
                 .map(q!(|v| v + 1))
-                .filter(q!(|v| v % 2 == 1)),
+                .filter(q!(|v| v % 2 == 1))
+                .send(&node2, TCP.fail_stop().bincode())
+                .send(&node, TCP.fail_stop().bincode()),
         );
 
         let out_recv = ordered.sim_output();
@@ -3694,8 +3710,7 @@ mod tests {
             let out = out_recv.collect::<Vec<_>>().await;
             assert_eq!(out.len(), 4);
         });
-
-        assert_eq!(instance_count, 22)
+        assert_eq!(instance_count, 22);
     }
 
     #[cfg(feature = "deploy")]
