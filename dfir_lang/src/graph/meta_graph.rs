@@ -1886,13 +1886,13 @@ impl DfirGraph {
 
                 use #root::{var_expr, var_args};
 
-                let __dfir_flow_state = ::std::sync::Arc::new(
-                    #root::scheduled::context::InlineFlowState::default()
+                let __dfir_wake_state = ::std::sync::Arc::new(
+                    #root::scheduled::context::InlineWakeState::default()
                 );
 
                 #[allow(unused_mut)]
                 let mut #df = #root::scheduled::context::InlineContext::new(
-                    ::std::clone::Clone::clone(&__dfir_flow_state)
+                    ::std::clone::Clone::clone(&__dfir_wake_state)
                 );
 
                 #( #buffer_code )*
@@ -1905,15 +1905,15 @@ impl DfirGraph {
                 // if any handoff buffer has data.
                 let mut __dfir_work_done = true;
                 #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref)]
-                let __dfir_inline_tick = async move || -> bool {
+                let __dfir_inline_tick = async move || {
                     #( #subgraph_blocks )*
 
                     #df.__end_tick();
                     ::std::mem::take(&mut __dfir_work_done)
                 };
-                #root::scheduled::context::InlineFlow::new(
+                #root::scheduled::context::InlineDfir::new(
                     __dfir_inline_tick,
-                    __dfir_flow_state,
+                    __dfir_wake_state,
                 )
             }
         })

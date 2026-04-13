@@ -125,9 +125,9 @@ fn dfir_syntax_inline_internal(
         }) => (code, diagnostics),
         Err(diagnostics) => (
             quote! {
-                #root::scheduled::context::InlineFlow::new(
-                    async move || -> bool { true },
-                    ::std::sync::Arc::new(#root::scheduled::context::InlineFlowState::default()),
+                #root::scheduled::context::InlineDfir::new(
+                    async move || { false },
+                    ::std::sync::Arc::new(#root::scheduled::context::InlineWakeState::default()),
                 )
             },
             diagnostics,

@@ -863,7 +863,7 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                 .collect();
 
             let ret_type: syn::Type = if inline {
-                syn::parse_quote! { #root::runtime_support::dfir_rs::scheduled::context::InlineFlow<impl #root::runtime_support::dfir_rs::scheduled::context::TickClosure + 'a> }
+                syn::parse_quote! { #root::runtime_support::dfir_rs::scheduled::context::InlineDfir<impl #root::runtime_support::dfir_rs::scheduled::context::TickClosure + 'a> }
             } else {
                 syn::parse_quote! { #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> }
             };

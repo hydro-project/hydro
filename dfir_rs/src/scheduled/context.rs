@@ -9,6 +9,8 @@ use std::future::Future;
 use std::marker::PhantomData;
 use std::ops::DerefMut;
 use std::pin::Pin;
+use std::sync::atomic::Ordering;
+use std::task::Wake;
 
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 use tokio::task::JoinHandle;
@@ -419,16 +421,22 @@ struct StateData {
 }
 type LifespanResetFn = Box<dyn FnMut(&mut dyn Any)>;
 
-/// Shared state between [`InlineContext`] and [`InlineFlow`].
+/// Coordinates waking between [`InlineContext`] (inside the tick closure) and [`InlineDfir`]
+/// (the external runner). Shared via `Arc` between both.
+///
+/// When external data arrives (e.g., a tokio stream receives a message), the [`InlineContext::waker`]
+/// fires, which sets `can_start_tick` and wakes the [`InlineDfir::run`] task so it starts a new tick.
+/// Implements [`Wake`] directly so it can be used as a `Waker` without an extra wrapper.
 #[doc(hidden)]
-pub struct InlineFlowState {
-    /// Whether the next tick should run.
+pub struct InlineWakeState {
+    /// Set to `true` when external data arrives, signaling that a new tick should run.
+    /// Checked by [`InlineDfir::run_tick`] and [`InlineDfir::run_available`].
     can_start_tick: std::sync::atomic::AtomicBool,
-    /// Waker to wake the [`InlineFlow::run`] task when external events arrive.
+    /// Wakes the [`InlineDfir::run`] task from its idle `poll_fn` sleep.
     task_waker: futures::task::AtomicWaker,
 }
 
-impl Default for InlineFlowState {
+impl Default for InlineWakeState {
     fn default() -> Self {
         Self {
             can_start_tick: std::sync::atomic::AtomicBool::new(false),
@@ -437,14 +445,14 @@ impl Default for InlineFlowState {
     }
 }
 
-impl std::task::Wake for InlineFlowState {
+impl Wake for InlineWakeState {
     fn wake(self: std::sync::Arc<Self>) {
         self.wake_by_ref();
     }
 
     fn wake_by_ref(self: &std::sync::Arc<Self>) {
-        self.can_start_tick
-            .store(true, std::sync::atomic::Ordering::Relaxed);
+        use Ordering::Relaxed;
+        self.can_start_tick.store(true, Relaxed);
         self.task_waker.wake();
     }
 }
@@ -459,18 +467,16 @@ impl std::task::Wake for InlineFlowState {
 pub struct InlineContext {
     states: SlotVec<StateTag, StateData>,
     current_tick: TickInstant,
-    is_first_run_this_tick: bool,
-    flow_state: std::sync::Arc<InlineFlowState>,
+    wake_state: std::sync::Arc<InlineWakeState>,
 }
 
 impl InlineContext {
-    /// Create a new inline context with shared flow state.
-    pub fn new(flow_state: std::sync::Arc<InlineFlowState>) -> Self {
+    /// Create a new inline context with shared wake state.
+    pub fn new(wake_state: std::sync::Arc<InlineWakeState>) -> Self {
         Self {
             states: SlotVec::new(),
             current_tick: TickInstant::default(),
-            is_first_run_this_tick: true,
-            flow_state,
+            wake_state,
         }
     }
 
@@ -532,9 +538,11 @@ impl InlineContext {
         unsafe { &*(state as *const dyn Any as *const T) }
     }
 
-    /// Gets whether this is the first time running this tick.
+    /// Always returns `true` in inline mode. The inline codegen runs the entire DAG
+    /// once per tick with no re-execution, so every subgraph is always on its first
+    /// (and only) run within each tick.
     pub fn is_first_run_this_tick(&self) -> bool {
-        self.is_first_run_this_tick
+        true
     }
 
     /// Gets the current tick count.
@@ -547,19 +555,18 @@ impl InlineContext {
         SubgraphId::from_raw(0)
     }
 
-    /// Schedules a subgraph. In inline mode, only external events trigger a new tick.
+    /// In inline mode, every subgraph runs unconditionally each tick, so the `sg_id`
+    /// parameter is ignored. Only `is_external` matters: when `true`, it signals that
+    /// external data has arrived and a new tick should be started.
     pub fn schedule_subgraph(&self, _sg_id: SubgraphId, is_external: bool) {
         if is_external {
-            self.flow_state
-                .can_start_tick
-                .store(true, std::sync::atomic::Ordering::Relaxed);
-            self.flow_state.task_waker.wake();
+            self.wake_state.wake_by_ref();
         }
     }
 
     /// Returns a waker that signals external data has arrived.
     pub fn waker(&self) -> std::task::Waker {
-        std::task::Waker::from(self.flow_state.clone())
+        std::task::Waker::from(self.wake_state.clone())
     }
 
     /// No-op for inline mode.
@@ -569,14 +576,9 @@ impl InlineContext {
     {
     }
 
-    // --- Methods called by __end_tick / __context ---
-
-    /// Returns `&Self` (for binding `context` in generated code).
-    pub fn __context(&self) -> &Self {
-        self
-    }
-
     /// Runs end-of-tick state hooks and increments the tick counter.
+    /// Called by the generated tick closure at the end of each tick.
+    #[doc(hidden)]
     pub fn __end_tick(&mut self) {
         for state_data in self.states.values_mut() {
             let StateData {
@@ -590,7 +592,6 @@ impl InlineContext {
             (lifespan_hook_fn)(Box::deref_mut(state));
         }
         self.current_tick += crate::scheduled::ticks::TickDuration::SINGLE_TICK;
-        self.is_first_run_this_tick = true;
     }
 }
 
@@ -602,7 +603,7 @@ impl InlineContext {
 ///
 /// The inline codegen generates an `async move ||` closure that captures all dataflow state
 /// (operator accumulators, handoff buffers, source iterators) and runs one tick per call.
-/// `InlineFlow` wraps this closure and adds tick lifecycle and idle/wake coordination.
+/// `InlineDfir` wraps this closure and adds tick lifecycle and idle/wake coordination.
 ///
 /// We use a single opaque closure rather than generating a bespoke struct per dataflow because:
 /// - The closure naturally captures exactly the state it needs with correct lifetimes
@@ -611,17 +612,17 @@ impl InlineContext {
 ///   `.await` points) that would be very difficult to replicate in a generated struct
 ///
 /// The `Tick` type parameter is bounded by [`TickClosure`] (not `AsyncFnMut` directly) to
-/// support type erasure via [`ErasedTickFn`] / [`ErasedInlineFlow`] for heterogeneous
+/// support type erasure via [`TickClosureErased`] / [`InlineDfirErased`] for heterogeneous
 /// collections (e.g., the sim runtime storing multiple locations in a `Vec`). The concrete
 /// (non-erased) path used by trybuild and embedded has zero overhead.
 #[doc(hidden)]
-pub struct InlineFlow<Tick> {
-    tick: Tick,
-    flow_state: std::sync::Arc<InlineFlowState>,
+pub struct InlineDfir<Tick> {
+    tick_closure: Tick,
+    wake_state: std::sync::Arc<InlineWakeState>,
 }
 
 /// Trait for tick closures — abstracts over both concrete async closures
-/// and type-erased boxed versions ([`ErasedTickFn`]).
+/// and type-erased boxed versions ([`TickClosureErased`]).
 #[doc(hidden)]
 pub trait TickClosure {
     /// Call the tick closure. Returns `true` if any subgraph received input data.
@@ -636,32 +637,38 @@ impl<F: AsyncFnMut() -> bool> TickClosure for F {
 
 /// Type-erased tick function for use in heterogeneous collections (e.g., the sim runtime).
 #[doc(hidden)]
-pub struct ErasedTickFn(Box<dyn ErasedTickFnInner>);
+pub struct TickClosureErased(Box<dyn TickClosureErasedInner>);
 
-trait ErasedTickFnInner {
+/// Object-safe inner trait for [`TickClosureErased`]. Needed because `AsyncFnMut` is not
+/// object-safe (GAT return type), but a trait with `&mut self -> Pin<Box<dyn Future + '_>>`
+/// is — the returned future borrows from the trait object which owns the closure.
+trait TickClosureErasedInner {
     fn call_tick(&mut self) -> Pin<Box<dyn Future<Output = bool> + '_>>;
 }
 
-impl<F: AsyncFnMut() -> bool> ErasedTickFnInner for F {
+impl<F: AsyncFnMut() -> bool> TickClosureErasedInner for F {
     fn call_tick(&mut self) -> Pin<Box<dyn Future<Output = bool> + '_>> {
         Box::pin(self())
     }
 }
 
-impl TickClosure for ErasedTickFn {
+impl TickClosure for TickClosureErased {
     fn call_tick(&mut self) -> impl Future<Output = bool> {
         self.0.call_tick()
     }
 }
 
-/// Type alias for a type-erased [`InlineFlow`] that can be stored in heterogeneous collections.
-#[doc(hidden)]
-pub type ErasedInlineFlow = InlineFlow<ErasedTickFn>;
+/// Type alias for a type-erased [`InlineDfir`] that can be stored in heterogeneous collections.
+/// Created via [`InlineDfir::into_erased`].
+pub type InlineDfirErased = InlineDfir<TickClosureErased>;
 
-impl<Tick: TickClosure> InlineFlow<Tick> {
-    /// Create a new `InlineFlow` from a tick closure and shared flow state.
-    pub fn new(tick: Tick, flow_state: std::sync::Arc<InlineFlowState>) -> Self {
-        Self { tick, flow_state }
+impl<Tick: TickClosure> InlineDfir<Tick> {
+    /// Create a new `InlineDfir` from a tick closure and shared flow state.
+    pub fn new(tick_closure: Tick, wake_state: std::sync::Arc<InlineWakeState>) -> Self {
+        Self {
+            tick_closure,
+            wake_state,
+        }
     }
 
     /// Run a single tick. Returns `true` if any subgraph received input data.
@@ -670,10 +677,10 @@ impl<Tick: TickClosure> InlineFlow<Tick> {
     /// and external events (via `can_start_tick` set by wakers/schedule_subgraph),
     /// Run a single tick. Returns `true` if any subgraph received input data.
     pub async fn run_tick(&mut self) -> bool {
-        use std::sync::atomic::Ordering::Relaxed;
-        let had_external = self.flow_state.can_start_tick.swap(false, Relaxed);
-        let tick_had_work = self.tick.call_tick().await;
-        had_external || tick_had_work || self.flow_state.can_start_tick.load(Relaxed)
+        use Ordering::Relaxed;
+        let had_external = self.wake_state.can_start_tick.swap(false, Relaxed);
+        let tick_had_work = self.tick_closure.call_tick().await;
+        had_external || tick_had_work || self.wake_state.can_start_tick.load(Relaxed)
     }
 
     /// Run a single tick synchronously. Panics if the tick yields (async suspension).
@@ -684,35 +691,37 @@ impl<Tick: TickClosure> InlineFlow<Tick> {
         match fut.as_mut().poll(&mut ctx) {
             std::task::Poll::Ready(result) => result,
             std::task::Poll::Pending => {
-                panic!("InlineFlow::run_tick_sync: tick yielded asynchronously.")
+                panic!("InlineDfir::run_tick_sync: tick yielded asynchronously.")
             }
         }
     }
 
     /// Run ticks as long as work is available, then return.
     pub async fn run_available(&mut self) {
-        use std::sync::atomic::Ordering::Relaxed;
+        use Ordering::Relaxed;
         // Always run at least one tick.
-        self.flow_state.can_start_tick.store(false, Relaxed);
+        self.wake_state.can_start_tick.store(false, Relaxed);
         self.run_tick().await;
 
         // Keep running while there's more work.
-        while self.flow_state.can_start_tick.swap(false, Relaxed) {
+        while self.wake_state.can_start_tick.swap(false, Relaxed) {
             self.run_tick().await;
         }
     }
 
     /// Run forever, processing ticks when work is available and yielding when idle.
     pub async fn run(&mut self) -> crate::Never {
-        use std::sync::atomic::Ordering::Relaxed;
+        use Ordering::Relaxed;
         loop {
             self.run_available().await;
             // Wait for an external event to wake us.
             std::future::poll_fn(|cx| {
-                if self.flow_state.can_start_tick.load(Relaxed) {
+                // Register waker first to avoid race: if an event fires between
+                // the check and the register, the waker is already in place.
+                self.wake_state.task_waker.register(cx.waker());
+                if self.wake_state.can_start_tick.load(Relaxed) {
                     std::task::Poll::Ready(())
                 } else {
-                    self.flow_state.task_waker.register(cx.waker());
                     std::task::Poll::Pending
                 }
             })
@@ -721,19 +730,19 @@ impl<Tick: TickClosure> InlineFlow<Tick> {
     }
 }
 
-impl<Tick: AsyncFnMut() -> bool + 'static> InlineFlow<Tick> {
+impl<Tick: AsyncFnMut() -> bool + 'static> InlineDfir<Tick> {
     /// Type-erase the tick closure for use in heterogeneous collections.
     ///
-    /// Wraps the concrete async closure in [`ErasedTickFn`], which boxes the future
+    /// Wraps the concrete async closure in [`TickClosureErased`], which boxes the future
     /// returned by each tick call. This adds one heap allocation per tick, but enables
-    /// storing multiple `InlineFlow`s with different closure types in a single `Vec`.
+    /// storing multiple `InlineDfir`s with different closure types in a single `Vec`.
     ///
     /// Only needed for the sim runtime path. The trybuild and embedded paths keep the
     /// concrete type and pay no erasure cost.
-    pub fn into_erased(self) -> ErasedInlineFlow {
-        InlineFlow {
-            tick: ErasedTickFn(Box::new(self.tick)),
-            flow_state: self.flow_state,
+    pub fn into_erased(self) -> InlineDfirErased {
+        InlineDfir {
+            tick_closure: TickClosureErased(Box::new(self.tick_closure)),
+            wake_state: self.wake_state,
         }
     }
 }

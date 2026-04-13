@@ -12,23 +12,25 @@ pub use hydro_deploy_integration::*;
 use procfs::WithCurrentSystemInfo;
 use serde::de::DeserializeOwned;
 
-/// Trait for types that can be run as a dataflow (both `Dfir` and `InlineFlow`).
+/// Trait for types that can be run as a dataflow (both `Dfir` and `InlineDfir`).
 pub trait Runnable {
     /// Run the dataflow forever (never returns in practice).
-    fn run(&mut self) -> impl std::future::Future<Output: Send>;
+    fn run(&mut self) -> impl Future;
 }
 
+#[expect(refining_impl_trait, reason = "Dfir::run returns Option<Never>")]
 impl Runnable for Dfir<'_> {
-    fn run(&mut self) -> impl std::future::Future<Output = Option<dfir_rs::Never>> {
+    fn run(&mut self) -> impl Future<Output = Option<dfir_rs::Never>> {
         Dfir::run(self)
     }
 }
 
+#[expect(refining_impl_trait, reason = "InlineDfir::run returns Never")]
 impl<Tick: dfir_rs::scheduled::context::TickClosure> Runnable
-    for dfir_rs::scheduled::context::InlineFlow<Tick>
+    for dfir_rs::scheduled::context::InlineDfir<Tick>
 {
-    fn run(&mut self) -> impl std::future::Future<Output = dfir_rs::Never> {
-        dfir_rs::scheduled::context::InlineFlow::run(self)
+    fn run(&mut self) -> impl Future<Output = dfir_rs::Never> {
+        dfir_rs::scheduled::context::InlineDfir::run(self)
     }
 }
 
