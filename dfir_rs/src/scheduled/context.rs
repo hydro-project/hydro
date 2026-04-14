@@ -451,8 +451,7 @@ impl Wake for InlineWakeState {
     }
 
     fn wake_by_ref(self: &std::sync::Arc<Self>) {
-        use Ordering::Relaxed;
-        self.can_start_tick.store(true, Relaxed);
+        self.can_start_tick.store(true, Ordering::Relaxed);
         self.task_waker.wake();
     }
 }
@@ -677,10 +676,12 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
     /// and external events (via `can_start_tick` set by wakers/schedule_subgraph),
     /// Run a single tick. Returns `true` if any subgraph received input data.
     pub async fn run_tick(&mut self) -> bool {
-        use Ordering::Relaxed;
-        let had_external = self.wake_state.can_start_tick.swap(false, Relaxed);
+        let had_external = self
+            .wake_state
+            .can_start_tick
+            .swap(false, Ordering::Relaxed);
         let tick_had_work = self.tick_closure.call_tick().await;
-        had_external || tick_had_work || self.wake_state.can_start_tick.load(Relaxed)
+        had_external || tick_had_work || self.wake_state.can_start_tick.load(Ordering::Relaxed)
     }
 
     /// Run a single tick synchronously. Panics if the tick yields (async suspension).
@@ -698,20 +699,26 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
 
     /// Run ticks as long as work is available, then return.
     pub async fn run_available(&mut self) {
-        use Ordering::Relaxed;
         // Always run at least one tick.
-        self.wake_state.can_start_tick.store(false, Relaxed);
-        self.run_tick().await;
-
-        // Keep running while there's more work.
-        while self.wake_state.can_start_tick.swap(false, Relaxed) {
+        self.wake_state
+            .can_start_tick
+            .store(false, Ordering::Relaxed);
+        loop {
             self.run_tick().await;
+            let can_start_tick = self
+                .wake_state
+                .can_start_tick
+                .swap(false, Ordering::Relaxed);
+            if !can_start_tick {
+                break;
+            }
+            // Yield between each tick to receive more events.
+            tokio::task::yield_now().await;
         }
     }
 
     /// Run forever, processing ticks when work is available and yielding when idle.
     pub async fn run(&mut self) -> crate::Never {
-        use Ordering::Relaxed;
         loop {
             self.run_available().await;
             // Wait for an external event to wake us.
@@ -719,7 +726,7 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
                 // Register waker first to avoid race: if an event fires between
                 // the check and the register, the waker is already in place.
                 self.wake_state.task_waker.register(cx.waker());
-                if self.wake_state.can_start_tick.load(Relaxed) {
+                if self.wake_state.can_start_tick.load(Ordering::Relaxed) {
                     std::task::Poll::Ready(())
                 } else {
                     std::task::Poll::Pending
