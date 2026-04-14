@@ -383,6 +383,7 @@ fn short_name(node: &HydroNode) -> &'static str {
         HydroNode::ResolveFutures { .. } => "resolvefutures",
         HydroNode::ResolveFuturesBlocking { .. } => "resolvefuturesblocking",
         HydroNode::ResolveFuturesOrdered { .. } => "resolvefuturesordered",
+        HydroNode::FlatMapStreamBlocking { .. } => "flatmapstreamblocking",
     }
 }
 
@@ -534,7 +535,8 @@ fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
         | HydroNode::FlatMap { input, .. }
         | HydroNode::Filter { input, .. }
         | HydroNode::FilterMap { input, .. }
-        | HydroNode::Inspect { input, .. } => PreserveGoals { input, goals: SET_PREFIX },
+        | HydroNode::Inspect { input, .. }
+        | HydroNode::FlatMapStreamBlocking { input, .. } => PreserveGoals { input, goals: SET_PREFIX },
 
         // SetInclusion only
         HydroNode::Enumerate { input, .. }
