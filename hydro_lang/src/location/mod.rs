@@ -1140,13 +1140,19 @@ pub trait Location<'a>: dynamic::DynLocation {
         )))
     }
 
-    /// Creates a forward reference for defining recursive or mutually-dependent dataflows.
+    /// Creates a forward reference, allowing a stream to be used before its source is defined.
     ///
-    /// Returns a handle that must be completed with the actual stream, and a placeholder
-    /// stream that can be used in the dataflow graph before the actual stream is defined.
+    /// Returns a `(handle, placeholder)` pair. Use the placeholder in the dataflow graph,
+    /// then call `handle.complete(actual_stream)` to wire in the real source.
     ///
-    /// This is useful for implementing feedback loops or recursive computations where
-    /// a stream depends on its own output.
+    /// This is useful for mutually-dependent dataflows or when the definition order
+    /// doesn't match the data flow direction. For feedback loops, prefer [`Tick::cycle`]
+    /// instead, which automatically defers values by one tick.
+    ///
+    /// # Panics
+    /// Panics if the forward reference creates a synchronous cycle (i.e., the completed
+    /// stream transitively depends on the placeholder without a `defer_tick` or network
+    /// hop in between).
     ///
     /// # Example
     /// ```rust
@@ -1155,21 +1161,21 @@ pub trait Location<'a>: dynamic::DynLocation {
     /// # use hydro_lang::live_collections::stream::NoOrder;
     /// # use futures::StreamExt;
     /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// // Create a forward reference for the feedback stream
-    /// let (complete, feedback) = process.forward_ref::<Stream<i32, _, _, NoOrder>>();
+    /// // Create a forward reference to define a stream that will be completed later
+    /// let (complete, forward_stream) = process.forward_ref::<Stream<i32, _, _, NoOrder>>();
     ///
-    /// // Combine initial input with feedback, then increment
-    /// let input: Stream<_, _, Unbounded> = process.source_iter(q!([1])).into();
-    /// let output: Stream<_, _, _, NoOrder> = input.merge_unordered(feedback).map(q!(|x| x + 1));
+    /// // Use the forward reference as input to another computation
+    /// let output: Stream<_, _, _, NoOrder> = forward_stream.map(q!(|x| x * 2));
     ///
-    /// // Complete the forward reference with the output
-    /// complete.complete(output.clone());
+    /// // Complete the forward reference with the actual source
+    /// let source: Stream<_, _, Unbounded> = process.source_iter(q!([1, 2, 3])).into();
+    /// complete.complete(source);
     /// output
     /// # }, |mut stream| async move {
-    /// // 2, 3, 4, 5, ...
+    /// // 2, 4, 6
     /// # assert_eq!(stream.next().await.unwrap(), 2);
-    /// # assert_eq!(stream.next().await.unwrap(), 3);
     /// # assert_eq!(stream.next().await.unwrap(), 4);
+    /// # assert_eq!(stream.next().await.unwrap(), 6);
     /// # }));
     /// # }
     /// ```

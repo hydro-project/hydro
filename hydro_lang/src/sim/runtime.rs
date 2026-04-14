@@ -961,6 +961,24 @@ impl<K: Hash + Eq + Clone, V> SimInlineHook for KeyedStreamOrderHook<K, V> {
     }
 }
 
+/// Top-level (outside-tick) `assume_ordering` hooks release elements **one at a
+/// time** rather than shuffling the entire batch. This is the key mechanism for
+/// simulating causality in feedback cycles: when data flows through a network hop
+/// and cycles back (e.g. via `forward_ref`), the cycled-back result can arrive
+/// and interleave with elements that are still pending in the input queue.
+///
+/// For example, given input `[1, 2, 3]` where each element is mapped and sent
+/// through a network cycle, the simulator can explore orderings like
+/// `[1, map(1), 2, map(2), 3, ...]` -- the cycled-back `map(1)` arrives before `2`.
+///
+/// This is the only place where such causality is observable, because top-level
+/// unbounded streams are "maximally async" -- any non-atomic stream can be
+/// arbitrarily decoupled. The in-tick variants (`StreamOrderHook`,
+/// `KeyedStreamOrderHook`) shuffle the full batch instead, since within a tick
+/// all data is available simultaneously.
+///
+/// The `sim_top_level_assume_ordering_*` tests are regression tests ensuring
+/// this one-at-a-time release behavior correctly explores causal interleavings.
 pub struct TopLevelStreamOrderHook<T> {
     pub input: Rc<RefCell<VecDeque<T>>>,
     pub to_release: Option<Vec<T>>,
@@ -1044,6 +1062,9 @@ impl<T> SimHook for TopLevelStreamOrderHook<T> {
     }
 }
 
+/// Keyed variant of [`TopLevelStreamOrderHook`]. Same one-at-a-time release
+/// strategy to simulate causal interleavings -- see the comment on
+/// [`TopLevelStreamOrderHook`] for the full explanation.
 pub struct TopLevelKeyedStreamOrderHook<K: Hash + Eq + Clone, V> {
     pub input: Rc<RefCell<FxHashMap<K, VecDeque<V>>>>,
     pub to_release: Option<Vec<(K, V)>>,
