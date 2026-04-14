@@ -115,7 +115,7 @@ impl LocationId {
             cardinality: None,
             tag: None,
             op: HydroIrOpMetadata {
-                backtrace: Backtrace::get_backtrace(2),
+                backtrace: Backtrace::get_backtrace(3),
                 cpu_usage: None,
                 network_recv_cpu_usage: None,
                 id: None,
