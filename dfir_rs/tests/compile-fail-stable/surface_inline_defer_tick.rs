@@ -1,0 +1,1 @@
+../compile-fail/surface_inline_defer_tick.rs

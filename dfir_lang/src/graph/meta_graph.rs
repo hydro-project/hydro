@@ -718,7 +718,7 @@ impl DfirGraph {
     }
 
     /// Gets whether the subgraph is lazy or not
-    fn subgraph_laziness(&self, sg_id: GraphSubgraphId) -> bool {
+    pub fn subgraph_laziness(&self, sg_id: GraphSubgraphId) -> bool {
         self.subgraph_laziness.get(sg_id).copied().unwrap_or(false)
     }
 

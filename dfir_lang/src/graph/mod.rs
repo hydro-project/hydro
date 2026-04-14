@@ -515,6 +515,12 @@ pub fn build_dfir_code_inline(
         }
     };
 
+    // Inline-specific validation: reject unsupported features.
+    validate_inline(&partitioned_graph, &mut diagnostics);
+    if diagnostics.has_error() {
+        return Err(diagnostics);
+    }
+
     let code = partitioned_graph.as_code_inline(
         root,
         true,
@@ -527,6 +533,87 @@ pub fn build_dfir_code_inline(
         code,
         diagnostics,
     })
+}
+
+/// Validates that a partitioned graph is compatible with the inline codegen path.
+/// Rejects: (1) `loop {}` blocks, (2) `defer_tick()` (non-lazy), (3) intra-tick cycles.
+fn validate_inline(graph: &DfirGraph, diagnostics: &mut Diagnostics) {
+    // 1. Reject `loop { }` blocks.
+    if let Some((_loop_id, nodes)) = graph.loops().next() {
+        let span = nodes
+            .first()
+            .map_or_else(Span::call_site, |&n| graph.node(n).span());
+        diagnostics.push(Diagnostic::spanned(
+            span,
+            Level::Error,
+            "`loop { }` blocks are not (yet) supported in `dfir_syntax_inline!`.",
+        ));
+    }
+
+    // 2. Reject `defer_tick()` (non-lazy).
+    for (node_id, _node) in graph.nodes() {
+        if let Some(op_inst) = graph.node_op_inst(node_id)
+            && op_inst.op_constraints.name == "defer_tick"
+        {
+            diagnostics.push(Diagnostic::spanned(
+                graph.node(node_id).span(),
+                Level::Error,
+                "`defer_tick()` is not (yet) supported in `dfir_syntax_inline!`. Use `defer_tick_lazy()` instead.",
+            ));
+        }
+    }
+
+    // 3. Reject intra-tick cycles (non-DAG dataflows excluding defer_tick_lazy).
+    // Build a subgraph-level directed graph, excluding lazy subgraphs (defer_tick_lazy).
+    // Then check for cycles via topo sort. Also check for self-loops on subgraphs.
+    {
+        use std::collections::BTreeSet;
+
+        // Collect non-lazy subgraph IDs.
+        let non_lazy_sgs: BTreeSet<GraphSubgraphId> = graph
+            .subgraph_ids()
+            .filter(|&sg_id| !graph.subgraph_laziness(sg_id))
+            .collect();
+
+        // Build predecessor map: for each non-lazy subgraph, find which non-lazy subgraphs feed into it
+        // (including self-loops). Edges go through handoff nodes: pred_sg -> handoff -> succ_sg.
+        let predecessors = |sg_id: GraphSubgraphId| -> Vec<GraphSubgraphId> {
+            let mut recv_hoffs = Vec::new();
+            for &node_id in graph.subgraph(sg_id) {
+                for (_edge, pred_id) in graph.node_predecessors(node_id) {
+                    if matches!(graph.node(pred_id), GraphNode::Handoff { .. }) {
+                        recv_hoffs.push(pred_id);
+                    }
+                }
+            }
+            let mut preds = Vec::new();
+            for hoff_id in recv_hoffs {
+                for (_edge, pred_id) in graph.node_predecessors(hoff_id) {
+                    if let Some(pred_sg) = graph.node_subgraph(pred_id)
+                        && non_lazy_sgs.contains(&pred_sg)
+                    {
+                        preds.push(pred_sg);
+                    }
+                }
+            }
+            preds
+        };
+
+        let topo_result = graph_algorithms::topo_sort(non_lazy_sgs.iter().copied(), predecessors);
+        if let Err(cycle) = topo_result {
+            // Find a representative span from the first subgraph in the cycle.
+            let span = cycle
+                .first()
+                .and_then(|&sg_id| graph.subgraph(sg_id).first().copied())
+                .map(|n| graph.node(n).span())
+                .unwrap_or_else(Span::call_site);
+            diagnostics.push(Diagnostic::spanned(
+                span,
+                Level::Error,
+                "Cyclical dataflow within a tick is not supported in `dfir_syntax_inline!`. Use `defer_tick_lazy()` to break the cycle across ticks.",
+            ));
+        }
+    }
 }
 
 /// Changes all of token's spans to `span`, recursing into groups.

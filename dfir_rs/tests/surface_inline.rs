@@ -261,13 +261,13 @@ pub async fn test_inline_multi_tick_fold_tick() {
     );
 }
 
-/// Test 13: defer_tick — data from tick N appears in tick N+1.
+/// Test 13: defer_tick_lazy — data from tick N appears in tick N+1.
 #[dfir_rs::test]
-pub async fn test_inline_defer_tick() {
+pub async fn test_inline_defer_tick_lazy() {
     let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
     let mut flow = dfir_rs::dfir_syntax_inline! {
-        source_stream(recv) -> defer_tick() -> for_each(|v: i32| out_send.send(v).unwrap());
+        source_stream(recv) -> defer_tick_lazy() -> for_each(|v: i32| out_send.send(v).unwrap());
     };
 
     send.send(1).unwrap();
@@ -295,7 +295,7 @@ pub async fn test_inline_defer_tick() {
     );
 }
 
-/// Test 14: defer_tick flip-flop — a cycle through defer_tick toggles a boolean.
+/// Test 14: defer_tick_lazy flip-flop — a cycle through defer_tick_lazy toggles a boolean.
 #[dfir_rs::test]
 pub async fn test_inline_defer_tick_flipflop() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<bool>();
@@ -305,7 +305,7 @@ pub async fn test_inline_defer_tick_flipflop() {
         state = union()
                 -> inspect(|x: &bool| out_send.send(*x).unwrap())
                 -> map(|x: bool| !x)
-                -> defer_tick()
+                -> defer_tick_lazy()
                 -> state;
     };
 
