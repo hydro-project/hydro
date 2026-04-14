@@ -1807,6 +1807,7 @@ dependencies = [
  "dfir_lang",
  "dfir_macro",
  "dfir_pipes",
+ "dfir_rs",
  "example_test",
  "futures",
  "getrandom 0.2.16",

@@ -313,7 +313,7 @@ pub fn compile_graph_trybuild(
                 #[#root::runtime_support::tokio::main(crate = #tokio_main_ident, flavor = "current_thread")]
                 async fn main() {
                     let ports = #root::runtime_support::launch::init_no_ack_start().await;
-                    let #dfir_ident = __hydro_runtime(&ports);
+                    let mut #dfir_ident = __hydro_runtime(&ports);
                     println!("ack start");
 
                     // TODO(mingwei): initialize `tracing` at this point in execution.
@@ -324,7 +324,11 @@ pub fn compile_graph_trybuild(
                         let _ = local_set.spawn_local( #sidecars ); // Uses #dfir_ident
                     )*
 
-                    let _ = local_set.run_until(#root::runtime_support::launch::run_stdin_commands(#dfir_ident)).await;
+                    let _ = local_set.run_until(#root::runtime_support::launch::run_stdin_commands(
+                        async move {
+                            #dfir_ident.run().await
+                        }
+                    )).await;
                 }
             }
         }
