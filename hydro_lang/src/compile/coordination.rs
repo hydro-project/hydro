@@ -18,6 +18,7 @@ use std::fmt;
 use super::builder::CycleId;
 use super::ir::{HydroNode, HydroRoot, SharedNode, StreamOrder};
 use crate::location::dynamic::LocationId;
+use super::ir::HydroSource;
 
 #[cfg(feature = "build")]
 use dfir_lang::diagnostic::{Diagnostic, Level};
@@ -490,19 +491,39 @@ fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
     const SET_LATTICE: &[OrderGoal] = &[OrderGoal::SetInclusion, OrderGoal::Lattice];
 
     match node {
-        // Sources
+        // Sources: on a Cluster, per-member sources break coordination.
+        // Embedded/EmbeddedSingleton (includes CLUSTER_SELF_ID) and Spin are per-member.
+        // Iter, Stream, ClusterMembers, ExternalNetwork produce identical data at all members.
+        HydroNode::Source { source, metadata, .. } => {
+            if matches!(metadata.location_id, LocationId::Cluster(_)) {
+                match source {
+                    HydroSource::Embedded(_) | HydroSource::EmbeddedSingleton(_) | HydroSource::Spin() => Custom,
+                    _ => Source, // Iter, Stream, ClusterMembers, ExternalNetwork — same at all members
+                }
+            } else {
+                Source
+            }
+        }
         HydroNode::Placeholder
-        | HydroNode::Source { .. }
         | HydroNode::SingletonSource { .. }
         | HydroNode::ExternalInput { .. }
         | HydroNode::Counter { .. } => Source,
 
         // Passthrough
         HydroNode::Cast { inner, .. }
-        | HydroNode::ObserveNonDet { inner, .. }
         | HydroNode::BeginAtomic { inner, .. }
         | HydroNode::EndAtomic { inner, .. }
         | HydroNode::YieldConcat { inner, .. } => Passthrough(inner),
+
+        // ObserveNonDet: on a Cluster, per-member non-determinism breaks coordination.
+        // On a Process (or if trusted), pass through.
+        HydroNode::ObserveNonDet { inner, trusted, metadata, .. } => {
+            if !trusted && matches!(metadata.location_id, LocationId::Cluster(_)) {
+                Custom // handled in prove() below
+            } else {
+                Passthrough(inner)
+            }
+        }
 
         // Shared passthrough
         HydroNode::Tee { inner, .. }
@@ -547,14 +568,23 @@ fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
         // Sort: bounded discharges, unbounded breaks (same as non-commutative aggregation)
         HydroNode::Sort { input, .. } => Aggregation { is_commutative: false, is_idempotent: false, input },
 
-        // Network: preserves based on output ordering
+        // Network: cross-location receive onto a Cluster discharges (broadcast trust boundary).
+        // Same-location or non-Cluster preserves based on output ordering.
         HydroNode::Network { input, metadata, .. } => {
-            let is_total = matches!(
-                &metadata.collection_kind,
-                super::ir::CollectionKind::Stream { order: StreamOrder::TotalOrder, .. }
-                | super::ir::CollectionKind::KeyedStream { value_order: StreamOrder::TotalOrder, .. }
-            );
-            PreserveIfOrdered { input, output_is_total_order: is_total }
+            let recv_loc = &metadata.location_id;
+            let send_loc = &input.metadata().location_id;
+            let is_cross_location_to_cluster = matches!(recv_loc, LocationId::Cluster(_))
+                && recv_loc != send_loc;
+            if is_cross_location_to_cluster {
+                Source // all cluster members receive the same data via broadcast
+            } else {
+                let is_total = matches!(
+                    &metadata.collection_kind,
+                    super::ir::CollectionKind::Stream { order: StreamOrder::TotalOrder, .. }
+                    | super::ir::CollectionKind::KeyedStream { value_order: StreamOrder::TotalOrder, .. }
+                );
+                PreserveIfOrdered { input, output_is_total_order: is_total }
+            }
         }
 
         // Scan: preserves if input is TotalOrder
@@ -681,6 +711,19 @@ fn prove(
             }
             _ => ProofResult::fail(&name, "cross_singleton breaks lattice order", span, pm_span),
         },
+
+        // ObserveNonDet on a Cluster: per-member non-determinism breaks coordination
+        HydroNode::ObserveNonDet { metadata, .. } if matches!(metadata.location_id, LocationId::Cluster(_)) => {
+            ProofResult::fail(&name, "per-member non-determinism (nondet! on Cluster) breaks coordination", span, pm_span)
+        }
+
+        // Per-member source on a Cluster: Embedded/EmbeddedSingleton/Spin
+        HydroNode::Source { source, metadata, .. }
+            if matches!(metadata.location_id, LocationId::Cluster(_))
+            && matches!(source, HydroSource::Embedded(_) | HydroSource::EmbeddedSingleton(_) | HydroSource::Spin()) =>
+        {
+            ProofResult::fail(&name, "per-member source on Cluster (e.g. CLUSTER_SELF_ID) breaks coordination", span, pm_span)
+        }
 
         // Catch-all for nodes handled by classify() — should not be reached
         _ => ProofResult::fail(&name, "BUG: unhandled node type", span, pm_span),
