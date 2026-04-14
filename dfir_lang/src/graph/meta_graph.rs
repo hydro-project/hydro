@@ -1878,6 +1878,14 @@ impl DfirGraph {
             return Err(std::mem::take(diagnostics));
         }
         let _ = diagnostics; // Ensure no more diagnostics may be added after checking for errors.
+
+        let meta_graph_json = serde_json::to_string(&self).unwrap();
+        let meta_graph_json = Literal::string(&meta_graph_json);
+
+        let serde_diagnostics: Vec<_> = diagnostics.iter().map(Diagnostic::to_serde).collect();
+        let diagnostics_json = serde_json::to_string(&*serde_diagnostics).unwrap();
+        let diagnostics_json = Literal::string(&diagnostics_json);
+
         // Prologues and buffer declarations persist across ticks (outside the closure).
         // Subgraph blocks run each tick (inside the closure).
         Ok(quote! {
@@ -1914,6 +1922,8 @@ impl DfirGraph {
                 #root::scheduled::context::InlineDfir::new(
                     __dfir_inline_tick,
                     __dfir_wake_state,
+                    Some(#meta_graph_json),
+                    Some(#diagnostics_json),
                 )
             }
         })
