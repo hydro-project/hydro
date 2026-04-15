@@ -295,4 +295,14 @@ impl<'a> FlowBuilder<'a> {
     pub fn replace_ir(&mut self, roots: Vec<HydroRoot>) {
         self.flow_state.borrow_mut().roots = Some(roots);
     }
+
+    #[doc(hidden)] // TODO(mingwei): This is an unstable API for now
+    pub fn next_clock_id(&mut self) -> ClockId {
+        self.flow_state.borrow_mut().next_clock_id()
+    }
+
+    #[doc(hidden)] // TODO(mingwei): This is an unstable API for now
+    pub fn next_cycle_id(&mut self) -> CycleId {
+        self.flow_state.borrow_mut().next_cycle_id()
+    }
 }

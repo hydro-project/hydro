@@ -12,7 +12,7 @@ use std::task::ready;
 
 use bytes::Bytes;
 use colored::Colorize;
-use dfir_rs::scheduled::graph::Dfir;
+use dfir_rs::scheduled::context::InlineDfirErased;
 use futures::{Stream, StreamExt};
 use libloading::Library;
 use serde::Serialize;
@@ -84,8 +84,8 @@ type SimLoaded<'a> = libloading::Symbol<
         println_handler: fn(fmt::Arguments<'_>),
         eprintln_handler: fn(fmt::Arguments<'_>),
     ) -> (
-        Vec<(&'static str, Option<u32>, Dfir<'static>)>,
-        Vec<(&'static str, Option<u32>, Dfir<'static>)>,
+        Vec<(&'static str, Option<u32>, InlineDfirErased)>,
+        Vec<(&'static str, Option<u32>, InlineDfirErased)>,
         Hooks<&'static str>,
         InlineHooks<&'static str>,
     ),
@@ -333,8 +333,8 @@ impl CompiledSim {
 
 // This must be a tuple because it is referenced from generated code in `graph.rs`.
 type DylibResult = (
-    Vec<(&'static str, Option<u32>, Dfir<'static>)>,
-    Vec<(&'static str, Option<u32>, Dfir<'static>)>,
+    Vec<(&'static str, Option<u32>, InlineDfirErased)>,
+    Vec<(&'static str, Option<u32>, InlineDfirErased)>,
     Hooks<&'static str>,
     InlineHooks<&'static str>,
 );
@@ -927,9 +927,9 @@ impl<W: std::io::Write> std::fmt::Write for LogKind<W> {
 /// A running simulation, which manages the async DFIR and tick DFIRs, and makes decisions
 /// about scheduling ticks and choices for non-deterministic operators like batch.
 struct LaunchedSim<W: std::io::Write> {
-    async_dfirs: Vec<(LocationId, Option<u32>, Dfir<'static>)>,
-    possibly_ready_ticks: Vec<(LocationId, Option<u32>, Dfir<'static>)>,
-    not_ready_ticks: Vec<(LocationId, Option<u32>, Dfir<'static>)>,
+    async_dfirs: Vec<(LocationId, Option<u32>, InlineDfirErased)>,
+    possibly_ready_ticks: Vec<(LocationId, Option<u32>, InlineDfirErased)>,
+    not_ready_ticks: Vec<(LocationId, Option<u32>, InlineDfirErased)>,
     possibly_ready_observation: Vec<(LocationId, Option<u32>)>,
     not_ready_observation: Vec<(LocationId, Option<u32>)>,
     hooks: Hooks<LocationId>,

@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 use std::ops::{Deref, Not};
 use std::rc::Rc;
 
+use sealed::sealed;
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
@@ -12,7 +13,9 @@ use super::optional::Optional;
 use super::sliced::sliced;
 use super::stream::{AtLeastOnce, ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::builder::{CycleId, FlowState};
-use crate::compile::ir::{CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode};
+use crate::compile::ir::{
+    CollectionKind, HydroIrOpMetadata, HydroNode, HydroRoot, SharedNode, SingletonBoundKind,
+};
 #[cfg(stageleft_runtime)]
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
@@ -21,6 +24,72 @@ use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::nondet::{NonDet, nondet};
+use crate::properties::{ApplyMonotoneStream, Proved};
+
+/// A marker trait indicating which components of a [`Singleton`] may change.
+///
+/// In addition to [`Bounded`] (immutable) and [`Unbounded`] (arbitrarily mutable), this also
+/// includes an additional variant [`Monotonic`], which means that the value will only grow.
+pub trait SingletonBound {
+    /// The [`Boundedness`] that this [`Singleton`] would be erased to.
+    type UnderlyingBound: Boundedness + ApplyMonotoneStream<Proved, Self::StreamToMonotone>;
+
+    /// The [`Boundedness`] of this [`Singleton`] if it is produced from a [`Stream`] with [`Self`] boundedness.
+    type StreamToMonotone: SingletonBound<UnderlyingBound = Self::UnderlyingBound>;
+
+    /// Returns the [`SingletonBoundKind`] corresponding to this type.
+    fn bound_kind() -> SingletonBoundKind;
+}
+
+impl SingletonBound for Unbounded {
+    type UnderlyingBound = Unbounded;
+
+    type StreamToMonotone = Monotonic;
+
+    fn bound_kind() -> SingletonBoundKind {
+        SingletonBoundKind::Unbounded
+    }
+}
+
+impl SingletonBound for Bounded {
+    type UnderlyingBound = Bounded;
+
+    type StreamToMonotone = Bounded;
+
+    fn bound_kind() -> SingletonBoundKind {
+        SingletonBoundKind::Bounded
+    }
+}
+
+/// Marks that the [`Singleton`] is monotonic, which means that its value will only grow over time.
+pub struct Monotonic;
+
+impl SingletonBound for Monotonic {
+    type UnderlyingBound = Unbounded;
+
+    type StreamToMonotone = Monotonic;
+
+    fn bound_kind() -> SingletonBoundKind {
+        SingletonBoundKind::Monotonic
+    }
+}
+
+#[sealed]
+#[diagnostic::on_unimplemented(
+    message = "The input singleton must be monotonic (`Monotonic`) or bounded (`Bounded`), but has bound `{Self}`. Strengthen the monotonicity upstream or consider a different API.",
+    label = "required here",
+    note = "To intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region. This introduces non-determinism so avoid unless necessary."
+)]
+/// Marker trait that is implemented for the [`Monotonic`] boundedness guarantee.
+pub trait IsMonotonic: SingletonBound {}
+
+#[sealed]
+#[diagnostic::do_not_recommend]
+impl IsMonotonic for Monotonic {}
+
+#[sealed]
+#[diagnostic::do_not_recommend]
+impl<B: IsBounded> IsMonotonic for B {}
 
 /// A single Rust value that can asynchronously change over time.
 ///
@@ -36,7 +105,7 @@ use crate::nondet::{NonDet, nondet};
 /// - `Type`: the type of the value in this singleton
 /// - `Loc`: the [`Location`] where the singleton is materialized
 /// - `Bound`: tracks whether the value is [`Bounded`] (fixed) or [`Unbounded`] (changing asynchronously)
-pub struct Singleton<Type, Loc, Bound: Boundedness> {
+pub struct Singleton<Type, Loc, Bound: SingletonBound> {
     pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,
     pub(crate) flow_state: FlowState,
@@ -44,7 +113,7 @@ pub struct Singleton<Type, Loc, Bound: Boundedness> {
     _phantom: PhantomData<(Type, Loc, Bound)>,
 }
 
-impl<T, L, B: Boundedness> Drop for Singleton<T, L, B> {
+impl<T, L, B: SingletonBound> Drop for Singleton<T, L, B> {
     fn drop(&mut self) {
         let ir_node = self.ir_node.replace(HydroNode::Placeholder);
         if !matches!(ir_node, HydroNode::Placeholder) && !ir_node.is_shared_with_others() {
@@ -149,7 +218,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness> CycleCollection<'a, ForwardRef> for Singleton<T, L, B>
+impl<'a, T, L, B: SingletonBound> CycleCollection<'a, ForwardRef> for Singleton<T, L, B>
 where
     L: Location<'a> + NoTick,
 {
@@ -166,7 +235,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness> ReceiverComplete<'a, ForwardRef> for Singleton<T, L, B>
+impl<'a, T, L, B: SingletonBound> ReceiverComplete<'a, ForwardRef> for Singleton<T, L, B>
 where
     L: Location<'a> + NoTick,
 {
@@ -187,7 +256,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness> Clone for Singleton<T, L, B>
+impl<'a, T, L, B: SingletonBound> Clone for Singleton<T, L, B>
 where
     T: Clone,
     L: Location<'a>,
@@ -219,15 +288,15 @@ where
 }
 
 #[cfg(stageleft_runtime)]
-fn zip_inside_tick<'a, T, L: Location<'a>, B: Boundedness, O>(
+fn zip_inside_tick<'a, T, L: Location<'a>, B: SingletonBound, O>(
     me: Singleton<T, Tick<L>, B>,
-    other: Optional<O, Tick<L>, B>,
-) -> Optional<(T, O), Tick<L>, B> {
-    let me_as_optional: Optional<T, Tick<L>, B> = me.into();
+    other: Optional<O, Tick<L>, B::UnderlyingBound>,
+) -> Optional<(T, O), Tick<L>, B::UnderlyingBound> {
+    let me_as_optional: Optional<T, Tick<L>, B::UnderlyingBound> = me.into();
     super::optional::zip_inside_tick(me_as_optional, other)
 }
 
-impl<'a, T, L, B: Boundedness> Singleton<T, L, B>
+impl<'a, T, L, B: SingletonBound> Singleton<T, L, B>
 where
     L: Location<'a>,
 {
@@ -245,7 +314,7 @@ where
 
     pub(crate) fn collection_kind() -> CollectionKind {
         CollectionKind::Singleton {
-            bound: B::BOUND_KIND,
+            bound: B::bound_kind(),
             element_type: stageleft::quote_type::<T>().into(),
         }
     }
@@ -253,6 +322,27 @@ where
     /// Returns the [`Location`] where this singleton is being materialized.
     pub fn location(&self) -> &L {
         &self.location
+    }
+
+    /// Drops the monotonicity property of the [`Singleton`].
+    pub fn ignore_monotonic(self) -> Singleton<T, L, B::UnderlyingBound> {
+        if B::bound_kind() == B::UnderlyingBound::bound_kind() {
+            Singleton::new(
+                self.location.clone(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            Singleton::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    metadata:
+                        self.location.new_node_metadata(
+                            Singleton::<T, L, B::UnderlyingBound>::collection_kind(),
+                        ),
+                },
+            )
+        }
     }
 
     /// Transforms the singleton value by applying a function `f` to it,
@@ -273,7 +363,7 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Singleton<U, L, B>
+    pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Singleton<U, L, B::UnderlyingBound>
     where
         F: Fn(T) -> U + 'a,
     {
@@ -463,7 +553,7 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<T, L, B>
+    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<T, L, B::UnderlyingBound>
     where
         F: Fn(&T) -> bool + 'a,
     {
@@ -475,7 +565,7 @@ where
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
-                    .new_node_metadata(Optional::<T, L, B>::collection_kind()),
+                    .new_node_metadata(Optional::<T, L, B::UnderlyingBound>::collection_kind()),
             },
         )
     }
@@ -503,7 +593,10 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn filter_map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Optional<U, L, B>
+    pub fn filter_map<U, F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L>,
+    ) -> Optional<U, L, B::UnderlyingBound>
     where
         F: Fn(T) -> Option<U> + 'a,
     {
@@ -515,7 +608,7 @@ where
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
-                    .new_node_metadata(Optional::<U, L, B>::collection_kind()),
+                    .new_node_metadata(Optional::<U, L, B::UnderlyingBound>::collection_kind()),
             },
         )
     }
@@ -630,7 +723,10 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn filter_if(self, signal: Singleton<bool, L, B>) -> Optional<T, L, B>
+    pub fn filter_if(
+        self,
+        signal: Singleton<bool, L, B>,
+    ) -> Optional<T, L, <B as SingletonBound>::UnderlyingBound>
     where
         B: IsBounded,
     {
@@ -673,7 +769,10 @@ where
     /// # }
     /// ```
     #[deprecated(note = "use `filter_if` with `Optional::is_some()` instead")]
-    pub fn filter_if_some<U>(self, signal: Optional<U, L, B>) -> Optional<T, L, B>
+    pub fn filter_if_some<U>(
+        self,
+        signal: Optional<U, L, B>,
+    ) -> Optional<T, L, <B as SingletonBound>::UnderlyingBound>
     where
         B: IsBounded,
     {
@@ -716,7 +815,10 @@ where
     /// # }
     /// ```
     #[deprecated(note = "use `filter_if` with `!Optional::is_some()` instead")]
-    pub fn filter_if_none<U>(self, other: Optional<U, L, B>) -> Optional<T, L, B>
+    pub fn filter_if_none<U>(
+        self,
+        other: Optional<U, L, B>,
+    ) -> Optional<T, L, <B as SingletonBound>::UnderlyingBound>
     where
         B: IsBounded,
     {
@@ -749,6 +851,71 @@ where
         self.zip(other).map(q!(|(a, b)| a == b))
     }
 
+    /// Returns a [`Stream`] that emits an event the first time the singleton has a value that is
+    /// greater than or equal to the provided threshold. The event will have the value of the
+    /// given threshold.
+    ///
+    /// This requires the incoming singleton to be monotonic, because otherwise the detection of
+    /// the threshold would be non-deterministic.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let a = // singleton 1 ~> 5 ~> 10
+    /// # process.singleton(q!(5));
+    /// let b = process.singleton(q!(4));
+    /// a.threshold_greater_or_equal(b)
+    /// # }, |mut stream| async move {
+    /// // [4]
+    /// # assert_eq!(stream.next().await.unwrap(), 4);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn threshold_greater_or_equal<B2: IsBounded>(
+        self,
+        threshold: Singleton<T, L, B2>,
+    ) -> Stream<T, L, B::UnderlyingBound>
+    where
+        T: Clone + PartialOrd,
+        B: IsMonotonic,
+    {
+        let threshold = threshold.make_bounded();
+        match self.try_make_bounded() {
+            Ok(bounded) => {
+                let uncasted = threshold
+                    .zip(bounded)
+                    .into_stream()
+                    .filter_map(q!(|(t, m)| if m < t { None } else { Some(t) }));
+
+                Stream::new(
+                    uncasted.location.clone(),
+                    uncasted.ir_node.replace(HydroNode::Placeholder),
+                )
+            }
+            Err(me) => {
+                let uncasted = sliced! {
+                    let me = use(me, nondet!(/** thresholds are deterministic */));
+                    let mut remaining_threshold = use::state(|l| {
+                        let as_option: Optional<_, _, _> = threshold.clone_into_tick(l).into();
+                        as_option
+                    });
+
+                    let (not_passed, passed) = remaining_threshold.zip(me).into_stream().partition(q!(|(t, m)| m < t));
+                    remaining_threshold = not_passed.first().map(q!(|(t, _)| t));
+                    passed.map(q!(|(t, _)| t))
+                };
+
+                Stream::new(
+                    uncasted.location.clone(),
+                    uncasted.ir_node.replace(HydroNode::Placeholder),
+                )
+            }
+        }
+    }
+
     /// An operator which allows you to "name" a `HydroNode`.
     /// This is only used for testing, to correlate certain `HydroNode`s with IDs.
     pub fn ir_node_named(self, name: &str) -> Singleton<T, L, B> {
@@ -761,15 +928,15 @@ where
     }
 }
 
-impl<'a, L: Location<'a>, B: Boundedness> Not for Singleton<bool, L, B> {
-    type Output = Singleton<bool, L, B>;
+impl<'a, L: Location<'a>, B: SingletonBound> Not for Singleton<bool, L, B> {
+    type Output = Singleton<bool, L, B::UnderlyingBound>;
 
     fn not(self) -> Self::Output {
         self.map(q!(|b| !b))
     }
 }
 
-impl<'a, T, L, B: Boundedness> Singleton<Option<T>, L, B>
+impl<'a, T, L, B: SingletonBound> Singleton<Option<T>, L, B>
 where
     L: Location<'a>,
 {
@@ -795,12 +962,12 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn into_optional(self) -> Optional<T, L, B> {
+    pub fn into_optional(self) -> Optional<T, L, B::UnderlyingBound> {
         self.filter_map(q!(|v| v))
     }
 }
 
-impl<'a, L, B: Boundedness> Singleton<bool, L, B>
+impl<'a, L, B: SingletonBound> Singleton<bool, L, B>
 where
     L: Location<'a>,
 {
@@ -827,11 +994,11 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn and(self, other: Singleton<bool, L, B>) -> Singleton<bool, L, B>
+    pub fn and(self, other: Singleton<bool, L, B>) -> Singleton<bool, L, Bounded>
     where
         B: IsBounded,
     {
-        self.zip(other).map(q!(|(a, b)| a && b))
+        self.zip(other).map(q!(|(a, b)| a && b)).make_bounded()
     }
 
     /// Returns a [`Singleton`] containing the logical OR of this and another boolean singleton.
@@ -857,15 +1024,15 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn or(self, other: Singleton<bool, L, B>) -> Singleton<bool, L, B>
+    pub fn or(self, other: Singleton<bool, L, B>) -> Singleton<bool, L, Bounded>
     where
         B: IsBounded,
     {
-        self.zip(other).map(q!(|(a, b)| a || b))
+        self.zip(other).map(q!(|(a, b)| a || b)).make_bounded()
     }
 }
 
-impl<'a, T, L, B: Boundedness> Singleton<T, Atomic<L>, B>
+impl<'a, T, L, B: SingletonBound> Singleton<T, Atomic<L>, B>
 where
     L: Location<'a> + NoTick,
 {
@@ -911,7 +1078,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness> Singleton<T, L, B>
+impl<'a, T, L, B: SingletonBound> Singleton<T, L, B>
 where
     L: Location<'a>,
 {
@@ -1017,6 +1184,18 @@ where
         )
     }
 
+    #[expect(clippy::result_large_err, reason = "internal use only")]
+    fn try_make_bounded(self) -> Result<Singleton<T, L, Bounded>, Singleton<T, L, B>> {
+        if B::UnderlyingBound::BOUNDED {
+            Ok(Singleton::new(
+                self.location.clone(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            ))
+        } else {
+            Err(self)
+        }
+    }
+
     /// Clones this bounded singleton into a tick, returning a singleton that has the
     /// same value as the outer singleton. Because the outer singleton is bounded, this
     /// is deterministic because there is only a single immutable version.
@@ -1099,7 +1278,9 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn resolve_future_blocking(self) -> Singleton<T::Output, L, B>
+    pub fn resolve_future_blocking(
+        self,
+    ) -> Singleton<T::Output, L, <B as SingletonBound>::UnderlyingBound>
     where
         T: Future,
         B: IsBounded,
@@ -1265,7 +1446,7 @@ pub trait ZipResult<'a, Other> {
 }
 
 #[sealed::sealed]
-impl<'a, T, U, L, B: Boundedness> ZipResult<'a, Singleton<U, L, B>> for Singleton<T, L, B>
+impl<'a, T, U, L, B: SingletonBound> ZipResult<'a, Singleton<U, L, B>> for Singleton<T, L, B>
 where
     L: Location<'a>,
 {
@@ -1294,20 +1475,21 @@ where
 }
 
 #[sealed::sealed]
-impl<'a, T, U, L, B: Boundedness> ZipResult<'a, Optional<U, L, B>> for Singleton<T, L, B>
+impl<'a, T, U, L, B: SingletonBound> ZipResult<'a, Optional<U, L, B::UnderlyingBound>>
+    for Singleton<T, L, B>
 where
     L: Location<'a>,
 {
-    type Out = Optional<(T, U), L, B>;
+    type Out = Optional<(T, U), L, B::UnderlyingBound>;
     type ElementType = (T, U);
     type OtherType = U;
     type Location = L;
 
-    fn other_location(other: &Optional<U, L, B>) -> L {
+    fn other_location(other: &Optional<U, L, B::UnderlyingBound>) -> L {
         other.location.clone()
     }
 
-    fn other_ir_node(other: Optional<U, L, B>) -> HydroNode {
+    fn other_ir_node(other: Optional<U, L, B::UnderlyingBound>) -> HydroNode {
         other.ir_node.replace(HydroNode::Placeholder)
     }
 

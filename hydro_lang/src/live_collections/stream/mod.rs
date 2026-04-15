@@ -23,6 +23,7 @@ use crate::compile::ir::{
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::live_collections::batch_atomic::BatchAtomic;
+use crate::live_collections::singleton::SingletonBound;
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::{Atomic, DeferTick, NoAtomic};
@@ -30,7 +31,9 @@ use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 use crate::prelude::manual_proof;
-use crate::properties::{AggFuncAlgebra, ValidCommutativityFor, ValidIdempotenceFor};
+use crate::properties::{
+    AggFuncAlgebra, ApplyMonotoneStream, ValidCommutativityFor, ValidIdempotenceFor,
+};
 
 pub mod networking;
 
@@ -1220,16 +1223,17 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn fold<A, I, F, C, Idemp>(
+    pub fn fold<A, I, F, C, Idemp, M, B2: SingletonBound>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
-        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp>>,
-    ) -> Singleton<A, L, B>
+        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp, M>>,
+    ) -> Singleton<A, L, B2>
     where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, T),
         C: ValidCommutativityFor<O>,
         Idemp: ValidIdempotenceFor<R>,
+        B: ApplyMonotoneStream<M, B2>,
     {
         let init = init.splice_fn0_ctx(&self.location).into();
         let (comb, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
@@ -1244,7 +1248,7 @@ where
             input: Box::new(ordered_etc.ir_node.replace(HydroNode::Placeholder)),
             metadata: ordered_etc
                 .location
-                .new_node_metadata(Singleton::<A, L, B>::collection_kind()),
+                .new_node_metadata(Singleton::<A, L, B2>::collection_kind()),
         };
 
         Singleton::new(ordered_etc.location.clone(), core)
@@ -1394,6 +1398,7 @@ where
     {
         self.make_totally_ordered()
             .assume_retries_trusted::<ExactlyOnce>(nondet!(/** first is idempotent */))
+            .generator(q!(|| ()), q!(|_, item| Generate::Return(item)))
             .reduce(q!(|_, _| {}))
     }
 
@@ -1426,6 +1431,53 @@ where
         self.make_totally_ordered()
             .assume_retries_trusted::<ExactlyOnce>(nondet!(/** last is idempotent */))
             .reduce(q!(|curr, new| *curr = new))
+    }
+
+    /// Returns a stream containing at most the first `n` elements of the input stream,
+    /// preserving the original order. Similar to `LIMIT` in SQL.
+    ///
+    /// This requires the stream to have a [`TotalOrder`] guarantee and [`ExactlyOnce`]
+    /// retries, since the result depends on the order and cardinality of elements.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let numbers = process.source_iter(q!(vec![10, 20, 30, 40, 50]));
+    /// numbers.limit(q!(3))
+    /// # }, |mut stream| async move {
+    /// // 10, 20, 30
+    /// # for w in vec![10, 20, 30] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn limit(
+        self,
+        n: impl QuotedWithContext<'a, usize, L> + Copy + 'a,
+    ) -> Stream<T, L, B, TotalOrder, ExactlyOnce>
+    where
+        O: IsOrdered,
+        R: IsExactlyOnce,
+    {
+        self.generator(
+            q!(|| 0usize),
+            q!(move |count, item| {
+                if *count == n {
+                    Generate::Break
+                } else {
+                    *count += 1;
+                    if *count == n {
+                        Generate::Return(item)
+                    } else {
+                        Generate::Yield(item)
+                    }
+                }
+            }),
+        )
     }
 
     /// Collects all the elements of this stream into a single [`Vec`] element.
@@ -1543,6 +1595,67 @@ where
         Stream::new(
             self.location.clone(),
             HydroNode::Scan {
+                init,
+                acc: f,
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self.location.new_node_metadata(
+                    Stream::<U, L, B, TotalOrder, ExactlyOnce>::collection_kind(),
+                ),
+            },
+        )
+    }
+
+    /// Async version of [`Stream::scan`]. Applies an async function to each element of the
+    /// stream, maintaining an internal state (accumulator) and emitting the values returned
+    /// by the function.
+    ///
+    /// The closure runs synchronously (so it can mutate the accumulator), then returns a
+    /// future. The future is polled to completion. If it resolves to `Some`, the value is
+    /// emitted. If it resolves to `None`, the item is filtered out.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![1, 2, 3, 4]))
+    ///     .scan_async_blocking(
+    ///         q!(|| 0),
+    ///         q!(|acc, x| {
+    ///             *acc += x;
+    ///             let val = *acc;
+    ///             async move { Some(val) }
+    ///         }),
+    ///     )
+    /// # }, |mut stream| async move {
+    /// // Output: 1, 3, 6, 10
+    /// # for w in vec![1, 3, 6, 10] {
+    /// #     assert_eq!(stream.next().await.unwrap(), w);
+    /// # }
+    /// # }));
+    /// # }
+    /// ```
+    pub fn scan_async_blocking<A, U, I, F, Fut>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L>,
+        f: impl IntoQuotedMut<'a, F, L>,
+    ) -> Stream<U, L, B, TotalOrder, ExactlyOnce>
+    where
+        O: IsOrdered,
+        R: IsExactlyOnce,
+        I: Fn() -> A + 'a,
+        F: Fn(&mut A, T) -> Fut + 'a,
+        Fut: Future<Output = Option<U>> + 'a,
+    {
+        let init = init.splice_fn0_ctx(&self.location).into();
+        let f = f.splice_fn2_borrow_mut_ctx(&self.location).into();
+
+        Stream::new(
+            self.location.clone(),
+            HydroNode::ScanAsyncBlocking {
                 init,
                 acc: f,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
@@ -2059,11 +2172,17 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn count(self) -> Singleton<usize, L, B> {
+    pub fn count(self) -> Singleton<usize, L, B::StreamToMonotone> {
         self.assume_ordering_trusted::<TotalOrder>(nondet!(
             /// Order does not affect eventual count, and also does not affect intermediate states.
         ))
-        .fold(q!(|| 0usize), q!(|count, _| *count += 1))
+        .fold(
+            q!(|| 0usize),
+            q!(
+                |count, _| *count += 1,
+                monotone = manual_proof!(/** += 1 is monotone */)
+            ),
+        )
     }
 }
 
@@ -2447,8 +2566,8 @@ where
             .assume_ordering_trusted::<TotalOrder>(
                 nondet!(/** is_empty intermediates unaffected by order */),
             )
-            .assume_retries_trusted::<ExactlyOnce>(nondet!(/** is_empty is idempotent */))
-            .fold(q!(|| true), q!(|empty, _| { *empty = false },))
+            .first()
+            .is_none()
     }
 }
 
@@ -2917,6 +3036,8 @@ mod tests {
     use crate::live_collections::stream::TotalOrder;
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::location::Location;
+    #[cfg(feature = "sim")]
+    use crate::networking::TCP;
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::nondet::nondet;
 
@@ -3498,6 +3619,7 @@ mod tests {
     fn sim_top_level_assume_ordering_cycle_back() {
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
@@ -3510,7 +3632,9 @@ mod tests {
             ordered
                 .clone()
                 .map(q!(|v| v + 1))
-                .filter(q!(|v| v % 2 == 1)),
+                .filter(q!(|v| v % 2 == 1))
+                .send(&node2, TCP.fail_stop().bincode())
+                .send(&node, TCP.fail_stop().bincode()),
         );
 
         let out_recv = ordered.sim_output();
@@ -3526,7 +3650,7 @@ mod tests {
         });
 
         assert!(saw, "did not see an instance with 0, 1, 2 in order");
-        assert_eq!(instance_count, 6)
+        assert_eq!(instance_count, 6);
     }
 
     #[cfg(feature = "sim")]
@@ -3534,6 +3658,7 @@ mod tests {
     fn sim_top_level_assume_ordering_cycle_back_tick() {
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
@@ -3548,7 +3673,9 @@ mod tests {
                 .batch(&node.tick(), nondet!(/** test */))
                 .all_ticks()
                 .map(q!(|v| v + 1))
-                .filter(q!(|v| v % 2 == 1)),
+                .filter(q!(|v| v % 2 == 1))
+                .send(&node2, TCP.fail_stop().bincode())
+                .send(&node, TCP.fail_stop().bincode()),
         );
 
         let out_recv = ordered.sim_output();
@@ -3564,7 +3691,7 @@ mod tests {
         });
 
         assert!(saw, "did not see an instance with 0, 1, 2 in order");
-        assert_eq!(instance_count, 58)
+        assert_eq!(instance_count, 58);
     }
 
     #[cfg(feature = "sim")]
@@ -3572,6 +3699,7 @@ mod tests {
     fn sim_top_level_assume_ordering_multiple() {
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
         let (_, input2) = node.sim_input::<_, NoOrder, _>();
@@ -3589,7 +3717,11 @@ mod tests {
             .merge_unordered(input2)
             .assume_ordering::<TotalOrder>(nondet!(/** test */));
 
-        complete_cycle_back.complete(foo.filter(q!(|v| *v == 3)));
+        complete_cycle_back.complete(
+            foo.filter(q!(|v| *v == 3))
+                .send(&node2, TCP.fail_stop().bincode())
+                .send(&node, TCP.fail_stop().bincode()),
+        );
 
         let out_recv = input1_ordered.sim_output();
 
@@ -3604,7 +3736,7 @@ mod tests {
         });
 
         assert!(saw, "did not see an instance with 0, 3, 1 in order");
-        assert_eq!(instance_count, 24)
+        assert_eq!(instance_count, 24);
     }
 
     #[cfg(feature = "sim")]
@@ -3612,6 +3744,7 @@ mod tests {
     fn sim_atomic_assume_ordering_cycle_back() {
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
@@ -3626,7 +3759,9 @@ mod tests {
             ordered
                 .clone()
                 .map(q!(|v| v + 1))
-                .filter(q!(|v| v % 2 == 1)),
+                .filter(q!(|v| v % 2 == 1))
+                .send(&node2, TCP.fail_stop().bincode())
+                .send(&node, TCP.fail_stop().bincode()),
         );
 
         let out_recv = ordered.sim_output();
@@ -3636,8 +3771,7 @@ mod tests {
             let out = out_recv.collect::<Vec<_>>().await;
             assert_eq!(out.len(), 4);
         });
-
-        assert_eq!(instance_count, 22)
+        assert_eq!(instance_count, 22);
     }
 
     #[cfg(feature = "deploy")]
@@ -3721,5 +3855,116 @@ mod tests {
                 "inspect: 4",
             ]
         );
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_limit() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input();
+
+        let out_recv = input.limit(q!(3)).sim_output();
+
+        flow.sim().exhaustive(async || {
+            in_send.send(1);
+            in_send.send(2);
+            in_send.send(3);
+            in_send.send(4);
+            in_send.send(5);
+
+            out_recv.assert_yields_only([1, 2, 3]).await;
+        });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_limit_zero() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input();
+
+        let out_recv = input.limit(q!(0)).sim_output();
+
+        flow.sim().exhaustive(async || {
+            in_send.send(1);
+            in_send.send(2);
+
+            out_recv.assert_yields_only::<i32, _>([]).await;
+        });
+    }
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn monotone_fold_threshold() {
+        use crate::properties::manual_proof;
+
+        let mut deployment = Deployment::new();
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let in_unbounded: super::Stream<_, _> =
+            node.source_iter(q!(vec![1i32, 2, 3, 4, 5, 6])).into();
+        let sum = in_unbounded.fold(
+            q!(|| 0),
+            q!(
+                |sum, v| {
+                    *sum += v;
+                },
+                monotone = manual_proof!(/** test */)
+            ),
+        );
+
+        let threshold_out = sum
+            .threshold_greater_or_equal(node.singleton(q!(7)))
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut threshold_out = nodes.connect(threshold_out).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(threshold_out.next().await.unwrap(), 7);
+    }
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn monotone_count_threshold() {
+        let mut deployment = Deployment::new();
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let in_unbounded: super::Stream<_, _> =
+            node.source_iter(q!(vec![1i32, 2, 3, 4, 5, 6])).into();
+        let sum = in_unbounded.count();
+
+        let threshold_out = sum
+            .threshold_greater_or_equal(node.singleton(q!(3)))
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut threshold_out = nodes.connect(threshold_out).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(threshold_out.next().await.unwrap(), 3);
     }
 }

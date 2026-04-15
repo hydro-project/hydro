@@ -3,14 +3,17 @@
 
 use sealed::sealed;
 
-use super::keyed_singleton::{BoundedValue, KeyedSingletonBound};
+use super::keyed_singleton::KeyedSingletonBound;
 use crate::compile::ir::BoundKind;
+use crate::live_collections::singleton::SingletonBound;
 
 /// A marker trait indicating whether a stream’s length is bounded (finite) or unbounded (potentially infinite).
 ///
 /// Implementors of this trait use it to signal the boundedness property of a stream.
 #[sealed]
-pub trait Boundedness: KeyedBoundFoldLike {
+pub trait Boundedness:
+    SingletonBound<UnderlyingBound = Self> + KeyedSingletonBound<UnderlyingBound = Self>
+{
     /// `true` if the bound is [`Bounded`], `false` if it is [`Unbounded`].
     const BOUNDED: bool;
 
@@ -52,24 +55,3 @@ pub trait IsBounded: Boundedness {}
 #[sealed]
 #[diagnostic::do_not_recommend]
 impl IsBounded for Bounded {}
-
-/// Helper trait that determines the boundedness for the result of keyed aggregations.
-#[sealed]
-pub trait KeyedBoundFoldLike {
-    /// The boundedness of the keyed singleton if the values for each key will asynchronously change.
-    type WhenValueUnbounded: KeyedSingletonBound<UnderlyingBound = Self>;
-    /// The boundedness of the keyed singleton if the value for each key is immutable.
-    type WhenValueBounded: KeyedSingletonBound<UnderlyingBound = Self>;
-}
-
-#[sealed]
-impl KeyedBoundFoldLike for Unbounded {
-    type WhenValueUnbounded = Unbounded;
-    type WhenValueBounded = BoundedValue;
-}
-
-#[sealed]
-impl KeyedBoundFoldLike for Bounded {
-    type WhenValueUnbounded = Bounded;
-    type WhenValueBounded = Bounded;
-}

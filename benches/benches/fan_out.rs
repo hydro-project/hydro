@@ -1,5 +1,5 @@
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use dfir_rs::dfir_syntax;
+use dfir_rs::{dfir_syntax, dfir_syntax_inline};
 use static_assertions::const_assert;
 use timely::dataflow::operators::{Map, ToStream};
 
@@ -41,6 +41,43 @@ fn benchmark_hydroflow_surface(c: &mut Criterion) {
             };
 
             df.run_available_sync();
+        })
+    });
+}
+
+fn benchmark_hydroflow_surface_inline(c: &mut Criterion) {
+    c.bench_function("fan_out/dfir_rs/surface_inline", |b| {
+        b.iter(|| {
+            let mut flow = dfir_syntax_inline! {
+                my_tee = tee();
+
+                source_iter(black_box(0..NUM_INTS)) -> my_tee;
+
+                my_tee -> for_each(|x| { black_box(x); });
+                my_tee -> for_each(|x| { black_box(x); });
+                my_tee -> for_each(|x| { black_box(x); });
+                my_tee -> for_each(|x| { black_box(x); });
+                my_tee -> for_each(|x| { black_box(x); });
+
+                my_tee -> for_each(|x| { black_box(x); });
+                my_tee -> for_each(|x| { black_box(x); });
+                my_tee -> for_each(|x| { black_box(x); });
+                my_tee -> for_each(|x| { black_box(x); });
+                my_tee -> for_each(|x| { black_box(x); });
+
+                my_tee -> for_each(|x| { black_box(x); });
+                my_tee -> for_each(|x| { black_box(x); });
+                my_tee -> for_each(|x| { black_box(x); });
+                my_tee -> for_each(|x| { black_box(x); });
+                my_tee -> for_each(|x| { black_box(x); });
+
+                my_tee -> for_each(|x| { black_box(x); });
+                my_tee -> for_each(|x| { black_box(x); });
+                my_tee -> for_each(|x| { black_box(x); });
+                my_tee -> for_each(|x| { black_box(x); });
+                my_tee -> for_each(|x| { black_box(x); });
+            };
+            flow.run_tick_sync();
         })
     });
 }
@@ -105,6 +142,7 @@ fn benchmark_sol(c: &mut Criterion) {
 criterion_group!(
     fan_out_dataflow,
     benchmark_hydroflow_surface,
+    benchmark_hydroflow_surface_inline,
     // benchmark_hydroflow_teer,
     benchmark_timely,
     benchmark_sol,

@@ -11,6 +11,7 @@ use crate::{Context, Toggle};
 mod fanout;
 mod filter;
 mod filter_map;
+mod filter_map_async;
 mod flat_map;
 mod flat_map_stream;
 mod flatten;
@@ -42,6 +43,7 @@ pub use demux_var::{DemuxVar, PushVariadic, demux_var};
 pub use fanout::Fanout;
 pub use filter::Filter;
 pub use filter_map::FilterMap;
+pub use filter_map_async::FilterMapAsync;
 pub use flat_map::FlatMap;
 pub use flat_map_stream::FlatMapStream;
 pub use flatten::Flatten;
@@ -238,6 +240,18 @@ where
     Func: FnMut(In) -> Option<Out>,
 {
     FilterMap::new(func, next)
+}
+
+/// Creates a [`FilterMapAsync`] push that applies an async filter-map function.
+pub const fn filter_map_async<Func, In, Out, Fut, Next>(
+    func: Func,
+    next: Next,
+) -> FilterMapAsync<Next, Func, Fut, Out, ()>
+where
+    Func: FnMut(In) -> Fut,
+    Fut: Future<Output = Option<Out>>,
+{
+    FilterMapAsync::new(func, next)
 }
 
 /// Creates a [`FlatMap`] push that maps each item to an iterator and flattens the results.

@@ -196,7 +196,7 @@ hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1" }
 
 [dev-dependencies]
 ctor = "0.2"
-hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1" }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.0.1", features = ["insta"] }
 tokio-test = "0.4.4"
 trybuild = "1"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }

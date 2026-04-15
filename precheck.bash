@@ -113,6 +113,8 @@ fi
 set -x
 
 cargo +nightly fmt --all
+cargo clippy $TARGETS --all-targets --no-default-features -- -D warnings
+cargo clippy $TARGETS --all-targets --all-features -- -D warnings
 cargo clippy $TARGETS --all-targets $FEATURES -- -D warnings
 [ "$TEST_ALL" = false ] || cargo check --all-targets --no-default-features
 

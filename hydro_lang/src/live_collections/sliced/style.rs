@@ -8,7 +8,8 @@ use super::Slicable;
 use crate::forward_handle::{CycleCollection, CycleCollectionWithInitial};
 use crate::forward_handle::{TickCycle, TickCycleHandle};
 use crate::live_collections::boundedness::{Bounded, Boundedness, Unbounded};
-use crate::live_collections::keyed_singleton::BoundedValue;
+use crate::live_collections::keyed_singleton::{BoundedValue, KeyedSingletonBound};
+use crate::live_collections::singleton::SingletonBound;
 use crate::live_collections::stream::{Ordering, Retries};
 use crate::location::tick::{DeferTick, Tick};
 use crate::location::{Location, NoTick};
@@ -70,7 +71,7 @@ pub fn atomic<T>(t: T, nondet: NonDet) -> Atomic<T> {
 pub fn state<
     'a,
     S: CycleCollectionWithInitial<'a, TickCycle, Location = Tick<L>>,
-    L: Location<'a> + NoTick,
+    L: Location<'a>,
 >(
     tick: &Tick<L>,
     initial_fn: impl FnOnce(&Tick<L>) -> S,
@@ -118,7 +119,7 @@ impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries> Slicable<'
     }
 }
 
-impl<'a, T, L: Location<'a>, B: Boundedness> Slicable<'a, L>
+impl<'a, T, L: Location<'a>, B: SingletonBound> Slicable<'a, L>
     for Default<crate::live_collections::Singleton<T, L, B>>
 {
     type Slice = crate::live_collections::Singleton<T, Tick<L>, Bounded>;
@@ -150,8 +151,8 @@ impl<'a, T, L: Location<'a>, B: Boundedness> Slicable<'a, L>
     }
 }
 
-impl<'a, K, V, L: Location<'a>, O: Ordering, R: Retries> Slicable<'a, L>
-    for Default<crate::live_collections::KeyedStream<K, V, L, Unbounded, O, R>>
+impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries> Slicable<'a, L>
+    for Default<crate::live_collections::KeyedStream<K, V, L, B, O, R>>
 {
     type Slice = crate::live_collections::KeyedStream<K, V, Tick<L>, Bounded, O, R>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
@@ -166,8 +167,8 @@ impl<'a, K, V, L: Location<'a>, O: Ordering, R: Retries> Slicable<'a, L>
     }
 }
 
-impl<'a, K, V, L: Location<'a>> Slicable<'a, L>
-    for Default<crate::live_collections::KeyedSingleton<K, V, L, Unbounded>>
+impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Unbounded>> Slicable<'a, L>
+    for Default<crate::live_collections::KeyedSingleton<K, V, L, B>>
 {
     type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
@@ -202,8 +203,8 @@ impl<'a, K, V, L: Location<'a> + NoTick> Slicable<'a, L>
 // Atomic style Slicable implementations
 // ============================================================================
 
-impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Slicable<'a, L>
-    for Atomic<crate::live_collections::Stream<T, crate::location::Atomic<L>, Unbounded, O, R>>
+impl<'a, T, L: Location<'a> + NoTick, B: Boundedness, O: Ordering, R: Retries> Slicable<'a, L>
+    for Atomic<crate::live_collections::Stream<T, crate::location::Atomic<L>, B, O, R>>
 {
     type Slice = crate::live_collections::Stream<T, Tick<L>, Bounded, O, R>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
@@ -218,8 +219,8 @@ impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Slicable<'a, L>
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick> Slicable<'a, L>
-    for Atomic<crate::live_collections::Singleton<T, crate::location::Atomic<L>, Unbounded>>
+impl<'a, T, L: Location<'a> + NoTick, B: SingletonBound> Slicable<'a, L>
+    for Atomic<crate::live_collections::Singleton<T, crate::location::Atomic<L>, B>>
 {
     type Slice = crate::live_collections::Singleton<T, Tick<L>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
@@ -234,8 +235,8 @@ impl<'a, T, L: Location<'a> + NoTick> Slicable<'a, L>
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick> Slicable<'a, L>
-    for Atomic<crate::live_collections::Optional<T, crate::location::Atomic<L>, Unbounded>>
+impl<'a, T, L: Location<'a> + NoTick, B: Boundedness> Slicable<'a, L>
+    for Atomic<crate::live_collections::Optional<T, crate::location::Atomic<L>, B>>
 {
     type Slice = crate::live_collections::Optional<T, Tick<L>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
@@ -250,10 +251,8 @@ impl<'a, T, L: Location<'a> + NoTick> Slicable<'a, L>
     }
 }
 
-impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries> Slicable<'a, L>
-    for Atomic<
-        crate::live_collections::KeyedStream<K, V, crate::location::Atomic<L>, Unbounded, O, R>,
-    >
+impl<'a, K, V, L: Location<'a> + NoTick, B: Boundedness, O: Ordering, R: Retries> Slicable<'a, L>
+    for Atomic<crate::live_collections::KeyedStream<K, V, crate::location::Atomic<L>, B, O, R>>
 {
     type Slice = crate::live_collections::KeyedStream<K, V, Tick<L>, Bounded, O, R>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
@@ -268,8 +267,9 @@ impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries> Slicable<'a, L
     }
 }
 
-impl<'a, K, V, L: Location<'a> + NoTick> Slicable<'a, L>
-    for Atomic<crate::live_collections::KeyedSingleton<K, V, crate::location::Atomic<L>, Unbounded>>
+impl<'a, K, V, L: Location<'a> + NoTick, B: KeyedSingletonBound<ValueBound = Unbounded>>
+    Slicable<'a, L>
+    for Atomic<crate::live_collections::KeyedSingleton<K, V, crate::location::Atomic<L>, B>>
 {
     type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;

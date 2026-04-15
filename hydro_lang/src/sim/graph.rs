@@ -688,7 +688,7 @@ fn compile_sim_graph_trybuild(
 
     let mut dfir_into_code = |g: &DfirGraph| {
         let mut dfir_expr: syn::Expr = syn::parse2(
-            g.as_code(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
+            g.as_code_inline(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
                 .expect("DFIR code generation failed with diagnostics."),
         )
         .unwrap();
@@ -698,6 +698,14 @@ fn compile_sim_graph_trybuild(
         }
 
         dfir_expr
+    };
+
+    // Wrap to erase the concrete closure type so all locations can go in a Vec.
+    let mut dfir_into_code_erased = |g: &DfirGraph| -> syn::Expr {
+        let inner = dfir_into_code(g);
+        syn::parse_quote! {
+            __root_dfir_rs::scheduled::context::InlineDfir::into_erased(#inner)
+        }
     };
 
     if is_test {
@@ -715,7 +723,7 @@ fn compile_sim_graph_trybuild(
     let process_dfir_exprs = process_graphs
         .into_iter()
         .map(|(lid, g)| {
-            let dfir_expr = dfir_into_code(&g);
+            let dfir_expr = dfir_into_code_erased(&g);
             let ser_lid = serde_json::to_string(&lid).unwrap();
             syn::parse_quote!((#ser_lid, None, #dfir_expr))
         })
@@ -738,14 +746,14 @@ fn compile_sim_graph_trybuild(
     let cluster_dfir_stmts = cluster_graphs
         .into_iter()
         .map(|(lid, g)| {
-            let dfir_expr = dfir_into_code(&g);
+            let dfir_expr = dfir_into_code_erased(&g);
 
             let tick_dfir_stmts = cluster_ticks_grouped_by_root
                 .remove(&lid)
                 .unwrap_or_default()
                 .into_iter()
                 .map(|(tick_lid, tick_g)| {
-                    let tick_dfir_expr = dfir_into_code(&tick_g);
+                    let tick_dfir_expr = dfir_into_code_erased(&tick_g);
                     let ser_tick_lid = serde_json::to_string(&tick_lid).unwrap();
                     syn::parse_quote! {
                         __tick_dfirs.push((
@@ -789,7 +797,7 @@ fn compile_sim_graph_trybuild(
     let process_tick_dfir_exprs = process_tick_graphs
         .into_iter()
         .map(|(lid, g)| {
-            let dfir_expr = dfir_into_code(&g);
+            let dfir_expr = dfir_into_code_erased(&g);
             let ser_lid = serde_json::to_string(&lid).unwrap();
             syn::parse_quote!((#ser_lid, None, #dfir_expr))
         })
@@ -843,8 +851,8 @@ fn compile_sim_graph_trybuild(
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
-            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
-            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'a>)>,
+            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::context::InlineDfirErased)>,
+            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::context::InlineDfirErased)>,
             #root::sim::runtime::Hooks<&'static str>,
             #root::sim::runtime::InlineHooks<&'static str>,
         ) {
@@ -913,8 +921,8 @@ fn compile_sim_graph_trybuild(
             __println_handler: fn(::std::fmt::Arguments<'_>),
             __eprintln_handler: fn(::std::fmt::Arguments<'_>),
         ) -> (
-            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
-            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::graph::Dfir<'static>)>,
+            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::context::InlineDfirErased)>,
+            Vec<(&'static str, Option<u32>, __root_dfir_rs::scheduled::context::InlineDfirErased)>,
             #root::sim::runtime::Hooks<&'static str>,
             #root::sim::runtime::InlineHooks<&'static str>,
         ) {

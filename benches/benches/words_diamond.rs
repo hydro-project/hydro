@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use std::sync::LazyLock;
 
 use criterion::{Criterion, criterion_group, criterion_main};
-use dfir_rs::dfir_syntax;
 use dfir_rs::itertools::Itertools;
+use dfir_rs::{dfir_syntax, dfir_syntax_inline};
 use nameof::name_of;
 
 const OUTPUT: usize = 5_123_595;
@@ -44,6 +44,29 @@ fn dfir_rs_diamond(c: &mut Criterion) {
                 }) -> assert_eq([OUTPUT]);
             };
             df.run_available_sync();
+        })
+    });
+}
+
+fn dfir_rs_diamond_inline(c: &mut Criterion) {
+    let _ = *WORDS;
+
+    c.bench_function(name_of!(dfir_rs_diamond_inline), |b| {
+        b.iter(|| {
+            let words = words();
+            let mut count: usize = 0;
+            let count_ref = &mut count;
+            let mut flow = dfir_syntax_inline! {
+                my_tee = source_iter(words) -> tee();
+                my_tee -> flat_map(|s| [format!("hi {}", s), format!("bye {}", s)]) -> my_union;
+                my_tee -> filter(|s| 0 == s.len() % 5) -> my_union;
+                my_union = union() -> fold(|| 0_usize, |n: &mut usize, s: String| {
+                    *n += s.len();
+                }) -> for_each(|n: usize| { *count_ref = n; });
+            };
+            flow.run_tick_sync();
+            drop(flow);
+            assert_eq!(OUTPUT, count);
         })
     });
 }
@@ -168,6 +191,7 @@ fn hydroflo2_diamond_iter_buffer_one(c: &mut Criterion) {
 criterion_group!(
     words_diamond,
     dfir_rs_diamond,
+    dfir_rs_diamond_inline,
     hydroflo2_diamond_forloop,
     hydroflo2_diamond_iter_clone_chain,
     hydroflo2_diamond_iter_clone_interleave,

@@ -3,7 +3,6 @@ use std::collections::HashMap;
 
 #[cfg(feature = "runtime_measure")]
 use dfir_rs::futures::FutureExt;
-use dfir_rs::scheduled::graph::Dfir;
 use futures::StreamExt;
 use futures::stream::FuturesUnordered;
 pub use hydro_deploy_integration::*;
@@ -13,12 +12,12 @@ use procfs::WithCurrentSystemInfo;
 use serde::de::DeserializeOwned;
 
 #[cfg(not(feature = "runtime_measure"))]
-pub async fn run_stdin_commands(flow: Dfir<'_>) {
+pub async fn run_stdin_commands(flow: impl Future) {
     launch_flow_stdin_commands(flow).await;
 }
 
 #[cfg(feature = "runtime_measure")]
-pub async fn run_stdin_commands(flow: Dfir<'_>) {
+pub async fn run_stdin_commands(flow: impl Future) {
     // Make sure to print CPU even if we crash
     let res = std::panic::AssertUnwindSafe(launch_flow_stdin_commands(flow))
         .catch_unwind()
@@ -81,7 +80,7 @@ pub async fn run_stdin_commands(flow: Dfir<'_>) {
     res.unwrap();
 }
 
-pub async fn launch_flow_stdin_commands(mut flow: Dfir<'_>) {
+pub async fn launch_flow_stdin_commands(flow: impl Future) {
     // TODO(mingwei): convert to use CancellationToken at some point
     // Not trivial: https://github.com/hydro-project/hydro/pull/2495/changes#r2733428502
     let stop = tokio::sync::oneshot::channel();
@@ -95,11 +94,9 @@ pub async fn launch_flow_stdin_commands(mut flow: Dfir<'_>) {
         }
     });
 
-    let flow_run = flow.run();
-
     tokio::select! {
         _ = stop.1 => {},
-        _ = flow_run => {}
+        _ = flow => {}
     }
 }
 

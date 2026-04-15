@@ -70,6 +70,7 @@ tokio-util = { version = "0.7.5", features = [ "net" ] }
 getrandom = { version = "0.2.6", features = [ "js" ] }
 
 [dev-dependencies]
+dfir_rs = { path = ".", features = [ "meta" ] }
 dfir_lang = { path = "../dfir_lang", version = "^0.15.0", features = [ "clap-derive" ] }
 
 chrono = { version = "0.4.20", features = [ "serde", "clock" ], default-features = false }

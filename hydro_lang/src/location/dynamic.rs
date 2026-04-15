@@ -104,6 +104,24 @@ impl LocationId {
             }
         }
     }
+
+    pub fn new_node_metadata(self, collection_kind: CollectionKind) -> HydroIrMetadata {
+        use crate::compile::ir::HydroIrOpMetadata;
+        use crate::compile::ir::backtrace::Backtrace;
+
+        HydroIrMetadata {
+            location_id: self,
+            collection_kind,
+            cardinality: None,
+            tag: None,
+            op: HydroIrOpMetadata {
+                backtrace: Backtrace::get_backtrace(3),
+                cpu_usage: None,
+                network_recv_cpu_usage: None,
+                id: None,
+            },
+        }
+    }
 }
 
 #[cfg(stageleft_runtime)]
@@ -115,20 +133,6 @@ pub(crate) trait DynLocation: Clone {
     fn multiversioned(&self) -> bool;
 
     fn new_node_metadata(&self, collection_kind: CollectionKind) -> HydroIrMetadata {
-        use crate::compile::ir::HydroIrOpMetadata;
-        use crate::compile::ir::backtrace::Backtrace;
-
-        HydroIrMetadata {
-            location_id: self.id(),
-            collection_kind,
-            cardinality: None,
-            tag: None,
-            op: HydroIrOpMetadata {
-                backtrace: Backtrace::get_backtrace(2),
-                cpu_usage: None,
-                network_recv_cpu_usage: None,
-                id: None,
-            },
-        }
+        self.id().new_node_metadata(collection_kind)
     }
 }

@@ -23,6 +23,7 @@ use crate::compile::ir::{
 use crate::forward_handle::{CycleCollection, ReceiverComplete};
 use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::live_collections::batch_atomic::BatchAtomic;
+use crate::live_collections::keyed_singleton::KeyedSingletonBound;
 use crate::live_collections::stream::{
     AtLeastOnce, Ordering, Retries, WeakerOrderingThan, WeakerRetryThan,
 };
@@ -32,7 +33,10 @@ use crate::location::tick::DeferTick;
 use crate::location::{Atomic, Location, NoTick, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
-use crate::properties::{AggFuncAlgebra, ValidCommutativityFor, ValidIdempotenceFor};
+use crate::properties::{
+    AggFuncAlgebra, ApplyMonotoneKeyedStream, ValidCommutativityFor, ValidIdempotenceFor,
+    manual_proof,
+};
 
 pub mod networking;
 
@@ -1491,7 +1495,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         self,
         init: impl IntoQuotedMut<'a, I, L> + Copy,
         f: impl IntoQuotedMut<'a, F, L> + Copy,
-    ) -> KeyedSingleton<K, A, L, B::WhenValueBounded>
+    ) -> KeyedSingleton<K, A, L, B::WithBoundedValue>
     where
         O: IsOrdered,
         R: IsExactlyOnce,
@@ -1527,7 +1531,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 metadata: out_without_bound_cast
                     .location
                     .new_node_metadata(
-                        KeyedSingleton::<K, A, L, B::WhenValueBounded>::collection_kind(),
+                        KeyedSingleton::<K, A, L, B::WithBoundedValue>::collection_kind(),
                     ),
             },
         )
@@ -1559,7 +1563,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn first(self) -> KeyedSingleton<K, V, L, B::WhenValueBounded>
+    pub fn first(self) -> KeyedSingleton<K, V, L, B::WithBoundedValue>
     where
         O: IsOrdered,
         R: IsExactlyOnce,
@@ -1573,6 +1577,62 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
             }),
         )
         .map(q!(|v| v.unwrap()))
+    }
+
+    /// Returns a keyed stream containing at most the first `n` values per key,
+    /// preserving the original order within each group. Similar to SQL `LIMIT`
+    /// applied per group.
+    ///
+    /// This requires the stream to have a [`TotalOrder`] guarantee and [`ExactlyOnce`]
+    /// retries, since the result depends on the order and cardinality of elements
+    /// within each group.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// process
+    ///     .source_iter(q!(vec![(1, 10), (1, 20), (1, 30), (2, 40), (2, 50)]))
+    ///     .into_keyed()
+    ///     .limit(q!(2))
+    /// #   .entries()
+    /// # }, |mut stream| async move {
+    /// // { 1: [10, 20], 2: [40, 50] }
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..4 {
+    /// #     results.push(stream.next().await.unwrap());
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec![(1, 10), (1, 20), (2, 40), (2, 50)]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn limit(
+        self,
+        n: impl QuotedWithContext<'a, usize, L> + Copy + 'a,
+    ) -> KeyedStream<K, V, L, B, TotalOrder, ExactlyOnce>
+    where
+        O: IsOrdered,
+        R: IsExactlyOnce,
+        K: Clone + Eq + Hash,
+    {
+        self.generator(
+            q!(|| 0usize),
+            q!(move |count, item| {
+                if *count == n {
+                    Generate::Break
+                } else {
+                    *count += 1;
+                    if *count == n {
+                        Generate::Return(item)
+                    } else {
+                        Generate::Yield(item)
+                    }
+                }
+            }),
+        )
     }
 
     /// Assigns a zero-based index to each value within each key group, emitting
@@ -1649,7 +1709,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn value_counts(self) -> KeyedSingleton<K, usize, L, B::WhenValueUnbounded>
+    pub fn value_counts(
+        self,
+    ) -> KeyedSingleton<K, usize, L, <B as KeyedSingletonBound>::KeyedStreamToMonotone>
     where
         R: IsExactlyOnce,
         K: Eq + Hash,
@@ -1658,7 +1720,13 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
             .assume_ordering_trusted(
                 nondet!(/** ordering within each group affects neither result nor intermediates */),
             )
-            .fold(q!(|| 0), q!(|acc, _| *acc += 1))
+            .fold(
+                q!(|| 0),
+                q!(
+                    |acc, _| *acc += 1,
+                    monotone = manual_proof!(/** += 1 is monotonic */)
+                ),
+            )
     }
 
     /// Like [`Stream::fold`] but in the spirit of SQL `GROUP BY`, aggregates the values in each
@@ -1696,15 +1764,16 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn fold<A, I: Fn() -> A + 'a, F: Fn(&mut A, V), C, Idemp>(
+    pub fn fold<A, I: Fn() -> A + 'a, F: Fn(&mut A, V), C, Idemp, M, B2: KeyedSingletonBound>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
-        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp>>,
-    ) -> KeyedSingleton<K, A, L, B::WhenValueUnbounded>
+        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp, M>>,
+    ) -> KeyedSingleton<K, A, L, B2>
     where
         K: Eq + Hash,
         C: ValidCommutativityFor<O>,
         Idemp: ValidIdempotenceFor<R>,
+        B: ApplyMonotoneKeyedStream<M, B2>,
     {
         let init = init.splice_fn0_ctx(&self.location).into();
         let (comb, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
@@ -1720,12 +1789,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 init,
                 acc: comb.into(),
                 input: Box::new(ordered.ir_node.replace(HydroNode::Placeholder)),
-                metadata: ordered.location.new_node_metadata(KeyedSingleton::<
-                    K,
-                    A,
-                    L,
-                    B::WhenValueUnbounded,
-                >::collection_kind()),
+                metadata: ordered
+                    .location
+                    .new_node_metadata(KeyedSingleton::<K, A, L, B2>::collection_kind()),
             },
         )
     }
@@ -1767,7 +1833,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     pub fn reduce<F: Fn(&mut V, V) + 'a, C, Idemp>(
         self,
         comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp>>,
-    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
+    ) -> KeyedSingleton<K, V, L, B>
     where
         K: Eq + Hash,
         C: ValidCommutativityFor<O>,
@@ -1785,12 +1851,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
             HydroNode::ReduceKeyed {
                 f: f.into(),
                 input: Box::new(ordered.ir_node.replace(HydroNode::Placeholder)),
-                metadata: ordered.location.new_node_metadata(KeyedSingleton::<
-                    K,
-                    V,
-                    L,
-                    B::WhenValueUnbounded,
-                >::collection_kind()),
+                metadata: ordered
+                    .location
+                    .new_node_metadata(KeyedSingleton::<K, V, L, B>::collection_kind()),
             },
         )
     }
@@ -1827,7 +1890,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         self,
         other: impl Into<Optional<O2, Tick<L::Root>, Bounded>>,
         comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp>>,
-    ) -> KeyedSingleton<K, V, L, B::WhenValueUnbounded>
+    ) -> KeyedSingleton<K, V, L, B>
     where
         K: Eq + Hash,
         O2: Clone,
@@ -1850,12 +1913,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 f: f.into(),
                 input: Box::new(ordered.ir_node.replace(HydroNode::Placeholder)),
                 watermark: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
-                metadata: ordered.location.new_node_metadata(KeyedSingleton::<
-                    K,
-                    V,
-                    L,
-                    B::WhenValueUnbounded,
-                >::collection_kind()),
+                metadata: ordered
+                    .location
+                    .new_node_metadata(KeyedSingleton::<K, V, L, B>::collection_kind()),
             },
         )
     }
@@ -2698,6 +2758,8 @@ mod tests {
     use crate::live_collections::stream::{NoOrder, TotalOrder};
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::location::Location;
+    #[cfg(feature = "sim")]
+    use crate::networking::TCP;
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::nondet::nondet;
     #[cfg(feature = "deploy")]
@@ -3042,6 +3104,7 @@ mod tests {
 
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
@@ -3055,7 +3118,11 @@ mod tests {
             ordered
                 .clone()
                 .map(q!(|v| v + 1))
-                .filter(q!(|v| v % 2 == 1)),
+                .filter(q!(|v| v % 2 == 1))
+                .entries()
+                .send(&node2, TCP.fail_stop().bincode())
+                .send(&node, TCP.fail_stop().bincode())
+                .into_keyed(),
         );
 
         let out_recv = ordered
@@ -3106,6 +3173,7 @@ mod tests {
         // that other key.
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
@@ -3124,6 +3192,8 @@ mod tests {
                 .map(q!(|_| 100))
                 .entries()
                 .map(q!(|(_, v)| (2, v))) // Change key from 1 to 2
+                .send(&node2, TCP.fail_stop().bincode())
+                .send(&node, TCP.fail_stop().bincode())
                 .into_keyed(),
         );
 
@@ -3176,6 +3246,7 @@ mod tests {
 
         let mut flow = FlowBuilder::new();
         let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
 
         let (in_send, input) = node.sim_input::<_, NoOrder, _>();
 
@@ -3191,7 +3262,11 @@ mod tests {
                 .batch(&node.tick(), nondet!(/** test */))
                 .all_ticks()
                 .map(q!(|v| v + 1))
-                .filter(q!(|v| v % 2 == 1)),
+                .filter(q!(|v| v % 2 == 1))
+                .entries()
+                .send(&node2, TCP.fail_stop().bincode())
+                .send(&node, TCP.fail_stop().bincode())
+                .into_keyed(),
         );
 
         let out_recv = ordered

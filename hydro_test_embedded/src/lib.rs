@@ -71,9 +71,13 @@ mod tests {
     use hydro_lang::location::MembershipEvent;
     use hydro_lang::location::member_id::TaglessMemberId;
 
-    async fn run_dfir(mut flow: dfir_rs::scheduled::graph::Dfir<'_>) {
+    async fn run_flow(
+        flow: &mut dfir_rs::scheduled::context::InlineDfir<
+            impl dfir_rs::scheduled::context::TickClosure,
+        >,
+    ) {
         tokio::task::LocalSet::new()
-            .run_until(flow.run_available())
+            .run_until(flow.run_tick())
             .await;
     }
 
@@ -90,8 +94,9 @@ mod tests {
         let mut outputs = crate::embedded::capitalize::EmbeddedOutputs {
             output: |s: String| collected.push(s),
         };
-        let flow = crate::embedded::capitalize(input, &mut outputs);
-        run_dfir(flow).await;
+        let mut flow = crate::embedded::capitalize(input, &mut outputs);
+        run_flow(&mut flow).await;
+        drop(flow);
         assert_eq!(collected, vec!["HELLO", "WORLD", "HYDRO"]);
     }
 
@@ -104,8 +109,10 @@ mod tests {
         let mut outputs = crate::singleton_input::prefix_names::EmbeddedOutputs {
             output: |s: String| collected.push(s),
         };
-        let flow = crate::singleton_input::prefix_names("Hello".to_owned(), names, &mut outputs);
-        run_dfir(flow).await;
+        let mut flow =
+            crate::singleton_input::prefix_names("Hello".to_owned(), names, &mut outputs);
+        run_flow(&mut flow).await;
+        drop(flow);
         assert_eq!(collected, vec!["Hello Alice", "Hello Bob"]);
     }
 
@@ -123,7 +130,9 @@ mod tests {
                 tx.send(bytes).unwrap();
             },
         };
-        run_dfir(crate::echo_network::echo_sender(input, &mut net_out)).await;
+        let mut flow_sender = crate::echo_network::echo_sender(input, &mut net_out);
+        run_flow(&mut flow_sender).await;
+        drop(flow_sender);
 
         let mut bytes_vec = vec![];
         while let Ok(b) = rx.try_recv() {
@@ -139,7 +148,9 @@ mod tests {
         let mut outputs = crate::echo_network::echo_receiver::EmbeddedOutputs {
             output: |s: String| received.push(s),
         };
-        run_dfir(crate::echo_network::echo_receiver(&mut outputs, net_in)).await;
+        let mut flow_receiver = crate::echo_network::echo_receiver(&mut outputs, net_in);
+        run_flow(&mut flow_receiver).await;
+        drop(flow_receiver);
         assert_eq!(received, vec!["HELLO", "WORLD"]);
     }
 
@@ -161,12 +172,9 @@ mod tests {
                 tx.send(item).unwrap();
             },
         };
-        run_dfir(crate::o2m_broadcast::o2m_sender(
-            membership,
-            input,
-            &mut net_out,
-        ))
-        .await;
+        let mut flow_sender = crate::o2m_broadcast::o2m_sender(membership, input, &mut net_out);
+        run_flow(&mut flow_sender).await;
+        drop(flow_sender);
 
         let mut tagged_bytes = vec![];
         while let Ok((id, b)) = rx.try_recv() {
@@ -183,12 +191,10 @@ mod tests {
         let mut outputs = crate::o2m_broadcast::o2m_receiver::EmbeddedOutputs {
             output: |s: String| received.push(s),
         };
-        run_dfir(crate::o2m_broadcast::o2m_receiver(
-            &member_id,
-            &mut outputs,
-            net_in,
-        ))
-        .await;
+        let mut flow_receiver =
+            crate::o2m_broadcast::o2m_receiver(&member_id, &mut outputs, net_in);
+        run_flow(&mut flow_receiver).await;
+        drop(flow_receiver);
         assert_eq!(received, vec!["HELLO", "WORLD"]);
     }
 
@@ -207,10 +213,12 @@ mod tests {
                 tx.send(bytes).unwrap();
             },
         };
-        run_dfir(crate::m2o_send::m2o_sender(&member_id, input, &mut net_out)).await;
+        let mut flow_sender = crate::m2o_send::m2o_sender(&member_id, input, &mut net_out);
+        run_flow(&mut flow_sender).await;
+        drop(flow_sender);
 
-        // Wrap as tagged (simulating transport tagging by member id)
         let mut tagged_bytes = vec![];
+        // Wrap as tagged (simulating transport tagging by member id)
         while let Ok(b) = rx.try_recv() {
             tagged_bytes.push(Ok((member_id.clone(), BytesMut::from(b.as_ref()))));
         }
@@ -224,7 +232,9 @@ mod tests {
         let mut outputs = crate::m2o_send::m2o_receiver::EmbeddedOutputs {
             output: |s| received.push(s),
         };
-        run_dfir(crate::m2o_send::m2o_receiver(&mut outputs, net_in)).await;
+        let mut flow_receiver = crate::m2o_send::m2o_receiver(&mut outputs, net_in);
+        run_flow(&mut flow_receiver).await;
+        drop(flow_receiver);
         assert_eq!(received.len(), 2);
         // Values are uppercased; entries() gives (MemberId, String)
         assert_eq!(received[0].1, "FOO");
@@ -250,13 +260,10 @@ mod tests {
                 tx.send(item).unwrap();
             },
         };
-        run_dfir(crate::m2m_broadcast::m2m_sender(
-            &src_id,
-            membership,
-            input,
-            &mut net_out,
-        ))
-        .await;
+        let mut flow_sender =
+            crate::m2m_broadcast::m2m_sender(&src_id, membership, input, &mut net_out);
+        run_flow(&mut flow_sender).await;
+        drop(flow_sender);
 
         let mut tagged_bytes = vec![];
         while let Ok((id, b)) = rx.try_recv() {
@@ -273,12 +280,9 @@ mod tests {
         let mut outputs = crate::m2m_broadcast::m2m_receiver::EmbeddedOutputs {
             output: |s| received.push(s),
         };
-        run_dfir(crate::m2m_broadcast::m2m_receiver(
-            &dst_id,
-            &mut outputs,
-            net_in,
-        ))
-        .await;
+        let mut flow_receiver = crate::m2m_broadcast::m2m_receiver(&dst_id, &mut outputs, net_in);
+        run_flow(&mut flow_receiver).await;
+        drop(flow_receiver);
         assert_eq!(received.len(), 1);
         assert_eq!(received[0].1, "PING");
     }

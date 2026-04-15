@@ -131,12 +131,9 @@ impl ChannelMux {
                 let (rx, _tx) = stream.into_split();
                 let mut source = FramedRead::new(rx, LengthDelimitedCodec::new());
 
-                let magic_frame = match source.next().await {
-                    Some(Ok(frame)) => frame,
-                    _ => {
-                        warn!(name: "magic_failed", ?peer, "no magic frame");
-                        return;
-                    }
+                let Some(Ok(magic_frame)) = source.next().await else {
+                    warn!(name: "magic_failed", ?peer, "no magic frame");
+                    return;
                 };
 
                 let magic: ChannelMagic = match bincode::deserialize(&magic_frame) {
@@ -152,12 +149,9 @@ impl ChannelMux {
                     return;
                 }
 
-                let version_frame = match source.next().await {
-                    Some(Ok(frame)) => frame,
-                    _ => {
-                        warn!(name: "version_failed", ?peer, "no version frame");
-                        return;
-                    }
+                let Some(Ok(version_frame)) = source.next().await else {
+                    warn!(name: "version_failed", ?peer, "no version frame");
+                    return;
                 };
 
                 let version: ChannelProtocolVersion = match bincode::deserialize(&version_frame) {
@@ -173,12 +167,9 @@ impl ChannelMux {
                     return;
                 }
 
-                let handshake_frame = match source.next().await {
-                    Some(Ok(frame)) => frame,
-                    _ => {
-                        warn!(name: "handshake_failed", ?peer, "no handshake frame");
-                        return;
-                    }
+                let Some(Ok(handshake_frame)) = source.next().await else {
+                    warn!(name: "handshake_failed", ?peer, "no handshake frame");
+                    return;
                 };
 
                 let handshake: ChannelHandshake = match bincode::deserialize(&handshake_frame) {

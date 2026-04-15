@@ -18,6 +18,7 @@ mod empty;
 mod enumerate;
 mod filter;
 mod filter_map;
+mod filter_map_async;
 mod flat_map;
 mod flat_map_stream;
 mod flatten;
@@ -62,6 +63,7 @@ pub use empty::Empty;
 pub use enumerate::Enumerate;
 pub use filter::Filter;
 pub use filter_map::FilterMap;
+pub use filter_map_async::FilterMapAsync;
 pub use flat_map::FlatMap;
 pub use flat_map_stream::FlatMapStream;
 pub use flatten::Flatten;
@@ -281,6 +283,20 @@ pub trait Pull {
         F: FnMut(Self::Item) -> Option<B>,
     {
         FilterMap::new(self, f)
+    }
+
+    /// Creates a pull that both filters and maps using an async closure.
+    ///
+    /// Like [`filter_map`](Pull::filter_map), but the closure returns a
+    /// `Future<Output = Option<B>>`. When the future is pending, this operator
+    /// yields `Pending` as well.
+    fn filter_map_async<B, Fut, F>(self, f: F) -> FilterMapAsync<Self, F, Fut, Self::Meta>
+    where
+        Self: Sized,
+        F: FnMut(Self::Item) -> Fut,
+        Fut: Future<Output = Option<B>>,
+    {
+        FilterMapAsync::new(self, f)
     }
 
     /// Creates a pull that works like map, but flattens nested structure.
