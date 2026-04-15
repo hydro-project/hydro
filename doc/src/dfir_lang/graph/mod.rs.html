@@ -515,46 +515,133 @@
 <a href=#515 id=515 data-nosnippet>515</a>        }
 <a href=#516 id=516 data-nosnippet>516</a>    };
 <a href=#517 id=517 data-nosnippet>517</a>
-<a href=#518 id=518 data-nosnippet>518</a>    <span class="kw">let </span>code = partitioned_graph.as_code_inline(
-<a href=#519 id=519 data-nosnippet>519</a>        root,
-<a href=#520 id=520 data-nosnippet>520</a>        <span class="bool-val">true</span>,
-<a href=#521 id=521 data-nosnippet>521</a>        <span class="macro">quote::quote!</span> { #( #uses )* },
-<a href=#522 id=522 data-nosnippet>522</a>        <span class="kw-2">&amp;mut </span>diagnostics,
-<a href=#523 id=523 data-nosnippet>523</a>    )<span class="question-mark">?</span>;
-<a href=#524 id=524 data-nosnippet>524</a>
-<a href=#525 id=525 data-nosnippet>525</a>    <span class="prelude-val">Ok</span>(BuildDfirCodeOutput {
-<a href=#526 id=526 data-nosnippet>526</a>        partitioned_graph,
-<a href=#527 id=527 data-nosnippet>527</a>        code,
-<a href=#528 id=528 data-nosnippet>528</a>        diagnostics,
-<a href=#529 id=529 data-nosnippet>529</a>    })
-<a href=#530 id=530 data-nosnippet>530</a>}
-<a href=#531 id=531 data-nosnippet>531</a>
-<a href=#532 id=532 data-nosnippet>532</a><span class="doccomment">/// Changes all of token's spans to `span`, recursing into groups.
-<a href=#533 id=533 data-nosnippet>533</a></span><span class="kw">fn </span>change_spans(tokens: TokenStream, span: Span) -&gt; TokenStream {
-<a href=#534 id=534 data-nosnippet>534</a>    <span class="kw">use </span>proc_macro2::{Group, TokenTree};
-<a href=#535 id=535 data-nosnippet>535</a>    tokens
-<a href=#536 id=536 data-nosnippet>536</a>        .into_iter()
-<a href=#537 id=537 data-nosnippet>537</a>        .map(|token| <span class="kw">match </span>token {
-<a href=#538 id=538 data-nosnippet>538</a>            TokenTree::Group(<span class="kw-2">mut </span>group) =&gt; {
-<a href=#539 id=539 data-nosnippet>539</a>                group.set_span(span);
-<a href=#540 id=540 data-nosnippet>540</a>                TokenTree::Group(Group::new(
-<a href=#541 id=541 data-nosnippet>541</a>                    group.delimiter(),
-<a href=#542 id=542 data-nosnippet>542</a>                    change_spans(group.stream(), span),
-<a href=#543 id=543 data-nosnippet>543</a>                ))
-<a href=#544 id=544 data-nosnippet>544</a>            }
-<a href=#545 id=545 data-nosnippet>545</a>            TokenTree::Ident(<span class="kw-2">mut </span>ident) =&gt; {
-<a href=#546 id=546 data-nosnippet>546</a>                ident.set_span(span.resolved_at(ident.span()));
-<a href=#547 id=547 data-nosnippet>547</a>                TokenTree::Ident(ident)
-<a href=#548 id=548 data-nosnippet>548</a>            }
-<a href=#549 id=549 data-nosnippet>549</a>            TokenTree::Punct(<span class="kw-2">mut </span>punct) =&gt; {
-<a href=#550 id=550 data-nosnippet>550</a>                punct.set_span(span);
-<a href=#551 id=551 data-nosnippet>551</a>                TokenTree::Punct(punct)
-<a href=#552 id=552 data-nosnippet>552</a>            }
-<a href=#553 id=553 data-nosnippet>553</a>            TokenTree::Literal(<span class="kw-2">mut </span>literal) =&gt; {
-<a href=#554 id=554 data-nosnippet>554</a>                literal.set_span(span);
-<a href=#555 id=555 data-nosnippet>555</a>                TokenTree::Literal(literal)
-<a href=#556 id=556 data-nosnippet>556</a>            }
-<a href=#557 id=557 data-nosnippet>557</a>        })
-<a href=#558 id=558 data-nosnippet>558</a>        .collect()
-<a href=#559 id=559 data-nosnippet>559</a>}
+<a href=#518 id=518 data-nosnippet>518</a>    <span class="comment">// Inline-specific validation: reject unsupported features.
+<a href=#519 id=519 data-nosnippet>519</a>    </span>validate_inline(<span class="kw-2">&amp;</span>partitioned_graph, <span class="kw-2">&amp;mut </span>diagnostics);
+<a href=#520 id=520 data-nosnippet>520</a>    <span class="kw">if </span>diagnostics.has_error() {
+<a href=#521 id=521 data-nosnippet>521</a>        <span class="kw">return </span><span class="prelude-val">Err</span>(diagnostics);
+<a href=#522 id=522 data-nosnippet>522</a>    }
+<a href=#523 id=523 data-nosnippet>523</a>
+<a href=#524 id=524 data-nosnippet>524</a>    <span class="kw">let </span>code = partitioned_graph.as_code_inline(
+<a href=#525 id=525 data-nosnippet>525</a>        root,
+<a href=#526 id=526 data-nosnippet>526</a>        <span class="bool-val">true</span>,
+<a href=#527 id=527 data-nosnippet>527</a>        <span class="macro">quote::quote!</span> { #( #uses )* },
+<a href=#528 id=528 data-nosnippet>528</a>        <span class="kw-2">&amp;mut </span>diagnostics,
+<a href=#529 id=529 data-nosnippet>529</a>    )<span class="question-mark">?</span>;
+<a href=#530 id=530 data-nosnippet>530</a>
+<a href=#531 id=531 data-nosnippet>531</a>    <span class="prelude-val">Ok</span>(BuildDfirCodeOutput {
+<a href=#532 id=532 data-nosnippet>532</a>        partitioned_graph,
+<a href=#533 id=533 data-nosnippet>533</a>        code,
+<a href=#534 id=534 data-nosnippet>534</a>        diagnostics,
+<a href=#535 id=535 data-nosnippet>535</a>    })
+<a href=#536 id=536 data-nosnippet>536</a>}
+<a href=#537 id=537 data-nosnippet>537</a>
+<a href=#538 id=538 data-nosnippet>538</a><span class="doccomment">/// Validates that a partitioned graph is compatible with the inline codegen path.
+<a href=#539 id=539 data-nosnippet>539</a>/// Rejects: (1) `loop {}` blocks, (2) `defer_tick()` (non-lazy), (3) intra-tick cycles.
+<a href=#540 id=540 data-nosnippet>540</a></span><span class="kw">fn </span>validate_inline(graph: <span class="kw-2">&amp;</span>DfirGraph, diagnostics: <span class="kw-2">&amp;mut </span>Diagnostics) {
+<a href=#541 id=541 data-nosnippet>541</a>    <span class="comment">// 1. Reject `loop { }` blocks.
+<a href=#542 id=542 data-nosnippet>542</a>    </span><span class="kw">if let </span><span class="prelude-val">Some</span>((_loop_id, nodes)) = graph.loops().next() {
+<a href=#543 id=543 data-nosnippet>543</a>        <span class="kw">let </span>span = nodes
+<a href=#544 id=544 data-nosnippet>544</a>            .first()
+<a href=#545 id=545 data-nosnippet>545</a>            .map_or_else(Span::call_site, |<span class="kw-2">&amp;</span>n| graph.node(n).span());
+<a href=#546 id=546 data-nosnippet>546</a>        diagnostics.push(Diagnostic::spanned(
+<a href=#547 id=547 data-nosnippet>547</a>            span,
+<a href=#548 id=548 data-nosnippet>548</a>            Level::Error,
+<a href=#549 id=549 data-nosnippet>549</a>            <span class="string">"`loop { }` blocks are not (yet) supported in `dfir_syntax_inline!`."</span>,
+<a href=#550 id=550 data-nosnippet>550</a>        ));
+<a href=#551 id=551 data-nosnippet>551</a>    }
+<a href=#552 id=552 data-nosnippet>552</a>
+<a href=#553 id=553 data-nosnippet>553</a>    <span class="comment">// 2. Reject `defer_tick()` (non-lazy).
+<a href=#554 id=554 data-nosnippet>554</a>    </span><span class="kw">for </span>(node_id, _node) <span class="kw">in </span>graph.nodes() {
+<a href=#555 id=555 data-nosnippet>555</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(op_inst) = graph.node_op_inst(node_id)
+<a href=#556 id=556 data-nosnippet>556</a>            &amp;&amp; op_inst.op_constraints.name == <span class="string">"defer_tick"
+<a href=#557 id=557 data-nosnippet>557</a>        </span>{
+<a href=#558 id=558 data-nosnippet>558</a>            diagnostics.push(Diagnostic::spanned(
+<a href=#559 id=559 data-nosnippet>559</a>                graph.node(node_id).span(),
+<a href=#560 id=560 data-nosnippet>560</a>                Level::Error,
+<a href=#561 id=561 data-nosnippet>561</a>                <span class="string">"`defer_tick()` is not (yet) supported in `dfir_syntax_inline!`. Use `defer_tick_lazy()` instead."</span>,
+<a href=#562 id=562 data-nosnippet>562</a>            ));
+<a href=#563 id=563 data-nosnippet>563</a>        }
+<a href=#564 id=564 data-nosnippet>564</a>    }
+<a href=#565 id=565 data-nosnippet>565</a>
+<a href=#566 id=566 data-nosnippet>566</a>    <span class="comment">// 3. Reject intra-tick cycles (non-DAG dataflows excluding defer_tick_lazy).
+<a href=#567 id=567 data-nosnippet>567</a>    // Build a subgraph-level directed graph, excluding lazy subgraphs (defer_tick_lazy).
+<a href=#568 id=568 data-nosnippet>568</a>    // Then check for cycles via topo sort. Also check for self-loops on subgraphs.
+<a href=#569 id=569 data-nosnippet>569</a>    </span>{
+<a href=#570 id=570 data-nosnippet>570</a>        <span class="kw">use </span>std::collections::BTreeSet;
+<a href=#571 id=571 data-nosnippet>571</a>
+<a href=#572 id=572 data-nosnippet>572</a>        <span class="comment">// Collect non-lazy subgraph IDs.
+<a href=#573 id=573 data-nosnippet>573</a>        </span><span class="kw">let </span>non_lazy_sgs: BTreeSet&lt;GraphSubgraphId&gt; = graph
+<a href=#574 id=574 data-nosnippet>574</a>            .subgraph_ids()
+<a href=#575 id=575 data-nosnippet>575</a>            .filter(|<span class="kw-2">&amp;</span>sg_id| !graph.subgraph_laziness(sg_id))
+<a href=#576 id=576 data-nosnippet>576</a>            .collect();
+<a href=#577 id=577 data-nosnippet>577</a>
+<a href=#578 id=578 data-nosnippet>578</a>        <span class="comment">// Build predecessor map: for each non-lazy subgraph, find which non-lazy subgraphs feed into it
+<a href=#579 id=579 data-nosnippet>579</a>        // (including self-loops). Edges go through handoff nodes: pred_sg -&gt; handoff -&gt; succ_sg.
+<a href=#580 id=580 data-nosnippet>580</a>        </span><span class="kw">let </span>predecessors = |sg_id: GraphSubgraphId| -&gt; Vec&lt;GraphSubgraphId&gt; {
+<a href=#581 id=581 data-nosnippet>581</a>            <span class="kw">let </span><span class="kw-2">mut </span>recv_hoffs = Vec::new();
+<a href=#582 id=582 data-nosnippet>582</a>            <span class="kw">for </span><span class="kw-2">&amp;</span>node_id <span class="kw">in </span>graph.subgraph(sg_id) {
+<a href=#583 id=583 data-nosnippet>583</a>                <span class="kw">for </span>(_edge, pred_id) <span class="kw">in </span>graph.node_predecessors(node_id) {
+<a href=#584 id=584 data-nosnippet>584</a>                    <span class="kw">if </span><span class="macro">matches!</span>(graph.node(pred_id), GraphNode::Handoff { .. }) {
+<a href=#585 id=585 data-nosnippet>585</a>                        recv_hoffs.push(pred_id);
+<a href=#586 id=586 data-nosnippet>586</a>                    }
+<a href=#587 id=587 data-nosnippet>587</a>                }
+<a href=#588 id=588 data-nosnippet>588</a>            }
+<a href=#589 id=589 data-nosnippet>589</a>            <span class="kw">let </span><span class="kw-2">mut </span>preds = Vec::new();
+<a href=#590 id=590 data-nosnippet>590</a>            <span class="kw">for </span>hoff_id <span class="kw">in </span>recv_hoffs {
+<a href=#591 id=591 data-nosnippet>591</a>                <span class="kw">for </span>(_edge, pred_id) <span class="kw">in </span>graph.node_predecessors(hoff_id) {
+<a href=#592 id=592 data-nosnippet>592</a>                    <span class="kw">if let </span><span class="prelude-val">Some</span>(pred_sg) = graph.node_subgraph(pred_id)
+<a href=#593 id=593 data-nosnippet>593</a>                        &amp;&amp; non_lazy_sgs.contains(<span class="kw-2">&amp;</span>pred_sg)
+<a href=#594 id=594 data-nosnippet>594</a>                    {
+<a href=#595 id=595 data-nosnippet>595</a>                        preds.push(pred_sg);
+<a href=#596 id=596 data-nosnippet>596</a>                    }
+<a href=#597 id=597 data-nosnippet>597</a>                }
+<a href=#598 id=598 data-nosnippet>598</a>            }
+<a href=#599 id=599 data-nosnippet>599</a>            preds
+<a href=#600 id=600 data-nosnippet>600</a>        };
+<a href=#601 id=601 data-nosnippet>601</a>
+<a href=#602 id=602 data-nosnippet>602</a>        <span class="kw">let </span>topo_result = graph_algorithms::topo_sort(non_lazy_sgs.iter().copied(), predecessors);
+<a href=#603 id=603 data-nosnippet>603</a>        <span class="kw">if let </span><span class="prelude-val">Err</span>(cycle) = topo_result {
+<a href=#604 id=604 data-nosnippet>604</a>            <span class="comment">// Find a representative span from the first subgraph in the cycle.
+<a href=#605 id=605 data-nosnippet>605</a>            </span><span class="kw">let </span>span = cycle
+<a href=#606 id=606 data-nosnippet>606</a>                .first()
+<a href=#607 id=607 data-nosnippet>607</a>                .and_then(|<span class="kw-2">&amp;</span>sg_id| graph.subgraph(sg_id).first().copied())
+<a href=#608 id=608 data-nosnippet>608</a>                .map(|n| graph.node(n).span())
+<a href=#609 id=609 data-nosnippet>609</a>                .unwrap_or_else(Span::call_site);
+<a href=#610 id=610 data-nosnippet>610</a>            diagnostics.push(Diagnostic::spanned(
+<a href=#611 id=611 data-nosnippet>611</a>                span,
+<a href=#612 id=612 data-nosnippet>612</a>                Level::Error,
+<a href=#613 id=613 data-nosnippet>613</a>                <span class="string">"Cyclical dataflow within a tick is not supported in `dfir_syntax_inline!`. Use `defer_tick_lazy()` to break the cycle across ticks."</span>,
+<a href=#614 id=614 data-nosnippet>614</a>            ));
+<a href=#615 id=615 data-nosnippet>615</a>        }
+<a href=#616 id=616 data-nosnippet>616</a>    }
+<a href=#617 id=617 data-nosnippet>617</a>}
+<a href=#618 id=618 data-nosnippet>618</a>
+<a href=#619 id=619 data-nosnippet>619</a><span class="doccomment">/// Changes all of token's spans to `span`, recursing into groups.
+<a href=#620 id=620 data-nosnippet>620</a></span><span class="kw">fn </span>change_spans(tokens: TokenStream, span: Span) -&gt; TokenStream {
+<a href=#621 id=621 data-nosnippet>621</a>    <span class="kw">use </span>proc_macro2::{Group, TokenTree};
+<a href=#622 id=622 data-nosnippet>622</a>    tokens
+<a href=#623 id=623 data-nosnippet>623</a>        .into_iter()
+<a href=#624 id=624 data-nosnippet>624</a>        .map(|token| <span class="kw">match </span>token {
+<a href=#625 id=625 data-nosnippet>625</a>            TokenTree::Group(<span class="kw-2">mut </span>group) =&gt; {
+<a href=#626 id=626 data-nosnippet>626</a>                group.set_span(span);
+<a href=#627 id=627 data-nosnippet>627</a>                TokenTree::Group(Group::new(
+<a href=#628 id=628 data-nosnippet>628</a>                    group.delimiter(),
+<a href=#629 id=629 data-nosnippet>629</a>                    change_spans(group.stream(), span),
+<a href=#630 id=630 data-nosnippet>630</a>                ))
+<a href=#631 id=631 data-nosnippet>631</a>            }
+<a href=#632 id=632 data-nosnippet>632</a>            TokenTree::Ident(<span class="kw-2">mut </span>ident) =&gt; {
+<a href=#633 id=633 data-nosnippet>633</a>                ident.set_span(span.resolved_at(ident.span()));
+<a href=#634 id=634 data-nosnippet>634</a>                TokenTree::Ident(ident)
+<a href=#635 id=635 data-nosnippet>635</a>            }
+<a href=#636 id=636 data-nosnippet>636</a>            TokenTree::Punct(<span class="kw-2">mut </span>punct) =&gt; {
+<a href=#637 id=637 data-nosnippet>637</a>                punct.set_span(span);
+<a href=#638 id=638 data-nosnippet>638</a>                TokenTree::Punct(punct)
+<a href=#639 id=639 data-nosnippet>639</a>            }
+<a href=#640 id=640 data-nosnippet>640</a>            TokenTree::Literal(<span class="kw-2">mut </span>literal) =&gt; {
+<a href=#641 id=641 data-nosnippet>641</a>                literal.set_span(span);
+<a href=#642 id=642 data-nosnippet>642</a>                TokenTree::Literal(literal)
+<a href=#643 id=643 data-nosnippet>643</a>            }
+<a href=#644 id=644 data-nosnippet>644</a>        })
+<a href=#645 id=645 data-nosnippet>645</a>        .collect()
+<a href=#646 id=646 data-nosnippet>646</a>}
 </code></pre></div></section></main></body></html>

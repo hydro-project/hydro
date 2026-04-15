@@ -718,7 +718,7 @@
 <a href=#718 id=718 data-nosnippet>718</a>    }
 <a href=#719 id=719 data-nosnippet>719</a>
 <a href=#720 id=720 data-nosnippet>720</a>    <span class="doccomment">/// Gets whether the subgraph is lazy or not
-<a href=#721 id=721 data-nosnippet>721</a>    </span><span class="kw">fn </span>subgraph_laziness(<span class="kw-2">&amp;</span><span class="self">self</span>, sg_id: GraphSubgraphId) -&gt; bool {
+<a href=#721 id=721 data-nosnippet>721</a>    </span><span class="kw">pub fn </span>subgraph_laziness(<span class="kw-2">&amp;</span><span class="self">self</span>, sg_id: GraphSubgraphId) -&gt; bool {
 <a href=#722 id=722 data-nosnippet>722</a>        <span class="self">self</span>.subgraph_laziness.get(sg_id).copied().unwrap_or(<span class="bool-val">false</span>)
 <a href=#723 id=723 data-nosnippet>723</a>    }
 <a href=#724 id=724 data-nosnippet>724</a>
