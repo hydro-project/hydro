@@ -50,7 +50,7 @@
 <a href=#50 id=50 data-nosnippet>50</a>}
 <a href=#51 id=51 data-nosnippet>51</a>
 <a href=#52 id=52 data-nosnippet>52</a><span class="kw">impl </span>GraphSubgraphId {
-<a href=#53 id=53 data-nosnippet>53</a>    <span class="doccomment">/// Generate a deterministic `Ident` for the given loop ID.
+<a href=#53 id=53 data-nosnippet>53</a>    <span class="doccomment">/// Generate a deterministic `Ident` for the given subgraph ID.
 <a href=#54 id=54 data-nosnippet>54</a>    </span><span class="kw">pub fn </span>as_ident(<span class="self">self</span>, span: Span) -&gt; Ident {
 <a href=#55 id=55 data-nosnippet>55</a>        <span class="kw">use </span>slotmap::Key;
 <a href=#56 id=56 data-nosnippet>56</a>        Ident::new(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"sgid_{:?}"</span>, <span class="self">self</span>.data()), span)
