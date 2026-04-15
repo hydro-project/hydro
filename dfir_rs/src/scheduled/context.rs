@@ -633,6 +633,7 @@ pub struct InlineDfir<Tick> {
     /// See [`Self::diagnostics()`].
     diagnostics: Option<Vec<Diagnostic<SerdeSpan>>>,
 
+    /// Live-updating DFIR runtime metrics via interior mutability.
     metrics: Rc<DfirMetrics>,
 }
 
@@ -728,13 +729,19 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
         self.diagnostics.as_deref()
     }
 
-    /// Returns a reference-counted handle to the continually-updated runtime metrics.
+    /// Returns a reference-counted handle to the continually-updated runtime metrics for this DFIR instance.
     pub fn metrics(&self) -> Rc<DfirMetrics> {
         Rc::clone(&self.metrics)
     }
 
     /// Returns a [`DfirMetricsIntervals`] handle where each call to
     /// [`DfirMetricsIntervals::take_interval`] ends the current interval and returns its metrics.
+    ///
+    /// The first call to `take_interval` returns metrics since this DFIR instance was created. Each subsequent call to
+    /// `take_interval` returns metrics since the previous call.
+    ///
+    /// Cloning the handle "forks" it from the original, as afterwards each interval may return different metrics
+    /// depending on when exactly `take_interval` is called.
     pub fn metrics_intervals(&self) -> DfirMetricsIntervals {
         DfirMetricsIntervals {
             curr: self.metrics(),

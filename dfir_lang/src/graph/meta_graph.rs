@@ -1411,7 +1411,7 @@ impl DfirGraph {
         // eliminating this index mapping.
         let handoff_metrics_idx: HashMap<GraphNodeId, usize> = handoff_nodes
             .iter()
-            .map(|&(node_id, _)| (node_id, (node_id.data().as_ffi() & 0xFFFF_FFFF) as usize))
+            .map(|&(node_id, _)| (node_id, (node_id.data().as_ffi() & 0xffff_ffff) as usize))
             .collect();
 
         let buffer_code: Vec<TokenStream> = handoff_nodes
@@ -1447,7 +1447,7 @@ impl DfirGraph {
                 // the meta graph for cross-referencing.
                 // TODO(cleanup): When scheduled Dfir is removed, DfirMetrics could use slotmap
                 // SecondaryMap<GraphSubgraphId, _> directly, eliminating this ffi conversion.
-                let sg_metrics_idx = (subgraph_id.data().as_ffi() & 0xFFFF_FFFF) as usize;
+                let sg_metrics_idx = (subgraph_id.data().as_ffi() & 0xffff_ffff) as usize;
                 let (recv_hoffs, send_hoffs) = &subgraph_handoffs[subgraph_id];
 
                 // Generate buffer ident helpers for this subgraph's handoffs.
@@ -1486,15 +1486,15 @@ impl DfirGraph {
                         let hoff_idx = handoff_metrics_idx[&hoff_id];
                         quote_spanned! {port_ident.span()=>
                             {
-                                let __hoff_len = #buf_ident.len();
-                                if __hoff_len > 0 {
+                                let hoff_len = #buf_ident.len();
+                                if hoff_len > 0 {
                                     __dfir_work_done = true;
                                 }
-                                let __hoff_metrics = &__dfir_metrics.handoffs[
+                                let hoff_metrics = &__dfir_metrics.handoffs[
                                     #root::util::slot_vec::Key::<#root::scheduled::HandoffTag>::from_raw(#hoff_idx)
                                 ];
-                                __hoff_metrics.total_items_count.update(|__x| __x + __hoff_len);
-                                __hoff_metrics.curr_items_count.set(__hoff_len);
+                                hoff_metrics.total_items_count.update(|x| x + hoff_len);
+                                hoff_metrics.curr_items_count.set(hoff_len);
                             }
                             let #port_ident = #root::dfir_pipes::pull::iter(#buf_ident.drain(..));
                         }
@@ -1906,19 +1906,21 @@ impl DfirGraph {
 
                 subgraph_blocks.push(quote! {
                     let #sg_fut_ident = async {
-                        let #context = &#df;;
+                        let #context = &#df;
                         #( #recv_port_code )*
                         #( #send_port_code )*
                         #( #subgraph_op_iter_code )*
                         #( #subgraph_op_iter_after_code )*
                     };
-                    let __sg_metrics = &__dfir_metrics.subgraphs[
-                        #root::util::slot_vec::Key::<#root::scheduled::SubgraphTag>::from_raw(#sg_metrics_idx)
-                    ];
-                    #root::scheduled::metrics::InstrumentSubgraph::new(
-                        #sg_fut_ident, __sg_metrics
-                    ).await;
-                    __sg_metrics.total_run_count.update(|__x| __x + 1);
+                    {
+                        let sg_metrics = &__dfir_metrics.subgraphs[
+                            #root::util::slot_vec::Key::<#root::scheduled::SubgraphTag>::from_raw(#sg_metrics_idx)
+                        ];
+                        #root::scheduled::metrics::InstrumentSubgraph::new(
+                            #sg_fut_ident, sg_metrics
+                        ).await;
+                        sg_metrics.total_run_count.update(|x| x + 1);
+                    }
                     #( #send_metrics_code )*
                 });
 
@@ -1945,18 +1947,18 @@ impl DfirGraph {
         // instead of converting ffi keys to SecondarySlotVec indices.
         let metrics_init_code = {
             let handoff_inits = handoff_nodes.iter().map(|&(node_id, _)| {
-                let idx = (node_id.data().as_ffi() & 0xFFFF_FFFF) as usize;
+                let idx = (node_id.data().as_ffi() & 0xffff_ffff) as usize;
                 quote! {
-                    __m.handoffs.insert(
+                    dfir_metrics.handoffs.insert(
                         #root::util::slot_vec::Key::from_raw(#idx),
                         ::std::default::Default::default(),
                     );
                 }
             });
             let subgraph_inits = all_subgraphs.iter().map(|&(sg_id, _)| {
-                let idx = (sg_id.data().as_ffi() & 0xFFFF_FFFF) as usize;
+                let idx = (sg_id.data().as_ffi() & 0xffff_ffff) as usize;
                 quote! {
-                    __m.subgraphs.insert(
+                    dfir_metrics.subgraphs.insert(
                         #root::util::slot_vec::Key::from_raw(#idx),
                         ::std::default::Default::default(),
                     );
@@ -1978,9 +1980,9 @@ impl DfirGraph {
                 );
 
                 let __dfir_metrics = {
-                    let mut __m = #root::scheduled::metrics::DfirMetrics::default();
+                    let mut dfir_metrics = #root::scheduled::metrics::DfirMetrics::default();
                     #( #metrics_init_code )*
-                    ::std::rc::Rc::new(__m)
+                    ::std::rc::Rc::new(dfir_metrics)
                 };
 
                 #[allow(unused_mut)]
