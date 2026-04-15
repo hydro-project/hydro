@@ -1854,19 +1854,19 @@ impl DfirGraph {
                     }
                 };
 
-                // Generate a dummy subgraph ID for state lifespan hooks.
-                let sg_ident = subgraph_id.as_ident(Span::call_site());
-
-                // Each subgraph block — .await works because the whole output is async.
+                // Each subgraph block is an async block so it can be individually instrumented.
+                // Note: this ident is for the subgraph future, not a runtime SubgraphId binding
+                // (unlike the scheduled path's `sg_ident`).
+                let sg_fut_ident = subgraph_id.as_ident(Span::call_site());
                 subgraph_blocks.push(quote! {
-                    let #sg_ident: #root::scheduled::SubgraphId = #root::util::slot_vec::Key::from_raw(0);
-                    {
+                    let #sg_fut_ident = async {
                         let #context = &#df;;
                         #( #recv_port_code )*
                         #( #send_port_code )*
                         #( #subgraph_op_iter_code )*
                         #( #subgraph_op_iter_after_code )*
-                    }
+                    };
+                    #sg_fut_ident.await;
                 });
 
                 // Collect per-subgraph prologues into the main prologue lists.

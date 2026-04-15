@@ -50,7 +50,7 @@ new_key_type! {
 }
 
 impl GraphSubgraphId {
-    /// Generate a deterministic `Ident` for the given loop ID.
+    /// Generate a deterministic `Ident` for the given subgraph ID.
     pub fn as_ident(self, span: Span) -> Ident {
         use slotmap::Key;
         Ident::new(&format!("sgid_{:?}", self.data()), span)
