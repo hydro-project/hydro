@@ -22,7 +22,7 @@ use tokio::task::JoinHandle;
 use web_time::SystemTime;
 
 use super::graph::StateLifespan;
-use super::metrics::{DfirMetrics, DfirMetricsIntervals, HasMetrics};
+use super::metrics::{DfirMetrics, DfirMetricsIntervals};
 use super::state::StateHandle;
 use super::{LoopId, LoopTag, StateId, StateTag, SubgraphId, SubgraphTag};
 use crate::scheduled::ticks::TickInstant;
@@ -740,16 +740,6 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
             curr: self.metrics(),
             prev: None,
         }
-    }
-}
-
-impl<Tick: TickClosure> HasMetrics for InlineDfir<Tick> {
-    fn metrics(&self) -> Rc<DfirMetrics> {
-        self.metrics()
-    }
-
-    fn metrics_intervals(&self) -> DfirMetricsIntervals {
-        self.metrics_intervals()
     }
 }
 

@@ -12,9 +12,7 @@ use std::time::SystemTime;
 #[cfg(feature = "runtime_support")]
 use dfir_rs::Never;
 #[cfg(feature = "runtime_support")]
-use dfir_rs::scheduled::metrics::DfirMetrics;
-#[cfg(feature = "runtime_support")]
-use dfir_rs::scheduled::metrics::HasMetrics;
+use dfir_rs::scheduled::metrics::{DfirMetrics, DfirMetricsIntervals};
 #[cfg(feature = "runtime_support")]
 use futures::FutureExt;
 use quote::quote;
@@ -76,7 +74,7 @@ impl Sidecar for RecordMetricsSidecar {
         };
 
         parse_quote! {
-            #root::telemetry::emf::record_metrics_sidecar(&#dfir_ident, #namespace, #location_name, #file_path, #interval)
+            #root::telemetry::emf::record_metrics_sidecar(#dfir_ident.metrics_intervals(), #namespace, #location_name, #file_path, #interval)
         }
     }
 }
@@ -85,15 +83,13 @@ impl Sidecar for RecordMetricsSidecar {
 #[cfg(feature = "runtime_support")]
 #[doc(hidden)]
 pub fn record_metrics_sidecar(
-    dfir: &impl HasMetrics,
+    mut dfir_intervals: DfirMetricsIntervals,
     namespace: &'static str,
     location_name: &'static str,
     file_path: &'static str,
     interval: Duration,
 ) -> impl 'static + Future<Output = Never> {
     assert!(!namespace.contains(char::is_whitespace));
-
-    let mut dfir_intervals = dfir.metrics_intervals();
 
     async move {
         // Attempt to create log file parent dir.

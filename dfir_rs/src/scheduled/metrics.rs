@@ -80,18 +80,6 @@ impl DfirMetricsIntervals {
     }
 }
 
-/// Trait for types that expose DFIR runtime metrics.
-///
-/// Implemented by both [`Dfir`] (scheduled codegen) and
-/// [`super::context::InlineDfir`] (inline codegen).
-pub trait HasMetrics {
-    /// Returns a reference-counted handle to the continually-updated runtime metrics.
-    fn metrics(&self) -> Rc<DfirMetrics>;
-
-    /// Returns a [`DfirMetricsIntervals`] handle for interval-based metric snapshots.
-    fn metrics_intervals(&self) -> DfirMetricsIntervals;
-}
-
 /// Declarative macro to generate metrics structs with Cell-based fields and getter methods.
 macro_rules! define_metrics {
     (
