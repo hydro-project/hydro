@@ -2,7 +2,7 @@
 
 extern crate proc_macro;
 
-use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt::Debug;
 use std::iter::FusedIterator;
 
@@ -1389,10 +1389,18 @@ impl DfirGraph {
         prefix: TokenStream,
         diagnostics: &mut Diagnostics,
     ) -> Result<TokenStream, Diagnostics> {
+        // Extract the slot index from a slotmap key for use as a runtime metrics key.
+        // Uses the low 32 bits of `KeyData::as_ffi()` (the idx, ignoring the version).
+        // TODO(cleanup): When scheduled Dfir is removed, DfirMetrics could use slotmap
+        // SecondaryMaps directly, eliminating this conversion.
+        fn slotmap_raw_idx(key: impl Key) -> usize {
+            (key.data().as_ffi() & 0xffff_ffff) as usize
+        }
+
         let df = Ident::new(GRAPH, Span::call_site());
         let context = Ident::new(CONTEXT, Span::call_site());
 
-        // 1. Generate local Vec buffers for each handoff node, and assign metrics indices.
+        // 1. Generate local Vec buffers for each handoff node.
         let handoff_nodes: Vec<_> = self
             .nodes
             .iter()
@@ -1401,17 +1409,6 @@ impl DfirGraph {
                 &GraphNode::Handoff { src_span, dst_span } => Some((node_id, (src_span, dst_span))),
                 GraphNode::ModuleBoundary { .. } => panic!(),
             })
-            .collect();
-
-        // Map from graph node ID to metrics handoff index.
-        // Uses the slotmap idx (low 32 bits of as_ffi) so runtime metrics IDs match the
-        // meta graph for cross-referencing.
-        // TODO(cleanup): When scheduled Dfir is removed, DfirMetrics could use slotmap
-        // SecondaryMap<GraphNodeId, _> directly instead of SecondarySlotVec<HandoffTag, _>,
-        // eliminating this index mapping.
-        let handoff_metrics_idx: HashMap<GraphNodeId, usize> = handoff_nodes
-            .iter()
-            .map(|&(node_id, _)| (node_id, (node_id.data().as_ffi() & 0xffff_ffff) as usize))
             .collect();
 
         let buffer_code: Vec<TokenStream> = handoff_nodes
@@ -1443,11 +1440,7 @@ impl DfirGraph {
         let mut subgraph_blocks = Vec::new();
         {
             for &(subgraph_id, subgraph_nodes) in all_subgraphs.iter() {
-                // Use the slotmap idx (low 32 bits of as_ffi) so runtime metrics IDs match
-                // the meta graph for cross-referencing.
-                // TODO(cleanup): When scheduled Dfir is removed, DfirMetrics could use slotmap
-                // SecondaryMap<GraphSubgraphId, _> directly, eliminating this ffi conversion.
-                let sg_metrics_idx = (subgraph_id.data().as_ffi() & 0xffff_ffff) as usize;
+                let sg_metrics_idx = slotmap_raw_idx(subgraph_id);
                 let (recv_hoffs, send_hoffs) = &subgraph_handoffs[subgraph_id];
 
                 // Generate buffer ident helpers for this subgraph's handoffs.
@@ -1483,7 +1476,7 @@ impl DfirGraph {
                     .zip(recv_buf_idents.iter())
                     .zip(recv_hoffs.iter())
                     .map(|((port_ident, buf_ident), &hoff_id)| {
-                        let hoff_idx = handoff_metrics_idx[&hoff_id];
+                        let hoff_idx = slotmap_raw_idx(hoff_id);
                         quote_spanned! {port_ident.span()=>
                             {
                                 let hoff_len = #buf_ident.len();
@@ -1895,7 +1888,7 @@ impl DfirGraph {
                     .iter()
                     .zip(send_buf_idents.iter())
                     .map(|(&hoff_id, buf_ident)| {
-                        let hoff_idx = handoff_metrics_idx[&hoff_id];
+                        let hoff_idx = slotmap_raw_idx(hoff_id);
                         quote! {
                             __dfir_metrics.handoffs[
                                 #root::util::slot_vec::Key::<#root::scheduled::HandoffTag>::from_raw(#hoff_idx)
@@ -1942,12 +1935,9 @@ impl DfirGraph {
         let diagnostics_json = Literal::string(&diagnostics_json);
 
         // Generate metrics initialization: one entry per handoff and per subgraph.
-        // Uses slotmap ffi keys so runtime metrics IDs match the meta graph for cross-referencing.
-        // TODO(cleanup): When scheduled Dfir is removed, use slotmap SecondaryMaps directly
-        // instead of converting ffi keys to SecondarySlotVec indices.
         let metrics_init_code = {
             let handoff_inits = handoff_nodes.iter().map(|&(node_id, _)| {
-                let idx = (node_id.data().as_ffi() & 0xffff_ffff) as usize;
+                let idx = slotmap_raw_idx(node_id);
                 quote! {
                     dfir_metrics.handoffs.insert(
                         #root::util::slot_vec::Key::from_raw(#idx),
@@ -1956,7 +1946,7 @@ impl DfirGraph {
                 }
             });
             let subgraph_inits = all_subgraphs.iter().map(|&(sg_id, _)| {
-                let idx = (sg_id.data().as_ffi() & 0xffff_ffff) as usize;
+                let idx = slotmap_raw_idx(sg_id);
                 quote! {
                     dfir_metrics.subgraphs.insert(
                         #root::util::slot_vec::Key::from_raw(#idx),
