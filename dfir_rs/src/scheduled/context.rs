@@ -683,6 +683,8 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
         meta_graph_json: Option<&str>,
         diagnostics_json: Option<&str>,
     ) -> Self {
+        #[cfg(not(feature = "meta"))]
+        let _ = (meta_graph_json, diagnostics_json);
         Self {
             tick_closure,
             wake_state,
