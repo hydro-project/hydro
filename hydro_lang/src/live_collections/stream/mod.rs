@@ -3906,4 +3906,51 @@ mod tests {
 
         assert_eq!(threshold_out.next().await.unwrap(), 3);
     }
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn monotone_map_order_preserving_threshold() {
+        use crate::properties::manual_proof;
+
+        let mut deployment = Deployment::new();
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let in_unbounded: super::Stream<_, _> =
+            node.source_iter(q!(vec![1i32, 2, 3, 4, 5, 6])).into();
+        let sum = in_unbounded.fold(
+            q!(|| 0),
+            q!(
+                |sum, v| {
+                    *sum += v;
+                },
+                monotone = manual_proof!(/** test */)
+            ),
+        );
+
+        // map with order_preserving should preserve monotonicity
+        let doubled = sum.map(q!(
+            |v| v * 2,
+            order_preserving = manual_proof!(/** doubling preserves order */)
+        ));
+
+        let threshold_out = doubled
+            .threshold_greater_or_equal(node.singleton(q!(14)))
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut threshold_out = nodes.connect(threshold_out).await;
+
+        deployment.start().await.unwrap();
+
+        assert_eq!(threshold_out.next().await.unwrap(), 14);
+    }
 }

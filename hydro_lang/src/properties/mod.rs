@@ -36,6 +36,15 @@ pub trait MonotoneProof {
     fn register_proof(&self, expr: &syn::Expr);
 }
 
+/// A trait for proof mechanisms that can validate order-preservation (monotonicity of a map function).
+#[sealed::sealed]
+pub trait OrderPreservingProof {
+    /// Registers the expression with the proof mechanism.
+    ///
+    /// This should not perform any blocking analysis; it is only intended to record the expression for later processing.
+    fn register_proof(&self, expr: &syn::Expr);
+}
+
 /// A hand-written human proof of the correctness property.
 ///
 /// To create a manual proof, use the [`manual_proof!`] macro, which takes in a doc comment
@@ -51,6 +60,10 @@ impl IdempotentProof for ManualProof {
 }
 #[sealed::sealed]
 impl MonotoneProof for ManualProof {
+    fn register_proof(&self, _expr: &syn::Expr) {}
+}
+#[sealed::sealed]
+impl OrderPreservingProof for ManualProof {
     fn register_proof(&self, _expr: &syn::Expr) {}
 }
 
@@ -154,6 +167,39 @@ impl<C, I, M> Property for AggFuncAlgebra<C, I, M> {
     }
 }
 
+/// Algebraic properties for a map function of type T -> U.
+///
+/// Order-preserving means that if the input grows monotonically, the output also grows monotonically.
+pub struct MapFuncAlgebra<OrderPreserving = NotProved>(
+    Option<Box<dyn OrderPreservingProof>>,
+    PhantomData<OrderPreserving>,
+);
+
+impl<O> MapFuncAlgebra<O> {
+    /// Marks the function as being order-preserving, with the given proof mechanism.
+    pub fn order_preserving(
+        self,
+        proof: impl OrderPreservingProof + 'static,
+    ) -> MapFuncAlgebra<Proved> {
+        MapFuncAlgebra(Some(Box::new(proof)), PhantomData)
+    }
+
+    /// Registers the expression with the underlying proof mechanisms.
+    pub(crate) fn register_proof(self, expr: &syn::Expr) {
+        if let Some(proof) = self.0 {
+            proof.register_proof(expr);
+        }
+    }
+}
+
+impl<O> Property for MapFuncAlgebra<O> {
+    type Root = MapFuncAlgebra;
+
+    fn make_root(_target: &mut Option<Self>) -> Self::Root {
+        MapFuncAlgebra(None, PhantomData)
+    }
+}
+
 /// Marker trait identifying that the commutativity property is valid for the given stream ordering.
 #[diagnostic::on_unimplemented(
     message = "Because the input stream has ordering `{O}`, the closure must demonstrate commutativity with a `commutative = ...` annotation.",
@@ -201,3 +247,14 @@ impl<B: Boundedness> ApplyMonotoneKeyedStream<NotProved, B> for B {}
 
 #[sealed::sealed]
 impl<B: Boundedness> ApplyMonotoneKeyedStream<Proved, B::KeyedStreamToMonotone> for B {}
+
+/// Marker trait identifying the boundedness of a singleton after a map operation,
+/// given an order-preserving property.
+#[sealed::sealed]
+pub trait ApplyOrderPreservingSingleton<P, B2: SingletonBound> {}
+
+#[sealed::sealed]
+impl<B: SingletonBound> ApplyOrderPreservingSingleton<NotProved, B::UnderlyingBound> for B {}
+
+#[sealed::sealed]
+impl<B: SingletonBound> ApplyOrderPreservingSingleton<Proved, B> for B {}

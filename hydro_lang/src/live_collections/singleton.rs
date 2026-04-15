@@ -6,7 +6,7 @@ use std::ops::{Deref, Not};
 use std::rc::Rc;
 
 use sealed::sealed;
-use stageleft::{IntoQuotedMut, QuotedWithContext, q};
+use stageleft::{IntoQuotedMut, QuotedWithContext, QuotedWithContextWithProps, q};
 
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::optional::Optional;
@@ -24,7 +24,9 @@ use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::{Atomic, NoAtomic};
 use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::nondet::{NonDet, nondet};
-use crate::properties::{ApplyMonotoneStream, Proved};
+use crate::properties::{
+    ApplyMonotoneStream, ApplyOrderPreservingSingleton, MapFuncAlgebra, Proved,
+};
 
 /// A marker trait indicating which components of a [`Singleton`] may change.
 ///
@@ -363,11 +365,17 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Singleton<U, L, B::UnderlyingBound>
+    pub fn map<U, F, OP, B2: SingletonBound>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L, MapFuncAlgebra<OP>>,
+    ) -> Singleton<U, L, B2>
     where
         F: Fn(T) -> U + 'a,
+        B: ApplyOrderPreservingSingleton<OP, B2>,
     {
-        let f = f.splice_fn1_ctx(&self.location).into();
+        let (f, proof) = f.splice_fn1_ctx_props(&self.location);
+        proof.register_proof(&f);
+        let f = f.into();
         Singleton::new(
             self.location.clone(),
             HydroNode::Map {
@@ -375,7 +383,7 @@ where
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
-                    .new_node_metadata(Singleton::<U, L, B>::collection_kind()),
+                    .new_node_metadata(Singleton::<U, L, B2>::collection_kind()),
             },
         )
     }
