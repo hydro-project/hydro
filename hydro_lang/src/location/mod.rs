@@ -132,11 +132,11 @@ impl LocationKey {
 
     /// A key for testing with index 1.
     #[cfg(test)]
-    pub const TEST_KEY_1: Self = Self(slotmap::KeyData::from_ffi(0x000000ff00000001)); // `1v255`
+    pub const TEST_KEY_1: Self = Self(slotmap::KeyData::from_ffi(0x000000FF00000001)); // `1v255`
 
     /// A key for testing with index 2.
     #[cfg(test)]
-    pub const TEST_KEY_2: Self = Self(slotmap::KeyData::from_ffi(0x000000ff00000002)); // `2v255`
+    pub const TEST_KEY_2: Self = Self(slotmap::KeyData::from_ffi(0x000000FF00000002)); // `2v255`
 }
 
 /// This is used within `q!` code in docker and ECS.

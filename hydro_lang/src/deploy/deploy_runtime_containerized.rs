@@ -36,7 +36,7 @@ use crate::location::{LocationKey, MemberId, MembershipEvent};
 pub const CHANNEL_MUX_PORT: u16 = 10000;
 
 /// Magic constant embedded in every [`ChannelMagic`] header.
-pub const CHANNEL_MAGIC: u64 = 0x4859_4452_4f5f_4348;
+pub const CHANNEL_MAGIC: u64 = 0x4859_4452_4F5F_4348;
 
 /// Magic header sent as the very first frame of every channel handshake.
 ///

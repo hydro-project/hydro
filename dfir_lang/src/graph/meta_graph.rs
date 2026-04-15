@@ -1394,7 +1394,7 @@ impl DfirGraph {
         // TODO(cleanup): When scheduled Dfir is removed, DfirMetrics could use slotmap
         // SecondaryMaps directly, eliminating this conversion.
         fn slotmap_raw_idx(key: impl Key) -> usize {
-            (key.data().as_ffi() & 0xffff_ffff) as usize
+            (key.data().as_ffi() & 0xFFFF_FFFF) as usize
         }
 
         let df = Ident::new(GRAPH, Span::call_site());
