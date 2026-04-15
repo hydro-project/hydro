@@ -101,7 +101,7 @@ macro_rules! define_metrics {
                 $( #[doc = $doc:literal] )*
                 #[diff($diff:ident)]
                 $( #[$field_attr:meta] )*
-                $field_vis:vis $field_name:ident: Cell<$field_type:ty>,
+                $field_name:ident: Cell<$field_type:ty>,
             )*
         }
     ) => {
@@ -112,7 +112,7 @@ macro_rules! define_metrics {
             $(
                 #[doc(hidden)] // Public for codegen access; use the getter method instead.
                 $(#[$field_attr])*
-                $field_vis $field_name: Cell<$field_type>,
+                pub $field_name: Cell<$field_type>,
             )*
         }
 
@@ -146,11 +146,11 @@ define_metrics! {
     pub struct HandoffMetrics {
         /// Number of items currently in the handoff.
         #[diff(curr)]
-        pub curr_items_count: Cell<usize>,
+        curr_items_count: Cell<usize>,
 
         /// Total number of items read out of the handoff.
         #[diff(total)]
-        pub total_items_count: Cell<usize>,
+        total_items_count: Cell<usize>,
     }
 }
 
@@ -159,23 +159,23 @@ define_metrics! {
     pub struct SubgraphMetrics {
         /// Number of times the subgraph has run.
         #[diff(total)]
-        pub total_run_count: Cell<usize>,
+        total_run_count: Cell<usize>,
 
         /// Time elapsed during polling (when the subgraph is actively doing work).
         #[diff(total)]
-        pub total_poll_duration: Cell<Duration>,
+        total_poll_duration: Cell<Duration>,
 
         /// Number of times the subgraph has been polled.
         #[diff(total)]
-        pub total_poll_count: Cell<usize>,
+        total_poll_count: Cell<usize>,
 
         /// Time elapsed during idle (when the subgraph has yielded and is waiting for async events).
         #[diff(total)]
-        pub total_idle_duration: Cell<Duration>,
+        total_idle_duration: Cell<Duration>,
 
         /// Number of times the subgraph has been idle.
         #[diff(total)]
-        pub total_idle_count: Cell<usize>,
+        total_idle_count: Cell<usize>,
     }
 }
 
