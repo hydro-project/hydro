@@ -340,357 +340,358 @@
 <a href=#340 id=340 data-nosnippet>340</a>    reduce::REDUCE,
 <a href=#341 id=341 data-nosnippet>341</a>    reduce_no_replay::REDUCE_NO_REPLAY,
 <a href=#342 id=342 data-nosnippet>342</a>    scan::SCAN,
-<a href=#343 id=343 data-nosnippet>343</a>    spin::SPIN,
-<a href=#344 id=344 data-nosnippet>344</a>    sort::SORT,
-<a href=#345 id=345 data-nosnippet>345</a>    sort_by_key::SORT_BY_KEY,
-<a href=#346 id=346 data-nosnippet>346</a>    source_file::SOURCE_FILE,
-<a href=#347 id=347 data-nosnippet>347</a>    source_interval::SOURCE_INTERVAL,
-<a href=#348 id=348 data-nosnippet>348</a>    source_iter::SOURCE_ITER,
-<a href=#349 id=349 data-nosnippet>349</a>    source_json::SOURCE_JSON,
-<a href=#350 id=350 data-nosnippet>350</a>    source_stdin::SOURCE_STDIN,
-<a href=#351 id=351 data-nosnippet>351</a>    source_stream::SOURCE_STREAM,
-<a href=#352 id=352 data-nosnippet>352</a>    source_stream_serde::SOURCE_STREAM_SERDE,
-<a href=#353 id=353 data-nosnippet>353</a>    state::STATE,
-<a href=#354 id=354 data-nosnippet>354</a>    state_by::STATE_BY,
-<a href=#355 id=355 data-nosnippet>355</a>    tee::TEE,
-<a href=#356 id=356 data-nosnippet>356</a>    unique::UNIQUE,
-<a href=#357 id=357 data-nosnippet>357</a>    unzip::UNZIP,
-<a href=#358 id=358 data-nosnippet>358</a>    zip::ZIP,
-<a href=#359 id=359 data-nosnippet>359</a>    zip_longest::ZIP_LONGEST,
-<a href=#360 id=360 data-nosnippet>360</a>];
-<a href=#361 id=361 data-nosnippet>361</a>
-<a href=#362 id=362 data-nosnippet>362</a><span class="doccomment">/// Get the operator lookup table, generating it if needed.
-<a href=#363 id=363 data-nosnippet>363</a></span><span class="kw">pub fn </span>operator_lookup() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'static </span>HashMap&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>OperatorConstraints&gt; {
-<a href=#364 id=364 data-nosnippet>364</a>    <span class="kw">pub static </span>OPERATOR_LOOKUP: OnceLock&lt;HashMap&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>OperatorConstraints&gt;&gt; =
-<a href=#365 id=365 data-nosnippet>365</a>        OnceLock::new();
-<a href=#366 id=366 data-nosnippet>366</a>    OPERATOR_LOOKUP.get_or_init(|| OPERATORS.iter().map(|op| (op.name, op)).collect())
-<a href=#367 id=367 data-nosnippet>367</a>}
-<a href=#368 id=368 data-nosnippet>368</a><span class="doccomment">/// Find an operator by [`GraphNode`].
-<a href=#369 id=369 data-nosnippet>369</a></span><span class="kw">pub fn </span>find_node_op_constraints(node: <span class="kw-2">&amp;</span>GraphNode) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>OperatorConstraints&gt; {
-<a href=#370 id=370 data-nosnippet>370</a>    <span class="kw">if let </span>GraphNode::Operator(operator) = node {
-<a href=#371 id=371 data-nosnippet>371</a>        find_op_op_constraints(operator)
-<a href=#372 id=372 data-nosnippet>372</a>    } <span class="kw">else </span>{
-<a href=#373 id=373 data-nosnippet>373</a>        <span class="prelude-val">None
-<a href=#374 id=374 data-nosnippet>374</a>    </span>}
-<a href=#375 id=375 data-nosnippet>375</a>}
-<a href=#376 id=376 data-nosnippet>376</a><span class="doccomment">/// Find an operator by an AST [`Operator`].
-<a href=#377 id=377 data-nosnippet>377</a></span><span class="kw">pub fn </span>find_op_op_constraints(operator: <span class="kw-2">&amp;</span>Operator) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>OperatorConstraints&gt; {
-<a href=#378 id=378 data-nosnippet>378</a>    <span class="kw">let </span>name = <span class="kw-2">&amp;*</span>operator.name_string();
-<a href=#379 id=379 data-nosnippet>379</a>    operator_lookup().get(name).copied()
-<a href=#380 id=380 data-nosnippet>380</a>}
-<a href=#381 id=381 data-nosnippet>381</a>
-<a href=#382 id=382 data-nosnippet>382</a><span class="doccomment">/// Context arguments provided to [`OperatorConstraints::write_fn`].
-<a href=#383 id=383 data-nosnippet>383</a></span><span class="attr">#[derive(Clone)]
-<a href=#384 id=384 data-nosnippet>384</a></span><span class="kw">pub struct </span>WriteContextArgs&lt;<span class="lifetime">'a</span>&gt; {
-<a href=#385 id=385 data-nosnippet>385</a>    <span class="doccomment">/// `dfir` crate name for `use #root::something`.
-<a href=#386 id=386 data-nosnippet>386</a>    </span><span class="kw">pub </span>root: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>TokenStream,
-<a href=#387 id=387 data-nosnippet>387</a>    <span class="doccomment">/// `context` ident, the name of the provided
-<a href=#388 id=388 data-nosnippet>388</a>    /// [`dfir_rs::scheduled::Context`](https://hydro.run/rustdoc/dfir_rs/scheduled/context/struct.Context.html).
-<a href=#389 id=389 data-nosnippet>389</a>    </span><span class="kw">pub </span>context: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Ident,
-<a href=#390 id=390 data-nosnippet>390</a>    <span class="doccomment">/// `df` ident, the name of the
-<a href=#391 id=391 data-nosnippet>391</a>    /// [`dfir_rs::scheduled::graph::Dfir`](https://hydro.run/rustdoc/dfir_rs/scheduled/graph/struct.Dfir.html)
-<a href=#392 id=392 data-nosnippet>392</a>    /// instance.
-<a href=#393 id=393 data-nosnippet>393</a>    </span><span class="kw">pub </span>df_ident: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Ident,
-<a href=#394 id=394 data-nosnippet>394</a>    <span class="doccomment">/// Subgraph ID in which this operator is contained.
-<a href=#395 id=395 data-nosnippet>395</a>    </span><span class="kw">pub </span>subgraph_id: GraphSubgraphId,
-<a href=#396 id=396 data-nosnippet>396</a>    <span class="doccomment">/// Node ID identifying this operator in the flat or partitioned graph meta-datastructure.
-<a href=#397 id=397 data-nosnippet>397</a>    </span><span class="kw">pub </span>node_id: GraphNodeId,
-<a href=#398 id=398 data-nosnippet>398</a>    <span class="doccomment">/// Loop ID in which this operator is contained, or `None` if not in a loop.
-<a href=#399 id=399 data-nosnippet>399</a>    </span><span class="kw">pub </span>loop_id: <span class="prelude-ty">Option</span>&lt;GraphLoopId&gt;,
-<a href=#400 id=400 data-nosnippet>400</a>    <span class="doccomment">/// The source span of this operator.
-<a href=#401 id=401 data-nosnippet>401</a>    </span><span class="kw">pub </span>op_span: Span,
-<a href=#402 id=402 data-nosnippet>402</a>    <span class="doccomment">/// Tag for this operator appended to the generated identifier.
-<a href=#403 id=403 data-nosnippet>403</a>    </span><span class="kw">pub </span>op_tag: <span class="prelude-ty">Option</span>&lt;String&gt;,
-<a href=#404 id=404 data-nosnippet>404</a>    <span class="doccomment">/// Identifier for a function to call when doing work outside the stream.
-<a href=#405 id=405 data-nosnippet>405</a>    </span><span class="kw">pub </span>work_fn: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Ident,
-<a href=#406 id=406 data-nosnippet>406</a>    <span class="doccomment">/// Identifier for a function to wrap futures when doing work outside the stream.
-<a href=#407 id=407 data-nosnippet>407</a>    </span><span class="kw">pub </span>work_fn_async: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Ident,
-<a href=#408 id=408 data-nosnippet>408</a>
-<a href=#409 id=409 data-nosnippet>409</a>    <span class="doccomment">/// Ident the `Stream` or `Sink` should be assigned to.
-<a href=#410 id=410 data-nosnippet>410</a>    </span><span class="kw">pub </span>ident: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Ident,
-<a href=#411 id=411 data-nosnippet>411</a>    <span class="doccomment">/// If a pull `Stream` (true) or push `Sink` (false) should be used.
-<a href=#412 id=412 data-nosnippet>412</a>    </span><span class="kw">pub </span>is_pull: bool,
-<a href=#413 id=413 data-nosnippet>413</a>    <span class="doccomment">/// Input `Stream` operator idents (or ref idents; used for pull).
-<a href=#414 id=414 data-nosnippet>414</a>    </span><span class="kw">pub </span>inputs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[Ident],
-<a href=#415 id=415 data-nosnippet>415</a>    <span class="doccomment">/// Output `Sink` operator idents (or ref idents; used for push).
-<a href=#416 id=416 data-nosnippet>416</a>    </span><span class="kw">pub </span>outputs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[Ident],
-<a href=#417 id=417 data-nosnippet>417</a>    <span class="doccomment">/// Ident for the singleton output of this operator, if any.
-<a href=#418 id=418 data-nosnippet>418</a>    </span><span class="kw">pub </span>singleton_output_ident: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Ident,
-<a href=#419 id=419 data-nosnippet>419</a>
-<a href=#420 id=420 data-nosnippet>420</a>    <span class="doccomment">/// Operator name.
-<a href=#421 id=421 data-nosnippet>421</a>    </span><span class="kw">pub </span>op_name: <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str,
-<a href=#422 id=422 data-nosnippet>422</a>    <span class="doccomment">/// Operator instance arguments object.
-<a href=#423 id=423 data-nosnippet>423</a>    </span><span class="kw">pub </span>op_inst: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>OperatorInstance,
-<a href=#424 id=424 data-nosnippet>424</a>    <span class="doccomment">/// Arguments provided by the user into the operator as arguments.
-<a href=#425 id=425 data-nosnippet>425</a>    /// I.e. the `a, b, c` in `-&gt; my_op(a, b, c) -&gt; `.
-<a href=#426 id=426 data-nosnippet>426</a>    ///
-<a href=#427 id=427 data-nosnippet>427</a>    /// These arguments include singleton postprocessing codegen, with
-<a href=#428 id=428 data-nosnippet>428</a>    /// [`std::cell::RefCell::borrow_mut`] code pre-generated.
-<a href=#429 id=429 data-nosnippet>429</a>    </span><span class="kw">pub </span>arguments: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Punctuated&lt;Expr, <span class="macro">Token!</span>[,]&gt;,
-<a href=#430 id=430 data-nosnippet>430</a>    <span class="doccomment">/// Same as [`Self::arguments`] but with only `StateHandle`s, no borrowing code.
-<a href=#431 id=431 data-nosnippet>431</a>    </span><span class="kw">pub </span>arguments_handles: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Punctuated&lt;Expr, <span class="macro">Token!</span>[,]&gt;,
-<a href=#432 id=432 data-nosnippet>432</a>}
-<a href=#433 id=433 data-nosnippet>433</a><span class="kw">impl </span>WriteContextArgs&lt;<span class="lifetime">'_</span>&gt; {
-<a href=#434 id=434 data-nosnippet>434</a>    <span class="doccomment">/// Generate a (almost certainly) unique identifier with the given suffix.
-<a href=#435 id=435 data-nosnippet>435</a>    ///
-<a href=#436 id=436 data-nosnippet>436</a>    /// Includes the subgraph and node IDs in the generated identifier.
-<a href=#437 id=437 data-nosnippet>437</a>    ///
-<a href=#438 id=438 data-nosnippet>438</a>    /// This will always return the same identifier for a given `suffix`.
-<a href=#439 id=439 data-nosnippet>439</a>    </span><span class="kw">pub fn </span>make_ident(<span class="kw-2">&amp;</span><span class="self">self</span>, suffix: <span class="kw">impl </span>AsRef&lt;str&gt;) -&gt; Ident {
-<a href=#440 id=440 data-nosnippet>440</a>        Ident::new(
-<a href=#441 id=441 data-nosnippet>441</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(
-<a href=#442 id=442 data-nosnippet>442</a>                <span class="string">"sg_{:?}_node_{:?}_{}"</span>,
-<a href=#443 id=443 data-nosnippet>443</a>                <span class="self">self</span>.subgraph_id.data(),
-<a href=#444 id=444 data-nosnippet>444</a>                <span class="self">self</span>.node_id.data(),
-<a href=#445 id=445 data-nosnippet>445</a>                suffix.as_ref(),
-<a href=#446 id=446 data-nosnippet>446</a>            ),
-<a href=#447 id=447 data-nosnippet>447</a>            <span class="self">self</span>.op_span,
-<a href=#448 id=448 data-nosnippet>448</a>        )
-<a href=#449 id=449 data-nosnippet>449</a>    }
-<a href=#450 id=450 data-nosnippet>450</a>
-<a href=#451 id=451 data-nosnippet>451</a>    <span class="doccomment">/// Returns `#root::scheduled::graph::StateLifespan::#variant` corresponding to the given
-<a href=#452 id=452 data-nosnippet>452</a>    /// peristence.
-<a href=#453 id=453 data-nosnippet>453</a>    </span><span class="kw">pub fn </span>persistence_as_state_lifespan(<span class="kw-2">&amp;</span><span class="self">self</span>, persistence: Persistence) -&gt; <span class="prelude-ty">Option</span>&lt;TokenStream&gt; {
-<a href=#454 id=454 data-nosnippet>454</a>        <span class="kw">let </span>root = <span class="self">self</span>.root;
-<a href=#455 id=455 data-nosnippet>455</a>        <span class="kw">let </span>variant =
-<a href=#456 id=456 data-nosnippet>456</a>            persistence.as_state_lifespan_variant(<span class="self">self</span>.subgraph_id, <span class="self">self</span>.loop_id, <span class="self">self</span>.op_span)<span class="question-mark">?</span>;
-<a href=#457 id=457 data-nosnippet>457</a>        <span class="prelude-val">Some</span>(<span class="macro">quote_spanned!</span> {<span class="self">self</span>.op_span=&gt;
-<a href=#458 id=458 data-nosnippet>458</a>            #root::scheduled::graph::StateLifespan::#variant
-<a href=#459 id=459 data-nosnippet>459</a>        })
-<a href=#460 id=460 data-nosnippet>460</a>    }
-<a href=#461 id=461 data-nosnippet>461</a>
-<a href=#462 id=462 data-nosnippet>462</a>    <span class="doccomment">/// Returns the given number of persistence arguments, disallowing mutable lifetimes.
-<a href=#463 id=463 data-nosnippet>463</a>    </span><span class="kw">pub fn </span>persistence_args_disallow_mutable&lt;<span class="kw">const </span>N: usize&gt;(
-<a href=#464 id=464 data-nosnippet>464</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
-<a href=#465 id=465 data-nosnippet>465</a>        diagnostics: <span class="kw-2">&amp;mut </span>Diagnostics,
-<a href=#466 id=466 data-nosnippet>466</a>    ) -&gt; [Persistence; N] {
-<a href=#467 id=467 data-nosnippet>467</a>        <span class="kw">let </span>len = <span class="self">self</span>.op_inst.generics.persistence_args.len();
-<a href=#468 id=468 data-nosnippet>468</a>        <span class="kw">if </span><span class="number">0 </span>!= len &amp;&amp; <span class="number">1 </span>!= len &amp;&amp; N != len {
-<a href=#469 id=469 data-nosnippet>469</a>            diagnostics.push(Diagnostic::spanned(
-<a href=#470 id=470 data-nosnippet>470</a>                <span class="self">self</span>.op_span,
-<a href=#471 id=471 data-nosnippet>471</a>                Level::Error,
-<a href=#472 id=472 data-nosnippet>472</a>                <span class="macro">format!</span>(
-<a href=#473 id=473 data-nosnippet>473</a>                    <span class="string">"The operator `{}` only accepts 0, 1, or {} persistence arguments"</span>,
-<a href=#474 id=474 data-nosnippet>474</a>                    <span class="self">self</span>.op_name, N
-<a href=#475 id=475 data-nosnippet>475</a>                ),
-<a href=#476 id=476 data-nosnippet>476</a>            ));
-<a href=#477 id=477 data-nosnippet>477</a>        }
-<a href=#478 id=478 data-nosnippet>478</a>
-<a href=#479 id=479 data-nosnippet>479</a>        <span class="kw">let </span>default_persistence = <span class="kw">if </span><span class="self">self</span>.loop_id.is_some() {
-<a href=#480 id=480 data-nosnippet>480</a>            Persistence::None
-<a href=#481 id=481 data-nosnippet>481</a>        } <span class="kw">else </span>{
-<a href=#482 id=482 data-nosnippet>482</a>            Persistence::Tick
-<a href=#483 id=483 data-nosnippet>483</a>        };
-<a href=#484 id=484 data-nosnippet>484</a>        <span class="kw">let </span><span class="kw-2">mut </span>out = [default_persistence; N];
-<a href=#485 id=485 data-nosnippet>485</a>        <span class="self">self</span>.op_inst
-<a href=#486 id=486 data-nosnippet>486</a>            .generics
-<a href=#487 id=487 data-nosnippet>487</a>            .persistence_args
-<a href=#488 id=488 data-nosnippet>488</a>            .iter()
-<a href=#489 id=489 data-nosnippet>489</a>            .copied()
-<a href=#490 id=490 data-nosnippet>490</a>            .cycle() <span class="comment">// Re-use the first element for both persistences.
-<a href=#491 id=491 data-nosnippet>491</a>            </span>.take(N)
-<a href=#492 id=492 data-nosnippet>492</a>            .enumerate()
-<a href=#493 id=493 data-nosnippet>493</a>            .filter(|<span class="kw-2">&amp;</span>(_i, p)| {
-<a href=#494 id=494 data-nosnippet>494</a>                <span class="kw">if </span>p == Persistence::Mutable {
-<a href=#495 id=495 data-nosnippet>495</a>                    diagnostics.push(Diagnostic::spanned(
-<a href=#496 id=496 data-nosnippet>496</a>                        <span class="self">self</span>.op_span,
-<a href=#497 id=497 data-nosnippet>497</a>                        Level::Error,
-<a href=#498 id=498 data-nosnippet>498</a>                        <span class="macro">format!</span>(
-<a href=#499 id=499 data-nosnippet>499</a>                            <span class="string">"An implementation of `'{}` does not exist"</span>,
-<a href=#500 id=500 data-nosnippet>500</a>                            p.to_str_lowercase()
-<a href=#501 id=501 data-nosnippet>501</a>                        ),
-<a href=#502 id=502 data-nosnippet>502</a>                    ));
-<a href=#503 id=503 data-nosnippet>503</a>                    <span class="bool-val">false
-<a href=#504 id=504 data-nosnippet>504</a>                </span>} <span class="kw">else </span>{
-<a href=#505 id=505 data-nosnippet>505</a>                    <span class="bool-val">true
-<a href=#506 id=506 data-nosnippet>506</a>                </span>}
-<a href=#507 id=507 data-nosnippet>507</a>            })
-<a href=#508 id=508 data-nosnippet>508</a>            .for_each(|(i, p)| {
-<a href=#509 id=509 data-nosnippet>509</a>                out[i] = p;
-<a href=#510 id=510 data-nosnippet>510</a>            });
-<a href=#511 id=511 data-nosnippet>511</a>        out
-<a href=#512 id=512 data-nosnippet>512</a>    }
-<a href=#513 id=513 data-nosnippet>513</a>}
-<a href=#514 id=514 data-nosnippet>514</a>
-<a href=#515 id=515 data-nosnippet>515</a><span class="doccomment">/// An object-safe version of [`RangeBounds`].
-<a href=#516 id=516 data-nosnippet>516</a></span><span class="kw">pub trait </span>RangeTrait&lt;T&gt;: Send + Sync + Debug
-<a href=#517 id=517 data-nosnippet>517</a><span class="kw">where
-<a href=#518 id=518 data-nosnippet>518</a>    </span>T: <span class="question-mark">?</span>Sized,
-<a href=#519 id=519 data-nosnippet>519</a>{
-<a href=#520 id=520 data-nosnippet>520</a>    <span class="doccomment">/// Start (lower) bound.
-<a href=#521 id=521 data-nosnippet>521</a>    </span><span class="kw">fn </span>start_bound(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Bound&lt;<span class="kw-2">&amp;</span>T&gt;;
-<a href=#522 id=522 data-nosnippet>522</a>    <span class="doccomment">/// End (upper) bound.
-<a href=#523 id=523 data-nosnippet>523</a>    </span><span class="kw">fn </span>end_bound(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Bound&lt;<span class="kw-2">&amp;</span>T&gt;;
-<a href=#524 id=524 data-nosnippet>524</a>    <span class="doccomment">/// Returns if `item` is contained in this range.
-<a href=#525 id=525 data-nosnippet>525</a>    </span><span class="kw">fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, item: <span class="kw-2">&amp;</span>T) -&gt; bool
-<a href=#526 id=526 data-nosnippet>526</a>    <span class="kw">where
-<a href=#527 id=527 data-nosnippet>527</a>        </span>T: PartialOrd&lt;T&gt;;
-<a href=#528 id=528 data-nosnippet>528</a>
-<a href=#529 id=529 data-nosnippet>529</a>    <span class="doccomment">/// Turn this range into a human-readable string.
-<a href=#530 id=530 data-nosnippet>530</a>    </span><span class="kw">fn </span>human_string(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String
-<a href=#531 id=531 data-nosnippet>531</a>    <span class="kw">where
-<a href=#532 id=532 data-nosnippet>532</a>        </span>T: Display + PartialEq,
-<a href=#533 id=533 data-nosnippet>533</a>    {
-<a href=#534 id=534 data-nosnippet>534</a>        <span class="kw">match </span>(<span class="self">self</span>.start_bound(), <span class="self">self</span>.end_bound()) {
-<a href=#535 id=535 data-nosnippet>535</a>            (Bound::Unbounded, Bound::Unbounded) =&gt; <span class="string">"any number of"</span>.to_owned(),
-<a href=#536 id=536 data-nosnippet>536</a>
-<a href=#537 id=537 data-nosnippet>537</a>            (Bound::Included(n), Bound::Included(x)) <span class="kw">if </span>n == x =&gt; {
-<a href=#538 id=538 data-nosnippet>538</a>                <span class="macro">format!</span>(<span class="string">"exactly {}"</span>, n)
-<a href=#539 id=539 data-nosnippet>539</a>            }
-<a href=#540 id=540 data-nosnippet>540</a>            (Bound::Included(n), Bound::Included(x)) =&gt; {
-<a href=#541 id=541 data-nosnippet>541</a>                <span class="macro">format!</span>(<span class="string">"at least {} and at most {}"</span>, n, x)
-<a href=#542 id=542 data-nosnippet>542</a>            }
-<a href=#543 id=543 data-nosnippet>543</a>            (Bound::Included(n), Bound::Excluded(x)) =&gt; {
-<a href=#544 id=544 data-nosnippet>544</a>                <span class="macro">format!</span>(<span class="string">"at least {} and less than {}"</span>, n, x)
-<a href=#545 id=545 data-nosnippet>545</a>            }
-<a href=#546 id=546 data-nosnippet>546</a>            (Bound::Included(n), Bound::Unbounded) =&gt; <span class="macro">format!</span>(<span class="string">"at least {}"</span>, n),
-<a href=#547 id=547 data-nosnippet>547</a>            (Bound::Excluded(n), Bound::Included(x)) =&gt; {
-<a href=#548 id=548 data-nosnippet>548</a>                <span class="macro">format!</span>(<span class="string">"more than {} and at most {}"</span>, n, x)
-<a href=#549 id=549 data-nosnippet>549</a>            }
-<a href=#550 id=550 data-nosnippet>550</a>            (Bound::Excluded(n), Bound::Excluded(x)) =&gt; {
-<a href=#551 id=551 data-nosnippet>551</a>                <span class="macro">format!</span>(<span class="string">"more than {} and less than {}"</span>, n, x)
-<a href=#552 id=552 data-nosnippet>552</a>            }
-<a href=#553 id=553 data-nosnippet>553</a>            (Bound::Excluded(n), Bound::Unbounded) =&gt; <span class="macro">format!</span>(<span class="string">"more than {}"</span>, n),
-<a href=#554 id=554 data-nosnippet>554</a>            (Bound::Unbounded, Bound::Included(x)) =&gt; <span class="macro">format!</span>(<span class="string">"at most {}"</span>, x),
-<a href=#555 id=555 data-nosnippet>555</a>            (Bound::Unbounded, Bound::Excluded(x)) =&gt; <span class="macro">format!</span>(<span class="string">"less than {}"</span>, x),
-<a href=#556 id=556 data-nosnippet>556</a>        }
-<a href=#557 id=557 data-nosnippet>557</a>    }
-<a href=#558 id=558 data-nosnippet>558</a>}
-<a href=#559 id=559 data-nosnippet>559</a>
-<a href=#560 id=560 data-nosnippet>560</a><span class="kw">impl</span>&lt;R, T&gt; RangeTrait&lt;T&gt; <span class="kw">for </span>R
-<a href=#561 id=561 data-nosnippet>561</a><span class="kw">where
-<a href=#562 id=562 data-nosnippet>562</a>    </span>R: RangeBounds&lt;T&gt; + Send + Sync + Debug,
-<a href=#563 id=563 data-nosnippet>563</a>{
-<a href=#564 id=564 data-nosnippet>564</a>    <span class="kw">fn </span>start_bound(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Bound&lt;<span class="kw-2">&amp;</span>T&gt; {
-<a href=#565 id=565 data-nosnippet>565</a>        <span class="self">self</span>.start_bound()
-<a href=#566 id=566 data-nosnippet>566</a>    }
-<a href=#567 id=567 data-nosnippet>567</a>
-<a href=#568 id=568 data-nosnippet>568</a>    <span class="kw">fn </span>end_bound(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Bound&lt;<span class="kw-2">&amp;</span>T&gt; {
-<a href=#569 id=569 data-nosnippet>569</a>        <span class="self">self</span>.end_bound()
-<a href=#570 id=570 data-nosnippet>570</a>    }
-<a href=#571 id=571 data-nosnippet>571</a>
-<a href=#572 id=572 data-nosnippet>572</a>    <span class="kw">fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, item: <span class="kw-2">&amp;</span>T) -&gt; bool
-<a href=#573 id=573 data-nosnippet>573</a>    <span class="kw">where
-<a href=#574 id=574 data-nosnippet>574</a>        </span>T: PartialOrd&lt;T&gt;,
-<a href=#575 id=575 data-nosnippet>575</a>    {
-<a href=#576 id=576 data-nosnippet>576</a>        <span class="self">self</span>.contains(item)
-<a href=#577 id=577 data-nosnippet>577</a>    }
-<a href=#578 id=578 data-nosnippet>578</a>}
-<a href=#579 id=579 data-nosnippet>579</a>
-<a href=#580 id=580 data-nosnippet>580</a><span class="doccomment">/// Persistence lifetimes: `'none`, `'tick`, `'static`, or `'mutable`.
-<a href=#581 id=581 data-nosnippet>581</a></span><span class="attr">#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Serialize, Deserialize)]
-<a href=#582 id=582 data-nosnippet>582</a></span><span class="kw">pub enum </span>Persistence {
-<a href=#583 id=583 data-nosnippet>583</a>    <span class="doccomment">/// No persistence, for within a loop iteration.
-<a href=#584 id=584 data-nosnippet>584</a>    </span><span class="prelude-val">None</span>,
-<a href=#585 id=585 data-nosnippet>585</a>    <span class="doccomment">/// Persistence throughout a single loop execution, across iterations.
-<a href=#586 id=586 data-nosnippet>586</a>    </span>Loop,
-<a href=#587 id=587 data-nosnippet>587</a>    <span class="doccomment">/// Persistence for one tick, at the top-level only (outside any loops).
-<a href=#588 id=588 data-nosnippet>588</a>    </span>Tick,
-<a href=#589 id=589 data-nosnippet>589</a>    <span class="doccomment">/// Persistence across all ticks.
-<a href=#590 id=590 data-nosnippet>590</a>    </span>Static,
-<a href=#591 id=591 data-nosnippet>591</a>    <span class="doccomment">/// The static lifetime but allowing non-monotonic mutability.
-<a href=#592 id=592 data-nosnippet>592</a>    </span>Mutable,
-<a href=#593 id=593 data-nosnippet>593</a>}
-<a href=#594 id=594 data-nosnippet>594</a><span class="kw">impl </span>Persistence {
-<a href=#595 id=595 data-nosnippet>595</a>    <span class="doccomment">/// Returns just the variant of `#root::scheduled::graph::StateLifespan::VARIANT` for use in macros.
-<a href=#596 id=596 data-nosnippet>596</a>    </span><span class="kw">pub fn </span>as_state_lifespan_variant(
-<a href=#597 id=597 data-nosnippet>597</a>        <span class="self">self</span>,
-<a href=#598 id=598 data-nosnippet>598</a>        subgraph_id: GraphSubgraphId,
-<a href=#599 id=599 data-nosnippet>599</a>        loop_id: <span class="prelude-ty">Option</span>&lt;GraphLoopId&gt;,
-<a href=#600 id=600 data-nosnippet>600</a>        span: Span,
-<a href=#601 id=601 data-nosnippet>601</a>    ) -&gt; <span class="prelude-ty">Option</span>&lt;TokenStream&gt; {
-<a href=#602 id=602 data-nosnippet>602</a>        <span class="kw">match </span><span class="self">self </span>{
-<a href=#603 id=603 data-nosnippet>603</a>            Persistence::None =&gt; {
-<a href=#604 id=604 data-nosnippet>604</a>                <span class="kw">let </span>sg_ident = subgraph_id.as_ident(span);
-<a href=#605 id=605 data-nosnippet>605</a>                <span class="prelude-val">Some</span>(<span class="macro">quote_spanned!</span>(span=&gt; Subgraph(#sg_ident)))
-<a href=#606 id=606 data-nosnippet>606</a>            }
-<a href=#607 id=607 data-nosnippet>607</a>            Persistence::Loop =&gt; {
-<a href=#608 id=608 data-nosnippet>608</a>                <span class="kw">let </span>loop_ident = loop_id
-<a href=#609 id=609 data-nosnippet>609</a>                    .expect(<span class="string">"`Persistence::Loop` outside of a loop context."</span>)
-<a href=#610 id=610 data-nosnippet>610</a>                    .as_ident(span);
-<a href=#611 id=611 data-nosnippet>611</a>                <span class="prelude-val">Some</span>(<span class="macro">quote_spanned!</span>(span=&gt; Loop(#loop_ident)))
-<a href=#612 id=612 data-nosnippet>612</a>            }
-<a href=#613 id=613 data-nosnippet>613</a>            Persistence::Tick =&gt; <span class="prelude-val">Some</span>(<span class="macro">quote_spanned!</span>(span=&gt; Tick)),
-<a href=#614 id=614 data-nosnippet>614</a>            Persistence::Static =&gt; <span class="prelude-val">None</span>,
-<a href=#615 id=615 data-nosnippet>615</a>            Persistence::Mutable =&gt; <span class="prelude-val">None</span>,
-<a href=#616 id=616 data-nosnippet>616</a>        }
-<a href=#617 id=617 data-nosnippet>617</a>    }
-<a href=#618 id=618 data-nosnippet>618</a>
-<a href=#619 id=619 data-nosnippet>619</a>    <span class="doccomment">/// Returns a lowercase string for the persistence type.
-<a href=#620 id=620 data-nosnippet>620</a>    </span><span class="kw">pub fn </span>to_str_lowercase(<span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str {
-<a href=#621 id=621 data-nosnippet>621</a>        <span class="kw">match </span><span class="self">self </span>{
-<a href=#622 id=622 data-nosnippet>622</a>            Persistence::None =&gt; <span class="string">"none"</span>,
-<a href=#623 id=623 data-nosnippet>623</a>            Persistence::Tick =&gt; <span class="string">"tick"</span>,
-<a href=#624 id=624 data-nosnippet>624</a>            Persistence::Loop =&gt; <span class="string">"loop"</span>,
-<a href=#625 id=625 data-nosnippet>625</a>            Persistence::Static =&gt; <span class="string">"static"</span>,
-<a href=#626 id=626 data-nosnippet>626</a>            Persistence::Mutable =&gt; <span class="string">"mutable"</span>,
-<a href=#627 id=627 data-nosnippet>627</a>        }
-<a href=#628 id=628 data-nosnippet>628</a>    }
-<a href=#629 id=629 data-nosnippet>629</a>}
-<a href=#630 id=630 data-nosnippet>630</a>
-<a href=#631 id=631 data-nosnippet>631</a><span class="doccomment">/// Helper which creates a error message string literal for when the Tokio runtime is not found.
-<a href=#632 id=632 data-nosnippet>632</a></span><span class="kw">fn </span>make_missing_runtime_msg(op_name: <span class="kw-2">&amp;</span>str) -&gt; Literal {
-<a href=#633 id=633 data-nosnippet>633</a>    Literal::string(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
-<a href=#634 id=634 data-nosnippet>634</a>        <span class="string">"`{}()` must be used within a Tokio runtime. For example, use `#[dfir_rs::main]` on your main method."</span>,
-<a href=#635 id=635 data-nosnippet>635</a>        op_name
-<a href=#636 id=636 data-nosnippet>636</a>    ))
-<a href=#637 id=637 data-nosnippet>637</a>}
-<a href=#638 id=638 data-nosnippet>638</a>
-<a href=#639 id=639 data-nosnippet>639</a><span class="doccomment">/// Operator categories, for docs.
-<a href=#640 id=640 data-nosnippet>640</a></span><span class="attr">#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, DocumentedVariants)]
-<a href=#641 id=641 data-nosnippet>641</a></span><span class="kw">pub enum </span>OperatorCategory {
-<a href=#642 id=642 data-nosnippet>642</a>    <span class="doccomment">/// Maps: Simple one-in-one-out operators.
-<a href=#643 id=643 data-nosnippet>643</a>    </span>Map,
-<a href=#644 id=644 data-nosnippet>644</a>    <span class="doccomment">/// Filters: One-in zero-or-one-out operators.
-<a href=#645 id=645 data-nosnippet>645</a>    </span>Filter,
-<a href=#646 id=646 data-nosnippet>646</a>    <span class="doccomment">/// Flattens: One-in multiple-out operators.
-<a href=#647 id=647 data-nosnippet>647</a>    </span>Flatten,
-<a href=#648 id=648 data-nosnippet>648</a>    <span class="doccomment">/// Folds: Operators which accumulate elements together.
-<a href=#649 id=649 data-nosnippet>649</a>    </span>Fold,
-<a href=#650 id=650 data-nosnippet>650</a>    <span class="doccomment">/// Keyed Folds: Operators which accumulate elements together by key.
-<a href=#651 id=651 data-nosnippet>651</a>    </span>KeyedFold,
-<a href=#652 id=652 data-nosnippet>652</a>    <span class="doccomment">/// Lattice Folds: Folds based on lattice-merge.
-<a href=#653 id=653 data-nosnippet>653</a>    </span>LatticeFold,
-<a href=#654 id=654 data-nosnippet>654</a>    <span class="doccomment">/// Persistent Operators: Persistent (stateful) operators.
-<a href=#655 id=655 data-nosnippet>655</a>    </span>Persistence,
-<a href=#656 id=656 data-nosnippet>656</a>    <span class="doccomment">/// Multi-Input Operators: Operators with multiple inputs.
-<a href=#657 id=657 data-nosnippet>657</a>    </span>MultiIn,
-<a href=#658 id=658 data-nosnippet>658</a>    <span class="doccomment">/// Multi-Output Operators: Operators with multiple outputs.
-<a href=#659 id=659 data-nosnippet>659</a>    </span>MultiOut,
-<a href=#660 id=660 data-nosnippet>660</a>    <span class="doccomment">/// Sources: Operators which produce output elements (and consume no inputs).
-<a href=#661 id=661 data-nosnippet>661</a>    </span>Source,
-<a href=#662 id=662 data-nosnippet>662</a>    <span class="doccomment">/// Sinks: Operators which consume input elements (and produce no outputs).
-<a href=#663 id=663 data-nosnippet>663</a>    </span>Sink,
-<a href=#664 id=664 data-nosnippet>664</a>    <span class="doccomment">/// Control Flow Operators: Operators which affect control flow/scheduling.
-<a href=#665 id=665 data-nosnippet>665</a>    </span>Control,
-<a href=#666 id=666 data-nosnippet>666</a>    <span class="doccomment">/// Compiler Fusion Operators: Operators which are necessary to implement certain optimizations and rewrite rules.
-<a href=#667 id=667 data-nosnippet>667</a>    </span>CompilerFusionOperator,
-<a href=#668 id=668 data-nosnippet>668</a>    <span class="doccomment">/// Windowing Operators: Operators for windowing `loop` inputs.
-<a href=#669 id=669 data-nosnippet>669</a>    </span>Windowing,
-<a href=#670 id=670 data-nosnippet>670</a>    <span class="doccomment">/// Un-Windowing Operators: Operators for collecting `loop` outputs.
-<a href=#671 id=671 data-nosnippet>671</a>    </span>Unwindowing,
-<a href=#672 id=672 data-nosnippet>672</a>}
-<a href=#673 id=673 data-nosnippet>673</a><span class="kw">impl </span>OperatorCategory {
-<a href=#674 id=674 data-nosnippet>674</a>    <span class="doccomment">/// Human-readible heading name, for docs.
-<a href=#675 id=675 data-nosnippet>675</a>    </span><span class="kw">pub fn </span>name(<span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str {
-<a href=#676 id=676 data-nosnippet>676</a>        <span class="self">self</span>.get_variant_docs().split_once(<span class="string">":"</span>).unwrap().<span class="number">0
-<a href=#677 id=677 data-nosnippet>677</a>    </span>}
-<a href=#678 id=678 data-nosnippet>678</a>    <span class="doccomment">/// Human description, for docs.
-<a href=#679 id=679 data-nosnippet>679</a>    </span><span class="kw">pub fn </span>description(<span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str {
-<a href=#680 id=680 data-nosnippet>680</a>        <span class="self">self</span>.get_variant_docs().split_once(<span class="string">":"</span>).unwrap().<span class="number">1
-<a href=#681 id=681 data-nosnippet>681</a>    </span>}
-<a href=#682 id=682 data-nosnippet>682</a>}
-<a href=#683 id=683 data-nosnippet>683</a>
-<a href=#684 id=684 data-nosnippet>684</a><span class="doccomment">/// Operator type for Flo semantics.
-<a href=#685 id=685 data-nosnippet>685</a></span><span class="attr">#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug)]
-<a href=#686 id=686 data-nosnippet>686</a></span><span class="kw">pub enum </span>FloType {
-<a href=#687 id=687 data-nosnippet>687</a>    <span class="doccomment">/// A source operator, which must be at the top level.
-<a href=#688 id=688 data-nosnippet>688</a>    </span>Source,
-<a href=#689 id=689 data-nosnippet>689</a>    <span class="doccomment">/// A windowing operator, for moving data into a loop context.
-<a href=#690 id=690 data-nosnippet>690</a>    </span>Windowing,
-<a href=#691 id=691 data-nosnippet>691</a>    <span class="doccomment">/// An un-windowing operator, for moving data out of a loop context.
-<a href=#692 id=692 data-nosnippet>692</a>    </span>Unwindowing,
-<a href=#693 id=693 data-nosnippet>693</a>    <span class="doccomment">/// Moves data into the next loop iteration within a loop context.
-<a href=#694 id=694 data-nosnippet>694</a>    </span>NextIteration,
-<a href=#695 id=695 data-nosnippet>695</a>}
+<a href=#343 id=343 data-nosnippet>343</a>    scan_async_blocking::SCAN_ASYNC_BLOCKING,
+<a href=#344 id=344 data-nosnippet>344</a>    spin::SPIN,
+<a href=#345 id=345 data-nosnippet>345</a>    sort::SORT,
+<a href=#346 id=346 data-nosnippet>346</a>    sort_by_key::SORT_BY_KEY,
+<a href=#347 id=347 data-nosnippet>347</a>    source_file::SOURCE_FILE,
+<a href=#348 id=348 data-nosnippet>348</a>    source_interval::SOURCE_INTERVAL,
+<a href=#349 id=349 data-nosnippet>349</a>    source_iter::SOURCE_ITER,
+<a href=#350 id=350 data-nosnippet>350</a>    source_json::SOURCE_JSON,
+<a href=#351 id=351 data-nosnippet>351</a>    source_stdin::SOURCE_STDIN,
+<a href=#352 id=352 data-nosnippet>352</a>    source_stream::SOURCE_STREAM,
+<a href=#353 id=353 data-nosnippet>353</a>    source_stream_serde::SOURCE_STREAM_SERDE,
+<a href=#354 id=354 data-nosnippet>354</a>    state::STATE,
+<a href=#355 id=355 data-nosnippet>355</a>    state_by::STATE_BY,
+<a href=#356 id=356 data-nosnippet>356</a>    tee::TEE,
+<a href=#357 id=357 data-nosnippet>357</a>    unique::UNIQUE,
+<a href=#358 id=358 data-nosnippet>358</a>    unzip::UNZIP,
+<a href=#359 id=359 data-nosnippet>359</a>    zip::ZIP,
+<a href=#360 id=360 data-nosnippet>360</a>    zip_longest::ZIP_LONGEST,
+<a href=#361 id=361 data-nosnippet>361</a>];
+<a href=#362 id=362 data-nosnippet>362</a>
+<a href=#363 id=363 data-nosnippet>363</a><span class="doccomment">/// Get the operator lookup table, generating it if needed.
+<a href=#364 id=364 data-nosnippet>364</a></span><span class="kw">pub fn </span>operator_lookup() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'static </span>HashMap&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>OperatorConstraints&gt; {
+<a href=#365 id=365 data-nosnippet>365</a>    <span class="kw">pub static </span>OPERATOR_LOOKUP: OnceLock&lt;HashMap&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="kw-2">&amp;</span><span class="lifetime">'static </span>OperatorConstraints&gt;&gt; =
+<a href=#366 id=366 data-nosnippet>366</a>        OnceLock::new();
+<a href=#367 id=367 data-nosnippet>367</a>    OPERATOR_LOOKUP.get_or_init(|| OPERATORS.iter().map(|op| (op.name, op)).collect())
+<a href=#368 id=368 data-nosnippet>368</a>}
+<a href=#369 id=369 data-nosnippet>369</a><span class="doccomment">/// Find an operator by [`GraphNode`].
+<a href=#370 id=370 data-nosnippet>370</a></span><span class="kw">pub fn </span>find_node_op_constraints(node: <span class="kw-2">&amp;</span>GraphNode) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>OperatorConstraints&gt; {
+<a href=#371 id=371 data-nosnippet>371</a>    <span class="kw">if let </span>GraphNode::Operator(operator) = node {
+<a href=#372 id=372 data-nosnippet>372</a>        find_op_op_constraints(operator)
+<a href=#373 id=373 data-nosnippet>373</a>    } <span class="kw">else </span>{
+<a href=#374 id=374 data-nosnippet>374</a>        <span class="prelude-val">None
+<a href=#375 id=375 data-nosnippet>375</a>    </span>}
+<a href=#376 id=376 data-nosnippet>376</a>}
+<a href=#377 id=377 data-nosnippet>377</a><span class="doccomment">/// Find an operator by an AST [`Operator`].
+<a href=#378 id=378 data-nosnippet>378</a></span><span class="kw">pub fn </span>find_op_op_constraints(operator: <span class="kw-2">&amp;</span>Operator) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>OperatorConstraints&gt; {
+<a href=#379 id=379 data-nosnippet>379</a>    <span class="kw">let </span>name = <span class="kw-2">&amp;*</span>operator.name_string();
+<a href=#380 id=380 data-nosnippet>380</a>    operator_lookup().get(name).copied()
+<a href=#381 id=381 data-nosnippet>381</a>}
+<a href=#382 id=382 data-nosnippet>382</a>
+<a href=#383 id=383 data-nosnippet>383</a><span class="doccomment">/// Context arguments provided to [`OperatorConstraints::write_fn`].
+<a href=#384 id=384 data-nosnippet>384</a></span><span class="attr">#[derive(Clone)]
+<a href=#385 id=385 data-nosnippet>385</a></span><span class="kw">pub struct </span>WriteContextArgs&lt;<span class="lifetime">'a</span>&gt; {
+<a href=#386 id=386 data-nosnippet>386</a>    <span class="doccomment">/// `dfir` crate name for `use #root::something`.
+<a href=#387 id=387 data-nosnippet>387</a>    </span><span class="kw">pub </span>root: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>TokenStream,
+<a href=#388 id=388 data-nosnippet>388</a>    <span class="doccomment">/// `context` ident, the name of the provided
+<a href=#389 id=389 data-nosnippet>389</a>    /// [`dfir_rs::scheduled::Context`](https://hydro.run/rustdoc/dfir_rs/scheduled/context/struct.Context.html).
+<a href=#390 id=390 data-nosnippet>390</a>    </span><span class="kw">pub </span>context: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Ident,
+<a href=#391 id=391 data-nosnippet>391</a>    <span class="doccomment">/// `df` ident, the name of the
+<a href=#392 id=392 data-nosnippet>392</a>    /// [`dfir_rs::scheduled::graph::Dfir`](https://hydro.run/rustdoc/dfir_rs/scheduled/graph/struct.Dfir.html)
+<a href=#393 id=393 data-nosnippet>393</a>    /// instance.
+<a href=#394 id=394 data-nosnippet>394</a>    </span><span class="kw">pub </span>df_ident: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Ident,
+<a href=#395 id=395 data-nosnippet>395</a>    <span class="doccomment">/// Subgraph ID in which this operator is contained.
+<a href=#396 id=396 data-nosnippet>396</a>    </span><span class="kw">pub </span>subgraph_id: GraphSubgraphId,
+<a href=#397 id=397 data-nosnippet>397</a>    <span class="doccomment">/// Node ID identifying this operator in the flat or partitioned graph meta-datastructure.
+<a href=#398 id=398 data-nosnippet>398</a>    </span><span class="kw">pub </span>node_id: GraphNodeId,
+<a href=#399 id=399 data-nosnippet>399</a>    <span class="doccomment">/// Loop ID in which this operator is contained, or `None` if not in a loop.
+<a href=#400 id=400 data-nosnippet>400</a>    </span><span class="kw">pub </span>loop_id: <span class="prelude-ty">Option</span>&lt;GraphLoopId&gt;,
+<a href=#401 id=401 data-nosnippet>401</a>    <span class="doccomment">/// The source span of this operator.
+<a href=#402 id=402 data-nosnippet>402</a>    </span><span class="kw">pub </span>op_span: Span,
+<a href=#403 id=403 data-nosnippet>403</a>    <span class="doccomment">/// Tag for this operator appended to the generated identifier.
+<a href=#404 id=404 data-nosnippet>404</a>    </span><span class="kw">pub </span>op_tag: <span class="prelude-ty">Option</span>&lt;String&gt;,
+<a href=#405 id=405 data-nosnippet>405</a>    <span class="doccomment">/// Identifier for a function to call when doing work outside the stream.
+<a href=#406 id=406 data-nosnippet>406</a>    </span><span class="kw">pub </span>work_fn: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Ident,
+<a href=#407 id=407 data-nosnippet>407</a>    <span class="doccomment">/// Identifier for a function to wrap futures when doing work outside the stream.
+<a href=#408 id=408 data-nosnippet>408</a>    </span><span class="kw">pub </span>work_fn_async: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Ident,
+<a href=#409 id=409 data-nosnippet>409</a>
+<a href=#410 id=410 data-nosnippet>410</a>    <span class="doccomment">/// Ident the `Stream` or `Sink` should be assigned to.
+<a href=#411 id=411 data-nosnippet>411</a>    </span><span class="kw">pub </span>ident: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Ident,
+<a href=#412 id=412 data-nosnippet>412</a>    <span class="doccomment">/// If a pull `Stream` (true) or push `Sink` (false) should be used.
+<a href=#413 id=413 data-nosnippet>413</a>    </span><span class="kw">pub </span>is_pull: bool,
+<a href=#414 id=414 data-nosnippet>414</a>    <span class="doccomment">/// Input `Stream` operator idents (or ref idents; used for pull).
+<a href=#415 id=415 data-nosnippet>415</a>    </span><span class="kw">pub </span>inputs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[Ident],
+<a href=#416 id=416 data-nosnippet>416</a>    <span class="doccomment">/// Output `Sink` operator idents (or ref idents; used for push).
+<a href=#417 id=417 data-nosnippet>417</a>    </span><span class="kw">pub </span>outputs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[Ident],
+<a href=#418 id=418 data-nosnippet>418</a>    <span class="doccomment">/// Ident for the singleton output of this operator, if any.
+<a href=#419 id=419 data-nosnippet>419</a>    </span><span class="kw">pub </span>singleton_output_ident: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Ident,
+<a href=#420 id=420 data-nosnippet>420</a>
+<a href=#421 id=421 data-nosnippet>421</a>    <span class="doccomment">/// Operator name.
+<a href=#422 id=422 data-nosnippet>422</a>    </span><span class="kw">pub </span>op_name: <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str,
+<a href=#423 id=423 data-nosnippet>423</a>    <span class="doccomment">/// Operator instance arguments object.
+<a href=#424 id=424 data-nosnippet>424</a>    </span><span class="kw">pub </span>op_inst: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>OperatorInstance,
+<a href=#425 id=425 data-nosnippet>425</a>    <span class="doccomment">/// Arguments provided by the user into the operator as arguments.
+<a href=#426 id=426 data-nosnippet>426</a>    /// I.e. the `a, b, c` in `-&gt; my_op(a, b, c) -&gt; `.
+<a href=#427 id=427 data-nosnippet>427</a>    ///
+<a href=#428 id=428 data-nosnippet>428</a>    /// These arguments include singleton postprocessing codegen, with
+<a href=#429 id=429 data-nosnippet>429</a>    /// [`std::cell::RefCell::borrow_mut`] code pre-generated.
+<a href=#430 id=430 data-nosnippet>430</a>    </span><span class="kw">pub </span>arguments: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Punctuated&lt;Expr, <span class="macro">Token!</span>[,]&gt;,
+<a href=#431 id=431 data-nosnippet>431</a>    <span class="doccomment">/// Same as [`Self::arguments`] but with only `StateHandle`s, no borrowing code.
+<a href=#432 id=432 data-nosnippet>432</a>    </span><span class="kw">pub </span>arguments_handles: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Punctuated&lt;Expr, <span class="macro">Token!</span>[,]&gt;,
+<a href=#433 id=433 data-nosnippet>433</a>}
+<a href=#434 id=434 data-nosnippet>434</a><span class="kw">impl </span>WriteContextArgs&lt;<span class="lifetime">'_</span>&gt; {
+<a href=#435 id=435 data-nosnippet>435</a>    <span class="doccomment">/// Generate a (almost certainly) unique identifier with the given suffix.
+<a href=#436 id=436 data-nosnippet>436</a>    ///
+<a href=#437 id=437 data-nosnippet>437</a>    /// Includes the subgraph and node IDs in the generated identifier.
+<a href=#438 id=438 data-nosnippet>438</a>    ///
+<a href=#439 id=439 data-nosnippet>439</a>    /// This will always return the same identifier for a given `suffix`.
+<a href=#440 id=440 data-nosnippet>440</a>    </span><span class="kw">pub fn </span>make_ident(<span class="kw-2">&amp;</span><span class="self">self</span>, suffix: <span class="kw">impl </span>AsRef&lt;str&gt;) -&gt; Ident {
+<a href=#441 id=441 data-nosnippet>441</a>        Ident::new(
+<a href=#442 id=442 data-nosnippet>442</a>            <span class="kw-2">&amp;</span><span class="macro">format!</span>(
+<a href=#443 id=443 data-nosnippet>443</a>                <span class="string">"sg_{:?}_node_{:?}_{}"</span>,
+<a href=#444 id=444 data-nosnippet>444</a>                <span class="self">self</span>.subgraph_id.data(),
+<a href=#445 id=445 data-nosnippet>445</a>                <span class="self">self</span>.node_id.data(),
+<a href=#446 id=446 data-nosnippet>446</a>                suffix.as_ref(),
+<a href=#447 id=447 data-nosnippet>447</a>            ),
+<a href=#448 id=448 data-nosnippet>448</a>            <span class="self">self</span>.op_span,
+<a href=#449 id=449 data-nosnippet>449</a>        )
+<a href=#450 id=450 data-nosnippet>450</a>    }
+<a href=#451 id=451 data-nosnippet>451</a>
+<a href=#452 id=452 data-nosnippet>452</a>    <span class="doccomment">/// Returns `#root::scheduled::graph::StateLifespan::#variant` corresponding to the given
+<a href=#453 id=453 data-nosnippet>453</a>    /// peristence.
+<a href=#454 id=454 data-nosnippet>454</a>    </span><span class="kw">pub fn </span>persistence_as_state_lifespan(<span class="kw-2">&amp;</span><span class="self">self</span>, persistence: Persistence) -&gt; <span class="prelude-ty">Option</span>&lt;TokenStream&gt; {
+<a href=#455 id=455 data-nosnippet>455</a>        <span class="kw">let </span>root = <span class="self">self</span>.root;
+<a href=#456 id=456 data-nosnippet>456</a>        <span class="kw">let </span>variant =
+<a href=#457 id=457 data-nosnippet>457</a>            persistence.as_state_lifespan_variant(<span class="self">self</span>.subgraph_id, <span class="self">self</span>.loop_id, <span class="self">self</span>.op_span)<span class="question-mark">?</span>;
+<a href=#458 id=458 data-nosnippet>458</a>        <span class="prelude-val">Some</span>(<span class="macro">quote_spanned!</span> {<span class="self">self</span>.op_span=&gt;
+<a href=#459 id=459 data-nosnippet>459</a>            #root::scheduled::graph::StateLifespan::#variant
+<a href=#460 id=460 data-nosnippet>460</a>        })
+<a href=#461 id=461 data-nosnippet>461</a>    }
+<a href=#462 id=462 data-nosnippet>462</a>
+<a href=#463 id=463 data-nosnippet>463</a>    <span class="doccomment">/// Returns the given number of persistence arguments, disallowing mutable lifetimes.
+<a href=#464 id=464 data-nosnippet>464</a>    </span><span class="kw">pub fn </span>persistence_args_disallow_mutable&lt;<span class="kw">const </span>N: usize&gt;(
+<a href=#465 id=465 data-nosnippet>465</a>        <span class="kw-2">&amp;</span><span class="self">self</span>,
+<a href=#466 id=466 data-nosnippet>466</a>        diagnostics: <span class="kw-2">&amp;mut </span>Diagnostics,
+<a href=#467 id=467 data-nosnippet>467</a>    ) -&gt; [Persistence; N] {
+<a href=#468 id=468 data-nosnippet>468</a>        <span class="kw">let </span>len = <span class="self">self</span>.op_inst.generics.persistence_args.len();
+<a href=#469 id=469 data-nosnippet>469</a>        <span class="kw">if </span><span class="number">0 </span>!= len &amp;&amp; <span class="number">1 </span>!= len &amp;&amp; N != len {
+<a href=#470 id=470 data-nosnippet>470</a>            diagnostics.push(Diagnostic::spanned(
+<a href=#471 id=471 data-nosnippet>471</a>                <span class="self">self</span>.op_span,
+<a href=#472 id=472 data-nosnippet>472</a>                Level::Error,
+<a href=#473 id=473 data-nosnippet>473</a>                <span class="macro">format!</span>(
+<a href=#474 id=474 data-nosnippet>474</a>                    <span class="string">"The operator `{}` only accepts 0, 1, or {} persistence arguments"</span>,
+<a href=#475 id=475 data-nosnippet>475</a>                    <span class="self">self</span>.op_name, N
+<a href=#476 id=476 data-nosnippet>476</a>                ),
+<a href=#477 id=477 data-nosnippet>477</a>            ));
+<a href=#478 id=478 data-nosnippet>478</a>        }
+<a href=#479 id=479 data-nosnippet>479</a>
+<a href=#480 id=480 data-nosnippet>480</a>        <span class="kw">let </span>default_persistence = <span class="kw">if </span><span class="self">self</span>.loop_id.is_some() {
+<a href=#481 id=481 data-nosnippet>481</a>            Persistence::None
+<a href=#482 id=482 data-nosnippet>482</a>        } <span class="kw">else </span>{
+<a href=#483 id=483 data-nosnippet>483</a>            Persistence::Tick
+<a href=#484 id=484 data-nosnippet>484</a>        };
+<a href=#485 id=485 data-nosnippet>485</a>        <span class="kw">let </span><span class="kw-2">mut </span>out = [default_persistence; N];
+<a href=#486 id=486 data-nosnippet>486</a>        <span class="self">self</span>.op_inst
+<a href=#487 id=487 data-nosnippet>487</a>            .generics
+<a href=#488 id=488 data-nosnippet>488</a>            .persistence_args
+<a href=#489 id=489 data-nosnippet>489</a>            .iter()
+<a href=#490 id=490 data-nosnippet>490</a>            .copied()
+<a href=#491 id=491 data-nosnippet>491</a>            .cycle() <span class="comment">// Re-use the first element for both persistences.
+<a href=#492 id=492 data-nosnippet>492</a>            </span>.take(N)
+<a href=#493 id=493 data-nosnippet>493</a>            .enumerate()
+<a href=#494 id=494 data-nosnippet>494</a>            .filter(|<span class="kw-2">&amp;</span>(_i, p)| {
+<a href=#495 id=495 data-nosnippet>495</a>                <span class="kw">if </span>p == Persistence::Mutable {
+<a href=#496 id=496 data-nosnippet>496</a>                    diagnostics.push(Diagnostic::spanned(
+<a href=#497 id=497 data-nosnippet>497</a>                        <span class="self">self</span>.op_span,
+<a href=#498 id=498 data-nosnippet>498</a>                        Level::Error,
+<a href=#499 id=499 data-nosnippet>499</a>                        <span class="macro">format!</span>(
+<a href=#500 id=500 data-nosnippet>500</a>                            <span class="string">"An implementation of `'{}` does not exist"</span>,
+<a href=#501 id=501 data-nosnippet>501</a>                            p.to_str_lowercase()
+<a href=#502 id=502 data-nosnippet>502</a>                        ),
+<a href=#503 id=503 data-nosnippet>503</a>                    ));
+<a href=#504 id=504 data-nosnippet>504</a>                    <span class="bool-val">false
+<a href=#505 id=505 data-nosnippet>505</a>                </span>} <span class="kw">else </span>{
+<a href=#506 id=506 data-nosnippet>506</a>                    <span class="bool-val">true
+<a href=#507 id=507 data-nosnippet>507</a>                </span>}
+<a href=#508 id=508 data-nosnippet>508</a>            })
+<a href=#509 id=509 data-nosnippet>509</a>            .for_each(|(i, p)| {
+<a href=#510 id=510 data-nosnippet>510</a>                out[i] = p;
+<a href=#511 id=511 data-nosnippet>511</a>            });
+<a href=#512 id=512 data-nosnippet>512</a>        out
+<a href=#513 id=513 data-nosnippet>513</a>    }
+<a href=#514 id=514 data-nosnippet>514</a>}
+<a href=#515 id=515 data-nosnippet>515</a>
+<a href=#516 id=516 data-nosnippet>516</a><span class="doccomment">/// An object-safe version of [`RangeBounds`].
+<a href=#517 id=517 data-nosnippet>517</a></span><span class="kw">pub trait </span>RangeTrait&lt;T&gt;: Send + Sync + Debug
+<a href=#518 id=518 data-nosnippet>518</a><span class="kw">where
+<a href=#519 id=519 data-nosnippet>519</a>    </span>T: <span class="question-mark">?</span>Sized,
+<a href=#520 id=520 data-nosnippet>520</a>{
+<a href=#521 id=521 data-nosnippet>521</a>    <span class="doccomment">/// Start (lower) bound.
+<a href=#522 id=522 data-nosnippet>522</a>    </span><span class="kw">fn </span>start_bound(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Bound&lt;<span class="kw-2">&amp;</span>T&gt;;
+<a href=#523 id=523 data-nosnippet>523</a>    <span class="doccomment">/// End (upper) bound.
+<a href=#524 id=524 data-nosnippet>524</a>    </span><span class="kw">fn </span>end_bound(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Bound&lt;<span class="kw-2">&amp;</span>T&gt;;
+<a href=#525 id=525 data-nosnippet>525</a>    <span class="doccomment">/// Returns if `item` is contained in this range.
+<a href=#526 id=526 data-nosnippet>526</a>    </span><span class="kw">fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, item: <span class="kw-2">&amp;</span>T) -&gt; bool
+<a href=#527 id=527 data-nosnippet>527</a>    <span class="kw">where
+<a href=#528 id=528 data-nosnippet>528</a>        </span>T: PartialOrd&lt;T&gt;;
+<a href=#529 id=529 data-nosnippet>529</a>
+<a href=#530 id=530 data-nosnippet>530</a>    <span class="doccomment">/// Turn this range into a human-readable string.
+<a href=#531 id=531 data-nosnippet>531</a>    </span><span class="kw">fn </span>human_string(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String
+<a href=#532 id=532 data-nosnippet>532</a>    <span class="kw">where
+<a href=#533 id=533 data-nosnippet>533</a>        </span>T: Display + PartialEq,
+<a href=#534 id=534 data-nosnippet>534</a>    {
+<a href=#535 id=535 data-nosnippet>535</a>        <span class="kw">match </span>(<span class="self">self</span>.start_bound(), <span class="self">self</span>.end_bound()) {
+<a href=#536 id=536 data-nosnippet>536</a>            (Bound::Unbounded, Bound::Unbounded) =&gt; <span class="string">"any number of"</span>.to_owned(),
+<a href=#537 id=537 data-nosnippet>537</a>
+<a href=#538 id=538 data-nosnippet>538</a>            (Bound::Included(n), Bound::Included(x)) <span class="kw">if </span>n == x =&gt; {
+<a href=#539 id=539 data-nosnippet>539</a>                <span class="macro">format!</span>(<span class="string">"exactly {}"</span>, n)
+<a href=#540 id=540 data-nosnippet>540</a>            }
+<a href=#541 id=541 data-nosnippet>541</a>            (Bound::Included(n), Bound::Included(x)) =&gt; {
+<a href=#542 id=542 data-nosnippet>542</a>                <span class="macro">format!</span>(<span class="string">"at least {} and at most {}"</span>, n, x)
+<a href=#543 id=543 data-nosnippet>543</a>            }
+<a href=#544 id=544 data-nosnippet>544</a>            (Bound::Included(n), Bound::Excluded(x)) =&gt; {
+<a href=#545 id=545 data-nosnippet>545</a>                <span class="macro">format!</span>(<span class="string">"at least {} and less than {}"</span>, n, x)
+<a href=#546 id=546 data-nosnippet>546</a>            }
+<a href=#547 id=547 data-nosnippet>547</a>            (Bound::Included(n), Bound::Unbounded) =&gt; <span class="macro">format!</span>(<span class="string">"at least {}"</span>, n),
+<a href=#548 id=548 data-nosnippet>548</a>            (Bound::Excluded(n), Bound::Included(x)) =&gt; {
+<a href=#549 id=549 data-nosnippet>549</a>                <span class="macro">format!</span>(<span class="string">"more than {} and at most {}"</span>, n, x)
+<a href=#550 id=550 data-nosnippet>550</a>            }
+<a href=#551 id=551 data-nosnippet>551</a>            (Bound::Excluded(n), Bound::Excluded(x)) =&gt; {
+<a href=#552 id=552 data-nosnippet>552</a>                <span class="macro">format!</span>(<span class="string">"more than {} and less than {}"</span>, n, x)
+<a href=#553 id=553 data-nosnippet>553</a>            }
+<a href=#554 id=554 data-nosnippet>554</a>            (Bound::Excluded(n), Bound::Unbounded) =&gt; <span class="macro">format!</span>(<span class="string">"more than {}"</span>, n),
+<a href=#555 id=555 data-nosnippet>555</a>            (Bound::Unbounded, Bound::Included(x)) =&gt; <span class="macro">format!</span>(<span class="string">"at most {}"</span>, x),
+<a href=#556 id=556 data-nosnippet>556</a>            (Bound::Unbounded, Bound::Excluded(x)) =&gt; <span class="macro">format!</span>(<span class="string">"less than {}"</span>, x),
+<a href=#557 id=557 data-nosnippet>557</a>        }
+<a href=#558 id=558 data-nosnippet>558</a>    }
+<a href=#559 id=559 data-nosnippet>559</a>}
+<a href=#560 id=560 data-nosnippet>560</a>
+<a href=#561 id=561 data-nosnippet>561</a><span class="kw">impl</span>&lt;R, T&gt; RangeTrait&lt;T&gt; <span class="kw">for </span>R
+<a href=#562 id=562 data-nosnippet>562</a><span class="kw">where
+<a href=#563 id=563 data-nosnippet>563</a>    </span>R: RangeBounds&lt;T&gt; + Send + Sync + Debug,
+<a href=#564 id=564 data-nosnippet>564</a>{
+<a href=#565 id=565 data-nosnippet>565</a>    <span class="kw">fn </span>start_bound(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Bound&lt;<span class="kw-2">&amp;</span>T&gt; {
+<a href=#566 id=566 data-nosnippet>566</a>        <span class="self">self</span>.start_bound()
+<a href=#567 id=567 data-nosnippet>567</a>    }
+<a href=#568 id=568 data-nosnippet>568</a>
+<a href=#569 id=569 data-nosnippet>569</a>    <span class="kw">fn </span>end_bound(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Bound&lt;<span class="kw-2">&amp;</span>T&gt; {
+<a href=#570 id=570 data-nosnippet>570</a>        <span class="self">self</span>.end_bound()
+<a href=#571 id=571 data-nosnippet>571</a>    }
+<a href=#572 id=572 data-nosnippet>572</a>
+<a href=#573 id=573 data-nosnippet>573</a>    <span class="kw">fn </span>contains(<span class="kw-2">&amp;</span><span class="self">self</span>, item: <span class="kw-2">&amp;</span>T) -&gt; bool
+<a href=#574 id=574 data-nosnippet>574</a>    <span class="kw">where
+<a href=#575 id=575 data-nosnippet>575</a>        </span>T: PartialOrd&lt;T&gt;,
+<a href=#576 id=576 data-nosnippet>576</a>    {
+<a href=#577 id=577 data-nosnippet>577</a>        <span class="self">self</span>.contains(item)
+<a href=#578 id=578 data-nosnippet>578</a>    }
+<a href=#579 id=579 data-nosnippet>579</a>}
+<a href=#580 id=580 data-nosnippet>580</a>
+<a href=#581 id=581 data-nosnippet>581</a><span class="doccomment">/// Persistence lifetimes: `'none`, `'tick`, `'static`, or `'mutable`.
+<a href=#582 id=582 data-nosnippet>582</a></span><span class="attr">#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Serialize, Deserialize)]
+<a href=#583 id=583 data-nosnippet>583</a></span><span class="kw">pub enum </span>Persistence {
+<a href=#584 id=584 data-nosnippet>584</a>    <span class="doccomment">/// No persistence, for within a loop iteration.
+<a href=#585 id=585 data-nosnippet>585</a>    </span><span class="prelude-val">None</span>,
+<a href=#586 id=586 data-nosnippet>586</a>    <span class="doccomment">/// Persistence throughout a single loop execution, across iterations.
+<a href=#587 id=587 data-nosnippet>587</a>    </span>Loop,
+<a href=#588 id=588 data-nosnippet>588</a>    <span class="doccomment">/// Persistence for one tick, at the top-level only (outside any loops).
+<a href=#589 id=589 data-nosnippet>589</a>    </span>Tick,
+<a href=#590 id=590 data-nosnippet>590</a>    <span class="doccomment">/// Persistence across all ticks.
+<a href=#591 id=591 data-nosnippet>591</a>    </span>Static,
+<a href=#592 id=592 data-nosnippet>592</a>    <span class="doccomment">/// The static lifetime but allowing non-monotonic mutability.
+<a href=#593 id=593 data-nosnippet>593</a>    </span>Mutable,
+<a href=#594 id=594 data-nosnippet>594</a>}
+<a href=#595 id=595 data-nosnippet>595</a><span class="kw">impl </span>Persistence {
+<a href=#596 id=596 data-nosnippet>596</a>    <span class="doccomment">/// Returns just the variant of `#root::scheduled::graph::StateLifespan::VARIANT` for use in macros.
+<a href=#597 id=597 data-nosnippet>597</a>    </span><span class="kw">pub fn </span>as_state_lifespan_variant(
+<a href=#598 id=598 data-nosnippet>598</a>        <span class="self">self</span>,
+<a href=#599 id=599 data-nosnippet>599</a>        subgraph_id: GraphSubgraphId,
+<a href=#600 id=600 data-nosnippet>600</a>        loop_id: <span class="prelude-ty">Option</span>&lt;GraphLoopId&gt;,
+<a href=#601 id=601 data-nosnippet>601</a>        span: Span,
+<a href=#602 id=602 data-nosnippet>602</a>    ) -&gt; <span class="prelude-ty">Option</span>&lt;TokenStream&gt; {
+<a href=#603 id=603 data-nosnippet>603</a>        <span class="kw">match </span><span class="self">self </span>{
+<a href=#604 id=604 data-nosnippet>604</a>            Persistence::None =&gt; {
+<a href=#605 id=605 data-nosnippet>605</a>                <span class="kw">let </span>sg_ident = subgraph_id.as_ident(span);
+<a href=#606 id=606 data-nosnippet>606</a>                <span class="prelude-val">Some</span>(<span class="macro">quote_spanned!</span>(span=&gt; Subgraph(#sg_ident)))
+<a href=#607 id=607 data-nosnippet>607</a>            }
+<a href=#608 id=608 data-nosnippet>608</a>            Persistence::Loop =&gt; {
+<a href=#609 id=609 data-nosnippet>609</a>                <span class="kw">let </span>loop_ident = loop_id
+<a href=#610 id=610 data-nosnippet>610</a>                    .expect(<span class="string">"`Persistence::Loop` outside of a loop context."</span>)
+<a href=#611 id=611 data-nosnippet>611</a>                    .as_ident(span);
+<a href=#612 id=612 data-nosnippet>612</a>                <span class="prelude-val">Some</span>(<span class="macro">quote_spanned!</span>(span=&gt; Loop(#loop_ident)))
+<a href=#613 id=613 data-nosnippet>613</a>            }
+<a href=#614 id=614 data-nosnippet>614</a>            Persistence::Tick =&gt; <span class="prelude-val">Some</span>(<span class="macro">quote_spanned!</span>(span=&gt; Tick)),
+<a href=#615 id=615 data-nosnippet>615</a>            Persistence::Static =&gt; <span class="prelude-val">None</span>,
+<a href=#616 id=616 data-nosnippet>616</a>            Persistence::Mutable =&gt; <span class="prelude-val">None</span>,
+<a href=#617 id=617 data-nosnippet>617</a>        }
+<a href=#618 id=618 data-nosnippet>618</a>    }
+<a href=#619 id=619 data-nosnippet>619</a>
+<a href=#620 id=620 data-nosnippet>620</a>    <span class="doccomment">/// Returns a lowercase string for the persistence type.
+<a href=#621 id=621 data-nosnippet>621</a>    </span><span class="kw">pub fn </span>to_str_lowercase(<span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str {
+<a href=#622 id=622 data-nosnippet>622</a>        <span class="kw">match </span><span class="self">self </span>{
+<a href=#623 id=623 data-nosnippet>623</a>            Persistence::None =&gt; <span class="string">"none"</span>,
+<a href=#624 id=624 data-nosnippet>624</a>            Persistence::Tick =&gt; <span class="string">"tick"</span>,
+<a href=#625 id=625 data-nosnippet>625</a>            Persistence::Loop =&gt; <span class="string">"loop"</span>,
+<a href=#626 id=626 data-nosnippet>626</a>            Persistence::Static =&gt; <span class="string">"static"</span>,
+<a href=#627 id=627 data-nosnippet>627</a>            Persistence::Mutable =&gt; <span class="string">"mutable"</span>,
+<a href=#628 id=628 data-nosnippet>628</a>        }
+<a href=#629 id=629 data-nosnippet>629</a>    }
+<a href=#630 id=630 data-nosnippet>630</a>}
+<a href=#631 id=631 data-nosnippet>631</a>
+<a href=#632 id=632 data-nosnippet>632</a><span class="doccomment">/// Helper which creates a error message string literal for when the Tokio runtime is not found.
+<a href=#633 id=633 data-nosnippet>633</a></span><span class="kw">fn </span>make_missing_runtime_msg(op_name: <span class="kw-2">&amp;</span>str) -&gt; Literal {
+<a href=#634 id=634 data-nosnippet>634</a>    Literal::string(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
+<a href=#635 id=635 data-nosnippet>635</a>        <span class="string">"`{}()` must be used within a Tokio runtime. For example, use `#[dfir_rs::main]` on your main method."</span>,
+<a href=#636 id=636 data-nosnippet>636</a>        op_name
+<a href=#637 id=637 data-nosnippet>637</a>    ))
+<a href=#638 id=638 data-nosnippet>638</a>}
+<a href=#639 id=639 data-nosnippet>639</a>
+<a href=#640 id=640 data-nosnippet>640</a><span class="doccomment">/// Operator categories, for docs.
+<a href=#641 id=641 data-nosnippet>641</a></span><span class="attr">#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, DocumentedVariants)]
+<a href=#642 id=642 data-nosnippet>642</a></span><span class="kw">pub enum </span>OperatorCategory {
+<a href=#643 id=643 data-nosnippet>643</a>    <span class="doccomment">/// Maps: Simple one-in-one-out operators.
+<a href=#644 id=644 data-nosnippet>644</a>    </span>Map,
+<a href=#645 id=645 data-nosnippet>645</a>    <span class="doccomment">/// Filters: One-in zero-or-one-out operators.
+<a href=#646 id=646 data-nosnippet>646</a>    </span>Filter,
+<a href=#647 id=647 data-nosnippet>647</a>    <span class="doccomment">/// Flattens: One-in multiple-out operators.
+<a href=#648 id=648 data-nosnippet>648</a>    </span>Flatten,
+<a href=#649 id=649 data-nosnippet>649</a>    <span class="doccomment">/// Folds: Operators which accumulate elements together.
+<a href=#650 id=650 data-nosnippet>650</a>    </span>Fold,
+<a href=#651 id=651 data-nosnippet>651</a>    <span class="doccomment">/// Keyed Folds: Operators which accumulate elements together by key.
+<a href=#652 id=652 data-nosnippet>652</a>    </span>KeyedFold,
+<a href=#653 id=653 data-nosnippet>653</a>    <span class="doccomment">/// Lattice Folds: Folds based on lattice-merge.
+<a href=#654 id=654 data-nosnippet>654</a>    </span>LatticeFold,
+<a href=#655 id=655 data-nosnippet>655</a>    <span class="doccomment">/// Persistent Operators: Persistent (stateful) operators.
+<a href=#656 id=656 data-nosnippet>656</a>    </span>Persistence,
+<a href=#657 id=657 data-nosnippet>657</a>    <span class="doccomment">/// Multi-Input Operators: Operators with multiple inputs.
+<a href=#658 id=658 data-nosnippet>658</a>    </span>MultiIn,
+<a href=#659 id=659 data-nosnippet>659</a>    <span class="doccomment">/// Multi-Output Operators: Operators with multiple outputs.
+<a href=#660 id=660 data-nosnippet>660</a>    </span>MultiOut,
+<a href=#661 id=661 data-nosnippet>661</a>    <span class="doccomment">/// Sources: Operators which produce output elements (and consume no inputs).
+<a href=#662 id=662 data-nosnippet>662</a>    </span>Source,
+<a href=#663 id=663 data-nosnippet>663</a>    <span class="doccomment">/// Sinks: Operators which consume input elements (and produce no outputs).
+<a href=#664 id=664 data-nosnippet>664</a>    </span>Sink,
+<a href=#665 id=665 data-nosnippet>665</a>    <span class="doccomment">/// Control Flow Operators: Operators which affect control flow/scheduling.
+<a href=#666 id=666 data-nosnippet>666</a>    </span>Control,
+<a href=#667 id=667 data-nosnippet>667</a>    <span class="doccomment">/// Compiler Fusion Operators: Operators which are necessary to implement certain optimizations and rewrite rules.
+<a href=#668 id=668 data-nosnippet>668</a>    </span>CompilerFusionOperator,
+<a href=#669 id=669 data-nosnippet>669</a>    <span class="doccomment">/// Windowing Operators: Operators for windowing `loop` inputs.
+<a href=#670 id=670 data-nosnippet>670</a>    </span>Windowing,
+<a href=#671 id=671 data-nosnippet>671</a>    <span class="doccomment">/// Un-Windowing Operators: Operators for collecting `loop` outputs.
+<a href=#672 id=672 data-nosnippet>672</a>    </span>Unwindowing,
+<a href=#673 id=673 data-nosnippet>673</a>}
+<a href=#674 id=674 data-nosnippet>674</a><span class="kw">impl </span>OperatorCategory {
+<a href=#675 id=675 data-nosnippet>675</a>    <span class="doccomment">/// Human-readible heading name, for docs.
+<a href=#676 id=676 data-nosnippet>676</a>    </span><span class="kw">pub fn </span>name(<span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str {
+<a href=#677 id=677 data-nosnippet>677</a>        <span class="self">self</span>.get_variant_docs().split_once(<span class="string">":"</span>).unwrap().<span class="number">0
+<a href=#678 id=678 data-nosnippet>678</a>    </span>}
+<a href=#679 id=679 data-nosnippet>679</a>    <span class="doccomment">/// Human description, for docs.
+<a href=#680 id=680 data-nosnippet>680</a>    </span><span class="kw">pub fn </span>description(<span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'static </span>str {
+<a href=#681 id=681 data-nosnippet>681</a>        <span class="self">self</span>.get_variant_docs().split_once(<span class="string">":"</span>).unwrap().<span class="number">1
+<a href=#682 id=682 data-nosnippet>682</a>    </span>}
+<a href=#683 id=683 data-nosnippet>683</a>}
+<a href=#684 id=684 data-nosnippet>684</a>
+<a href=#685 id=685 data-nosnippet>685</a><span class="doccomment">/// Operator type for Flo semantics.
+<a href=#686 id=686 data-nosnippet>686</a></span><span class="attr">#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug)]
+<a href=#687 id=687 data-nosnippet>687</a></span><span class="kw">pub enum </span>FloType {
+<a href=#688 id=688 data-nosnippet>688</a>    <span class="doccomment">/// A source operator, which must be at the top level.
+<a href=#689 id=689 data-nosnippet>689</a>    </span>Source,
+<a href=#690 id=690 data-nosnippet>690</a>    <span class="doccomment">/// A windowing operator, for moving data into a loop context.
+<a href=#691 id=691 data-nosnippet>691</a>    </span>Windowing,
+<a href=#692 id=692 data-nosnippet>692</a>    <span class="doccomment">/// An un-windowing operator, for moving data out of a loop context.
+<a href=#693 id=693 data-nosnippet>693</a>    </span>Unwindowing,
+<a href=#694 id=694 data-nosnippet>694</a>    <span class="doccomment">/// Moves data into the next loop iteration within a loop context.
+<a href=#695 id=695 data-nosnippet>695</a>    </span>NextIteration,
+<a href=#696 id=696 data-nosnippet>696</a>}
 </code></pre></div></section></main></body></html>
