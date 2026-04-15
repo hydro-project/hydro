@@ -9,6 +9,7 @@ use std::future::Future;
 use std::marker::PhantomData;
 use std::ops::DerefMut;
 use std::pin::Pin;
+use std::rc::Rc;
 use std::sync::atomic::Ordering;
 use std::task::Wake;
 
@@ -21,6 +22,7 @@ use tokio::task::JoinHandle;
 use web_time::SystemTime;
 
 use super::graph::StateLifespan;
+use super::metrics::{DfirMetrics, DfirMetricsIntervals, HasMetrics};
 use super::state::StateHandle;
 use super::{LoopId, LoopTag, StateId, StateTag, SubgraphId, SubgraphTag};
 use crate::scheduled::ticks::TickInstant;
@@ -630,6 +632,8 @@ pub struct InlineDfir<Tick> {
     #[cfg(feature = "meta")]
     /// See [`Self::diagnostics()`].
     diagnostics: Option<Vec<Diagnostic<SerdeSpan>>>,
+
+    metrics: Rc<DfirMetrics>,
 }
 
 /// Trait for tick closures — abstracts over both concrete async closures
@@ -674,12 +678,13 @@ impl TickClosure for TickClosureErased {
 pub type InlineDfirErased = InlineDfir<TickClosureErased>;
 
 impl<Tick: TickClosure> InlineDfir<Tick> {
-    /// Create a new `InlineDfir` from a tick closure, shared wake state, and
-    /// meta graph / diagnostics JSON strings.
+    /// Create a new `InlineDfir` from a tick closure, shared wake state,
+    /// meta graph / diagnostics JSON strings, and metrics.
     #[doc(hidden)]
     pub fn new(
         tick_closure: Tick,
         wake_state: std::sync::Arc<InlineWakeState>,
+        metrics: Rc<DfirMetrics>,
         meta_graph_json: Option<&str>,
         diagnostics_json: Option<&str>,
     ) -> Self {
@@ -705,6 +710,7 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
             diagnostics: diagnostics_json.map(|json| {
                 serde_json::from_str(json).expect("Failed to deserialize diagnostics.")
             }),
+            metrics,
         }
     }
 
@@ -722,11 +728,36 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
         self.diagnostics.as_deref()
     }
 
+    /// Returns a reference-counted handle to the continually-updated runtime metrics.
+    pub fn metrics(&self) -> Rc<DfirMetrics> {
+        Rc::clone(&self.metrics)
+    }
+
+    /// Returns a [`DfirMetricsIntervals`] handle where each call to
+    /// [`DfirMetricsIntervals::take_interval`] ends the current interval and returns its metrics.
+    pub fn metrics_intervals(&self) -> DfirMetricsIntervals {
+        DfirMetricsIntervals {
+            curr: self.metrics(),
+            prev: None,
+        }
+    }
+}
+
+impl<Tick: TickClosure> HasMetrics for InlineDfir<Tick> {
+    fn metrics(&self) -> Rc<DfirMetrics> {
+        self.metrics()
+    }
+
+    fn metrics_intervals(&self) -> DfirMetricsIntervals {
+        self.metrics_intervals()
+    }
+}
+
+impl<Tick: TickClosure> InlineDfir<Tick> {
     /// Run a single tick. Returns `true` if any subgraph received input data.
     ///
     /// Checks both handoff buffers (via `work_done` flag set in generated recv port code)
-    /// and external events (via `can_start_tick` set by wakers/schedule_subgraph),
-    /// Run a single tick. Returns `true` if any subgraph received input data.
+    /// and external events (via `can_start_tick` set by wakers/schedule_subgraph).
     pub async fn run_tick(&mut self) -> bool {
         let had_external = self
             .wake_state
@@ -806,6 +837,7 @@ impl<Tick: AsyncFnMut() -> bool + 'static> InlineDfir<Tick> {
             meta_graph: self.meta_graph,
             #[cfg(feature = "meta")]
             diagnostics: self.diagnostics,
+            metrics: self.metrics,
         }
     }
 }

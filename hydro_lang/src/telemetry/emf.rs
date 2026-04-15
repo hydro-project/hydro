@@ -12,9 +12,9 @@ use std::time::SystemTime;
 #[cfg(feature = "runtime_support")]
 use dfir_rs::Never;
 #[cfg(feature = "runtime_support")]
-use dfir_rs::scheduled::graph::Dfir;
-#[cfg(feature = "runtime_support")]
 use dfir_rs::scheduled::metrics::DfirMetrics;
+#[cfg(feature = "runtime_support")]
+use dfir_rs::scheduled::metrics::HasMetrics;
 #[cfg(feature = "runtime_support")]
 use futures::FutureExt;
 use quote::quote;
@@ -85,7 +85,7 @@ impl Sidecar for RecordMetricsSidecar {
 #[cfg(feature = "runtime_support")]
 #[doc(hidden)]
 pub fn record_metrics_sidecar(
-    dfir: &Dfir<'_>,
+    dfir: &impl HasMetrics,
     namespace: &'static str,
     location_name: &'static str,
     file_path: &'static str,

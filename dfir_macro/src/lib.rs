@@ -128,6 +128,7 @@ fn dfir_syntax_inline_internal(
                 #root::scheduled::context::InlineDfir::new(
                     async move || { false },
                     ::std::sync::Arc::new(#root::scheduled::context::InlineWakeState::default()),
+                    ::std::rc::Rc::new(#root::scheduled::metrics::DfirMetrics::default()),
                     None,
                     None,
                 )

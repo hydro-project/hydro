@@ -20,7 +20,7 @@ use web_time::SystemTime;
 use super::context::Context;
 use super::handoff::handoff_list::PortList;
 use super::handoff::{Handoff, HandoffMeta, TeeingHandoff};
-use super::metrics::{DfirMetrics, DfirMetricsIntervals, InstrumentSubgraph};
+use super::metrics::{DfirMetrics, DfirMetricsIntervals, HasMetrics, InstrumentSubgraph};
 use super::port::{RECV, RecvCtx, RecvPort, SEND, SendCtx, SendPort};
 use super::reactor::Reactor;
 use super::state::StateHandle;
@@ -1082,6 +1082,16 @@ impl<'a> Dfir<'a> {
             curr: self.metrics(),
             prev: None,
         }
+    }
+}
+
+impl HasMetrics for Dfir<'_> {
+    fn metrics(&self) -> Rc<DfirMetrics> {
+        self.metrics()
+    }
+
+    fn metrics_intervals(&self) -> DfirMetricsIntervals {
+        self.metrics_intervals()
     }
 }
 

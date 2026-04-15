@@ -2,7 +2,7 @@
 
 extern crate proc_macro;
 
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
 use std::fmt::Debug;
 use std::iter::FusedIterator;
 
@@ -1392,8 +1392,8 @@ impl DfirGraph {
         let df = Ident::new(GRAPH, Span::call_site());
         let context = Ident::new(CONTEXT, Span::call_site());
 
-        // 1. Generate local Vec buffers for each handoff node.
-        let buffer_code: Vec<TokenStream> = self
+        // 1. Generate local Vec buffers for each handoff node, and assign metrics indices.
+        let handoff_nodes: Vec<_> = self
             .nodes
             .iter()
             .filter_map(|(node_id, node)| match node {
@@ -1401,7 +1401,18 @@ impl DfirGraph {
                 &GraphNode::Handoff { src_span, dst_span } => Some((node_id, (src_span, dst_span))),
                 GraphNode::ModuleBoundary { .. } => panic!(),
             })
-            .map(|(node_id, (src_span, dst_span))| {
+            .collect();
+
+        // Map from graph node ID to metrics handoff index.
+        let handoff_metrics_idx: HashMap<GraphNodeId, usize> = handoff_nodes
+            .iter()
+            .enumerate()
+            .map(|(idx, &(node_id, _))| (node_id, idx))
+            .collect();
+
+        let buffer_code: Vec<TokenStream> = handoff_nodes
+            .iter()
+            .map(|&(node_id, (src_span, dst_span))| {
                 let span = src_span.join(dst_span).unwrap_or(src_span);
                 let buf_ident = Ident::new(&format!("hoff_{:?}_buf", node_id.data()), span);
                 quote_spanned! {span=>
@@ -1427,7 +1438,8 @@ impl DfirGraph {
         let mut op_prologue_after_code = Vec::new();
         let mut subgraph_blocks = Vec::new();
         {
-            for &(subgraph_id, subgraph_nodes) in all_subgraphs.iter() {
+            for (sg_metrics_idx, &(subgraph_id, subgraph_nodes)) in all_subgraphs.iter().enumerate()
+            {
                 let (recv_hoffs, send_hoffs) = &subgraph_handoffs[subgraph_id];
 
                 // Generate buffer ident helpers for this subgraph's handoffs.
@@ -1457,13 +1469,24 @@ impl DfirGraph {
                     .collect();
 
                 // Recv port code: drain from buffer into iterator, tracking if non-empty.
+                // Also update handoff metrics (measured at recv, not send — see graph.rs).
                 let recv_port_code: Vec<TokenStream> = recv_port_idents
                     .iter()
                     .zip(recv_buf_idents.iter())
-                    .map(|(port_ident, buf_ident)| {
+                    .zip(recv_hoffs.iter())
+                    .map(|((port_ident, buf_ident), &hoff_id)| {
+                        let hoff_idx = handoff_metrics_idx[&hoff_id];
                         quote_spanned! {port_ident.span()=>
-                            if !#buf_ident.is_empty() {
-                                __dfir_work_done = true;
+                            {
+                                let __hoff_len = #buf_ident.len();
+                                if __hoff_len > 0 {
+                                    __dfir_work_done = true;
+                                }
+                                let __hoff_metrics = &__dfir_metrics.handoffs[
+                                    #root::util::slot_vec::Key::<#root::scheduled::HandoffTag>::from_raw(#hoff_idx)
+                                ];
+                                __hoff_metrics.total_items_count.update(|__x| __x + __hoff_len);
+                                __hoff_metrics.curr_items_count.set(__hoff_len);
                             }
                             let #port_ident = #root::dfir_pipes::pull::iter(#buf_ident.drain(..));
                         }
@@ -1858,6 +1881,21 @@ impl DfirGraph {
                 // Note: this ident is for the subgraph future, not a runtime SubgraphId binding
                 // (unlike the scheduled path's `sg_ident`).
                 let sg_fut_ident = subgraph_id.as_ident(Span::call_site());
+
+                // Generate send-side curr_items_count updates (after subgraph runs).
+                let send_metrics_code: Vec<TokenStream> = send_hoffs
+                    .iter()
+                    .zip(send_buf_idents.iter())
+                    .map(|(&hoff_id, buf_ident)| {
+                        let hoff_idx = handoff_metrics_idx[&hoff_id];
+                        quote! {
+                            __dfir_metrics.handoffs[
+                                #root::util::slot_vec::Key::<#root::scheduled::HandoffTag>::from_raw(#hoff_idx)
+                            ].curr_items_count.set(#buf_ident.len());
+                        }
+                    })
+                    .collect();
+
                 subgraph_blocks.push(quote! {
                     let #sg_fut_ident = async {
                         let #context = &#df;;
@@ -1866,7 +1904,14 @@ impl DfirGraph {
                         #( #subgraph_op_iter_code )*
                         #( #subgraph_op_iter_after_code )*
                     };
-                    #sg_fut_ident.await;
+                    let __sg_metrics = &__dfir_metrics.subgraphs[
+                        #root::util::slot_vec::Key::<#root::scheduled::SubgraphTag>::from_raw(#sg_metrics_idx)
+                    ];
+                    #root::scheduled::metrics::InstrumentSubgraph::new(
+                        #sg_fut_ident, __sg_metrics
+                    ).await;
+                    __sg_metrics.total_run_count.update(|__x| __x + 1);
+                    #( #send_metrics_code )*
                 });
 
                 // Collect per-subgraph prologues into the main prologue lists.
@@ -1886,6 +1931,29 @@ impl DfirGraph {
         let diagnostics_json = serde_json::to_string(&*serde_diagnostics).unwrap();
         let diagnostics_json = Literal::string(&diagnostics_json);
 
+        // Generate metrics initialization: one entry per handoff and per subgraph.
+        let num_handoffs = handoff_nodes.len();
+        let num_subgraphs = all_subgraphs.len();
+        let metrics_init_code = {
+            let handoff_inits = (0..num_handoffs).map(|i| {
+                quote! {
+                    __m.handoffs.insert(
+                        #root::util::slot_vec::Key::from_raw(#i),
+                        ::std::default::Default::default(),
+                    );
+                }
+            });
+            let subgraph_inits = (0..num_subgraphs).map(|i| {
+                quote! {
+                    __m.subgraphs.insert(
+                        #root::util::slot_vec::Key::from_raw(#i),
+                        ::std::default::Default::default(),
+                    );
+                }
+            });
+            handoff_inits.chain(subgraph_inits).collect::<Vec<_>>()
+        };
+
         // Prologues and buffer declarations persist across ticks (outside the closure).
         // Subgraph blocks run each tick (inside the closure).
         Ok(quote! {
@@ -1898,9 +1966,15 @@ impl DfirGraph {
                     #root::scheduled::context::InlineWakeState::default()
                 );
 
+                let __dfir_metrics = {
+                    let mut __m = #root::scheduled::metrics::DfirMetrics::default();
+                    #( #metrics_init_code )*
+                    ::std::rc::Rc::new(__m)
+                };
+
                 #[allow(unused_mut)]
                 let mut #df = #root::scheduled::context::InlineContext::new(
-                    ::std::clone::Clone::clone(&__dfir_wake_state)
+                    ::std::clone::Clone::clone(&__dfir_wake_state),
                 );
 
                 #( #buffer_code )*
@@ -1912,6 +1986,7 @@ impl DfirGraph {
                 // start false (from take()) and are set true by recv port code
                 // if any handoff buffer has data.
                 let mut __dfir_work_done = true;
+                let __dfir_metrics_outer = ::std::clone::Clone::clone(&__dfir_metrics);
                 #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref)]
                 let __dfir_inline_tick = async move || {
                     #( #subgraph_blocks )*
@@ -1922,6 +1997,7 @@ impl DfirGraph {
                 #root::scheduled::context::InlineDfir::new(
                     __dfir_inline_tick,
                     __dfir_wake_state,
+                    __dfir_metrics_outer,
                     Some(#meta_graph_json),
                     Some(#diagnostics_json),
                 )
