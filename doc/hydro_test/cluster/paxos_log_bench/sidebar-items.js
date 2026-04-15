@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["paxos_log_bench"],"struct":["Aggregator","Client"]};
