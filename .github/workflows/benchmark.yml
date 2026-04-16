@@ -119,7 +119,7 @@ jobs:
           )
           html = html.replace(
               "            const color = toolColors[dataset.length > 0 ? dataset[0].tool : '_'];",
-              "            const color = ((dataset.length > 0 && /(?:^|\\s)(?:ops\\/?s|req\\/?s|requests\\/?s|rps|qps|tps)(?:\\s|$)/i.test(dataset[0].bench.unit || '')) ? '#3572a5' : toolColors[dataset.length > 0 ? dataset[0].tool : '_']);",
+              "            const tool = dataset.length > 0 ? dataset[0].tool : '_';\n            const unit = dataset.length > 0 ? (dataset[0].bench.unit || '') : '';\n            const isHigherBetter = /(?:^|\\s)(?:ops\\/?s|req\\/?s|requests\\/?s|rps|qps|tps)(?:\\s|$)/i.test(unit);\n            const color = isHigherBetter ? '#3572a5' : toolColors[tool];",
               1,
           )
           
