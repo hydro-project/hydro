@@ -1,10 +1,9 @@
-use dfir_rs::dfir_syntax;
-use dfir_rs::util::collect_ready;
+use dfir_rs::dfir_syntax_inline;
+use dfir_rs::util::collect_ready_async;
 use dfir_rs::util::demux_enum::DemuxEnum;
-use multiplatform_test::multiplatform_test;
 
-#[multiplatform_test]
-pub fn test_demux_enum_basic() {
+#[dfir_rs::test]
+pub async fn test_demux_enum_basic() {
     #[derive(DemuxEnum)]
     enum Shape {
         Square(f64),
@@ -12,7 +11,7 @@ pub fn test_demux_enum_basic() {
         Circle { r: f64 },
     }
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         my_demux = source_iter([
             Shape::Square(9.0),
             Shape::Rectangle { w: 10.0, h: 8.0 },
@@ -23,11 +22,11 @@ pub fn test_demux_enum_basic() {
         my_demux[Circle] -> for_each(drop);
         my_demux[Rectangle] -> for_each(drop);
     };
-    df.run_available_sync();
+    df.run_available().await;
 }
 
-#[multiplatform_test]
-pub fn test_demux_enum() {
+#[dfir_rs::test]
+pub async fn test_demux_enum() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel();
 
     #[derive(DemuxEnum)]
@@ -37,7 +36,7 @@ pub fn test_demux_enum() {
         Circle { r: f64 },
     }
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         my_demux = source_iter([
             Shape::Square(9.0),
             Shape::Rectangle { w: 10.0, h: 8.0 },
@@ -52,14 +51,14 @@ pub fn test_demux_enum() {
             -> map(|area| format!("{:.2}", area))
             -> for_each(|area_str| out_send.send(area_str).unwrap());
     };
-    df.run_available_sync();
+    df.run_available().await;
 
-    let areas = collect_ready::<Vec<_>, _>(out_recv);
+    let areas = collect_ready_async::<Vec<_>, _>(out_recv).await;
     assert_eq!(&["81.00", "78.54", "80.00"], &*areas);
 }
 
-#[multiplatform_test]
-pub fn test_demux_enum_generic() {
+#[dfir_rs::test]
+pub async fn test_demux_enum_generic() {
     #[derive(DemuxEnum)]
     enum Shape<N> {
         Square(N),
@@ -67,13 +66,13 @@ pub fn test_demux_enum_generic() {
         Circle { r: N },
     }
 
-    fn test<N>(s: N, w: N, h: N, r: N, expected: &[&str])
+    async fn test<N>(s: N, w: N, h: N, r: N, expected: &[&str])
     where
         N: 'static + Into<f64>,
     {
         let (out_send, out_recv) = dfir_rs::util::unbounded_channel();
 
-        let mut df = dfir_syntax! {
+        let mut df = dfir_syntax_inline! {
             my_demux = source_iter([
                 Shape::Square(s),
                 Shape::Rectangle { w, h },
@@ -88,28 +87,28 @@ pub fn test_demux_enum_generic() {
                 -> map(|area| format!("{:.2}", area))
                 -> for_each(|area_str| out_send.send(area_str).unwrap());
         };
-        df.run_available_sync();
+        df.run_available().await;
 
-        let areas = collect_ready::<Vec<_>, _>(out_recv);
+        let areas = collect_ready_async::<Vec<_>, _>(out_recv).await;
         assert_eq!(expected, &*areas);
     }
-    test::<f32>(9., 10., 8., 5., &["81.00", "78.54", "80.00"]);
-    test::<u32>(9, 10, 8, 5, &["81.00", "78.54", "80.00"]);
+    test::<f32>(9., 10., 8., 5., &["81.00", "78.54", "80.00"]).await;
+    test::<u32>(9, 10, 8, 5, &["81.00", "78.54", "80.00"]).await;
 }
 
-#[multiplatform_test]
-fn test_zero_variants() {
+#[dfir_rs::test]
+async fn test_zero_variants() {
     #[derive(DemuxEnum)]
     enum Never {}
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter(std::iter::empty::<Never>()) -> demux_enum::<Never>();
     };
-    df.run_available_sync();
+    df.run_available().await;
 }
 
-#[multiplatform_test]
-fn test_one_variant() {
+#[dfir_rs::test]
+async fn test_one_variant() {
     #[derive(DemuxEnum)]
     enum Request<T> {
         OnlyMessage(T),
@@ -117,11 +116,11 @@ fn test_one_variant() {
 
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         input = source_iter([Request::OnlyMessage("hi")]) -> demux_enum::<Request<&'static str>>();
         input[OnlyMessage] -> for_each(|(msg,)| out_send.send(msg).unwrap());
     };
-    df.run_available_sync();
+    df.run_available().await;
 
-    assert_eq!(&["hi"], &*collect_ready::<Vec<_>, _>(out_recv));
+    assert_eq!(&["hi"], &*collect_ready_async::<Vec<_>, _>(out_recv).await);
 }

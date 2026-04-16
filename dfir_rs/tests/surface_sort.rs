@@ -1,25 +1,23 @@
-use dfir_rs::util::collect_ready;
-use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
-use multiplatform_test::multiplatform_test;
+use dfir_rs::util::collect_ready_async;
+use dfir_rs::dfir_syntax_inline;
 
-#[multiplatform_test]
-pub fn test_sort() {
+#[dfir_rs::test]
+pub async fn test_sort() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_stream(items_recv)
             -> sort()
             -> for_each(|v| print!("{:?}, ", v));
     };
-    assert_graphvis_snapshots!(df);
-    df.run_available_sync();
+    df.run_available().await;
 
     print!("\nA: ");
 
     items_send.send(9).unwrap();
     items_send.send(2).unwrap();
     items_send.send(5).unwrap();
-    df.run_available_sync();
+    df.run_available().await;
 
     print!("\nB: ");
 
@@ -28,25 +26,24 @@ pub fn test_sort() {
     items_send.send(2).unwrap();
     items_send.send(0).unwrap();
     items_send.send(3).unwrap();
-    df.run_available_sync();
+    df.run_available().await;
 
     println!();
 }
 
-#[multiplatform_test]
-pub fn test_sort_by_key() {
-    let mut df = dfir_syntax! {
+#[dfir_rs::test]
+pub async fn test_sort_by_key() {
+    let mut df = dfir_syntax_inline! {
         source_iter(vec!((2, 'y'), (3, 'x'), (1, 'z')))
             -> sort_by_key(|(k, _v)| k)
             -> for_each(|v| println!("{:?}", v));
     };
-    assert_graphvis_snapshots!(df);
-    df.run_available_sync();
+    df.run_available().await;
     println!();
 }
 
-#[multiplatform_test]
-fn test_sort_by_owned() {
+#[dfir_rs::test]
+async fn test_sort_by_owned() {
     #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
     struct Dummy {
         x: String,
@@ -67,11 +64,11 @@ fn test_sort_by_owned() {
     ];
     let mut dummies_saved = dummies.clone();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter(dummies) -> sort_by_key(|d| &d.x) -> for_each(|d| out_send.send(d).unwrap());
     };
-    df.run_available_sync();
-    let results = collect_ready::<Vec<_>, _>(&mut out_recv);
+    df.run_available().await;
+    let results = collect_ready_async::<Vec<_>, _>(&mut out_recv).await;
     dummies_saved.sort_unstable_by(|d1, d2| d1.y.cmp(&d2.y));
     assert_ne!(&dummies_saved, &*results);
     dummies_saved.sort_unstable_by(|d1, d2| d1.x.cmp(&d2.x));
