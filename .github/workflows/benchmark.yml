@@ -105,26 +105,16 @@ jobs:
         shell: bash
         run: |
           node --input-type=module -e "$(curl -sSL https://raw.githubusercontent.com/benchmark-action/github-action-benchmark/c38cce98215cf75e178ecd5a0c1a1ab215e93006/src/default_index_html.ts) console.log(DEFAULT_INDEX_HTML)" > "$WWW_DIR/bench/index.html"
-          python - "$WWW_DIR/bench/index.html" <<'PY'
-          import sys
-          from pathlib import Path
-          
-          path = Path(sys.argv[1])
-          html = path.read_text()
-          
-          html = html.replace(
-              "          const data = window.BENCHMARK_DATA;\n",
-              "          const data = window.BENCHMARK_DATA;\n                    data.entries.Benchmark = data.entries.Benchmark.slice(-365)\n",
-              1,
-          )
-          html = html.replace(
-              "            const color = toolColors[dataset.length > 0 ? dataset[0].tool : '_'];",
-              "            const tool = dataset.length > 0 ? dataset[0].tool : '_';\n            const unit = dataset.length > 0 ? (dataset[0].bench.unit || '') : '';\n            const isHigherBetter = /(?:^|\\s)(?:ops\\/?s|req\\/?s|requests\\/?s|rps|qps|tps)(?:\\s|$)/i.test(unit);\n            const color = isHigherBetter ? '#3572a5' : toolColors[tool];",
-              1,
-          )
-          
-          path.write_text(html)
-          PY
+          cat > /tmp/bench-patch.sed << 'SEDEOF'
+          /const data = window\.BENCHMARK_DATA;/a\
+                              data.entries.Benchmark = data.entries.Benchmark.slice(-365)
+          /const color = toolColors/c\
+                      const tool = dataset.length > 0 ? dataset[0].tool : '_';\
+                      const unit = dataset.length > 0 ? (dataset[0].bench.unit || '') : '';\
+                      const isHigherBetter = /(?:^|\\s)(?:ops\\/?s|req\\/?s|requests\\/?s|rps|qps|tps)(?:\\s|$)/i.test(unit);\
+                      const color = isHigherBetter ? '#3572a5' : toolColors[tool];
+          SEDEOF
+          sed -i -f /tmp/bench-patch.sed "$WWW_DIR/bench/index.html"
 
       - name: Upload benchmark artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
