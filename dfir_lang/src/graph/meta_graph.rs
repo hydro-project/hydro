@@ -1453,10 +1453,15 @@ impl DfirGraph {
                 let pred_stratum = self.subgraph_stratum(pred_sg).unwrap();
                 let succ_stratum = self.subgraph_stratum(succ_sg).unwrap();
                 if succ_stratum < pred_stratum {
-                    // `defer_tick_lazy()` back-edge.
-                    continue;
+                    // Tick/back-edge handoff: preserve the required same-tick ordering by
+                    // forcing the higher-stratum producer subgraph to run after the
+                    // lower-stratum consumer subgraph. Dropping this edge entirely leaves the
+                    // order unconstrained and can collapse a tick delay to zero when inline
+                    // handoff buffers persist across ticks.
+                    sg_preds.entry(pred_sg).unwrap().or_default().push(succ_sg);
+                } else {
+                    sg_preds.entry(succ_sg).unwrap().or_default().push(pred_sg);
                 }
-                sg_preds.entry(succ_sg).unwrap().or_default().push(pred_sg);
             }
 
             let topo_sort = super::graph_algorithms::topo_sort(self.subgraph_ids(), |sg_id| {
