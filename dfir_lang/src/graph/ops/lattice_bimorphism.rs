@@ -85,7 +85,7 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
                     func: Func,
                     lhs_state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<LhsState>>,
                     rhs_state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<RhsState>>,
-                    context: &'a #root::scheduled::context::Context,
+                    context: &'a #root::scheduled::context::InlineContext,
                 ) -> impl #root::dfir_pipes::pull::Pull<
                     Item = Output,
                     Meta = (),

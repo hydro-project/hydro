@@ -7,7 +7,6 @@ use std::error::Error;
 use std::net::{Ipv4Addr, SocketAddr};
 
 use bytes::Bytes;
-use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::util::{collect_ready_async, tcp_lines};
 use dfir_rs::{assert_graphvis_snapshots, dfir_syntax, rassert, rassert_eq};
 use multiplatform_test::multiplatform_test;
@@ -33,7 +32,7 @@ pub async fn test_echo_udp() -> Result<(), Box<dyn Error>> {
 
         let (seen_send, seen_recv) = dfir_rs::util::unbounded_channel();
 
-        let mut df: Dfir = dfir_syntax! {
+        let mut df = dfir_syntax! {
             recv = source_stream(udp_recv)
                 -> map(|r| r.unwrap())
                 -> tee();
@@ -145,7 +144,7 @@ pub async fn test_echo_tcp() -> Result<(), Box<dyn Error>> {
 
         let (seen_send, seen_recv) = dfir_rs::util::unbounded_channel();
 
-        let mut df: Dfir = dfir_syntax! {
+        let mut df = dfir_syntax! {
             rev = source_stream(server_recv)
                 -> map(|x| x.unwrap())
                 -> tee();
@@ -213,7 +212,7 @@ pub async fn test_echo() {
     // LinesCodec separates each line from `lines_recv` with `\n`.
     let stdout_lines = FramedWrite::new(tokio::io::stdout(), LinesCodec::new());
 
-    let mut df: Dfir = dfir_syntax! {
+    let mut df = dfir_syntax! {
         source_stream(lines_recv) -> dest_sink(stdout_lines);
     };
     assert_graphvis_snapshots!(df);
@@ -349,13 +348,13 @@ async fn asynctest_source_stream() {
         let mut flow = dfir_syntax! {
             source_stream(a_recv) -> for_each(|x| { b_send.send(x).unwrap(); });
         };
-        let None = flow.run().await;
+        flow.run().await;
     });
     let task_b = tokio::task::spawn_local(async move {
         let mut flow = dfir_syntax! {
             source_stream(b_recv) -> for_each(|x| { c_send.send(x).unwrap(); });
         };
-        let None = flow.run().await;
+        flow.run().await;
     });
 
     a_send.send(1).unwrap();

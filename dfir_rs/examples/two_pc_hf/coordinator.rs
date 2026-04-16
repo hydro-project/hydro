@@ -1,7 +1,6 @@
 use std::net::SocketAddr;
 
 use dfir_rs::dfir_syntax;
-use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::util::{UdpSink, UdpStream};
 
 use crate::helpers::parse_out;
@@ -12,7 +11,7 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
     println!("Coordinator live!");
 
     let path = opts.path();
-    let mut df: Dfir = dfir_syntax! {
+    let mut df = dfir_syntax! {
         // fetch subordinates from file, convert ip:port to a SocketAddr, and tee
         subords = source_json(path)
             -> flat_map(|json: Addresses| json.subordinates)
@@ -39,7 +38,7 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
 
         msgs[Ended]
             -> map(|(xid,)| dfir_rs::util::PersistenceKeyed::Delete(xid))
-            -> defer_tick()
+            -> defer_tick_lazy()
             -> phase_map;
 
         // we log all messages (in this prototype we just print)
@@ -71,7 +70,7 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
         abort_p1s = msgs[Abort] -> tee();
         abort_p1s
             -> flat_map(|(xid,)| [dfir_rs::util::PersistenceKeyed::Delete(xid), dfir_rs::util::PersistenceKeyed::Persist(xid, 2)])
-            -> defer_tick()
+            -> defer_tick_lazy()
             -> phase_map;
         abort_p1s
             -> map(|(xid,)| Msg::Abort(xid))
@@ -105,7 +104,7 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
         // update the phase_map
         check_committed
             -> flat_map(|xid| [dfir_rs::util::PersistenceKeyed::Delete(xid), dfir_rs::util::PersistenceKeyed::Persist(xid, 2)])
-            -> defer_tick()
+            -> defer_tick_lazy()
             -> phase_map;
         // broadcast the P2 commit message
         check_committed
@@ -116,7 +115,7 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
         ack_p2s = msgs[AckP2] -> tee();
         ack_p2s
             -> flat_map(|(xid,)| [dfir_rs::util::PersistenceKeyed::Delete(xid), dfir_rs::util::PersistenceKeyed::Persist(xid, 3)])
-            -> defer_tick()
+            -> defer_tick_lazy()
             -> phase_map;
         ack_p2s
             -> map(|(xid,)| Msg::End(xid))
@@ -133,5 +132,5 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
         serde_graph.open_graph(graph, opts.write_config).unwrap();
     }
 
-    let None = df.run().await;
+    df.run().await;
 }

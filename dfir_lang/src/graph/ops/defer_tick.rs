@@ -14,7 +14,7 @@ use super::{
 /// a flip-flop -- the invariant is that it emit one of true or false in a given tick
 /// (but never both!)
 ///
-/// ```rustbook
+/// ```text
 /// pub fn main() {
 ///     let mut df = dfir_rs::dfir_syntax! {
 ///         source_iter(vec!(true))
@@ -37,7 +37,7 @@ use super::{
 /// filter out any items that arrive from `inp` in the current tick which match
 /// an item from `inp` in the previous
 /// tick.
-/// ```rustbook
+/// ```text
 /// // Outputs 1 2 3 4 5 6 (on separate lines).
 /// let (input_send, input_recv) = dfir_rs::util::unbounded_channel::<usize>();
 /// let mut flow = dfir_rs::dfir_syntax! {

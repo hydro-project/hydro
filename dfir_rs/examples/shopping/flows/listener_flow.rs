@@ -1,7 +1,6 @@
 use std::net::SocketAddr;
 
 use dfir_rs::dfir_syntax;
-use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::util::UdpStream;
 
 use crate::lattices::{BoundedPrefix, SealedSetOfIndexedValues};
@@ -11,7 +10,7 @@ pub(crate) async fn listener_flow(
     tuple_input: UdpStream,
     bp_input: UdpStream,
     ssiv_input: UdpStream,
-) -> Dfir<'static> {
+) -> dfir_rs::scheduled::context::InlineDfirErased {
     // Simply print what we receive.
     dfir_syntax! {
         source_stream_serde(tuple_input)
@@ -23,5 +22,5 @@ pub(crate) async fn listener_flow(
         source_stream_serde(ssiv_input)
             -> map(Result::unwrap)
             -> for_each(|(cart, _): (((usize, ClientClass), SealedSetOfIndexedValues<Request>), SocketAddr)| println!("{:?}", cart));
-    }
+    }.into_erased()
 }

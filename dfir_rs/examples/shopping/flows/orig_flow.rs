@@ -2,7 +2,6 @@ use std::net::SocketAddr;
 
 use bytes::Bytes;
 use dfir_rs::dfir_syntax;
-use dfir_rs::scheduled::graph::Dfir;
 use futures::stream::SplitSink;
 use tokio_util::codec::LengthDelimitedCodec;
 use tokio_util::udp::UdpFramed;
@@ -14,7 +13,7 @@ pub(crate) async fn orig_flow(
     shopping: impl Iterator<Item = (usize, LineItem)> + 'static,
     out_addr: SocketAddr,
     out: SplitSink<UdpFramed<LengthDelimitedCodec>, (Bytes, SocketAddr)>,
-) -> Dfir<'static> {
+) -> dfir_rs::scheduled::context::InlineDfirErased {
     let client_class = client_class_iter();
 
     // This is the straightforward single-process sequential case.
@@ -30,4 +29,5 @@ pub(crate) async fn orig_flow(
           -> fold_keyed::<'static>(Vec::new, Vec::push)
           -> map(|m| (m, out_addr)) -> dest_sink_serde(out);
     }
+    .into_erased()
 }

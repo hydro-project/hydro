@@ -134,6 +134,6 @@ const DOCTEST_PREFIX: &str = "\
 # let mut __hf = ::dfir_rs::dfir_syntax! {";
 const DOCTEST_SUFFIX: &str = "\
 # };
-# __hf.run_available();
+# __hf.run_available().await;
 # }).await})
 # }";

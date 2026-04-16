@@ -1,14 +1,6 @@
-use dfir_rs::dfir_syntax;
+// TODO: Naturals example uses within-tick fixpoint cycles that require
+// `loop {}` support in inline codegen.
 
 pub fn main() {
-    let mut _flow = dfir_syntax! {
-        base = source_iter(vec![1]) -> cycle;
-        cycle = union()
-                -> map(|i| i + 1)
-                -> inspect(|i| println!("{}", i))
-                -> cycle;
-    };
-
-    // Let's not run this -- it will go forever!
-    // flow.run_available_sync();
+    eprintln!("Naturals example is temporarily disabled during inline codegen migration.");
 }

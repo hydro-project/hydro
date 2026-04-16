@@ -5,8 +5,8 @@
 
 use dfir_lang::diagnostic::Level;
 use dfir_lang::graph::{
-    BuildDfirCodeOutput, FlatGraphBuilder, FlatGraphBuilderOutput, build_dfir_code,
-    build_dfir_code_inline, partition_graph,
+    BuildDfirCodeOutput, FlatGraphBuilder, FlatGraphBuilderOutput, build_dfir_code_inline,
+    partition_graph,
 };
 use dfir_lang::parse::DfirCode;
 use proc_macro2::{Ident, Literal, Span};
@@ -71,30 +71,9 @@ fn dfir_syntax_internal(
     input: proc_macro::TokenStream,
     retain_diagnostic_level: Option<Level>,
 ) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(input as DfirCode);
-    let root = root();
-
-    let (code, mut diagnostics) = match build_dfir_code(input, &root) {
-        Ok(BuildDfirCodeOutput {
-            partitioned_graph: _,
-            code,
-            diagnostics,
-        }) => (code, diagnostics),
-        Err(diagnostics) => (quote! { #root::scheduled::graph::Dfir::new() }, diagnostics),
-    };
-
-    let diagnostic_tokens = retain_diagnostic_level.and_then(|level| {
-        diagnostics.retain_level(level);
-        diagnostics.try_emit_all().err()
-    });
-
-    quote! {
-        {
-            #diagnostic_tokens
-            #code
-        }
-    }
-    .into()
+    // TODO(cleanup): Now that dfir_syntax! uses the inline path, consider merging
+    // dfir_syntax! and dfir_syntax_inline! into a single macro.
+    dfir_syntax_inline_internal(input, retain_diagnostic_level)
 }
 
 /// Create an inline dataflow graph that runs immediately without the Dfir scheduler.

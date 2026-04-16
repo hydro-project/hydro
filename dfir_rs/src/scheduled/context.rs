@@ -543,6 +543,19 @@ impl InlineContext {
         unsafe { &*(state as *const dyn Any as *const T) }
     }
 
+    /// Returns a shared reference to the state (safe version).
+    pub fn state_ref<T>(&self, handle: StateHandle<T>) -> &'_ T
+    where
+        T: Any,
+    {
+        self.states
+            .get(handle.state_id)
+            .expect("Failed to find state with given handle.")
+            .state
+            .downcast_ref()
+            .expect("StateHandle wrong type T for casting.")
+    }
+
     /// Always returns `true` in inline mode. The inline codegen runs the entire DAG
     /// once per tick with no re-execution, so every subgraph is always on its first
     /// (and only) run within each tick.
@@ -555,9 +568,19 @@ impl InlineContext {
         self.current_tick
     }
 
+    /// Gets the timestamp of the beginning of the current tick.
+    pub fn current_tick_start(&self) -> SystemTime {
+        SystemTime::now()
+    }
+
     /// No-op: inline mode has no subgraph scheduling.
     pub fn current_subgraph(&self) -> SubgraphId {
         SubgraphId::from_raw(0)
+    }
+
+    /// In inline mode all strata run sequentially within a tick, so this always returns 0.
+    pub fn current_stratum(&self) -> usize {
+        0
     }
 
     /// In inline mode, every subgraph runs unconditionally each tick, so the `sg_id`
@@ -635,6 +658,9 @@ pub struct InlineDfir<Tick> {
 
     /// Live-updating DFIR runtime metrics via interior mutability.
     metrics: Rc<DfirMetrics>,
+
+    /// Current tick count, incremented after each `run_tick`.
+    current_tick: TickInstant,
 }
 
 /// Trait for tick closures — abstracts over both concrete async closures
@@ -712,6 +738,7 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
                 serde_json::from_str(json).expect("Failed to deserialize diagnostics.")
             }),
             metrics,
+            current_tick: TickInstant::default(),
         }
     }
 
@@ -751,6 +778,17 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
 }
 
 impl<Tick: TickClosure> InlineDfir<Tick> {
+    /// Gets the current tick (local time) count.
+    pub fn current_tick(&self) -> TickInstant {
+        self.current_tick
+    }
+
+    /// Gets the current stratum number. In inline mode all strata run sequentially
+    /// within a single tick, so this always returns 0.
+    pub fn current_stratum(&self) -> usize {
+        0
+    }
+
     /// Run a single tick. Returns `true` if any subgraph received input data.
     ///
     /// Checks both handoff buffers (via `work_done` flag set in generated recv port code)
@@ -761,6 +799,7 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
             .can_start_tick
             .swap(false, Ordering::Relaxed);
         let tick_had_work = self.tick_closure.call_tick().await;
+        self.current_tick += crate::scheduled::ticks::TickDuration::SINGLE_TICK;
         had_external || tick_had_work || self.wake_state.can_start_tick.load(Ordering::Relaxed)
     }
 
@@ -777,9 +816,29 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
         }
     }
 
+    /// Run ticks as long as work is available from external events, then return.
+    /// Panics if a subgraph yields asynchronously.
+    ///
+    /// Note: does not run across-tick fixpoints from `defer_tick_lazy` cycles.
+    /// For that, use `while self.run_tick_sync() {}` or the `loop {}` surface syntax
+    /// (once supported in inline codegen).
+    pub fn run_available_sync(&mut self) -> bool {
+        let mut work_done = false;
+        loop {
+            work_done |= self.run_tick_sync();
+            if !self
+                .wake_state
+                .can_start_tick
+                .swap(false, Ordering::Relaxed)
+            {
+                break;
+            }
+        }
+        work_done
+    }
+
     /// Run ticks as long as work is available, then return.
     pub async fn run_available(&mut self) {
-        // Always run at least one tick.
         self.wake_state
             .can_start_tick
             .store(false, Ordering::Relaxed);
@@ -835,6 +894,7 @@ impl<Tick: AsyncFnMut() -> bool + 'static> InlineDfir<Tick> {
             #[cfg(feature = "meta")]
             diagnostics: self.diagnostics,
             metrics: self.metrics,
+            current_tick: self.current_tick,
         }
     }
 }

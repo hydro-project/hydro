@@ -2,7 +2,6 @@ use std::net::SocketAddr;
 
 use chrono::prelude::*;
 use dfir_rs::dfir_syntax;
-use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::util::bind_udp_lines;
 
 use crate::Opts;
@@ -30,7 +29,7 @@ pub(crate) async fn run_server(opts: Opts) {
     println!("Server is live! Listening on {:?}", actual_server_addr);
 
     // The skeletal DFIR spec for a server.
-    let mut flow: Dfir = dfir_syntax! {
+    let mut flow = dfir_syntax! {
         // Inbound channel sharing
         inbound_chan = source_stream(inbound) -> map(deserialize_json) -> tee();
 
@@ -43,7 +42,12 @@ pub(crate) async fn run_server(opts: Opts) {
 
     // If a graph was requested to be printed, print it.
     if let Some(graph) = opts.graph {
-        print_graph(&flow, graph, opts.write_config);
+        print_graph(
+            flow.meta_graph()
+                .expect("No graph found, maybe failed to parse."),
+            graph,
+            opts.write_config,
+        );
     }
 
     // Run the server. This is an async function, so we need to await it.

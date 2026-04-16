@@ -77,7 +77,7 @@ use crate::diagnostic::Diagnostic;
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> persist::<'static>() -> [0]my_join;
 /// source_iter(vec![("key", 2)]) -> my_union;
-/// source_iter(vec![("key", 3)]) -> defer_tick() -> my_union;
+/// source_iter(vec![("key", 3)]) -> defer_tick_lazy() -> my_union;
 /// my_union = union() -> persist::<'static>() -> [1]my_join;
 ///
 /// my_join = join_fused(Reduce::new(|x, y| *x += y), Fold::new(|| 1, |x, y| *x *= y))
@@ -89,7 +89,7 @@ use crate::diagnostic::Diagnostic;
 ///
 /// source_iter(vec![("key", 0), ("key", 1), ("key", 2)]) -> [0]my_join;
 /// source_iter(vec![("key", 2)]) -> my_union;
-/// source_iter(vec![("key", 3)]) -> defer_tick() -> my_union;
+/// source_iter(vec![("key", 3)]) -> defer_tick_lazy() -> my_union;
 /// my_union = union() -> [1]my_join;
 ///
 /// my_join = join_fused::<'static>(Reduce::new(|x, y| *x += y), Fold::new(|| 1, |x, y| *x *= y))

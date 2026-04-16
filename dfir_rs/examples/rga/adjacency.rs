@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
 
 use dfir_rs::dfir_syntax;
-use dfir_rs::scheduled::graph::Dfir;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -11,7 +10,7 @@ pub(crate) fn rga_adjacency(
     input_recv: UnboundedReceiverStream<(Token, Timestamp)>,
     rga_send: UnboundedSender<(Token, Timestamp)>,
     list_send: UnboundedSender<(Timestamp, Timestamp)>,
-) -> Dfir<'static> {
+) -> dfir_rs::scheduled::context::InlineDfirErased {
     dfir_syntax! {
         insertAfter = source_stream(input_recv) -> tee();
 
@@ -44,7 +43,7 @@ pub(crate) fn rga_adjacency(
         upEdge = join() -> map(|(_parent, (last_child, next_sib)): (Timestamp, (Timestamp, Timestamp))| (last_child, next_sib));
         lastChild -> [0]upEdge;
         nextSiblingAnc -> [1]upEdge;
-        upEdge -> nextSiblingAnc;
+        upEdge -> defer_tick_lazy() -> nextSiblingAnc;
 
         // nextElem
         nextElem = union();
@@ -57,5 +56,5 @@ pub(crate) fn rga_adjacency(
 
         insertAfter[print] -> for_each(|(c, p): (Token, Timestamp)| rga_send.send((c, p)).unwrap());
         nextElem -> for_each(|(first, second)| list_send.send((first, second)).unwrap());
-    }
+    }.into_erased()
 }

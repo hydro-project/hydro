@@ -1,5 +1,4 @@
 use dfir_rs::dfir_syntax;
-use dfir_rs::scheduled::graph::Dfir;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -9,7 +8,7 @@ pub(crate) fn rga_datalog_agg(
     input_recv: UnboundedReceiverStream<(Token, Timestamp)>,
     rga_send: UnboundedSender<(Token, Timestamp)>,
     list_send: UnboundedSender<(Timestamp, Timestamp)>,
-) -> Dfir<'static> {
+) -> dfir_rs::scheduled::context::InlineDfirErased {
     dfir_syntax! {
         edges = source_stream(input_recv) -> tee();
         insertAfter =  edges -> map(|(c, p): (Token, Timestamp)| (c.ts, p)) -> tee();
@@ -58,7 +57,7 @@ pub(crate) fn rga_datalog_agg(
         nextSibling -> filter(|(_s1, s2)| *s2 != Timestamp{node_ts: 0, node_id: 0}) -> nextSiblingAnc;
 
         // nextSiblingAnc(Node, Next) :- lastChild(Parent, Node), nextSiblingAnc(Parent, Next)
-        upEdge = join() -> map(|(_parent, (node, next))| (node, next)) -> nextSiblingAnc;
+        upEdge = join() -> map(|(_parent, (node, next))| (node, next)) -> defer_tick_lazy() -> nextSiblingAnc;
         lastChild      -> [0]upEdge;
         nextSiblingAnc -> [1]upEdge;
 
@@ -77,5 +76,5 @@ pub(crate) fn rga_datalog_agg(
 
         edges -> for_each(|(c, p): (Token, Timestamp)| rga_send.send((c, p)).unwrap());
         nextElem -> for_each(|(first, second)| list_send.send((first, second)).unwrap());
-    }
+    }.into_erased()
 }
