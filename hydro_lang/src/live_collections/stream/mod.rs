@@ -2279,25 +2279,16 @@ impl<'a, T, L: Location<'a> + NoTick, R: Retries> Stream<T, L, Unbounded, TotalO
     pub fn merge_ordered<R2: Retries>(
         self,
         other: Stream<T, L, Unbounded, TotalOrder, R2>,
-        _nondet: NonDet,
+        nondet: NonDet,
     ) -> Stream<T, L, Unbounded, TotalOrder, <R as MinRetries<R2>>::Min>
     where
         R: MinRetries<R2>,
     {
-        Stream::new(
-            self.location.clone(),
-            HydroNode::Chain {
-                first: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                second: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self.location.new_node_metadata(Stream::<
-                    T,
-                    L,
-                    Unbounded,
-                    TotalOrder,
-                    <R as MinRetries<R2>>::Min,
-                >::collection_kind()),
-            },
-        )
+        super::sliced::sliced! {
+            let self_batch = use(self, nondet);
+            let other_batch = use(other, nondet);
+            self_batch.chain(other_batch)
+        }
     }
 }
 
@@ -3894,6 +3885,40 @@ mod tests {
 
             out_recv.assert_yields_only::<i32, _>([]).await;
         });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_merge_ordered() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input();
+        let (in_send2, input2) = node.sim_input();
+
+        let out_recv = input
+            .merge_ordered(input2, nondet!(/** test */))
+            .sim_output();
+
+        let mut saw_out_of_order = false;
+        let instances = flow.sim().exhaustive(async || {
+            in_send.send(1);
+            in_send.send(2);
+            in_send2.send(3);
+            in_send2.send(4);
+
+            let mut out = out_recv.collect::<Vec<_>>().await;
+
+            if out == [1, 3, 2, 4] {
+                saw_out_of_order = true;
+            }
+
+            out.sort();
+            assert_eq!(out, vec![1, 2, 3, 4]);
+        });
+
+        assert!(saw_out_of_order);
+        assert_eq!(instances, 26);
     }
 
     #[cfg(feature = "deploy")]
