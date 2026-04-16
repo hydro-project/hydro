@@ -2228,7 +2228,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn get(self, key: impl Into<Optional<K, L, Bounded>>) -> Stream<V, L, B, O, R>
     where
-        K: Eq,
+        K: Eq + Clone,
     {
         let key: Optional<K, L, Bounded> = key.into();
         check_matching_location(&self.location, &key.location);
