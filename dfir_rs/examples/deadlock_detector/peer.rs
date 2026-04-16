@@ -2,7 +2,6 @@ use std::convert::identity;
 use std::net::SocketAddr;
 
 use dfir_rs::dfir_syntax;
-use dfir_rs::scheduled::graph::Dfir;
 use tokio::io::AsyncBufReadExt;
 use tokio::net::UdpSocket;
 use tokio_stream::wrappers::LinesStream;
@@ -20,7 +19,7 @@ pub(crate) async fn run_detector(opts: Opts, peer_list: Vec<String>) {
     let reader = tokio::io::BufReader::new(tokio::io::stdin());
     let stdin_lines = LinesStream::new(reader.lines());
 
-    let mut hf: Dfir = dfir_syntax! {
+    let mut hf= dfir_syntax! {
         // fetch peers from file, convert ip:port to a SocketAddr, and tee
         peers = source_iter(peer_list)
             -> map(|s| s.parse::<SocketAddr>().unwrap())
@@ -59,7 +58,7 @@ pub(crate) async fn run_detector(opts: Opts, peer_list: Vec<String>) {
 
         // persist an edges set
         edges = union() -> tee();
-        edges[0] -> defer_tick() -> [1]edges;
+        edges[0] -> defer_tick_lazy() -> [1]edges;
 
         // add new edges locally
         new_edges -> [0]edges;
@@ -97,7 +96,7 @@ pub(crate) async fn run_detector(opts: Opts, peer_list: Vec<String>) {
                     println!("path found: {}", format_cycle(path));
                });
         // paths :- new_paths
-        new_paths[1] -> [1]paths;
+        new_paths[1] -> defer_tick_lazy() -> [1]paths;
 
     };
 
@@ -109,5 +108,5 @@ pub(crate) async fn run_detector(opts: Opts, peer_list: Vec<String>) {
         serde_graph.open_graph(graph, opts.write_config).unwrap();
     }
 
-    let None = hf.run().await;
+    hf.run().await;
 }

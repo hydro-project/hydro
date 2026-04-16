@@ -3,7 +3,6 @@ use std::net::SocketAddr;
 
 use chrono::{DateTime, Utc};
 use dfir_macro::dfir_syntax;
-use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::util::{bind_udp_bytes, ipv4_resolve};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
@@ -90,7 +89,7 @@ pub(crate) async fn run_gossiping_server(opts: Opts) {
         "Server is live! Listening on {:?}. Gossiping On: {:?}",
         actual_server_addr, gossip_listening_addr
     );
-    let mut hf: Dfir = dfir_syntax! {
+    let mut hf = dfir_syntax! {
         // Define shared inbound and outbound channels
         client_out = union() -> dest_sink_serde(client_outbound);
         client_in = source_stream_serde(client_inbound)
@@ -134,7 +133,7 @@ pub(crate) async fn run_gossiping_server(opts: Opts) {
         // 1. Add it to the set of known messages.
         // 2. Broadcast it to the clients connected locally.
         // 3. Add it to the set of messages currently infecting this server.
-        actually_new_messages -> defer_tick() -> all_messages; // Add to known messages
+        actually_new_messages -> defer_tick_lazy() -> all_messages; // Add to known messages
         actually_new_messages
             -> map(|chat_msg: ChatMessage| Message::ChatMsg {
                     nickname: chat_msg.nickname,
@@ -185,7 +184,7 @@ pub(crate) async fn run_gossiping_server(opts: Opts) {
                     None
                 }
             })
-            -> defer_tick()
+            -> defer_tick_lazy()
             -> infecting_messages;
 
     };
@@ -198,7 +197,7 @@ pub(crate) async fn run_gossiping_server(opts: Opts) {
         serde_graph.open_graph(graph, opts.write_config).unwrap();
     }
 
-    let None = hf.run().await;
+    hf.run().await;
 }
 
 /// The address on which the gossip protocol runs. Servers communicate with each other using these

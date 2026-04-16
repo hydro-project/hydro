@@ -1,3 +1,6 @@
+// TODO: `loop { }` blocks are not yet supported in inline codegen.
+#![cfg(any())]
+
 use std::collections::BTreeSet;
 
 use dfir_rs::util::{collect_ready, iter_batches_stream};

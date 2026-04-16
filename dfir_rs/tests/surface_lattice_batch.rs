@@ -9,12 +9,12 @@ pub fn test_lattice_batch() {
     let mut df = dfir_syntax! {
         // Can release in the same tick
         source_iter([SetUnionSingletonSet::new_from(0), SetUnionSingletonSet::new_from(1)]) -> [input]b1;
-        source_iter([()]) -> defer_tick() -> [signal]b1;
+        source_iter([()]) -> defer_tick_lazy() -> [signal]b1;
         b1 = _lattice_fold_batch::<SetUnionHashSet>() -> assert_eq([SetUnionHashSet::new_from([1, 0])]);
 
         // Can hold the data across a tick
         source_iter([SetUnionSingletonSet::new_from(0), SetUnionSingletonSet::new_from(1)]) -> [input]b2;
-        source_iter([()]) -> defer_tick() -> [signal]b2;
+        source_iter([()]) -> defer_tick_lazy() -> [signal]b2;
         b2 = _lattice_fold_batch::<SetUnionHashSet>() -> assert_eq([SetUnionHashSet::new_from([1, 0])]);
 
         // Doesn't release without a signal

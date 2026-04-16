@@ -10,7 +10,7 @@ digraph {
     n3v1 [label="(n3v1) tee()", shape=house, fillcolor="#ffff88"]
     n4v1 [label="(n4v1) map(|n| n + TickDuration::SINGLE_TICK)", shape=house, fillcolor="#ffff88"]
     n5v1 [label="(n5v1) filter(|&n| n < TickInstant::new(10))", shape=invhouse, fillcolor="#88aaff"]
-    n6v1 [label="(n6v1) defer_tick()", shape=invhouse, fillcolor="#88aaff"]
+    n6v1 [label="(n6v1) defer_tick_lazy()", shape=invhouse, fillcolor="#88aaff"]
     n7v1 [label="(n7v1) for_each(|v| out_send.send(v).unwrap())", shape=house, fillcolor="#ffff88"]
     n8v1 [label="(n8v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n9v1 [label="(n9v1) handoff", shape=parallelogram, fillcolor="#ddddff"]

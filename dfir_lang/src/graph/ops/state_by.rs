@@ -126,7 +126,7 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         prev: Prev,
                         mapfn: MappingFn,
                         state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<Lat>>,
-                        context: &'a #root::scheduled::context::Context,
+                        context: &'a #root::scheduled::context::InlineContext,
                     ) -> impl 'a + #root::dfir_pipes::pull::Pull<Item = Item, Meta = Prev::Meta>
                     where
                         Item: ::std::clone::Clone,
@@ -156,7 +156,7 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         push: Psh,
                         mapfn: MappingFn,
                         state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<Lat>>,
-                        context: &'a #root::scheduled::context::Context,
+                        context: &'a #root::scheduled::context::InlineContext,
                     ) -> impl 'a + #root::dfir_pipes::push::Push<Item, ()>
                     where
                         Item: 'a + ::std::clone::Clone,
@@ -182,7 +182,7 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                     fn check_output<'a, Item, MappingFn, MappedItem, Lat>(
                         state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<Lat>>,
                         mapfn: MappingFn,
-                        context: &'a #root::scheduled::context::Context,
+                        context: &'a #root::scheduled::context::InlineContext,
                     ) -> impl 'a + #root::dfir_pipes::push::Push<Item, ()>
                     where
                         Item: 'a,

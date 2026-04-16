@@ -10,7 +10,7 @@ pub fn test_anti_join_multiset() {
         inp = source_stream(inp_recv) -> tee();
         diff = anti_join() -> sort() -> for_each(|x| out_send.send(x).unwrap());
         inp -> [pos]diff;
-        inp -> defer_tick() -> map(|x: (usize, usize)| x.0) -> [neg]diff;
+        inp -> defer_tick_lazy() -> map(|x: (usize, usize)| x.0) -> [neg]diff;
     };
 
     for x in [(1, 2), (1, 2), (2, 3), (3, 4), (4, 5)] {
@@ -39,7 +39,7 @@ pub fn test_anti_join() {
         inp = source_stream(inp_recv) -> tee();
         diff = anti_join() -> sort() -> for_each(|x| out_send.send(x).unwrap());
         inp -> [pos]diff;
-        inp -> defer_tick() -> map(|x: (usize, usize)| x.0) -> [neg]diff;
+        inp -> defer_tick_lazy() -> map(|x: (usize, usize)| x.0) -> [neg]diff;
     };
 
     for x in [(1, 2), (1, 2), (2, 3), (3, 4), (4, 5)] {

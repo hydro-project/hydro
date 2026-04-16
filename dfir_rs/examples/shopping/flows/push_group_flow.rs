@@ -3,7 +3,6 @@ use std::net::SocketAddr;
 use bytes::Bytes;
 use dfir_rs::dfir_syntax;
 use dfir_rs::lattices::Merge;
-use dfir_rs::scheduled::graph::Dfir;
 use futures::stream::SplitSink;
 use tokio_util::codec::LengthDelimitedCodec;
 use tokio_util::udp::UdpFramed;
@@ -16,7 +15,7 @@ pub(crate) async fn push_group_flow(
     shopping_ssiv: impl Iterator<Item = (usize, SealedSetOfIndexedValues<Request>)> + 'static,
     out_addr: SocketAddr,
     out: SplitSink<UdpFramed<LengthDelimitedCodec>, (Bytes, SocketAddr)>,
-) -> Dfir<'static> {
+) -> dfir_rs::scheduled::context::InlineDfirErased {
     let client_class = client_class_iter();
 
     // First define some shorthand for the merge and bot of this lattice
@@ -36,5 +35,5 @@ pub(crate) async fn push_group_flow(
         lookup_class = join::<'static>()
           -> map(|(client, (li, class))| ((client, class), li))
           -> map(|m| (m, out_addr)) -> dest_sink_serde(out);
-    }
+    }.into_erased()
 }
