@@ -3967,5 +3967,52 @@
 <a href=#3967 id=3967 data-nosnippet>3967</a>
 <a href=#3968 id=3968 data-nosnippet>3968</a>        <span class="macro">assert_eq!</span>(threshold_out.next().<span class="kw">await</span>.unwrap(), <span class="number">3</span>);
 <a href=#3969 id=3969 data-nosnippet>3969</a>    }
-<a href=#3970 id=3970 data-nosnippet>3970</a>}
+<a href=#3970 id=3970 data-nosnippet>3970</a>
+<a href=#3971 id=3971 data-nosnippet>3971</a>    <span class="attr">#[cfg(feature = <span class="string">"deploy"</span>)]
+<a href=#3972 id=3972 data-nosnippet>3972</a>    #[tokio::test]
+<a href=#3973 id=3973 data-nosnippet>3973</a>    </span><span class="kw">async fn </span>monotone_map_order_preserving_threshold() {
+<a href=#3974 id=3974 data-nosnippet>3974</a>        <span class="kw">use </span><span class="kw">crate</span>::properties::manual_proof;
+<a href=#3975 id=3975 data-nosnippet>3975</a>
+<a href=#3976 id=3976 data-nosnippet>3976</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
+<a href=#3977 id=3977 data-nosnippet>3977</a>
+<a href=#3978 id=3978 data-nosnippet>3978</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#3979 id=3979 data-nosnippet>3979</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#3980 id=3980 data-nosnippet>3980</a>        <span class="kw">let </span>external = flow.external::&lt;()&gt;();
+<a href=#3981 id=3981 data-nosnippet>3981</a>
+<a href=#3982 id=3982 data-nosnippet>3982</a>        <span class="kw">let </span>in_unbounded: <span class="kw">super</span>::Stream&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt; =
+<a href=#3983 id=3983 data-nosnippet>3983</a>            node.source_iter(<span class="macro">q!</span>(<span class="macro">vec!</span>[<span class="number">1i32</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>])).into();
+<a href=#3984 id=3984 data-nosnippet>3984</a>        <span class="kw">let </span>sum = in_unbounded.fold(
+<a href=#3985 id=3985 data-nosnippet>3985</a>            <span class="macro">q!</span>(|| <span class="number">0</span>),
+<a href=#3986 id=3986 data-nosnippet>3986</a>            <span class="macro">q!</span>(
+<a href=#3987 id=3987 data-nosnippet>3987</a>                |sum, v| {
+<a href=#3988 id=3988 data-nosnippet>3988</a>                    <span class="kw-2">*</span>sum += v;
+<a href=#3989 id=3989 data-nosnippet>3989</a>                },
+<a href=#3990 id=3990 data-nosnippet>3990</a>                monotone = <span class="macro">manual_proof!</span>(<span class="doccomment">/** test */</span>)
+<a href=#3991 id=3991 data-nosnippet>3991</a>            ),
+<a href=#3992 id=3992 data-nosnippet>3992</a>        );
+<a href=#3993 id=3993 data-nosnippet>3993</a>
+<a href=#3994 id=3994 data-nosnippet>3994</a>        <span class="comment">// map with order_preserving should preserve monotonicity
+<a href=#3995 id=3995 data-nosnippet>3995</a>        </span><span class="kw">let </span>doubled = sum.map(<span class="macro">q!</span>(
+<a href=#3996 id=3996 data-nosnippet>3996</a>            |v| v * <span class="number">2</span>,
+<a href=#3997 id=3997 data-nosnippet>3997</a>            order_preserving = <span class="macro">manual_proof!</span>(<span class="doccomment">/** doubling preserves order */</span>)
+<a href=#3998 id=3998 data-nosnippet>3998</a>        ));
+<a href=#3999 id=3999 data-nosnippet>3999</a>
+<a href=#4000 id=4000 data-nosnippet>4000</a>        <span class="kw">let </span>threshold_out = doubled
+<a href=#4001 id=4001 data-nosnippet>4001</a>            .threshold_greater_or_equal(node.singleton(<span class="macro">q!</span>(<span class="number">14</span>)))
+<a href=#4002 id=4002 data-nosnippet>4002</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
+<a href=#4003 id=4003 data-nosnippet>4003</a>
+<a href=#4004 id=4004 data-nosnippet>4004</a>        <span class="kw">let </span>nodes = flow
+<a href=#4005 id=4005 data-nosnippet>4005</a>            .with_process(<span class="kw-2">&amp;</span>node, deployment.Localhost())
+<a href=#4006 id=4006 data-nosnippet>4006</a>            .with_external(<span class="kw-2">&amp;</span>external, deployment.Localhost())
+<a href=#4007 id=4007 data-nosnippet>4007</a>            .deploy(<span class="kw-2">&amp;mut </span>deployment);
+<a href=#4008 id=4008 data-nosnippet>4008</a>
+<a href=#4009 id=4009 data-nosnippet>4009</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
+<a href=#4010 id=4010 data-nosnippet>4010</a>
+<a href=#4011 id=4011 data-nosnippet>4011</a>        <span class="kw">let </span><span class="kw-2">mut </span>threshold_out = nodes.connect(threshold_out).<span class="kw">await</span>;
+<a href=#4012 id=4012 data-nosnippet>4012</a>
+<a href=#4013 id=4013 data-nosnippet>4013</a>        deployment.start().<span class="kw">await</span>.unwrap();
+<a href=#4014 id=4014 data-nosnippet>4014</a>
+<a href=#4015 id=4015 data-nosnippet>4015</a>        <span class="macro">assert_eq!</span>(threshold_out.next().<span class="kw">await</span>.unwrap(), <span class="number">14</span>);
+<a href=#4016 id=4016 data-nosnippet>4016</a>    }
+<a href=#4017 id=4017 data-nosnippet>4017</a>}
 </code></pre></div></section></main></body></html>

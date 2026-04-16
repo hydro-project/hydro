@@ -1,9 +1,9 @@
 (function() {
-    const implementors = Object.fromEntries([["hydro_lang",[["impl&lt;C, I, M&gt; Property for <a class=\"struct\" href=\"hydro_lang/properties/struct.AggFuncAlgebra.html\" title=\"struct hydro_lang::properties::AggFuncAlgebra\">AggFuncAlgebra</a>&lt;C, I, M&gt;",0]]]]);
+    const implementors = Object.fromEntries([["hydro_lang",[["impl&lt;C, I, M&gt; Property for <a class=\"struct\" href=\"hydro_lang/properties/struct.AggFuncAlgebra.html\" title=\"struct hydro_lang::properties::AggFuncAlgebra\">AggFuncAlgebra</a>&lt;C, I, M&gt;",0],["impl&lt;O&gt; Property for <a class=\"struct\" href=\"hydro_lang/properties/struct.MapFuncAlgebra.html\" title=\"struct hydro_lang::properties::MapFuncAlgebra\">MapFuncAlgebra</a>&lt;O&gt;",0]]]]);
     if (window.register_implementors) {
         window.register_implementors(implementors);
     } else {
         window.pending_implementors = implementors;
     }
 })()
-//{"start":59,"fragment_lengths":[223]}
+//{"start":59,"fragment_lengths":[418]}
