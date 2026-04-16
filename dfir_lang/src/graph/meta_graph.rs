@@ -1425,15 +1425,66 @@ impl DfirGraph {
         // 2. Collect subgraph handoffs (same as as_code).
         let subgraph_handoffs = self.helper_collect_subgraph_handoffs();
 
-        // 3. Sort subgraphs by stratum, then sources (no-preds) first (for type inference).
-        let mut all_subgraphs: Vec<_> = self.subgraph_nodes.iter().collect();
-        all_subgraphs.sort_by_key(|&(sg_id, nodes)| {
-            let stratum = self.subgraph_stratum.get(sg_id).copied().unwrap_or(0);
-            let is_source = nodes
-                .iter()
-                .any(|&node_id| self.node_degree_in(node_id) == 0);
-            (stratum, !is_source)
-        });
+        // 3. Sort subgraphs: first by stratum, then topologically within each stratum
+        // based on handoff edges. This ensures that if sg_A writes to a handoff that sg_B
+        // reads (within the same stratum), sg_A runs before sg_B. Without this, deferred
+        // data can arrive one tick late. See https://github.com/hydro-project/hydro/issues/2747
+        //
+        // TODO(cleanup): Once scheduled Dfir is removed, move this topological ordering
+        // into the subgraph stratification/partitioning pass directly, rather than doing
+        // it as a post-hoc sort in codegen.
+        let all_subgraphs: Vec<_> = {
+            // Build intra-stratum predecessor map for subgraphs.
+            let mut sg_preds: SecondaryMap<GraphSubgraphId, Vec<GraphSubgraphId>> = self
+                .subgraph_nodes
+                .keys()
+                .map(|k| (k, Vec::new()))
+                .collect();
+            for (hoff_id, node) in self.nodes() {
+                if !matches!(node, GraphNode::Handoff { .. }) {
+                    continue;
+                }
+                let sender = self
+                    .node_predecessors(hoff_id)
+                    .next()
+                    .and_then(|(_, pred_id)| self.node_subgraph(pred_id));
+                let receiver = self
+                    .node_successors(hoff_id)
+                    .next()
+                    .and_then(|(_, succ_id)| self.node_subgraph(succ_id));
+                if let (Some(sender), Some(receiver)) = (sender, receiver) {
+                    if sender == receiver {
+                        continue;
+                    }
+                    let s_stratum = self.subgraph_stratum.get(sender).copied().unwrap_or(0);
+                    let r_stratum = self.subgraph_stratum.get(receiver).copied().unwrap_or(0);
+                    if s_stratum == r_stratum {
+                        sg_preds[receiver].push(sender);
+                    }
+                }
+            }
+
+            // Group subgraphs by stratum, topo-sort within each, concatenate.
+            let mut by_stratum: BTreeMap<usize, Vec<GraphSubgraphId>> = BTreeMap::new();
+            for sg_id in self.subgraph_nodes.keys() {
+                let stratum = self.subgraph_stratum.get(sg_id).copied().unwrap_or(0);
+                by_stratum.entry(stratum).or_default().push(sg_id);
+            }
+
+            let mut result = Vec::new();
+            for sg_ids in by_stratum.values() {
+                let sorted =
+                    crate::graph::graph_algorithms::topo_sort(sg_ids.iter().copied(), |sg_id| {
+                        sg_preds[sg_id].iter().copied()
+                    })
+                    .expect("Unexpected cycle between subgraphs within a stratum");
+                for sg_id in sorted {
+                    let nodes = &self.subgraph_nodes[sg_id];
+                    result.push((sg_id, nodes));
+                }
+            }
+            result
+        };
 
         let mut op_prologue_code = Vec::new();
         let mut op_prologue_after_code = Vec::new();
