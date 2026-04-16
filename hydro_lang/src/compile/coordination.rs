@@ -108,6 +108,9 @@ pub enum ProofAction {
     Broken { reason: String },
     /// Goal changed — a different goal was required on an input.
     GoalChanged { new_goal: OrderGoal },
+    /// nondet! on a Cluster was blessed (passed through conditionally).
+    /// The proof succeeds only if this nondet! is trusted.
+    Blessed { reason: String },
 }
 
 /// Result of the backward proof walk for a single path.
@@ -116,6 +119,9 @@ pub struct ProofResult {
     pub success: bool,
     /// The walk trace, from sink (first) to source/break point (last).
     pub trace: Vec<ProofStep>,
+    /// nondet! points that were blessed (passed through conditionally).
+    /// If non-empty, the proof is conditional on these being trusted.
+    pub blessings_required: Vec<ProofStep>,
 }
 
 impl ProofResult {
@@ -124,11 +130,11 @@ impl ProofResult {
     }
 
     pub(crate) fn proved(trace: Vec<ProofStep>) -> Self {
-        Self { success: true, trace }
+        Self { success: true, trace, blessings_required: vec![] }
     }
 
     pub(crate) fn broken(trace: Vec<ProofStep>) -> Self {
-        Self { success: false, trace }
+        Self { success: false, trace, blessings_required: vec![] }
     }
 
     pub(crate) fn discharged(operator: &str, reason: impl Into<String>, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
@@ -263,9 +269,18 @@ impl fmt::Display for CoordinationReport {
 
         let total = self.sinks.len();
         let failing: Vec<_> = self.sinks.iter().filter(|s| !s.result.is_proved()).collect();
+        let conditional: Vec<_> = self.sinks.iter()
+            .filter(|s| s.result.is_proved() && !s.result.blessings_required.is_empty())
+            .collect();
 
-        if failing.is_empty() {
+        if failing.is_empty() && conditional.is_empty() {
             writeln!(f, "Coordination Criterion: PASS — all {total} sinks are future-monotone")?;
+        } else if failing.is_empty() {
+            writeln!(
+                f,
+                "Coordination Criterion: CONDITIONAL PASS — all {total} sinks pass if {} nondet! point(s) are blessed",
+                conditional.iter().map(|s| s.result.blessings_required.len()).sum::<usize>()
+            )?;
         } else {
             writeln!(
                 f,
@@ -275,8 +290,16 @@ impl fmt::Display for CoordinationReport {
         }
 
         for s in &self.sinks {
-            if s.result.is_proved() {
+            if s.result.is_proved() && s.result.blessings_required.is_empty() {
                 writeln!(f, "\n  ✓ {} ({})", s.name, s.goal)?;
+            } else if s.result.is_proved() {
+                writeln!(f, "\n  ⚡ {} ({}) — CONDITIONAL PASS, requires {} blessing(s):", s.name, s.goal, s.result.blessings_required.len())?;
+                for b in &s.result.blessings_required {
+                    let bspan = b.span.as_deref().unwrap_or("");
+                    if let ProofAction::Blessed { reason } = &b.action {
+                        writeln!(f, "      bless: {} at {}  ({})", b.operator, bspan, reason)?;
+                    }
+                }
                 for step in &s.result.trace {
                     let span = step.span.as_deref().unwrap_or("");
                     match &step.action {
@@ -290,6 +313,9 @@ impl fmt::Display for CoordinationReport {
                             writeln!(f, "    {} — goal → {}  {}", step.operator, new_goal, span)?;
                         }
                         ProofAction::Broken { .. } => {} // shouldn't appear in proved
+                        ProofAction::Blessed { reason } => {
+                            writeln!(f, "    {} — ⚡ blessed: {}  {}", step.operator, reason, span)?;
+                        }
                     }
                 }
             } else {
@@ -307,6 +333,9 @@ impl fmt::Display for CoordinationReport {
                             writeln!(f, "    {} — goal → {}  {}", step.operator, new_goal, span)?;
                         }
                         ProofAction::Discharged { .. } => {} // shouldn't appear in broken
+                        ProofAction::Blessed { reason } => {
+                            writeln!(f, "    {} — ⚡ blessed: {}  {}", step.operator, reason, span)?;
+                        }
                     }
                 }
             }
@@ -714,17 +743,39 @@ fn prove(
             _ => ProofResult::fail(&name, "cross_singleton breaks lattice order", span, pm_span),
         },
 
-        // ObserveNonDet on a Cluster: per-member non-determinism breaks coordination
-        HydroNode::ObserveNonDet { metadata, .. } if matches!(metadata.location_id, LocationId::Cluster(_)) => {
-            ProofResult::fail(&name, "per-member non-determinism (nondet! on Cluster) breaks coordination", span, pm_span)
+        // ObserveNonDet on a Cluster: bless and continue walking.
+        // The proof succeeds conditionally on this nondet! being trusted.
+        HydroNode::ObserveNonDet { inner, metadata, .. } if matches!(metadata.location_id, LocationId::Cluster(_)) => {
+            let blessing = ProofStep {
+                operator: name.to_string(),
+                action: ProofAction::Blessed {
+                    reason: "per-member non-determinism (nondet! on Cluster) — blessed".to_string(),
+                },
+                span: span.clone(),
+                proc_macro_span: pm_span,
+            };
+            let mut result = prove(inner, goal, cycle_proofs, seen_tees)
+                .prepend_preserved(&name, span, None);
+            result.blessings_required.push(blessing);
+            result
         }
 
-        // Per-member source on a Cluster: Embedded/EmbeddedSingleton/Spin
+        // Per-member source on a Cluster: bless and discharge.
         HydroNode::Source { source, metadata, .. }
             if matches!(metadata.location_id, LocationId::Cluster(_))
             && matches!(source, HydroSource::Embedded(_) | HydroSource::EmbeddedSingleton(_) | HydroSource::Spin()) =>
         {
-            ProofResult::fail(&name, "per-member source on Cluster (e.g. CLUSTER_SELF_ID) breaks coordination", span, pm_span)
+            let blessing = ProofStep {
+                operator: name.to_string(),
+                action: ProofAction::Blessed {
+                    reason: "per-member source on Cluster (e.g. CLUSTER_SELF_ID) — blessed".to_string(),
+                },
+                span: span.clone(),
+                proc_macro_span: pm_span,
+            };
+            let mut result = ProofResult::discharged(&name, "source — blessed per-member data", span, None);
+            result.blessings_required.push(blessing);
+            result
         }
 
         // Catch-all for nodes handled by classify() — should not be reached
@@ -805,20 +856,48 @@ pub fn analyze_coordination(
         let sink_name = short_name_root(root);
         let sink_span = root.op_metadata().backtrace.format_span().unwrap_or_default();
         let sink_id = format!("{sink_name}@{sink_span}");
-        let goal = goal_overrides
+        // If the user provided an override, use it. Otherwise try candidate goals
+        // and pick the best (fewest blessings, or passing outright).
+        let override_goal = goal_overrides
             .get(sink_id.as_str())
             .or_else(|| goal_overrides.get(sink_name))
-            .cloned()
-            .unwrap_or_else(|| default_goal_for_sink(root));
+            .cloned();
 
-        let result = prove(root.input(), &goal, &cycle_proofs, &mut seen_tees);
+        let candidates: Vec<OrderGoal> = if let Some(g) = override_goal {
+            vec![g]
+        } else {
+            // Try the default goal plus alternatives
+            let default = default_goal_for_sink(root);
+            let mut goals = vec![default.clone()];
+            // Add alternatives that aren't already the default
+            for alt in &[OrderGoal::Prefix, OrderGoal::SetInclusion, OrderGoal::Lattice] {
+                if *alt != default {
+                    goals.push(alt.clone());
+                }
+            }
+            goals
+        };
 
-        let mut result = result;
-        result.trace.reverse();
+        // Try each candidate goal, pick the best result
+        let mut best_goal = candidates[0].clone();
+        let mut best_result = prove(root.input(), &candidates[0], &cycle_proofs, &mut seen_tees);
+        for candidate in &candidates[1..] {
+            let mut alt_seen = SeenTees::new();
+            let alt_result = prove(root.input(), candidate, &cycle_proofs, &mut alt_seen);
+            // Prefer: (1) outright pass, (2) conditional pass with fewer blessings, (3) fail
+            let best_score = if best_result.success { best_result.blessings_required.len() } else { usize::MAX };
+            let alt_score = if alt_result.success { alt_result.blessings_required.len() } else { usize::MAX };
+            if alt_score < best_score {
+                best_goal = candidate.clone();
+                best_result = alt_result;
+            }
+        }
+
+        best_result.trace.reverse();
         sinks.push(SinkResult {
             name: short_name_root(root).to_string(),
-            goal,
-            result,
+            goal: best_goal,
+            result: best_result,
             location: root.input_metadata().location_id.clone(),
         });
     }
@@ -1254,15 +1333,16 @@ mod tests {
 
     #[test]
     fn chain_breaks_prefix() {
+        // chain breaks Prefix but passes SetInclusion.
+        // With multi-goal exploration, the analysis picks SetInclusion (the better goal).
         let r = check(|flow| {
             let p = flow.process::<()>();
             let a = p.source_iter(q!([1, 2]));
             let b = p.source_iter(q!([3, 4]));
-            // chain of two TotalOrder streams — interleaving breaks prefix
             a.chain(b).for_each(q!(|_| {}));
         });
-        // Default goal for TotalOrder sink is Prefix; chain breaks it
-        assert!(!r.all_monotone(), "chain should break Prefix:\n{r}");
+        assert!(r.all_monotone(), "chain should pass under SetInclusion:\n{r}");
+        assert_eq!(r.sinks[0].goal, OrderGoal::SetInclusion);
     }
 
     // --- Join breaks Prefix ---
