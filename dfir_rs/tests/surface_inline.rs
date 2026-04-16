@@ -399,3 +399,28 @@ pub async fn test_inline_hydro_pattern_multi_tick() {
     result.sort();
     assert_eq!(vec![(200, 8), (300, 8)], result);
 }
+
+/// Regression test for https://github.com/hydro-project/hydro/issues/2747
+/// defer_tick_lazy in a cycle must deliver data on the next tick, not two ticks later.
+/// This was caused by missing topological sort of subgraphs within a stratum.
+#[dfir_rs::test]
+pub async fn test_inline_defer_tick_lazy_cycle() {
+    let output = std::rc::Rc::new(std::cell::RefCell::new(Vec::<usize>::new()));
+    let output_inner = std::rc::Rc::clone(&output);
+
+    let mut flow = dfir_rs::dfir_syntax_inline! {
+        a = union() -> tee();
+        source_iter([1_usize, 3]) -> [0]a;
+        a[0] -> defer_tick_lazy() -> map(|x: usize| 2 * x) -> [1]a;
+        a[1] -> for_each(|x: usize| output_inner.borrow_mut().push(x));
+    };
+
+    flow.run_tick().await;
+    assert_eq!(vec![1, 3], output.take());
+
+    flow.run_tick().await;
+    assert_eq!(vec![2, 6], output.take());
+
+    flow.run_tick().await;
+    assert_eq!(vec![4, 12], output.take());
+}
