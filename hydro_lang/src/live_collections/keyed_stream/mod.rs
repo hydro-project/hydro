@@ -2228,27 +2228,42 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// ```
     pub fn get(self, key: impl Into<Optional<K, L, Bounded>>) -> Stream<V, L, B, O, R>
     where
-        K: Eq + Clone,
+        K: Eq,
     {
         let key: Optional<K, L, Bounded> = key.into();
-        // Preserve ordering by working at the Stream<(K, V)> level directly
-        // rather than going through entries() which drops to NoOrder.
-        let entries_preserving_order: Stream<(K, V), L, B, O, R> = Stream::new(
-            self.location.clone(),
-            HydroNode::Cast {
-                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .new_node_metadata(Stream::<(K, V), L, B, O, R>::collection_kind()),
-            },
-        );
-        entries_preserving_order
-            .cross_singleton(key)
-            .filter_map(q!(|((k, v), lookup_key)| if k == lookup_key {
+        check_matching_location(&self.location, &key.location);
+
+        // Build CrossSingleton IR node directly (rather than calling
+        // Stream::cross_singleton) so we avoid requiring K: Clone.
+        // The DFIR cross_singleton operator handles cloning internally.
+        let cross_node = HydroNode::CrossSingleton {
+            left: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+            right: Box::new(key.ir_node.replace(HydroNode::Placeholder)),
+            metadata: self
+                .location
+                .new_node_metadata(Stream::<((K, V), K), L, B, O, R>::collection_kind()),
+        };
+
+        let filter_map_f = q!(|((k, v), lookup_key)| {
+            if k == lookup_key {
                 Some(v)
             } else {
                 None
-            }))
+            }
+        })
+        .splice_fn1_ctx::<((K, V), K), Option<V>>(&self.location)
+        .into();
+
+        Stream::new(
+            self.location.clone(),
+            HydroNode::FilterMap {
+                f: filter_map_f,
+                input: Box::new(cross_node),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<V, L, B, O, R>::collection_kind()),
+            },
+        )
     }
 
     /// For each value in `self`, find the matching key in `lookup`.
@@ -3318,5 +3333,47 @@ mod tests {
             "did not see an instance with key 1 having [0, 1] in order"
         );
         assert_eq!(instance_count, 58);
+    }
+
+    /// Regression: `get` on a `TotalOrder` keyed stream must produce a `TotalOrder` stream.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_get_preserves_total_order() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let tick = node.tick();
+
+        let keyed = node
+            .source_iter(q!(vec![(1, 10), (1, 11), (2, 20)]))
+            .into_keyed()
+            .batch(&tick, nondet!(/** test */))
+            .assume_ordering::<TotalOrder>(nondet!(/** test */));
+
+        let key = tick.singleton(q!(1));
+        // get returns TotalOrder, so first() (which requires IsOrdered) compiles,
+        // and sim_output yields a TotalOrder receiver with assert_yields_only.
+        let out = keyed.get(key).all_ticks().sim_output();
+
+        flow.sim().exhaustive(async || {
+            out.assert_yields_only([10, 11]).await;
+        });
+    }
+
+    /// Regression: `get` must work on `Unbounded` keyed streams.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_get_on_unbounded() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input::<_, TotalOrder, _>();
+        // keyed is Unbounded here — get must compile without IsBounded.
+        let key = node.singleton(q!(1));
+        let out = input.into_keyed().get(key).sim_output();
+
+        flow.sim().exhaustive(async || {
+            in_send.send_many([(1, 10), (1, 11), (2, 20)]);
+            out.assert_yields([10, 11]).await;
+        });
     }
 }
