@@ -2232,7 +2232,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     {
         let filtered = self
             .cross_singleton(key)
-            .filter_with_key(q!(|(k, (_v, lookup_key))| k == lookup_key))
+            .filter_with_key(q!(|&(ref k, (_, ref lookup_key))| k == lookup_key))
             .map(q!(|(v, _lookup_key)| v));
 
         // Cast KeyedStream<K, V> to Stream<(K, V)> preserving O (unlike
