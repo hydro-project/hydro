@@ -409,216 +409,209 @@
 <a href=#409 id=409 data-nosnippet>409</a>            </span>);
 <a href=#410 id=410 data-nosnippet>410</a>        }
 <a href=#411 id=411 data-nosnippet>411</a>
-<a href=#412 id=412 data-nosnippet>412</a>        <span class="kw">let </span>raw_stream: Stream&lt;
-<a href=#413 id=413 data-nosnippet>413</a>            (MemberId&lt;L&gt;, T),
-<a href=#414 id=414 data-nosnippet>414</a>            Cluster&lt;<span class="lifetime">'a</span>, L2&gt;,
-<a href=#415 id=415 data-nosnippet>415</a>            Unbounded,
-<a href=#416 id=416 data-nosnippet>416</a>            &lt;O <span class="kw">as </span>MinOrder&lt;N::OrderingGuarantee&gt;&gt;::Min,
-<a href=#417 id=417 data-nosnippet>417</a>            R,
-<a href=#418 id=418 data-nosnippet>418</a>        &gt; = Stream::new(
-<a href=#419 id=419 data-nosnippet>419</a>            to.clone(),
-<a href=#420 id=420 data-nosnippet>420</a>            HydroNode::Network {
-<a href=#421 id=421 data-nosnippet>421</a>                name: name.map(ToOwned::to_owned),
-<a href=#422 id=422 data-nosnippet>422</a>                networking_info: N::networking_info(),
-<a href=#423 id=423 data-nosnippet>423</a>                serialize_fn: serialize_pipeline.map(|e| e.into()),
-<a href=#424 id=424 data-nosnippet>424</a>                instantiate_fn: DebugInstantiate::Building,
-<a href=#425 id=425 data-nosnippet>425</a>                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
-<a href=#426 id=426 data-nosnippet>426</a>                input: Box::new(<span class="self">self</span>.ir_node.replace(HydroNode::Placeholder)),
-<a href=#427 id=427 data-nosnippet>427</a>                metadata: to.new_node_metadata(Stream::&lt;
-<a href=#428 id=428 data-nosnippet>428</a>                    (MemberId&lt;L&gt;, T),
-<a href=#429 id=429 data-nosnippet>429</a>                    Cluster&lt;<span class="lifetime">'a</span>, L2&gt;,
-<a href=#430 id=430 data-nosnippet>430</a>                    Unbounded,
-<a href=#431 id=431 data-nosnippet>431</a>                    &lt;O <span class="kw">as </span>MinOrder&lt;N::OrderingGuarantee&gt;&gt;::Min,
-<a href=#432 id=432 data-nosnippet>432</a>                    R,
-<a href=#433 id=433 data-nosnippet>433</a>                &gt;::collection_kind()),
-<a href=#434 id=434 data-nosnippet>434</a>            },
-<a href=#435 id=435 data-nosnippet>435</a>        );
-<a href=#436 id=436 data-nosnippet>436</a>
-<a href=#437 id=437 data-nosnippet>437</a>        raw_stream.into_keyed()
-<a href=#438 id=438 data-nosnippet>438</a>    }
-<a href=#439 id=439 data-nosnippet>439</a>}
-<a href=#440 id=440 data-nosnippet>440</a>
-<a href=#441 id=441 data-nosnippet>441</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, K, V, L, B: Boundedness, O: Ordering, R: Retries&gt;
-<a href=#442 id=442 data-nosnippet>442</a>    KeyedStream&lt;K, V, Cluster&lt;<span class="lifetime">'a</span>, L&gt;, B, O, R&gt;
-<a href=#443 id=443 data-nosnippet>443</a>{
-<a href=#444 id=444 data-nosnippet>444</a>    <span class="attr">#[expect(clippy::type_complexity, reason = <span class="string">"compound key types with ordering"</span>)]
-<a href=#445 id=445 data-nosnippet>445</a>    #[deprecated = <span class="string">"use KeyedStream::send(..., TCP.fail_stop().bincode()) instead"</span>]
-<a href=#446 id=446 data-nosnippet>446</a>    </span><span class="doccomment">/// "Moves" elements of this keyed stream from a cluster to a process by sending them over the
-<a href=#447 id=447 data-nosnippet>447</a>    /// network, using [`bincode`] to serialize/deserialize messages. The resulting [`KeyedStream`]
-<a href=#448 id=448 data-nosnippet>448</a>    /// has a compound key where the first element is the sender's [`MemberId`] and the second
-<a href=#449 id=449 data-nosnippet>449</a>    /// element is the original key.
-<a href=#450 id=450 data-nosnippet>450</a>    ///
-<a href=#451 id=451 data-nosnippet>451</a>    /// # Example
-<a href=#452 id=452 data-nosnippet>452</a>    /// ```rust
-<a href=#453 id=453 data-nosnippet>453</a>    /// # #[cfg(feature = "deploy")] {
-<a href=#454 id=454 data-nosnippet>454</a>    /// # use hydro_lang::prelude::*;
-<a href=#455 id=455 data-nosnippet>455</a>    /// # use futures::StreamExt;
-<a href=#456 id=456 data-nosnippet>456</a>    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
-<a href=#457 id=457 data-nosnippet>457</a>    /// # type Source = ();
-<a href=#458 id=458 data-nosnippet>458</a>    /// # type Destination = ();
-<a href=#459 id=459 data-nosnippet>459</a>    /// let source: Cluster&lt;Source&gt; = flow.cluster::&lt;Source&gt;();
-<a href=#460 id=460 data-nosnippet>460</a>    /// let to_send: KeyedStream&lt;_, _, Cluster&lt;_&gt;, _&gt; = source
-<a href=#461 id=461 data-nosnippet>461</a>    ///     .source_iter(q!(vec![0, 1, 2, 3]))
-<a href=#462 id=462 data-nosnippet>462</a>    ///     .map(q!(|x| (x, x + 123)))
-<a href=#463 id=463 data-nosnippet>463</a>    ///     .into_keyed();
-<a href=#464 id=464 data-nosnippet>464</a>    /// let destination_process = flow.process::&lt;Destination&gt;();
-<a href=#465 id=465 data-nosnippet>465</a>    /// let all_received = to_send.send_bincode(&amp;destination_process); // KeyedStream&lt;(MemberId&lt;Source&gt;, i32), i32, ...&gt;
-<a href=#466 id=466 data-nosnippet>466</a>    /// # all_received.entries().send_bincode(&amp;p2)
-<a href=#467 id=467 data-nosnippet>467</a>    /// # }, |mut stream| async move {
-<a href=#468 id=468 data-nosnippet>468</a>    /// // if there are 4 members in the source cluster, the destination process receives four messages from each source member
-<a href=#469 id=469 data-nosnippet>469</a>    /// // {
-<a href=#470 id=470 data-nosnippet>470</a>    /// //     (MemberId&lt;Source&gt;(0), 0): [123], (MemberId&lt;Source&gt;(1), 0): [123], ...,
-<a href=#471 id=471 data-nosnippet>471</a>    /// //     (MemberId&lt;Source&gt;(0), 1): [124], (MemberId&lt;Source&gt;(1), 1): [124], ...,
-<a href=#472 id=472 data-nosnippet>472</a>    /// //     ...
-<a href=#473 id=473 data-nosnippet>473</a>    /// // }
-<a href=#474 id=474 data-nosnippet>474</a>    /// # let mut results = Vec::new();
-<a href=#475 id=475 data-nosnippet>475</a>    /// # for w in 0..16 {
-<a href=#476 id=476 data-nosnippet>476</a>    /// #     results.push(format!("{:?}", stream.next().await.unwrap()));
-<a href=#477 id=477 data-nosnippet>477</a>    /// # }
-<a href=#478 id=478 data-nosnippet>478</a>    /// # results.sort();
-<a href=#479 id=479 data-nosnippet>479</a>    /// # assert_eq!(results, vec![
-<a href=#480 id=480 data-nosnippet>480</a>    /// #   "((MemberId::&lt;()&gt;(0), 0), 123)",
-<a href=#481 id=481 data-nosnippet>481</a>    /// #   "((MemberId::&lt;()&gt;(0), 1), 124)",
-<a href=#482 id=482 data-nosnippet>482</a>    /// #   "((MemberId::&lt;()&gt;(0), 2), 125)",
-<a href=#483 id=483 data-nosnippet>483</a>    /// #   "((MemberId::&lt;()&gt;(0), 3), 126)",
-<a href=#484 id=484 data-nosnippet>484</a>    /// #   "((MemberId::&lt;()&gt;(1), 0), 123)",
-<a href=#485 id=485 data-nosnippet>485</a>    /// #   "((MemberId::&lt;()&gt;(1), 1), 124)",
-<a href=#486 id=486 data-nosnippet>486</a>    /// #   "((MemberId::&lt;()&gt;(1), 2), 125)",
-<a href=#487 id=487 data-nosnippet>487</a>    /// #   "((MemberId::&lt;()&gt;(1), 3), 126)",
-<a href=#488 id=488 data-nosnippet>488</a>    /// #   "((MemberId::&lt;()&gt;(2), 0), 123)",
-<a href=#489 id=489 data-nosnippet>489</a>    /// #   "((MemberId::&lt;()&gt;(2), 1), 124)",
-<a href=#490 id=490 data-nosnippet>490</a>    /// #   "((MemberId::&lt;()&gt;(2), 2), 125)",
-<a href=#491 id=491 data-nosnippet>491</a>    /// #   "((MemberId::&lt;()&gt;(2), 3), 126)",
-<a href=#492 id=492 data-nosnippet>492</a>    /// #   "((MemberId::&lt;()&gt;(3), 0), 123)",
-<a href=#493 id=493 data-nosnippet>493</a>    /// #   "((MemberId::&lt;()&gt;(3), 1), 124)",
-<a href=#494 id=494 data-nosnippet>494</a>    /// #   "((MemberId::&lt;()&gt;(3), 2), 125)",
-<a href=#495 id=495 data-nosnippet>495</a>    /// #   "((MemberId::&lt;()&gt;(3), 3), 126)",
-<a href=#496 id=496 data-nosnippet>496</a>    /// # ]);
-<a href=#497 id=497 data-nosnippet>497</a>    /// # }));
-<a href=#498 id=498 data-nosnippet>498</a>    /// # }
-<a href=#499 id=499 data-nosnippet>499</a>    /// ```
-<a href=#500 id=500 data-nosnippet>500</a>    </span><span class="kw">pub fn </span>send_bincode&lt;L2&gt;(
-<a href=#501 id=501 data-nosnippet>501</a>        <span class="self">self</span>,
-<a href=#502 id=502 data-nosnippet>502</a>        other: <span class="kw-2">&amp;</span>Process&lt;<span class="lifetime">'a</span>, L2&gt;,
-<a href=#503 id=503 data-nosnippet>503</a>    ) -&gt; KeyedStream&lt;(MemberId&lt;L&gt;, K), V, Process&lt;<span class="lifetime">'a</span>, L2&gt;, Unbounded, O, R&gt;
-<a href=#504 id=504 data-nosnippet>504</a>    <span class="kw">where
-<a href=#505 id=505 data-nosnippet>505</a>        </span>K: Serialize + DeserializeOwned,
-<a href=#506 id=506 data-nosnippet>506</a>        V: Serialize + DeserializeOwned,
-<a href=#507 id=507 data-nosnippet>507</a>    {
-<a href=#508 id=508 data-nosnippet>508</a>        <span class="self">self</span>.send(other, TCP.fail_stop().bincode())
-<a href=#509 id=509 data-nosnippet>509</a>    }
-<a href=#510 id=510 data-nosnippet>510</a>
-<a href=#511 id=511 data-nosnippet>511</a>    <span class="attr">#[expect(clippy::type_complexity, reason = <span class="string">"compound key types with ordering"</span>)]
-<a href=#512 id=512 data-nosnippet>512</a>    </span><span class="doccomment">/// "Moves" elements of this keyed stream from a cluster to a process by sending them over the
-<a href=#513 id=513 data-nosnippet>513</a>    /// network, using the configuration in `via` to set up the message transport. The resulting
-<a href=#514 id=514 data-nosnippet>514</a>    /// [`KeyedStream`] has a compound key where the first element is the sender's [`MemberId`] and
-<a href=#515 id=515 data-nosnippet>515</a>    /// the second element is the original key.
-<a href=#516 id=516 data-nosnippet>516</a>    ///
-<a href=#517 id=517 data-nosnippet>517</a>    /// # Example
-<a href=#518 id=518 data-nosnippet>518</a>    /// ```rust
-<a href=#519 id=519 data-nosnippet>519</a>    /// # #[cfg(feature = "deploy")] {
-<a href=#520 id=520 data-nosnippet>520</a>    /// # use hydro_lang::prelude::*;
-<a href=#521 id=521 data-nosnippet>521</a>    /// # use futures::StreamExt;
-<a href=#522 id=522 data-nosnippet>522</a>    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
-<a href=#523 id=523 data-nosnippet>523</a>    /// # type Source = ();
-<a href=#524 id=524 data-nosnippet>524</a>    /// # type Destination = ();
-<a href=#525 id=525 data-nosnippet>525</a>    /// let source: Cluster&lt;Source&gt; = flow.cluster::&lt;Source&gt;();
-<a href=#526 id=526 data-nosnippet>526</a>    /// let to_send: KeyedStream&lt;_, _, Cluster&lt;_&gt;, _&gt; = source
-<a href=#527 id=527 data-nosnippet>527</a>    ///     .source_iter(q!(vec![0, 1, 2, 3]))
-<a href=#528 id=528 data-nosnippet>528</a>    ///     .map(q!(|x| (x, x + 123)))
-<a href=#529 id=529 data-nosnippet>529</a>    ///     .into_keyed();
-<a href=#530 id=530 data-nosnippet>530</a>    /// let destination_process = flow.process::&lt;Destination&gt;();
-<a href=#531 id=531 data-nosnippet>531</a>    /// let all_received = to_send.send(&amp;destination_process, TCP.fail_stop().bincode()); // KeyedStream&lt;(MemberId&lt;Source&gt;, i32), i32, ...&gt;
-<a href=#532 id=532 data-nosnippet>532</a>    /// # all_received.entries().send(&amp;p2, TCP.fail_stop().bincode())
-<a href=#533 id=533 data-nosnippet>533</a>    /// # }, |mut stream| async move {
-<a href=#534 id=534 data-nosnippet>534</a>    /// // if there are 4 members in the source cluster, the destination process receives four messages from each source member
-<a href=#535 id=535 data-nosnippet>535</a>    /// // {
-<a href=#536 id=536 data-nosnippet>536</a>    /// //     (MemberId&lt;Source&gt;(0), 0): [123], (MemberId&lt;Source&gt;(1), 0): [123], ...,
-<a href=#537 id=537 data-nosnippet>537</a>    /// //     (MemberId&lt;Source&gt;(0), 1): [124], (MemberId&lt;Source&gt;(1), 1): [124], ...,
-<a href=#538 id=538 data-nosnippet>538</a>    /// //     ...
-<a href=#539 id=539 data-nosnippet>539</a>    /// // }
-<a href=#540 id=540 data-nosnippet>540</a>    /// # let mut results = Vec::new();
-<a href=#541 id=541 data-nosnippet>541</a>    /// # for w in 0..16 {
-<a href=#542 id=542 data-nosnippet>542</a>    /// #     results.push(format!("{:?}", stream.next().await.unwrap()));
-<a href=#543 id=543 data-nosnippet>543</a>    /// # }
-<a href=#544 id=544 data-nosnippet>544</a>    /// # results.sort();
-<a href=#545 id=545 data-nosnippet>545</a>    /// # assert_eq!(results, vec![
-<a href=#546 id=546 data-nosnippet>546</a>    /// #   "((MemberId::&lt;()&gt;(0), 0), 123)",
-<a href=#547 id=547 data-nosnippet>547</a>    /// #   "((MemberId::&lt;()&gt;(0), 1), 124)",
-<a href=#548 id=548 data-nosnippet>548</a>    /// #   "((MemberId::&lt;()&gt;(0), 2), 125)",
-<a href=#549 id=549 data-nosnippet>549</a>    /// #   "((MemberId::&lt;()&gt;(0), 3), 126)",
-<a href=#550 id=550 data-nosnippet>550</a>    /// #   "((MemberId::&lt;()&gt;(1), 0), 123)",
-<a href=#551 id=551 data-nosnippet>551</a>    /// #   "((MemberId::&lt;()&gt;(1), 1), 124)",
-<a href=#552 id=552 data-nosnippet>552</a>    /// #   "((MemberId::&lt;()&gt;(1), 2), 125)",
-<a href=#553 id=553 data-nosnippet>553</a>    /// #   "((MemberId::&lt;()&gt;(1), 3), 126)",
-<a href=#554 id=554 data-nosnippet>554</a>    /// #   "((MemberId::&lt;()&gt;(2), 0), 123)",
-<a href=#555 id=555 data-nosnippet>555</a>    /// #   "((MemberId::&lt;()&gt;(2), 1), 124)",
-<a href=#556 id=556 data-nosnippet>556</a>    /// #   "((MemberId::&lt;()&gt;(2), 2), 125)",
-<a href=#557 id=557 data-nosnippet>557</a>    /// #   "((MemberId::&lt;()&gt;(2), 3), 126)",
-<a href=#558 id=558 data-nosnippet>558</a>    /// #   "((MemberId::&lt;()&gt;(3), 0), 123)",
-<a href=#559 id=559 data-nosnippet>559</a>    /// #   "((MemberId::&lt;()&gt;(3), 1), 124)",
-<a href=#560 id=560 data-nosnippet>560</a>    /// #   "((MemberId::&lt;()&gt;(3), 2), 125)",
-<a href=#561 id=561 data-nosnippet>561</a>    /// #   "((MemberId::&lt;()&gt;(3), 3), 126)",
-<a href=#562 id=562 data-nosnippet>562</a>    /// # ]);
-<a href=#563 id=563 data-nosnippet>563</a>    /// # }));
-<a href=#564 id=564 data-nosnippet>564</a>    /// # }
-<a href=#565 id=565 data-nosnippet>565</a>    /// ```
-<a href=#566 id=566 data-nosnippet>566</a>    </span><span class="kw">pub fn </span>send&lt;L2, N: NetworkFor&lt;(K, V)&gt;&gt;(
-<a href=#567 id=567 data-nosnippet>567</a>        <span class="self">self</span>,
-<a href=#568 id=568 data-nosnippet>568</a>        to: <span class="kw-2">&amp;</span>Process&lt;<span class="lifetime">'a</span>, L2&gt;,
-<a href=#569 id=569 data-nosnippet>569</a>        via: N,
-<a href=#570 id=570 data-nosnippet>570</a>    ) -&gt; KeyedStream&lt;
-<a href=#571 id=571 data-nosnippet>571</a>        (MemberId&lt;L&gt;, K),
-<a href=#572 id=572 data-nosnippet>572</a>        V,
-<a href=#573 id=573 data-nosnippet>573</a>        Process&lt;<span class="lifetime">'a</span>, L2&gt;,
-<a href=#574 id=574 data-nosnippet>574</a>        Unbounded,
-<a href=#575 id=575 data-nosnippet>575</a>        &lt;O <span class="kw">as </span>MinOrder&lt;N::OrderingGuarantee&gt;&gt;::Min,
-<a href=#576 id=576 data-nosnippet>576</a>        R,
-<a href=#577 id=577 data-nosnippet>577</a>    &gt;
-<a href=#578 id=578 data-nosnippet>578</a>    <span class="kw">where
-<a href=#579 id=579 data-nosnippet>579</a>        </span>K: Serialize + DeserializeOwned,
-<a href=#580 id=580 data-nosnippet>580</a>        V: Serialize + DeserializeOwned,
-<a href=#581 id=581 data-nosnippet>581</a>        O: MinOrder&lt;N::OrderingGuarantee&gt;,
-<a href=#582 id=582 data-nosnippet>582</a>    {
-<a href=#583 id=583 data-nosnippet>583</a>        <span class="kw">let </span>serialize_pipeline = <span class="prelude-val">Some</span>(N::serialize_thunk(<span class="bool-val">false</span>));
-<a href=#584 id=584 data-nosnippet>584</a>
-<a href=#585 id=585 data-nosnippet>585</a>        <span class="kw">let </span>deserialize_pipeline = <span class="prelude-val">Some</span>(N::deserialize_thunk(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>quote_type::&lt;L&gt;())));
+<a href=#412 id=412 data-nosnippet>412</a>        KeyedStream::new(
+<a href=#413 id=413 data-nosnippet>413</a>            to.clone(),
+<a href=#414 id=414 data-nosnippet>414</a>            HydroNode::Network {
+<a href=#415 id=415 data-nosnippet>415</a>                name: name.map(ToOwned::to_owned),
+<a href=#416 id=416 data-nosnippet>416</a>                networking_info: N::networking_info(),
+<a href=#417 id=417 data-nosnippet>417</a>                serialize_fn: serialize_pipeline.map(|e| e.into()),
+<a href=#418 id=418 data-nosnippet>418</a>                instantiate_fn: DebugInstantiate::Building,
+<a href=#419 id=419 data-nosnippet>419</a>                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
+<a href=#420 id=420 data-nosnippet>420</a>                input: Box::new(<span class="self">self</span>.ir_node.replace(HydroNode::Placeholder)),
+<a href=#421 id=421 data-nosnippet>421</a>                metadata: to.new_node_metadata(KeyedStream::&lt;
+<a href=#422 id=422 data-nosnippet>422</a>                    MemberId&lt;L&gt;,
+<a href=#423 id=423 data-nosnippet>423</a>                    T,
+<a href=#424 id=424 data-nosnippet>424</a>                    Cluster&lt;<span class="lifetime">'a</span>, L2&gt;,
+<a href=#425 id=425 data-nosnippet>425</a>                    Unbounded,
+<a href=#426 id=426 data-nosnippet>426</a>                    &lt;O <span class="kw">as </span>MinOrder&lt;N::OrderingGuarantee&gt;&gt;::Min,
+<a href=#427 id=427 data-nosnippet>427</a>                    R,
+<a href=#428 id=428 data-nosnippet>428</a>                &gt;::collection_kind()),
+<a href=#429 id=429 data-nosnippet>429</a>            },
+<a href=#430 id=430 data-nosnippet>430</a>        )
+<a href=#431 id=431 data-nosnippet>431</a>    }
+<a href=#432 id=432 data-nosnippet>432</a>}
+<a href=#433 id=433 data-nosnippet>433</a>
+<a href=#434 id=434 data-nosnippet>434</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, K, V, L, B: Boundedness, O: Ordering, R: Retries&gt;
+<a href=#435 id=435 data-nosnippet>435</a>    KeyedStream&lt;K, V, Cluster&lt;<span class="lifetime">'a</span>, L&gt;, B, O, R&gt;
+<a href=#436 id=436 data-nosnippet>436</a>{
+<a href=#437 id=437 data-nosnippet>437</a>    <span class="attr">#[expect(clippy::type_complexity, reason = <span class="string">"compound key types with ordering"</span>)]
+<a href=#438 id=438 data-nosnippet>438</a>    #[deprecated = <span class="string">"use KeyedStream::send(..., TCP.fail_stop().bincode()) instead"</span>]
+<a href=#439 id=439 data-nosnippet>439</a>    </span><span class="doccomment">/// "Moves" elements of this keyed stream from a cluster to a process by sending them over the
+<a href=#440 id=440 data-nosnippet>440</a>    /// network, using [`bincode`] to serialize/deserialize messages. The resulting [`KeyedStream`]
+<a href=#441 id=441 data-nosnippet>441</a>    /// has a compound key where the first element is the sender's [`MemberId`] and the second
+<a href=#442 id=442 data-nosnippet>442</a>    /// element is the original key.
+<a href=#443 id=443 data-nosnippet>443</a>    ///
+<a href=#444 id=444 data-nosnippet>444</a>    /// # Example
+<a href=#445 id=445 data-nosnippet>445</a>    /// ```rust
+<a href=#446 id=446 data-nosnippet>446</a>    /// # #[cfg(feature = "deploy")] {
+<a href=#447 id=447 data-nosnippet>447</a>    /// # use hydro_lang::prelude::*;
+<a href=#448 id=448 data-nosnippet>448</a>    /// # use futures::StreamExt;
+<a href=#449 id=449 data-nosnippet>449</a>    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
+<a href=#450 id=450 data-nosnippet>450</a>    /// # type Source = ();
+<a href=#451 id=451 data-nosnippet>451</a>    /// # type Destination = ();
+<a href=#452 id=452 data-nosnippet>452</a>    /// let source: Cluster&lt;Source&gt; = flow.cluster::&lt;Source&gt;();
+<a href=#453 id=453 data-nosnippet>453</a>    /// let to_send: KeyedStream&lt;_, _, Cluster&lt;_&gt;, _&gt; = source
+<a href=#454 id=454 data-nosnippet>454</a>    ///     .source_iter(q!(vec![0, 1, 2, 3]))
+<a href=#455 id=455 data-nosnippet>455</a>    ///     .map(q!(|x| (x, x + 123)))
+<a href=#456 id=456 data-nosnippet>456</a>    ///     .into_keyed();
+<a href=#457 id=457 data-nosnippet>457</a>    /// let destination_process = flow.process::&lt;Destination&gt;();
+<a href=#458 id=458 data-nosnippet>458</a>    /// let all_received = to_send.send_bincode(&amp;destination_process); // KeyedStream&lt;(MemberId&lt;Source&gt;, i32), i32, ...&gt;
+<a href=#459 id=459 data-nosnippet>459</a>    /// # all_received.entries().send_bincode(&amp;p2)
+<a href=#460 id=460 data-nosnippet>460</a>    /// # }, |mut stream| async move {
+<a href=#461 id=461 data-nosnippet>461</a>    /// // if there are 4 members in the source cluster, the destination process receives four messages from each source member
+<a href=#462 id=462 data-nosnippet>462</a>    /// // {
+<a href=#463 id=463 data-nosnippet>463</a>    /// //     (MemberId&lt;Source&gt;(0), 0): [123], (MemberId&lt;Source&gt;(1), 0): [123], ...,
+<a href=#464 id=464 data-nosnippet>464</a>    /// //     (MemberId&lt;Source&gt;(0), 1): [124], (MemberId&lt;Source&gt;(1), 1): [124], ...,
+<a href=#465 id=465 data-nosnippet>465</a>    /// //     ...
+<a href=#466 id=466 data-nosnippet>466</a>    /// // }
+<a href=#467 id=467 data-nosnippet>467</a>    /// # let mut results = Vec::new();
+<a href=#468 id=468 data-nosnippet>468</a>    /// # for w in 0..16 {
+<a href=#469 id=469 data-nosnippet>469</a>    /// #     results.push(format!("{:?}", stream.next().await.unwrap()));
+<a href=#470 id=470 data-nosnippet>470</a>    /// # }
+<a href=#471 id=471 data-nosnippet>471</a>    /// # results.sort();
+<a href=#472 id=472 data-nosnippet>472</a>    /// # assert_eq!(results, vec![
+<a href=#473 id=473 data-nosnippet>473</a>    /// #   "((MemberId::&lt;()&gt;(0), 0), 123)",
+<a href=#474 id=474 data-nosnippet>474</a>    /// #   "((MemberId::&lt;()&gt;(0), 1), 124)",
+<a href=#475 id=475 data-nosnippet>475</a>    /// #   "((MemberId::&lt;()&gt;(0), 2), 125)",
+<a href=#476 id=476 data-nosnippet>476</a>    /// #   "((MemberId::&lt;()&gt;(0), 3), 126)",
+<a href=#477 id=477 data-nosnippet>477</a>    /// #   "((MemberId::&lt;()&gt;(1), 0), 123)",
+<a href=#478 id=478 data-nosnippet>478</a>    /// #   "((MemberId::&lt;()&gt;(1), 1), 124)",
+<a href=#479 id=479 data-nosnippet>479</a>    /// #   "((MemberId::&lt;()&gt;(1), 2), 125)",
+<a href=#480 id=480 data-nosnippet>480</a>    /// #   "((MemberId::&lt;()&gt;(1), 3), 126)",
+<a href=#481 id=481 data-nosnippet>481</a>    /// #   "((MemberId::&lt;()&gt;(2), 0), 123)",
+<a href=#482 id=482 data-nosnippet>482</a>    /// #   "((MemberId::&lt;()&gt;(2), 1), 124)",
+<a href=#483 id=483 data-nosnippet>483</a>    /// #   "((MemberId::&lt;()&gt;(2), 2), 125)",
+<a href=#484 id=484 data-nosnippet>484</a>    /// #   "((MemberId::&lt;()&gt;(2), 3), 126)",
+<a href=#485 id=485 data-nosnippet>485</a>    /// #   "((MemberId::&lt;()&gt;(3), 0), 123)",
+<a href=#486 id=486 data-nosnippet>486</a>    /// #   "((MemberId::&lt;()&gt;(3), 1), 124)",
+<a href=#487 id=487 data-nosnippet>487</a>    /// #   "((MemberId::&lt;()&gt;(3), 2), 125)",
+<a href=#488 id=488 data-nosnippet>488</a>    /// #   "((MemberId::&lt;()&gt;(3), 3), 126)",
+<a href=#489 id=489 data-nosnippet>489</a>    /// # ]);
+<a href=#490 id=490 data-nosnippet>490</a>    /// # }));
+<a href=#491 id=491 data-nosnippet>491</a>    /// # }
+<a href=#492 id=492 data-nosnippet>492</a>    /// ```
+<a href=#493 id=493 data-nosnippet>493</a>    </span><span class="kw">pub fn </span>send_bincode&lt;L2&gt;(
+<a href=#494 id=494 data-nosnippet>494</a>        <span class="self">self</span>,
+<a href=#495 id=495 data-nosnippet>495</a>        other: <span class="kw-2">&amp;</span>Process&lt;<span class="lifetime">'a</span>, L2&gt;,
+<a href=#496 id=496 data-nosnippet>496</a>    ) -&gt; KeyedStream&lt;(MemberId&lt;L&gt;, K), V, Process&lt;<span class="lifetime">'a</span>, L2&gt;, Unbounded, O, R&gt;
+<a href=#497 id=497 data-nosnippet>497</a>    <span class="kw">where
+<a href=#498 id=498 data-nosnippet>498</a>        </span>K: Serialize + DeserializeOwned,
+<a href=#499 id=499 data-nosnippet>499</a>        V: Serialize + DeserializeOwned,
+<a href=#500 id=500 data-nosnippet>500</a>    {
+<a href=#501 id=501 data-nosnippet>501</a>        <span class="self">self</span>.send(other, TCP.fail_stop().bincode())
+<a href=#502 id=502 data-nosnippet>502</a>    }
+<a href=#503 id=503 data-nosnippet>503</a>
+<a href=#504 id=504 data-nosnippet>504</a>    <span class="attr">#[expect(clippy::type_complexity, reason = <span class="string">"compound key types with ordering"</span>)]
+<a href=#505 id=505 data-nosnippet>505</a>    </span><span class="doccomment">/// "Moves" elements of this keyed stream from a cluster to a process by sending them over the
+<a href=#506 id=506 data-nosnippet>506</a>    /// network, using the configuration in `via` to set up the message transport. The resulting
+<a href=#507 id=507 data-nosnippet>507</a>    /// [`KeyedStream`] has a compound key where the first element is the sender's [`MemberId`] and
+<a href=#508 id=508 data-nosnippet>508</a>    /// the second element is the original key.
+<a href=#509 id=509 data-nosnippet>509</a>    ///
+<a href=#510 id=510 data-nosnippet>510</a>    /// # Example
+<a href=#511 id=511 data-nosnippet>511</a>    /// ```rust
+<a href=#512 id=512 data-nosnippet>512</a>    /// # #[cfg(feature = "deploy")] {
+<a href=#513 id=513 data-nosnippet>513</a>    /// # use hydro_lang::prelude::*;
+<a href=#514 id=514 data-nosnippet>514</a>    /// # use futures::StreamExt;
+<a href=#515 id=515 data-nosnippet>515</a>    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
+<a href=#516 id=516 data-nosnippet>516</a>    /// # type Source = ();
+<a href=#517 id=517 data-nosnippet>517</a>    /// # type Destination = ();
+<a href=#518 id=518 data-nosnippet>518</a>    /// let source: Cluster&lt;Source&gt; = flow.cluster::&lt;Source&gt;();
+<a href=#519 id=519 data-nosnippet>519</a>    /// let to_send: KeyedStream&lt;_, _, Cluster&lt;_&gt;, _&gt; = source
+<a href=#520 id=520 data-nosnippet>520</a>    ///     .source_iter(q!(vec![0, 1, 2, 3]))
+<a href=#521 id=521 data-nosnippet>521</a>    ///     .map(q!(|x| (x, x + 123)))
+<a href=#522 id=522 data-nosnippet>522</a>    ///     .into_keyed();
+<a href=#523 id=523 data-nosnippet>523</a>    /// let destination_process = flow.process::&lt;Destination&gt;();
+<a href=#524 id=524 data-nosnippet>524</a>    /// let all_received = to_send.send(&amp;destination_process, TCP.fail_stop().bincode()); // KeyedStream&lt;(MemberId&lt;Source&gt;, i32), i32, ...&gt;
+<a href=#525 id=525 data-nosnippet>525</a>    /// # all_received.entries().send(&amp;p2, TCP.fail_stop().bincode())
+<a href=#526 id=526 data-nosnippet>526</a>    /// # }, |mut stream| async move {
+<a href=#527 id=527 data-nosnippet>527</a>    /// // if there are 4 members in the source cluster, the destination process receives four messages from each source member
+<a href=#528 id=528 data-nosnippet>528</a>    /// // {
+<a href=#529 id=529 data-nosnippet>529</a>    /// //     (MemberId&lt;Source&gt;(0), 0): [123], (MemberId&lt;Source&gt;(1), 0): [123], ...,
+<a href=#530 id=530 data-nosnippet>530</a>    /// //     (MemberId&lt;Source&gt;(0), 1): [124], (MemberId&lt;Source&gt;(1), 1): [124], ...,
+<a href=#531 id=531 data-nosnippet>531</a>    /// //     ...
+<a href=#532 id=532 data-nosnippet>532</a>    /// // }
+<a href=#533 id=533 data-nosnippet>533</a>    /// # let mut results = Vec::new();
+<a href=#534 id=534 data-nosnippet>534</a>    /// # for w in 0..16 {
+<a href=#535 id=535 data-nosnippet>535</a>    /// #     results.push(format!("{:?}", stream.next().await.unwrap()));
+<a href=#536 id=536 data-nosnippet>536</a>    /// # }
+<a href=#537 id=537 data-nosnippet>537</a>    /// # results.sort();
+<a href=#538 id=538 data-nosnippet>538</a>    /// # assert_eq!(results, vec![
+<a href=#539 id=539 data-nosnippet>539</a>    /// #   "((MemberId::&lt;()&gt;(0), 0), 123)",
+<a href=#540 id=540 data-nosnippet>540</a>    /// #   "((MemberId::&lt;()&gt;(0), 1), 124)",
+<a href=#541 id=541 data-nosnippet>541</a>    /// #   "((MemberId::&lt;()&gt;(0), 2), 125)",
+<a href=#542 id=542 data-nosnippet>542</a>    /// #   "((MemberId::&lt;()&gt;(0), 3), 126)",
+<a href=#543 id=543 data-nosnippet>543</a>    /// #   "((MemberId::&lt;()&gt;(1), 0), 123)",
+<a href=#544 id=544 data-nosnippet>544</a>    /// #   "((MemberId::&lt;()&gt;(1), 1), 124)",
+<a href=#545 id=545 data-nosnippet>545</a>    /// #   "((MemberId::&lt;()&gt;(1), 2), 125)",
+<a href=#546 id=546 data-nosnippet>546</a>    /// #   "((MemberId::&lt;()&gt;(1), 3), 126)",
+<a href=#547 id=547 data-nosnippet>547</a>    /// #   "((MemberId::&lt;()&gt;(2), 0), 123)",
+<a href=#548 id=548 data-nosnippet>548</a>    /// #   "((MemberId::&lt;()&gt;(2), 1), 124)",
+<a href=#549 id=549 data-nosnippet>549</a>    /// #   "((MemberId::&lt;()&gt;(2), 2), 125)",
+<a href=#550 id=550 data-nosnippet>550</a>    /// #   "((MemberId::&lt;()&gt;(2), 3), 126)",
+<a href=#551 id=551 data-nosnippet>551</a>    /// #   "((MemberId::&lt;()&gt;(3), 0), 123)",
+<a href=#552 id=552 data-nosnippet>552</a>    /// #   "((MemberId::&lt;()&gt;(3), 1), 124)",
+<a href=#553 id=553 data-nosnippet>553</a>    /// #   "((MemberId::&lt;()&gt;(3), 2), 125)",
+<a href=#554 id=554 data-nosnippet>554</a>    /// #   "((MemberId::&lt;()&gt;(3), 3), 126)",
+<a href=#555 id=555 data-nosnippet>555</a>    /// # ]);
+<a href=#556 id=556 data-nosnippet>556</a>    /// # }));
+<a href=#557 id=557 data-nosnippet>557</a>    /// # }
+<a href=#558 id=558 data-nosnippet>558</a>    /// ```
+<a href=#559 id=559 data-nosnippet>559</a>    </span><span class="kw">pub fn </span>send&lt;L2, N: NetworkFor&lt;(K, V)&gt;&gt;(
+<a href=#560 id=560 data-nosnippet>560</a>        <span class="self">self</span>,
+<a href=#561 id=561 data-nosnippet>561</a>        to: <span class="kw-2">&amp;</span>Process&lt;<span class="lifetime">'a</span>, L2&gt;,
+<a href=#562 id=562 data-nosnippet>562</a>        via: N,
+<a href=#563 id=563 data-nosnippet>563</a>    ) -&gt; KeyedStream&lt;
+<a href=#564 id=564 data-nosnippet>564</a>        (MemberId&lt;L&gt;, K),
+<a href=#565 id=565 data-nosnippet>565</a>        V,
+<a href=#566 id=566 data-nosnippet>566</a>        Process&lt;<span class="lifetime">'a</span>, L2&gt;,
+<a href=#567 id=567 data-nosnippet>567</a>        Unbounded,
+<a href=#568 id=568 data-nosnippet>568</a>        &lt;O <span class="kw">as </span>MinOrder&lt;N::OrderingGuarantee&gt;&gt;::Min,
+<a href=#569 id=569 data-nosnippet>569</a>        R,
+<a href=#570 id=570 data-nosnippet>570</a>    &gt;
+<a href=#571 id=571 data-nosnippet>571</a>    <span class="kw">where
+<a href=#572 id=572 data-nosnippet>572</a>        </span>K: Serialize + DeserializeOwned,
+<a href=#573 id=573 data-nosnippet>573</a>        V: Serialize + DeserializeOwned,
+<a href=#574 id=574 data-nosnippet>574</a>        O: MinOrder&lt;N::OrderingGuarantee&gt;,
+<a href=#575 id=575 data-nosnippet>575</a>    {
+<a href=#576 id=576 data-nosnippet>576</a>        <span class="kw">let </span>serialize_pipeline = <span class="prelude-val">Some</span>(N::serialize_thunk(<span class="bool-val">false</span>));
+<a href=#577 id=577 data-nosnippet>577</a>
+<a href=#578 id=578 data-nosnippet>578</a>        <span class="kw">let </span>deserialize_pipeline = <span class="prelude-val">Some</span>(N::deserialize_thunk(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>quote_type::&lt;L&gt;())));
+<a href=#579 id=579 data-nosnippet>579</a>
+<a href=#580 id=580 data-nosnippet>580</a>        <span class="kw">let </span>name = via.name();
+<a href=#581 id=581 data-nosnippet>581</a>        <span class="kw">if </span>to.multiversioned() &amp;&amp; name.is_none() {
+<a href=#582 id=582 data-nosnippet>582</a>            <span class="macro">panic!</span>(
+<a href=#583 id=583 data-nosnippet>583</a>                <span class="string">"Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+<a href=#584 id=584 data-nosnippet>584</a>            </span>);
+<a href=#585 id=585 data-nosnippet>585</a>        }
 <a href=#586 id=586 data-nosnippet>586</a>
-<a href=#587 id=587 data-nosnippet>587</a>        <span class="kw">let </span>name = via.name();
-<a href=#588 id=588 data-nosnippet>588</a>        <span class="kw">if </span>to.multiversioned() &amp;&amp; name.is_none() {
-<a href=#589 id=589 data-nosnippet>589</a>            <span class="macro">panic!</span>(
-<a href=#590 id=590 data-nosnippet>590</a>                <span class="string">"Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
-<a href=#591 id=591 data-nosnippet>591</a>            </span>);
-<a href=#592 id=592 data-nosnippet>592</a>        }
-<a href=#593 id=593 data-nosnippet>593</a>
-<a href=#594 id=594 data-nosnippet>594</a>        <span class="kw">let </span>raw_stream: Stream&lt;
-<a href=#595 id=595 data-nosnippet>595</a>            (MemberId&lt;L&gt;, (K, V)),
-<a href=#596 id=596 data-nosnippet>596</a>            Process&lt;<span class="lifetime">'a</span>, L2&gt;,
-<a href=#597 id=597 data-nosnippet>597</a>            Unbounded,
-<a href=#598 id=598 data-nosnippet>598</a>            &lt;O <span class="kw">as </span>MinOrder&lt;N::OrderingGuarantee&gt;&gt;::Min,
-<a href=#599 id=599 data-nosnippet>599</a>            R,
-<a href=#600 id=600 data-nosnippet>600</a>        &gt; = Stream::new(
-<a href=#601 id=601 data-nosnippet>601</a>            to.clone(),
-<a href=#602 id=602 data-nosnippet>602</a>            HydroNode::Network {
-<a href=#603 id=603 data-nosnippet>603</a>                name: name.map(ToOwned::to_owned),
-<a href=#604 id=604 data-nosnippet>604</a>                networking_info: N::networking_info(),
-<a href=#605 id=605 data-nosnippet>605</a>                serialize_fn: serialize_pipeline.map(|e| e.into()),
-<a href=#606 id=606 data-nosnippet>606</a>                instantiate_fn: DebugInstantiate::Building,
-<a href=#607 id=607 data-nosnippet>607</a>                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
-<a href=#608 id=608 data-nosnippet>608</a>                input: Box::new(<span class="self">self</span>.ir_node.replace(HydroNode::Placeholder)),
-<a href=#609 id=609 data-nosnippet>609</a>                metadata: to.new_node_metadata(Stream::&lt;
-<a href=#610 id=610 data-nosnippet>610</a>                    (MemberId&lt;L&gt;, (K, V)),
-<a href=#611 id=611 data-nosnippet>611</a>                    Cluster&lt;<span class="lifetime">'a</span>, L2&gt;,
-<a href=#612 id=612 data-nosnippet>612</a>                    Unbounded,
-<a href=#613 id=613 data-nosnippet>613</a>                    &lt;O <span class="kw">as </span>MinOrder&lt;N::OrderingGuarantee&gt;&gt;::Min,
-<a href=#614 id=614 data-nosnippet>614</a>                    R,
-<a href=#615 id=615 data-nosnippet>615</a>                &gt;::collection_kind()),
-<a href=#616 id=616 data-nosnippet>616</a>            },
-<a href=#617 id=617 data-nosnippet>617</a>        );
-<a href=#618 id=618 data-nosnippet>618</a>
-<a href=#619 id=619 data-nosnippet>619</a>        raw_stream
-<a href=#620 id=620 data-nosnippet>620</a>            .map(<span class="macro">q!</span>(|(sender, (k, v))| ((sender, k), v)))
-<a href=#621 id=621 data-nosnippet>621</a>            .into_keyed()
-<a href=#622 id=622 data-nosnippet>622</a>    }
-<a href=#623 id=623 data-nosnippet>623</a>}
+<a href=#587 id=587 data-nosnippet>587</a>        <span class="kw">let </span>raw_stream: Stream&lt;
+<a href=#588 id=588 data-nosnippet>588</a>            (MemberId&lt;L&gt;, (K, V)),
+<a href=#589 id=589 data-nosnippet>589</a>            Process&lt;<span class="lifetime">'a</span>, L2&gt;,
+<a href=#590 id=590 data-nosnippet>590</a>            Unbounded,
+<a href=#591 id=591 data-nosnippet>591</a>            &lt;O <span class="kw">as </span>MinOrder&lt;N::OrderingGuarantee&gt;&gt;::Min,
+<a href=#592 id=592 data-nosnippet>592</a>            R,
+<a href=#593 id=593 data-nosnippet>593</a>        &gt; = Stream::new(
+<a href=#594 id=594 data-nosnippet>594</a>            to.clone(),
+<a href=#595 id=595 data-nosnippet>595</a>            HydroNode::Network {
+<a href=#596 id=596 data-nosnippet>596</a>                name: name.map(ToOwned::to_owned),
+<a href=#597 id=597 data-nosnippet>597</a>                networking_info: N::networking_info(),
+<a href=#598 id=598 data-nosnippet>598</a>                serialize_fn: serialize_pipeline.map(|e| e.into()),
+<a href=#599 id=599 data-nosnippet>599</a>                instantiate_fn: DebugInstantiate::Building,
+<a href=#600 id=600 data-nosnippet>600</a>                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
+<a href=#601 id=601 data-nosnippet>601</a>                input: Box::new(<span class="self">self</span>.ir_node.replace(HydroNode::Placeholder)),
+<a href=#602 id=602 data-nosnippet>602</a>                metadata: to.new_node_metadata(Stream::&lt;
+<a href=#603 id=603 data-nosnippet>603</a>                    (MemberId&lt;L&gt;, (K, V)),
+<a href=#604 id=604 data-nosnippet>604</a>                    Cluster&lt;<span class="lifetime">'a</span>, L2&gt;,
+<a href=#605 id=605 data-nosnippet>605</a>                    Unbounded,
+<a href=#606 id=606 data-nosnippet>606</a>                    &lt;O <span class="kw">as </span>MinOrder&lt;N::OrderingGuarantee&gt;&gt;::Min,
+<a href=#607 id=607 data-nosnippet>607</a>                    R,
+<a href=#608 id=608 data-nosnippet>608</a>                &gt;::collection_kind()),
+<a href=#609 id=609 data-nosnippet>609</a>            },
+<a href=#610 id=610 data-nosnippet>610</a>        );
+<a href=#611 id=611 data-nosnippet>611</a>
+<a href=#612 id=612 data-nosnippet>612</a>        raw_stream
+<a href=#613 id=613 data-nosnippet>613</a>            .map(<span class="macro">q!</span>(|(sender, (k, v))| ((sender, k), v)))
+<a href=#614 id=614 data-nosnippet>614</a>            .into_keyed()
+<a href=#615 id=615 data-nosnippet>615</a>    }
+<a href=#616 id=616 data-nosnippet>616</a>}
 </code></pre></div></section></main></body></html>
