@@ -961,6 +961,123 @@ impl<K: Hash + Eq + Clone, V> SimInlineHook for KeyedStreamOrderHook<K, V> {
     }
 }
 
+/// Inline hook for `entries_partially_ordered` on bounded/not-root keyed streams.
+/// Produces a random interleaving of key-value pairs that preserves within-key order.
+pub struct PartiallyOrderedStreamHook<K: Hash + Eq + Clone, V> {
+    input: KeyedStreamOrderHookInput<K, V>,
+    to_release: Option<Vec<(K, V)>>,
+    output: UnboundedSender<Vec<(K, V)>>,
+    batch_location: HookLocationMeta,
+    format_key_debug: fn(&K) -> Option<String>,
+    format_value_debug: fn(&V) -> Option<String>,
+}
+
+impl<K: Hash + Eq + Clone, V> PartiallyOrderedStreamHook<K, V> {
+    pub fn new(
+        input: KeyedStreamOrderHookInput<K, V>,
+        output: UnboundedSender<Vec<(K, V)>>,
+        batch_location: HookLocationMeta,
+        format_key_debug: fn(&K) -> Option<String>,
+        format_value_debug: fn(&V) -> Option<String>,
+    ) -> Self {
+        Self {
+            input,
+            to_release: None,
+            output,
+            batch_location,
+            format_key_debug,
+            format_value_debug,
+        }
+    }
+}
+
+impl<K: Hash + Eq + Clone, V> SimInlineHook for PartiallyOrderedStreamHook<K, V> {
+    fn pending_decision(&self) -> bool {
+        self.input.borrow().is_some()
+    }
+
+    fn has_decision(&self) -> bool {
+        self.to_release.is_some()
+    }
+
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>) {
+        let inputs = self.input.borrow_mut().take().unwrap();
+        // Group by key, preserving within-key order
+        let mut grouped: Vec<(K, VecDeque<V>)> = Vec::new();
+        let mut key_indices: FxHashMap<K, usize> = FxHashMap::default();
+        for (k, v) in inputs {
+            if let Some(&idx) = key_indices.get(&k) {
+                grouped[idx].1.push_back(v);
+            } else {
+                let idx = grouped.len();
+                key_indices.insert(k.clone(), idx);
+                grouped.push((k, VecDeque::from([v])));
+            }
+        }
+
+        // Interleave: repeatedly pick a random non-empty key and take its front element
+        let mut out = Vec::new();
+        loop {
+            let nonempty: Vec<usize> = grouped
+                .iter()
+                .enumerate()
+                .filter(|(_, (_, q))| !q.is_empty())
+                .map(|(i, _)| i)
+                .collect();
+            if nonempty.is_empty() {
+                break;
+            }
+            let pick = nonempty[(0..nonempty.len()).generate(driver).unwrap()];
+            let (k, q) = &mut grouped[pick];
+            out.push((k.clone(), q.pop_front().unwrap()));
+        }
+
+        self.to_release = Some(out);
+    }
+
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+        if let Some(to_release) = self.to_release.take() {
+            if !to_release.is_empty() {
+                let (batch_location, line, caret_indent) = self.batch_location;
+                let mut note_str = String::new();
+                for (key, value) in &to_release {
+                    let entry_text = format!(
+                        "({:?}, {:?})",
+                        ManualDebug(key, self.format_key_debug),
+                        ManualDebug(value, self.format_value_debug)
+                    );
+                    if !note_str.is_empty() {
+                        note_str.push_str(", ");
+                    }
+                    note_str.push_str(&entry_text);
+                }
+                note_str = format!("^ observed partially-ordered interleaving: [{}]", note_str);
+
+                let _ = writeln!(
+                    log_writer,
+                    "{} {}",
+                    "-->".color(colored::Color::Blue),
+                    batch_location
+                );
+
+                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+                let _ = writeln!(
+                    log_writer,
+                    " {}{}{}",
+                    "|".color(colored::Color::Blue),
+                    caret_indent,
+                    note_str.color(colored::Color::Cyan)
+                );
+            }
+
+            self.output.send(to_release).unwrap();
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}
+
 /// Top-level (outside-tick) `assume_ordering` hooks release elements **one at a
 /// time** rather than shuffling the entire batch. This is the key mechanism for
 /// simulating causality in feedback cycles: when data flows through a network hop
@@ -1131,6 +1248,102 @@ impl<K: Hash + Eq + Clone, V> SimHook for TopLevelKeyedStreamOrderHook<K, V> {
                 let (batch_location, line, caret_indent) = self.location;
                 let note_str = format!(
                     "^ observed non-deterministic order: {:?}",
+                    TruncatedVecDebug(
+                        RefCell::new(Some(to_release.iter())),
+                        8,
+                        self.format_item_debug
+                    )
+                );
+
+                let _ = writeln!(
+                    log_writer,
+                    "\n{} {}",
+                    "-->".color(colored::Color::Blue),
+                    batch_location
+                );
+
+                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+                let _ = writeln!(
+                    log_writer,
+                    " {}{}{}",
+                    "|".color(colored::Color::Blue),
+                    caret_indent,
+                    note_str.color(colored::Color::Green)
+                );
+            }
+
+            for item in to_release {
+                self.output.send(item).unwrap();
+            }
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}
+
+/// Top-level variant of [`PartiallyOrderedStreamHook`]. Same one-at-a-time release
+/// strategy as [`TopLevelKeyedStreamOrderHook`], but always takes from the FRONT
+/// of the chosen key's queue to preserve within-key order.
+pub struct TopLevelPartiallyOrderedStreamHook<K: Hash + Eq + Clone, V> {
+    pub input: Rc<RefCell<FxHashMap<K, VecDeque<V>>>>,
+    pub to_release: Option<Vec<(K, V)>>,
+    pub output: UnboundedSender<(K, V)>,
+    pub location: HookLocationMeta,
+    pub format_item_debug: fn(&(K, V)) -> Option<String>,
+}
+
+impl<K: Hash + Eq + Clone, V> SimHook for TopLevelPartiallyOrderedStreamHook<K, V> {
+    fn current_decision(&self) -> Option<bool> {
+        self.to_release.as_ref().map(|v| !v.is_empty())
+    }
+
+    fn can_make_nontrivial_decision(&self) -> bool {
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+        !self.input.borrow().values().all(|q| q.is_empty())
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        driver: &mut Borrowed<'a>,
+        force_nontrivial: bool,
+    ) -> bool {
+        let mut current_input = self.input.borrow_mut();
+
+        #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+        let nonempty_keys: Vec<K> = current_input
+            .iter()
+            .filter(|(_, q)| !q.is_empty())
+            .map(|(k, _)| k.clone())
+            .collect();
+
+        if nonempty_keys.is_empty() {
+            self.to_release = Some(vec![]);
+            return false;
+        }
+
+        if !force_nontrivial && produce().generate(driver).unwrap() {
+            self.to_release = Some(vec![]);
+            return false;
+        }
+
+        // Pick which key to release from
+        let key_idx = (0..nonempty_keys.len()).generate(driver).unwrap();
+        let key = &nonempty_keys[key_idx];
+
+        // Always take from the front to preserve within-key order
+        let item = current_input.get_mut(key).unwrap().pop_front().unwrap();
+
+        self.to_release = Some(vec![(key.clone(), item)]);
+        true
+    }
+
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+        if let Some(to_release) = self.to_release.take() {
+            if !to_release.is_empty() {
+                let (batch_location, line, caret_indent) = self.location;
+                let note_str = format!(
+                    "^ observed partially-ordered interleaving: {:?}",
                     TruncatedVecDebug(
                         RefCell::new(Some(to_release.iter())),
                         8,

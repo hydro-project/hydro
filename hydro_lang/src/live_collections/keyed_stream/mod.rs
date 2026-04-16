@@ -493,6 +493,31 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         )
     }
 
+    /// Flattens the keyed stream into a totally ordered stream of key-value pairs,
+    /// preserving the order of values within each key group but non-deterministically
+    /// interleaving across keys.
+    ///
+    /// Requires the keyed stream to be totally ordered within each group (`O: IsOrdered`).
+    ///
+    /// # Non-Determinism
+    /// The interleaving of entries across different keys is non-deterministic.
+    /// Within each key, the original order is preserved.
+    pub fn entries_partially_ordered(self, _nondet: NonDet) -> Stream<(K, V), L, B, TotalOrder, R>
+    where
+        O: IsOrdered,
+    {
+        Stream::new(
+            self.location.clone(),
+            HydroNode::ObserveNonDet {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                trusted: false,
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<(K, V), L, B, TotalOrder, R>::collection_kind()),
+            },
+        )
+    }
+
     /// Flattens the keyed stream into an unordered stream of only the values.
     ///
     /// # Example
@@ -3301,5 +3326,104 @@ mod tests {
             "did not see an instance with key 1 having [0, 1] in order"
         );
         assert_eq!(instance_count, 58);
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_entries_partially_ordered_bounded() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (port, input) = node.sim_input::<_, TotalOrder, _>();
+
+        let tick = node.tick();
+        let batch = input.into_keyed().batch(&tick, nondet!(/** test */));
+        let out_recv = batch
+            .entries_partially_ordered(nondet!(/** test */))
+            .all_ticks()
+            .sim_output();
+
+        let instance_count = flow.sim().exhaustive(async || {
+            port.send((1, 'a'));
+            port.send((1, 'b'));
+            port.send((2, 'c'));
+            let _: Vec<(i32, char)> = out_recv.collect().await;
+        });
+
+        assert_eq!(instance_count, 12);
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_entries_partially_ordered_top_level() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input::<_, TotalOrder, _>();
+
+        let out_recv = input
+            .into_keyed()
+            .entries_partially_ordered(nondet!(/** test */))
+            .sim_output();
+
+        let instance_count = flow.sim().exhaustive(async || {
+            in_send.send((1, 'a'));
+            in_send.send((1, 'b'));
+            in_send.send((2, 'c'));
+            let _: Vec<(i32, char)> = out_recv.collect().await;
+        });
+
+        assert_eq!(instance_count, 3);
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_entries_partially_ordered_cycle_back() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let node2 = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input::<_, NoOrder, _>();
+
+        let (complete_cycle_back, cycle_back) =
+            node.forward_ref::<super::KeyedStream<_, _, _, _, NoOrder>>();
+        let ordered = input
+            .into_keyed()
+            .merge_unordered(cycle_back)
+            .assume_ordering::<TotalOrder>(nondet!(/** test */));
+
+        let flat = ordered
+            .clone()
+            .entries_partially_ordered(nondet!(/** test */));
+
+        complete_cycle_back.complete(
+            flat.clone()
+                .map(q!(|(k, v): (i32, i32)| (k, v + 1)))
+                .filter(q!(|(_, v)| *v % 2 == 1))
+                .send(&node2, TCP.fail_stop().bincode())
+                .send(&node, TCP.fail_stop().bincode())
+                .into_keyed(),
+        );
+
+        let out_recv = flat.sim_output();
+
+        let mut saw = false;
+        let instance_count = flow.sim().exhaustive(async || {
+            // Send (1, 0) and (1, 2). 0+1=1 is odd so cycles back as (1, 1).
+            // We want to see (1, 1) before (1, 2) - the cycled back value beats the pending one
+            in_send.send_many_unordered([(1, 0), (1, 2)]);
+            let results: Vec<(i32, i32)> = out_recv.collect().await;
+
+            let pos_1 = results.iter().position(|v| *v == (1, 1));
+            let pos_2 = results.iter().position(|v| *v == (1, 2));
+            if let (Some(p1), Some(p2)) = (pos_1, pos_2)
+                && p1 < p2
+            {
+                saw = true;
+            }
+        });
+
+        assert!(saw, "did not see an instance with (1, 1) before (1, 2)");
+        assert_eq!(instance_count, 78);
     }
 }

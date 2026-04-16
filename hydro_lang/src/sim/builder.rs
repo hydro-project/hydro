@@ -685,6 +685,81 @@ impl DfirBuilder for SimBuilder {
                         None,
                     );
                 }
+                (
+                    CollectionKind::KeyedStream {
+                        value_order: StreamOrder::TotalOrder,
+                        value_retry: StreamRetry::ExactlyOnce,
+                        key_type,
+                        value_type,
+                        ..
+                    },
+                    CollectionKind::Stream {
+                        order: StreamOrder::TotalOrder,
+                        retry: StreamRetry::ExactlyOnce,
+                        ..
+                    },
+                ) => {
+                    let hoff_id = self.next_hoff_id;
+                    self.next_hoff_id += 1;
+
+                    let buffered_ident =
+                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                    });
+
+                    self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                        let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident.into_inner()));
+                    });
+
+                    self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(None));
+                    });
+
+                    self.add_inline_hook(
+                        location,
+                        syn::parse_quote!(
+                            Box::new(#root::sim::runtime::PartiallyOrderedStreamHook::<_, _>::new(
+                                #buffered_ident.clone(),
+                                #hoff_send_ident,
+                                (#assume_location, #line, #caret),
+                                #root::__maybe_debug__!(#key_type),
+                                #root::__maybe_debug__!(#value_type),
+                            ))
+                        ),
+                    );
+
+                    let builder = self.get_dfir_mut(location);
+                    builder.add_dfir(
+                        parse_quote! {
+                            #out_ident = #in_ident -> fold::<'tick>(
+                                || ::std::vec::Vec::new(),
+                                |acc, v| {
+                                    acc.push(v);
+                                }
+                            ) -> map(|v| {
+                                let #buffered_ident = #buffered_ident.clone();
+                                let #hoff_recv_ident = #hoff_recv_ident.clone();
+                                async move {
+                                    fn force_matching_type<T>(a: &mut Option<::std::vec::Vec<T>>, b: ::std::vec::Vec<T>) -> ::std::vec::Vec<T> {
+                                        b
+                                    }
+
+                                    let mut out_holder = Some(v);
+                                    *#buffered_ident.borrow_mut() = out_holder.take();
+                                    force_matching_type(&mut out_holder, #hoff_recv_ident.borrow_mut().recv().await.unwrap())
+                                }
+                            }) -> resolve_futures_blocking() -> flatten();
+                        },
+                        None,
+                        None,
+                    );
+                }
                 _ => {
                     todo!(
                         "non-trusted observe_nondet not yet supported for kinds {:?} -> {:?}",
@@ -792,6 +867,66 @@ impl DfirBuilder for SimBuilder {
                         location,
                         syn::parse_quote!(
                             Box::new(#root::sim::runtime::TopLevelKeyedStreamOrderHook::<_, _> {
+                                input: #buffered_ident.clone(),
+                                to_release: None,
+                                output: #hoff_send_ident,
+                                location: (#assume_location, #line, #caret),
+                                format_item_debug: #root::__maybe_debug__!((#key_type, #value_type)),
+                            })
+                        ),
+                    );
+
+                    self.get_dfir_mut(location).add_dfir(
+                        parse_quote! {
+                            #in_ident -> for_each(|(k, v)| #buffered_ident.borrow_mut().entry(k).or_insert_with(::std::collections::VecDeque::new).push_back(v));
+                        },
+                        None,
+                        None,
+                    );
+
+                    self.get_dfir_mut(location).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#hoff_recv_ident);
+                        },
+                        None,
+                        None,
+                    );
+                }
+                (
+                    CollectionKind::KeyedStream {
+                        value_order: StreamOrder::TotalOrder,
+                        value_retry: StreamRetry::ExactlyOnce,
+                        key_type,
+                        value_type,
+                        ..
+                    },
+                    CollectionKind::Stream {
+                        order: StreamOrder::TotalOrder,
+                        retry: StreamRetry::ExactlyOnce,
+                        ..
+                    },
+                ) => {
+                    let hoff_id = self.next_hoff_id;
+                    self.next_hoff_id += 1;
+
+                    let buffered_ident =
+                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    self.add_extra_stmt_internal(location, syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                    });
+                    self.add_extra_stmt_internal(location, syn::parse_quote! {
+                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(__root_dfir_rs::rustc_hash::FxHashMap::default()));
+                    });
+                    self.add_hook(
+                        location,
+                        location,
+                        syn::parse_quote!(
+                            Box::new(#root::sim::runtime::TopLevelPartiallyOrderedStreamHook::<_, _> {
                                 input: #buffered_ident.clone(),
                                 to_release: None,
                                 output: #hoff_send_ident,
