@@ -2279,14 +2279,41 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn get(self, key: impl Into<Optional<K, L, Bounded>>) -> Stream<V, L, B, NoOrder, R>
+    pub fn get(self, key: impl Into<Optional<K, L, Bounded>>) -> Stream<V, L, B, O, R>
     where
         K: Eq + Hash + Clone,
         V: Clone,
     {
-        self.join_keyed_singleton(key.into().map(q!(|k| (k, ()))).into_keyed_singleton())
-            .values()
-            .map(q!(|(v, _)| v))
+        let joined =
+            self.join_keyed_singleton(key.into().map(q!(|k| (k, ()))).into_keyed_singleton());
+
+        if O::ORDERING_KIND == StreamOrder::TotalOrder {
+            let joined_ordered =
+                joined.assume_ordering::<TotalOrder>(nondet!(/** already ordered */));
+
+            let casted_entries: Stream<(K, (V, ())), L, B, TotalOrder, R> = Stream::new(
+                joined_ordered.location.clone(),
+                HydroNode::Cast {
+                    // Cast is correct because there is only a single key so no non-determinism
+                    inner: Box::new(joined_ordered.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: joined_ordered.location.new_node_metadata(Stream::<
+                        (K, (V, ())),
+                        L,
+                        B,
+                        TotalOrder,
+                        R,
+                    >::collection_kind(
+                    )),
+                },
+            );
+
+            casted_entries.map(q!(|(_, (v, _))| v)).weaken_ordering()
+        } else {
+            joined
+                .values()
+                .map(q!(|(v, _)| v))
+                .assume_ordering(nondet!(/** O is NoOrder */))
+        }
     }
 
     /// For each value in `self`, find the matching key in `lookup`.
