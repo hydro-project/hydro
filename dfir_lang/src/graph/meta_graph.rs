@@ -464,9 +464,9 @@ impl DfirGraph {
         }
 
         // In-degree, excluding ref-edges.
-        let inn_degree = self.node_predecessor_nodes(node_id).count();
+        let inn_degree = self.node_predecessor_nodes(node_id).len();
         // Out-degree excluding ref-edges.
-        let out_degree = self.node_successor_nodes(node_id).count();
+        let out_degree = self.node_successor_nodes(node_id).len();
 
         match (inn_degree, out_degree) {
             (0, 0) => None, // Generally should not happen, "Degenerate subgraph detected".
@@ -1425,15 +1425,50 @@ impl DfirGraph {
         // 2. Collect subgraph handoffs (same as as_code).
         let subgraph_handoffs = self.helper_collect_subgraph_handoffs();
 
-        // 3. Sort subgraphs by stratum, then sources (no-preds) first (for type inference).
-        let mut all_subgraphs: Vec<_> = self.subgraph_nodes.iter().collect();
-        all_subgraphs.sort_by_key(|&(sg_id, nodes)| {
-            let stratum = self.subgraph_stratum.get(sg_id).copied().unwrap_or(0);
-            let is_source = nodes
-                .iter()
-                .any(|&node_id| self.node_degree_in(node_id) == 0);
-            (stratum, !is_source)
-        });
+        // 3. Sort subgraphs topologically (excluding `defer_tick_lazy()` edges). This bypasses
+        // existing stratum logic (except to detect `defer_tick_lazy()`). Without this, or if we
+        // only use strata, deferred data can arrive one tick late. See
+        // https://github.com/hydro-project/hydro/issues/2747
+        //
+        // TODO(cleanup): Once scheduled Dfir is removed, move this topological ordering to replace
+        // the subgraph stratification pass directly, rather than doing it as a post-hoc sort in
+        // codegen.
+        let all_subgraphs = {
+            // Build predecessor map for subgraphs.
+            let mut sg_preds = SecondaryMap::<_, Vec<_>>::with_capacity(self.subgraph_nodes.len());
+            for (hoff_id, node) in self.nodes() {
+                if !matches!(node, GraphNode::Handoff { .. }) {
+                    // Not between handoffs
+                    continue;
+                }
+                assert_eq!(1, self.node_successors(hoff_id).len());
+                assert_eq!(1, self.node_predecessors(hoff_id).len());
+                let (_edge_id, pred) = self.node_predecessors(hoff_id).next().unwrap();
+                let (_edge_id, succ) = self.node_successors(hoff_id).next().unwrap();
+                let pred_sg = self.node_subgraph(pred).unwrap();
+                let succ_sg = self.node_subgraph(succ).unwrap();
+                if pred_sg == succ_sg {
+                    panic!("bug: unexpected subgraph self-handoff cycle");
+                }
+                let pred_stratum = self.subgraph_stratum(pred_sg).unwrap();
+                let succ_stratum = self.subgraph_stratum(succ_sg).unwrap();
+                if succ_stratum < pred_stratum {
+                    // `defer_tick_lazy()` back-edge.
+                    continue;
+                }
+                sg_preds.entry(succ_sg).unwrap().or_default().push(pred_sg);
+            }
+
+            let topo_sort = super::graph_algorithms::topo_sort(self.subgraph_ids(), |sg_id| {
+                sg_preds.get(sg_id).into_iter().flatten().copied()
+            })
+            .expect("bug: unexpected cycle between subgraphs within the tick");
+
+            topo_sort
+                .into_iter()
+                .map(|sg_id| (sg_id, self.subgraph(sg_id)))
+                .collect::<Vec<_>>()
+        };
 
         let mut op_prologue_code = Vec::new();
         let mut op_prologue_after_code = Vec::new();

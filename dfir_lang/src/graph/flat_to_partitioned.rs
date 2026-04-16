@@ -335,7 +335,7 @@ fn find_subgraph_strata(
     // Iterate handoffs between subgraphs, to build a subgraph meta-graph.
     for (node_id, node) in partitioned_graph.nodes() {
         if matches!(node, GraphNode::Handoff { .. }) {
-            assert_eq!(1, partitioned_graph.node_successors(node_id).count());
+            assert_eq!(1, partitioned_graph.node_successors(node_id).len());
             let (succ_edge, succ) = partitioned_graph.node_successors(node_id).next().unwrap();
 
             // TODO(mingwei): Should we look at the singleton references too?
@@ -348,7 +348,7 @@ fn find_subgraph_strata(
                 continue;
             }
 
-            assert_eq!(1, partitioned_graph.node_predecessors(node_id).count());
+            assert_eq!(1, partitioned_graph.node_predecessors(node_id).len());
             let (_edge_id, pred) = partitioned_graph.node_predecessors(node_id).next().unwrap();
 
             let pred_sg = partitioned_graph.node_subgraph(pred).unwrap();
@@ -426,7 +426,7 @@ fn find_subgraph_strata(
         }
         let (_hoff_port, dst_port) = partitioned_graph.edge_ports(edge_id);
 
-        assert_eq!(1, partitioned_graph.node_predecessors(hoff).count());
+        assert_eq!(1, partitioned_graph.node_predecessors(hoff).len());
         let src = partitioned_graph
             .node_predecessor_nodes(hoff)
             .next()
