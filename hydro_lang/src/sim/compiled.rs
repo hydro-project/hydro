@@ -924,15 +924,38 @@ impl<W: std::io::Write> std::fmt::Write for LogKind<W> {
     }
 }
 
-/// A running simulation, which manages the async DFIR and tick DFIRs, and makes decisions
-/// about scheduling ticks and choices for non-deterministic operators like batch.
+/// A running simulation, which manages the async DFIRs, tick DFIRs, and hook-based
+/// scheduling decisions for non-deterministic operators like `batch` and `assume_ordering`.
+///
+/// The scheduler loops between three kinds of work:
+/// - **Async DFIRs**: long-running top-level dataflows (one per process/cluster member) that
+///   produce data consumed by ticks and observations.
+/// - **Ticks**: tick-scoped DFIRs that execute a single tick. Before running, their associated
+///   hooks (e.g. from `batch`) are resolved to decide what data to release into the tick.
+/// - **Observations**: top-level locations that have hooks (e.g. from `assume_ordering` on a
+///   non-tick stream) needing decisions, but no tick DFIR to execute. The scheduler just
+///   resolves their hooks.
 struct LaunchedSim<W: std::io::Write> {
+    /// Top-level async DFIRs, one per process/cluster member. These run continuously and
+    /// produce data that feeds into ticks and observations.
     async_dfirs: Vec<(LocationId, Option<u32>, InlineDfirErased)>,
+    /// Tick DFIRs whose parent async DFIR has made progress, so they may be ready to run.
+    /// The scheduler further filters these by checking whether their hooks have pending decisions.
     possibly_ready_ticks: Vec<(LocationId, Option<u32>, InlineDfirErased)>,
+    /// Tick DFIRs whose parent async DFIR has not yet made progress since they were last checked.
     not_ready_ticks: Vec<(LocationId, Option<u32>, InlineDfirErased)>,
+    /// Top-level locations whose async DFIR has made progress and whose hooks (from top-level
+    /// `assume_ordering`) may have ordering decisions to resolve. Unlike ticks, these have no
+    /// DFIR to execute — only hook resolution.
     possibly_ready_observation: Vec<(LocationId, Option<u32>)>,
+    /// Top-level locations whose async DFIR has not yet made progress since they were last checked.
     not_ready_observation: Vec<(LocationId, Option<u32>)>,
+    /// Hooks keyed by (location, cluster_member_id). These are resolved *before* a tick runs
+    /// (for `batch` hooks) or standalone (for top-level `assume_ordering` hooks via observations).
     hooks: Hooks<LocationId>,
+    /// Inline hooks keyed by (tick location, cluster_member_id). These are resolved *during*
+    /// tick execution via a `tokio::select!` loop, for operators like `assume_ordering` inside
+    /// a tick that block on ordering decisions while the tick DFIR is running.
     inline_hooks: InlineHooks<LocationId>,
     log: LogKind<W>,
 }
