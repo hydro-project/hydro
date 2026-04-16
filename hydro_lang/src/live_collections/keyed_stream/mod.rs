@@ -2232,9 +2232,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     {
         let filtered = self
             .cross_singleton(key)
-            .filter_map_with_key(q!(|(k, (v, lookup_key))| {
-                if k == lookup_key { Some(v) } else { None }
-            }));
+            .filter_with_key(q!(|(k, (_v, lookup_key))| k == lookup_key))
+            .map(q!(|(v, _lookup_key)| v));
 
         // Cast KeyedStream<K, V> to Stream<(K, V)> preserving O (unlike
         // entries() which drops to NoOrder), then map to just V.
@@ -3334,8 +3333,8 @@ mod tests {
             .assume_ordering::<TotalOrder>(nondet!(/** test */));
 
         let key = tick.singleton(q!(1));
-        // get returns TotalOrder, so first() (which requires IsOrdered) compiles,
-        // and sim_output yields a TotalOrder receiver with assert_yields_only.
+        // get preserves TotalOrder here, so all_ticks().sim_output() produces
+        // an ordered receiver that supports assert_yields_only.
         let out = keyed.get(key).all_ticks().sim_output();
 
         flow.sim().exhaustive(async || {
