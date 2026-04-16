@@ -2230,40 +2230,24 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     where
         K: Eq + Clone,
     {
-        let key: Optional<K, L, Bounded> = key.into();
-        check_matching_location(&self.location, &key.location);
+        let filtered = self
+            .cross_singleton(key)
+            .filter_map_with_key(q!(|(k, (v, lookup_key))| {
+                if k == lookup_key { Some(v) } else { None }
+            }));
 
-        // Build CrossSingleton IR node directly (rather than calling
-        // Stream::cross_singleton) so we avoid requiring K: Clone.
-        // The DFIR cross_singleton operator handles cloning internally.
-        let cross_node = HydroNode::CrossSingleton {
-            left: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-            right: Box::new(key.ir_node.replace(HydroNode::Placeholder)),
-            metadata: self
-                .location
-                .new_node_metadata(Stream::<((K, V), K), L, B, O, R>::collection_kind()),
-        };
-
-        let filter_map_f = q!(|((k, v), lookup_key)| {
-            if k == lookup_key {
-                Some(v)
-            } else {
-                None
-            }
-        })
-        .splice_fn1_ctx::<((K, V), K), Option<V>>(&self.location)
-        .into();
-
-        Stream::new(
-            self.location.clone(),
-            HydroNode::FilterMap {
-                f: filter_map_f,
-                input: Box::new(cross_node),
-                metadata: self
+        // Cast KeyedStream<K, V> to Stream<(K, V)> preserving O (unlike
+        // entries() which drops to NoOrder), then map to just V.
+        Stream::<(K, V), L, B, O, R>::new(
+            filtered.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(filtered.ir_node.replace(HydroNode::Placeholder)),
+                metadata: filtered
                     .location
-                    .new_node_metadata(Stream::<V, L, B, O, R>::collection_kind()),
+                    .new_node_metadata(Stream::<(K, V), L, B, O, R>::collection_kind()),
             },
         )
+        .map(q!(|(_k, v)| v))
     }
 
     /// For each value in `self`, find the matching key in `lookup`.
