@@ -2114,10 +2114,29 @@ where
     where
         B: IsBounded,
     {
-        Stream::new(
-            self.location.clone(),
-            self.ir_node.replace(HydroNode::Placeholder),
-        )
+        self.weaken_boundedness()
+    }
+
+    /// Weakens the boundedness guarantee to an arbitrary boundedness `B2`, given that `B: IsBounded`,
+    /// which implies that `B == Bounded`.
+    pub fn weaken_boundedness<B2: Boundedness>(self) -> Stream<T, L, B2, O, R> {
+        if B::BOUNDED == B2::BOUNDED {
+            Stream::new(
+                self.location.clone(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            // We can always weaken the boundedness
+            Stream::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: self
+                        .location
+                        .new_node_metadata(Stream::<T, L, B2, O, R>::collection_kind()),
+                },
+            )
+        }
     }
 }
 
@@ -2601,8 +2620,10 @@ where
         n: Stream<(K, V2), L, B, O2, R2>,
     ) -> Stream<(K, (V1, V2)), L, B, NoOrder, <R as MinRetries<R2>>::Min>
     where
-        K: Eq + Hash,
+        K: Eq + Hash + Clone,
         R: MinRetries<R2>,
+        V1: Clone,
+        V2: Clone,
     {
         check_matching_location(&self.location, &n.location);
 

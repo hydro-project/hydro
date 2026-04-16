@@ -625,7 +625,8 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     pub fn get(self, key: impl Into<Optional<K, L, Bounded>>) -> Optional<V, L, Bounded>
     where
         B: IsBounded,
-        K: Hash + Eq,
+        K: Hash + Eq + Clone,
+        V: Clone,
     {
         self.make_bounded()
             .into_keyed_stream()
@@ -666,19 +667,29 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// # }));
     /// # }
     /// ```
-    pub fn join_keyed_stream<O2: Ordering, R2: Retries, V2>(
+    pub fn join_keyed_stream<O2: Ordering, R2: Retries, V2, B2: Boundedness>(
         self,
-        keyed_stream: KeyedStream<K, V2, L, Bounded, O2, R2>,
-    ) -> KeyedStream<K, (V, V2), L, Bounded, NoOrder, R2>
+        other: KeyedStream<K, V2, L, B2, O2, R2>,
+    ) -> KeyedStream<K, (V, V2), L, B2, O2, R2>
     where
         B: IsBounded,
-        K: Eq + Hash,
+        K: Eq + Hash + Clone,
+        V: Clone,
+        V2: Clone,
     {
-        self.make_bounded()
-            .entries()
-            .weaken_retries::<R2>()
-            .join(keyed_stream.entries())
-            .into_keyed()
+        // TODO(shadaj): if DFIR guarantees that joining unbounded keyed stream x bounded keyed stream
+        // always produces deterministic order per key (nested loop join), this could just use
+        // `join_keyed_stream` without constructing IRs manually
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::Join {
+                left: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                right: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(KeyedStream::<K, (V, V2), L, B2, O2, R2>::collection_kind()),
+            },
+        )
     }
 
     /// Emit a keyed singleton containing all keys shared between two keyed singletons,
@@ -723,7 +734,8 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     ) -> KeyedSingleton<K, (V, V2), L, Bounded>
     where
         B: IsBounded,
-        K: Eq + Hash,
+        K: Eq + Hash + Clone,
+        V: Clone,
     {
         let result_stream = self
             .make_bounded()

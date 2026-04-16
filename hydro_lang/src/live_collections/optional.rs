@@ -22,6 +22,7 @@ use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::{Atomic, DeferTick, NoAtomic};
 use crate::location::{Location, NoTick, Tick, check_matching_location};
 use crate::nondet::{NonDet, nondet};
+use crate::prelude::KeyedSingleton;
 
 /// A *nullable* Rust value that can asynchronously change over time.
 ///
@@ -1176,6 +1177,30 @@ where
         B: IsBounded,
     {
         value.filter_if(self.is_some())
+    }
+}
+
+impl<'a, K, V, L, B: Boundedness> Optional<(K, V), L, B>
+where
+    L: Location<'a>,
+{
+    /// Converts this optional into a [`KeyedSingleton`] containing a single entry with the
+    /// key-value pair of this [`Optional`].
+    ///
+    /// If this [`Optional`] is [`Bounded`], the [`KeyedSingleton`] will be [`Bounded`] as well
+    /// if it is [`Unbounded`], the [`KeyedSingleton`] will be [`Unbounded`], which means that
+    /// the entry will be updated and appear / disappear according to the state of the
+    /// [`Optional`].
+    pub fn into_keyed_singleton(self) -> KeyedSingleton<K, V, L, B> {
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(KeyedSingleton::<K, V, L, B>::collection_kind()),
+            },
+        )
     }
 }
 

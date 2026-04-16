@@ -452,10 +452,29 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     where
         B: IsBounded,
     {
-        KeyedStream::new(
-            self.location.clone(),
-            self.ir_node.replace(HydroNode::Placeholder),
-        )
+        self.weaken_boundedness()
+    }
+
+    /// Weakens the boundedness guarantee to an arbitrary boundedness `B2`, given that `B: IsBounded`,
+    /// which implies that `B == Bounded`.
+    pub fn weaken_boundedness<B2: Boundedness>(self) -> KeyedStream<K, V, L, B2, O, R> {
+        if B::BOUNDED == B2::BOUNDED {
+            KeyedStream::new(
+                self.location.clone(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            // We can always weaken the boundedness
+            KeyedStream::new(
+                self.location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: self
+                        .location
+                        .new_node_metadata(KeyedStream::<K, V, L, B2, O, R>::collection_kind()),
+                },
+            )
+        }
     }
 
     /// Flattens the keyed stream into an unordered stream of key-value pairs.
@@ -2007,8 +2026,10 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         other: KeyedStream<K, V2, L, B, O2, R2>,
     ) -> KeyedStream<K, (V, V2), L, B, NoOrder, <R as MinRetries<R2>>::Min>
     where
-        K: Eq + Hash,
+        K: Eq + Hash + Clone,
         R: MinRetries<R2>,
+        V: Clone,
+        V2: Clone,
     {
         self.entries().join(other.entries()).into_keyed()
     }
@@ -2183,17 +2204,27 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn join_keyed_singleton<V2: Clone>(
+    pub fn join_keyed_singleton<V2: Clone, B2: IsBounded>(
         self,
-        keyed_singleton: KeyedSingleton<K, V2, L, Bounded>,
-    ) -> KeyedStream<K, (V, V2), L, Bounded, NoOrder, R>
+        other: KeyedSingleton<K, V2, L, B2>,
+    ) -> KeyedStream<K, (V, V2), L, B, O, R>
     where
-        B: IsBounded,
-        K: Eq + Hash,
+        K: Eq + Hash + Clone,
+        V: Clone,
     {
-        keyed_singleton
-            .join_keyed_stream(self.make_bounded())
-            .map(q!(|(v2, v)| (v, v2)))
+        // TODO(shadaj): if DFIR guarantees that joining unbounded keyed stream x bounded keyed stream
+        // always produces deterministic order per key (nested loop join), this could just use
+        // `join_keyed_stream` without constructing IRs manually
+        KeyedStream::new(
+            self.location.clone(),
+            HydroNode::Join {
+                left: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                right: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(KeyedStream::<K, (V, V2), L, B, O, R>::collection_kind()),
+            },
+        )
     }
 
     /// Gets the values associated with a specific key from the keyed stream.
@@ -2223,15 +2254,14 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn get(self, key: impl Into<Optional<K, L, Bounded>>) -> Stream<V, L, Bounded, NoOrder, R>
+    pub fn get(self, key: impl Into<Optional<K, L, Bounded>>) -> Stream<V, L, B, NoOrder, R>
     where
-        B: IsBounded,
-        K: Eq + Hash,
+        K: Eq + Hash + Clone,
+        V: Clone,
     {
-        self.make_bounded()
-            .entries()
-            .join(key.into().into_stream().map(q!(|k| (k, ()))))
-            .map(q!(|(_, (v, _))| v))
+        self.join_keyed_singleton(key.into().map(q!(|k| (k, ()))).into_keyed_singleton())
+            .values()
+            .map(q!(|(v, _)| v))
     }
 
     /// For each value in `self`, find the matching key in `lookup`.
@@ -2764,6 +2794,48 @@ mod tests {
     use crate::nondet::nondet;
     #[cfg(feature = "deploy")]
     use crate::properties::manual_proof;
+
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn get_unbounded_keyed_stream_bounded_singleton() {
+        let mut deployment = Deployment::new();
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_send, input_stream) =
+            node.source_external_bincode::<_, (i32, i32), _, ExactlyOnce>(&external);
+
+        let key = node.singleton(q!(1));
+
+        let out = input_stream
+            .into_keyed()
+            .get(key)
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut input_send = nodes.connect(input_send).await;
+        let mut out = nodes.connect(out).await;
+
+        deployment.start().await.unwrap();
+
+        // First batch
+        input_send.send((1, 10)).await.unwrap();
+        input_send.send((2, 20)).await.unwrap();
+        assert_eq!(out.next().await.unwrap(), 10);
+
+        // Second batch
+        input_send.send((1, 11)).await.unwrap();
+        input_send.send((2, 21)).await.unwrap();
+        assert_eq!(out.next().await.unwrap(), 11);
+    }
 
     #[cfg(feature = "deploy")]
     #[tokio::test]
