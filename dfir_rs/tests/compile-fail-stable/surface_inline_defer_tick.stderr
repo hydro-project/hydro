@@ -1,5 +1,0 @@
-error: `defer_tick()` is not (yet) supported in `dfir_syntax_inline!`. Use `defer_tick_lazy()` instead.
- --> tests/compile-fail-stable/surface_inline_defer_tick.rs:3:34
-  |
-3 |         source_iter(0..5_i32) -> defer_tick() -> for_each(|_x: i32| {});
-  |                                  ^^^^^^^^^^

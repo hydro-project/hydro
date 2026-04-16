@@ -424,3 +424,97 @@ pub async fn test_inline_defer_tick_lazy_cycle() {
     flow.run_tick().await;
     assert_eq!(vec![4, 12], output.take());
 }
+
+/// Test: defer_tick (non-lazy) — data from tick N appears in tick N+1.
+#[dfir_rs::test]
+pub async fn test_inline_defer_tick() {
+    let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let mut flow = dfir_rs::dfir_syntax_inline! {
+        source_stream(recv) -> defer_tick() -> for_each(|v: i32| out_send.send(v).unwrap());
+    };
+
+    send.send(1).unwrap();
+    send.send(2).unwrap();
+    flow.run_tick().await;
+    // Tick 0: data is deferred, nothing comes out yet.
+    assert_eq!(
+        Vec::<i32>::new(),
+        dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
+
+    send.send(3).unwrap();
+    flow.run_tick().await;
+    // Tick 1: data from tick 0 appears.
+    assert_eq!(
+        vec![1, 2],
+        dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
+
+    flow.run_tick().await;
+    // Tick 2: data from tick 1 appears.
+    assert_eq!(
+        vec![3],
+        dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
+}
+
+/// Test: defer_tick (non-lazy) flip-flop — a cycle through defer_tick toggles a boolean.
+#[dfir_rs::test]
+pub async fn test_inline_defer_tick_nonlazy_flipflop() {
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<bool>();
+    let mut flow = dfir_rs::dfir_syntax_inline! {
+        source_iter(vec![true])
+                -> state;
+        state = union()
+                -> inspect(|x: &bool| out_send.send(*x).unwrap())
+                -> map(|x: bool| !x)
+                -> defer_tick()
+                -> state;
+    };
+
+    flow.run_tick().await;
+    assert_eq!(
+        vec![true],
+        dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
+
+    flow.run_tick().await;
+    assert_eq!(
+        vec![false],
+        dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
+
+    flow.run_tick().await;
+    assert_eq!(
+        vec![true],
+        dfir_rs::util::collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+    );
+}
+
+/// Test: defer_tick (non-lazy) with run_available — run_available should continue
+/// ticking as long as defer_tick buffers have data (the key difference from lazy).
+#[dfir_rs::test]
+pub async fn test_inline_defer_tick_run_available() {
+    let output = std::rc::Rc::new(std::cell::RefCell::new(Vec::<usize>::new()));
+    let output_inner = std::rc::Rc::clone(&output);
+
+    let mut flow = dfir_rs::dfir_syntax_inline! {
+        a = union() -> tee();
+        source_iter([1_usize, 3]) -> [0]a;
+        a[0] -> defer_tick() -> map(|x: usize| 2 * x) -> filter(|&x: &usize| x < 20) -> [1]a;
+        a[1] -> for_each(|x: usize| output_inner.borrow_mut().push(x));
+    };
+
+    // run_available should run multiple ticks until quiescence (defer buffers empty).
+    flow.run_available().await;
+
+    let result = output.take();
+    // Tick 0: [1, 3]
+    // Tick 1: [2, 6] (from defer of 1,3 -> *2)
+    // Tick 2: [4, 12] (from defer of 2,6 -> *2)
+    // Tick 3: [8] (from defer of 4,12 -> *2, 24 filtered out)
+    // Tick 4: [16] (from defer of 8 -> *2)
+    // Tick 5: [] (32 filtered out, no more data)
+    assert_eq!(vec![1, 3, 2, 6, 4, 12, 8, 16], result);
+}

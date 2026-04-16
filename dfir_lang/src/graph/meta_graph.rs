@@ -1475,6 +1475,39 @@ impl DfirGraph {
                 .collect::<Vec<_>>()
         };
 
+        // Collect handoff buffer idents for non-lazy tick-boundary edges (defer_tick).
+        // When these buffers are non-empty at end of tick, we must set can_start_tick
+        // so that run_available continues ticking.
+        //
+        // TODO(cleanup): Once scheduled Dfir is removed, replace the `subgraph_laziness`
+        // flag with a more direct representation (e.g., a `DelayType` on the handoff edge
+        // itself). Currently we piggyback on the laziness bit of the intermediate identity
+        // subgraph that `flat_to_partitioned` injects for `defer_tick` vs `defer_tick_lazy`,
+        // which is an indirect way to distinguish the two.
+        let defer_tick_buf_idents: Vec<Ident> = {
+            let mut idents = Vec::new();
+            for (hoff_id, node) in self.nodes() {
+                if !matches!(node, GraphNode::Handoff { .. }) {
+                    continue;
+                }
+                let (_edge_id, pred) = self.node_predecessors(hoff_id).next().unwrap();
+                let (_edge_id, succ) = self.node_successors(hoff_id).next().unwrap();
+                let pred_sg = self.node_subgraph(pred).unwrap();
+                let succ_sg = self.node_subgraph(succ).unwrap();
+                let pred_stratum = self.subgraph_stratum(pred_sg).unwrap();
+                let succ_stratum = self.subgraph_stratum(succ_sg).unwrap();
+                // Non-lazy tick-boundary: pred at extra_stratum, succ at lower stratum.
+                if succ_stratum < pred_stratum && !self.subgraph_laziness(pred_sg) {
+                    let span = node.span();
+                    idents.push(Ident::new(
+                        &format!("hoff_{:?}_buf", hoff_id.data()),
+                        span,
+                    ));
+                }
+            }
+            idents
+        };
+
         let mut op_prologue_code = Vec::new();
         let mut op_prologue_after_code = Vec::new();
         let mut subgraph_blocks = Vec::new();
@@ -2033,6 +2066,15 @@ impl DfirGraph {
                 #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref)]
                 let __dfir_inline_tick = async move || {
                     #( #subgraph_blocks )*
+
+                    // For non-lazy defer_tick: if any deferred buffer has data,
+                    // signal that another tick should run (sets can_start_tick).
+                    if false #( || !#defer_tick_buf_idents.is_empty() )* {
+                        #df.schedule_subgraph(
+                            #root::scheduled::SubgraphId::from_raw(0),
+                            true,
+                        );
+                    }
 
                     #df.__end_tick();
                     ::std::mem::take(&mut __dfir_work_done)
