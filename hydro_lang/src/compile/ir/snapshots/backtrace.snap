@@ -1,10 +1,10 @@
 ---
 source: hydro_lang/src/compile/ir/backtrace.rs
-expression: elements
+expression: "elements.collect::<Vec<_>>()"
 ---
 [
     BacktraceElement {
-        fn_name: "hydro_lang::compile::ir::backtrace::tests::test_backtrace",
+        fn_name: "test_backtrace",
         lineno: Some(
             184,
         ),
@@ -13,7 +13,7 @@ expression: elements
         ),
     },
     BacktraceElement {
-        fn_name: "hydro_lang::compile::ir::backtrace::tests::test_backtrace::{{closure}}",
+        fn_name: "{closure#0}",
         lineno: Some(
             176,
         ),
@@ -22,7 +22,7 @@ expression: elements
         ),
     },
     BacktraceElement {
-        fn_name: "core::ops::function::FnOnce::call_once",
+        fn_name: "call_once<hydro_lang::compile::ir::backtrace::tests::test_backtrace",
         lineno: Some(
             250,
         ),

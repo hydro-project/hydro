@@ -625,7 +625,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     pub fn get(self, key: impl Into<Optional<K, L, Bounded>>) -> Optional<V, L, Bounded>
     where
         B: IsBounded,
-        K: Hash + Eq,
+        K: Eq + Clone,
     {
         self.make_bounded()
             .into_keyed_stream()

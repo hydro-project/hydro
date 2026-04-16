@@ -2199,6 +2199,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// Gets the values associated with a specific key from the keyed stream.
     /// Returns an empty stream if the key is `None` or there are no associated values.
     ///
+    /// If the keyed stream has [`TotalOrder`], the output stream will also have [`TotalOrder`].
+    /// This method also works on [`Unbounded`] keyed streams.
+    ///
     /// # Example
     /// ```rust
     /// # #[cfg(feature = "deploy")] {
@@ -2223,15 +2226,29 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn get(self, key: impl Into<Optional<K, L, Bounded>>) -> Stream<V, L, Bounded, NoOrder, R>
+    pub fn get(self, key: impl Into<Optional<K, L, Bounded>>) -> Stream<V, L, B, O, R>
     where
-        B: IsBounded,
-        K: Eq + Hash,
+        K: Eq + Clone,
     {
-        self.make_bounded()
-            .entries()
-            .join(key.into().into_stream().map(q!(|k| (k, ()))))
-            .map(q!(|(_, (v, _))| v))
+        let key: Optional<K, L, Bounded> = key.into();
+        // Preserve ordering by working at the Stream<(K, V)> level directly
+        // rather than going through entries() which drops to NoOrder.
+        let entries_preserving_order: Stream<(K, V), L, B, O, R> = Stream::new(
+            self.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<(K, V), L, B, O, R>::collection_kind()),
+            },
+        );
+        entries_preserving_order
+            .cross_singleton(key)
+            .filter_map(q!(|((k, v), lookup_key)| if k == lookup_key {
+                Some(v)
+            } else {
+                None
+            }))
     }
 
     /// For each value in `self`, find the matching key in `lookup`.
