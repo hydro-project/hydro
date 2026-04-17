@@ -569,6 +569,13 @@ impl InlineContext {
         }
     }
 
+    /// Signals that another tick should be started (sets `can_start_tick`).
+    /// Used by generated code for non-lazy `defer_tick` buffers.
+    #[doc(hidden)]
+    pub fn request_next_tick(&self) {
+        self.wake_state.wake_by_ref();
+    }
+
     /// Returns a waker that signals external data has arrived.
     pub fn waker(&self) -> std::task::Waker {
         std::task::Waker::from(self.wake_state.clone())
