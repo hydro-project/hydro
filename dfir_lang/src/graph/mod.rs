@@ -550,17 +550,14 @@ fn validate_inline(graph: &DfirGraph, diagnostics: &mut Diagnostics) {
         ));
     }
 
-    // 2. Reject intra-tick cycles (non-DAG dataflows excluding tick-boundary edges).
-    // Build a subgraph-level directed graph, excluding edges that cross tick boundaries
-    // (defer_tick_lazy subgraphs, and back-edges where succ_stratum < pred_stratum).
-    // Then check for cycles via topo sort.
+    // 2. Reject intra-tick cycles.
+    // Build a subgraph-level directed graph, excluding edges where succ_stratum < pred_stratum.
+    // Stratification (find_subgraph_strata) guarantees that strata are non-decreasing along
+    // all non-tick edges: regular edges get non-decreasing strata via topo sort, Stratum
+    // (negative) edges get an increment, and Tick/TickLazy edges are excluded from
+    // stratification entirely and re-introduced at extra_stratum. So succ_stratum < pred_stratum
+    // can only occur for defer_tick/defer_tick_lazy back-edges, which are cross-tick by design.
     {
-        use std::collections::BTreeSet;
-
-        let all_sgs: BTreeSet<GraphSubgraphId> = graph.subgraph_ids().collect();
-
-        // Build predecessor map: for each subgraph, find which subgraphs feed into it
-        // within the same tick (excluding lazy subgraphs and tick-boundary back-edges).
         let predecessors = |sg_id: GraphSubgraphId| -> Vec<GraphSubgraphId> {
             let mut recv_hoffs = Vec::new();
             for &node_id in graph.subgraph(sg_id) {
@@ -573,28 +570,25 @@ fn validate_inline(graph: &DfirGraph, diagnostics: &mut Diagnostics) {
             let mut preds = Vec::new();
             for hoff_id in recv_hoffs {
                 for (_edge, pred_id) in graph.node_predecessors(hoff_id) {
-                    if let Some(pred_sg) = graph.node_subgraph(pred_id)
-                        && all_sgs.contains(&pred_sg)
-                    {
-                        // Skip lazy subgraphs (defer_tick_lazy intermediates).
-                        if graph.subgraph_laziness(pred_sg) {
-                            continue;
-                        }
-                        // Skip tick-boundary back-edges (defer_tick intermediates at extra_stratum
-                        // feeding into lower-stratum successors).
-                        let pred_stratum = graph.subgraph_stratum(pred_sg).unwrap_or(0);
-                        let succ_stratum = graph.subgraph_stratum(sg_id).unwrap_or(0);
-                        if succ_stratum < pred_stratum {
-                            continue;
-                        }
-                        preds.push(pred_sg);
+                    let pred_sg = graph
+                        .node_subgraph(pred_id)
+                        .expect("bug: handoff predecessor must belong to a subgraph");
+                    let pred_stratum = graph
+                        .subgraph_stratum(pred_sg)
+                        .expect("bug: subgraph must have a stratum assigned");
+                    let succ_stratum = graph
+                        .subgraph_stratum(sg_id)
+                        .expect("bug: subgraph must have a stratum assigned");
+                    if succ_stratum < pred_stratum {
+                        continue;
                     }
+                    preds.push(pred_sg);
                 }
             }
             preds
         };
 
-        let topo_result = graph_algorithms::topo_sort(all_sgs.iter().copied(), predecessors);
+        let topo_result = graph_algorithms::topo_sort(graph.subgraph_ids(), predecessors);
         if let Err(cycle) = topo_result {
             // Find a representative span from the first subgraph in the cycle.
             let span = cycle

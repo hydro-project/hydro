@@ -1499,10 +1499,7 @@ impl DfirGraph {
                 // Non-lazy tick-boundary: pred at extra_stratum, succ at lower stratum.
                 if succ_stratum < pred_stratum && !self.subgraph_laziness(pred_sg) {
                     let span = node.span();
-                    idents.push(Ident::new(
-                        &format!("hoff_{:?}_buf", hoff_id.data()),
-                        span,
-                    ));
+                    idents.push(Ident::new(&format!("hoff_{:?}_buf", hoff_id.data()), span));
                 }
             }
             idents
