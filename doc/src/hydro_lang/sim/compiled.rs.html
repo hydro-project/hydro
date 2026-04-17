@@ -924,221 +924,244 @@
 <a href=#924 id=924 data-nosnippet>924</a>    }
 <a href=#925 id=925 data-nosnippet>925</a>}
 <a href=#926 id=926 data-nosnippet>926</a>
-<a href=#927 id=927 data-nosnippet>927</a><span class="doccomment">/// A running simulation, which manages the async DFIR and tick DFIRs, and makes decisions
-<a href=#928 id=928 data-nosnippet>928</a>/// about scheduling ticks and choices for non-deterministic operators like batch.
-<a href=#929 id=929 data-nosnippet>929</a></span><span class="kw">struct </span>LaunchedSim&lt;W: std::io::Write&gt; {
-<a href=#930 id=930 data-nosnippet>930</a>    async_dfirs: Vec&lt;(LocationId, <span class="prelude-ty">Option</span>&lt;u32&gt;, InlineDfirErased)&gt;,
-<a href=#931 id=931 data-nosnippet>931</a>    possibly_ready_ticks: Vec&lt;(LocationId, <span class="prelude-ty">Option</span>&lt;u32&gt;, InlineDfirErased)&gt;,
-<a href=#932 id=932 data-nosnippet>932</a>    not_ready_ticks: Vec&lt;(LocationId, <span class="prelude-ty">Option</span>&lt;u32&gt;, InlineDfirErased)&gt;,
-<a href=#933 id=933 data-nosnippet>933</a>    possibly_ready_observation: Vec&lt;(LocationId, <span class="prelude-ty">Option</span>&lt;u32&gt;)&gt;,
-<a href=#934 id=934 data-nosnippet>934</a>    not_ready_observation: Vec&lt;(LocationId, <span class="prelude-ty">Option</span>&lt;u32&gt;)&gt;,
-<a href=#935 id=935 data-nosnippet>935</a>    hooks: Hooks&lt;LocationId&gt;,
-<a href=#936 id=936 data-nosnippet>936</a>    inline_hooks: InlineHooks&lt;LocationId&gt;,
-<a href=#937 id=937 data-nosnippet>937</a>    log: LogKind&lt;W&gt;,
-<a href=#938 id=938 data-nosnippet>938</a>}
-<a href=#939 id=939 data-nosnippet>939</a>
-<a href=#940 id=940 data-nosnippet>940</a><span class="kw">impl</span>&lt;W: std::io::Write&gt; LaunchedSim&lt;W&gt; {
-<a href=#941 id=941 data-nosnippet>941</a>    <span class="kw">async fn </span>scheduler(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#942 id=942 data-nosnippet>942</a>        <span class="kw">loop </span>{
-<a href=#943 id=943 data-nosnippet>943</a>            tokio::task::yield_now().<span class="kw">await</span>;
-<a href=#944 id=944 data-nosnippet>944</a>            <span class="kw">let </span><span class="kw-2">mut </span>any_made_progress = <span class="bool-val">false</span>;
-<a href=#945 id=945 data-nosnippet>945</a>            <span class="kw">for </span>(loc, c_id, dfir) <span class="kw">in </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.async_dfirs {
-<a href=#946 id=946 data-nosnippet>946</a>                <span class="kw">if </span>dfir.run_tick().<span class="kw">await </span>{
-<a href=#947 id=947 data-nosnippet>947</a>                    any_made_progress = <span class="bool-val">true</span>;
-<a href=#948 id=948 data-nosnippet>948</a>                    <span class="kw">let </span>(now_ready, still_not_ready): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = <span class="self">self
-<a href=#949 id=949 data-nosnippet>949</a>                        </span>.not_ready_ticks
-<a href=#950 id=950 data-nosnippet>950</a>                        .drain(..)
-<a href=#951 id=951 data-nosnippet>951</a>                        .partition(|(tick_loc, tick_c_id, <span class="kw">_</span>)| {
-<a href=#952 id=952 data-nosnippet>952</a>                            <span class="kw">let </span>LocationId::Tick(<span class="kw">_</span>, outer) = tick_loc <span class="kw">else </span>{
-<a href=#953 id=953 data-nosnippet>953</a>                                <span class="macro">unreachable!</span>()
-<a href=#954 id=954 data-nosnippet>954</a>                            };
-<a href=#955 id=955 data-nosnippet>955</a>                            outer.as_ref() == loc &amp;&amp; tick_c_id == c_id
-<a href=#956 id=956 data-nosnippet>956</a>                        });
-<a href=#957 id=957 data-nosnippet>957</a>
-<a href=#958 id=958 data-nosnippet>958</a>                    <span class="self">self</span>.possibly_ready_ticks.extend(now_ready);
-<a href=#959 id=959 data-nosnippet>959</a>                    <span class="self">self</span>.not_ready_ticks.extend(still_not_ready);
-<a href=#960 id=960 data-nosnippet>960</a>
-<a href=#961 id=961 data-nosnippet>961</a>                    <span class="kw">let </span>(now_ready_obs, still_not_ready_obs): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = <span class="self">self
-<a href=#962 id=962 data-nosnippet>962</a>                        </span>.not_ready_observation
-<a href=#963 id=963 data-nosnippet>963</a>                        .drain(..)
-<a href=#964 id=964 data-nosnippet>964</a>                        .partition(|(obs_loc, obs_c_id)| obs_loc == loc &amp;&amp; obs_c_id == c_id);
-<a href=#965 id=965 data-nosnippet>965</a>
-<a href=#966 id=966 data-nosnippet>966</a>                    <span class="self">self</span>.possibly_ready_observation.extend(now_ready_obs);
-<a href=#967 id=967 data-nosnippet>967</a>                    <span class="self">self</span>.not_ready_observation.extend(still_not_ready_obs);
-<a href=#968 id=968 data-nosnippet>968</a>                }
-<a href=#969 id=969 data-nosnippet>969</a>            }
-<a href=#970 id=970 data-nosnippet>970</a>
-<a href=#971 id=971 data-nosnippet>971</a>            <span class="kw">if </span>any_made_progress {
-<a href=#972 id=972 data-nosnippet>972</a>                <span class="kw">continue</span>;
-<a href=#973 id=973 data-nosnippet>973</a>            } <span class="kw">else </span>{
-<a href=#974 id=974 data-nosnippet>974</a>                <span class="kw">use </span>bolero::generator::<span class="kw-2">*</span>;
-<a href=#975 id=975 data-nosnippet>975</a>
-<a href=#976 id=976 data-nosnippet>976</a>                <span class="kw">let </span>(ready_tick, <span class="kw-2">mut </span>not_ready_tick): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = <span class="self">self
-<a href=#977 id=977 data-nosnippet>977</a>                    </span>.possibly_ready_ticks
-<a href=#978 id=978 data-nosnippet>978</a>                    .drain(..)
-<a href=#979 id=979 data-nosnippet>979</a>                    .partition(|(name, cid, <span class="kw">_</span>)| {
-<a href=#980 id=980 data-nosnippet>980</a>                        <span class="self">self</span>.hooks
-<a href=#981 id=981 data-nosnippet>981</a>                            .get(<span class="kw-2">&amp;</span>(name.clone(), <span class="kw-2">*</span>cid))
-<a href=#982 id=982 data-nosnippet>982</a>                            .unwrap()
-<a href=#983 id=983 data-nosnippet>983</a>                            .iter()
-<a href=#984 id=984 data-nosnippet>984</a>                            .any(|hook| {
-<a href=#985 id=985 data-nosnippet>985</a>                                hook.current_decision().unwrap_or(<span class="bool-val">false</span>)
-<a href=#986 id=986 data-nosnippet>986</a>                                    || hook.can_make_nontrivial_decision()
-<a href=#987 id=987 data-nosnippet>987</a>                            })
-<a href=#988 id=988 data-nosnippet>988</a>                    });
-<a href=#989 id=989 data-nosnippet>989</a>
-<a href=#990 id=990 data-nosnippet>990</a>                <span class="self">self</span>.possibly_ready_ticks = ready_tick;
-<a href=#991 id=991 data-nosnippet>991</a>                <span class="self">self</span>.not_ready_ticks.append(<span class="kw-2">&amp;mut </span>not_ready_tick);
-<a href=#992 id=992 data-nosnippet>992</a>
-<a href=#993 id=993 data-nosnippet>993</a>                <span class="kw">let </span>(ready_obs, <span class="kw-2">mut </span>not_ready_obs): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = <span class="self">self
-<a href=#994 id=994 data-nosnippet>994</a>                    </span>.possibly_ready_observation
-<a href=#995 id=995 data-nosnippet>995</a>                    .drain(..)
-<a href=#996 id=996 data-nosnippet>996</a>                    .partition(|(name, cid)| {
-<a href=#997 id=997 data-nosnippet>997</a>                        <span class="self">self</span>.hooks
-<a href=#998 id=998 data-nosnippet>998</a>                            .get(<span class="kw-2">&amp;</span>(name.clone(), <span class="kw-2">*</span>cid))
-<a href=#999 id=999 data-nosnippet>999</a>                            .into_iter()
-<a href=#1000 id=1000 data-nosnippet>1000</a>                            .flatten()
-<a href=#1001 id=1001 data-nosnippet>1001</a>                            .any(|hook| {
-<a href=#1002 id=1002 data-nosnippet>1002</a>                                hook.current_decision().unwrap_or(<span class="bool-val">false</span>)
-<a href=#1003 id=1003 data-nosnippet>1003</a>                                    || hook.can_make_nontrivial_decision()
-<a href=#1004 id=1004 data-nosnippet>1004</a>                            })
-<a href=#1005 id=1005 data-nosnippet>1005</a>                    });
-<a href=#1006 id=1006 data-nosnippet>1006</a>
-<a href=#1007 id=1007 data-nosnippet>1007</a>                <span class="self">self</span>.possibly_ready_observation = ready_obs;
-<a href=#1008 id=1008 data-nosnippet>1008</a>                <span class="self">self</span>.not_ready_observation.append(<span class="kw-2">&amp;mut </span>not_ready_obs);
-<a href=#1009 id=1009 data-nosnippet>1009</a>
-<a href=#1010 id=1010 data-nosnippet>1010</a>                <span class="kw">if </span><span class="self">self</span>.possibly_ready_ticks.is_empty()
-<a href=#1011 id=1011 data-nosnippet>1011</a>                    &amp;&amp; <span class="self">self</span>.possibly_ready_observation.is_empty()
-<a href=#1012 id=1012 data-nosnippet>1012</a>                {
-<a href=#1013 id=1013 data-nosnippet>1013</a>                    <span class="kw">break</span>;
-<a href=#1014 id=1014 data-nosnippet>1014</a>                } <span class="kw">else </span>{
-<a href=#1015 id=1015 data-nosnippet>1015</a>                    <span class="kw">let </span>next_tick_or_obs = (<span class="number">0</span>..(<span class="self">self</span>.possibly_ready_ticks.len()
-<a href=#1016 id=1016 data-nosnippet>1016</a>                        + <span class="self">self</span>.possibly_ready_observation.len()))
-<a href=#1017 id=1017 data-nosnippet>1017</a>                        .any();
-<a href=#1018 id=1018 data-nosnippet>1018</a>
-<a href=#1019 id=1019 data-nosnippet>1019</a>                    <span class="kw">if </span>next_tick_or_obs &lt; <span class="self">self</span>.possibly_ready_ticks.len() {
-<a href=#1020 id=1020 data-nosnippet>1020</a>                        <span class="kw">let </span>next_tick = next_tick_or_obs;
-<a href=#1021 id=1021 data-nosnippet>1021</a>                        <span class="kw">let </span><span class="kw-2">mut </span>removed = <span class="self">self</span>.possibly_ready_ticks.remove(next_tick);
-<a href=#1022 id=1022 data-nosnippet>1022</a>
-<a href=#1023 id=1023 data-nosnippet>1023</a>                        <span class="kw">match </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.log {
-<a href=#1024 id=1024 data-nosnippet>1024</a>                            LogKind::Null =&gt; {}
-<a href=#1025 id=1025 data-nosnippet>1025</a>                            LogKind::Stderr =&gt; {
-<a href=#1026 id=1026 data-nosnippet>1026</a>                                <span class="kw">if let </span><span class="prelude-val">Some</span>(cid) = <span class="kw-2">&amp;</span>removed.<span class="number">1 </span>{
-<a href=#1027 id=1027 data-nosnippet>1027</a>                                    <span class="macro">eprintln!</span>(
-<a href=#1028 id=1028 data-nosnippet>1028</a>                                        <span class="string">"\n{}"</span>,
-<a href=#1029 id=1029 data-nosnippet>1029</a>                                        <span class="macro">format!</span>(<span class="string">"Running Tick (Cluster Member {})"</span>, cid)
-<a href=#1030 id=1030 data-nosnippet>1030</a>                                            .color(colored::Color::Magenta)
-<a href=#1031 id=1031 data-nosnippet>1031</a>                                            .bold()
-<a href=#1032 id=1032 data-nosnippet>1032</a>                                    )
-<a href=#1033 id=1033 data-nosnippet>1033</a>                                } <span class="kw">else </span>{
-<a href=#1034 id=1034 data-nosnippet>1034</a>                                    <span class="macro">eprintln!</span>(
-<a href=#1035 id=1035 data-nosnippet>1035</a>                                        <span class="string">"\n{}"</span>,
-<a href=#1036 id=1036 data-nosnippet>1036</a>                                        <span class="string">"Running Tick"</span>.color(colored::Color::Magenta).bold()
-<a href=#1037 id=1037 data-nosnippet>1037</a>                                    )
-<a href=#1038 id=1038 data-nosnippet>1038</a>                                }
-<a href=#1039 id=1039 data-nosnippet>1039</a>                            }
-<a href=#1040 id=1040 data-nosnippet>1040</a>                            LogKind::Custom(writer) =&gt; {
-<a href=#1041 id=1041 data-nosnippet>1041</a>                                <span class="macro">writeln!</span>(
-<a href=#1042 id=1042 data-nosnippet>1042</a>                                    writer,
-<a href=#1043 id=1043 data-nosnippet>1043</a>                                    <span class="string">"\n{}"</span>,
-<a href=#1044 id=1044 data-nosnippet>1044</a>                                    <span class="string">"Running Tick"</span>.color(colored::Color::Magenta).bold()
-<a href=#1045 id=1045 data-nosnippet>1045</a>                                )
-<a href=#1046 id=1046 data-nosnippet>1046</a>                                .unwrap();
-<a href=#1047 id=1047 data-nosnippet>1047</a>                            }
-<a href=#1048 id=1048 data-nosnippet>1048</a>                        }
-<a href=#1049 id=1049 data-nosnippet>1049</a>
-<a href=#1050 id=1050 data-nosnippet>1050</a>                        <span class="kw">let </span><span class="kw-2">mut </span>asterisk_indenter = |_line_no, write: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write| {
-<a href=#1051 id=1051 data-nosnippet>1051</a>                            write.write_str(<span class="kw-2">&amp;</span><span class="string">"*"</span>.color(colored::Color::Magenta).bold())<span class="question-mark">?</span>;
-<a href=#1052 id=1052 data-nosnippet>1052</a>                            write.write_str(<span class="string">" "</span>)
-<a href=#1053 id=1053 data-nosnippet>1053</a>                        };
-<a href=#1054 id=1054 data-nosnippet>1054</a>
-<a href=#1055 id=1055 data-nosnippet>1055</a>                        <span class="kw">let </span><span class="kw-2">mut </span>tick_decision_writer = indenter::indented(<span class="kw-2">&amp;mut </span><span class="self">self</span>.log)
-<a href=#1056 id=1056 data-nosnippet>1056</a>                            .with_format(indenter::Format::Custom {
-<a href=#1057 id=1057 data-nosnippet>1057</a>                                inserter: <span class="kw-2">&amp;mut </span>asterisk_indenter,
-<a href=#1058 id=1058 data-nosnippet>1058</a>                            });
-<a href=#1059 id=1059 data-nosnippet>1059</a>
-<a href=#1060 id=1060 data-nosnippet>1060</a>                        <span class="kw">let </span>hooks = <span class="self">self</span>.hooks.get_mut(<span class="kw-2">&amp;</span>(removed.<span class="number">0</span>.clone(), removed.<span class="number">1</span>)).unwrap();
-<a href=#1061 id=1061 data-nosnippet>1061</a>                        run_hooks(<span class="kw-2">&amp;mut </span>tick_decision_writer, hooks);
-<a href=#1062 id=1062 data-nosnippet>1062</a>
-<a href=#1063 id=1063 data-nosnippet>1063</a>                        <span class="kw">let </span>run_tick_future = removed.<span class="number">2</span>.run_tick();
-<a href=#1064 id=1064 data-nosnippet>1064</a>                        <span class="kw">if let </span><span class="prelude-val">Some</span>(inline_hooks) =
-<a href=#1065 id=1065 data-nosnippet>1065</a>                            <span class="self">self</span>.inline_hooks.get_mut(<span class="kw-2">&amp;</span>(removed.<span class="number">0</span>.clone(), removed.<span class="number">1</span>))
-<a href=#1066 id=1066 data-nosnippet>1066</a>                        {
-<a href=#1067 id=1067 data-nosnippet>1067</a>                            <span class="kw">let </span><span class="kw-2">mut </span>run_tick_future_pinned = <span class="macro">pin!</span>(run_tick_future);
-<a href=#1068 id=1068 data-nosnippet>1068</a>
-<a href=#1069 id=1069 data-nosnippet>1069</a>                            <span class="kw">loop </span>{
-<a href=#1070 id=1070 data-nosnippet>1070</a>                                <span class="macro">tokio::select!</span> {
-<a href=#1071 id=1071 data-nosnippet>1071</a>                                    biased;
-<a href=#1072 id=1072 data-nosnippet>1072</a>                                    r = <span class="kw-2">&amp;mut </span>run_tick_future_pinned =&gt; {
-<a href=#1073 id=1073 data-nosnippet>1073</a>                                        <span class="macro">assert!</span>(r);
-<a href=#1074 id=1074 data-nosnippet>1074</a>                                        <span class="kw">break</span>;
-<a href=#1075 id=1075 data-nosnippet>1075</a>                                    }
-<a href=#1076 id=1076 data-nosnippet>1076</a>                                    <span class="kw">_ </span>= <span class="kw">async </span>{} =&gt; {
-<a href=#1077 id=1077 data-nosnippet>1077</a>                                        bolero_generator::any::scope::borrow_with(|driver| {
-<a href=#1078 id=1078 data-nosnippet>1078</a>                                            <span class="kw">for </span>hook <span class="kw">in </span>inline_hooks.iter_mut() {
-<a href=#1079 id=1079 data-nosnippet>1079</a>                                                <span class="kw">if </span>hook.pending_decision() {
-<a href=#1080 id=1080 data-nosnippet>1080</a>                                                    <span class="kw">if </span>!hook.has_decision() {
-<a href=#1081 id=1081 data-nosnippet>1081</a>                                                        hook.autonomous_decision(driver);
-<a href=#1082 id=1082 data-nosnippet>1082</a>                                                    }
-<a href=#1083 id=1083 data-nosnippet>1083</a>
-<a href=#1084 id=1084 data-nosnippet>1084</a>                                                    hook.release_decision(<span class="kw-2">&amp;mut </span>tick_decision_writer);
-<a href=#1085 id=1085 data-nosnippet>1085</a>                                                }
-<a href=#1086 id=1086 data-nosnippet>1086</a>                                            }
-<a href=#1087 id=1087 data-nosnippet>1087</a>                                        });
-<a href=#1088 id=1088 data-nosnippet>1088</a>                                    }
-<a href=#1089 id=1089 data-nosnippet>1089</a>                                }
-<a href=#1090 id=1090 data-nosnippet>1090</a>                            }
-<a href=#1091 id=1091 data-nosnippet>1091</a>                        } <span class="kw">else </span>{
-<a href=#1092 id=1092 data-nosnippet>1092</a>                            <span class="macro">assert!</span>(run_tick_future.<span class="kw">await</span>);
-<a href=#1093 id=1093 data-nosnippet>1093</a>                        }
-<a href=#1094 id=1094 data-nosnippet>1094</a>
-<a href=#1095 id=1095 data-nosnippet>1095</a>                        <span class="self">self</span>.possibly_ready_ticks.push(removed);
-<a href=#1096 id=1096 data-nosnippet>1096</a>                    } <span class="kw">else </span>{
-<a href=#1097 id=1097 data-nosnippet>1097</a>                        <span class="kw">let </span>next_obs = next_tick_or_obs - <span class="self">self</span>.possibly_ready_ticks.len();
-<a href=#1098 id=1098 data-nosnippet>1098</a>                        <span class="kw">let </span><span class="kw-2">mut </span>default_hooks = <span class="macro">vec!</span>[];
-<a href=#1099 id=1099 data-nosnippet>1099</a>                        <span class="kw">let </span>hooks = <span class="self">self
-<a href=#1100 id=1100 data-nosnippet>1100</a>                            </span>.hooks
-<a href=#1101 id=1101 data-nosnippet>1101</a>                            .get_mut(<span class="kw-2">&amp;</span><span class="self">self</span>.possibly_ready_observation[next_obs])
-<a href=#1102 id=1102 data-nosnippet>1102</a>                            .unwrap_or(<span class="kw-2">&amp;mut </span>default_hooks);
-<a href=#1103 id=1103 data-nosnippet>1103</a>
-<a href=#1104 id=1104 data-nosnippet>1104</a>                        run_hooks(<span class="kw-2">&amp;mut </span><span class="self">self</span>.log, hooks);
-<a href=#1105 id=1105 data-nosnippet>1105</a>                    }
-<a href=#1106 id=1106 data-nosnippet>1106</a>                }
-<a href=#1107 id=1107 data-nosnippet>1107</a>            }
-<a href=#1108 id=1108 data-nosnippet>1108</a>        }
-<a href=#1109 id=1109 data-nosnippet>1109</a>    }
-<a href=#1110 id=1110 data-nosnippet>1110</a>}
-<a href=#1111 id=1111 data-nosnippet>1111</a>
-<a href=#1112 id=1112 data-nosnippet>1112</a><span class="kw">fn </span>run_hooks(tick_decision_writer: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>std::fmt::Write, hooks: <span class="kw-2">&amp;mut </span>Vec&lt;Box&lt;<span class="kw">dyn </span>SimHook&gt;&gt;) {
-<a href=#1113 id=1113 data-nosnippet>1113</a>    <span class="kw">let </span><span class="kw-2">mut </span>remaining_decision_count = hooks.len();
-<a href=#1114 id=1114 data-nosnippet>1114</a>    <span class="kw">let </span><span class="kw-2">mut </span>made_nontrivial_decision = <span class="bool-val">false</span>;
-<a href=#1115 id=1115 data-nosnippet>1115</a>
-<a href=#1116 id=1116 data-nosnippet>1116</a>    bolero::generator::bolero_generator::any::scope::borrow_with(|driver| {
-<a href=#1117 id=1117 data-nosnippet>1117</a>        <span class="comment">// first, scan manual decisions
-<a href=#1118 id=1118 data-nosnippet>1118</a>        </span>hooks.iter_mut().for_each(|hook| {
-<a href=#1119 id=1119 data-nosnippet>1119</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(is_nontrivial) = hook.current_decision() {
-<a href=#1120 id=1120 data-nosnippet>1120</a>                made_nontrivial_decision |= is_nontrivial;
-<a href=#1121 id=1121 data-nosnippet>1121</a>                remaining_decision_count -= <span class="number">1</span>;
-<a href=#1122 id=1122 data-nosnippet>1122</a>            } <span class="kw">else if </span>!hook.can_make_nontrivial_decision() {
-<a href=#1123 id=1123 data-nosnippet>1123</a>                <span class="comment">// if no nontrivial decision is possible, make a trivial one
-<a href=#1124 id=1124 data-nosnippet>1124</a>                // (we need to do this in the first pass to force nontrivial decisions
-<a href=#1125 id=1125 data-nosnippet>1125</a>                // on the remaining hooks)
-<a href=#1126 id=1126 data-nosnippet>1126</a>                </span>hook.autonomous_decision(driver, <span class="bool-val">false</span>);
-<a href=#1127 id=1127 data-nosnippet>1127</a>                remaining_decision_count -= <span class="number">1</span>;
-<a href=#1128 id=1128 data-nosnippet>1128</a>            }
-<a href=#1129 id=1129 data-nosnippet>1129</a>        });
-<a href=#1130 id=1130 data-nosnippet>1130</a>
-<a href=#1131 id=1131 data-nosnippet>1131</a>        hooks.iter_mut().for_each(|hook| {
-<a href=#1132 id=1132 data-nosnippet>1132</a>            <span class="kw">if </span>hook.current_decision().is_none() {
-<a href=#1133 id=1133 data-nosnippet>1133</a>                made_nontrivial_decision |= hook.autonomous_decision(
-<a href=#1134 id=1134 data-nosnippet>1134</a>                    driver,
-<a href=#1135 id=1135 data-nosnippet>1135</a>                    !made_nontrivial_decision &amp;&amp; remaining_decision_count == <span class="number">1</span>,
-<a href=#1136 id=1136 data-nosnippet>1136</a>                );
-<a href=#1137 id=1137 data-nosnippet>1137</a>                remaining_decision_count -= <span class="number">1</span>;
-<a href=#1138 id=1138 data-nosnippet>1138</a>            }
-<a href=#1139 id=1139 data-nosnippet>1139</a>
-<a href=#1140 id=1140 data-nosnippet>1140</a>            hook.release_decision(tick_decision_writer);
-<a href=#1141 id=1141 data-nosnippet>1141</a>        });
-<a href=#1142 id=1142 data-nosnippet>1142</a>    });
-<a href=#1143 id=1143 data-nosnippet>1143</a>}
+<a href=#927 id=927 data-nosnippet>927</a><span class="doccomment">/// A running simulation, which manages the async DFIRs, tick DFIRs, and hook-based
+<a href=#928 id=928 data-nosnippet>928</a>/// scheduling decisions for non-deterministic operators like `batch` and `assume_ordering`.
+<a href=#929 id=929 data-nosnippet>929</a>///
+<a href=#930 id=930 data-nosnippet>930</a>/// The scheduler loops between three kinds of work:
+<a href=#931 id=931 data-nosnippet>931</a>/// - **Async DFIRs**: long-running top-level dataflows (one per process/cluster member) that
+<a href=#932 id=932 data-nosnippet>932</a>///   produce data consumed by ticks and observations.
+<a href=#933 id=933 data-nosnippet>933</a>/// - **Ticks**: tick-scoped DFIRs that execute a single tick. Before running, their associated
+<a href=#934 id=934 data-nosnippet>934</a>///   hooks (e.g. from `batch`) are resolved to decide what data to release into the tick.
+<a href=#935 id=935 data-nosnippet>935</a>/// - **Observations**: top-level locations that have hooks (e.g. from `assume_ordering` on a
+<a href=#936 id=936 data-nosnippet>936</a>///   non-tick stream) needing decisions, but no tick DFIR to execute. The scheduler just
+<a href=#937 id=937 data-nosnippet>937</a>///   resolves their hooks.
+<a href=#938 id=938 data-nosnippet>938</a></span><span class="kw">struct </span>LaunchedSim&lt;W: std::io::Write&gt; {
+<a href=#939 id=939 data-nosnippet>939</a>    <span class="doccomment">/// Top-level async DFIRs, one per process/cluster member. These run continuously and
+<a href=#940 id=940 data-nosnippet>940</a>    /// produce data that feeds into ticks and observations.
+<a href=#941 id=941 data-nosnippet>941</a>    </span>async_dfirs: Vec&lt;(LocationId, <span class="prelude-ty">Option</span>&lt;u32&gt;, InlineDfirErased)&gt;,
+<a href=#942 id=942 data-nosnippet>942</a>    <span class="doccomment">/// Tick DFIRs whose parent async DFIR has made progress, so they may be ready to run.
+<a href=#943 id=943 data-nosnippet>943</a>    /// The scheduler further filters these by checking whether their hooks have pending decisions.
+<a href=#944 id=944 data-nosnippet>944</a>    </span>possibly_ready_ticks: Vec&lt;(LocationId, <span class="prelude-ty">Option</span>&lt;u32&gt;, InlineDfirErased)&gt;,
+<a href=#945 id=945 data-nosnippet>945</a>    <span class="doccomment">/// Tick DFIRs whose parent async DFIR has not yet made progress since they were last checked.
+<a href=#946 id=946 data-nosnippet>946</a>    </span>not_ready_ticks: Vec&lt;(LocationId, <span class="prelude-ty">Option</span>&lt;u32&gt;, InlineDfirErased)&gt;,
+<a href=#947 id=947 data-nosnippet>947</a>    <span class="doccomment">/// Top-level locations whose async DFIR has made progress and whose hooks (from top-level
+<a href=#948 id=948 data-nosnippet>948</a>    /// `assume_ordering`) may have ordering decisions to resolve. Unlike ticks, these have no
+<a href=#949 id=949 data-nosnippet>949</a>    /// DFIR to execute — only hook resolution.
+<a href=#950 id=950 data-nosnippet>950</a>    </span>possibly_ready_observation: Vec&lt;(LocationId, <span class="prelude-ty">Option</span>&lt;u32&gt;)&gt;,
+<a href=#951 id=951 data-nosnippet>951</a>    <span class="doccomment">/// Top-level locations whose async DFIR has not yet made progress since they were last checked.
+<a href=#952 id=952 data-nosnippet>952</a>    </span>not_ready_observation: Vec&lt;(LocationId, <span class="prelude-ty">Option</span>&lt;u32&gt;)&gt;,
+<a href=#953 id=953 data-nosnippet>953</a>    <span class="doccomment">/// Hooks keyed by (location, cluster_member_id). These are resolved *before* a tick runs
+<a href=#954 id=954 data-nosnippet>954</a>    /// (for `batch` hooks) or standalone (for top-level `assume_ordering` hooks via observations).
+<a href=#955 id=955 data-nosnippet>955</a>    </span>hooks: Hooks&lt;LocationId&gt;,
+<a href=#956 id=956 data-nosnippet>956</a>    <span class="doccomment">/// Inline hooks keyed by (tick location, cluster_member_id). These are resolved *during*
+<a href=#957 id=957 data-nosnippet>957</a>    /// tick execution via a `tokio::select!` loop, for operators like `assume_ordering` inside
+<a href=#958 id=958 data-nosnippet>958</a>    /// a tick that block on ordering decisions while the tick DFIR is running.
+<a href=#959 id=959 data-nosnippet>959</a>    </span>inline_hooks: InlineHooks&lt;LocationId&gt;,
+<a href=#960 id=960 data-nosnippet>960</a>    log: LogKind&lt;W&gt;,
+<a href=#961 id=961 data-nosnippet>961</a>}
+<a href=#962 id=962 data-nosnippet>962</a>
+<a href=#963 id=963 data-nosnippet>963</a><span class="kw">impl</span>&lt;W: std::io::Write&gt; LaunchedSim&lt;W&gt; {
+<a href=#964 id=964 data-nosnippet>964</a>    <span class="kw">async fn </span>scheduler(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#965 id=965 data-nosnippet>965</a>        <span class="kw">loop </span>{
+<a href=#966 id=966 data-nosnippet>966</a>            tokio::task::yield_now().<span class="kw">await</span>;
+<a href=#967 id=967 data-nosnippet>967</a>            <span class="kw">let </span><span class="kw-2">mut </span>any_made_progress = <span class="bool-val">false</span>;
+<a href=#968 id=968 data-nosnippet>968</a>            <span class="kw">for </span>(loc, c_id, dfir) <span class="kw">in </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.async_dfirs {
+<a href=#969 id=969 data-nosnippet>969</a>                <span class="kw">if </span>dfir.run_tick().<span class="kw">await </span>{
+<a href=#970 id=970 data-nosnippet>970</a>                    any_made_progress = <span class="bool-val">true</span>;
+<a href=#971 id=971 data-nosnippet>971</a>                    <span class="kw">let </span>(now_ready, still_not_ready): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = <span class="self">self
+<a href=#972 id=972 data-nosnippet>972</a>                        </span>.not_ready_ticks
+<a href=#973 id=973 data-nosnippet>973</a>                        .drain(..)
+<a href=#974 id=974 data-nosnippet>974</a>                        .partition(|(tick_loc, tick_c_id, <span class="kw">_</span>)| {
+<a href=#975 id=975 data-nosnippet>975</a>                            <span class="kw">let </span>LocationId::Tick(<span class="kw">_</span>, outer) = tick_loc <span class="kw">else </span>{
+<a href=#976 id=976 data-nosnippet>976</a>                                <span class="macro">unreachable!</span>()
+<a href=#977 id=977 data-nosnippet>977</a>                            };
+<a href=#978 id=978 data-nosnippet>978</a>                            outer.as_ref() == loc &amp;&amp; tick_c_id == c_id
+<a href=#979 id=979 data-nosnippet>979</a>                        });
+<a href=#980 id=980 data-nosnippet>980</a>
+<a href=#981 id=981 data-nosnippet>981</a>                    <span class="self">self</span>.possibly_ready_ticks.extend(now_ready);
+<a href=#982 id=982 data-nosnippet>982</a>                    <span class="self">self</span>.not_ready_ticks.extend(still_not_ready);
+<a href=#983 id=983 data-nosnippet>983</a>
+<a href=#984 id=984 data-nosnippet>984</a>                    <span class="kw">let </span>(now_ready_obs, still_not_ready_obs): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = <span class="self">self
+<a href=#985 id=985 data-nosnippet>985</a>                        </span>.not_ready_observation
+<a href=#986 id=986 data-nosnippet>986</a>                        .drain(..)
+<a href=#987 id=987 data-nosnippet>987</a>                        .partition(|(obs_loc, obs_c_id)| obs_loc == loc &amp;&amp; obs_c_id == c_id);
+<a href=#988 id=988 data-nosnippet>988</a>
+<a href=#989 id=989 data-nosnippet>989</a>                    <span class="self">self</span>.possibly_ready_observation.extend(now_ready_obs);
+<a href=#990 id=990 data-nosnippet>990</a>                    <span class="self">self</span>.not_ready_observation.extend(still_not_ready_obs);
+<a href=#991 id=991 data-nosnippet>991</a>                }
+<a href=#992 id=992 data-nosnippet>992</a>            }
+<a href=#993 id=993 data-nosnippet>993</a>
+<a href=#994 id=994 data-nosnippet>994</a>            <span class="kw">if </span>any_made_progress {
+<a href=#995 id=995 data-nosnippet>995</a>                <span class="kw">continue</span>;
+<a href=#996 id=996 data-nosnippet>996</a>            } <span class="kw">else </span>{
+<a href=#997 id=997 data-nosnippet>997</a>                <span class="kw">use </span>bolero::generator::<span class="kw-2">*</span>;
+<a href=#998 id=998 data-nosnippet>998</a>
+<a href=#999 id=999 data-nosnippet>999</a>                <span class="kw">let </span>(ready_tick, <span class="kw-2">mut </span>not_ready_tick): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = <span class="self">self
+<a href=#1000 id=1000 data-nosnippet>1000</a>                    </span>.possibly_ready_ticks
+<a href=#1001 id=1001 data-nosnippet>1001</a>                    .drain(..)
+<a href=#1002 id=1002 data-nosnippet>1002</a>                    .partition(|(name, cid, <span class="kw">_</span>)| {
+<a href=#1003 id=1003 data-nosnippet>1003</a>                        <span class="self">self</span>.hooks
+<a href=#1004 id=1004 data-nosnippet>1004</a>                            .get(<span class="kw-2">&amp;</span>(name.clone(), <span class="kw-2">*</span>cid))
+<a href=#1005 id=1005 data-nosnippet>1005</a>                            .unwrap()
+<a href=#1006 id=1006 data-nosnippet>1006</a>                            .iter()
+<a href=#1007 id=1007 data-nosnippet>1007</a>                            .any(|hook| {
+<a href=#1008 id=1008 data-nosnippet>1008</a>                                hook.current_decision().unwrap_or(<span class="bool-val">false</span>)
+<a href=#1009 id=1009 data-nosnippet>1009</a>                                    || hook.can_make_nontrivial_decision()
+<a href=#1010 id=1010 data-nosnippet>1010</a>                            })
+<a href=#1011 id=1011 data-nosnippet>1011</a>                    });
+<a href=#1012 id=1012 data-nosnippet>1012</a>
+<a href=#1013 id=1013 data-nosnippet>1013</a>                <span class="self">self</span>.possibly_ready_ticks = ready_tick;
+<a href=#1014 id=1014 data-nosnippet>1014</a>                <span class="self">self</span>.not_ready_ticks.append(<span class="kw-2">&amp;mut </span>not_ready_tick);
+<a href=#1015 id=1015 data-nosnippet>1015</a>
+<a href=#1016 id=1016 data-nosnippet>1016</a>                <span class="kw">let </span>(ready_obs, <span class="kw-2">mut </span>not_ready_obs): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = <span class="self">self
+<a href=#1017 id=1017 data-nosnippet>1017</a>                    </span>.possibly_ready_observation
+<a href=#1018 id=1018 data-nosnippet>1018</a>                    .drain(..)
+<a href=#1019 id=1019 data-nosnippet>1019</a>                    .partition(|(name, cid)| {
+<a href=#1020 id=1020 data-nosnippet>1020</a>                        <span class="self">self</span>.hooks
+<a href=#1021 id=1021 data-nosnippet>1021</a>                            .get(<span class="kw-2">&amp;</span>(name.clone(), <span class="kw-2">*</span>cid))
+<a href=#1022 id=1022 data-nosnippet>1022</a>                            .into_iter()
+<a href=#1023 id=1023 data-nosnippet>1023</a>                            .flatten()
+<a href=#1024 id=1024 data-nosnippet>1024</a>                            .any(|hook| {
+<a href=#1025 id=1025 data-nosnippet>1025</a>                                hook.current_decision().unwrap_or(<span class="bool-val">false</span>)
+<a href=#1026 id=1026 data-nosnippet>1026</a>                                    || hook.can_make_nontrivial_decision()
+<a href=#1027 id=1027 data-nosnippet>1027</a>                            })
+<a href=#1028 id=1028 data-nosnippet>1028</a>                    });
+<a href=#1029 id=1029 data-nosnippet>1029</a>
+<a href=#1030 id=1030 data-nosnippet>1030</a>                <span class="self">self</span>.possibly_ready_observation = ready_obs;
+<a href=#1031 id=1031 data-nosnippet>1031</a>                <span class="self">self</span>.not_ready_observation.append(<span class="kw-2">&amp;mut </span>not_ready_obs);
+<a href=#1032 id=1032 data-nosnippet>1032</a>
+<a href=#1033 id=1033 data-nosnippet>1033</a>                <span class="kw">if </span><span class="self">self</span>.possibly_ready_ticks.is_empty()
+<a href=#1034 id=1034 data-nosnippet>1034</a>                    &amp;&amp; <span class="self">self</span>.possibly_ready_observation.is_empty()
+<a href=#1035 id=1035 data-nosnippet>1035</a>                {
+<a href=#1036 id=1036 data-nosnippet>1036</a>                    <span class="kw">break</span>;
+<a href=#1037 id=1037 data-nosnippet>1037</a>                } <span class="kw">else </span>{
+<a href=#1038 id=1038 data-nosnippet>1038</a>                    <span class="kw">let </span>next_tick_or_obs = (<span class="number">0</span>..(<span class="self">self</span>.possibly_ready_ticks.len()
+<a href=#1039 id=1039 data-nosnippet>1039</a>                        + <span class="self">self</span>.possibly_ready_observation.len()))
+<a href=#1040 id=1040 data-nosnippet>1040</a>                        .any();
+<a href=#1041 id=1041 data-nosnippet>1041</a>
+<a href=#1042 id=1042 data-nosnippet>1042</a>                    <span class="kw">if </span>next_tick_or_obs &lt; <span class="self">self</span>.possibly_ready_ticks.len() {
+<a href=#1043 id=1043 data-nosnippet>1043</a>                        <span class="kw">let </span>next_tick = next_tick_or_obs;
+<a href=#1044 id=1044 data-nosnippet>1044</a>                        <span class="kw">let </span><span class="kw-2">mut </span>removed = <span class="self">self</span>.possibly_ready_ticks.remove(next_tick);
+<a href=#1045 id=1045 data-nosnippet>1045</a>
+<a href=#1046 id=1046 data-nosnippet>1046</a>                        <span class="kw">match </span><span class="kw-2">&amp;mut </span><span class="self">self</span>.log {
+<a href=#1047 id=1047 data-nosnippet>1047</a>                            LogKind::Null =&gt; {}
+<a href=#1048 id=1048 data-nosnippet>1048</a>                            LogKind::Stderr =&gt; {
+<a href=#1049 id=1049 data-nosnippet>1049</a>                                <span class="kw">if let </span><span class="prelude-val">Some</span>(cid) = <span class="kw-2">&amp;</span>removed.<span class="number">1 </span>{
+<a href=#1050 id=1050 data-nosnippet>1050</a>                                    <span class="macro">eprintln!</span>(
+<a href=#1051 id=1051 data-nosnippet>1051</a>                                        <span class="string">"\n{}"</span>,
+<a href=#1052 id=1052 data-nosnippet>1052</a>                                        <span class="macro">format!</span>(<span class="string">"Running Tick (Cluster Member {})"</span>, cid)
+<a href=#1053 id=1053 data-nosnippet>1053</a>                                            .color(colored::Color::Magenta)
+<a href=#1054 id=1054 data-nosnippet>1054</a>                                            .bold()
+<a href=#1055 id=1055 data-nosnippet>1055</a>                                    )
+<a href=#1056 id=1056 data-nosnippet>1056</a>                                } <span class="kw">else </span>{
+<a href=#1057 id=1057 data-nosnippet>1057</a>                                    <span class="macro">eprintln!</span>(
+<a href=#1058 id=1058 data-nosnippet>1058</a>                                        <span class="string">"\n{}"</span>,
+<a href=#1059 id=1059 data-nosnippet>1059</a>                                        <span class="string">"Running Tick"</span>.color(colored::Color::Magenta).bold()
+<a href=#1060 id=1060 data-nosnippet>1060</a>                                    )
+<a href=#1061 id=1061 data-nosnippet>1061</a>                                }
+<a href=#1062 id=1062 data-nosnippet>1062</a>                            }
+<a href=#1063 id=1063 data-nosnippet>1063</a>                            LogKind::Custom(writer) =&gt; {
+<a href=#1064 id=1064 data-nosnippet>1064</a>                                <span class="macro">writeln!</span>(
+<a href=#1065 id=1065 data-nosnippet>1065</a>                                    writer,
+<a href=#1066 id=1066 data-nosnippet>1066</a>                                    <span class="string">"\n{}"</span>,
+<a href=#1067 id=1067 data-nosnippet>1067</a>                                    <span class="string">"Running Tick"</span>.color(colored::Color::Magenta).bold()
+<a href=#1068 id=1068 data-nosnippet>1068</a>                                )
+<a href=#1069 id=1069 data-nosnippet>1069</a>                                .unwrap();
+<a href=#1070 id=1070 data-nosnippet>1070</a>                            }
+<a href=#1071 id=1071 data-nosnippet>1071</a>                        }
+<a href=#1072 id=1072 data-nosnippet>1072</a>
+<a href=#1073 id=1073 data-nosnippet>1073</a>                        <span class="kw">let </span><span class="kw-2">mut </span>asterisk_indenter = |_line_no, write: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>std::fmt::Write| {
+<a href=#1074 id=1074 data-nosnippet>1074</a>                            write.write_str(<span class="kw-2">&amp;</span><span class="string">"*"</span>.color(colored::Color::Magenta).bold())<span class="question-mark">?</span>;
+<a href=#1075 id=1075 data-nosnippet>1075</a>                            write.write_str(<span class="string">" "</span>)
+<a href=#1076 id=1076 data-nosnippet>1076</a>                        };
+<a href=#1077 id=1077 data-nosnippet>1077</a>
+<a href=#1078 id=1078 data-nosnippet>1078</a>                        <span class="kw">let </span><span class="kw-2">mut </span>tick_decision_writer = indenter::indented(<span class="kw-2">&amp;mut </span><span class="self">self</span>.log)
+<a href=#1079 id=1079 data-nosnippet>1079</a>                            .with_format(indenter::Format::Custom {
+<a href=#1080 id=1080 data-nosnippet>1080</a>                                inserter: <span class="kw-2">&amp;mut </span>asterisk_indenter,
+<a href=#1081 id=1081 data-nosnippet>1081</a>                            });
+<a href=#1082 id=1082 data-nosnippet>1082</a>
+<a href=#1083 id=1083 data-nosnippet>1083</a>                        <span class="kw">let </span>hooks = <span class="self">self</span>.hooks.get_mut(<span class="kw-2">&amp;</span>(removed.<span class="number">0</span>.clone(), removed.<span class="number">1</span>)).unwrap();
+<a href=#1084 id=1084 data-nosnippet>1084</a>                        run_hooks(<span class="kw-2">&amp;mut </span>tick_decision_writer, hooks);
+<a href=#1085 id=1085 data-nosnippet>1085</a>
+<a href=#1086 id=1086 data-nosnippet>1086</a>                        <span class="kw">let </span>run_tick_future = removed.<span class="number">2</span>.run_tick();
+<a href=#1087 id=1087 data-nosnippet>1087</a>                        <span class="kw">if let </span><span class="prelude-val">Some</span>(inline_hooks) =
+<a href=#1088 id=1088 data-nosnippet>1088</a>                            <span class="self">self</span>.inline_hooks.get_mut(<span class="kw-2">&amp;</span>(removed.<span class="number">0</span>.clone(), removed.<span class="number">1</span>))
+<a href=#1089 id=1089 data-nosnippet>1089</a>                        {
+<a href=#1090 id=1090 data-nosnippet>1090</a>                            <span class="kw">let </span><span class="kw-2">mut </span>run_tick_future_pinned = <span class="macro">pin!</span>(run_tick_future);
+<a href=#1091 id=1091 data-nosnippet>1091</a>
+<a href=#1092 id=1092 data-nosnippet>1092</a>                            <span class="kw">loop </span>{
+<a href=#1093 id=1093 data-nosnippet>1093</a>                                <span class="macro">tokio::select!</span> {
+<a href=#1094 id=1094 data-nosnippet>1094</a>                                    biased;
+<a href=#1095 id=1095 data-nosnippet>1095</a>                                    r = <span class="kw-2">&amp;mut </span>run_tick_future_pinned =&gt; {
+<a href=#1096 id=1096 data-nosnippet>1096</a>                                        <span class="macro">assert!</span>(r);
+<a href=#1097 id=1097 data-nosnippet>1097</a>                                        <span class="kw">break</span>;
+<a href=#1098 id=1098 data-nosnippet>1098</a>                                    }
+<a href=#1099 id=1099 data-nosnippet>1099</a>                                    <span class="kw">_ </span>= <span class="kw">async </span>{} =&gt; {
+<a href=#1100 id=1100 data-nosnippet>1100</a>                                        bolero_generator::any::scope::borrow_with(|driver| {
+<a href=#1101 id=1101 data-nosnippet>1101</a>                                            <span class="kw">for </span>hook <span class="kw">in </span>inline_hooks.iter_mut() {
+<a href=#1102 id=1102 data-nosnippet>1102</a>                                                <span class="kw">if </span>hook.pending_decision() {
+<a href=#1103 id=1103 data-nosnippet>1103</a>                                                    <span class="kw">if </span>!hook.has_decision() {
+<a href=#1104 id=1104 data-nosnippet>1104</a>                                                        hook.autonomous_decision(driver);
+<a href=#1105 id=1105 data-nosnippet>1105</a>                                                    }
+<a href=#1106 id=1106 data-nosnippet>1106</a>
+<a href=#1107 id=1107 data-nosnippet>1107</a>                                                    hook.release_decision(<span class="kw-2">&amp;mut </span>tick_decision_writer);
+<a href=#1108 id=1108 data-nosnippet>1108</a>                                                }
+<a href=#1109 id=1109 data-nosnippet>1109</a>                                            }
+<a href=#1110 id=1110 data-nosnippet>1110</a>                                        });
+<a href=#1111 id=1111 data-nosnippet>1111</a>                                    }
+<a href=#1112 id=1112 data-nosnippet>1112</a>                                }
+<a href=#1113 id=1113 data-nosnippet>1113</a>                            }
+<a href=#1114 id=1114 data-nosnippet>1114</a>                        } <span class="kw">else </span>{
+<a href=#1115 id=1115 data-nosnippet>1115</a>                            <span class="macro">assert!</span>(run_tick_future.<span class="kw">await</span>);
+<a href=#1116 id=1116 data-nosnippet>1116</a>                        }
+<a href=#1117 id=1117 data-nosnippet>1117</a>
+<a href=#1118 id=1118 data-nosnippet>1118</a>                        <span class="self">self</span>.possibly_ready_ticks.push(removed);
+<a href=#1119 id=1119 data-nosnippet>1119</a>                    } <span class="kw">else </span>{
+<a href=#1120 id=1120 data-nosnippet>1120</a>                        <span class="kw">let </span>next_obs = next_tick_or_obs - <span class="self">self</span>.possibly_ready_ticks.len();
+<a href=#1121 id=1121 data-nosnippet>1121</a>                        <span class="kw">let </span><span class="kw-2">mut </span>default_hooks = <span class="macro">vec!</span>[];
+<a href=#1122 id=1122 data-nosnippet>1122</a>                        <span class="kw">let </span>hooks = <span class="self">self
+<a href=#1123 id=1123 data-nosnippet>1123</a>                            </span>.hooks
+<a href=#1124 id=1124 data-nosnippet>1124</a>                            .get_mut(<span class="kw-2">&amp;</span><span class="self">self</span>.possibly_ready_observation[next_obs])
+<a href=#1125 id=1125 data-nosnippet>1125</a>                            .unwrap_or(<span class="kw-2">&amp;mut </span>default_hooks);
+<a href=#1126 id=1126 data-nosnippet>1126</a>
+<a href=#1127 id=1127 data-nosnippet>1127</a>                        run_hooks(<span class="kw-2">&amp;mut </span><span class="self">self</span>.log, hooks);
+<a href=#1128 id=1128 data-nosnippet>1128</a>                    }
+<a href=#1129 id=1129 data-nosnippet>1129</a>                }
+<a href=#1130 id=1130 data-nosnippet>1130</a>            }
+<a href=#1131 id=1131 data-nosnippet>1131</a>        }
+<a href=#1132 id=1132 data-nosnippet>1132</a>    }
+<a href=#1133 id=1133 data-nosnippet>1133</a>}
+<a href=#1134 id=1134 data-nosnippet>1134</a>
+<a href=#1135 id=1135 data-nosnippet>1135</a><span class="kw">fn </span>run_hooks(tick_decision_writer: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>std::fmt::Write, hooks: <span class="kw-2">&amp;mut </span>Vec&lt;Box&lt;<span class="kw">dyn </span>SimHook&gt;&gt;) {
+<a href=#1136 id=1136 data-nosnippet>1136</a>    <span class="kw">let </span><span class="kw-2">mut </span>remaining_decision_count = hooks.len();
+<a href=#1137 id=1137 data-nosnippet>1137</a>    <span class="kw">let </span><span class="kw-2">mut </span>made_nontrivial_decision = <span class="bool-val">false</span>;
+<a href=#1138 id=1138 data-nosnippet>1138</a>
+<a href=#1139 id=1139 data-nosnippet>1139</a>    bolero::generator::bolero_generator::any::scope::borrow_with(|driver| {
+<a href=#1140 id=1140 data-nosnippet>1140</a>        <span class="comment">// first, scan manual decisions
+<a href=#1141 id=1141 data-nosnippet>1141</a>        </span>hooks.iter_mut().for_each(|hook| {
+<a href=#1142 id=1142 data-nosnippet>1142</a>            <span class="kw">if let </span><span class="prelude-val">Some</span>(is_nontrivial) = hook.current_decision() {
+<a href=#1143 id=1143 data-nosnippet>1143</a>                made_nontrivial_decision |= is_nontrivial;
+<a href=#1144 id=1144 data-nosnippet>1144</a>                remaining_decision_count -= <span class="number">1</span>;
+<a href=#1145 id=1145 data-nosnippet>1145</a>            } <span class="kw">else if </span>!hook.can_make_nontrivial_decision() {
+<a href=#1146 id=1146 data-nosnippet>1146</a>                <span class="comment">// if no nontrivial decision is possible, make a trivial one
+<a href=#1147 id=1147 data-nosnippet>1147</a>                // (we need to do this in the first pass to force nontrivial decisions
+<a href=#1148 id=1148 data-nosnippet>1148</a>                // on the remaining hooks)
+<a href=#1149 id=1149 data-nosnippet>1149</a>                </span>hook.autonomous_decision(driver, <span class="bool-val">false</span>);
+<a href=#1150 id=1150 data-nosnippet>1150</a>                remaining_decision_count -= <span class="number">1</span>;
+<a href=#1151 id=1151 data-nosnippet>1151</a>            }
+<a href=#1152 id=1152 data-nosnippet>1152</a>        });
+<a href=#1153 id=1153 data-nosnippet>1153</a>
+<a href=#1154 id=1154 data-nosnippet>1154</a>        hooks.iter_mut().for_each(|hook| {
+<a href=#1155 id=1155 data-nosnippet>1155</a>            <span class="kw">if </span>hook.current_decision().is_none() {
+<a href=#1156 id=1156 data-nosnippet>1156</a>                made_nontrivial_decision |= hook.autonomous_decision(
+<a href=#1157 id=1157 data-nosnippet>1157</a>                    driver,
+<a href=#1158 id=1158 data-nosnippet>1158</a>                    !made_nontrivial_decision &amp;&amp; remaining_decision_count == <span class="number">1</span>,
+<a href=#1159 id=1159 data-nosnippet>1159</a>                );
+<a href=#1160 id=1160 data-nosnippet>1160</a>                remaining_decision_count -= <span class="number">1</span>;
+<a href=#1161 id=1161 data-nosnippet>1161</a>            }
+<a href=#1162 id=1162 data-nosnippet>1162</a>
+<a href=#1163 id=1163 data-nosnippet>1163</a>            hook.release_decision(tick_decision_writer);
+<a href=#1164 id=1164 data-nosnippet>1164</a>        });
+<a href=#1165 id=1165 data-nosnippet>1165</a>    });
+<a href=#1166 id=1166 data-nosnippet>1166</a>}
 </code></pre></div></section></main></body></html>
