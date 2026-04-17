@@ -1,4 +1,3 @@
-use dfir_rs::assert_graphvis_snapshots;
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
