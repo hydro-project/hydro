@@ -1,5 +1,5 @@
-use dfir_rs::util::collect_ready_async;
 use dfir_rs::dfir_syntax_inline;
+use dfir_rs::util::collect_ready_async;
 
 #[dfir_rs::test]
 pub async fn test_basic_2() {

@@ -15,7 +15,10 @@ pub async fn test_flatten_stream_blocking() {
     };
     df.run_available().await;
 
-    assert_eq!(&[1, 2, 3], &*collect_ready_async::<Vec<_>, _>(&mut result_recv).await);
+    assert_eq!(
+        &[1, 2, 3],
+        &*collect_ready_async::<Vec<_>, _>(&mut result_recv).await
+    );
 }
 
 #[dfir_rs::test]
@@ -67,5 +70,8 @@ pub async fn test_flatten_stream_blocking_empty() {
     };
     df.run_available().await;
 
-    assert_eq!(&[1], &*collect_ready_async::<Vec<_>, _>(&mut result_recv).await);
+    assert_eq!(
+        &[1],
+        &*collect_ready_async::<Vec<_>, _>(&mut result_recv).await
+    );
 }

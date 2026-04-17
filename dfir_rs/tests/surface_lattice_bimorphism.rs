@@ -1,21 +1,20 @@
 use std::collections::{HashMap, HashSet};
 
-use dfir_rs::util::collect_ready;
-use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
+use dfir_rs::util::collect_ready_async;
+use dfir_rs::dfir_syntax_inline;
 use lattices::GhtType;
 use lattices::ght::GeneralizedHashTrieNode;
 use lattices::ght::lattice::{DeepJoinLatticeBimorphism, GhtBimorphism};
 use lattices::map_union::{KeyedBimorphism, MapUnionHashMap, MapUnionSingletonMap};
 use lattices::set_union::{CartesianProductBimorphism, SetUnionHashSet, SetUnionSingletonSet};
-use multiplatform_test::multiplatform_test;
 use variadics::CloneVariadic;
 use variadics::variadic_collections::VariadicHashSet;
 
-#[multiplatform_test]
-pub fn test_cartesian_product() {
+#[dfir_rs::test]
+pub async fn test_cartesian_product() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         lhs = source_iter(0..3)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
@@ -30,8 +29,7 @@ pub fn test_cartesian_product() {
             -> for_each(|x| out_send.send(x).unwrap());
     };
 
-    assert_graphvis_snapshots!(df);
-    df.run_available_sync();
+    df.run_available().await;
 
     assert_eq!(
         &[SetUnionHashSet::new(HashSet::from_iter([
@@ -42,15 +40,15 @@ pub fn test_cartesian_product() {
             (2, 3),
             (2, 4),
         ]))],
-        &*collect_ready::<Vec<_>, _>(out_recv)
+        &*collect_ready_async::<Vec<_>, _>(out_recv).await
     );
 }
 
-#[multiplatform_test(test, wasm, env_tracing)]
-pub fn test_cartesian_product_1401() {
+#[dfir_rs::test]
+pub async fn test_cartesian_product_1401() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         lhs = source_iter(0..1)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
@@ -64,20 +62,19 @@ pub fn test_cartesian_product_1401() {
         my_join = lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), #lhs, #rhs)
             -> for_each(|x| out_send.send(x).unwrap());
     };
-    assert_graphvis_snapshots!(df);
-    df.run_available_sync();
+    df.run_available().await;
 
     assert_eq!(
         &[SetUnionHashSet::new(HashSet::from_iter([(0, 1)]))],
-        &*collect_ready::<Vec<_>, _>(out_recv)
+        &*collect_ready_async::<Vec<_>, _>(out_recv).await
     );
 }
 
-#[multiplatform_test]
-pub fn test_join() {
+#[dfir_rs::test]
+pub async fn test_join() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         lhs = source_iter([(7, 1), (7, 2)])
             -> map(|(k, v)| MapUnionSingletonMap::new_from((k, SetUnionSingletonSet::new_from(v))))
             -> state::<'static, MapUnionHashMap<usize, SetUnionHashSet<usize>>>();
@@ -92,8 +89,7 @@ pub fn test_join() {
             -> for_each(|x| out_send.send(x).unwrap());
     };
 
-    assert_graphvis_snapshots!(df);
-    df.run_available_sync();
+    df.run_available().await;
 
     assert_eq!(
         &[MapUnionHashMap::new(HashMap::from_iter([(
@@ -107,18 +103,18 @@ pub fn test_join() {
                 (2, 2),
             ]))
         )]))],
-        &*collect_ready::<Vec<_>, _>(out_recv)
+        &*collect_ready_async::<Vec<_>, _>(out_recv).await
     );
 }
 
 /// Test for https://github.com/hydro-project/hydro/issues/1298
-#[multiplatform_test]
-pub fn test_cartesian_product_tick_state() {
+#[dfir_rs::test]
+pub async fn test_cartesian_product_tick_state() {
     let (lhs_send, lhs_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (rhs_send, rhs_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         lhs = source_stream(lhs_recv)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'tick, SetUnionHashSet<u32>>();
@@ -133,7 +129,6 @@ pub fn test_cartesian_product_tick_state() {
             -> inspect(|x| println!("{:?}: {:?}", context.current_tick(), x))
             -> for_each(|x| out_send.send(x).unwrap());
     };
-    assert_graphvis_snapshots!(df);
 
     for x in 0..3 {
         lhs_send.send(x).unwrap();
@@ -141,7 +136,7 @@ pub fn test_cartesian_product_tick_state() {
     for x in 3..5 {
         rhs_send.send(x).unwrap();
     }
-    df.run_available_sync();
+    df.run_available().await;
     assert_eq!(
         &[SetUnionHashSet::new(HashSet::from_iter([
             (0, 3),
@@ -151,21 +146,21 @@ pub fn test_cartesian_product_tick_state() {
             (2, 3),
             (2, 4),
         ]))],
-        &*collect_ready::<Vec<_>, _>(&mut out_recv)
+        &*collect_ready_async::<Vec<_>, _>(&mut out_recv).await
     );
 
     for x in 3..5 {
         lhs_send.send(x).unwrap();
     }
-    df.run_available_sync();
+    df.run_available().await;
     assert_eq!(
         &[SetUnionHashSet::default()],
-        &*collect_ready::<Vec<_>, _>(&mut out_recv)
+        &*collect_ready_async::<Vec<_>, _>(&mut out_recv).await
     );
 }
 
-#[multiplatform_test]
-fn test_ght_join_bimorphism() {
+#[dfir_rs::test]
+async fn test_ght_join_bimorphism() {
     type MyGhtATrie = GhtType!(u32, u64, u16 => &'static str: VariadicHashSet);
     type MyGhtBTrie = GhtType!(u32, u64, u16 => &'static str: VariadicHashSet);
 
@@ -176,7 +171,7 @@ fn test_ght_join_bimorphism() {
     >>::DeepJoinLatticeBimorphism;
     type MyBim = GhtBimorphism<MyNodeBim>;
 
-    let mut hf = dfir_syntax! {
+    let mut hf = dfir_syntax_inline! {
         lhs = source_iter([
                 var_expr!(123, 2, 5, "hello"),
                 var_expr!(50, 1, 1, "hi"),
@@ -205,5 +200,5 @@ fn test_ght_join_bimorphism() {
             -> flat_map(|(_num, ght)| ght.recursive_iter().map(<JoinSchema as CloneVariadic>::clone_ref_var).collect::<Vec<_>>())
             -> null();
     };
-    hf.run_available_sync();
+    hf.run_available().await;
 }

@@ -1,13 +1,13 @@
-use dfir_rs::dfir_syntax;
+use dfir_rs::dfir_syntax_inline;
 use dfir_rs::lattices::GhtType;
 use dfir_rs::lattices::ght::GeneralizedHashTrieNode;
 use dfir_rs::lattices::ght::lattice::{DeepJoinLatticeBimorphism, GhtBimorphism};
-use dfir_rs::util::collect_ready;
+use dfir_rs::util::collect_ready_async;
 use dfir_rs::variadics::{var_expr, var_type};
 use variadics::variadic_collections::VariadicHashSet; // Import the Insert trait
 
-#[test]
-fn test_basic() {
+#[dfir_rs::test]
+async fn test_basic() {
     type MyGht = GhtType!(u16, u32 => u64: VariadicHashSet);
     type FlatTup = var_type!(u16, u32, u64);
     let input: Vec<FlatTup> = vec![
@@ -21,7 +21,7 @@ fn test_basic() {
         merged.insert(i);
     }
     println!("merged: {:?}", merged);
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter(input)
             -> map(|t| MyGht::new_from(vec![t]))
             -> lattice_fold::<'static>(MyGht::default)
@@ -29,11 +29,11 @@ fn test_basic() {
             -> assert(|x: &MyGht| x.eq(&merged))
             -> null();
     };
-    df.run_available_sync();
+    df.run_available().await;
 }
 
-#[test]
-fn test_join() {
+#[dfir_rs::test]
+async fn test_join() {
     type MyGht = GhtType!(u8 => u16: VariadicHashSet);
     type ResultGht = GhtType!(u8 => u16, u16: VariadicHashSet);
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
@@ -51,7 +51,7 @@ fn test_join() {
     >>::DeepJoinLatticeBimorphism;
     type MyBim = GhtBimorphism<MyNodeBim>;
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         R = source_iter(r)
             -> map(|t| MyGht::new_from([t]))
             -> state::<MyGht>();
@@ -64,10 +64,10 @@ fn test_join() {
             -> lattice_reduce()
             -> for_each(|x| out_send.send(x).unwrap());
     };
-    df.run_available_sync();
+    df.run_available().await;
 
     assert_eq!(
         &[ResultGht::new_from(vec![var_expr!(1, 10, 10),])],
-        &*collect_ready::<Vec<_>, _>(out_recv)
+        &*collect_ready_async::<Vec<_>, _>(out_recv).await
     );
 }

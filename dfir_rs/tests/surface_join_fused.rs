@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use dfir_rs::dfir_pipes::pull::{Fold, Reduce};
+use dfir_rs::dfir_syntax_inline;
 use dfir_rs::lattices::set_union::SetUnionSingletonSet;
 use dfir_rs::scheduled::ticks::TickInstant;
-use dfir_rs::dfir_syntax_inline;
 use lattices::Merge;
 use lattices::set_union::SetUnionHashSet;
 
