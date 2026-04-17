@@ -1444,9 +1444,11 @@ impl DfirGraph {
         // `flat_to_partitioned` injects for `defer_tick` vs `defer_tick_lazy`.
         let mut defer_tick_buf_idents: Vec<Ident> = Vec::new();
         let all_subgraphs = {
+            // Build predecessor map for subgraphs.
             let mut sg_preds = SecondaryMap::<_, Vec<_>>::with_capacity(self.subgraph_nodes.len());
             for (hoff_id, node) in self.nodes() {
                 if !matches!(node, GraphNode::Handoff { .. }) {
+                    // Not a handoff; skip.
                     continue;
                 }
                 assert_eq!(1, self.node_successors(hoff_id).len());
@@ -2052,8 +2054,14 @@ impl DfirGraph {
 
                     // For non-lazy defer_tick: if any deferred buffer has data,
                     // signal that another tick should run (sets can_start_tick).
+                    // Inline DFIR doesn't dynamically schedule subgraph IDs, so the
+                    // subgraph ID here is a meaningless placeholder.
+                    // TODO(cleanup): remove the subgraph ID parameter once scheduled DFIR is gone.
                     if false #( || !#defer_tick_buf_idents.is_empty() )* {
-                        #df.request_next_tick();
+                        #df.schedule_subgraph(
+                            #root::scheduled::SubgraphId::from_raw(0),
+                            true,
+                        );
                     }
 
                     #df.__end_tick();
