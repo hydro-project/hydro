@@ -173,13 +173,9 @@ impl Debug for BacktraceElement {
 mod tests {
     #[cfg(feature = "build")]
     #[test]
+    #[cfg_attr(not(target_os = "linux"), ignore)]
     fn test_backtrace() {
         use super::*;
-
-        if cfg!(not(target_os = "linux")) && std::env::var_os("GITHUB_ACTIONS").is_some() {
-            eprintln!("Backtrace tests fail on non-linux Github Actions runners, skipping.");
-            return;
-        }
 
         let backtrace = Backtrace::get_backtrace(0);
         let elements = backtrace.elements();
