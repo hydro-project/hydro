@@ -1,8 +1,9 @@
 use dfir_rs::dfir_syntax_inline;
-use dfir_rs::util::collect_ready_async;
+use dfir_rs::util::collect_ready;
+use multiplatform_test::multiplatform_test;
 
-#[dfir_rs::test]
-pub async fn test_flatten_stream_blocking() {
+#[multiplatform_test]
+pub fn test_flatten_stream_blocking() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
     let mut df = dfir_syntax_inline! {
@@ -13,16 +14,13 @@ pub async fn test_flatten_stream_blocking() {
             -> flatten_stream_blocking()
             -> for_each(|x| result_send.send(x).unwrap());
     };
-    df.run_available().await;
+    df.run_available_sync();
 
-    assert_eq!(
-        &[1, 2, 3],
-        &*collect_ready_async::<Vec<_>, _>(&mut result_recv).await
-    );
+    assert_eq!(&[1, 2, 3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 }
 
-#[dfir_rs::test]
-pub async fn test_flat_map_stream_blocking() {
+#[multiplatform_test]
+pub fn test_flat_map_stream_blocking() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
     let mut df = dfir_syntax_inline! {
@@ -30,16 +28,16 @@ pub async fn test_flat_map_stream_blocking() {
             -> flat_map_stream_blocking(|x| futures::stream::iter(vec![x, x * 10]))
             -> for_each(|x| result_send.send(x).unwrap());
     };
-    df.run_available().await;
+    df.run_available_sync();
 
     assert_eq!(
         &[1, 10, 2, 20, 3, 30],
-        &*collect_ready_async::<Vec<_>, _>(&mut result_recv).await
+        &*collect_ready::<Vec<_>, _>(&mut result_recv)
     );
 }
 
-#[dfir_rs::test]
-pub async fn test_flat_map_stream_blocking_empty() {
+#[multiplatform_test]
+pub fn test_flat_map_stream_blocking_empty() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
     let mut df = dfir_syntax_inline! {
@@ -47,16 +45,16 @@ pub async fn test_flat_map_stream_blocking_empty() {
             -> flat_map_stream_blocking(|_| futures::stream::empty::<i32>())
             -> for_each(|x| result_send.send(x).unwrap());
     };
-    df.run_available().await;
+    df.run_available_sync();
 
     assert_eq!(
         Vec::<i32>::new(),
-        collect_ready_async::<Vec<_>, _>(&mut result_recv).await
+        collect_ready::<Vec<_>, _>(&mut result_recv)
     );
 }
 
-#[dfir_rs::test]
-pub async fn test_flatten_stream_blocking_empty() {
+#[multiplatform_test]
+pub fn test_flatten_stream_blocking_empty() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
     let mut df = dfir_syntax_inline! {
@@ -68,10 +66,7 @@ pub async fn test_flatten_stream_blocking_empty() {
             -> flatten_stream_blocking()
             -> for_each(|x| result_send.send(x).unwrap());
     };
-    df.run_available().await;
+    df.run_available_sync();
 
-    assert_eq!(
-        &[1],
-        &*collect_ready_async::<Vec<_>, _>(&mut result_recv).await
-    );
+    assert_eq!(&[1], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 }

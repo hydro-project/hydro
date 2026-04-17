@@ -1,8 +1,9 @@
 use dfir_rs::dfir_syntax_inline;
-use dfir_rs::util::collect_ready_async;
+use dfir_rs::util::collect_ready;
+use multiplatform_test::multiplatform_test;
 
-#[dfir_rs::test]
-pub async fn test_basic_2() {
+#[multiplatform_test]
+pub fn test_basic_2() {
     let (signal_tx, signal_rx) = dfir_rs::util::unbounded_channel::<()>();
     let (egress_tx, mut egress_rx) = dfir_rs::util::unbounded_channel();
 
@@ -14,13 +15,13 @@ pub async fn test_basic_2() {
         gate -> for_each(|x| egress_tx.send(x).unwrap());
     };
 
-    df.run_available().await;
-    let out: Vec<_> = collect_ready_async(&mut egress_rx).await;
+    df.run_available_sync();
+    let out: Vec<_> = collect_ready(&mut egress_rx);
     assert_eq!(out, [0; 0]);
 
     signal_tx.send(()).unwrap();
-    df.run_available().await;
+    df.run_available_sync();
 
-    let out: Vec<_> = collect_ready_async(&mut egress_rx).await;
+    let out: Vec<_> = collect_ready(&mut egress_rx);
     assert_eq!(out, vec![1, 2, 3]);
 }

@@ -2,12 +2,12 @@ use dfir_rs::dfir_syntax_inline;
 use dfir_rs::lattices::GhtType;
 use dfir_rs::lattices::ght::GeneralizedHashTrieNode;
 use dfir_rs::lattices::ght::lattice::{DeepJoinLatticeBimorphism, GhtBimorphism};
-use dfir_rs::util::collect_ready_async;
+use dfir_rs::util::collect_ready;
 use dfir_rs::variadics::{var_expr, var_type};
 use variadics::variadic_collections::VariadicHashSet; // Import the Insert trait
 
-#[dfir_rs::test]
-async fn test_basic() {
+#[test]
+fn test_basic() {
     type MyGht = GhtType!(u16, u32 => u64: VariadicHashSet);
     type FlatTup = var_type!(u16, u32, u64);
     let input: Vec<FlatTup> = vec![
@@ -29,11 +29,11 @@ async fn test_basic() {
             -> assert(|x: &MyGht| x.eq(&merged))
             -> null();
     };
-    df.run_available().await;
+    df.run_available_sync();
 }
 
-#[dfir_rs::test]
-async fn test_join() {
+#[test]
+fn test_join() {
     type MyGht = GhtType!(u8 => u16: VariadicHashSet);
     type ResultGht = GhtType!(u8 => u16, u16: VariadicHashSet);
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
@@ -64,10 +64,10 @@ async fn test_join() {
             -> lattice_reduce()
             -> for_each(|x| out_send.send(x).unwrap());
     };
-    df.run_available().await;
+    df.run_available_sync();
 
     assert_eq!(
         &[ResultGht::new_from(vec![var_expr!(1, 10, 10),])],
-        &*collect_ready_async::<Vec<_>, _>(out_recv).await
+        &*collect_ready::<Vec<_>, _>(out_recv)
     );
 }

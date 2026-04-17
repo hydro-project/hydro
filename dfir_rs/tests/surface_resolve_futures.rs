@@ -2,9 +2,10 @@ use std::collections::HashSet;
 
 use dfir_rs::dfir_syntax_inline;
 use dfir_rs::util::collect_ready_async;
+use multiplatform_test::multiplatform_test;
 use tokio::time::{Duration, sleep};
 
-#[dfir_rs::test]
+#[multiplatform_test(dfir, env_tracing)]
 async fn single_batch_test() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
@@ -33,7 +34,7 @@ async fn single_batch_test() {
     handle.await.unwrap();
 }
 
-#[dfir_rs::test]
+#[multiplatform_test(dfir, env_tracing)]
 async fn multi_batch_test() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u64>();
 
@@ -62,7 +63,7 @@ async fn multi_batch_test() {
     handle.await.unwrap();
 }
 
-#[dfir_rs::test]
+#[multiplatform_test(dfir, env_tracing)]
 async fn pusherator_test() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u64>();
 
@@ -92,7 +93,7 @@ async fn pusherator_test() {
     handle.await.unwrap();
 }
 
-#[dfir_rs::test]
+#[multiplatform_test(dfir, env_tracing)]
 async fn pusherator_ordered_test() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u64>();
 

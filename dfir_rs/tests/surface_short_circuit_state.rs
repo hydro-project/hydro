@@ -4,8 +4,9 @@ use std::time::Duration;
 
 use dfir_rs::dfir_syntax_inline;
 use dfir_rs::util::collect_ready_async;
+use multiplatform_test::multiplatform_test;
 
-#[dfir_rs::test]
+#[multiplatform_test(dfir)]
 async fn test_resolve_futures_cross_singleton() {
     let (singleton_send, singleton_recv) = dfir_rs::util::unbounded_channel::<()>();
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<u64>();
@@ -45,7 +46,7 @@ async fn test_resolve_futures_cross_singleton() {
     assert_eq!(&[500, 510, 520], &*out);
 }
 
-#[dfir_rs::test]
+#[multiplatform_test(dfir)]
 async fn test_zip_cross_singleton() {
     let (a_send, a_recv) = dfir_rs::util::unbounded_channel::<&'static str>();
     let (b_send, b_recv) = dfir_rs::util::unbounded_channel::<u64>();

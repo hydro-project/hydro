@@ -1,8 +1,9 @@
 use dfir_rs::dfir_syntax_inline;
-use dfir_rs::util::collect_ready_async;
+use dfir_rs::util::collect_ready;
+use multiplatform_test::multiplatform_test;
 
-#[dfir_rs::test]
-pub async fn test_basic() {
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_basic() {
     let (single_tx, single_rx) = dfir_rs::util::unbounded_channel::<()>();
     let (egress_tx, mut egress_rx) = dfir_rs::util::unbounded_channel();
 
@@ -14,19 +15,19 @@ pub async fn test_basic() {
         join -> for_each(|x| egress_tx.send(x).unwrap());
     };
 
-    df.run_available().await;
-    let out: Vec<_> = collect_ready_async(&mut egress_rx).await;
+    df.run_available_sync();
+    let out: Vec<_> = collect_ready(&mut egress_rx);
     assert_eq!(out, []);
 
     single_tx.send(()).unwrap();
-    df.run_available().await;
+    df.run_available_sync();
 
-    let out: Vec<_> = collect_ready_async(&mut egress_rx).await;
+    let out: Vec<_> = collect_ready(&mut egress_rx);
     assert_eq!(out, vec![(1, ()), (2, ()), (3, ())]);
 }
 
-#[dfir_rs::test]
-pub async fn test_union_defer_tick() {
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_union_defer_tick() {
     let (cross_tx, cross_rx) = dfir_rs::util::unbounded_channel::<i32>();
     let (egress_tx, mut egress_rx) = dfir_rs::util::unbounded_channel();
 
@@ -54,15 +55,15 @@ pub async fn test_union_defer_tick() {
         deferred_stream = joined_folded -> fold(|| 0, |_, _| {}) -> flat_map(|_| []);
     };
 
-    df.run_available().await;
-    let out: Vec<_> = collect_ready_async(&mut egress_rx).await;
+    df.run_available_sync();
+    let out: Vec<_> = collect_ready(&mut egress_rx);
     assert_eq!(out, vec![]);
 
     cross_tx.send(1).unwrap();
     cross_tx.send(2).unwrap();
     cross_tx.send(3).unwrap();
-    df.run_available().await;
+    df.run_available_sync();
 
-    let out: Vec<_> = collect_ready_async(&mut egress_rx).await;
+    let out: Vec<_> = collect_ready(&mut egress_rx);
     assert_eq!(out, vec![(1, 0), (2, 0), (3, 0)]);
 }

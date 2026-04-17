@@ -8,6 +8,7 @@ use dfir_rs::lattices::set_union::SetUnionSingletonSet;
 use dfir_rs::scheduled::ticks::TickInstant;
 use lattices::Merge;
 use lattices::set_union::SetUnionHashSet;
+use multiplatform_test::multiplatform_test;
 
 macro_rules! assert_contains_each_by_tick {
     ($results:expr, $tick:expr, $input:expr) => {{
@@ -22,8 +23,8 @@ macro_rules! assert_contains_each_by_tick {
     }};
 }
 
-#[dfir_rs::test]
-pub async fn tick_tick_lhs_blocking_rhs_streaming() {
+#[multiplatform_test]
+pub fn tick_tick_lhs_blocking_rhs_streaming() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
@@ -41,7 +42,7 @@ pub async fn tick_tick_lhs_blocking_rhs_streaming() {
         my_join = join_fused_lhs(Fold::new(SetUnionHashSet::default, |state, delta| { Merge::merge(state, delta); }))
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
-    df.run_available().await;
+    df.run_available_sync();
 
     assert_contains_each_by_tick!(
         results,
@@ -50,8 +51,8 @@ pub async fn tick_tick_lhs_blocking_rhs_streaming() {
     );
 }
 
-#[dfir_rs::test]
-pub async fn static_tick_lhs_blocking_rhs_streaming() {
+#[multiplatform_test]
+pub fn static_tick_lhs_blocking_rhs_streaming() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
@@ -69,7 +70,7 @@ pub async fn static_tick_lhs_blocking_rhs_streaming() {
         my_join = join_fused_lhs::<'static, 'tick>(Fold::new(SetUnionHashSet::default, |state, delta| { Merge::merge(state, delta); }))
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
-    df.run_available().await;
+    df.run_available_sync();
 
     assert_contains_each_by_tick!(
         results,
@@ -88,8 +89,8 @@ pub async fn static_tick_lhs_blocking_rhs_streaming() {
     );
 }
 
-#[dfir_rs::test]
-pub async fn static_static_lhs_blocking_rhs_streaming() {
+#[multiplatform_test]
+pub fn static_static_lhs_blocking_rhs_streaming() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
@@ -107,7 +108,7 @@ pub async fn static_static_lhs_blocking_rhs_streaming() {
         my_join = join_fused_lhs::<'static, 'static>(Fold::new(SetUnionHashSet::default, |state, delta| { Merge::merge(state, delta); }))
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
-    df.run_available().await;
+    df.run_available_sync();
 
     #[rustfmt::skip]
     {
@@ -117,8 +118,8 @@ pub async fn static_static_lhs_blocking_rhs_streaming() {
     };
 }
 
-#[dfir_rs::test]
-pub async fn tick_tick_lhs_streaming_rhs_blocking() {
+#[multiplatform_test]
+pub fn tick_tick_lhs_streaming_rhs_blocking() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
@@ -136,7 +137,7 @@ pub async fn tick_tick_lhs_streaming_rhs_blocking() {
         my_join = join_fused_rhs(Fold::new(SetUnionHashSet::default, |state, delta| { Merge::merge(state, delta); }))
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
-    df.run_available().await;
+    df.run_available_sync();
 
     assert_contains_each_by_tick!(
         results,
@@ -145,8 +146,8 @@ pub async fn tick_tick_lhs_streaming_rhs_blocking() {
     );
 }
 
-#[dfir_rs::test]
-pub async fn static_tick_lhs_streaming_rhs_blocking() {
+#[multiplatform_test]
+pub fn static_tick_lhs_streaming_rhs_blocking() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
@@ -164,7 +165,7 @@ pub async fn static_tick_lhs_streaming_rhs_blocking() {
         my_join = join_fused_rhs::<'static, 'tick>(Fold::new(SetUnionHashSet::default, |state, delta| { Merge::merge(state, delta); }))
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
-    df.run_available().await;
+    df.run_available_sync();
 
     assert_contains_each_by_tick!(
         results,
@@ -183,8 +184,8 @@ pub async fn static_tick_lhs_streaming_rhs_blocking() {
     );
 }
 
-#[dfir_rs::test]
-pub async fn static_static_lhs_streaming_rhs_blocking() {
+#[multiplatform_test]
+pub fn static_static_lhs_streaming_rhs_blocking() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
@@ -203,7 +204,7 @@ pub async fn static_static_lhs_streaming_rhs_blocking() {
             -> inspect(|x| println!("{}, {x:?}", context.current_tick()))
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
-    df.run_available().await;
+    df.run_available_sync();
 
     #[rustfmt::skip]
     {
@@ -213,8 +214,8 @@ pub async fn static_static_lhs_streaming_rhs_blocking() {
     };
 }
 
-#[dfir_rs::test]
-pub async fn tick_tick_lhs_fold_rhs_reduce() {
+#[multiplatform_test]
+pub fn tick_tick_lhs_fold_rhs_reduce() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
@@ -235,7 +236,7 @@ pub async fn tick_tick_lhs_fold_rhs_reduce() {
             )
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
-    df.run_available().await;
+    df.run_available_sync();
 
     assert_contains_each_by_tick!(
         results,

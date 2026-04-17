@@ -1,17 +1,18 @@
 use std::collections::{HashMap, HashSet};
 
-use dfir_rs::util::collect_ready_async;
 use dfir_rs::dfir_syntax_inline;
+use dfir_rs::util::collect_ready;
 use lattices::GhtType;
 use lattices::ght::GeneralizedHashTrieNode;
 use lattices::ght::lattice::{DeepJoinLatticeBimorphism, GhtBimorphism};
 use lattices::map_union::{KeyedBimorphism, MapUnionHashMap, MapUnionSingletonMap};
 use lattices::set_union::{CartesianProductBimorphism, SetUnionHashSet, SetUnionSingletonSet};
+use multiplatform_test::multiplatform_test;
 use variadics::CloneVariadic;
 use variadics::variadic_collections::VariadicHashSet;
 
-#[dfir_rs::test]
-pub async fn test_cartesian_product() {
+#[multiplatform_test]
+pub fn test_cartesian_product() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
     let mut df = dfir_syntax_inline! {
@@ -29,7 +30,7 @@ pub async fn test_cartesian_product() {
             -> for_each(|x| out_send.send(x).unwrap());
     };
 
-    df.run_available().await;
+    df.run_available_sync();
 
     assert_eq!(
         &[SetUnionHashSet::new(HashSet::from_iter([
@@ -40,12 +41,12 @@ pub async fn test_cartesian_product() {
             (2, 3),
             (2, 4),
         ]))],
-        &*collect_ready_async::<Vec<_>, _>(out_recv).await
+        &*collect_ready::<Vec<_>, _>(out_recv)
     );
 }
 
-#[dfir_rs::test]
-pub async fn test_cartesian_product_1401() {
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_cartesian_product_1401() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
     let mut df = dfir_syntax_inline! {
@@ -62,16 +63,16 @@ pub async fn test_cartesian_product_1401() {
         my_join = lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), #lhs, #rhs)
             -> for_each(|x| out_send.send(x).unwrap());
     };
-    df.run_available().await;
+    df.run_available_sync();
 
     assert_eq!(
         &[SetUnionHashSet::new(HashSet::from_iter([(0, 1)]))],
-        &*collect_ready_async::<Vec<_>, _>(out_recv).await
+        &*collect_ready::<Vec<_>, _>(out_recv)
     );
 }
 
-#[dfir_rs::test]
-pub async fn test_join() {
+#[multiplatform_test]
+pub fn test_join() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
     let mut df = dfir_syntax_inline! {
@@ -89,7 +90,7 @@ pub async fn test_join() {
             -> for_each(|x| out_send.send(x).unwrap());
     };
 
-    df.run_available().await;
+    df.run_available_sync();
 
     assert_eq!(
         &[MapUnionHashMap::new(HashMap::from_iter([(
@@ -103,13 +104,13 @@ pub async fn test_join() {
                 (2, 2),
             ]))
         )]))],
-        &*collect_ready_async::<Vec<_>, _>(out_recv).await
+        &*collect_ready::<Vec<_>, _>(out_recv)
     );
 }
 
 /// Test for https://github.com/hydro-project/hydro/issues/1298
-#[dfir_rs::test]
-pub async fn test_cartesian_product_tick_state() {
+#[multiplatform_test]
+pub fn test_cartesian_product_tick_state() {
     let (lhs_send, lhs_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (rhs_send, rhs_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<_>();
@@ -136,7 +137,7 @@ pub async fn test_cartesian_product_tick_state() {
     for x in 3..5 {
         rhs_send.send(x).unwrap();
     }
-    df.run_available().await;
+    df.run_available_sync();
     assert_eq!(
         &[SetUnionHashSet::new(HashSet::from_iter([
             (0, 3),
@@ -146,21 +147,21 @@ pub async fn test_cartesian_product_tick_state() {
             (2, 3),
             (2, 4),
         ]))],
-        &*collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+        &*collect_ready::<Vec<_>, _>(&mut out_recv)
     );
 
     for x in 3..5 {
         lhs_send.send(x).unwrap();
     }
-    df.run_available().await;
+    df.run_available_sync();
     assert_eq!(
         &[SetUnionHashSet::default()],
-        &*collect_ready_async::<Vec<_>, _>(&mut out_recv).await
+        &*collect_ready::<Vec<_>, _>(&mut out_recv)
     );
 }
 
-#[dfir_rs::test]
-async fn test_ght_join_bimorphism() {
+#[multiplatform_test]
+fn test_ght_join_bimorphism() {
     type MyGhtATrie = GhtType!(u32, u64, u16 => &'static str: VariadicHashSet);
     type MyGhtBTrie = GhtType!(u32, u64, u16 => &'static str: VariadicHashSet);
 
@@ -200,5 +201,5 @@ async fn test_ght_join_bimorphism() {
             -> flat_map(|(_num, ght)| ght.recursive_iter().map(<JoinSchema as CloneVariadic>::clone_ref_var).collect::<Vec<_>>())
             -> null();
     };
-    hf.run_available().await;
+    hf.run_available_sync();
 }

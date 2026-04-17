@@ -1,8 +1,9 @@
 use dfir_rs::dfir_syntax_inline;
-use dfir_rs::util::collect_ready_async;
+use dfir_rs::util::collect_ready;
+use multiplatform_test::multiplatform_test;
 
-#[dfir_rs::test]
-pub async fn test_multiset_delta() {
+#[multiplatform_test]
+pub fn test_multiset_delta() {
     let (input_send, input_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
@@ -15,26 +16,20 @@ pub async fn test_multiset_delta() {
     input_send.send(3).unwrap();
     input_send.send(4).unwrap();
     input_send.send(3).unwrap();
-    flow.run_tick().await;
-    assert_eq!(
-        &[3, 4, 3],
-        &*collect_ready_async::<Vec<_>, _>(&mut result_recv).await
-    );
+    flow.run_tick_sync();
+    assert_eq!(&[3, 4, 3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 
     input_send.send(3).unwrap();
     input_send.send(5).unwrap();
     input_send.send(3).unwrap();
     input_send.send(3).unwrap();
-    flow.run_tick().await;
+    flow.run_tick_sync();
     // First two "3"s are removed due to previous tick.
-    assert_eq!(
-        &[5, 3],
-        &*collect_ready_async::<Vec<_>, _>(&mut result_recv).await
-    );
+    assert_eq!(&[5, 3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 }
 
-#[dfir_rs::test]
-pub async fn test_persist_multiset_delta() {
+#[multiplatform_test]
+pub fn test_persist_multiset_delta() {
     let (input_send, input_recv) = dfir_rs::util::unbounded_channel::<usize>();
     let (output_send, mut output_recv) = dfir_rs::util::unbounded_channel::<usize>();
     let mut flow = dfir_rs::dfir_syntax_inline! {
@@ -45,29 +40,18 @@ pub async fn test_persist_multiset_delta() {
     };
 
     input_send.send(1).unwrap();
-    flow.run_tick().await;
-    assert_eq!(
-        &[(1)],
-        &*collect_ready_async::<Vec<_>, _>(&mut output_recv).await
-    );
+    flow.run_tick_sync();
+    assert_eq!(&[(1)], &*collect_ready::<Vec<_>, _>(&mut output_recv));
 
-    flow.run_tick().await;
-    assert!(
-        collect_ready_async::<Vec<_>, _>(&mut output_recv)
-            .await
-            .is_empty()
-    );
+    flow.run_tick_sync();
+    assert!(collect_ready::<Vec<_>, _>(&mut output_recv).is_empty());
 
-    flow.run_tick().await;
-    assert!(
-        collect_ready_async::<Vec<_>, _>(&mut output_recv)
-            .await
-            .is_empty()
-    );
+    flow.run_tick_sync();
+    assert!(collect_ready::<Vec<_>, _>(&mut output_recv).is_empty());
 }
 
-#[dfir_rs::test]
-pub async fn test_multiset_delta_2() {
+#[multiplatform_test]
+pub fn test_multiset_delta_2() {
     let (input_send, input_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
@@ -80,26 +64,20 @@ pub async fn test_multiset_delta_2() {
     input_send.send(3).unwrap();
     input_send.send(4).unwrap();
     input_send.send(3).unwrap();
-    flow.run_tick().await;
-    assert_eq!(
-        &[3, 4, 3],
-        &*collect_ready_async::<Vec<_>, _>(&mut result_recv).await
-    );
+    flow.run_tick_sync();
+    assert_eq!(&[3, 4, 3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 
     input_send.send(3).unwrap();
     input_send.send(4).unwrap();
     input_send.send(3).unwrap();
     input_send.send(3).unwrap();
-    flow.run_tick().await;
+    flow.run_tick_sync();
 
-    assert_eq!(
-        &[3],
-        &*collect_ready_async::<Vec<_>, _>(&mut result_recv).await
-    );
+    assert_eq!(&[3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 }
 
-#[dfir_rs::test]
-async fn test_chat_app_replay() {
+#[multiplatform_test]
+fn test_chat_app_replay() {
     let (users_send, users) = dfir_rs::util::unbounded_channel::<u32>();
     let (messages_send, messages) = dfir_rs::util::unbounded_channel::<String>();
     let (out, mut out_recv) = dfir_rs::util::unbounded_channel::<(u32, String)>();
@@ -122,7 +100,7 @@ async fn test_chat_app_replay() {
     messages_send.send("hello".to_owned()).unwrap();
     messages_send.send("world".to_owned()).unwrap();
 
-    chat_server.run_tick().await;
+    chat_server.run_tick_sync();
 
     assert_eq!(
         &[
@@ -131,14 +109,14 @@ async fn test_chat_app_replay() {
             (1, "world".to_owned()),
             (2, "world".to_owned())
         ],
-        &*collect_ready_async::<Vec<_>, _>(&mut out_recv).await,
+        &*collect_ready::<Vec<_>, _>(&mut out_recv),
     );
 
     users_send.send(3).unwrap();
 
     messages_send.send("goodbye".to_owned()).unwrap();
 
-    chat_server.run_tick().await;
+    chat_server.run_tick_sync();
 
     // fails with: [(1, "hello"), (2, "hello"), (3, "hello"), (1, "world"), (2, "world"), (3, "world"), (1, "goodbye"), (2, "goodbye"), (3, "goodbye")]
 
@@ -150,12 +128,12 @@ async fn test_chat_app_replay() {
             (2, "goodbye".to_owned()),
             (3, "goodbye".to_owned())
         ],
-        &*collect_ready_async::<Vec<_>, _>(&mut out_recv).await,
+        &*collect_ready::<Vec<_>, _>(&mut out_recv),
     );
 }
 
-#[dfir_rs::test]
-async fn test_chat_app_replay_manual() {
+#[multiplatform_test]
+fn test_chat_app_replay_manual() {
     let (input_send, input_recv) = dfir_rs::util::unbounded_channel::<(u32, String)>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<(u32, String)>();
 
@@ -170,7 +148,7 @@ async fn test_chat_app_replay_manual() {
     input_send.send((1, "world".to_owned())).unwrap();
     input_send.send((2, "world".to_owned())).unwrap();
 
-    flow.run_tick().await;
+    flow.run_tick_sync();
     assert_eq!(
         &[
             (1, "hello".to_owned()),
@@ -178,7 +156,7 @@ async fn test_chat_app_replay_manual() {
             (1, "world".to_owned()),
             (2, "world".to_owned())
         ],
-        &*collect_ready_async::<Vec<_>, _>(&mut result_recv).await,
+        &*collect_ready::<Vec<_>, _>(&mut result_recv),
     );
 
     input_send.send((1, "hello".to_owned())).unwrap();
@@ -191,7 +169,7 @@ async fn test_chat_app_replay_manual() {
     input_send.send((2, "goodbye".to_owned())).unwrap();
     input_send.send((3, "goodbye".to_owned())).unwrap();
 
-    flow.run_tick().await;
+    flow.run_tick_sync();
     assert_eq!(
         &[
             (3, "hello".to_owned()),
@@ -200,6 +178,6 @@ async fn test_chat_app_replay_manual() {
             (2, "goodbye".to_owned()),
             (3, "goodbye".to_owned())
         ],
-        &*collect_ready_async::<Vec<_>, _>(&mut result_recv).await,
+        &*collect_ready::<Vec<_>, _>(&mut result_recv),
     );
 }

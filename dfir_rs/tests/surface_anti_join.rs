@@ -1,8 +1,9 @@
 use dfir_rs::dfir_syntax_inline;
-use dfir_rs::util::{collect_ready_async, unbounded_channel};
+use dfir_rs::util::{collect_ready, unbounded_channel};
+use multiplatform_test::multiplatform_test;
 
-#[dfir_rs::test]
-pub async fn test_anti_join_multiset() {
+#[multiplatform_test]
+pub fn test_anti_join_multiset() {
     let (inp_send, inp_recv) = unbounded_channel::<(usize, usize)>();
     let (out_send, mut out_recv) = unbounded_channel::<(usize, usize)>();
     let mut flow = dfir_syntax_inline! {
@@ -22,16 +23,16 @@ pub async fn test_anti_join_multiset() {
     }
     flow.run_tick_sync();
 
-    flow.run_available().await;
-    let out: Vec<_> = collect_ready_async(&mut out_recv).await;
+    flow.run_available_sync();
+    let out: Vec<_> = collect_ready(&mut out_recv);
     assert_eq!(
         &[(1, 2), (1, 2), (2, 3), (3, 4), (4, 5), (5, 4), (6, 5)],
         &*out
     );
 }
 
-#[dfir_rs::test]
-pub async fn test_anti_join() {
+#[multiplatform_test]
+pub fn test_anti_join() {
     let (inp_send, inp_recv) = unbounded_channel::<(usize, usize)>();
     let (out_send, mut out_recv) = unbounded_channel::<(usize, usize)>();
     let mut flow = dfir_syntax_inline! {
@@ -51,16 +52,16 @@ pub async fn test_anti_join() {
     }
     flow.run_tick_sync();
 
-    flow.run_available().await;
-    let out: Vec<_> = collect_ready_async(&mut out_recv).await;
+    flow.run_available_sync();
+    let out: Vec<_> = collect_ready(&mut out_recv);
     assert_eq!(
         &[(1, 2), (1, 2), (2, 3), (3, 4), (4, 5), (5, 4), (6, 5)],
         &*out
     );
 }
 
-#[dfir_rs::test]
-pub async fn test_anti_join_tick_static() {
+#[multiplatform_test]
+pub fn test_anti_join_tick_static() {
     let (pos_send, pos_recv) = unbounded_channel::<(usize, usize)>();
     let (neg_send, neg_recv) = unbounded_channel::<usize>();
     let (out_send, mut out_recv) = unbounded_channel::<(usize, usize)>();
@@ -79,20 +80,20 @@ pub async fn test_anti_join_tick_static() {
         neg_send.send(x).unwrap();
     }
     flow.run_tick_sync();
-    let out: Vec<_> = collect_ready_async(&mut out_recv).await;
+    let out: Vec<_> = collect_ready(&mut out_recv);
     assert_eq!(&[(1, 2), (1, 2), (5, 6), (400, 5)], &*out);
 
     for x in [(10, 10), (10, 10), (200, 5)] {
         pos_send.send(x).unwrap();
     }
 
-    flow.run_available().await;
-    let out: Vec<_> = collect_ready_async(&mut out_recv).await;
+    flow.run_available_sync();
+    let out: Vec<_> = collect_ready(&mut out_recv);
     assert_eq!(&[(10, 10), (10, 10)], &*out);
 }
 
-#[dfir_rs::test]
-pub async fn test_anti_join_multiset_tick_static() {
+#[multiplatform_test]
+pub fn test_anti_join_multiset_tick_static() {
     let (pos_send, pos_recv) = unbounded_channel::<(usize, usize)>();
     let (neg_send, neg_recv) = unbounded_channel::<usize>();
     let (out_send, mut out_recv) = unbounded_channel::<(usize, usize)>();
@@ -111,20 +112,20 @@ pub async fn test_anti_join_multiset_tick_static() {
         neg_send.send(x).unwrap();
     }
     flow.run_tick_sync();
-    let out: Vec<_> = collect_ready_async(&mut out_recv).await;
+    let out: Vec<_> = collect_ready(&mut out_recv);
     assert_eq!(&[(1, 2), (1, 2), (5, 6), (400, 5),], &*out);
 
     for x in [(10, 10), (10, 10), (200, 5)] {
         pos_send.send(x).unwrap();
     }
 
-    flow.run_available().await;
-    let out: Vec<_> = collect_ready_async(&mut out_recv).await;
+    flow.run_available_sync();
+    let out: Vec<_> = collect_ready(&mut out_recv);
     assert_eq!(&[(10, 10), (10, 10)], &*out);
 }
 
-#[dfir_rs::test]
-pub async fn test_anti_join_multiset_static() {
+#[multiplatform_test]
+pub fn test_anti_join_multiset_static() {
     let (pos_send, pos_recv) = unbounded_channel::<(usize, usize)>();
     let (neg_send, neg_recv) = unbounded_channel::<usize>();
     let (out_send, mut out_recv) = unbounded_channel::<(usize, usize)>();
@@ -143,12 +144,12 @@ pub async fn test_anti_join_multiset_static() {
         neg_send.send(x).unwrap();
     }
     flow.run_tick_sync();
-    let out: Vec<_> = collect_ready_async(&mut out_recv).await;
+    let out: Vec<_> = collect_ready(&mut out_recv);
     assert_eq!(&[(1, 2), (1, 2), (5, 6), (400, 5)], &*out);
 
     neg_send.send(400).unwrap();
 
-    flow.run_available().await;
-    let out: Vec<_> = collect_ready_async(&mut out_recv).await;
+    flow.run_available_sync();
+    let out: Vec<_> = collect_ready(&mut out_recv);
     assert_eq!(&[(1, 2), (1, 2), (5, 6)], &*out);
 }

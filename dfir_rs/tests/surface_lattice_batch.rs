@@ -1,7 +1,8 @@
 use dfir_rs::dfir_syntax_inline;
+use multiplatform_test::multiplatform_test;
 
-#[dfir_rs::test]
-pub async fn test_lattice_batch() {
+#[multiplatform_test]
+pub fn test_lattice_batch() {
     type SetUnionHashSet = lattices::set_union::SetUnionHashSet<usize>;
     type SetUnionSingletonSet = lattices::set_union::SetUnionSingletonSet<usize>;
 
@@ -22,5 +23,5 @@ pub async fn test_lattice_batch() {
         b3 = _lattice_fold_batch::<SetUnionHashSet>() -> assert(|_| false);
     };
 
-    df.run_available().await;
+    df.run_available_sync();
 }
