@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
-use dfir_rs::scheduled::graph::Dfir;
+use dfir_rs::dfir_syntax_inline;
+use dfir_rs::scheduled::context::InlineDfirErased;
 use dfir_rs::util::collect_ready;
-use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use lattices::set_union::{CartesianProductBimorphism, SetUnionHashSet, SetUnionSingletonSet};
 use multiplatform_test::multiplatform_test;
 use tokio::sync::mpsc::UnboundedSender;
@@ -10,7 +10,7 @@ use tokio_stream::wrappers::UnboundedReceiverStream;
 
 /// Check that the following tests all behave the same.
 fn check_cartesian_product_multi_tick(
-    mut df: Dfir,
+    mut df: InlineDfirErased,
     lhs_send: UnboundedSender<u32>,
     rhs_send: UnboundedSender<u32>,
     mut out_recv: UnboundedReceiverStream<SetUnionHashSet<(u32, u32)>>,
@@ -47,7 +47,7 @@ pub fn test_cartesian_product_multi_tick() {
     let (rhs_send, rhs_recv) = dfir_rs::util::unbounded_channel::<_>();
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
-    let df = dfir_syntax! {
+    let df = dfir_syntax_inline! {
         lhs = source_stream(lhs_recv)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
@@ -63,8 +63,7 @@ pub fn test_cartesian_product_multi_tick() {
             -> for_each(|x| out_send.send(x).unwrap());
     };
 
-    assert_graphvis_snapshots!(df);
-    check_cartesian_product_multi_tick(df, lhs_send, rhs_send, out_recv);
+    check_cartesian_product_multi_tick(df.into_erased(), lhs_send, rhs_send, out_recv);
 }
 
 #[multiplatform_test]
@@ -73,7 +72,7 @@ pub fn test_cartesian_product_multi_tick_tee() {
     let (rhs_send, rhs_recv) = dfir_rs::util::unbounded_channel::<_>();
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
-    let df = dfir_syntax! {
+    let df = dfir_syntax_inline! {
         lhs = source_stream(lhs_recv)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
@@ -91,8 +90,7 @@ pub fn test_cartesian_product_multi_tick_tee() {
             -> for_each(|x| out_send.send(x).unwrap());
     };
 
-    assert_graphvis_snapshots!(df);
-    check_cartesian_product_multi_tick(df, lhs_send, rhs_send, out_recv);
+    check_cartesian_product_multi_tick(df.into_erased(), lhs_send, rhs_send, out_recv);
 }
 
 #[multiplatform_test]
@@ -101,7 +99,7 @@ pub fn test_cartesian_product_multi_tick_identity() {
     let (rhs_send, rhs_recv) = dfir_rs::util::unbounded_channel::<_>();
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
-    let df = dfir_syntax! {
+    let df = dfir_syntax_inline! {
         lhs = source_stream(lhs_recv)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
@@ -118,6 +116,5 @@ pub fn test_cartesian_product_multi_tick_identity() {
             -> for_each(|x| out_send.send(x).unwrap());
     };
 
-    assert_graphvis_snapshots!(df);
-    check_cartesian_product_multi_tick(df, lhs_send, rhs_send, out_recv);
+    check_cartesian_product_multi_tick(df.into_erased(), lhs_send, rhs_send, out_recv);
 }
