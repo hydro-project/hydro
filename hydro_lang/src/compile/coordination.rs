@@ -385,6 +385,7 @@ fn short_name(node: &HydroNode) -> &'static str {
         HydroNode::ResolveFuturesBlocking { .. } => "resolvefuturesblocking",
         HydroNode::ResolveFuturesOrdered { .. } => "resolvefuturesordered",
         HydroNode::FlatMapStreamBlocking { .. } => "flatmapstreamblocking",
+        HydroNode::ScanAsyncBlocking { .. } => "scanasyncblocking",
     }
 }
 
@@ -538,6 +539,15 @@ fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
         | HydroNode::FilterMap { input, .. }
         | HydroNode::Inspect { input, .. }
         | HydroNode::FlatMapStreamBlocking { input, .. } => PreserveGoals { input, goals: SET_PREFIX },
+
+        // ScanAsyncBlocking: like Scan, preserves if input is TotalOrder
+        HydroNode::ScanAsyncBlocking { input, .. } => {
+            let is_total = matches!(
+                &input.metadata().collection_kind,
+                super::ir::CollectionKind::Stream { order: StreamOrder::TotalOrder, .. }
+            );
+            PreserveIfOrdered { input, output_is_total_order: is_total }
+        }
 
         // SetInclusion only
         HydroNode::Enumerate { input, .. }
