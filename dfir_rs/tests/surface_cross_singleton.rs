@@ -1,38 +1,36 @@
-use dfir_rs::util::collect_ready;
-use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
-use multiplatform_test::multiplatform_test;
+use dfir_rs::util::collect_ready_async;
+use dfir_rs::dfir_syntax_inline;
 
-#[multiplatform_test(test, wasm, env_tracing)]
-pub fn test_basic() {
+#[dfir_rs::test]
+pub async fn test_basic() {
     let (single_tx, single_rx) = dfir_rs::util::unbounded_channel::<()>();
     let (egress_tx, mut egress_rx) = dfir_rs::util::unbounded_channel();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         join = cross_singleton();
         source_iter([1, 2, 3]) -> persist::<'static>() -> [input]join;
         source_stream(single_rx) -> [single]join;
 
         join -> for_each(|x| egress_tx.send(x).unwrap());
     };
-    assert_graphvis_snapshots!(df);
 
-    df.run_available_sync();
-    let out: Vec<_> = collect_ready(&mut egress_rx);
+    df.run_available().await;
+    let out: Vec<_> = collect_ready_async(&mut egress_rx).await;
     assert_eq!(out, []);
 
     single_tx.send(()).unwrap();
-    df.run_available_sync();
+    df.run_available().await;
 
-    let out: Vec<_> = collect_ready(&mut egress_rx);
+    let out: Vec<_> = collect_ready_async(&mut egress_rx).await;
     assert_eq!(out, vec![(1, ()), (2, ()), (3, ())]);
 }
 
-#[multiplatform_test(test, wasm, env_tracing)]
-pub fn test_union_defer_tick() {
+#[dfir_rs::test]
+pub async fn test_union_defer_tick() {
     let (cross_tx, cross_rx) = dfir_rs::util::unbounded_channel::<i32>();
     let (egress_tx, mut egress_rx) = dfir_rs::util::unbounded_channel();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         teed_in = source_stream(cross_rx) -> sort() -> tee();
         teed_in -> [input]join;
 
@@ -55,17 +53,16 @@ pub fn test_union_defer_tick() {
         joined_folded = cross_singleton();
         deferred_stream = joined_folded -> fold(|| 0, |_, _| {}) -> flat_map(|_| []);
     };
-    assert_graphvis_snapshots!(df);
 
-    df.run_available_sync();
-    let out: Vec<_> = collect_ready(&mut egress_rx);
+    df.run_available().await;
+    let out: Vec<_> = collect_ready_async(&mut egress_rx).await;
     assert_eq!(out, vec![]);
 
     cross_tx.send(1).unwrap();
     cross_tx.send(2).unwrap();
     cross_tx.send(3).unwrap();
-    df.run_available_sync();
+    df.run_available().await;
 
-    let out: Vec<_> = collect_ready(&mut egress_rx);
+    let out: Vec<_> = collect_ready_async(&mut egress_rx).await;
     assert_eq!(out, vec![(1, 0), (2, 0), (3, 0)]);
 }

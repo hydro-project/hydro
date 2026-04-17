@@ -1,12 +1,11 @@
-use dfir_rs::dfir_syntax;
-use multiplatform_test::multiplatform_test;
+use dfir_rs::dfir_syntax_inline;
 
-#[multiplatform_test]
-pub fn test_lattice_batch() {
+#[dfir_rs::test]
+pub async fn test_lattice_batch() {
     type SetUnionHashSet = lattices::set_union::SetUnionHashSet<usize>;
     type SetUnionSingletonSet = lattices::set_union::SetUnionSingletonSet<usize>;
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         // Can release in the same tick
         source_iter([SetUnionSingletonSet::new_from(0), SetUnionSingletonSet::new_from(1)]) -> [input]b1;
         source_iter([()]) -> defer_tick() -> [signal]b1;
@@ -23,5 +22,5 @@ pub fn test_lattice_batch() {
         b3 = _lattice_fold_batch::<SetUnionHashSet>() -> assert(|_| false);
     };
 
-    df.run_available_sync();
+    df.run_available().await;
 }
