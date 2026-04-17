@@ -1,8 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use dfir_rs::dfir_syntax;
-use dfir_rs::scheduled::graph::Dfir;
+use dfir_rs::dfir_syntax_inline;
 use dfir_rs::util::iter_batches_stream;
 use multiplatform_test::multiplatform_test;
 use web_time::Duration;
@@ -17,7 +16,7 @@ fn fib(n: u64) -> u64 {
 
 #[multiplatform_test(dfir)]
 pub async fn test_fib() {
-    let mut df: Dfir = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_stream(iter_batches_stream(0..=40, 1))
             -> map(fib)
             -> _counter("_counter(nums)", Duration::from_millis(50));
@@ -34,7 +33,7 @@ pub async fn test_fib() {
 
 #[multiplatform_test(dfir)]
 pub async fn test_stream() {
-    let mut df: Dfir = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_stream(iter_batches_stream(0..=100_000, 1))
             -> _counter("_counter(nums)", Duration::from_millis(100));
     };
@@ -63,7 +62,7 @@ pub async fn test_pull() {
     let output = Rc::new(RefCell::new(Vec::new()));
     let output_ref = output.clone();
 
-    let mut df: Dfir = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter(0..10)
             -> _counter("_counter(pull_test)", Duration::from_millis(50))
             -> for_each(|x| output_ref.borrow_mut().push(x));
