@@ -108,7 +108,9 @@ pub enum ProofAction {
     Broken { reason: String },
     /// Goal changed — a different goal was required on an input.
     GoalChanged { new_goal: OrderGoal },
-
+    /// Nondeterminism resolved locally on a Process — proof continues,
+    /// but replication would require coordination at this site.
+    ResolvedLocally { reason: String },
 }
 
 /// Result of the backward proof walk for a single path.
@@ -117,7 +119,9 @@ pub struct ProofResult {
     pub success: bool,
     /// The walk trace, from sink (first) to source/break point (last).
     pub trace: Vec<ProofStep>,
-
+    /// Sites where ObserveNonDet on a Process was resolved locally.
+    /// These would require coordination if the Process were replicated as a Cluster.
+    pub replication_issues: Vec<ProofStep>,
 }
 
 impl ProofResult {
@@ -126,11 +130,11 @@ impl ProofResult {
     }
 
     pub(crate) fn proved(trace: Vec<ProofStep>) -> Self {
-        Self { success: true, trace }
+        Self { success: true, trace, replication_issues: vec![] }
     }
 
     pub(crate) fn broken(trace: Vec<ProofStep>) -> Self {
-        Self { success: false, trace }
+        Self { success: false, trace, replication_issues: vec![] }
     }
 
     pub(crate) fn discharged(operator: &str, reason: impl Into<String>, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
@@ -172,6 +176,31 @@ impl ProofResult {
         });
         self
     }
+
+    /// Append a "resolved locally" step and record a replication issue.
+    pub(crate) fn prepend_resolved_locally(mut self, operator: &str, reason: impl Into<String>, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
+        let reason = reason.into();
+        let step = ProofStep {
+            operator: operator.to_string(),
+            action: ProofAction::ResolvedLocally { reason: reason.clone() },
+            span: span.clone(),
+            proc_macro_span: pm_span,
+        };
+        self.replication_issues.push(ProofStep {
+            operator: step.operator.clone(),
+            action: ProofAction::ResolvedLocally { reason },
+            span,
+            proc_macro_span: step.proc_macro_span,
+        });
+        self.trace.push(step);
+        self
+    }
+
+    /// Merge replication issues from another result into this one.
+    pub(crate) fn merge_replication_issues(mut self, other: &ProofResult) -> Self {
+        self.replication_issues.extend(other.replication_issues.iter().cloned());
+        self
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -184,7 +213,8 @@ fn node_proc_macro_span(node: &HydroNode) -> Option<proc_macro2::Span> {
     match node {
         HydroNode::Fold { acc, .. }
         | HydroNode::FoldKeyed { acc, .. }
-        | HydroNode::Scan { acc, .. } => Some(acc.0.span()),
+        | HydroNode::Scan { acc, .. }
+        | HydroNode::ScanAsyncBlocking { acc, .. } => Some(acc.0.span()),
         HydroNode::Reduce { f, .. }
         | HydroNode::ReduceKeyed { f, .. }
         | HydroNode::ReduceKeyedWatermark { f, .. } => Some(f.0.span()),
@@ -211,6 +241,9 @@ pub struct SinkResult {
     pub goal: OrderGoal,
     pub result: ProofResult,
     pub location: LocationId,
+    /// Sites where local nondeterminism was resolved on a Process.
+    /// Non-empty means the Process cannot be replicated as a Cluster without coordination.
+    pub replication_issues: Vec<ProofStep>,
 }
 
 // ---------------------------------------------------------------------------
@@ -290,6 +323,9 @@ impl fmt::Display for CoordinationReport {
                         ProofAction::GoalChanged { new_goal } => {
                             writeln!(f, "    {} — goal → {}  {}", step.operator, new_goal, span)?;
                         }
+                        ProofAction::ResolvedLocally { .. } => {
+                            writeln!(f, "    {} — resolved locally (Process)  {}", step.operator, span)?;
+                        }
                         ProofAction::Broken { .. } => {} // shouldn't appear in proved
                     }
                 }
@@ -307,11 +343,40 @@ impl fmt::Display for CoordinationReport {
                         ProofAction::GoalChanged { new_goal } => {
                             writeln!(f, "    {} — goal → {}  {}", step.operator, new_goal, span)?;
                         }
+                        ProofAction::ResolvedLocally { .. } => {
+                            writeln!(f, "    {} — resolved locally (Process)  {}", step.operator, span)?;
+                        }
                         ProofAction::Discharged { .. } => {} // shouldn't appear in broken
                     }
                 }
             }
         }
+
+        // Replication analysis: collect all Process locations with replication issues
+        let mut process_issues: HashMap<String, Vec<&ProofStep>> = HashMap::new();
+        for s in &self.sinks {
+            if !s.replication_issues.is_empty() {
+                let loc_name = format!("{:?}", s.location);
+                let issues = process_issues.entry(loc_name).or_default();
+                for issue in &s.replication_issues {
+                    // Deduplicate by span
+                    if !issues.iter().any(|existing| existing.span == issue.span) {
+                        issues.push(issue);
+                    }
+                }
+            }
+        }
+        if !process_issues.is_empty() {
+            writeln!(f, "\n  Replication analysis:")?;
+            for (loc, issues) in &process_issues {
+                writeln!(f, "    {loc}: {} coordination point(s) if replicated", issues.len())?;
+                for issue in issues {
+                    let span = issue.span.as_deref().unwrap_or("(unknown location)");
+                    writeln!(f, "      • {span}")?;
+                }
+            }
+        }
+
         Ok(())
     }
 }
@@ -451,7 +516,9 @@ fn difference_logic(
             let p = prove(pos, &OrderGoal::SetInclusion, cycle_proofs, seen_tees);
             if !p.is_proved() { return p.prepend_preserved(name, span.clone(), pm_span.clone()); }
             if neg.metadata().collection_kind.is_bounded() {
-                ProofResult::discharged(name, "neg input is bounded", span, pm_span)
+                let mut result = ProofResult::discharged(name, "neg input is bounded", span, pm_span);
+                result.replication_issues = p.replication_issues;
+                result
             } else {
                 ProofResult::fail(name, "unbounded neg input can retract output elements", span, pm_span)
             }
@@ -519,12 +586,14 @@ fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
         | HydroNode::YieldConcat { inner, .. } => Passthrough(inner),
 
         // ObserveNonDet: on a Cluster, per-member non-determinism breaks coordination.
-        // On a Process (or if trusted), pass through.
-        HydroNode::ObserveNonDet { inner, trusted, metadata, .. } => {
+        // On a Process (or if trusted), resolved locally but flagged for replication analysis.
+        HydroNode::ObserveNonDet { trusted, metadata, .. } => {
             if !trusted && matches!(metadata.location_id, LocationId::Cluster(_)) {
-                Custom // handled in prove() below
+                Custom // handled in prove() below — fails
+            } else if !trusted {
+                Custom // handled in prove() below — resolved locally with replication issue
             } else {
-                Passthrough(inner)
+                Passthrough(match node { HydroNode::ObserveNonDet { inner, .. } => inner, _ => unreachable!() })
             }
         }
 
@@ -540,20 +609,12 @@ fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
         | HydroNode::Inspect { input, .. }
         | HydroNode::FlatMapStreamBlocking { input, .. } => PreserveGoals { input, goals: SET_PREFIX },
 
-        // ScanAsyncBlocking: like Scan, preserves if input is TotalOrder
-        HydroNode::ScanAsyncBlocking { input, .. } => {
-            let is_total = matches!(
-                &input.metadata().collection_kind,
-                super::ir::CollectionKind::Stream { order: StreamOrder::TotalOrder, .. }
-            );
-            PreserveIfOrdered { input, output_is_total_order: is_total }
-        }
-
         // SetInclusion only
         HydroNode::Enumerate { input, .. }
         | HydroNode::Unique { input, .. } => PreserveGoals { input, goals: SET },
 
-        HydroNode::Batch { inner, .. } => PreserveGoals { input: inner, goals: SET },
+        // Batch: nondeterministic tick boundaries — handled in prove() for replication analysis
+        HydroNode::Batch { .. } => Custom,
 
         HydroNode::ResolveFutures { input, .. }
         | HydroNode::ResolveFuturesBlocking { input, .. }
@@ -601,7 +662,8 @@ fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
         }
 
         // Scan: preserves if input is TotalOrder
-        HydroNode::Scan { input, .. } => {
+        HydroNode::Scan { input, .. }
+        | HydroNode::ScanAsyncBlocking { input, .. } => {
             let is_total = matches!(
                 &input.metadata().collection_kind,
                 super::ir::CollectionKind::Stream { order: StreamOrder::TotalOrder, .. }
@@ -684,9 +746,9 @@ fn prove(
                     }
                     let b = prove(second, goal, cycle_proofs, seen_tees);
                     if !b.is_proved() {
-                        return b.prepend_preserved(&format!("{name} (2nd branch)"), span.clone(), pm_span.clone());
+                        return b.merge_replication_issues(&a).prepend_preserved(&format!("{name} (2nd branch)"), span.clone(), pm_span.clone());
                     }
-                    b.prepend_preserved(&name, span, pm_span)
+                    b.merge_replication_issues(&a).prepend_preserved(&name, span, pm_span)
                 }
                 _ => ProofResult::fail(&name, "breaks prefix/lattice order", span, pm_span),
             };
@@ -696,6 +758,37 @@ fn prove(
 
     // Custom logic for operators that need it
     match node {
+
+        // --- ObserveNonDet on Process: resolved locally, flagged for replication ---
+        HydroNode::ObserveNonDet { inner, trusted: false, metadata, .. }
+            if !matches!(metadata.location_id, LocationId::Cluster(_)) =>
+        {
+            prove(inner, goal, cycle_proofs, seen_tees)
+                .prepend_resolved_locally(&name, "nondeterministic ordering", span, pm_span)
+        }
+
+        // --- ObserveNonDet on Cluster: per-member non-determinism breaks coordination ---
+        HydroNode::ObserveNonDet { metadata, .. } if matches!(metadata.location_id, LocationId::Cluster(_)) => {
+            ProofResult::fail(&name, "per-member non-determinism (nondet! on Cluster) breaks coordination", span, pm_span)
+        }
+
+        // --- Batch: nondeterministic tick boundaries, flagged for replication ---
+        // Batch preserves SetInclusion (no elements lost), but tick boundaries are
+        // nondeterministic — different runs/replicas may group elements differently,
+        // affecting downstream scan state when combined with chain/cross_singleton.
+        HydroNode::Batch { inner, metadata, .. } => {
+            let allowed: &[OrderGoal] = &[OrderGoal::SetInclusion];
+            if !allowed.contains(goal) {
+                return ProofResult::fail(&name, "breaks goal (not preserved by batch)", span, pm_span);
+            }
+            if matches!(metadata.location_id, LocationId::Cluster(_)) {
+                // On a Cluster, batch boundaries are per-member — breaks coordination directly
+                ProofResult::fail(&name, "per-member nondeterministic batch boundaries on Cluster", span, pm_span)
+            } else {
+                prove(inner, goal, cycle_proofs, seen_tees)
+                    .prepend_resolved_locally(&name, "nondeterministic batch boundary", span, pm_span)
+            }
+        }
 
         // --- CycleSource: inherit from matching CycleSink ---
         HydroNode::CycleSource { cycle_id, .. } => {
@@ -718,7 +811,8 @@ fn prove(
                 if right.metadata().collection_kind.is_bounded() {
                     a.prepend_preserved(&name, span, pm_span)
                 } else {
-                    prove(right, &OrderGoal::Lattice, cycle_proofs, seen_tees)
+                    let b = prove(right, &OrderGoal::Lattice, cycle_proofs, seen_tees);
+                    b.merge_replication_issues(&a)
                         .prepend_goal_changed(&name, &OrderGoal::Lattice, span, pm_span)
                 }
             }
@@ -841,11 +935,13 @@ pub fn analyze_coordination(
         }
 
         best_result.trace.reverse();
+        let replication_issues = best_result.replication_issues.clone();
         sinks.push(SinkResult {
             name: short_name_root(root).to_string(),
             goal: best_goal,
             result: best_result,
             location: root.input_metadata().location_id.clone(),
+            replication_issues,
         });
     }
 
