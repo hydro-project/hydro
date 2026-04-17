@@ -1902,6 +1902,39 @@ where
         self
     }
 
+    /// Turns this [`Stream`] into a [`Optional`], under the invariant assumption that there is at
+    /// most one element. If this invariant is broken, the program may exhibit undefined behavior,
+    /// so uses must be carefully vetted.
+    pub(crate) fn cast_at_most_one_element(self) -> Optional<T, L, B>
+    where
+        B: IsBounded,
+    {
+        Optional::new(
+            self.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(Optional::<T, L, B>::collection_kind()),
+            },
+        )
+    }
+
+    pub(crate) fn use_ordering_type<O2: Ordering>(self) -> Stream<T, L, B, O2, R> {
+        if O::ORDERING_KIND == O2::ORDERING_KIND {
+            Stream::new(
+                self.location.clone(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            panic!(
+                "Runtime ordering {:?} did not match requested cast {:?}.",
+                O::ORDERING_KIND,
+                O2::ORDERING_KIND
+            )
+        }
+    }
+
     /// Explicitly "casts" the stream to a type with a different ordering
     /// guarantee. Useful in unsafe code where the ordering cannot be proven
     /// by the type-system.
@@ -1912,10 +1945,7 @@ where
     /// for the rest of the program.
     pub fn assume_ordering<O2: Ordering>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
         if O::ORDERING_KIND == O2::ORDERING_KIND {
-            Stream::new(
-                self.location.clone(),
-                self.ir_node.replace(HydroNode::Placeholder),
-            )
+            self.use_ordering_type()
         } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
             // We can always weaken the ordering guarantee
             Stream::new(

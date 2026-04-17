@@ -288,6 +288,56 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         &self.location
     }
 
+    /// Turns this [`KeyedStream`] into a [`Stream`] preserving ordering, under the invariant
+    /// assumption that there is at most one key. If this invariant is broken, the program
+    /// may exhibit undefined behavior, so uses must be carefully vetted.
+    pub(crate) fn cast_at_most_one_key(self) -> Stream<(K, V), L, B, O, R> {
+        Stream::new(
+            self.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(Stream::<(K, V), L, B, O, R>::collection_kind()),
+            },
+        )
+    }
+
+    /// Turns this [`KeyedStream`] into a [`KeyedSingleton`], under the invariant assumption that
+    /// there is at most one entry per key. If this invariant is broken, the program may exhibit
+    /// undefined behavior, so uses must be carefully vetted.
+    pub(crate) fn cast_at_most_one_entry_per_key(
+        self,
+    ) -> KeyedSingleton<K, V, L, B::WithBoundedValue> {
+        KeyedSingleton::new(
+            self.location.clone(),
+            HydroNode::Cast {
+                inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self.location.new_node_metadata(KeyedSingleton::<
+                    K,
+                    V,
+                    L,
+                    B::WithBoundedValue,
+                >::collection_kind()),
+            },
+        )
+    }
+
+    pub(crate) fn use_ordering_type<O2: Ordering>(self) -> KeyedStream<K, V, L, B, O2, R> {
+        if O::ORDERING_KIND == O2::ORDERING_KIND {
+            KeyedStream::new(
+                self.location.clone(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            panic!(
+                "Runtime ordering {:?} did not match requested cast {:?}.",
+                O::ORDERING_KIND,
+                O2::ORDERING_KIND
+            )
+        }
+    }
+
     /// Explicitly "casts" the keyed stream to a type with a different ordering
     /// guarantee for each group. Useful in unsafe code where the ordering cannot be proven
     /// by the type-system.
@@ -1564,21 +1614,9 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
             }),
         );
 
-        KeyedSingleton::new(
-            out_without_bound_cast.location.clone(),
-            HydroNode::Cast {
-                inner: Box::new(
-                    out_without_bound_cast
-                        .ir_node
-                        .replace(HydroNode::Placeholder),
-                ),
-                metadata: out_without_bound_cast
-                    .location
-                    .new_node_metadata(
-                        KeyedSingleton::<K, A, L, B::WithBoundedValue>::collection_kind(),
-                    ),
-            },
-        )
+        // SAFETY: The generator will only ever return at most one value per key, since once it
+        // returns a value for a key it will never process any more values for that key.
+        out_without_bound_cast.cast_at_most_one_entry_per_key()
     }
 
     /// Gets the first element inside each group of values as a [`KeyedSingleton`] that preserves
@@ -2269,7 +2307,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// let key = tick.singleton(q!(1));
     /// keyed_data.get(key).all_ticks()
     /// # }, |mut stream| async move {
-    /// // 10, 11 in any order
+    /// // 10, 11
     /// # let mut results = vec![];
     /// # for _ in 0..2 {
     /// #     results.push(stream.next().await.unwrap());
@@ -2288,31 +2326,13 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
             self.join_keyed_singleton(key.into().map(q!(|k| (k, ()))).into_keyed_singleton());
 
         if O::ORDERING_KIND == StreamOrder::TotalOrder {
-            let joined_ordered =
-                joined.assume_ordering::<TotalOrder>(nondet!(/** already ordered */));
-
-            let casted_entries: Stream<(K, (V, ())), L, B, TotalOrder, R> = Stream::new(
-                joined_ordered.location.clone(),
-                HydroNode::Cast {
-                    // Cast is correct because there is only a single key so no non-determinism
-                    inner: Box::new(joined_ordered.ir_node.replace(HydroNode::Placeholder)),
-                    metadata: joined_ordered.location.new_node_metadata(Stream::<
-                        (K, (V, ())),
-                        L,
-                        B,
-                        TotalOrder,
-                        R,
-                    >::collection_kind(
-                    )),
-                },
-            );
-
-            casted_entries.map(q!(|(_, (v, _))| v)).weaken_ordering()
-        } else {
             joined
-                .values()
-                .map(q!(|(v, _)| v))
-                .assume_ordering(nondet!(/** O is NoOrder */))
+                .use_ordering_type::<TotalOrder>()
+                .cast_at_most_one_key()
+                .map(q!(|(_, (v, _))| v))
+                .weaken_ordering()
+        } else {
+            joined.values().map(q!(|(v, _)| v)).use_ordering_type()
         }
     }
 

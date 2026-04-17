@@ -304,8 +304,13 @@ where
     K: Eq + Hash,
 {
     me.entries()
-        .assume_ordering(nondet!(
-            /// Because this is a keyed singleton, there is only one value per key.
+        .assume_ordering_trusted(nondet!(
+            /// There is only one element associated with each key. The closure technically
+            /// isn't commutative in the case where both passed entries have the same key
+            /// but different values.
+            ///
+            /// In the future, we may want to have an `assume!(...)` statement in the UDF that
+            /// the key is never already present in the map.
         ))
         .fold(
             q!(|| HashMap::new()),
@@ -544,8 +549,13 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             };
 
             me.entries()
-                .assume_ordering(nondet!(
-                    /// Because this is a keyed singleton, there is only one value per key.
+                .assume_ordering_trusted(nondet!(
+                    /// There is only one element associated with each key. The closure technically
+                    /// isn't commutative in the case where both passed entries have the same key
+                    /// but different values.
+                    ///
+                    /// In the future, we may want to have an `assume!(...)` statement in the UDF that
+                    /// the key is never already present in the map.
                 ))
                 .fold(
                     q!(|| HashMap::new()),
@@ -631,8 +641,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
         self.make_bounded()
             .into_keyed_stream()
             .get(key)
-            .assume_ordering::<TotalOrder>(nondet!(/** only a single key, so totally ordered */))
-            .first()
+            .cast_at_most_one_element()
     }
 
     /// Emit a keyed stream containing keys shared between the keyed singleton and the
@@ -744,19 +753,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             .into_keyed();
 
         // The cast is guaranteed to succeed, since each key (in both `self` and `other`) has at most one value.
-        KeyedSingleton::new(
-            result_stream.location.clone(),
-            HydroNode::Cast {
-                inner: Box::new(result_stream.ir_node.replace(HydroNode::Placeholder)),
-                metadata: result_stream.location.new_node_metadata(KeyedSingleton::<
-                    K,
-                    (V, V2),
-                    L,
-                    Bounded,
-                >::collection_kind(
-                )),
-            },
-        )
+        result_stream.cast_at_most_one_entry_per_key()
     }
 
     /// For each value in `self`, find the matching key in `lookup`.
@@ -812,19 +809,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             .lookup_keyed_stream(lookup.into_keyed_stream());
 
         // The cast is guaranteed to succeed since both lookup and self contain at most 1 value per key
-        KeyedSingleton::new(
-            result_stream.location.clone(),
-            HydroNode::Cast {
-                inner: Box::new(result_stream.ir_node.replace(HydroNode::Placeholder)),
-                metadata: result_stream.location.new_node_metadata(KeyedSingleton::<
-                    K,
-                    (V, Option<V2>),
-                    L,
-                    Bounded,
-                >::collection_kind(
-                )),
-            },
-        )
+        result_stream.cast_at_most_one_entry_per_key()
     }
 
     /// For each value in `self`, find the matching key in `lookup`.
