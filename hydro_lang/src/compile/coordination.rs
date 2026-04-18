@@ -1535,6 +1535,7 @@ mod tests {
         let r = check_set_inclusion(|flow| {
             let p = flow.process::<()>();
             p.source_iter(q!(vec![(1, 10), (2, 20)]))
+                .erase_consistency()
                 .into_keyed()
                 .fold(q!(|| 0), q!(|acc, x| { *acc = x; }))
                 .entries()

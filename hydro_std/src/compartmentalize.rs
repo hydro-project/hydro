@@ -1,5 +1,5 @@
 use hydro_lang::live_collections::boundedness::Boundedness;
-use hydro_lang::live_collections::stream::{NoOrder, Ordering};
+use hydro_lang::live_collections::stream::{Consistency, ExactlyOnce, NoOrder, Ordering};
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 use hydro_lang::location::{Location, MemberId, NoTick};
 use hydro_lang::prelude::*;
@@ -34,7 +34,7 @@ impl<'a, T, C1, C2, Order: Ordering> PartitionStream<'a, T, C1, C2, Order>
     }
 }
 
-pub trait DecoupleClusterStream<'a, T, C1, B, Order: Ordering> {
+pub trait DecoupleClusterStream<'a, T, C1, B, Order: Ordering, Con: Consistency> {
     fn decouple_cluster<C2: 'a>(
         self,
         other: &Cluster<'a, C2>,
@@ -44,8 +44,8 @@ pub trait DecoupleClusterStream<'a, T, C1, B, Order: Ordering> {
         C1: 'a;
 }
 
-impl<'a, T, C1, B: Boundedness, Order: Ordering> DecoupleClusterStream<'a, T, C1, B, Order>
-    for Stream<T, Cluster<'a, C1>, B, Order>
+impl<'a, T, C1, B: Boundedness, Order: Ordering, Con: Consistency> DecoupleClusterStream<'a, T, C1, B, Order, Con>
+    for Stream<T, Cluster<'a, C1>, B, Order, ExactlyOnce, Con>
 where
     C1: 'a,
 {
@@ -71,7 +71,7 @@ where
     }
 }
 
-pub trait DecoupleProcessStream<'a, T, L: Location<'a> + NoTick, B, Order: Ordering> {
+pub trait DecoupleProcessStream<'a, T, L: Location<'a> + NoTick, B, Order: Ordering, Con: Consistency> {
     fn decouple_process<P2>(
         self,
         other: &Process<'a, P2>,
@@ -80,8 +80,8 @@ pub trait DecoupleProcessStream<'a, T, L: Location<'a> + NoTick, B, Order: Order
         T: Clone + Serialize + DeserializeOwned;
 }
 
-impl<'a, T, L, B: Boundedness, Order: Ordering>
-    DecoupleProcessStream<'a, T, Process<'a, L>, B, Order> for Stream<T, Process<'a, L>, B, Order>
+impl<'a, T, L, B: Boundedness, Order: Ordering, Con: Consistency>
+    DecoupleProcessStream<'a, T, Process<'a, L>, B, Order, Con> for Stream<T, Process<'a, L>, B, Order, ExactlyOnce, Con>
 {
     fn decouple_process<P2>(
         self,

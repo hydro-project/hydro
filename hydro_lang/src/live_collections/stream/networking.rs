@@ -89,7 +89,7 @@ pub(crate) fn deserialize_bincode<T: DeserializeOwned>(tagged: Option<&syn::Type
     deserialize_bincode_with_type(tagged, &quote_type::<T>())
 }
 
-impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>, B, O, R> {
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries, C: Consistency> Stream<T, Process<'a, L>, B, O, R, C> {
     #[deprecated = "use Stream::send(..., TCP.fail_stop().bincode()) instead"]
     /// "Moves" elements of this stream to a new distributed location by sending them over the network,
     /// using [`bincode`] to serialize/deserialize messages.
@@ -783,7 +783,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
     }
 }
 
-impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>, B, O, R> {
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries, C: Consistency> Stream<T, Cluster<'a, L>, B, O, R, C> {
     #[deprecated = "use Stream::send(..., TCP.fail_stop().bincode()) instead"]
     /// "Moves" elements of this stream from a cluster to a process by sending them over the network,
     /// using [`bincode`] to serialize/deserialize messages.

@@ -344,11 +344,11 @@ impl<T, L, B: Boundedness, O: Ordering, R: Retries, C: Consistency> Drop for Str
 }
 
 impl<'a, T, L, O: Ordering, R: Retries, C: Consistency> From<Stream<T, L, Bounded, O, R, C>>
-    for Stream<T, L, Unbounded, O, R, C>
+    for Stream<T, L, Unbounded, O, R, UnknownCon>
 where
     L: Location<'a>,
 {
-    fn from(stream: Stream<T, L, Bounded, O, R, C>) -> Stream<T, L, Unbounded, O, R, C> {
+    fn from(stream: Stream<T, L, Bounded, O, R, C>) -> Stream<T, L, Unbounded, O, R, UnknownCon> {
         let new_meta = stream
             .location
             .new_node_metadata(Stream::<T, L, Unbounded, O, R, UnknownCon>::collection_kind());
@@ -2512,14 +2512,15 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn chain<O2: Ordering, R2: Retries, B2: Boundedness>(
+    pub fn chain<O2: Ordering, R2: Retries, B2: Boundedness, C2: Consistency>(
         self,
-        other: Stream<T, L, B2, O2, R2>,
-    ) -> Stream<T, L, B2, <O as MinOrder<O2>>::Min, <R as MinRetries<R2>>::Min>
+        other: Stream<T, L, B2, O2, R2, C2>,
+    ) -> Stream<T, L, B2, <O as MinOrder<O2>>::Min, <R as MinRetries<R2>>::Min, <C as MinConsistency<C2>>::Min>
     where
         B: IsBounded,
         O: MinOrder<O2>,
         R: MinRetries<R2>,
+        C: MinConsistency<C2>,
     {
         check_matching_location(&self.location, &other.location);
 
@@ -2534,6 +2535,7 @@ where
                     B2,
                     <O as MinOrder<O2>>::Min,
                     <R as MinRetries<R2>>::Min,
+                    <C as MinConsistency<C2>>::Min,
                 >::collection_kind()),
             },
         )
@@ -2734,13 +2736,14 @@ where
     /// # stream.map(|i| assert!(expected.contains(&i)));
     /// # }));
     /// # }
-    pub fn join<V2, O2: Ordering, R2: Retries>(
+    pub fn join<V2, O2: Ordering, R2: Retries, C2: Consistency>(
         self,
-        n: Stream<(K, V2), L, B, O2, R2>,
-    ) -> Stream<(K, (V1, V2)), L, B, NoOrder, <R as MinRetries<R2>>::Min>
+        n: Stream<(K, V2), L, B, O2, R2, C2>,
+    ) -> Stream<(K, (V1, V2)), L, B, NoOrder, <R as MinRetries<R2>>::Min, <C as MinConsistency<C2>>::Min>
     where
         K: Eq + Hash,
         R: MinRetries<R2>,
+        C: MinConsistency<C2>,
     {
         check_matching_location(&self.location, &n.location);
 
@@ -2755,6 +2758,7 @@ where
                     B,
                     NoOrder,
                     <R as MinRetries<R2>>::Min,
+                    <C as MinConsistency<C2>>::Min,
                 >::collection_kind()),
             },
         )
@@ -2886,7 +2890,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Atomic<L>, B, O, R>
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries, C: Consistency> Stream<T, Atomic<L>, B, O, R, C>
 where
     L: Location<'a> + NoTick,
 {

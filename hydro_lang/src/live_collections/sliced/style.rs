@@ -10,7 +10,7 @@ use crate::forward_handle::{TickCycle, TickCycleHandle};
 use crate::live_collections::boundedness::{Bounded, Boundedness, Unbounded};
 use crate::live_collections::keyed_singleton::{BoundedValue, KeyedSingletonBound};
 use crate::live_collections::singleton::SingletonBound;
-use crate::live_collections::stream::{Ordering, Retries};
+use crate::live_collections::stream::{Consistency, Ordering, Retries, UnknownCon};
 use crate::location::tick::{DeferTick, Tick};
 use crate::location::{Location, NoTick};
 use crate::nondet::NonDet;
@@ -103,10 +103,10 @@ pub fn state_null<
 // Default style Slicable implementations
 // ============================================================================
 
-impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries> Slicable<'a, L>
-    for Default<crate::live_collections::Stream<T, L, B, O, R>>
+impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries, C: Consistency> Slicable<'a, L>
+    for Default<crate::live_collections::Stream<T, L, B, O, R, C>>
 {
-    type Slice = crate::live_collections::Stream<T, Tick<L>, Bounded, O, R>;
+    type Slice = crate::live_collections::Stream<T, Tick<L>, Bounded, O, R, UnknownCon>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
 
     fn get_location(&self) -> &L {
@@ -203,10 +203,10 @@ impl<'a, K, V, L: Location<'a> + NoTick> Slicable<'a, L>
 // Atomic style Slicable implementations
 // ============================================================================
 
-impl<'a, T, L: Location<'a> + NoTick, B: Boundedness, O: Ordering, R: Retries> Slicable<'a, L>
-    for Atomic<crate::live_collections::Stream<T, crate::location::Atomic<L>, B, O, R>>
+impl<'a, T, L: Location<'a> + NoTick, B: Boundedness, O: Ordering, R: Retries, C: Consistency> Slicable<'a, L>
+    for Atomic<crate::live_collections::Stream<T, crate::location::Atomic<L>, B, O, R, C>>
 {
-    type Slice = crate::live_collections::Stream<T, Tick<L>, Bounded, O, R>;
+    type Slice = crate::live_collections::Stream<T, Tick<L>, Bounded, O, R, UnknownCon>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
     fn get_location(&self) -> &L {
         &self.collection.location().tick.l
