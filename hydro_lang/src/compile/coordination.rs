@@ -84,7 +84,7 @@ pub enum ConsistencyLabel {
 }
 
 impl ConsistencyLabel {
-    fn strength(&self) -> u8 {
+    pub fn strength(&self) -> u8 {
         match self {
             ConsistencyLabel::SequentiallyConsistent => 3,
             ConsistencyLabel::Convergent => 2,
@@ -1155,18 +1155,29 @@ fn prove(
     // Custom logic for operators that need it
     match node {
 
-        // --- Batch: nondeterministic tick boundaries, flagged for replication ---
-        // Batch preserves SetInclusion (no elements lost), but tick boundaries are
-        // nondeterministic — different runs/replicas may group elements differently,
-        // affecting downstream scan state when combined with chain/cross_singleton.
+        // --- Batch: nondeterministic tick boundaries ---
+        // Batch groups elements into ticks nondeterministically. However:
+        // - SetInclusion is always preserved (no elements lost).
+        // - Prefix is preserved when the input is TotalOrder: batch doesn't
+        //   reorder elements, and all_ticks() concatenation restores the
+        //   full prefix. On a Cluster with broadcast input, all members
+        //   process the same TotalOrder sequence.
         HydroNode::Batch { inner, metadata, .. } => {
-            let allowed: &[OrderGoal] = &[OrderGoal::SetInclusion];
+            let input_is_total_order = matches!(
+                &inner.metadata().collection_kind,
+                super::ir::CollectionKind::Stream { order: StreamOrder::TotalOrder, .. }
+            );
+            let allowed: &[OrderGoal] = if input_is_total_order {
+                &[OrderGoal::SetInclusion, OrderGoal::Prefix]
+            } else {
+                &[OrderGoal::SetInclusion]
+            };
             if !allowed.contains(goal) {
                 return ProofResult::fail(&name, "breaks goal (not preserved by batch)", span, pm_span);
             }
-            if matches!(metadata.location_id, LocationId::Cluster(_)) {
-                // On a Cluster, batch boundaries are per-member — breaks coordination directly
-                ProofResult::fail(&name, "per-member nondeterministic batch boundaries on Cluster", span, pm_span)
+            if is_cluster_location(&metadata.location_id) {
+                prove(inner, goal, cycle_proofs, seen_tees)
+                    .prepend_resolved_locally(&name, "per-member nondeterministic batch boundary on Cluster", span, pm_span)
             } else {
                 prove(inner, goal, cycle_proofs, seen_tees)
                     .prepend_resolved_locally(&name, "nondeterministic batch boundary", span, pm_span)
