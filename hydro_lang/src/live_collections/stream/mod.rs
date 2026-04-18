@@ -173,6 +173,130 @@ pub trait IsExactlyOnce: Retries {}
 #[diagnostic::do_not_recommend]
 impl IsExactlyOnce for ExactlyOnce {}
 
+// ---------------------------------------------------------------------------
+// Consistency — the coordination guarantee carried by a stream
+// ---------------------------------------------------------------------------
+
+/// A trait implemented by valid consistency markers.
+///
+/// The consistency parameter tracks the coordination guarantee that the stream
+/// provides, as determined by the Coordination Criterion analysis:
+///
+/// - [`Seq`]: sequentially consistent — all replicas produce prefixes of the
+///   same deterministic sequence.
+/// - [`Conv`]: convergent (strong eventual consistency) — all replicas converge
+///   to the same value via commutative merge.
+/// - [`SelfCon`]: self-consistent — future-monotone per-replica, but different
+///   replicas may differ.
+/// - [`Incon`]: inconsistent — output may contradict earlier observations.
+/// - [`UnknownCon`]: consistency not yet determined (default).
+#[sealed::sealed]
+pub trait Consistency:
+    MinConsistency<Self, Min = Self>
+    + MinConsistency<Seq, Min = Self>
+    + MinConsistency<UnknownCon, Min = UnknownCon>
+{
+}
+
+/// Sequentially consistent: all replicas produce prefixes of the same
+/// deterministic sequence, respecting each client's program order.
+pub enum Seq {}
+
+/// Convergent (strong eventual consistency): all replicas converge to the
+/// same value via a commutative, idempotent merge (lattice join).
+pub enum Conv {}
+
+/// Self-consistent: future-monotone per-replica (observations only refine,
+/// never retract), but different replicas or runs may produce different results.
+pub enum SelfCon {}
+
+/// Inconsistent: output may contradict earlier observations. No guarantee.
+pub enum Incon {}
+
+/// Consistency not yet determined. Default for streams where the analysis
+/// has not been applied. Behaves as the weakest level in `MinConsistency`.
+pub enum UnknownCon {}
+
+#[sealed::sealed]
+impl Consistency for Seq {}
+#[sealed::sealed]
+impl Consistency for Conv {}
+#[sealed::sealed]
+impl Consistency for SelfCon {}
+#[sealed::sealed]
+impl Consistency for Incon {}
+#[sealed::sealed]
+impl Consistency for UnknownCon {}
+
+/// Helper trait for computing the weaker of two consistency levels.
+///
+/// Strength order: Seq > Conv > SelfCon > Incon > UnknownCon.
+/// `Min` is the weaker (lower) of the two.
+#[sealed::sealed]
+pub trait MinConsistency<Other: ?Sized> {
+    type Min: Consistency;
+}
+
+// Seq is strongest: min(Seq, X) = X
+#[sealed::sealed]
+impl MinConsistency<Seq> for Seq { type Min = Seq; }
+#[sealed::sealed]
+impl MinConsistency<Conv> for Seq { type Min = Conv; }
+#[sealed::sealed]
+impl MinConsistency<SelfCon> for Seq { type Min = SelfCon; }
+#[sealed::sealed]
+impl MinConsistency<Incon> for Seq { type Min = Incon; }
+#[sealed::sealed]
+impl MinConsistency<UnknownCon> for Seq { type Min = UnknownCon; }
+
+// Conv
+#[sealed::sealed]
+impl MinConsistency<Seq> for Conv { type Min = Conv; }
+#[sealed::sealed]
+impl MinConsistency<Conv> for Conv { type Min = Conv; }
+#[sealed::sealed]
+impl MinConsistency<SelfCon> for Conv { type Min = SelfCon; }
+#[sealed::sealed]
+impl MinConsistency<Incon> for Conv { type Min = Incon; }
+#[sealed::sealed]
+impl MinConsistency<UnknownCon> for Conv { type Min = UnknownCon; }
+
+// SelfCon
+#[sealed::sealed]
+impl MinConsistency<Seq> for SelfCon { type Min = SelfCon; }
+#[sealed::sealed]
+impl MinConsistency<Conv> for SelfCon { type Min = SelfCon; }
+#[sealed::sealed]
+impl MinConsistency<SelfCon> for SelfCon { type Min = SelfCon; }
+#[sealed::sealed]
+impl MinConsistency<Incon> for SelfCon { type Min = Incon; }
+#[sealed::sealed]
+impl MinConsistency<UnknownCon> for SelfCon { type Min = UnknownCon; }
+
+// Incon
+#[sealed::sealed]
+impl MinConsistency<Seq> for Incon { type Min = Incon; }
+#[sealed::sealed]
+impl MinConsistency<Conv> for Incon { type Min = Incon; }
+#[sealed::sealed]
+impl MinConsistency<SelfCon> for Incon { type Min = Incon; }
+#[sealed::sealed]
+impl MinConsistency<Incon> for Incon { type Min = Incon; }
+#[sealed::sealed]
+impl MinConsistency<UnknownCon> for Incon { type Min = UnknownCon; }
+
+// UnknownCon is weakest: min(UnknownCon, X) = UnknownCon
+#[sealed::sealed]
+impl MinConsistency<Seq> for UnknownCon { type Min = UnknownCon; }
+#[sealed::sealed]
+impl MinConsistency<Conv> for UnknownCon { type Min = UnknownCon; }
+#[sealed::sealed]
+impl MinConsistency<SelfCon> for UnknownCon { type Min = UnknownCon; }
+#[sealed::sealed]
+impl MinConsistency<Incon> for UnknownCon { type Min = UnknownCon; }
+#[sealed::sealed]
+impl MinConsistency<UnknownCon> for UnknownCon { type Min = UnknownCon; }
+
 /// Streaming sequence of elements with type `Type`.
 ///
 /// This live collection represents a growing sequence of elements, with new elements being
@@ -198,15 +322,16 @@ pub struct Stream<
     Bound: Boundedness = Unbounded,
     Order: Ordering = TotalOrder,
     Retry: Retries = ExactlyOnce,
+    Con: Consistency = UnknownCon,
 > {
     pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,
     pub(crate) flow_state: FlowState,
 
-    _phantom: PhantomData<(Type, Loc, Bound, Order, Retry)>,
+    _phantom: PhantomData<(Type, Loc, Bound, Order, Retry, Con)>,
 }
 
-impl<T, L, B: Boundedness, O: Ordering, R: Retries> Drop for Stream<T, L, B, O, R> {
+impl<T, L, B: Boundedness, O: Ordering, R: Retries, C: Consistency> Drop for Stream<T, L, B, O, R, C> {
     fn drop(&mut self) {
         let ir_node = self.ir_node.replace(HydroNode::Placeholder);
         if !matches!(ir_node, HydroNode::Placeholder) && !ir_node.is_shared_with_others() {
