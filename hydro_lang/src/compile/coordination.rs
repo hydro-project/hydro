@@ -113,31 +113,8 @@ fn is_cluster_location(location: &LocationId) -> bool {
     }
 }
 
-fn consistency_label(goal: &OrderGoal, passed: bool, location: &LocationId) -> ConsistencyLabel {
-    if !passed {
-        return ConsistencyLabel::Inconsistent;
-    }
-    let on_cluster = is_cluster_location(location);
-    match goal {
-        OrderGoal::Prefix => {
-            if on_cluster {
-                ConsistencyLabel::SequentiallyConsistent
-            } else {
-                ConsistencyLabel::SelfConsistent
-            }
-        }
-        OrderGoal::SetInclusion | OrderGoal::Lattice => {
-            if on_cluster {
-                ConsistencyLabel::Convergent
-            } else {
-                ConsistencyLabel::SelfConsistent
-            }
-        }
-    }
-}
-
 /// Label based only on goal (ignoring location). Used for propagation where
-/// location context is handled separately.
+/// location context is handled by the propagation rules.
 fn goal_label(goal: &OrderGoal) -> ConsistencyLabel {
     match goal {
         OrderGoal::Prefix => ConsistencyLabel::SequentiallyConsistent,
@@ -151,7 +128,11 @@ pub struct ChannelEdge {
     pub from: LocationId,
     pub to: LocationId,
     pub label: ConsistencyLabel,
+    /// Label assuming fixed broadcast membership (broadcast plumbing is trusted).
+    pub label_fixed_membership: ConsistencyLabel,
     pub goal: OrderGoal,
+    /// Whether this is a broadcast-to-Cluster edge.
+    pub is_broadcast: bool,
 }
 
 // ---------------------------------------------------------------------------
@@ -180,15 +161,16 @@ fn split_forward_back(
 
 /// Propagate consistency labels forward along the DAG edges.
 ///
-/// Edge labels initially reflect the sender's local consistency. Propagation
-/// allows a location to inherit upstream labels only when its local proof
-/// passes at the same strength:
+/// Implements Definition 6.2 from the consistency paper:
+///   (i)   Cluster with upstream ≥ Self  → ℓ_local
+///   (ii)  Cluster with upstream = Incon → Incon
+///   (iii) Deterministic Process          → min(ℓ_local, ℓ_upstream)
+///   (iv)  Nondeterministic Process       → Self
+///   (v)   Failing proof                  → Incon
 ///
-/// - Deterministic (Prefix-preserving) on SEQ CONSISTENT → SEQ CONSISTENT
-/// - Monotone (SetInclusion-preserving) on SEQ CONSISTENT → CONVERGENT (order lost)
-/// - Monotone on CONVERGENT → CONVERGENT
-/// - Nondeterministic Process → SELF-CONSISTENT (provenance erased)
-/// - Proof fails → INCONSISTENT
+/// When `assume_fixed_membership` is true, broadcast-to-Cluster edges use
+/// their `label_fixed_membership` (Self floor) instead of `label`, modeling
+/// the scenario where broadcast membership is static.
 ///
 /// Returns the propagated consistency at the terminal sink.
 fn propagate_forward(
@@ -198,6 +180,7 @@ fn propagate_forward(
     sink_proof_passed: bool,
     sink_has_nondet: bool,
     sink_location: &LocationId,
+    assume_fixed_membership: bool,
 ) -> ConsistencyLabel {
     // Sort forward edges source-first (highest discovery order first)
     forward.sort_by(|a, b| {
@@ -209,14 +192,24 @@ fn propagate_forward(
     // Track the best label arriving at each location
     let mut arriving: HashMap<LocationId, ConsistencyLabel> = HashMap::new();
 
-    for edge in forward.iter_mut() {
-        if let Some(upstream) = arriving.get(&edge.from) {
-            edge.label = propagate_label(upstream, &edge.label, is_cluster_location(&edge.from));
-        }
+    for edge in forward.iter() {
+        let edge_label = if assume_fixed_membership {
+            &edge.label_fixed_membership
+        } else {
+            &edge.label
+        };
+
+        let propagated = if let Some(upstream) = arriving.get(&edge.from) {
+            let sender_local = goal_label(&edge.goal);
+            let sender_is_cluster = is_cluster_location(&edge.from);
+            propagate_at_location(upstream, &sender_local, sender_is_cluster, false)
+        } else {
+            edge_label.clone()
+        };
 
         let entry = arriving.entry(edge.to.clone()).or_insert(ConsistencyLabel::Inconsistent);
-        if edge.label.strength() > entry.strength() {
-            *entry = edge.label.clone();
+        if propagated.strength() > entry.strength() {
+            *entry = propagated;
         }
     }
 
@@ -226,53 +219,48 @@ fn propagate_forward(
     }
     let sink_base = base_location(sink_location).clone();
     let local_label = goal_label(sink_goal);
+    let is_cluster = is_cluster_location(sink_location);
     match arriving.get(&sink_base) {
-        Some(upstream) => {
-            if sink_has_nondet && !is_cluster_location(sink_location) {
-                // Nondet Process erases provenance
-                ConsistencyLabel::SelfConsistent
-            } else {
-                propagate_label(upstream, &local_label, is_cluster_location(sink_location))
-            }
-        }
+        Some(upstream) => propagate_at_location(upstream, &local_label, is_cluster, sink_has_nondet),
         None => {
             // No channels — purely local
-            if is_cluster_location(sink_location) {
-                local_label
-            } else {
-                ConsistencyLabel::SelfConsistent
-            }
+            if is_cluster { local_label } else { ConsistencyLabel::SelfConsistent }
         }
     }
 }
 
-/// Given an upstream label, a location's local label, and the location type,
-/// compute the propagated label.
+/// Apply the paper's propagation rules (Definition 6.2) at a single location.
 ///
-/// - Cluster: re-establishes consistency via broadcast. Result = local label.
-/// - Deterministic Process (local != SELF-CONSISTENT): inherits upstream,
-///   capped by local strength (can't upgrade beyond what local proof shows).
-/// - Nondet Process (local == SELF-CONSISTENT): provenance erased.
-/// - INCONSISTENT locally: always INCONSISTENT.
-fn propagate_label(upstream: &ConsistencyLabel, local: &ConsistencyLabel, is_cluster: bool) -> ConsistencyLabel {
-    match local {
-        ConsistencyLabel::Inconsistent => ConsistencyLabel::Inconsistent,
-        ConsistencyLabel::SelfConsistent => ConsistencyLabel::SelfConsistent,
-        _ if is_cluster => {
-            // Cluster re-establishes from broadcast — uses its own label.
-            // NOTE: This assumes the broadcast data is well-formed.
-            // If upstream is truly non-monotone (proof failed), the
-            // Cluster's local proof may be unsound. See Remark~6.3
-            // in the paper for discussion of this limitation.
-            local.clone()
+/// `upstream`:    best label arriving from upstream locations
+/// `local`:       label from this location's own proof goal (goal_label)
+/// `is_cluster`:  whether this location is a Cluster
+/// `has_nondet`:  whether this location has nondeterministic operations (Process only)
+fn propagate_at_location(
+    upstream: &ConsistencyLabel,
+    local: &ConsistencyLabel,
+    is_cluster: bool,
+    has_nondet: bool,
+) -> ConsistencyLabel {
+    // Rule (v): failing proof → Incon
+    if *local == ConsistencyLabel::Inconsistent {
+        return ConsistencyLabel::Inconsistent;
+    }
+    if is_cluster {
+        // Rule (ii): Cluster with non-monotone upstream → Incon
+        if *upstream == ConsistencyLabel::Inconsistent {
+            return ConsistencyLabel::Inconsistent;
         }
-        _ => {
-            // Deterministic Process: inherit upstream, capped by local strength
-            if upstream.strength() <= local.strength() {
-                upstream.clone()
-            } else {
-                local.clone()
-            }
+        // Rule (i): Cluster with monotone upstream → ℓ_local
+        local.clone()
+    } else if has_nondet {
+        // Rule (iv): Nondeterministic Process → Self
+        ConsistencyLabel::SelfConsistent
+    } else {
+        // Rule (iii): Deterministic Process → min(ℓ_local, ℓ_upstream)
+        if upstream.strength() <= local.strength() {
+            upstream.clone()
+        } else {
+            local.clone()
         }
     }
 }
@@ -287,7 +275,7 @@ fn render_forward_dag(forward: &[ChannelEdge], names: &SecondaryMap<LocationKey,
     };
 
     let edges: Vec<(usize, usize, String)> = forward.iter().map(|ch| {
-        (loc_id(&ch.from), loc_id(&ch.to), short_label(&ch.label).to_string())
+        (loc_id(&ch.from), loc_id(&ch.to), short_label(&ch.label_fixed_membership).to_string())
     }).collect();
 
     let nodes: Vec<(usize, String)> = loc_ids.iter().enumerate()
@@ -402,25 +390,40 @@ fn analyze_channels_from(
                     discovery_order.entry(recv_loc.clone()).or_insert(next_ord);
                     let next_ord = discovery_order.len();
                     discovery_order.entry(send_loc.clone()).or_insert(next_ord);
-                    // Run proof from sending side, pick strongest label
+                    // Run proof from sending side, pick strongest goal-based label.
+                    // The edge label must reflect the sender's actual consistency
+                    // so that propagation rule (ii) can detect upstream Incon.
+                    let is_broadcast_to_cluster = is_cluster_location(&recv_loc);
                     let mut best_label = ConsistencyLabel::Inconsistent;
                     let mut best_goal = OrderGoal::SetInclusion;
                     for candidate in &[OrderGoal::Prefix, OrderGoal::Lattice, OrderGoal::SetInclusion] {
                         let mut seen = SeenTees::new();
                         let result = prove(input, candidate, cycle_proofs, &mut seen);
                         if result.is_proved() {
-                            let label = consistency_label(candidate, true, &send_loc);
+                            let label = goal_label(candidate);
                             if label.strength() > best_label.strength() {
                                 best_label = label;
                                 best_goal = candidate.clone();
                             }
                         }
                     }
+                    // Fixed-membership label: for broadcast-to-Cluster edges, the
+                    // edge proof may fail due to broadcast plumbing (dynamic membership
+                    // tracking) rather than the actual data path. The fixed-membership
+                    // label floors at Self, modeling static cluster membership where
+                    // broadcast is trusted infrastructure.
+                    let label_fixed = if is_broadcast_to_cluster && best_label == ConsistencyLabel::Inconsistent {
+                        ConsistencyLabel::SelfConsistent
+                    } else {
+                        best_label.clone()
+                    };
                     edges.push(ChannelEdge {
                         from: send_loc,
                         to: recv_loc,
                         label: best_label,
+                        label_fixed_membership: label_fixed,
                         goal: best_goal,
+                        is_broadcast: is_broadcast_to_cluster,
                     });
                 }
                 // Continue upstream
@@ -636,8 +639,10 @@ pub struct SinkResult {
     pub goal: OrderGoal,
     pub result: ProofResult,
     pub location: LocationId,
-    /// The overall consistency guarantee (strongest across all channels).
+    /// Consistency assuming dynamic broadcast membership (full analysis).
     pub consistency: ConsistencyLabel,
+    /// Consistency assuming fixed broadcast membership (broadcast plumbing trusted).
+    pub consistency_fixed: ConsistencyLabel,
     /// Per-channel consistency labels along the dataflow path.
     pub channels: Vec<ChannelEdge>,
     /// Discovery order of locations from the backward walk (location → order, 0 = sink).
@@ -752,7 +757,12 @@ impl fmt::Display for CoordinationReport {
         for s in &self.sinks {
             let loc = fmt_location(&s.location, &self.location_names);
             if s.result.is_proved() {
-                writeln!(f, "\n  ✓ {} @ {} ({}) — {}", s.name, trim(&s.span), loc, s.consistency)?;
+                if s.consistency == s.consistency_fixed {
+                    writeln!(f, "\n  ✓ {} @ {} ({}) — {}", s.name, trim(&s.span), loc, s.consistency)?;
+                } else {
+                    writeln!(f, "\n  ✓ {} @ {} ({}) — {} (fixed membership: {})",
+                        s.name, trim(&s.span), loc, s.consistency, s.consistency_fixed)?;
+                }
             } else {
                 writeln!(f, "\n  ✗ {} @ {} ({}) — INCONSISTENT", s.name, trim(&s.span), loc)?;
             }
@@ -768,10 +778,10 @@ impl fmt::Display for CoordinationReport {
                 }
                 #[cfg(not(feature = "build"))]
                 for ch in &forward {
-                    writeln!(f, "    {} --[{}]--> {}", fmt_location(&ch.from, &self.location_names), short_label(&ch.label), fmt_location(&ch.to, &self.location_names))?;
+                    writeln!(f, "    {} --[{}]--> {}", fmt_location(&ch.from, &self.location_names), short_label(&ch.label_fixed_membership), fmt_location(&ch.to, &self.location_names))?;
                 }
                 for ch in &back {
-                    writeln!(f, "    ↩ {} --[{}]--> {}", fmt_location(&ch.from, &self.location_names), short_label(&ch.label), fmt_location(&ch.to, &self.location_names))?;
+                    writeln!(f, "    ↩ {} --[{}]--> {}", fmt_location(&ch.from, &self.location_names), short_label(&ch.label_fixed_membership), fmt_location(&ch.to, &self.location_names))?;
                 }
             }
             // Show proof trace
@@ -1361,33 +1371,41 @@ pub fn analyze_coordination(
             }
         }
 
-        best_result.trace.reverse();
-        let replication_issues = best_result.replication_issues.clone();
-        let location = root.input_metadata().location_id.clone();
+          best_result.trace.reverse();
+          let replication_issues = best_result.replication_issues.clone();
+          let location = root.input_metadata().location_id.clone();
 
-        // Compute per-channel consistency labels by walking upstream
-        let (mut channels, discovery_order) = analyze_channels(root.input(), &location, &cycle_proofs, ir);
-        // Split forward/back and propagate labels forward
-        let (mut forward, back) = split_forward_back(&channels, &discovery_order);
-        let sink_has_nondet = !replication_issues.is_empty();
-        let consistency = propagate_forward(
-            &mut forward, &discovery_order,
-            &best_goal, best_result.is_proved(), sink_has_nondet, &location,
-        );
-        // Reassemble channels with propagated labels
-        channels = forward.into_iter().chain(back.into_iter()).collect();
+          // Compute per-channel consistency labels by walking upstream
+          let (channels, discovery_order) = analyze_channels(root.input(), &location, &cycle_proofs, ir);
+          let (mut forward, back) = split_forward_back(&channels, &discovery_order);
+          let sink_has_nondet = !replication_issues.is_empty();
 
-        sinks.push(SinkResult {
-            name: short_name_root(root).to_string(),
-            span: root.op_metadata().backtrace.format_span().unwrap_or_default(),
-            goal: best_goal,
-            result: best_result,
-            location,
-            consistency,
-            channels,
-            discovery_order,
-            replication_issues,
-        });
+          // Propagate twice: dynamic membership (full analysis) and fixed membership
+          let consistency = propagate_forward(
+              &mut forward, &discovery_order,
+              &best_goal, best_result.is_proved(), sink_has_nondet, &location,
+              false,
+          );
+          let consistency_fixed = propagate_forward(
+              &mut forward, &discovery_order,
+              &best_goal, best_result.is_proved(), sink_has_nondet, &location,
+              true,
+          );
+          // Reassemble channels with propagated labels
+          let channels = forward.into_iter().chain(back.into_iter()).collect();
+
+          sinks.push(SinkResult {
+              name: short_name_root(root).to_string(),
+              span: root.op_metadata().backtrace.format_span().unwrap_or_default(),
+              goal: best_goal,
+              result: best_result,
+              location,
+              consistency,
+              consistency_fixed,
+              channels,
+              discovery_order,
+              replication_issues,
+          });
     }
 
     CoordinationReport { sinks, location_names: location_names.clone() }
