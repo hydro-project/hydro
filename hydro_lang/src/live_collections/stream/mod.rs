@@ -190,13 +190,7 @@ impl IsExactlyOnce for ExactlyOnce {}
 ///   replicas may differ.
 /// - [`Incon`]: inconsistent — output may contradict earlier observations.
 /// - [`UnknownCon`]: consistency not yet determined (default).
-#[sealed::sealed]
-pub trait Consistency:
-    MinConsistency<Self, Min = Self>
-    + MinConsistency<Seq, Min = Self>
-    + MinConsistency<UnknownCon, Min = UnknownCon>
-{
-}
+pub trait Consistency {}
 
 /// Sequentially consistent: all replicas produce prefixes of the same
 /// deterministic sequence, respecting each client's program order.
@@ -217,84 +211,53 @@ pub enum Incon {}
 /// has not been applied. Behaves as the weakest level in `MinConsistency`.
 pub enum UnknownCon {}
 
-#[sealed::sealed]
 impl Consistency for Seq {}
-#[sealed::sealed]
 impl Consistency for Conv {}
-#[sealed::sealed]
 impl Consistency for SelfCon {}
-#[sealed::sealed]
 impl Consistency for Incon {}
-#[sealed::sealed]
 impl Consistency for UnknownCon {}
 
 /// Helper trait for computing the weaker of two consistency levels.
 ///
 /// Strength order: Seq > Conv > SelfCon > Incon > UnknownCon.
 /// `Min` is the weaker (lower) of the two.
-#[sealed::sealed]
 pub trait MinConsistency<Other: ?Sized> {
     type Min: Consistency;
 }
 
 // Seq is strongest: min(Seq, X) = X
-#[sealed::sealed]
 impl MinConsistency<Seq> for Seq { type Min = Seq; }
-#[sealed::sealed]
 impl MinConsistency<Conv> for Seq { type Min = Conv; }
-#[sealed::sealed]
 impl MinConsistency<SelfCon> for Seq { type Min = SelfCon; }
-#[sealed::sealed]
 impl MinConsistency<Incon> for Seq { type Min = Incon; }
-#[sealed::sealed]
 impl MinConsistency<UnknownCon> for Seq { type Min = UnknownCon; }
 
 // Conv
-#[sealed::sealed]
 impl MinConsistency<Seq> for Conv { type Min = Conv; }
-#[sealed::sealed]
 impl MinConsistency<Conv> for Conv { type Min = Conv; }
-#[sealed::sealed]
 impl MinConsistency<SelfCon> for Conv { type Min = SelfCon; }
-#[sealed::sealed]
 impl MinConsistency<Incon> for Conv { type Min = Incon; }
-#[sealed::sealed]
 impl MinConsistency<UnknownCon> for Conv { type Min = UnknownCon; }
 
 // SelfCon
-#[sealed::sealed]
 impl MinConsistency<Seq> for SelfCon { type Min = SelfCon; }
-#[sealed::sealed]
 impl MinConsistency<Conv> for SelfCon { type Min = SelfCon; }
-#[sealed::sealed]
 impl MinConsistency<SelfCon> for SelfCon { type Min = SelfCon; }
-#[sealed::sealed]
 impl MinConsistency<Incon> for SelfCon { type Min = Incon; }
-#[sealed::sealed]
 impl MinConsistency<UnknownCon> for SelfCon { type Min = UnknownCon; }
 
 // Incon
-#[sealed::sealed]
 impl MinConsistency<Seq> for Incon { type Min = Incon; }
-#[sealed::sealed]
 impl MinConsistency<Conv> for Incon { type Min = Incon; }
-#[sealed::sealed]
 impl MinConsistency<SelfCon> for Incon { type Min = Incon; }
-#[sealed::sealed]
 impl MinConsistency<Incon> for Incon { type Min = Incon; }
-#[sealed::sealed]
 impl MinConsistency<UnknownCon> for Incon { type Min = UnknownCon; }
 
 // UnknownCon is weakest: min(UnknownCon, X) = UnknownCon
-#[sealed::sealed]
 impl MinConsistency<Seq> for UnknownCon { type Min = UnknownCon; }
-#[sealed::sealed]
 impl MinConsistency<Conv> for UnknownCon { type Min = UnknownCon; }
-#[sealed::sealed]
 impl MinConsistency<SelfCon> for UnknownCon { type Min = UnknownCon; }
-#[sealed::sealed]
 impl MinConsistency<Incon> for UnknownCon { type Min = UnknownCon; }
-#[sealed::sealed]
 impl MinConsistency<UnknownCon> for UnknownCon { type Min = UnknownCon; }
 
 /// Streaming sequence of elements with type `Type`.
@@ -2792,7 +2755,7 @@ where
     pub fn anti_join<O2: Ordering, R2: Retries>(
         self,
         n: Stream<K, L, Bounded, O2, R2>,
-    ) -> Stream<(K, V1), L, B, O, R>
+    ) -> Stream<(K, V1), L, B, O, R, C>
     where
         K: Eq + Hash,
     {
@@ -2853,7 +2816,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     }
 }
 
-impl<'a, K, V, L, O: Ordering, R: Retries> Stream<(K, V), Tick<L>, Bounded, O, R>
+impl<'a, K, V, L, O: Ordering, R: Retries, C: Consistency> Stream<(K, V), Tick<L>, Bounded, O, R, C>
 where
     K: Eq + Hash,
     L: Location<'a>,
@@ -2877,7 +2840,7 @@ where
     /// # }
     /// ```
     pub fn keys(self) -> Stream<K, Tick<L>, Bounded, NoOrder, ExactlyOnce> {
-        self.into_keyed()
+        self.erase_consistency().into_keyed()
             .fold(
                 q!(|| ()),
                 q!(
