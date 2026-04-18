@@ -259,7 +259,11 @@ fn propagate_label(upstream: &ConsistencyLabel, local: &ConsistencyLabel, is_clu
         ConsistencyLabel::Inconsistent => ConsistencyLabel::Inconsistent,
         ConsistencyLabel::SelfConsistent => ConsistencyLabel::SelfConsistent,
         _ if is_cluster => {
-            // Cluster re-establishes from broadcast — uses its own label
+            // Cluster re-establishes from broadcast — uses its own label.
+            // NOTE: This assumes the broadcast data is well-formed.
+            // If upstream is truly non-monotone (proof failed), the
+            // Cluster's local proof may be unsound. See Remark~6.3
+            // in the paper for discussion of this limitation.
             local.clone()
         }
         _ => {
