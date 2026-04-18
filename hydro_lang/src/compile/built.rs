@@ -54,7 +54,7 @@ impl<'a> BuiltFlow<'a> {
     /// Returns a report indicating whether each observable sink is
     /// future-monotone (coordination-free) or requires coordination.
     pub fn check_coordination(&self) -> super::coordination::CoordinationReport {
-        super::coordination::analyze_coordination_default(&self.ir)
+        super::coordination::analyze_coordination_default(&self.ir, &self.location_names)
     }
 
     /// Generate compiler diagnostic tokens for future rust-analyzer integration.
@@ -77,7 +77,7 @@ impl<'a> BuiltFlow<'a> {
         &self,
         goal_overrides: &std::collections::HashMap<String, super::coordination::OrderGoal>,
     ) -> super::coordination::CoordinationReport {
-        super::coordination::analyze_coordination(&self.ir, goal_overrides)
+        super::coordination::analyze_coordination(&self.ir, goal_overrides, &self.location_names)
     }
 
     /// Returns all raw location ID -> location name mappings.
