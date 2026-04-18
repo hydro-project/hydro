@@ -283,7 +283,7 @@ fn render_forward_dag(forward: &[ChannelEdge], names: &SecondaryMap<LocationKey,
     };
 
     let edges: Vec<(usize, usize, String)> = forward.iter().map(|ch| {
-        (loc_id(&ch.from), loc_id(&ch.to), ch.label.to_string())
+        (loc_id(&ch.from), loc_id(&ch.to), short_label(&ch.label).to_string())
     }).collect();
 
     let nodes: Vec<(usize, String)> = loc_ids.iter().enumerate()
@@ -334,7 +334,19 @@ fn fmt_location(loc: &LocationId, names: &SecondaryMap<LocationKey, String>) -> 
     if name.is_empty() || name == "()" {
         format!("{}({})", kind, key)
     } else {
-        format!("{}({})", kind, name)
+        // Strip crate path: "kvs_zoo::kvs_core::KVSNode" → "KVSNode"
+        let short = name.rsplit("::").next().unwrap_or(name);
+        format!("{}({})", kind, short)
+    }
+}
+
+/// Short label for use in chain display.
+fn short_label(label: &ConsistencyLabel) -> &'static str {
+    match label {
+        ConsistencyLabel::SequentiallyConsistent => "SEQ",
+        ConsistencyLabel::Convergent => "CONV",
+        ConsistencyLabel::SelfConsistent => "SELF",
+        ConsistencyLabel::Inconsistent => "INCON",
     }
 }
 fn consistency_description(label: &ConsistencyLabel) -> &'static str {
@@ -616,6 +628,7 @@ fn node_span(node: &HydroNode) -> Option<String> {
 #[derive(Clone)]
 pub struct SinkResult {
     pub name: String,
+    pub span: String,
     pub goal: OrderGoal,
     pub result: ProofResult,
     pub location: LocationId,
@@ -709,10 +722,11 @@ impl fmt::Display for CoordinationReport {
         }
 
         for s in &self.sinks {
+            let loc = fmt_location(&s.location, &self.location_names);
             if s.result.is_proved() {
-                writeln!(f, "\n  ✓ {} — {}", s.name, s.consistency)?;
+                writeln!(f, "\n  ✓ {} @ {} ({}) — {}", s.name, s.span, loc, s.consistency)?;
             } else {
-                writeln!(f, "\n  ✗ {} — INCONSISTENT", s.name)?;
+                writeln!(f, "\n  ✗ {} @ {} ({}) — INCONSISTENT", s.name, s.span, loc)?;
             }
             // Show channel graph: forward DAG via ascii-dag, back edges listed
             if !s.channels.is_empty() {
@@ -726,10 +740,10 @@ impl fmt::Display for CoordinationReport {
                 }
                 #[cfg(not(feature = "build"))]
                 for ch in &forward {
-                    writeln!(f, "    {} --[{}]--> {}", fmt_location(&ch.from, &self.location_names), ch.label, fmt_location(&ch.to, &self.location_names))?;
+                    writeln!(f, "    {} --[{}]--> {}", fmt_location(&ch.from, &self.location_names), short_label(&ch.label), fmt_location(&ch.to, &self.location_names))?;
                 }
                 for ch in &back {
-                    writeln!(f, "    ↩ {} --[{}]--> {}", fmt_location(&ch.from, &self.location_names), ch.label, fmt_location(&ch.to, &self.location_names))?;
+                    writeln!(f, "    ↩ {} --[{}]--> {}", fmt_location(&ch.from, &self.location_names), short_label(&ch.label), fmt_location(&ch.to, &self.location_names))?;
                 }
             }
             // Show proof trace
@@ -1337,6 +1351,7 @@ pub fn analyze_coordination(
 
         sinks.push(SinkResult {
             name: short_name_root(root).to_string(),
+            span: root.op_metadata().backtrace.format_span().unwrap_or_default(),
             goal: best_goal,
             result: best_result,
             location,
