@@ -709,6 +709,30 @@ impl fmt::Display for CoordinationReport {
             return write!(f, "Coordination Criterion: no observable sinks found");
         }
 
+        // Compute common path prefix across all spans for shorter display
+        let all_spans: Vec<&str> = self.sinks.iter()
+            .map(|s| s.span.as_str())
+            .chain(self.sinks.iter().flat_map(|s| s.result.trace.iter().filter_map(|t| t.span.as_deref())))
+            .filter(|s| !s.is_empty())
+            .collect();
+        let prefix_len = if all_spans.is_empty() { 0 } else {
+            let first = all_spans[0].as_bytes();
+            let mut len = first.len();
+            for s in &all_spans[1..] {
+                len = len.min(
+                    first.iter().zip(s.as_bytes()).take_while(|(a, b)| a == b).count()
+                );
+            }
+            // Back up to last '/' so we don't cut mid-component
+            match all_spans[0][..len].rfind('/') {
+                Some(i) => i + 1,
+                None => 0,
+            }
+        };
+        let trim = |s: &str| -> String {
+            if s.len() > prefix_len { s[prefix_len..].to_string() } else { s.to_string() }
+        };
+
         let total = self.sinks.len();
         let failing: Vec<_> = self.sinks.iter().filter(|s| !s.result.is_proved()).collect();
         if failing.is_empty() {
@@ -724,9 +748,9 @@ impl fmt::Display for CoordinationReport {
         for s in &self.sinks {
             let loc = fmt_location(&s.location, &self.location_names);
             if s.result.is_proved() {
-                writeln!(f, "\n  ✓ {} @ {} ({}) — {}", s.name, s.span, loc, s.consistency)?;
+                writeln!(f, "\n  ✓ {} @ {} ({}) — {}", s.name, trim(&s.span), loc, s.consistency)?;
             } else {
-                writeln!(f, "\n  ✗ {} @ {} ({}) — INCONSISTENT", s.name, s.span, loc)?;
+                writeln!(f, "\n  ✗ {} @ {} ({}) — INCONSISTENT", s.name, trim(&s.span), loc)?;
             }
             // Show channel graph: forward DAG via ascii-dag, back edges listed
             if !s.channels.is_empty() {
@@ -748,7 +772,7 @@ impl fmt::Display for CoordinationReport {
             }
             // Show proof trace
             for step in &s.result.trace {
-                let span = step.span.as_deref().unwrap_or("");
+                let span = step.span.as_deref().map(|s| trim(s)).unwrap_or_default();
                 match &step.action {
                     ProofAction::Preserved => {
                         writeln!(f, "    {} — preserved  {}", step.operator, span)?;
@@ -788,7 +812,7 @@ impl fmt::Display for CoordinationReport {
             for (loc, issues) in &process_issues {
                 writeln!(f, "    {loc}: {} coordination point(s) if replicated", issues.len())?;
                 for issue in issues {
-                    let span = issue.span.as_deref().unwrap_or("(unknown location)");
+                    let span = issue.span.as_deref().map(|s| trim(s)).unwrap_or_else(|| "(unknown)".to_string());
                     writeln!(f, "      • {span}")?;
                 }
             }
