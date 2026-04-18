@@ -528,7 +528,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries, C: Consistency> Stream<T, L, B, O, R, C>
 where
     L: Location<'a>,
 {
@@ -1158,7 +1158,7 @@ where
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
-                    .new_node_metadata(Stream::<T, L, B, O, ExactlyOnce>::collection_kind()),
+                    .new_node_metadata(Stream::<T, L, B, O, ExactlyOnce, UnknownCon>::collection_kind()),
             },
         )
     }
@@ -1348,15 +1348,15 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn fold<A, I, F, C, Idemp, M, B2: SingletonBound>(
+    pub fn fold<A, I, F, Comm, Idemp, M, B2: SingletonBound>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
-        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp, M>>,
+        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<Comm, Idemp, M>>,
     ) -> Singleton<A, L, B2>
     where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, T),
-        C: ValidCommutativityFor<O> + IsProved,
+        Comm: ValidCommutativityFor<O> + IsProved,
         Idemp: ValidIdempotenceFor<R> + IsProved,
         B: ApplyMonotoneStream<M, B2>,
     {
@@ -1371,7 +1371,7 @@ where
             init,
             acc: comb.into(),
             input: Box::new(ordered_etc.ir_node.replace(HydroNode::Placeholder)),
-            is_commutative: C::IS_PROVED,
+            is_commutative: Comm::IS_PROVED,
             is_idempotent: Idemp::IS_PROVED,
             metadata: ordered_etc
                 .location
@@ -1403,13 +1403,13 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn reduce<F, C, Idemp>(
+    pub fn reduce<F, Comm, Idemp>(
         self,
-        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp>>,
+        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<Comm, Idemp>>,
     ) -> Optional<T, L, B>
     where
         F: Fn(&mut T, T) + 'a,
-        C: ValidCommutativityFor<O> + IsProved,
+        Comm: ValidCommutativityFor<O> + IsProved,
         Idemp: ValidIdempotenceFor<R> + IsProved,
     {
         let (f, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
@@ -1421,7 +1421,7 @@ where
         let core = HydroNode::Reduce {
             f: f.into(),
             input: Box::new(ordered_etc.ir_node.replace(HydroNode::Placeholder)),
-            is_commutative: C::IS_PROVED,
+            is_commutative: Comm::IS_PROVED,
             is_idempotent: Idemp::IS_PROVED,
             metadata: ordered_etc
                 .location
@@ -1728,7 +1728,7 @@ where
                 acc: f,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self.location.new_node_metadata(
-                    Stream::<U, L, B, TotalOrder, ExactlyOnce>::collection_kind(),
+                    Stream::<U, L, B, TotalOrder, ExactlyOnce, UnknownCon>::collection_kind(),
                 ),
             },
         )
@@ -1789,7 +1789,7 @@ where
                 acc: f,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self.location.new_node_metadata(
-                    Stream::<U, L, B, TotalOrder, ExactlyOnce>::collection_kind(),
+                    Stream::<U, L, B, TotalOrder, ExactlyOnce, UnknownCon>::collection_kind(),
                 ),
             },
         )
@@ -1902,7 +1902,7 @@ where
             input: Box::new(scan_node),
             metadata: this
                 .location
-                .new_node_metadata(Stream::<U, L, B, TotalOrder, ExactlyOnce>::collection_kind()),
+                .new_node_metadata(Stream::<U, L, B, TotalOrder, ExactlyOnce, UnknownCon>::collection_kind()),
         };
 
         Stream::new(this.location.clone(), flatten_node)
@@ -2022,7 +2022,7 @@ where
 
     /// An operator which allows you to "name" a `HydroNode`.
     /// This is only used for testing, to correlate certain `HydroNode`s with IDs.
-    pub fn ir_node_named(self, name: &str) -> Stream<T, L, B, O, R> {
+    pub fn ir_node_named(self, name: &str) -> Stream<T, L, B, O, R, C> {
         {
             let mut node = self.ir_node.borrow_mut();
             let metadata = node.metadata_mut();
@@ -2250,7 +2250,7 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<&T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries, C: Consistency> Stream<&T, L, B, O, R, C>
 where
     L: Location<'a>,
 {
@@ -2430,7 +2430,7 @@ impl<'a, T, L: Location<'a> + NoTick, R: Retries> Stream<T, L, Unbounded, TotalO
     }
 }
 
-impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, L, B, O, R>
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries, C: Consistency> Stream<T, L, B, O, R, C>
 where
     L: Location<'a>,
 {
@@ -2700,7 +2700,7 @@ where
     }
 }
 
-impl<'a, K, V1, L, B: Boundedness, O: Ordering, R: Retries> Stream<(K, V1), L, B, O, R>
+impl<'a, K, V1, L, B: Boundedness, O: Ordering, R: Retries, C: Consistency> Stream<(K, V1), L, B, O, R, C>
 where
     L: Location<'a>,
 {
@@ -2919,7 +2919,7 @@ where
     }
 }
 
-impl<'a, F, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<F, L, B, O, R>
+impl<'a, F, T, L, B: Boundedness, O: Ordering, R: Retries, C: Consistency> Stream<F, L, B, O, R, C>
 where
     L: Location<'a> + NoTick + NoAtomic,
     F: Future<Output = T>,

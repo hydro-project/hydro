@@ -14,6 +14,7 @@ use super::keyed_singleton::KeyedSingleton;
 use super::optional::Optional;
 use super::stream::{
     ExactlyOnce, IsExactlyOnce, IsOrdered, MinOrder, MinRetries, NoOrder, Stream, TotalOrder,
+    UnknownCon,
 };
 use crate::compile::builder::{CycleId, FlowState};
 use crate::compile::ir::{
@@ -966,14 +967,14 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         let other: Optional<O2, L, Bounded> = other.into();
         check_matching_location(&self.location, &other.location);
 
-        Stream::new(
+        Stream::<_, _, _, _, _, UnknownCon>::new(
             self.location.clone(),
             HydroNode::CrossSingleton {
                 left: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 right: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
-                    .new_node_metadata(Stream::<((K, V), O2), L, B, O, R>::collection_kind()),
+                    .new_node_metadata(Stream::<((K, V), O2), L, B, O, R, UnknownCon>::collection_kind()),
             },
         )
         .map(q!(|((k, v), o2)| (k, (v, o2))))

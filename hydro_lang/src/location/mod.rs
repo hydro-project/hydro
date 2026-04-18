@@ -41,7 +41,7 @@ use crate::live_collections::boundedness::{Bounded, Unbounded};
 use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::singleton::Singleton;
 use crate::live_collections::stream::{
-    ExactlyOnce, NoOrder, Ordering, Retries, Stream, TotalOrder,
+    ExactlyOnce, NoOrder, Ordering, Retries, Stream, TotalOrder, UnknownCon,
 };
 use crate::location::dynamic::LocationId;
 use crate::location::external_process::{
@@ -385,7 +385,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             HydroNode::Source {
                 source: HydroSource::Iter(e.into()),
                 metadata: self.new_node_metadata(
-                    Stream::<T, Self, Bounded, TotalOrder, ExactlyOnce>::collection_kind(),
+                    Stream::<T, Self, Bounded, TotalOrder, ExactlyOnce, UnknownCon>::collection_kind(),
                 ),
             },
         )
@@ -431,7 +431,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     where
         Self: Sized + NoTick,
     {
-        Stream::new(
+        Stream::<_, _, _, _, _, UnknownCon>::new(
             self.clone(),
             HydroNode::Source {
                 source: HydroSource::ClusterMembers(cluster.id(), ClusterMembersState::Uninit),
@@ -441,6 +441,7 @@ pub trait Location<'a>: dynamic::DynLocation {
                     Unbounded,
                     TotalOrder,
                     ExactlyOnce,
+                    UnknownCon,
                 >::collection_kind()),
             },
         )
