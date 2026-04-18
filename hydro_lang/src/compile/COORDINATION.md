@@ -54,6 +54,27 @@ The analysis depends on proof annotations surviving into the IR:
 
 These capture whether the aggregation has been proven to be a lattice join, via the `commutative = manual_proof!(...)` and `idempotent = manual_proof!(...)` annotations on fold/reduce closures. The `IsProved` trait in `properties/mod.rs` bridges the compile-time proof to the IR boolean.
 
+## Consistency labels and propagation
+
+Each passing sink receives a consistency label based on its proof goal and location:
+
+| Label | Condition | Guarantee |
+|-------|-----------|-----------|
+| **SEQ** (Sequentially Consistent) | Prefix passes on Cluster | All replicas produce prefixes of the same deterministic sequence |
+| **CONV** (Convergent) | SetInclusion or Lattice passes on Cluster | All replicas converge via commutative merge |
+| **SELF** (Self-Consistent) | Proof passes, no cross-replica guarantee | Future-monotone per-replica, but replicas may differ |
+| **INCON** (Inconsistent) | Proof fails | No guarantee |
+
+Labels propagate forward along the channel DAG using five rules (Definition 6.2 of the consistency paper):
+
+1. **Cluster with monotone upstream** (upstream ≥ SELF): Cluster re-establishes consistency via broadcast → use local label.
+2. **Cluster with non-monotone upstream** (upstream = INCON): local proof's monotone-input assumption is violated → INCON.
+3. **Deterministic Process**: inherits upstream, capped by local proof strength → min(local, upstream).
+4. **Nondeterministic Process**: nondeterminism erases upstream provenance → SELF.
+5. **Failing proof**: → INCON regardless of upstream.
+
+Edge labels are computed by running the backward proof at each Network boundary (even for broadcast-to-Cluster edges), so upstream INCON is correctly detected and propagated.
+
 ## Unfinished goals
 
 **User-defined refinement orders.** The three built-in orders (Prefix, SetInclusion, Lattice) cover common cases, but the Coordination Criterion is parameterized over *any* partial order on outputs. A user should be able to specify a custom `PartialOrd` and have the analysis check monotonicity under that order. The `goal_overrides` API provides the hook; the missing piece is a `UserDefined` variant of `OrderGoal` that carries the order specification and rules for how operators interact with it.
