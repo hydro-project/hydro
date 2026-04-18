@@ -41,7 +41,7 @@ use crate::live_collections::boundedness::{Bounded, Unbounded};
 use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::singleton::Singleton;
 use crate::live_collections::stream::{
-    ExactlyOnce, NoOrder, Ordering, Retries, Stream, TotalOrder, UnknownCon,
+    ExactlyOnce, NoOrder, Ordering, Retries, Seq, Stream, TotalOrder, UnknownCon,
 };
 use crate::location::dynamic::LocationId;
 use crate::location::external_process::{
@@ -373,7 +373,7 @@ pub trait Location<'a>: dynamic::DynLocation {
     fn source_iter<T, E>(
         &self,
         e: impl QuotedWithContext<'a, E, Self>,
-    ) -> Stream<T, Self, Bounded, TotalOrder, ExactlyOnce>
+    ) -> Stream<T, Self, Bounded, TotalOrder, ExactlyOnce, Seq>
     where
         E: IntoIterator<Item = T>,
         Self: Sized,
@@ -385,7 +385,7 @@ pub trait Location<'a>: dynamic::DynLocation {
             HydroNode::Source {
                 source: HydroSource::Iter(e.into()),
                 metadata: self.new_node_metadata(
-                    Stream::<T, Self, Bounded, TotalOrder, ExactlyOnce, UnknownCon>::collection_kind(),
+                    Stream::<T, Self, Bounded, TotalOrder, ExactlyOnce, Seq>::collection_kind(),
                 ),
             },
         )
@@ -469,7 +469,7 @@ pub trait Location<'a>: dynamic::DynLocation {
         let (port, stream, sink) =
             self.bind_single_client::<_, Bytes, LengthDelimitedCodec>(from, NetworkHint::Auto);
 
-        sink.complete(self.source_iter(q!([])));
+        sink.complete(self.source_iter(q!([])).erase_consistency());
 
         (port, stream)
     }
@@ -493,7 +493,7 @@ pub trait Location<'a>: dynamic::DynLocation {
         T: Serialize + DeserializeOwned,
     {
         let (port, stream, sink) = self.bind_single_client_bincode::<_, T, ()>(from);
-        sink.complete(self.source_iter(q!([])));
+        sink.complete(self.source_iter(q!([])).erase_consistency());
 
         (
             ExternalBincodeSink {

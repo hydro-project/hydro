@@ -7,7 +7,7 @@ use serde::de::DeserializeOwned;
 use stageleft::{q, quote_type};
 use syn::parse_quote;
 
-use super::{ExactlyOnce, MinOrder, Ordering, Stream, TotalOrder};
+use super::{Consistency, ExactlyOnce, MinOrder, Ordering, Stream, TotalOrder, UnknownCon};
 use crate::compile::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot};
 use crate::live_collections::boundedness::{Boundedness, Unbounded};
 use crate::live_collections::keyed_singleton::KeyedSingleton;
@@ -509,7 +509,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     }
 }
 
-impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyOnce> {
+impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyOnce, UnknownCon> {
     #[deprecated = "use Stream::round_robin(..., TCP.fail_stop().bincode()) instead"]
     /// Distributes elements of this stream to cluster members in a round-robin fashion, using
     /// [`bincode`] to serialize/deserialize messages.
@@ -643,7 +643,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     }
 }
 
-impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyOnce> {
+impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyOnce, UnknownCon> {
     #[deprecated = "use Stream::round_robin(..., TCP.fail_stop().bincode()) instead"]
     /// Distributes elements of this stream to cluster members in a round-robin fashion, using
     /// [`bincode`] to serialize/deserialize messages.

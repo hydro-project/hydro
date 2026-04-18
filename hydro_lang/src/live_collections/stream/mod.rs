@@ -343,15 +343,15 @@ impl<T, L, B: Boundedness, O: Ordering, R: Retries, C: Consistency> Drop for Str
     }
 }
 
-impl<'a, T, L, O: Ordering, R: Retries> From<Stream<T, L, Bounded, O, R>>
-    for Stream<T, L, Unbounded, O, R>
+impl<'a, T, L, O: Ordering, R: Retries, C: Consistency> From<Stream<T, L, Bounded, O, R, C>>
+    for Stream<T, L, Unbounded, O, R, C>
 where
     L: Location<'a>,
 {
-    fn from(stream: Stream<T, L, Bounded, O, R>) -> Stream<T, L, Unbounded, O, R> {
+    fn from(stream: Stream<T, L, Bounded, O, R, C>) -> Stream<T, L, Unbounded, O, R, C> {
         let new_meta = stream
             .location
-            .new_node_metadata(Stream::<T, L, Unbounded, O, R>::collection_kind());
+            .new_node_metadata(Stream::<T, L, Unbounded, O, R, UnknownCon>::collection_kind());
 
         Stream {
             location: stream.location.clone(),
@@ -365,22 +365,22 @@ where
     }
 }
 
-impl<'a, T, L, B: Boundedness, R: Retries> From<Stream<T, L, B, TotalOrder, R>>
-    for Stream<T, L, B, NoOrder, R>
+impl<'a, T, L, B: Boundedness, R: Retries, C: Consistency> From<Stream<T, L, B, TotalOrder, R, C>>
+    for Stream<T, L, B, NoOrder, R, C>
 where
     L: Location<'a>,
 {
-    fn from(stream: Stream<T, L, B, TotalOrder, R>) -> Stream<T, L, B, NoOrder, R> {
+    fn from(stream: Stream<T, L, B, TotalOrder, R, C>) -> Stream<T, L, B, NoOrder, R, C> {
         stream.weaken_ordering()
     }
 }
 
-impl<'a, T, L, B: Boundedness, O: Ordering> From<Stream<T, L, B, O, ExactlyOnce>>
-    for Stream<T, L, B, O, AtLeastOnce>
+impl<'a, T, L, B: Boundedness, O: Ordering, C: Consistency> From<Stream<T, L, B, O, ExactlyOnce, C>>
+    for Stream<T, L, B, O, AtLeastOnce, C>
 where
     L: Location<'a>,
 {
-    fn from(stream: Stream<T, L, B, O, ExactlyOnce>) -> Stream<T, L, B, O, AtLeastOnce> {
+    fn from(stream: Stream<T, L, B, O, ExactlyOnce, C>) -> Stream<T, L, B, O, AtLeastOnce, C> {
         stream.weaken_retries()
     }
 }
@@ -548,6 +548,15 @@ where
     /// Returns the [`Location`] where this stream is being materialized.
     pub fn location(&self) -> &L {
         &self.location
+    }
+
+    /// Erases the consistency type parameter to `UnknownCon`.
+    /// Used internally where consistency tracking is not needed.
+    pub(crate) fn erase_consistency(self) -> Stream<T, L, B, O, R, UnknownCon> {
+        Stream::new(
+            self.location.clone(),
+            self.ir_node.replace(HydroNode::Placeholder),
+        )
     }
 
     pub(crate) fn collection_kind() -> CollectionKind {
@@ -1365,7 +1374,7 @@ where
         proof.register_proof(&comb);
 
         let nondet = nondet!(/** the combinator function is commutative and idempotent */);
-        let ordered_etc: Stream<T, L, B> = self.assume_retries(nondet).assume_ordering(nondet);
+        let ordered_etc = self.assume_retries::<ExactlyOnce>(nondet).assume_ordering::<TotalOrder>(nondet);
 
         let core = HydroNode::Fold {
             init,
@@ -1416,7 +1425,7 @@ where
         proof.register_proof(&f);
 
         let nondet = nondet!(/** the combinator function is commutative and idempotent */);
-        let ordered_etc: Stream<T, L, B> = self.assume_retries(nondet).assume_ordering(nondet);
+        let ordered_etc = self.assume_retries::<ExactlyOnce>(nondet).assume_ordering::<TotalOrder>(nondet);
 
         let core = HydroNode::Reduce {
             f: f.into(),
@@ -2039,7 +2048,7 @@ where
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
-    pub fn assume_ordering<O2: Ordering>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
+    pub fn assume_ordering<O2: Ordering>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R, C> {
         if O::ORDERING_KIND == O2::ORDERING_KIND {
             Stream::new(
                 self.location.clone(),
@@ -2075,7 +2084,7 @@ where
     fn assume_ordering_trusted_bounded<O2: Ordering>(
         self,
         nondet: NonDet,
-    ) -> Stream<T, L, B, O2, R> {
+    ) -> Stream<T, L, B, O2, R, C> {
         if B::BOUNDED {
             self.assume_ordering_trusted(nondet)
         } else {
@@ -2088,7 +2097,7 @@ where
     pub(crate) fn assume_ordering_trusted<O2: Ordering>(
         self,
         _nondet: NonDet,
-    ) -> Stream<T, L, B, O2, R> {
+    ) -> Stream<T, L, B, O2, R, C> {
         if O::ORDERING_KIND == O2::ORDERING_KIND {
             Stream::new(
                 self.location.clone(),
@@ -2122,20 +2131,20 @@ where
     #[deprecated = "use `weaken_ordering::<NoOrder>()` instead"]
     /// Weakens the ordering guarantee provided by the stream to [`NoOrder`],
     /// which is always safe because that is the weakest possible guarantee.
-    pub fn weakest_ordering(self) -> Stream<T, L, B, NoOrder, R> {
+    pub fn weakest_ordering(self) -> Stream<T, L, B, NoOrder, R, C> {
         self.weaken_ordering::<NoOrder>()
     }
 
     /// Weakens the ordering guarantee provided by the stream to `O2`, with the type-system
     /// enforcing that `O2` is weaker than the input ordering guarantee.
-    pub fn weaken_ordering<O2: WeakerOrderingThan<O>>(self) -> Stream<T, L, B, O2, R> {
+    pub fn weaken_ordering<O2: WeakerOrderingThan<O>>(self) -> Stream<T, L, B, O2, R, C> {
         let nondet = nondet!(/** this is a weaker ordering guarantee, so it is safe to assume */);
         self.assume_ordering::<O2>(nondet)
     }
 
     /// Strengthens the ordering guarantee to `TotalOrder`, given that `O: IsOrdered`, which
     /// implies that `O == TotalOrder`.
-    pub fn make_totally_ordered(self) -> Stream<T, L, B, TotalOrder, R>
+    pub fn make_totally_ordered(self) -> Stream<T, L, B, TotalOrder, R, C>
     where
         O: IsOrdered,
     {
@@ -2150,7 +2159,7 @@ where
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
-    pub fn assume_retries<R2: Retries>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
+    pub fn assume_retries<R2: Retries>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2, C> {
         if R::RETRIES_KIND == R2::RETRIES_KIND {
             Stream::new(
                 self.location.clone(),
@@ -2183,7 +2192,7 @@ where
 
     // only for internal APIs that have been carefully vetted to ensure that the non-determinism
     // is not observable
-    fn assume_retries_trusted<R2: Retries>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
+    fn assume_retries_trusted<R2: Retries>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2, C> {
         if R::RETRIES_KIND == R2::RETRIES_KIND {
             Stream::new(
                 self.location.clone(),
@@ -2217,20 +2226,20 @@ where
     #[deprecated = "use `weaken_retries::<AtLeastOnce>()` instead"]
     /// Weakens the retries guarantee provided by the stream to [`AtLeastOnce`],
     /// which is always safe because that is the weakest possible guarantee.
-    pub fn weakest_retries(self) -> Stream<T, L, B, O, AtLeastOnce> {
+    pub fn weakest_retries(self) -> Stream<T, L, B, O, AtLeastOnce, C> {
         self.weaken_retries::<AtLeastOnce>()
     }
 
     /// Weakens the retries guarantee provided by the stream to `R2`, with the type-system
     /// enforcing that `R2` is weaker than the input retries guarantee.
-    pub fn weaken_retries<R2: WeakerRetryThan<R>>(self) -> Stream<T, L, B, O, R2> {
+    pub fn weaken_retries<R2: WeakerRetryThan<R>>(self) -> Stream<T, L, B, O, R2, C> {
         let nondet = nondet!(/** this is a weaker retry guarantee, so it is safe to assume */);
         self.assume_retries::<R2>(nondet)
     }
 
     /// Strengthens the retry guarantee to `ExactlyOnce`, given that `R: IsExactlyOnce`, which
     /// implies that `R == ExactlyOnce`.
-    pub fn make_exactly_once(self) -> Stream<T, L, B, O, ExactlyOnce>
+    pub fn make_exactly_once(self) -> Stream<T, L, B, O, ExactlyOnce, C>
     where
         R: IsExactlyOnce,
     {
