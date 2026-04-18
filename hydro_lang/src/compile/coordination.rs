@@ -12,12 +12,15 @@
 //! or break (monotonicity violated).
 
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
+
+use slotmap::SecondaryMap;
 
 use super::builder::CycleId;
 use super::ir::{HydroNode, HydroRoot, SharedNode, StreamOrder};
 use crate::location::dynamic::LocationId;
+use crate::location::LocationKey;
 use super::ir::HydroSource;
 
 #[cfg(feature = "build")]
@@ -62,8 +65,387 @@ impl fmt::Display for OrderGoal {
     }
 }
 
-/// This can be overridden by the user (future API).
-/// Infer the default proof goal from a collection kind.
+/// The consistency guarantee provided by a passing coordination analysis.
+///
+/// Derived from the proof goal, the proof result, and the sink's location:
+/// - **SequentiallyConsistent**: Prefix goal passes on a Cluster — all replicas
+///   produce prefixes of the same deterministic sequence.
+/// - **Convergent**: SetInclusion or Lattice goal passes — all replicas converge
+///   via commutative merge.
+/// - **SelfConsistent**: analysis passes but no cross-replica guarantee applies
+///   (e.g., single Process).
+/// - **Inconsistent**: analysis fails — output may contradict earlier observations.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ConsistencyLabel {
+    SequentiallyConsistent,
+    Convergent,
+    SelfConsistent,
+    Inconsistent,
+}
+
+impl ConsistencyLabel {
+    fn strength(&self) -> u8 {
+        match self {
+            ConsistencyLabel::SequentiallyConsistent => 3,
+            ConsistencyLabel::Convergent => 2,
+            ConsistencyLabel::SelfConsistent => 1,
+            ConsistencyLabel::Inconsistent => 0,
+        }
+    }
+}
+
+impl fmt::Display for ConsistencyLabel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ConsistencyLabel::SequentiallyConsistent => write!(f, "SEQUENTIALLY CONSISTENT"),
+            ConsistencyLabel::Convergent => write!(f, "CONVERGENT"),
+            ConsistencyLabel::SelfConsistent => write!(f, "SELF-CONSISTENT"),
+            ConsistencyLabel::Inconsistent => write!(f, "INCONSISTENT"),
+        }
+    }
+}
+
+fn is_cluster_location(location: &LocationId) -> bool {
+    match location {
+        LocationId::Cluster(_) => true,
+        LocationId::Tick(_, inner) | LocationId::Atomic(inner) => is_cluster_location(inner),
+        _ => false,
+    }
+}
+
+fn consistency_label(goal: &OrderGoal, passed: bool, location: &LocationId) -> ConsistencyLabel {
+    if !passed {
+        return ConsistencyLabel::Inconsistent;
+    }
+    let on_cluster = is_cluster_location(location);
+    match goal {
+        OrderGoal::Prefix => {
+            if on_cluster {
+                ConsistencyLabel::SequentiallyConsistent
+            } else {
+                ConsistencyLabel::SelfConsistent
+            }
+        }
+        OrderGoal::SetInclusion | OrderGoal::Lattice => {
+            if on_cluster {
+                ConsistencyLabel::Convergent
+            } else {
+                ConsistencyLabel::SelfConsistent
+            }
+        }
+    }
+}
+
+/// Label based only on goal (ignoring location). Used for propagation where
+/// location context is handled separately.
+fn goal_label(goal: &OrderGoal) -> ConsistencyLabel {
+    match goal {
+        OrderGoal::Prefix => ConsistencyLabel::SequentiallyConsistent,
+        OrderGoal::SetInclusion | OrderGoal::Lattice => ConsistencyLabel::Convergent,
+    }
+}
+
+/// An edge in the location graph with its consistency label.
+#[derive(Clone, Debug)]
+pub struct ChannelEdge {
+    pub from: LocationId,
+    pub to: LocationId,
+    pub label: ConsistencyLabel,
+    pub goal: OrderGoal,
+}
+
+// ---------------------------------------------------------------------------
+// Channel graph rendering: forward DAG via ascii-dag, back edges listed
+// ---------------------------------------------------------------------------
+
+/// Split channel edges into forward (toward sink) and back (feedback) based
+/// on backward-walk discovery order. Forward edges form a DAG.
+fn split_forward_back(
+    channels: &[ChannelEdge],
+    discovery_order: &HashMap<LocationId, usize>,
+) -> (Vec<ChannelEdge>, Vec<ChannelEdge>) {
+    let mut forward = Vec::new();
+    let mut back = Vec::new();
+    for ch in channels {
+        let from_ord = discovery_order.get(&ch.from).copied().unwrap_or(usize::MAX);
+        let to_ord = discovery_order.get(&ch.to).copied().unwrap_or(usize::MAX);
+        if from_ord > to_ord {
+            forward.push(ch.clone());
+        } else {
+            back.push(ch.clone());
+        }
+    }
+    (forward, back)
+}
+
+/// Propagate consistency labels forward along the DAG edges.
+///
+/// Edge labels initially reflect the sender's local consistency. Propagation
+/// allows a location to inherit upstream labels only when its local proof
+/// passes at the same strength:
+///
+/// - Deterministic (Prefix-preserving) on SEQ CONSISTENT → SEQ CONSISTENT
+/// - Monotone (SetInclusion-preserving) on SEQ CONSISTENT → CONVERGENT (order lost)
+/// - Monotone on CONVERGENT → CONVERGENT
+/// - Nondeterministic Process → SELF-CONSISTENT (provenance erased)
+/// - Proof fails → INCONSISTENT
+///
+/// Returns the propagated consistency at the terminal sink.
+fn propagate_forward(
+    forward: &mut [ChannelEdge],
+    discovery_order: &HashMap<LocationId, usize>,
+    sink_goal: &OrderGoal,
+    sink_proof_passed: bool,
+    sink_has_nondet: bool,
+    sink_location: &LocationId,
+) -> ConsistencyLabel {
+    // Sort forward edges source-first (highest discovery order first)
+    forward.sort_by(|a, b| {
+        let a_ord = discovery_order.get(&a.from).copied().unwrap_or(0);
+        let b_ord = discovery_order.get(&b.from).copied().unwrap_or(0);
+        b_ord.cmp(&a_ord)
+    });
+
+    // Track the best label arriving at each location
+    let mut arriving: HashMap<LocationId, ConsistencyLabel> = HashMap::new();
+
+    for edge in forward.iter_mut() {
+        if let Some(upstream) = arriving.get(&edge.from) {
+            edge.label = propagate_label(upstream, &edge.label, is_cluster_location(&edge.from));
+        }
+
+        let entry = arriving.entry(edge.to.clone()).or_insert(ConsistencyLabel::Inconsistent);
+        if edge.label.strength() > entry.strength() {
+            *entry = edge.label.clone();
+        }
+    }
+
+    // Terminal sink label
+    if !sink_proof_passed {
+        return ConsistencyLabel::Inconsistent;
+    }
+    let sink_base = base_location(sink_location).clone();
+    let local_label = goal_label(sink_goal);
+    match arriving.get(&sink_base) {
+        Some(upstream) => {
+            if sink_has_nondet && !is_cluster_location(sink_location) {
+                // Nondet Process erases provenance
+                ConsistencyLabel::SelfConsistent
+            } else {
+                propagate_label(upstream, &local_label, is_cluster_location(sink_location))
+            }
+        }
+        None => {
+            // No channels — purely local
+            if is_cluster_location(sink_location) {
+                local_label
+            } else {
+                ConsistencyLabel::SelfConsistent
+            }
+        }
+    }
+}
+
+/// Given an upstream label, a location's local label, and the location type,
+/// compute the propagated label.
+///
+/// - Cluster: re-establishes consistency via broadcast. Result = local label.
+/// - Deterministic Process (local != SELF-CONSISTENT): inherits upstream,
+///   capped by local strength (can't upgrade beyond what local proof shows).
+/// - Nondet Process (local == SELF-CONSISTENT): provenance erased.
+/// - INCONSISTENT locally: always INCONSISTENT.
+fn propagate_label(upstream: &ConsistencyLabel, local: &ConsistencyLabel, is_cluster: bool) -> ConsistencyLabel {
+    match local {
+        ConsistencyLabel::Inconsistent => ConsistencyLabel::Inconsistent,
+        ConsistencyLabel::SelfConsistent => ConsistencyLabel::SelfConsistent,
+        _ if is_cluster => {
+            // Cluster re-establishes from broadcast — uses its own label
+            local.clone()
+        }
+        _ => {
+            // Deterministic Process: inherit upstream, capped by local strength
+            if upstream.strength() <= local.strength() {
+                upstream.clone()
+            } else {
+                local.clone()
+            }
+        }
+    }
+}
+
+#[cfg(feature = "build")]
+fn render_forward_dag(forward: &[ChannelEdge], names: &SecondaryMap<LocationKey, String>) -> String {
+    let mut loc_ids: Vec<LocationId> = Vec::new();
+    let mut loc_id = |loc: &LocationId| -> usize {
+        let base = base_location(loc).clone();
+        if let Some(i) = loc_ids.iter().position(|l| l == &base) { i }
+        else { loc_ids.push(base); loc_ids.len() - 1 }
+    };
+
+    let edges: Vec<(usize, usize, String)> = forward.iter().map(|ch| {
+        (loc_id(&ch.from), loc_id(&ch.to), ch.label.to_string())
+    }).collect();
+
+    let nodes: Vec<(usize, String)> = loc_ids.iter().enumerate()
+        .map(|(i, loc)| (i, fmt_location(loc, names)))
+        .collect();
+
+    // Check if it's a simple chain: each node has at most 1 in-edge and 1 out-edge
+    let n = nodes.len();
+    let mut in_count = vec![0usize; n];
+    let mut out_count = vec![0usize; n];
+    let mut out_edge: Vec<Option<usize>> = vec![None; n];
+    for (i, &(f, t, _)) in edges.iter().enumerate() {
+        in_count[t] += 1;
+        out_count[f] += 1;
+        out_edge[f] = Some(i);
+    }
+    let is_chain = in_count.iter().all(|&c| c <= 1) && out_count.iter().all(|&c| c <= 1);
+
+    if is_chain && !edges.is_empty() {
+        // Find the root (no incoming edges)
+        let start = (0..n).find(|&i| in_count[i] == 0).unwrap_or(0);
+        let mut parts = vec![nodes[start].1.clone()];
+        let mut cur = start;
+        while let Some(ei) = out_edge[cur] {
+            let (_, to, ref label) = edges[ei];
+            parts.push(format!("--[{}]--> {}", label, nodes[to].1));
+            cur = to;
+        }
+        parts.join(" ")
+    } else {
+        // Diamond/complex: fall back to ascii-dag vertical with edge labels
+        use ascii_dag::Graph;
+        let node_refs: Vec<(usize, &str)> = nodes.iter().map(|(i, s)| (*i, s.as_str())).collect();
+        let edge_refs: Vec<(usize, usize, Option<&str>)> = edges.iter()
+            .map(|(f, t, l)| (*f, *t, Some(l.as_str())))
+            .collect();
+        let dag = Graph::from_edges_labeled(&node_refs, &edge_refs);
+        let ir = dag.compute_layout();
+        ir.render_scanline().trim_end().to_string()
+    }
+}
+
+fn fmt_location(loc: &LocationId, names: &SecondaryMap<LocationKey, String>) -> String {
+    let base = base_location(loc);
+    let key = base.key();
+    let name = names.get(key).map(|s| s.as_str()).unwrap_or("");
+    let kind = if is_cluster_location(base) { "Cluster" } else { "Process" };
+    if name.is_empty() || name == "()" {
+        format!("{}({})", kind, key)
+    } else {
+        format!("{}({})", kind, name)
+    }
+}
+fn consistency_description(label: &ConsistencyLabel) -> &'static str {
+    match label {
+        ConsistencyLabel::SequentiallyConsistent => "All replicas produce prefixes of the same deterministic sequence.",
+        ConsistencyLabel::Convergent => "All replicas converge to the same value via commutative merge.",
+        ConsistencyLabel::SelfConsistent => "Future-monotone: observations only refine, never retract.",
+        ConsistencyLabel::Inconsistent => "Output may contradict earlier observations.",
+    }
+}
+
+/// Analyze channels along the dataflow path from a sink backward.
+/// Returns channel edges and a discovery order map (location → order, 0 = sink location).
+fn analyze_channels(
+    root_input: &HydroNode,
+    sink_location: &LocationId,
+    cycle_proofs: &CycleProofs,
+    ir: &[HydroRoot],
+) -> (Vec<ChannelEdge>, HashMap<LocationId, usize>) {
+    let mut edges = Vec::new();
+    let mut visited_edges: HashSet<(String, String)> = HashSet::new();
+    let mut visited_cycles: HashSet<CycleId> = HashSet::new();
+    let mut discovery_order: HashMap<LocationId, usize> = HashMap::new();
+    let sink_base = base_location(sink_location).clone();
+    discovery_order.insert(sink_base, 0);
+    analyze_channels_from(root_input, cycle_proofs, ir, &mut edges, &mut visited_edges, &mut visited_cycles, &mut discovery_order);
+    (edges, discovery_order)
+}
+
+fn analyze_channels_from(
+    node: &HydroNode,
+    cycle_proofs: &CycleProofs,
+    ir: &[HydroRoot],
+    edges: &mut Vec<ChannelEdge>,
+    visited_edges: &mut HashSet<(String, String)>,
+    visited_cycles: &mut HashSet<CycleId>,
+    discovery_order: &mut HashMap<LocationId, usize>,
+) {
+    match node {
+        HydroNode::Network { input, metadata, .. } => {
+            let recv_loc = base_location(&metadata.location_id).clone();
+            let send_loc = base_location(&input.metadata().location_id).clone();
+            if send_loc != recv_loc {
+                let edge_key = (format!("{:?}", send_loc), format!("{:?}", recv_loc));
+                if !visited_edges.contains(&edge_key) {
+                    visited_edges.insert(edge_key);
+                    // Record discovery order
+                    let next_ord = discovery_order.len();
+                    discovery_order.entry(recv_loc.clone()).or_insert(next_ord);
+                    let next_ord = discovery_order.len();
+                    discovery_order.entry(send_loc.clone()).or_insert(next_ord);
+                    // Run proof from sending side, pick strongest label
+                    let mut best_label = ConsistencyLabel::Inconsistent;
+                    let mut best_goal = OrderGoal::SetInclusion;
+                    for candidate in &[OrderGoal::Prefix, OrderGoal::Lattice, OrderGoal::SetInclusion] {
+                        let mut seen = SeenTees::new();
+                        let result = prove(input, candidate, cycle_proofs, &mut seen);
+                        if result.is_proved() {
+                            let label = consistency_label(candidate, true, &send_loc);
+                            if label.strength() > best_label.strength() {
+                                best_label = label;
+                                best_goal = candidate.clone();
+                            }
+                        }
+                    }
+                    edges.push(ChannelEdge {
+                        from: send_loc,
+                        to: recv_loc,
+                        label: best_label,
+                        goal: best_goal,
+                    });
+                }
+                // Continue upstream
+                analyze_channels_from(input, cycle_proofs, ir, edges, visited_edges, visited_cycles, discovery_order);
+                return;
+            }
+            // Same-location network: keep walking
+            analyze_channels_from(input, cycle_proofs, ir, edges, visited_edges, visited_cycles, discovery_order);
+        }
+        HydroNode::CycleSource { cycle_id, .. } => {
+            if !visited_cycles.insert(*cycle_id) {
+                return;
+            }
+            for root in ir {
+                if let HydroRoot::CycleSink { cycle_id: sid, input, .. } = root {
+                    if sid == cycle_id {
+                        analyze_channels_from(input, cycle_proofs, ir, edges, visited_edges, visited_cycles, discovery_order);
+                        return;
+                    }
+                }
+            }
+        }
+        HydroNode::Tee { inner, .. } | HydroNode::Partition { inner, .. } => {
+            let borrowed = inner.0.borrow();
+            analyze_channels_from(&borrowed, cycle_proofs, ir, edges, visited_edges, visited_cycles, discovery_order);
+        }
+        _ => {
+            for input in node.input() {
+                analyze_channels_from(input, cycle_proofs, ir, edges, visited_edges, visited_cycles, discovery_order);
+            }
+        }
+    }
+}
+
+fn base_location(loc: &LocationId) -> &LocationId {
+    match loc {
+        LocationId::Tick(_, inner) | LocationId::Atomic(inner) => base_location(inner),
+        other => other,
+    }
+}
+
 fn goal_for_collection_kind(kind: &super::ir::CollectionKind) -> OrderGoal {
     match kind {
         super::ir::CollectionKind::Stream { order: StreamOrder::TotalOrder, .. } => OrderGoal::Prefix,
@@ -74,10 +456,6 @@ fn goal_for_collection_kind(kind: &super::ir::CollectionKind) -> OrderGoal {
         | super::ir::CollectionKind::Optional { .. }
         | super::ir::CollectionKind::KeyedSingleton { .. } => OrderGoal::Lattice,
     }
-}
-
-fn default_goal_for_sink(root: &HydroRoot) -> OrderGoal {
-    goal_for_collection_kind(&root.input_metadata().collection_kind)
 }
 
 // ---------------------------------------------------------------------------
@@ -241,8 +619,13 @@ pub struct SinkResult {
     pub goal: OrderGoal,
     pub result: ProofResult,
     pub location: LocationId,
+    /// The overall consistency guarantee (strongest across all channels).
+    pub consistency: ConsistencyLabel,
+    /// Per-channel consistency labels along the dataflow path.
+    pub channels: Vec<ChannelEdge>,
+    /// Discovery order of locations from the backward walk (location → order, 0 = sink).
+    pub discovery_order: HashMap<LocationId, usize>,
     /// Sites where local nondeterminism was resolved on a Process.
-    /// Non-empty means the Process cannot be replicated as a Cluster without coordination.
     pub replication_issues: Vec<ProofStep>,
 }
 
@@ -253,12 +636,18 @@ pub struct SinkResult {
 /// Full coordination analysis report.
 pub struct CoordinationReport {
     pub sinks: Vec<SinkResult>,
+    pub location_names: SecondaryMap<LocationKey, String>,
 }
 
 impl CoordinationReport {
     /// Whether all observable sinks are proved monotone.
     pub fn all_monotone(&self) -> bool {
         self.sinks.iter().all(|s| s.result.is_proved())
+    }
+
+    /// Whether all observable sinks have a consistency guarantee (not Inconsistent).
+    pub fn all_consistent(&self) -> bool {
+        self.sinks.iter().all(|s| s.consistency != ConsistencyLabel::Inconsistent)
     }
 
     /// Generate compiler diagnostics (warnings/notes) for rust-analyzer integration.
@@ -278,9 +667,20 @@ impl CoordinationReport {
                             span,
                             Level::Warning,
                             format!(
-                                "coordination required: {} (sink `{}`, goal: {})",
+                                "INCONSISTENT: {} (sink `{}`, goal: {})",
                                 reason, sink.name, sink.goal
                             ),
+                        ));
+                    }
+                }
+            } else {
+                if let Some(step) = sink.result.trace.last() {
+                    if let ProofAction::Discharged { .. } = &step.action {
+                        let span = step.proc_macro_span.unwrap_or_else(proc_macro2::Span::call_site);
+                        diags.push(Diagnostic::spanned(
+                            span,
+                            Level::Note,
+                            format!("{}: sink `{}` ({})", sink.consistency, sink.name, sink.goal),
                         ));
                     }
                 }
@@ -299,54 +699,57 @@ impl fmt::Display for CoordinationReport {
         let total = self.sinks.len();
         let failing: Vec<_> = self.sinks.iter().filter(|s| !s.result.is_proved()).collect();
         if failing.is_empty() {
-            writeln!(f, "Coordination Criterion: PASS — all {total} sinks are future-monotone")?;
+            writeln!(f, "Coordination Analysis: all {total} sinks are consistent")?;
         } else {
             writeln!(
                 f,
-                "Coordination Criterion: FAIL — {}/{total} sinks require coordination",
+                "Coordination Analysis: {}/{total} sinks are INCONSISTENT",
                 failing.len()
             )?;
         }
 
         for s in &self.sinks {
             if s.result.is_proved() {
-                writeln!(f, "\n  ✓ {} ({})", s.name, s.goal)?;
-                for step in &s.result.trace {
-                    let span = step.span.as_deref().unwrap_or("");
-                    match &step.action {
-                        ProofAction::Preserved => {
-                            writeln!(f, "    {} — preserved  {}", step.operator, span)?;
-                        }
-                        ProofAction::Discharged { reason } => {
-                            writeln!(f, "    {} — ✓ discharged: {}  {}", step.operator, reason, span)?;
-                        }
-                        ProofAction::GoalChanged { new_goal } => {
-                            writeln!(f, "    {} — goal → {}  {}", step.operator, new_goal, span)?;
-                        }
-                        ProofAction::ResolvedLocally { .. } => {
-                            writeln!(f, "    {} — resolved locally (Process)  {}", step.operator, span)?;
-                        }
-                        ProofAction::Broken { .. } => {} // shouldn't appear in proved
+                writeln!(f, "\n  ✓ {} — {}", s.name, s.consistency)?;
+            } else {
+                writeln!(f, "\n  ✗ {} — INCONSISTENT", s.name)?;
+            }
+            // Show channel graph: forward DAG via ascii-dag, back edges listed
+            if !s.channels.is_empty() {
+                let (forward, back) = split_forward_back(&s.channels, &s.discovery_order);
+                #[cfg(feature = "build")]
+                if !forward.is_empty() {
+                    let graph = render_forward_dag(&forward, &self.location_names);
+                    for line in graph.trim_end().lines() {
+                        writeln!(f, "    {}", line)?;
                     }
                 }
-            } else {
-                writeln!(f, "\n  ✗ {} (goal: {})", s.name, s.goal)?;
-                for step in &s.result.trace {
-                    let span = step.span.as_deref().unwrap_or("");
-                    match &step.action {
-                        ProofAction::Preserved => {
-                            writeln!(f, "    {} — preserved  {}", step.operator, span)?;
-                        }
-                        ProofAction::Broken { reason } => {
-                            writeln!(f, "    {} — ✗ BROKEN: {}  {}", step.operator, reason, span)?;
-                        }
-                        ProofAction::GoalChanged { new_goal } => {
-                            writeln!(f, "    {} — goal → {}  {}", step.operator, new_goal, span)?;
-                        }
-                        ProofAction::ResolvedLocally { .. } => {
-                            writeln!(f, "    {} — resolved locally (Process)  {}", step.operator, span)?;
-                        }
-                        ProofAction::Discharged { .. } => {} // shouldn't appear in broken
+                #[cfg(not(feature = "build"))]
+                for ch in &forward {
+                    writeln!(f, "    {} --[{}]--> {}", fmt_location(&ch.from, &self.location_names), ch.label, fmt_location(&ch.to, &self.location_names))?;
+                }
+                for ch in &back {
+                    writeln!(f, "    ↩ {} --[{}]--> {}", fmt_location(&ch.from, &self.location_names), ch.label, fmt_location(&ch.to, &self.location_names))?;
+                }
+            }
+            // Show proof trace
+            for step in &s.result.trace {
+                let span = step.span.as_deref().unwrap_or("");
+                match &step.action {
+                    ProofAction::Preserved => {
+                        writeln!(f, "    {} — preserved  {}", step.operator, span)?;
+                    }
+                    ProofAction::Discharged { reason } => {
+                        writeln!(f, "    {} — ✓ discharged: {}  {}", step.operator, reason, span)?;
+                    }
+                    ProofAction::Broken { reason } => {
+                        writeln!(f, "    {} — ✗ BROKEN: {}  {}", step.operator, reason, span)?;
+                    }
+                    ProofAction::GoalChanged { new_goal } => {
+                        writeln!(f, "    {} — goal → {}  {}", step.operator, new_goal, span)?;
+                    }
+                    ProofAction::ResolvedLocally { .. } => {
+                        writeln!(f, "    {} — resolved locally (Process)  {}", step.operator, span)?;
                     }
                 }
             }
@@ -356,7 +759,7 @@ impl fmt::Display for CoordinationReport {
         let mut process_issues: HashMap<String, Vec<&ProofStep>> = HashMap::new();
         for s in &self.sinks {
             if !s.replication_issues.is_empty() {
-                let loc_name = format!("{:?}", s.location);
+                let loc_name = fmt_location(&s.location, &self.location_names);
                 let issues = process_issues.entry(loc_name).or_default();
                 for issue in &s.replication_issues {
                     // Deduplicate by span
@@ -585,17 +988,10 @@ fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
         | HydroNode::EndAtomic { inner, .. }
         | HydroNode::YieldConcat { inner, .. } => Passthrough(inner),
 
-        // ObserveNonDet: on a Cluster, per-member non-determinism breaks coordination.
-        // On a Process (or if trusted), resolved locally but flagged for replication analysis.
-        HydroNode::ObserveNonDet { trusted, metadata, .. } => {
-            if !trusted && matches!(metadata.location_id, LocationId::Cluster(_)) {
-                Custom // handled in prove() below — fails
-            } else if !trusted {
-                Custom // handled in prove() below — resolved locally with replication issue
-            } else {
-                Passthrough(match node { HydroNode::ObserveNonDet { inner, .. } => inner, _ => unreachable!() })
-            }
-        }
+        // ObserveNonDet: type-level ordering annotation (assume_ordering / nondet!).
+        // Does not change data — just a type cast. The analysis looks straight through it.
+        // The real trust boundary is the upstream operator (e.g., Network broadcast into Cluster).
+        HydroNode::ObserveNonDet { inner, .. } => Passthrough(inner),
 
         // Shared passthrough
         HydroNode::Tee { inner, .. }
@@ -759,19 +1155,6 @@ fn prove(
     // Custom logic for operators that need it
     match node {
 
-        // --- ObserveNonDet on Process: resolved locally, flagged for replication ---
-        HydroNode::ObserveNonDet { inner, trusted: false, metadata, .. }
-            if !matches!(metadata.location_id, LocationId::Cluster(_)) =>
-        {
-            prove(inner, goal, cycle_proofs, seen_tees)
-                .prepend_resolved_locally(&name, "nondeterministic ordering", span, pm_span)
-        }
-
-        // --- ObserveNonDet on Cluster: per-member non-determinism breaks coordination ---
-        HydroNode::ObserveNonDet { metadata, .. } if matches!(metadata.location_id, LocationId::Cluster(_)) => {
-            ProofResult::fail(&name, "per-member non-determinism (nondet! on Cluster) breaks coordination", span, pm_span)
-        }
-
         // --- Batch: nondeterministic tick boundaries, flagged for replication ---
         // Batch preserves SetInclusion (no elements lost), but tick boundaries are
         // nondeterministic — different runs/replicas may group elements differently,
@@ -858,6 +1241,7 @@ fn prove_shared(
 pub fn analyze_coordination(
     ir: &[HydroRoot],
     goal_overrides: &HashMap<String, OrderGoal>,
+    location_names: &SecondaryMap<LocationKey, String>,
 ) -> CoordinationReport {
     // Pass 1: analyze CycleSink roots to determine cycle monotonicity.
     // Seed all cycles with optimistic placeholders so self-recursive cycles
@@ -907,28 +1291,18 @@ pub fn analyze_coordination(
         let candidates: Vec<OrderGoal> = if let Some(g) = override_goal {
             vec![g]
         } else {
-            // Try the default goal plus alternatives
-            let default = default_goal_for_sink(root);
-            let mut goals = vec![default.clone()];
-            // Add alternatives that aren't already the default
-            for alt in &[OrderGoal::Prefix, OrderGoal::SetInclusion, OrderGoal::Lattice] {
-                if *alt != default {
-                    goals.push(alt.clone());
-                }
-            }
-            goals
+            vec![OrderGoal::Prefix, OrderGoal::Lattice, OrderGoal::SetInclusion]
         };
 
-        // Try each candidate goal, pick the best result
+        // Try each candidate goal, pick the strongest passing one
+        // (Prefix > Lattice > SetInclusion — Prefix implies SetInclusion)
         let mut best_goal = candidates[0].clone();
         let mut best_result = prove(root.input(), &candidates[0], &cycle_proofs, &mut seen_tees);
         for candidate in &candidates[1..] {
+            if best_result.success { break; } // stronger goal already passes
             let mut alt_seen = SeenTees::new();
             let alt_result = prove(root.input(), candidate, &cycle_proofs, &mut alt_seen);
-            // Prefer: (1) outright pass, (2) conditional pass with fewer blessings, (3) fail
-            let best_score = if best_result.success { 0 } else { usize::MAX };
-            let alt_score = if alt_result.success { 0 } else { usize::MAX };
-            if alt_score < best_score {
+            if alt_result.success || !best_result.success {
                 best_goal = candidate.clone();
                 best_result = alt_result;
             }
@@ -936,16 +1310,33 @@ pub fn analyze_coordination(
 
         best_result.trace.reverse();
         let replication_issues = best_result.replication_issues.clone();
+        let location = root.input_metadata().location_id.clone();
+
+        // Compute per-channel consistency labels by walking upstream
+        let (mut channels, discovery_order) = analyze_channels(root.input(), &location, &cycle_proofs, ir);
+        // Split forward/back and propagate labels forward
+        let (mut forward, back) = split_forward_back(&channels, &discovery_order);
+        let sink_has_nondet = !replication_issues.is_empty();
+        let consistency = propagate_forward(
+            &mut forward, &discovery_order,
+            &best_goal, best_result.is_proved(), sink_has_nondet, &location,
+        );
+        // Reassemble channels with propagated labels
+        channels = forward.into_iter().chain(back.into_iter()).collect();
+
         sinks.push(SinkResult {
             name: short_name_root(root).to_string(),
             goal: best_goal,
             result: best_result,
-            location: root.input_metadata().location_id.clone(),
+            location,
+            consistency,
+            channels,
+            discovery_order,
             replication_issues,
         });
     }
 
-    CoordinationReport { sinks }
+    CoordinationReport { sinks, location_names: location_names.clone() }
 }
 
 fn short_name_root(root: &HydroRoot) -> &'static str {
@@ -964,8 +1355,8 @@ fn short_name_root(root: &HydroRoot) -> &'static str {
 // ---------------------------------------------------------------------------
 
 /// Analyze with default goals for all sinks.
-pub fn analyze_coordination_default(ir: &[HydroRoot]) -> CoordinationReport {
-    analyze_coordination(ir, &HashMap::new())
+pub fn analyze_coordination_default(ir: &[HydroRoot], location_names: &SecondaryMap<LocationKey, String>) -> CoordinationReport {
+    analyze_coordination(ir, &HashMap::new(), location_names)
 }
 
 #[cfg(test)]
