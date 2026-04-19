@@ -373,14 +373,14 @@ pub trait Location<'a>: dynamic::DynLocation {
     fn source_iter<T, E>(
         &self,
         e: impl QuotedWithContext<'a, E, Self>,
-    ) -> Stream<T, Self, Bounded, TotalOrder, ExactlyOnce>
+    ) -> crate::consistency::Consistent<crate::consistency::Seq, Stream<T, Self, Bounded, TotalOrder, ExactlyOnce>>
     where
         E: IntoIterator<Item = T>,
         Self: Sized,
     {
         let e = e.splice_typed_ctx(self);
 
-        Stream::new(
+        crate::consistency::Consistent::new(Stream::new(
             self.clone(),
             HydroNode::Source {
                 source: HydroSource::Iter(e.into()),
@@ -388,7 +388,7 @@ pub trait Location<'a>: dynamic::DynLocation {
                     Stream::<T, Self, Bounded, TotalOrder, ExactlyOnce>::collection_kind(),
                 ),
             },
-        )
+        ))
     }
 
     /// Creates a stream of membership events for a cluster.
@@ -468,7 +468,7 @@ pub trait Location<'a>: dynamic::DynLocation {
         let (port, stream, sink) =
             self.bind_single_client::<_, Bytes, LengthDelimitedCodec>(from, NetworkHint::Auto);
 
-        sink.complete(self.source_iter(q!([])));
+        sink.complete(self.source_iter(q!([])).into_inner());
 
         (port, stream)
     }
@@ -492,7 +492,7 @@ pub trait Location<'a>: dynamic::DynLocation {
         T: Serialize + DeserializeOwned,
     {
         let (port, stream, sink) = self.bind_single_client_bincode::<_, T, ()>(from);
-        sink.complete(self.source_iter(q!([])));
+        sink.complete(self.source_iter(q!([])).into_inner());
 
         (
             ExternalBincodeSink {

@@ -108,6 +108,16 @@ impl<C: Consistency, S> Consistent<C, S> {
     }
 }
 
+/// Bounded → Unbounded conversion preserves consistency.
+impl<'a, C: Consistency, T, L: Location<'a>, O: Ordering, R: Retries>
+    From<Consistent<C, Stream<T, L, Bounded, O, R>>>
+    for Consistent<C, Stream<T, L, Unbounded, O, R>>
+{
+    fn from(c: Consistent<C, Stream<T, L, Bounded, O, R>>) -> Self {
+        Consistent::new(c.inner.into())
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Stream operator forwarding
 // ---------------------------------------------------------------------------
@@ -643,6 +653,106 @@ impl<'a, Con: Consistency, T, L, B: Boundedness, O: Ordering, R: Retries>
     >>
     where T: Clone + Serialize + DeserializeOwned {
         Consistent::new(self.inner.broadcast_bincode(other, nondet_membership))
+    }
+}
+
+
+// ---------------------------------------------------------------------------
+// KeyedStream, Singleton, Optional: entry points and essential forwarding
+// ---------------------------------------------------------------------------
+
+use crate::live_collections::keyed_stream::KeyedStream;
+use crate::live_collections::keyed_singleton::KeyedSingleton;
+
+impl<K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, L, B, O, R> {
+    pub fn consistent<C: Consistency>(self) -> Consistent<C, Self> {
+        Consistent::new(self)
+    }
+}
+
+impl<T, L, B: crate::live_collections::singleton::SingletonBound> Singleton<T, L, B> {
+    pub fn consistent<C: Consistency>(self) -> Consistent<C, Self> {
+        Consistent::new(self)
+    }
+}
+
+impl<T, L, B: Boundedness> Optional<T, L, B> {
+    pub fn consistent<C: Consistency>(self) -> Consistent<C, Self> {
+        Consistent::new(self)
+    }
+}
+
+// ---- Consistent<C, Stream<(K,V)>> → Consistent<C, KeyedStream> ----
+
+impl<'a, Con: Consistency, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    Consistent<Con, Stream<(K, V), L, B, O, R>>
+{
+    pub fn into_keyed(self) -> Consistent<Con, KeyedStream<K, V, L, B, O, R>> {
+        Consistent::new(self.inner.into_keyed())
+    }
+}
+
+// ---- KeyedStream preserving operators ----
+
+impl<'a, Con: Consistency, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    Consistent<Con, KeyedStream<K, V, L, B, O, R>>
+{
+    pub fn entries(self) -> Consistent<Con, Stream<(K, V), L, B, NoOrder, R>> {
+        Consistent::new(self.inner.entries())
+    }
+
+    pub fn values(self) -> Consistent<Con, Stream<V, L, B, NoOrder, R>> {
+        Consistent::new(self.inner.values())
+    }
+
+    pub fn keys(self) -> Consistent<Con, Stream<K, L, B, NoOrder, ExactlyOnce>>
+    where K: Eq + std::hash::Hash {
+        Consistent::new(self.inner.keys())
+    }
+
+    pub fn ir_node_named(self, name: &str) -> Consistent<Con, KeyedStream<K, V, L, B, O, R>> {
+        Consistent::new(self.inner.ir_node_named(name))
+    }
+
+    /// Fold with commutative+idempotent proof → Conv.
+    pub fn fold<A, I, F, Comm, Idemp, M, B2: crate::live_collections::keyed_singleton::KeyedSingletonBound>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L>,
+        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<Comm, Idemp, M>>,
+    ) -> Consistent<Conv, KeyedSingleton<K, A, L, B2>>
+    where
+        I: Fn() -> A + 'a,
+        F: Fn(&mut A, V),
+        K: Eq + std::hash::Hash,
+        Comm: ValidCommutativityFor<O> + IsProved,
+        Idemp: ValidIdempotenceFor<R> + IsProved,
+        B: crate::properties::ApplyMonotoneKeyedStream<M, B2>,
+    {
+        Consistent::new(self.inner.fold(init, comb))
+    }
+
+    pub fn reduce<F, Comm, Idemp>(
+        self,
+        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<Comm, Idemp>>,
+    ) -> Consistent<Conv, KeyedSingleton<K, V, L, B>>
+    where
+        F: Fn(&mut V, V) + 'a,
+        K: Eq + std::hash::Hash,
+        Comm: ValidCommutativityFor<O> + IsProved,
+        Idemp: ValidIdempotenceFor<R> + IsProved,
+    {
+        Consistent::new(self.inner.reduce(comb))
+    }
+}
+
+// ---- Optional: into_stream preserves C ----
+
+impl<'a, Con: Consistency, T, L: Location<'a>, B: Boundedness + IsBounded>
+    Consistent<Con, Optional<T, L, B>>
+{
+    pub fn into_stream(self) -> Consistent<Con, Stream<T, L, Bounded, TotalOrder, ExactlyOnce>>
+    where B: IsBounded {
+        Consistent::new(self.inner.into_stream())
     }
 }
 
