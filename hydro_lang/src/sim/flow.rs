@@ -38,6 +38,9 @@ pub struct SimFlow<'a> {
     /// When true, the simulator only tests safety properties (not liveness).
     pub(crate) test_safety_only: bool,
 
+    /// Coordination analysis report from finalize().
+    pub coordination_report: Option<crate::compile::coordination::CoordinationReport>,
+
     pub(crate) _phantom: Invariant<'a>,
 }
 

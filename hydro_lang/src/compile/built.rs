@@ -26,6 +26,9 @@ pub struct BuiltFlow<'a> {
     /// Application name used in telemetry.
     pub(super) flow_name: String,
 
+    /// Coordination analysis report, computed at finalize() time.
+    pub coordination_report: Option<super::coordination::CoordinationReport>,
+
     pub(super) _phantom: Invariant<'a>,
 }
 
@@ -282,6 +285,7 @@ impl<'a> BuiltFlow<'a> {
             cluster_max_sizes: SparseSecondaryMap::new(),
             externals_port_registry: Default::default(),
             test_safety_only: false,
+            coordination_report: self.coordination_report,
             _phantom: PhantomData,
         }
     }
