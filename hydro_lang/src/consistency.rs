@@ -108,19 +108,6 @@ impl<C: Consistency, S> Consistent<C, S> {
     }
 }
 
-impl<C: Consistency, S> std::ops::Deref for Consistent<C, S> {
-    type Target = S;
-    fn deref(&self) -> &S {
-        &self.inner
-    }
-}
-
-impl<C: Consistency, S> std::ops::DerefMut for Consistent<C, S> {
-    fn deref_mut(&mut self) -> &mut S {
-        &mut self.inner
-    }
-}
-
 // ---------------------------------------------------------------------------
 // Stream operator forwarding
 // ---------------------------------------------------------------------------
@@ -242,13 +229,6 @@ impl<'a, Con: Consistency, T, L: Location<'a>, B: Boundedness, O: Ordering, R: R
         F: Fn(&mut A, T) -> Option<U> + 'a,
     {
         Consistent::new(self.inner.scan(init, f))
-    }
-
-    // ---- Batch: preserves C (tick boundaries are nondeterministic but don't reorder) ----
-
-    pub fn batch(self, tick: &Tick<L>, nondet: NonDet) -> Consistent<Con, Stream<T, Tick<L>, Bounded, O, R>>
-    where L: NoTick {
-        Consistent::new(self.inner.batch(tick, nondet))
     }
 
     // ---- Sort: preserves C on bounded input ----
@@ -404,6 +384,155 @@ impl<'a, C1: Consistency, K, V1, L: Location<'a>, B: Boundedness, O: Ordering, R
         Consistent::new(self.inner.join(n.inner))
     }
 }
+
+// ---- Additional preserving operators ----
+
+impl<'a, Con: Consistency, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    Consistent<Con, Stream<T, L, B, O, R>>
+{
+    pub fn flat_map_unordered<U, I, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Consistent<Con, Stream<U, L, B, NoOrder, R>>
+    where I: IntoIterator<Item = U>, F: Fn(T) -> I + 'a {
+        Consistent::new(self.inner.flat_map_unordered(f))
+    }
+
+    pub fn flatten_unordered<U>(self) -> Consistent<Con, Stream<U, L, B, NoOrder, R>>
+    where T: IntoIterator<Item = U> {
+        Consistent::new(self.inner.flatten_unordered())
+    }
+
+    pub fn flat_map_stream_blocking<U, S, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Consistent<Con, Stream<U, L, B, O, R>>
+    where S: futures::Stream<Item = U>, F: Fn(T) -> S + 'a {
+        Consistent::new(self.inner.flat_map_stream_blocking(f))
+    }
+
+    pub fn flatten_stream_blocking<U>(self) -> Consistent<Con, Stream<U, L, B, O, R>>
+    where T: futures::Stream<Item = U> {
+        Consistent::new(self.inner.flatten_stream_blocking())
+    }
+
+    pub fn resolve_futures_blocking(self) -> Consistent<Con, Stream<T::Output, L, B, NoOrder, R>>
+    where T: std::future::Future {
+        Consistent::new(self.inner.resolve_futures_blocking())
+    }
+
+    pub fn limit(self, n: impl QuotedWithContext<'a, usize, L> + Copy + 'a) -> Consistent<Con, Stream<T, L, B, TotalOrder, ExactlyOnce>>
+    where O: IsOrdered, R: IsExactlyOnce {
+        Consistent::new(self.inner.limit(n))
+    }
+
+    pub fn scan_async_blocking<A, U, I, F, Fut>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L>,
+        f: impl IntoQuotedMut<'a, F, L>,
+    ) -> Consistent<Con, Stream<U, L, B, TotalOrder, ExactlyOnce>>
+    where
+        O: IsOrdered, R: IsExactlyOnce,
+        I: Fn() -> A + 'a,
+        F: Fn(&mut A, T) -> Fut + 'a,
+        Fut: std::future::Future<Output = Option<U>> + 'a,
+    {
+        Consistent::new(self.inner.scan_async_blocking(init, f))
+    }
+
+    pub fn generator<A, U, I, F>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L> + Copy,
+        f: impl IntoQuotedMut<'a, F, L> + Copy,
+    ) -> Consistent<Con, Stream<U, L, B, TotalOrder, ExactlyOnce>>
+    where
+        O: IsOrdered, R: IsExactlyOnce,
+        I: Fn() -> A + 'a,
+        F: Fn(&mut A, T) -> crate::live_collections::keyed_stream::Generate<U> + 'a,
+    {
+        Consistent::new(self.inner.generator(init, f))
+    }
+
+    pub fn sample_every(
+        self,
+        interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
+        nondet: NonDet,
+    ) -> Consistent<Con, Stream<T, L, Unbounded, O, AtLeastOnce>>
+    where L: NoTick + crate::location::tick::NoAtomic {
+        Consistent::new(self.inner.sample_every(interval, nondet))
+    }
+
+    pub fn atomic(self) -> Consistent<Con, Stream<T, crate::location::tick::Atomic<L>, B, O, R>>
+    where L: NoTick {
+        Consistent::new(self.inner.atomic())
+    }
+
+    pub fn timeout(
+        self,
+        duration: impl QuotedWithContext<'a, std::time::Duration, Tick<L>> + Copy + 'a,
+        nondet: NonDet,
+    ) -> Optional<(), L, Unbounded>
+    where L: NoTick + crate::location::tick::NoAtomic {
+        self.inner.timeout(duration, nondet)
+    }
+}
+
+// ---- end_atomic: on Atomic<L> streams ----
+
+impl<'a, Con: Consistency, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    Consistent<Con, Stream<T, crate::location::tick::Atomic<L>, B, O, R>>
+{
+    pub fn end_atomic(self) -> Consistent<Con, Stream<T, L, B, O, R>>
+    where L: NoTick {
+        Consistent::new(self.inner.end_atomic())
+    }
+}
+
+// ---- Interleave / merge_ordered: two-input, Unbounded ----
+
+impl<'a, C1: Consistency, T, L: Location<'a> + NoTick, O: Ordering, R: Retries>
+    Consistent<C1, Stream<T, L, Unbounded, O, R>>
+{
+    pub fn interleave<C2: Consistency, O2: Ordering, R2: Retries>(
+        self,
+        other: Consistent<C2, Stream<T, L, Unbounded, O2, R2>>,
+    ) -> Consistent<<C1 as MinConsistency<C2>>::Min, Stream<T, L, Unbounded, NoOrder, <R as MinRetries<R2>>::Min>>
+    where R: MinRetries<R2>, C1: MinConsistency<C2> {
+        Consistent::new(self.inner.interleave(other.inner))
+    }
+}
+
+impl<'a, C1: Consistency, T, L: Location<'a> + NoTick, R: Retries>
+    Consistent<C1, Stream<T, L, Unbounded, TotalOrder, R>>
+{
+    pub fn merge_ordered<C2: Consistency, R2: Retries>(
+        self,
+        other: Consistent<C2, Stream<T, L, Unbounded, TotalOrder, R2>>,
+        nondet: NonDet,
+    ) -> Consistent<<C1 as MinConsistency<C2>>::Min, Stream<T, L, Unbounded, TotalOrder, <R as MinRetries<R2>>::Min>>
+    where R: MinRetries<R2>, C1: MinConsistency<C2> {
+        Consistent::new(self.inner.merge_ordered(other.inner, nondet))
+    }
+}
+
+// ---- Batch on NoTick locations ----
+
+impl<'a, Con: Consistency, T, L: Location<'a> + NoTick, O: Ordering, R: Retries>
+    Consistent<Con, Stream<T, L, Unbounded, O, R>>
+{
+    pub fn batch(self, tick: &Tick<L>, nondet: NonDet) -> Consistent<Con, Stream<T, Tick<L>, Bounded, O, R>> {
+        Consistent::new(self.inner.batch(tick, nondet))
+    }
+}
+
+// ---- Cloned on reference streams ----
+
+impl<'a, Con: Consistency, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    Consistent<Con, Stream<&T, L, B, O, R>>
+{
+    pub fn cloned(self) -> Consistent<Con, Stream<T, L, B, O, R>>
+    where T: Clone {
+        Consistent::new(self.inner.cloned())
+    }
+}
+
+// ---- Networking: erases consistency (dynamic membership) ----
+// Users access networking via .into_inner() and re-label after if needed.
+// Future: fixed_broadcast could preserve consistency.
 
 // ---------------------------------------------------------------------------
 // Entry point: wrap a source with its consistency label
