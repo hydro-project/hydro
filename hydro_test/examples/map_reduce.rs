@@ -77,7 +77,11 @@ async fn main() {
     // Extract the IR for graph visualization
     let built = builder.finalize();
 
-    if built.generate_graph(&args.graph).unwrap_or(None).is_some() {
+    if built
+        .generate_graph(&args.graph)
+        .expect("failed to generate graph")
+        .is_some()
+    {
         return;
     }
 
