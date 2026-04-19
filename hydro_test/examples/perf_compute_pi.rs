@@ -126,8 +126,13 @@ async fn main() {
 
     let built = builder.finalize();
 
-    if built.generate_graph(&args.graph).unwrap_or(None).is_some() {
-        return;
+    match built.generate_graph(&args.graph) {
+        Ok(Some(_)) => return,
+        Ok(None) => {}
+        Err(err) => {
+            eprintln!("failed to generate graph: {err}");
+            return;
+        }
     }
 
     let mut optimized = if args.tracing {
