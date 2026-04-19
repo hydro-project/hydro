@@ -11,9 +11,5 @@ pub mod render;
 #[cfg(test)]
 mod json_test;
 
-#[cfg(test)]
-mod url_generation_test;
-
 // Re-export only the necessary public API
 pub use api::GraphApi;
-pub use config::VisualizerConfig;

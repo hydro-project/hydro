@@ -61,136 +61,34 @@ impl<'a> BuiltFlow<'a> {
         GraphApi::new(&self.ir, self.location_names())
     }
 
-    // String generation methods
+    /// Render graph to string in the given format.
     #[cfg(feature = "viz")]
-    pub fn mermaid_string(
+    pub fn render_graph(
         &self,
-        show_metadata: bool,
-        show_location_groups: bool,
+        format: crate::viz::config::GraphType,
         use_short_labels: bool,
     ) -> String {
-        self.graph_api()
-            .mermaid_to_string(show_metadata, show_location_groups, use_short_labels)
+        self.graph_api().render(format, use_short_labels)
     }
 
+    /// Write graph to file.
     #[cfg(feature = "viz")]
-    pub fn dot_string(
+    pub fn write_graph_to_file(
         &self,
-        show_metadata: bool,
-        show_location_groups: bool,
-        use_short_labels: bool,
-    ) -> String {
-        self.graph_api()
-            .dot_to_string(show_metadata, show_location_groups, use_short_labels)
-    }
-
-    #[cfg(feature = "viz")]
-    pub fn hydroscope_string(
-        &self,
-        show_metadata: bool,
-        show_location_groups: bool,
-        use_short_labels: bool,
-    ) -> String {
-        self.graph_api()
-            .hydroscope_to_string(show_metadata, show_location_groups, use_short_labels)
-    }
-
-    // File generation methods
-    #[cfg(feature = "viz")]
-    pub fn mermaid_to_file(
-        &self,
+        format: crate::viz::config::GraphType,
         filename: &str,
-        show_metadata: bool,
-        show_location_groups: bool,
         use_short_labels: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().mermaid_to_file(
-            filename,
-            show_metadata,
-            show_location_groups,
-            use_short_labels,
-        )
+        self.graph_api().write_to_file(format, filename, use_short_labels)
     }
 
+    /// Generate graph based on CLI config. Returns Some(path) if written.
     #[cfg(feature = "viz")]
-    pub fn dot_to_file(
+    pub fn generate_graph(
         &self,
-        filename: &str,
-        show_metadata: bool,
-        show_location_groups: bool,
-        use_short_labels: bool,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().dot_to_file(
-            filename,
-            show_metadata,
-            show_location_groups,
-            use_short_labels,
-        )
-    }
-
-    #[cfg(feature = "viz")]
-    pub fn hydroscope_to_file(
-        &self,
-        filename: &str,
-        show_metadata: bool,
-        show_location_groups: bool,
-        use_short_labels: bool,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().hydroscope_to_file(
-            filename,
-            show_metadata,
-            show_location_groups,
-            use_short_labels,
-        )
-    }
-
-    // Browser generation methods
-    #[cfg(feature = "viz")]
-    pub fn mermaid_to_browser(
-        &self,
-        show_metadata: bool,
-        show_location_groups: bool,
-        use_short_labels: bool,
-        message_handler: Option<&dyn Fn(&str)>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().mermaid_to_browser(
-            show_metadata,
-            show_location_groups,
-            use_short_labels,
-            message_handler,
-        )
-    }
-
-    #[cfg(feature = "viz")]
-    pub fn dot_to_browser(
-        &self,
-        show_metadata: bool,
-        show_location_groups: bool,
-        use_short_labels: bool,
-        message_handler: Option<&dyn Fn(&str)>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().dot_to_browser(
-            show_metadata,
-            show_location_groups,
-            use_short_labels,
-            message_handler,
-        )
-    }
-
-    #[cfg(feature = "viz")]
-    pub fn hydroscope_to_browser(
-        &self,
-        show_metadata: bool,
-        show_location_groups: bool,
-        use_short_labels: bool,
-        message_handler: Option<&dyn Fn(&str)>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().hydroscope_to_browser(
-            show_metadata,
-            show_location_groups,
-            use_short_labels,
-            message_handler,
-        )
+        config: &crate::viz::config::GraphConfig,
+    ) -> Result<Option<String>, Box<dyn std::error::Error>> {
+        self.graph_api().generate_graph(config)
     }
 
     pub fn optimize_with(mut self, f: impl FnOnce(&mut [HydroRoot])) -> Self {
@@ -321,41 +219,5 @@ impl<'a> BuiltFlow<'a> {
 
     pub fn deploy<D: Deploy<'a>>(self, env: &mut D::InstantiateEnv) -> DeployResult<'a, D> {
         self.into_deploy::<D>().deploy(env)
-    }
-
-    #[cfg(feature = "viz")]
-    pub fn generate_all_files(
-        &self,
-        prefix: &str,
-        show_metadata: bool,
-        show_location_groups: bool,
-        use_short_labels: bool,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().generate_all_files(
-            prefix,
-            show_metadata,
-            show_location_groups,
-            use_short_labels,
-        )
-    }
-
-    #[cfg(feature = "viz")]
-    pub fn generate_graph_with_config(
-        &self,
-        config: &crate::viz::config::GraphConfig,
-        message_handler: Option<&dyn Fn(&str)>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api()
-            .generate_graph_with_config(config, message_handler)
-    }
-
-    #[cfg(feature = "viz")]
-    pub fn generate_all_files_with_config(
-        &self,
-        config: &crate::viz::config::GraphConfig,
-        prefix: &str,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api()
-            .generate_all_files_with_config(config, prefix)
     }
 }

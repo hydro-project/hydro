@@ -2689,10 +2689,8 @@ dependencies = [
  "colored 3.1.1",
  "copy_span",
  "ctor 0.2.9",
- "data-encoding",
  "dfir_lang",
  "dfir_rs",
- "flate2",
  "futures",
  "http-body-util",
  "hydro_build_utils",
@@ -2731,8 +2729,6 @@ dependencies = [
  "tracing-subscriber",
  "trybuild",
  "trybuild-internals-api",
- "urlencoding",
- "webbrowser",
 ]
 
 [[package]]

@@ -497,19 +497,7 @@ where
         let mut hierarchy_choices = Vec::new();
         let mut node_assignments_choices = serde_json::Map::new();
 
-        // Always add location-based hierarchy
-        let (location_hierarchy, location_assignments) = self.create_location_hierarchy();
-        hierarchy_choices.push(serde_json::json!({
-            "id": "location",
-            "name": "Location",
-            "children": location_hierarchy
-        }));
-        node_assignments_choices.insert(
-            "location".to_owned(),
-            serde_json::Value::Object(location_assignments),
-        );
-
-        // Add backtrace-based hierarchy if available
+        // Add backtrace-based hierarchy first (default)
         if self.has_backtrace_data() {
             let (backtrace_hierarchy, backtrace_assignments) = self.create_backtrace_hierarchy();
             hierarchy_choices.push(serde_json::json!({
@@ -522,6 +510,18 @@ where
                 serde_json::Value::Object(backtrace_assignments),
             );
         }
+
+        // Add location-based hierarchy
+        let (location_hierarchy, location_assignments) = self.create_location_hierarchy();
+        hierarchy_choices.push(serde_json::json!({
+            "id": "location",
+            "name": "Location",
+            "children": location_hierarchy
+        }));
+        node_assignments_choices.insert(
+            "location".to_owned(),
+            serde_json::Value::Object(location_assignments),
+        );
 
         // Before serialization, enforce deterministic ordering for nodes and edges
         let mut nodes_sorted = self.nodes.clone();
@@ -1048,20 +1048,6 @@ pub fn hydro_ir_to_json(
     Ok(output)
 }
 
-/// Open JSON visualization in browser using the docs visualizer with URL-encoded data
-pub fn open_json_browser(
-    ir: &[HydroRoot],
-    location_names: &SecondaryMap<LocationKey, String>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let config = HydroWriteConfig {
-        location_names,
-        ..Default::default()
-    };
-
-    super::debug::open_json_visualizer(ir, Some(config))
-        .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
-}
-
 /// Save JSON to file using the consolidated debug utilities
 pub fn save_json(
     ir: &[HydroRoot],
@@ -1075,12 +1061,4 @@ pub fn save_json(
 
     super::debug::save_json(ir, Some(filename), Some(config))
         .map_err(|e| Box::new(e) as Box<dyn std::error::Error>)
-}
-
-/// Open JSON visualization in browser for a BuiltFlow
-#[cfg(feature = "build")]
-pub fn open_browser(
-    built_flow: &crate::compile::built::BuiltFlow,
-) -> Result<(), Box<dyn std::error::Error>> {
-    open_json_browser(built_flow.ir(), built_flow.location_names())
 }

@@ -88,10 +88,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let built = flow.finalize();
 
     // Generate graph visualizations based on command line arguments
-    built.generate_graph_with_config(&args.graph, None)?;
-
-    // If we're just generating a graph file, exit early
-    if args.graph.should_exit_after_graph_generation() {
+    if built.generate_graph(&args.graph)?.is_some() {
         return Ok(());
     }
 

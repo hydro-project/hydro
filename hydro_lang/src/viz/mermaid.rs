@@ -197,21 +197,3 @@ where
         Ok(())
     }
 }
-
-/// Open mermaid visualization in browser for a BuiltFlow
-#[cfg(feature = "build")]
-pub fn open_browser(
-    built_flow: &crate::compile::built::BuiltFlow,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let config = HydroWriteConfig {
-        show_metadata: false,
-        show_location_groups: true,
-        use_short_labels: true, // Default to short labels
-        location_names: built_flow.location_names(),
-    };
-
-    // Use the existing debug function
-    crate::viz::debug::open_mermaid(built_flow.ir(), Some(config))?;
-
-    Ok(())
-}

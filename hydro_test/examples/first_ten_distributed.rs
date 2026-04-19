@@ -101,13 +101,7 @@ async fn main() {
     // Extract the IR for graph visualization
     let built = builder.finalize();
 
-    // Generate graph visualizations based on command line arguments
-    if let Err(e) = built.generate_graph_with_config(&args.graph, None) {
-        eprintln!("Error generating graph: {}", e);
-    }
-
-    // If we're just generating a graph file, exit early
-    if args.graph.should_exit_after_graph_generation() {
+    if built.generate_graph(&args.graph).unwrap_or(None).is_some() {
         return;
     }
 
