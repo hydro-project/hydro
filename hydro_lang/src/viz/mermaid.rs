@@ -58,14 +58,7 @@ where
             self.base.write,
             "{b:i$}%%{{init:{{'theme':'base','themeVariables':{{'clusterBkg':'#fafafa','clusterBorder':'#e0e0e0'}},'elk':{{'algorithm':'mrtree','elk.direction':'DOWN','elk.layered.spacing.nodeNodeBetweenLayers':'30'}}}}}}%%
 {b:i$}graph TD
-{b:i$}classDef sourceClass fill:#8dd3c7,stroke:#86c8bd,text-align:left,white-space:pre
-{b:i$}classDef transformClass fill:#ffffb3,stroke:#f5f5a8,text-align:left,white-space:pre
-{b:i$}classDef joinClass fill:#bebada,stroke:#b5b1cf,text-align:left,white-space:pre
-{b:i$}classDef aggClass fill:#fb8072,stroke:#ee796b,text-align:left,white-space:pre
-{b:i$}classDef networkClass fill:#80b1d3,stroke:#79a8c8,text-align:left,white-space:pre
-{b:i$}classDef sinkClass fill:#fdb462,stroke:#f0aa5b,text-align:left,white-space:pre
-{b:i$}classDef teeClass fill:#b3de69,stroke:#aad362,text-align:left,white-space:pre
-{b:i$}classDef nondetClass fill:#fccde5,stroke:#f3c4dc,text-align:left,white-space:pre
+{b:i$}classDef default fill:#f5f5f5,stroke:#bbb,text-align:left,white-space:pre
 {b:i$}linkStyle default stroke:#666666",
             b = "",
             i = self.base.indent
@@ -77,30 +70,11 @@ where
         &mut self,
         node_id: VizNodeKey,
         node_label: &super::render::NodeLabel,
-        node_type: HydroNodeType,
+        _node_type: HydroNodeType,
         _location_id: Option<LocationKey>,
         _location_type: Option<LocationType>,
         _backtrace: Option<&crate::compile::ir::backtrace::Backtrace>,
     ) -> Result<(), Self::Err> {
-        let class_str = match node_type {
-            HydroNodeType::Source => "sourceClass",
-            HydroNodeType::Transform => "transformClass",
-            HydroNodeType::Join => "joinClass",
-            HydroNodeType::Aggregation => "aggClass",
-            HydroNodeType::Network => "networkClass",
-            HydroNodeType::Sink => "sinkClass",
-            HydroNodeType::Tee => "teeClass",
-            HydroNodeType::NonDeterministic => "nondetClass",
-        };
-
-        let (lbracket, rbracket) = match node_type {
-            HydroNodeType::Source => ("[[", "]]"),
-            HydroNodeType::Sink => ("[/", "/]"),
-            HydroNodeType::Network => ("[[", "]]"),
-            HydroNodeType::Tee => ("(", ")"),
-            _ => ("[", "]"),
-        };
-
         // Create the full label string using DebugExpr::Display for expressions
         let full_label = match node_label {
             super::render::NodeLabel::Static(s) => s.clone(),
@@ -122,15 +96,10 @@ where
             full_label
         };
 
-        let label = format!(
-            r#"n{node_id}{lbracket}"{escaped_label}"{rbracket}:::{class}"#,
-            escaped_label = escape_mermaid(&display_label),
-            class = class_str,
-        );
-
         writeln!(
             self.base.write,
-            "{b:i$}{label}",
+            "{b:i$}n{node_id}[\"{escaped_label}\"]",
+            escaped_label = escape_mermaid(&display_label),
             b = "",
             i = self.base.indent
         )?;

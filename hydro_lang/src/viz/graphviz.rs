@@ -88,7 +88,7 @@ where
         &mut self,
         node_id: VizNodeKey,
         node_label: &super::render::NodeLabel,
-        node_type: HydroNodeType,
+        _node_type: HydroNodeType,
         _location_id: Option<LocationKey>,
         _location_type: Option<LocationType>,
         _backtrace: Option<&crate::compile::ir::backtrace::Backtrace>,
@@ -117,18 +117,6 @@ where
         let escaped_label = escape_dot(&display_label, "\\l");
         let label = format!("n{}", node_id);
 
-        let (shape_str, color_str) = match node_type {
-            // ColorBrewer Set3 palette colors (matching Mermaid and Hydroscope)
-            HydroNodeType::Source => ("ellipse", "\"#8dd3c7\""), // Light teal
-            HydroNodeType::Transform => ("box", "\"#ffffb3\""),  // Light yellow
-            HydroNodeType::Join => ("diamond", "\"#bebada\""),   // Light purple
-            HydroNodeType::Aggregation => ("house", "\"#fb8072\""), // Light red/salmon
-            HydroNodeType::Network => ("doubleoctagon", "\"#80b1d3\""), // Light blue
-            HydroNodeType::Sink => ("invhouse", "\"#fdb462\""),  // Light orange
-            HydroNodeType::Tee => ("terminator", "\"#b3de69\""), // Light green
-            HydroNodeType::NonDeterministic => ("hexagon", "\"#fccde5\""), // Light pink/magenta
-        };
-
         write!(
             self.base.write,
             "{b:i$}{label} [label=\"({node_id}) {escaped_label}{}\"",
@@ -142,7 +130,7 @@ where
         )?;
         write!(
             self.base.write,
-            ", shape={shape_str}, fillcolor={color_str}"
+            ", shape=box, fillcolor=\"#f5f5f5\""
         )?;
         writeln!(self.base.write, "]")?;
         Ok(())
