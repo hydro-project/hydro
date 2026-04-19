@@ -546,6 +546,106 @@ impl<T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, L, B, O, R> {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Networking operator forwarding
+// ---------------------------------------------------------------------------
+
+use crate::location::cluster::Cluster;
+use crate::location::external_process::External;
+use crate::networking::NetworkFor;
+use serde::de::DeserializeOwned;
+use serde::Serialize;
+
+/// Process → Process send: preserves consistency (point-to-point).
+impl<'a, Con: Consistency, T, L, B: Boundedness, O: Ordering, R: Retries>
+    Consistent<Con, Stream<T, crate::prelude::Process<'a, L>, B, O, R>>
+{
+    pub fn send_bincode<L2>(
+        self,
+        other: &crate::prelude::Process<'a, L2>,
+    ) -> Consistent<Con, Stream<T, crate::prelude::Process<'a, L2>, Unbounded, O, R>>
+    where T: Serialize + DeserializeOwned {
+        Consistent::new(self.inner.send_bincode(other))
+    }
+
+    pub fn send<L2, N: NetworkFor<T>>(
+        self,
+        to: &crate::prelude::Process<'a, L2>,
+        via: N,
+    ) -> Consistent<Con, Stream<T, crate::prelude::Process<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>>
+    where T: Serialize + DeserializeOwned, O: MinOrder<N::OrderingGuarantee> {
+        Consistent::new(self.inner.send(to, via))
+    }
+
+    /// Broadcast from Process to Cluster: erases to Incon (dynamic membership).
+    pub fn broadcast_bincode<L2: 'a>(
+        self,
+        other: &Cluster<'a, L2>,
+        nondet_membership: NonDet,
+    ) -> Consistent<Incon, Stream<T, Cluster<'a, L2>, Unbounded, O, R>>
+    where T: Clone + Serialize + DeserializeOwned {
+        Consistent::new(self.inner.broadcast_bincode(other, nondet_membership))
+    }
+
+    pub fn broadcast<L2: 'a, N: NetworkFor<T>>(
+        self,
+        to: &Cluster<'a, L2>,
+        via: N,
+        nondet_membership: NonDet,
+    ) -> Consistent<Incon, Stream<T, Cluster<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>>
+    where T: Clone + Serialize + DeserializeOwned, O: MinOrder<N::OrderingGuarantee> {
+        Consistent::new(self.inner.broadcast(to, via, nondet_membership))
+    }
+
+    pub fn send_bincode_external<L2>(
+        self,
+        other: &External<L2>,
+    ) -> crate::location::external_process::ExternalBincodeStream<T, O, R>
+    where T: Serialize + DeserializeOwned {
+        self.inner.send_bincode_external(other)
+    }
+}
+
+/// Cluster → Process send: preserves consistency.
+impl<'a, Con: Consistency, T, L, B: Boundedness, O: Ordering, R: Retries>
+    Consistent<Con, Stream<T, Cluster<'a, L>, B, O, R>>
+{
+    pub fn send_bincode<L2>(
+        self,
+        other: &crate::prelude::Process<'a, L2>,
+    ) -> crate::live_collections::keyed_stream::KeyedStream<
+        crate::location::MemberId<L>, T, crate::prelude::Process<'a, L2>, Unbounded, O, R,
+    >
+    where T: Serialize + DeserializeOwned {
+        // KeyedStream doesn't carry consistency — erase at this boundary
+        self.inner.send_bincode(other)
+    }
+
+    pub fn send<L2, N: NetworkFor<T>>(
+        self,
+        to: &crate::prelude::Process<'a, L2>,
+        via: N,
+    ) -> crate::live_collections::keyed_stream::KeyedStream<
+        crate::location::MemberId<L>, T, crate::prelude::Process<'a, L2>, Unbounded,
+        <O as MinOrder<N::OrderingGuarantee>>::Min, R,
+    >
+    where T: Serialize + DeserializeOwned, O: MinOrder<N::OrderingGuarantee> {
+        self.inner.send(to, via)
+    }
+
+    /// Broadcast from Cluster to Cluster: erases to Incon (dynamic membership).
+    pub fn broadcast_bincode<L2: 'a>(
+        self,
+        other: &Cluster<'a, L2>,
+        nondet_membership: NonDet,
+    ) -> Consistent<Incon, crate::live_collections::keyed_stream::KeyedStream<
+        crate::location::MemberId<L>, T, Cluster<'a, L2>, Unbounded, O, R,
+    >>
+    where T: Clone + Serialize + DeserializeOwned {
+        Consistent::new(self.inner.broadcast_bincode(other, nondet_membership))
+    }
+}
+
 #[cfg(test)]
 #[cfg(feature = "build")]
 mod tests {
