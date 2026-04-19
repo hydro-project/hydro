@@ -11,7 +11,7 @@ pub fn unordered<'a>(process: &Process<'a>) -> Stream<u32, Process<'a>, Unbounde
             tokio::time::sleep(Duration::from_millis(10)).await;
             x
         }))
-        .resolve_futures()
+        .into_inner().resolve_futures()
 }
 
 pub fn ordered<'a>(process: &Process<'a>) -> Stream<u32, Process<'a>, Unbounded> {
@@ -21,7 +21,7 @@ pub fn ordered<'a>(process: &Process<'a>) -> Stream<u32, Process<'a>, Unbounded>
             tokio::time::sleep(Duration::from_millis(10)).await;
             x
         }))
-        .resolve_futures_ordered()
+        .into_inner().resolve_futures_ordered()
 }
 
 #[cfg(test)]

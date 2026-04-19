@@ -118,6 +118,27 @@ impl<'a, C: Consistency, T, L: Location<'a>, O: Ordering, R: Retries>
     }
 }
 
+/// Unwrap Consistent to bare Stream (discards consistency label).
+/// Enables passing Consistent<C, Stream<...>> where Stream<...> is expected.
+impl<C: Consistency, T, L, B: Boundedness, O: Ordering, R: Retries>
+    From<Consistent<C, Stream<T, L, B, O, R>>>
+    for Stream<T, L, B, O, R>
+{
+    fn from(c: Consistent<C, Stream<T, L, B, O, R>>) -> Self {
+        c.inner
+    }
+}
+
+/// Unwrap Consistent + Bounded→Unbounded in one step.
+impl<'a, C: Consistency, T, L: Location<'a>, O: Ordering, R: Retries>
+    From<Consistent<C, Stream<T, L, Bounded, O, R>>>
+    for Stream<T, L, Unbounded, O, R>
+{
+    fn from(c: Consistent<C, Stream<T, L, Bounded, O, R>>) -> Self {
+        c.inner.into()
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Stream operator forwarding
 // ---------------------------------------------------------------------------
@@ -210,6 +231,14 @@ impl<'a, Con: Consistency, T, L: Location<'a>, B: Boundedness, O: Ordering, R: R
 
     pub fn weaken_ordering<O2: WeakerOrderingThan<O>>(self) -> Consistent<Con, Stream<T, L, B, O2, R>> {
         Consistent::new(self.inner.weaken_ordering())
+    }
+
+    pub fn assume_ordering<O2: Ordering>(self, nondet: NonDet) -> Consistent<Con, Stream<T, L, B, O2, R>> {
+        Consistent::new(self.inner.assume_ordering(nondet))
+    }
+
+    pub fn assume_retries<R2: Retries>(self, nondet: NonDet) -> Consistent<Con, Stream<T, L, B, O, R2>> {
+        Consistent::new(self.inner.assume_retries(nondet))
     }
 
     pub fn weakest_ordering(self) -> Consistent<Con, Stream<T, L, B, NoOrder, R>> {
@@ -653,6 +682,19 @@ impl<'a, Con: Consistency, T, L, B: Boundedness, O: Ordering, R: Retries>
     >>
     where T: Clone + Serialize + DeserializeOwned {
         Consistent::new(self.inner.broadcast_bincode(other, nondet_membership))
+    }
+
+    pub fn broadcast<L2: 'a, N: NetworkFor<T>>(
+        self,
+        to: &Cluster<'a, L2>,
+        via: N,
+        nondet_membership: NonDet,
+    ) -> Consistent<Incon, crate::live_collections::keyed_stream::KeyedStream<
+        crate::location::MemberId<L>, T, Cluster<'a, L2>, Unbounded,
+        <O as MinOrder<N::OrderingGuarantee>>::Min, R,
+    >>
+    where T: Clone + Serialize + DeserializeOwned, O: MinOrder<N::OrderingGuarantee> {
+        Consistent::new(self.inner.broadcast(to, via, nondet_membership))
     }
 }
 

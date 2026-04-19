@@ -12,7 +12,7 @@ pub fn map_reduce<'a>(flow: &mut FlowBuilder<'a>) -> (Process<'a, Leader>, Clust
         .source_iter(q!(vec!["abc", "abc", "xyz", "abc"]))
         .map(q!(|s| s.to_owned()));
 
-    let partitioned_words = words
+    let partitioned_words = words.into_inner()
         .round_robin(&cluster, TCP.fail_stop().bincode(), nondet!(/** test */))
         .map(q!(|string| (string, ())))
         .into_keyed();

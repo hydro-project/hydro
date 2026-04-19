@@ -29,7 +29,7 @@ pub fn decouple_cluster<'a>(flow: &mut FlowBuilder<'a>) -> (Cluster<'a, ()>, Clu
         .source_iter(q!(vec!(CLUSTER_SELF_ID)))
         // .for_each(q!(|message| println!("hey, {}", message)))
         .inspect(q!(|message| println!("Cluster1 node sending message: {}", message)))
-        .decouple_cluster(&cluster2)
+        .into_inner().decouple_cluster(&cluster2)
         .for_each(q!(move |message| println!(
             "My self id is {}, my message is {}",
             CLUSTER_SELF_ID, message
@@ -42,7 +42,7 @@ pub fn decouple_process<'a>(flow: &mut FlowBuilder<'a>) -> (Process<'a, ()>, Pro
     let process2 = flow.process();
     process1
         .source_iter(q!(0..3))
-        .decouple_process(&process2)
+        .into_inner().decouple_process(&process2)
         .for_each(q!(|message| println!("I received message is {}", message)));
     (process1, process2)
 }
@@ -60,7 +60,7 @@ pub fn simple_cluster<'a>(flow: &mut FlowBuilder<'a>) -> (Process<'a, ()>, Clust
             MembershipEvent::Left => None,
         }));
 
-    ids.cross_product(numbers.into())
+    ids.cross_product(numbers.into_inner().into())
         .map(q!(|(id, n)| (id.clone(), (id, n))))
         .demux(&cluster, TCP.fail_stop().bincode())
         .inspect(q!(move |n| println!(
