@@ -91,6 +91,8 @@ pub mod networking;
 
 pub mod properties;
 
+pub mod consistency;
+
 pub mod telemetry;
 
 #[cfg(any(
