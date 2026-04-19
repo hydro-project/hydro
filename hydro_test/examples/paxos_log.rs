@@ -116,7 +116,11 @@ async fn main() {
     let built = builder.finalize();
 
     // Generate graph if requested
-    if built.generate_graph(&args.graph).unwrap_or(None).is_some() {
+    if built
+        .generate_graph(&args.graph)
+        .expect("failed to generate graph output")
+        .is_some()
+    {
         return;
     }
 
