@@ -125,60 +125,224 @@ impl<C: Consistency, S> std::ops::DerefMut for Consistent<C, S> {
 // Stream operator forwarding
 // ---------------------------------------------------------------------------
 
-use crate::live_collections::boundedness::{Bounded, Boundedness, IsBounded};
+use crate::live_collections::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
+use crate::live_collections::optional::Optional;
+use crate::live_collections::singleton::{Singleton, SingletonBound};
 use crate::live_collections::stream::{
-    ExactlyOnce, MinOrder, MinRetries, NoOrder, Ordering, Retries, Stream, TotalOrder,
+    AtLeastOnce, ExactlyOnce, IsExactlyOnce, IsOrdered, MinOrder, MinRetries, NoOrder, Ordering,
+    Retries, Stream, TotalOrder, WeakerOrderingThan, WeakerRetryThan,
 };
-use crate::location::Location;
-use stageleft::IntoQuotedMut;
+use crate::location::tick::Tick;
+use crate::location::{Location, NoTick};
+use crate::nondet::NonDet;
+use crate::properties::{
+    AggFuncAlgebra, ApplyMonotoneStream, IsProved, ValidCommutativityFor, ValidIdempotenceFor,
+};
+use stageleft::{IntoQuotedMut, QuotedWithContext};
 
-/// Preserving operators: map, filter, filter_map, inspect.
-/// These pass the consistency level through unchanged.
-impl<'a, C: Consistency, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
-    Consistent<C, Stream<T, L, B, O, R>>
+// ---- Preserving operators: pass C through unchanged ----
+
+impl<'a, Con: Consistency, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    Consistent<Con, Stream<T, L, B, O, R>>
 {
-    pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Consistent<C, Stream<U, L, B, O, R>>
-    where
-        F: Fn(T) -> U + 'a,
-    {
+    pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Consistent<Con, Stream<U, L, B, O, R>>
+    where F: Fn(T) -> U + 'a {
         Consistent::new(self.inner.map(f))
     }
 
-    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Consistent<C, Stream<T, L, B, O, R>>
-    where
-        F: Fn(&T) -> bool + 'a,
-    {
+    pub fn filter<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Consistent<Con, Stream<T, L, B, O, R>>
+    where F: Fn(&T) -> bool + 'a {
         Consistent::new(self.inner.filter(f))
     }
 
-    pub fn filter_map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Consistent<C, Stream<U, L, B, O, R>>
-    where
-        F: Fn(T) -> Option<U> + 'a,
-    {
+    pub fn filter_map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Consistent<Con, Stream<U, L, B, O, R>>
+    where F: Fn(T) -> Option<U> + 'a {
         Consistent::new(self.inner.filter_map(f))
     }
 
-    pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Consistent<C, Stream<T, L, B, O, R>>
-    where
-        F: Fn(&T) + 'a,
-    {
+    pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Consistent<Con, Stream<T, L, B, O, R>>
+    where F: Fn(&T) + 'a {
         Consistent::new(self.inner.inspect(f))
     }
 
-    /// Terminal: consume the stream. The consistency level `C` is visible
-    /// in the type of `self` before this call.
-    pub fn for_each<F>(self, f: impl IntoQuotedMut<'a, F, L>)
+    pub fn flat_map_ordered<U, I, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Consistent<Con, Stream<U, L, B, O, R>>
+    where F: Fn(T) -> I + 'a, I: IntoIterator<Item = U> {
+        Consistent::new(self.inner.flat_map_ordered(f))
+    }
+
+    pub fn flatten_ordered<U>(self) -> Consistent<Con, Stream<U, L, B, O, R>>
+    where T: IntoIterator<Item = U> {
+        Consistent::new(self.inner.flatten_ordered())
+    }
+
+    pub fn enumerate(self) -> Consistent<Con, Stream<(usize, T), L, B, O, R>>
+    where O: IsOrdered, R: IsExactlyOnce {
+        Consistent::new(self.inner.enumerate())
+    }
+
+    pub fn unique(self) -> Consistent<Con, Stream<T, L, B, O, ExactlyOnce>>
+    where T: Eq + std::hash::Hash {
+        Consistent::new(self.inner.unique())
+    }
+
+    pub fn filter_if(self, signal: Singleton<bool, L, Bounded>) -> Consistent<Con, Stream<T, L, B, O, R>> {
+        Consistent::new(self.inner.filter_if(signal))
+    }
+
+    pub fn filter_if_some<U>(self, signal: Optional<U, L, Bounded>) -> Consistent<Con, Stream<T, L, B, O, R>> {
+        Consistent::new(self.inner.filter_if_some(signal))
+    }
+
+    pub fn filter_if_none<U>(self, other: Optional<U, L, Bounded>) -> Consistent<Con, Stream<T, L, B, O, R>> {
+        Consistent::new(self.inner.filter_if_none(other))
+    }
+
+    pub fn filter_not_in<O2: Ordering, B2>(self, other: Stream<T, L, B2, O2, R>) -> Consistent<Con, Stream<T, L, B, O, R>>
+    where T: Eq + std::hash::Hash, B2: Boundedness + IsBounded {
+        Consistent::new(self.inner.filter_not_in(other))
+    }
+
+    pub fn ir_node_named(self, name: &str) -> Consistent<Con, Stream<T, L, B, O, R>> {
+        Consistent::new(self.inner.ir_node_named(name))
+    }
+
+    pub fn make_bounded(self) -> Consistent<Con, Stream<T, L, Bounded, O, R>>
+    where B: IsBounded {
+        Consistent::new(self.inner.make_bounded())
+    }
+
+    pub fn weaken_ordering<O2: WeakerOrderingThan<O>>(self) -> Consistent<Con, Stream<T, L, B, O2, R>> {
+        Consistent::new(self.inner.weaken_ordering())
+    }
+
+    pub fn weakest_ordering(self) -> Consistent<Con, Stream<T, L, B, NoOrder, R>> {
+        Consistent::new(self.inner.weakest_ordering())
+    }
+
+    pub fn weaken_retries<R2: WeakerRetryThan<R>>(self) -> Consistent<Con, Stream<T, L, B, O, R2>> {
+        Consistent::new(self.inner.weaken_retries())
+    }
+
+    pub fn weakest_retries(self) -> Consistent<Con, Stream<T, L, B, O, AtLeastOnce>> {
+        Consistent::new(self.inner.weakest_retries())
+    }
+
+    // ---- Scan: preserves C (deterministic stateful transform) ----
+
+    pub fn scan<A, U, I, F>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L>,
+        f: impl IntoQuotedMut<'a, F, L>,
+    ) -> Consistent<Con, Stream<U, L, B, TotalOrder, ExactlyOnce>>
     where
-        F: Fn(T) + 'a,
-        L: crate::location::NoTick,
-        O: crate::live_collections::stream::IsOrdered,
-        R: crate::live_collections::stream::IsExactlyOnce,
+        L: NoTick,
+        O: IsOrdered,
+        R: IsExactlyOnce,
+        I: Fn() -> A + 'a,
+        F: Fn(&mut A, T) -> Option<U> + 'a,
     {
+        Consistent::new(self.inner.scan(init, f))
+    }
+
+    // ---- Batch: preserves C (tick boundaries are nondeterministic but don't reorder) ----
+
+    pub fn batch(self, tick: &Tick<L>, nondet: NonDet) -> Consistent<Con, Stream<T, Tick<L>, Bounded, O, R>>
+    where L: NoTick {
+        Consistent::new(self.inner.batch(tick, nondet))
+    }
+
+    // ---- Sort: preserves C on bounded input ----
+
+    pub fn sort(self) -> Consistent<Con, Stream<T, L, Bounded, TotalOrder, R>>
+    where T: Ord, B: IsBounded {
+        Consistent::new(self.inner.sort())
+    }
+
+    // ---- Terminals: C is visible in the type before consumption ----
+
+    pub fn for_each<F: Fn(T) + 'a>(self, f: impl IntoQuotedMut<'a, F, L>)
+    where L: NoTick, O: IsOrdered, R: IsExactlyOnce {
         self.inner.for_each(f)
+    }
+
+    pub fn dest_sink<S>(self, sink: impl QuotedWithContext<'a, S, L>)
+    where S: 'a + futures::Sink<T> + Unpin, L: NoTick, O: IsOrdered, R: IsExactlyOnce {
+        self.inner.dest_sink(sink)
+    }
+
+    // ---- Aggregations that discharge to Conv (commutative+idempotent) ----
+
+    pub fn fold<A, I, F, Comm, Idemp, M, B2: SingletonBound>(
+        self,
+        init: impl IntoQuotedMut<'a, I, L>,
+        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<Comm, Idemp, M>>,
+    ) -> Consistent<Conv, Singleton<A, L, B2>>
+    where
+        I: Fn() -> A + 'a,
+        F: Fn(&mut A, T),
+        Comm: ValidCommutativityFor<O> + IsProved,
+        Idemp: ValidIdempotenceFor<R> + IsProved,
+        B: ApplyMonotoneStream<M, B2>,
+    {
+        Consistent::new(self.inner.fold(init, comb))
+    }
+
+    pub fn reduce<F, Comm, Idemp>(
+        self,
+        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<Comm, Idemp>>,
+    ) -> Consistent<Conv, Optional<T, L, B>>
+    where
+        F: Fn(&mut T, T) + 'a,
+        Comm: ValidCommutativityFor<O> + IsProved,
+        Idemp: ValidIdempotenceFor<R> + IsProved,
+    {
+        Consistent::new(self.inner.reduce(comb))
+    }
+
+    // ---- Aggregations without proof: erase consistency ----
+
+    pub fn max(self) -> Optional<T, L, B>
+    where T: Ord, B: IsBounded {
+        self.inner.max()
+    }
+
+    pub fn min(self) -> Optional<T, L, B>
+    where T: Ord, B: IsBounded {
+        self.inner.min()
+    }
+
+    pub fn first(self) -> Optional<T, L, B>
+    where O: IsOrdered, R: IsExactlyOnce {
+        self.inner.first()
+    }
+
+    pub fn last(self) -> Optional<T, L, B>
+    where O: IsOrdered, R: IsExactlyOnce, B: IsBounded {
+        self.inner.last()
+    }
+
+    pub fn collect_vec(self) -> Singleton<Vec<T>, L, B>
+    where O: IsOrdered, R: IsExactlyOnce {
+        self.inner.collect_vec()
+    }
+
+    pub fn is_empty(self) -> Singleton<bool, L, Bounded>
+    where B: IsBounded {
+        self.inner.is_empty()
+    }
+
+    pub fn partition<F>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L>,
+    ) -> (Consistent<Con, Stream<T, L, B, O, R>>, Consistent<Con, Stream<T, L, B, O, R>>)
+    where F: Fn(&T) -> bool + 'a {
+        let (a, b) = self.inner.partition(f);
+        (Consistent::new(a), Consistent::new(b))
     }
 }
 
-/// Chain: computes MinConsistency of the two inputs.
+// ---- Downgrading operators: compute MinConsistency ----
+
 impl<'a, C1: Consistency, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     Consistent<C1, Stream<T, L, B, O, R>>
 {
@@ -193,6 +357,51 @@ impl<'a, C1: Consistency, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Re
         C1: MinConsistency<C2>,
     {
         Consistent::new(self.inner.chain(other.inner))
+    }
+
+    pub fn cross_product<C2: Consistency, T2, O2: Ordering>(
+        self,
+        other: Consistent<C2, Stream<T2, L, B, O2, R>>,
+    ) -> Consistent<<C1 as MinConsistency<C2>>::Min, Stream<(T, T2), L, B, NoOrder, R>>
+    where
+        T: Clone,
+        T2: Clone,
+        C1: MinConsistency<C2>,
+    {
+        Consistent::new(self.inner.cross_product(other.inner))
+    }
+}
+
+impl<'a, C1: Consistency, T, L: Location<'a> + NoTick, O: Ordering, R: Retries>
+    Consistent<C1, Stream<T, L, Unbounded, O, R>>
+{
+    pub fn merge_unordered<C2: Consistency, O2: Ordering, R2: Retries>(
+        self,
+        other: Consistent<C2, Stream<T, L, Unbounded, O2, R2>>,
+    ) -> Consistent<<C1 as MinConsistency<C2>>::Min, Stream<T, L, Unbounded, NoOrder, <R as MinRetries<R2>>::Min>>
+    where
+        R: MinRetries<R2>,
+        C1: MinConsistency<C2>,
+    {
+        Consistent::new(self.inner.merge_unordered(other.inner))
+    }
+}
+
+// ---- Join: computes MinConsistency on keyed streams ----
+
+impl<'a, C1: Consistency, K, V1, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    Consistent<C1, Stream<(K, V1), L, B, O, R>>
+{
+    pub fn join<C2: Consistency, V2, O2: Ordering, R2: Retries>(
+        self,
+        n: Consistent<C2, Stream<(K, V2), L, B, O2, R2>>,
+    ) -> Consistent<<C1 as MinConsistency<C2>>::Min, Stream<(K, (V1, V2)), L, B, NoOrder, <R as MinRetries<R2>>::Min>>
+    where
+        K: Eq + std::hash::Hash,
+        R: MinRetries<R2>,
+        C1: MinConsistency<C2>,
+    {
+        Consistent::new(self.inner.join(n.inner))
     }
 }
 
