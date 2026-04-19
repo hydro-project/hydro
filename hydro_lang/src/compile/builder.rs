@@ -213,13 +213,19 @@ impl<'a> FlowBuilder<'a> {
         let mut ir = self.flow_state.borrow_mut().roots.take().unwrap();
         super::ir::unify_atomic_ticks(&mut ir);
 
-        super::built::BuiltFlow {
+        let built = super::built::BuiltFlow {
             ir,
             locations: std::mem::take(&mut self.locations),
             location_names: std::mem::take(&mut self.location_names),
             flow_name: std::mem::take(&mut self.flow_name),
             _phantom: PhantomData,
-        }
+        };
+
+        // Auto-run coordination analysis and print results
+        let report = built.check_coordination();
+        eprintln!("\n{report}");
+
+        built
     }
 
     pub fn with_default_optimize<D: Deploy<'a>>(self) -> DeployFlow<'a, D> {
