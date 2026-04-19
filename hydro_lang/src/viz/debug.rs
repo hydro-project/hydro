@@ -25,7 +25,7 @@ pub fn save_mermaid(
     config: Option<HydroWriteConfig>,
 ) -> Result<std::path::PathBuf> {
     let content = render_with_config(roots, config, render_hydro_ir_mermaid);
-    save_to_file(content, filename, "hydro_graph.mermaid")
+    save_to_file(content, filename, "hydro_graph.mmd")
 }
 
 /// Saves Hydro IR roots as a DOT/Graphviz file.
