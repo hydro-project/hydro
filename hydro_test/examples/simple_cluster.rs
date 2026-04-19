@@ -77,8 +77,13 @@ async fn main() {
     // Extract the IR for graph visualization
     let built = builder.finalize();
 
-    if built.generate_graph(&args.graph).unwrap_or(None).is_some() {
-        return;
+    match built.generate_graph(&args.graph) {
+        Ok(Some(_)) => return,
+        Ok(None) => {}
+        Err(err) => {
+            eprintln!("failed to generate graph: {err}");
+            std::process::exit(1);
+        }
     }
 
     let _nodes = built
