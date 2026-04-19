@@ -19,9 +19,9 @@ impl<'a> GraphApi<'a> {
         Self { ir, location_names }
     }
 
-    fn config(&self, use_short_labels: bool) -> HydroWriteConfig<'a> {
+    fn config(&self, use_short_labels: bool, show_metadata: bool) -> HydroWriteConfig<'a> {
         HydroWriteConfig {
-            show_metadata: true,
+            show_metadata,
             show_location_groups: true,
             use_short_labels,
             location_names: self.location_names,
@@ -33,8 +33,9 @@ impl<'a> GraphApi<'a> {
         &self,
         format: crate::viz::config::GraphType,
         use_short_labels: bool,
+        show_metadata: bool,
     ) -> String {
-        let config = self.config(use_short_labels);
+        let config = self.config(use_short_labels, show_metadata);
         match format {
             crate::viz::config::GraphType::Mermaid => render_hydro_ir_mermaid(self.ir, config),
             crate::viz::config::GraphType::Dot => render_hydro_ir_dot(self.ir, config),
@@ -48,8 +49,9 @@ impl<'a> GraphApi<'a> {
         format: crate::viz::config::GraphType,
         filename: &str,
         use_short_labels: bool,
+        show_metadata: bool,
     ) -> Result<(), Box<dyn Error>> {
-        let content = self.render(format, use_short_labels);
+        let content = self.render(format, use_short_labels, show_metadata);
         std::fs::write(filename, content)?;
         Ok(())
     }
@@ -67,8 +69,7 @@ impl<'a> GraphApi<'a> {
             .output
             .clone()
             .unwrap_or_else(|| format!("hydro_graph.{}", graph_type.file_extension()));
-        self.write_to_file(graph_type, &filename, !config.long_labels)?;
-        println!("Graph written to {}", filename);
+        self.write_to_file(graph_type, &filename, !config.long_labels, !config.no_metadata)?;
         Ok(Some(filename))
     }
 }
@@ -86,9 +87,9 @@ mod tests {
 
         let api = GraphApi::new(&ir, &location_names);
 
-        let mermaid = api.render(crate::viz::config::GraphType::Mermaid, true);
-        let dot = api.render(crate::viz::config::GraphType::Dot, true);
-        let json = api.render(crate::viz::config::GraphType::Json, true);
+        let mermaid = api.render(crate::viz::config::GraphType::Mermaid, true, true);
+        let dot = api.render(crate::viz::config::GraphType::Dot, true, true);
+        let json = api.render(crate::viz::config::GraphType::Json, true, true);
 
         assert!(!mermaid.is_empty());
         assert!(!dot.is_empty());

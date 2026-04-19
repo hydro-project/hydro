@@ -67,8 +67,9 @@ impl<'a> BuiltFlow<'a> {
         &self,
         format: crate::viz::config::GraphType,
         use_short_labels: bool,
+        show_metadata: bool,
     ) -> String {
-        self.graph_api().render(format, use_short_labels)
+        self.graph_api().render(format, use_short_labels, show_metadata)
     }
 
     /// Write graph to file.
@@ -78,8 +79,9 @@ impl<'a> BuiltFlow<'a> {
         format: crate::viz::config::GraphType,
         filename: &str,
         use_short_labels: bool,
+        show_metadata: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        self.graph_api().write_to_file(format, filename, use_short_labels)
+        self.graph_api().write_to_file(format, filename, use_short_labels, show_metadata)
     }
 
     /// Generate graph based on CLI config. Returns Some(path) if written.

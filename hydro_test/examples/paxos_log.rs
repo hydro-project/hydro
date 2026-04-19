@@ -119,6 +119,7 @@ async fn main() {
     if built.generate_graph(&args.graph).unwrap_or(None).is_some() {
         return;
     }
+
     // Optimize the flow before deployment to remove marker nodes
     let optimized = built.with_default_optimize();
 

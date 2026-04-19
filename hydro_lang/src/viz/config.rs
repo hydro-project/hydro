@@ -36,4 +36,8 @@ pub struct GraphConfig {
     /// Use full/long labels instead of short ones
     #[clap(long)]
     pub long_labels: bool,
+
+    /// Don't show metadata in graph nodes
+    #[clap(long)]
+    pub no_metadata: bool,
 }
