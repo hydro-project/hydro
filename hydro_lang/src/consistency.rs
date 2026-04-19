@@ -139,6 +139,26 @@ impl<'a, C: Consistency, T, L: Location<'a>, O: Ordering, R: Retries>
     }
 }
 
+/// Unwrap Consistent Singleton (discards consistency label).
+impl<C: Consistency, T, L, B: SingletonBound>
+    From<Consistent<C, Singleton<T, L, B>>>
+    for Singleton<T, L, B>
+{
+    fn from(c: Consistent<C, Singleton<T, L, B>>) -> Self {
+        c.inner
+    }
+}
+
+/// Unwrap Consistent Singleton to Optional (discards consistency label).
+impl<'a, C: Consistency, T, L: Location<'a>, B: SingletonBound>
+    From<Consistent<C, Singleton<T, L, B>>>
+    for Optional<T, L, B::UnderlyingBound>
+{
+    fn from(c: Consistent<C, Singleton<T, L, B>>) -> Self {
+        c.inner.into()
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Stream operator forwarding
 // ---------------------------------------------------------------------------
@@ -275,6 +295,16 @@ impl<'a, Con: Consistency, T, L: Location<'a>, B: Boundedness, O: Ordering, R: R
     pub fn sort(self) -> Consistent<Con, Stream<T, L, Bounded, TotalOrder, R>>
     where T: Ord, B: IsBounded {
         Consistent::new(self.inner.sort())
+    }
+
+    // ---- Cross singleton ----
+
+    pub fn cross_singleton<O2>(
+        self,
+        other: impl Into<Optional<O2, L, Bounded>>,
+    ) -> Consistent<Con, Stream<(T, O2), L, B, O, R>>
+    where O2: Clone {
+        Consistent::new(self.inner.cross_singleton(other))
     }
 
     // ---- Terminals: C is visible in the type before consumption ----
@@ -422,6 +452,14 @@ impl<'a, C1: Consistency, K, V1, L: Location<'a>, B: Boundedness, O: Ordering, R
     {
         Consistent::new(self.inner.join(n.inner))
     }
+
+    pub fn anti_join<O2: Ordering, R2: Retries>(
+        self,
+        n: impl Into<Stream<K, L, Bounded, O2, R2>>,
+    ) -> Consistent<C1, Stream<(K, V1), L, B, O, R>>
+    where K: Eq + std::hash::Hash {
+        Consistent::new(self.inner.anti_join(n.into()))
+    }
 }
 
 // ---- Additional preserving operators ----
@@ -510,6 +548,20 @@ impl<'a, Con: Consistency, T, L: Location<'a>, B: Boundedness, O: Ordering, R: R
     }
 }
 
+// ---- Tick-bounded stream operations ----
+
+impl<'a, Con: Consistency, T, L: Location<'a>, O: Ordering, R: Retries>
+    Consistent<Con, Stream<T, Tick<L>, Bounded, O, R>>
+{
+    pub fn all_ticks(self) -> Consistent<Con, Stream<T, L, Unbounded, O, R>> {
+        Consistent::new(self.inner.all_ticks())
+    }
+
+    pub fn defer_tick(self) -> Consistent<Con, Stream<T, Tick<L>, Bounded, O, R>> {
+        Consistent::new(self.inner.defer_tick())
+    }
+}
+
 // ---- end_atomic: on Atomic<L> streams ----
 
 impl<'a, Con: Consistency, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
@@ -550,8 +602,8 @@ impl<'a, C1: Consistency, T, L: Location<'a> + NoTick, R: Retries>
 
 // ---- Batch on NoTick locations ----
 
-impl<'a, Con: Consistency, T, L: Location<'a> + NoTick, O: Ordering, R: Retries>
-    Consistent<Con, Stream<T, L, Unbounded, O, R>>
+impl<'a, Con: Consistency, T, L: Location<'a> + NoTick, B: Boundedness, O: Ordering, R: Retries>
+    Consistent<Con, Stream<T, L, B, O, R>>
 {
     pub fn batch(self, tick: &Tick<L>, nondet: NonDet) -> Consistent<Con, Stream<T, Tick<L>, Bounded, O, R>> {
         Consistent::new(self.inner.batch(tick, nondet))
@@ -579,7 +631,6 @@ impl<'a, Con: Consistency, T, L: Location<'a>, B: Boundedness, O: Ordering, R: R
 
 impl<T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, L, B, O, R> {
     /// Wrap this stream with a consistency label.
-    /// Typically called on sources: `process.source_iter(q!([1,2,3])).consistent::<Seq>()`
     pub fn consistent<C: Consistency>(self) -> Consistent<C, Self> {
         Consistent::new(self)
     }
@@ -787,6 +838,40 @@ impl<'a, Con: Consistency, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R
     }
 }
 
+// ---- KeyedSingleton: entries preserves C ----
+
+impl<'a, Con: Consistency, K, V, L: Location<'a>, B: crate::live_collections::keyed_singleton::KeyedSingletonBound<ValueBound = Bounded>>
+    Consistent<Con, KeyedSingleton<K, V, L, B>>
+{
+    pub fn entries(self) -> Consistent<Con, Stream<(K, V), L, B::UnderlyingBound, NoOrder, ExactlyOnce>> {
+        Consistent::new(self.inner.entries())
+    }
+}
+
+impl<'a, Con: Consistency, K, V, L: Location<'a>, B: crate::live_collections::keyed_singleton::KeyedSingletonBound<ValueBound = Unbounded>>
+    Consistent<Con, KeyedSingleton<K, V, L, B>>
+{
+    pub fn snapshot(self, tick: &Tick<L>, nondet: NonDet) -> Consistent<Con, KeyedSingleton<K, V, Tick<L>, Bounded>>
+    where L: NoTick {
+        Consistent::new(self.inner.snapshot(tick, nondet))
+    }
+}
+
+// General KeyedSingleton methods
+impl<'a, Con: Consistency, K, V, L: Location<'a>, B: crate::live_collections::keyed_singleton::KeyedSingletonBound>
+    Consistent<Con, KeyedSingleton<K, V, L, B>>
+{
+    pub fn into_singleton(self) -> Consistent<Con, Singleton<std::collections::HashMap<K, V>, L, B::UnderlyingBound>>
+    where K: Eq + std::hash::Hash {
+        Consistent::new(self.inner.into_singleton())
+    }
+
+    pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L> + Copy) -> Consistent<Con, KeyedSingleton<K, U, L, B::EraseMonotonic>>
+    where F: Fn(V) -> U + 'a {
+        Consistent::new(self.inner.map(f))
+    }
+}
+
 // ---- Optional: into_stream preserves C ----
 
 impl<'a, Con: Consistency, T, L: Location<'a>, B: Boundedness + IsBounded>
@@ -817,7 +902,6 @@ mod tests {
             let p = flow.process::<()>();
             let _s: Consistent<Seq, Stream<i32, _, _, _, _>> =
                 p.source_iter(q!(vec![1, 2, 3]))
-                    .consistent::<Seq>()
                     .map(q!(|x| x + 1));
         });
     }
@@ -828,7 +912,6 @@ mod tests {
             let p = flow.process::<()>();
             let _s: Consistent<Seq, Stream<i32, _, _, _, _>> =
                 p.source_iter(q!(vec![1, 2, 3]))
-                    .consistent::<Seq>()
                     .filter(q!(|x| *x > 1));
         });
     }
@@ -837,8 +920,8 @@ mod tests {
     fn chain_seq_seq_is_seq() {
         build(|flow| {
             let p = flow.process::<()>();
-            let a = p.source_iter(q!(vec![1, 2])).consistent::<Seq>();
-            let b = p.source_iter(q!(vec![3, 4])).consistent::<Seq>();
+            let a = p.source_iter(q!(vec![1, 2]));
+            let b = p.source_iter(q!(vec![3, 4]));
             let _s: Consistent<Seq, Stream<i32, _, _, _, _>> = a.chain(b);
         });
     }
@@ -847,8 +930,8 @@ mod tests {
     fn chain_seq_conv_is_conv() {
         build(|flow| {
             let p = flow.process::<()>();
-            let a = p.source_iter(q!(vec![1, 2])).consistent::<Seq>();
-            let b = p.source_iter(q!(vec![3, 4])).consistent::<Conv>();
+            let a = p.source_iter(q!(vec![1, 2]));
+            let b = p.source_iter(q!(vec![3, 4])).relabel::<Conv>();
             let _s: Consistent<Conv, Stream<i32, _, _, _, _>> = a.chain(b);
         });
     }
@@ -858,7 +941,6 @@ mod tests {
         build(|flow| {
             let p = flow.process::<()>();
             p.source_iter(q!(vec![1, 2, 3]))
-                .consistent::<Seq>()
                 .map(q!(|x| x + 1))
                 .for_each(q!(|_| {}));
         });
