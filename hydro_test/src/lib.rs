@@ -2,6 +2,7 @@
 hydro_lang::setup!();
 
 pub mod cluster;
+pub mod coordination;
 pub mod distributed;
 pub mod embedded;
 pub mod external_client;

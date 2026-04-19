@@ -1520,6 +1520,40 @@ impl<T: std::fmt::Debug + PartialEq + Clone> ConsistencyCollector<T> {
     pub fn num_runs(&self) -> usize {
         self.runs.lock().unwrap().len()
     }
+
+    /// Check consistency against a CoordinationReport for a named sink.
+    ///
+    /// Looks up the sink's consistency label and runs the appropriate check:
+    /// - SEQ / SELF with Prefix goal → check_prefix_consistency
+    /// - CONV / SELF with SetInclusion or Lattice goal → check_set_consistency
+    /// - INCON → skip (inconsistency is expected)
+    ///
+    /// Returns the label found, or None if the sink wasn't in the report.
+    pub fn check_against_report(&self, report: &CoordinationReport, sink_name: &str) -> Option<ConsistencyLabel>
+    where T: Eq + std::hash::Hash {
+        let sink = report.sinks.iter().find(|s| s.name == sink_name)?;
+        let label = &sink.consistency_fixed;
+        match label {
+            ConsistencyLabel::SequentiallyConsistent => {
+                self.check_prefix_consistency();
+            }
+            ConsistencyLabel::Convergent => {
+                self.check_set_consistency();
+            }
+            ConsistencyLabel::SelfConsistent => {
+                match &sink.goal {
+                    OrderGoal::Prefix => self.check_prefix_consistency(),
+                    _ => self.check_set_consistency(),
+                }
+            }
+            ConsistencyLabel::Inconsistent => {
+                // Inconsistency is expected — don't check.
+                // The user can still call check_prefix/set_consistency manually
+                // to find a concrete counterexample.
+            }
+        }
+        Some(label.clone())
+    }
 }
 
 #[cfg(test)]
