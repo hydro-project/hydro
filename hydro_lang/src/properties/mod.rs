@@ -119,6 +119,7 @@ pub enum Proved {}
 
 /// Query whether a proof marker is `Proved`.
 pub trait IsProved {
+    /// Whether this proof mechanism has been proved.
     const IS_PROVED: bool;
 }
 impl IsProved for NotProved {

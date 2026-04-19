@@ -344,15 +344,6 @@ fn short_label(label: &ConsistencyLabel) -> &'static str {
         ConsistencyLabel::Inconsistent => "INCON",
     }
 }
-fn consistency_description(label: &ConsistencyLabel) -> &'static str {
-    match label {
-        ConsistencyLabel::SequentiallyConsistent => "All replicas produce prefixes of the same deterministic sequence.",
-        ConsistencyLabel::Convergent => "All replicas converge to the same value via commutative merge.",
-        ConsistencyLabel::SelfConsistent => "Future-monotone: observations only refine, never retract.",
-        ConsistencyLabel::Inconsistent => "Output may contradict earlier observations.",
-    }
-}
-
 /// Analyze channels along the dataflow path from a sink backward.
 /// Returns channel edges and a discovery order map (location → order, 0 = sink location).
 fn analyze_channels(
@@ -1454,7 +1445,7 @@ pub struct ConsistencyCollector<T> {
     runs: std::sync::Mutex<Vec<Vec<T>>>,
 }
 
-impl<T: std::fmt::Debug + PartialEq + Clone> ConsistencyCollector<T> {
+impl<T: fmt::Debug + PartialEq + Clone> ConsistencyCollector<T> {
     pub fn new() -> Self {
         Self { runs: std::sync::Mutex::new(Vec::new()) }
     }
@@ -1502,9 +1493,9 @@ impl<T: std::fmt::Debug + PartialEq + Clone> ConsistencyCollector<T> {
         if runs.len() < 2 { return; }
         // Simple check: all runs should produce the same set of elements
         // (for a convergent program, all replicas converge to the same value)
-        let first_set: std::collections::HashSet<&T> = runs[0].iter().collect();
+        let first_set: HashSet<&T> = runs[0].iter().collect();
         for (i, run) in runs.iter().enumerate().skip(1) {
-            let run_set: std::collections::HashSet<&T> = run.iter().collect();
+            let run_set: HashSet<&T> = run.iter().collect();
             if first_set != run_set {
                 let only_in_first: Vec<_> = first_set.difference(&run_set).collect();
                 let only_in_run: Vec<_> = run_set.difference(&first_set).collect();

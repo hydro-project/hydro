@@ -7,7 +7,7 @@ pub mod ir;
 ///
 /// Checks whether each observable sink is future-monotone under an appropriate
 /// partial order, identifying where coordination is intrinsically required.
-
+#[allow(missing_docs)]
 pub mod coordination;
 
 #[cfg(feature = "build")]
