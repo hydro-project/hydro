@@ -221,10 +221,13 @@ fn propagate_forward(
     let local_label = goal_label(sink_goal);
     let is_cluster = is_cluster_location(sink_location);
     match arriving.get(&sink_base) {
-        Some(upstream) => propagate_at_location(upstream, &local_label, is_cluster, sink_has_nondet),
+        // For Process sinks, local nondeterminism (batch boundaries) doesn't
+        // break convergence — there's only one replica. has_nondet only matters
+        // for Cluster sinks where different members may diverge.
+        Some(upstream) => propagate_at_location(upstream, &local_label, is_cluster, sink_has_nondet && is_cluster),
         None => {
             // No channels — purely local
-            if is_cluster { local_label } else { ConsistencyLabel::SelfConsistent }
+            local_label
         }
     }
 }
