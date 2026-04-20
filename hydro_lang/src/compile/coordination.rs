@@ -401,23 +401,23 @@ fn analyze_channels_from(
                             }
                         }
                     }
-                    // For durable channels, the delivery mechanism guarantees
-                    // PrefixConsistency regardless of membership dynamics.
-                    // The sending-side proof may fail due to broadcast plumbing
-                    // (membership tracking), but durability subsumes that concern.
-                    // For dynamic Cluster with non-durable transport, the edge proof
-                    // may fail due to broadcast plumbing — floor at Self.
-                    let is_durable = networking_info.is_durable();
+                    // Edge label adjustment based on channel delivery properties.
+                    //
+                    // If the channel guarantees complete delivery (no late-joiner
+                    // gap), membership-tracking plumbing is irrelevant — use the
+                    // goal-based label from the data path.
+                    //
+                    // Otherwise, for dynamic Cluster broadcasts, the sending-side
+                    // proof may fail due to track_membership's non-commutative fold
+                    // rather than the actual data. Floor at Self for fixed-membership.
+                    let is_static = matches!(recv_loc, LocationId::StaticCluster(_));
+                    let no_late_joiners = is_static || networking_info.is_durable();
+                    let complete_delivery = no_late_joiners && networking_info.is_gap_free();
                     let is_dynamic_cluster = matches!(recv_loc, LocationId::Cluster(_));
-                    let (label, label_fixed) = if is_durable {
-                        // Durable channel: delivery is guaranteed by the recovery
-                        // mechanism. Use the goal-based label (what the data path
-                        // would produce if membership weren't an issue).
-                        let durable_label = goal_label(&best_goal);
-                        (durable_label.clone(), durable_label)
+                    let (label, label_fixed) = if complete_delivery {
+                        let data_label = goal_label(&best_goal);
+                        (data_label.clone(), data_label)
                     } else if is_dynamic_cluster && is_broadcast_to_cluster && best_label == ConsistencyLabel::Inconsistent {
-                        // Dynamic Cluster, non-durable: membership plumbing may
-                        // cause spurious INCON. Floor at Self for fixed-membership.
                         (best_label.clone(), ConsistencyLabel::SelfConsistent)
                     } else {
                         (best_label.clone(), best_label.clone())
@@ -1101,23 +1101,24 @@ fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
 
             if is_cross_location && is_to_cluster {
                 // Cross-location broadcast to a cluster.
-                // PrefixConsistency requires: IncludesFirst + gap-free + ordered.
+                // Complete delivery requires every active member to receive
+                // the full set of sent elements. Two independent concerns:
                 //
-                // StaticCluster + FailStop: deployment protocol guarantees IncludesFirst,
-                //   FailStop guarantees gap-free. Discharges all goals.
-                // Durable channel: replay mechanism guarantees IncludesFirst + gap-free.
-                //   Discharges all goals.
-                // Dynamic Cluster + non-durable: IncludesFirst not guaranteed for late
-                //   joiners. Only SetInclusion is safe (elements accumulate per-member).
-                let has_prefix_consistency = match networking_info {
-                    crate::networking::NetworkingInfo::Durable { .. } => true,
-                    crate::networking::NetworkingInfo::Tcp { fault } => {
-                        matches!(recv_loc, LocationId::StaticCluster(_))
-                            && matches!(fault, crate::networking::TcpFault::FailStop)
-                    }
-                };
-                if has_prefix_consistency {
-                    Source // all members see complete prefix
+                // 1. Late joiners: do members that start after data flows
+                //    receive missed elements?
+                //    - StaticCluster: no late joiners (all present at startup)
+                //    - Durable channel: replay catches up late joiners
+                //    - Dynamic Cluster + non-durable: late joiners miss data
+                //
+                // 2. Transport loss: does the channel drop elements?
+                //    - is_gap_free(): ExactlyOnce/AtLeastOnce delivery
+                //
+                let is_static = matches!(recv_loc, LocationId::StaticCluster(_));
+                let no_late_joiners = is_static || networking_info.is_durable();
+                let complete_delivery = no_late_joiners && networking_info.is_gap_free();
+
+                if complete_delivery {
+                    Source // all members see complete stream
                 } else {
                     // Per-member monotone under SetInclusion only.
                     PreserveGoals { input, goals: &[OrderGoal::SetInclusion] }
