@@ -1,4 +1,3 @@
-
 use dfir_rs::scheduled::ticks::TickInstant;
 use dfir_rs::util::collect_ready;
 use lattices::Max;
@@ -28,7 +27,6 @@ pub fn test_state() {
             -> map(|x| (context.current_tick(), x.into_reveal()))
             -> for_each(|x| max_send.send(x).unwrap());
     };
-
 
     df.run_available_sync();
 
@@ -73,7 +71,6 @@ pub fn test_state_unused() {
         stream2 = source_iter(15..=25) -> map(Max::new);
         max_of_stream2 = stream2 -> state::<'static, Max<_>>();
     };
-
 
     df.run_available_sync();
 }
@@ -140,7 +137,6 @@ pub fn test_fold_cross() {
             -> for_each(|x| max_send.send(x).unwrap());
     };
 
-
     df.run_available_sync();
 
     assert_eq!(
@@ -182,7 +178,6 @@ pub fn test_fold_singleton() {
             -> for_each(|x| max_send.send(x).unwrap());
     };
 
-
     df.run_available_sync();
 
     assert_eq!(
@@ -219,7 +214,6 @@ pub fn test_fold_singleton_push() {
             -> map(|x| (context.current_tick(), x))
             -> for_each(|x| filter_send.send(x).unwrap());
     };
-
 
     df.run_available_sync();
 
@@ -259,7 +253,6 @@ pub fn test_reduce_singleton() {
             -> for_each(|x| max_send.send(x).unwrap());
     };
 
-
     df.run_available_sync();
 
     assert_eq!(
@@ -296,7 +289,6 @@ pub fn test_reduce_singleton_push() {
             -> map(|x| (context.current_tick(), x))
             -> for_each(|x| filter_send.send(x).unwrap());
     };
-
 
     df.run_available_sync();
 
@@ -380,7 +372,6 @@ pub fn test_multi_tick() {
             -> map(|x| (context.current_tick(), x.into_reveal()))
             -> for_each(|x| max_send.send(x).unwrap());
     };
-
 
     df.run_available_sync();
     assert_eq!(

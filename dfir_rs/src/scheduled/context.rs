@@ -427,6 +427,20 @@ struct StateData {
 }
 type LifespanResetFn = Box<dyn FnMut(&mut dyn Any)>;
 
+/// Runtime state shared between [`InlineContext`] (inside the tick closure) and [`InlineDfir`]
+/// (the external handle). Wrapped in `Rc` so both sides can read/write without ownership issues.
+///
+/// This consolidates non-wake shared state into a single allocation. Wake-related state
+/// lives separately in [`InlineWakeState`] (which requires `Arc` for the [`Wake`] trait).
+#[doc(hidden)]
+pub struct InlineSharedState {
+    /// Current tick counter, incremented by [`InlineContext::__end_tick`].
+    pub current_tick: Cell<TickInstant>,
+    /// Live-updating DFIR runtime metrics (subgraph run counts, handoff item counts, etc.).
+    /// Wrapped in its own `Rc` for compatibility with [`DfirMetricsIntervals`].
+    pub metrics: Rc<DfirMetrics>,
+}
+
 /// Coordinates waking between [`InlineContext`] (inside the tick closure) and [`InlineDfir`]
 /// (the external runner). Shared via `Arc` between both.
 ///
@@ -471,20 +485,17 @@ impl Wake for InlineWakeState {
 #[doc(hidden)]
 pub struct InlineContext {
     states: SlotVec<StateTag, StateData>,
-    /// Shared tick counter, also readable from `InlineDfir` outside the closure.
-    current_tick: Rc<Cell<TickInstant>>,
+    /// Shared state readable from both inside the closure and from [`InlineDfir`].
+    shared: Rc<InlineSharedState>,
     wake_state: std::sync::Arc<InlineWakeState>,
 }
 
 impl InlineContext {
-    /// Create a new inline context with shared wake state and tick counter.
-    pub fn new(
-        wake_state: std::sync::Arc<InlineWakeState>,
-        current_tick: Rc<Cell<TickInstant>>,
-    ) -> Self {
+    /// Create a new inline context with shared wake state and shared state.
+    pub fn new(wake_state: std::sync::Arc<InlineWakeState>, shared: Rc<InlineSharedState>) -> Self {
         Self {
             states: SlotVec::new(),
-            current_tick,
+            shared,
             wake_state,
         }
     }
@@ -556,7 +567,7 @@ impl InlineContext {
 
     /// Gets the current tick count.
     pub fn current_tick(&self) -> TickInstant {
-        self.current_tick.get()
+        self.shared.current_tick.get()
     }
 
     /// No-op: inline mode has no subgraph scheduling.
@@ -600,7 +611,9 @@ impl InlineContext {
             };
             (lifespan_hook_fn)(Box::deref_mut(state));
         }
-        self.current_tick.set(self.current_tick.get() + crate::scheduled::ticks::TickDuration::SINGLE_TICK);
+        self.shared.current_tick.set(
+            self.shared.current_tick.get() + crate::scheduled::ticks::TickDuration::SINGLE_TICK,
+        );
     }
 }
 
@@ -629,8 +642,8 @@ pub struct InlineDfir<Tick> {
     tick_closure: Tick,
     wake_state: std::sync::Arc<InlineWakeState>,
 
-    /// Shared tick counter, updated by `InlineContext::__end_tick()` inside the closure.
-    current_tick: Rc<Cell<TickInstant>>,
+    /// Shared state, also held by [`InlineContext`] inside the tick closure.
+    shared: Rc<InlineSharedState>,
 
     #[cfg(feature = "meta")]
     /// See [`Self::meta_graph()`].
@@ -639,9 +652,6 @@ pub struct InlineDfir<Tick> {
     #[cfg(feature = "meta")]
     /// See [`Self::diagnostics()`].
     diagnostics: Option<Vec<Diagnostic<SerdeSpan>>>,
-
-    /// Live-updating DFIR runtime metrics via interior mutability.
-    metrics: Rc<DfirMetrics>,
 }
 
 /// Trait for tick closures — abstracts over both concrete async closures
@@ -687,13 +697,12 @@ pub type InlineDfirErased = InlineDfir<TickClosureErased>;
 
 impl<Tick: TickClosure> InlineDfir<Tick> {
     /// Create a new `InlineDfir` from a tick closure, shared wake state,
-    /// shared tick counter, meta graph / diagnostics JSON strings, and metrics.
+    /// shared state, and meta graph / diagnostics JSON strings.
     #[doc(hidden)]
     pub fn new(
         tick_closure: Tick,
         wake_state: std::sync::Arc<InlineWakeState>,
-        current_tick: Rc<Cell<TickInstant>>,
-        metrics: Rc<DfirMetrics>,
+        shared: Rc<InlineSharedState>,
         meta_graph_json: Option<&str>,
         diagnostics_json: Option<&str>,
     ) -> Self {
@@ -702,7 +711,7 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
         Self {
             tick_closure,
             wake_state,
-            current_tick,
+            shared,
             #[cfg(feature = "meta")]
             meta_graph: meta_graph_json.map(|json| {
                 let mut meta_graph: DfirGraph =
@@ -720,7 +729,6 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
             diagnostics: diagnostics_json.map(|json| {
                 serde_json::from_str(json).expect("Failed to deserialize diagnostics.")
             }),
-            metrics,
         }
     }
 
@@ -740,12 +748,12 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
 
     /// Returns a reference-counted handle to the continually-updated runtime metrics for this DFIR instance.
     pub fn metrics(&self) -> Rc<DfirMetrics> {
-        Rc::clone(&self.metrics)
+        Rc::clone(&self.shared.metrics)
     }
 
     /// Gets the current tick (local time) count.
     pub fn current_tick(&self) -> TickInstant {
-        self.current_tick.get()
+        self.shared.current_tick.get()
     }
 
     /// Returns a [`DfirMetricsIntervals`] handle where each call to
@@ -861,12 +869,11 @@ impl<Tick: AsyncFnMut() -> bool + 'static> InlineDfir<Tick> {
         InlineDfir {
             tick_closure: TickClosureErased(Box::new(self.tick_closure)),
             wake_state: self.wake_state,
-            current_tick: self.current_tick,
+            shared: self.shared,
             #[cfg(feature = "meta")]
             meta_graph: self.meta_graph,
             #[cfg(feature = "meta")]
             diagnostics: self.diagnostics,
-            metrics: self.metrics,
         }
     }
 }

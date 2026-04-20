@@ -1,5 +1,5 @@
-use dfir_rs::util::{collect_ready, iter_batches_stream, unbounded_channel};
 use dfir_rs::dfir_syntax;
+use dfir_rs::util::{collect_ready, iter_batches_stream, unbounded_channel};
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
