@@ -1482,6 +1482,27 @@ impl DfirGraph {
                 }
             }
 
+            // Include singleton reference edges: if node A references the
+            // singleton output of node B, then A's subgraph must run after B's.
+            for dst_id in self.node_ids() {
+                for src_ref_id in self
+                    .node_singleton_references(dst_id)
+                    .iter()
+                    .copied()
+                    .flatten()
+                {
+                    let Some(src_sg) = self.node_subgraph(src_ref_id) else {
+                        continue;
+                    };
+                    let Some(dst_sg) = self.node_subgraph(dst_id) else {
+                        continue;
+                    };
+                    if src_sg != dst_sg {
+                        sg_preds.entry(dst_sg).unwrap().or_default().push(src_sg);
+                    }
+                }
+            }
+
             let topo_sort = super::graph_algorithms::topo_sort(self.subgraph_ids(), |sg_id| {
                 sg_preds.get(sg_id).into_iter().flatten().copied()
             })
