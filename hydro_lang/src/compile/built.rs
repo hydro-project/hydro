@@ -52,7 +52,7 @@ impl<'a> BuiltFlow<'a> {
         &self.ir
     }
 
-    /// Analyze the program for the Coordination Criterion (Hellerstein 2026).
+    /// Analyze the program for the Coordination Criterion (Hellerstein 2025, preprint).
     ///
     /// Returns a report indicating whether each observable sink is
     /// future-monotone (coordination-free) or requires coordination.

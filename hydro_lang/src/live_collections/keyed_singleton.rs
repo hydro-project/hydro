@@ -49,7 +49,7 @@ pub trait KeyedSingletonBound {
             EraseMonotonic = Self::WithBoundedValue,
         >;
 
-    /// The [`Boundedness`] of this [`Singleton`] if it is produced from a [`KeyedStream`] with [`Self`] boundedness.
+    /// The [`Boundedness`] of this [`KeyedSingleton`] if it is produced from a [`KeyedStream`] with [`Self`] boundedness.
     type KeyedStreamToMonotone: KeyedSingletonBound<UnderlyingBound = Self::UnderlyingBound, ValueBound = Self::ValueBound>;
 
     /// The type of the keyed singleton if the value for each key is no longer monotonic.
@@ -84,7 +84,7 @@ impl KeyedSingletonBound for Bounded {
 }
 
 /// A variation of boundedness specific to [`KeyedSingleton`], which indicates that once a key appears,
-/// its value is bounded and will never change, but new entries may appear asynchronously
+/// its value is bounded and will never change, but new entries may appear asynchronously.
 pub struct BoundedValue;
 
 impl KeyedSingletonBound for BoundedValue {
@@ -502,7 +502,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                 out.ir_node.replace(HydroNode::Placeholder),
             )
         } else {
-            panic!("BoundedValue or Unbounded KeyedSingleton inside a tick, not supported");
+            panic!("Non-Unbounded KeyedSingleton (Bounded/BoundedValue/MonotonicValue) inside a tick, not supported");
         }
     }
 
@@ -572,7 +572,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                 out.ir_node.replace(HydroNode::Placeholder),
             )
         } else {
-            panic!("BoundedValue or Unbounded KeyedSingleton inside a tick, not supported");
+            panic!("Non-Unbounded KeyedSingleton (Bounded/BoundedValue/MonotonicValue) inside a tick, not supported");
         }
     }
 

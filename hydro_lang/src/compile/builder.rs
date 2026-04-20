@@ -215,18 +215,20 @@ impl<'a> FlowBuilder<'a> {
 
         let location_names = std::mem::take(&mut self.location_names);
 
-        let report = super::coordination::analyze_coordination_default(&ir, &location_names);
-
-        if std::env::var("HYDRO_CHECK_COORDINATION").is_ok() {
+        let coordination_report = if std::env::var("HYDRO_CHECK_COORDINATION").is_ok() {
+            let report = super::coordination::analyze_coordination_default(&ir, &location_names);
             eprintln!("\n{report}");
-        }
+            Some(report)
+        } else {
+            None
+        };
 
         super::built::BuiltFlow {
             ir,
             locations: std::mem::take(&mut self.locations),
             location_names,
             flow_name: std::mem::take(&mut self.flow_name),
-            coordination_report: Some(report),
+            coordination_report,
             _phantom: PhantomData,
         }
     }

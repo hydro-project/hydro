@@ -3,11 +3,11 @@
 #[expect(missing_docs, reason = "TODO")]
 pub mod ir;
 
-/// Static analysis for the Coordination Criterion (Hellerstein 2026).
+/// Static analysis for the Coordination Criterion (Hellerstein 2025, preprint).
 ///
 /// Checks whether each observable sink is future-monotone under an appropriate
 /// partial order, identifying where coordination is intrinsically required.
-#[allow(missing_docs)]
+#[expect(missing_docs, reason = "TODO: add docs to remaining public items")]
 pub mod coordination;
 
 #[cfg(feature = "build")]

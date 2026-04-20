@@ -1,6 +1,6 @@
 # Coordination Criterion Analysis
 
-Static analysis for the Hydro compiler that determines whether a distributed program requires coordination, based on [The Coordination Criterion](https://arxiv.org/abs/2602.09435) (Hellerstein, 2026) and the Flo/Gyatso semantics from [Laddad's dissertation](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2025/EECS-2025-85.html).
+Static analysis for the Hydro compiler that determines whether a distributed program requires coordination, based on [The Coordination Criterion](https://arxiv.org/abs/2602.09435) (Hellerstein, 2025 preprint) and the Flo/Gyatso semantics from [Laddad's dissertation](https://www2.eecs.berkeley.edu/Pubs/TechRpts/2025/EECS-2025-85.html).
 
 ## What is to be proved
 
@@ -93,6 +93,6 @@ Edge labels are computed by running the backward proof at each Network boundary 
 
 **Network ordering is transport-aware.** The analysis checks the `Network` node's IR metadata for the output ordering, which reflects the transport's guarantee (e.g., TCP FailStop preserves `TotalOrder` for point-to-point sends). Multi-sender scenarios (e.g., cluster-to-cluster demux) correctly produce `NoOrder` due to receiver-side interleaving.
 
-**Cycle analysis is not a full fixpoint.** Inter-cycle dependencies are handled by iterating the cycle analysis to fixpoint. This handles one level of nesting (cycle A depends on cycle B) but not deeper chains. A true fixpoint iteration would be more robust, though deeper cycle nesting is rare in practice.
+**Cycle analysis uses fixpoint iteration.** Inter-cycle dependencies are handled by seeding all cycles with optimistic placeholders and iterating until convergence. This correctly handles arbitrary nesting depth (cycle A depends on cycle B depends on cycle C, etc.).
 
 **Bounded vs. unbounded is structural.** The analysis uses Hydro's `Bounded`/`Unbounded` distinction to determine whether aggregation results are stable. `Bounded` means "within a tick" — the fold sees complete input and produces a deterministic result. Cross-tick accumulation is handled by `YieldConcat` (which preserves set inclusion) and `DeferTick` (which preserves set inclusion and lattice order). This structural approach is sound for Hydro's tick-based execution model but would need revisiting if Hydro added non-tick-based windowing.

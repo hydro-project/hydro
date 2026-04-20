@@ -21,7 +21,6 @@ use super::builder::CycleId;
 use super::ir::{HydroNode, HydroRoot, SharedNode, StreamOrder};
 use crate::location::dynamic::LocationId;
 use crate::location::LocationKey;
-use super::ir::HydroSource;
 
 #[cfg(feature = "build")]
 use dfir_lang::diagnostic::{Diagnostic, Level};
@@ -32,7 +31,7 @@ use dfir_lang::diagnostic::{Diagnostic, Level};
 
 /// The partial order under which we're trying to prove monotonicity.
 ///
-/// The Coordination Criterion (Hellerstein 2026) states that a program admits
+/// The Coordination Criterion (Hellerstein 2025, preprint) states that a program admits
 /// a coordination-free implementation iff its observable outputs are
 /// future-monotone — meaning outputs only grow (never contradict) as inputs
 /// grow. "Growth" is defined by a partial order on the output type:
@@ -174,7 +173,7 @@ fn split_forward_back(
 ///
 /// Returns the propagated consistency at the terminal sink.
 fn propagate_forward(
-    forward: &mut [ChannelEdge],
+    forward: &[ChannelEdge],
     discovery_order: &HashMap<LocationId, usize>,
     sink_goal: &OrderGoal,
     sink_proof_passed: bool,
@@ -183,7 +182,8 @@ fn propagate_forward(
     assume_fixed_membership: bool,
 ) -> ConsistencyLabel {
     // Sort forward edges source-first (highest discovery order first)
-    forward.sort_by(|a, b| {
+    let mut sorted: Vec<&ChannelEdge> = forward.iter().collect();
+    sorted.sort_by(|a, b| {
         let a_ord = discovery_order.get(&a.from).copied().unwrap_or(0);
         let b_ord = discovery_order.get(&b.from).copied().unwrap_or(0);
         b_ord.cmp(&a_ord)
@@ -192,7 +192,7 @@ fn propagate_forward(
     // Track the best label arriving at each location
     let mut arriving: HashMap<LocationId, ConsistencyLabel> = HashMap::new();
 
-    for edge in forward.iter() {
+    for edge in &sorted {
         let edge_label = if assume_fixed_membership {
             &edge.label_fixed_membership
         } else {
@@ -558,7 +558,7 @@ impl ProofResult {
     }
 
     /// Append a "preserved" step (trace is built back-to-front, reversed at display time).
-    pub(crate) fn prepend_preserved(mut self, operator: &str, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
+    pub(crate) fn with_preserved(mut self, operator: &str, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
         self.trace.push(ProofStep {
             operator: operator.to_string(),
             action: ProofAction::Preserved,
@@ -569,7 +569,7 @@ impl ProofResult {
     }
 
     /// Append a "goal changed" step (trace is built back-to-front, reversed at display time).
-    pub(crate) fn prepend_goal_changed(mut self, operator: &str, new_goal: &OrderGoal, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
+    pub(crate) fn with_goal_changed(mut self, operator: &str, new_goal: &OrderGoal, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
         self.trace.push(ProofStep {
             operator: operator.to_string(),
             action: ProofAction::GoalChanged { new_goal: new_goal.clone() },
@@ -580,7 +580,7 @@ impl ProofResult {
     }
 
     /// Append a "resolved locally" step and record a replication issue.
-    pub(crate) fn prepend_resolved_locally(mut self, operator: &str, reason: impl Into<String>, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
+    pub(crate) fn with_resolved_locally(mut self, operator: &str, reason: impl Into<String>, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
         let reason = reason.into();
         let step = ProofStep {
             operator: operator.to_string(),
@@ -932,7 +932,7 @@ fn preserve_or_fail(
     seen_tees: &mut SeenTees,
 ) -> ProofResult {
     if allowed.contains(goal) {
-        prove(input, goal, cycle_proofs, seen_tees).prepend_preserved(name, span, pm_span)
+        prove(input, goal, cycle_proofs, seen_tees).with_preserved(name, span, pm_span)
     } else {
         ProofResult::fail(name, fail_msg, span, pm_span)
     }
@@ -974,7 +974,7 @@ fn difference_logic(
     match goal {
         OrderGoal::SetInclusion => {
             let p = prove(pos, &OrderGoal::SetInclusion, cycle_proofs, seen_tees);
-            if !p.is_proved() { return p.prepend_preserved(name, span.clone(), pm_span.clone()); }
+            if !p.is_proved() { return p.with_preserved(name, span.clone(), pm_span.clone()); }
             if neg.metadata().collection_kind.is_bounded() {
                 let mut result = ProofResult::discharged(name, "neg input is bounded", span, pm_span);
                 result.replication_issues = p.replication_issues;
@@ -1021,19 +1021,11 @@ fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
     const SET_LATTICE: &[OrderGoal] = &[OrderGoal::SetInclusion, OrderGoal::Lattice];
 
     match node {
-        // Sources: on a Cluster, per-member sources break coordination.
-        // Embedded/EmbeddedSingleton (includes CLUSTER_SELF_ID) and Spin are per-member.
-        // Iter, Stream, ClusterMembers, ExternalNetwork produce identical data at all members.
-        HydroNode::Source { source, metadata, .. } => {
-            if matches!(metadata.location_id, LocationId::Cluster(_)) {
-                match source {
-                    HydroSource::Embedded(_) | HydroSource::EmbeddedSingleton(_) | HydroSource::Spin() => Custom,
-                    _ => Source, // Iter, Stream, ClusterMembers, ExternalNetwork — same at all members
-                }
-            } else {
-                Source
-            }
-        }
+        // Sources: per-member sources (Embedded, EmbeddedSingleton, Spin) produce
+        // different data at each Cluster member (e.g. CLUSTER_SELF_ID), but are still
+        // monotone per-member (data only arrives). Cross-replica divergence is handled
+        // by the consistency label propagation layer, not the per-sink proof.
+        HydroNode::Source { .. } => Source,
         HydroNode::Placeholder
         | HydroNode::SingletonSource { .. }
         | HydroNode::ExternalInput { .. }
@@ -1178,7 +1170,7 @@ fn prove(
             return ProofResult::discharged(&name, "source — data only arrives", span, pm_span);
         }
         MonotoneBehavior::Passthrough(inner) => {
-            return prove(inner, goal, cycle_proofs, seen_tees).prepend_preserved(&name, span, pm_span);
+            return prove(inner, goal, cycle_proofs, seen_tees).with_preserved(&name, span, pm_span);
         }
         MonotoneBehavior::PreserveGoals { input, goals } => {
             return preserve_or_fail(
@@ -1195,7 +1187,7 @@ fn prove(
             );
         }
         MonotoneBehavior::SharedPassthrough(inner) => {
-            return prove_shared(inner, goal, cycle_proofs, seen_tees).prepend_preserved(&name, span, pm_span);
+            return prove_shared(inner, goal, cycle_proofs, seen_tees).with_preserved(&name, span, pm_span);
         }
         MonotoneBehavior::DifferenceOp { pos, neg } => {
             return difference_logic(
@@ -1221,13 +1213,13 @@ fn prove(
                 OrderGoal::SetInclusion => {
                     let a = prove(first, goal, cycle_proofs, seen_tees);
                     if !a.is_proved() {
-                        return a.prepend_preserved(&format!("{name} (1st branch)"), span.clone(), pm_span.clone());
+                        return a.with_preserved(&format!("{name} (1st branch)"), span.clone(), pm_span.clone());
                     }
                     let b = prove(second, goal, cycle_proofs, seen_tees);
                     if !b.is_proved() {
-                        return b.merge_replication_issues(&a).prepend_preserved(&format!("{name} (2nd branch)"), span.clone(), pm_span.clone());
+                        return b.merge_replication_issues(&a).with_preserved(&format!("{name} (2nd branch)"), span.clone(), pm_span.clone());
                     }
-                    b.merge_replication_issues(&a).prepend_preserved(&name, span, pm_span)
+                    b.merge_replication_issues(&a).with_preserved(&name, span, pm_span)
                 }
                 _ => ProofResult::fail(&name, "breaks prefix/lattice order", span, pm_span),
             };
@@ -1260,17 +1252,17 @@ fn prove(
             }
             if is_cluster_location(&metadata.location_id) {
                 prove(inner, goal, cycle_proofs, seen_tees)
-                    .prepend_resolved_locally(&name, "per-member nondeterministic batch boundary on Cluster", span, pm_span)
+                    .with_resolved_locally(&name, "per-member nondeterministic batch boundary on Cluster", span, pm_span)
             } else {
                 prove(inner, goal, cycle_proofs, seen_tees)
-                    .prepend_resolved_locally(&name, "nondeterministic batch boundary", span, pm_span)
+                    .with_resolved_locally(&name, "nondeterministic batch boundary", span, pm_span)
             }
         }
 
         // --- CycleSource: inherit from matching CycleSink ---
         HydroNode::CycleSource { cycle_id, .. } => {
             match cycle_proofs.get(cycle_id) {
-                Some(r) => r.clone().prepend_preserved(&name, span, pm_span),
+                Some(r) => r.clone().with_preserved(&name, span, pm_span),
                 None => {
                     // This should not happen in well-formed IR — ForwardHandle panics
                     // if not completed, guaranteeing a matching CycleSink exists.
@@ -1283,14 +1275,14 @@ fn prove(
         HydroNode::CrossSingleton { left, right, .. } => match goal {
             OrderGoal::SetInclusion | OrderGoal::Prefix => {
                 let a = prove(left, goal, cycle_proofs, seen_tees);
-                if !a.is_proved() { return a.prepend_preserved(&name, span.clone(), pm_span.clone()); }
+                if !a.is_proved() { return a.with_preserved(&name, span.clone(), pm_span.clone()); }
                 // Bounded singleton is stable — no lattice proof needed
                 if right.metadata().collection_kind.is_bounded() {
-                    a.prepend_preserved(&name, span, pm_span)
+                    a.with_preserved(&name, span, pm_span)
                 } else {
                     let b = prove(right, &OrderGoal::Lattice, cycle_proofs, seen_tees);
                     b.merge_replication_issues(&a)
-                        .prepend_goal_changed(&name, &OrderGoal::Lattice, span, pm_span)
+                        .with_goal_changed(&name, &OrderGoal::Lattice, span, pm_span)
                 }
             }
             _ => ProofResult::fail(&name, "cross_singleton breaks lattice order", span, pm_span),
@@ -1408,17 +1400,17 @@ pub fn analyze_coordination(
 
           // Compute per-channel consistency labels by walking upstream
           let (channels, discovery_order) = analyze_channels(root.input(), &location, &cycle_proofs, ir);
-          let (mut forward, back) = split_forward_back(&channels, &discovery_order);
+          let (forward, back) = split_forward_back(&channels, &discovery_order);
           let sink_has_nondet = !replication_issues.is_empty();
 
           // Propagate twice: dynamic membership (full analysis) and fixed membership
           let consistency = propagate_forward(
-              &mut forward, &discovery_order,
+              &forward, &discovery_order,
               &best_goal, best_result.is_proved(), sink_has_nondet, &location,
               false,
           );
           let consistency_fixed = propagate_forward(
-              &mut forward, &discovery_order,
+              &forward, &discovery_order,
               &best_goal, best_result.is_proved(), sink_has_nondet, &location,
               true,
           );
@@ -1513,23 +1505,14 @@ impl<T: fmt::Debug + PartialEq + Clone> ConsistencyCollector<T> {
         }
     }
 
-    /// Check that all recorded runs produce outputs consistent under set inclusion.
-    /// All runs must produce subsets of the same eventual set (union of all runs).
-    /// For set inclusion, we check that no run retracts an element that appeared earlier
-    /// in the same run (monotone growth within each run).
-    /// Panics with a counterexample if a run retracts an element.
+    /// Check that all recorded runs converge to the same set of outputs.
+    /// For a convergent program, all runs should produce identical output sets
+    /// (though element order may differ).
+    /// Panics with a counterexample if two runs produce different sets.
     pub fn check_set_consistency(&self)
     where T: Eq + std::hash::Hash {
         let runs = self.runs.lock().unwrap();
-        // For set inclusion, each run's output should be a subset of the eventual output.
-        // Since we collect final outputs (not intermediate), we just check that
-        // different runs produce compatible sets (their union is well-defined).
-        // The real check is that within each run, elements only accumulate.
-        // With final outputs only, we can check that all runs agree on the
-        // elements they share.
         if runs.len() < 2 { return; }
-        // Simple check: all runs should produce the same set of elements
-        // (for a convergent program, all replicas converge to the same value)
         let first_set: HashSet<&T> = runs[0].iter().collect();
         for (i, run) in runs.iter().enumerate().skip(1) {
             let run_set: HashSet<&T> = run.iter().collect();

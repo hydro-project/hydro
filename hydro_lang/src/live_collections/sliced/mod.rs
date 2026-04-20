@@ -193,8 +193,11 @@ pub trait Slicable<'a, L: Location<'a>> {
     fn get_location(&self) -> &L;
 
     /// Creates a tick that is appropriate for the collection's location.
+    ///
+    /// # Panics
+    /// Panics if the location is already inside a tick (i.e., `try_tick()` returns `None`).
     fn create_tick(&self) -> Tick<L> {
-        self.get_location().try_tick().unwrap()
+        self.get_location().try_tick().expect("create_tick called on a location already inside a tick")
     }
 
     /// Slices this live collection at the given tick.

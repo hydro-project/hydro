@@ -61,7 +61,7 @@ pub fn paxos_log_bench<'a>(
                 .into_keyed();
 
             // Compute checkpoints on the leader
-            let nondet_log_holes = nondet!(/** Current max log sequence number dpeends on when the commit is confirmed */);
+            let nondet_log_holes = nondet!(/** Current max log sequence number depends on when the commit is confirmed */);
             let p_checkpoint = sliced! {
                 let new_slots = use(sequenced_payloads.into_keyed().keys(), nondet_log_holes);
                 let mut log_holes = use::state_null::<Stream<usize, Tick<_>, Bounded, NoOrder>>();
@@ -154,8 +154,9 @@ mod tests {
         );
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread")]
     async fn paxos_log_some_throughput() {
+        tokio::time::timeout(std::time::Duration::from_secs(120), async {
         let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
         let proposers = builder.cluster();
         let acceptors = builder.cluster();
@@ -207,5 +208,6 @@ mod tests {
                 }
             }
         }
+        }).await.expect("paxos_log_some_throughput timed out after 120s");
     }
 }
