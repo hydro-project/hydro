@@ -1,12 +1,12 @@
 use dfir_rs::util::{collect_ready, iter_batches_stream, unbounded_channel};
-use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
+use dfir_rs::dfir_syntax;
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
 pub fn test_difference() {
     let (result_send, mut result_recv) = unbounded_channel::<usize>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_iter([1, 2, 3, 4, 5]) -> [pos]diff;
         source_iter([2, 3, 4]) -> [neg]diff;
         diff = difference() -> for_each(|x| result_send.send(x).unwrap());
@@ -20,7 +20,7 @@ pub fn test_difference() {
 pub fn test_difference_multiset() {
     let (result_send, mut result_recv) = unbounded_channel::<usize>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_iter([1, 2, 2, 3, 3, 4, 4, 5, 5]) -> [pos]diff;
         source_iter([2, 3, 4]) -> [neg]diff;
         diff = difference() -> for_each(|x| result_send.send(x).unwrap());
@@ -38,15 +38,13 @@ pub fn test_diff_timing() {
 
     let (output_send, mut output_recv) = unbounded_channel::<_>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_stream(pos_recv) -> [pos]diff;
         source_stream(neg_recv) -> [neg]diff;
         diff = difference() -> for_each(|x| output_send.send((context.current_tick().0, x)).unwrap());
     };
-    assert_graphvis_snapshots!(df);
 
     df.run_tick_sync();
-    println!("{}x{}", df.current_tick(), df.current_stratum());
 
     println!("A");
 
@@ -82,12 +80,11 @@ pub fn test_diff_static() {
 
     let (output_send, mut output_recv) = unbounded_channel::<usize>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_stream(pos_recv) -> [pos]diff;
         source_stream(neg_recv) -> [neg]diff;
         diff = difference::<'tick, 'static>() -> sort() -> for_each(|v| output_send.send(v).unwrap());
     };
-    assert_graphvis_snapshots!(df);
 
     pos_send.send(1).unwrap();
     pos_send.send(1).unwrap();
@@ -117,15 +114,13 @@ pub fn test_diff_multiset_timing() {
 
     let (output_send, mut output_recv) = unbounded_channel::<_>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_stream(pos_recv) -> [pos]diff;
         source_stream(neg_recv) -> [neg]diff;
         diff = difference() -> for_each(|x| output_send.send((context.current_tick().0, x)).unwrap());
     };
-    assert_graphvis_snapshots!(df);
 
     df.run_tick_sync();
-    println!("{}x{}", df.current_tick(), df.current_stratum());
 
     println!("A");
 
@@ -161,7 +156,7 @@ pub fn test_diff_multiset_static() {
 
     let (output_send, mut output_recv) = unbounded_channel::<usize>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         diff = difference::<'static>() -> sort() -> for_each(|v| output_send.send(v).unwrap());
 
         poss = source_stream(pos_recv); //-> tee();
@@ -174,7 +169,6 @@ pub fn test_diff_multiset_static() {
         negs -> for_each(|x| println!("neg: {:?}", x));
 
     };
-    assert_graphvis_snapshots!(df);
 
     pos_send.send(1).unwrap();
     pos_send.send(1).unwrap();
@@ -207,7 +201,7 @@ pub fn test_diff_multiset_tick_static() {
 
     let (output_send, mut output_recv) = unbounded_channel::<usize>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         diff = difference::<'tick, 'static>() -> sort() -> for_each(|v| output_send.send(v).unwrap());
 
         poss = source_stream(pos_recv); //-> tee();
@@ -220,7 +214,6 @@ pub fn test_diff_multiset_tick_static() {
         negs -> for_each(|x| println!("neg: {:?}", x));
 
     };
-    assert_graphvis_snapshots!(df);
 
     pos_send.send(1).unwrap();
     pos_send.send(1).unwrap();
@@ -250,7 +243,7 @@ pub fn test_diff_multiset_static_tick() {
 
     let (output_send, mut output_recv) = unbounded_channel::<usize>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         diff = difference::<'static, 'tick>() -> sort() -> for_each(|v| output_send.send(v).unwrap());
 
         poss = source_stream(pos_recv); //-> tee();
@@ -263,7 +256,6 @@ pub fn test_diff_multiset_static_tick() {
         negs -> for_each(|x| println!("neg: {:?}", x));
 
     };
-    assert_graphvis_snapshots!(df);
 
     pos_send.send(1).unwrap();
     pos_send.send(1).unwrap();

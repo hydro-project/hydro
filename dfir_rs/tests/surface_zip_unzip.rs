@@ -7,7 +7,7 @@ pub fn test_zip_basic() {
     let (result_send, mut result_recv) =
         dfir_rs::util::unbounded_channel::<(usize, &'static str)>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_iter(0..5) -> [0]my_zip;
         source_iter(["Hello", "World"]) -> [1]my_zip;
         my_zip = zip() -> for_each(|pair| result_send.send(pair).unwrap());
@@ -60,7 +60,7 @@ pub fn test_zip_longest_basic() {
     let (result_send, mut result_recv) =
         dfir_rs::util::unbounded_channel::<EitherOrBoth<usize, &'static str>>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_iter(0..5) -> [0]my_zip_longest;
         source_iter(["Hello", "World"]) -> [1]my_zip_longest;
         my_zip_longest = zip_longest() -> for_each(|pair| result_send.send(pair).unwrap());
@@ -84,7 +84,7 @@ pub fn test_zip_longest_basic() {
 pub fn test_unzip_basic() {
     let (send0, mut recv0) = dfir_rs::util::unbounded_channel::<&'static str>();
     let (send1, mut recv1) = dfir_rs::util::unbounded_channel::<&'static str>();
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         my_unzip = source_iter(vec![("Hello", "Foo"), ("World", "Bar")]) -> unzip();
         my_unzip[0] -> for_each(|v| send0.send(v).unwrap());
         my_unzip[1] -> for_each(|v| send1.send(v).unwrap());

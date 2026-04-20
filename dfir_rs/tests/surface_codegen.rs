@@ -4,7 +4,7 @@ use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::scheduled::ticks::TickInstant;
 use dfir_rs::util::collect_ready;
 use dfir_rs::util::multiset::HashMultiSet;
-use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
+use dfir_rs::{assert_graphvis_snapshots, dfir_syntax, dfir_syntax_inline};
 use multiplatform_test::multiplatform_test;
 
 // TODO(mingwei): custom operators? How to handle in syntax? How to handle state?
@@ -28,10 +28,9 @@ use multiplatform_test::multiplatform_test;
 pub fn test_basic_2() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter([1]) -> for_each(|v| out_send.send(v).unwrap());
     };
-    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     assert_eq!(&[1], &*collect_ready::<Vec<_>, _>(&mut out_recv));
@@ -41,10 +40,9 @@ pub fn test_basic_2() {
 pub fn test_basic_3() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter([1]) -> map(|v| v + 1) -> for_each(|v| out_send.send(v).unwrap());
     };
-    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     assert_eq!(&[2], &*collect_ready::<Vec<_>, _>(&mut out_recv));
@@ -54,12 +52,11 @@ pub fn test_basic_3() {
 pub fn test_basic_union() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         m = union() -> for_each(|v| out_send.send(v).unwrap());
         source_iter([1]) -> [0]m;
         source_iter([2]) -> [1]m;
     };
-    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     assert_eq!(&[1, 2], &*collect_ready::<Vec<_>, _>(&mut out_recv));
@@ -70,7 +67,7 @@ pub fn test_basic_tee() {
     let (out_send_a, mut out_recv) = dfir_rs::util::unbounded_channel::<String>();
     let out_send_b = out_send_a.clone();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         t = source_iter([1]) -> tee();
         t[0] -> for_each(|v| out_send_a.send(format!("A {}", v)).unwrap());
         t[1] -> for_each(|v| out_send_b.send(format!("B {}", v)).unwrap());
@@ -91,7 +88,7 @@ pub fn test_basic_inspect_null() {
     let seen = Rc::new(RefCell::new(Vec::new()));
     let seen_inner = Rc::clone(&seen);
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter([1, 2, 3, 4]) -> inspect(|&x| seen_inner.borrow_mut().push(x)) -> null();
     };
     df.run_available_sync();
@@ -107,7 +104,7 @@ pub fn test_basic_inspect_no_null() {
     let seen = Rc::new(RefCell::new(Vec::new()));
     let seen_inner = Rc::clone(&seen);
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter([1, 2, 3, 4]) -> inspect(|&x| seen_inner.borrow_mut().push(x));
     };
     df.run_available_sync();
@@ -118,7 +115,7 @@ pub fn test_basic_inspect_no_null() {
 // Mainly checking subgraph partitioning pull-push handling.
 #[multiplatform_test]
 pub fn test_large_diamond() {
-    let mut df: Dfir = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         t = source_iter([1]) -> tee();
         j = union() -> for_each(|x| println!("{}", x));
         t[0] -> map(std::convert::identity) -> map(std::convert::identity) -> [0]j;
@@ -132,11 +129,10 @@ pub fn test_large_diamond() {
 pub fn test_recv_expr() {
     let send_recv = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_stream(send_recv.1)
             -> for_each(|v| print!("{:?}", v));
     };
-    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     let items_send = send_recv.0;
@@ -148,12 +144,12 @@ pub fn test_recv_expr() {
 
 #[multiplatform_test]
 pub fn test_join_order() {
-    let _df_good = dfir_syntax! {
+    let _df_good = dfir_syntax_inline! {
         yikes = join() -> for_each(|m: ((), (u32, String))| println!("{:?}", m));
         source_iter([0,1,2]) -> map(|i| ((), i)) -> [0]yikes;
         source_iter(["a".to_owned(),"b".to_owned(),"c".to_owned()]) -> map(|s| ((), s)) -> [1]yikes;
     };
-    let _df_bad = dfir_syntax! {
+    let _df_bad = dfir_syntax_inline! {
         yikes = join() -> for_each(|m: ((), (u32, String))| println!("{:?}", m));
         source_iter(["a".to_owned(),"b".to_owned(),"c".to_owned()]) -> map(|s| ((), s)) -> [1]yikes;
         source_iter([0,1,2]) -> map(|i| ((), i)) -> [0]yikes;
@@ -168,7 +164,7 @@ pub fn test_multiset_join() {
 
         let (out_tx, mut out_rx) = dfir_rs::util::unbounded_channel::<(usize, (usize, usize))>();
 
-        let mut df = dfir_syntax! {
+        let mut df = dfir_syntax_inline! {
             my_join = join::<HalfSetJoinState>() -> for_each(|m| out_tx.send(m).unwrap());
             source_iter([(0, 1), (0, 1)]) -> [0]my_join;
             source_iter([(0, 2)]) -> [1]my_join;
@@ -185,7 +181,7 @@ pub fn test_multiset_join() {
         use dfir_pipes::pull::HalfMultisetJoinState;
         let (out_tx, mut out_rx) = dfir_rs::util::unbounded_channel::<(usize, (usize, usize))>();
 
-        let mut df = dfir_syntax! {
+        let mut df = dfir_syntax_inline! {
             my_join = join::<HalfMultisetJoinState>() -> for_each(|m| out_tx.send(m).unwrap());
             source_iter([(1, 1), (1, 1), (1, 1)]) -> [0]my_join;
             source_iter([(1, 2), (1, 2), (1, 2), (1, 2)]) -> [1]my_join;
@@ -202,7 +198,7 @@ pub fn test_multiset_join() {
         use dfir_pipes::pull::HalfMultisetJoinState;
         let (out_tx, mut out_rx) = dfir_rs::util::unbounded_channel::<(usize, (usize, usize))>();
 
-        let mut df = dfir_syntax! {
+        let mut df = dfir_syntax_inline! {
             my_join = join::<HalfMultisetJoinState>() -> for_each(|m| out_tx.send(m).unwrap());
             source_iter([(1, 1), (1, 1), (1, 1), (1, 1)]) -> [0]my_join;
             source_iter([(1, 2), (1, 2), (1, 2)]) -> [1]my_join;
@@ -219,7 +215,7 @@ pub fn test_multiset_join() {
 pub fn test_cross_join() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<(usize, &str)>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         cj = cross_join() -> for_each(|v| out_send.send(v).unwrap());
         source_iter([1, 2, 2, 3]) -> [0]cj;
         source_iter(["a", "b", "c", "c"]) -> [1]cj;
@@ -248,7 +244,7 @@ pub fn test_cross_join() {
 pub fn test_cross_join_multiset() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<(usize, &str)>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         cj = cross_join_multiset() -> for_each(|v| out_send.send(v).unwrap());
         source_iter([1, 2, 2, 3]) -> [0]cj;
         source_iter(["a", "b", "c", "c"]) -> [1]cj;
@@ -284,7 +280,7 @@ pub fn test_cross_join_multiset() {
 pub fn test_defer_tick() {
     let (inp_send, inp_recv) = dfir_rs::util::unbounded_channel::<usize>();
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<usize>();
-    let mut flow = dfir_syntax! {
+    let mut flow = dfir_syntax_inline! {
         inp = source_stream(inp_recv) -> tee();
         diff = difference() -> for_each(|x| out_send.send(x).unwrap());
         inp -> [pos]diff;
@@ -314,11 +310,11 @@ pub fn test_channel_minimal() {
 
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut df1 = dfir_syntax! {
+    let mut df1 = dfir_syntax_inline! {
         source_iter([1, 2, 3]) -> for_each(|x| { send.send(x).unwrap(); });
     };
 
-    let mut df2 = dfir_syntax! {
+    let mut df2 = dfir_syntax_inline! {
         source_stream(recv) -> for_each(|x| out_send.send(x).unwrap());
     };
 
@@ -563,7 +559,7 @@ pub fn test_covid_tracing() {
 
 #[multiplatform_test]
 pub fn test_assert_eq() {
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter([1, 2, 3]) -> assert_eq([1, 2, 3]) -> assert_eq([1, 2, 3]); // one in pull, one in push
         source_iter([1, 2, 3]) -> assert_eq([1, 2, 3]) -> assert_eq(vec![1, 2, 3]);
         source_iter([1, 2, 3]) -> assert_eq(vec![1, 2, 3]) -> assert_eq([1, 2, 3]);
@@ -576,7 +572,7 @@ pub fn test_assert_eq() {
 pub fn test_assert_failures() {
     assert!(
         std::panic::catch_unwind(|| {
-            let mut df = dfir_syntax! {
+            let mut df = dfir_syntax_inline! {
                 source_iter([0]) -> assert_eq([1]);
             };
 
@@ -587,7 +583,7 @@ pub fn test_assert_failures() {
 
     assert!(
         std::panic::catch_unwind(|| {
-            let mut df = dfir_syntax! {
+            let mut df = dfir_syntax_inline! {
                 source_iter([0]) -> assert_eq([1]) -> null();
             };
 
@@ -608,7 +604,7 @@ pub fn test_iter_stream_batches() {
         .map(|n| (TickInstant::new((n / BATCH).try_into().unwrap()), n))
         .collect();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_stream(stream)
             -> map(|x| (context.current_tick(), x))
             -> assert_eq(expected);

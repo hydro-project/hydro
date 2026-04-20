@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 
-use dfir_rs::assert_graphvis_snapshots;
 use dfir_rs::scheduled::ticks::TickInstant;
 use dfir_rs::util::collect_ready;
 use multiplatform_test::multiplatform_test;
@@ -13,7 +12,7 @@ pub fn test_reduce_keyed_infer_basic() {
     }
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<(&'static str, u32)>();
 
-    let mut df = dfir_rs::dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_iter([
                 SubordResponse { xid: "123", mtype: 33 },
                 SubordResponse { xid: "123", mtype: 52 },
@@ -25,16 +24,9 @@ pub fn test_reduce_keyed_infer_basic() {
             -> reduce_keyed::<'static>(|old: &mut u32, val: u32| *old += val)
             -> for_each(|kv| result_send.send(kv).unwrap());
     };
-    assert_graphvis_snapshots!(df);
-    assert_eq!(
-        (TickInstant::new(0), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(0), df.current_tick());
     df.run_tick_sync();
-    assert_eq!(
-        (TickInstant::new(1), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(1), df.current_tick());
 
     df.run_available_sync(); // Should return quickly and not hang
 
@@ -49,21 +41,14 @@ pub fn test_reduce_keyed_tick() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<(u32, Vec<u32>)>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<(u32, Vec<u32>)>();
 
-    let mut df = dfir_rs::dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_stream(items_recv)
             -> reduce_keyed::<'tick>(|old: &mut Vec<u32>, mut x: Vec<u32>| old.append(&mut x))
             -> for_each(|v| result_send.send(v).unwrap());
     };
-    assert_graphvis_snapshots!(df);
-    assert_eq!(
-        (TickInstant::new(0), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(0), df.current_tick());
     df.run_tick_sync();
-    assert_eq!(
-        (TickInstant::new(1), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(1), df.current_tick());
 
     items_send.send((0, vec![1, 2])).unwrap();
     items_send.send((0, vec![3, 4])).unwrap();
@@ -71,10 +56,7 @@ pub fn test_reduce_keyed_tick() {
     items_send.send((1, vec![1, 2])).unwrap();
     df.run_tick_sync();
 
-    assert_eq!(
-        (TickInstant::new(2), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(2), df.current_tick());
     assert_eq!(
         [(0, vec![1, 2, 3, 4]), (1, vec![1, 1, 2])]
             .into_iter()
@@ -88,10 +70,7 @@ pub fn test_reduce_keyed_tick() {
     items_send.send((1, vec![11, 12])).unwrap();
     df.run_tick_sync();
 
-    assert_eq!(
-        (TickInstant::new(3), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(3), df.current_tick());
     assert_eq!(
         [(0, vec![5, 6, 7, 8]), (1, vec![10, 11, 12])]
             .into_iter()
@@ -107,21 +86,14 @@ pub fn test_reduce_keyed_static() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<(u32, Vec<u32>)>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<(u32, Vec<u32>)>();
 
-    let mut df = dfir_rs::dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_stream(items_recv)
             -> reduce_keyed::<'static>(|old: &mut Vec<u32>, mut x: Vec<u32>| old.append(&mut x))
             -> for_each(|v| result_send.send(v).unwrap());
     };
-    assert_graphvis_snapshots!(df);
-    assert_eq!(
-        (TickInstant::new(0), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(0), df.current_tick());
     df.run_tick_sync();
-    assert_eq!(
-        (TickInstant::new(1), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(1), df.current_tick());
 
     items_send.send((0, vec![1, 2])).unwrap();
     items_send.send((0, vec![3, 4])).unwrap();
@@ -129,10 +101,7 @@ pub fn test_reduce_keyed_static() {
     items_send.send((1, vec![1, 2])).unwrap();
     df.run_tick_sync();
 
-    assert_eq!(
-        (TickInstant::new(2), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(2), df.current_tick());
     assert_eq!(
         [(0, vec![1, 2, 3, 4]), (1, vec![1, 1, 2])]
             .into_iter()
@@ -146,10 +115,7 @@ pub fn test_reduce_keyed_static() {
     items_send.send((1, vec![11, 12])).unwrap();
     df.run_tick_sync();
 
-    assert_eq!(
-        (TickInstant::new(3), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(3), df.current_tick());
     assert_eq!(
         [
             (0, vec![1, 2, 3, 4, 5, 6, 7, 8]),

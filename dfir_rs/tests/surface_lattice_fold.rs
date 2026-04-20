@@ -4,7 +4,7 @@ use dfir_rs::util::collect_ready;
 
 #[test]
 fn test_basic() {
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_iter([1,2,3,4,5])
             -> map(Max::new)
             -> lattice_fold::<'static>(|| Max::<u32>::new(0))

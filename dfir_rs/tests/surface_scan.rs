@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use dfir_rs::assert_graphvis_snapshots;
 use dfir_rs::scheduled::ticks::TickInstant;
 use dfir_rs::util::collect_ready;
 use multiplatform_test::multiplatform_test;
@@ -13,7 +12,7 @@ pub fn test_scan_tick() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut df = dfir_rs::dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_stream(items_recv)
             -> scan::<'tick>(|| 0, |acc: &mut u32, x: u32| {
                 *acc += x;
@@ -21,22 +20,15 @@ pub fn test_scan_tick() {
             })
             -> for_each(|v| result_send.send(v).unwrap());
     };
-    assert_graphvis_snapshots!(df);
 
-    assert_eq!(
-        (TickInstant::new(0), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(0), df.current_tick());
 
     // First tick with values 1, 2
     items_send.send(1).unwrap();
     items_send.send(2).unwrap();
     df.run_tick_sync();
 
-    assert_eq!(
-        (TickInstant::new(1), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(1), df.current_tick());
 
     // Should receive running sums: 1, 3
     assert_eq!(&[1, 3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
@@ -46,10 +38,7 @@ pub fn test_scan_tick() {
     items_send.send(4).unwrap();
     df.run_tick_sync();
 
-    assert_eq!(
-        (TickInstant::new(2), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(2), df.current_tick());
 
     // With 'tick' persistence, accumulator resets each tick
     // So we should get: 3, 7 (not 6, 10)
@@ -64,7 +53,7 @@ pub fn test_scan_static() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut df = dfir_rs::dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_stream(items_recv)
             -> scan::<'static>(|| 0, |acc: &mut u32, x: u32| {
                 *acc += x;
@@ -72,22 +61,15 @@ pub fn test_scan_static() {
             })
             -> for_each(|v| result_send.send(v).unwrap());
     };
-    assert_graphvis_snapshots!(df);
 
-    assert_eq!(
-        (TickInstant::new(0), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(0), df.current_tick());
 
     // First tick with values 1, 2
     items_send.send(1).unwrap();
     items_send.send(2).unwrap();
     df.run_tick_sync();
 
-    assert_eq!(
-        (TickInstant::new(1), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(1), df.current_tick());
 
     // Should receive running sums: 1, 3
     assert_eq!(&[1, 3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
@@ -97,10 +79,7 @@ pub fn test_scan_static() {
     items_send.send(4).unwrap();
     df.run_tick_sync();
 
-    assert_eq!(
-        (TickInstant::new(2), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(2), df.current_tick());
 
     // With 'static' persistence, accumulator persists across ticks
     // So we should get: 6, 10 (continuing from previous sum of 3)
@@ -117,7 +96,7 @@ pub fn test_scan_empty_input() {
     let (_items_send, items_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut df = dfir_rs::dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_stream(items_recv)
             -> scan::<'tick>(|| 0, |acc: &mut u32, x: u32| {
                 *acc += x;
@@ -144,7 +123,7 @@ pub fn test_scan_different_types() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<String>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<(usize, String)>();
 
-    let mut df = dfir_rs::dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_stream(items_recv)
             -> scan::<'tick>(|| (0, String::new()), |acc: &mut (usize, String), x: String| {
                 // Accumulator is a tuple of (count, concatenated_string)
@@ -179,7 +158,7 @@ pub fn test_scan_early_termination() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut df = dfir_rs::dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_stream(items_recv)
             -> scan::<'tick>(|| 0, |acc: &mut u32, x: u32| {
                 *acc += x;
@@ -221,7 +200,7 @@ pub fn test_scan_static_early_termination() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut df = dfir_rs::dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_stream(items_recv)
             -> scan::<'static>(|| 0, |acc: &mut u32, x: u32| {
                 *acc += x;
@@ -266,7 +245,7 @@ pub fn test_scan_complex_accumulator() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<(String, u32)>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<HashMap<String, u32>>();
 
-    let mut df = dfir_rs::dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_stream(items_recv)
             -> scan::<'tick>(HashMap::<String, u32>::new, |acc: &mut HashMap<String, u32>, item: (String, u32)| {
                 // Update frequency count for each key
@@ -314,7 +293,7 @@ pub fn test_scan_push() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut df = dfir_rs::dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         teed = source_stream(items_recv) -> tee();
         teed -> for_each(|_| {}); // Dummy consumer to force push
         teed
@@ -324,22 +303,15 @@ pub fn test_scan_push() {
             })
             -> for_each(|v| result_send.send(v).unwrap());
     };
-    assert_graphvis_snapshots!(df);
 
-    assert_eq!(
-        (TickInstant::new(0), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(0), df.current_tick());
 
     // First tick with values 1, 2
     items_send.send(1).unwrap();
     items_send.send(2).unwrap();
     df.run_tick_sync();
 
-    assert_eq!(
-        (TickInstant::new(1), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(1), df.current_tick());
 
     // Should receive running sums: 1, 3
     assert_eq!(&[1, 3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
@@ -349,10 +321,7 @@ pub fn test_scan_push() {
     items_send.send(4).unwrap();
     df.run_tick_sync();
 
-    assert_eq!(
-        (TickInstant::new(2), 0),
-        (df.current_tick(), df.current_stratum())
-    );
+    assert_eq!(TickInstant::new(2), df.current_tick());
 
     // With 'tick' persistence, accumulator resets each tick
     // So we should get: 3, 7 (not 6, 10)
