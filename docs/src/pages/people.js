@@ -72,8 +72,9 @@ export default function Home() {
         <div className={styles["container"]}>
           <h1 className={styles["title"]}>Hydro Team</h1>
           <p className={styles["blurb"]}>The Hydro framework began as a research project at UC Berkeley led by Joe Hellerstein, continuing a long line of work applying insights from database research to distributed systems. In 2025, several graduates of the Hydro group joined AWS to continue its development in a production environment. The core team, which leads the technical direction for Hydro, consists of researchers and engineers at UC Berkeley and AWS. We also collaborate with leading researchers at UC Berkeley and Princeton University.</p>
+          <p className={styles["blurb"]}>Hydro's open-source community is governed by <b>Project Leaders</b>, consisting of the original researchers: Joe Hellerstein, David Chu, Lucky Katahanas, Shadaj Laddad, Conor Power, and Mingwei Samuel. New <b>Project Leaders</b> and <b>Committers</b> are approved via a public GitHub review process. All governance decisions, including membership and general policy changes, require approval of all Project Leaders.</p>
           <div>
-            <div className={styles["subtitle"]}>Core Team</div>
+            <div className={styles["subtitle"]}>Committers</div>
             <div className={styles["personGroup"]}>
               <PersonCard
                 name={"Joe Hellerstein"}
@@ -147,7 +148,7 @@ export default function Home() {
               
             </div>
 
-            <div className={styles["subtitle"]}>Alumni</div>
+            <div className={styles["subtitle"]}>Project Alumni</div>
             <div className={styles["personGroup"]}>
               <PersonCard
                 name={"Tiemo Bang"}
