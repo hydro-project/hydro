@@ -700,20 +700,28 @@ impl<W> HydroJson<'_, W> {
                 }
 
                 // Build hierarchy path from backtrace frames (reverse order for call stack)
-                // Use file:line for context, with function name
                 let mut hierarchy_path = Vec::new();
+                let mut prev_fn = String::new();
                 for elem in user_frames.iter().rev() {
                     let fn_short = Self::truncate_function_name(&elem.fn_name);
                     let label = if let Some(filename) = &elem.filename {
                         let file_short = Self::truncate_path(filename);
-                        if let Some(line) = elem.lineno {
-                            format!("{}:{} ({})", file_short, line, fn_short)
+                        // Only show function name when it changes from the parent
+                        if fn_short != prev_fn {
+                            if let Some(line) = elem.lineno {
+                                format!("{} — {}:{}", fn_short, file_short, line)
+                            } else {
+                                format!("{} — {}", fn_short, file_short)
+                            }
+                        } else if let Some(line) = elem.lineno {
+                            format!("{}:{}", file_short, line)
                         } else {
-                            format!("{} ({})", file_short, fn_short)
+                            file_short
                         }
                     } else {
                         fn_short.to_owned()
                     };
+                    prev_fn = fn_short.to_owned();
                     hierarchy_path.push(label);
                 }
 
