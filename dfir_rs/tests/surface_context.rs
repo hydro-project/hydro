@@ -8,11 +8,10 @@ use web_time::Duration;
 
 #[multiplatform_test]
 pub fn test_context_ref() {
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_iter([()])
-            -> for_each(|()| println!("Current tick: {}, stratum: {}", context.current_tick(), context.current_stratum()));
+            -> for_each(|()| println!("Current tick: {}", context.current_tick()));
     };
-    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 }
 
@@ -56,7 +55,7 @@ pub async fn test_context_current_tick_start_does_not_count_time_between_ticks_a
 pub async fn test_defered_tick_and_no_io_with_run_async() {
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_iter([()])
             -> defer_tick()
             -> for_each(|_| tx.send(()).unwrap());

@@ -28,7 +28,7 @@ pub fn tick_tick() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_iter([1, 2])
             -> [0]my_cross_join_multiset;
 
@@ -53,7 +53,7 @@ pub fn tick_static() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_iter([1, 2])
             -> [0]my_cross_join_multiset;
 
@@ -78,7 +78,7 @@ pub fn static_tick() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_iter([1, 2])
             -> [0]my_cross_join_multiset;
 
@@ -105,7 +105,7 @@ pub fn static_static() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_iter([1, 2])
             -> [0]my_cross_join_multiset;
 
@@ -143,7 +143,7 @@ pub fn replay_static() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_rs::dfir_syntax_inline! {
         source_iter([1, 2]) -> [0]my_cross_join_multiset;
         source_iter([3, 4]) -> [1]my_cross_join_multiset;
         my_cross_join_multiset = cross_join_multiset::<'static, 'static>()
