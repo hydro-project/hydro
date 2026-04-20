@@ -339,12 +339,17 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         T: Clone + Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
-        // Static cluster: all members are always present. Use the membership
-        // source deterministically — no sliced! nondeterminism needed.
-        let ids = track_membership(self.location.source_cluster_members_static(to));
+        // Static cluster: all members are always present. Use a trivially
+        // commutative+idempotent fold (const true) instead of track_membership's
+        // join/leave fold, so the coordination analysis can prove it.
+        let ids = self.location.source_cluster_members_static(to)
+            .fold(
+                q!(|| true),
+                q!(|_present, _event| {},
+                   commutative = crate::properties::manual_proof!(/** const true is trivially commutative */),
+                   idempotent = crate::properties::manual_proof!(/** const true is trivially idempotent */)),
+            );
         sliced! {
-            // The NonDet here is safe: static cluster membership never changes,
-            // so the snapshot is always the same deterministic set of members.
             let members_snapshot = use(ids, crate::nondet::nondet!(/** static cluster membership is deterministic */));
             let elements = use(self, crate::nondet::nondet!(/** static cluster: element batching is the only nondeterminism */));
 
