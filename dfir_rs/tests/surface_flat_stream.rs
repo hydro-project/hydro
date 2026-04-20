@@ -1,4 +1,4 @@
-use dfir_rs::dfir_syntax;
+use dfir_rs::dfir_syntax_inline;
 use dfir_rs::util::collect_ready;
 use multiplatform_test::multiplatform_test;
 
@@ -6,7 +6,7 @@ use multiplatform_test::multiplatform_test;
 pub fn test_flatten_stream_blocking() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter(vec![
             futures::stream::iter(vec![1, 2]),
             futures::stream::iter(vec![3]),
@@ -23,7 +23,7 @@ pub fn test_flatten_stream_blocking() {
 pub fn test_flat_map_stream_blocking() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter(vec![1, 2, 3])
             -> flat_map_stream_blocking(|x| futures::stream::iter(vec![x, x * 10]))
             -> for_each(|x| result_send.send(x).unwrap());
@@ -40,7 +40,7 @@ pub fn test_flat_map_stream_blocking() {
 pub fn test_flat_map_stream_blocking_empty() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter(vec![1, 2, 3])
             -> flat_map_stream_blocking(|_| futures::stream::empty::<i32>())
             -> for_each(|x| result_send.send(x).unwrap());
@@ -57,7 +57,7 @@ pub fn test_flat_map_stream_blocking_empty() {
 pub fn test_flatten_stream_blocking_empty() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter(vec![
             futures::stream::iter(Vec::<i32>::new()),
             futures::stream::iter(vec![1]),

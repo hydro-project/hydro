@@ -122,11 +122,14 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
             let input = &inputs[0];
             quote_spanned! {op_span=>
                 let #ident = {
+                    let state_ref = unsafe {
+                        // SAFETY: handle from `#df_ident.add_state(..)`.
+                        #context.state_ref_unchecked(#state_ident)
+                    };
                     fn check_input<'a, Item, MappingFn, MappedItem, Prev, Lat>(
                         prev: Prev,
                         mapfn: MappingFn,
-                        state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<Lat>>,
-                        context: &'a #root::scheduled::context::Context,
+                        state_ref: &'a ::std::cell::RefCell<Lat>,
                     ) -> impl 'a + #root::dfir_pipes::pull::Pull<Item = Item, Meta = Prev::Meta>
                     where
                         Item: ::std::clone::Clone,
@@ -137,26 +140,25 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         #root::dfir_pipes::pull::Pull::filter(
                             prev,
                             move |item| {
-                                let state = unsafe {
-                                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                                    context.state_ref_unchecked(state_handle)
-                                };
-                                let mut state = state.borrow_mut();
+                                let mut state = state_ref.borrow_mut();
                                 #root::lattices::Merge::merge(&mut *state, (mapfn)(::std::clone::Clone::clone(item)))
                             },
                         )
                     }
-                    check_input::<_, _, _, _, #lattice_type>(#input, #by_fn, #state_ident, #context)
+                    check_input::<_, _, _, _, #lattice_type>(#input, #by_fn, state_ref)
                 };
             }
         } else if let Some(output) = outputs.first() {
             quote_spanned! {op_span=>
                 let #ident = {
+                    let state_ref = unsafe {
+                        // SAFETY: handle from `#df_ident.add_state(..)`.
+                        #context.state_ref_unchecked(#state_ident)
+                    };
                     fn check_output<'a, Item, MappingFn, MappedItem, Psh, Lat>(
                         push: Psh,
                         mapfn: MappingFn,
-                        state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<Lat>>,
-                        context: &'a #root::scheduled::context::Context,
+                        state_ref: &'a ::std::cell::RefCell<Lat>,
                     ) -> impl 'a + #root::dfir_pipes::push::Push<Item, ()>
                     where
                         Item: 'a + ::std::clone::Clone,
@@ -165,24 +167,23 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         Lat: 'static + #root::lattices::Merge<MappedItem>,
                     {
                         #root::dfir_pipes::push::filter(move |item| {
-                            let state = unsafe {
-                                // SAFETY: handle from `#df_ident.add_state(..)`.
-                                context.state_ref_unchecked(state_handle)
-                            };
-                            let mut state = state.borrow_mut();
-                                #root::lattices::Merge::merge(&mut *state, (mapfn)(::std::clone::Clone::clone(item)))
+                            let mut state = state_ref.borrow_mut();
+                            #root::lattices::Merge::merge(&mut *state, (mapfn)(::std::clone::Clone::clone(item)))
                         }, push)
                     }
-                    check_output::<_, _, _, _, #lattice_type>(#output, #by_fn, #state_ident, #context)
+                    check_output::<_, _, _, _, #lattice_type>(#output, #by_fn, state_ref)
                 };
             }
         } else {
             quote_spanned! {op_span=>
                 let #ident = {
+                    let state_ref = unsafe {
+                        // SAFETY: handle from `#df_ident.add_state(..)`.
+                        #context.state_ref_unchecked(#state_ident)
+                    };
                     fn check_output<'a, Item, MappingFn, MappedItem, Lat>(
-                        state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<Lat>>,
+                        state_ref: &'a ::std::cell::RefCell<Lat>,
                         mapfn: MappingFn,
-                        context: &'a #root::scheduled::context::Context,
                     ) -> impl 'a + #root::dfir_pipes::push::Push<Item, ()>
                     where
                         Item: 'a,
@@ -191,15 +192,11 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         Lat: 'static + #root::lattices::Merge<MappedItem>,
                     {
                         #root::dfir_pipes::push::for_each(move |item| {
-                            let state = unsafe {
-                                // SAFETY: handle from `#df_ident.add_state(..)`.
-                                context.state_ref_unchecked(state_handle)
-                            };
-                            let mut state = state.borrow_mut();
+                            let mut state = state_ref.borrow_mut();
                             #root::lattices::Merge::merge(&mut *state, (mapfn)(item));
                         })
                     }
-                    check_output::<_, _, _, #lattice_type>(#state_ident, #by_fn, #context)
+                    check_output::<_, _, _, #lattice_type>(state_ref, #by_fn)
                 };
             }
         };

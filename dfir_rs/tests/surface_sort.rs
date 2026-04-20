@@ -1,17 +1,16 @@
+use dfir_rs::dfir_syntax_inline;
 use dfir_rs::util::collect_ready;
-use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
 pub fn test_sort() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_stream(items_recv)
             -> sort()
             -> for_each(|v| print!("{:?}, ", v));
     };
-    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     print!("\nA: ");
@@ -35,12 +34,11 @@ pub fn test_sort() {
 
 #[multiplatform_test]
 pub fn test_sort_by_key() {
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter(vec!((2, 'y'), (3, 'x'), (1, 'z')))
             -> sort_by_key(|(k, _v)| k)
             -> for_each(|v| println!("{:?}", v));
     };
-    assert_graphvis_snapshots!(df);
     df.run_available_sync();
     println!();
 }
@@ -67,7 +65,7 @@ fn test_sort_by_owned() {
     ];
     let mut dummies_saved = dummies.clone();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter(dummies) -> sort_by_key(|d| &d.x) -> for_each(|d| out_send.send(d).unwrap());
     };
     df.run_available_sync();

@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use dfir_rs::dfir_pipes::pull::{Fold, Reduce};
+use dfir_rs::dfir_syntax_inline;
 use dfir_rs::lattices::set_union::SetUnionSingletonSet;
 use dfir_rs::scheduled::ticks::TickInstant;
-use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use lattices::Merge;
 use lattices::set_union::SetUnionHashSet;
 use multiplatform_test::multiplatform_test;
@@ -28,7 +28,7 @@ pub fn tick_tick_lhs_blocking_rhs_streaming() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter([(7, 1), (7, 2)])
             -> map(|(k, v)| (k, SetUnionSingletonSet::new_from(v)))
             -> [0]my_join;
@@ -42,7 +42,6 @@ pub fn tick_tick_lhs_blocking_rhs_streaming() {
         my_join = join_fused_lhs(Fold::new(SetUnionHashSet::default, |state, delta| { Merge::merge(state, delta); }))
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
-    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     assert_contains_each_by_tick!(
@@ -57,7 +56,7 @@ pub fn static_tick_lhs_blocking_rhs_streaming() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter([(7, 1), (7, 2)])
             -> map(|(k, v)| (k, SetUnionSingletonSet::new_from(v)))
             -> [0]my_join;
@@ -71,7 +70,6 @@ pub fn static_tick_lhs_blocking_rhs_streaming() {
         my_join = join_fused_lhs::<'static, 'tick>(Fold::new(SetUnionHashSet::default, |state, delta| { Merge::merge(state, delta); }))
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
-    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     assert_contains_each_by_tick!(
@@ -96,7 +94,7 @@ pub fn static_static_lhs_blocking_rhs_streaming() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter([(7, 1), (7, 2)])
             -> map(|(k, v)| (k, SetUnionSingletonSet::new_from(v)))
             -> [0]my_join;
@@ -110,7 +108,6 @@ pub fn static_static_lhs_blocking_rhs_streaming() {
         my_join = join_fused_lhs::<'static, 'static>(Fold::new(SetUnionHashSet::default, |state, delta| { Merge::merge(state, delta); }))
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
-    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     #[rustfmt::skip]
@@ -126,7 +123,7 @@ pub fn tick_tick_lhs_streaming_rhs_blocking() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter([(7, 1), (7, 2)])
             -> map(|(k, v)| (k, SetUnionSingletonSet::new_from(v)))
             -> [1]my_join;
@@ -140,7 +137,6 @@ pub fn tick_tick_lhs_streaming_rhs_blocking() {
         my_join = join_fused_rhs(Fold::new(SetUnionHashSet::default, |state, delta| { Merge::merge(state, delta); }))
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
-    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     assert_contains_each_by_tick!(
@@ -155,7 +151,7 @@ pub fn static_tick_lhs_streaming_rhs_blocking() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter([(7, 1), (7, 2)])
             -> map(|(k, v)| (k, SetUnionSingletonSet::new_from(v)))
             -> [1]my_join;
@@ -169,7 +165,6 @@ pub fn static_tick_lhs_streaming_rhs_blocking() {
         my_join = join_fused_rhs::<'static, 'tick>(Fold::new(SetUnionHashSet::default, |state, delta| { Merge::merge(state, delta); }))
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
-    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     assert_contains_each_by_tick!(
@@ -194,7 +189,7 @@ pub fn static_static_lhs_streaming_rhs_blocking() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter([(7, 1), (7, 2)])
             -> map(|(k, v)| (k, SetUnionSingletonSet::new_from(v)))
             -> [1]my_join;
@@ -209,7 +204,6 @@ pub fn static_static_lhs_streaming_rhs_blocking() {
             -> inspect(|x| println!("{}, {x:?}", context.current_tick()))
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
-    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     #[rustfmt::skip]
@@ -225,7 +219,7 @@ pub fn tick_tick_lhs_fold_rhs_reduce() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter([(7, 1), (7, 2)])
             -> map(|(k, v)| (k, SetUnionSingletonSet::new_from(v)))
             -> [0]my_join;
@@ -242,7 +236,6 @@ pub fn tick_tick_lhs_fold_rhs_reduce() {
             )
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
-    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     assert_contains_each_by_tick!(

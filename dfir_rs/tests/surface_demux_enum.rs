@@ -1,4 +1,4 @@
-use dfir_rs::dfir_syntax;
+use dfir_rs::dfir_syntax_inline;
 use dfir_rs::util::collect_ready;
 use dfir_rs::util::demux_enum::DemuxEnum;
 use multiplatform_test::multiplatform_test;
@@ -12,7 +12,7 @@ pub fn test_demux_enum_basic() {
         Circle { r: f64 },
     }
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         my_demux = source_iter([
             Shape::Square(9.0),
             Shape::Rectangle { w: 10.0, h: 8.0 },
@@ -37,7 +37,7 @@ pub fn test_demux_enum() {
         Circle { r: f64 },
     }
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         my_demux = source_iter([
             Shape::Square(9.0),
             Shape::Rectangle { w: 10.0, h: 8.0 },
@@ -73,7 +73,7 @@ pub fn test_demux_enum_generic() {
     {
         let (out_send, out_recv) = dfir_rs::util::unbounded_channel();
 
-        let mut df = dfir_syntax! {
+        let mut df = dfir_syntax_inline! {
             my_demux = source_iter([
                 Shape::Square(s),
                 Shape::Rectangle { w, h },
@@ -102,7 +102,7 @@ fn test_zero_variants() {
     #[derive(DemuxEnum)]
     enum Never {}
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         source_iter(std::iter::empty::<Never>()) -> demux_enum::<Never>();
     };
     df.run_available_sync();
@@ -117,7 +117,7 @@ fn test_one_variant() {
 
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         input = source_iter([Request::OnlyMessage("hi")]) -> demux_enum::<Request<&'static str>>();
         input[OnlyMessage] -> for_each(|(msg,)| out_send.send(msg).unwrap());
     };

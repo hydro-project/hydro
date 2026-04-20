@@ -78,14 +78,20 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
 
         let write_iterator = quote_spanned! {op_span=>
             let #ident = {
+                let (lhs_state, rhs_state) = unsafe {
+                    // SAFETY: handle from `#df_ident.add_state(..)`.
+                    (
+                        #context.state_ref_unchecked(#lhs_state_handle),
+                        #context.state_ref_unchecked(#rhs_state_handle),
+                    )
+                };
                 #[inline(always)]
                 fn check_inputs<'a, Func, LhsPull, RhsPull, LhsState, RhsState, Output>(
                     lhs_pull: LhsPull,
                     rhs_pull: RhsPull,
                     func: Func,
-                    lhs_state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<LhsState>>,
-                    rhs_state_handle: #root::scheduled::state::StateHandle<::std::cell::RefCell<RhsState>>,
-                    context: &'a #root::scheduled::context::Context,
+                    lhs_state: &'a ::std::cell::RefCell<LhsState>,
+                    rhs_state: &'a ::std::cell::RefCell<RhsState>,
                 ) -> impl #root::dfir_pipes::pull::Pull<
                     Item = Output,
                     Meta = (),
@@ -102,14 +108,6 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
                     RhsState: 'static + ::std::clone::Clone,
                     Output: #root::lattices::Merge<Output>,
                 {
-                    let (lhs_state, rhs_state) = unsafe {
-                        // SAFETY: handle from `#df_ident.add_state(..)`.
-                        (
-                            context.state_ref_unchecked(lhs_state_handle),
-                            context.state_ref_unchecked(rhs_state_handle),
-                        )
-                    };
-
                     #root::compiled::pull::LatticeBimorphismPull::new(
                         #root::dfir_pipes::pull::Pull::fuse(lhs_pull),
                         #root::dfir_pipes::pull::Pull::fuse(rhs_pull),
@@ -122,9 +120,8 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
                     #lhs_items,
                     #rhs_items,
                     #func,
-                    #lhs_state_handle,
-                    #rhs_state_handle,
-                    &#context,
+                    lhs_state,
+                    rhs_state,
                 )
             };
         };

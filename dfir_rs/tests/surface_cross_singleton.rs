@@ -1,5 +1,5 @@
+use dfir_rs::dfir_syntax_inline;
 use dfir_rs::util::collect_ready;
-use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test(test, wasm, env_tracing)]
@@ -7,14 +7,13 @@ pub fn test_basic() {
     let (single_tx, single_rx) = dfir_rs::util::unbounded_channel::<()>();
     let (egress_tx, mut egress_rx) = dfir_rs::util::unbounded_channel();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         join = cross_singleton();
         source_iter([1, 2, 3]) -> persist::<'static>() -> [input]join;
         source_stream(single_rx) -> [single]join;
 
         join -> for_each(|x| egress_tx.send(x).unwrap());
     };
-    assert_graphvis_snapshots!(df);
 
     df.run_available_sync();
     let out: Vec<_> = collect_ready(&mut egress_rx);
@@ -32,7 +31,7 @@ pub fn test_union_defer_tick() {
     let (cross_tx, cross_rx) = dfir_rs::util::unbounded_channel::<i32>();
     let (egress_tx, mut egress_rx) = dfir_rs::util::unbounded_channel();
 
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         teed_in = source_stream(cross_rx) -> sort() -> tee();
         teed_in -> [input]join;
 
@@ -55,7 +54,6 @@ pub fn test_union_defer_tick() {
         joined_folded = cross_singleton();
         deferred_stream = joined_folded -> fold(|| 0, |_, _| {}) -> flat_map(|_| []);
     };
-    assert_graphvis_snapshots!(df);
 
     df.run_available_sync();
     let out: Vec<_> = collect_ready(&mut egress_rx);

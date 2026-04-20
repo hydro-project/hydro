@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use dfir_macro::dfir_syntax;
+use dfir_rs::dfir_syntax_inline;
 use dfir_rs::util::collect_ready;
 use lattices::DeepReveal;
 use lattices::collections::SingletonMap;
@@ -10,7 +10,7 @@ use multiplatform_test::multiplatform_test;
 pub fn test_lattice_join_fused_join_reducing_behavior() {
     // lattice_fold has the following particular initialization behavior. It uses LatticeFrom to convert the first element into another lattice type to create the accumulator and then it folds the remaining elements into that accumulator.
     // This initialization style supports things like SetUnionSingletonSet -> SetUnionHashSet. It also helps with things like Min, where there is not obvious default value so you want reduce-like behavior.
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         use lattices::Min;
         use lattices::Max;
 
@@ -29,7 +29,7 @@ pub fn test_lattice_join_fused_join_reducing_behavior() {
 
 #[multiplatform_test]
 pub fn test_lattice_join_fused_join_set_union() {
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         use lattices::set_union::SetUnionSingletonSet;
         use lattices::set_union::SetUnionHashSet;
 
@@ -46,7 +46,7 @@ pub fn test_lattice_join_fused_join_set_union() {
 
 #[multiplatform_test]
 pub fn test_lattice_join_fused_join_map_union() {
-    let mut df = dfir_syntax! {
+    let mut df = dfir_syntax_inline! {
         use lattices::map_union::MapUnionSingletonMap;
         use lattices::map_union::MapUnionHashMap;
         use dfir_rs::lattices::Min;
@@ -81,7 +81,7 @@ pub fn test_lattice_join_fused_join() {
         let (lhs_tx, lhs_rx) = dfir_rs::util::unbounded_channel::<(usize, Max<usize>)>();
         let (rhs_tx, rhs_rx) = dfir_rs::util::unbounded_channel::<(usize, Max<usize>)>();
 
-        let mut df = dfir_syntax! {
+        let mut df = dfir_syntax_inline! {
             my_join = _lattice_join_fused_join::<'static, 'tick, Max<usize>, Max<usize>>();
 
             source_stream(lhs_rx) -> [0]my_join;
@@ -120,7 +120,7 @@ pub fn test_lattice_join_fused_join() {
         let (lhs_tx, lhs_rx) = dfir_rs::util::unbounded_channel::<(usize, Max<usize>)>();
         let (rhs_tx, rhs_rx) = dfir_rs::util::unbounded_channel::<(usize, Max<usize>)>();
 
-        let mut df = dfir_syntax! {
+        let mut df = dfir_syntax_inline! {
             my_join = _lattice_join_fused_join::<'static, 'static, Max<usize>, Max<usize>>();
 
             source_stream(lhs_rx) -> [0]my_join;
@@ -146,7 +146,6 @@ pub fn test_lattice_join_fused_join() {
 
         df.run_tick_sync();
         let out: Vec<_> = collect_ready(&mut out_rx);
-        // TODO(mingwei): Should only be one, but bug: https://github.com/hydro-project/hydro/issues/1050#issuecomment-1924338317
-        assert_eq!(out, [SingletonMap(7, (4, 6)), SingletonMap(7, (4, 6))]);
+        assert_eq!(out, [SingletonMap(7, (4, 6))]);
     }
 }

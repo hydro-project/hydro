@@ -797,6 +797,23 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
         }
     }
 
+    /// [`Self::run_available`] but panics if any tick yields asynchronously.
+    pub fn run_available_sync(&mut self) {
+        self.wake_state
+            .can_start_tick
+            .store(false, Ordering::Relaxed);
+        loop {
+            self.run_tick_sync();
+            let can_start_tick = self
+                .wake_state
+                .can_start_tick
+                .swap(false, Ordering::Relaxed);
+            if !can_start_tick {
+                break;
+            }
+        }
+    }
+
     /// Run forever, processing ticks when work is available and yielding when idle.
     pub async fn run(&mut self) -> crate::Never {
         loop {
