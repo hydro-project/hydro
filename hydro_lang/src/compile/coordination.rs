@@ -372,7 +372,7 @@ fn analyze_channels_from(
     discovery_order: &mut HashMap<LocationId, usize>,
 ) {
     match node {
-        HydroNode::Network { input, metadata, .. } => {
+        HydroNode::Network { input, metadata, networking_info, .. } => {
             let recv_loc = base_location(&metadata.location_id).clone();
             let send_loc = base_location(&input.metadata().location_id).clone();
             if send_loc != recv_loc {
@@ -401,22 +401,31 @@ fn analyze_channels_from(
                             }
                         }
                     }
-                    // Fixed-membership label: for broadcast-to-dynamic-Cluster edges,
-                    // the edge proof may fail due to broadcast plumbing (dynamic
-                    // membership tracking) rather than the actual data path. The
-                    // fixed-membership label floors at Self, modeling the scenario
-                    // where broadcast membership is static.
-                    // For StaticCluster, membership IS fixed, so both labels are the same.
+                    // For durable channels, the delivery mechanism guarantees
+                    // PrefixConsistency regardless of membership dynamics.
+                    // The sending-side proof may fail due to broadcast plumbing
+                    // (membership tracking), but durability subsumes that concern.
+                    // For dynamic Cluster with non-durable transport, the edge proof
+                    // may fail due to broadcast plumbing — floor at Self.
+                    let is_durable = networking_info.is_durable();
                     let is_dynamic_cluster = matches!(recv_loc, LocationId::Cluster(_));
-                    let label_fixed = if is_dynamic_cluster && is_broadcast_to_cluster && best_label == ConsistencyLabel::Inconsistent {
-                        ConsistencyLabel::SelfConsistent
+                    let (label, label_fixed) = if is_durable {
+                        // Durable channel: delivery is guaranteed by the recovery
+                        // mechanism. Use the goal-based label (what the data path
+                        // would produce if membership weren't an issue).
+                        let durable_label = goal_label(&best_goal);
+                        (durable_label.clone(), durable_label)
+                    } else if is_dynamic_cluster && is_broadcast_to_cluster && best_label == ConsistencyLabel::Inconsistent {
+                        // Dynamic Cluster, non-durable: membership plumbing may
+                        // cause spurious INCON. Floor at Self for fixed-membership.
+                        (best_label.clone(), ConsistencyLabel::SelfConsistent)
                     } else {
-                        best_label.clone()
+                        (best_label.clone(), best_label.clone())
                     };
                     edges.push(ChannelEdge {
                         from: send_loc,
                         to: recv_loc,
-                        label: best_label,
+                        label,
                         label_fixed_membership: label_fixed,
                         goal: best_goal,
                         is_broadcast: is_broadcast_to_cluster,
@@ -1092,19 +1101,35 @@ fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
         //   - SetInclusion: each member accumulates elements → Source (per-member monotone).
         //   - Prefix: late joiner misses prefix → breaks proof.
         // Same-location or non-Cluster preserves based on output ordering.
-        HydroNode::Network { input, metadata, .. } => {
+        HydroNode::Network { input, metadata, networking_info, .. } => {
             let recv_loc = &metadata.location_id;
             let send_loc = &input.metadata().location_id;
-            let is_cross_location_to_static_cluster = matches!(recv_loc, LocationId::StaticCluster(_))
-                && recv_loc != send_loc;
-            let is_cross_location_to_dynamic_cluster = matches!(recv_loc, LocationId::Cluster(_))
-                && recv_loc != send_loc;
-            if is_cross_location_to_static_cluster {
-                Source // static cluster: all members always present
-            } else if is_cross_location_to_dynamic_cluster {
-                // Dynamic cluster: per-member monotone under SetInclusion only.
-                // Prefix breaks because late joiners miss earlier elements.
-                PreserveGoals { input, goals: &[OrderGoal::SetInclusion] }
+            let is_cross_location = recv_loc != send_loc;
+            let is_to_cluster = is_cluster_location(recv_loc);
+
+            if is_cross_location && is_to_cluster {
+                // Cross-location broadcast to a cluster.
+                // PrefixConsistency requires: IncludesFirst + gap-free + ordered.
+                //
+                // StaticCluster + FailStop: deployment protocol guarantees IncludesFirst,
+                //   FailStop guarantees gap-free. Discharges all goals.
+                // Durable channel: replay mechanism guarantees IncludesFirst + gap-free.
+                //   Discharges all goals.
+                // Dynamic Cluster + non-durable: IncludesFirst not guaranteed for late
+                //   joiners. Only SetInclusion is safe (elements accumulate per-member).
+                let has_prefix_consistency = match networking_info {
+                    crate::networking::NetworkingInfo::Durable { .. } => true,
+                    crate::networking::NetworkingInfo::Tcp { fault } => {
+                        matches!(recv_loc, LocationId::StaticCluster(_))
+                            && matches!(fault, crate::networking::TcpFault::FailStop)
+                    }
+                };
+                if has_prefix_consistency {
+                    Source // all members see complete prefix
+                } else {
+                    // Per-member monotone under SetInclusion only.
+                    PreserveGoals { input, goals: &[OrderGoal::SetInclusion] }
+                }
             } else {
                 let is_total = matches!(
                     &metadata.collection_kind,

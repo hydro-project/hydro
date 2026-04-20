@@ -63,9 +63,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
-            crate::networking::NetworkingInfo::Tcp {
-                fault: crate::networking::TcpFault::FailStop,
-            } => {}
+            crate::networking::NetworkingInfo::Tcp { fault: crate::networking::TcpFault::FailStop } | crate::networking::NetworkingInfo::Durable { fault: crate::networking::TcpFault::FailStop, .. } => {}
             _ => panic!("Unsupported networking info: {:?}", networking_info),
         }
         let p1_port = p1_port.as_str();
@@ -111,9 +109,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
-            crate::networking::NetworkingInfo::Tcp {
-                fault: crate::networking::TcpFault::FailStop,
-            } => {}
+            crate::networking::NetworkingInfo::Tcp { fault: crate::networking::TcpFault::FailStop } | crate::networking::NetworkingInfo::Durable { fault: crate::networking::TcpFault::FailStop, .. } => {}
             _ => panic!("Unsupported networking info: {:?}", networking_info),
         }
         let p1_port = p1_port.as_str();
@@ -171,9 +167,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
-            crate::networking::NetworkingInfo::Tcp {
-                fault: crate::networking::TcpFault::FailStop,
-            } => {}
+            crate::networking::NetworkingInfo::Tcp { fault: crate::networking::TcpFault::FailStop } | crate::networking::NetworkingInfo::Durable { fault: crate::networking::TcpFault::FailStop, .. } => {}
             _ => panic!("Unsupported networking info: {:?}", networking_info),
         }
         let c1_port = c1_port.as_str();
@@ -223,9 +217,7 @@ impl<'a> Deploy<'a> for HydroDeploy {
         networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
-            crate::networking::NetworkingInfo::Tcp {
-                fault: crate::networking::TcpFault::FailStop,
-            } => {}
+            crate::networking::NetworkingInfo::Tcp { fault: crate::networking::TcpFault::FailStop } | crate::networking::NetworkingInfo::Durable { fault: crate::networking::TcpFault::FailStop, .. } => {}
             _ => panic!("Unsupported networking info: {:?}", networking_info),
         }
         let c1_port = c1_port.as_str();

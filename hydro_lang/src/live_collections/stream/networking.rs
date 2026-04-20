@@ -359,6 +359,54 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         .demux_static(to, via)
     }
 
+    /// Broadcasts elements of this stream to all members of a dynamic cluster with
+    /// durable delivery guarantees.
+    ///
+    /// Unlike [`Stream::broadcast`], which only guarantees delivery to members that
+    /// are present when each element is sent, `durable_broadcast` guarantees that
+    /// every cluster member — including late joiners — receives the complete stream
+    /// from the first item.
+    ///
+    /// The durability mechanism (journal replay, state transfer, etc.) is external
+    /// to Hydro. The `manual_proof` asserts that the combination of replay + live
+    /// delivery produces a gap-free stream from the first item for every member.
+    ///
+    /// The resulting stream has [`AtLeastOnce`] retries semantics because replay
+    /// may deliver duplicates at the recovery boundary. Downstream processing
+    /// must be idempotent or perform explicit deduplication.
+    ///
+    /// # Example
+    /// ```ignore
+    /// let journal_on_cluster = paxos_log
+    ///     .durable_broadcast(
+    ///         &cluster,
+    ///         TCP.fail_stop().bincode(),
+    ///         manual_proof!(/** Journal replay delivers complete log to every member */),
+    ///     );
+    /// ```
+    pub fn durable_broadcast<L2: 'a, N: NetworkFor<T>>(
+        self,
+        to: &Cluster<'a, L2>,
+        via: N,
+        _durability_proof: crate::properties::ManualProof,
+    ) -> Stream<T, Cluster<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, super::AtLeastOnce>
+    where
+        T: Clone + Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
+    {
+        let durable_via = crate::networking::DurableTransport::new(via);
+        let ids = track_membership(self.location.source_cluster_members(to));
+        sliced! {
+            let members_snapshot = use(ids, crate::nondet::nondet!(/** durable broadcast: membership tracking */));
+            let elements = use(self, crate::nondet::nondet!(/** durable broadcast: element batching */));
+
+            let current_members = members_snapshot.filter(q!(|b| *b));
+            elements.repeat_with_keys(current_members)
+        }
+        .demux(to, durable_via)
+        .weaken_retries::<super::AtLeastOnce>()
+    }
+
     /// Sends the elements of this stream to an external (non-Hydro) process, using [`bincode`]
     /// serialization. The external process can receive these elements by establishing a TCP
     /// connection and decoding using [`tokio_util::codec::LengthDelimitedCodec`].
