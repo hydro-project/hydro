@@ -105,8 +105,21 @@ jobs:
         shell: bash
         run: |
           node --input-type=module -e "$(curl -sSL https://raw.githubusercontent.com/benchmark-action/github-action-benchmark/c38cce98215cf75e178ecd5a0c1a1ab215e93006/src/default_index_html.ts) console.log(DEFAULT_INDEX_HTML)" > "$WWW_DIR/bench/index.html"
-          sed -i '/          const data = window.BENCHMARK_DATA;/a\
-                    data.entries.Benchmark = data.entries.Benchmark.slice(-365)' "$WWW_DIR/bench/index.html"
+          # Patch the generated index.html:
+          #   1. Limit history to the last 365 entries.
+          #   2. Color throughput-style units (ops/s, req/s, rps, qps, tps) blue to indicate
+          #      higher-is-better. The double backslashes survive YAML->bash->sed interpretation
+          #      to produce the correct \s / \? in the output JavaScript regex.
+          cat > /tmp/bench-patch.sed << 'SEDEOF'
+          /const data = window\.BENCHMARK_DATA;/a\
+                              data.entries.Benchmark = data.entries.Benchmark.slice(-365)
+          /const color = toolColors/c\
+                      const tool = dataset.length > 0 ? dataset[0].tool : '_';\
+                      const unit = dataset.length > 0 ? (dataset[0].bench.unit || '') : '';\
+                      const isHigherBetter = /(?:^|\\s)(?:ops\\/?s|req\\/?s|requests\\/?s|rps|qps|tps)(?:\\s|$)/i.test(unit);\
+                      const color = isHigherBetter ? '#3572a5' : toolColors[tool];
+          SEDEOF
+          sed -i -f /tmp/bench-patch.sed "$WWW_DIR/bench/index.html"
 
       - name: Upload benchmark artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
