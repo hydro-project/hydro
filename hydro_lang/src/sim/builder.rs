@@ -43,7 +43,7 @@ impl SimBuilder {
             LocationId::Process(_) => {
                 self.extra_stmts_global.push(stmt);
             }
-            LocationId::Cluster(_) => {
+            LocationId::Cluster(_) | LocationId::StaticCluster(_) => {
                 self.extra_stmts_cluster
                     .entry(location.clone())
                     .or_default()
@@ -64,7 +64,7 @@ impl SimBuilder {
                     },
                 );
             }
-            LocationId::Cluster(_) => {
+            LocationId::Cluster(_) | LocationId::StaticCluster(_) => {
                 self.add_extra_stmt_internal(in_location, syn::parse_quote! {
                     __hydro_hooks.entry((#out_location_ser, Some(__current_cluster_id))).or_default().push(#expr);
                 });
@@ -85,7 +85,7 @@ impl SimBuilder {
                         },
                     );
                 }
-                LocationId::Cluster(_) => {
+                LocationId::Cluster(_) | LocationId::StaticCluster(_) => {
                     self.add_extra_stmt_internal(l.root(), syn::parse_quote! {
                         __hydro_inline_hooks.entry((#tick_location_ser, Some(__current_cluster_id))).or_default().push(#expr);
                     });
@@ -105,13 +105,13 @@ impl DfirBuilder for SimBuilder {
     fn get_dfir_mut(&mut self, location: &LocationId) -> &mut FlatGraphBuilder {
         match location {
             LocationId::Process(_) => self.process_graphs.entry(location.clone()).or_default(),
-            LocationId::Cluster(_) => self.cluster_graphs.entry(location.clone()).or_default(),
+            LocationId::Cluster(_) | LocationId::StaticCluster(_) => self.cluster_graphs.entry(location.clone()).or_default(),
             LocationId::Atomic(tick) => self.get_dfir_mut(tick.as_ref()),
             LocationId::Tick(_, l) => match l.root() {
                 LocationId::Process(_) => {
                     self.process_tick_dfirs.entry(location.clone()).or_default()
                 }
-                LocationId::Cluster(_) => {
+                LocationId::Cluster(_) | LocationId::StaticCluster(_) => {
                     self.cluster_tick_dfirs.entry(location.clone()).or_default()
                 }
                 _ => unreachable!(),
@@ -1039,7 +1039,8 @@ impl DfirBuilder for SimBuilder {
                     );
                 }
             }
-            (LocationId::Cluster(_), LocationId::Process(_)) => {
+            (LocationId::Cluster(_), LocationId::Process(_))
+            | (LocationId::StaticCluster(_), LocationId::Process(_)) => {
                 self.extra_stmts_global.push(syn::parse_quote! {
                     let (#sink, #source) = __root_dfir_rs::util::unbounded_channel::<(#root::__staged::location::TaglessMemberId, __root_dfir_rs::bytes::Bytes)>();
                 });
@@ -1087,7 +1088,8 @@ impl DfirBuilder for SimBuilder {
                     );
                 }
             }
-            (LocationId::Process(_), LocationId::Cluster(_)) => {
+            (LocationId::Process(_), LocationId::Cluster(_))
+            | (LocationId::Process(_), LocationId::StaticCluster(_)) => {
                 let sink_writer = syn::Ident::new(
                     &format!("__cloned_{}", sink.to_token_stream()),
                     Span::call_site(),
@@ -1147,7 +1149,10 @@ impl DfirBuilder for SimBuilder {
                     );
                 }
             }
-            (LocationId::Cluster(_), LocationId::Cluster(_)) => {
+            (LocationId::Cluster(_), LocationId::Cluster(_))
+            | (LocationId::StaticCluster(_), LocationId::Cluster(_))
+            | (LocationId::Cluster(_), LocationId::StaticCluster(_))
+            | (LocationId::StaticCluster(_), LocationId::StaticCluster(_)) => {
                 let sink_writer = syn::Ident::new(
                     &format!("__cloned_{}", sink.to_token_stream()),
                     Span::call_site(),

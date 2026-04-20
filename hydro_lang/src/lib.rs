@@ -55,7 +55,7 @@ pub mod prelude {
     pub use crate::live_collections::singleton::Singleton;
     pub use crate::live_collections::sliced::sliced;
     pub use crate::live_collections::stream::Stream;
-    pub use crate::location::{Cluster, External, Location as _, Process, Tick};
+    pub use crate::location::{Cluster, External, Location as _, Process, StaticCluster, Tick};
     pub use crate::networking::TCP;
     pub use crate::nondet::{NonDet, nondet};
     pub use crate::properties::{ManualProof, manual_proof};

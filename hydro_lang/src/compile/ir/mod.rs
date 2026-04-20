@@ -815,7 +815,8 @@ impl HydroRoot {
                                         )
                                     }
                                 }
-                                LocationId::Cluster(cluster_key) => {
+                                LocationId::Cluster(cluster_key)
+                                | LocationId::StaticCluster(cluster_key) => {
                                     let from_node = clusters
                                         .get(*cluster_key)
                                         .unwrap_or_else(|| {
@@ -863,7 +864,7 @@ impl HydroRoot {
                         _ => panic!("Embedded output must have Stream collection kind"),
                     };
                     let location_key = match input.metadata().location_id.root() {
-                        LocationId::Process(key) | LocationId::Cluster(key) => *key,
+                        LocationId::Process(key) | LocationId::Cluster(key) | LocationId::StaticCluster(key) => *key,
                         _ => panic!("Embedded output must be on a process or cluster"),
                     };
                     D::register_embedded_output(
@@ -964,7 +965,8 @@ impl HydroRoot {
                                         D::e2o_connect(&from_node, &sink_port, &to_node, &source_port, *from_many, *port_hint),
                                     )
                                 }
-                                LocationId::Cluster(cluster_key) => {
+                                LocationId::Cluster(cluster_key)
+                                | LocationId::StaticCluster(cluster_key) => {
                                     let to_node = clusters
                                         .get(*cluster_key)
                                         .unwrap_or_else(|| {
@@ -1010,7 +1012,7 @@ impl HydroRoot {
                         _ => panic!("Embedded source must have Stream collection kind"),
                     };
                     let location_key = match metadata.location_id.root() {
-                        LocationId::Process(key) | LocationId::Cluster(key) => *key,
+                        LocationId::Process(key) | LocationId::Cluster(key) | LocationId::StaticCluster(key) => *key,
                         _ => panic!("Embedded source must be on a process or cluster"),
                     };
                     D::register_embedded_stream_input(
@@ -1025,7 +1027,7 @@ impl HydroRoot {
                         _ => panic!("EmbeddedSingleton source must have Singleton collection kind"),
                     };
                     let location_key = match metadata.location_id.root() {
-                        LocationId::Process(key) | LocationId::Cluster(key) => *key,
+                        LocationId::Process(key) | LocationId::Cluster(key) | LocationId::StaticCluster(key) => *key,
                         _ => panic!("EmbeddedSingleton source must be on a process or cluster"),
                     };
                     D::register_embedded_singleton_input(
@@ -1038,7 +1040,7 @@ impl HydroRoot {
                     match state {
                         ClusterMembersState::Uninit => {
                             let at_location = metadata.location_id.root().clone();
-                            let key = (at_location.clone(), LocationId::Cluster(location_id.key()));
+                            let key = (at_location.clone(), location_id.clone());
                             if refcell_seen_cluster_members.borrow_mut().insert(key) {
                                 // First occurrence: call cluster_membership_stream and mark as Stream.
                                 let expr = stageleft::QuotedWithContext::splice_untyped_ctx(
@@ -1482,7 +1484,7 @@ fn remap_location(loc: &mut LocationId, uf: &mut HashMap<ClockId, ClockId>) {
         LocationId::Atomic(inner) => {
             remap_location(inner, uf);
         }
-        LocationId::Process(_) | LocationId::Cluster(_) => {}
+        LocationId::Process(_) | LocationId::Cluster(_) | LocationId::StaticCluster(_) => {}
     }
 }
 
@@ -4433,7 +4435,8 @@ where
                 D::o2o_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
-        (&LocationId::Process(from), &LocationId::Cluster(to)) => {
+        (&LocationId::Process(from), &LocationId::Cluster(to))
+        | (&LocationId::Process(from), &LocationId::StaticCluster(to)) => {
             let from_node = processes
                 .get(from)
                 .unwrap_or_else(|| {
@@ -4463,7 +4466,8 @@ where
                 D::o2m_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
-        (&LocationId::Cluster(from), &LocationId::Process(to)) => {
+        (&LocationId::Cluster(from), &LocationId::Process(to))
+        | (&LocationId::StaticCluster(from), &LocationId::Process(to)) => {
             let from_node = clusters
                 .get(from)
                 .unwrap_or_else(|| {
@@ -4493,7 +4497,10 @@ where
                 D::m2o_connect(&from_node, &sink_port, &to_node, &source_port),
             )
         }
-        (&LocationId::Cluster(from), &LocationId::Cluster(to)) => {
+        (&LocationId::Cluster(from), &LocationId::Cluster(to))
+        | (&LocationId::StaticCluster(from), &LocationId::Cluster(to))
+        | (&LocationId::Cluster(from), &LocationId::StaticCluster(to))
+        | (&LocationId::StaticCluster(from), &LocationId::StaticCluster(to)) => {
             let from_node = clusters
                 .get(from)
                 .unwrap_or_else(|| {

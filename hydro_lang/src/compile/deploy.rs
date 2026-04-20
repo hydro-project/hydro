@@ -120,6 +120,22 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         self
     }
 
+    /// Deploys a [`StaticCluster`] with the given spec.
+    ///
+    /// Static clusters use the same deploy infrastructure as dynamic clusters —
+    /// the difference is enforced at the type level (no membership change stream).
+    pub fn with_static_cluster<C>(
+        mut self,
+        cluster: &crate::location::StaticCluster<'_, C>,
+        spec: impl ClusterSpec<'a, D>,
+    ) -> Self {
+        self.clusters.insert(
+            cluster.key,
+            spec.build(cluster.key, &self.location_names[cluster.key]),
+        );
+        self
+    }
+
     /// TODO(mingwei): unstable API
     #[doc(hidden)]
     pub fn with_cluster_erased(
@@ -127,9 +143,11 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         cluster_loc_key: LocationKey,
         spec: impl ClusterSpec<'a, D>,
     ) -> Self {
-        assert_eq!(
-            Some(&LocationType::Cluster),
-            self.locations.get(cluster_loc_key),
+        assert!(
+            matches!(
+                self.locations.get(cluster_loc_key),
+                Some(&LocationType::Cluster) | Some(&LocationType::StaticCluster)
+            ),
             "No cluster with the given `LocationKey` was found."
         );
         self.clusters.insert(
@@ -144,7 +162,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         spec: impl Fn() -> S,
     ) -> Self {
         for (location_key, &location_type) in self.locations.iter() {
-            if LocationType::Cluster == location_type {
+            if matches!(location_type, LocationType::Cluster | LocationType::StaticCluster) {
                 self.clusters
                     .entry(location_key)
                     .expect("location was removed")
@@ -188,7 +206,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     /// Adds a [`Sidecar`] to all processes and clusters in the flow.
     pub fn with_sidecar_all(mut self, sidecar: &impl Sidecar) -> Self {
         for (location_key, &location_type) in self.locations.iter() {
-            if !matches!(location_type, LocationType::Process | LocationType::Cluster) {
+            if !matches!(location_type, LocationType::Process | LocationType::Cluster | LocationType::StaticCluster) {
                 continue;
             }
 

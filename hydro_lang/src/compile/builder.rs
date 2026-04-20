@@ -177,6 +177,21 @@ impl<'a> FlowBuilder<'a> {
         }
     }
 
+    /// Creates a new [`StaticCluster`] location with fixed membership.
+    ///
+    /// Unlike [`FlowBuilder::cluster`], a static cluster does not support dynamic
+    /// membership changes. All members are present for the entire execution.
+    /// This enables stronger consistency guarantees for broadcast operations.
+    pub fn static_cluster<C>(&mut self) -> crate::location::StaticCluster<'a, C> {
+        let key = self.locations.insert(LocationType::StaticCluster);
+        self.location_names.insert(key, type_name::<C>().to_owned());
+        crate::location::StaticCluster {
+            key,
+            flow_state: self.flow_state().clone(),
+            _phantom: PhantomData,
+        }
+    }
+
     pub fn external<E>(&mut self) -> External<'a, E> {
         let key = self.locations.insert(LocationType::External);
         self.location_names.insert(key, type_name::<E>().to_owned());
