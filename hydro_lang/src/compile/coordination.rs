@@ -107,7 +107,7 @@ impl fmt::Display for ConsistencyLabel {
 
 fn is_cluster_location(location: &LocationId) -> bool {
     match location {
-        LocationId::Cluster(_) => true,
+        LocationId::Cluster(_) | LocationId::StaticCluster(_) => true,
         LocationId::Tick(_, inner) | LocationId::Atomic(inner) => is_cluster_location(inner),
         _ => false,
     }
@@ -401,12 +401,14 @@ fn analyze_channels_from(
                             }
                         }
                     }
-                    // Fixed-membership label: for broadcast-to-Cluster edges, the
-                    // edge proof may fail due to broadcast plumbing (dynamic membership
-                    // tracking) rather than the actual data path. The fixed-membership
-                    // label floors at Self, modeling static cluster membership where
-                    // broadcast is trusted infrastructure.
-                    let label_fixed = if is_broadcast_to_cluster && best_label == ConsistencyLabel::Inconsistent {
+                    // Fixed-membership label: for broadcast-to-dynamic-Cluster edges,
+                    // the edge proof may fail due to broadcast plumbing (dynamic
+                    // membership tracking) rather than the actual data path. The
+                    // fixed-membership label floors at Self, modeling the scenario
+                    // where broadcast membership is static.
+                    // For StaticCluster, membership IS fixed, so both labels are the same.
+                    let is_dynamic_cluster = matches!(recv_loc, LocationId::Cluster(_));
+                    let label_fixed = if is_dynamic_cluster && is_broadcast_to_cluster && best_label == ConsistencyLabel::Inconsistent {
                         ConsistencyLabel::SelfConsistent
                     } else {
                         best_label.clone()
@@ -1084,15 +1086,25 @@ fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
         // Sort: bounded discharges, unbounded breaks (same as non-commutative aggregation)
         HydroNode::Sort { input, .. } => Aggregation { is_commutative: false, is_idempotent: false, input },
 
-        // Network: cross-location receive onto a Cluster discharges (broadcast trust boundary).
+        // Network: cross-location receive onto a cluster.
+        // - StaticCluster: all members present for entire execution → Source (discharged).
+        // - Dynamic Cluster: membership may change.
+        //   - SetInclusion: each member accumulates elements → Source (per-member monotone).
+        //   - Prefix: late joiner misses prefix → breaks proof.
         // Same-location or non-Cluster preserves based on output ordering.
         HydroNode::Network { input, metadata, .. } => {
             let recv_loc = &metadata.location_id;
             let send_loc = &input.metadata().location_id;
-            let is_cross_location_to_cluster = matches!(recv_loc, LocationId::Cluster(_))
+            let is_cross_location_to_static_cluster = matches!(recv_loc, LocationId::StaticCluster(_))
                 && recv_loc != send_loc;
-            if is_cross_location_to_cluster {
-                Source // all cluster members receive the same data via broadcast
+            let is_cross_location_to_dynamic_cluster = matches!(recv_loc, LocationId::Cluster(_))
+                && recv_loc != send_loc;
+            if is_cross_location_to_static_cluster {
+                Source // static cluster: all members always present
+            } else if is_cross_location_to_dynamic_cluster {
+                // Dynamic cluster: per-member monotone under SetInclusion only.
+                // Prefix breaks because late joiners miss earlier elements.
+                PreserveGoals { input, goals: &[OrderGoal::SetInclusion] }
             } else {
                 let is_total = matches!(
                     &metadata.collection_kind,
