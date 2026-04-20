@@ -145,7 +145,7 @@
           }
 
           const data = window.BENCHMARK_DATA;
-          data.entries.Benchmark = data.entries.Benchmark.slice(-365)
+                    data.entries.Benchmark = data.entries.Benchmark.slice(-365)
 
           // Render header
           document.getElementById('last-update').textContent = new Date(data.lastUpdate).toString();
@@ -176,7 +176,10 @@
             canvas.className = 'benchmark-chart';
             parent.appendChild(canvas);
 
-            const color = toolColors[dataset.length > 0 ? dataset[0].tool : '_'];
+            const tool = dataset.length > 0 ? dataset[0].tool : '_';
+            const unit = dataset.length > 0 ? (dataset[0].bench.unit || '') : '';
+            const isHigherBetter = /(?:^|\s)(?:ops\/?s|req\/?s|requests\/?s|rps|qps|tps)(?:\s|$)/i.test(unit);
+            const color = isHigherBetter ? '#3572a5' : toolColors[tool];
             const data = {
               labels: dataset.map(d => d.commit.id.slice(0, 7)),
               datasets: [
