@@ -2027,6 +2027,10 @@ impl DfirGraph {
                     #root::scheduled::context::InlineWakeState::default()
                 );
 
+                let __dfir_current_tick = ::std::rc::Rc::new(
+                    ::std::cell::Cell::new(#root::scheduled::ticks::TickInstant::default())
+                );
+
                 let __dfir_metrics = {
                     let mut dfir_metrics = #root::scheduled::metrics::DfirMetrics::default();
                     #( #metrics_init_code )*
@@ -2036,6 +2040,7 @@ impl DfirGraph {
                 #[allow(unused_mut)]
                 let mut #df = #root::scheduled::context::InlineContext::new(
                     ::std::clone::Clone::clone(&__dfir_wake_state),
+                    ::std::clone::Clone::clone(&__dfir_current_tick),
                 );
 
                 #( #buffer_code )*
@@ -2070,6 +2075,7 @@ impl DfirGraph {
                 #root::scheduled::context::InlineDfir::new(
                     __dfir_inline_tick,
                     __dfir_wake_state,
+                    __dfir_current_tick,
                     __dfir_metrics_outer,
                     Some(#meta_graph_json),
                     Some(#diagnostics_json),
