@@ -471,9 +471,8 @@ impl Wake for InlineWakeState {
 #[doc(hidden)]
 pub struct InlineContext {
     states: SlotVec<StateTag, StateData>,
-    current_tick: TickInstant,
-    /// Shared tick counter readable from `InlineDfir` outside the closure.
-    current_tick_shared: Rc<Cell<TickInstant>>,
+    /// Shared tick counter, also readable from `InlineDfir` outside the closure.
+    current_tick: Rc<Cell<TickInstant>>,
     wake_state: std::sync::Arc<InlineWakeState>,
 }
 
@@ -481,12 +480,11 @@ impl InlineContext {
     /// Create a new inline context with shared wake state and tick counter.
     pub fn new(
         wake_state: std::sync::Arc<InlineWakeState>,
-        current_tick_shared: Rc<Cell<TickInstant>>,
+        current_tick: Rc<Cell<TickInstant>>,
     ) -> Self {
         Self {
             states: SlotVec::new(),
-            current_tick: TickInstant::default(),
-            current_tick_shared,
+            current_tick,
             wake_state,
         }
     }
@@ -558,7 +556,7 @@ impl InlineContext {
 
     /// Gets the current tick count.
     pub fn current_tick(&self) -> TickInstant {
-        self.current_tick
+        self.current_tick.get()
     }
 
     /// No-op: inline mode has no subgraph scheduling.
@@ -602,8 +600,7 @@ impl InlineContext {
             };
             (lifespan_hook_fn)(Box::deref_mut(state));
         }
-        self.current_tick += crate::scheduled::ticks::TickDuration::SINGLE_TICK;
-        self.current_tick_shared.set(self.current_tick);
+        self.current_tick.set(self.current_tick.get() + crate::scheduled::ticks::TickDuration::SINGLE_TICK);
     }
 }
 

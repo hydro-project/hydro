@@ -1491,12 +1491,10 @@ impl DfirGraph {
                     .copied()
                     .flatten()
                 {
-                    let Some(src_sg) = self.node_subgraph(src_ref_id) else {
-                        continue;
-                    };
-                    let Some(dst_sg) = self.node_subgraph(dst_id) else {
-                        continue;
-                    };
+                    let src_sg = self.node_subgraph(src_ref_id)
+                        .expect("bug: singleton ref node must belong to a subgraph");
+                    let dst_sg = self.node_subgraph(dst_id)
+                        .expect("bug: singleton ref consumer must belong to a subgraph");
                     if src_sg != dst_sg {
                         sg_preds.entry(dst_sg).unwrap().or_default().push(src_sg);
                     }
