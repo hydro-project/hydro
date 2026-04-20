@@ -185,6 +185,76 @@ impl<C> IsCluster for Cluster<'_, C> {
     type Tag = C;
 }
 
+impl<C> IsCluster for StaticCluster<'_, C> {
+    type Tag = C;
+}
+
+/// A multi-node location with fixed membership known at deploy time.
+///
+/// Unlike [`Cluster`], a `StaticCluster` does not support dynamic membership
+/// changes. All members are present for the entire execution. This enables
+/// stronger consistency guarantees: broadcasting to a `StaticCluster` does not
+/// require a [`NonDet`](crate::nondet::NonDet) guard because membership is not
+/// a source of nondeterminism.
+///
+/// The `ClusterTag` type parameter is a phantom tag used to distinguish between
+/// different clusters in the type system, preventing accidental mixing of
+/// member IDs across clusters.
+pub struct StaticCluster<'a, ClusterTag> {
+    pub(crate) key: LocationKey,
+    pub(crate) flow_state: FlowState,
+    pub(crate) _phantom: Invariant<'a, ClusterTag>,
+}
+
+impl<C> Debug for StaticCluster<'_, C> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "StaticCluster({})", self.key)
+    }
+}
+
+impl<C> Eq for StaticCluster<'_, C> {}
+impl<C> PartialEq for StaticCluster<'_, C> {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key && FlowState::ptr_eq(&self.flow_state, &other.flow_state)
+    }
+}
+
+impl<C> Clone for StaticCluster<'_, C> {
+    fn clone(&self) -> Self {
+        StaticCluster {
+            key: self.key,
+            flow_state: self.flow_state.clone(),
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a, C> super::dynamic::DynLocation for StaticCluster<'a, C> {
+    fn id(&self) -> LocationId {
+        LocationId::StaticCluster(self.key)
+    }
+
+    fn flow_state(&self) -> &FlowState {
+        &self.flow_state
+    }
+
+    fn is_top_level() -> bool {
+        true
+    }
+
+    fn multiversioned(&self) -> bool {
+        false
+    }
+}
+
+impl<'a, C> Location<'a> for StaticCluster<'a, C> {
+    type Root = StaticCluster<'a, C>;
+
+    fn root(&self) -> Self::Root {
+        self.clone()
+    }
+}
+
 /// A free variable representing the cluster's own ID. When spliced in
 /// a quoted snippet that will run on a cluster, this turns into a [`MemberId`].
 pub static CLUSTER_SELF_ID: ClusterSelfId = ClusterSelfId { _private: &() };

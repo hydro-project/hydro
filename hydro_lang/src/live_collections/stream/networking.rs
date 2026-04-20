@@ -309,6 +309,51 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         .demux(to, via)
     }
 
+    /// Broadcasts elements of this stream to all members of a static cluster using
+    /// [`bincode`] serialization.
+    ///
+    /// Unlike [`Stream::broadcast_bincode`], this does not require a [`NonDet`] guard
+    /// because [`StaticCluster`] membership is fixed at deploy time — all members are
+    /// present for the entire execution.
+    pub fn broadcast_static_bincode<L2: 'a>(
+        self,
+        to: &crate::location::StaticCluster<'a, L2>,
+    ) -> Stream<T, crate::location::StaticCluster<'a, L2>, Unbounded, O, R>
+    where
+        T: Clone + Serialize + DeserializeOwned,
+    {
+        self.broadcast_static(to, TCP.fail_stop().bincode())
+    }
+
+    /// Broadcasts elements of this stream to all members of a static cluster using
+    /// the given network configuration.
+    ///
+    /// Unlike [`Stream::broadcast`], this does not require a [`NonDet`] guard
+    /// because [`StaticCluster`] membership is fixed at deploy time.
+    pub fn broadcast_static<L2: 'a, N: NetworkFor<T>>(
+        self,
+        to: &crate::location::StaticCluster<'a, L2>,
+        via: N,
+    ) -> Stream<T, crate::location::StaticCluster<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
+    where
+        T: Clone + Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
+    {
+        // Static cluster: all members are always present. Use the membership
+        // source deterministically — no sliced! nondeterminism needed.
+        let ids = track_membership(self.location.source_cluster_members_static(to));
+        sliced! {
+            // The NonDet here is safe: static cluster membership never changes,
+            // so the snapshot is always the same deterministic set of members.
+            let members_snapshot = use(ids, crate::nondet::nondet!(/** static cluster membership is deterministic */));
+            let elements = use(self, crate::nondet::nondet!(/** static cluster: element batching is the only nondeterminism */));
+
+            let current_members = members_snapshot.filter(q!(|b| *b));
+            elements.repeat_with_keys(current_members)
+        }
+        .demux_static(to, via)
+    }
+
     /// Sends the elements of this stream to an external (non-Hydro) process, using [`bincode`]
     /// serialization. The external process can receive these elements by establishing a TCP
     /// connection and decoding using [`tokio_util::codec::LengthDelimitedCodec`].

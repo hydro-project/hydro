@@ -141,6 +141,42 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
             },
         )
     }
+
+    /// Sends each group of this stream to a specific member of a static cluster.
+    ///
+    /// Like [`KeyedStream::demux`] but targets a [`StaticCluster`](crate::location::StaticCluster)
+    /// with fixed membership.
+    pub fn demux_static<N: NetworkFor<T>>(
+        self,
+        to: &crate::location::StaticCluster<'a, L2>,
+        via: N,
+    ) -> Stream<T, crate::location::StaticCluster<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
+    where
+        T: Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
+    {
+        let serialize_pipeline = Some(N::serialize_thunk(true));
+        let deserialize_pipeline = Some(N::deserialize_thunk(None));
+
+        Stream::new(
+            to.clone(),
+            HydroNode::Network {
+                name: via.name().map(ToOwned::to_owned),
+                networking_info: N::networking_info(),
+                serialize_fn: serialize_pipeline.map(|e| e.into()),
+                instantiate_fn: DebugInstantiate::Building,
+                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: to.new_node_metadata(Stream::<
+                    T,
+                    crate::location::StaticCluster<'a, L2>,
+                    Unbounded,
+                    <O as MinOrder<N::OrderingGuarantee>>::Min,
+                    R,
+                >::collection_kind()),
+            },
+        )
+    }
 }
 
 impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>

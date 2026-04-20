@@ -48,6 +48,16 @@ impl<'a> SimFlow<'a> {
         self
     }
 
+    /// Sets the size of the given static cluster in the simulation.
+    pub fn with_static_cluster_size<C>(
+        mut self,
+        cluster: &crate::location::StaticCluster<'a, C>,
+        size: usize,
+    ) -> Self {
+        self.cluster_max_sizes.insert(cluster.key, size);
+        self
+    }
+
     /// Opts in to safety-only testing, which is required when using
     /// [`lossy_delayed_forever`](crate::networking::NetworkingConfig::lossy_delayed_forever)
     /// networking.
