@@ -29,7 +29,7 @@ pub struct GraphConfig {
     #[clap(long)]
     pub graph: Option<GraphType>,
 
-    /// Output file path (default: hydro_graph.<ext>)
+    /// Output file path (default: `hydro_graph.{ext}`)
     #[clap(long, short = 'o')]
     pub output: Option<String>,
 
