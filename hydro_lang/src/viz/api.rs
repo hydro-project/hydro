@@ -69,7 +69,12 @@ impl<'a> GraphApi<'a> {
             .output
             .clone()
             .unwrap_or_else(|| format!("hydro_graph.{}", graph_type.file_extension()));
-        self.write_to_file(graph_type, &filename, !config.long_labels, !config.no_metadata)?;
+        self.write_to_file(
+            graph_type,
+            &filename,
+            !config.long_labels,
+            !config.no_metadata,
+        )?;
         Ok(Some(filename))
     }
 }

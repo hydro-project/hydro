@@ -128,10 +128,7 @@ where
             b = "",
             i = self.base.indent,
         )?;
-        write!(
-            self.base.write,
-            ", shape=box, fillcolor=\"#f5f5f5\""
-        )?;
+        write!(self.base.write, ", shape=box, fillcolor=\"#f5f5f5\"")?;
         writeln!(self.base.write, "]")?;
         Ok(())
     }
