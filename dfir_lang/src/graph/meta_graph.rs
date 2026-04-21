@@ -2048,19 +2048,20 @@ impl DfirGraph {
                     #root::scheduled::context::InlineWakeState::default()
                 );
 
-                let __dfir_shared = {
+                let __dfir_current_tick = ::std::rc::Rc::new(
+                    ::std::cell::Cell::new(#root::scheduled::ticks::TickInstant::default())
+                );
+
+                let __dfir_metrics = {
                     let mut dfir_metrics = #root::scheduled::metrics::DfirMetrics::default();
                     #( #metrics_init_code )*
-                    ::std::rc::Rc::new(#root::scheduled::context::InlineSharedState {
-                        current_tick: ::std::cell::Cell::new(#root::scheduled::ticks::TickInstant::default()),
-                        metrics: ::std::rc::Rc::new(dfir_metrics),
-                    })
+                    ::std::rc::Rc::new(dfir_metrics)
                 };
 
                 #[allow(unused_mut)]
                 let mut #df = #root::scheduled::context::InlineContext::new(
                     ::std::clone::Clone::clone(&__dfir_wake_state),
-                    ::std::clone::Clone::clone(&__dfir_shared),
+                    ::std::clone::Clone::clone(&__dfir_current_tick),
                 );
 
                 #( #buffer_code )*
@@ -2072,7 +2073,7 @@ impl DfirGraph {
                 // start false (from take()) and are set true by recv port code
                 // if any handoff buffer has data.
                 let mut __dfir_work_done = true;
-                let __dfir_metrics = ::std::clone::Clone::clone(&__dfir_shared.metrics);
+                let __dfir_metrics_outer = ::std::clone::Clone::clone(&__dfir_metrics);
                 #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref)]
                 let __dfir_inline_tick = async move || {
                     #( #subgraph_blocks )*
@@ -2095,7 +2096,8 @@ impl DfirGraph {
                 #root::scheduled::context::InlineDfir::new(
                     __dfir_inline_tick,
                     __dfir_wake_state,
-                    __dfir_shared,
+                    __dfir_current_tick,
+                    __dfir_metrics_outer,
                     Some(#meta_graph_json),
                     Some(#diagnostics_json),
                 )
