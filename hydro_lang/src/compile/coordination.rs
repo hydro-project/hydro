@@ -943,6 +943,7 @@ fn preserve_or_fail(
 fn aggregation_discharge(
     is_commutative: bool,
     is_idempotent: bool,
+    is_associative: bool,
     input: &HydroNode,
     goal: &OrderGoal,
     name: &str,
@@ -953,7 +954,17 @@ fn aggregation_discharge(
     if is_commutative && is_idempotent && *goal != OrderGoal::Prefix {
         ProofResult::discharged(name, "lattice join (proven commutative + idempotent)", span, pm_span)
     } else if input.metadata().collection_kind.is_bounded() {
-        ProofResult::discharged(name, "bounded input", span, pm_span)
+        // Bounded input (within a tick). The fold sees complete input per tick.
+        // For SetInclusion/Lattice: safe regardless — fold results accumulate.
+        // For Prefix: the fold result depends on which elements are in this tick.
+        // If the fold is associative, different batch boundaries produce the same
+        // concatenated output. If not, the output is batch-boundary-dependent.
+        // Lattice joins (commutative + idempotent) are associative by definition.
+        if *goal == OrderGoal::Prefix && !is_associative && !(is_commutative && is_idempotent) {
+            ProofResult::fail(name, "bounded fold breaks Prefix: not proven associative (batch boundaries affect result)", span, pm_span)
+        } else {
+            ProofResult::discharged(name, "bounded input", span, pm_span)
+        }
     } else {
         ProofResult::fail(name, fail_msg, span, pm_span)
     }
@@ -1180,9 +1191,9 @@ fn prove(
                 &name, span, pm_span, cycle_proofs, seen_tees,
             );
         }
-        MonotoneBehavior::Aggregation { is_commutative, is_idempotent, is_associative: _, input } => {
+        MonotoneBehavior::Aggregation { is_commutative, is_idempotent, is_associative, input } => {
             return aggregation_discharge(
-                is_commutative, is_idempotent, input, goal,
+                is_commutative, is_idempotent, is_associative, input, goal,
                 &name, span, pm_span,
                 "unbounded input without lattice join proof (requires commutative + idempotent)",
             );
