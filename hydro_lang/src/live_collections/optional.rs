@@ -328,6 +328,13 @@ where
         &self.location
     }
 
+    /// Assigns a human-readable name to this optional for use in analysis
+    /// output and graph visualization.
+    pub fn name(self, name: impl Into<String>) -> Self {
+        self.ir_node.borrow_mut().metadata_mut().op.name = Some(name.into());
+        self
+    }
+
     /// Transforms the optional value by applying a function `f` to it,
     /// continuously as the input is updated.
     ///

@@ -287,6 +287,13 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     pub fn location(&self) -> &L {
         &self.location
     }
+
+    /// Assigns a human-readable name to this keyed singleton for use in analysis
+    /// output and graph visualization.
+    pub fn name(self, name: impl Into<String>) -> Self {
+        self.ir_node.borrow_mut().metadata_mut().op.name = Some(name.into());
+        self
+    }
 }
 
 #[cfg(stageleft_runtime)]

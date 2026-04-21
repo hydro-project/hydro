@@ -326,6 +326,13 @@ where
         &self.location
     }
 
+    /// Assigns a human-readable name to this singleton for use in analysis
+    /// output and graph visualization.
+    pub fn name(self, name: impl Into<String>) -> Self {
+        self.ir_node.borrow_mut().metadata_mut().op.name = Some(name.into());
+        self
+    }
+
     /// Drops the monotonicity property of the [`Singleton`].
     pub fn ignore_monotonic(self) -> Singleton<T, L, B::UnderlyingBound> {
         if B::bound_kind() == B::UnderlyingBound::bound_kind() {

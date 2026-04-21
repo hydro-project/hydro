@@ -288,6 +288,13 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         &self.location
     }
 
+    /// Assigns a human-readable name to this keyed stream for use in analysis
+    /// output and graph visualization.
+    pub fn name(self, name: impl Into<String>) -> Self {
+        self.ir_node.borrow_mut().metadata_mut().op.name = Some(name.into());
+        self
+    }
+
     /// Explicitly "casts" the keyed stream to a type with a different ordering
     /// guarantee for each group. Useful in unsafe code where the ordering cannot be proven
     /// by the type-system.

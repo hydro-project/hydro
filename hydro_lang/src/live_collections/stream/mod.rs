@@ -1118,6 +1118,21 @@ where
         )
     }
 
+    /// Assigns a human-readable name to this stream for use in analysis output
+    /// and graph visualization.
+    ///
+    /// The name appears in the coordination analysis report and dataflow graphs
+    /// instead of the generic operator name.
+    ///
+    /// # Example
+    /// ```ignore
+    /// tx_responses.name("tx_responses").for_each(q!(|_| {}));
+    /// ```
+    pub fn name(self, name: impl Into<String>) -> Self {
+        self.ir_node.borrow_mut().metadata_mut().op.name = Some(name.into());
+        self
+    }
+
     /// Executes the provided closure for every element in this stream.
     ///
     /// Because the closure may have side effects, the stream must have deterministic order
@@ -3052,6 +3067,18 @@ mod tests {
     use crate::networking::TCP;
     #[cfg(any(feature = "deploy", feature = "sim"))]
     use crate::nondet::nondet;
+
+    #[cfg(any(feature = "deploy", feature = "sim"))]
+    #[test]
+    fn stream_name_sets_metadata() {
+        let mut flow = FlowBuilder::new();
+        let p = flow.process::<()>();
+        let stream = p.source_iter(q!([1, 2, 3])).name("my_stream");
+        assert_eq!(
+            stream.ir_node.borrow().metadata().op.name.as_deref(),
+            Some("my_stream")
+        );
+    }
 
     mod backtrace_chained_ops;
 

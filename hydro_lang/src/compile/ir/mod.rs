@@ -1794,6 +1794,8 @@ pub struct HydroIrOpMetadata {
     pub cpu_usage: Option<f64>,
     pub network_recv_cpu_usage: Option<f64>,
     pub id: Option<usize>,
+    /// User-provided display name for this node (used in coordination analysis output).
+    pub name: Option<String>,
 }
 
 impl HydroIrOpMetadata {
@@ -1811,6 +1813,7 @@ impl HydroIrOpMetadata {
             cpu_usage: None,
             network_recv_cpu_usage: None,
             id: None,
+            name: None,
         }
     }
 }
