@@ -473,15 +473,18 @@ pub struct InlineContext {
     states: SlotVec<StateTag, StateData>,
     current_tick: TickInstant,
     wake_state: std::sync::Arc<InlineWakeState>,
+    /// Live-updating DFIR runtime metrics via interior mutability.
+    pub metrics: Rc<DfirMetrics>,
 }
 
 impl InlineContext {
-    /// Create a new inline context with shared wake state.
-    pub fn new(wake_state: std::sync::Arc<InlineWakeState>) -> Self {
+    /// Create a new inline context with shared wake state and metrics.
+    pub fn new(wake_state: std::sync::Arc<InlineWakeState>, metrics: Rc<DfirMetrics>) -> Self {
         Self {
             states: SlotVec::new(),
             current_tick: TickInstant::default(),
             wake_state,
+            metrics,
         }
     }
 
@@ -622,9 +625,6 @@ pub struct InlineDfir<Tick> {
     /// The inline context, owned by `InlineDfir` and passed to the tick closure by reference.
     context: InlineContext,
 
-    /// Live-updating DFIR runtime metrics via interior mutability.
-    metrics: Rc<DfirMetrics>,
-
     #[cfg(feature = "meta")]
     /// See [`Self::meta_graph()`].
     meta_graph: Option<DfirGraph>,
@@ -642,17 +642,11 @@ pub struct InlineDfir<Tick> {
 #[doc(hidden)]
 pub trait TickClosure {
     /// Call the tick closure. Returns `true` if any subgraph received input data.
-    fn call_tick<'a>(
-        &'a mut self,
-        ctx: &'a mut InlineContext,
-    ) -> impl Future<Output = bool> + 'a;
+    fn call_tick<'a>(&'a mut self, ctx: &'a mut InlineContext) -> impl Future<Output = bool> + 'a;
 }
 
 impl<F: for<'a> AsyncFnMut(&'a mut InlineContext) -> bool> TickClosure for F {
-    fn call_tick<'a>(
-        &'a mut self,
-        ctx: &'a mut InlineContext,
-    ) -> impl Future<Output = bool> + 'a {
+    fn call_tick<'a>(&'a mut self, ctx: &'a mut InlineContext) -> impl Future<Output = bool> + 'a {
         self(ctx)
     }
 }
@@ -681,10 +675,7 @@ impl<F: for<'a> AsyncFnMut(&'a mut InlineContext) -> bool> TickClosureErasedInne
 }
 
 impl TickClosure for TickClosureErased {
-    fn call_tick<'a>(
-        &'a mut self,
-        ctx: &'a mut InlineContext,
-    ) -> impl Future<Output = bool> + 'a {
+    fn call_tick<'a>(&'a mut self, ctx: &'a mut InlineContext) -> impl Future<Output = bool> + 'a {
         self.0.call_tick(ctx)
     }
 }
@@ -695,13 +686,12 @@ pub type InlineDfirErased = InlineDfir<TickClosureErased>;
 
 impl<Tick: TickClosure> InlineDfir<Tick> {
     /// Create a new `InlineDfir` from a tick closure, shared wake state,
-    /// inline context, metrics, and meta graph / diagnostics JSON strings.
+    /// inline context, and meta graph / diagnostics JSON strings.
     #[doc(hidden)]
     pub fn new(
         tick_closure: Tick,
         wake_state: std::sync::Arc<InlineWakeState>,
         context: InlineContext,
-        metrics: Rc<DfirMetrics>,
         meta_graph_json: Option<&str>,
         diagnostics_json: Option<&str>,
     ) -> Self {
@@ -711,7 +701,6 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
             tick_closure,
             wake_state,
             context,
-            metrics,
             #[cfg(feature = "meta")]
             meta_graph: meta_graph_json.map(|json| {
                 let mut meta_graph: DfirGraph =
@@ -748,7 +737,7 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
 
     /// Returns a reference-counted handle to the continually-updated runtime metrics for this DFIR instance.
     pub fn metrics(&self) -> Rc<DfirMetrics> {
-        Rc::clone(&self.metrics)
+        Rc::clone(&self.context.metrics)
     }
 
     /// Gets the current tick (local time) count.
@@ -870,7 +859,6 @@ impl<Tick: 'static + for<'a> AsyncFnMut(&'a mut InlineContext) -> bool> InlineDf
             tick_closure: TickClosureErased(Box::new(self.tick_closure)),
             wake_state: self.wake_state,
             context: self.context,
-            metrics: self.metrics,
             #[cfg(feature = "meta")]
             meta_graph: self.meta_graph,
             #[cfg(feature = "meta")]
