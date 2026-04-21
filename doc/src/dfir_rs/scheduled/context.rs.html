@@ -471,388 +471,404 @@
 <a href=#471 id=471 data-nosnippet>471</a></span><span class="attr">#[doc(hidden)]
 <a href=#472 id=472 data-nosnippet>472</a></span><span class="kw">pub struct </span>InlineContext {
 <a href=#473 id=473 data-nosnippet>473</a>    states: SlotVec&lt;StateTag, StateData&gt;,
-<a href=#474 id=474 data-nosnippet>474</a>    current_tick: TickInstant,
-<a href=#475 id=475 data-nosnippet>475</a>    wake_state: std::sync::Arc&lt;InlineWakeState&gt;,
-<a href=#476 id=476 data-nosnippet>476</a>}
-<a href=#477 id=477 data-nosnippet>477</a>
-<a href=#478 id=478 data-nosnippet>478</a><span class="kw">impl </span>InlineContext {
-<a href=#479 id=479 data-nosnippet>479</a>    <span class="doccomment">/// Create a new inline context with shared wake state.
-<a href=#480 id=480 data-nosnippet>480</a>    </span><span class="kw">pub fn </span>new(wake_state: std::sync::Arc&lt;InlineWakeState&gt;) -&gt; <span class="self">Self </span>{
-<a href=#481 id=481 data-nosnippet>481</a>        <span class="self">Self </span>{
-<a href=#482 id=482 data-nosnippet>482</a>            states: SlotVec::new(),
-<a href=#483 id=483 data-nosnippet>483</a>            current_tick: TickInstant::default(),
-<a href=#484 id=484 data-nosnippet>484</a>            wake_state,
-<a href=#485 id=485 data-nosnippet>485</a>        }
-<a href=#486 id=486 data-nosnippet>486</a>    }
-<a href=#487 id=487 data-nosnippet>487</a>
-<a href=#488 id=488 data-nosnippet>488</a>    <span class="comment">// --- Methods called as `df.xxx()` in operator prologues ---
-<a href=#489 id=489 data-nosnippet>489</a>
-<a href=#490 id=490 data-nosnippet>490</a>    </span><span class="doccomment">/// Adds state and returns a handle.
-<a href=#491 id=491 data-nosnippet>491</a>    </span><span class="kw">pub fn </span>add_state&lt;T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, state: T) -&gt; StateHandle&lt;T&gt;
-<a href=#492 id=492 data-nosnippet>492</a>    <span class="kw">where
-<a href=#493 id=493 data-nosnippet>493</a>        </span>T: Any,
-<a href=#494 id=494 data-nosnippet>494</a>    {
-<a href=#495 id=495 data-nosnippet>495</a>        <span class="kw">let </span>state_data = StateData {
-<a href=#496 id=496 data-nosnippet>496</a>            state: Box::new(state),
-<a href=#497 id=497 data-nosnippet>497</a>            lifespan_hook_fn: <span class="prelude-val">None</span>,
-<a href=#498 id=498 data-nosnippet>498</a>            lifespan: <span class="prelude-val">None</span>,
-<a href=#499 id=499 data-nosnippet>499</a>        };
-<a href=#500 id=500 data-nosnippet>500</a>        <span class="kw">let </span>state_id = <span class="self">self</span>.states.insert(state_data);
-<a href=#501 id=501 data-nosnippet>501</a>        StateHandle {
-<a href=#502 id=502 data-nosnippet>502</a>            state_id,
-<a href=#503 id=503 data-nosnippet>503</a>            _phantom: PhantomData,
-<a href=#504 id=504 data-nosnippet>504</a>        }
-<a href=#505 id=505 data-nosnippet>505</a>    }
-<a href=#506 id=506 data-nosnippet>506</a>
-<a href=#507 id=507 data-nosnippet>507</a>    <span class="doccomment">/// Sets a hook to modify state at the end of each tick.
-<a href=#508 id=508 data-nosnippet>508</a>    </span><span class="kw">pub fn </span>set_state_lifespan_hook&lt;T&gt;(
-<a href=#509 id=509 data-nosnippet>509</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-<a href=#510 id=510 data-nosnippet>510</a>        handle: StateHandle&lt;T&gt;,
-<a href=#511 id=511 data-nosnippet>511</a>        _lifespan: StateLifespan,
-<a href=#512 id=512 data-nosnippet>512</a>        <span class="kw-2">mut </span>hook_fn: <span class="kw">impl </span><span class="lifetime">'static </span>+ FnMut(<span class="kw-2">&amp;mut </span>T),
-<a href=#513 id=513 data-nosnippet>513</a>    ) <span class="kw">where
-<a href=#514 id=514 data-nosnippet>514</a>        </span>T: Any,
-<a href=#515 id=515 data-nosnippet>515</a>    {
-<a href=#516 id=516 data-nosnippet>516</a>        <span class="kw">let </span>state_data = <span class="self">self
-<a href=#517 id=517 data-nosnippet>517</a>            </span>.states
-<a href=#518 id=518 data-nosnippet>518</a>            .get_mut(handle.state_id)
-<a href=#519 id=519 data-nosnippet>519</a>            .expect(<span class="string">"Failed to find state with given handle."</span>);
-<a href=#520 id=520 data-nosnippet>520</a>        state_data.lifespan_hook_fn = <span class="prelude-val">Some</span>(Box::new(<span class="kw">move </span>|state| {
-<a href=#521 id=521 data-nosnippet>521</a>            (hook_fn)(state.downcast_mut::&lt;T&gt;().unwrap());
-<a href=#522 id=522 data-nosnippet>522</a>        }));
-<a href=#523 id=523 data-nosnippet>523</a>        state_data.lifespan = <span class="prelude-val">Some</span>(_lifespan);
-<a href=#524 id=524 data-nosnippet>524</a>    }
-<a href=#525 id=525 data-nosnippet>525</a>
-<a href=#526 id=526 data-nosnippet>526</a>    <span class="comment">// --- Methods called as `context.xxx()` in operator iterators ---
-<a href=#527 id=527 data-nosnippet>527</a>
-<a href=#528 id=528 data-nosnippet>528</a>    </span><span class="doccomment">/// Returns a shared reference to the state.
-<a href=#529 id=529 data-nosnippet>529</a>    ///
-<a href=#530 id=530 data-nosnippet>530</a>    /// # Safety
-<a href=#531 id=531 data-nosnippet>531</a>    /// `StateHandle&lt;T&gt;` must be from _this_ instance.
-<a href=#532 id=532 data-nosnippet>532</a>    </span><span class="kw">pub unsafe fn </span>state_ref_unchecked&lt;T&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, handle: StateHandle&lt;T&gt;) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'_ </span>T
-<a href=#533 id=533 data-nosnippet>533</a>    <span class="kw">where
-<a href=#534 id=534 data-nosnippet>534</a>        </span>T: Any,
-<a href=#535 id=535 data-nosnippet>535</a>    {
-<a href=#536 id=536 data-nosnippet>536</a>        <span class="kw">let </span>state = <span class="self">self
-<a href=#537 id=537 data-nosnippet>537</a>            </span>.states
-<a href=#538 id=538 data-nosnippet>538</a>            .get(handle.state_id)
-<a href=#539 id=539 data-nosnippet>539</a>            .expect(<span class="string">"Failed to find state with given handle."</span>)
-<a href=#540 id=540 data-nosnippet>540</a>            .state
-<a href=#541 id=541 data-nosnippet>541</a>            .as_ref();
-<a href=#542 id=542 data-nosnippet>542</a>        <span class="macro">debug_assert!</span>(state.is::&lt;T&gt;());
-<a href=#543 id=543 data-nosnippet>543</a>        <span class="kw">unsafe </span>{ <span class="kw-2">&amp;*</span>(state <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">dyn </span>Any <span class="kw">as </span><span class="kw-2">*const </span>T) }
-<a href=#544 id=544 data-nosnippet>544</a>    }
-<a href=#545 id=545 data-nosnippet>545</a>
-<a href=#546 id=546 data-nosnippet>546</a>    <span class="doccomment">/// Always returns `true` in inline mode. The inline codegen runs the entire DAG
-<a href=#547 id=547 data-nosnippet>547</a>    /// once per tick with no re-execution, so every subgraph is always on its first
-<a href=#548 id=548 data-nosnippet>548</a>    /// (and only) run within each tick.
-<a href=#549 id=549 data-nosnippet>549</a>    </span><span class="kw">pub fn </span>is_first_run_this_tick(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
-<a href=#550 id=550 data-nosnippet>550</a>        <span class="bool-val">true
-<a href=#551 id=551 data-nosnippet>551</a>    </span>}
-<a href=#552 id=552 data-nosnippet>552</a>
-<a href=#553 id=553 data-nosnippet>553</a>    <span class="doccomment">/// Gets the current tick count.
-<a href=#554 id=554 data-nosnippet>554</a>    </span><span class="kw">pub fn </span>current_tick(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TickInstant {
-<a href=#555 id=555 data-nosnippet>555</a>        <span class="self">self</span>.current_tick
-<a href=#556 id=556 data-nosnippet>556</a>    }
-<a href=#557 id=557 data-nosnippet>557</a>
-<a href=#558 id=558 data-nosnippet>558</a>    <span class="doccomment">/// No-op: inline mode has no subgraph scheduling.
-<a href=#559 id=559 data-nosnippet>559</a>    </span><span class="kw">pub fn </span>current_subgraph(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SubgraphId {
-<a href=#560 id=560 data-nosnippet>560</a>        SubgraphId::from_raw(<span class="number">0</span>)
-<a href=#561 id=561 data-nosnippet>561</a>    }
-<a href=#562 id=562 data-nosnippet>562</a>
-<a href=#563 id=563 data-nosnippet>563</a>    <span class="doccomment">/// In inline mode, every subgraph runs unconditionally each tick, so the `sg_id`
-<a href=#564 id=564 data-nosnippet>564</a>    /// parameter is ignored. Only `is_external` matters: when `true`, it signals that
-<a href=#565 id=565 data-nosnippet>565</a>    /// external data has arrived and a new tick should be started.
-<a href=#566 id=566 data-nosnippet>566</a>    </span><span class="kw">pub fn </span>schedule_subgraph(<span class="kw-2">&amp;</span><span class="self">self</span>, _sg_id: SubgraphId, is_external: bool) {
-<a href=#567 id=567 data-nosnippet>567</a>        <span class="kw">if </span>is_external {
-<a href=#568 id=568 data-nosnippet>568</a>            <span class="self">self</span>.wake_state.wake_by_ref();
-<a href=#569 id=569 data-nosnippet>569</a>        }
-<a href=#570 id=570 data-nosnippet>570</a>    }
-<a href=#571 id=571 data-nosnippet>571</a>
-<a href=#572 id=572 data-nosnippet>572</a>    <span class="doccomment">/// Returns a waker that signals external data has arrived.
-<a href=#573 id=573 data-nosnippet>573</a>    </span><span class="kw">pub fn </span>waker(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; std::task::Waker {
-<a href=#574 id=574 data-nosnippet>574</a>        std::task::Waker::from(<span class="self">self</span>.wake_state.clone())
-<a href=#575 id=575 data-nosnippet>575</a>    }
-<a href=#576 id=576 data-nosnippet>576</a>
-<a href=#577 id=577 data-nosnippet>577</a>    <span class="doccomment">/// No-op for inline mode.
-<a href=#578 id=578 data-nosnippet>578</a>    </span><span class="kw">pub fn </span>request_task&lt;Fut&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _future: Fut)
-<a href=#579 id=579 data-nosnippet>579</a>    <span class="kw">where
-<a href=#580 id=580 data-nosnippet>580</a>        </span>Fut: Future&lt;Output = ()&gt; + <span class="lifetime">'static</span>,
-<a href=#581 id=581 data-nosnippet>581</a>    {
-<a href=#582 id=582 data-nosnippet>582</a>    }
-<a href=#583 id=583 data-nosnippet>583</a>
-<a href=#584 id=584 data-nosnippet>584</a>    <span class="doccomment">/// Runs end-of-tick state hooks and increments the tick counter.
-<a href=#585 id=585 data-nosnippet>585</a>    /// Called by the generated tick closure at the end of each tick.
-<a href=#586 id=586 data-nosnippet>586</a>    </span><span class="attr">#[doc(hidden)]
-<a href=#587 id=587 data-nosnippet>587</a>    </span><span class="kw">pub fn </span>__end_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#588 id=588 data-nosnippet>588</a>        <span class="kw">for </span>state_data <span class="kw">in </span><span class="self">self</span>.states.values_mut() {
-<a href=#589 id=589 data-nosnippet>589</a>            <span class="kw">let </span>StateData {
-<a href=#590 id=590 data-nosnippet>590</a>                state,
-<a href=#591 id=591 data-nosnippet>591</a>                lifespan_hook_fn: <span class="prelude-val">Some</span>(lifespan_hook_fn),
-<a href=#592 id=592 data-nosnippet>592</a>                lifespan: <span class="prelude-val">Some</span>(StateLifespan::Tick),
-<a href=#593 id=593 data-nosnippet>593</a>            } = state_data
-<a href=#594 id=594 data-nosnippet>594</a>            <span class="kw">else </span>{
-<a href=#595 id=595 data-nosnippet>595</a>                <span class="kw">continue</span>;
-<a href=#596 id=596 data-nosnippet>596</a>            };
-<a href=#597 id=597 data-nosnippet>597</a>            (lifespan_hook_fn)(Box::deref_mut(state));
-<a href=#598 id=598 data-nosnippet>598</a>        }
-<a href=#599 id=599 data-nosnippet>599</a>        <span class="self">self</span>.current_tick += <span class="kw">crate</span>::scheduled::ticks::TickDuration::SINGLE_TICK;
-<a href=#600 id=600 data-nosnippet>600</a>    }
-<a href=#601 id=601 data-nosnippet>601</a>}
-<a href=#602 id=602 data-nosnippet>602</a>
-<a href=#603 id=603 data-nosnippet>603</a><span class="doccomment">/// A wrapper around an inline-codegen tick closure that provides [`Self::run`],
-<a href=#604 id=604 data-nosnippet>604</a>/// [`Self::run_available`], and [`Self::run_tick`] methods — mirroring the [`super::graph::Dfir`]
-<a href=#605 id=605 data-nosnippet>605</a>/// API.
-<a href=#606 id=606 data-nosnippet>606</a>///
-<a href=#607 id=607 data-nosnippet>607</a>/// # Design
-<a href=#608 id=608 data-nosnippet>608</a>///
-<a href=#609 id=609 data-nosnippet>609</a>/// The inline codegen generates an `async move ||` closure that captures all dataflow state
-<a href=#610 id=610 data-nosnippet>610</a>/// (operator accumulators, handoff buffers, source iterators) and runs one tick per call.
-<a href=#611 id=611 data-nosnippet>611</a>/// `InlineDfir` wraps this closure and adds tick lifecycle and idle/wake coordination.
-<a href=#612 id=612 data-nosnippet>612</a>///
-<a href=#613 id=613 data-nosnippet>613</a>/// We use a single opaque closure rather than generating a bespoke struct per dataflow because:
-<a href=#614 id=614 data-nosnippet>614</a>/// - The closure naturally captures exactly the state it needs with correct lifetimes
-<a href=#615 id=615 data-nosnippet>615</a>/// - No codegen needed for struct definitions, field accessors, or initialization
-<a href=#616 id=616 data-nosnippet>616</a>/// - Rust's async closure machinery handles the complex state machine (suspend/resume across
-<a href=#617 id=617 data-nosnippet>617</a>///   `.await` points) that would be very difficult to replicate in a generated struct
-<a href=#618 id=618 data-nosnippet>618</a>///
-<a href=#619 id=619 data-nosnippet>619</a>/// The `Tick` type parameter is bounded by [`TickClosure`] (not `AsyncFnMut` directly) to
-<a href=#620 id=620 data-nosnippet>620</a>/// support type erasure via [`TickClosureErased`] / [`InlineDfirErased`] for heterogeneous
-<a href=#621 id=621 data-nosnippet>621</a>/// collections (e.g., the sim runtime storing multiple locations in a `Vec`). The concrete
-<a href=#622 id=622 data-nosnippet>622</a>/// (non-erased) path used by trybuild and embedded has zero overhead.
-<a href=#623 id=623 data-nosnippet>623</a></span><span class="attr">#[doc(hidden)]
-<a href=#624 id=624 data-nosnippet>624</a></span><span class="kw">pub struct </span>InlineDfir&lt;Tick&gt; {
-<a href=#625 id=625 data-nosnippet>625</a>    tick_closure: Tick,
-<a href=#626 id=626 data-nosnippet>626</a>    wake_state: std::sync::Arc&lt;InlineWakeState&gt;,
-<a href=#627 id=627 data-nosnippet>627</a>
-<a href=#628 id=628 data-nosnippet>628</a>    <span class="attr">#[cfg(feature = <span class="string">"meta"</span>)]
-<a href=#629 id=629 data-nosnippet>629</a>    </span><span class="doccomment">/// See [`Self::meta_graph()`].
-<a href=#630 id=630 data-nosnippet>630</a>    </span>meta_graph: <span class="prelude-ty">Option</span>&lt;DfirGraph&gt;,
-<a href=#631 id=631 data-nosnippet>631</a>
-<a href=#632 id=632 data-nosnippet>632</a>    <span class="attr">#[cfg(feature = <span class="string">"meta"</span>)]
-<a href=#633 id=633 data-nosnippet>633</a>    </span><span class="doccomment">/// See [`Self::diagnostics()`].
-<a href=#634 id=634 data-nosnippet>634</a>    </span>diagnostics: <span class="prelude-ty">Option</span>&lt;Vec&lt;Diagnostic&lt;SerdeSpan&gt;&gt;&gt;,
+<a href=#474 id=474 data-nosnippet>474</a>    <span class="doccomment">/// Shared tick counter, also readable from [`InlineDfir`] outside the closure.
+<a href=#475 id=475 data-nosnippet>475</a>    </span>current_tick: Rc&lt;Cell&lt;TickInstant&gt;&gt;,
+<a href=#476 id=476 data-nosnippet>476</a>    wake_state: std::sync::Arc&lt;InlineWakeState&gt;,
+<a href=#477 id=477 data-nosnippet>477</a>}
+<a href=#478 id=478 data-nosnippet>478</a>
+<a href=#479 id=479 data-nosnippet>479</a><span class="kw">impl </span>InlineContext {
+<a href=#480 id=480 data-nosnippet>480</a>    <span class="doccomment">/// Create a new inline context with shared wake state and tick counter.
+<a href=#481 id=481 data-nosnippet>481</a>    </span><span class="kw">pub fn </span>new(
+<a href=#482 id=482 data-nosnippet>482</a>        wake_state: std::sync::Arc&lt;InlineWakeState&gt;,
+<a href=#483 id=483 data-nosnippet>483</a>        current_tick: Rc&lt;Cell&lt;TickInstant&gt;&gt;,
+<a href=#484 id=484 data-nosnippet>484</a>    ) -&gt; <span class="self">Self </span>{
+<a href=#485 id=485 data-nosnippet>485</a>        <span class="self">Self </span>{
+<a href=#486 id=486 data-nosnippet>486</a>            states: SlotVec::new(),
+<a href=#487 id=487 data-nosnippet>487</a>            current_tick,
+<a href=#488 id=488 data-nosnippet>488</a>            wake_state,
+<a href=#489 id=489 data-nosnippet>489</a>        }
+<a href=#490 id=490 data-nosnippet>490</a>    }
+<a href=#491 id=491 data-nosnippet>491</a>
+<a href=#492 id=492 data-nosnippet>492</a>    <span class="comment">// --- Methods called as `df.xxx()` in operator prologues ---
+<a href=#493 id=493 data-nosnippet>493</a>
+<a href=#494 id=494 data-nosnippet>494</a>    </span><span class="doccomment">/// Adds state and returns a handle.
+<a href=#495 id=495 data-nosnippet>495</a>    </span><span class="kw">pub fn </span>add_state&lt;T&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, state: T) -&gt; StateHandle&lt;T&gt;
+<a href=#496 id=496 data-nosnippet>496</a>    <span class="kw">where
+<a href=#497 id=497 data-nosnippet>497</a>        </span>T: Any,
+<a href=#498 id=498 data-nosnippet>498</a>    {
+<a href=#499 id=499 data-nosnippet>499</a>        <span class="kw">let </span>state_data = StateData {
+<a href=#500 id=500 data-nosnippet>500</a>            state: Box::new(state),
+<a href=#501 id=501 data-nosnippet>501</a>            lifespan_hook_fn: <span class="prelude-val">None</span>,
+<a href=#502 id=502 data-nosnippet>502</a>            lifespan: <span class="prelude-val">None</span>,
+<a href=#503 id=503 data-nosnippet>503</a>        };
+<a href=#504 id=504 data-nosnippet>504</a>        <span class="kw">let </span>state_id = <span class="self">self</span>.states.insert(state_data);
+<a href=#505 id=505 data-nosnippet>505</a>        StateHandle {
+<a href=#506 id=506 data-nosnippet>506</a>            state_id,
+<a href=#507 id=507 data-nosnippet>507</a>            _phantom: PhantomData,
+<a href=#508 id=508 data-nosnippet>508</a>        }
+<a href=#509 id=509 data-nosnippet>509</a>    }
+<a href=#510 id=510 data-nosnippet>510</a>
+<a href=#511 id=511 data-nosnippet>511</a>    <span class="doccomment">/// Sets a hook to modify state at the end of each tick.
+<a href=#512 id=512 data-nosnippet>512</a>    </span><span class="kw">pub fn </span>set_state_lifespan_hook&lt;T&gt;(
+<a href=#513 id=513 data-nosnippet>513</a>        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+<a href=#514 id=514 data-nosnippet>514</a>        handle: StateHandle&lt;T&gt;,
+<a href=#515 id=515 data-nosnippet>515</a>        _lifespan: StateLifespan,
+<a href=#516 id=516 data-nosnippet>516</a>        <span class="kw-2">mut </span>hook_fn: <span class="kw">impl </span><span class="lifetime">'static </span>+ FnMut(<span class="kw-2">&amp;mut </span>T),
+<a href=#517 id=517 data-nosnippet>517</a>    ) <span class="kw">where
+<a href=#518 id=518 data-nosnippet>518</a>        </span>T: Any,
+<a href=#519 id=519 data-nosnippet>519</a>    {
+<a href=#520 id=520 data-nosnippet>520</a>        <span class="kw">let </span>state_data = <span class="self">self
+<a href=#521 id=521 data-nosnippet>521</a>            </span>.states
+<a href=#522 id=522 data-nosnippet>522</a>            .get_mut(handle.state_id)
+<a href=#523 id=523 data-nosnippet>523</a>            .expect(<span class="string">"Failed to find state with given handle."</span>);
+<a href=#524 id=524 data-nosnippet>524</a>        state_data.lifespan_hook_fn = <span class="prelude-val">Some</span>(Box::new(<span class="kw">move </span>|state| {
+<a href=#525 id=525 data-nosnippet>525</a>            (hook_fn)(state.downcast_mut::&lt;T&gt;().unwrap());
+<a href=#526 id=526 data-nosnippet>526</a>        }));
+<a href=#527 id=527 data-nosnippet>527</a>        state_data.lifespan = <span class="prelude-val">Some</span>(_lifespan);
+<a href=#528 id=528 data-nosnippet>528</a>    }
+<a href=#529 id=529 data-nosnippet>529</a>
+<a href=#530 id=530 data-nosnippet>530</a>    <span class="comment">// --- Methods called as `context.xxx()` in operator iterators ---
+<a href=#531 id=531 data-nosnippet>531</a>
+<a href=#532 id=532 data-nosnippet>532</a>    </span><span class="doccomment">/// Returns a shared reference to the state.
+<a href=#533 id=533 data-nosnippet>533</a>    ///
+<a href=#534 id=534 data-nosnippet>534</a>    /// # Safety
+<a href=#535 id=535 data-nosnippet>535</a>    /// `StateHandle&lt;T&gt;` must be from _this_ instance.
+<a href=#536 id=536 data-nosnippet>536</a>    </span><span class="kw">pub unsafe fn </span>state_ref_unchecked&lt;T&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, handle: StateHandle&lt;T&gt;) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">'_ </span>T
+<a href=#537 id=537 data-nosnippet>537</a>    <span class="kw">where
+<a href=#538 id=538 data-nosnippet>538</a>        </span>T: Any,
+<a href=#539 id=539 data-nosnippet>539</a>    {
+<a href=#540 id=540 data-nosnippet>540</a>        <span class="kw">let </span>state = <span class="self">self
+<a href=#541 id=541 data-nosnippet>541</a>            </span>.states
+<a href=#542 id=542 data-nosnippet>542</a>            .get(handle.state_id)
+<a href=#543 id=543 data-nosnippet>543</a>            .expect(<span class="string">"Failed to find state with given handle."</span>)
+<a href=#544 id=544 data-nosnippet>544</a>            .state
+<a href=#545 id=545 data-nosnippet>545</a>            .as_ref();
+<a href=#546 id=546 data-nosnippet>546</a>        <span class="macro">debug_assert!</span>(state.is::&lt;T&gt;());
+<a href=#547 id=547 data-nosnippet>547</a>        <span class="kw">unsafe </span>{ <span class="kw-2">&amp;*</span>(state <span class="kw">as </span><span class="kw-2">*const </span><span class="kw">dyn </span>Any <span class="kw">as </span><span class="kw-2">*const </span>T) }
+<a href=#548 id=548 data-nosnippet>548</a>    }
+<a href=#549 id=549 data-nosnippet>549</a>
+<a href=#550 id=550 data-nosnippet>550</a>    <span class="doccomment">/// Always returns `true` in inline mode. The inline codegen runs the entire DAG
+<a href=#551 id=551 data-nosnippet>551</a>    /// once per tick with no re-execution, so every subgraph is always on its first
+<a href=#552 id=552 data-nosnippet>552</a>    /// (and only) run within each tick.
+<a href=#553 id=553 data-nosnippet>553</a>    </span><span class="kw">pub fn </span>is_first_run_this_tick(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
+<a href=#554 id=554 data-nosnippet>554</a>        <span class="bool-val">true
+<a href=#555 id=555 data-nosnippet>555</a>    </span>}
+<a href=#556 id=556 data-nosnippet>556</a>
+<a href=#557 id=557 data-nosnippet>557</a>    <span class="doccomment">/// Gets the current tick count.
+<a href=#558 id=558 data-nosnippet>558</a>    </span><span class="kw">pub fn </span>current_tick(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TickInstant {
+<a href=#559 id=559 data-nosnippet>559</a>        <span class="self">self</span>.current_tick.get()
+<a href=#560 id=560 data-nosnippet>560</a>    }
+<a href=#561 id=561 data-nosnippet>561</a>
+<a href=#562 id=562 data-nosnippet>562</a>    <span class="doccomment">/// No-op: inline mode has no subgraph scheduling.
+<a href=#563 id=563 data-nosnippet>563</a>    </span><span class="kw">pub fn </span>current_subgraph(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; SubgraphId {
+<a href=#564 id=564 data-nosnippet>564</a>        SubgraphId::from_raw(<span class="number">0</span>)
+<a href=#565 id=565 data-nosnippet>565</a>    }
+<a href=#566 id=566 data-nosnippet>566</a>
+<a href=#567 id=567 data-nosnippet>567</a>    <span class="doccomment">/// In inline mode, every subgraph runs unconditionally each tick, so the `sg_id`
+<a href=#568 id=568 data-nosnippet>568</a>    /// parameter is ignored. Only `is_external` matters: when `true`, it signals that
+<a href=#569 id=569 data-nosnippet>569</a>    /// external data has arrived and a new tick should be started.
+<a href=#570 id=570 data-nosnippet>570</a>    </span><span class="kw">pub fn </span>schedule_subgraph(<span class="kw-2">&amp;</span><span class="self">self</span>, _sg_id: SubgraphId, is_external: bool) {
+<a href=#571 id=571 data-nosnippet>571</a>        <span class="kw">if </span>is_external {
+<a href=#572 id=572 data-nosnippet>572</a>            <span class="self">self</span>.wake_state.wake_by_ref();
+<a href=#573 id=573 data-nosnippet>573</a>        }
+<a href=#574 id=574 data-nosnippet>574</a>    }
+<a href=#575 id=575 data-nosnippet>575</a>
+<a href=#576 id=576 data-nosnippet>576</a>    <span class="doccomment">/// Returns a waker that signals external data has arrived.
+<a href=#577 id=577 data-nosnippet>577</a>    </span><span class="kw">pub fn </span>waker(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; std::task::Waker {
+<a href=#578 id=578 data-nosnippet>578</a>        std::task::Waker::from(<span class="self">self</span>.wake_state.clone())
+<a href=#579 id=579 data-nosnippet>579</a>    }
+<a href=#580 id=580 data-nosnippet>580</a>
+<a href=#581 id=581 data-nosnippet>581</a>    <span class="doccomment">/// No-op for inline mode.
+<a href=#582 id=582 data-nosnippet>582</a>    </span><span class="kw">pub fn </span>request_task&lt;Fut&gt;(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _future: Fut)
+<a href=#583 id=583 data-nosnippet>583</a>    <span class="kw">where
+<a href=#584 id=584 data-nosnippet>584</a>        </span>Fut: Future&lt;Output = ()&gt; + <span class="lifetime">'static</span>,
+<a href=#585 id=585 data-nosnippet>585</a>    {
+<a href=#586 id=586 data-nosnippet>586</a>    }
+<a href=#587 id=587 data-nosnippet>587</a>
+<a href=#588 id=588 data-nosnippet>588</a>    <span class="doccomment">/// Runs end-of-tick state hooks and increments the tick counter.
+<a href=#589 id=589 data-nosnippet>589</a>    /// Called by the generated tick closure at the end of each tick.
+<a href=#590 id=590 data-nosnippet>590</a>    </span><span class="attr">#[doc(hidden)]
+<a href=#591 id=591 data-nosnippet>591</a>    </span><span class="kw">pub fn </span>__end_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#592 id=592 data-nosnippet>592</a>        <span class="kw">for </span>state_data <span class="kw">in </span><span class="self">self</span>.states.values_mut() {
+<a href=#593 id=593 data-nosnippet>593</a>            <span class="kw">let </span>StateData {
+<a href=#594 id=594 data-nosnippet>594</a>                state,
+<a href=#595 id=595 data-nosnippet>595</a>                lifespan_hook_fn: <span class="prelude-val">Some</span>(lifespan_hook_fn),
+<a href=#596 id=596 data-nosnippet>596</a>                lifespan: <span class="prelude-val">Some</span>(StateLifespan::Tick),
+<a href=#597 id=597 data-nosnippet>597</a>            } = state_data
+<a href=#598 id=598 data-nosnippet>598</a>            <span class="kw">else </span>{
+<a href=#599 id=599 data-nosnippet>599</a>                <span class="kw">continue</span>;
+<a href=#600 id=600 data-nosnippet>600</a>            };
+<a href=#601 id=601 data-nosnippet>601</a>            (lifespan_hook_fn)(Box::deref_mut(state));
+<a href=#602 id=602 data-nosnippet>602</a>        }
+<a href=#603 id=603 data-nosnippet>603</a>        <span class="self">self</span>.current_tick
+<a href=#604 id=604 data-nosnippet>604</a>            .set(<span class="self">self</span>.current_tick.get() + <span class="kw">crate</span>::scheduled::ticks::TickDuration::SINGLE_TICK);
+<a href=#605 id=605 data-nosnippet>605</a>    }
+<a href=#606 id=606 data-nosnippet>606</a>}
+<a href=#607 id=607 data-nosnippet>607</a>
+<a href=#608 id=608 data-nosnippet>608</a><span class="doccomment">/// A wrapper around an inline-codegen tick closure that provides [`Self::run`],
+<a href=#609 id=609 data-nosnippet>609</a>/// [`Self::run_available`], and [`Self::run_tick`] methods — mirroring the [`super::graph::Dfir`]
+<a href=#610 id=610 data-nosnippet>610</a>/// API.
+<a href=#611 id=611 data-nosnippet>611</a>///
+<a href=#612 id=612 data-nosnippet>612</a>/// # Design
+<a href=#613 id=613 data-nosnippet>613</a>///
+<a href=#614 id=614 data-nosnippet>614</a>/// The inline codegen generates an `async move ||` closure that captures all dataflow state
+<a href=#615 id=615 data-nosnippet>615</a>/// (operator accumulators, handoff buffers, source iterators) and runs one tick per call.
+<a href=#616 id=616 data-nosnippet>616</a>/// `InlineDfir` wraps this closure and adds tick lifecycle and idle/wake coordination.
+<a href=#617 id=617 data-nosnippet>617</a>///
+<a href=#618 id=618 data-nosnippet>618</a>/// We use a single opaque closure rather than generating a bespoke struct per dataflow because:
+<a href=#619 id=619 data-nosnippet>619</a>/// - The closure naturally captures exactly the state it needs with correct lifetimes
+<a href=#620 id=620 data-nosnippet>620</a>/// - No codegen needed for struct definitions, field accessors, or initialization
+<a href=#621 id=621 data-nosnippet>621</a>/// - Rust's async closure machinery handles the complex state machine (suspend/resume across
+<a href=#622 id=622 data-nosnippet>622</a>///   `.await` points) that would be very difficult to replicate in a generated struct
+<a href=#623 id=623 data-nosnippet>623</a>///
+<a href=#624 id=624 data-nosnippet>624</a>/// The `Tick` type parameter is bounded by [`TickClosure`] (not `AsyncFnMut` directly) to
+<a href=#625 id=625 data-nosnippet>625</a>/// support type erasure via [`TickClosureErased`] / [`InlineDfirErased`] for heterogeneous
+<a href=#626 id=626 data-nosnippet>626</a>/// collections (e.g., the sim runtime storing multiple locations in a `Vec`). The concrete
+<a href=#627 id=627 data-nosnippet>627</a>/// (non-erased) path used by trybuild and embedded has zero overhead.
+<a href=#628 id=628 data-nosnippet>628</a></span><span class="attr">#[doc(hidden)]
+<a href=#629 id=629 data-nosnippet>629</a></span><span class="kw">pub struct </span>InlineDfir&lt;Tick&gt; {
+<a href=#630 id=630 data-nosnippet>630</a>    tick_closure: Tick,
+<a href=#631 id=631 data-nosnippet>631</a>    wake_state: std::sync::Arc&lt;InlineWakeState&gt;,
+<a href=#632 id=632 data-nosnippet>632</a>
+<a href=#633 id=633 data-nosnippet>633</a>    <span class="doccomment">/// Shared tick counter, updated by [`InlineContext::__end_tick`] inside the closure.
+<a href=#634 id=634 data-nosnippet>634</a>    </span>current_tick: Rc&lt;Cell&lt;TickInstant&gt;&gt;,
 <a href=#635 id=635 data-nosnippet>635</a>
 <a href=#636 id=636 data-nosnippet>636</a>    <span class="doccomment">/// Live-updating DFIR runtime metrics via interior mutability.
 <a href=#637 id=637 data-nosnippet>637</a>    </span>metrics: Rc&lt;DfirMetrics&gt;,
-<a href=#638 id=638 data-nosnippet>638</a>}
-<a href=#639 id=639 data-nosnippet>639</a>
-<a href=#640 id=640 data-nosnippet>640</a><span class="doccomment">/// Trait for tick closures — abstracts over both concrete async closures
-<a href=#641 id=641 data-nosnippet>641</a>/// and type-erased boxed versions ([`TickClosureErased`]).
-<a href=#642 id=642 data-nosnippet>642</a></span><span class="attr">#[doc(hidden)]
-<a href=#643 id=643 data-nosnippet>643</a></span><span class="kw">pub trait </span>TickClosure {
-<a href=#644 id=644 data-nosnippet>644</a>    <span class="doccomment">/// Call the tick closure. Returns `true` if any subgraph received input data.
-<a href=#645 id=645 data-nosnippet>645</a>    </span><span class="kw">fn </span>call_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Future&lt;Output = bool&gt;;
+<a href=#638 id=638 data-nosnippet>638</a>
+<a href=#639 id=639 data-nosnippet>639</a>    <span class="attr">#[cfg(feature = <span class="string">"meta"</span>)]
+<a href=#640 id=640 data-nosnippet>640</a>    </span><span class="doccomment">/// See [`Self::meta_graph()`].
+<a href=#641 id=641 data-nosnippet>641</a>    </span>meta_graph: <span class="prelude-ty">Option</span>&lt;DfirGraph&gt;,
+<a href=#642 id=642 data-nosnippet>642</a>
+<a href=#643 id=643 data-nosnippet>643</a>    <span class="attr">#[cfg(feature = <span class="string">"meta"</span>)]
+<a href=#644 id=644 data-nosnippet>644</a>    </span><span class="doccomment">/// See [`Self::diagnostics()`].
+<a href=#645 id=645 data-nosnippet>645</a>    </span>diagnostics: <span class="prelude-ty">Option</span>&lt;Vec&lt;Diagnostic&lt;SerdeSpan&gt;&gt;&gt;,
 <a href=#646 id=646 data-nosnippet>646</a>}
 <a href=#647 id=647 data-nosnippet>647</a>
-<a href=#648 id=648 data-nosnippet>648</a><span class="kw">impl</span>&lt;F: AsyncFnMut() -&gt; bool&gt; TickClosure <span class="kw">for </span>F {
-<a href=#649 id=649 data-nosnippet>649</a>    <span class="kw">fn </span>call_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Future&lt;Output = bool&gt; {
-<a href=#650 id=650 data-nosnippet>650</a>        <span class="self">self</span>()
-<a href=#651 id=651 data-nosnippet>651</a>    }
-<a href=#652 id=652 data-nosnippet>652</a>}
-<a href=#653 id=653 data-nosnippet>653</a>
-<a href=#654 id=654 data-nosnippet>654</a><span class="doccomment">/// Type-erased tick function for use in heterogeneous collections (e.g., the sim runtime).
-<a href=#655 id=655 data-nosnippet>655</a></span><span class="attr">#[doc(hidden)]
-<a href=#656 id=656 data-nosnippet>656</a></span><span class="kw">pub struct </span>TickClosureErased(Box&lt;<span class="kw">dyn </span>TickClosureErasedInner&gt;);
-<a href=#657 id=657 data-nosnippet>657</a>
-<a href=#658 id=658 data-nosnippet>658</a><span class="doccomment">/// Object-safe inner trait for [`TickClosureErased`]. Needed because `AsyncFnMut` is not
-<a href=#659 id=659 data-nosnippet>659</a>/// object-safe (GAT return type), but a trait with `&amp;mut self -&gt; Pin&lt;Box&lt;dyn Future + '_&gt;&gt;`
-<a href=#660 id=660 data-nosnippet>660</a>/// is — the returned future borrows from the trait object which owns the closure.
-<a href=#661 id=661 data-nosnippet>661</a></span><span class="kw">trait </span>TickClosureErasedInner {
-<a href=#662 id=662 data-nosnippet>662</a>    <span class="kw">fn </span>call_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Pin&lt;Box&lt;<span class="kw">dyn </span>Future&lt;Output = bool&gt; + <span class="lifetime">'_</span>&gt;&gt;;
-<a href=#663 id=663 data-nosnippet>663</a>}
-<a href=#664 id=664 data-nosnippet>664</a>
-<a href=#665 id=665 data-nosnippet>665</a><span class="kw">impl</span>&lt;F: AsyncFnMut() -&gt; bool&gt; TickClosureErasedInner <span class="kw">for </span>F {
-<a href=#666 id=666 data-nosnippet>666</a>    <span class="kw">fn </span>call_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Pin&lt;Box&lt;<span class="kw">dyn </span>Future&lt;Output = bool&gt; + <span class="lifetime">'_</span>&gt;&gt; {
-<a href=#667 id=667 data-nosnippet>667</a>        Box::pin(<span class="self">self</span>())
-<a href=#668 id=668 data-nosnippet>668</a>    }
-<a href=#669 id=669 data-nosnippet>669</a>}
-<a href=#670 id=670 data-nosnippet>670</a>
-<a href=#671 id=671 data-nosnippet>671</a><span class="kw">impl </span>TickClosure <span class="kw">for </span>TickClosureErased {
-<a href=#672 id=672 data-nosnippet>672</a>    <span class="kw">fn </span>call_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Future&lt;Output = bool&gt; {
-<a href=#673 id=673 data-nosnippet>673</a>        <span class="self">self</span>.<span class="number">0</span>.call_tick()
-<a href=#674 id=674 data-nosnippet>674</a>    }
-<a href=#675 id=675 data-nosnippet>675</a>}
-<a href=#676 id=676 data-nosnippet>676</a>
-<a href=#677 id=677 data-nosnippet>677</a><span class="doccomment">/// Type alias for a type-erased [`InlineDfir`] that can be stored in heterogeneous collections.
-<a href=#678 id=678 data-nosnippet>678</a>/// Created via [`InlineDfir::into_erased`].
-<a href=#679 id=679 data-nosnippet>679</a></span><span class="kw">pub type </span>InlineDfirErased = InlineDfir&lt;TickClosureErased&gt;;
-<a href=#680 id=680 data-nosnippet>680</a>
-<a href=#681 id=681 data-nosnippet>681</a><span class="kw">impl</span>&lt;Tick: TickClosure&gt; InlineDfir&lt;Tick&gt; {
-<a href=#682 id=682 data-nosnippet>682</a>    <span class="doccomment">/// Create a new `InlineDfir` from a tick closure, shared wake state,
-<a href=#683 id=683 data-nosnippet>683</a>    /// meta graph / diagnostics JSON strings, and metrics.
-<a href=#684 id=684 data-nosnippet>684</a>    </span><span class="attr">#[doc(hidden)]
-<a href=#685 id=685 data-nosnippet>685</a>    </span><span class="kw">pub fn </span>new(
-<a href=#686 id=686 data-nosnippet>686</a>        tick_closure: Tick,
-<a href=#687 id=687 data-nosnippet>687</a>        wake_state: std::sync::Arc&lt;InlineWakeState&gt;,
-<a href=#688 id=688 data-nosnippet>688</a>        metrics: Rc&lt;DfirMetrics&gt;,
-<a href=#689 id=689 data-nosnippet>689</a>        meta_graph_json: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
-<a href=#690 id=690 data-nosnippet>690</a>        diagnostics_json: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
-<a href=#691 id=691 data-nosnippet>691</a>    ) -&gt; <span class="self">Self </span>{
-<a href=#692 id=692 data-nosnippet>692</a>        <span class="attr">#[cfg(not(feature = <span class="string">"meta"</span>))]
-<a href=#693 id=693 data-nosnippet>693</a>        </span><span class="kw">let _ </span>= (meta_graph_json, diagnostics_json);
-<a href=#694 id=694 data-nosnippet>694</a>        <span class="self">Self </span>{
-<a href=#695 id=695 data-nosnippet>695</a>            tick_closure,
-<a href=#696 id=696 data-nosnippet>696</a>            wake_state,
-<a href=#697 id=697 data-nosnippet>697</a>            <span class="attr">#[cfg(feature = <span class="string">"meta"</span>)]
-<a href=#698 id=698 data-nosnippet>698</a>            </span>meta_graph: meta_graph_json.map(|json| {
-<a href=#699 id=699 data-nosnippet>699</a>                <span class="kw">let </span><span class="kw-2">mut </span>meta_graph: DfirGraph =
-<a href=#700 id=700 data-nosnippet>700</a>                    serde_json::from_str(json).expect(<span class="string">"Failed to deserialize graph."</span>);
-<a href=#701 id=701 data-nosnippet>701</a>                <span class="kw">let </span><span class="kw-2">mut </span>op_inst_diagnostics = Diagnostics::new();
-<a href=#702 id=702 data-nosnippet>702</a>                meta_graph.insert_node_op_insts_all(<span class="kw-2">&amp;mut </span>op_inst_diagnostics);
-<a href=#703 id=703 data-nosnippet>703</a>                <span class="macro">assert!</span>(
-<a href=#704 id=704 data-nosnippet>704</a>                    op_inst_diagnostics.is_empty(),
-<a href=#705 id=705 data-nosnippet>705</a>                    <span class="string">"Expected no diagnostics, got: {:#?}"</span>,
-<a href=#706 id=706 data-nosnippet>706</a>                    op_inst_diagnostics
-<a href=#707 id=707 data-nosnippet>707</a>                );
-<a href=#708 id=708 data-nosnippet>708</a>                meta_graph
-<a href=#709 id=709 data-nosnippet>709</a>            }),
-<a href=#710 id=710 data-nosnippet>710</a>            <span class="attr">#[cfg(feature = <span class="string">"meta"</span>)]
-<a href=#711 id=711 data-nosnippet>711</a>            </span>diagnostics: diagnostics_json.map(|json| {
-<a href=#712 id=712 data-nosnippet>712</a>                serde_json::from_str(json).expect(<span class="string">"Failed to deserialize diagnostics."</span>)
-<a href=#713 id=713 data-nosnippet>713</a>            }),
-<a href=#714 id=714 data-nosnippet>714</a>            metrics,
-<a href=#715 id=715 data-nosnippet>715</a>        }
-<a href=#716 id=716 data-nosnippet>716</a>    }
-<a href=#717 id=717 data-nosnippet>717</a>
-<a href=#718 id=718 data-nosnippet>718</a>    <span class="doccomment">/// Return a handle to the meta graph, if set.
-<a href=#719 id=719 data-nosnippet>719</a>    </span><span class="attr">#[cfg(feature = <span class="string">"meta"</span>)]
-<a href=#720 id=720 data-nosnippet>720</a>    #[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"meta"</span>)))]
-<a href=#721 id=721 data-nosnippet>721</a>    </span><span class="kw">pub fn </span>meta_graph(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>DfirGraph&gt; {
-<a href=#722 id=722 data-nosnippet>722</a>        <span class="self">self</span>.meta_graph.as_ref()
-<a href=#723 id=723 data-nosnippet>723</a>    }
-<a href=#724 id=724 data-nosnippet>724</a>
-<a href=#725 id=725 data-nosnippet>725</a>    <span class="doccomment">/// Returns any diagnostics generated by the surface syntax macro.
-<a href=#726 id=726 data-nosnippet>726</a>    </span><span class="attr">#[cfg(feature = <span class="string">"meta"</span>)]
-<a href=#727 id=727 data-nosnippet>727</a>    #[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"meta"</span>)))]
-<a href=#728 id=728 data-nosnippet>728</a>    </span><span class="kw">pub fn </span>diagnostics(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[Diagnostic&lt;SerdeSpan&gt;]&gt; {
-<a href=#729 id=729 data-nosnippet>729</a>        <span class="self">self</span>.diagnostics.as_deref()
-<a href=#730 id=730 data-nosnippet>730</a>    }
-<a href=#731 id=731 data-nosnippet>731</a>
-<a href=#732 id=732 data-nosnippet>732</a>    <span class="doccomment">/// Returns a reference-counted handle to the continually-updated runtime metrics for this DFIR instance.
-<a href=#733 id=733 data-nosnippet>733</a>    </span><span class="kw">pub fn </span>metrics(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Rc&lt;DfirMetrics&gt; {
-<a href=#734 id=734 data-nosnippet>734</a>        Rc::clone(<span class="kw-2">&amp;</span><span class="self">self</span>.metrics)
-<a href=#735 id=735 data-nosnippet>735</a>    }
-<a href=#736 id=736 data-nosnippet>736</a>
-<a href=#737 id=737 data-nosnippet>737</a>    <span class="doccomment">/// Returns a [`DfirMetricsIntervals`] handle where each call to
-<a href=#738 id=738 data-nosnippet>738</a>    /// [`DfirMetricsIntervals::take_interval`] ends the current interval and returns its metrics.
-<a href=#739 id=739 data-nosnippet>739</a>    ///
-<a href=#740 id=740 data-nosnippet>740</a>    /// The first call to `take_interval` returns metrics since this DFIR instance was created. Each subsequent call to
-<a href=#741 id=741 data-nosnippet>741</a>    /// `take_interval` returns metrics since the previous call.
-<a href=#742 id=742 data-nosnippet>742</a>    ///
-<a href=#743 id=743 data-nosnippet>743</a>    /// Cloning the handle "forks" it from the original, as afterwards each interval may return different metrics
-<a href=#744 id=744 data-nosnippet>744</a>    /// depending on when exactly `take_interval` is called.
-<a href=#745 id=745 data-nosnippet>745</a>    </span><span class="kw">pub fn </span>metrics_intervals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DfirMetricsIntervals {
-<a href=#746 id=746 data-nosnippet>746</a>        DfirMetricsIntervals {
-<a href=#747 id=747 data-nosnippet>747</a>            curr: <span class="self">self</span>.metrics(),
-<a href=#748 id=748 data-nosnippet>748</a>            prev: <span class="prelude-val">None</span>,
-<a href=#749 id=749 data-nosnippet>749</a>        }
+<a href=#648 id=648 data-nosnippet>648</a><span class="doccomment">/// Trait for tick closures — abstracts over both concrete async closures
+<a href=#649 id=649 data-nosnippet>649</a>/// and type-erased boxed versions ([`TickClosureErased`]).
+<a href=#650 id=650 data-nosnippet>650</a></span><span class="attr">#[doc(hidden)]
+<a href=#651 id=651 data-nosnippet>651</a></span><span class="kw">pub trait </span>TickClosure {
+<a href=#652 id=652 data-nosnippet>652</a>    <span class="doccomment">/// Call the tick closure. Returns `true` if any subgraph received input data.
+<a href=#653 id=653 data-nosnippet>653</a>    </span><span class="kw">fn </span>call_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Future&lt;Output = bool&gt;;
+<a href=#654 id=654 data-nosnippet>654</a>}
+<a href=#655 id=655 data-nosnippet>655</a>
+<a href=#656 id=656 data-nosnippet>656</a><span class="kw">impl</span>&lt;F: AsyncFnMut() -&gt; bool&gt; TickClosure <span class="kw">for </span>F {
+<a href=#657 id=657 data-nosnippet>657</a>    <span class="kw">fn </span>call_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Future&lt;Output = bool&gt; {
+<a href=#658 id=658 data-nosnippet>658</a>        <span class="self">self</span>()
+<a href=#659 id=659 data-nosnippet>659</a>    }
+<a href=#660 id=660 data-nosnippet>660</a>}
+<a href=#661 id=661 data-nosnippet>661</a>
+<a href=#662 id=662 data-nosnippet>662</a><span class="doccomment">/// Type-erased tick function for use in heterogeneous collections (e.g., the sim runtime).
+<a href=#663 id=663 data-nosnippet>663</a></span><span class="attr">#[doc(hidden)]
+<a href=#664 id=664 data-nosnippet>664</a></span><span class="kw">pub struct </span>TickClosureErased(Box&lt;<span class="kw">dyn </span>TickClosureErasedInner&gt;);
+<a href=#665 id=665 data-nosnippet>665</a>
+<a href=#666 id=666 data-nosnippet>666</a><span class="doccomment">/// Object-safe inner trait for [`TickClosureErased`]. Needed because `AsyncFnMut` is not
+<a href=#667 id=667 data-nosnippet>667</a>/// object-safe (GAT return type), but a trait with `&amp;mut self -&gt; Pin&lt;Box&lt;dyn Future + '_&gt;&gt;`
+<a href=#668 id=668 data-nosnippet>668</a>/// is — the returned future borrows from the trait object which owns the closure.
+<a href=#669 id=669 data-nosnippet>669</a></span><span class="kw">trait </span>TickClosureErasedInner {
+<a href=#670 id=670 data-nosnippet>670</a>    <span class="kw">fn </span>call_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Pin&lt;Box&lt;<span class="kw">dyn </span>Future&lt;Output = bool&gt; + <span class="lifetime">'_</span>&gt;&gt;;
+<a href=#671 id=671 data-nosnippet>671</a>}
+<a href=#672 id=672 data-nosnippet>672</a>
+<a href=#673 id=673 data-nosnippet>673</a><span class="kw">impl</span>&lt;F: AsyncFnMut() -&gt; bool&gt; TickClosureErasedInner <span class="kw">for </span>F {
+<a href=#674 id=674 data-nosnippet>674</a>    <span class="kw">fn </span>call_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; Pin&lt;Box&lt;<span class="kw">dyn </span>Future&lt;Output = bool&gt; + <span class="lifetime">'_</span>&gt;&gt; {
+<a href=#675 id=675 data-nosnippet>675</a>        Box::pin(<span class="self">self</span>())
+<a href=#676 id=676 data-nosnippet>676</a>    }
+<a href=#677 id=677 data-nosnippet>677</a>}
+<a href=#678 id=678 data-nosnippet>678</a>
+<a href=#679 id=679 data-nosnippet>679</a><span class="kw">impl </span>TickClosure <span class="kw">for </span>TickClosureErased {
+<a href=#680 id=680 data-nosnippet>680</a>    <span class="kw">fn </span>call_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Future&lt;Output = bool&gt; {
+<a href=#681 id=681 data-nosnippet>681</a>        <span class="self">self</span>.<span class="number">0</span>.call_tick()
+<a href=#682 id=682 data-nosnippet>682</a>    }
+<a href=#683 id=683 data-nosnippet>683</a>}
+<a href=#684 id=684 data-nosnippet>684</a>
+<a href=#685 id=685 data-nosnippet>685</a><span class="doccomment">/// Type alias for a type-erased [`InlineDfir`] that can be stored in heterogeneous collections.
+<a href=#686 id=686 data-nosnippet>686</a>/// Created via [`InlineDfir::into_erased`].
+<a href=#687 id=687 data-nosnippet>687</a></span><span class="kw">pub type </span>InlineDfirErased = InlineDfir&lt;TickClosureErased&gt;;
+<a href=#688 id=688 data-nosnippet>688</a>
+<a href=#689 id=689 data-nosnippet>689</a><span class="kw">impl</span>&lt;Tick: TickClosure&gt; InlineDfir&lt;Tick&gt; {
+<a href=#690 id=690 data-nosnippet>690</a>    <span class="doccomment">/// Create a new `InlineDfir` from a tick closure, shared wake state,
+<a href=#691 id=691 data-nosnippet>691</a>    /// shared tick counter, metrics, and meta graph / diagnostics JSON strings.
+<a href=#692 id=692 data-nosnippet>692</a>    </span><span class="attr">#[doc(hidden)]
+<a href=#693 id=693 data-nosnippet>693</a>    </span><span class="kw">pub fn </span>new(
+<a href=#694 id=694 data-nosnippet>694</a>        tick_closure: Tick,
+<a href=#695 id=695 data-nosnippet>695</a>        wake_state: std::sync::Arc&lt;InlineWakeState&gt;,
+<a href=#696 id=696 data-nosnippet>696</a>        current_tick: Rc&lt;Cell&lt;TickInstant&gt;&gt;,
+<a href=#697 id=697 data-nosnippet>697</a>        metrics: Rc&lt;DfirMetrics&gt;,
+<a href=#698 id=698 data-nosnippet>698</a>        meta_graph_json: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
+<a href=#699 id=699 data-nosnippet>699</a>        diagnostics_json: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>str&gt;,
+<a href=#700 id=700 data-nosnippet>700</a>    ) -&gt; <span class="self">Self </span>{
+<a href=#701 id=701 data-nosnippet>701</a>        <span class="attr">#[cfg(not(feature = <span class="string">"meta"</span>))]
+<a href=#702 id=702 data-nosnippet>702</a>        </span><span class="kw">let _ </span>= (meta_graph_json, diagnostics_json);
+<a href=#703 id=703 data-nosnippet>703</a>        <span class="self">Self </span>{
+<a href=#704 id=704 data-nosnippet>704</a>            tick_closure,
+<a href=#705 id=705 data-nosnippet>705</a>            wake_state,
+<a href=#706 id=706 data-nosnippet>706</a>            current_tick,
+<a href=#707 id=707 data-nosnippet>707</a>            metrics,
+<a href=#708 id=708 data-nosnippet>708</a>            <span class="attr">#[cfg(feature = <span class="string">"meta"</span>)]
+<a href=#709 id=709 data-nosnippet>709</a>            </span>meta_graph: meta_graph_json.map(|json| {
+<a href=#710 id=710 data-nosnippet>710</a>                <span class="kw">let </span><span class="kw-2">mut </span>meta_graph: DfirGraph =
+<a href=#711 id=711 data-nosnippet>711</a>                    serde_json::from_str(json).expect(<span class="string">"Failed to deserialize graph."</span>);
+<a href=#712 id=712 data-nosnippet>712</a>                <span class="kw">let </span><span class="kw-2">mut </span>op_inst_diagnostics = Diagnostics::new();
+<a href=#713 id=713 data-nosnippet>713</a>                meta_graph.insert_node_op_insts_all(<span class="kw-2">&amp;mut </span>op_inst_diagnostics);
+<a href=#714 id=714 data-nosnippet>714</a>                <span class="macro">assert!</span>(
+<a href=#715 id=715 data-nosnippet>715</a>                    op_inst_diagnostics.is_empty(),
+<a href=#716 id=716 data-nosnippet>716</a>                    <span class="string">"Expected no diagnostics, got: {:#?}"</span>,
+<a href=#717 id=717 data-nosnippet>717</a>                    op_inst_diagnostics
+<a href=#718 id=718 data-nosnippet>718</a>                );
+<a href=#719 id=719 data-nosnippet>719</a>                meta_graph
+<a href=#720 id=720 data-nosnippet>720</a>            }),
+<a href=#721 id=721 data-nosnippet>721</a>            <span class="attr">#[cfg(feature = <span class="string">"meta"</span>)]
+<a href=#722 id=722 data-nosnippet>722</a>            </span>diagnostics: diagnostics_json.map(|json| {
+<a href=#723 id=723 data-nosnippet>723</a>                serde_json::from_str(json).expect(<span class="string">"Failed to deserialize diagnostics."</span>)
+<a href=#724 id=724 data-nosnippet>724</a>            }),
+<a href=#725 id=725 data-nosnippet>725</a>        }
+<a href=#726 id=726 data-nosnippet>726</a>    }
+<a href=#727 id=727 data-nosnippet>727</a>
+<a href=#728 id=728 data-nosnippet>728</a>    <span class="doccomment">/// Return a handle to the meta graph, if set.
+<a href=#729 id=729 data-nosnippet>729</a>    </span><span class="attr">#[cfg(feature = <span class="string">"meta"</span>)]
+<a href=#730 id=730 data-nosnippet>730</a>    #[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"meta"</span>)))]
+<a href=#731 id=731 data-nosnippet>731</a>    </span><span class="kw">pub fn </span>meta_graph(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>DfirGraph&gt; {
+<a href=#732 id=732 data-nosnippet>732</a>        <span class="self">self</span>.meta_graph.as_ref()
+<a href=#733 id=733 data-nosnippet>733</a>    }
+<a href=#734 id=734 data-nosnippet>734</a>
+<a href=#735 id=735 data-nosnippet>735</a>    <span class="doccomment">/// Returns any diagnostics generated by the surface syntax macro.
+<a href=#736 id=736 data-nosnippet>736</a>    </span><span class="attr">#[cfg(feature = <span class="string">"meta"</span>)]
+<a href=#737 id=737 data-nosnippet>737</a>    #[cfg_attr(docsrs, doc(cfg(feature = <span class="string">"meta"</span>)))]
+<a href=#738 id=738 data-nosnippet>738</a>    </span><span class="kw">pub fn </span>diagnostics(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[Diagnostic&lt;SerdeSpan&gt;]&gt; {
+<a href=#739 id=739 data-nosnippet>739</a>        <span class="self">self</span>.diagnostics.as_deref()
+<a href=#740 id=740 data-nosnippet>740</a>    }
+<a href=#741 id=741 data-nosnippet>741</a>
+<a href=#742 id=742 data-nosnippet>742</a>    <span class="doccomment">/// Returns a reference-counted handle to the continually-updated runtime metrics for this DFIR instance.
+<a href=#743 id=743 data-nosnippet>743</a>    </span><span class="kw">pub fn </span>metrics(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Rc&lt;DfirMetrics&gt; {
+<a href=#744 id=744 data-nosnippet>744</a>        Rc::clone(<span class="kw-2">&amp;</span><span class="self">self</span>.metrics)
+<a href=#745 id=745 data-nosnippet>745</a>    }
+<a href=#746 id=746 data-nosnippet>746</a>
+<a href=#747 id=747 data-nosnippet>747</a>    <span class="doccomment">/// Gets the current tick (local time) count.
+<a href=#748 id=748 data-nosnippet>748</a>    </span><span class="kw">pub fn </span>current_tick(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TickInstant {
+<a href=#749 id=749 data-nosnippet>749</a>        <span class="self">self</span>.current_tick.get()
 <a href=#750 id=750 data-nosnippet>750</a>    }
-<a href=#751 id=751 data-nosnippet>751</a>}
-<a href=#752 id=752 data-nosnippet>752</a>
-<a href=#753 id=753 data-nosnippet>753</a><span class="kw">impl</span>&lt;Tick: TickClosure&gt; InlineDfir&lt;Tick&gt; {
-<a href=#754 id=754 data-nosnippet>754</a>    <span class="doccomment">/// Run a single tick. Returns `true` if any subgraph received input data.
-<a href=#755 id=755 data-nosnippet>755</a>    ///
-<a href=#756 id=756 data-nosnippet>756</a>    /// Checks both handoff buffers (via `work_done` flag set in generated recv port code)
-<a href=#757 id=757 data-nosnippet>757</a>    /// and external events (via `can_start_tick` set by wakers/schedule_subgraph).
-<a href=#758 id=758 data-nosnippet>758</a>    </span><span class="kw">pub async fn </span>run_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
-<a href=#759 id=759 data-nosnippet>759</a>        <span class="kw">let </span>had_external = <span class="self">self
-<a href=#760 id=760 data-nosnippet>760</a>            </span>.wake_state
-<a href=#761 id=761 data-nosnippet>761</a>            .can_start_tick
-<a href=#762 id=762 data-nosnippet>762</a>            .swap(<span class="bool-val">false</span>, Ordering::Relaxed);
-<a href=#763 id=763 data-nosnippet>763</a>        <span class="kw">let </span>tick_had_work = <span class="self">self</span>.tick_closure.call_tick().<span class="kw">await</span>;
-<a href=#764 id=764 data-nosnippet>764</a>        had_external || tick_had_work || <span class="self">self</span>.wake_state.can_start_tick.load(Ordering::Relaxed)
+<a href=#751 id=751 data-nosnippet>751</a>
+<a href=#752 id=752 data-nosnippet>752</a>    <span class="doccomment">/// Returns a [`DfirMetricsIntervals`] handle where each call to
+<a href=#753 id=753 data-nosnippet>753</a>    /// [`DfirMetricsIntervals::take_interval`] ends the current interval and returns its metrics.
+<a href=#754 id=754 data-nosnippet>754</a>    ///
+<a href=#755 id=755 data-nosnippet>755</a>    /// The first call to `take_interval` returns metrics since this DFIR instance was created. Each subsequent call to
+<a href=#756 id=756 data-nosnippet>756</a>    /// `take_interval` returns metrics since the previous call.
+<a href=#757 id=757 data-nosnippet>757</a>    ///
+<a href=#758 id=758 data-nosnippet>758</a>    /// Cloning the handle "forks" it from the original, as afterwards each interval may return different metrics
+<a href=#759 id=759 data-nosnippet>759</a>    /// depending on when exactly `take_interval` is called.
+<a href=#760 id=760 data-nosnippet>760</a>    </span><span class="kw">pub fn </span>metrics_intervals(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; DfirMetricsIntervals {
+<a href=#761 id=761 data-nosnippet>761</a>        DfirMetricsIntervals {
+<a href=#762 id=762 data-nosnippet>762</a>            curr: <span class="self">self</span>.metrics(),
+<a href=#763 id=763 data-nosnippet>763</a>            prev: <span class="prelude-val">None</span>,
+<a href=#764 id=764 data-nosnippet>764</a>        }
 <a href=#765 id=765 data-nosnippet>765</a>    }
-<a href=#766 id=766 data-nosnippet>766</a>
-<a href=#767 id=767 data-nosnippet>767</a>    <span class="doccomment">/// Run a single tick synchronously. Panics if the tick yields (async suspension).
-<a href=#768 id=768 data-nosnippet>768</a>    /// Returns `true` if work was done (see [`Self::run_tick`]).
-<a href=#769 id=769 data-nosnippet>769</a>    </span><span class="kw">pub fn </span>run_tick_sync(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
-<a href=#770 id=770 data-nosnippet>770</a>        <span class="kw">let </span><span class="kw-2">mut </span>fut = <span class="macro">std::pin::pin!</span>(<span class="self">self</span>.run_tick());
-<a href=#771 id=771 data-nosnippet>771</a>        <span class="kw">let </span><span class="kw-2">mut </span>ctx = std::task::Context::from_waker(std::task::Waker::noop());
-<a href=#772 id=772 data-nosnippet>772</a>        <span class="kw">match </span>fut.as_mut().poll(<span class="kw-2">&amp;mut </span>ctx) {
-<a href=#773 id=773 data-nosnippet>773</a>            std::task::Poll::Ready(result) =&gt; result,
-<a href=#774 id=774 data-nosnippet>774</a>            std::task::Poll::Pending =&gt; {
-<a href=#775 id=775 data-nosnippet>775</a>                <span class="macro">panic!</span>(<span class="string">"InlineDfir::run_tick_sync: tick yielded asynchronously."</span>)
-<a href=#776 id=776 data-nosnippet>776</a>            }
-<a href=#777 id=777 data-nosnippet>777</a>        }
-<a href=#778 id=778 data-nosnippet>778</a>    }
-<a href=#779 id=779 data-nosnippet>779</a>
-<a href=#780 id=780 data-nosnippet>780</a>    <span class="doccomment">/// Run ticks as long as work is available, then return.
-<a href=#781 id=781 data-nosnippet>781</a>    </span><span class="kw">pub async fn </span>run_available(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#782 id=782 data-nosnippet>782</a>        <span class="comment">// Always run at least one tick.
-<a href=#783 id=783 data-nosnippet>783</a>        </span><span class="self">self</span>.wake_state
-<a href=#784 id=784 data-nosnippet>784</a>            .can_start_tick
-<a href=#785 id=785 data-nosnippet>785</a>            .store(<span class="bool-val">false</span>, Ordering::Relaxed);
-<a href=#786 id=786 data-nosnippet>786</a>        <span class="kw">loop </span>{
-<a href=#787 id=787 data-nosnippet>787</a>            <span class="self">self</span>.run_tick().<span class="kw">await</span>;
-<a href=#788 id=788 data-nosnippet>788</a>            <span class="kw">let </span>can_start_tick = <span class="self">self
-<a href=#789 id=789 data-nosnippet>789</a>                </span>.wake_state
-<a href=#790 id=790 data-nosnippet>790</a>                .can_start_tick
-<a href=#791 id=791 data-nosnippet>791</a>                .swap(<span class="bool-val">false</span>, Ordering::Relaxed);
-<a href=#792 id=792 data-nosnippet>792</a>            <span class="kw">if </span>!can_start_tick {
-<a href=#793 id=793 data-nosnippet>793</a>                <span class="kw">break</span>;
-<a href=#794 id=794 data-nosnippet>794</a>            }
-<a href=#795 id=795 data-nosnippet>795</a>            <span class="comment">// Yield between each tick to receive more events.
-<a href=#796 id=796 data-nosnippet>796</a>            </span>tokio::task::yield_now().<span class="kw">await</span>;
-<a href=#797 id=797 data-nosnippet>797</a>        }
-<a href=#798 id=798 data-nosnippet>798</a>    }
-<a href=#799 id=799 data-nosnippet>799</a>
-<a href=#800 id=800 data-nosnippet>800</a>    <span class="doccomment">/// [`Self::run_available`] but panics if any tick yields asynchronously.
-<a href=#801 id=801 data-nosnippet>801</a>    </span><span class="kw">pub fn </span>run_available_sync(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
-<a href=#802 id=802 data-nosnippet>802</a>        <span class="self">self</span>.wake_state
-<a href=#803 id=803 data-nosnippet>803</a>            .can_start_tick
-<a href=#804 id=804 data-nosnippet>804</a>            .store(<span class="bool-val">false</span>, Ordering::Relaxed);
-<a href=#805 id=805 data-nosnippet>805</a>        <span class="kw">loop </span>{
-<a href=#806 id=806 data-nosnippet>806</a>            <span class="self">self</span>.run_tick_sync();
-<a href=#807 id=807 data-nosnippet>807</a>            <span class="kw">let </span>can_start_tick = <span class="self">self
-<a href=#808 id=808 data-nosnippet>808</a>                </span>.wake_state
-<a href=#809 id=809 data-nosnippet>809</a>                .can_start_tick
-<a href=#810 id=810 data-nosnippet>810</a>                .swap(<span class="bool-val">false</span>, Ordering::Relaxed);
-<a href=#811 id=811 data-nosnippet>811</a>            <span class="kw">if </span>!can_start_tick {
-<a href=#812 id=812 data-nosnippet>812</a>                <span class="kw">break</span>;
-<a href=#813 id=813 data-nosnippet>813</a>            }
-<a href=#814 id=814 data-nosnippet>814</a>        }
-<a href=#815 id=815 data-nosnippet>815</a>    }
-<a href=#816 id=816 data-nosnippet>816</a>
-<a href=#817 id=817 data-nosnippet>817</a>    <span class="doccomment">/// Run forever, processing ticks when work is available and yielding when idle.
-<a href=#818 id=818 data-nosnippet>818</a>    </span><span class="kw">pub async fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">crate</span>::Never {
-<a href=#819 id=819 data-nosnippet>819</a>        <span class="kw">loop </span>{
-<a href=#820 id=820 data-nosnippet>820</a>            <span class="self">self</span>.run_available().<span class="kw">await</span>;
-<a href=#821 id=821 data-nosnippet>821</a>            <span class="comment">// Wait for an external event to wake us.
-<a href=#822 id=822 data-nosnippet>822</a>            </span>std::future::poll_fn(|cx| {
-<a href=#823 id=823 data-nosnippet>823</a>                <span class="comment">// Register waker first to avoid race: if an event fires between
-<a href=#824 id=824 data-nosnippet>824</a>                // the check and the register, the waker is already in place.
-<a href=#825 id=825 data-nosnippet>825</a>                </span><span class="self">self</span>.wake_state.task_waker.register(cx.waker());
-<a href=#826 id=826 data-nosnippet>826</a>                <span class="kw">if </span><span class="self">self</span>.wake_state.can_start_tick.load(Ordering::Relaxed) {
-<a href=#827 id=827 data-nosnippet>827</a>                    std::task::Poll::Ready(())
-<a href=#828 id=828 data-nosnippet>828</a>                } <span class="kw">else </span>{
-<a href=#829 id=829 data-nosnippet>829</a>                    std::task::Poll::Pending
-<a href=#830 id=830 data-nosnippet>830</a>                }
-<a href=#831 id=831 data-nosnippet>831</a>            })
-<a href=#832 id=832 data-nosnippet>832</a>            .<span class="kw">await</span>;
-<a href=#833 id=833 data-nosnippet>833</a>        }
-<a href=#834 id=834 data-nosnippet>834</a>    }
-<a href=#835 id=835 data-nosnippet>835</a>}
-<a href=#836 id=836 data-nosnippet>836</a>
-<a href=#837 id=837 data-nosnippet>837</a><span class="kw">impl</span>&lt;Tick: AsyncFnMut() -&gt; bool + <span class="lifetime">'static</span>&gt; InlineDfir&lt;Tick&gt; {
-<a href=#838 id=838 data-nosnippet>838</a>    <span class="doccomment">/// Type-erase the tick closure for use in heterogeneous collections.
-<a href=#839 id=839 data-nosnippet>839</a>    ///
-<a href=#840 id=840 data-nosnippet>840</a>    /// Wraps the concrete async closure in [`TickClosureErased`], which boxes the future
-<a href=#841 id=841 data-nosnippet>841</a>    /// returned by each tick call. This adds one heap allocation per tick, but enables
-<a href=#842 id=842 data-nosnippet>842</a>    /// storing multiple `InlineDfir`s with different closure types in a single `Vec`.
-<a href=#843 id=843 data-nosnippet>843</a>    ///
-<a href=#844 id=844 data-nosnippet>844</a>    /// Only needed for the sim runtime path. The trybuild and embedded paths keep the
-<a href=#845 id=845 data-nosnippet>845</a>    /// concrete type and pay no erasure cost.
-<a href=#846 id=846 data-nosnippet>846</a>    </span><span class="kw">pub fn </span>into_erased(<span class="self">self</span>) -&gt; InlineDfirErased {
-<a href=#847 id=847 data-nosnippet>847</a>        InlineDfir {
-<a href=#848 id=848 data-nosnippet>848</a>            tick_closure: TickClosureErased(Box::new(<span class="self">self</span>.tick_closure)),
-<a href=#849 id=849 data-nosnippet>849</a>            wake_state: <span class="self">self</span>.wake_state,
-<a href=#850 id=850 data-nosnippet>850</a>            <span class="attr">#[cfg(feature = <span class="string">"meta"</span>)]
-<a href=#851 id=851 data-nosnippet>851</a>            </span>meta_graph: <span class="self">self</span>.meta_graph,
-<a href=#852 id=852 data-nosnippet>852</a>            <span class="attr">#[cfg(feature = <span class="string">"meta"</span>)]
-<a href=#853 id=853 data-nosnippet>853</a>            </span>diagnostics: <span class="self">self</span>.diagnostics,
-<a href=#854 id=854 data-nosnippet>854</a>            metrics: <span class="self">self</span>.metrics,
-<a href=#855 id=855 data-nosnippet>855</a>        }
-<a href=#856 id=856 data-nosnippet>856</a>    }
-<a href=#857 id=857 data-nosnippet>857</a>}
+<a href=#766 id=766 data-nosnippet>766</a>}
+<a href=#767 id=767 data-nosnippet>767</a>
+<a href=#768 id=768 data-nosnippet>768</a><span class="kw">impl</span>&lt;Tick: TickClosure&gt; InlineDfir&lt;Tick&gt; {
+<a href=#769 id=769 data-nosnippet>769</a>    <span class="doccomment">/// Run a single tick. Returns `true` if any subgraph received input data.
+<a href=#770 id=770 data-nosnippet>770</a>    ///
+<a href=#771 id=771 data-nosnippet>771</a>    /// Checks both handoff buffers (via `work_done` flag set in generated recv port code)
+<a href=#772 id=772 data-nosnippet>772</a>    /// and external events (via `can_start_tick` set by wakers/schedule_subgraph).
+<a href=#773 id=773 data-nosnippet>773</a>    </span><span class="kw">pub async fn </span>run_tick(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
+<a href=#774 id=774 data-nosnippet>774</a>        <span class="kw">let </span>had_external = <span class="self">self
+<a href=#775 id=775 data-nosnippet>775</a>            </span>.wake_state
+<a href=#776 id=776 data-nosnippet>776</a>            .can_start_tick
+<a href=#777 id=777 data-nosnippet>777</a>            .swap(<span class="bool-val">false</span>, Ordering::Relaxed);
+<a href=#778 id=778 data-nosnippet>778</a>        <span class="kw">let </span>tick_had_work = <span class="self">self</span>.tick_closure.call_tick().<span class="kw">await</span>;
+<a href=#779 id=779 data-nosnippet>779</a>        had_external || tick_had_work || <span class="self">self</span>.wake_state.can_start_tick.load(Ordering::Relaxed)
+<a href=#780 id=780 data-nosnippet>780</a>    }
+<a href=#781 id=781 data-nosnippet>781</a>
+<a href=#782 id=782 data-nosnippet>782</a>    <span class="doccomment">/// Run a single tick synchronously. Panics if the tick yields (async suspension).
+<a href=#783 id=783 data-nosnippet>783</a>    /// Returns `true` if work was done (see [`Self::run_tick`]).
+<a href=#784 id=784 data-nosnippet>784</a>    </span><span class="kw">pub fn </span>run_tick_sync(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; bool {
+<a href=#785 id=785 data-nosnippet>785</a>        <span class="kw">let </span><span class="kw-2">mut </span>fut = <span class="macro">std::pin::pin!</span>(<span class="self">self</span>.run_tick());
+<a href=#786 id=786 data-nosnippet>786</a>        <span class="kw">let </span><span class="kw-2">mut </span>ctx = std::task::Context::from_waker(std::task::Waker::noop());
+<a href=#787 id=787 data-nosnippet>787</a>        <span class="kw">match </span>fut.as_mut().poll(<span class="kw-2">&amp;mut </span>ctx) {
+<a href=#788 id=788 data-nosnippet>788</a>            std::task::Poll::Ready(result) =&gt; result,
+<a href=#789 id=789 data-nosnippet>789</a>            std::task::Poll::Pending =&gt; {
+<a href=#790 id=790 data-nosnippet>790</a>                <span class="macro">panic!</span>(<span class="string">"InlineDfir::run_tick_sync: tick yielded asynchronously."</span>)
+<a href=#791 id=791 data-nosnippet>791</a>            }
+<a href=#792 id=792 data-nosnippet>792</a>        }
+<a href=#793 id=793 data-nosnippet>793</a>    }
+<a href=#794 id=794 data-nosnippet>794</a>
+<a href=#795 id=795 data-nosnippet>795</a>    <span class="doccomment">/// Run ticks as long as work is available, then return.
+<a href=#796 id=796 data-nosnippet>796</a>    </span><span class="kw">pub async fn </span>run_available(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#797 id=797 data-nosnippet>797</a>        <span class="comment">// Always run at least one tick.
+<a href=#798 id=798 data-nosnippet>798</a>        </span><span class="self">self</span>.wake_state
+<a href=#799 id=799 data-nosnippet>799</a>            .can_start_tick
+<a href=#800 id=800 data-nosnippet>800</a>            .store(<span class="bool-val">false</span>, Ordering::Relaxed);
+<a href=#801 id=801 data-nosnippet>801</a>        <span class="kw">loop </span>{
+<a href=#802 id=802 data-nosnippet>802</a>            <span class="self">self</span>.run_tick().<span class="kw">await</span>;
+<a href=#803 id=803 data-nosnippet>803</a>            <span class="kw">let </span>can_start_tick = <span class="self">self
+<a href=#804 id=804 data-nosnippet>804</a>                </span>.wake_state
+<a href=#805 id=805 data-nosnippet>805</a>                .can_start_tick
+<a href=#806 id=806 data-nosnippet>806</a>                .swap(<span class="bool-val">false</span>, Ordering::Relaxed);
+<a href=#807 id=807 data-nosnippet>807</a>            <span class="kw">if </span>!can_start_tick {
+<a href=#808 id=808 data-nosnippet>808</a>                <span class="kw">break</span>;
+<a href=#809 id=809 data-nosnippet>809</a>            }
+<a href=#810 id=810 data-nosnippet>810</a>            <span class="comment">// Yield between each tick to receive more events.
+<a href=#811 id=811 data-nosnippet>811</a>            </span>tokio::task::yield_now().<span class="kw">await</span>;
+<a href=#812 id=812 data-nosnippet>812</a>        }
+<a href=#813 id=813 data-nosnippet>813</a>    }
+<a href=#814 id=814 data-nosnippet>814</a>
+<a href=#815 id=815 data-nosnippet>815</a>    <span class="doccomment">/// [`Self::run_available`] but panics if any tick yields asynchronously.
+<a href=#816 id=816 data-nosnippet>816</a>    </span><span class="kw">pub fn </span>run_available_sync(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+<a href=#817 id=817 data-nosnippet>817</a>        <span class="self">self</span>.wake_state
+<a href=#818 id=818 data-nosnippet>818</a>            .can_start_tick
+<a href=#819 id=819 data-nosnippet>819</a>            .store(<span class="bool-val">false</span>, Ordering::Relaxed);
+<a href=#820 id=820 data-nosnippet>820</a>        <span class="kw">loop </span>{
+<a href=#821 id=821 data-nosnippet>821</a>            <span class="self">self</span>.run_tick_sync();
+<a href=#822 id=822 data-nosnippet>822</a>            <span class="kw">let </span>can_start_tick = <span class="self">self
+<a href=#823 id=823 data-nosnippet>823</a>                </span>.wake_state
+<a href=#824 id=824 data-nosnippet>824</a>                .can_start_tick
+<a href=#825 id=825 data-nosnippet>825</a>                .swap(<span class="bool-val">false</span>, Ordering::Relaxed);
+<a href=#826 id=826 data-nosnippet>826</a>            <span class="kw">if </span>!can_start_tick {
+<a href=#827 id=827 data-nosnippet>827</a>                <span class="kw">break</span>;
+<a href=#828 id=828 data-nosnippet>828</a>            }
+<a href=#829 id=829 data-nosnippet>829</a>        }
+<a href=#830 id=830 data-nosnippet>830</a>    }
+<a href=#831 id=831 data-nosnippet>831</a>
+<a href=#832 id=832 data-nosnippet>832</a>    <span class="doccomment">/// Run forever, processing ticks when work is available and yielding when idle.
+<a href=#833 id=833 data-nosnippet>833</a>    </span><span class="kw">pub async fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw">crate</span>::Never {
+<a href=#834 id=834 data-nosnippet>834</a>        <span class="kw">loop </span>{
+<a href=#835 id=835 data-nosnippet>835</a>            <span class="self">self</span>.run_available().<span class="kw">await</span>;
+<a href=#836 id=836 data-nosnippet>836</a>            <span class="comment">// Wait for an external event to wake us.
+<a href=#837 id=837 data-nosnippet>837</a>            </span>std::future::poll_fn(|cx| {
+<a href=#838 id=838 data-nosnippet>838</a>                <span class="comment">// Register waker first to avoid race: if an event fires between
+<a href=#839 id=839 data-nosnippet>839</a>                // the check and the register, the waker is already in place.
+<a href=#840 id=840 data-nosnippet>840</a>                </span><span class="self">self</span>.wake_state.task_waker.register(cx.waker());
+<a href=#841 id=841 data-nosnippet>841</a>                <span class="kw">if </span><span class="self">self</span>.wake_state.can_start_tick.load(Ordering::Relaxed) {
+<a href=#842 id=842 data-nosnippet>842</a>                    std::task::Poll::Ready(())
+<a href=#843 id=843 data-nosnippet>843</a>                } <span class="kw">else </span>{
+<a href=#844 id=844 data-nosnippet>844</a>                    std::task::Poll::Pending
+<a href=#845 id=845 data-nosnippet>845</a>                }
+<a href=#846 id=846 data-nosnippet>846</a>            })
+<a href=#847 id=847 data-nosnippet>847</a>            .<span class="kw">await</span>;
+<a href=#848 id=848 data-nosnippet>848</a>        }
+<a href=#849 id=849 data-nosnippet>849</a>    }
+<a href=#850 id=850 data-nosnippet>850</a>}
+<a href=#851 id=851 data-nosnippet>851</a>
+<a href=#852 id=852 data-nosnippet>852</a><span class="kw">impl</span>&lt;Tick: AsyncFnMut() -&gt; bool + <span class="lifetime">'static</span>&gt; InlineDfir&lt;Tick&gt; {
+<a href=#853 id=853 data-nosnippet>853</a>    <span class="doccomment">/// Type-erase the tick closure for use in heterogeneous collections.
+<a href=#854 id=854 data-nosnippet>854</a>    ///
+<a href=#855 id=855 data-nosnippet>855</a>    /// Wraps the concrete async closure in [`TickClosureErased`], which boxes the future
+<a href=#856 id=856 data-nosnippet>856</a>    /// returned by each tick call. This adds one heap allocation per tick, but enables
+<a href=#857 id=857 data-nosnippet>857</a>    /// storing multiple `InlineDfir`s with different closure types in a single `Vec`.
+<a href=#858 id=858 data-nosnippet>858</a>    ///
+<a href=#859 id=859 data-nosnippet>859</a>    /// Only needed for the sim runtime path. The trybuild and embedded paths keep the
+<a href=#860 id=860 data-nosnippet>860</a>    /// concrete type and pay no erasure cost.
+<a href=#861 id=861 data-nosnippet>861</a>    </span><span class="kw">pub fn </span>into_erased(<span class="self">self</span>) -&gt; InlineDfirErased {
+<a href=#862 id=862 data-nosnippet>862</a>        InlineDfir {
+<a href=#863 id=863 data-nosnippet>863</a>            tick_closure: TickClosureErased(Box::new(<span class="self">self</span>.tick_closure)),
+<a href=#864 id=864 data-nosnippet>864</a>            wake_state: <span class="self">self</span>.wake_state,
+<a href=#865 id=865 data-nosnippet>865</a>            current_tick: <span class="self">self</span>.current_tick,
+<a href=#866 id=866 data-nosnippet>866</a>            metrics: <span class="self">self</span>.metrics,
+<a href=#867 id=867 data-nosnippet>867</a>            <span class="attr">#[cfg(feature = <span class="string">"meta"</span>)]
+<a href=#868 id=868 data-nosnippet>868</a>            </span>meta_graph: <span class="self">self</span>.meta_graph,
+<a href=#869 id=869 data-nosnippet>869</a>            <span class="attr">#[cfg(feature = <span class="string">"meta"</span>)]
+<a href=#870 id=870 data-nosnippet>870</a>            </span>diagnostics: <span class="self">self</span>.diagnostics,
+<a href=#871 id=871 data-nosnippet>871</a>        }
+<a href=#872 id=872 data-nosnippet>872</a>    }
+<a href=#873 id=873 data-nosnippet>873</a>}
 </code></pre></div></section></main></body></html>
