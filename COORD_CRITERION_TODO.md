@@ -1,59 +1,92 @@
-# coord-criterion branch: outstanding issues
+# coord-criterion branch: status and remaining work
 
-This branch is shelved pending a static broadcast PR. Rebase on top of that PR
-before resuming work here.
+## Resolved issues
 
-## 1. Dynamic broadcast to Cluster is unsound (blocking)
+### 1. ~~Dynamic broadcast to Cluster~~ (FIXED)
+StaticCluster location type added. The analysis uses property-based
+`complete_delivery = no_late_joiners && is_gap_free()` where
+`no_late_joiners` is true for StaticCluster (location property) or
+`is_durable()` (channel property via `durable_broadcast`).
 
-The analysis classifies `Network` from a different location into a `Cluster` as
-`Source` (discharged) in `classify()`, and the propagation layer doesn't model
-membership dynamics. This produces false CONV/SEQ labels for programs that are
-actually weaker:
+The `label_fixed_membership` / `consistency_fixed` dual-label mechanism
+is retained — it shows what the label would be under fixed membership,
+useful for diagnosing dynamic cluster issues.
 
-- **NoOrder/SetInclusion goal → should be SELF, not CONV.** A late-joining
-  Cluster member sees a subset of what an always-present member sees. That's
-  future-monotone per-member (set inclusion holds locally), but members don't
-  converge to the same set.
+### 2. ~~Sink identifiers keyed by source spans~~ (MITIGATED)
+The coordination analysis now reads `metadata.tag` (set by `ir_node_named()`)
+for user-provided sink names. This provides stable identifiers that survive
+refactoring. Example: `tx_responses @ service.rs:204:10` instead of
+`foreach @ service.rs:204:10`.
 
-- **Prefix/TotalOrder goal → should be INCON.** A late joiner misses a prefix,
-  so its observation is not a prefix of the full sequence.
+A PR for a cleaner `.name()` API (following Flink's convention) was drafted
+but withdrawn — it duplicated the existing `ir_node_named` mechanism. The
+existing mechanism works; a future cleanup could rename `ir_node_named` to
+`.name()` and unify with the channel naming system.
 
-**Fix:** A separate PR will introduce a static broadcast mechanism (e.g.,
-`StaticCluster` location type or `static_broadcast` vs `dynamic_broadcast` at
-the network layer). Once that lands, rebase this branch and:
+### 3. ~~viz/render.rs refactor~~ (NOT BLOCKING)
+Not addressed. Low priority — the viz overlay is a future feature.
 
-- For static broadcast to a Cluster: keep current `Source` classification
-  (all members present for entire execution, same data).
-- For dynamic broadcast to a Cluster: classify as SELF under SetInclusion,
-  INCON under Prefix.
-- Remove the `label_fixed_membership` / `consistency_fixed` dual-label
-  mechanism, which was a workaround for this issue.
+### 4. ~~Remaining review items~~ (ADDRESSED)
+- `SinkResult` and `CoordinationReport` are intentionally public API.
+- `HYDRO_CHECK_COORDINATION` env var: coordination analysis is now lazy
+  (only runs when the env var is set), so the stderr output is opt-in.
+- Inline codegen fixes: landed independently in upstream.
 
-## 2. `goal_overrides` keyed by source spans (minor)
+## Current state
 
-Sink identifiers use `"name@file:line:col"` format (e.g.,
-`"sendexternal@src/plumbing.rs:73:20"`). These break on any refactor that moves
-the sink call. Consider user-provided labels as a more stable alternative.
+The branch is rebased on current `origin/main` (including upstream PRs
+for `entries_partially_ordered`, `KeyedStream::get` ordering preservation,
+and `order_preserving` on MapFuncAlgebra).
 
-## 3. `viz/render.rs` refactor — is it used? (minor)
+### Features implemented
+- Backward goal-seeking proof (Prefix, SetInclusion, Lattice)
+- Forward consistency label propagation
+- Cycle analysis with fixpoint iteration
+- StaticCluster support (type-level, no manual proof needed)
+- `durable_broadcast` for log-based recovery
+- `ChannelDelivery` enum, `NetworkingInfo::Durable`, `DurableTransport`
+- Associativity annotation and check for bounded folds under Prefix
+- PER_KEY SEQ CONSISTENT label with `entries_partially_ordered` detection
+- Sink naming via `ir_node_named` / `metadata.tag`
+- Simulator integration (ConsistencyCollector)
+- Replication analysis
 
-`build_hydro_graph_structure` was extracted as a public function but doesn't
-appear to be called by the coordination analysis. Confirm whether this is for
-the future viz overlay mentioned in COORDINATION.md or if it's dead code.
+### Label hierarchy
+```
+SEQ CONSISTENT > PER_KEY SEQ CONSISTENT > CONVERGENT > LOCAL > INCONSISTENT
+```
 
-## 4. Remaining review items not yet discussed
+## Remaining work
 
-These were identified in the initial review but we didn't get to them in
-discussion. They may be fine as-is or may need attention:
+### Per-key sequential consistency for merged input streams
+The PER_KEY SEQ CONSISTENT label exists and is sound for cases where
+global Prefix passes through `entries_partially_ordered`. However,
+services that merge multiple input streams (e.g., microdb's writes +
+reads via `merge_unordered`) cannot achieve PER_KEY SEQ because global
+Prefix fails at the chain. A sound `PerKeyPrefix` goal that passes
+through chain was attempted but found to be unsound (shared state means
+one client's responses depend on other clients' operations).
 
-- `SinkResult` and `CoordinationReport` are `pub` — confirm these need to be
-  public API (CoordinationReport is returned by `check_coordination()` so yes,
-  but SinkResult fields could potentially be `pub(crate)`).
+To achieve PER_KEY SEQ for write confirmations in microdb, the service
+architecture must separate the write confirmation path (TotalOrder
+journal outcomes) from the read path. This aligns with the Java MicroDB
+model where offer callbacks are a separate event stream.
 
-- `HYDRO_CHECK_COORDINATION` env var in `builder.rs::finalize()` prints to
-  stderr unconditionally when set. Fine for development, but consider whether
-  this should use a structured logging mechanism before merging.
+### kvs_zoo StaticCluster for Paxos
+The linearizable_replicated example shows CONVERGENT instead of SEQ
+CONSISTENT because all clusters use `flow.cluster()` (dynamic). Paxos
+proposers/acceptors should use `flow.static_cluster()`. Requires
+refactoring `KVSClusters` to support `StaticCluster`.
 
-- The inline codegen fixes (`dfir_lang/src/graph/mod.rs`, `meta_graph.rs`) are
-  bug fixes to the inline path unrelated to coordination. Could be split into
-  a separate small PR to land independently, but not blocking.
+### Stream naming PR
+A `.name()` API for labeling dataflow edges was prototyped (PR #2775,
+closed). The existing `ir_node_named` works but has a less intuitive
+name. A future PR could rename it to `.name()` and unify with the
+channel naming system (`TCP.name("channel")`).
+
+### Gossip complete delivery
+CRDT gossip gets its consistency proof from lattice properties
+(commutative + idempotent fold). A broadcast-based gossip with
+`complete_delivery` was discussed but deferred — the optimization of
+reordering merge and forward requires program transformation support
+that doesn't exist yet.
