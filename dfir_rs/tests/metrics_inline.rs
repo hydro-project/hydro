@@ -103,8 +103,7 @@ async fn test_multiple_ticks() {
     assert_eq!(1, metrics.subgraphs.len());
     let sg_id = metrics.subgraphs.keys().next().unwrap();
     assert_eq!(1, metrics.subgraphs[sg_id].total_run_count());
-    // TODO(https://github.com/hydro-project/hydro/issues/2741): assert current_tick once
-    // InlineDfir exposes it.
+    assert_eq!(1, flow.current_tick().0);
 
     input_send.send(3).unwrap();
     input_send.send(4).unwrap();
@@ -112,7 +111,7 @@ async fn test_multiple_ticks() {
 
     let metrics = flow.metrics();
     assert_eq!(2, metrics.subgraphs[sg_id].total_run_count());
-    // TODO(https://github.com/hydro-project/hydro/issues/2741): assert current_tick == 2.
+    assert_eq!(2, flow.current_tick().0);
 
     let output: Vec<_> = collect_ready_async(&mut output_recv).await;
     assert_eq!(output, vec![2, 3, 4, 5]);
