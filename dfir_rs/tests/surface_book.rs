@@ -1,3 +1,4 @@
+use dfir_rs::assert_graphvis_snapshots;
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
@@ -8,6 +9,7 @@ fn test_surface_flows_1() {
         my_tee[1] -> map(|x| x.to_lowercase()) -> [1]my_union;
         my_union = union() -> for_each(|x| println!("{}", x));
     };
+    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 }
 

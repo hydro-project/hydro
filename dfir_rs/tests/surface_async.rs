@@ -8,7 +8,7 @@ use std::net::{Ipv4Addr, SocketAddr};
 
 use bytes::Bytes;
 use dfir_rs::util::{collect_ready_async, tcp_lines};
-use dfir_rs::{dfir_syntax_inline, rassert, rassert_eq};
+use dfir_rs::{assert_graphvis_snapshots, dfir_syntax_inline, rassert, rassert_eq};
 use multiplatform_test::multiplatform_test;
 use tokio::net::{TcpListener, TcpStream, UdpSocket};
 use tokio::task::LocalSet;
@@ -215,6 +215,7 @@ pub async fn test_echo() {
     let mut df = dfir_syntax_inline! {
         source_stream(lines_recv) -> dest_sink(stdout_lines);
     };
+    assert_graphvis_snapshots!(df);
     df.run_available().await;
 
     lines_send.send("Hello".to_owned()).unwrap();

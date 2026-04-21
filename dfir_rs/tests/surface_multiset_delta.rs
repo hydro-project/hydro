@@ -1,3 +1,4 @@
+use dfir_rs::assert_graphvis_snapshots;
 use dfir_rs::dfir_syntax_inline;
 use dfir_rs::util::collect_ready;
 use multiplatform_test::multiplatform_test;
@@ -12,6 +13,7 @@ pub fn test_multiset_delta() {
             -> multiset_delta()
             -> for_each(|x| result_send.send(x).unwrap());
     };
+    assert_graphvis_snapshots!(flow);
 
     input_send.send(3).unwrap();
     input_send.send(4).unwrap();

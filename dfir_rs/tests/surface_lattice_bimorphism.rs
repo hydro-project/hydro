@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use dfir_rs::assert_graphvis_snapshots;
 use dfir_rs::dfir_syntax_inline;
 use dfir_rs::util::collect_ready;
 use lattices::GhtType;
@@ -30,6 +31,7 @@ pub fn test_cartesian_product() {
             -> for_each(|x| out_send.send(x).unwrap());
     };
 
+    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     assert_eq!(
@@ -63,6 +65,7 @@ pub fn test_cartesian_product_1401() {
         my_join = lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), #lhs, #rhs)
             -> for_each(|x| out_send.send(x).unwrap());
     };
+    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     assert_eq!(
@@ -90,6 +93,7 @@ pub fn test_join() {
             -> for_each(|x| out_send.send(x).unwrap());
     };
 
+    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     assert_eq!(
@@ -130,6 +134,7 @@ pub fn test_cartesian_product_tick_state() {
             -> inspect(|x| println!("{:?}: {:?}", context.current_tick(), x))
             -> for_each(|x| out_send.send(x).unwrap());
     };
+    assert_graphvis_snapshots!(df);
 
     for x in 0..3 {
         lhs_send.send(x).unwrap();

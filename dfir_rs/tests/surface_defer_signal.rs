@@ -1,3 +1,4 @@
+use dfir_rs::assert_graphvis_snapshots;
 use dfir_rs::dfir_syntax_inline;
 use dfir_rs::util::collect_ready;
 use multiplatform_test::multiplatform_test;
@@ -14,6 +15,7 @@ pub fn test_basic_2() {
 
         gate -> for_each(|x| egress_tx.send(x).unwrap());
     };
+    assert_graphvis_snapshots!(df);
 
     df.run_available_sync();
     let out: Vec<_> = collect_ready(&mut egress_rx);

@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use dfir_rs::assert_graphvis_snapshots;
 use dfir_rs::dfir_syntax_inline;
 use dfir_rs::scheduled::context::InlineDfirErased;
 use dfir_rs::util::collect_ready;
@@ -63,6 +64,7 @@ pub fn test_cartesian_product_multi_tick() {
             -> for_each(|x| out_send.send(x).unwrap());
     };
 
+    assert_graphvis_snapshots!(df);
     check_cartesian_product_multi_tick(df.into_erased(), lhs_send, rhs_send, out_recv);
 }
 
@@ -90,6 +92,7 @@ pub fn test_cartesian_product_multi_tick_tee() {
             -> for_each(|x| out_send.send(x).unwrap());
     };
 
+    assert_graphvis_snapshots!(df);
     check_cartesian_product_multi_tick(df.into_erased(), lhs_send, rhs_send, out_recv);
 }
 
@@ -116,5 +119,6 @@ pub fn test_cartesian_product_multi_tick_identity() {
             -> for_each(|x| out_send.send(x).unwrap());
     };
 
+    assert_graphvis_snapshots!(df);
     check_cartesian_product_multi_tick(df.into_erased(), lhs_send, rhs_send, out_recv);
 }
