@@ -1376,7 +1376,8 @@ pub fn analyze_coordination(
             continue;
         }
 
-        let sink_name = short_name_root(root);
+        let sink_name = root.input().metadata().op.name.as_deref()
+            .unwrap_or_else(|| short_name_root(root));
         let sink_span = root.op_metadata().backtrace.format_span().unwrap_or_default();
         let sink_id = format!("{sink_name}@{sink_span}");
         // If the user provided an override, use it. Otherwise try candidate goals
@@ -1430,7 +1431,7 @@ pub fn analyze_coordination(
           let channels = forward.into_iter().chain(back.into_iter()).collect();
 
           sinks.push(SinkResult {
-              name: short_name_root(root).to_string(),
+              name: sink_name.to_string(),
               span: root.op_metadata().backtrace.format_span().unwrap_or_default(),
               goal: best_goal,
               result: best_result,
