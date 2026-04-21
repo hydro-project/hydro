@@ -364,24 +364,37 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     ///
     /// Unlike [`Stream::broadcast`], which only guarantees delivery to members that
     /// are present when each element is sent, `durable_broadcast` guarantees that
-    /// every cluster member — including late joiners — receives the complete stream
-    /// from the first item.
+    /// every cluster member — including late joiners — receives the complete stream.
     ///
     /// The durability mechanism (journal replay, state transfer, etc.) is external
-    /// to Hydro. The `manual_proof` asserts that the combination of replay + live
-    /// delivery produces a gap-free stream from the first item for every member.
+    /// to Hydro. The `manual_proof` asserts the following properties:
+    ///
+    /// 1. **Replay soundness**: the external store faithfully persists all elements
+    ///    written to it, and replays them correctly on restore. For snapshot-based
+    ///    restore: applying the snapshot then replaying the log tail produces the
+    ///    same state as processing the full log from the beginning.
+    ///
+    /// 2. **Gap-freeness**: the combination of restore + live traffic delivers every
+    ///    element with no gaps at the cutover seam. This includes:
+    ///    - No elements lost between the last restored element and the first live element
+    ///    - Buffering or coordination during restore prevents missed elements
+    ///    - Duplicates at the boundary are acceptable (downstream must be idempotent
+    ///      or perform explicit deduplication)
     ///
     /// The resulting stream has [`AtLeastOnce`] retries semantics because replay
-    /// may deliver duplicates at the recovery boundary. Downstream processing
-    /// must be idempotent or perform explicit deduplication.
+    /// may deliver duplicates at the recovery boundary.
     ///
     /// # Example
     /// ```ignore
+    /// // MicroDB journal: interleaved snapshot + log records in one stream
     /// let journal_on_cluster = paxos_log
     ///     .durable_broadcast(
     ///         &cluster,
     ///         TCP.fail_stop().bincode(),
-    ///         manual_proof!(/** Journal replay delivers complete log to every member */),
+    ///         manual_proof!(/**
+    ///             1. Journal store faithfully persists and replays all records
+    ///             2. Cutover from replay to live is gap-free
+    ///         */),
     ///     );
     /// ```
     pub fn durable_broadcast<L2: 'a, N: NetworkFor<T>>(
