@@ -1,8 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
-use dfir_rs::assert_graphvis_snapshots;
-use dfir_rs::dfir_syntax_inline;
 use dfir_rs::util::collect_ready;
+use dfir_rs::{assert_graphvis_snapshots, dfir_syntax_inline};
 use lattices::GhtType;
 use lattices::ght::GeneralizedHashTrieNode;
 use lattices::ght::lattice::{DeepJoinLatticeBimorphism, GhtBimorphism};

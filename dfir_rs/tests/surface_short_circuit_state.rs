@@ -2,9 +2,8 @@
 //! See https://github.com/hydro-project/hydro/issues/2334
 use std::time::Duration;
 
-use dfir_rs::assert_graphvis_snapshots;
-use dfir_rs::dfir_syntax_inline;
 use dfir_rs::util::collect_ready_async;
+use dfir_rs::{assert_graphvis_snapshots, dfir_syntax_inline};
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test(dfir)]
