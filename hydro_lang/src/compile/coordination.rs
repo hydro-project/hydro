@@ -1930,6 +1930,22 @@ mod tests {
 
     // --- Goal override ---
 
+    // --- KeyedStream::get preserves TotalOrder for per-key Prefix ---
+
+    #[test]
+    fn keyed_stream_get_preserves_prefix() {
+        // A TotalOrder KeyedStream, get(key) should preserve TotalOrder,
+        // allowing the analysis to prove Prefix on the per-key output.
+        let r = check(|flow| {
+            let p = flow.process::<()>();
+            let keyed = p.source_iter(q!(vec![(1i32, "a"), (1, "b"), (2, "c")]))
+                .into_keyed();
+            let key = p.source_iter(q!(vec![1i32])).first();
+            keyed.get(key).for_each(q!(|_: &str| {}));
+        });
+        assert!(r.all_monotone(), "get on TotalOrder KeyedStream should pass Prefix:\n{r}");
+    }
+
     #[test]
     fn goal_override_set_inclusion_on_total_order() {
         let mut flow = FlowBuilder::new();
