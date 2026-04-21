@@ -1,3 +1,4 @@
+use dfir_rs::assert_graphvis_snapshots;
 use dfir_rs::scheduled::ticks::TickInstant;
 use dfir_rs::util::collect_ready;
 use lattices::Max;
@@ -27,6 +28,8 @@ pub fn test_state() {
             -> map(|x| (context.current_tick(), x.into_reveal()))
             -> for_each(|x| max_send.send(x).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
 
     df.run_available_sync();
 
@@ -71,6 +74,8 @@ pub fn test_state_unused() {
         stream2 = source_iter(15..=25) -> map(Max::new);
         max_of_stream2 = stream2 -> state::<'static, Max<_>>();
     };
+    assert_graphvis_snapshots!(df);
+
 
     df.run_available_sync();
 }
@@ -136,6 +141,8 @@ pub fn test_fold_cross() {
             -> map(|x: Max<_>| (context.current_tick(), x.into_reveal()))
             -> for_each(|x| max_send.send(x).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
 
     df.run_available_sync();
 
@@ -177,6 +184,8 @@ pub fn test_fold_singleton() {
             -> map(|x| (context.current_tick(), x))
             -> for_each(|x| max_send.send(x).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
 
     df.run_available_sync();
 
@@ -214,6 +223,8 @@ pub fn test_fold_singleton_push() {
             -> map(|x| (context.current_tick(), x))
             -> for_each(|x| filter_send.send(x).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
 
     df.run_available_sync();
 
@@ -252,6 +263,8 @@ pub fn test_reduce_singleton() {
             -> map(|x| (context.current_tick(), x))
             -> for_each(|x| max_send.send(x).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
 
     df.run_available_sync();
 
@@ -289,6 +302,8 @@ pub fn test_reduce_singleton_push() {
             -> map(|x| (context.current_tick(), x))
             -> for_each(|x| filter_send.send(x).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
 
     df.run_available_sync();
 
@@ -372,6 +387,8 @@ pub fn test_multi_tick() {
             -> map(|x| (context.current_tick(), x.into_reveal()))
             -> for_each(|x| max_send.send(x).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
 
     df.run_available_sync();
     assert_eq!(

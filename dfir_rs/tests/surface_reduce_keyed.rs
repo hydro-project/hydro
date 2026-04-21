@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use dfir_rs::assert_graphvis_snapshots;
 use dfir_rs::scheduled::ticks::TickInstant;
 use dfir_rs::util::collect_ready;
 use multiplatform_test::multiplatform_test;
@@ -24,6 +25,8 @@ pub fn test_reduce_keyed_infer_basic() {
             -> reduce_keyed::<'static>(|old: &mut u32, val: u32| *old += val)
             -> for_each(|kv| result_send.send(kv).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
     assert_eq!(TickInstant::new(0), df.current_tick());
     df.run_tick_sync();
     assert_eq!(TickInstant::new(1), df.current_tick());
@@ -46,6 +49,8 @@ pub fn test_reduce_keyed_tick() {
             -> reduce_keyed::<'tick>(|old: &mut Vec<u32>, mut x: Vec<u32>| old.append(&mut x))
             -> for_each(|v| result_send.send(v).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
     assert_eq!(TickInstant::new(0), df.current_tick());
     df.run_tick_sync();
     assert_eq!(TickInstant::new(1), df.current_tick());
@@ -91,6 +96,8 @@ pub fn test_reduce_keyed_static() {
             -> reduce_keyed::<'static>(|old: &mut Vec<u32>, mut x: Vec<u32>| old.append(&mut x))
             -> for_each(|v| result_send.send(v).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
     assert_eq!(TickInstant::new(0), df.current_tick());
     df.run_tick_sync();
     assert_eq!(TickInstant::new(1), df.current_tick());

@@ -31,6 +31,7 @@ pub fn test_basic_2() {
     let mut df = dfir_syntax_inline! {
         source_iter([1]) -> for_each(|v| out_send.send(v).unwrap());
     };
+    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     assert_eq!(&[1], &*collect_ready::<Vec<_>, _>(&mut out_recv));
@@ -43,6 +44,7 @@ pub fn test_basic_3() {
     let mut df = dfir_syntax_inline! {
         source_iter([1]) -> map(|v| v + 1) -> for_each(|v| out_send.send(v).unwrap());
     };
+    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     assert_eq!(&[2], &*collect_ready::<Vec<_>, _>(&mut out_recv));
@@ -57,6 +59,7 @@ pub fn test_basic_union() {
         source_iter([1]) -> [0]m;
         source_iter([2]) -> [1]m;
     };
+    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     assert_eq!(&[1, 2], &*collect_ready::<Vec<_>, _>(&mut out_recv));
@@ -133,6 +136,7 @@ pub fn test_recv_expr() {
         source_stream(send_recv.1)
             -> for_each(|v| print!("{:?}", v));
     };
+    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     let items_send = send_recv.0;

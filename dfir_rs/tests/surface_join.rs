@@ -41,6 +41,8 @@ pub fn tick_tick() {
         my_join = join::<'tick, 'tick>()
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
+    assert_graphvis_snapshots!(df);
+
     df.run_available_sync();
 
     assert_contains_each_by_tick!(results, TickInstant::new(0), &[(7, (1, 0)), (7, (2, 0))]);
@@ -65,6 +67,8 @@ pub fn tick_static() {
         my_join = join::<'tick, 'static>()
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
+    assert_graphvis_snapshots!(df);
+
     df.run_available_sync();
 
     assert_contains_each_by_tick!(results, TickInstant::new(0), &[(7, (1, 0)), (7, (2, 0))]);
@@ -89,6 +93,8 @@ pub fn static_tick() {
         my_join = join::<'static, 'tick>()
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
+    assert_graphvis_snapshots!(df);
+
     df.run_available_sync();
 
     assert_contains_each_by_tick!(results, TickInstant::new(0), &[(7, (1, 0)), (7, (2, 0))]);
@@ -115,6 +121,8 @@ pub fn static_static() {
         my_join = join::<'static, 'static>()
             -> for_each(|x| results_inner.borrow_mut().entry(context.current_tick()).or_default().push(x));
     };
+    assert_graphvis_snapshots!(df);
+
     df.run_available_sync();
 
     #[rustfmt::skip]

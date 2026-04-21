@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use dfir_rs::assert_graphvis_snapshots;
 use dfir_rs::scheduled::ticks::TickInstant;
 use dfir_rs::util::collect_ready;
 use dfir_rs::{dfir_syntax, dfir_syntax_inline};
@@ -15,6 +16,8 @@ pub fn test_fold_tick() {
             -> fold::<'tick>(Vec::new, |old: &mut Vec<u32>, mut x: Vec<u32>| { old.append(&mut x); })
             -> for_each(|v| result_send.send(v).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
 
     assert_eq!(TickInstant::new(0), df.current_tick());
 
@@ -51,6 +54,8 @@ pub fn test_fold_static() {
             -> fold::<'static>(Vec::new, |old: &mut Vec<u32>, mut x: Vec<u32>| { old.append(&mut x); })
             -> for_each(|v| result_send.send(v).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
 
     assert_eq!(TickInstant::new(0), df.current_tick());
 
@@ -94,6 +99,8 @@ pub fn test_fold_static_join() {
         join_node = cross_join_multiset();
         join_node -> for_each(|v| result_send.send(v).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
 
     assert_eq!(TickInstant::new(0), df.current_tick());
 

@@ -1,3 +1,4 @@
+use dfir_rs::assert_graphvis_snapshots;
 use dfir_rs::util::collect_ready;
 use dfir_rs::{dfir_syntax, dfir_syntax_inline};
 use multiplatform_test::multiplatform_test;
@@ -11,6 +12,7 @@ pub fn test_unique() {
             -> unique()
             -> for_each(|v| print!("{:?}, ", v));
     };
+    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 
     print!("\nA: ");
@@ -43,6 +45,7 @@ pub fn test_unique_tick_pull() {
         source_iter(0..0) -> persist::<'static>() -> m2; // Extra union to force `unique()` to be pull.
         m2 = union() -> for_each(|v| out_send.send(v).unwrap());
     };
+    assert_graphvis_snapshots!(df);
     df.run_tick_sync();
     let mut out: Vec<_> = collect_ready(&mut out_recv);
     out.sort_unstable();
@@ -65,6 +68,7 @@ pub fn test_unique_static_pull() {
         source_iter(0..0) -> persist::<'static>() -> m2; // Extra union to force `unique()` to be pull.
         m2 = union() -> for_each(|v| out_send.send(v).unwrap());
     };
+    assert_graphvis_snapshots!(df);
     df.run_tick_sync();
     let mut out: Vec<_> = collect_ready(&mut out_recv);
     out.sort_unstable();
@@ -87,6 +91,7 @@ pub fn test_unique_tick_push() {
         pivot -> unique::<'tick>() -> for_each(|v| out_send.send(v).unwrap());
         pivot -> for_each(std::mem::drop); // Force to be push.
     };
+    assert_graphvis_snapshots!(df);
     df.run_tick_sync();
     let mut out: Vec<_> = collect_ready(&mut out_recv);
     out.sort_unstable();
@@ -109,6 +114,7 @@ pub fn test_unique_static_push() {
         pivot -> unique::<'static>() -> for_each(|v| out_send.send(v).unwrap());
         pivot -> for_each(std::mem::drop); // Force to be push.
     };
+    assert_graphvis_snapshots!(df);
     df.run_tick_sync();
     let mut out: Vec<_> = collect_ready(&mut out_recv);
     out.sort_unstable();

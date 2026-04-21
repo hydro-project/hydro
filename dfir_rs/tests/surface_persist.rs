@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use dfir_pipes::pull::HalfMultisetJoinState;
+use dfir_rs::assert_graphvis_snapshots;
 use dfir_rs::scheduled::ticks::TickInstant;
 use dfir_rs::util::collect_ready;
 use dfir_rs::dfir_syntax;
@@ -17,6 +18,8 @@ pub fn test_persist_basic() {
             -> fold(|| 0, |a: &mut _, b| *a += b)
             -> for_each(|x| result_send.send(x).unwrap());
     };
+    assert_graphvis_snapshots!(hf);
+
 
     for tick in 0..10 {
         assert_eq!(TickInstant::new(tick), hf.current_tick());
@@ -42,6 +45,8 @@ pub fn test_persist_pull() {
             -> fold(|| 0, |a: &mut _, b| *a += b)
             -> for_each(|x| result_send.send(x).unwrap());
     };
+    assert_graphvis_snapshots!(hf);
+
 
     for tick in 0..10 {
         assert_eq!(TickInstant::new(tick), hf.current_tick());
@@ -64,6 +69,8 @@ pub fn test_persist_push() {
         t1 -> null();
         t1 -> fold(|| 0, |a: &mut _, b| *a += b) -> for_each(|x| result_send.send(x).unwrap());
     };
+    assert_graphvis_snapshots!(hf);
+
 
     for tick in 0..10 {
         assert_eq!(TickInstant::new(tick), hf.current_tick());
@@ -225,6 +232,8 @@ pub fn test_persist() {
             -> persist::<'static>() // push
             -> for_each(|v| push_tx.send(v).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
     df.run_available_sync();
 
     assert_eq!(&[1, 2, 3], &*collect_ready::<Vec<_>, _>(&mut pull_rx));
@@ -252,6 +261,8 @@ pub fn test_persist_mut() {
             -> persist_mut::<'mutable>() // push
             -> for_each(|v| push_tx.send(v).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
     df.run_available_sync();
 
     assert_eq!(&[1, 3, 4], &*collect_ready::<Vec<_>, _>(&mut pull_rx));
@@ -279,6 +290,8 @@ pub fn test_persist_mut_keyed() {
             -> persist_mut_keyed::<'mutable>() // push
             -> for_each(|(_k, v)| push_tx.send(v).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
     df.run_available_sync();
 
     assert_eq!(

@@ -1,3 +1,4 @@
+use dfir_rs::assert_graphvis_snapshots;
 use dfir_rs::dfir_syntax;
 use dfir_rs::util::{collect_ready, iter_batches_stream, unbounded_channel};
 use multiplatform_test::multiplatform_test;
@@ -43,6 +44,8 @@ pub fn test_diff_timing() {
         source_stream(neg_recv) -> [neg]diff;
         diff = difference() -> for_each(|x| output_send.send((context.current_tick().0, x)).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
 
     df.run_tick_sync();
 
@@ -85,6 +88,8 @@ pub fn test_diff_static() {
         source_stream(neg_recv) -> [neg]diff;
         diff = difference::<'tick, 'static>() -> sort() -> for_each(|v| output_send.send(v).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
 
     pos_send.send(1).unwrap();
     pos_send.send(1).unwrap();
@@ -119,6 +124,8 @@ pub fn test_diff_multiset_timing() {
         source_stream(neg_recv) -> [neg]diff;
         diff = difference() -> for_each(|x| output_send.send((context.current_tick().0, x)).unwrap());
     };
+    assert_graphvis_snapshots!(df);
+
 
     df.run_tick_sync();
 
@@ -169,6 +176,8 @@ pub fn test_diff_multiset_static() {
         negs -> for_each(|x| println!("neg: {:?}", x));
 
     };
+    assert_graphvis_snapshots!(df);
+
 
     pos_send.send(1).unwrap();
     pos_send.send(1).unwrap();
@@ -214,6 +223,8 @@ pub fn test_diff_multiset_tick_static() {
         negs -> for_each(|x| println!("neg: {:?}", x));
 
     };
+    assert_graphvis_snapshots!(df);
+
 
     pos_send.send(1).unwrap();
     pos_send.send(1).unwrap();
@@ -256,6 +267,8 @@ pub fn test_diff_multiset_static_tick() {
         negs -> for_each(|x| println!("neg: {:?}", x));
 
     };
+    assert_graphvis_snapshots!(df);
+
 
     pos_send.send(1).unwrap();
     pos_send.send(1).unwrap();
