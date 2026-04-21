@@ -71,14 +71,14 @@ impl fmt::Display for OrderGoal {
 ///   produce prefixes of the same deterministic sequence.
 /// - **Convergent**: SetInclusion or Lattice goal passes — all replicas converge
 ///   via commutative merge.
-/// - **SelfConsistent**: analysis passes but no cross-replica guarantee applies
-///   (e.g., single Process).
+/// - **Local**: analysis passes but no cross-replica guarantee applies
+///   (each process or cluster member is individually future-monotone).
 /// - **Inconsistent**: analysis fails — output may contradict earlier observations.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ConsistencyLabel {
     SequentiallyConsistent,
     Convergent,
-    SelfConsistent,
+    Local,
     Inconsistent,
 }
 
@@ -87,7 +87,7 @@ impl ConsistencyLabel {
         match self {
             ConsistencyLabel::SequentiallyConsistent => 3,
             ConsistencyLabel::Convergent => 2,
-            ConsistencyLabel::SelfConsistent => 1,
+            ConsistencyLabel::Local => 1,
             ConsistencyLabel::Inconsistent => 0,
         }
     }
@@ -98,7 +98,7 @@ impl fmt::Display for ConsistencyLabel {
         match self {
             ConsistencyLabel::SequentiallyConsistent => write!(f, "SEQUENTIALLY CONSISTENT"),
             ConsistencyLabel::Convergent => write!(f, "CONVERGENT"),
-            ConsistencyLabel::SelfConsistent => write!(f, "SELF-CONSISTENT"),
+            ConsistencyLabel::Local => write!(f, "LOCAL"),
             ConsistencyLabel::Inconsistent => write!(f, "INCONSISTENT"),
         }
     }
@@ -257,7 +257,7 @@ fn propagate_at_location(
         local.clone()
     } else if has_nondet {
         // Rule (iv): Nondeterministic Process → Self
-        ConsistencyLabel::SelfConsistent
+        ConsistencyLabel::Local
     } else {
         // Rule (iii): Deterministic Process → min(ℓ_local, ℓ_upstream)
         if upstream.strength() <= local.strength() {
@@ -278,7 +278,7 @@ fn render_forward_dag(forward: &[ChannelEdge], names: &SecondaryMap<LocationKey,
     };
 
     let edges: Vec<(usize, usize, String)> = forward.iter().map(|ch| {
-        (loc_id(&ch.from), loc_id(&ch.to), short_label(&ch.label_fixed_membership).to_string())
+        (loc_id(&ch.from), loc_id(&ch.to), display_label(&ch.label_fixed_membership).to_string())
     }).collect();
 
     let nodes: Vec<(usize, String)> = loc_ids.iter().enumerate()
@@ -335,13 +335,13 @@ fn fmt_location(loc: &LocationId, names: &SecondaryMap<LocationKey, String>) -> 
     }
 }
 
-/// Short label for use in chain display.
-fn short_label(label: &ConsistencyLabel) -> &'static str {
+/// Full label for use in chain display.
+fn display_label(label: &ConsistencyLabel) -> &'static str {
     match label {
-        ConsistencyLabel::SequentiallyConsistent => "SEQ",
-        ConsistencyLabel::Convergent => "CONV",
-        ConsistencyLabel::SelfConsistent => "SELF",
-        ConsistencyLabel::Inconsistent => "INCON",
+        ConsistencyLabel::SequentiallyConsistent => "SEQUENTIALLY CONSISTENT",
+        ConsistencyLabel::Convergent => "CONVERGENT",
+        ConsistencyLabel::Local => "LOCAL",
+        ConsistencyLabel::Inconsistent => "INCONSISTENT",
     }
 }
 /// Analyze channels along the dataflow path from a sink backward.
@@ -418,7 +418,7 @@ fn analyze_channels_from(
                         let data_label = goal_label(&best_goal);
                         (data_label.clone(), data_label)
                     } else if is_dynamic_cluster && is_broadcast_to_cluster && best_label == ConsistencyLabel::Inconsistent {
-                        (best_label.clone(), ConsistencyLabel::SelfConsistent)
+                        (best_label.clone(), ConsistencyLabel::Local)
                     } else {
                         (best_label.clone(), best_label.clone())
                     };
@@ -783,10 +783,10 @@ impl fmt::Display for CoordinationReport {
                 }
                 #[cfg(not(feature = "build"))]
                 for ch in &forward {
-                    writeln!(f, "    {} --[{}]--> {}", fmt_location(&ch.from, &self.location_names), short_label(&ch.label_fixed_membership), fmt_location(&ch.to, &self.location_names))?;
+                    writeln!(f, "    {} --[{}]--> {}", fmt_location(&ch.from, &self.location_names), display_label(&ch.label_fixed_membership), fmt_location(&ch.to, &self.location_names))?;
                 }
                 for ch in &back {
-                    writeln!(f, "    ↩ {} --[{}]--> {}", fmt_location(&ch.from, &self.location_names), short_label(&ch.label_fixed_membership), fmt_location(&ch.to, &self.location_names))?;
+                    writeln!(f, "    ↩ {} --[{}]--> {}", fmt_location(&ch.from, &self.location_names), display_label(&ch.label_fixed_membership), fmt_location(&ch.to, &self.location_names))?;
                 }
             }
             // Show proof trace
@@ -1563,7 +1563,7 @@ impl<T: fmt::Debug + PartialEq + Clone> ConsistencyCollector<T> {
             ConsistencyLabel::Convergent => {
                 self.check_set_consistency();
             }
-            ConsistencyLabel::SelfConsistent => {
+            ConsistencyLabel::Local => {
                 match &sink.goal {
                     OrderGoal::Prefix => self.check_prefix_consistency(),
                     _ => self.check_set_consistency(),
