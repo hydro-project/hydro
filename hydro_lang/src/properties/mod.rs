@@ -45,6 +45,19 @@ pub trait OrderPreservingProof {
     fn register_proof(&self, expr: &syn::Expr);
 }
 
+/// A trait for proof mechanisms that can validate associativity.
+///
+/// Associativity means the fold is a homomorphism over concatenation:
+/// `fold(xs ++ ys) = combine(fold(xs), fold(ys))` for some combine operation.
+/// This ensures that batch/tick boundaries do not affect the result.
+#[sealed::sealed]
+pub trait AssociativeProof {
+    /// Registers the expression with the proof mechanism.
+    ///
+    /// This should not perform any blocking analysis; it is only intended to record the expression for later processing.
+    fn register_proof(&self, expr: &syn::Expr);
+}
+
 /// A hand-written human proof of the correctness property.
 ///
 /// To create a manual proof, use the [`manual_proof!`] macro, which takes in a doc comment
@@ -64,6 +77,10 @@ impl MonotoneProof for ManualProof {
 }
 #[sealed::sealed]
 impl OrderPreservingProof for ManualProof {
+    fn register_proof(&self, _expr: &syn::Expr) {}
+}
+#[sealed::sealed]
+impl AssociativeProof for ManualProof {
     fn register_proof(&self, _expr: &syn::Expr) {}
 }
 
@@ -117,30 +134,47 @@ pub enum Proved {}
 /// f(a, &mut state);
 /// // state1 must be equal to state
 /// ```
-pub struct AggFuncAlgebra<Commutative = NotProved, Idempotent = NotProved, Monotone = NotProved>(
+///
+/// Associativity (homomorphism over concatenation):
+/// ```rust,ignore
+/// fold(init, f, xs ++ ys) == combine(fold(init, f, xs), fold(init, f, ys))
+/// // for some combine operation on accumulators
+/// ```
+pub struct AggFuncAlgebra<Commutative = NotProved, Idempotent = NotProved, Monotone = NotProved, Associative = NotProved>(
     Option<Box<dyn CommutativeProof>>,
     Option<Box<dyn IdempotentProof>>,
     Option<Box<dyn MonotoneProof>>,
-    PhantomData<(Commutative, Idempotent, Monotone)>,
+    Option<Box<dyn AssociativeProof>>,
+    PhantomData<(Commutative, Idempotent, Monotone, Associative)>,
 );
 
-impl<C, I, M> AggFuncAlgebra<C, I, M> {
+impl<C, I, M, A> AggFuncAlgebra<C, I, M, A> {
     /// Marks the function as being commutative, with the given proof mechanism.
     pub fn commutative(
         self,
         proof: impl CommutativeProof + 'static,
-    ) -> AggFuncAlgebra<Proved, I, M> {
-        AggFuncAlgebra(Some(Box::new(proof)), self.1, self.2, PhantomData)
+    ) -> AggFuncAlgebra<Proved, I, M, A> {
+        AggFuncAlgebra(Some(Box::new(proof)), self.1, self.2, self.3, PhantomData)
     }
 
     /// Marks the function as being idempotent, with the given proof mechanism.
-    pub fn idempotent(self, proof: impl IdempotentProof + 'static) -> AggFuncAlgebra<C, Proved, M> {
-        AggFuncAlgebra(self.0, Some(Box::new(proof)), self.2, PhantomData)
+    pub fn idempotent(self, proof: impl IdempotentProof + 'static) -> AggFuncAlgebra<C, Proved, M, A> {
+        AggFuncAlgebra(self.0, Some(Box::new(proof)), self.2, self.3, PhantomData)
     }
 
     /// Marks the function as being monotone, with the given proof mechanism.
-    pub fn monotone(self, proof: impl MonotoneProof + 'static) -> AggFuncAlgebra<C, I, Proved> {
-        AggFuncAlgebra(self.0, self.1, Some(Box::new(proof)), PhantomData)
+    pub fn monotone(self, proof: impl MonotoneProof + 'static) -> AggFuncAlgebra<C, I, Proved, A> {
+        AggFuncAlgebra(self.0, self.1, Some(Box::new(proof)), self.3, PhantomData)
+    }
+
+    /// Marks the function as being associative (a homomorphism over concatenation),
+    /// with the given proof mechanism.
+    ///
+    /// Associativity means that the result of folding over a concatenation of two
+    /// sequences equals combining the results of folding each sequence independently.
+    /// This ensures that batch/tick boundaries do not affect the final result.
+    pub fn associative(self, proof: impl AssociativeProof + 'static) -> AggFuncAlgebra<C, I, M, Proved> {
+        AggFuncAlgebra(self.0, self.1, self.2, Some(Box::new(proof)), PhantomData)
     }
 
     /// Registers the expression with the underlying proof mechanisms.
@@ -156,14 +190,18 @@ impl<C, I, M> AggFuncAlgebra<C, I, M> {
         if let Some(monotone_proof) = self.2 {
             monotone_proof.register_proof(expr);
         }
+
+        if let Some(assoc_proof) = self.3 {
+            assoc_proof.register_proof(expr);
+        }
     }
 }
 
-impl<C, I, M> Property for AggFuncAlgebra<C, I, M> {
+impl<C, I, M, A> Property for AggFuncAlgebra<C, I, M, A> {
     type Root = AggFuncAlgebra;
 
     fn make_root(_target: &mut Option<Self>) -> Self::Root {
-        AggFuncAlgebra(None, None, None, PhantomData)
+        AggFuncAlgebra(None, None, None, None, PhantomData)
     }
 }
 
