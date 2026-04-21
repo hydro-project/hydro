@@ -51,7 +51,6 @@ pub enum OrderGoal {
     /// Value only grows under lattice join. Applies to singletons from
     /// aggregations proven to be lattice joins (commutative + idempotent).
     Lattice,
-    // Future: UserDefined { type_name: String }
 }
 
 impl fmt::Display for OrderGoal {
@@ -69,6 +68,8 @@ impl fmt::Display for OrderGoal {
 /// Derived from the proof goal, the proof result, and the sink's location:
 /// - **SequentiallyConsistent**: Prefix goal passes on a Cluster — all replicas
 ///   produce prefixes of the same deterministic sequence.
+/// - **PerKeySequentiallyConsistent**: Prefix goal passes per-key — each key's
+///   values form a growing prefix, but cross-key interleaving is non-deterministic.
 /// - **Convergent**: SetInclusion or Lattice goal passes — all replicas converge
 ///   via commutative merge.
 /// - **Local**: analysis passes but no cross-replica guarantee applies
@@ -77,6 +78,7 @@ impl fmt::Display for OrderGoal {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ConsistencyLabel {
     SequentiallyConsistent,
+    PerKeySequentiallyConsistent,
     Convergent,
     Local,
     Inconsistent,
@@ -85,7 +87,8 @@ pub enum ConsistencyLabel {
 impl ConsistencyLabel {
     pub fn strength(&self) -> u8 {
         match self {
-            ConsistencyLabel::SequentiallyConsistent => 3,
+            ConsistencyLabel::SequentiallyConsistent => 4,
+            ConsistencyLabel::PerKeySequentiallyConsistent => 3,
             ConsistencyLabel::Convergent => 2,
             ConsistencyLabel::Local => 1,
             ConsistencyLabel::Inconsistent => 0,
@@ -96,7 +99,8 @@ impl ConsistencyLabel {
 impl fmt::Display for ConsistencyLabel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ConsistencyLabel::SequentiallyConsistent => write!(f, "SEQUENTIALLY CONSISTENT"),
+            ConsistencyLabel::SequentiallyConsistent => write!(f, "SEQ CONSISTENT"),
+            ConsistencyLabel::PerKeySequentiallyConsistent => write!(f, "PER_KEY SEQ CONSISTENT"),
             ConsistencyLabel::Convergent => write!(f, "CONVERGENT"),
             ConsistencyLabel::Local => write!(f, "LOCAL"),
             ConsistencyLabel::Inconsistent => write!(f, "INCONSISTENT"),
@@ -338,7 +342,8 @@ fn fmt_location(loc: &LocationId, names: &SecondaryMap<LocationKey, String>) -> 
 /// Full label for use in chain display.
 fn display_label(label: &ConsistencyLabel) -> &'static str {
     match label {
-        ConsistencyLabel::SequentiallyConsistent => "SEQUENTIALLY CONSISTENT",
+        ConsistencyLabel::SequentiallyConsistent => "SEQ CONSISTENT",
+        ConsistencyLabel::PerKeySequentiallyConsistent => "PER_KEY SEQ CONSISTENT",
         ConsistencyLabel::Convergent => "CONVERGENT",
         ConsistencyLabel::Local => "LOCAL",
         ConsistencyLabel::Inconsistent => "INCONSISTENT",
@@ -524,6 +529,10 @@ pub struct ProofResult {
     /// Sites where ObserveNonDet on a Process was resolved locally.
     /// These would require coordination if the Process were replicated as a Cluster.
     pub replication_issues: Vec<ProofStep>,
+    /// Whether the proof walked through a per-key interleaving nondet
+    /// (e.g., entries_partially_ordered). If true and the goal is Prefix,
+    /// the consistency label is PER_KEY SEQ CONSISTENT instead of SEQ CONSISTENT.
+    pub has_per_key_interleaving: bool,
 }
 
 impl ProofResult {
@@ -532,11 +541,11 @@ impl ProofResult {
     }
 
     pub(crate) fn proved(trace: Vec<ProofStep>) -> Self {
-        Self { success: true, trace, replication_issues: vec![] }
+        Self { success: true, trace, replication_issues: vec![], has_per_key_interleaving: false }
     }
 
     pub(crate) fn broken(trace: Vec<ProofStep>) -> Self {
-        Self { success: false, trace, replication_issues: vec![] }
+        Self { success: false, trace, replication_issues: vec![], has_per_key_interleaving: false }
     }
 
     pub(crate) fn discharged(operator: &str, reason: impl Into<String>, span: Option<String>, pm_span: Option<proc_macro2::Span>) -> Self {
@@ -1049,9 +1058,8 @@ fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
         | HydroNode::YieldConcat { inner, .. } => Passthrough(inner),
 
         // ObserveNonDet: type-level ordering annotation (assume_ordering / nondet!).
-        // Does not change data — just a type cast. The analysis looks straight through it.
-        // The real trust boundary is the upstream operator (e.g., Network broadcast into Cluster).
-        HydroNode::ObserveNonDet { inner, .. } => Passthrough(inner),
+        // Handled in prove() to detect per-key interleaving (entries_partially_ordered).
+        HydroNode::ObserveNonDet { .. } => Custom,
 
         // Shared passthrough
         HydroNode::Tee { inner, .. }
@@ -1242,6 +1250,19 @@ fn prove(
     // Custom logic for operators that need it
     match node {
 
+        // --- ObserveNonDet: passthrough, but detect per-key interleaving ---
+        HydroNode::ObserveNonDet { inner, .. } => {
+            let mut result = prove(inner, goal, cycle_proofs, seen_tees)
+                .with_preserved(&name, span, pm_span);
+            // Detect entries_partially_ordered: input is KeyedStream, output is Stream
+            if matches!(inner.metadata().collection_kind, super::ir::CollectionKind::KeyedStream { .. })
+                && matches!(node.metadata().collection_kind, super::ir::CollectionKind::Stream { .. })
+            {
+                result.has_per_key_interleaving = true;
+            }
+            return result;
+        }
+
         // --- Batch: nondeterministic tick boundaries ---
         // Batch groups elements into ticks nondeterministically. However:
         // - SetInclusion is always preserved (no elements lost).
@@ -1430,6 +1451,18 @@ pub fn analyze_coordination(
           // Reassemble channels with propagated labels
           let channels = forward.into_iter().chain(back.into_iter()).collect();
 
+          // Downgrade SEQ CONSISTENT to PER_KEY SEQ CONSISTENT if the proof
+          // walked through a per-key interleaving nondet (entries_partially_ordered).
+          let downgrade_per_key = |label: ConsistencyLabel| {
+              if best_result.has_per_key_interleaving && label == ConsistencyLabel::SequentiallyConsistent {
+                  ConsistencyLabel::PerKeySequentiallyConsistent
+              } else {
+                  label
+              }
+          };
+          let consistency = downgrade_per_key(consistency);
+          let consistency_fixed = downgrade_per_key(consistency_fixed);
+
           sinks.push(SinkResult {
               name: sink_name.to_string(),
               span: root.op_metadata().backtrace.format_span().unwrap_or_default(),
@@ -1558,7 +1591,8 @@ impl<T: fmt::Debug + PartialEq + Clone> ConsistencyCollector<T> {
         let sink = report.sinks.iter().find(|s| s.name == sink_name)?;
         let label = &sink.consistency_fixed;
         match label {
-            ConsistencyLabel::SequentiallyConsistent => {
+            ConsistencyLabel::SequentiallyConsistent
+            | ConsistencyLabel::PerKeySequentiallyConsistent => {
                 self.check_prefix_consistency();
             }
             ConsistencyLabel::Convergent => {
@@ -1572,8 +1606,6 @@ impl<T: fmt::Debug + PartialEq + Clone> ConsistencyCollector<T> {
             }
             ConsistencyLabel::Inconsistent => {
                 // Inconsistency is expected — don't check.
-                // The user can still call check_prefix/set_consistency manually
-                // to find a concrete counterexample.
             }
         }
         Some(label.clone())
@@ -1945,6 +1977,23 @@ mod tests {
             keyed.get(key).for_each(q!(|_: &str| {}));
         });
         assert!(r.all_monotone(), "get on TotalOrder KeyedStream should pass Prefix:\n{r}");
+    }
+
+    #[test]
+    fn entries_partially_ordered_produces_per_key_seq() {
+        // entries_partially_ordered flattens a TotalOrder KeyedStream into a
+        // TotalOrder Stream with non-deterministic cross-key interleaving.
+        // The analysis should produce PER_KEY SEQ CONSISTENT, not full SEQ CONSISTENT.
+        let r = check(|flow| {
+            let p = flow.process::<()>();
+            let keyed = p.source_iter(q!(vec![(1i32, "a"), (1, "b"), (2, "c")]))
+                .into_keyed();
+            keyed.entries_partially_ordered(nondet!(/** cross-key interleaving */))
+                .for_each(q!(|_: (i32, &str)| {}));
+        });
+        assert!(r.all_monotone(), "entries_partially_ordered should pass:\n{r}");
+        assert_eq!(r.sinks[0].consistency, ConsistencyLabel::PerKeySequentiallyConsistent,
+            "should be PER_KEY SEQ CONSISTENT:\n{r}");
     }
 
     #[test]
