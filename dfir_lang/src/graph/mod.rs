@@ -546,7 +546,7 @@ fn validate_inline(graph: &DfirGraph, diagnostics: &mut Diagnostics) {
         diagnostics.push(Diagnostic::spanned(
             span,
             Level::Error,
-            "`loop { }` blocks are not (yet) supported in `dfir_syntax_inline!`.",
+            "`loop { }` blocks are not (yet) supported in `dfir_syntax!`.",
         ));
     }
 
@@ -599,7 +599,7 @@ fn validate_inline(graph: &DfirGraph, diagnostics: &mut Diagnostics) {
             diagnostics.push(Diagnostic::spanned(
                 span,
                 Level::Error,
-                "Cyclical dataflow within a tick is not supported in `dfir_syntax_inline!`. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks.",
+                "Cyclical dataflow within a tick is not supported in `dfir_syntax!`. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks.",
             ));
         }
     }

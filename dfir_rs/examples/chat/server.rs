@@ -17,7 +17,7 @@ pub(crate) async fn run_server(opts: Opts) {
 
     println!("Server is live! Listening on {:?}", actual_server_addr);
 
-    let mut hf= dfir_syntax! {
+    let mut hf = dfir_syntax! {
         // Define shared inbound and outbound channels
         outbound_chan = union() -> dest_sink_serde(outbound);
         inbound_chan = source_stream_serde(inbound)

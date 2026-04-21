@@ -4,11 +4,11 @@
 // use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 // use multiplatform_test::multiplatform_test;
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (loop {} blocks)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (loop {} blocks)
 // #[multiplatform_test(test, env_tracing, wasm)]
 // pub fn test_batches_basic() {
 //     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<_>();
-// 
+//
 //     let mut df = dfir_syntax! {
 //         x = source_stream(iter_batches_stream(0..10, 1));
 //         loop {
@@ -17,7 +17,7 @@
 //         };
 //     };
 //     df.run_available_sync();
-// 
+//
 //     assert_eq!(
 //         &[
 //             (0, 0),
@@ -35,11 +35,11 @@
 //     );
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (loop {} blocks)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (loop {} blocks)
 // #[multiplatform_test(test, env_tracing, wasm)]
 // pub fn test_flo_syntax() {
 //     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<_>();
-// 
+//
 //     let mut df = dfir_syntax! {
 //         users = source_iter(["alice", "bob"]);
 //         messages = source_stream(iter_batches_stream(0..12, 3));
@@ -53,7 +53,7 @@
 //     };
 //     assert_graphvis_snapshots!(df);
 //     df.run_available_sync();
-// 
+//
 //     assert_eq!(
 //         BTreeSet::from_iter([
 //             (0, ("alice", 0)),
@@ -85,11 +85,11 @@
 //     );
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (loop {} blocks)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (loop {} blocks)
 // #[multiplatform_test(test, wasm, env_tracing)]
 // pub fn test_flo_nested() {
 //     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<_>();
-// 
+//
 //     let mut df = dfir_syntax! {
 //         users = source_iter(["alice", "bob"]);
 //         messages = source_stream(iter_batches_stream(0..12, 3));
@@ -107,7 +107,7 @@
 //     };
 //     assert_graphvis_snapshots!(df);
 //     df.run_available_sync();
-// 
+//
 //     assert_eq!(
 //         BTreeSet::from_iter([
 //             (0, ("alice", 0)),
@@ -139,11 +139,11 @@
 //     );
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (loop {} blocks)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (loop {} blocks)
 // #[multiplatform_test(test, env_tracing)]
 // pub fn test_flo_repeat_n() {
 //     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<_>();
-// 
+//
 //     let mut df = dfir_syntax! {
 //         users = source_iter(["alice", "bob"]);
 //         messages = source_stream(iter_batches_stream(0..9, 3));
@@ -160,7 +160,7 @@
 //     };
 //     assert_graphvis_snapshots!(df);
 //     df.run_available_sync();
-// 
+//
 //     assert_eq!(
 //         BTreeSet::from_iter([
 //             ("alice", 0),
@@ -204,11 +204,11 @@
 //     );
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (loop {} blocks)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (loop {} blocks)
 // #[multiplatform_test(test, wasm, env_tracing)]
 // pub fn test_flo_repeat_n_nested() {
 //     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<_>();
-// 
+//
 //     let mut df = dfir_syntax! {
 //         usrs1 = source_iter(["alice", "bob"]);
 //         loop {
@@ -225,7 +225,7 @@
 //     };
 //     assert_graphvis_snapshots!(df);
 //     df.run_available_sync();
-// 
+//
 //     assert_eq!(
 //         &[
 //             "alice", "bob", "alice", "bob", "alice", "bob", "alice", "bob", "alice", "bob",
@@ -235,12 +235,12 @@
 //     );
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (loop {} blocks)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (loop {} blocks)
 // #[multiplatform_test]
 // pub fn test_flo_repeat_n_multiple_nested() {
 //     let (result1_send, mut result1_recv) = dfir_rs::util::unbounded_channel::<_>();
 //     let (result2_send, mut result2_recv) = dfir_rs::util::unbounded_channel::<_>();
-// 
+//
 //     let mut df = dfir_syntax! {
 //         usrs1 = source_iter(["alice", "bob"]);
 //         loop {
@@ -264,7 +264,7 @@
 //     };
 //     assert_graphvis_snapshots!(df);
 //     df.run_available_sync();
-// 
+//
 //     assert_eq!(
 //         &[
 //             "alice", "bob", "alice", "bob", "alice", "bob", "alice", "bob", "alice", "bob",
@@ -272,7 +272,7 @@
 //         ],
 //         &*collect_ready::<Vec<_>, _>(&mut result1_recv)
 //     );
-// 
+//
 //     assert_eq!(
 //         &[
 //             "alice", "bob", "alice", "bob", "alice", "bob", "alice", "bob", "alice", "bob",
@@ -282,7 +282,7 @@
 //     );
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (loop {} blocks)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (loop {} blocks)
 // #[multiplatform_test(test, wasm, env_tracing)]
 // pub fn test_flo_repeat_kmeans() {
 //     const POINTS: &[[i32; 2]] = &[
@@ -318,25 +318,25 @@
 //         [192, 58],
 //     ];
 //     const CENTROIDS: &[[i32; 2]] = &[[-50, 0], [0, 0], [50, 0]];
-// 
+//
 //     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<_>();
-// 
+//
 //     let mut df = dfir_syntax! {
 //         init_points = source_iter(POINTS) -> map(std::clone::Clone::clone);
 //         init_centroids = source_iter(CENTROIDS) -> map(std::clone::Clone::clone);
 //         loop {
 //             batch_points = init_points -> batch();
 //             batch_centroids = init_centroids -> batch();
-// 
+//
 //             loop {
 //                 points = batch_points
 //                     -> repeat_n(10)
 //                     -> [0]cj;
 //                 batch_centroids -> all_once() -> centroids;
-// 
+//
 //                 centroids = union() -> tee();
 //                 centroids -> [1]cj;
-// 
+//
 //                 cj = cross_join_multiset()
 //                     -> map(|(point, centroid): ([i32; 2], [i32; 2])| {
 //                         let dist2 = (point[0] - centroid[0]).pow(2) + (point[1] - centroid[1]).pow(2);
@@ -363,7 +363,7 @@
 //                     -> inspect(|x| println!("centroid: {:?}", x))
 //                     -> centroids;
 //             };
-// 
+//
 //             centroids
 //                 -> all_iterations()
 //                 -> for_each(|x| result_send.send(x).unwrap());
@@ -371,7 +371,7 @@
 //     };
 //     assert_graphvis_snapshots!(df);
 //     df.run_available_sync();
-// 
+//
 //     let mut result = collect_ready::<Vec<_>, _>(&mut result_recv);
 //     let n = result.len();
 //     let last = &mut result[n - 3..];
@@ -379,7 +379,7 @@
 //     assert_eq!(&[[-231, -118], [-103, 97], [168, -6]], last);
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (loop {} blocks)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (loop {} blocks)
 // #[test]
 // fn test_state_codegen() {
 //     let mut df = dfir_syntax! {
@@ -389,25 +389,25 @@
 //             a -> batch() -> fold(|| 0, |old: &mut _, val| {
 //                 *old += val;
 //             }) -> for_each(|v| println!("fold1 {:?}", v));
-// 
+//
 //             a -> batch() -> fold::<'none>(|| 0, |old: &mut _, val| {
 //                 *old += val;
 //             }) -> for_each(|v| println!("fold2 {:?}", v));
-// 
+//
 //             a -> batch() -> reduce::<'none>(|old: &mut _, val| {
 //                 *old += val;
 //             }) -> for_each(|v| println!("reduce {:?}", v));
-// 
+//
 //             pairs -> batch() -> fold_keyed(|| 0, |old: &mut _, val| {
 //                 *old += val;
 //             }) -> for_each(|v| println!("fold_keyed {:?}", v));
-// 
+//
 //             a -> batch() -> unique() -> for_each(|v| println!("unique {:?}", v));
-// 
+//
 //             j = join() -> for_each(|v| println!("join {:?}", v));
 //             pairs -> batch() -> [0]j;
 //             pairs -> batch() -> [1]j;
-// 
+//
 //             aj = difference() -> for_each(|v| println!("difference {:?}", v));
 //             a -> batch() -> filter(|n| 0 == n % 2) -> [neg]aj;
 //             a -> batch() -> [pos]aj;
@@ -416,7 +416,7 @@
 //     df.run_available_sync();
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (loop {} blocks)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (loop {} blocks)
 // #[multiplatform_test]
 // pub fn test_enumerate_loop() {
 //     let (result1_send, mut result1_recv) = dfir_rs::util::unbounded_channel::<_>();
@@ -433,7 +433,7 @@
 //     };
 //     assert_graphvis_snapshots!(df);
 //     df.run_available_sync();
-// 
+//
 //     assert_eq!(
 //         &[
 //             (0, 0),
@@ -454,7 +454,7 @@
 //         ],
 //         &*collect_ready::<Vec<_>, _>(&mut result1_recv)
 //     );
-// 
+//
 //     assert_eq!(
 //         &[
 //             (0, 0),
@@ -477,14 +477,14 @@
 //     );
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (loop {} blocks)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (loop {} blocks)
 // #[cfg(not(target_arch = "wasm32"))]
 // #[multiplatform_test(test, env_tracing)]
 // pub fn test_write() {
 //     use dfir_lang::graph::WriteConfig;
-// 
+//
 //     let (result_send, _result_recv) = dfir_rs::util::unbounded_channel::<_>();
-// 
+//
 //     let df = dfir_syntax! {
 //         users = source_iter(["alice", "bob"]);
 //         messages = source_stream(iter_batches_stream(0..12, 3));

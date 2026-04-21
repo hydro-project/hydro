@@ -31,7 +31,7 @@ pub(crate) async fn run_server(opts: Opts) {
 
     println!("Server live!");
 
-    let mut flow= dfir_syntax! {
+    let mut flow = dfir_syntax! {
         // Define a shared inbound channel
         inbound_chan = source_stream_serde(inbound) -> map(Result::unwrap) -> tee();
 

@@ -1,4 +1,4 @@
-use dfir_rs::dfir_syntax_inline;
+use dfir_rs::dfir_syntax;
 use dfir_rs::util::collect_ready;
 use multiplatform_test::multiplatform_test;
 
@@ -6,7 +6,7 @@ use multiplatform_test::multiplatform_test;
 pub fn test_partition_fizzbuzz() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<String>();
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         my_partition = source_iter(1..=15)
             -> partition(|&v, [fzbz, fizz, buzz, vals]|
                 match (v % 3, v % 5) {
@@ -40,7 +40,7 @@ pub fn test_partition_fizzbuzz() {
 pub fn test_partition_round() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<String>();
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         my_partition = source_iter(0..20)
             -> partition(|v, len| v % len);
         my_partition[2] -> map(|x| format!("{} 2", x))

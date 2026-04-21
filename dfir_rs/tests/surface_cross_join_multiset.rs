@@ -26,7 +26,7 @@ pub fn tick_tick() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_iter([1, 2])
             -> [0]my_cross_join_multiset;
 
@@ -51,7 +51,7 @@ pub fn tick_static() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_iter([1, 2])
             -> [0]my_cross_join_multiset;
 
@@ -76,7 +76,7 @@ pub fn static_tick() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_iter([1, 2])
             -> [0]my_cross_join_multiset;
 
@@ -103,7 +103,7 @@ pub fn static_static() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_iter([1, 2])
             -> [0]my_cross_join_multiset;
 
@@ -141,7 +141,7 @@ pub fn replay_static() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_iter([1, 2]) -> [0]my_cross_join_multiset;
         source_iter([3, 4]) -> [1]my_cross_join_multiset;
         my_cross_join_multiset = cross_join_multiset::<'static, 'static>()
@@ -167,43 +167,43 @@ pub fn replay_static() {
     };
 }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (loop {} blocks)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (loop {} blocks)
 // #[multiplatform_test(test, wasm, env_tracing)]
 // pub fn loop_lifetimes() {
 //     let (result1_send, mut result1_recv) = dfir_rs::util::unbounded_channel::<_>();
 //     let (result2_send, mut result2_recv) = dfir_rs::util::unbounded_channel::<_>();
 //     let (result3_send, mut result3_recv) = dfir_rs::util::unbounded_channel::<_>();
 //     let (result4_send, mut result4_recv) = dfir_rs::util::unbounded_channel::<_>();
-// 
+//
 //     let mut df = dfir_syntax! {
 //         lb = source_stream(iter_batches_stream([1, 2, 3, 4], 2)) -> tee();
 //         rb = source_stream(iter_batches_stream([5, 6, 7, 8], 2)) -> tee();
-// 
+//
 //         loop {
 //             lb -> batch() -> [0]cross_join_multiset1;
 //             rb -> batch() -> [1]cross_join_multiset1;
 //             cross_join_multiset1 = cross_join_multiset::<'loop, 'loop>()
 //                 -> for_each(|x| result1_send.send((context.loop_iter_count(), x)).unwrap());
-// 
+//
 //             lb -> batch() -> [0]cross_join_multiset2;
 //             rb -> batch() -> [1]cross_join_multiset2;
 //             cross_join_multiset2 = cross_join_multiset::<'loop, 'none>()
 //                 -> for_each(|x| result2_send.send((context.loop_iter_count(), x)).unwrap());
-// 
+//
 //             lb -> batch() -> [0]cross_join_multiset3;
 //             rb -> batch() -> [1]cross_join_multiset3;
 //             cross_join_multiset3 = cross_join_multiset::<'none, 'loop>()
 //                 -> for_each(|x| result3_send.send((context.loop_iter_count(), x)).unwrap());
-// 
+//
 //             lb -> batch() -> [0]cross_join_multiset4;
 //             rb -> batch() -> [1]cross_join_multiset4;
 //             cross_join_multiset4 = cross_join_multiset::<'none, 'none>()
 //                 -> for_each(|x| result4_send.send((context.loop_iter_count(), x)).unwrap());
 //         };
 //     };
-// 
+//
 //     df.run_available_sync();
-// 
+//
 //     assert_eq!(
 //         BTreeSet::from_iter([
 //             (0, (1, 5)),

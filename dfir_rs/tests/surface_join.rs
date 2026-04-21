@@ -2,8 +2,8 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use dfir_rs::scheduled::ticks::TickInstant;
 use dfir_rs::assert_graphvis_snapshots;
+use dfir_rs::scheduled::ticks::TickInstant;
 use multiplatform_test::multiplatform_test;
 
 macro_rules! assert_contains_each_by_tick {
@@ -27,7 +27,7 @@ pub fn tick_tick() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_iter([(7, 1), (7, 2)])
             -> [0]my_join;
 
@@ -53,7 +53,7 @@ pub fn tick_static() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_iter([(7, 1), (7, 2)])
             -> [0]my_join;
 
@@ -79,7 +79,7 @@ pub fn static_tick() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_iter([(7, 1), (7, 2)])
             -> [0]my_join;
 
@@ -107,7 +107,7 @@ pub fn static_static() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_iter([(7, 1), (7, 2)])
             -> [0]my_join;
 
@@ -138,7 +138,7 @@ pub fn replay_static() {
     let results = Rc::new(RefCell::new(HashMap::<TickInstant, Vec<_>>::new()));
     let results_inner = Rc::clone(&results);
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_iter([(7, 1), (7, 2)]) -> [0]my_join;
         source_iter([(7, 3), (7, 4)]) -> [1]my_join;
         my_join = join::<'static, 'static>()
@@ -156,14 +156,14 @@ pub fn replay_static() {
     };
 }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (loop {} blocks)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (loop {} blocks)
 // #[multiplatform_test(test, wasm, env_tracing)]
 // pub fn loop_lifetimes() {
 //     let (result1_send, mut result1_recv) = dfir_rs::util::unbounded_channel::<_>();
 //     let (result2_send, mut result2_recv) = dfir_rs::util::unbounded_channel::<_>();
 //     let (result3_send, mut result3_recv) = dfir_rs::util::unbounded_channel::<_>();
 //     let (result4_send, mut result4_recv) = dfir_rs::util::unbounded_channel::<_>();
-// 
+//
 //     let mut df = dfir_syntax! {
 //         lb = source_stream(iter_batches_stream([
 //             (7, 1),
@@ -177,23 +177,23 @@ pub fn replay_static() {
 //             (7, 7),
 //             (8, 8),
 //         ], 2)) -> tee();
-// 
+//
 //         loop {
 //             lb -> batch() -> [0]join1;
 //             rb -> batch() -> [1]join1;
 //             join1 = join::<'loop, 'loop>()
 //                 -> for_each(|x| result1_send.send((context.loop_iter_count(), x)).unwrap());
-// 
+//
 //             lb -> batch() -> [0]join2;
 //             rb -> batch() -> [1]join2;
 //             join2 = join::<'loop, 'none>()
 //                 -> for_each(|x| result2_send.send((context.loop_iter_count(), x)).unwrap());
-// 
+//
 //             lb -> batch() -> [0]join3;
 //             rb -> batch() -> [1]join3;
 //             join3 = join::<'none, 'loop>()
 //                 -> for_each(|x| result3_send.send((context.loop_iter_count(), x)).unwrap());
-// 
+//
 //             lb -> batch() -> [0]join4;
 //             rb -> batch() -> [1]join4;
 //             join4 = join::<'none, 'none>()
@@ -201,9 +201,9 @@ pub fn replay_static() {
 //         };
 //     };
 //     assert_graphvis_snapshots!(df);
-// 
+//
 //     df.run_available_sync();
-// 
+//
 //     assert_eq!(
 //         BTreeSet::from_iter([
 //             (0, (7, (1, 5))),

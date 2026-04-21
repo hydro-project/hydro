@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use std::sync::LazyLock;
 
 use criterion::{Criterion, criterion_group, criterion_main};
+use dfir_rs::dfir_syntax;
 use dfir_rs::itertools::Itertools;
-use dfir_rs::{dfir_syntax, dfir_syntax_inline};
 use nameof::name_of;
 
 const OUTPUT: usize = 5_123_595;
@@ -56,7 +56,7 @@ fn dfir_rs_diamond_inline(c: &mut Criterion) {
             let words = words();
             let mut count: usize = 0;
             let count_ref = &mut count;
-            let mut flow = dfir_syntax_inline! {
+            let mut flow = dfir_syntax! {
                 my_tee = source_iter(words) -> tee();
                 my_tee -> flat_map(|s| [format!("hi {}", s), format!("bye {}", s)]) -> my_union;
                 my_tee -> filter(|s| 0 == s.len() % 5) -> my_union;

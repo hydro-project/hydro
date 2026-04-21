@@ -1,12 +1,12 @@
-use dfir_rs::util::{collect_ready, unbounded_channel};
 use dfir_rs::assert_graphvis_snapshots;
+use dfir_rs::util::{collect_ready, unbounded_channel};
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
 pub fn test_difference() {
     let (result_send, mut result_recv) = unbounded_channel::<usize>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_iter([1, 2, 3, 4, 5]) -> [pos]diff;
         source_iter([2, 3, 4]) -> [neg]diff;
         diff = difference() -> for_each(|x| result_send.send(x).unwrap());
@@ -20,7 +20,7 @@ pub fn test_difference() {
 pub fn test_difference_multiset() {
     let (result_send, mut result_recv) = unbounded_channel::<usize>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_iter([1, 2, 2, 3, 3, 4, 4, 5, 5]) -> [pos]diff;
         source_iter([2, 3, 4]) -> [neg]diff;
         diff = difference() -> for_each(|x| result_send.send(x).unwrap());
@@ -38,7 +38,7 @@ pub fn test_diff_timing() {
 
     let (output_send, mut output_recv) = unbounded_channel::<_>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_stream(pos_recv) -> [pos]diff;
         source_stream(neg_recv) -> [neg]diff;
         diff = difference() -> for_each(|x| output_send.send((context.current_tick().0, x)).unwrap());
@@ -81,7 +81,7 @@ pub fn test_diff_static() {
 
     let (output_send, mut output_recv) = unbounded_channel::<usize>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_stream(pos_recv) -> [pos]diff;
         source_stream(neg_recv) -> [neg]diff;
         diff = difference::<'tick, 'static>() -> sort() -> for_each(|v| output_send.send(v).unwrap());
@@ -116,7 +116,7 @@ pub fn test_diff_multiset_timing() {
 
     let (output_send, mut output_recv) = unbounded_channel::<_>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_stream(pos_recv) -> [pos]diff;
         source_stream(neg_recv) -> [neg]diff;
         diff = difference() -> for_each(|x| output_send.send((context.current_tick().0, x)).unwrap());
@@ -159,7 +159,7 @@ pub fn test_diff_multiset_static() {
 
     let (output_send, mut output_recv) = unbounded_channel::<usize>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         diff = difference::<'static>() -> sort() -> for_each(|v| output_send.send(v).unwrap());
 
         poss = source_stream(pos_recv); //-> tee();
@@ -205,7 +205,7 @@ pub fn test_diff_multiset_tick_static() {
 
     let (output_send, mut output_recv) = unbounded_channel::<usize>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         diff = difference::<'tick, 'static>() -> sort() -> for_each(|v| output_send.send(v).unwrap());
 
         poss = source_stream(pos_recv); //-> tee();
@@ -248,7 +248,7 @@ pub fn test_diff_multiset_static_tick() {
 
     let (output_send, mut output_recv) = unbounded_channel::<usize>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         diff = difference::<'static, 'tick>() -> sort() -> for_each(|v| output_send.send(v).unwrap());
 
         poss = source_stream(pos_recv); //-> tee();
@@ -282,38 +282,38 @@ pub fn test_diff_multiset_static_tick() {
     assert_eq!(&[1, 1, 2], &*collect_ready::<Vec<_>, _>(&mut output_recv));
 }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (loop {} blocks)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (loop {} blocks)
 // #[multiplatform_test]
 // pub fn test_difference_loop_lifetimes() {
 //     let (result_nn_send, mut result_nn_recv) = unbounded_channel::<_>();
 //     let (result_nl_send, mut result_nl_recv) = unbounded_channel::<_>();
 //     let (result_ln_send, mut result_ln_recv) = unbounded_channel::<_>();
 //     let (result_ll_send, mut result_ll_recv) = unbounded_channel::<_>();
-// 
+//
 //     let mut df = dfir_syntax! {
 //         pos = source_stream(iter_batches_stream([1, 2, 2, 3, 2, 4], 2)) -> tee();
 //         neg = source_stream(iter_batches_stream([3, 1, 2], 1)) -> tee();
-// 
+//
 //         loop {
 //             pos -> batch() -> [pos]diff_nn;
 //             neg -> batch() -> [neg]diff_nn;
 //             diff_nn = difference::<'none, 'none>() -> for_each(|x| result_nn_send.send((context.loop_iter_count(), x)).unwrap());
-// 
+//
 //             pos -> batch() -> [pos]diff_nl;
 //             neg -> batch() -> [neg]diff_nl;
 //             diff_nl = difference::<'none, 'loop>() -> for_each(|x| result_nl_send.send((context.loop_iter_count(), x)).unwrap());
-// 
+//
 //             pos -> batch() -> [pos]diff_ln;
 //             neg -> batch() -> [neg]diff_ln;
 //             diff_ln = difference::<'loop, 'none>() -> for_each(|x| result_ln_send.send((context.loop_iter_count(), x)).unwrap());
-// 
+//
 //             pos -> batch() -> [pos]diff_ll;
 //             neg -> batch() -> [neg]diff_ll;
 //             diff_ll = difference::<'loop, 'loop>() -> for_each(|x| result_ll_send.send((context.loop_iter_count(), x)).unwrap());
 //         };
 //     };
 //     df.run_available_sync();
-// 
+//
 //     assert_eq!(
 //         &[(0, 1), (0, 2), (1, 2), (1, 3), (2, 4)],
 //         &*collect_ready::<Vec<_>, _>(&mut result_nn_recv)
@@ -341,38 +341,38 @@ pub fn test_diff_multiset_static_tick() {
 //     );
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (loop {} blocks)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (loop {} blocks)
 // #[multiplatform_test]
 // pub fn test_difference_multiset_loop_lifetimes() {
 //     let (result_nn_send, mut result_nn_recv) = unbounded_channel::<_>();
 //     let (result_nl_send, mut result_nl_recv) = unbounded_channel::<_>();
 //     let (result_ln_send, mut result_ln_recv) = unbounded_channel::<_>();
 //     let (result_ll_send, mut result_ll_recv) = unbounded_channel::<_>();
-// 
+//
 //     let mut df = dfir_syntax! {
 //         pos = source_stream(iter_batches_stream([1, 2, 2, 3, 2, 4], 2)) -> tee();
 //         neg = source_stream(iter_batches_stream([3, 1, 2], 1)) -> tee();
-// 
+//
 //         loop {
 //             pos -> batch() -> [pos]diff_nn;
 //             neg -> batch() -> [neg]diff_nn;
 //             diff_nn = difference::<'none, 'none>() -> for_each(|x| result_nn_send.send((context.loop_iter_count(), x)).unwrap());
-// 
+//
 //             pos -> batch() -> [pos]diff_nl;
 //             neg -> batch() -> [neg]diff_nl;
 //             diff_nl = difference::<'none, 'loop>() -> for_each(|x| result_nl_send.send((context.loop_iter_count(), x)).unwrap());
-// 
+//
 //             pos -> batch() -> [pos]diff_ln;
 //             neg -> batch() -> [neg]diff_ln;
 //             diff_ln = difference::<'loop, 'none>() -> for_each(|x| result_ln_send.send((context.loop_iter_count(), x)).unwrap());
-// 
+//
 //             pos -> batch() -> [pos]diff_ll;
 //             neg -> batch() -> [neg]diff_ll;
 //             diff_ll = difference::<'loop, 'loop>() -> for_each(|x| result_ll_send.send((context.loop_iter_count(), x)).unwrap());
 //         };
 //     };
 //     df.run_available_sync();
-// 
+//
 //     assert_eq!(
 //         &[(0, 1), (0, 2), (1, 2), (1, 3), (2, 4)],
 //         &*collect_ready::<Vec<_>, _>(&mut result_nn_recv)

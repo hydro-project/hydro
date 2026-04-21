@@ -5,8 +5,8 @@
 
 use dfir_lang::diagnostic::Level;
 use dfir_lang::graph::{
-    BuildDfirCodeOutput, FlatGraphBuilder, FlatGraphBuilderOutput, build_dfir_code,
-    build_dfir_code_inline, partition_graph,
+    BuildDfirCodeOutput, FlatGraphBuilder, FlatGraphBuilderOutput, build_dfir_code_inline,
+    partition_graph,
 };
 use dfir_lang::parse::DfirCode;
 use proc_macro2::{Ident, Literal, Span};
@@ -74,49 +74,6 @@ fn dfir_syntax_internal(
     let input = parse_macro_input!(input as DfirCode);
     let root = root();
 
-    let (code, mut diagnostics) = match build_dfir_code(input, &root) {
-        Ok(BuildDfirCodeOutput {
-            partitioned_graph: _,
-            code,
-            diagnostics,
-        }) => (code, diagnostics),
-        Err(diagnostics) => (quote! { #root::scheduled::graph::Dfir::new() }, diagnostics),
-    };
-
-    let diagnostic_tokens = retain_diagnostic_level.and_then(|level| {
-        diagnostics.retain_level(level);
-        diagnostics.try_emit_all().err()
-    });
-
-    quote! {
-        {
-            #diagnostic_tokens
-            #code
-        }
-    }
-    .into()
-}
-
-/// Create an inline dataflow graph that runs immediately without the Dfir scheduler.
-/// Experimental: uses local Vec buffers instead of handoffs, runs subgraphs in topological order.
-#[proc_macro]
-pub fn dfir_syntax_inline(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    dfir_syntax_inline_internal(input, Some(Level::Help))
-}
-
-/// [`dfir_syntax_inline!`] but will not emit any diagnostics.
-#[proc_macro]
-pub fn dfir_syntax_inline_noemit(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    dfir_syntax_inline_internal(input, None)
-}
-
-fn dfir_syntax_inline_internal(
-    input: proc_macro::TokenStream,
-    retain_diagnostic_level: Option<Level>,
-) -> proc_macro::TokenStream {
-    let input = parse_macro_input!(input as DfirCode);
-    let root = root();
-
     let (code, mut diagnostics) = match build_dfir_code_inline(input, &root) {
         Ok(BuildDfirCodeOutput {
             partitioned_graph: _,
@@ -143,13 +100,13 @@ fn dfir_syntax_inline_internal(
         diagnostics.try_emit_all().err()
     });
 
-    let out = quote! {
+    quote! {
         {
             #diagnostic_tokens
             #code
         }
-    };
-    out.into()
+    }
+    .into()
 }
 
 /// Parse DFIR syntax without emitting code.

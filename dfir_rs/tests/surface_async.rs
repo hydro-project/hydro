@@ -8,7 +8,7 @@ use std::net::{Ipv4Addr, SocketAddr};
 
 use bytes::Bytes;
 use dfir_rs::util::{collect_ready_async, tcp_lines};
-use dfir_rs::{assert_graphvis_snapshots, dfir_syntax_inline, rassert, rassert_eq};
+use dfir_rs::{assert_graphvis_snapshots, dfir_syntax, rassert, rassert_eq};
 use multiplatform_test::multiplatform_test;
 use tokio::net::{TcpListener, TcpStream, UdpSocket};
 use tokio::task::LocalSet;
@@ -32,7 +32,7 @@ pub async fn test_echo_udp() -> Result<(), Box<dyn Error>> {
 
         let (seen_send, seen_recv) = dfir_rs::util::unbounded_channel();
 
-        let mut df = dfir_syntax_inline! {
+        let mut df = dfir_syntax! {
             recv = source_stream(udp_recv)
                 -> map(|r| r.unwrap())
                 -> tee();
@@ -66,7 +66,7 @@ pub async fn test_echo_udp() -> Result<(), Box<dyn Error>> {
 
         let (seen_send, seen_recv) = dfir_rs::util::unbounded_channel();
 
-        let mut df = dfir_syntax_inline! {
+        let mut df = dfir_syntax! {
             recv = source_stream(recv_udp)
                 -> map(|r| r.unwrap())
                 -> tee();
@@ -97,7 +97,7 @@ pub async fn test_echo_udp() -> Result<(), Box<dyn Error>> {
 
         let (seen_send, seen_recv) = dfir_rs::util::unbounded_channel();
 
-        let mut df = dfir_syntax_inline! {
+        let mut df = dfir_syntax! {
             recv = source_stream(recv_udp)
                 -> map(|r| r.unwrap())
                 -> tee();
@@ -144,7 +144,7 @@ pub async fn test_echo_tcp() -> Result<(), Box<dyn Error>> {
 
         let (seen_send, seen_recv) = dfir_rs::util::unbounded_channel();
 
-        let mut df = dfir_syntax_inline! {
+        let mut df = dfir_syntax! {
             rev = source_stream(server_recv)
                 -> map(|x| x.unwrap())
                 -> tee();
@@ -171,7 +171,7 @@ pub async fn test_echo_tcp() -> Result<(), Box<dyn Error>> {
 
         let (seen_send, seen_recv) = dfir_rs::util::unbounded_channel();
 
-        let mut df = dfir_syntax_inline! {
+        let mut df = dfir_syntax! {
             recv = source_stream(client_recv)
                 -> map(|x| x.unwrap())
                 -> tee();
@@ -212,7 +212,7 @@ pub async fn test_echo() {
     // LinesCodec separates each line from `lines_recv` with `\n`.
     let stdout_lines = FramedWrite::new(tokio::io::stdout(), LinesCodec::new());
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         source_stream(lines_recv) -> dest_sink(stdout_lines);
     };
     assert_graphvis_snapshots!(df);
@@ -239,7 +239,7 @@ pub async fn test_futures_stream_sink() {
 
     let (seen_send, seen_recv) = dfir_rs::util::unbounded_channel();
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         recv = source_stream(recv) -> tee();
         recv[0] -> map(|x| x + 1)
             -> filter(|&x| x < MAX)
@@ -263,7 +263,7 @@ async fn asynctest_dest_sink_bounded_channel() {
     let send = tokio_util::sync::PollSender::new(send);
     let mut recv = tokio_stream::wrappers::ReceiverStream::new(recv);
 
-    let mut flow = dfir_syntax_inline! {
+    let mut flow = dfir_syntax! {
         source_iter(0..10) -> dest_sink(send);
     };
     let mut run_fut = std::pin::pin!(flow.run());
@@ -297,7 +297,7 @@ async fn asynctest_dest_sink_duplex() {
         .length_field_length(1)
         .new_write(asyncwrite);
 
-    let mut flow = dfir_syntax_inline! {
+    let mut flow = dfir_syntax! {
         source_iter([
             Bytes::from_static(b"hello"),
             Bytes::from_static(b"world"),
@@ -322,7 +322,7 @@ async fn asynctest_dest_asyncwrite_duplex() {
     let (asyncwrite, mut asyncread) = tokio::io::duplex(256);
     let sink = FramedWrite::new(asyncwrite, BytesCodec::new());
 
-    let mut flow = dfir_syntax_inline! {
+    let mut flow = dfir_syntax! {
         source_iter([
             Bytes::from_static("hello".as_bytes()),
             Bytes::from_static("world".as_bytes()),
@@ -345,13 +345,13 @@ async fn asynctest_source_stream() {
     let (c_send, c_recv) = dfir_rs::util::unbounded_channel::<usize>();
 
     let task_a = tokio::task::spawn_local(async move {
-        let mut flow = dfir_syntax_inline! {
+        let mut flow = dfir_syntax! {
             source_stream(a_recv) -> for_each(|x| { b_send.send(x).unwrap(); });
         };
         flow.run().await;
     });
     let task_b = tokio::task::spawn_local(async move {
-        let mut flow = dfir_syntax_inline! {
+        let mut flow = dfir_syntax! {
             source_stream(b_recv) -> for_each(|x| { c_send.send(x).unwrap(); });
         };
         flow.run().await;
@@ -399,7 +399,7 @@ async fn asynctest_check_state_yielding() {
 
     let task_b = tokio::task::spawn_local(
         async move {
-            let mut hf = dfir_syntax_inline! {
+            let mut hf = dfir_syntax! {
                 source_stream(a_recv)
                     -> reduce::<'static>(|a: &mut _, b| *a += b)
                     -> for_each(|x| b_send.send(x).unwrap());
@@ -428,7 +428,7 @@ async fn asynctest_check_state_yielding() {
 async fn asynctest_repeat_iter() {
     let (b_send, b_recv) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut hf = dfir_syntax_inline! {
+    let mut hf = dfir_syntax! {
         source_iter(0..3) -> persist::<'static>()
             -> for_each(|x| b_send.send(x).unwrap());
     };
@@ -443,7 +443,7 @@ async fn asynctest_event_repeat_iter() {
     let (a_send, a_recv) = dfir_rs::util::unbounded_channel::<usize>();
     let (b_send, b_recv) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut hf = dfir_syntax_inline! {
+    let mut hf = dfir_syntax! {
         source_iter(0..3) -> persist::<'static>() -> my_union;
         source_stream(a_recv) -> my_union;
         my_union = union() -> for_each(|x| b_send.send(x).unwrap());
@@ -475,14 +475,14 @@ async fn asynctest_tcp() {
     let (tx_out, rx_out) = dfir_rs::util::unbounded_channel::<String>();
 
     let (tx, rx, server_addr) = dfir_rs::util::bind_tcp_lines("127.0.0.1:0".parse().unwrap()).await;
-    let mut echo_server = dfir_syntax_inline! {
+    let mut echo_server = dfir_syntax! {
         source_stream(rx)
             -> filter_map(Result::ok)
             -> dest_sink(tx);
     };
 
     let (tx, rx) = dfir_rs::util::connect_tcp_lines();
-    let mut echo_client = dfir_syntax_inline! {
+    let mut echo_client = dfir_syntax! {
         source_iter([("Hello".to_owned(), server_addr)])
             -> dest_sink(tx);
 
@@ -508,14 +508,14 @@ async fn asynctest_udp() {
     let (tx_out, rx_out) = dfir_rs::util::unbounded_channel::<String>();
 
     let (tx, rx, server_addr) = dfir_rs::util::bind_udp_lines("127.0.0.1:0".parse().unwrap()).await;
-    let mut echo_server = dfir_syntax_inline! {
+    let mut echo_server = dfir_syntax! {
         source_stream(rx)
             -> filter_map(Result::ok)
             -> dest_sink(tx);
     };
 
     let (tx, rx, _) = dfir_rs::util::bind_udp_lines("127.0.0.1:0".parse().unwrap()).await;
-    let mut echo_client = dfir_syntax_inline! {
+    let mut echo_client = dfir_syntax! {
         source_iter([("Hello".to_owned(), server_addr)])
             -> dest_sink(tx);
 

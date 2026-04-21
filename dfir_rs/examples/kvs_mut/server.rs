@@ -23,7 +23,7 @@ pub(crate) async fn run_server(opts: Opts) {
 
     println!("Server is live! Listening on {:?}", actual_server_addr);
 
-    let mut flow= dfir_syntax! {
+    let mut flow = dfir_syntax! {
         // Setup network channels.
         network_send = dest_sink_serde(outbound);
         network_recv = source_stream_serde(inbound)

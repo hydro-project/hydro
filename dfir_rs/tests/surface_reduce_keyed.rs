@@ -13,7 +13,7 @@ pub fn test_reduce_keyed_infer_basic() {
     }
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<(&'static str, u32)>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_iter([
                 SubordResponse { xid: "123", mtype: 33 },
                 SubordResponse { xid: "123", mtype: 52 },
@@ -44,7 +44,7 @@ pub fn test_reduce_keyed_tick() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<(u32, Vec<u32>)>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<(u32, Vec<u32>)>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_stream(items_recv)
             -> reduce_keyed::<'tick>(|old: &mut Vec<u32>, mut x: Vec<u32>| old.append(&mut x))
             -> for_each(|v| result_send.send(v).unwrap());
@@ -91,7 +91,7 @@ pub fn test_reduce_keyed_static() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<(u32, Vec<u32>)>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<(u32, Vec<u32>)>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_stream(items_recv)
             -> reduce_keyed::<'static>(|old: &mut Vec<u32>, mut x: Vec<u32>| old.append(&mut x))
             -> for_each(|v| result_send.send(v).unwrap());
@@ -136,12 +136,12 @@ pub fn test_reduce_keyed_static() {
     df.run_available_sync(); // Should return quickly and not hang
 }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (loop {} blocks)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (loop {} blocks)
 // #[multiplatform_test]
 // pub fn test_reduce_keyed_loop_lifetime() {
 //     let (result1_send, mut result1_recv) = dfir_rs::util::unbounded_channel::<_>();
 //     let (result2_send, mut result2_recv) = dfir_rs::util::unbounded_channel::<_>();
-// 
+//
 //     let mut df = dfir_rs::dfir_syntax! {
 //         a = source_iter([
 //             ("foo", 0),
@@ -165,14 +165,14 @@ pub fn test_reduce_keyed_static() {
 //             ("bar", 8),
 //             ("bar", 9),
 //         ]);
-// 
+//
 //         loop {
 //             b = a -> batch() -> tee();
 //             loop {
 //                 b -> repeat_n(5)
 //                     -> reduce_keyed::<'none>(|old: &mut u32, val: u32| *old += val)
 //                     -> for_each(|v| result1_send.send(v).unwrap());
-// 
+//
 //                 b -> repeat_n(5)
 //                     -> reduce_keyed::<'loop>(|old: &mut u32, val: u32| *old += val)
 //                     -> for_each(|v| result2_send.send(v).unwrap());
@@ -180,7 +180,7 @@ pub fn test_reduce_keyed_static() {
 //         };
 //     };
 //     df.run_available_sync();
-// 
+//
 //     // `'none` resets each iteration.
 //     assert_eq!(
 //         BTreeSet::from_iter([

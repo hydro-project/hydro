@@ -9,7 +9,7 @@ pub fn test_state() {
     let (filter_send, mut filter_recv) = dfir_rs::util::unbounded_channel::<(TickInstant, usize)>();
     let (max_send, mut max_recv) = dfir_rs::util::unbounded_channel::<(TickInstant, usize)>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         stream1 = source_iter(1..=10);
         stream2 = source_iter(3..=5) -> map(Max::new);
         max_of_stream2 = stream2 -> state::<'static, Max<_>>();
@@ -69,7 +69,7 @@ pub fn test_state() {
 /// Just tests that the codegen is valid.
 #[multiplatform_test]
 pub fn test_state_unused() {
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         stream2 = source_iter(15..=25) -> map(Max::new);
         max_of_stream2 = stream2 -> state::<'static, Max<_>>();
     };
@@ -83,7 +83,7 @@ pub fn test_state_unused() {
 pub fn test_state_tick() {
     let (input_send, input_recv) = dfir_rs::util::unbounded_channel::<usize>();
     let (max_send, mut max_recv) = dfir_rs::util::unbounded_channel::<(TickInstant, usize)>();
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         stream2 = source_stream(input_recv) -> map(Max::new);
         max_of_stream2 = stream2 -> state::<'tick, Max<_>>();
 
@@ -117,7 +117,7 @@ pub fn test_fold_cross() {
     let (filter_send, mut filter_recv) = dfir_rs::util::unbounded_channel::<(TickInstant, usize)>();
     let (max_send, mut max_recv) = dfir_rs::util::unbounded_channel::<(TickInstant, usize)>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         stream1 = source_iter(1..=10);
         stream2 = source_iter(3..=5) -> map(Max::new);
         max_of_stream2 = stream2 -> lattice_reduce() -> tee();
@@ -164,7 +164,7 @@ pub fn test_fold_singleton() {
     let (filter_send, mut filter_recv) = dfir_rs::util::unbounded_channel::<(TickInstant, usize)>();
     let (max_send, mut max_recv) = dfir_rs::util::unbounded_channel::<(TickInstant, usize)>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         stream1 = source_iter(1..=10);
         stream2 = source_iter(3..=5);
         max_of_stream2 = stream2 -> fold(|| 0, |a, b| *a = std::cmp::max(*a, b));
@@ -205,7 +205,7 @@ pub fn test_fold_singleton() {
 pub fn test_fold_singleton_push() {
     let (filter_send, mut filter_recv) = dfir_rs::util::unbounded_channel::<(TickInstant, usize)>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         stream1 = source_iter(1..=10);
         stream2 = source_iter(3..=5);
         max_of_stream2 = stream2 -> fold(|| 0, |a, b| *a = std::cmp::max(*a, b));
@@ -240,7 +240,7 @@ pub fn test_reduce_singleton() {
     let (filter_send, mut filter_recv) = dfir_rs::util::unbounded_channel::<(TickInstant, usize)>();
     let (max_send, mut max_recv) = dfir_rs::util::unbounded_channel::<(TickInstant, usize)>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         stream1 = source_iter(1..=10);
         stream2 = source_iter(3..=5);
         max_of_stream2 = stream2 -> reduce(|a, b| *a = std::cmp::max(*a, b));
@@ -282,7 +282,7 @@ pub fn test_reduce_singleton() {
 pub fn test_reduce_singleton_push() {
     let (filter_send, mut filter_recv) = dfir_rs::util::unbounded_channel::<(TickInstant, usize)>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         stream1 = source_iter(1..=10);
         stream2 = source_iter(3..=5);
         max_of_stream2 = stream2 -> reduce(|a, b| *a = std::cmp::max(*a, b));
@@ -317,7 +317,7 @@ pub fn test_scheduling() {
     let (inn_send, inn_recv) = dfir_rs::util::unbounded_channel::<usize>();
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<(TickInstant, usize)>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         stream1 = source_iter(1..=10);
         stream2 = source_stream(inn_recv);
         max_of_stream2 = stream2 -> fold(|| 0, |a, b| *a = std::cmp::max(*a, b));
@@ -362,7 +362,7 @@ pub fn test_multi_tick() {
     let (filter_send, mut filter_recv) = dfir_rs::util::unbounded_channel::<(TickInstant, usize)>();
     let (max_send, mut max_recv) = dfir_rs::util::unbounded_channel::<(TickInstant, usize)>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         stream1 = source_iter(1..=10);
         stream2 = source_iter(3..=5) -> map(Max::new);
         max_of_stream2 = stream2 -> state::<'static, Max<_>>();

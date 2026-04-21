@@ -29,7 +29,7 @@ pub(crate) async fn run_server(opts: Opts) {
     println!("Server is live! Listening on {:?}", actual_server_addr);
 
     // The skeletal DFIR spec for a server.
-    let mut flow= dfir_syntax! {
+    let mut flow = dfir_syntax! {
         // Inbound channel sharing
         inbound_chan = source_stream(inbound) -> map(deserialize_json) -> tee();
 

@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use dfir_rs::util::collect_ready;
-use dfir_rs::{assert_graphvis_snapshots, dfir_syntax_inline};
+use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use lattices::GhtType;
 use lattices::ght::GeneralizedHashTrieNode;
 use lattices::ght::lattice::{DeepJoinLatticeBimorphism, GhtBimorphism};
@@ -15,7 +15,7 @@ use variadics::variadic_collections::VariadicHashSet;
 pub fn test_cartesian_product() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         lhs = source_iter(0..3)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
@@ -50,7 +50,7 @@ pub fn test_cartesian_product() {
 pub fn test_cartesian_product_1401() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         lhs = source_iter(0..1)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
@@ -77,7 +77,7 @@ pub fn test_cartesian_product_1401() {
 pub fn test_join() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         lhs = source_iter([(7, 1), (7, 2)])
             -> map(|(k, v)| MapUnionSingletonMap::new_from((k, SetUnionSingletonSet::new_from(v))))
             -> state::<'static, MapUnionHashMap<usize, SetUnionHashSet<usize>>>();
@@ -118,7 +118,7 @@ pub fn test_cartesian_product_tick_state() {
     let (rhs_send, rhs_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         lhs = source_stream(lhs_recv)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'tick, SetUnionHashSet<u32>>();
@@ -176,7 +176,7 @@ fn test_ght_join_bimorphism() {
     >>::DeepJoinLatticeBimorphism;
     type MyBim = GhtBimorphism<MyNodeBim>;
 
-    let mut hf = dfir_syntax_inline! {
+    let mut hf = dfir_syntax! {
         lhs = source_iter([
                 var_expr!(123, 2, 5, "hello"),
                 var_expr!(50, 1, 1, "hi"),

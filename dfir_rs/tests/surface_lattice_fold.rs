@@ -2,7 +2,7 @@ use dfir_rs::lattices::Max;
 
 #[test]
 fn test_basic() {
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_iter([1,2,3,4,5])
             -> map(Max::new)
             -> lattice_fold::<'static>(|| Max::<u32>::new(0))
@@ -11,7 +11,7 @@ fn test_basic() {
     df.run_available_sync();
 }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (intra-tick cycle)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (intra-tick cycle)
 // #[test]
 // fn test_fold_loop() {
 //     let (output_send, output_recv) = dfir_rs::util::unbounded_channel::<u8>();
@@ -32,7 +32,7 @@ fn test_basic() {
 //     assert_eq!(&[2], &*collect_ready::<Vec<_>, _>(output_recv));
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (intra-tick cycle)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (intra-tick cycle)
 // #[test]
 // fn test_lattice_fold_loop() {
 //     let (output_send, output_recv) = dfir_rs::util::unbounded_channel::<u8>();

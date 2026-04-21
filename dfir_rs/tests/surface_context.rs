@@ -4,7 +4,7 @@ use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
 pub fn test_context_ref() {
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_iter([()])
             -> for_each(|()| println!("Current tick: {}", context.current_tick()));
     };
@@ -12,7 +12,7 @@ pub fn test_context_ref() {
     df.run_available_sync();
 }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (next_stratum())
+// TODO(inline): commented out, not yet supported in dfir_syntax! (next_stratum())
 // #[multiplatform_test]
 // pub fn test_context_mut() {
 //     // TODO(mingwei): Currently cannot have conflicting (mut) references to `context` in the same
@@ -27,11 +27,11 @@ pub fn test_context_ref() {
 //     df.run_available_sync();
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (context.current_tick_start())
+// TODO(inline): commented out, not yet supported in dfir_syntax! (context.current_tick_start())
 // #[multiplatform_test(dfir)]
 // pub async fn test_context_current_tick_start_does_not_count_time_between_ticks_async() {
 //     let time = Rc::new(Cell::new(None));
-// 
+//
 //     let mut df = {
 //         let time = time.clone();
 //         dfir_syntax! {
@@ -44,7 +44,7 @@ pub fn test_context_ref() {
 //     tokio::time::sleep(Duration::from_millis(100)).await;
 //     df.run_tick().await;
 //     assert!(time.take().unwrap() < Duration::from_millis(50));
-// 
+//
 //     tokio::time::sleep(Duration::from_millis(100)).await;
 //     df.run_available().await;
 //     assert!(time.take().unwrap() < Duration::from_millis(50));
@@ -54,7 +54,7 @@ pub fn test_context_ref() {
 pub async fn test_defered_tick_and_no_io_with_run_async() {
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_iter([()])
             -> defer_tick()
             -> for_each(|_| tx.send(()).unwrap());

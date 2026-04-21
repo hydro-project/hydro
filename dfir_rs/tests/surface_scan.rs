@@ -13,7 +13,7 @@ pub fn test_scan_tick() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_stream(items_recv)
             -> scan::<'tick>(|| 0, |acc: &mut u32, x: u32| {
                 *acc += x;
@@ -55,7 +55,7 @@ pub fn test_scan_static() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_stream(items_recv)
             -> scan::<'static>(|| 0, |acc: &mut u32, x: u32| {
                 *acc += x;
@@ -99,7 +99,7 @@ pub fn test_scan_empty_input() {
     let (_items_send, items_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_stream(items_recv)
             -> scan::<'tick>(|| 0, |acc: &mut u32, x: u32| {
                 *acc += x;
@@ -126,7 +126,7 @@ pub fn test_scan_different_types() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<String>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<(usize, String)>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_stream(items_recv)
             -> scan::<'tick>(|| (0, String::new()), |acc: &mut (usize, String), x: String| {
                 // Accumulator is a tuple of (count, concatenated_string)
@@ -161,7 +161,7 @@ pub fn test_scan_early_termination() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_stream(items_recv)
             -> scan::<'tick>(|| 0, |acc: &mut u32, x: u32| {
                 *acc += x;
@@ -203,7 +203,7 @@ pub fn test_scan_static_early_termination() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_stream(items_recv)
             -> scan::<'static>(|| 0, |acc: &mut u32, x: u32| {
                 *acc += x;
@@ -248,7 +248,7 @@ pub fn test_scan_complex_accumulator() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<(String, u32)>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<HashMap<String, u32>>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_stream(items_recv)
             -> scan::<'tick>(HashMap::<String, u32>::new, |acc: &mut HashMap<String, u32>, item: (String, u32)| {
                 // Update frequency count for each key
@@ -296,7 +296,7 @@ pub fn test_scan_push() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         teed = source_stream(items_recv) -> tee();
         teed -> for_each(|_| {}); // Dummy consumer to force push
         teed

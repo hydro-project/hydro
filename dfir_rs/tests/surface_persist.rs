@@ -1,16 +1,16 @@
 use std::collections::HashSet;
 
 use dfir_pipes::pull::HalfMultisetJoinState;
+use dfir_rs::assert_graphvis_snapshots;
 use dfir_rs::scheduled::ticks::TickInstant;
 use dfir_rs::util::collect_ready;
-use dfir_rs::assert_graphvis_snapshots;
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
 pub fn test_persist_basic() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut hf = dfir_rs::dfir_syntax_inline! {
+    let mut hf = dfir_rs::dfir_syntax! {
         source_iter([1])
             -> persist::<'static>()
             -> persist::<'static>()
@@ -33,7 +33,7 @@ pub fn test_persist_basic() {
 pub fn test_persist_pull() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut hf = dfir_rs::dfir_syntax_inline! {
+    let mut hf = dfir_rs::dfir_syntax! {
         // Structured to ensure `persist::<'static>()` is pull-based.
         source_iter([1]) -> persist::<'static>() -> m0;
         null() -> m0;
@@ -59,7 +59,7 @@ pub fn test_persist_pull() {
 pub fn test_persist_push() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut hf = dfir_rs::dfir_syntax_inline! {
+    let mut hf = dfir_rs::dfir_syntax! {
         t0 = source_iter([1]) -> persist::<'static>() -> tee();
         t0 -> null();
         t1 = t0 -> persist::<'static>() -> tee();
@@ -81,7 +81,7 @@ pub fn test_persist_push() {
 #[multiplatform_test]
 pub fn test_persist_join() {
     let (input_send, input_recv) = dfir_rs::util::unbounded_channel::<(&str, &str)>();
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_iter([("hello", "world")]) -> persist::<'static>() -> [0]my_join;
         source_stream(input_recv) -> persist::<'static>() -> [1]my_join;
         my_join = join::<'tick>() -> for_each(|(k, (v1, v2))| println!("({}, ({}, {}))", k, v1, v2));
@@ -92,36 +92,36 @@ pub fn test_persist_join() {
     flow.run_tick_sync();
 }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (next_stratum())
+// TODO(inline): commented out, not yet supported in dfir_syntax! (next_stratum())
 // #[multiplatform_test]
 // pub fn test_persist_replay_join() {
 //     let (persist_input_send, persist_input) = dfir_rs::util::unbounded_channel::<u32>();
 //     let (other_input_send, other_input) = dfir_rs::util::unbounded_channel::<u32>();
 //     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<(u32, u32)>();
-// 
+//
 //     let mut hf = dfir_syntax! {
 //         source_stream(persist_input)
 //             -> persist::<'static>()
 //             -> fold::<'tick>(|| 0, |a: &mut _, b| *a += b)
 //             -> next_stratum()
 //             -> [0]product_node;
-// 
+//
 //         source_stream(other_input) -> [1] product_node;
-// 
+//
 //         product_node = cross_join::<'tick, 'tick>() -> for_each(|x| result_send.send(x).unwrap());
 //     };
 //     assert_graphvis_snapshots!(hf);
-// 
+//
 //     persist_input_send.send(1).unwrap();
 //     other_input_send.send(2).unwrap();
 //     hf.run_tick_sync();
 //     assert_eq!(&[(1, 2)], &*collect_ready::<Vec<_>, _>(&mut result_recv));
-// 
+//
 //     persist_input_send.send(2).unwrap();
 //     other_input_send.send(2).unwrap();
 //     hf.run_tick_sync();
 //     assert_eq!(&[(3, 2)], &*collect_ready::<Vec<_>, _>(&mut result_recv));
-// 
+//
 //     other_input_send.send(3).unwrap();
 //     hf.run_tick_sync();
 //     assert_eq!(&[(3, 3)], &*collect_ready::<Vec<_>, _>(&mut result_recv));
@@ -132,7 +132,7 @@ pub fn test_persist_double_handoff() {
     let (input_send, input_recv) = dfir_rs::util::unbounded_channel::<usize>();
     let (input_2_send, input_2_recv) = dfir_rs::util::unbounded_channel::<usize>();
     let (output_send, mut output_recv) = dfir_rs::util::unbounded_channel::<(usize, usize)>();
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         teed_first_sg = source_stream(input_2_recv) -> tee();
         teed_first_sg -> [0] joined_second_sg;
         teed_first_sg -> [1] joined_second_sg;
@@ -161,7 +161,7 @@ pub fn test_persist_single_handoff() {
     let (input_send, input_recv) = dfir_rs::util::unbounded_channel::<usize>();
     let (input_2_send, input_2_recv) = dfir_rs::util::unbounded_channel::<usize>();
     let (output_send, mut output_recv) = dfir_rs::util::unbounded_channel::<(usize, usize)>();
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         teed_first_sg = source_stream(input_2_recv) -> tee();
         teed_first_sg [0] -> null();
         teed_first_sg [1] -> joined_second_sg;
@@ -191,7 +191,7 @@ pub fn test_persist_single_subgraph() {
     let (input_send, input_recv) = dfir_rs::util::unbounded_channel::<usize>();
     let (input_2_send, input_2_recv) = dfir_rs::util::unbounded_channel::<usize>();
     let (output_send, mut output_recv) = dfir_rs::util::unbounded_channel::<(usize, usize)>();
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_stream(input_2_recv) -> joined_second_sg;
 
         source_stream(input_recv) -> persist::<'static>()
@@ -217,7 +217,7 @@ pub fn test_persist() {
     let (pull_tx, mut pull_rx) = dfir_rs::util::unbounded_channel::<usize>();
     let (push_tx, mut push_rx) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
 
         my_tee = source_iter([1, 2, 3])
             -> persist::<'static>() // pull
@@ -245,7 +245,7 @@ pub fn test_persist_mut() {
     let (pull_tx, mut pull_rx) = dfir_rs::util::unbounded_channel::<usize>();
     let (push_tx, mut push_rx) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
 
         my_tee = source_iter([Persist(1), Persist(2), Persist(3), Persist(4), Delete(2)])
             -> persist_mut::<'mutable>() // pull
@@ -274,7 +274,7 @@ pub fn test_persist_mut_keyed() {
     let (pull_tx, mut pull_rx) = dfir_rs::util::unbounded_channel::<usize>();
     let (push_tx, mut push_rx) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
 
         my_tee = source_iter([Persist(1, 1), Persist(2, 2), Persist(3, 3), Persist(4, 4), Delete(2)])
             -> persist_mut_keyed::<'mutable>() // pull

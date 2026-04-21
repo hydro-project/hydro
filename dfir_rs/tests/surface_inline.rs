@@ -1,4 +1,4 @@
-//! Tests for the experimental `dfir_syntax_inline!` macro.
+//! Tests for the experimental `dfir_syntax!` macro.
 //! This runs the dataflow inline using local Vec buffers instead of the Dfir scheduler.
 
 /// Test 1: Simple linear pipeline
@@ -6,7 +6,7 @@
 pub async fn test_inline_linear() {
     let mut output = Vec::<i32>::new();
     let out = &mut output;
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_iter(0..5_i32) -> map(|x: i32| x * 10) -> for_each(|v: i32| out.push(v));
     };
     flow.run_tick().await;
@@ -19,7 +19,7 @@ pub async fn test_inline_linear() {
 pub async fn test_inline_fold() {
     let mut output = Vec::<i32>::new();
     let out = &mut output;
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_iter(0..5_i32)
             -> fold(|| 0_i32, |acc: &mut i32, x: i32| *acc += x)
             -> for_each(|v: i32| out.push(v));
@@ -34,7 +34,7 @@ pub async fn test_inline_fold() {
 pub async fn test_inline_diamond() {
     let mut output = Vec::<i32>::new();
     let out = &mut output;
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         my_tee = source_iter(1..=3_i32) -> tee();
         my_tee -> map(|x: i32| x * 10) -> my_union;
         my_tee -> map(|x: i32| x * 100) -> my_union;
@@ -53,7 +53,7 @@ pub async fn test_inline_intertwined_diamonds() {
     let mut prods = Vec::<i64>::new();
     let s = &mut sums;
     let p = &mut prods;
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         src = source_iter(1..=3_i64) -> tee();
         src -> map(|x: i64| x * 2) -> branch_a;
         src -> map(|x: i64| x * 3) -> branch_b;
@@ -81,7 +81,7 @@ pub async fn test_inline_intertwined_diamonds() {
 pub async fn test_inline_join() {
     let mut output = Vec::<(String, i32, i32)>::new();
     let out = &mut output;
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_iter(vec![("a", 1_i32), ("b", 2)]) -> [0]my_join;
         source_iter(vec![("b", 10_i32), ("a", 20)]) -> [1]my_join;
         my_join = join::<'tick, 'tick>()
@@ -101,7 +101,7 @@ pub async fn test_inline_join() {
 pub async fn test_inline_multi_stratum() {
     let mut output = Vec::<i32>::new();
     let out = &mut output;
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_iter(1..=4_i32)
             -> fold(|| 0_i32, |a: &mut i32, x: i32| *a += x)
             -> map(|sum: i32| sum * 2)
@@ -120,7 +120,7 @@ pub async fn test_inline_w_mesh() {
     let mut ys = Vec::<i32>::new();
     let xr = &mut xs;
     let yr = &mut ys;
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         src_a = source_iter(vec![1_i32, 2]) -> tee();
         src_b = source_iter(vec![10_i32, 20]) -> tee();
         src_a -> sink_x;
@@ -147,7 +147,7 @@ pub async fn test_inline_source_stream() {
     send.send(3).unwrap();
     let mut output = Vec::<i32>::new();
     let out = &mut output;
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_stream(recv) -> for_each(|v: i32| out.push(v));
     };
     flow.run_tick().await;
@@ -165,7 +165,7 @@ pub async fn test_inline_resolve_futures() {
         tokio::task::yield_now().await;
         tx.send(42).unwrap();
     });
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_iter([rx])
             -> resolve_futures_blocking()
             -> map(|v: Result<i32, _>| v.unwrap())
@@ -181,7 +181,7 @@ pub async fn test_inline_resolve_futures() {
 pub async fn test_inline_multi_tick_source_stream() {
     let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_stream(recv) -> for_each(|v: i32| out_send.send(v).unwrap());
     };
 
@@ -206,7 +206,7 @@ pub async fn test_inline_multi_tick_source_stream() {
 pub async fn test_inline_multi_tick_fold_static() {
     let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_stream(recv)
             -> fold::<'static>(|| 0_i32, |acc: &mut i32, x: i32| *acc += x)
             -> for_each(|v: i32| out_send.send(v).unwrap());
@@ -239,7 +239,7 @@ pub async fn test_inline_multi_tick_fold_static() {
 pub async fn test_inline_multi_tick_fold_tick() {
     let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_stream(recv)
             -> fold::<'tick>(|| 0_i32, |acc: &mut i32, x: i32| *acc += x)
             -> for_each(|v: i32| out_send.send(v).unwrap());
@@ -266,7 +266,7 @@ pub async fn test_inline_multi_tick_fold_tick() {
 pub async fn test_inline_defer_tick_lazy() {
     let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_stream(recv) -> defer_tick_lazy() -> for_each(|v: i32| out_send.send(v).unwrap());
     };
 
@@ -299,7 +299,7 @@ pub async fn test_inline_defer_tick_lazy() {
 #[dfir_rs::test]
 pub async fn test_inline_defer_tick_flipflop() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<bool>();
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_iter(vec![true])
                 -> state;
         state = union()
@@ -340,7 +340,7 @@ pub async fn test_inline_defer_tick_flipflop() {
 pub async fn test_inline_cross_singleton() {
     let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<(i32, i32)>();
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         // A stream of values
         items = source_stream(recv);
         // A singleton: sum of a fixed set
@@ -368,7 +368,7 @@ pub async fn test_inline_hydro_pattern_multi_tick() {
     let (data_send, data_recv) = dfir_rs::util::unbounded_channel::<i32>();
     let (count_send, count_recv) = dfir_rs::util::unbounded_channel::<i32>();
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<(i32, i32)>();
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         // Running count across ticks
         running_count = source_stream(count_recv)
             -> fold::<'static>(|| 0_i32, |a: &mut i32, x: i32| *a += x);
@@ -408,7 +408,7 @@ pub async fn test_inline_defer_tick_lazy_cycle() {
     let output = std::rc::Rc::new(std::cell::RefCell::new(Vec::<usize>::new()));
     let output_inner = std::rc::Rc::clone(&output);
 
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         a = union() -> tee();
         source_iter([1_usize, 3]) -> [0]a;
         a[0] -> defer_tick_lazy() -> map(|x: usize| 2 * x) -> [1]a;
@@ -430,7 +430,7 @@ pub async fn test_inline_defer_tick_lazy_cycle() {
 pub async fn test_inline_defer_tick() {
     let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<i32>();
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_stream(recv) -> defer_tick() -> for_each(|v: i32| out_send.send(v).unwrap());
     };
 
@@ -463,7 +463,7 @@ pub async fn test_inline_defer_tick() {
 #[dfir_rs::test]
 pub async fn test_inline_defer_tick_nonlazy_flipflop() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<bool>();
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_iter(vec![true])
                 -> state;
         state = union()
@@ -499,7 +499,7 @@ pub async fn test_inline_defer_tick_run_available() {
     let output = std::rc::Rc::new(std::cell::RefCell::new(Vec::<usize>::new()));
     let output_inner = std::rc::Rc::clone(&output);
 
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         a = union() -> tee();
         source_iter([1_usize, 3]) -> [0]a;
         a[0] -> defer_tick() -> map(|x: usize| 2 * x) -> filter(|&x: &usize| x < 20) -> [1]a;

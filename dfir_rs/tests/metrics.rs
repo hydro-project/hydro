@@ -6,7 +6,7 @@ use web_time::Duration;
 async fn test_initial() {
     let (output_send, _output_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
-    let flow = dfir_rs::dfir_syntax_inline! {
+    let flow = dfir_rs::dfir_syntax! {
         source_iter(0..5)
             -> map(|x| x * 2)
             -> for_each(|x| output_send.send(x).unwrap());
@@ -37,7 +37,7 @@ async fn test_initial() {
 async fn test_subgraph_metrics() {
     let (output_send, _output_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_iter(0..3) -> for_each(|x| output_send.send(x).unwrap());
     };
 
@@ -57,7 +57,7 @@ async fn test_subgraph_metrics() {
 async fn test_handoff_metrics() {
     let (output_send, mut output_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_iter(0..5)
             -> map(|x| x * 2)
             -> fold(|| 0, |acc: &mut _, x| { *acc += x; })
@@ -83,7 +83,7 @@ async fn test_multiple_ticks() {
     let (input_send, input_recv) = dfir_rs::util::unbounded_channel::<i32>();
     let (output_send, mut output_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_stream(input_recv)
             -> map(|x| x + 1)
             -> for_each(|x| output_send.send(x).unwrap());
@@ -116,7 +116,7 @@ async fn test_metrics_intervals() {
     let (input_send, input_recv) = dfir_rs::util::unbounded_channel::<i32>();
     let (output_send, mut output_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_stream(input_recv)
             -> map(|x| x + 1)
             -> for_each(|x| output_send.send(x).unwrap());

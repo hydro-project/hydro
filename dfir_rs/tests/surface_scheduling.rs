@@ -6,11 +6,11 @@
 // use tokio::time::timeout;
 // use web_time::Duration;
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (next_stratum())
+// TODO(inline): commented out, not yet supported in dfir_syntax! (next_stratum())
 // #[multiplatform_test(test, wasm, env_tracing)]
 // pub fn test_stratum_loop() {
 //     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<TickInstant>();
-// 
+//
 //     let mut df = dfir_syntax! {
 //         source_iter([TickInstant::new(0)]) -> union_tee;
 //         union_tee = union() -> tee();
@@ -19,7 +19,7 @@
 //     };
 //     assert_graphvis_snapshots!(df);
 //     df.run_available_sync();
-// 
+//
 //     assert_eq!(
 //         &[
 //             TickInstant::new(0),
@@ -41,11 +41,11 @@
 //     );
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (next_stratum())
+// TODO(inline): commented out, not yet supported in dfir_syntax! (next_stratum())
 // #[multiplatform_test(test, wasm, env_tracing)]
 // pub fn test_tick_loop() {
 //     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<TickInstant>();
-// 
+//
 //     let mut df = dfir_syntax! {
 //         source_iter([TickInstant::new(0)]) -> union_tee;
 //         union_tee = union() -> tee();
@@ -54,7 +54,7 @@
 //     };
 //     assert_graphvis_snapshots!(df);
 //     df.run_available_sync();
-// 
+//
 //     assert_eq!(
 //         &[
 //             TickInstant::new(0),
@@ -76,11 +76,11 @@
 //     );
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (next_stratum())
+// TODO(inline): commented out, not yet supported in dfir_syntax! (next_stratum())
 // #[multiplatform_test(dfir, env_tracing)]
 // async fn test_persist_stratum_run_available() -> Result<(), Box<dyn Error>> {
 //     let (out_send, out_recv) = dfir_rs::util::unbounded_channel();
-// 
+//
 //     let mut df = dfir_syntax! {
 //         a = source_iter([0])
 //             -> persist::<'static>()
@@ -89,7 +89,7 @@
 //     };
 //     assert_graphvis_snapshots!(df);
 //     df.run_available().await;
-// 
+//
 //     let seen: Vec<_> = dfir_rs::util::collect_ready_async(out_recv).await;
 //     rassert_eq!(
 //         &[0],
@@ -97,15 +97,15 @@
 //         "Only one tick should have run, actually ran {}",
 //         seen.len()
 //     )?;
-// 
+//
 //     Ok(())
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (next_stratum())
+// TODO(inline): commented out, not yet supported in dfir_syntax! (next_stratum())
 // #[multiplatform_test(dfir, env_tracing)]
 // async fn test_persist_stratum_run_async() -> Result<(), Box<dyn Error>> {
 //     let (out_send, out_recv) = dfir_rs::util::unbounded_channel();
-// 
+//
 //     let mut df = dfir_syntax! {
 //         source_iter([0])
 //             -> persist::<'static>()
@@ -113,11 +113,11 @@
 //             -> for_each(|x| out_send.send(x).unwrap());
 //     };
 //     assert_graphvis_snapshots!(df);
-// 
+//
 //     timeout(Duration::from_millis(200), df.run())
 //         .await
 //         .expect_err("Expected time out");
-// 
+//
 //     let seen: Vec<_> = dfir_rs::util::collect_ready_async(out_recv).await;
 //     rassert_eq!(
 //         &[0],
@@ -125,17 +125,17 @@
 //         "Only one tick should have run, actually ran {}",
 //         seen.len()
 //     )?;
-// 
+//
 //     Ok(())
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (next_stratum())
+// TODO(inline): commented out, not yet supported in dfir_syntax! (next_stratum())
 // #[multiplatform_test(test, wasm, env_tracing)]
 // pub fn test_issue_800_1050_persist() {
 //     let mut df = dfir_syntax! {
 //         in1 = source_iter(0..10) -> map(|i| (i, i));
 //         in1 -> persist::<'static>() -> my_union_tee;
-// 
+//
 //         my_union_tee = union() -> tee();
 //         my_union_tee -> filter(|_| false) -> my_union_tee;
 //         my_union_tee -> for_each(|x| println!("A {} {} {:?}", context.current_tick(), context.current_stratum(), x));
@@ -144,13 +144,13 @@
 //     df.run_available_sync();
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (next_stratum())
+// TODO(inline): commented out, not yet supported in dfir_syntax! (next_stratum())
 // #[multiplatform_test(test, wasm, env_tracing)]
 // pub fn test_issue_800_1050_fold_keyed() {
 //     let mut df = dfir_syntax! {
 //         in1 = source_iter(0..10) -> map(|i| (i, i));
 //         in1 -> fold_keyed::<'static>(Vec::new, Vec::push) -> my_union_tee;
-// 
+//
 //         my_union_tee = union() -> tee();
 //         my_union_tee -> filter(|_| false) -> my_union_tee;
 //         my_union_tee -> for_each(|x| println!("A {} {} {:?}", context.current_tick(), context.current_stratum(), x));
@@ -159,13 +159,13 @@
 //     df.run_available_sync();
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (next_stratum())
+// TODO(inline): commented out, not yet supported in dfir_syntax! (next_stratum())
 // #[multiplatform_test(test, wasm, env_tracing)]
 // pub fn test_issue_800_1050_reduce_keyed() {
 //     let mut df = dfir_syntax! {
 //         in1 = source_iter(0..10) -> map(|i| (i, i));
 //         in1 -> reduce_keyed::<'static>(std::ops::AddAssign::add_assign) -> my_union_tee;
-// 
+//
 //         my_union_tee = union() -> tee();
 //         my_union_tee -> filter(|_| false) -> my_union_tee;
 //         my_union_tee -> for_each(|x| println!("A {} {} {:?}", context.current_tick(), context.current_stratum(), x));
@@ -174,7 +174,7 @@
 //     df.run_available_sync();
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (stratum-specific behavior)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (stratum-specific behavior)
 // #[multiplatform_test(dfir, env_tracing)]
 // async fn test_nospin_issue_961() {
 //     let mut df = dfir_syntax! {
@@ -185,32 +185,32 @@
 //             -> null();
 //     };
 //     assert_graphvis_snapshots!(df);
-// 
+//
 //     timeout(Duration::from_millis(100), df.run_available())
 //         .await
 //         .expect("Should not spin.");
 // }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (stratum-specific behavior)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (stratum-specific behavior)
 // #[multiplatform_test(dfir, env_tracing)]
 // async fn test_nospin_issue_961_complicated() {
 //     let mut df = dfir_syntax! {
 //         source_iter([1]) -> items;
 //         items = union();
-// 
+//
 //         double = items
 //             -> persist::<'static>()
 //             -> fold(|| 0, |accum, x| *accum += x)
 //             -> defer_tick_lazy()
 //             -> filter(|_| false)
 //             -> tee();
-// 
+//
 //         double -> null();
-// 
+//
 //         double -> items;
 //     };
 //     assert_graphvis_snapshots!(df);
-// 
+//
 //     timeout(Duration::from_millis(100), df.run_available())
 //         .await
 //         .expect("Should not spin.");

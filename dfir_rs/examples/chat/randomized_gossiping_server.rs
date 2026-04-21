@@ -89,7 +89,7 @@ pub(crate) async fn run_gossiping_server(opts: Opts) {
         "Server is live! Listening on {:?}. Gossiping On: {:?}",
         actual_server_addr, gossip_listening_addr
     );
-    let mut hf= dfir_syntax! {
+    let mut hf = dfir_syntax! {
         // Define shared inbound and outbound channels
         client_out = union() -> dest_sink_serde(client_outbound);
         client_in = source_stream_serde(client_inbound)

@@ -19,7 +19,7 @@ pub(crate) async fn run_detector(opts: Opts, peer_list: Vec<String>) {
     let reader = tokio::io::BufReader::new(tokio::io::stdin());
     let stdin_lines = LinesStream::new(reader.lines());
 
-    let mut hf= dfir_syntax! {
+    let mut hf = dfir_syntax! {
         // fetch peers from file, convert ip:port to a SocketAddr, and tee
         peers = source_iter(peer_list)
             -> map(|s| s.parse::<SocketAddr>().unwrap())

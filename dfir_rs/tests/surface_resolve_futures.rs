@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use dfir_rs::dfir_syntax_inline;
+use dfir_rs::dfir_syntax;
 use dfir_rs::util::collect_ready_async;
 use multiplatform_test::multiplatform_test;
 use tokio::time::{Duration, sleep};
@@ -9,7 +9,7 @@ use tokio::time::{Duration, sleep};
 async fn single_batch_test() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         source_iter(0..10)
         -> map(|x| async move {
             sleep(Duration::from_millis(100)).await;
@@ -38,7 +38,7 @@ async fn single_batch_test() {
 async fn multi_batch_test() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u64>();
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         source_iter([2, 3, 1, 9, 6, 5, 4, 7, 8])
         -> map(|x| async move {
             sleep(Duration::from_millis(10*x)).await;
@@ -67,7 +67,7 @@ async fn multi_batch_test() {
 async fn pusherator_test() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u64>();
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         ins = source_iter([2, 3, 1, 9, 6, 5, 4, 7, 8])
             -> tee();
 
@@ -97,7 +97,7 @@ async fn pusherator_test() {
 async fn pusherator_ordered_test() {
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u64>();
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         ins = source_iter([2, 3, 1, 9, 6, 5, 4, 7, 8])
             -> tee();
 

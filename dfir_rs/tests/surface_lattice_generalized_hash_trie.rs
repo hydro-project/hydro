@@ -1,4 +1,4 @@
-use dfir_rs::dfir_syntax_inline;
+use dfir_rs::dfir_syntax;
 use dfir_rs::lattices::GhtType;
 use dfir_rs::lattices::ght::GeneralizedHashTrieNode;
 use dfir_rs::lattices::ght::lattice::{DeepJoinLatticeBimorphism, GhtBimorphism};
@@ -21,7 +21,7 @@ fn test_basic() {
         merged.insert(i);
     }
     println!("merged: {:?}", merged);
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         source_iter(input)
             -> map(|t| MyGht::new_from(vec![t]))
             -> lattice_fold::<'static>(MyGht::default)
@@ -51,7 +51,7 @@ fn test_join() {
     >>::DeepJoinLatticeBimorphism;
     type MyBim = GhtBimorphism<MyNodeBim>;
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         R = source_iter(r)
             -> map(|t| MyGht::new_from([t]))
             -> state::<MyGht>();

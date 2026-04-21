@@ -11,7 +11,7 @@ pub(crate) async fn run_subordinate(outbound: UdpSink, inbound: UdpStream, opts:
     println!("Subordinate live!");
 
     let path = opts.path();
-    let mut df= dfir_syntax! {
+    let mut df = dfir_syntax! {
         // Outbound address
         server_addr = source_json::<Addresses>(path)
             -> map(|json| json.coordinator)

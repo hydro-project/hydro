@@ -11,7 +11,7 @@ pub(crate) async fn run_coordinator(outbound: UdpSink, inbound: UdpStream, opts:
     println!("Coordinator live!");
 
     let path = opts.path();
-    let mut df= dfir_syntax! {
+    let mut df = dfir_syntax! {
         // fetch subordinates from file, convert ip:port to a SocketAddr, and tee
         subords = source_json(path)
             -> flat_map(|json: Addresses| json.subordinates)

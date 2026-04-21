@@ -1,4 +1,4 @@
-error: `loop { }` blocks are not (yet) supported in `dfir_syntax_inline!`.
+error: `loop { }` blocks are not (yet) supported in `dfir_syntax!`.
  --> tests/compile-fail/surface_inline_loop.rs:6:18
   |
 6 |             x -> batch() -> for_each(|_x: i32| {});

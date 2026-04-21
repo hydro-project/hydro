@@ -1,5 +1,5 @@
 use dfir_rs::util::collect_ready;
-use dfir_rs::{assert_graphvis_snapshots, dfir_syntax_inline};
+use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
@@ -7,7 +7,7 @@ pub fn test_multiset_delta() {
     let (input_send, input_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut flow = dfir_syntax_inline! {
+    let mut flow = dfir_syntax! {
         source_stream(input_recv)
             -> multiset_delta()
             -> for_each(|x| result_send.send(x).unwrap());
@@ -33,7 +33,7 @@ pub fn test_multiset_delta() {
 pub fn test_persist_multiset_delta() {
     let (input_send, input_recv) = dfir_rs::util::unbounded_channel::<usize>();
     let (output_send, mut output_recv) = dfir_rs::util::unbounded_channel::<usize>();
-    let mut flow = dfir_rs::dfir_syntax_inline! {
+    let mut flow = dfir_rs::dfir_syntax! {
         source_stream(input_recv)
             -> persist::<'static>()
             -> multiset_delta()
@@ -56,7 +56,7 @@ pub fn test_multiset_delta_2() {
     let (input_send, input_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut flow = dfir_syntax_inline! {
+    let mut flow = dfir_syntax! {
         source_stream(input_recv)
             -> multiset_delta()
             -> for_each(|x| result_send.send(x).unwrap());
@@ -83,7 +83,7 @@ fn test_chat_app_replay() {
     let (messages_send, messages) = dfir_rs::util::unbounded_channel::<String>();
     let (out, mut out_recv) = dfir_rs::util::unbounded_channel::<(u32, String)>();
 
-    let mut chat_server = dfir_syntax_inline! {
+    let mut chat_server = dfir_syntax! {
         users = source_stream(users) -> persist::<'static>();
         messages = source_stream(messages) -> persist::<'static>();
         users -> [0]crossed;
@@ -138,7 +138,7 @@ fn test_chat_app_replay_manual() {
     let (input_send, input_recv) = dfir_rs::util::unbounded_channel::<(u32, String)>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<(u32, String)>();
 
-    let mut flow = dfir_syntax_inline! {
+    let mut flow = dfir_syntax! {
         source_stream(input_recv)
             -> multiset_delta()
             -> for_each(|x| result_send.send(x).unwrap());

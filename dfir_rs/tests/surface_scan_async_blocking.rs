@@ -6,7 +6,7 @@ pub fn test_scan_async_blocking_tick() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_stream(items_recv)
             -> scan_async_blocking::<'tick>(|| 0, |acc: &mut u32, x: u32| {
                 *acc += x;
@@ -37,7 +37,7 @@ pub fn test_scan_async_blocking_static() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_stream(items_recv)
             -> scan_async_blocking::<'static>(|| 0, |acc: &mut u32, x: u32| {
                 *acc += x;
@@ -69,7 +69,7 @@ pub fn test_scan_async_blocking_filter() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<u32>();
     let (result_send, mut result_recv) = dfir_rs::util::unbounded_channel::<u32>();
 
-    let mut df = dfir_rs::dfir_syntax_inline! {
+    let mut df = dfir_rs::dfir_syntax! {
         source_stream(items_recv)
             -> scan_async_blocking::<'tick>(|| 0, |acc: &mut u32, x: u32| {
                 *acc += x;

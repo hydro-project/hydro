@@ -1,5 +1,5 @@
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use dfir_rs::{dfir_syntax, dfir_syntax_inline};
+use dfir_rs::dfir_syntax;
 use static_assertions::const_assert;
 use timely::dataflow::operators::{Map, ToStream};
 
@@ -48,7 +48,7 @@ fn benchmark_hydroflow_surface(c: &mut Criterion) {
 fn benchmark_hydroflow_surface_inline(c: &mut Criterion) {
     c.bench_function("fan_out/dfir_rs/surface_inline", |b| {
         b.iter(|| {
-            let mut flow = dfir_syntax_inline! {
+            let mut flow = dfir_syntax! {
                 my_tee = tee();
 
                 source_iter(black_box(0..NUM_INTS)) -> my_tee;

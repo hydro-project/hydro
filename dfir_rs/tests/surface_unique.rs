@@ -1,12 +1,12 @@
 use dfir_rs::util::collect_ready;
-use dfir_rs::{assert_graphvis_snapshots, dfir_syntax_inline};
+use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
 pub fn test_unique() {
     let (items_send, items_recv) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         source_stream(items_recv)
             -> unique()
             -> for_each(|v| print!("{:?}, ", v));
@@ -37,7 +37,7 @@ pub fn test_unique() {
 pub fn test_unique_tick_pull() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         source_iter(0..10) -> persist::<'static>() -> m1;
         source_iter(5..15) -> persist::<'static>() -> m1;
         m1 = union() -> unique::<'tick>() -> m2;
@@ -60,7 +60,7 @@ pub fn test_unique_tick_pull() {
 pub fn test_unique_static_pull() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         source_iter(0..10) -> persist::<'static>() -> m1;
         source_iter(5..15) -> persist::<'static>() -> m1;
         m1 = union() -> unique::<'static>() -> m2;
@@ -83,7 +83,7 @@ pub fn test_unique_static_pull() {
 pub fn test_unique_tick_push() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         source_iter(0..10) -> persist::<'static>() -> pivot;
         source_iter(5..15) -> persist::<'static>() -> pivot;
         pivot = union() -> tee();
@@ -106,7 +106,7 @@ pub fn test_unique_tick_push() {
 pub fn test_unique_static_push() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         source_iter(0..10) -> persist::<'static>() -> pivot;
         source_iter(5..15) -> persist::<'static>() -> pivot;
         pivot = union() -> tee();
@@ -125,7 +125,7 @@ pub fn test_unique_static_push() {
     assert_eq!(Vec::<usize>::new(), out);
 }
 
-// TODO(inline): commented out, not yet supported in dfir_syntax_inline! (loop {} blocks)
+// TODO(inline): commented out, not yet supported in dfir_syntax! (loop {} blocks)
 // #[multiplatform_test]
 // pub fn test_loop_lifetime() {
 //     let (result1_send, mut result1_recv) = dfir_rs::util::unbounded_channel::<_>();
@@ -141,13 +141,13 @@ pub fn test_unique_static_push() {
 //         };
 //     };
 //     df.run_available_sync();
-// 
+//
 //     assert_eq!(
 //         &[0, 1, 2, 3, 4, 0, 1, 2, 3, 4, 0, 1, 2, 3, 4],
 //         &*collect_ready::<Vec<_>, _>(&mut result1_recv),
 //         "Unique per loop iteration."
 //     );
-// 
+//
 //     assert_eq!(
 //         &[0, 1, 2, 3, 4],
 //         &*collect_ready::<Vec<_>, _>(&mut result2_recv),

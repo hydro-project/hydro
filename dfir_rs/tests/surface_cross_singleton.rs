@@ -1,5 +1,5 @@
 use dfir_rs::util::collect_ready;
-use dfir_rs::{assert_graphvis_snapshots, dfir_syntax_inline};
+use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test(test, wasm, env_tracing)]
@@ -7,7 +7,7 @@ pub fn test_basic() {
     let (single_tx, single_rx) = dfir_rs::util::unbounded_channel::<()>();
     let (egress_tx, mut egress_rx) = dfir_rs::util::unbounded_channel();
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         join = cross_singleton();
         source_iter([1, 2, 3]) -> persist::<'static>() -> [input]join;
         source_stream(single_rx) -> [single]join;
@@ -32,7 +32,7 @@ pub fn test_union_defer_tick() {
     let (cross_tx, cross_rx) = dfir_rs::util::unbounded_channel::<i32>();
     let (egress_tx, mut egress_rx) = dfir_rs::util::unbounded_channel();
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         teed_in = source_stream(cross_rx) -> sort() -> tee();
         teed_in -> [input]join;
 
