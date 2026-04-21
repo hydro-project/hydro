@@ -1376,7 +1376,7 @@ pub fn analyze_coordination(
             continue;
         }
 
-        let sink_name = root.input().metadata().op.name.as_deref()
+        let sink_name = root.input().metadata().tag.as_deref()
             .unwrap_or_else(|| short_name_root(root));
         let sink_span = root.op_metadata().backtrace.format_span().unwrap_or_default();
         let sink_id = format!("{sink_name}@{sink_span}");
