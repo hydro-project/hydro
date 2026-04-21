@@ -79,15 +79,33 @@ Edge labels are computed by running the backward proof at each Network boundary 
 
 **User-defined refinement orders.** The three built-in orders (Prefix, SetInclusion, Lattice) cover common cases, but the Coordination Criterion is parameterized over *any* partial order on outputs. A user should be able to specify a custom `PartialOrd` and have the analysis check monotonicity under that order. The `goal_overrides` API provides the hook; the missing piece is a `UserDefined` variant of `OrderGoal` that carries the order specification and rules for how operators interact with it.
 
-**Closure analysis.** Element-wise transforms (`Map`, `FilterMap`, etc.) are conservatively treated as breaking Lattice order because the analysis cannot inspect closures. A `monotone = manual_proof!(...)` annotation on closures would let users assert that their closure preserves the lattice order, similar to how `commutative` works for folds.
+**Per-key sequential consistency for merged input streams.** The `PER_KEY SEQ CONSISTENT` label exists and is sound for cases where global Prefix passes through `entries_partially_ordered`. However, services that merge multiple input streams (e.g., writes + reads via `merge_unordered`) cannot achieve PER_KEY SEQ because global Prefix fails at the chain. A sound `PerKeyPrefix` goal that passes through chain was attempted but found to be unsound: in a shared-state system, one client's responses depend on other clients' operations. To achieve PER_KEY SEQ for write confirmations, the service architecture must separate the write confirmation path (TotalOrder journal outcomes) from the read path.
+
+**Closure analysis.** Element-wise transforms (`Map`, `FilterMap`, etc.) are conservatively treated as breaking Lattice order because the analysis cannot inspect closures. The upstream `order_preserving` annotation on `MapFuncAlgebra` (#2742) addresses this for singleton maps at the type level. A general `monotone = manual_proof!(...)` annotation on closures would extend this to stream maps.
 
 **IDE integration.** The analysis captures `proc_macro2::Span` from IR nodes and can generate `dfir_lang::Diagnostic` entries. The `coordination_diagnostics_tokens()` method on `BuiltFlow` produces `#[deprecated]`-based warning tokens. These are not yet wired into the stageleft/trybuild code generation pipeline, so they don't appear in rust-analyzer automatically. Integration requires injecting the tokens into the generated code during compilation.
 
 **Viz overlay.** The v1 analysis had a viz integration that colored non-monotone edges red in Mermaid/DOT graphs. This was removed during the v2 rewrite. Re-adding it with the v2 report structure (which tracks sinks and traces rather than individual edges) is straightforward but not yet done.
 
+## Consistency labels
+
+| Label | Meaning |
+|-------|---------|
+| **SEQ CONSISTENT** | All replicas produce prefixes of the same deterministic sequence |
+| **PER_KEY SEQ CONSISTENT** | Each key's values form a growing prefix; cross-key interleaving is non-deterministic |
+| **CONVERGENT** | All replicas converge to the same eventual output set/value |
+| **LOCAL** | Each process/member is individually future-monotone; no cross-instance guarantee |
+| **INCONSISTENT** | Output may contradict earlier observations |
+
+Hierarchy: SEQ CONSISTENT > PER_KEY SEQ CONSISTENT > CONVERGENT > LOCAL > INCONSISTENT.
+
 ## Potential weaknesses
 
 **Lattice join proofs are trusted, not verified.** The `manual_proof!` macro accepts a doc comment as justification but performs no actual verification. A user who incorrectly claims their fold is a lattice join (via `commutative + idempotent` annotations) will get a false "coordination-free" result. This is by design — the same trust model as Rust's `unsafe` — but it means the analysis is only as sound as the user's proofs.
+
+**Associativity for batch safety.** Bounded folds under the Prefix goal now require an `associative` annotation (or commutative + idempotent, which implies associativity). This ensures that batch/tick boundaries do not affect the result. Scan is exempt because it carries state across ticks. The `associative = manual_proof!(...)` annotation follows the same trust model as commutativity.
+
+**Complete delivery for durable channels.** The `durable_broadcast` API requires a `manual_proof` covering two properties: (1) replay soundness — the external store faithfully persists and replays all elements, and (2) gap-freeness — no gaps at the cutover seam between restore and live traffic. The analysis uses `complete_delivery = no_late_joiners && is_gap_free()` where `no_late_joiners` is true for `StaticCluster` or `is_durable()`.
 
 **Gyatso's trivial monotonicity.** As noted by Laddad, Flo/Gyatso semantics guarantee that *every* program is monotone under the trivial order induced by each collection type's concatenation operator. Our analysis is meaningful only because it checks monotonicity under *non-trivial* orders (set inclusion, prefix, lattice). If the default order inference picks the wrong order, the analysis may give vacuously true results. The `goal_overrides` API mitigates this by letting users specify the order they care about.
 
