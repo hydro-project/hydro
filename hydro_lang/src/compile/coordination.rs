@@ -997,7 +997,7 @@ enum MonotoneBehavior<'a> {
     /// Preserves the listed goals, breaks all others. Recurse into input.
     PreserveGoals { input: &'a HydroNode, goals: &'static [OrderGoal] },
     /// Aggregation that may be a lattice join (discharges if proven commutative+idempotent).
-    Aggregation { is_commutative: bool, is_idempotent: bool, input: &'a HydroNode },
+    Aggregation { is_commutative: bool, is_idempotent: bool, is_associative: bool, input: &'a HydroNode },
     /// Preserves any goal via prove_shared (Tee, Partition).
     SharedPassthrough(&'a SharedNode),
     /// Difference/AntiJoin: SetInclusion with bounded neg check.
@@ -1069,15 +1069,15 @@ fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
         HydroNode::DeferTick { input, .. } => PreserveGoals { input, goals: SET_LATTICE },
 
         // Aggregation
-        HydroNode::Fold { is_commutative, is_idempotent, input, .. }
-        | HydroNode::FoldKeyed { is_commutative, is_idempotent, input, .. }
-        | HydroNode::Reduce { is_commutative, is_idempotent, input, .. }
-        | HydroNode::ReduceKeyed { is_commutative, is_idempotent, input, .. } => {
-            Aggregation { is_commutative: *is_commutative, is_idempotent: *is_idempotent, input }
+        HydroNode::Fold { is_commutative, is_idempotent, is_associative, input, .. }
+        | HydroNode::FoldKeyed { is_commutative, is_idempotent, is_associative, input, .. }
+        | HydroNode::Reduce { is_commutative, is_idempotent, is_associative, input, .. }
+        | HydroNode::ReduceKeyed { is_commutative, is_idempotent, is_associative, input, .. } => {
+            Aggregation { is_commutative: *is_commutative, is_idempotent: *is_idempotent, is_associative: *is_associative, input }
         }
 
-        HydroNode::ReduceKeyedWatermark { is_commutative, is_idempotent, input, .. } => {
-            Aggregation { is_commutative: *is_commutative, is_idempotent: *is_idempotent, input }
+        HydroNode::ReduceKeyedWatermark { is_commutative, is_idempotent, is_associative, input, .. } => {
+            Aggregation { is_commutative: *is_commutative, is_idempotent: *is_idempotent, is_associative: *is_associative, input }
         }
 
         // Difference / AntiJoin
@@ -1085,7 +1085,7 @@ fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
         | HydroNode::AntiJoin { pos, neg, .. } => DifferenceOp { pos, neg },
 
         // Sort: bounded discharges, unbounded breaks (same as non-commutative aggregation)
-        HydroNode::Sort { input, .. } => Aggregation { is_commutative: false, is_idempotent: false, input },
+        HydroNode::Sort { input, .. } => Aggregation { is_commutative: false, is_idempotent: false, is_associative: false, input },
 
         // Network: cross-location receive onto a cluster.
         // - StaticCluster: all members present for entire execution → Source (discharged).
@@ -1180,7 +1180,7 @@ fn prove(
                 &name, span, pm_span, cycle_proofs, seen_tees,
             );
         }
-        MonotoneBehavior::Aggregation { is_commutative, is_idempotent, input } => {
+        MonotoneBehavior::Aggregation { is_commutative, is_idempotent, is_associative: _, input } => {
             return aggregation_discharge(
                 is_commutative, is_idempotent, input, goal,
                 &name, span, pm_span,

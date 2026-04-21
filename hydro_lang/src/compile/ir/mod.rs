@@ -2025,6 +2025,8 @@ pub enum HydroNode {
         is_commutative: bool,
         /// Whether the accumulator was proven idempotent.
         is_idempotent: bool,
+        /// Whether the accumulator was proven associative (homomorphism over concatenation).
+        is_associative: bool,
         metadata: HydroIrMetadata,
     },
 
@@ -2046,6 +2048,7 @@ pub enum HydroNode {
         input: Box<HydroNode>,
         is_commutative: bool,
         is_idempotent: bool,
+        is_associative: bool,
         metadata: HydroIrMetadata,
     },
 
@@ -2054,6 +2057,7 @@ pub enum HydroNode {
         input: Box<HydroNode>,
         is_commutative: bool,
         is_idempotent: bool,
+        is_associative: bool,
         metadata: HydroIrMetadata,
     },
     ReduceKeyed {
@@ -2061,6 +2065,7 @@ pub enum HydroNode {
         input: Box<HydroNode>,
         is_commutative: bool,
         is_idempotent: bool,
+        is_associative: bool,
         metadata: HydroIrMetadata,
     },
     ReduceKeyedWatermark {
@@ -2069,6 +2074,7 @@ pub enum HydroNode {
         watermark: Box<HydroNode>,
         is_commutative: bool,
         is_idempotent: bool,
+        is_associative: bool,
         metadata: HydroIrMetadata,
     },
 
@@ -2474,6 +2480,7 @@ impl HydroNode {
                 input,
                 is_commutative,
                 is_idempotent,
+                is_associative,
                 metadata,
             } => HydroNode::Fold {
                 init: init.clone(),
@@ -2481,6 +2488,7 @@ impl HydroNode {
                 input: Box::new(input.deep_clone(seen_tees)),
                 is_commutative: *is_commutative,
                 is_idempotent: *is_idempotent,
+                is_associative: *is_associative,
                 metadata: metadata.clone(),
             },
             HydroNode::Scan {
@@ -2511,6 +2519,7 @@ impl HydroNode {
                 input,
                 is_commutative,
                 is_idempotent,
+                is_associative,
                 metadata,
             } => HydroNode::FoldKeyed {
                 init: init.clone(),
@@ -2518,6 +2527,7 @@ impl HydroNode {
                 input: Box::new(input.deep_clone(seen_tees)),
                 is_commutative: *is_commutative,
                 is_idempotent: *is_idempotent,
+                is_associative: *is_associative,
                 metadata: metadata.clone(),
             },
             HydroNode::ReduceKeyedWatermark {
@@ -2526,6 +2536,7 @@ impl HydroNode {
                 watermark,
                 is_commutative,
                 is_idempotent,
+                is_associative,
                 metadata,
             } => HydroNode::ReduceKeyedWatermark {
                 f: f.clone(),
@@ -2533,20 +2544,23 @@ impl HydroNode {
                 watermark: Box::new(watermark.deep_clone(seen_tees)),
                 is_commutative: *is_commutative,
                 is_idempotent: *is_idempotent,
+                is_associative: *is_associative,
                 metadata: metadata.clone(),
             },
-            HydroNode::Reduce { f, input, is_commutative, is_idempotent, metadata } => HydroNode::Reduce {
+            HydroNode::Reduce { f, input, is_commutative, is_idempotent, is_associative, metadata } => HydroNode::Reduce {
                 f: f.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
                 is_commutative: *is_commutative,
                 is_idempotent: *is_idempotent,
+                is_associative: *is_associative,
                 metadata: metadata.clone(),
             },
-            HydroNode::ReduceKeyed { f, input, is_commutative, is_idempotent, metadata } => HydroNode::ReduceKeyed {
+            HydroNode::ReduceKeyed { f, input, is_commutative, is_idempotent, is_associative, metadata } => HydroNode::ReduceKeyed {
                 f: f.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
                 is_commutative: *is_commutative,
                 is_idempotent: *is_idempotent,
+                is_associative: *is_associative,
                 metadata: metadata.clone(),
             },
             HydroNode::Network {
