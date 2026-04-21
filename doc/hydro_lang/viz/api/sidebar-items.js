@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["GraphFormat"],"struct":["GraphApi"]};
+window.SIDEBAR_ITEMS = {"struct":["GraphApi"]};
