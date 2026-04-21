@@ -599,9 +599,10 @@ impl InlineContext {
 ///
 /// # Design
 ///
-/// The inline codegen generates an `async move ||` closure that captures all dataflow state
-/// (operator accumulators, handoff buffers, source iterators) and runs one tick per call.
-/// `InlineDfir` wraps this closure and adds tick lifecycle and idle/wake coordination.
+/// The inline codegen generates an `async move |df: &mut InlineContext|` closure that captures
+/// dataflow-specific state (handoff buffers, source iterators) and receives the [`InlineContext`]
+/// (operator accumulators, tick counter) by reference each tick. `InlineDfir` owns both the
+/// closure and the context, and coordinates tick lifecycle and idle/wake behavior.
 ///
 /// We use a single opaque closure rather than generating a bespoke struct per dataflow because:
 /// - The closure naturally captures exactly the state it needs with correct lifetimes
@@ -855,7 +856,7 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
     }
 }
 
-impl<Tick: for<'a> AsyncFnMut(&'a mut InlineContext) -> bool + 'static> InlineDfir<Tick> {
+impl<Tick: 'static + for<'a> AsyncFnMut(&'a mut InlineContext) -> bool> InlineDfir<Tick> {
     /// Type-erase the tick closure for use in heterogeneous collections.
     ///
     /// Wraps the concrete async closure in [`TickClosureErased`], which boxes the future
