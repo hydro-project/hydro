@@ -1,5 +1,4 @@
 use dfir_rs::dfir_syntax;
-use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::util::bind_udp_bytes;
 
 use crate::Opts;
@@ -29,7 +28,7 @@ pub(crate) async fn run_server(opts: Opts) {
         actual_server_addr, peer_server
     );
 
-    let mut flow: Dfir = dfir_syntax! {
+    let mut flow= dfir_syntax! {
         // Setup network channels.
         network_send = union() -> dest_sink_serde(outbound);
         network_recv = source_stream_serde(inbound)

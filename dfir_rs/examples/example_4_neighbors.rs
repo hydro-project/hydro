@@ -1,10 +1,10 @@
-use dfir_rs::dfir_syntax;
+use dfir_rs::dfir_syntax_inline;
 
 pub fn main() {
     // An edge in the input data = a pair of `usize` vertex IDs.
     let (edges_send, edges_recv) = dfir_rs::util::unbounded_channel::<(usize, usize)>();
 
-    let mut flow = dfir_syntax! {
+    let mut flow = dfir_syntax_inline! {
         // inputs: the origin vertex (vertex 0) and stream of input edges
         origin = source_iter(vec![0]);
         stream_of_edges = source_stream(edges_recv);

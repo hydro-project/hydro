@@ -1,7 +1,7 @@
-use dfir_rs::dfir_syntax;
+use dfir_rs::dfir_syntax_inline;
 
 pub fn main() {
-    let mut flow = dfir_syntax! {
+    let mut flow = dfir_syntax_inline! {
         source_iter(0..10)
             -> map(|n| n * n)
             -> filter(|n| *n > 10)

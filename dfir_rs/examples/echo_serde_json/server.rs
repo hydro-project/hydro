@@ -2,7 +2,6 @@ use std::net::SocketAddr;
 
 use chrono::prelude::*;
 use dfir_rs::dfir_syntax;
-use dfir_rs::scheduled::graph::Dfir;
 use dfir_rs::util::bind_udp_lines;
 
 use crate::Opts;
@@ -30,7 +29,7 @@ pub(crate) async fn run_server(opts: Opts) {
     println!("Server is live! Listening on {:?}", actual_server_addr);
 
     // The skeletal DFIR spec for a server.
-    let mut flow: Dfir = dfir_syntax! {
+    let mut flow= dfir_syntax! {
         // Inbound channel sharing
         inbound_chan = source_stream(inbound) -> map(deserialize_json) -> tee();
 

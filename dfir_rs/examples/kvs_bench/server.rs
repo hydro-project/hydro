@@ -6,7 +6,7 @@ use bincode::options;
 use bytes::{BufMut, Bytes, BytesMut};
 use dfir_lang::graph::{WriteConfig, WriteGraphType};
 use dfir_pipes::pull::HalfMultisetJoinState;
-use dfir_rs::dfir_syntax;
+use dfir_rs::dfir_syntax_inline;
 use dfir_rs::scheduled::ticks::TickInstant;
 use futures::Stream;
 use lattices::map_union::{MapUnionHashMap, MapUnionSingletonMap};
@@ -139,7 +139,7 @@ pub fn run_server<RX>(
 
             let mut throughput_internal = 0usize;
 
-            let mut df = dfir_syntax! {
+            let mut df = dfir_syntax_inline! {
 
                 simulated_put_requests = spin() -> flat_map(|_| {
                     let buffer_pool = buffer_pool.clone();
