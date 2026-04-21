@@ -1,10 +1,9 @@
 use std::collections::HashSet;
 
 use dfir_pipes::pull::HalfMultisetJoinState;
-use dfir_rs::assert_graphvis_snapshots;
 use dfir_rs::scheduled::ticks::TickInstant;
 use dfir_rs::util::collect_ready;
-use dfir_rs::dfir_syntax;
+use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
@@ -19,7 +18,6 @@ pub fn test_persist_basic() {
             -> for_each(|x| result_send.send(x).unwrap());
     };
     assert_graphvis_snapshots!(hf);
-
 
     for tick in 0..10 {
         assert_eq!(TickInstant::new(tick), hf.current_tick());
@@ -47,7 +45,6 @@ pub fn test_persist_pull() {
     };
     assert_graphvis_snapshots!(hf);
 
-
     for tick in 0..10 {
         assert_eq!(TickInstant::new(tick), hf.current_tick());
         hf.run_tick_sync();
@@ -70,7 +67,6 @@ pub fn test_persist_push() {
         t1 -> fold(|| 0, |a: &mut _, b| *a += b) -> for_each(|x| result_send.send(x).unwrap());
     };
     assert_graphvis_snapshots!(hf);
-
 
     for tick in 0..10 {
         assert_eq!(TickInstant::new(tick), hf.current_tick());
@@ -113,6 +109,7 @@ pub fn test_persist_replay_join() {
 
         product_node = cross_join::<'tick, 'tick>() -> for_each(|x| result_send.send(x).unwrap());
     };
+    assert_graphvis_snapshots!(hf);
 
     persist_input_send.send(1).unwrap();
     other_input_send.send(2).unwrap();

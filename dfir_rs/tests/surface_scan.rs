@@ -23,7 +23,6 @@ pub fn test_scan_tick() {
     };
     assert_graphvis_snapshots!(df);
 
-
     assert_eq!(TickInstant::new(0), df.current_tick());
 
     // First tick with values 1, 2
@@ -65,7 +64,6 @@ pub fn test_scan_static() {
             -> for_each(|v| result_send.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-
 
     assert_eq!(TickInstant::new(0), df.current_tick());
 
@@ -309,7 +307,6 @@ pub fn test_scan_push() {
             -> for_each(|v| result_send.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-
 
     assert_eq!(TickInstant::new(0), df.current_tick());
 

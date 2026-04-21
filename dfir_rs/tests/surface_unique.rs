@@ -1,6 +1,5 @@
-use dfir_rs::assert_graphvis_snapshots;
 use dfir_rs::util::collect_ready;
-use dfir_rs::{dfir_syntax, dfir_syntax_inline};
+use dfir_rs::{assert_graphvis_snapshots, dfir_syntax, dfir_syntax_inline};
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]

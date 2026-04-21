@@ -1,6 +1,5 @@
-use dfir_rs::assert_graphvis_snapshots;
-use dfir_rs::dfir_syntax;
 use dfir_rs::util::{collect_ready, iter_batches_stream, unbounded_channel};
+use dfir_rs::{assert_graphvis_snapshots, dfir_syntax};
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
@@ -46,7 +45,6 @@ pub fn test_diff_timing() {
     };
     assert_graphvis_snapshots!(df);
 
-
     df.run_tick_sync();
 
     println!("A");
@@ -90,7 +88,6 @@ pub fn test_diff_static() {
     };
     assert_graphvis_snapshots!(df);
 
-
     pos_send.send(1).unwrap();
     pos_send.send(1).unwrap();
     pos_send.send(2).unwrap();
@@ -125,7 +122,6 @@ pub fn test_diff_multiset_timing() {
         diff = difference() -> for_each(|x| output_send.send((context.current_tick().0, x)).unwrap());
     };
     assert_graphvis_snapshots!(df);
-
 
     df.run_tick_sync();
 
@@ -178,7 +174,6 @@ pub fn test_diff_multiset_static() {
     };
     assert_graphvis_snapshots!(df);
 
-
     pos_send.send(1).unwrap();
     pos_send.send(1).unwrap();
     pos_send.send(2).unwrap();
@@ -225,7 +220,6 @@ pub fn test_diff_multiset_tick_static() {
     };
     assert_graphvis_snapshots!(df);
 
-
     pos_send.send(1).unwrap();
     pos_send.send(1).unwrap();
     pos_send.send(2).unwrap();
@@ -268,7 +262,6 @@ pub fn test_diff_multiset_static_tick() {
 
     };
     assert_graphvis_snapshots!(df);
-
 
     pos_send.send(1).unwrap();
     pos_send.send(1).unwrap();

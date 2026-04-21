@@ -600,9 +600,8 @@ impl InlineContext {
             };
             (lifespan_hook_fn)(Box::deref_mut(state));
         }
-        self.current_tick.set(
-            self.current_tick.get() + crate::scheduled::ticks::TickDuration::SINGLE_TICK,
-        );
+        self.current_tick
+            .set(self.current_tick.get() + crate::scheduled::ticks::TickDuration::SINGLE_TICK);
     }
 }
 

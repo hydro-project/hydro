@@ -30,7 +30,6 @@ pub fn test_state() {
     };
     assert_graphvis_snapshots!(df);
 
-
     df.run_available_sync();
 
     assert_eq!(
@@ -75,7 +74,6 @@ pub fn test_state_unused() {
         max_of_stream2 = stream2 -> state::<'static, Max<_>>();
     };
     assert_graphvis_snapshots!(df);
-
 
     df.run_available_sync();
 }
@@ -143,7 +141,6 @@ pub fn test_fold_cross() {
     };
     assert_graphvis_snapshots!(df);
 
-
     df.run_available_sync();
 
     assert_eq!(
@@ -186,7 +183,6 @@ pub fn test_fold_singleton() {
     };
     assert_graphvis_snapshots!(df);
 
-
     df.run_available_sync();
 
     assert_eq!(
@@ -224,7 +220,6 @@ pub fn test_fold_singleton_push() {
             -> for_each(|x| filter_send.send(x).unwrap());
     };
     assert_graphvis_snapshots!(df);
-
 
     df.run_available_sync();
 
@@ -265,7 +260,6 @@ pub fn test_reduce_singleton() {
     };
     assert_graphvis_snapshots!(df);
 
-
     df.run_available_sync();
 
     assert_eq!(
@@ -303,7 +297,6 @@ pub fn test_reduce_singleton_push() {
             -> for_each(|x| filter_send.send(x).unwrap());
     };
     assert_graphvis_snapshots!(df);
-
 
     df.run_available_sync();
 
@@ -388,7 +381,6 @@ pub fn test_multi_tick() {
             -> for_each(|x| max_send.send(x).unwrap());
     };
     assert_graphvis_snapshots!(df);
-
 
     df.run_available_sync();
     assert_eq!(

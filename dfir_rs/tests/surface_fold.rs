@@ -1,9 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
-use dfir_rs::assert_graphvis_snapshots;
 use dfir_rs::scheduled::ticks::TickInstant;
 use dfir_rs::util::collect_ready;
-use dfir_rs::{dfir_syntax, dfir_syntax_inline};
+use dfir_rs::{assert_graphvis_snapshots, dfir_syntax, dfir_syntax_inline};
 use multiplatform_test::multiplatform_test;
 
 #[multiplatform_test]
@@ -17,7 +16,6 @@ pub fn test_fold_tick() {
             -> for_each(|v| result_send.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-
 
     assert_eq!(TickInstant::new(0), df.current_tick());
 
@@ -55,7 +53,6 @@ pub fn test_fold_static() {
             -> for_each(|v| result_send.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-
 
     assert_eq!(TickInstant::new(0), df.current_tick());
 
@@ -100,7 +97,6 @@ pub fn test_fold_static_join() {
         join_node -> for_each(|v| result_send.send(v).unwrap());
     };
     assert_graphvis_snapshots!(df);
-
 
     assert_eq!(TickInstant::new(0), df.current_tick());
 
@@ -175,6 +171,7 @@ pub fn test_fold_sort() {
             -> flat_map(|mut vec| { vec.sort(); vec })
             -> for_each(|v| print!("{:?}, ", v));
     };
+    assert_graphvis_snapshots!(df);
     assert_eq!(TickInstant::new(0), df.current_tick());
     df.run_tick_sync();
     assert_eq!(TickInstant::new(1), df.current_tick());

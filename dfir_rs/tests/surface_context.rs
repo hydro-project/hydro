@@ -12,6 +12,7 @@ pub fn test_context_ref() {
         source_iter([()])
             -> for_each(|()| println!("Current tick: {}", context.current_tick()));
     };
+    assert_graphvis_snapshots!(df);
     df.run_available_sync();
 }
 
