@@ -471,20 +471,16 @@ impl Wake for InlineWakeState {
 #[doc(hidden)]
 pub struct InlineContext {
     states: SlotVec<StateTag, StateData>,
-    /// Shared tick counter, also readable from [`InlineDfir`] outside the closure.
-    current_tick: Rc<Cell<TickInstant>>,
+    current_tick: TickInstant,
     wake_state: std::sync::Arc<InlineWakeState>,
 }
 
 impl InlineContext {
-    /// Create a new inline context with shared wake state and tick counter.
-    pub fn new(
-        wake_state: std::sync::Arc<InlineWakeState>,
-        current_tick: Rc<Cell<TickInstant>>,
-    ) -> Self {
+    /// Create a new inline context with shared wake state.
+    pub fn new(wake_state: std::sync::Arc<InlineWakeState>) -> Self {
         Self {
             states: SlotVec::new(),
-            current_tick,
+            current_tick: TickInstant::default(),
             wake_state,
         }
     }
@@ -556,7 +552,7 @@ impl InlineContext {
 
     /// Gets the current tick count.
     pub fn current_tick(&self) -> TickInstant {
-        self.current_tick.get()
+        self.current_tick
     }
 
     /// No-op: inline mode has no subgraph scheduling.
@@ -593,8 +589,7 @@ impl InlineContext {
             };
             (lifespan_hook_fn)(Box::deref_mut(state));
         }
-        self.current_tick
-            .set(self.current_tick.get() + crate::scheduled::ticks::TickDuration::SINGLE_TICK);
+        self.current_tick += crate::scheduled::ticks::TickDuration::SINGLE_TICK;
     }
 }
 
@@ -623,8 +618,8 @@ pub struct InlineDfir<Tick> {
     tick_closure: Tick,
     wake_state: std::sync::Arc<InlineWakeState>,
 
-    /// Shared tick counter, updated by [`InlineContext::__end_tick`] inside the closure.
-    current_tick: Rc<Cell<TickInstant>>,
+    /// The inline context, owned by `InlineDfir` and passed to the tick closure by reference.
+    context: InlineContext,
 
     /// Live-updating DFIR runtime metrics via interior mutability.
     metrics: Rc<DfirMetrics>,
@@ -640,15 +635,24 @@ pub struct InlineDfir<Tick> {
 
 /// Trait for tick closures — abstracts over both concrete async closures
 /// and type-erased boxed versions ([`TickClosureErased`]).
+///
+/// The `&mut InlineContext` parameter is owned by [`InlineDfir`] and lent to the
+/// closure each tick, avoiding shared-ownership overhead for the context.
 #[doc(hidden)]
 pub trait TickClosure {
     /// Call the tick closure. Returns `true` if any subgraph received input data.
-    fn call_tick(&mut self) -> impl Future<Output = bool>;
+    fn call_tick<'a>(
+        &'a mut self,
+        ctx: &'a mut InlineContext,
+    ) -> impl Future<Output = bool> + 'a;
 }
 
-impl<F: AsyncFnMut() -> bool> TickClosure for F {
-    fn call_tick(&mut self) -> impl Future<Output = bool> {
-        self()
+impl<F: for<'a> AsyncFnMut(&'a mut InlineContext) -> bool> TickClosure for F {
+    fn call_tick<'a>(
+        &'a mut self,
+        ctx: &'a mut InlineContext,
+    ) -> impl Future<Output = bool> + 'a {
+        self(ctx)
     }
 }
 
@@ -660,18 +664,27 @@ pub struct TickClosureErased(Box<dyn TickClosureErasedInner>);
 /// object-safe (GAT return type), but a trait with `&mut self -> Pin<Box<dyn Future + '_>>`
 /// is — the returned future borrows from the trait object which owns the closure.
 trait TickClosureErasedInner {
-    fn call_tick(&mut self) -> Pin<Box<dyn Future<Output = bool> + '_>>;
+    fn call_tick<'a>(
+        &'a mut self,
+        ctx: &'a mut InlineContext,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>>;
 }
 
-impl<F: AsyncFnMut() -> bool> TickClosureErasedInner for F {
-    fn call_tick(&mut self) -> Pin<Box<dyn Future<Output = bool> + '_>> {
-        Box::pin(self())
+impl<F: for<'a> AsyncFnMut(&'a mut InlineContext) -> bool> TickClosureErasedInner for F {
+    fn call_tick<'a>(
+        &'a mut self,
+        ctx: &'a mut InlineContext,
+    ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
+        Box::pin(self(ctx))
     }
 }
 
 impl TickClosure for TickClosureErased {
-    fn call_tick(&mut self) -> impl Future<Output = bool> {
-        self.0.call_tick()
+    fn call_tick<'a>(
+        &'a mut self,
+        ctx: &'a mut InlineContext,
+    ) -> impl Future<Output = bool> + 'a {
+        self.0.call_tick(ctx)
     }
 }
 
@@ -681,12 +694,12 @@ pub type InlineDfirErased = InlineDfir<TickClosureErased>;
 
 impl<Tick: TickClosure> InlineDfir<Tick> {
     /// Create a new `InlineDfir` from a tick closure, shared wake state,
-    /// shared tick counter, metrics, and meta graph / diagnostics JSON strings.
+    /// inline context, metrics, and meta graph / diagnostics JSON strings.
     #[doc(hidden)]
     pub fn new(
         tick_closure: Tick,
         wake_state: std::sync::Arc<InlineWakeState>,
-        current_tick: Rc<Cell<TickInstant>>,
+        context: InlineContext,
         metrics: Rc<DfirMetrics>,
         meta_graph_json: Option<&str>,
         diagnostics_json: Option<&str>,
@@ -696,7 +709,7 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
         Self {
             tick_closure,
             wake_state,
-            current_tick,
+            context,
             metrics,
             #[cfg(feature = "meta")]
             meta_graph: meta_graph_json.map(|json| {
@@ -739,7 +752,7 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
 
     /// Gets the current tick (local time) count.
     pub fn current_tick(&self) -> TickInstant {
-        self.current_tick.get()
+        self.context.current_tick()
     }
 
     /// Returns a [`DfirMetricsIntervals`] handle where each call to
@@ -768,7 +781,7 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
             .wake_state
             .can_start_tick
             .swap(false, Ordering::Relaxed);
-        let tick_had_work = self.tick_closure.call_tick().await;
+        let tick_had_work = self.tick_closure.call_tick(&mut self.context).await;
         had_external || tick_had_work || self.wake_state.can_start_tick.load(Ordering::Relaxed)
     }
 
@@ -842,7 +855,7 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
     }
 }
 
-impl<Tick: AsyncFnMut() -> bool + 'static> InlineDfir<Tick> {
+impl<Tick: for<'a> AsyncFnMut(&'a mut InlineContext) -> bool + 'static> InlineDfir<Tick> {
     /// Type-erase the tick closure for use in heterogeneous collections.
     ///
     /// Wraps the concrete async closure in [`TickClosureErased`], which boxes the future
@@ -855,7 +868,7 @@ impl<Tick: AsyncFnMut() -> bool + 'static> InlineDfir<Tick> {
         InlineDfir {
             tick_closure: TickClosureErased(Box::new(self.tick_closure)),
             wake_state: self.wake_state,
-            current_tick: self.current_tick,
+            context: self.context,
             metrics: self.metrics,
             #[cfg(feature = "meta")]
             meta_graph: self.meta_graph,

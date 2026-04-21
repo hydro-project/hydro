@@ -126,9 +126,11 @@ fn dfir_syntax_inline_internal(
         Err(diagnostics) => (
             quote! {
                 #root::scheduled::context::InlineDfir::new(
-                    async move || { false },
+                    async move |_: &mut #root::scheduled::context::InlineContext| { false },
                     ::std::sync::Arc::new(#root::scheduled::context::InlineWakeState::default()),
-                    ::std::rc::Rc::new(::std::cell::Cell::new(#root::scheduled::ticks::TickInstant::default())),
+                    #root::scheduled::context::InlineContext::new(
+                        ::std::sync::Arc::new(#root::scheduled::context::InlineWakeState::default()),
+                    ),
                     ::std::rc::Rc::new(#root::scheduled::metrics::DfirMetrics::default()),
                     None,
                     None,
