@@ -1676,7 +1676,7 @@ mod tests {
         assert!(r.all_monotone(), "join:\n{r}");
     }
 
-    // --- Fold: bounded always discharges ---
+    // --- Fold: bounded always discharges for SetInclusion ---
 
     #[test]
     fn fold_keyed_on_bounded_discharges() {
@@ -1690,6 +1690,70 @@ mod tests {
                 .for_each(q!(|_| {}));
         });
         assert!(r.all_monotone(), "fold_keyed bounded:\n{r}");
+    }
+
+    // --- Fold: bounded non-associative fold breaks Prefix ---
+
+    #[test]
+    fn bounded_fold_without_associative_breaks_prefix() {
+        // batch → fold (non-associative) → all_ticks → for_each
+        // Force Prefix goal. The fold is not associative, so different batch
+        // boundaries produce different per-tick results. Prefix should fail.
+        let mut flow = FlowBuilder::new();
+        let p = flow.process::<()>();
+        let tick = p.tick();
+        p.source_iter(q!([1i32, 2, 3]))
+            .batch(&tick, nondet!(/** test */))
+            .fold(q!(|| 0i32), q!(|acc, x| { *acc += x; }))
+            .into_stream()
+            .all_ticks()
+            .for_each(q!(|_| {}));
+        let built = flow.finalize();
+        let mut overrides = HashMap::new();
+        overrides.insert("foreach".to_string(), OrderGoal::Prefix);
+        let r = built.check_coordination_with_goals(&overrides);
+        assert!(!r.all_monotone(), "non-associative bounded fold should break Prefix:\n{r}");
+    }
+
+    #[test]
+    fn bounded_fold_with_associative_passes_prefix() {
+        // Same pattern but fold is annotated as associative.
+        let mut flow = FlowBuilder::new();
+        let p = flow.process::<()>();
+        let tick = p.tick();
+        p.source_iter(q!([1i32, 2, 3]))
+            .batch(&tick, nondet!(/** test */))
+            .fold(
+                q!(|| 0i32),
+                q!(|acc, x| { *acc += x; },
+                   associative = manual_proof!(/** integer addition is associative */)),
+            )
+            .into_stream()
+            .all_ticks()
+            .for_each(q!(|_| {}));
+        let built = flow.finalize();
+        let mut overrides = HashMap::new();
+        overrides.insert("foreach".to_string(), OrderGoal::Prefix);
+        let r = built.check_coordination_with_goals(&overrides);
+        assert!(r.all_monotone(), "associative bounded fold should pass Prefix:\n{r}");
+    }
+
+    #[test]
+    fn bounded_fold_without_associative_passes_set_inclusion() {
+        // Same non-associative fold, but under SetInclusion goal.
+        // SetInclusion doesn't require associativity — fold results accumulate.
+        let r = check_set_inclusion(|flow| {
+            let p = flow.process::<()>();
+            let tick = p.tick();
+            p.source_iter(q!([1i32, 2, 3]))
+                .batch(&tick, nondet!(/** test */))
+                .fold(q!(|| 0i32), q!(|acc, x| { *acc += x; }))
+                .into_stream()
+                .all_ticks()
+                .assume_ordering::<TotalOrder>(nondet!(/** test */))
+                .for_each(q!(|_| {}));
+        });
+        assert!(r.all_monotone(), "non-associative bounded fold should pass SetInclusion:\n{r}");
     }
 
     // --- Fold: commutative+idempotent on unbounded discharges ---
