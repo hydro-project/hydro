@@ -49,8 +49,8 @@ The analysis produces a trace for each sink showing every operator visited, whet
 
 The analysis depends on proof annotations surviving into the IR:
 
-- `Fold`, `FoldKeyed`: `is_commutative: bool`, `is_idempotent: bool`
-- `Reduce`, `ReduceKeyed`, `ReduceKeyedWatermark`: `is_commutative: bool`, `is_idempotent: bool`
+- `Fold`, `FoldKeyed`: `is_commutative: bool`, `is_idempotent: bool`, `is_associative: bool`
+- `Reduce`, `ReduceKeyed`, `ReduceKeyedWatermark`: `is_commutative: bool`, `is_idempotent: bool`, `is_associative: bool`
 
 These capture whether the aggregation has been proven to be a lattice join, via the `commutative = manual_proof!(...)` and `idempotent = manual_proof!(...)` annotations on fold/reduce closures. The `IsProved` trait in `properties/mod.rs` bridges the compile-time proof to the IR boolean.
 
