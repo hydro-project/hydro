@@ -32,7 +32,8 @@ use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 use crate::prelude::manual_proof;
 use crate::properties::{
-    AggFuncAlgebra, ApplyMonotoneStream, ValidCommutativityFor, ValidIdempotenceFor,
+    AggFuncAlgebra, ApplyMonotoneStream, IsProved, NotProved, ValidCommutativityFor,
+    ValidIdempotenceFor,
 };
 
 pub mod networking;
@@ -1246,16 +1247,17 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn fold<A, I, F, C, Idemp, M, B2: SingletonBound>(
+    pub fn fold<A, I, F, C, Idemp, M, Assoc, B2: SingletonBound>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
-        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp, M>>,
+        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp, M, Assoc>>,
     ) -> Singleton<A, L, B2>
     where
         I: Fn() -> A + 'a,
         F: Fn(&mut A, T),
-        C: ValidCommutativityFor<O>,
-        Idemp: ValidIdempotenceFor<R>,
+        C: ValidCommutativityFor<O> + IsProved,
+        Idemp: ValidIdempotenceFor<R> + IsProved,
+        Assoc: IsProved,
         B: ApplyMonotoneStream<M, B2>,
     {
         let init = init.splice_fn0_ctx(&self.location).into();
@@ -1269,6 +1271,9 @@ where
             init,
             acc: comb.into(),
             input: Box::new(ordered_etc.ir_node.replace(HydroNode::Placeholder)),
+            is_commutative: C::IS_PROVED,
+            is_idempotent: Idemp::IS_PROVED,
+            is_associative: Assoc::IS_PROVED,
             metadata: ordered_etc
                 .location
                 .new_node_metadata(Singleton::<A, L, B2>::collection_kind()),
@@ -1299,14 +1304,15 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn reduce<F, C, Idemp>(
+    pub fn reduce<F, C, Idemp, Assoc>(
         self,
-        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp>>,
+        comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp, NotProved, Assoc>>,
     ) -> Optional<T, L, B>
     where
         F: Fn(&mut T, T) + 'a,
-        C: ValidCommutativityFor<O>,
-        Idemp: ValidIdempotenceFor<R>,
+        C: ValidCommutativityFor<O> + IsProved,
+        Idemp: ValidIdempotenceFor<R> + IsProved,
+        Assoc: IsProved,
     {
         let (f, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
         proof.register_proof(&f);
@@ -1317,6 +1323,9 @@ where
         let core = HydroNode::Reduce {
             f: f.into(),
             input: Box::new(ordered_etc.ir_node.replace(HydroNode::Placeholder)),
+            is_commutative: C::IS_PROVED,
+            is_idempotent: Idemp::IS_PROVED,
+            is_associative: Assoc::IS_PROVED,
             metadata: ordered_etc
                 .location
                 .new_node_metadata(Optional::<T, L, B>::collection_kind()),
