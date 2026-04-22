@@ -5,8 +5,7 @@
 
 use dfir_lang::diagnostic::Level;
 use dfir_lang::graph::{
-    BuildDfirCodeOutput, FlatGraphBuilder, FlatGraphBuilderOutput, build_dfir_code,
-    partition_graph,
+    BuildDfirCodeOutput, FlatGraphBuilder, FlatGraphBuilderOutput, build_dfir_code, partition_graph,
 };
 use dfir_lang::parse::DfirCode;
 use proc_macro2::{Ident, Literal, Span};
@@ -80,7 +79,19 @@ fn dfir_syntax_internal(
             code,
             diagnostics,
         }) => (code, diagnostics),
-        Err(diagnostics) => (quote! {}, diagnostics),
+        Err(diagnostics) => (
+            quote! {
+                {
+                    #root::scheduled::context::InlineDfir::new(
+                        #root::scheduled::context::NullTickClosure,
+                        <#root::scheduled::context::InlineContext as ::std::default::Default>::default(),
+                        None,
+                        None,
+                    )
+                }
+            },
+            diagnostics,
+        ),
     };
 
     let diagnostic_tokens = retain_diagnostic_level.and_then(|level| {

@@ -1,8 +1,3 @@
-#![allow(
-    unused_qualifications,
-    reason = "macro-generated code from difference() operator"
-)]
-
 use std::cell::RefCell;
 use std::rc::Rc;
 
