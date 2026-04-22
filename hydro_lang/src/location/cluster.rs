@@ -279,8 +279,9 @@ where
     where
         Self: Sized,
     {
-        let LocationId::Cluster(cluster_id) = ctx.root().id() else {
-            unreachable!()
+        let cluster_id = match ctx.root().id() {
+            LocationId::Cluster(id) | LocationId::StaticCluster(id) => id,
+            _ => unreachable!(),
         };
 
         let ident = syn::Ident::new(
