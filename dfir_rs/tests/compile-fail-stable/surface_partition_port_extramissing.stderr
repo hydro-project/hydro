@@ -15,9 +15,3 @@ error: `partition(..)` closure argument `a` missing corresponding output port.
   |
 5 |         my_partition = source_iter(0..10) -> partition(|item, [a, b, c]| {
   |                                                                ^
-
-error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
-  --> tests/compile-fail-stable/surface_partition_port_extramissing.rs:16:8
-   |
-16 |     df.run_available_sync();
-   |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

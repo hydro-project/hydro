@@ -9,9 +9,3 @@ error: Output ports from `partition` must either be all integer indices or all i
    |
 13 |         my_partition[evens] -> for_each(std::mem::drop);
    |                      ^^^^^
-
-error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
-  --> tests/compile-fail-stable/surface_partition_port_inconsistent.rs:16:8
-   |
-16 |     df.run_available_sync();
-   |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

@@ -9,9 +9,3 @@ error: Name `f` forms or references an illegal self-referential cycle (1/1).
   |
 5 |         f = f -> f;
   |                  ^
-
-error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
- --> tests/compile-fail-stable/surface_forwardref_self1.rs:7:8
-  |
-7 |     df.run_available_sync();
-  |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

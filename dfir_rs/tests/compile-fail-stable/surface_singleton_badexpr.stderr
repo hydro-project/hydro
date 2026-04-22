@@ -3,9 +3,3 @@ error: `persist` should have exactly 1 persistence lifetime arguments, actually 
   |
 6 |             -> persist()
   |                ^^^^^^^
-
-error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
-  --> tests/compile-fail-stable/surface_singleton_badexpr.rs:11:8
-   |
-11 |     df.run_available_sync();
-   |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

@@ -3,9 +3,3 @@ error: Output port index is unused. (Is the port on the correct side?)
   |
 5 |         source_iter(0..10) -> dst[0];
   |                                   ^
-
-error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
- --> tests/compile-fail-stable/surface_port_unused_out.rs:8:8
-  |
-8 |     df.run_available_sync();
-  |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

@@ -3,9 +3,3 @@ error: `demux_enum` should have exactly 1 generic type arguments, actually has 0
    |
 17 |         ]) -> demux_enum();
    |               ^^^^^^^^^^
-
-error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
-  --> tests/compile-fail-stable/surface_demuxenum_missingtypeparam.rs:22:8
-   |
-22 |     df.run_available_sync();
-   |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

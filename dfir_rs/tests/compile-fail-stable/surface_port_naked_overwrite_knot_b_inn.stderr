@@ -21,9 +21,3 @@ error: Cannot index on already-indexed input, previously indexed above (unknown:
    |
 11 |         x_1[0] -> [1]x_1; // Error: `[1][1]pivot`
    |                    ^
-
-error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
-  --> tests/compile-fail-stable/surface_port_naked_overwrite_knot_b_inn.rs:13:8
-   |
-13 |     df.run_available_sync();
-   |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

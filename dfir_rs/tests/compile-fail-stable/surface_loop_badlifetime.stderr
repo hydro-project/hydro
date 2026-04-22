@@ -9,9 +9,3 @@ error: Operator uses `'static` persistence, which is not allowed within a `loop 
   |
 9 |             a -> batch() -> fold::<'static>(|| 0, |old: &mut _, val| {
   |                                    ^^^^^^^
-
-error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
-  --> tests/compile-fail-stable/surface_loop_badlifetime.rs:14:8
-   |
-14 |     df.run_available_sync();
-   |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

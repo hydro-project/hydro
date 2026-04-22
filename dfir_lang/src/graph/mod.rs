@@ -478,12 +478,8 @@ pub fn build_dfir_code(
         return Err(diagnostics);
     }
 
-    let code = partitioned_graph.as_code(
-        root,
-        true,
-        quote::quote! { #( #uses )* },
-        &mut diagnostics,
-    )?;
+    let code =
+        partitioned_graph.as_code(root, true, quote::quote! { #( #uses )* }, &mut diagnostics)?;
 
     Ok(BuildDfirCodeOutput {
         partitioned_graph,

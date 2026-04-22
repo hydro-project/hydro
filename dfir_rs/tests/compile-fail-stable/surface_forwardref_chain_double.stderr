@@ -81,9 +81,3 @@ error: Name `k` forms or references an illegal self-referential cycle (1/1).
   |
 5 |         a = b -> k;
   |                  ^
-
-error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
-  --> tests/compile-fail-stable/surface_forwardref_chain_double.rs:21:8
-   |
-21 |     df.run_available_sync();
-   |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

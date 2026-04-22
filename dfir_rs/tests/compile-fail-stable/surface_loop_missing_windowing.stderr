@@ -3,9 +3,3 @@ error: Operator `null(...)` entering a loop context must be a windowing operator
   |
 5 |             a -> null();
   |                  ^^^^
-
-error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
- --> tests/compile-fail-stable/surface_loop_missing_windowing.rs:8:8
-  |
-8 |     df.run_available_sync();
-  |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

@@ -9,9 +9,3 @@ error: Input port index is unused. (Is the port on the correct side?)
   |
 7 |         src_0 = [0]src;
   |                  ^
-
-error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
-  --> tests/compile-fail-stable/surface_port_unused_both_indirect.rs:11:8
-   |
-11 |     df.run_available_sync();
-   |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

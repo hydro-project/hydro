@@ -3,9 +3,3 @@ error: Unknown operator `hydro_lab`
   |
 5 |         hydro_lab() -> for_each(std::mem::drop);
   |         ^^^^^^^^^
-
-error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
- --> tests/compile-fail-stable/surface_unknown_operators.rs:7:8
-  |
-7 |     df.run_available_sync();
-  |        ^^^^^^^^^^^^^^^^^^ method not found in `()`
