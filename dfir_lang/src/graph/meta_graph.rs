@@ -1556,13 +1556,18 @@ impl DfirGraph {
                     .zip(recv_hoffs.iter())
                     .map(|((port_ident, buf_ident), &hoff_id)| {
                         let hoff_idx = slotmap_raw_idx(hoff_id);
+                        // Use call_site span for internal identifiers to avoid
+                        // hygiene issues when invoked through declarative macros
+                        // (e.g. dfir_expect_warnings!).
+                        let work_done = Ident::new("__dfir_work_done", Span::call_site());
+                        let metrics = Ident::new("__dfir_metrics", Span::call_site());
                         quote_spanned! {port_ident.span()=>
                             {
                                 let hoff_len = #buf_ident.len();
                                 if hoff_len > 0 {
-                                    __dfir_work_done = true;
+                                    #work_done = true;
                                 }
-                                let hoff_metrics = &__dfir_metrics.handoffs[
+                                let hoff_metrics = &#metrics.handoffs[
                                     #root::util::slot_vec::Key::<#root::scheduled::HandoffTag>::from_raw(#hoff_idx)
                                 ];
                                 hoff_metrics.total_items_count.update(|x| x + hoff_len);
