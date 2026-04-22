@@ -91,6 +91,12 @@ export default function Home() {
                 img={david}
               ></PersonCard>
               <PersonCard
+                name={"Aanand Kainth"}
+                role={"Engineer, AWS"}
+                url={"https://www.linkedin.com/in/akainth015"}
+                img={hydroTurtle}
+              ></PersonCard>
+              <PersonCard
                 name={"Lucky Katahanas"}
                 role={"Engineer, AWS"}
                 url={"https://www.linkedin.com/in/luckykatahanas/"}
