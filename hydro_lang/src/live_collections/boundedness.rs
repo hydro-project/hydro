@@ -55,3 +55,28 @@ pub trait IsBounded: Boundedness {}
 #[sealed]
 #[diagnostic::do_not_recommend]
 impl IsBounded for Bounded {}
+
+/// Determines the output ordering of a join based on the right (build) side's boundedness.
+///
+/// When the right side is [`Bounded`], the join accumulates the right side first and then
+/// streams the left side through, preserving the left side's ordering. When the right side
+/// is [`Unbounded`], a symmetric hash join is used and ordering is lost.
+#[sealed]
+pub trait JoinBoundedness<LeftO: crate::live_collections::stream::Ordering>: Boundedness {
+    /// The ordering of the join output.
+    type OutputOrder: crate::live_collections::stream::Ordering;
+    /// Whether to use the asymmetric bounded-join IR node.
+    const USE_BOUNDED_JOIN: bool;
+}
+
+#[sealed]
+impl<LeftO: crate::live_collections::stream::Ordering> JoinBoundedness<LeftO> for Bounded {
+    type OutputOrder = LeftO;
+    const USE_BOUNDED_JOIN: bool = true;
+}
+
+#[sealed]
+impl<LeftO: crate::live_collections::stream::Ordering> JoinBoundedness<LeftO> for Unbounded {
+    type OutputOrder = crate::live_collections::stream::NoOrder;
+    const USE_BOUNDED_JOIN: bool = false;
+}

@@ -10,7 +10,7 @@ use std::rc::Rc;
 use stageleft::{IntoQuotedMut, QuotedWithContext, QuotedWithContextWithProps, q, quote_type};
 use tokio::time::Instant;
 
-use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
+use super::boundedness::{Bounded, Boundedness, IsBounded, JoinBoundedness, Unbounded};
 use super::keyed_singleton::KeyedSingleton;
 use super::keyed_stream::{Generate, KeyedStream};
 use super::optional::Optional;
@@ -2598,6 +2598,10 @@ where
     /// Given two streams of pairs `(K, V1)` and `(K, V2)`, produces a new stream of nested pairs `(K, (V1, V2))`
     /// by equi-joining the two streams on the key attribute `K`.
     ///
+    /// When the right-hand side is [`Bounded`], the join accumulates the right side first
+    /// and streams the left side through, preserving the left side's ordering. When both
+    /// sides are [`Unbounded`], a symmetric hash join is used and ordering is [`NoOrder`].
+    ///
     /// # Example
     /// ```rust
     /// # #[cfg(feature = "deploy")] {
@@ -2615,10 +2619,16 @@ where
     /// # stream.map(|i| assert!(expected.contains(&i)));
     /// # }));
     /// # }
-    pub fn join<V2, O2: Ordering, R2: Retries>(
+    pub fn join<V2, B2: Boundedness + JoinBoundedness<O>, O2: Ordering, R2: Retries>(
         self,
-        n: Stream<(K, V2), L, B, O2, R2>,
-    ) -> Stream<(K, (V1, V2)), L, B, NoOrder, <R as MinRetries<R2>>::Min>
+        n: Stream<(K, V2), L, B2, O2, R2>,
+    ) -> Stream<
+        (K, (V1, V2)),
+        L,
+        B,
+        <B2 as JoinBoundedness<O>>::OutputOrder,
+        <R as MinRetries<R2>>::Min,
+    >
     where
         K: Eq + Hash + Clone,
         R: MinRetries<R2>,
@@ -2627,8 +2637,19 @@ where
     {
         check_matching_location(&self.location, &n.location);
 
-        Stream::new(
-            self.location.clone(),
+        let ir_node = if B2::USE_BOUNDED_JOIN {
+            HydroNode::JoinBounded {
+                left: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                right: Box::new(n.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self.location.new_node_metadata(Stream::<
+                    (K, (V1, V2)),
+                    L,
+                    B,
+                    <B2 as JoinBoundedness<O>>::OutputOrder,
+                    <R as MinRetries<R2>>::Min,
+                >::collection_kind()),
+            }
+        } else {
             HydroNode::Join {
                 left: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 right: Box::new(n.ir_node.replace(HydroNode::Placeholder)),
@@ -2636,11 +2657,13 @@ where
                     (K, (V1, V2)),
                     L,
                     B,
-                    NoOrder,
+                    <B2 as JoinBoundedness<O>>::OutputOrder,
                     <R as MinRetries<R2>>::Min,
                 >::collection_kind()),
-            },
-        )
+            }
+        };
+
+        Stream::new(self.location.clone(), ir_node)
     }
 
     /// Given a stream of pairs `(K, V1)` and a bounded stream of keys `K`,
