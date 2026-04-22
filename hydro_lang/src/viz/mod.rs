@@ -1,5 +1,6 @@
 //! Graph visualization utilities for Hydro IR
 
+pub mod analysis_json;
 pub mod api;
 pub mod config;
 pub mod debug;

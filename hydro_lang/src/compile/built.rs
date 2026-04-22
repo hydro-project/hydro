@@ -95,6 +95,12 @@ impl<'a> BuiltFlow<'a> {
             .hydroscope_to_string(show_metadata, show_location_groups, use_short_labels)
     }
 
+    #[cfg(feature = "viz")]
+    /// Emit the analysis JSON for coordination analysis.
+    pub fn analysis_json_string(&self) -> Result<String, serde_json::Error> {
+        crate::viz::analysis_json::emit_analysis_json(&self.ir, &self.location_names)
+    }
+
     // File generation methods
     #[cfg(feature = "viz")]
     pub fn mermaid_to_file(
