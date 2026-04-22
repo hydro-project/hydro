@@ -822,12 +822,20 @@ impl DfirGraph {
     }
 
     /// Emit this graph as runnable Rust source code tokens that execute inline.
+    /// Generates a flat `async move |df: &mut InlineContext|` closure where subgraph
+    /// blocks are inlined in topological order, using local `Vec<T>` buffers
+    /// instead of runtime handoffs. Each call to the closure runs one tick.
     ///
-    /// Generates a flat async closure where subgraph blocks are inlined in
-    /// topological order using local `Vec<T>` buffers instead of handoffs.
-    /// Each call to the closure runs one tick. State is managed by a
-    /// lightweight `InlineContext` instead of the full `Dfir` runtime.
-    /// The returned code is wrapped in an [`InlineDfir`] struct.
+    /// The generated code block evaluates to an `InlineDfir` instance wrapping the
+    /// closure. Operator prologues (`add_state`, `set_state_lifespan_hook`)
+    /// run at construction time on the `InlineContext` before it is moved into
+    /// `InlineDfir::new`. `InlineDfir` provides the `InlineContext` to the closure on
+    /// each tick run.
+    ///
+    /// # Errors
+    ///
+    /// Returns all diagnostics as `Err(diagnostics)` if any are errors
+    /// (leaving `&mut diagnostics` empty).
     pub fn as_code(
         &self,
         root: &TokenStream,
