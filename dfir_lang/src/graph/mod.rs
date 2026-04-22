@@ -442,8 +442,6 @@ pub struct BuildDfirCodeOutput {
     pub diagnostics: Diagnostics,
 }
 
-/// Compiles a [`DfirCode`] AST into inline source code that runs the dataflow
-/// without the `Dfir` runtime scheduler.
 pub fn build_dfir_code_inline(
     dfir_code: DfirCode,
     root: &TokenStream,

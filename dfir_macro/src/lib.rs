@@ -82,14 +82,6 @@ fn dfir_syntax_internal(
         }) => (code, diagnostics),
         Err(diagnostics) => (
             quote! {
-                {
-                    #root::scheduled::context::InlineDfir::new(
-                        #root::scheduled::context::NullTickClosure,
-                        <#root::scheduled::context::InlineContext as ::std::default::Default>::default(),
-                        None,
-                        None,
-                    )
-                }
             },
             diagnostics,
         ),
