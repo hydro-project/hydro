@@ -125,14 +125,14 @@
 <a href=#125 id=125 data-nosnippet>125</a>        }) =&gt; (code, diagnostics),
 <a href=#126 id=126 data-nosnippet>126</a>        <span class="prelude-val">Err</span>(diagnostics) =&gt; (
 <a href=#127 id=127 data-nosnippet>127</a>            <span class="macro">quote!</span> {
-<a href=#128 id=128 data-nosnippet>128</a>                #root::scheduled::context::InlineDfir::new(
-<a href=#129 id=129 data-nosnippet>129</a>                    <span class="kw">async move </span>|| { <span class="bool-val">false </span>},
-<a href=#130 id=130 data-nosnippet>130</a>                    ::std::sync::Arc::new(#root::scheduled::context::InlineWakeState::default()),
-<a href=#131 id=131 data-nosnippet>131</a>                    ::std::rc::Rc::new(::std::cell::Cell::new(#root::scheduled::ticks::TickInstant::default())),
-<a href=#132 id=132 data-nosnippet>132</a>                    ::std::rc::Rc::new(#root::scheduled::metrics::DfirMetrics::default()),
-<a href=#133 id=133 data-nosnippet>133</a>                    <span class="prelude-val">None</span>,
-<a href=#134 id=134 data-nosnippet>134</a>                    <span class="prelude-val">None</span>,
-<a href=#135 id=135 data-nosnippet>135</a>                )
+<a href=#128 id=128 data-nosnippet>128</a>                {
+<a href=#129 id=129 data-nosnippet>129</a>                    #root::scheduled::context::InlineDfir::new(
+<a href=#130 id=130 data-nosnippet>130</a>                        #root::scheduled::context::NullTickClosure,
+<a href=#131 id=131 data-nosnippet>131</a>                        &lt;#root::scheduled::context::InlineContext <span class="kw">as </span>::std::default::Default&gt;::default(),
+<a href=#132 id=132 data-nosnippet>132</a>                        <span class="prelude-val">None</span>,
+<a href=#133 id=133 data-nosnippet>133</a>                        <span class="prelude-val">None</span>,
+<a href=#134 id=134 data-nosnippet>134</a>                    )
+<a href=#135 id=135 data-nosnippet>135</a>                }
 <a href=#136 id=136 data-nosnippet>136</a>            },
 <a href=#137 id=137 data-nosnippet>137</a>            diagnostics,
 <a href=#138 id=138 data-nosnippet>138</a>        ),
