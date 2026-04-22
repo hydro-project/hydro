@@ -18,6 +18,7 @@ fn test_degenerate_union() {
 
     assert_eq!(&[1, 2, 3], &*collect_ready::<Vec<_>, _>(&mut result_recv));
 }
+
 #[test]
 fn test_empty_union() {
     let mut df = dfir_expect_warnings! {

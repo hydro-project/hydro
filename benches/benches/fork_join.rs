@@ -1,4 +1,5 @@
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use dfir_rs::dfir_syntax;
 use timely::dataflow::operators::{Concatenate, Filter, Inspect, ToStream};
 
 const NUM_OPS: usize = 20;
@@ -47,5 +48,19 @@ fn benchmark_timely(c: &mut Criterion) {
     });
 }
 
-criterion_group!(fork_join_dataflow, benchmark_timely, benchmark_raw,);
+fn benchmark_hydroflow_surface(c: &mut Criterion) {
+    c.bench_function("fork_join/dfir_rs/surface", |b| {
+        b.iter(|| {
+            let mut hf = include!("fork_join_20.hf");
+            hf.run_available_sync();
+        })
+    });
+}
+
+criterion_group!(
+    fork_join_dataflow,
+    benchmark_hydroflow_surface,
+    benchmark_timely,
+    benchmark_raw,
+);
 criterion_main!(fork_join_dataflow);
