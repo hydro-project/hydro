@@ -5,8 +5,8 @@ use std::marker::PhantomData;
 
 use super::StateId;
 
-/// A handle into a particular [`Dfir`](super::graph::Dfir) instance, referring to data
-/// inserted by [`add_state`](super::graph::Dfir::add_state).
+/// A handle into a particular [`Context`](super::context::Context) instance, referring to data
+/// inserted by [`add_state`](super::context::Context::add_state).
 ///
 /// If you need to store state handles in a data structure see [`StateHandleErased`] which hides
 /// the generic type parameter.

@@ -1,11 +1,11 @@
 use dfir_lang::graph::{WriteConfig, WriteGraphType};
-use dfir_rs::scheduled::context::{InlineDfir, TickClosure};
+use dfir_rs::scheduled::context::{Dfir, TickClosure};
 use regex::Regex;
 
 use crate::protocol::KvsMessage;
 
 pub fn print_graph(
-    flow: &InlineDfir<impl TickClosure>,
+    flow: &Dfir<impl TickClosure>,
     graph: WriteGraphType,
     write_config: Option<WriteConfig>,
 ) {

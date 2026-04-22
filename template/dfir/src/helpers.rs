@@ -1,8 +1,8 @@
 use dfir_rs::lang::graph::{WriteConfig, WriteGraphType};
-use dfir_rs::scheduled::context::{InlineDfir, TickClosure};
+use dfir_rs::scheduled::context::{Dfir, TickClosure};
 
 pub fn print_graph(
-    flow: &InlineDfir<impl TickClosure>,
+    flow: &Dfir<impl TickClosure>,
     graph: WriteGraphType,
     write_config: Option<WriteConfig>,
 ) {

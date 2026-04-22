@@ -852,7 +852,7 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                 .chain(net_out_params)
                 .collect();
 
-            let ret_type: syn::Type = syn::parse_quote! { #root::runtime_support::dfir_rs::scheduled::context::InlineDfir<impl #root::runtime_support::dfir_rs::scheduled::context::TickClosure + 'a> };
+            let ret_type: syn::Type = syn::parse_quote! { #root::runtime_support::dfir_rs::scheduled::context::Dfir<impl #root::runtime_support::dfir_rs::scheduled::context::TickClosure + 'a> };
 
             let func = if !extra_fn_generics.is_empty() {
                 syn::parse_quote! {

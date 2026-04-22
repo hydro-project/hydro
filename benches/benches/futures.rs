@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use criterion::{Criterion, criterion_group, criterion_main};
 use dfir_rs::dfir_syntax;
-use dfir_rs::scheduled::context::{InlineDfir, TickClosure};
+use dfir_rs::scheduled::context::{Dfir, TickClosure};
 
 const NUM_ELEMS: u32 = 3000;
 
@@ -64,7 +64,7 @@ fn benchmark_immediately_available(c: &mut Criterion) {
 type WakeInfo = (Rc<RefCell<bool>>, Vec<Rc<RefCell<Option<Waker>>>>);
 
 fn benchmark_delayed(c: &mut Criterion) {
-    fn setup(count: u32, wake_one: bool) -> (InlineDfir<impl TickClosure>, WakeInfo) {
+    fn setup(count: u32, wake_one: bool) -> (Dfir<impl TickClosure>, WakeInfo) {
         let done = Rc::new(RefCell::new(false));
         let mut wakers = Vec::new();
 

@@ -822,14 +822,14 @@ impl DfirGraph {
     }
 
     /// Emit this graph as runnable Rust source code tokens that execute inline.
-    /// Generates a flat `async move |df: &mut InlineContext|` closure where subgraph
+    /// Generates a flat `async move |df: &mut Context|` closure where subgraph
     /// blocks are inlined in topological order, using local `Vec<T>` buffers
     /// instead of runtime handoffs. Each call to the closure runs one tick.
     ///
-    /// The generated code block evaluates to an `InlineDfir` instance wrapping the
+    /// The generated code block evaluates to a `Dfir` instance wrapping the
     /// closure. Operator prologues (`add_state`, `set_state_lifespan_hook`)
-    /// run at construction time on the `InlineContext` before it is moved into
-    /// `InlineDfir::new`. `InlineDfir` provides the `InlineContext` to the closure on
+    /// run at construction time on the `Context` before it is moved into
+    /// `Dfir::new`. `Dfir` provides the `Context` to the closure on
     /// each tick run.
     ///
     /// # Errors
@@ -1504,7 +1504,7 @@ impl DfirGraph {
                 use #root::{var_expr, var_args};
 
                 let __dfir_wake_state = ::std::sync::Arc::new(
-                    #root::scheduled::context::InlineWakeState::default()
+                    #root::scheduled::context::WakeState::default()
                 );
 
                 let __dfir_metrics = {
@@ -1514,7 +1514,7 @@ impl DfirGraph {
                 };
 
                 #[allow(unused_mut)]
-                let mut #df = #root::scheduled::context::InlineContext::new(
+                let mut #df = #root::scheduled::context::Context::new(
                     ::std::clone::Clone::clone(&__dfir_wake_state),
                     __dfir_metrics,
                 );
@@ -1529,7 +1529,7 @@ impl DfirGraph {
                 // if any handoff buffer has data.
                 let mut __dfir_work_done = true;
                 #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref)]
-                let __dfir_inline_tick = async move |#df: &mut #root::scheduled::context::InlineContext| {
+                let __dfir_inline_tick = async move |#df: &mut #root::scheduled::context::Context| {
                     let __dfir_metrics = #df.metrics();
                     #( #subgraph_blocks )*
 
@@ -1548,7 +1548,7 @@ impl DfirGraph {
                     #df.__end_tick();
                     ::std::mem::take(&mut __dfir_work_done)
                 };
-                #root::scheduled::context::InlineDfir::new(
+                #root::scheduled::context::Dfir::new(
                     __dfir_inline_tick,
                     #df,
                     Some(#meta_graph_json),

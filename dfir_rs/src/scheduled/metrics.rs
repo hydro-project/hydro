@@ -11,10 +11,10 @@ use web_time::{Duration, Instant};
 use super::{HandoffTag, SubgraphTag};
 use crate::util::slot_vec::SecondarySlotVec;
 
-/// Metrics for a [`InlineDfir`] graph instance.
+/// Metrics for a [`Dfir`](super::context::Dfir) graph instance.
 ///
-/// Call [`InlineDfir::metrics`] for reference-counted continually-updated metrics,
-/// or call [`InlineDfir::metrics_intervals`] to obtain a [`DfirMetricsIntervals`] handle, and use
+/// Call [`Dfir::metrics`](super::context::Dfir::metrics) for reference-counted continually-updated metrics,
+/// or call [`Dfir::metrics_intervals`](super::context::Dfir::metrics_intervals) to obtain a [`DfirMetricsIntervals`] handle, and use
 /// [`DfirMetricsIntervals::take_interval`] to retrieve metrics for successive intervals.
 #[derive(Default, Clone)]
 #[non_exhaustive]
@@ -42,7 +42,7 @@ impl DfirMetrics {
 }
 
 /// A handle into a DFIR instance's metrics, where each call to [`Self::take_interval`] ends the current interval and
-/// returns its metrics. Obtained via [`InlineDfir::metrics_intervals`].
+/// returns its metrics. Obtained via [`Dfir::metrics_intervals`](super::context::Dfir::metrics_intervals).
 ///
 /// The first call to `take_interval` returns metrics since this DFIR instance was created. Each subsequent call to
 /// `take_interval` returns metrics since the previous call.
@@ -72,7 +72,7 @@ impl DfirMetricsIntervals {
 
     /// Returns a reference-counted handle to the original continually-updated runtime metrics for this DFIR instance.
     ///
-    /// See [`InlineDfir::metrics`].
+    /// See [`Dfir::metrics`](super::context::Dfir::metrics).
     pub fn all_metrics(&self) -> Rc<DfirMetrics> {
         Rc::clone(&self.curr)
     }

@@ -12,7 +12,7 @@ use std::task::ready;
 
 use bytes::Bytes;
 use colored::Colorize;
-use dfir_rs::scheduled::context::InlineDfirErased;
+use dfir_rs::scheduled::context::DfirErased;
 use futures::{Stream, StreamExt};
 use libloading::Library;
 use serde::Serialize;
@@ -84,8 +84,8 @@ type SimLoaded<'a> = libloading::Symbol<
         println_handler: fn(fmt::Arguments<'_>),
         eprintln_handler: fn(fmt::Arguments<'_>),
     ) -> (
-        Vec<(&'static str, Option<u32>, InlineDfirErased)>,
-        Vec<(&'static str, Option<u32>, InlineDfirErased)>,
+        Vec<(&'static str, Option<u32>, DfirErased)>,
+        Vec<(&'static str, Option<u32>, DfirErased)>,
         Hooks<&'static str>,
         InlineHooks<&'static str>,
     ),
@@ -333,8 +333,8 @@ impl CompiledSim {
 
 // This must be a tuple because it is referenced from generated code in `graph.rs`.
 type DylibResult = (
-    Vec<(&'static str, Option<u32>, InlineDfirErased)>,
-    Vec<(&'static str, Option<u32>, InlineDfirErased)>,
+    Vec<(&'static str, Option<u32>, DfirErased)>,
+    Vec<(&'static str, Option<u32>, DfirErased)>,
     Hooks<&'static str>,
     InlineHooks<&'static str>,
 );
@@ -938,12 +938,12 @@ impl<W: std::io::Write> std::fmt::Write for LogKind<W> {
 struct LaunchedSim<W: std::io::Write> {
     /// Top-level async DFIRs, one per process/cluster member. These run continuously and
     /// produce data that feeds into ticks and observations.
-    async_dfirs: Vec<(LocationId, Option<u32>, InlineDfirErased)>,
+    async_dfirs: Vec<(LocationId, Option<u32>, DfirErased)>,
     /// Tick DFIRs whose parent async DFIR has made progress, so they may be ready to run.
     /// The scheduler further filters these by checking whether their hooks have pending decisions.
-    possibly_ready_ticks: Vec<(LocationId, Option<u32>, InlineDfirErased)>,
+    possibly_ready_ticks: Vec<(LocationId, Option<u32>, DfirErased)>,
     /// Tick DFIRs whose parent async DFIR has not yet made progress since they were last checked.
-    not_ready_ticks: Vec<(LocationId, Option<u32>, InlineDfirErased)>,
+    not_ready_ticks: Vec<(LocationId, Option<u32>, DfirErased)>,
     /// Top-level locations whose async DFIR has made progress and whose hooks (from top-level
     /// `assume_ordering`) may have ordering decisions to resolve. Unlike ticks, these have no
     /// DFIR to execute — only hook resolution.

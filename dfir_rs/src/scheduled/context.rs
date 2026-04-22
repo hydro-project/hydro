@@ -1,7 +1,7 @@
 //! Module for the inline DFIR runtime context and execution engine.
 //!
-//! Provides [`InlineContext`] (the lightweight operator context) and
-//! [`InlineDfir`] (the dataflow execution wrapper).
+//! Provides [`Context`] (the lightweight operator context) and
+//! [`Dfir`] (the dataflow execution wrapper).
 
 use std::any::Any;
 use std::future::Future;
@@ -33,22 +33,22 @@ struct StateData {
 }
 type LifespanResetFn = Box<dyn FnMut(&mut dyn Any)>;
 
-/// Coordinates waking between [`InlineContext`] (inside the tick closure) and [`InlineDfir`]
+/// Coordinates waking between [`Context`] (inside the tick closure) and [`Dfir`]
 /// (the external runner). Shared via `Arc` between both.
 ///
-/// When external data arrives (e.g., a tokio stream receives a message), the [`InlineContext::waker`]
-/// fires, which sets `can_start_tick` and wakes the [`InlineDfir::run`] task so it starts a new tick.
+/// When external data arrives (e.g., a tokio stream receives a message), the [`Context::waker`]
+/// fires, which sets `can_start_tick` and wakes the [`Dfir::run`](Dfir::run) task so it starts a new tick.
 /// Implements [`Wake`] directly so it can be used as a `Waker` without an extra wrapper.
 #[doc(hidden)]
-pub struct InlineWakeState {
+pub struct WakeState {
     /// Set to `true` when external data arrives, signaling that a new tick should run.
-    /// Checked by [`InlineDfir::run_tick`] and [`InlineDfir::run_available`].
+    /// Checked by [`Dfir::run_tick`](Dfir::run_tick) and [`Dfir::run_available`](Dfir::run_available).
     can_start_tick: std::sync::atomic::AtomicBool,
-    /// Wakes the [`InlineDfir::run`] task from its idle `poll_fn` sleep.
+    /// Wakes the [`Dfir::run`](Dfir::run) task from its idle `poll_fn` sleep.
     task_waker: futures::task::AtomicWaker,
 }
 
-impl Default for InlineWakeState {
+impl Default for WakeState {
     fn default() -> Self {
         Self {
             can_start_tick: std::sync::atomic::AtomicBool::new(false),
@@ -57,7 +57,7 @@ impl Default for InlineWakeState {
     }
 }
 
-impl Wake for InlineWakeState {
+impl Wake for WakeState {
     fn wake(self: Arc<Self>) {
         self.wake_by_ref();
     }
@@ -76,21 +76,21 @@ impl Wake for InlineWakeState {
 /// `context` (for iterators: `state_ref_unchecked`, `is_first_run_this_tick`, etc.).
 #[doc(hidden)]
 #[derive(Default)]
-pub struct InlineContext {
+pub struct Context {
     /// Storage for the operator-facing State API.
     states: SlotVec<StateTag, StateData>,
     /// Counter for number of ticks run.
     current_tick: TickInstant,
-    /// Coordinates waking between [`InlineContext`] (inside the tick closure) and [`InlineDfir`]
+    /// Coordinates waking between [`Context`] (inside the tick closure) and [`Dfir`]
     /// (the external runner). Shared via `Arc` between both. Implements [`Wake`].
-    wake_state: Arc<InlineWakeState>,
+    wake_state: Arc<WakeState>,
     /// Live-updating DFIR runtime metrics via interior mutability.
     metrics: Rc<DfirMetrics>,
 }
 
-impl InlineContext {
+impl Context {
     /// Create a new inline context with shared wake state and metrics.
-    pub fn new(wake_state: Arc<InlineWakeState>, metrics: Rc<DfirMetrics>) -> Self {
+    pub fn new(wake_state: Arc<WakeState>, metrics: Rc<DfirMetrics>) -> Self {
         Self {
             states: SlotVec::new(),
             current_tick: TickInstant::default(),
@@ -213,14 +213,14 @@ impl InlineContext {
 }
 
 /// A wrapper around an inline-codegen tick closure that provides [`Self::run`],
-/// [`Self::run_available`], and [`Self::run_tick`] methods — mirroring the [`super::graph::Dfir`]
+/// [`Self::run_available`], and [`Self::run_tick`] methods — mirroring the [`Dfir`](super::context::Dfir)
 /// API.
 ///
 /// # Design
 ///
-/// The inline codegen generates an `async move |df: &mut InlineContext|` closure that captures
-/// dataflow-specific state (handoff buffers, source iterators) and receives the [`InlineContext`]
-/// (operator accumulators, tick counter) by reference each tick. `InlineDfir` owns both the
+/// The inline codegen generates an `async move |df: &mut Context|` closure that captures
+/// dataflow-specific state (handoff buffers, source iterators) and receives the [`Context`]
+/// (operator accumulators, tick counter) by reference each tick. `Dfir` owns both the
 /// closure and the context, and coordinates tick lifecycle and idle/wake behavior.
 ///
 /// We use a single opaque closure rather than generating a bespoke struct per dataflow because:
@@ -230,18 +230,18 @@ impl InlineContext {
 ///   `.await` points) that would be very difficult to replicate in a generated struct
 ///
 /// The `Tick` type parameter is bounded by [`TickClosure`] (not `AsyncFnMut` directly) to
-/// support type erasure via [`TickClosureErased`] / [`InlineDfirErased`] for heterogeneous
+/// support type erasure via [`TickClosureErased`] / [`DfirErased`] for heterogeneous
 /// collections (e.g., the sim runtime storing multiple locations in a `Vec`). The concrete
 /// (non-erased) path used by trybuild and embedded has zero overhead.
 #[doc(hidden)]
-pub struct InlineDfir<Tick> {
+pub struct Dfir<Tick> {
     /// Async closure which runs a single tick when called.
     tick_closure: Tick,
-    /// Coordinates waking between [`InlineContext`] (inside the tick closure) and [`InlineDfir`]
+    /// Coordinates waking between [`Context`] (inside the tick closure) and [`Dfir`]
     /// (the external runner). Shared via `Arc` between both. Implements [`Wake`].
-    wake_state: Arc<InlineWakeState>,
-    /// The inline context, owned by `InlineDfir` and passed to the tick closure by reference.
-    context: InlineContext,
+    wake_state: Arc<WakeState>,
+    /// The inline context, owned by `Dfir` and passed to the tick closure by reference.
+    context: Context,
     /// See [`Self::meta_graph()`].
     #[cfg(feature = "meta")]
     meta_graph: Option<DfirGraph>,
@@ -253,16 +253,16 @@ pub struct InlineDfir<Tick> {
 /// Trait for tick closures — abstracts over both concrete async closures
 /// and type-erased boxed versions ([`TickClosureErased`]).
 ///
-/// The `&mut InlineContext` parameter is owned by [`InlineDfir`] and lent to the
+/// The `&mut Context` parameter is owned by [`Dfir`] and lent to the
 /// closure each tick, avoiding shared-ownership overhead for the context.
 #[doc(hidden)]
 pub trait TickClosure {
     /// Call the tick closure. Returns `true` if any subgraph received input data.
-    fn call_tick<'a>(&'a mut self, ctx: &'a mut InlineContext) -> impl Future<Output = bool> + 'a;
+    fn call_tick<'a>(&'a mut self, ctx: &'a mut Context) -> impl Future<Output = bool> + 'a;
 }
 
-impl<F: for<'a> AsyncFnMut(&'a mut InlineContext) -> bool> TickClosure for F {
-    fn call_tick<'a>(&'a mut self, ctx: &'a mut InlineContext) -> impl Future<Output = bool> + 'a {
+impl<F: for<'a> AsyncFnMut(&'a mut Context) -> bool> TickClosure for F {
+    fn call_tick<'a>(&'a mut self, ctx: &'a mut Context) -> impl Future<Output = bool> + 'a {
         self(ctx)
     }
 }
@@ -272,7 +272,7 @@ impl<F: for<'a> AsyncFnMut(&'a mut InlineContext) -> bool> TickClosure for F {
 pub struct NullTickClosure;
 
 impl TickClosure for NullTickClosure {
-    fn call_tick<'a>(&'a mut self, _ctx: &'a mut InlineContext) -> impl Future<Output = bool> + 'a {
+    fn call_tick<'a>(&'a mut self, _ctx: &'a mut Context) -> impl Future<Output = bool> + 'a {
         std::future::ready(false)
     }
 }
@@ -287,36 +287,36 @@ pub struct TickClosureErased(Box<dyn TickClosureErasedInner>);
 trait TickClosureErasedInner {
     fn call_tick<'a>(
         &'a mut self,
-        ctx: &'a mut InlineContext,
+        ctx: &'a mut Context,
     ) -> Pin<Box<dyn Future<Output = bool> + 'a>>;
 }
 
-impl<F: for<'a> AsyncFnMut(&'a mut InlineContext) -> bool> TickClosureErasedInner for F {
+impl<F: for<'a> AsyncFnMut(&'a mut Context) -> bool> TickClosureErasedInner for F {
     fn call_tick<'a>(
         &'a mut self,
-        ctx: &'a mut InlineContext,
+        ctx: &'a mut Context,
     ) -> Pin<Box<dyn Future<Output = bool> + 'a>> {
         Box::pin(self(ctx))
     }
 }
 
 impl TickClosure for TickClosureErased {
-    fn call_tick<'a>(&'a mut self, ctx: &'a mut InlineContext) -> impl Future<Output = bool> + 'a {
+    fn call_tick<'a>(&'a mut self, ctx: &'a mut Context) -> impl Future<Output = bool> + 'a {
         self.0.call_tick(ctx)
     }
 }
 
-/// Type alias for a type-erased [`InlineDfir`] that can be stored in heterogeneous collections.
-/// Created via [`InlineDfir::into_erased`].
-pub type InlineDfirErased = InlineDfir<TickClosureErased>;
+/// Type alias for a type-erased [`Dfir`] that can be stored in heterogeneous collections.
+/// Created via [`Dfir::into_erased`](Dfir::into_erased).
+pub type DfirErased = Dfir<TickClosureErased>;
 
-impl<Tick: TickClosure> InlineDfir<Tick> {
-    /// Create a new `InlineDfir` from a tick closure, inline context,
+impl<Tick: TickClosure> Dfir<Tick> {
+    /// Create a new `Dfir` from a tick closure, inline context,
     /// and meta graph / diagnostics JSON strings.
     #[doc(hidden)]
     pub fn new(
         tick_closure: Tick,
-        context: InlineContext,
+        context: Context,
         meta_graph_json: Option<&str>,
         diagnostics_json: Option<&str>,
     ) -> Self {
@@ -386,7 +386,7 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
     }
 }
 
-impl<Tick: TickClosure> InlineDfir<Tick> {
+impl<Tick: TickClosure> Dfir<Tick> {
     /// Run a single tick. Returns `true` if any subgraph received input data.
     ///
     /// Checks both handoff buffers (via `work_done` flag set in generated recv port code)
@@ -408,7 +408,7 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
         match fut.as_mut().poll(&mut ctx) {
             std::task::Poll::Ready(result) => result,
             std::task::Poll::Pending => {
-                panic!("InlineDfir::run_tick_sync: tick yielded asynchronously.")
+                panic!("Dfir::run_tick_sync: tick yielded asynchronously.")
             }
         }
     }
@@ -470,17 +470,17 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
     }
 }
 
-impl<Tick: 'static + for<'a> AsyncFnMut(&'a mut InlineContext) -> bool> InlineDfir<Tick> {
+impl<Tick: 'static + for<'a> AsyncFnMut(&'a mut Context) -> bool> Dfir<Tick> {
     /// Type-erase the tick closure for use in heterogeneous collections.
     ///
     /// Wraps the concrete async closure in [`TickClosureErased`], which boxes the future
     /// returned by each tick call. This adds one heap allocation per tick, but enables
-    /// storing multiple `InlineDfir`s with different closure types in a single `Vec`.
+    /// storing multiple `Dfir`s with different closure types in a single `Vec`.
     ///
     /// Only needed for the sim runtime path. The trybuild and embedded paths keep the
     /// concrete type and pay no erasure cost.
-    pub fn into_erased(self) -> InlineDfirErased {
-        InlineDfir {
+    pub fn into_erased(self) -> DfirErased {
+        Dfir {
             tick_closure: TickClosureErased(Box::new(self.tick_closure)),
             wake_state: self.wake_state,
             context: self.context,
