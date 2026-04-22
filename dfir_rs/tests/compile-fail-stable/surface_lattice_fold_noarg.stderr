@@ -9,3 +9,9 @@ error: `lattice_fold` expects 1 argument(s), received 0.
   |
 6 |             -> lattice_fold::<dfir_rs::lattices::set_union::SetUnionHashSet<u32>>()
   |                ^^^^^^^^^^^^
+
+error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
+ --> tests/compile-fail-stable/surface_lattice_fold_noarg.rs:9:8
+  |
+9 |     df.run_available_sync();
+  |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

@@ -3,3 +3,9 @@ error: Unknown lifetime generic argument `'a`, expected `'none`, `'loop`, `'tick
   |
 5 |         j = join::<'a>() -> for_each(std::mem::drop);
   |                    ^^
+
+error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
+ --> tests/compile-fail-stable/surface_join_persistence_bad.rs:9:8
+  |
+9 |     df.run_available_sync();
+  |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

@@ -9,3 +9,9 @@ error: Output connection conflicts with above (unknown:14:21) (2/2)
    |
 15 |         my_partition[c] -> for_each(std::mem::drop);
    |                      ^
+
+error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
+  --> tests/compile-fail-stable/surface_partition_port_duplicate.rs:17:8
+   |
+17 |     df.run_available_sync();
+   |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

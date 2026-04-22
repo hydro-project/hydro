@@ -3,3 +3,9 @@ error: Operator input edge may not cross multiple loop contexts.
   |
 6 |                 a -> batch() -> null();
   |                      ^^^^^
+
+error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
+  --> tests/compile-fail-stable/surface_loop_multiple_window.rs:10:8
+   |
+10 |     df.run_available_sync();
+   |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

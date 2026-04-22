@@ -15,3 +15,9 @@ note: the lint level is defined here
   |
 5 |         tee();
   |         ^^^
+
+error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
+ --> tests/compile-fail-stable/surface_degenerate_tee.rs:7:8
+  |
+7 |     df.run_available_sync();
+  |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

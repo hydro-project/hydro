@@ -3,3 +3,9 @@ error: Cannot reference operator `null`. Only operators with singleton state can
   |
 7 |             -> filter(|value| value <= #my_ref.as_reveal_ref())
   |                                         ^^^^^^
+
+error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
+  --> tests/compile-fail-stable/surface_singleton_nostate.rs:11:8
+   |
+11 |     df.run_available_sync();
+   |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

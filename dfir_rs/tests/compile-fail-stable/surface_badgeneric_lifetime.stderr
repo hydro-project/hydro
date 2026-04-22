@@ -3,3 +3,9 @@ error: `identity` should have exactly 0 persistence lifetime arguments, actually
   |
 5 |         source_iter(0..10) -> identity::<'static>() -> for_each(std::mem::drop);
   |                                          ^^^^^^^
+
+error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
+ --> tests/compile-fail-stable/surface_badgeneric_lifetime.rs:7:8
+  |
+7 |     df.run_available_sync();
+  |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

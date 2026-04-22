@@ -9,3 +9,9 @@ error: Cannot index on already-indexed output, previously indexed above (unknown
    |
 13 |         out_0[0] -> inn_0; // Error: `pivot[0][0]`
    |               ^
+
+error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
+  --> tests/compile-fail-stable/surface_port_naked_overwrite_knot_a.rs:16:8
+   |
+16 |     df.run_available_sync();
+   |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

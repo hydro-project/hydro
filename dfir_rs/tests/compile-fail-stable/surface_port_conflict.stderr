@@ -9,3 +9,9 @@ error: Output connection conflicts with above (unknown:6:10) (2/2)
   |
 7 |         t[1] -> for_each(std::mem::drop);
   |           ^
+
+error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
+ --> tests/compile-fail-stable/surface_port_conflict.rs:9:8
+  |
+9 |     df.run_available_sync();
+  |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

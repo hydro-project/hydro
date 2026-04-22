@@ -3,3 +3,9 @@ error: `inspect` should have exactly 0 generic type arguments, actually has 1.
   |
 6 |         source_iter(0..10) -> inspect::<usize>(std::mem::drop) -> for_each(std::mem::drop);
   |                                         ^^^^^
+
+error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
+ --> tests/compile-fail-stable/surface_badgeneric_type.rs:8:8
+  |
+8 |     df.run_available_sync();
+  |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

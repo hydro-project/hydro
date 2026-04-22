@@ -80,11 +80,7 @@ fn dfir_syntax_internal(
             code,
             diagnostics,
         }) => (code, diagnostics),
-        Err(diagnostics) => (
-            quote! {
-            },
-            diagnostics,
-        ),
+        Err(diagnostics) => (quote! {}, diagnostics),
     };
 
     let diagnostic_tokens = retain_diagnostic_level.and_then(|level| {

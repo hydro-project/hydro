@@ -27,3 +27,9 @@ error: `map` must have exactly 1 output(s), actually has 0.
   |
 5 |         g = f -> map(|x: usize| x) -> f;
   |                  ^^^
+
+error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
+ --> tests/compile-fail-stable/surface_forwardref_self2_indirect.rs:8:8
+  |
+8 |     df.run_available_sync();
+  |        ^^^^^^^^^^^^^^^^^^ method not found in `()`

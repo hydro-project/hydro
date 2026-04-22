@@ -21,3 +21,9 @@ error: Cannot index on already-indexed input, previously indexed above (unknown:
   |
 8 |         out[0] -> [0]inn; // Error, equivalent to: `[0][0]id[0][0]`
   |                    ^
+
+error[E0599]: no method named `run_available_sync` found for unit type `()` in the current scope
+  --> tests/compile-fail-stable/surface_port_naked_overwrite_simple.rs:10:8
+   |
+10 |     df.run_available_sync();
+   |        ^^^^^^^^^^^^^^^^^^ method not found in `()`
