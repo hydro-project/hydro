@@ -8,14 +8,13 @@ use std::task::{Context, Poll};
 use pin_project_lite::pin_project;
 use web_time::{Duration, Instant};
 
-#[expect(unused_imports, reason = "used for rustdoc links")]
 use super::{HandoffTag, SubgraphTag};
 use crate::util::slot_vec::SecondarySlotVec;
 
-/// Metrics for a [`Dfir`] graph instance.
+/// Metrics for a [`InlineDfir`] graph instance.
 ///
-/// Call [`Dfir::metrics`] for reference-counted continually-updated metrics,
-/// or call [`Dfir::metrics_intervals`] to obtain a [`DfirMetricsIntervals`] handle, and use
+/// Call [`InlineDfir::metrics`] for reference-counted continually-updated metrics,
+/// or call [`InlineDfir::metrics_intervals`] to obtain a [`DfirMetricsIntervals`] handle, and use
 /// [`DfirMetricsIntervals::take_interval`] to retrieve metrics for successive intervals.
 #[derive(Default, Clone)]
 #[non_exhaustive]
@@ -43,7 +42,7 @@ impl DfirMetrics {
 }
 
 /// A handle into a DFIR instance's metrics, where each call to [`Self::take_interval`] ends the current interval and
-/// returns its metrics. Obtained via [`Dfir::metrics_intervals`].
+/// returns its metrics. Obtained via [`InlineDfir::metrics_intervals`].
 ///
 /// The first call to `take_interval` returns metrics since this DFIR instance was created. Each subsequent call to
 /// `take_interval` returns metrics since the previous call.
@@ -73,7 +72,7 @@ impl DfirMetricsIntervals {
 
     /// Returns a reference-counted handle to the original continually-updated runtime metrics for this DFIR instance.
     ///
-    /// See [`Dfir::metrics`].
+    /// See [`InlineDfir::metrics`].
     pub fn all_metrics(&self) -> Rc<DfirMetrics> {
         Rc::clone(&self.curr)
     }
