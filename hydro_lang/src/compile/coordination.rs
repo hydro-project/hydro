@@ -1030,6 +1030,8 @@ enum MonotoneBehavior<'a> {
     PreserveIfOrdered { input: &'a HydroNode, output_is_total_order: bool },
     /// Two branches, both must prove the goal. SetInclusion only.
     TwoBranchSetInclusion { first: &'a HydroNode, second: &'a HydroNode },
+    /// Two branches, both must prove the goal. Preserves any goal (not just SetInclusion).
+    TwoBranchPreserve { first: &'a HydroNode, second: &'a HydroNode },
     /// Requires custom logic in prove().
     Custom,
 }
@@ -1168,10 +1170,21 @@ fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
             PreserveIfOrdered { input, output_is_total_order: is_total }
         }
 
-        // Two-branch: both must prove the goal
+        // Chain with bounded first: both sides must prove the goal, but the bounded
+        // first side discharges easily (finite data). Unbounded first: SetInclusion only.
         HydroNode::Chain { first, second, .. }
-        | HydroNode::ChainFirst { first, second, .. }
-        | HydroNode::Join { left: first, right: second, .. }
+        | HydroNode::ChainFirst { first, second, .. } => {
+            if first.metadata().collection_kind.is_bounded() {
+                // Both sides must prove the goal. The bounded side will typically
+                // discharge at a source. This allows Prefix when both sides are TotalOrder.
+                TwoBranchPreserve { first, second }
+            } else {
+                TwoBranchSetInclusion { first, second }
+            }
+        }
+
+        // Two-branch: both must prove the goal. SetInclusion only.
+        HydroNode::Join { left: first, right: second, .. }
         | HydroNode::CrossProduct { left: first, right: second, .. } => TwoBranchSetInclusion { first, second },
 
         // Everything else needs custom logic
@@ -1264,6 +1277,17 @@ fn prove(
                 }
                 _ => ProofResult::fail(&name, "breaks prefix/lattice order", span, pm_span),
             };
+        }
+        MonotoneBehavior::TwoBranchPreserve { first, second } => {
+            let a = prove(first, goal, cycle_proofs, seen_tees);
+            if !a.is_proved() {
+                return a.with_preserved(&format!("{name} (1st branch)"), span.clone(), pm_span.clone());
+            }
+            let b = prove(second, goal, cycle_proofs, seen_tees);
+            if !b.is_proved() {
+                return b.merge_replication_issues(&a).with_preserved(&format!("{name} (2nd branch)"), span.clone(), pm_span.clone());
+            }
+            return b.merge_replication_issues(&a).with_preserved(&name, span, pm_span);
         }
         MonotoneBehavior::Custom => {} // fall through
     }
@@ -2138,16 +2162,14 @@ mod tests {
 
     #[test]
     fn chain_breaks_prefix() {
-        // chain breaks Prefix but passes SetInclusion.
-        // With multi-goal exploration, the analysis picks SetInclusion (the better goal).
+        // chain with bounded TotalOrder first side preserves Prefix.
         let r = check(|flow| {
             let p = flow.process::<()>();
             let a = p.source_iter(q!([1, 2]));
             let b = p.source_iter(q!([3, 4]));
             a.chain(b).for_each(q!(|_| {}));
         });
-        assert!(r.all_monotone(), "chain should pass under SetInclusion:\n{r}");
-        assert_eq!(r.sinks[0].goal, OrderGoal::SetInclusion);
+        assert!(r.all_monotone(), "chain with bounded first should pass:\n{r}");
     }
 
     // --- Join breaks Prefix ---
