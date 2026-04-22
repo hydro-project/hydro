@@ -4,10 +4,7 @@ use super::{
 };
 
 /// Buffers all input items and releases them in the next tick.
-/// the state of the current tick. For example,
 /// See the [book discussion on time](../concepts/life_and_times) for details on ticks.
-/// A tick may be divided into multiple [strata](../concepts/stratification); see the [`next_stratum()`](#next_stratum)
-/// operator.
 ///
 /// `defer_tick` is sometimes needed to separate conflicting data across time,
 /// in order to preserve invariants. Consider the following example, which implements

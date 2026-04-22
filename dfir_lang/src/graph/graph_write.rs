@@ -39,11 +39,7 @@ pub(crate) trait GraphWrite {
     /// Begin writing a loop.
     fn write_loop_start(&mut self, loop_id: GraphLoopId) -> Result<(), Self::Err>;
     /// Begin writing a subgraph.
-    fn write_subgraph_start(
-        &mut self,
-        sg_id: GraphSubgraphId,
-        stratum: usize,
-    ) -> Result<(), Self::Err>;
+    fn write_subgraph_start(&mut self, sg_id: GraphSubgraphId) -> Result<(), Self::Err>;
     /// Begin writing a varname block.
     fn write_varname_start(
         &mut self,
@@ -226,15 +222,10 @@ where
         Ok(())
     }
 
-    fn write_subgraph_start(
-        &mut self,
-        sg_id: GraphSubgraphId,
-        stratum: usize,
-    ) -> Result<(), Self::Err> {
+    fn write_subgraph_start(&mut self, sg_id: GraphSubgraphId) -> Result<(), Self::Err> {
         writeln!(
             self.write,
-            "{b:i$}subgraph sg_{sg:?} [\"sg_{sg:?} stratum {:?}\"]",
-            stratum,
+            "{b:i$}subgraph sg_{sg:?} [\"sg_{sg:?}\"]",
             sg = sg_id.data(),
             b = "",
             i = self.indent,
@@ -437,11 +428,7 @@ where
         Ok(())
     }
 
-    fn write_subgraph_start(
-        &mut self,
-        sg_id: GraphSubgraphId,
-        stratum: usize,
-    ) -> Result<(), Self::Err> {
+    fn write_subgraph_start(&mut self, sg_id: GraphSubgraphId) -> Result<(), Self::Err> {
         writeln!(
             self.write,
             "{b:i$}subgraph sg_{sg:?} {{",
@@ -460,7 +447,7 @@ where
         writeln!(self.write, "{b:i$}style=filled", b = "", i = self.indent)?;
         writeln!(
             self.write,
-            "{b:i$}label = \"sg_{sg:?}\\nstratum {stratum}\"",
+            "{b:i$}label = \"sg_{sg:?}\"",
             sg = sg_id.data(),
             b = "",
             i = self.indent

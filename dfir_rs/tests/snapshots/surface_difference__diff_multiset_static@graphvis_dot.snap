@@ -14,32 +14,35 @@ digraph {
     n7v1 [label="(n7v1) for_each(|x| println!(\"neg: {:?}\", x))", shape=house, fillcolor="#ffff88"]
     n8v1 [label="(n8v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n9v1 [label="(n9v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
-    n10v1 [label="(n10v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n2v1 -> n3v1
     n1v1 -> n8v1
-    n4v1 -> n10v1
+    n4v1 -> n1v1 [label="pos"]
     n5v1 -> n6v1
     n6v1 -> n9v1
     n6v1 -> n7v1
     n8v1 -> n2v1 [color=red]
     n9v1 -> n1v1 [label="neg", color=red]
-    n10v1 -> n1v1 [label="pos"]
     subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_1v1\nstratum 1"
+        label = "sg_1v1"
         subgraph sg_1v1_var_diff {
             cluster=true
             label="var diff"
             n1v1
+        }
+        subgraph sg_1v1_var_poss {
+            cluster=true
+            label="var poss"
+            n4v1
         }
     }
     subgraph sg_2v1 {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_2v1\nstratum 2"
+        label = "sg_2v1"
         subgraph sg_2v1_var_diff {
             cluster=true
             label="var diff"
@@ -51,24 +54,13 @@ digraph {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_3v1\nstratum 0"
+        label = "sg_3v1"
         n7v1
         subgraph sg_3v1_var_negs {
             cluster=true
             label="var negs"
             n5v1
             n6v1
-        }
-    }
-    subgraph sg_4v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_4v1\nstratum 0"
-        subgraph sg_4v1_var_poss {
-            cluster=true
-            label="var poss"
-            n4v1
         }
     }
 }

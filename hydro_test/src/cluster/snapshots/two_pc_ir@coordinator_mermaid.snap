@@ -1,7 +1,6 @@
 ---
 source: hydro_test/src/cluster/two_pc_bench.rs
 expression: "preview.dfir_for(&coordinator).to_mermaid(&WriteConfig\n{\n    no_subgraphs: true, no_pull_push: true, no_handoffs: true,\n    op_text_no_imports: true, ..WriteConfig::default()\n})"
-snapshot_kind: text
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
 flowchart TD
@@ -63,11 +62,7 @@ linkStyle default stroke:#aaa
 54v1["<div style=text-align:center>(54v1)</div> <code><br>for_each(|_| {})</code>"]:::otherClass
 55v1["<div style=text-align:center>(55v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
 56v1["<div style=text-align:center>(56v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
-74v1["<div style=text-align:center>(74v1)</div> <code><br>identity()</code>"]:::otherClass
-76v1["<div style=text-align:center>(76v1)</div> <code><br>identity()</code>"]:::otherClass
-78v1["<div style=text-align:center>(78v1)</div> <code><br>identity()</code>"]:::otherClass
-80v1["<div style=text-align:center>(80v1)</div> <code><br>identity()</code>"]:::otherClass
-24v1-->74v1
+24v1--o1v1; linkStyle 0 stroke:red
 2v1-->3v1
 3v1--x4v1; linkStyle 2 stroke:red
 4v1-->5v1
@@ -90,11 +85,11 @@ linkStyle default stroke:#aaa
 18v1-->|pos|23v1
 22v1--x|neg|23v1; linkStyle 21 stroke:red
 23v1-->24v1
-26v1-->76v1
+26v1--o25v1; linkStyle 23 stroke:red
 25v1-->26v1
 16v1-->27v1
 27v1-->28v1
-50v1-->78v1
+50v1--o29v1; linkStyle 27 stroke:red
 30v1-->31v1
 31v1--x32v1; linkStyle 29 stroke:red
 32v1-->33v1
@@ -116,16 +111,12 @@ linkStyle default stroke:#aaa
 44v1-->|pos|49v1
 48v1--x|neg|49v1; linkStyle 47 stroke:red
 49v1-->50v1
-52v1-->80v1
+52v1--o51v1; linkStyle 49 stroke:red
 51v1-->52v1
 42v1-->53v1
 53v1-->54v1
 55v1-->56v1
 48v1-->55v1
-74v1--o1v1; linkStyle 55 stroke:red
-76v1--o25v1; linkStyle 56 stroke:red
-78v1--o29v1; linkStyle 57 stroke:red
-80v1--o51v1; linkStyle 58 stroke:red
 10v1
 11v1
 28v1
@@ -134,10 +125,6 @@ linkStyle default stroke:#aaa
 54v1
 55v1
 56v1
-74v1
-76v1
-78v1
-80v1
 subgraph var_cycle_2 ["var <tt>cycle_2</tt>"]
     style var_cycle_2 fill:transparent
     24v1
@@ -216,8 +203,8 @@ subgraph var_stream_32 ["var <tt>stream_32</tt>"]
 end
 subgraph var_stream_44 ["var <tt>stream_44</tt>"]
     style var_stream_44 fill:transparent
-    8v1
     7v1
+    8v1
 end
 subgraph var_stream_48 ["var <tt>stream_48</tt>"]
     style var_stream_48 fill:transparent

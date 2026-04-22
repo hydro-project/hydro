@@ -135,8 +135,9 @@ pub fn dfir_parser(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
         let flat_mermaid = flat_graph.mermaid_string_flat();
 
-        let part_graph = partition_graph(flat_graph).unwrap();
-        let part_mermaid = part_graph.to_mermaid(&Default::default());
+        let part_mermaid = partition_graph(flat_graph)
+            .map(|part_graph| part_graph.to_mermaid(&Default::default()))
+            .unwrap_or_else(|err| format!("failed to partition: {err}"));
 
         let lit0 = Literal::string(&flat_mermaid);
         let lit1 = Literal::string(&part_mermaid);

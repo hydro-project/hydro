@@ -2,11 +2,12 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use proc_macro2::Span;
 use slotmap::{SecondaryMap, SparseSecondaryMap};
 use syn::parse_quote;
 
 use super::meta_graph::DfirGraph;
-use super::ops::{DelayType, FloType, find_node_op_constraints};
+use super::ops::{DelayType, FloType};
 use super::{Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId, graph_algorithms};
 use crate::diagnostic::{Diagnostic, Level};
 use crate::union_find::UnionFind;
@@ -299,132 +300,92 @@ fn can_connect_colorize(
     can_connect
 }
 
-/// Stratification is surprisingly tricky. Basically it is topological sort, but with some nuance.
+/// Topologically sorts subgraphs and injects intermediate identity subgraphs for `defer_tick`
+/// edges that go forward in the topological order (so they become back-edges).
 ///
-/// Returns an error if there is a cycle thru negation.
-fn find_subgraph_strata(
+/// Returns an error if there is an intra-tick cycle (i.e. the subgraph DAG has a cycle when
+/// tick-boundary edges are excluded).
+fn order_subgraphs(
     partitioned_graph: &mut DfirGraph,
     barrier_crossers: &BarrierCrossers,
 ) -> Result<(), Diagnostic> {
-    // Determine subgraphs's stratum number.
-    // Find SCCs ignoring `defer_tick()` (`DelayType::Tick`) edges, then do TopoSort on the
-    // resulting DAG.
-    // Cycles thru cross-stratum negative edges (both `DelayType::Tick` and `DelayType::Stratum`)
-    // are an error.
+    // Build a subgraph-level directed graph, excluding tick-boundary edges.
+    let mut sg_preds: BTreeMap<GraphSubgraphId, Vec<GraphSubgraphId>> = Default::default();
 
-    // Generate a subgraph graph. I.e. each node is a subgraph.
-    // Edges are connections between subgraphs, ignoring tick-crossers.
-    // TODO: use DiMulGraph here?
-    #[derive(Default)]
-    struct SubgraphGraph {
-        preds: BTreeMap<GraphSubgraphId, Vec<GraphSubgraphId>>,
-        succs: BTreeMap<GraphSubgraphId, Vec<GraphSubgraphId>>,
-    }
-    impl SubgraphGraph {
-        fn insert_edge(&mut self, src: GraphSubgraphId, dst: GraphSubgraphId) {
-            self.preds.entry(dst).or_default().push(src);
-            self.succs.entry(src).or_default().push(dst);
-        }
-    }
-    let mut subgraph_graph = SubgraphGraph::default();
+    // Track which handoff edges are tick-boundary, keyed by (src_sg, dst_sg).
+    let mut tick_edges: Vec<(GraphEdgeId, DelayType)> = Vec::new();
 
-    // Negative (next stratum) connections between subgraphs. (Ignore `defer_tick()` connections).
-    let mut subgraph_stratum_barriers: BTreeSet<(GraphSubgraphId, GraphSubgraphId)> =
-        Default::default();
-
-    // Iterate handoffs between subgraphs, to build a subgraph meta-graph.
+    // Iterate handoffs between subgraphs.
     for (node_id, node) in partitioned_graph.nodes() {
-        if matches!(node, GraphNode::Handoff { .. }) {
-            assert_eq!(1, partitioned_graph.node_successors(node_id).len());
-            let (succ_edge, succ) = partitioned_graph.node_successors(node_id).next().unwrap();
-
-            // TODO(mingwei): Should we look at the singleton references too?
-            let succ_edge_delaytype = barrier_crossers
-                .edge_barrier_crossers
-                .get(succ_edge)
-                .copied();
-            // Ignore tick edges.
-            if let Some(DelayType::Tick | DelayType::TickLazy) = succ_edge_delaytype {
-                continue;
-            }
-
-            assert_eq!(1, partitioned_graph.node_predecessors(node_id).len());
-            let (_edge_id, pred) = partitioned_graph.node_predecessors(node_id).next().unwrap();
-
-            let pred_sg = partitioned_graph.node_subgraph(pred).unwrap();
-            let succ_sg = partitioned_graph.node_subgraph(succ).unwrap();
-
-            subgraph_graph.insert_edge(pred_sg, succ_sg);
-
-            if Some(DelayType::Stratum) == succ_edge_delaytype {
-                subgraph_stratum_barriers.insert((pred_sg, succ_sg));
-            }
+        if !matches!(node, GraphNode::Handoff { .. }) {
+            continue;
         }
+        assert_eq!(1, partitioned_graph.node_successors(node_id).len());
+        let (succ_edge, succ) = partitioned_graph.node_successors(node_id).next().unwrap();
+
+        let succ_edge_delaytype = barrier_crossers
+            .edge_barrier_crossers
+            .get(succ_edge)
+            .copied();
+        // Tick edges are excluded from the topo sort — they are cross-tick by design.
+        if let Some(delay_type @ (DelayType::Tick | DelayType::TickLazy)) = succ_edge_delaytype {
+            tick_edges.push((succ_edge, delay_type));
+            continue;
+        }
+
+        assert_eq!(1, partitioned_graph.node_predecessors(node_id).len());
+        let (_edge_id, pred) = partitioned_graph.node_predecessors(node_id).next().unwrap();
+
+        let pred_sg = partitioned_graph.node_subgraph(pred).unwrap();
+        let succ_sg = partitioned_graph.node_subgraph(succ).unwrap();
+
+        sg_preds.entry(succ_sg).or_default().push(pred_sg);
     }
-    // Include reference edges as well.
-    // TODO(mingwei): deduplicate graph building code.
+    // Include singleton reference edges.
     for &(pred, succ) in barrier_crossers.singleton_barrier_crossers.iter() {
         assert_ne!(pred, succ, "TODO(mingwei)");
         let pred_sg = partitioned_graph.node_subgraph(pred).unwrap();
         let succ_sg = partitioned_graph.node_subgraph(succ).unwrap();
         assert_ne!(pred_sg, succ_sg);
-        subgraph_graph.insert_edge(pred_sg, succ_sg);
-        subgraph_stratum_barriers.insert((pred_sg, succ_sg));
+        sg_preds.entry(succ_sg).or_default().push(pred_sg);
     }
 
-    // Topological sort (of strongly connected components) is how we find the (nondecreasing)
-    // order of strata.
-    let topo_sort_order = graph_algorithms::topo_sort_scc(
-        || partitioned_graph.subgraph_ids(),
-        |v| subgraph_graph.preds.get(&v).into_iter().flatten().cloned(),
-        |u| subgraph_graph.succs.get(&u).into_iter().flatten().cloned(),
-    );
+    // Topological sort — rejects intra-tick cycles.
+    let topo_sort_order = graph_algorithms::topo_sort(partitioned_graph.subgraph_ids(), |v| {
+        sg_preds.get(&v).into_iter().flatten().copied()
+    });
+    let topo_sort_order = match topo_sort_order {
+        Ok(order) => order,
+        Err(cycle) => {
+            let span = cycle
+                .first()
+                .and_then(|&sg_id| partitioned_graph.subgraph(sg_id).first().copied())
+                .map(|n| partitioned_graph.node(n).span())
+                .unwrap_or_else(Span::call_site);
+            return Err(Diagnostic::spanned(
+                span,
+                Level::Error,
+                "Cyclical dataflow within a tick is not supported. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks.",
+            ));
+        }
+    };
 
-    // Each subgraph's stratum number is the same as it's predecessors.
-    //
-    // Unless:
-    // - At the top level: there is a negative edge (e.g. `fold()`), then we increment.
-    // - Entering or exiting a loop.
-    for sg_id in topo_sort_order {
-        let curr_loop = partitioned_graph.subgraph_loop(sg_id);
+    // Build a position map for the topo sort order.
+    let sg_position: BTreeMap<GraphSubgraphId, usize> = topo_sort_order
+        .iter()
+        .enumerate()
+        .map(|(i, &sg_id)| (sg_id, i))
+        .collect();
 
-        let stratum = subgraph_graph
-            .preds
-            .get(&sg_id)
-            .into_iter()
-            .flatten()
-            .filter_map(|&pred_sg_id| {
-                partitioned_graph
-                    .subgraph_stratum(pred_sg_id)
-                    .map(|stratum| {
-                        let pred_loop = partitioned_graph.subgraph_loop(pred_sg_id);
-                        if curr_loop != pred_loop {
-                            // Entering or exiting a loop.
-                            stratum + 1
-                        } else if curr_loop.is_none()
-                            && subgraph_stratum_barriers.contains(&(pred_sg_id, sg_id))
-                        {
-                            // Top level && negative edge.
-                            stratum + 1
-                        } else {
-                            stratum
-                        }
-                    })
-            })
-            .max()
-            .unwrap_or(0);
-        partitioned_graph.set_subgraph_stratum(sg_id, stratum);
-    }
-
-    // Re-introduce the `defer_tick()` edges, ensuring they actually go to the next tick.
-    let extra_stratum = partitioned_graph.max_stratum().unwrap_or(0) + 1; // Used for `defer_tick()` delayer subgraphs.
-    for (edge_id, &delay_type) in barrier_crossers.edge_barrier_crossers.iter() {
+    // Process tick-boundary edges: inject intermediate identity subgraphs where needed.
+    // TODO(cleanup): The intermediate identity subgraph injection is a workaround. In the future,
+    // handoff buffers should be sufficient without needing an extra subgraph.
+    for (edge_id, delay_type) in tick_edges {
         let (hoff, dst) = partitioned_graph.edge(edge_id);
         // Ignore barriers within `loop {` blocks.
         if partitioned_graph.node_loop(dst).is_some() {
             continue;
         }
-        let (_hoff_port, dst_port) = partitioned_graph.edge_ports(edge_id);
 
         assert_eq!(1, partitioned_graph.node_predecessors(hoff).len());
         let src = partitioned_graph
@@ -434,119 +395,47 @@ fn find_subgraph_strata(
 
         let src_sg = partitioned_graph.node_subgraph(src).unwrap();
         let dst_sg = partitioned_graph.node_subgraph(dst).unwrap();
-        let src_stratum = partitioned_graph.subgraph_stratum(src_sg);
-        let dst_stratum = partitioned_graph.subgraph_stratum(dst_sg);
+        let src_pos = sg_position[&src_sg];
+        let dst_pos = sg_position[&dst_sg];
         let dst_span = partitioned_graph.node(dst).span();
-        match delay_type {
-            DelayType::Tick | DelayType::TickLazy => {
-                let is_lazy = matches!(delay_type, DelayType::TickLazy);
-                // If tick edge goes foreward in stratum, need to buffer.
-                // (TODO(mingwei): could use a different kind of handoff.)
-                // Or if lazy, need to create extra subgraph to mark as lazy.
-                if src_stratum <= dst_stratum || is_lazy {
-                    // We inject a new subgraph between the src/dst which runs as the last stratum
-                    // of the tick and therefore delays the data until the next tick.
 
-                    // Before: A (src) -> H -> B (dst)
-                    // Then add intermediate identity:
-                    let (new_node_id, new_edge_id) = partitioned_graph.insert_intermediate_node(
-                        edge_id,
-                        // TODO(mingwei): Proper span w/ `parse_quote_spanned!`?
-                        GraphNode::Operator(parse_quote! { identity() }),
-                    );
-                    // Intermediate: A (src) -> H -> ID -> B (dst)
-                    let hoff = GraphNode::Handoff {
-                        // Span to the node that has the input stratum barrier.
-                        src_span: dst_span,
-                        dst_span,
-                    };
-                    let (_hoff_node_id, _hoff_edge_id) =
-                        partitioned_graph.insert_intermediate_node(new_edge_id, hoff);
-                    // After: A (src) -> H -> ID -> H' -> B (dst)
+        // If tick edge goes forward in topo order, need to inject a buffer subgraph.
+        if src_pos <= dst_pos {
+            // Before: A (src) -> H -> B (dst)
+            // Then add intermediate identity:
+            let (new_node_id, new_edge_id) = partitioned_graph.insert_intermediate_node(
+                edge_id,
+                // TODO(mingwei): Proper span w/ `parse_quote_spanned!`?
+                GraphNode::Operator(parse_quote! { identity() }),
+            );
+            // Intermediate: A (src) -> H -> ID -> B (dst)
+            let hoff_node = GraphNode::Handoff {
+                src_span: dst_span,
+                dst_span,
+            };
+            let (hoff_node_id, _hoff_edge_id) =
+                partitioned_graph.insert_intermediate_node(new_edge_id, hoff_node);
+            // After: A (src) -> H -> ID -> H' -> B (dst)
 
-                    // Set stratum number for new intermediate:
-                    // Create subgraph.
-                    let new_subgraph_id = partitioned_graph
-                        .insert_subgraph(vec![new_node_id])
-                        .unwrap();
+            // Create subgraph for the intermediate identity.
+            partitioned_graph
+                .insert_subgraph(vec![new_node_id])
+                .unwrap();
 
-                    // Assign stratum.
-                    partitioned_graph.set_subgraph_stratum(new_subgraph_id, extra_stratum);
-
-                    // Assign laziness.
-                    partitioned_graph.set_subgraph_laziness(new_subgraph_id, is_lazy);
-                }
-            }
-            DelayType::Stratum => {
-                // Any negative edges which go onto the same or previous stratum are bad.
-                // Indicates an unbroken negative cycle.
-                // TODO(mingwei): This check is insufficient: https://github.com/hydro-project/hydro/issues/1115#issuecomment-2018385033
-                if dst_stratum <= src_stratum {
-                    return Err(Diagnostic::spanned(
-                        dst_port.span(),
-                        Level::Error,
-                        "Negative edge creates a negative cycle which must be broken with a `defer_tick()` operator.",
-                    ));
-                }
-            }
-            DelayType::MonotoneAccum => {
-                // cycles are actually fine
-                continue;
-            }
+            // Mark H' as a tick-boundary back-edge.
+            partitioned_graph.set_handoff_delay_type(hoff_node_id, delay_type);
+        } else {
+            // Already a back-edge (src after dst in topo order).
+            // Mark the original handoff H as a tick-boundary back-edge.
+            partitioned_graph.set_handoff_delay_type(hoff, delay_type);
         }
     }
     Ok(())
 }
 
-/// Put `is_external_input: true` operators in separate stratum 0 subgraphs if they are not in stratum 0.
-/// By ripping them out of their subgraph/stratum if they're not already in statum 0.
-fn separate_external_inputs(partitioned_graph: &mut DfirGraph) {
-    let external_input_nodes: Vec<_> = partitioned_graph
-        .nodes()
-        // Ensure node is an operator (not a handoff), get constraints spec.
-        .filter_map(|(node_id, node)| {
-            find_node_op_constraints(node).map(|op_constraints| (node_id, op_constraints))
-        })
-        // Ensure current `node_id` is an external input.
-        .filter(|(_node_id, op_constraints)| op_constraints.is_external_input)
-        // Collect just `node_id`s.
-        .map(|(node_id, _op_constraints)| node_id)
-        // Ignore if operator node is already stratum 0.
-        .filter(|&node_id| {
-            0 != partitioned_graph
-                .subgraph_stratum(partitioned_graph.node_subgraph(node_id).unwrap())
-                .unwrap()
-        })
-        .collect();
-
-    for node_id in external_input_nodes {
-        // Remove node from old subgraph.
-        assert!(
-            partitioned_graph.remove_from_subgraph(node_id),
-            "Cannot move input node that is not in a subgraph, this is a bug."
-        );
-        // Create new subgraph in stratum 0 for this source.
-        let new_sg_id = partitioned_graph.insert_subgraph(vec![node_id]).unwrap();
-        partitioned_graph.set_subgraph_stratum(new_sg_id, 0);
-
-        // Insert handoff.
-        for edge_id in partitioned_graph
-            .node_successor_edges(node_id)
-            .collect::<Vec<_>>()
-        {
-            let span = partitioned_graph.node(node_id).span();
-            let hoff = GraphNode::Handoff {
-                src_span: span,
-                dst_span: span,
-            };
-            partitioned_graph.insert_intermediate_node(edge_id, hoff);
-        }
-    }
-}
-
-/// Main method for this module. Partions a flat [`DfirGraph`] into one with subgraphs.
+/// Main method for this module. Partitions a flat [`DfirGraph`] into one with subgraphs.
 ///
-/// Returns an error if a negative cycle exists in the graph. Negative cycles prevent partioning.
+/// Returns an error if an intra-tick cycle exists in the graph.
 pub fn partition_graph(flat_graph: DfirGraph) -> Result<DfirGraph, Diagnostic> {
     // Pre-find barrier crossers (input edges with a `DelayType`).
     let mut barrier_crossers = find_barrier_crossers(&flat_graph);
@@ -555,11 +444,8 @@ pub fn partition_graph(flat_graph: DfirGraph) -> Result<DfirGraph, Diagnostic> {
     // Partition into subgraphs.
     make_subgraphs(&mut partitioned_graph, &mut barrier_crossers);
 
-    // Find strata for subgraphs (early returns with error if negative cycle found).
-    find_subgraph_strata(&mut partitioned_graph, &barrier_crossers)?;
-
-    // Ensure all external inputs are in stratum 0.
-    separate_external_inputs(&mut partitioned_graph);
+    // Topologically order subgraphs and inject intermediate subgraphs for defer_tick edges.
+    order_subgraphs(&mut partitioned_graph, &barrier_crossers)?;
 
     Ok(partitioned_graph)
 }

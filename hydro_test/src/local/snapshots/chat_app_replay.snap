@@ -39,7 +39,7 @@ linkStyle default stroke:#aaa
 13v1-->|1|14v1
 16v1-->17v1
 15v1-->16v1
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
+subgraph sg_1v1 ["sg_1v1"]
     1v1
     2v1
     subgraph sg_1v1_var_cycle_0 ["var <tt>cycle_0</tt>"]
@@ -49,7 +49,7 @@ subgraph sg_1v1 ["sg_1v1 stratum 0"]
         3v1
     end
 end
-subgraph sg_2v1 ["sg_2v1 stratum 0"]
+subgraph sg_2v1 ["sg_2v1"]
     5v1
     6v1
     subgraph sg_2v1_var_cycle_1 ["var <tt>cycle_1</tt>"]
@@ -59,7 +59,7 @@ subgraph sg_2v1 ["sg_2v1 stratum 0"]
         7v1
     end
 end
-subgraph sg_3v1 ["sg_3v1 stratum 0"]
+subgraph sg_3v1 ["sg_3v1"]
     16v1
     17v1
     subgraph sg_3v1_var_stream_10 ["var <tt>stream_10</tt>"]

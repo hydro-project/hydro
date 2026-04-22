@@ -43,7 +43,7 @@ digraph {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_1v1\nstratum 0"
+        label = "sg_1v1"
         n9v1
         n10v1
         subgraph sg_1v1_var_a {
@@ -57,7 +57,7 @@ digraph {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_2v1\nstratum 0"
+        label = "sg_2v1"
         subgraph sg_2v1_var_b {
             cluster=true
             label="var b"
@@ -69,7 +69,7 @@ digraph {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_3v1\nstratum 0"
+        label = "sg_3v1"
         subgraph sg_3v1_var_c {
             cluster=true
             label="var c"
@@ -81,7 +81,7 @@ digraph {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_4v1\nstratum 0"
+        label = "sg_4v1"
         subgraph sg_4v1_var_d {
             cluster=true
             label="var d"

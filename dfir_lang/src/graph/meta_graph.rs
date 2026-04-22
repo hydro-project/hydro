@@ -68,18 +68,16 @@ pub struct DfirGraph {
 
     /// Which nodes belong to each subgraph.
     subgraph_nodes: SlotMap<GraphSubgraphId, Vec<GraphNodeId>>,
-    /// Which stratum each subgraph belongs to.
-    subgraph_stratum: SecondaryMap<GraphSubgraphId, usize>,
 
     /// Resolved singletons varnames references, per node.
     node_singleton_references: SparseSecondaryMap<GraphNodeId, Vec<Option<GraphNodeId>>>,
     /// What variable name each graph node belongs to (if any). For debugging (graph writing) purposes only.
     node_varnames: SparseSecondaryMap<GraphNodeId, Varname>,
 
-    /// If this subgraph is 'lazy' then when it sends data to a lower stratum it does not cause a new tick to start
-    /// This is to support lazy defers
-    /// If the value does not exist for a given subgraph id then the subgraph is not lazy.
-    subgraph_laziness: SecondaryMap<GraphSubgraphId, bool>,
+    /// Delay type for handoff nodes that represent tick-boundary back-edges.
+    /// Set by `order_subgraphs` for `defer_tick` / `defer_tick_lazy`, either on handoff nodes
+    /// it injects or on existing handoff nodes that it marks as tick-boundary back-edges.
+    handoff_delay_type: SparseSecondaryMap<GraphNodeId, DelayType>,
 }
 
 /// Basic methods.
@@ -703,33 +701,14 @@ impl DfirGraph {
         }
     }
 
-    /// Gets the stratum number of the subgraph.
-    pub fn subgraph_stratum(&self, sg_id: GraphSubgraphId) -> Option<usize> {
-        self.subgraph_stratum.get(sg_id).copied()
+    /// Gets the delay type for a handoff node, if set.
+    pub fn handoff_delay_type(&self, node_id: GraphNodeId) -> Option<DelayType> {
+        self.handoff_delay_type.get(node_id).copied()
     }
 
-    /// Set subgraph's stratum number, returning the old value if exists.
-    pub fn set_subgraph_stratum(
-        &mut self,
-        sg_id: GraphSubgraphId,
-        stratum: usize,
-    ) -> Option<usize> {
-        self.subgraph_stratum.insert(sg_id, stratum)
-    }
-
-    /// Gets whether the subgraph is lazy or not
-    pub fn subgraph_laziness(&self, sg_id: GraphSubgraphId) -> bool {
-        self.subgraph_laziness.get(sg_id).copied().unwrap_or(false)
-    }
-
-    /// Set subgraph's laziness, returning the old value.
-    pub fn set_subgraph_laziness(&mut self, sg_id: GraphSubgraphId, lazy: bool) -> bool {
-        self.subgraph_laziness.insert(sg_id, lazy).unwrap_or(false)
-    }
-
-    /// Returns the the stratum number of the largest (latest) stratum (inclusive).
-    pub fn max_stratum(&self) -> Option<usize> {
-        self.subgraph_stratum.values().copied().max()
+    /// Sets the delay type for a handoff node.
+    pub fn set_handoff_delay_type(&mut self, node_id: GraphNodeId, delay_type: DelayType) {
+        self.handoff_delay_type.insert(node_id, delay_type);
     }
 
     /// Helper: finds the first index in `subgraph_nodes` where it transitions from pull to push.
@@ -881,21 +860,13 @@ impl DfirGraph {
 
         // 3. Sort subgraphs topologically and collect non-lazy defer_tick buffer idents.
         //
-        // The topo sort excludes `defer_tick`/`defer_tick_lazy` back-edges (where
-        // succ_stratum < pred_stratum). This bypasses existing stratum logic. Without this,
-        // or if we only use strata, deferred data can arrive one tick late. See
-        // https://github.com/hydro-project/hydro/issues/2747
+        // Handoffs marked with a `DelayType` (Tick/TickLazy) are tick-boundary back-edges.
+        // For these, we reverse the ordering constraint (producer runs after consumer) to
+        // preserve the required same-tick ordering. Unmarked handoffs are forward edges.
         //
         // While iterating handoffs, we also collect buffer idents for non-lazy tick-boundary
         // edges (defer_tick). When these buffers are non-empty at end of tick, we set
         // can_start_tick so that run_available continues ticking.
-        //
-        // TODO(cleanup): Once scheduled Dfir is removed, move this topological ordering to
-        // replace the subgraph stratification pass directly, rather than doing it as a
-        // post-hoc sort in codegen. Also replace the `subgraph_laziness` flag with a more
-        // direct representation (e.g., a `DelayType` on the handoff edge itself) — currently
-        // we piggyback on the laziness bit of the intermediate identity subgraph that
-        // `flat_to_partitioned` injects for `defer_tick` vs `defer_tick_lazy`.
         let mut defer_tick_buf_idents: Vec<Ident> = Vec::new();
         let all_subgraphs = {
             // Build predecessor map for subgraphs.
@@ -914,18 +885,15 @@ impl DfirGraph {
                 if pred_sg == succ_sg {
                     panic!("bug: unexpected subgraph self-handoff cycle");
                 }
-                let pred_stratum = self.subgraph_stratum(pred_sg).unwrap();
-                let succ_stratum = self.subgraph_stratum(succ_sg).unwrap();
-                if succ_stratum < pred_stratum {
+                if let Some(delay_type) = self.handoff_delay_type(hoff_id) {
+                    debug_assert!(matches!(delay_type, DelayType::Tick | DelayType::TickLazy));
                     // Tick/back-edge handoff: preserve the required same-tick ordering by
-                    // forcing the higher-stratum producer subgraph to run after the
-                    // lower-stratum consumer subgraph. Dropping this edge entirely leaves the
-                    // order unconstrained and can collapse a tick delay to zero when inline
-                    // handoff buffers persist across ticks.
+                    // forcing the higher-order producer subgraph to run after the
+                    // lower-order consumer subgraph.
                     sg_preds.entry(pred_sg).unwrap().or_default().push(succ_sg);
 
                     // Non-lazy tick-boundary: defer_tick (not defer_tick_lazy).
-                    if !self.subgraph_laziness(pred_sg) {
+                    if !matches!(delay_type, DelayType::TickLazy) {
                         defer_tick_buf_idents.push(Ident::new(
                             &format!("hoff_{:?}_buf", hoff_id.data()),
                             node.span(),
@@ -1746,9 +1714,6 @@ impl DfirGraph {
         // handle both the enabled and disabled case, this code is structured as a series of nested loops. If the layer
         // is disabled, then the HashMap<Option<KEY>, Vec<VALUE>> will only have a single key (`None`) with a
         // corresponding `Vec` value containing everything. This way no special handling is needed for the next layer.
-        //
-        // (Note: `stratum` could also be included in this hierarchy, but it is being phased-out/deprecated in favor of
-        // Flo loops).
 
         // Loop -> Subgraphs
         let loop_subgraphs = self.subgraph_ids().map(|sg_id| {
@@ -1779,8 +1744,7 @@ impl DfirGraph {
             let subgraph_varnames_nodes = into_group_map(subgraph_varnames_nodes);
             for (sg_id, varnames) in subgraph_varnames_nodes {
                 if let Some(sg_id) = sg_id {
-                    let stratum = self.subgraph_stratum(sg_id).unwrap();
-                    graph_write.write_subgraph_start(sg_id, stratum)?;
+                    graph_write.write_subgraph_start(sg_id)?;
                 }
 
                 // Varnames -> Nodes.
