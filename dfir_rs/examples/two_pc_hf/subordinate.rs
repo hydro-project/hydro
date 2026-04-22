@@ -59,5 +59,5 @@ pub(crate) async fn run_subordinate(outbound: UdpSink, inbound: UdpStream, opts:
         serde_graph.open_graph(graph, opts.write_config).unwrap();
     }
 
-    let None = df.run().await;
+    df.run().await;
 }

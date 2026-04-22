@@ -1,7 +1,7 @@
-use dfir_rs::dfir_syntax_inline;
+use dfir_rs::dfir_syntax;
 
 pub fn main() {
-    let mut flow = dfir_syntax_inline! {
+    let mut flow = dfir_syntax! {
         my_tee = source_iter(vec!["Hello", "world"]) -> tee();
         my_tee -> map(|x| x.to_uppercase()) -> [low_road]my_union;
         my_tee -> map(|x| x.to_lowercase()) -> [high_road]my_union;

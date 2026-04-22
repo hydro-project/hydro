@@ -10,7 +10,8 @@ pub mod slot_vec;
 pub mod sparse_vec;
 pub mod unsync;
 
-pub mod simulation;
+// TODO(inline): simulation module removed during inline DFIR migration. It was unused.
+// pub mod simulation;
 
 mod monotonic;
 pub use monotonic::*;

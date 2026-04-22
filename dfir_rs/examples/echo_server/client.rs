@@ -66,7 +66,7 @@ pub(crate) async fn run_client(opts: Opts) {
 
     // If a graph was requested to be printed, print it.
     if let Some(graph) = opts.graph {
-        print_graph(&flow, graph, opts.write_config);
+        print_graph(flow.meta_graph().expect("No graph found, maybe failed to parse."), graph, opts.write_config);
     }
 
     // Run the client. This is an async function, so we need to await it.

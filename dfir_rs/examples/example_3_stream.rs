@@ -1,10 +1,10 @@
-use dfir_rs::dfir_syntax_inline;
+use dfir_rs::dfir_syntax;
 
 pub fn main() {
     // Create our channel input
     let (input_example, example_recv) = dfir_rs::util::unbounded_channel::<usize>();
 
-    let mut flow = dfir_syntax_inline! {
+    let mut flow = dfir_syntax! {
          source_stream(example_recv)
         -> filter_map(|n: usize| {
             let n2 = n * n;
