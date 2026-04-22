@@ -903,6 +903,7 @@ fn short_name(node: &HydroNode) -> &'static str {
         HydroNode::Chain { .. } => "chain",
         HydroNode::ChainFirst { .. } => "chainfirst",
         HydroNode::Join { .. } => "join",
+        HydroNode::JoinBounded { .. } => "join_bounded",
         HydroNode::CrossProduct { .. } => "crossproduct",
         HydroNode::CrossSingleton { .. } => "crosssingleton",
         HydroNode::Difference { .. } => "difference",
@@ -1022,6 +1023,8 @@ enum MonotoneBehavior<'a> {
     SharedPassthrough(&'a SharedNode),
     /// Difference/AntiJoin: SetInclusion with bounded neg check.
     DifferenceOp { pos: &'a HydroNode, neg: &'a HydroNode },
+    /// JoinBounded: probe side preserves any goal, build side must be bounded (discharged).
+    JoinBoundedOp { probe: &'a HydroNode, build: &'a HydroNode },
     /// Preserve SetInclusion+Prefix if output metadata is TotalOrder, else preserve only SetInclusion.
     /// Used for Network and Scan which may or may not preserve ordering.
     PreserveIfOrdered { input: &'a HydroNode, output_is_total_order: bool },
@@ -1102,6 +1105,9 @@ fn classify(node: &HydroNode) -> MonotoneBehavior<'_> {
         // Difference / AntiJoin
         HydroNode::Difference { pos, neg, .. }
         | HydroNode::AntiJoin { pos, neg, .. } => DifferenceOp { pos, neg },
+
+        // JoinBounded: probe (left) preserves goal, build (right) is bounded → discharged
+        HydroNode::JoinBounded { left, right, .. } => JoinBoundedOp { probe: left, build: right },
 
         // Sort: bounded discharges, unbounded breaks (same as non-commutative aggregation)
         HydroNode::Sort { input, .. } => Aggregation { is_commutative: false, is_idempotent: false, is_associative: false, input },
@@ -1215,6 +1221,21 @@ fn prove(
                 "breaks prefix/lattice order",
                 cycle_proofs, seen_tees,
             );
+        }
+        MonotoneBehavior::JoinBoundedOp { probe, build } => {
+            // Probe side preserves the goal (SetInclusion or Prefix).
+            // Build side is bounded → discharged.
+            let p = prove(probe, goal, cycle_proofs, seen_tees);
+            if !p.is_proved() {
+                return p.with_preserved(&format!("{name} (probe)"), span, pm_span);
+            }
+            if build.metadata().collection_kind.is_bounded() {
+                let mut result = ProofResult::discharged(&name, "build input is bounded", span, pm_span);
+                result.replication_issues = p.replication_issues;
+                return result;
+            } else {
+                return ProofResult::fail(&name, "unbounded build input breaks monotonicity", span, pm_span);
+            }
         }
         MonotoneBehavior::PreserveIfOrdered { input, output_is_total_order } => {
             let allowed: &[OrderGoal] = if output_is_total_order {
@@ -2133,10 +2154,13 @@ mod tests {
 
     #[test]
     fn join_breaks_prefix() {
+        // Both sides unbounded → symmetric Join → breaks Prefix
         let mut flow = FlowBuilder::new();
         let p = flow.process::<()>();
-        let a = p.source_iter(q!(vec![(1, "a"), (2, "b")]));
-        let b = p.source_iter(q!(vec![(1, "x"), (2, "y")]));
+        let (ha, a) = p.forward_ref::<Stream<(i32, &str), Process<()>, Unbounded, TotalOrder>>();
+        let (hb, b) = p.forward_ref::<Stream<(i32, &str), Process<()>, Unbounded, TotalOrder>>();
+        ha.complete(a.clone());
+        hb.complete(b.clone());
         a.join(b)
             .assume_ordering::<TotalOrder>(nondet!(/** test */))
             .for_each(q!(|_| {}));
@@ -2144,6 +2168,21 @@ mod tests {
         overrides.insert("foreach".to_string(), OrderGoal::Prefix);
         let r = flow.finalize().check_coordination_with_goals(&overrides);
         assert!(!r.all_monotone(), "join should break Prefix:\n{r}");
+    }
+
+    #[test]
+    fn join_bounded_preserves_prefix() {
+        // Right side bounded → JoinBounded → preserves Prefix
+        let mut flow = FlowBuilder::new();
+        let p = flow.process::<()>();
+        let a = p.source_iter(q!(vec![(1, "a"), (2, "b")]));
+        let b = p.source_iter(q!(vec![(1, "x"), (2, "y")]));
+        a.join(b)
+            .for_each(q!(|_| {}));
+        let mut overrides = HashMap::new();
+        overrides.insert("foreach".to_string(), OrderGoal::Prefix);
+        let r = flow.finalize().check_coordination_with_goals(&overrides);
+        assert!(r.all_monotone(), "join_bounded should preserve Prefix:\n{r}");
     }
 
     // --- Enumerate breaks Prefix ---
