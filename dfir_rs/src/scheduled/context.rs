@@ -474,7 +474,7 @@ pub struct InlineContext {
     current_tick: TickInstant,
     wake_state: std::sync::Arc<InlineWakeState>,
     /// Live-updating DFIR runtime metrics via interior mutability.
-    pub metrics: Rc<DfirMetrics>,
+    metrics: Rc<DfirMetrics>,
 }
 
 impl InlineContext {
@@ -556,6 +556,11 @@ impl InlineContext {
     /// Gets the current tick count.
     pub fn current_tick(&self) -> TickInstant {
         self.current_tick
+    }
+
+    /// Returns a reference to the runtime metrics.
+    pub fn metrics(&self) -> &Rc<DfirMetrics> {
+        &self.metrics
     }
 
     /// No-op: inline mode has no subgraph scheduling.
@@ -685,12 +690,11 @@ impl TickClosure for TickClosureErased {
 pub type InlineDfirErased = InlineDfir<TickClosureErased>;
 
 impl<Tick: TickClosure> InlineDfir<Tick> {
-    /// Create a new `InlineDfir` from a tick closure, shared wake state,
-    /// inline context, and meta graph / diagnostics JSON strings.
+    /// Create a new `InlineDfir` from a tick closure, inline context,
+    /// and meta graph / diagnostics JSON strings.
     #[doc(hidden)]
     pub fn new(
         tick_closure: Tick,
-        wake_state: std::sync::Arc<InlineWakeState>,
         context: InlineContext,
         meta_graph_json: Option<&str>,
         diagnostics_json: Option<&str>,
@@ -699,7 +703,7 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
         let _ = (meta_graph_json, diagnostics_json);
         Self {
             tick_closure,
-            wake_state,
+            wake_state: context.wake_state.clone(),
             context,
             #[cfg(feature = "meta")]
             meta_graph: meta_graph_json.map(|json| {
@@ -737,7 +741,7 @@ impl<Tick: TickClosure> InlineDfir<Tick> {
 
     /// Returns a reference-counted handle to the continually-updated runtime metrics for this DFIR instance.
     pub fn metrics(&self) -> Rc<DfirMetrics> {
-        Rc::clone(&self.context.metrics)
+        Rc::clone(self.context.metrics())
     }
 
     /// Gets the current tick (local time) count.

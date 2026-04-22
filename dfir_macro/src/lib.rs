@@ -125,16 +125,20 @@ fn dfir_syntax_inline_internal(
         }) => (code, diagnostics),
         Err(diagnostics) => (
             quote! {
-                #root::scheduled::context::InlineDfir::new(
-                    async move |_: &mut #root::scheduled::context::InlineContext| { false },
-                    ::std::sync::Arc::new(#root::scheduled::context::InlineWakeState::default()),
-                    #root::scheduled::context::InlineContext::new(
-                        ::std::sync::Arc::new(#root::scheduled::context::InlineWakeState::default()),
-                        ::std::rc::Rc::new(#root::scheduled::metrics::DfirMetrics::default()),
-                    ),
-                    None,
-                    None,
-                )
+                {
+                    let __dfir_wake_state = ::std::sync::Arc::new(
+                        #root::scheduled::context::InlineWakeState::default()
+                    );
+                    #root::scheduled::context::InlineDfir::new(
+                        async move |_: &mut #root::scheduled::context::InlineContext| { false },
+                        #root::scheduled::context::InlineContext::new(
+                            __dfir_wake_state,
+                            ::std::rc::Rc::new(#root::scheduled::metrics::DfirMetrics::default()),
+                        ),
+                        None,
+                        None,
+                    )
+                }
             },
             diagnostics,
         ),

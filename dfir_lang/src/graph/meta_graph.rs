@@ -2071,7 +2071,7 @@ impl DfirGraph {
                 let mut __dfir_work_done = true;
                 #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref)]
                 let __dfir_inline_tick = async move |#df: &mut #root::scheduled::context::InlineContext| {
-                    let __dfir_metrics = &#df.metrics;
+                    let __dfir_metrics = #df.metrics();
                     #( #subgraph_blocks )*
 
                     // For non-lazy defer_tick: if any deferred buffer has data,
@@ -2091,7 +2091,6 @@ impl DfirGraph {
                 };
                 #root::scheduled::context::InlineDfir::new(
                     __dfir_inline_tick,
-                    __dfir_wake_state,
                     #df,
                     Some(#meta_graph_json),
                     Some(#diagnostics_json),
