@@ -1,7 +1,7 @@
 mod utils;
 
 use dfir_lang::diagnostic::{Diagnostic, Level};
-use dfir_lang::graph::{BuildDfirCodeOutput, WriteConfig, build_dfir_code};
+use dfir_lang::graph::{BuildDfirCodeOutput, WriteConfig, build_dfir_code_inline};
 use proc_macro2::{LineColumn, Span};
 use quote::quote;
 use serde::{Deserialize, Serialize};
@@ -119,7 +119,7 @@ pub fn compile_dfir(
 
     let out = match syn::parse_str(&program) {
         Ok(input) => {
-            let (output, diagnostics) = match build_dfir_code(input, &quote!(dfir_rs)) {
+            let (output, diagnostics) = match build_dfir_code_inline(input, &quote!(dfir_rs)) {
                 Ok(BuildDfirCodeOutput {
                     partitioned_graph,
                     code,
