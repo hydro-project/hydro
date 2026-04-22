@@ -6,6 +6,15 @@ const NUM_OPS: usize = 20;
 const NUM_INTS: usize = 100_000;
 const BRANCH_FACTOR: usize = 2;
 
+fn benchmark_hydroflow_surface(c: &mut Criterion) {
+    c.bench_function("fork_join/dfir_rs/surface", |b| {
+        b.iter(|| {
+            let mut hf = include!("fork_join_20.hf");
+            hf.run_available_sync();
+        })
+    });
+}
+
 fn benchmark_raw(c: &mut Criterion) {
     c.bench_function("fork_join/raw", |b| {
         b.iter(|| {
@@ -44,15 +53,6 @@ fn benchmark_timely(c: &mut Criterion) {
                     black_box(i);
                 });
             });
-        })
-    });
-}
-
-fn benchmark_hydroflow_surface(c: &mut Criterion) {
-    c.bench_function("fork_join/dfir_rs/surface", |b| {
-        b.iter(|| {
-            let mut hf = include!("fork_join_20.hf");
-            hf.run_available_sync();
         })
     });
 }
