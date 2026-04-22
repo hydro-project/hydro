@@ -1253,6 +1253,240 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     }
 }
 
+// === StaticCluster networking: mirrors Cluster methods above ===
+
+impl<'a, T, L, B: Boundedness> Stream<T, crate::location::StaticCluster<'a, L>, B, TotalOrder, ExactlyOnce> {
+    /// Distributes elements of this stream to static cluster members in a round-robin fashion,
+    /// using [`bincode`] serialization.
+    pub fn round_robin_bincode<L2: 'a>(
+        self,
+        other: &crate::location::StaticCluster<'a, L2>,
+    ) -> KeyedStream<MemberId<L>, T, crate::location::StaticCluster<'a, L2>, Unbounded, TotalOrder, ExactlyOnce>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        self.round_robin(other, TCP.fail_stop().bincode())
+    }
+
+    /// Distributes elements of this stream to static cluster members in a round-robin fashion.
+    pub fn round_robin<L2: 'a, N: NetworkFor<T>>(
+        self,
+        to: &crate::location::StaticCluster<'a, L2>,
+        via: N,
+    ) -> KeyedStream<MemberId<L>, T, crate::location::StaticCluster<'a, L2>, Unbounded, N::OrderingGuarantee, ExactlyOnce>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        let ids = self.location.source_cluster_members_static(to)
+            .fold(
+                q!(|| true),
+                q!(|_present, _event| {},
+                   commutative = crate::properties::manual_proof!(/** const true is trivially commutative */),
+                   idempotent = crate::properties::manual_proof!(/** const true is trivially idempotent */)),
+            );
+        sliced! {
+            let members_snapshot = use(ids, crate::nondet::nondet!(/** static cluster membership is deterministic */));
+            let elements = use(self.enumerate(), crate::nondet::nondet!(/** static cluster round robin */));
+
+            let current_members = members_snapshot
+                .filter(q!(|b| *b))
+                .keys()
+                .assume_ordering::<TotalOrder>(crate::nondet::nondet!(/** static cluster membership is fixed */))
+                .collect_vec();
+
+            elements
+                .cross_singleton(current_members)
+                .map(q!(|(data, members)| (
+                    members[data.0 % members.len()].clone(),
+                    data.1
+                )))
+        }
+        .demux(to, via)
+    }
+}
+
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, crate::location::StaticCluster<'a, L>, B, O, R> {
+    /// Sends elements from a static cluster to a process using [`bincode`] serialization.
+    pub fn send_bincode<L2>(
+        self,
+        other: &Process<'a, L2>,
+    ) -> KeyedStream<MemberId<L>, T, Process<'a, L2>, Unbounded, O, R>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        self.send(other, TCP.fail_stop().bincode())
+    }
+
+    /// Sends elements from a static cluster to a process.
+    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
+    pub fn send<L2, N: NetworkFor<T>>(
+        self,
+        to: &Process<'a, L2>,
+        via: N,
+    ) -> KeyedStream<
+        MemberId<L>,
+        T,
+        Process<'a, L2>,
+        Unbounded,
+        <O as MinOrder<N::OrderingGuarantee>>::Min,
+        R,
+    >
+    where
+        T: Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
+    {
+        let serialize_pipeline = Some(N::serialize_thunk(false));
+        let deserialize_pipeline = Some(N::deserialize_thunk(Some(&quote_type::<L>())));
+
+        let name = via.name();
+        if to.multiversioned() && name.is_none() {
+            panic!(
+                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+            );
+        }
+
+        let raw_stream: Stream<
+            (MemberId<L>, T),
+            Process<'a, L2>,
+            Unbounded,
+            <O as MinOrder<N::OrderingGuarantee>>::Min,
+            R,
+        > = Stream::new(
+            to.clone(),
+            HydroNode::Network {
+                name: name.map(ToOwned::to_owned),
+                networking_info: N::networking_info(),
+                serialize_fn: serialize_pipeline.map(|e| e.into()),
+                instantiate_fn: DebugInstantiate::Building,
+                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: to.new_node_metadata(Stream::<
+                    (MemberId<L>, T),
+                    Process<'a, L2>,
+                    Unbounded,
+                    <O as MinOrder<N::OrderingGuarantee>>::Min,
+                    R,
+                >::collection_kind()),
+            },
+        );
+
+        raw_stream.into_keyed()
+    }
+
+    /// Broadcasts elements to all members of a destination static cluster using [`bincode`].
+    /// No [`NonDet`] guard needed since static cluster membership is fixed.
+    pub fn broadcast_bincode<L2: 'a>(
+        self,
+        other: &crate::location::StaticCluster<'a, L2>,
+    ) -> KeyedStream<MemberId<L>, T, crate::location::StaticCluster<'a, L2>, Unbounded, O, R>
+    where
+        T: Clone + Serialize + DeserializeOwned,
+    {
+        self.broadcast(other, TCP.fail_stop().bincode())
+    }
+
+    /// Broadcasts elements to all members of a destination static cluster.
+    /// No [`NonDet`] guard needed since static cluster membership is fixed.
+    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
+    pub fn broadcast<L2: 'a, N: NetworkFor<T>>(
+        self,
+        to: &crate::location::StaticCluster<'a, L2>,
+        via: N,
+    ) -> KeyedStream<
+        MemberId<L>,
+        T,
+        crate::location::StaticCluster<'a, L2>,
+        Unbounded,
+        <O as MinOrder<N::OrderingGuarantee>>::Min,
+        R,
+    >
+    where
+        T: Clone + Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
+    {
+        let ids = self.location.source_cluster_members_static(to)
+            .fold(
+                q!(|| true),
+                q!(|_present, _event| {},
+                   commutative = crate::properties::manual_proof!(/** const true is trivially commutative */),
+                   idempotent = crate::properties::manual_proof!(/** const true is trivially idempotent */)),
+            );
+        sliced! {
+            let members_snapshot = use(ids, crate::nondet::nondet!(/** static cluster membership is deterministic */));
+            let elements = use(self, crate::nondet::nondet!(/** static cluster: element batching is the only nondeterminism */));
+
+            let current_members = members_snapshot.filter(q!(|b| *b));
+            elements.repeat_with_keys(current_members)
+        }
+        .demux(to, via)
+    }
+
+    #[cfg(feature = "sim")]
+    /// Sets up a simulation output port for this static cluster stream.
+    pub fn sim_cluster_output(self) -> crate::sim::SimClusterReceiver<T, O, R>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        let external_location: External<'a, ()> = External {
+            key: LocationKey::FIRST,
+            flow_state: self.location.flow_state().clone(),
+            _phantom: PhantomData,
+        };
+
+        let serialize_pipeline = Some(serialize_bincode::<T>(false));
+        let mut flow_state_borrow = self.location.flow_state().borrow_mut();
+        let external_port_id = flow_state_borrow.next_external_port();
+        flow_state_borrow.push_root(HydroRoot::SendExternal {
+            to_external_key: external_location.key,
+            to_port_id: external_port_id,
+            to_many: false,
+            unpaired: true,
+            serialize_fn: serialize_pipeline.map(|e| e.into()),
+            instantiate_fn: DebugInstantiate::Building,
+            input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+            op_metadata: HydroIrOpMetadata::new(),
+        });
+
+        crate::sim::SimClusterReceiver(external_port_id, PhantomData)
+    }
+}
+
+impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
+    Stream<(MemberId<L2>, T), crate::location::StaticCluster<'a, L>, B, O, R>
+{
+    /// Sends elements to specific members of a destination static cluster using [`bincode`].
+    pub fn demux_bincode(
+        self,
+        other: &crate::location::StaticCluster<'a, L2>,
+    ) -> KeyedStream<MemberId<L>, T, crate::location::StaticCluster<'a, L2>, Unbounded, O, R>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        self.demux(other, TCP.fail_stop().bincode())
+    }
+
+    /// Sends elements to specific members of a destination static cluster.
+    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
+    pub fn demux<N: NetworkFor<T>>(
+        self,
+        to: &crate::location::StaticCluster<'a, L2>,
+        via: N,
+    ) -> KeyedStream<
+        MemberId<L>,
+        T,
+        crate::location::StaticCluster<'a, L2>,
+        Unbounded,
+        <O as MinOrder<N::OrderingGuarantee>>::Min,
+        R,
+    >
+    where
+        T: Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
+    {
+        self.into_keyed().demux(to, via)
+    }
+}
+
 impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     Stream<(MemberId<L2>, T), Cluster<'a, L>, B, O, R>
 {
