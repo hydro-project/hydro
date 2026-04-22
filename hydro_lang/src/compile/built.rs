@@ -162,6 +162,7 @@ impl<'a> BuiltFlow<'a> {
             cluster_max_sizes: SparseSecondaryMap::new(),
             externals_port_registry: Default::default(),
             test_safety_only: false,
+            skip_consistency_assertions: false,
             unit_test_fuzz_iterations: 8192,
             _phantom: PhantomData,
         }

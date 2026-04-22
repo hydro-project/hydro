@@ -45,6 +45,10 @@ pub trait OrderPreservingProof {
     fn register_proof(&self, expr: &syn::Expr);
 }
 
+/// A trait for proof mechanisms that can validate consistency of a collection.
+#[sealed::sealed]
+pub trait ConsistencyProof {}
+
 /// A hand-written human proof of the correctness property.
 ///
 /// To create a manual proof, use the [`manual_proof!`] macro, which takes in a doc comment
@@ -66,6 +70,8 @@ impl MonotoneProof for ManualProof {
 impl OrderPreservingProof for ManualProof {
     fn register_proof(&self, _expr: &syn::Expr) {}
 }
+#[sealed::sealed]
+impl ConsistencyProof for ManualProof {}
 
 #[doc(inline)]
 pub use crate::__manual_proof__ as manual_proof;

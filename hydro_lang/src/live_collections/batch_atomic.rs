@@ -3,12 +3,12 @@ use crate::live_collections::keyed_singleton::KeyedSingletonBound;
 use crate::live_collections::singleton::SingletonBound;
 use crate::live_collections::stream::{Ordering, Retries};
 use crate::location::tick::Tick;
-use crate::location::{Atomic, Location, NoTick};
+use crate::location::{Atomic, Location};
 use crate::nondet::nondet;
 
 /// Helper trait for live collections which can be batched back into a tick from a matching
 /// atomic region. Used in [`super::Stream::across_ticks`]
-pub trait BatchAtomic {
+pub trait BatchAtomic<'a> {
     /// The type of the stream when returned to the tick.
     type Batched;
 
@@ -16,10 +16,10 @@ pub trait BatchAtomic {
     fn batched_atomic(self) -> Self::Batched;
 }
 
-impl<'a, L: Location<'a> + NoTick, T, O: Ordering, R: Retries> BatchAtomic
+impl<'a, L: Location<'a>, T, O: Ordering, R: Retries> BatchAtomic<'a>
     for super::Stream<T, Atomic<L>, Unbounded, O, R>
 {
-    type Batched = super::Stream<T, Tick<L>, Bounded, O, R>;
+    type Batched = super::Stream<T, Tick<L::DropConsistency>, Bounded, O, R>;
 
     fn batched_atomic(self) -> Self::Batched {
         let tick = self.location.tick.clone();
@@ -27,10 +27,10 @@ impl<'a, L: Location<'a> + NoTick, T, O: Ordering, R: Retries> BatchAtomic
     }
 }
 
-impl<'a, L: Location<'a> + NoTick, T, B: SingletonBound> BatchAtomic
+impl<'a, L: Location<'a>, T, B: SingletonBound> BatchAtomic<'a>
     for super::Singleton<T, Atomic<L>, B>
 {
-    type Batched = super::Singleton<T, Tick<L>, Bounded>;
+    type Batched = super::Singleton<T, Tick<L::DropConsistency>, Bounded>;
 
     fn batched_atomic(self) -> Self::Batched {
         let tick = self.location.tick.clone();
@@ -38,8 +38,8 @@ impl<'a, L: Location<'a> + NoTick, T, B: SingletonBound> BatchAtomic
     }
 }
 
-impl<'a, L: Location<'a> + NoTick, T> BatchAtomic for super::Optional<T, Atomic<L>, Unbounded> {
-    type Batched = super::Optional<T, Tick<L>, Bounded>;
+impl<'a, L: Location<'a>, T> BatchAtomic<'a> for super::Optional<T, Atomic<L>, Unbounded> {
+    type Batched = super::Optional<T, Tick<L::DropConsistency>, Bounded>;
 
     fn batched_atomic(self) -> Self::Batched {
         let tick = self.location.tick.clone();
@@ -47,10 +47,10 @@ impl<'a, L: Location<'a> + NoTick, T> BatchAtomic for super::Optional<T, Atomic<
     }
 }
 
-impl<'a, L: Location<'a> + NoTick, K, V, B: KeyedSingletonBound<ValueBound = Unbounded>> BatchAtomic
+impl<'a, L: Location<'a>, K, V, B: KeyedSingletonBound<ValueBound = Unbounded>> BatchAtomic<'a>
     for super::KeyedSingleton<K, V, Atomic<L>, B>
 {
-    type Batched = super::KeyedSingleton<K, V, Tick<L>, Bounded>;
+    type Batched = super::KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded>;
 
     fn batched_atomic(self) -> Self::Batched {
         let tick = self.location.tick.clone();

@@ -1,6 +1,6 @@
 use hydro_lang::live_collections::stream::TotalOrder;
+use hydro_lang::location::MemberId;
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
-use hydro_lang::location::{MemberId, MembershipEvent};
 use hydro_lang::prelude::*;
 use hydro_std::compartmentalize::{DecoupleClusterStream, DecoupleProcessStream, PartitionStream};
 use stageleft::IntoQuotedMut;
@@ -52,25 +52,16 @@ pub fn simple_cluster<'a>(flow: &mut FlowBuilder<'a>) -> (Process<'a, ()>, Clust
     let cluster = flow.cluster();
 
     let numbers = process.source_iter(q!(0..5));
-    let ids = process
-        .source_cluster_members(&cluster)
-        .entries()
-        .filter_map(q!(|(i, e)| match e {
-            MembershipEvent::Joined => Some(i),
-            MembershipEvent::Left => None,
-        }));
-
-    ids.cross_product(numbers)
-        .map(q!(|(id, n)| (id.clone(), (id, n))))
-        .demux(&cluster, TCP.fail_stop().bincode())
+    numbers
+        .broadcast_closed(&cluster, TCP.fail_stop().bincode())
         .inspect(q!(move |n| println!(
-            "cluster received: {:?} (self cluster id: {})",
+            "cluster received: {} (self cluster id: {})",
             n, CLUSTER_SELF_ID
         )))
         .send(&process, TCP.fail_stop().bincode())
         .entries()
         .assume_ordering::<TotalOrder>(nondet!(/** testing, order does not matter */))
-        .for_each(q!(|(id, d)| println!("node received: ({}, {:?})", id, d)));
+        .for_each(q!(|(id, d)| println!("node received: ({}, {})", id, d)));
 
     (process, cluster)
 }
@@ -121,8 +112,8 @@ mod tests {
                 assert_eq!(
                     stdout.recv().await.unwrap(),
                     format!(
-                        "cluster received: (MemberId::<()>({}), {}) (self cluster id: MemberId::<()>({}))",
-                        i, j, i
+                        "cluster received: {} (self cluster id: MemberId::<()>({}))",
+                        j, i
                     )
                 );
             }
@@ -137,12 +128,7 @@ mod tests {
         for (i, n) in node_outs.into_iter().enumerate() {
             assert_eq!(
                 n,
-                format!(
-                    "node received: (MemberId::<()>({}), (MemberId::<()>({}), {}))",
-                    i / 5,
-                    i / 5,
-                    i % 5
-                )
+                format!("node received: (MemberId::<()>({}), {})", i / 5, i % 5)
             );
         }
     }

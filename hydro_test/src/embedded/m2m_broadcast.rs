@@ -9,10 +9,10 @@ pub fn m2m_broadcast<'a>(
     dst: &Cluster<'a, Dst>,
     input: Stream<String, Cluster<'a, Src>>,
 ) -> Stream<(MemberId<Src>, String), Cluster<'a, Dst>, Unbounded, NoOrder> {
-    // used to test that we can call `source_cluster members` multiple times
+    // used to test that we can call `source_cluster_membership_stream` multiple times
     input
         .location()
-        .source_cluster_members(dst)
+        .source_cluster_membership_stream(dst, nondet!(/** test */))
         .entries()
         .assume_ordering::<TotalOrder>(nondet!(/** test */))
         .for_each(q!(|_| {}));

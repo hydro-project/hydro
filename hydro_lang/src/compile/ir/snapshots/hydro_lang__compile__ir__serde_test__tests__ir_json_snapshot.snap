@@ -36,6 +36,7 @@ expression: json
                           "element_type": "i32"
                         }
                       },
+                      "consistency": null,
                       "cardinality": null,
                       "tag": null,
                       "op": {
@@ -62,6 +63,7 @@ expression: json
                       "element_type": "i32"
                     }
                   },
+                  "consistency": null,
                   "cardinality": null,
                   "tag": null,
                   "op": {
@@ -89,6 +91,7 @@ expression: json
                 "element_type": "i32"
               }
             },
+            "consistency": null,
             "cardinality": null,
             "tag": null,
             "op": {
@@ -131,6 +134,7 @@ expression: json
                 "element_type": "i32"
               }
             },
+            "consistency": null,
             "cardinality": null,
             "tag": null,
             "op": {

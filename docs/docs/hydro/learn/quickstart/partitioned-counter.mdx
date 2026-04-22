@@ -27,16 +27,16 @@ Before partitioning the counter, you need to make the `keyed_counter_service` fu
 <CodeBlock language="rust" title={
   <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/tutorials/keyed_counter.rs">src/keyed_counter.rs</Link>
 } showLineNumbers={8}>{getLines(keyedCounterSrc, 8, 14, `
-pub fn keyed_counter_service<'a, L: Location<'a> + NoTick>(
+pub fn keyed_counter_service<'a, L: Location<'a>>(
     increment_requests: KeyedStream<u32, String, L, Unbounded>,
     get_requests: KeyedStream<u32, String, L, Unbounded>,
 ) -> (
     KeyedStream<u32, String, L, Unbounded>,
-    KeyedStream<u32, (String, usize), L, Unbounded, NoOrder>,
+    KeyedStream<u32, (String, usize), L::DropConsistency, Unbounded, NoOrder>,
 ) {
 `)}</CodeBlock>
 
-The `L: Location<'a> + NoTick` bound means the function works with any location that that is outside a `Tick` (like `Process` or `Cluster`). This lets you reuse the same counter logic whether it runs on a single process or several cluster members. The rest of the function body remains unchanged, it already works with any location type.
+The `L: Location<'a>` bound means the function works with any location. This lets you reuse the same counter logic whether it runs on a single process or several cluster members. The rest of the function body remains unchanged, it already works with any location type. You'll notice that we also had to modify the location type parameter for the second output stream (the lookup responses), to be `L::DropConsistency`. In addition to tracking determinism, Hydro also tracks whether _eventual consistency_ is guaranteed across several replicas. Now that we scale the service across replicas, Hydro points out that even if the requests are the same across several replicas, the responses may be different because the service uses an asynchronous snapshot of the counter state. Hence, the responses stream is tagged with `L::DropConsistency`. Note that the `current_count` is still tagged with `L`, because the counter state is consistent - it's just the responses that read from it that may diverge.
 
 ## Introducing Clusters
 

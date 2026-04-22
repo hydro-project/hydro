@@ -1,20 +1,20 @@
 use hydro_lang::forward_handle::TickCycleHandle;
 use hydro_lang::live_collections::stream::NoOrder;
-use hydro_lang::location::{Location, NoTick};
+use hydro_lang::location::Location;
 use hydro_lang::prelude::*;
 
 use super::{KvKey, KvValue, SequencedKv};
 
 #[expect(clippy::type_complexity, reason = "Paxos internals")]
-pub fn sequence_payloads<'a, K: KvKey, V: KvValue, L: Location<'a> + NoTick>(
+pub fn sequence_payloads<'a, K: KvKey, V: KvValue, L: Location<'a>>(
     replica_tick: &Tick<L>,
     p_to_replicas: Stream<SequencedKv<K, V>, L, Unbounded, NoOrder>,
 ) -> (
-    Stream<SequencedKv<K, V>, Tick<L>, Bounded>,
-    TickCycleHandle<'a, Singleton<usize, Tick<L>, Bounded>>,
+    Stream<SequencedKv<K, V>, Tick<L::DropConsistency>, Bounded>,
+    TickCycleHandle<'a, Singleton<usize, Tick<L::DropConsistency>, Bounded>>,
 ) {
     let (r_buffered_payloads_complete_cycle, r_buffered_payloads) =
-        replica_tick.cycle::<Stream<SequencedKv<K, V>, Tick<L>, Bounded>>();
+        replica_tick.cycle::<Stream<SequencedKv<K, V>, Tick<L::DropConsistency>, Bounded>, _>();
     // p_to_replicas.inspect(q!(|payload: ReplicaPayload| println!("Replica received payload: {:?}", payload)));
     let r_sorted_payloads = p_to_replicas.batch(replica_tick, nondet!(
             /// because we fill slots one-by-one, we can safely batch
