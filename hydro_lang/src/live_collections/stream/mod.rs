@@ -983,9 +983,32 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn cross_product<T2, O2: Ordering>(
+    /// Forms the cross-product (Cartesian product, cross-join) of the items in the 2 input streams.
+    ///
+    /// When the right side is [`Bounded`], it is accumulated first and the left side streams
+    /// through. When both sides are [`Unbounded`], a symmetric hash join is used.
+    /// The output ordering is always [`NoOrder`].
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use std::collections::HashSet;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// let tick = process.tick();
+    /// let stream1 = process.source_iter(q!(vec![1, 2]));
+    /// let stream2 = process.source_iter(q!(vec!['a', 'b']));
+    /// stream1.cross_product(stream2)
+    /// # }, |mut stream| async move {
+    /// // (1, 'a'), (1, 'b'), (2, 'a'), (2, 'b') in any order
+    /// # let expected = HashSet::from([(1, 'a'), (1, 'b'), (2, 'a'), (2, 'b')]);
+    /// # stream.map(|i| assert!(expected.contains(&i)));
+    /// # }));
+    /// # }
+    pub fn cross_product<T2, B2: Boundedness, O2: Ordering>(
         self,
-        other: Stream<T2, L, B, O2, R>,
+        other: Stream<T2, L, B2, O2, R>,
     ) -> Stream<(T, T2), L, B, NoOrder, R>
     where
         T: Clone,
