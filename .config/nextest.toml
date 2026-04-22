@@ -6,9 +6,10 @@ default-filter = "not (package(hydro_test) & kind(bench))"
 serial-integration = { max-threads = 1 }
 hydro-trybuild-group = { max-threads = 1 }
 
-[[profile.default.overrides]]
-filter = 'binary(deadlock_detector)'
-test-group = 'serial-integration'
+# TODO(inline): deadlock_detector disabled (intra-tick cycles)
+# [[profile.default.overrides]]
+# filter = 'binary(deadlock_detector)'
+# test-group = 'serial-integration'
 
 [[profile.default.overrides]]
 filter = 'binary(two_pc_hf)'

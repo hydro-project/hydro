@@ -1,12 +1,15 @@
 use std::net::SocketAddr;
 
 use dfir_rs::lang::graph::{WriteConfig, WriteGraphType};
-
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio_util::codec::LinesCodecError;
 
-pub fn print_graph(serde_graph: &dfir_lang::graph::DfirGraph, graph: WriteGraphType, write_config: Option<WriteConfig>) {
+pub fn print_graph(
+    serde_graph: &dfir_lang::graph::DfirGraph,
+    graph: WriteGraphType,
+    write_config: Option<WriteConfig>,
+) {
     serde_graph.open_graph(graph, write_config).unwrap();
 }
 
