@@ -141,6 +141,42 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
             },
         )
     }
+
+    /// Sends each group of this stream to a specific member of a static cluster.
+    ///
+    /// Like [`KeyedStream::demux`] but targets a [`StaticCluster`](crate::location::StaticCluster)
+    /// with fixed membership.
+    pub fn demux_static<N: NetworkFor<T>>(
+        self,
+        to: &crate::location::StaticCluster<'a, L2>,
+        via: N,
+    ) -> Stream<T, crate::location::StaticCluster<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
+    where
+        T: Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
+    {
+        let serialize_pipeline = Some(N::serialize_thunk(true));
+        let deserialize_pipeline = Some(N::deserialize_thunk(None));
+
+        Stream::new(
+            to.clone(),
+            HydroNode::Network {
+                name: via.name().map(ToOwned::to_owned),
+                networking_info: N::networking_info(),
+                serialize_fn: serialize_pipeline.map(|e| e.into()),
+                instantiate_fn: DebugInstantiate::Building,
+                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: to.new_node_metadata(Stream::<
+                    T,
+                    crate::location::StaticCluster<'a, L2>,
+                    Unbounded,
+                    <O as MinOrder<N::OrderingGuarantee>>::Min,
+                    R,
+                >::collection_kind()),
+            },
+        )
+    }
 }
 
 impl<'a, K, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
@@ -602,6 +638,148 @@ impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries>
                 metadata: to.new_node_metadata(Stream::<
                     (MemberId<L>, (K, V)),
                     Cluster<'a, L2>,
+                    Unbounded,
+                    <O as MinOrder<N::OrderingGuarantee>>::Min,
+                    R,
+                >::collection_kind()),
+            },
+        );
+
+        raw_stream
+            .map(q!(|(sender, (k, v))| ((sender, k), v)))
+            .into_keyed()
+    }
+}
+
+// === StaticCluster KeyedStream networking ===
+
+impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
+    KeyedStream<MemberId<L2>, T, crate::location::StaticCluster<'a, L>, B, O, R>
+{
+    /// Sends each group to a specific member of a destination static cluster using [`bincode`].
+    pub fn demux_bincode(
+        self,
+        other: &crate::location::StaticCluster<'a, L2>,
+    ) -> KeyedStream<MemberId<L>, T, crate::location::StaticCluster<'a, L2>, Unbounded, O, R>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        self.demux(other, TCP.fail_stop().bincode())
+    }
+
+    /// Sends each group to a specific member of a destination static cluster.
+    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
+    pub fn demux<N: NetworkFor<T>>(
+        self,
+        to: &crate::location::StaticCluster<'a, L2>,
+        via: N,
+    ) -> KeyedStream<
+        MemberId<L>,
+        T,
+        crate::location::StaticCluster<'a, L2>,
+        Unbounded,
+        <O as MinOrder<N::OrderingGuarantee>>::Min,
+        R,
+    >
+    where
+        T: Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
+    {
+        let serialize_pipeline = Some(N::serialize_thunk(true));
+        let deserialize_pipeline = Some(N::deserialize_thunk(Some(&quote_type::<L>())));
+
+        let name = via.name();
+        if to.multiversioned() && name.is_none() {
+            panic!(
+                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+            );
+        }
+
+        KeyedStream::new(
+            to.clone(),
+            HydroNode::Network {
+                name: name.map(ToOwned::to_owned),
+                networking_info: N::networking_info(),
+                serialize_fn: serialize_pipeline.map(|e| e.into()),
+                instantiate_fn: DebugInstantiate::Building,
+                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: to.new_node_metadata(KeyedStream::<
+                    MemberId<L>,
+                    T,
+                    crate::location::StaticCluster<'a, L2>,
+                    Unbounded,
+                    <O as MinOrder<N::OrderingGuarantee>>::Min,
+                    R,
+                >::collection_kind()),
+            },
+        )
+    }
+}
+
+impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries>
+    KeyedStream<K, V, crate::location::StaticCluster<'a, L>, B, O, R>
+{
+    /// Sends elements from a static cluster to a process using [`bincode`].
+    #[expect(clippy::type_complexity, reason = "compound key types with ordering")]
+    pub fn send_bincode<L2>(
+        self,
+        other: &Process<'a, L2>,
+    ) -> KeyedStream<(MemberId<L>, K), V, Process<'a, L2>, Unbounded, O, R>
+    where
+        K: Serialize + DeserializeOwned,
+        V: Serialize + DeserializeOwned,
+    {
+        self.send(other, TCP.fail_stop().bincode())
+    }
+
+    /// Sends elements from a static cluster to a process.
+    #[expect(clippy::type_complexity, reason = "compound key types with ordering")]
+    pub fn send<L2, N: NetworkFor<(K, V)>>(
+        self,
+        to: &Process<'a, L2>,
+        via: N,
+    ) -> KeyedStream<
+        (MemberId<L>, K),
+        V,
+        Process<'a, L2>,
+        Unbounded,
+        <O as MinOrder<N::OrderingGuarantee>>::Min,
+        R,
+    >
+    where
+        K: Serialize + DeserializeOwned,
+        V: Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
+    {
+        let serialize_pipeline = Some(N::serialize_thunk(false));
+        let deserialize_pipeline = Some(N::deserialize_thunk(Some(&quote_type::<L>())));
+
+        let name = via.name();
+        if to.multiversioned() && name.is_none() {
+            panic!(
+                "Cannot send to a multiversioned location without a channel name. Please provide a name for the network."
+            );
+        }
+
+        let raw_stream: Stream<
+            (MemberId<L>, (K, V)),
+            Process<'a, L2>,
+            Unbounded,
+            <O as MinOrder<N::OrderingGuarantee>>::Min,
+            R,
+        > = Stream::new(
+            to.clone(),
+            HydroNode::Network {
+                name: name.map(ToOwned::to_owned),
+                networking_info: N::networking_info(),
+                serialize_fn: serialize_pipeline.map(|e| e.into()),
+                instantiate_fn: DebugInstantiate::Building,
+                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: to.new_node_metadata(Stream::<
+                    (MemberId<L>, (K, V)),
+                    crate::location::StaticCluster<'a, L2>,
                     Unbounded,
                     <O as MinOrder<N::OrderingGuarantee>>::Min,
                     R,

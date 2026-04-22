@@ -20,8 +20,10 @@ use crate::location::LocationType;
 pub enum LocationId {
     /// A process root location (i.e. a single node).
     Process(LocationKey),
-    /// A cluster root location (i.e. multiple nodes).
+    /// A cluster root location (i.e. multiple nodes) with dynamic membership.
     Cluster(LocationKey),
+    /// A cluster root location with fixed membership known at deploy time.
+    StaticCluster(LocationKey),
     /// An atomic region, within a tick.
     Atomic(
         /// The tick that the atomic region is associated with.
@@ -37,6 +39,7 @@ impl std::fmt::Debug for LocationId {
         match self {
             LocationId::Process(key) => write!(f, "Process({key})"),
             LocationId::Cluster(key) => write!(f, "Cluster({key})"),
+            LocationId::StaticCluster(key) => write!(f, "StaticCluster({key})"),
             LocationId::Atomic(tick) => write!(f, "Atomic({tick:?})"),
             LocationId::Tick(tick, id) => write!(f, "Tick({tick}, {id:?})"),
         }
@@ -49,6 +52,7 @@ impl LocationId {
         match self {
             LocationId::Process(_) => Some(LocationType::Process),
             LocationId::Cluster(_) => Some(LocationType::Cluster),
+            LocationId::StaticCluster(_) => Some(LocationType::StaticCluster),
             _ => None,
         }
     }
@@ -60,6 +64,7 @@ impl LocationId {
         match self {
             LocationId::Process(_) => self,
             LocationId::Cluster(_) => self,
+            LocationId::StaticCluster(_) => self,
             LocationId::Atomic(tick) => tick.root(),
             LocationId::Tick(_, id) => id.root(),
         }
@@ -67,7 +72,7 @@ impl LocationId {
 
     pub fn is_root(&self) -> bool {
         match self {
-            LocationId::Process(_) | LocationId::Cluster(_) => true,
+            LocationId::Process(_) | LocationId::Cluster(_) | LocationId::StaticCluster(_) => true,
             LocationId::Atomic(_) => false,
             LocationId::Tick(_, _) => false,
         }
@@ -75,7 +80,7 @@ impl LocationId {
 
     pub fn is_top_level(&self) -> bool {
         match self {
-            LocationId::Process(_) | LocationId::Cluster(_) => true,
+            LocationId::Process(_) | LocationId::Cluster(_) | LocationId::StaticCluster(_) => true,
             LocationId::Atomic(_) => true,
             LocationId::Tick(_, _) => false,
         }
@@ -85,8 +90,22 @@ impl LocationId {
         match self {
             LocationId::Process(id) => *id,
             LocationId::Cluster(id) => *id,
+            LocationId::StaticCluster(id) => *id,
             LocationId::Atomic(_) => panic!("cannot get raw id for atomic"),
             LocationId::Tick(_, _) => panic!("cannot get raw id for tick"),
+        }
+    }
+
+    /// Returns `true` if this is any kind of cluster (dynamic or static).
+    pub fn is_cluster(&self) -> bool {
+        matches!(self.root(), LocationId::Cluster(_) | LocationId::StaticCluster(_))
+    }
+
+    /// Returns the key if this is any kind of cluster, or `None` otherwise.
+    pub fn cluster_key(&self) -> Option<LocationKey> {
+        match self.root() {
+            LocationId::Cluster(key) | LocationId::StaticCluster(key) => Some(*key),
+            _ => None,
         }
     }
 

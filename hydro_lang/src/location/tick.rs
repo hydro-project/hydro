@@ -23,7 +23,7 @@ use stageleft::{QuotedWithContext, q};
 
 #[cfg(stageleft_runtime)]
 use super::dynamic::DynLocation;
-use super::{Cluster, Location, LocationId, Process};
+use super::{Cluster, Location, LocationId, Process, StaticCluster};
 use crate::compile::builder::{ClockId, FlowState};
 use crate::compile::ir::{HydroNode, HydroSource};
 #[cfg(stageleft_runtime)]
@@ -46,6 +46,8 @@ pub trait NoTick {}
 impl<T> NoTick for Process<'_, T> {}
 #[sealed]
 impl<T> NoTick for Cluster<'_, T> {}
+#[sealed]
+impl<T> NoTick for StaticCluster<'_, T> {}
 
 /// Marker trait for locations that are **not** inside an [`Atomic`] context.
 ///
@@ -58,6 +60,8 @@ pub trait NoAtomic {}
 impl<T> NoAtomic for Process<'_, T> {}
 #[sealed]
 impl<T> NoAtomic for Cluster<'_, T> {}
+#[sealed]
+impl<T> NoAtomic for StaticCluster<'_, T> {}
 #[sealed]
 impl<'a, L> NoAtomic for Tick<L> where L: Location<'a> {}
 

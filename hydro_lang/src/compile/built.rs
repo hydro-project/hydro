@@ -229,7 +229,7 @@ impl<'a> BuiltFlow<'a> {
                         },
                     );
                 }
-                LocationType::Cluster => {
+                LocationType::Cluster | LocationType::StaticCluster => {
                     clusters.insert(
                         key,
                         SimNode {

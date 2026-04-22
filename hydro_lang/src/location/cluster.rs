@@ -185,6 +185,119 @@ impl<C> IsCluster for Cluster<'_, C> {
     type Tag = C;
 }
 
+impl<C> IsCluster for StaticCluster<'_, C> {
+    type Tag = C;
+}
+
+/// A multi-node location with fixed membership known at deploy time.
+///
+/// Unlike [`Cluster`], a `StaticCluster` does not support dynamic membership
+/// changes. All members are present for the entire execution. This enables
+/// stronger consistency guarantees: broadcasting to a `StaticCluster` does not
+/// require a [`NonDet`](crate::nondet::NonDet) guard because membership is not
+/// a source of nondeterminism.
+///
+/// The `ClusterTag` type parameter is a phantom tag used to distinguish between
+/// different clusters in the type system, preventing accidental mixing of
+/// member IDs across clusters.
+pub struct StaticCluster<'a, ClusterTag> {
+    pub(crate) key: LocationKey,
+    pub(crate) flow_state: FlowState,
+    pub(crate) _phantom: Invariant<'a, ClusterTag>,
+}
+
+impl<C> Debug for StaticCluster<'_, C> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "StaticCluster({})", self.key)
+    }
+}
+
+impl<C> Eq for StaticCluster<'_, C> {}
+impl<C> PartialEq for StaticCluster<'_, C> {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key && FlowState::ptr_eq(&self.flow_state, &other.flow_state)
+    }
+}
+
+impl<C> Clone for StaticCluster<'_, C> {
+    fn clone(&self) -> Self {
+        StaticCluster {
+            key: self.key,
+            flow_state: self.flow_state.clone(),
+            _phantom: PhantomData,
+        }
+    }
+}
+
+impl<'a, C> super::dynamic::DynLocation for StaticCluster<'a, C> {
+    fn id(&self) -> LocationId {
+        LocationId::StaticCluster(self.key)
+    }
+
+    fn flow_state(&self) -> &FlowState {
+        &self.flow_state
+    }
+
+    fn is_top_level() -> bool {
+        true
+    }
+
+    fn multiversioned(&self) -> bool {
+        false
+    }
+}
+
+impl<'a, C> Location<'a> for StaticCluster<'a, C> {
+    type Root = StaticCluster<'a, C>;
+
+    fn root(&self) -> Self::Root {
+        self.clone()
+    }
+}
+
+#[cfg(feature = "sim")]
+impl<'a, C> StaticCluster<'a, C> {
+    /// Sets up a simulated input port on this static cluster for testing.
+    ///
+    /// Returns a `SimClusterSender` that sends `(member_id, T)` messages targeting
+    /// specific cluster members, and a `Stream<T>` received by each member.
+    #[expect(clippy::type_complexity, reason = "stream markers")]
+    pub fn sim_input<T>(
+        &self,
+    ) -> (
+        crate::sim::SimClusterSender<
+            T,
+            crate::live_collections::stream::TotalOrder,
+            crate::live_collections::stream::ExactlyOnce,
+        >,
+        crate::live_collections::Stream<
+            T,
+            Self,
+            crate::live_collections::boundedness::Unbounded,
+            crate::live_collections::stream::TotalOrder,
+            crate::live_collections::stream::ExactlyOnce,
+        >,
+    )
+    where
+        T: serde::Serialize + serde::de::DeserializeOwned,
+    {
+        use crate::location::Location;
+
+        let external_location: crate::location::External<'a, ()> = crate::location::External {
+            key: LocationKey::FIRST,
+            flow_state: self.flow_state.clone(),
+            _phantom: PhantomData,
+        };
+
+        let (external, stream) = self.source_external_bincode(&external_location);
+
+        (
+            crate::sim::SimClusterSender(external.port_id, PhantomData),
+            stream,
+        )
+    }
+}
+
 /// A free variable representing the cluster's own ID. When spliced in
 /// a quoted snippet that will run on a cluster, this turns into a [`MemberId`].
 pub static CLUSTER_SELF_ID: ClusterSelfId = ClusterSelfId { _private: &() };
@@ -209,8 +322,9 @@ where
     where
         Self: Sized,
     {
-        let LocationId::Cluster(cluster_id) = ctx.root().id() else {
-            unreachable!()
+        let cluster_id = match ctx.root().id() {
+            LocationId::Cluster(id) | LocationId::StaticCluster(id) => id,
+            _ => unreachable!(),
         };
 
         let ident = syn::Ident::new(
@@ -346,6 +460,80 @@ mod tests {
 
         flow.sim()
             .with_cluster_size(&cluster, 2)
+            .exhaustive(async || {
+                out_recv
+                    .assert_yields_only_unordered(vec![
+                        (MemberId::from_raw_id(0), MembershipEvent::Joined),
+                        (MemberId::from_raw_id(1), MembershipEvent::Joined),
+                    ])
+                    .await;
+            });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_static_cluster_self_id() {
+        let mut flow = FlowBuilder::new();
+        let cluster = flow.static_cluster::<()>();
+        let node = flow.process::<()>();
+
+        let out_recv = cluster
+            .source_iter(q!(vec![CLUSTER_SELF_ID]))
+            .send(&node, TCP.fail_stop().bincode())
+            .values()
+            .sim_output();
+
+        flow.sim()
+            .with_static_cluster_size(&cluster, 3)
+            .exhaustive(async || {
+                out_recv
+                    .assert_yields_only_unordered([0, 1, 2].map(MemberId::from_raw_id))
+                    .await
+            });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_static_cluster_broadcast() {
+        let mut flow = FlowBuilder::new();
+        let source = flow.static_cluster::<()>();
+        let node = flow.process::<()>();
+
+        // Each member broadcasts 1 to all members, then sends to process
+        let out_recv = source
+            .source_iter(q!(vec![1i32]))
+            .broadcast(&source, TCP.fail_stop().bincode())
+            .values()
+            .send(&node, TCP.fail_stop().bincode())
+            .values()
+            .sim_output();
+
+        flow.sim()
+            .with_static_cluster_size(&source, 2)
+            .exhaustive(async || {
+                // 2 members each broadcast 1 to all 2 → 4 items at cluster,
+                // then each sends to process → 4 items
+                out_recv
+                    .assert_yields_only_unordered(vec![1i32; 4])
+                    .await
+            });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_static_cluster_membership() {
+        let mut flow = FlowBuilder::new();
+        let cluster = flow.static_cluster::<()>();
+        let node = flow.process::<()>();
+
+        let out_recv = node
+            .source_cluster_members_static(&cluster)
+            .entries()
+            .map(q!(|(id, v)| (id, v)))
+            .sim_output();
+
+        flow.sim()
+            .with_static_cluster_size(&cluster, 2)
             .exhaustive(async || {
                 out_recv
                     .assert_yields_only_unordered(vec![

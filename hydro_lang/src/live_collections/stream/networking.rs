@@ -7,7 +7,7 @@ use serde::de::DeserializeOwned;
 use stageleft::{q, quote_type};
 use syn::parse_quote;
 
-use super::{ExactlyOnce, MinOrder, Ordering, Stream, TotalOrder};
+use super::{ExactlyOnce, MinOrder, NoOrder, Ordering, Stream, TotalOrder};
 use crate::compile::ir::{DebugInstantiate, HydroIrOpMetadata, HydroNode, HydroRoot};
 use crate::live_collections::boundedness::{Boundedness, Unbounded};
 use crate::live_collections::keyed_singleton::KeyedSingleton;
@@ -386,6 +386,44 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         let external = self.send_bincode_external(&external_location);
 
         SimReceiver(external.port_id, PhantomData)
+    }
+
+    /// Broadcasts elements of this stream to all members of a static cluster using
+    /// [`bincode`] serialization.
+    ///
+    /// No [`NonDet`] guard needed since [`StaticCluster`] membership is fixed at deploy time.
+    pub fn broadcast_static_bincode<L2: 'a>(
+        self,
+        to: &crate::location::StaticCluster<'a, L2>,
+    ) -> Stream<T, crate::location::StaticCluster<'a, L2>, Unbounded, NoOrder, R>
+    where
+        T: Clone + Serialize + DeserializeOwned,
+    {
+        self.broadcast_static(to, TCP.fail_stop().bincode())
+    }
+
+    /// Broadcasts elements of this stream to all members of a static cluster.
+    ///
+    /// No [`NonDet`] guard needed since [`StaticCluster`] membership is fixed at deploy time.
+    /// Uses `cross_product` with the bounded member set — no ticks or nondet involved.
+    pub fn broadcast_static<L2: 'a, N: NetworkFor<T>>(
+        self,
+        to: &crate::location::StaticCluster<'a, L2>,
+        via: N,
+    ) -> Stream<T, crate::location::StaticCluster<'a, L2>, Unbounded, NoOrder, R>
+    where
+        T: Clone + Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
+    {
+        let member_ids = self.location.source_cluster_members_static(to)
+            .filter(q!(|event| matches!(event, crate::location::MembershipEvent::Joined)))
+            .keys()
+            .weaken_retries();
+
+        self.cross_product(member_ids)
+            .map(q!(|(data, member_id)| (member_id, data)))
+            .into_keyed()
+            .demux_static(to, via)
     }
 }
 
@@ -1260,6 +1298,146 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
         <O as MinOrder<N::OrderingGuarantee>>::Min,
         R,
     >
+    where
+        T: Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
+    {
+        self.into_keyed().demux(to, via)
+    }
+}
+
+// === StaticCluster outbound networking ===
+
+impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, crate::location::StaticCluster<'a, L>, B, O, R> {
+    /// Sends elements from a static cluster to a process.
+    pub fn send_bincode<L2>(
+        self,
+        other: &Process<'a, L2>,
+    ) -> KeyedStream<MemberId<L>, T, Process<'a, L2>, Unbounded, O, R>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        self.send(other, TCP.fail_stop().bincode())
+    }
+
+    /// Sends elements from a static cluster to a process using the given transport.
+    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
+    pub fn send<L2, N: NetworkFor<T>>(
+        self,
+        to: &Process<'a, L2>,
+        via: N,
+    ) -> KeyedStream<MemberId<L>, T, Process<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
+    where
+        T: Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
+    {
+        let serialize_pipeline = Some(N::serialize_thunk(false));
+        let deserialize_pipeline = Some(N::deserialize_thunk(Some(&quote_type::<L>())));
+
+        let raw_stream: Stream<(MemberId<L>, T), Process<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R> = Stream::new(
+            to.clone(),
+            HydroNode::Network {
+                name: via.name().map(ToOwned::to_owned),
+                networking_info: N::networking_info(),
+                serialize_fn: serialize_pipeline.map(|e| e.into()),
+                instantiate_fn: DebugInstantiate::Building,
+                deserialize_fn: deserialize_pipeline.map(|e| e.into()),
+                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                metadata: to.new_node_metadata(Stream::<
+                    (MemberId<L>, T), Process<'a, L2>, Unbounded,
+                    <O as MinOrder<N::OrderingGuarantee>>::Min, R,
+                >::collection_kind()),
+            },
+        );
+        raw_stream.into_keyed()
+    }
+
+    /// Broadcasts elements to all members of a destination static cluster using [`bincode`].
+    /// No [`NonDet`] guard needed since static cluster membership is fixed.
+    pub fn broadcast_bincode<L2: 'a>(
+        self,
+        other: &crate::location::StaticCluster<'a, L2>,
+    ) -> KeyedStream<MemberId<L>, T, crate::location::StaticCluster<'a, L2>, Unbounded, NoOrder, R>
+    where
+        T: Clone + Serialize + DeserializeOwned,
+    {
+        self.broadcast(other, TCP.fail_stop().bincode())
+    }
+
+    /// Broadcasts elements to all members of a destination static cluster.
+    /// No [`NonDet`] guard needed since static cluster membership is fixed.
+    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
+    pub fn broadcast<L2: 'a, N: NetworkFor<T>>(
+        self,
+        to: &crate::location::StaticCluster<'a, L2>,
+        via: N,
+    ) -> KeyedStream<MemberId<L>, T, crate::location::StaticCluster<'a, L2>, Unbounded, NoOrder, R>
+    where
+        T: Clone + Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
+    {
+        let member_ids = self.location.source_cluster_members_static(to)
+            .filter(q!(|event| matches!(event, crate::location::MembershipEvent::Joined)))
+            .keys()
+            .weaken_retries();
+
+        self.cross_product(member_ids)
+            .map(q!(|(data, member_id)| (member_id, data)))
+            .into_keyed()
+            .demux(to, via)
+    }
+
+    #[cfg(feature = "sim")]
+    /// Sets up a simulation output port for this static cluster stream.
+    pub fn sim_cluster_output(self) -> crate::sim::SimClusterReceiver<T, O, R>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        let external_location: External<'a, ()> = External {
+            key: LocationKey::FIRST,
+            flow_state: self.location.flow_state().clone(),
+            _phantom: PhantomData,
+        };
+
+        let serialize_pipeline = Some(serialize_bincode::<T>(false));
+        let mut flow_state_borrow = self.location.flow_state().borrow_mut();
+        let external_port_id = flow_state_borrow.next_external_port();
+        flow_state_borrow.push_root(HydroRoot::SendExternal {
+            to_external_key: external_location.key,
+            to_port_id: external_port_id,
+            to_many: false,
+            unpaired: true,
+            serialize_fn: serialize_pipeline.map(|e| e.into()),
+            instantiate_fn: DebugInstantiate::Building,
+            input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+            op_metadata: HydroIrOpMetadata::new(),
+        });
+
+        crate::sim::SimClusterReceiver(external_port_id, PhantomData)
+    }
+}
+
+impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
+    Stream<(MemberId<L2>, T), crate::location::StaticCluster<'a, L>, B, O, R>
+{
+    /// Sends elements to specific members of a destination static cluster using [`bincode`].
+    pub fn demux_bincode(
+        self,
+        other: &crate::location::StaticCluster<'a, L2>,
+    ) -> KeyedStream<MemberId<L>, T, crate::location::StaticCluster<'a, L2>, Unbounded, O, R>
+    where
+        T: Serialize + DeserializeOwned,
+    {
+        self.demux(other, TCP.fail_stop().bincode())
+    }
+
+    /// Sends elements to specific members of a destination static cluster.
+    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
+    pub fn demux<N: NetworkFor<T>>(
+        self,
+        to: &crate::location::StaticCluster<'a, L2>,
+        via: N,
+    ) -> KeyedStream<MemberId<L>, T, crate::location::StaticCluster<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
     where
         T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,

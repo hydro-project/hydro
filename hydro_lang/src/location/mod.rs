@@ -61,7 +61,7 @@ pub mod process;
 pub use process::Process;
 
 pub mod cluster;
-pub use cluster::Cluster;
+pub use cluster::{Cluster, StaticCluster};
 
 pub mod member_id;
 pub use member_id::{MemberId, TaglessMemberId};
@@ -166,8 +166,10 @@ impl<Ctx> FreeVariableWithContextWithProps<Ctx, ()> for LocationKey {
 pub enum LocationType {
     /// A process (single node).
     Process,
-    /// A cluster (multiple nodes).
+    /// A cluster (multiple nodes) with dynamic membership.
     Cluster,
+    /// A cluster (multiple nodes) with fixed membership known at deploy time.
+    StaticCluster,
     /// An external client.
     External,
 }
@@ -439,6 +441,36 @@ pub trait Location<'a>: dynamic::DynLocation {
                     (TaglessMemberId, MembershipEvent),
                     Self,
                     Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        )
+        .map(q!(|(k, v)| (MemberId::from_tagless(k), v)))
+        .into_keyed()
+    }
+
+    /// Creates a stream of membership events for a static cluster.
+    ///
+    /// For a [`StaticCluster`], all members emit [`MembershipEvent::Joined`] at
+    /// startup and never emit [`MembershipEvent::Left`]. The returned stream has
+    /// the same type as [`Location::source_cluster_members`] for compatibility
+    /// with existing membership-tracking utilities.
+    fn source_cluster_members_static<C: 'a>(
+        &self,
+        cluster: &StaticCluster<'a, C>,
+    ) -> KeyedStream<MemberId<C>, MembershipEvent, Self, Bounded>
+    where
+        Self: Sized + NoTick,
+    {
+        Stream::new(
+            self.clone(),
+            HydroNode::Source {
+                source: HydroSource::ClusterMembers(cluster.id(), ClusterMembersState::Uninit),
+                metadata: self.new_node_metadata(Stream::<
+                    (TaglessMemberId, MembershipEvent),
+                    Self,
+                    Bounded,
                     TotalOrder,
                     ExactlyOnce,
                 >::collection_kind()),
