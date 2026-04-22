@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use dfir_rs::dfir_syntax_inline;
 use dfir_rs::util::iter_batches_stream;
