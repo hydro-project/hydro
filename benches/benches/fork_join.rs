@@ -47,9 +47,5 @@ fn benchmark_timely(c: &mut Criterion) {
     });
 }
 
-criterion_group!(
-    fork_join_dataflow,
-    benchmark_timely,
-    benchmark_raw,
-);
+criterion_group!(fork_join_dataflow, benchmark_timely, benchmark_raw,);
 criterion_main!(fork_join_dataflow);

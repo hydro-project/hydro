@@ -72,7 +72,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
 
         let write_prologue_pos = pos_persist.then(|| {
             quote_spanned! {op_span=>
-                let #pos_ident = #df_ident.add_state(std::cell::RefCell::new(
+                let #pos_ident = #df_ident.add_state(::std::cell::RefCell::new(
                     ::std::vec::Vec::new()
                 ));
             }
@@ -87,7 +87,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
             })).flatten();
 
         let write_prologue_neg = quote_spanned! {op_span=>
-            let #neg_ident = #df_ident.add_state(std::cell::RefCell::new(
+            let #neg_ident = #df_ident.add_state(::std::cell::RefCell::new(
                 #root::rustc_hash::FxHashSet::default()
             ));
         };

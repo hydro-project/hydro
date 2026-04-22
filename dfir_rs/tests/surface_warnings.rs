@@ -2,7 +2,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use dfir_rs::dfir_expect_warnings;
-
 use dfir_rs::util::collect_ready;
 
 #[test]

@@ -64,13 +64,7 @@ fn benchmark_immediately_available(c: &mut Criterion) {
 type WakeInfo = (Rc<RefCell<bool>>, Vec<Rc<RefCell<Option<Waker>>>>);
 
 fn benchmark_delayed(c: &mut Criterion) {
-    fn setup(
-        count: u32,
-        wake_one: bool,
-    ) -> (
-        InlineDfir<impl TickClosure>,
-        WakeInfo,
-    ) {
+    fn setup(count: u32, wake_one: bool) -> (InlineDfir<impl TickClosure>, WakeInfo) {
         let done = Rc::new(RefCell::new(false));
         let mut wakers = Vec::new();
 
