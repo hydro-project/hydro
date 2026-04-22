@@ -1932,6 +1932,15 @@ pub enum HydroNode {
         metadata: HydroIrMetadata,
     },
 
+    /// Asymmetric join where the right (build) side is bounded.
+    /// The build side is accumulated (stratum-delayed) into a hash table,
+    /// then the left (probe) side streams through preserving its ordering.
+    JoinBounded {
+        left: Box<HydroNode>,
+        right: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
+
     Difference {
         pos: Box<HydroNode>,
         neg: Box<HydroNode>,
@@ -2181,7 +2190,8 @@ impl HydroNode {
 
             HydroNode::CrossSingleton { left, right, .. }
             | HydroNode::CrossProduct { left, right, .. }
-            | HydroNode::Join { left, right, .. } => {
+            | HydroNode::Join { left, right, .. }
+            | HydroNode::JoinBounded { left, right, .. } => {
                 transform(left.as_mut(), seen_tees);
                 transform(right.as_mut(), seen_tees);
             }
@@ -2357,6 +2367,15 @@ impl HydroNode {
                 right,
                 metadata,
             } => HydroNode::Join {
+                left: Box::new(left.deep_clone(seen_tees)),
+                right: Box::new(right.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::JoinBounded {
+                left,
+                right,
+                metadata,
+            } => HydroNode::JoinBounded {
                 left: Box::new(left.deep_clone(seen_tees)),
                 right: Box::new(right.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
@@ -3222,6 +3241,46 @@ impl HydroNode {
                         ident_stack.push(stream_ident);
                     }
 
+                    HydroNode::JoinBounded { .. } => {
+                        let HydroNode::JoinBounded { right, .. } = node else {
+                            unreachable!()
+                        };
+
+                        let build_lifetime = if right.metadata().location_id.is_top_level() {
+                            quote!('static)
+                        } else {
+                            quote!('tick)
+                        };
+
+                        let build_ident = ident_stack.pop().unwrap();
+                        let probe_ident = ident_stack.pop().unwrap();
+
+                        let stream_ident =
+                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(graph_builders) => {
+                                let builder = graph_builders.get_dfir_mut(&out_location);
+                                builder.add_dfir(
+                                    parse_quote! {
+                                        #stream_ident = join_multiset_half::<#build_lifetime, 'tick>();
+                                        #probe_ident -> [probe]#stream_ident;
+                                        #build_ident -> [build]#stream_ident;
+                                    },
+                                    None,
+                                    Some(&next_stmt_id.to_string()),
+                                );
+                            }
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
+
+                        *next_stmt_id += 1;
+
+                        ident_stack.push(stream_ident);
+                    }
+
                     HydroNode::ResolveFutures { .. } => {
                         let input_ident = ident_stack.pop().unwrap();
 
@@ -4060,6 +4119,7 @@ impl HydroNode {
             | HydroNode::ResolveFuturesBlocking { .. }
             | HydroNode::ResolveFuturesOrdered { .. }
             | HydroNode::Join { .. }
+            | HydroNode::JoinBounded { .. }
             | HydroNode::Difference { .. }
             | HydroNode::AntiJoin { .. }
             | HydroNode::DeferTick { .. }
@@ -4133,6 +4193,7 @@ impl HydroNode {
             HydroNode::CrossProduct { metadata, .. } => metadata,
             HydroNode::CrossSingleton { metadata, .. } => metadata,
             HydroNode::Join { metadata, .. } => metadata,
+            HydroNode::JoinBounded { metadata, .. } => metadata,
             HydroNode::Difference { metadata, .. } => metadata,
             HydroNode::AntiJoin { metadata, .. } => metadata,
             HydroNode::ResolveFutures { metadata, .. } => metadata,
@@ -4186,6 +4247,7 @@ impl HydroNode {
             HydroNode::CrossProduct { metadata, .. } => metadata,
             HydroNode::CrossSingleton { metadata, .. } => metadata,
             HydroNode::Join { metadata, .. } => metadata,
+            HydroNode::JoinBounded { metadata, .. } => metadata,
             HydroNode::Difference { metadata, .. } => metadata,
             HydroNode::AntiJoin { metadata, .. } => metadata,
             HydroNode::ResolveFutures { metadata, .. } => metadata,
@@ -4244,7 +4306,8 @@ impl HydroNode {
             }
             HydroNode::CrossProduct { left, right, .. }
             | HydroNode::CrossSingleton { left, right, .. }
-            | HydroNode::Join { left, right, .. } => {
+            | HydroNode::Join { left, right, .. }
+            | HydroNode::JoinBounded { left, right, .. } => {
                 vec![left, right]
             }
             HydroNode::Difference { pos, neg, .. } | HydroNode::AntiJoin { pos, neg, .. } => {
@@ -4351,6 +4414,9 @@ impl HydroNode {
             }
             HydroNode::Join { left, right, .. } => {
                 format!("Join({}, {})", left.print_root(), right.print_root())
+            }
+            HydroNode::JoinBounded { left, right, .. } => {
+                format!("JoinBounded({}, {})", left.print_root(), right.print_root())
             }
             HydroNode::Difference { pos, neg, .. } => {
                 format!("Difference({}, {})", pos.print_root(), neg.print_root())

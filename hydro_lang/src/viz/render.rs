@@ -1291,6 +1291,11 @@ impl HydroNode {
                 right,
                 metadata,
             }
+            | HydroNode::JoinBounded {
+                left,
+                right,
+                metadata,
+            }
             | HydroNode::CrossProduct {
                 left,
                 right,
