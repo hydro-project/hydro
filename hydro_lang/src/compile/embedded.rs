@@ -500,10 +500,10 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
     /// include!(concat!(env!("OUT_DIR"), "/embedded.rs"));
     /// ```
     pub fn generate_embedded(self, crate_name: &str) -> syn::File {
-        self.generate_embedded_inner(crate_name, true)
+        self.generate_embedded_inner(crate_name)
     }
 
-    fn generate_embedded_inner(mut self, crate_name: &str, inline: bool) -> syn::File {
+    fn generate_embedded_inner(mut self, crate_name: &str) -> syn::File {
         let mut env = EmbeddedInstantiateEnv::default();
         let compiled = self.compile_internal(&mut env);
 
@@ -547,15 +547,9 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
             loc_outputs.sort_by(|a, b| a.0.to_string().cmp(&b.0.to_string()));
 
             let mut diagnostics = Diagnostics::new();
-            let dfir_tokens = if inline {
-                graph
-                    .as_code_inline(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
-                    .expect("DFIR inline code generation failed with diagnostics.")
-            } else {
-                graph
-                    .as_code(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
-                    .expect("DFIR code generation failed with diagnostics.")
-            };
+            let dfir_tokens = graph
+                .as_code_inline(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
+                .expect("DFIR inline code generation failed with diagnostics.");
 
             // --- Build module items (cluster info, output struct, network structs) ---
             let mut mod_items: Vec<proc_macro2::TokenStream> = Vec::new();
@@ -862,11 +856,8 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                 .chain(net_out_params)
                 .collect();
 
-            let ret_type: syn::Type = if inline {
-                syn::parse_quote! { #root::runtime_support::dfir_rs::scheduled::context::InlineDfir<impl #root::runtime_support::dfir_rs::scheduled::context::TickClosure + 'a> }
-            } else {
-                syn::parse_quote! { #root::runtime_support::dfir_rs::scheduled::graph::Dfir<'a> }
-            };
+            let ret_type: syn::Type =
+                syn::parse_quote! { #root::runtime_support::dfir_rs::scheduled::context::InlineDfir<impl #root::runtime_support::dfir_rs::scheduled::context::TickClosure + 'a> };
 
             let func = if !extra_fn_generics.is_empty() {
                 syn::parse_quote! {
