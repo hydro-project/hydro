@@ -310,6 +310,7 @@ declare_ops![
     join_fused_lhs::JOIN_FUSED_LHS,
     join_fused_rhs::JOIN_FUSED_RHS,
     join_multiset::JOIN_MULTISET,
+    join_multiset_half::JOIN_MULTISET_HALF,
     fold_keyed::FOLD_KEYED,
     reduce_keyed::REDUCE_KEYED,
     repeat_n::REPEAT_N,
