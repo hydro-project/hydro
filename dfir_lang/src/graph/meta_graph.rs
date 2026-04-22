@@ -1558,7 +1558,7 @@ impl DfirGraph {
                         let hoff_idx = slotmap_raw_idx(hoff_id);
                         // Use call_site span for internal identifiers to avoid
                         // hygiene issues when invoked through declarative macros
-                        // (e.g. dfir_expect_warnings!).
+                        // (e.g. dfir_expect_warnings!). TODO(#2781): define these once.
                         let work_done = Ident::new("__dfir_work_done", Span::call_site());
                         let metrics = Ident::new("__dfir_metrics", Span::call_site());
                         quote_spanned! {port_ident.span()=>
