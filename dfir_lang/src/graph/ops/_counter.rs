@@ -49,17 +49,16 @@ pub const _COUNTER: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
-                   root,
-                   df_ident,
-                   op_span,
-                   ident,
-                   inputs,
-                   outputs,
-                   is_pull,
-                   arguments,
-                   ..
-               },
-               _| {
+                     root,
+                     op_span,
+                     ident,
+                     inputs,
+                     outputs,
+                     is_pull,
+                     arguments,
+                     ..
+                 },
+                 _| {
         let read_ident = wc.make_ident("read");
         let write_ident = wc.make_ident("write");
 
@@ -74,7 +73,7 @@ pub const _COUNTER: OperatorConstraints = OperatorConstraints {
             let #read_ident = ::std::rc::Rc::clone(&#write_ident);
             let #duration_ident = #duration_expr;
             let #tag_ident = #tag_expr;
-            #df_ident.request_task(async move {
+            #root::tokio::task::spawn_local(async move {
                 loop {
                     println!("{}: {}", #tag_ident, #read_ident.get());
                     #root::tokio::time::sleep(#duration_ident).await;

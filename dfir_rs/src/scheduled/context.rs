@@ -578,13 +578,6 @@ impl InlineContext {
         std::task::Waker::from(self.wake_state.clone())
     }
 
-    /// No-op for inline mode.
-    pub fn request_task<Fut>(&mut self, _future: Fut)
-    where
-        Fut: Future<Output = ()> + 'static,
-    {
-    }
-
     /// Runs end-of-tick state hooks and increments the tick counter.
     /// Called by the generated tick closure at the end of each tick.
     #[doc(hidden)]
