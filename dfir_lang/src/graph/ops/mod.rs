@@ -449,14 +449,14 @@ impl WriteContextArgs<'_> {
         )
     }
 
-    /// Returns `#root::scheduled::graph::StateLifespan::#variant` corresponding to the given
+    /// Returns `#root::scheduled::StateLifespan::#variant` corresponding to the given
     /// peristence.
     pub fn persistence_as_state_lifespan(&self, persistence: Persistence) -> Option<TokenStream> {
         let root = self.root;
         let variant =
             persistence.as_state_lifespan_variant(self.subgraph_id, self.loop_id, self.op_span)?;
         Some(quote_spanned! {self.op_span=>
-            #root::scheduled::graph::StateLifespan::#variant
+            #root::scheduled::StateLifespan::#variant
         })
     }
 
@@ -593,7 +593,7 @@ pub enum Persistence {
     Mutable,
 }
 impl Persistence {
-    /// Returns just the variant of `#root::scheduled::graph::StateLifespan::VARIANT` for use in macros.
+    /// Returns just the variant of `#root::scheduled::StateLifespan::VARIANT` for use in macros.
     pub fn as_state_lifespan_variant(
         self,
         subgraph_id: GraphSubgraphId,

@@ -1,17 +1,17 @@
 //! Interfaces to access DFIR runtime metadata from Hydro programs.
 
-use dfir_rs::scheduled::context::Context;
+use dfir_rs::scheduled::context::InlineContext;
 use quote::quote;
 use stageleft::runtime_support::{FreeVariableWithContextWithProps, QuoteTokens};
 
 use crate::location::Location;
 
-/// Exposes the DFIR [`Context`] inside quoted code.
+/// Exposes the DFIR [`InlineContext`] inside quoted code.
 pub static RUNTIME_CONTEXT: RuntimeContext = RuntimeContext { _private: &() };
 
-/// A handle to DFIR [`Context`] which can be used inside quoted code.
+/// A handle to DFIR [`InlineContext`] which can be used inside quoted code.
 ///
-/// When spliced, it turns into a reference to [`Context`].
+/// When spliced, it turns into a reference to [`InlineContext`].
 #[derive(Clone, Copy)]
 pub struct RuntimeContext<'a> {
     _private: &'a (),
@@ -21,7 +21,7 @@ impl<'a, L> FreeVariableWithContextWithProps<L, ()> for RuntimeContext<'a>
 where
     L: Location<'a>,
 {
-    type O = &'a Context;
+    type O = &'a InlineContext;
 
     fn to_tokens(self, _ctx: &L) -> (QuoteTokens, ()) {
         (

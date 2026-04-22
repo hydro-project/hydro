@@ -3,10 +3,9 @@
 
 //! DFIR is a low-level dataflow-based runtime system for the [Hydro Project](https://hydro.run/).
 //!
-//! The primary item in this crate is the [`Dfir`](crate::scheduled::graph::Dfir) struct,
-//! representing a DFIR dataflow graph. Although this graph can be manually constructed, the
-//! easiest way to instantiate a graph instance is with the [`dfir_syntax!`] macro using
-//! DFIR's custom syntax.
+//! The primary item in this crate is the [`InlineDfir`](crate::scheduled::context::InlineDfir) struct,
+//! representing a DFIR dataflow instance. The easiest way to instantiate one is with the
+//! [`dfir_syntax!`] macro using DFIR's custom syntax.
 //!
 //! ```rust
 //! let mut df = dfir_rs::dfir_syntax! {

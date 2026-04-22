@@ -9,7 +9,6 @@ use pin_project_lite::pin_project;
 use web_time::{Duration, Instant};
 
 #[expect(unused_imports, reason = "used for rustdoc links")]
-use super::graph::Dfir;
 use super::{HandoffTag, SubgraphTag};
 use crate::util::slot_vec::SecondarySlotVec;
 
