@@ -48,29 +48,6 @@ fn dfir_rs_diamond(c: &mut Criterion) {
     });
 }
 
-fn dfir_rs_diamond_inline(c: &mut Criterion) {
-    let _ = *WORDS;
-
-    c.bench_function(name_of!(dfir_rs_diamond_inline), |b| {
-        b.iter(|| {
-            let words = words();
-            let mut count: usize = 0;
-            let count_ref = &mut count;
-            let mut flow = dfir_syntax! {
-                my_tee = source_iter(words) -> tee();
-                my_tee -> flat_map(|s| [format!("hi {}", s), format!("bye {}", s)]) -> my_union;
-                my_tee -> filter(|s| 0 == s.len() % 5) -> my_union;
-                my_union = union() -> fold(|| 0_usize, |n: &mut usize, s: String| {
-                    *n += s.len();
-                }) -> for_each(|n: usize| { *count_ref = n; });
-            };
-            flow.run_tick_sync();
-            drop(flow);
-            assert_eq!(OUTPUT, count);
-        })
-    });
-}
-
 fn hydroflo2_diamond_forloop(c: &mut Criterion) {
     let _ = *WORDS;
 
@@ -191,7 +168,6 @@ fn hydroflo2_diamond_iter_buffer_one(c: &mut Criterion) {
 criterion_group!(
     words_diamond,
     dfir_rs_diamond,
-    dfir_rs_diamond_inline,
     hydroflo2_diamond_forloop,
     hydroflo2_diamond_iter_clone_chain,
     hydroflo2_diamond_iter_clone_interleave,

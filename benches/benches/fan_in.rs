@@ -50,48 +50,6 @@ fn benchmark_hydroflow_surface(c: &mut Criterion) {
     });
 }
 
-fn benchmark_hydroflow_surface_inline(c: &mut Criterion) {
-    c.bench_function("fan_in/dfir_rs/surface_inline", |b| {
-        b.iter_batched(
-            || {
-                dfir_syntax! {
-                    my_union = union();
-
-                    source_iter(0..NUM_INTS) -> my_union;
-                    source_iter(0..NUM_INTS) -> my_union;
-                    source_iter(0..NUM_INTS) -> my_union;
-                    source_iter(0..NUM_INTS) -> my_union;
-                    source_iter(0..NUM_INTS) -> my_union;
-
-                    source_iter(0..NUM_INTS) -> my_union;
-                    source_iter(0..NUM_INTS) -> my_union;
-                    source_iter(0..NUM_INTS) -> my_union;
-                    source_iter(0..NUM_INTS) -> my_union;
-                    source_iter(0..NUM_INTS) -> my_union;
-
-                    source_iter(0..NUM_INTS) -> my_union;
-                    source_iter(0..NUM_INTS) -> my_union;
-                    source_iter(0..NUM_INTS) -> my_union;
-                    source_iter(0..NUM_INTS) -> my_union;
-                    source_iter(0..NUM_INTS) -> my_union;
-
-                    source_iter(0..NUM_INTS) -> my_union;
-                    source_iter(0..NUM_INTS) -> my_union;
-                    source_iter(0..NUM_INTS) -> my_union;
-                    source_iter(0..NUM_INTS) -> my_union;
-                    source_iter(0..NUM_INTS) -> my_union;
-
-                    my_union -> for_each(|x| { black_box(x); });
-                }
-            },
-            |mut flow| {
-                flow.run_tick_sync();
-            },
-            criterion::BatchSize::LargeInput,
-        )
-    });
-}
-
 fn benchmark_timely(c: &mut Criterion) {
     c.bench_function("fan_in/timely", |b| {
         b.iter(|| {
@@ -136,7 +94,6 @@ fn benchmark_for_loops(c: &mut Criterion) {
 criterion_group!(
     fan_in_dataflow,
     benchmark_hydroflow_surface,
-    benchmark_hydroflow_surface_inline,
     benchmark_timely,
     benchmark_iters,
     benchmark_for_loops,

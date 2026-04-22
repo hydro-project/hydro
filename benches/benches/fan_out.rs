@@ -45,72 +45,8 @@ fn benchmark_hydroflow_surface(c: &mut Criterion) {
     });
 }
 
-fn benchmark_hydroflow_surface_inline(c: &mut Criterion) {
-    c.bench_function("fan_out/dfir_rs/surface_inline", |b| {
-        b.iter(|| {
-            let mut flow = dfir_syntax! {
-                my_tee = tee();
-
-                source_iter(black_box(0..NUM_INTS)) -> my_tee;
-
-                my_tee -> for_each(|x| { black_box(x); });
-                my_tee -> for_each(|x| { black_box(x); });
-                my_tee -> for_each(|x| { black_box(x); });
-                my_tee -> for_each(|x| { black_box(x); });
-                my_tee -> for_each(|x| { black_box(x); });
-
-                my_tee -> for_each(|x| { black_box(x); });
-                my_tee -> for_each(|x| { black_box(x); });
-                my_tee -> for_each(|x| { black_box(x); });
-                my_tee -> for_each(|x| { black_box(x); });
-                my_tee -> for_each(|x| { black_box(x); });
-
-                my_tee -> for_each(|x| { black_box(x); });
-                my_tee -> for_each(|x| { black_box(x); });
-                my_tee -> for_each(|x| { black_box(x); });
-                my_tee -> for_each(|x| { black_box(x); });
-                my_tee -> for_each(|x| { black_box(x); });
-
-                my_tee -> for_each(|x| { black_box(x); });
-                my_tee -> for_each(|x| { black_box(x); });
-                my_tee -> for_each(|x| { black_box(x); });
-                my_tee -> for_each(|x| { black_box(x); });
-                my_tee -> for_each(|x| { black_box(x); });
-            };
-            flow.run_tick_sync();
-        })
-    });
-}
-
 // fn benchmark_hydroflow_teer(c: &mut Criterion) {
-//     c.bench_function("fan_out/dfir/teer", |b| {
-//         b.iter(|| {
-//             let mut df = Hydroflow::new();
-//             let output = df.add_source(|send: &SendCtx<TeeingHandoff<_>>| {
-//                 send.give((0..NUM_INTS).collect());
-//             });
-
-//             for _ in 0..(NUM_OPS - 1) {
-//                 let input = df.add_sink(|recv| {
-//                     for v in recv.take_inner() {
-//                         black_box(v);
-//                     }
-//                 });
-
-//                 df.add_edge(output.clone(), input);
-//             }
-
-//             let input = df.add_sink(|recv| {
-//                 for v in recv.take_inner() {
-//                     black_box(v);
-//                 }
-//             });
-
-//             df.add_edge(output, input);
-
-//             df.tick();
-//         })
-//     });
+//     ...
 // }
 
 fn benchmark_timely(c: &mut Criterion) {
@@ -142,7 +78,6 @@ fn benchmark_sol(c: &mut Criterion) {
 criterion_group!(
     fan_out_dataflow,
     benchmark_hydroflow_surface,
-    benchmark_hydroflow_surface_inline,
     // benchmark_hydroflow_teer,
     benchmark_timely,
     benchmark_sol,

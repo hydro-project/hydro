@@ -44,23 +44,11 @@ name = "fan_out"
 harness = false
 
 [[bench]]
-name = "fork_join"
-harness = false
-
-[[bench]]
-name = "identity"
-harness = false
-
-[[bench]]
 name = "upcase"
 harness = false
 
 [[bench]]
 name = "join"
-harness = false
-
-[[bench]]
-name = "reachability"
 harness = false
 
 [[bench]]

@@ -81,7 +81,7 @@ pub async fn test_counter_task_spawns() {
         flag_clone.store(true, Ordering::Relaxed);
     });
 
-    let mut df = dfir_syntax_inline! {
+    let mut df = dfir_syntax! {
         source_iter(0..5)
             -> _counter("_counter(spawn_test)", Duration::from_millis(10));
     };
