@@ -117,7 +117,7 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
     ) -> (syn::Expr, syn::Expr) {
         use crate::networking::{NetworkingInfo, TcpFault};
         match networking_info {
-            NetworkingInfo::Tcp { fault } => match (fault, env.nemesis.as_deref()) {
+            NetworkingInfo::Tcp { fault } | NetworkingInfo::Durable { fault, .. } => match (fault, env.nemesis.as_deref()) {
                 (TcpFault::Lossy | TcpFault::LossyDelayedForever, _) => {} /* lossy/delayed are always allowed */
                 (_, None) => {} // no nemesis means any fault model is fine
                 (TcpFault::FailStop, Some("partition")) => {

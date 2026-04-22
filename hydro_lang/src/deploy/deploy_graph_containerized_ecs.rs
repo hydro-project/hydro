@@ -440,14 +440,12 @@ impl<'a> Deploy<'a> for EcsDeploy {
         networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
-            crate::networking::NetworkingInfo::Tcp {
-                fault: crate::networking::TcpFault::FailStop,
-            } => {}
+            crate::networking::NetworkingInfo::Tcp { fault: crate::networking::TcpFault::FailStop } | crate::networking::NetworkingInfo::Durable { fault: crate::networking::TcpFault::FailStop, .. } => {}
             _ => panic!("Unsupported networking info: {:?}", networking_info),
         }
 
         deploy_containerized_o2o(
-            &p2.name,
+              &p2.name,
             name.expect("channel name is required for containerized deployment"),
         )
     }
@@ -480,9 +478,7 @@ impl<'a> Deploy<'a> for EcsDeploy {
         networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
-            crate::networking::NetworkingInfo::Tcp {
-                fault: crate::networking::TcpFault::FailStop,
-            } => {}
+            crate::networking::NetworkingInfo::Tcp { fault: crate::networking::TcpFault::FailStop } | crate::networking::NetworkingInfo::Durable { fault: crate::networking::TcpFault::FailStop, .. } => {}
             _ => panic!("Unsupported networking info: {:?}", networking_info),
         }
 
@@ -519,9 +515,7 @@ impl<'a> Deploy<'a> for EcsDeploy {
         networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
-            crate::networking::NetworkingInfo::Tcp {
-                fault: crate::networking::TcpFault::FailStop,
-            } => {}
+            crate::networking::NetworkingInfo::Tcp { fault: crate::networking::TcpFault::FailStop } | crate::networking::NetworkingInfo::Durable { fault: crate::networking::TcpFault::FailStop, .. } => {}
             _ => panic!("Unsupported networking info: {:?}", networking_info),
         }
 
@@ -559,9 +553,7 @@ impl<'a> Deploy<'a> for EcsDeploy {
         networking_info: &crate::networking::NetworkingInfo,
     ) -> (syn::Expr, syn::Expr) {
         match networking_info {
-            crate::networking::NetworkingInfo::Tcp {
-                fault: crate::networking::TcpFault::FailStop,
-            } => {}
+            crate::networking::NetworkingInfo::Tcp { fault: crate::networking::TcpFault::FailStop } | crate::networking::NetworkingInfo::Durable { fault: crate::networking::TcpFault::FailStop, .. } => {}
             _ => panic!("Unsupported networking info: {:?}", networking_info),
         }
 

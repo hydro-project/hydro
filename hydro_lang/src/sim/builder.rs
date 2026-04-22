@@ -978,7 +978,7 @@ impl DfirBuilder for SimBuilder {
     ) {
         use crate::networking::{NetworkingInfo, TcpFault};
         match networking_info {
-            NetworkingInfo::Tcp { fault } => match fault {
+            NetworkingInfo::Tcp { fault } | NetworkingInfo::Durable { fault, .. } => match fault {
                 TcpFault::FailStop => {}
                 TcpFault::LossyDelayedForever => {
                     assert!(

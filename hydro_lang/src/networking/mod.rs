@@ -148,6 +148,25 @@ pub enum TcpFault {
     LossyDelayedForever,
 }
 
+/// End-to-end delivery guarantee for a network channel.
+///
+/// Describes what the recipient is guaranteed to see relative to what the
+/// sender produced. This is a property of the channel (transport + lifecycle),
+/// not just the transport.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ChannelDelivery {
+    /// Every element sent arrives exactly once, in order.
+    /// If the connection fails, the stream dies (no partial delivery after reconnect).
+    ExactlyOnceOrdered,
+    /// Every element sent arrives at least once, in order.
+    /// Duplicates possible at recovery boundaries.
+    AtLeastOnceOrdered,
+    /// Every element sent arrives at least once. No order guarantee.
+    AtLeastOnceUnordered,
+    /// Elements may be lost. No order guarantee.
+    BestEffort,
+}
+
 /// Describes the networking configuration for a network channel at the IR level.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum NetworkingInfo {
@@ -156,6 +175,52 @@ pub enum NetworkingInfo {
         /// The fault model for this TCP connection.
         fault: TcpFault,
     },
+    /// A durable network channel that guarantees complete delivery
+    /// from the first item, even for late-joining cluster members.
+    /// The delivery guarantee is provided by an external mechanism
+    /// (journal replay, state transfer, etc.) asserted via manual_proof.
+    Durable {
+        /// The underlying transport's fault model.
+        fault: TcpFault,
+        /// The end-to-end delivery guarantee including recovery.
+        delivery: ChannelDelivery,
+    },
+}
+
+impl NetworkingInfo {
+    /// Returns the end-to-end delivery guarantee for this channel.
+    pub fn delivery(&self) -> ChannelDelivery {
+        match self {
+            NetworkingInfo::Tcp { fault } => match fault {
+                TcpFault::FailStop => ChannelDelivery::ExactlyOnceOrdered,
+                TcpFault::Lossy => ChannelDelivery::BestEffort,
+                TcpFault::LossyDelayedForever => ChannelDelivery::BestEffort,
+            },
+            NetworkingInfo::Durable { delivery, .. } => *delivery,
+        }
+    }
+
+    /// Whether this channel guarantees no gaps (ExactlyOnce or AtLeastOnce).
+    pub fn is_gap_free(&self) -> bool {
+        matches!(
+            self.delivery(),
+            ChannelDelivery::ExactlyOnceOrdered
+                | ChannelDelivery::AtLeastOnceOrdered
+                | ChannelDelivery::AtLeastOnceUnordered
+        )
+    }
+
+    /// Whether this channel is durable (survives session restarts).
+    pub fn is_durable(&self) -> bool {
+        matches!(self, NetworkingInfo::Durable { .. })
+    }
+
+    /// Returns the underlying TCP fault model.
+    pub fn fault(&self) -> TcpFault {
+        match self {
+            NetworkingInfo::Tcp { fault } | NetworkingInfo::Durable { fault, .. } => *fault,
+        }
+    }
 }
 
 /// A network channel configuration with `T` as transport backend and `S` as the serialization
@@ -288,6 +353,50 @@ where
 
     fn networking_info() -> NetworkingInfo {
         Tr::networking_info()
+    }
+}
+
+/// Wraps a network configuration to indicate durable delivery.
+///
+/// A `DurableTransport<N>` delegates serialization and ordering to the inner
+/// transport `N`, but returns [`NetworkingInfo::Durable`] from
+/// [`NetworkFor::networking_info`], signaling to the coordination analysis
+/// that this channel provides complete delivery from the first item
+/// (via journal replay, state transfer, or similar mechanism).
+pub struct DurableTransport<N> {
+    inner: N,
+}
+
+impl<N> DurableTransport<N> {
+    /// Wraps a transport with durable delivery semantics.
+    pub fn new(inner: N) -> Self {
+        Self { inner }
+    }
+}
+
+#[sealed::sealed]
+impl<N: NetworkFor<T>, T: ?Sized> NetworkFor<T> for DurableTransport<N> {
+    type OrderingGuarantee = N::OrderingGuarantee;
+
+    fn serialize_thunk(is_demux: bool) -> syn::Expr {
+        N::serialize_thunk(is_demux)
+    }
+
+    fn deserialize_thunk(tagged: Option<&syn::Type>) -> syn::Expr {
+        N::deserialize_thunk(tagged)
+    }
+
+    fn name(&self) -> Option<&str> {
+        self.inner.name()
+    }
+
+    fn networking_info() -> NetworkingInfo {
+        let base = N::networking_info();
+        let fault = base.fault();
+        NetworkingInfo::Durable {
+            fault,
+            delivery: ChannelDelivery::AtLeastOnceOrdered,
+        }
     }
 }
 

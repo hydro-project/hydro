@@ -425,6 +425,78 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
             .into_keyed()
             .demux_static(to, via)
     }
+
+    /// Broadcasts elements of this stream to all members of a dynamic cluster with
+    /// durable delivery guarantees.
+    ///
+    /// Unlike [`Stream::broadcast`], which only guarantees delivery to members that
+    /// are present when each element is sent, `durable_broadcast` guarantees that
+    /// every cluster member — including late joiners — receives the complete stream.
+    ///
+    /// The durability mechanism (journal replay, state transfer, etc.) is external
+    /// to Hydro. The `manual_proof` asserts the following properties:
+    ///
+    /// 1. **Replay soundness**: the external store faithfully persists all elements
+    ///    written to it, and replays them correctly on restore. For snapshot-based
+    ///    restore: applying the snapshot then replaying the log tail produces the
+    ///    same state as processing the full log from the beginning.
+    ///
+    /// 2. **Gap-freeness**: the combination of restore + live traffic delivers every
+    ///    element with no gaps at the cutover seam. This includes:
+    ///    - No elements lost between the last restored element and the first live element
+    ///    - Buffering or coordination during restore prevents missed elements
+    ///    - Duplicates at the boundary are acceptable (downstream must be idempotent
+    ///      or perform explicit deduplication)
+    ///
+    /// The resulting stream has [`AtLeastOnce`] retries semantics because replay
+    /// may deliver duplicates at the recovery boundary.
+    pub fn durable_broadcast<L2: 'a, N: NetworkFor<T>>(
+        self,
+        to: &Cluster<'a, L2>,
+        via: N,
+        _durability_proof: crate::properties::ManualProof,
+    ) -> Stream<T, Cluster<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, super::AtLeastOnce>
+    where
+        T: Clone + Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
+    {
+        let durable_via = crate::networking::DurableTransport::new(via);
+        let ids = track_membership(self.location.source_cluster_members(to));
+        sliced! {
+            let members_snapshot = use(ids, crate::nondet::nondet!(/** durable broadcast: membership tracking */));
+            let elements = use(self, crate::nondet::nondet!(/** durable broadcast: element batching */));
+
+            let current_members = members_snapshot.filter(q!(|b| *b));
+            elements.repeat_with_keys(current_members)
+        }
+        .demux(to, durable_via)
+        .weaken_retries::<super::AtLeastOnce>()
+    }
+
+    /// Broadcasts elements of this stream to all members of a static cluster with
+    /// durable delivery guarantees.
+    ///
+    /// Unlike [`Stream::durable_broadcast`] for dynamic clusters, this does not need
+    /// membership tracking since [`StaticCluster`] membership is fixed. The durability
+    /// mechanism (journal replay, state transfer, etc.) ensures that members recover
+    /// all elements after a failure.
+    ///
+    /// The `manual_proof` asserts replay soundness and gap-freeness (same as
+    /// [`Stream::durable_broadcast`]).
+    pub fn durable_broadcast_static<L2: 'a, N: NetworkFor<T>>(
+        self,
+        to: &crate::location::StaticCluster<'a, L2>,
+        via: N,
+        _durability_proof: crate::properties::ManualProof,
+    ) -> Stream<T, crate::location::StaticCluster<'a, L2>, Unbounded, NoOrder, super::AtLeastOnce>
+    where
+        T: Clone + Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
+    {
+        let durable_via = crate::networking::DurableTransport::new(via);
+        self.broadcast_static(to, durable_via)
+            .weaken_retries::<super::AtLeastOnce>()
+    }
 }
 
 impl<'a, T, L: Location<'a> + NoTick, B: Boundedness> Stream<T, L, B, TotalOrder, ExactlyOnce> {
