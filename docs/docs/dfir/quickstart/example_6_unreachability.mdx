@@ -2,11 +2,15 @@
 sidebar_position: 7
 ---
 import CodeBlock from '@theme/CodeBlock';
-import exampleCode from '!!raw-loader!../../../../dfir_rs/examples/example_6_unreachability.rs';
+import exampleCode from '!!raw-loader!../../../../dfir_rs/examples/example_6_unreachability.rs.disabled';
 import exampleOutput from '!!raw-loader!../../../../dfir_rs/tests/snapshots/surface_examples__example_6_unreachability.snap';
 import { getLines, extractOutput, extractMermaid } from '../../../src/util';
 
 # Graph Un-Reachability
+
+:::warning
+TODO(inline): This example uses intra-tick cycles and strata which are not yet supported in the inline DFIR codegen path. The example code is preserved but currently disabled.
+:::
 > In this example we cover:
 > * Extending a program with additional downstream logic.
 > * DFIR's ([`difference`](../syntax/surface_ops_gen.md#difference)) operator

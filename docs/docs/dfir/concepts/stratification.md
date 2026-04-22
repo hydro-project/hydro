@@ -3,6 +3,10 @@ sidebar_position: 3
 ---
 
 # Streaming, Blocking and Stratification
+
+:::warning
+TODO(inline): Stratification is a concept from the scheduled DFIR execution model. The inline codegen path does not use strata — it runs subgraphs in topological order. This page is out of date.
+:::
 Many DFIR operators (e.g. `map`, `filter` and `join`) work in a streaming fashion. Streaming operators process data as it arrives, generating outputs in the midst of processing inputs. If you restrict yourself to operators that work in this streaming fashion, then your process may start sending data across the network mid-tick, even while it is still consuming the data in the input batch.
 
 But some operators are blocking, and must wait for all their input data to arrive before they can produce any output data. For example, a `sort` operator must wait for all its input data to arrive before it can produce a single output value. After all, the lowest value may be the last to arrive!
