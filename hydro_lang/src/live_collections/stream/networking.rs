@@ -420,6 +420,31 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         .weaken_retries::<super::AtLeastOnce>()
     }
 
+    /// Broadcasts elements of this stream to all members of a static cluster with
+    /// durable delivery guarantees.
+    ///
+    /// Unlike [`Stream::durable_broadcast`] for dynamic clusters, this does not need
+    /// membership tracking since [`StaticCluster`] membership is fixed. The durability
+    /// mechanism (journal replay, state transfer, etc.) ensures that members recover
+    /// all elements after a failure.
+    ///
+    /// The `manual_proof` asserts replay soundness and gap-freeness (same as
+    /// [`Stream::durable_broadcast`]).
+    pub fn durable_broadcast_static<L2: 'a, N: NetworkFor<T>>(
+        self,
+        to: &crate::location::StaticCluster<'a, L2>,
+        via: N,
+        _durability_proof: crate::properties::ManualProof,
+    ) -> Stream<T, crate::location::StaticCluster<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, super::AtLeastOnce>
+    where
+        T: Clone + Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
+    {
+        let durable_via = crate::networking::DurableTransport::new(via);
+        self.broadcast_static(to, durable_via)
+            .weaken_retries::<super::AtLeastOnce>()
+    }
+
     /// Sends the elements of this stream to an external (non-Hydro) process, using [`bincode`]
     /// serialization. The external process can receive these elements by establishing a TCP
     /// connection and decoding using [`tokio_util::codec::LengthDelimitedCodec`].

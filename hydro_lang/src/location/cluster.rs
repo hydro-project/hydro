@@ -255,6 +255,49 @@ impl<'a, C> Location<'a> for StaticCluster<'a, C> {
     }
 }
 
+#[cfg(feature = "sim")]
+impl<'a, C> StaticCluster<'a, C> {
+    /// Sets up a simulated input port on this static cluster for testing.
+    ///
+    /// Returns a `SimClusterSender` that sends `(member_id, T)` messages targeting
+    /// specific cluster members, and a `Stream<T>` received by each member.
+    #[expect(clippy::type_complexity, reason = "stream markers")]
+    pub fn sim_input<T>(
+        &self,
+    ) -> (
+        crate::sim::SimClusterSender<
+            T,
+            crate::live_collections::stream::TotalOrder,
+            crate::live_collections::stream::ExactlyOnce,
+        >,
+        crate::live_collections::Stream<
+            T,
+            Self,
+            crate::live_collections::boundedness::Unbounded,
+            crate::live_collections::stream::TotalOrder,
+            crate::live_collections::stream::ExactlyOnce,
+        >,
+    )
+    where
+        T: serde::Serialize + serde::de::DeserializeOwned,
+    {
+        use crate::location::Location;
+
+        let external_location: crate::location::External<'a, ()> = crate::location::External {
+            key: LocationKey::FIRST,
+            flow_state: self.flow_state.clone(),
+            _phantom: PhantomData,
+        };
+
+        let (external, stream) = self.source_external_bincode(&external_location);
+
+        (
+            crate::sim::SimClusterSender(external.port_id, PhantomData),
+            stream,
+        )
+    }
+}
+
 /// A free variable representing the cluster's own ID. When spliced in
 /// a quoted snippet that will run on a cluster, this turns into a [`MemberId`].
 pub static CLUSTER_SELF_ID: ClusterSelfId = ClusterSelfId { _private: &() };
