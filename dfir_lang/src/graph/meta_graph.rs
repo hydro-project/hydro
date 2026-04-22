@@ -827,8 +827,7 @@ impl DfirGraph {
     /// topological order using local `Vec<T>` buffers instead of handoffs.
     /// Each call to the closure runs one tick. State is managed by a
     /// lightweight `InlineContext` instead of the full `Dfir` runtime.
-    ///
-    /// This is an experimental codegen path for the S3+Ref3 inline DAG design.
+    /// The returned code is wrapped in an [`InlineDfir`] struct.
     pub fn as_code(
         &self,
         root: &TokenStream,
