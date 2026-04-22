@@ -829,7 +829,7 @@ impl DfirGraph {
     /// lightweight `InlineContext` instead of the full `Dfir` runtime.
     ///
     /// This is an experimental codegen path for the S3+Ref3 inline DAG design.
-    pub fn as_code_inline(
+    pub fn as_code(
         &self,
         root: &TokenStream,
         include_type_guards: bool,

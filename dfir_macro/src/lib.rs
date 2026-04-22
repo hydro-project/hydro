@@ -5,7 +5,7 @@
 
 use dfir_lang::diagnostic::Level;
 use dfir_lang::graph::{
-    BuildDfirCodeOutput, FlatGraphBuilder, FlatGraphBuilderOutput, build_dfir_code_inline,
+    BuildDfirCodeOutput, FlatGraphBuilder, FlatGraphBuilderOutput, build_dfir_code,
     partition_graph,
 };
 use dfir_lang::parse::DfirCode;
@@ -74,7 +74,7 @@ fn dfir_syntax_internal(
     let input = parse_macro_input!(input as DfirCode);
     let root = root();
 
-    let (code, mut diagnostics) = match build_dfir_code_inline(input, &root) {
+    let (code, mut diagnostics) = match build_dfir_code(input, &root) {
         Ok(BuildDfirCodeOutput {
             partitioned_graph: _,
             code,

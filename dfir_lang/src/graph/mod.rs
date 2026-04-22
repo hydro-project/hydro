@@ -432,7 +432,7 @@ impl Display for PortIndexValue {
     }
 }
 
-/// Output of [`build_dfir_code_inline`].
+/// Output of [`build_dfir_code`].
 pub struct BuildDfirCodeOutput {
     /// The now-partitioned graph.
     pub partitioned_graph: DfirGraph,
@@ -443,7 +443,7 @@ pub struct BuildDfirCodeOutput {
 }
 
 /// Compiles a [`DfirCode`] AST into inline source code that runs the dataflow.
-pub fn build_dfir_code_inline(
+pub fn build_dfir_code(
     dfir_code: DfirCode,
     root: &TokenStream,
 ) -> Result<BuildDfirCodeOutput, Diagnostics> {
@@ -473,12 +473,12 @@ pub fn build_dfir_code_inline(
     };
 
     // Inline-specific validation: reject unsupported features.
-    validate_inline(&partitioned_graph, &mut diagnostics);
+    validate_graph(&partitioned_graph, &mut diagnostics);
     if diagnostics.has_error() {
         return Err(diagnostics);
     }
 
-    let code = partitioned_graph.as_code_inline(
+    let code = partitioned_graph.as_code(
         root,
         true,
         quote::quote! { #( #uses )* },
@@ -494,7 +494,7 @@ pub fn build_dfir_code_inline(
 
 /// Validates that a partitioned graph is compatible with the inline codegen path.
 /// Rejects: (1) `loop {}` blocks, (2) intra-tick cycles.
-fn validate_inline(graph: &DfirGraph, diagnostics: &mut Diagnostics) {
+fn validate_graph(graph: &DfirGraph, diagnostics: &mut Diagnostics) {
     // 1. Reject `loop { }` blocks.
     if let Some((_loop_id, nodes)) = graph.loops().next() {
         let span = nodes

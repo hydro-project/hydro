@@ -544,7 +544,7 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
 
             let mut diagnostics = Diagnostics::new();
             let dfir_tokens = graph
-                .as_code_inline(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
+                .as_code(&quote! { __root_dfir_rs }, true, quote!(), &mut diagnostics)
                 .expect("DFIR inline code generation failed with diagnostics.");
 
             // --- Build module items (cluster info, output struct, network structs) ---
