@@ -61,6 +61,8 @@ impl<T> NoAtomic for Process<'_, T> {}
 #[sealed]
 impl<T> NoAtomic for Cluster<'_, T> {}
 #[sealed]
+impl<T> NoAtomic for StaticCluster<'_, T> {}
+#[sealed]
 impl<'a, L> NoAtomic for Tick<L> where L: Location<'a> {}
 
 /// A location wrapper that provides atomicity guarantees within a [`Tick`].
