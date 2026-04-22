@@ -108,7 +108,7 @@ Finally we print the neighbor vertices as follows:
 
 <CodeBlock language="rust">{getLines(exampleCode, 17, 18)}</CodeBlock>
 
-The [unique](../syntax/surface_ops_gen.md#unique) operator removes duplicates from the stream to make things more readable.
+The [unique](../syntax/surface_ops_gen.md#unique) operator removes duplicates from the stream to make things more readable. Note that `unique` runs in a streaming fashion, which we will talk about more [later](./example_6_unreachability.mdx#strata-and-ticks).
 
 There's
 also some extra code here, `flow.meta_graph().expect(...).to_mermaid()`, which tells

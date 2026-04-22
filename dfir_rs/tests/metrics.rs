@@ -1,8 +1,9 @@
 use dfir_rs::util::collect_ready_async;
+use multiplatform_test::multiplatform_test;
 use web_time::Duration;
 
 /// Tests that everything is initially zero.
-#[dfir_rs::test]
+#[multiplatform_test(dfir)]
 async fn test_initial() {
     let (output_send, _output_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
@@ -33,7 +34,7 @@ async fn test_initial() {
     }
 }
 
-#[dfir_rs::test]
+#[multiplatform_test(dfir)]
 async fn test_subgraph_metrics() {
     let (output_send, _output_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
@@ -53,7 +54,7 @@ async fn test_subgraph_metrics() {
     assert!(0 < sg_metrics.total_poll_count());
 }
 
-#[dfir_rs::test]
+#[multiplatform_test(dfir)]
 async fn test_handoff_metrics() {
     let (output_send, mut output_recv) = dfir_rs::util::unbounded_channel::<i32>();
 
@@ -78,7 +79,7 @@ async fn test_handoff_metrics() {
     assert_eq!(output, vec![20]);
 }
 
-#[dfir_rs::test]
+#[multiplatform_test(dfir)]
 async fn test_multiple_ticks() {
     let (input_send, input_recv) = dfir_rs::util::unbounded_channel::<i32>();
     let (output_send, mut output_recv) = dfir_rs::util::unbounded_channel::<i32>();
@@ -111,7 +112,7 @@ async fn test_multiple_ticks() {
     assert_eq!(output, vec![2, 3, 4, 5]);
 }
 
-#[dfir_rs::test]
+#[multiplatform_test(dfir)]
 async fn test_metrics_intervals() {
     let (input_send, input_recv) = dfir_rs::util::unbounded_channel::<i32>();
     let (output_send, mut output_recv) = dfir_rs::util::unbounded_channel::<i32>();

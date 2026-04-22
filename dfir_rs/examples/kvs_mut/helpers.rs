@@ -1,13 +1,13 @@
 use dfir_lang::graph::{WriteConfig, WriteGraphType};
+use dfir_rs::scheduled::context::{InlineDfir, TickClosure};
 use regex::Regex;
 
 use crate::protocol::KvsMessage;
 
-pub fn print_graph(
-    serde_graph: &dfir_lang::graph::DfirGraph,
-    graph: WriteGraphType,
-    write_config: Option<WriteConfig>,
-) {
+pub fn print_graph(flow: &InlineDfir<impl TickClosure>, graph: WriteGraphType, write_config: Option<WriteConfig>) {
+    let serde_graph = flow
+        .meta_graph()
+        .expect("No graph found, maybe failed to parse.");
     serde_graph.open_graph(graph, write_config).unwrap();
 }
 

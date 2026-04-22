@@ -45,10 +45,6 @@ fn benchmark_hydroflow_surface(c: &mut Criterion) {
     });
 }
 
-// fn benchmark_hydroflow_teer(c: &mut Criterion) {
-//     ...
-// }
-
 fn benchmark_timely(c: &mut Criterion) {
     c.bench_function("fan_out/timely", |b| {
         b.iter(|| {
@@ -78,7 +74,6 @@ fn benchmark_sol(c: &mut Criterion) {
 criterion_group!(
     fan_out_dataflow,
     benchmark_hydroflow_surface,
-    // benchmark_hydroflow_teer,
     benchmark_timely,
     benchmark_sol,
 );
