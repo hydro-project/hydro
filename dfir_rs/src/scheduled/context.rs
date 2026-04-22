@@ -10,6 +10,7 @@ use std::marker::PhantomData;
 use std::ops::DerefMut;
 use std::pin::Pin;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::task::Wake;
 
@@ -452,11 +453,11 @@ impl Default for InlineWakeState {
 }
 
 impl Wake for InlineWakeState {
-    fn wake(self: std::sync::Arc<Self>) {
+    fn wake(self: Arc<Self>) {
         self.wake_by_ref();
     }
 
-    fn wake_by_ref(self: &std::sync::Arc<Self>) {
+    fn wake_by_ref(self: &Arc<Self>) {
         self.can_start_tick.store(true, Ordering::Relaxed);
         self.task_waker.wake();
     }
@@ -469,17 +470,22 @@ impl Wake for InlineWakeState {
 /// `df` (for prologues: `add_state`, `set_state_lifespan_hook`) and
 /// `context` (for iterators: `state_ref_unchecked`, `is_first_run_this_tick`, etc.).
 #[doc(hidden)]
+#[derive(Default)]
 pub struct InlineContext {
+    /// Storage for the operator-facing State API.
     states: SlotVec<StateTag, StateData>,
+    /// Counter for number of ticks run.
     current_tick: TickInstant,
-    wake_state: std::sync::Arc<InlineWakeState>,
+    /// Coordinates waking between [`InlineContext`] (inside the tick closure) and [`InlineDfir`]
+    /// (the external runner). Shared via `Arc` between both. Implements [`Wake`].
+    wake_state: Arc<InlineWakeState>,
     /// Live-updating DFIR runtime metrics via interior mutability.
     metrics: Rc<DfirMetrics>,
 }
 
 impl InlineContext {
     /// Create a new inline context with shared wake state and metrics.
-    pub fn new(wake_state: std::sync::Arc<InlineWakeState>, metrics: Rc<DfirMetrics>) -> Self {
+    pub fn new(wake_state: Arc<InlineWakeState>, metrics: Rc<DfirMetrics>) -> Self {
         Self {
             states: SlotVec::new(),
             current_tick: TickInstant::default(),
@@ -624,18 +630,18 @@ impl InlineContext {
 /// (non-erased) path used by trybuild and embedded has zero overhead.
 #[doc(hidden)]
 pub struct InlineDfir<Tick> {
+    /// Async closure which runs a single tick when called.
     tick_closure: Tick,
-    wake_state: std::sync::Arc<InlineWakeState>,
-
+    /// Coordinates waking between [`InlineContext`] (inside the tick closure) and [`InlineDfir`]
+    /// (the external runner). Shared via `Arc` between both. Implements [`Wake`].
+    wake_state: Arc<InlineWakeState>,
     /// The inline context, owned by `InlineDfir` and passed to the tick closure by reference.
     context: InlineContext,
-
-    #[cfg(feature = "meta")]
     /// See [`Self::meta_graph()`].
-    meta_graph: Option<DfirGraph>,
-
     #[cfg(feature = "meta")]
+    meta_graph: Option<DfirGraph>,
     /// See [`Self::diagnostics()`].
+    #[cfg(feature = "meta")]
     diagnostics: Option<Vec<Diagnostic<SerdeSpan>>>,
 }
 
@@ -653,6 +659,16 @@ pub trait TickClosure {
 impl<F: for<'a> AsyncFnMut(&'a mut InlineContext) -> bool> TickClosure for F {
     fn call_tick<'a>(&'a mut self, ctx: &'a mut InlineContext) -> impl Future<Output = bool> + 'a {
         self(ctx)
+    }
+}
+
+/// No-op `TickClosure`.
+#[doc(hidden)]
+pub struct NullTickClosure;
+
+impl TickClosure for NullTickClosure {
+    fn call_tick<'a>(&'a mut self, _ctx: &'a mut InlineContext) -> impl Future<Output = bool> + 'a {
+        std::future::ready(false)
     }
 }
 
