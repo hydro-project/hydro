@@ -307,7 +307,7 @@ impl TickClosure for TickClosureErased {
 }
 
 /// Type alias for a type-erased [`Dfir`] that can be stored in heterogeneous collections.
-/// Created via [`Dfir::into_erased`](Dfir::into_erased).
+/// Created via [`Dfir::into_erased`].
 pub type DfirErased = Dfir<TickClosureErased>;
 
 impl<Tick: TickClosure> Dfir<Tick> {
