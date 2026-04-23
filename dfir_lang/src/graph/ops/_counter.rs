@@ -50,6 +50,7 @@ pub const _COUNTER: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                      root,
+                     df_ident,
                      op_span,
                      ident,
                      inputs,
@@ -73,7 +74,7 @@ pub const _COUNTER: OperatorConstraints = OperatorConstraints {
             let #read_ident = ::std::rc::Rc::clone(&#write_ident);
             let #duration_ident = #duration_expr;
             let #tag_ident = #tag_expr;
-            #root::tokio::task::spawn_local(async move {
+            #df_ident.request_task(async move {
                 loop {
                     println!("{}: {}", #tag_ident, #read_ident.get());
                     #root::tokio::time::sleep(#duration_ident).await;
