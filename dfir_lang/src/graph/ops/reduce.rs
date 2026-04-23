@@ -144,6 +144,7 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
             write_prologue_after,
             write_iterator,
             write_iterator_after,
+            ..Default::default()
         })
     },
 };

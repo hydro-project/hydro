@@ -151,6 +151,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
             write_prologue_after: lhs_prologue_after,
             write_iterator,
             write_iterator_after,
+            ..Default::default()
         })
     },
 };

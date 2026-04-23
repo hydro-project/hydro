@@ -130,6 +130,9 @@ pub struct OperatorWriteOutput {
     pub write_iterator: TokenStream,
     /// Code which runs after `Stream`s/`Sink`s have been run. Mainly for flushing IO.
     pub write_iterator_after: TokenStream,
+    /// Code which runs at the end of each tick, after all subgraphs have run.
+    /// Used for resetting state with `'tick` persistence.
+    pub write_tick_end: TokenStream,
 }
 
 /// Convenience range: zero or more (any number).

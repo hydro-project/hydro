@@ -51,7 +51,6 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
-                   df_ident,
                    op_span,
                    work_fn,
                    work_fn_async,
@@ -83,23 +82,20 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
             let mut #initializer_func_ident = #init_fn;
 
             #[allow(clippy::redundant_closure_call)]
-            let #singleton_output_ident = #df_ident.add_state(::std::cell::RefCell::new(#init));
+            let #singleton_output_ident = ::std::cell::RefCell::new(#init);
         };
-        let write_prologue_after = wc
-            .persistence_as_state_lifespan(persistence)
-            .map(|lifespan| quote_spanned! {op_span=>
+
+        let write_tick_end = match persistence {
+            Persistence::Tick => quote_spanned! {op_span=>
                 #[allow(clippy::redundant_closure_call)]
-                #df_ident.set_state_lifespan_hook(
-                    #singleton_output_ident, #lifespan, move |rcell| { rcell.replace(#init); },
-                );
-            }).unwrap_or_default();
+                #singleton_output_ident.replace(#init);
+            },
+            _ => Default::default(),
+        };
 
         let assign_accum_ident = quote_spanned! {op_span=>
             #[allow(unused_mut)]
-            let mut #accumulator_ident = unsafe {
-                // SAFETY: handle from `#df_ident.add_state(..)`.
-                #context.state_ref_unchecked(#singleton_output_ident)
-            }.borrow_mut();
+            let mut #accumulator_ident = #singleton_output_ident.borrow_mut();
         };
         let foreach_body = quote_spanned! {op_span=>
             #[inline(always)]
@@ -153,9 +149,10 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
-            write_prologue_after,
             write_iterator,
             write_iterator_after,
+            write_tick_end,
+            ..Default::default()
         })
     },
 };

@@ -245,6 +245,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
             },
             write_iterator,
             write_iterator_after,
+            ..Default::default()
         })
     },
 };

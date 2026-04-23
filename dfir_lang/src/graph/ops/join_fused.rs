@@ -191,6 +191,7 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
             },
             write_iterator,
             write_iterator_after,
+            ..Default::default()
         })
     },
 };

@@ -938,6 +938,7 @@ impl DfirGraph {
 
         let mut op_prologue_code = Vec::new();
         let mut op_prologue_after_code = Vec::new();
+        let mut op_tick_end_code = Vec::new();
         let mut subgraph_blocks = Vec::new();
         {
             for &(subgraph_id, subgraph_nodes) in all_subgraphs.iter() {
@@ -1180,6 +1181,7 @@ impl DfirGraph {
                                 write_prologue_after,
                                 write_iterator,
                                 write_iterator_after,
+                                write_tick_end,
                             } = write_result.unwrap_or_else(|()| {
                                 assert!(
                                     diagnostics.has_error(),
@@ -1209,6 +1211,7 @@ impl DfirGraph {
                             });
                             op_prologue_code.push(write_prologue);
                             op_prologue_after_code.push(write_prologue_after);
+                            op_tick_end_code.push(write_tick_end);
                             subgraph_op_iter_code.push(write_iterator);
 
                             if include_type_guards {
@@ -1512,6 +1515,9 @@ impl DfirGraph {
                             true,
                         );
                     }
+
+                    // End-of-tick state reset (e.g. 'tick persistence).
+                    #( #op_tick_end_code )*
 
                     #df.__end_tick();
                     ::std::mem::take(&mut __dfir_work_done)

@@ -70,6 +70,7 @@ pub const SOURCE_FILE: OperatorConstraints = OperatorConstraints {
             write_prologue_after,
             write_iterator,
             write_iterator_after,
+            ..
         } = (super::source_stream::SOURCE_STREAM.write_fn)(&wc, diagnostics)?;
 
         let write_prologue = quote_spanned! {op_span=>
@@ -88,6 +89,7 @@ pub const SOURCE_FILE: OperatorConstraints = OperatorConstraints {
             write_prologue_after,
             write_iterator,
             write_iterator_after,
+            ..Default::default()
         })
     },
 };

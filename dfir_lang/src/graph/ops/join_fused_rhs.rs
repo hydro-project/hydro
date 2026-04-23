@@ -50,6 +50,7 @@ pub const JOIN_FUSED_RHS: OperatorConstraints = OperatorConstraints {
             write_prologue_after,
             write_iterator,
             write_iterator_after,
+            ..
         } = (super::join_fused_lhs::JOIN_FUSED_LHS.write_fn)(&wc, diagnostics)?;
 
         let write_iterator = quote_spanned! {op_span=>
@@ -62,6 +63,7 @@ pub const JOIN_FUSED_RHS: OperatorConstraints = OperatorConstraints {
             write_prologue_after,
             write_iterator,
             write_iterator_after,
+            ..Default::default()
         })
     },
 };

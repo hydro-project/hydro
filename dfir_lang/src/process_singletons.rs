@@ -32,21 +32,17 @@ pub fn preprocess_singletons(tokens: TokenStream, found_idents: &mut Vec<Ident>)
 pub fn postprocess_singletons(
     tokens: TokenStream,
     resolved_idents: impl IntoIterator<Item = Ident>,
-    context: &Ident,
+    _context: &Ident,
 ) -> Punctuated<Expr, Token![,]> {
     let mut resolved_idents_iter = resolved_idents.into_iter();
     let processed = process_singletons(tokens, &mut |singleton_ident| {
         let span = singleton_ident.span();
-        let context = Ident::new(&context.to_string(), span.resolved_at(context.span()));
         let mut resolved_ident = resolved_idents_iter.next().unwrap();
         resolved_ident.set_span(span);
         let mut group = Group::new(
             proc_macro2::Delimiter::Parenthesis,
             quote_spanned! {span=>
-                *(unsafe {
-                    // SAFETY: `handle` is from this instance.
-                    #context.state_ref_unchecked(#resolved_ident)
-                }.borrow_mut())
+                *#resolved_ident.borrow_mut()
             },
         );
         group.set_span(singleton_ident.span());

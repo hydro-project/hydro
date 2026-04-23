@@ -148,6 +148,7 @@ pub const SCAN_ASYNC_BLOCKING: OperatorConstraints = OperatorConstraints {
             write_prologue_after,
             write_iterator,
             write_iterator_after: Default::default(),
+            ..Default::default()
         })
     },
 };

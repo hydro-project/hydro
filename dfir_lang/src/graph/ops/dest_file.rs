@@ -79,6 +79,7 @@ pub const DEST_FILE: OperatorConstraints = OperatorConstraints {
             write_prologue_after,
             write_iterator,
             write_iterator_after,
+            ..
         } = (super::dest_sink::DEST_SINK.write_fn)(&wc, diagnostics)?;
 
         let write_prologue = quote_spanned! {op_span=>
@@ -95,6 +96,7 @@ pub const DEST_FILE: OperatorConstraints = OperatorConstraints {
             write_prologue_after,
             write_iterator,
             write_iterator_after,
+            ..Default::default()
         })
     },
 };

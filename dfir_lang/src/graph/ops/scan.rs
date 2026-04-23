@@ -178,6 +178,7 @@ pub const SCAN: OperatorConstraints = OperatorConstraints {
             write_prologue_after,
             write_iterator,
             write_iterator_after: Default::default(),
+            ..Default::default()
         })
     },
 };
