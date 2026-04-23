@@ -273,8 +273,6 @@ linkStyle default stroke:#aaa
 263v1["<div style=text-align:center>(263v1)</div> <code><br>cross_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 264v1["<div style=text-align:center>(264v1)</div> <code><br>map(|(id, data)| {<br>    (<br>        id.into_tagless(),<br>        hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into(),<br>    )<br>})</code>"]:::otherClass
 265v1["<div style=text-align:center>(265v1)</div> <code><br>dest_sink(DUMMY_SINK)</code>"]:::otherClass
-369v1["<div style=text-align:center>(369v1)</div> <code><br>identity()</code>"]:::otherClass
-371v1["<div style=text-align:center>(371v1)</div> <code><br>identity()</code>"]:::otherClass
 1v1-->2v1
 132v1--x|0|3v1; linkStyle 1 stroke:red
 250v1-->|1|3v1
@@ -424,7 +422,7 @@ linkStyle default stroke:#aaa
 136v1-->137v1
 128v1-->138v1
 138v1-->139v1
-139v1-->369v1
+139v1--o140v1; linkStyle 149 stroke:red
 140v1-->141v1
 141v1-->142v1
 143v1-->144v1
@@ -543,7 +541,7 @@ linkStyle default stroke:#aaa
 238v1--x|0|239v1; linkStyle 265 stroke:red
 216v1-->|1|239v1
 239v1-->240v1
-237v1-->371v1
+237v1--o241v1; linkStyle 268 stroke:red
 235v1-->|pos|242v1
 241v1--x|neg|242v1; linkStyle 270 stroke:red
 242v1-->243v1
@@ -572,8 +570,6 @@ linkStyle default stroke:#aaa
 262v1-->|1|263v1
 264v1-->265v1
 263v1-->264v1
-369v1--o140v1; linkStyle 297 stroke:red
-371v1--o241v1; linkStyle 298 stroke:red
 2v1
 44v1
 45v1
@@ -586,8 +582,6 @@ linkStyle default stroke:#aaa
 254v1
 264v1
 265v1
-369v1
-371v1
 subgraph var_cycle_10 ["var <tt>cycle_10</tt>"]
     style var_cycle_10 fill:transparent
     105v1

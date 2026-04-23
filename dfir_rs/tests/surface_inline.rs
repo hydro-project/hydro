@@ -533,8 +533,8 @@ pub fn test_mutual_defer_tick() {
         source_iter([(1usize, 0usize)]) -> [0]a;
         source_iter([(2usize, 0usize)]) -> [0]b;
 
-        a[0] -> defer_tick() -> map(|(id, gen): (usize, usize)| (id, gen + 1)) -> [1]b;
-        b[0] -> defer_tick() -> map(|(id, gen): (usize, usize)| (id, gen + 1)) -> [1]a;
+        a[0] -> defer_tick() -> map(|(id, g): (usize, usize)| (id, g + 1)) -> [1]b;
+        b[0] -> defer_tick() -> map(|(id, g): (usize, usize)| (id, g + 1)) -> [1]a;
 
         a[1] -> for_each(|x| tx.send(x).unwrap());
         b[1] -> for_each(|x| tx.send(x).unwrap());

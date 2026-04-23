@@ -855,19 +855,37 @@ impl DfirGraph {
             })
             .collect();
 
+        // For back-edge (defer_tick) handoffs, declare a second "back" buffer for
+        // double-buffering. At the start of each tick, the main buffer and back buffer
+        // are swapped so the consumer reads last tick's data while the producer writes
+        // to a fresh buffer.
+        let back_buffer_code: Vec<TokenStream> = handoff_nodes
+            .iter()
+            .filter(|(node_id, _)| self.handoff_delay_type(*node_id).is_some())
+            .map(|&(node_id, (src_span, dst_span))| {
+                let span = src_span.join(dst_span).unwrap_or(src_span);
+                let back_ident = Ident::new(&format!("hoff_{:?}_back", node_id.data()), span);
+                quote_spanned! {span=>
+                    let mut #back_ident: Vec<_> = Vec::new();
+                }
+            })
+            .collect();
+
         // 2. Collect subgraph handoffs (same as as_code).
         let subgraph_handoffs = self.helper_collect_subgraph_handoffs();
 
         // 3. Sort subgraphs topologically and collect non-lazy defer_tick buffer idents.
         //
         // Handoffs marked with a `DelayType` (Tick/TickLazy) are tick-boundary back-edges.
-        // For these, we reverse the ordering constraint (producer runs after consumer) to
-        // preserve the required same-tick ordering. Unmarked handoffs are forward edges.
+        // These are excluded from the topo sort (no ordering constraint). Double-buffering
+        // ensures data written by the producer in tick N is only visible to the consumer
+        // in tick N+1, regardless of execution order.
         //
         // While iterating handoffs, we also collect buffer idents for non-lazy tick-boundary
         // edges (defer_tick). When these buffers are non-empty at end of tick, we set
         // can_start_tick so that run_available continues ticking.
         let mut defer_tick_buf_idents: Vec<Ident> = Vec::new();
+        let mut back_edge_hoff_ids: BTreeSet<GraphNodeId> = BTreeSet::new();
         let all_subgraphs = {
             // Build predecessor map for subgraphs.
             let mut sg_preds = SecondaryMap::<_, Vec<_>>::with_capacity(self.subgraph_nodes.len());
@@ -887,10 +905,9 @@ impl DfirGraph {
                 }
                 if let Some(delay_type) = self.handoff_delay_type(hoff_id) {
                     debug_assert!(matches!(delay_type, DelayType::Tick | DelayType::TickLazy));
-                    // Tick/back-edge handoff: preserve the required same-tick ordering by
-                    // forcing the higher-order producer subgraph to run after the
-                    // lower-order consumer subgraph.
-                    sg_preds.entry(pred_sg).unwrap().or_default().push(succ_sg);
+                    // Tick/back-edge handoff: no ordering constraint. Double-buffering
+                    // handles the tick deferral regardless of execution order.
+                    back_edge_hoff_ids.insert(hoff_id);
 
                     // Non-lazy tick-boundary: defer_tick (not defer_tick_lazy).
                     if !matches!(delay_type, DelayType::TickLazy) {
@@ -936,6 +953,21 @@ impl DfirGraph {
                 .collect::<Vec<_>>()
         };
 
+        // Generate swap code for back-edge (defer_tick) handoffs.
+        // At the start of each tick, swap the main buffer and back buffer so the
+        // consumer reads last tick's data from the back buffer.
+        let back_edge_swap_code: Vec<TokenStream> = back_edge_hoff_ids
+            .iter()
+            .map(|&hoff_id| {
+                let span = self.nodes[hoff_id].span();
+                let buf_ident = Ident::new(&format!("hoff_{:?}_buf", hoff_id.data()), span);
+                let back_ident = Ident::new(&format!("hoff_{:?}_back", hoff_id.data()), span);
+                quote_spanned! {span=>
+                    ::std::mem::swap(&mut #buf_ident, &mut #back_ident);
+                }
+            })
+            .collect();
+
         let mut op_prologue_code = Vec::new();
         let mut op_prologue_after_code = Vec::new();
         let mut subgraph_blocks = Vec::new();
@@ -971,6 +1003,7 @@ impl DfirGraph {
                     .collect();
 
                 // Recv port code: drain from buffer into iterator, tracking if non-empty.
+                // For back-edge (defer_tick) handoffs, drain from the back buffer instead.
                 // Also update handoff metrics (measured at recv, not send — see graph.rs).
                 let recv_port_code: Vec<TokenStream> = recv_port_idents
                     .iter()
@@ -983,9 +1016,15 @@ impl DfirGraph {
                         // (e.g. dfir_expect_warnings!). TODO(#2781): define these once.
                         let work_done = Ident::new("__dfir_work_done", Span::call_site());
                         let metrics = Ident::new("__dfir_metrics", Span::call_site());
+                        // Back-edge handoffs drain from the back buffer (double-buffering).
+                        let drain_ident = if back_edge_hoff_ids.contains(&hoff_id) {
+                            Ident::new(&format!("hoff_{:?}_back", hoff_id.data()), buf_ident.span())
+                        } else {
+                            buf_ident.clone()
+                        };
                         quote_spanned! {port_ident.span()=>
                             {
-                                let hoff_len = #buf_ident.len();
+                                let hoff_len = #drain_ident.len();
                                 if hoff_len > 0 {
                                     #work_done = true;
                                 }
@@ -995,7 +1034,7 @@ impl DfirGraph {
                                 hoff_metrics.total_items_count.update(|x| x + hoff_len);
                                 hoff_metrics.curr_items_count.set(hoff_len);
                             }
-                            let #port_ident = #root::dfir_pipes::pull::iter(#buf_ident.drain(..));
+                            let #port_ident = #root::dfir_pipes::pull::iter(#drain_ident.drain(..));
                         }
                     })
                     .collect();
@@ -1488,6 +1527,7 @@ impl DfirGraph {
                 );
 
                 #( #buffer_code )*
+                #( #back_buffer_code )*
                 #( #op_prologue_code )*
                 #( #op_prologue_after_code )*
 
@@ -1499,6 +1539,9 @@ impl DfirGraph {
                 #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref)]
                 let __dfir_inline_tick = async move |#df: &mut #root::scheduled::context::Context| {
                     let __dfir_metrics = #df.metrics();
+                    // Double-buffer swap for defer_tick handoffs: move last tick's
+                    // producer output into the back buffer for the consumer to drain.
+                    #( #back_edge_swap_code )*
                     #( #subgraph_blocks )*
 
                     // For non-lazy defer_tick: if any deferred buffer has data,

@@ -21,12 +21,6 @@ digraph {
     n14v1 [label="(n14v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n15v1 [label="(n15v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n16v1 [label="(n16v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
-    n17v1 [label="(n17v1) identity()", shape=invhouse, fillcolor="#88aaff"]
-    n18v1 [label="(n18v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
-    n19v1 [label="(n19v1) identity()", shape=invhouse, fillcolor="#88aaff"]
-    n20v1 [label="(n20v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
-    n21v1 [label="(n21v1) identity()", shape=invhouse, fillcolor="#88aaff"]
-    n22v1 [label="(n22v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n2v1 -> n12v1
     n1v1 -> n2v1
     n3v1 -> n9v1
@@ -38,16 +32,10 @@ digraph {
     n9v1 -> n16v1
     n10v1 -> n11v1
     n12v1 -> n10v1 [label="0", color=red]
-    n13v1 -> n17v1
-    n14v1 -> n19v1
-    n15v1 -> n21v1
+    n13v1 -> n5v1 [color=red]
+    n14v1 -> n8v1 [color=red]
+    n15v1 -> n7v1 [color=red]
     n16v1 -> n10v1 [label="1", color=red]
-    n17v1 -> n18v1
-    n18v1 -> n5v1 [color=red]
-    n19v1 -> n20v1
-    n20v1 -> n8v1 [color=red]
-    n21v1 -> n22v1
-    n22v1 -> n7v1 [color=red]
     subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
@@ -102,26 +90,5 @@ digraph {
             n10v1
             n11v1
         }
-    }
-    subgraph sg_7v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_7v1"
-        n17v1
-    }
-    subgraph sg_8v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_8v1"
-        n19v1
-    }
-    subgraph sg_9v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_9v1"
-        n21v1
     }
 }
