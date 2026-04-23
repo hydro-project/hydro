@@ -67,7 +67,7 @@ pub const LATTICE_REDUCE: OperatorConstraints = OperatorConstraints {
             write_prologue_after,
             write_iterator,
             write_iterator_after,
-            ..
+            write_tick_end,
         } = (super::reduce::REDUCE.write_fn)(&wc, diagnostics)?;
 
         assert_eq!(1, inputs.len());
@@ -94,7 +94,7 @@ pub const LATTICE_REDUCE: OperatorConstraints = OperatorConstraints {
             write_prologue_after,
             write_iterator,
             write_iterator_after,
-            ..Default::default()
+            write_tick_end,
         })
     },
 };
