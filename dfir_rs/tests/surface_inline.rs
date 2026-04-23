@@ -518,3 +518,37 @@ pub async fn test_inline_defer_tick_run_available() {
     // Tick 5: [] (32 filtered out, no more data)
     assert_eq!(vec![1, 3, 2, 6, 4, 12, 8, 16], result);
 }
+
+/// Test: mutual defer_tick — two subgraphs each defer_tick to each other.
+/// This tests that the topo sort in as_code handles mutual back-edges without
+/// creating a cycle constraint.
+#[test]
+pub fn test_mutual_defer_tick() {
+    let (tx, mut rx) = dfir_rs::util::unbounded_channel::<(usize, usize)>();
+
+    let mut df = dfir_rs::dfir_syntax! {
+        a = union() -> tee();
+        b = union() -> tee();
+
+        source_iter([(1usize, 0usize)]) -> [0]a;
+        source_iter([(2usize, 0usize)]) -> [0]b;
+
+        a[0] -> defer_tick() -> map(|(id, gen): (usize, usize)| (id, gen + 1)) -> [1]b;
+        b[0] -> defer_tick() -> map(|(id, gen): (usize, usize)| (id, gen + 1)) -> [1]a;
+
+        a[1] -> for_each(|x| tx.send(x).unwrap());
+        b[1] -> for_each(|x| tx.send(x).unwrap());
+    };
+
+    df.run_tick_sync();
+    let mut r = dfir_rs::util::collect_ready::<Vec<_>, _>(&mut rx);
+    r.sort();
+    // Tick 0: a gets (1,0), b gets (2,0)
+    assert_eq!(r, vec![(1, 0), (2, 0)]);
+
+    df.run_tick_sync();
+    let mut r = dfir_rs::util::collect_ready::<Vec<_>, _>(&mut rx);
+    r.sort();
+    // Tick 1: a gets (2,1) from b's defer, b gets (1,1) from a's defer
+    assert_eq!(r, vec![(1, 1), (2, 1)]);
+}

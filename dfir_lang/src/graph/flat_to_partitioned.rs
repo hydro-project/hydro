@@ -4,7 +4,6 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use proc_macro2::Span;
 use slotmap::{SecondaryMap, SparseSecondaryMap};
-use syn::parse_quote;
 
 use super::meta_graph::DfirGraph;
 use super::ops::{DelayType, FloType};
@@ -351,11 +350,11 @@ fn order_subgraphs(
     }
 
     // Topological sort — rejects intra-tick cycles.
-    let topo_sort_order = graph_algorithms::topo_sort(partitioned_graph.subgraph_ids(), |v| {
+    let _topo_sort_order = graph_algorithms::topo_sort(partitioned_graph.subgraph_ids(), |v| {
         sg_preds.get(&v).into_iter().flatten().copied()
     });
-    let topo_sort_order = match topo_sort_order {
-        Ok(order) => order,
+    match _topo_sort_order {
+        Ok(_) => {}
         Err(cycle) => {
             let span = cycle
                 .first()
@@ -368,18 +367,12 @@ fn order_subgraphs(
                 "Cyclical dataflow within a tick is not supported. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks.",
             ));
         }
-    };
+    }
 
-    // Build a position map for the topo sort order.
-    let sg_position: BTreeMap<GraphSubgraphId, usize> = topo_sort_order
-        .iter()
-        .enumerate()
-        .map(|(i, &sg_id)| (sg_id, i))
-        .collect();
-
-    // Process tick-boundary edges: inject intermediate identity subgraphs where needed.
-    // TODO(cleanup): The intermediate identity subgraph injection is a workaround. In the future,
-    // handoff buffers should be sufficient without needing an extra subgraph.
+    // Mark tick-boundary handoffs with their delay type.
+    // The `as_code` topo sort will reverse the ordering constraint for these,
+    // ensuring the consumer runs before the producer so data naturally defers
+    // to the next tick via the handoff buffer.
     for (edge_id, delay_type) in tick_edges {
         let (hoff, dst) = partitioned_graph.edge(edge_id);
         // Ignore barriers within `loop {` blocks.
@@ -387,48 +380,57 @@ fn order_subgraphs(
             continue;
         }
 
-        assert_eq!(1, partitioned_graph.node_predecessors(hoff).len());
-        let src = partitioned_graph
-            .node_predecessor_nodes(hoff)
-            .next()
-            .unwrap();
-
-        let src_sg = partitioned_graph.node_subgraph(src).unwrap();
-        let dst_sg = partitioned_graph.node_subgraph(dst).unwrap();
-        let src_pos = sg_position[&src_sg];
-        let dst_pos = sg_position[&dst_sg];
-        let dst_span = partitioned_graph.node(dst).span();
-
-        // If tick edge goes forward in topo order, need to inject a buffer subgraph.
-        if src_pos <= dst_pos {
-            // Before: A (src) -> H -> B (dst)
-            // Then add intermediate identity:
-            let (new_node_id, new_edge_id) = partitioned_graph.insert_intermediate_node(
-                edge_id,
-                // TODO(mingwei): Proper span w/ `parse_quote_spanned!`?
-                GraphNode::Operator(parse_quote! { identity() }),
-            );
-            // Intermediate: A (src) -> H -> ID -> B (dst)
-            let hoff_node = GraphNode::Handoff {
-                src_span: dst_span,
-                dst_span,
-            };
-            let (hoff_node_id, _hoff_edge_id) =
-                partitioned_graph.insert_intermediate_node(new_edge_id, hoff_node);
-            // After: A (src) -> H -> ID -> H' -> B (dst)
-
-            // Create subgraph for the intermediate identity.
-            partitioned_graph
-                .insert_subgraph(vec![new_node_id])
-                .unwrap();
-
-            // Mark H' as a tick-boundary back-edge.
-            partitioned_graph.set_handoff_delay_type(hoff_node_id, delay_type);
-        } else {
-            // Already a back-edge (src after dst in topo order).
-            // Mark the original handoff H as a tick-boundary back-edge.
-            partitioned_graph.set_handoff_delay_type(hoff, delay_type);
-        }
+<<<<<<< conflict 1 of 1
+%%%%%%% diff from: rospmszn 5f4c17e7 "refactor(dfir_lang): replace stratification with plain topo sort, remove next_stratum" (parents of rebased revision)
+\\\\\\\        to: rospmszn e4bdfc7f "refactor(dfir_lang): replace stratification with plain topo sort, remove next_stratum" (rebase destination)
+         assert_eq!(1, partitioned_graph.node_predecessors(hoff).len());
+         let src = partitioned_graph
+             .node_predecessor_nodes(hoff)
+             .next()
+             .unwrap();
+ 
+         let src_sg = partitioned_graph.node_subgraph(src).unwrap();
+         let dst_sg = partitioned_graph.node_subgraph(dst).unwrap();
+         let src_pos = sg_position[&src_sg];
+         let dst_pos = sg_position[&dst_sg];
+         let dst_span = partitioned_graph.node(dst).span();
+ 
+-        let is_lazy = matches!(delay_type, DelayType::TickLazy);
+         // If tick edge goes forward in topo order, need to inject a buffer subgraph.
+-        // Or if lazy, always inject (to mark the handoff with the lazy delay type).
+-        if src_pos <= dst_pos || is_lazy {
++        if src_pos <= dst_pos {
+             // Before: A (src) -> H -> B (dst)
+             // Then add intermediate identity:
+             let (new_node_id, new_edge_id) = partitioned_graph.insert_intermediate_node(
+                 edge_id,
+                 // TODO(mingwei): Proper span w/ `parse_quote_spanned!`?
+                 GraphNode::Operator(parse_quote! { identity() }),
+             );
+             // Intermediate: A (src) -> H -> ID -> B (dst)
+             let hoff_node = GraphNode::Handoff {
+                 src_span: dst_span,
+                 dst_span,
+             };
+             let (hoff_node_id, _hoff_edge_id) =
+                 partitioned_graph.insert_intermediate_node(new_edge_id, hoff_node);
+             // After: A (src) -> H -> ID -> H' -> B (dst)
+ 
+             // Create subgraph for the intermediate identity.
+             partitioned_graph
+                 .insert_subgraph(vec![new_node_id])
+                 .unwrap();
+ 
+             // Mark H' as a tick-boundary back-edge.
+             partitioned_graph.set_handoff_delay_type(hoff_node_id, delay_type);
+         } else {
+             // Already a back-edge (src after dst in topo order).
+             // Mark the original handoff H as a tick-boundary back-edge.
+             partitioned_graph.set_handoff_delay_type(hoff, delay_type);
+         }
++++++++ xqxnxvxo d6eedd0d "test: add test_mutual_defer_tick reproducing as_code topo sort cycle" (rebased revision)
+        partitioned_graph.set_handoff_delay_type(hoff, delay_type);
+>>>>>>> conflict 1 of 1 ends
     }
     Ok(())
 }
