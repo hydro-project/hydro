@@ -198,11 +198,19 @@ pub trait Location<'a>: dynamic::DynLocation {
     /// For nested locations like [`Tick`], this is the root location that contains it.
     type Root: Location<'a>;
 
+    /// The same location but with cross-member consistency downgraded to `Nondeterministic`.
+    /// For `Process`, this is `Self` (nondets don't affect single-node consistency).
+    type AfterNondet: Location<'a, AfterNondet = Self::AfterNondet>;
+
     /// Returns the root location for this location.
     ///
     /// For top-level locations like [`Process`] and [`Cluster`], this returns `self`.
     /// For nested locations like [`Tick`], this returns the root location that contains it.
     fn root(&self) -> Self::Root;
+
+    /// Transitions this location to `Nondeterministic` consistency.
+    /// Called when a nondeterministic operation is introduced (batch, assume_ordering, etc.).
+    fn after_nondet(self) -> Self::AfterNondet;
 
     /// Attempts to create a new [`Tick`] clock domain at this location.
     ///

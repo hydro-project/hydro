@@ -16,7 +16,7 @@ pub fn sequence_payloads<'a, K: KvKey, V: KvValue, L: Location<'a> + NoTick>(
     let (r_buffered_payloads_complete_cycle, r_buffered_payloads) =
         replica_tick.cycle::<Stream<SequencedKv<K, V>, Tick<L>, Bounded>>();
     // p_to_replicas.inspect(q!(|payload: ReplicaPayload| println!("Replica received payload: {:?}", payload)));
-    let r_sorted_payloads = p_to_replicas.batch(replica_tick, nondet!(
+    let r_sorted_payloads = p_to_replicas.batch_same_consistency(replica_tick, nondet!(
             /// because we fill slots one-by-one, we can safely batch
             /// because non-determinism is resolved when we sort by slots
         ))

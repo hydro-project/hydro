@@ -739,7 +739,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
             let current_members = members_snapshot
                 .filter(q!(|b| *b))
                 .keys()
-                .assume_ordering::<TotalOrder>(nondet_membership)
+                .assume_ordering_same_consistency::<TotalOrder>(nondet_membership)
                 .collect_vec();
 
             elements
@@ -879,7 +879,7 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
             let current_members = members_snapshot
                 .filter(q!(|b| *b))
                 .keys()
-                .assume_ordering::<TotalOrder>(nondet_membership)
+                .assume_ordering_same_consistency::<TotalOrder>(nondet_membership)
                 .collect_vec();
 
             elements

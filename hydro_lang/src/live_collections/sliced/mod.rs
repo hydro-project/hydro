@@ -638,7 +638,7 @@ mod tests {
                 .map(q!(|(sum, _input)| sum))
                 .entries()
         }
-        .assume_ordering_trusted(nondet!(/** test */))
+        .assume_ordering_same_consistency(nondet!(/** test */))
         .sim_output();
 
         flow.sim().exhaustive(async || {

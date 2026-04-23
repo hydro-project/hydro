@@ -64,7 +64,7 @@ pub fn distributed_echo<'a>(
     let tick = p1.tick();
 
     let all_responses = echo_result
-        .batch(&tick, nondet!(/** test */))
+        .batch_same_consistency(&tick, nondet!(/** test */))
         .map(q!(|(client_id, n)| {
             let json = serde_json::to_string(&n).unwrap();
             (client_id, bytes::Bytes::from(json))

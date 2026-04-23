@@ -43,7 +43,7 @@ pub fn paxos_bench<'a>(
                         // Append Client ID so replicas know who to contact later
                         (virtual_id, (CLUSTER_SELF_ID.clone(), payload))
                     }))
-                    .assume_ordering(nondet!(/** benchmarking, order actually doesn't matter */)),
+                    .assume_ordering_same_consistency(nondet!(/** benchmarking, order actually doesn't matter */)),
                 acceptor_checkpoint,
                 // TODO(shadaj): we should retry when a payload is dropped due to stale leader
                 nondet!(/** benchmarking, assuming no re-election */),

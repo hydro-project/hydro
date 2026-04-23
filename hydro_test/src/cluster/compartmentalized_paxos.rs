@@ -258,7 +258,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
     let p_indexed_payloads = index_payloads(
         p_max_slot,
         c_to_proposers
-            .batch(
+            .batch_same_consistency(
                 proposer_tick,
                 nondet!(
                     /// We batch payloads so that we can compute the correct slot based on

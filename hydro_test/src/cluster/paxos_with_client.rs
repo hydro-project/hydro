@@ -92,7 +92,7 @@ pub trait PaxosLike<'a>: Sized {
                 .values();
 
                 let payloads_at_proposer = {
-                    payloads_at_proposer.assume_ordering(nondet!(
+                    payloads_at_proposer.assume_ordering_same_consistency(nondet!(
                         /// documented non-determinism in interleaving of client payloads
                         nondet_order
                     ))

@@ -65,7 +65,7 @@ where
             .demux(other, TCP.fail_stop().bincode())
             .values();
 
-        sent.assume_ordering(
+        sent.assume_ordering_same_consistency(
             nondet!(/** this is safe because we are only receiving from one sender */),
         )
     }

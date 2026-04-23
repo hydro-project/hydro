@@ -24,6 +24,7 @@ use stageleft::{QuotedWithContext, q};
 #[cfg(stageleft_runtime)]
 use super::dynamic::DynLocation;
 use super::{Cluster, Location, LocationId, Process, StaticCluster};
+use super::cluster::Consistency;
 use crate::compile::builder::{ClockId, FlowState};
 use crate::compile::ir::{HydroNode, HydroSource};
 #[cfg(stageleft_runtime)]
@@ -45,9 +46,9 @@ pub trait NoTick {}
 #[sealed]
 impl<T> NoTick for Process<'_, T> {}
 #[sealed]
-impl<T> NoTick for Cluster<'_, T> {}
+impl<T, Con: Consistency> NoTick for Cluster<'_, T, Con> {}
 #[sealed]
-impl<T> NoTick for StaticCluster<'_, T> {}
+impl<T, Con: Consistency> NoTick for StaticCluster<'_, T, Con> {}
 
 /// Marker trait for locations that are **not** inside an [`Atomic`] context.
 ///
@@ -59,9 +60,9 @@ pub trait NoAtomic {}
 #[sealed]
 impl<T> NoAtomic for Process<'_, T> {}
 #[sealed]
-impl<T> NoAtomic for Cluster<'_, T> {}
+impl<T, Con: Consistency> NoAtomic for Cluster<'_, T, Con> {}
 #[sealed]
-impl<T> NoAtomic for StaticCluster<'_, T> {}
+impl<T, Con: Consistency> NoAtomic for StaticCluster<'_, T, Con> {}
 #[sealed]
 impl<'a, L> NoAtomic for Tick<L> where L: Location<'a> {}
 
@@ -103,9 +104,16 @@ where
     L: Location<'a>,
 {
     type Root = L::Root;
+    type AfterNondet = Atomic<L::AfterNondet>;
 
     fn root(&self) -> Self::Root {
         self.tick.root()
+    }
+
+    fn after_nondet(self) -> Self::AfterNondet {
+        Atomic {
+            tick: self.tick.after_nondet(),
+        }
     }
 }
 
@@ -154,9 +162,17 @@ where
     L: Location<'a>,
 {
     type Root = L::Root;
+    type AfterNondet = Tick<L::AfterNondet>;
 
     fn root(&self) -> Self::Root {
         self.l.root()
+    }
+
+    fn after_nondet(self) -> Self::AfterNondet {
+        Tick {
+            id: self.id,
+            l: self.l.after_nondet(),
+        }
     }
 }
 
@@ -190,7 +206,8 @@ where
             .flat_map_ordered(q!(move |_| 0..batch_size))
             .map(q!(|_| ()));
 
-        out.batch(self, nondet!(/** at runtime, `spin` produces a single value per tick, so each batch is guaranteed to be the same size. */))
+        let inner = out.batch(self, nondet!(/** at runtime, `spin` produces a single value per tick, so each batch is guaranteed to be the same size. */));
+        Stream::new(self.clone(), inner.ir_node.replace(HydroNode::Placeholder))
     }
 
     /// Constructs a [`Singleton`] materialized inside this tick with the given static value.

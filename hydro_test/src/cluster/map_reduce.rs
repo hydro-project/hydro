@@ -18,7 +18,7 @@ pub fn map_reduce<'a>(flow: &mut FlowBuilder<'a>) -> (Process<'a, Leader>, Clust
         .into_keyed();
 
     let batches = partitioned_words
-        .batch(
+        .batch_same_consistency(
             &cluster.tick(),
             nondet!(/** addition is associative so we can batch reduce */),
         )

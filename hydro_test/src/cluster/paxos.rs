@@ -321,7 +321,7 @@ pub fn leader_election<'a, L: Clone + Debug + Serialize + DeserializeOwned>(
 
     let (a_max_ballot, a_to_proposers_p1b) = acceptor_p1(
         acceptor_tick,
-        p_to_acceptors_p1a.batch(
+        p_to_acceptors_p1a.batch_same_consistency(
             acceptor_tick,
             nondet!(
                 /// Non-deterministic batching may result in different payloads being rejected
@@ -466,7 +466,7 @@ fn p_leader_heartbeat<'a>(
                     nondet_reelection
                 ),
             )
-            .batch(proposer_tick, nondet!(/** absorbed into interval */))
+            .batch_same_consistency(proposer_tick, nondet!(/** absorbed into interval */))
             .first()
             .is_some(),
     );
@@ -704,7 +704,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
     let indexed_payloads = index_payloads(
         p_max_slot,
         c_to_proposers
-            .batch(
+            .batch_same_consistency(
                 proposer_tick,
                 nondet!(
                     /// We batch payloads so that we can compute the correct slot based on
@@ -815,7 +815,7 @@ pub fn acceptor_p2<'a, P: PaxosPayload, S: Clone>(
     >,
     Stream<((usize, Ballot), Result<(), Ballot>), Cluster<'a, S>, Unbounded, NoOrder>,
 ) {
-    let p_to_acceptors_p2a_batch = p_to_acceptors_p2a.batch(
+    let p_to_acceptors_p2a_batch = p_to_acceptors_p2a.batch_same_consistency(
         acceptor_tick,
         nondet!(
             /// We use batches to ensure that the log is updated before sending
@@ -912,7 +912,7 @@ mod tests {
         let (in_send, input_payloads) = node.sim_input();
         let indexed = index_payloads(
             tick.none(),
-            input_payloads.batch(&tick, nondet!(/** test */)),
+            input_payloads.batch_same_consistency(&tick, nondet!(/** test */)),
         );
 
         let out_recv = indexed.all_ticks().sim_output();
@@ -938,11 +938,11 @@ mod tests {
         let (in_send, input_payloads) = node.sim_input();
         let release_new_base = node
             .source_iter(q!([123]))
-            .batch(&tick, nondet!(/** test */))
+            .batch_same_consistency(&tick, nondet!(/** test */))
             .first();
         let indexed = index_payloads(
             release_new_base,
-            input_payloads.batch(&tick, nondet!(/** test */)),
+            input_payloads.batch_same_consistency(&tick, nondet!(/** test */)),
         );
 
         let out_recv = indexed.all_ticks().sim_output();

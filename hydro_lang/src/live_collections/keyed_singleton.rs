@@ -304,7 +304,7 @@ where
     K: Eq + Hash,
 {
     me.entries()
-        .assume_ordering(nondet!(
+        .assume_ordering_same_consistency(nondet!(
             /// Because this is a keyed singleton, there is only one value per key.
         ))
         .fold(
@@ -544,7 +544,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             };
 
             me.entries()
-                .assume_ordering(nondet!(
+                .assume_ordering_same_consistency(nondet!(
                     /// Because this is a keyed singleton, there is only one value per key.
                 ))
                 .fold(
@@ -631,7 +631,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
         self.make_bounded()
             .into_keyed_stream()
             .get(key)
-            .assume_ordering::<TotalOrder>(nondet!(/** only a single key, so totally ordered */))
+            .assume_ordering_same_consistency::<TotalOrder>(nondet!(/** only a single key, so totally ordered */))
             .first()
     }
 
@@ -1167,7 +1167,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
         K: Ord,
     {
         self.entries()
-            .assume_ordering_trusted(nondet!(
+            .assume_ordering_same_consistency(nondet!(
                 /// There is only one element associated with each key, and the keys are totallly
                 /// ordered so we will produce a deterministic value. The closure technically
                 /// isn't commutative in the case where both passed entries have the same key

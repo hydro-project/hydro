@@ -83,8 +83,13 @@ impl<'a, P> super::dynamic::DynLocation for Process<'a, P> {
 
 impl<'a, P> Location<'a> for Process<'a, P> {
     type Root = Self;
+    type AfterNondet = Self;
 
     fn root(&self) -> Self::Root {
         self.clone()
+    }
+
+    fn after_nondet(self) -> Self::AfterNondet {
+        self
     }
 }

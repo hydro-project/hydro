@@ -327,7 +327,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         }
     }
 
-    fn assume_ordering_trusted<O2: Ordering>(
+    fn assume_ordering_same_consistency<O2: Ordering>(
         self,
         _nondet: NonDet,
     ) -> KeyedStream<K, V, L, B, O2, R> {
@@ -1761,7 +1761,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         K: Eq + Hash,
     {
         self.make_exactly_once()
-            .assume_ordering_trusted(
+            .assume_ordering_same_consistency(
                 nondet!(/** ordering within each group affects neither result nor intermediates */),
             )
             .fold(
@@ -2467,18 +2467,36 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         self,
         tick: &Tick<L>,
         nondet: NonDet,
-    ) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
+    ) -> KeyedStream<K, V, Tick<L::AfterNondet>, Bounded, O, R>
+    where
+        L: Location<'a>,
+    {
         let _ = nondet;
         assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        let nondet_tick = tick.clone().after_nondet();
         KeyedStream::new(
-            tick.clone(),
+            nondet_tick.clone(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: tick.new_node_metadata(
-                    KeyedStream::<K, V, Tick<L>, Bounded, O, R>::collection_kind(),
+                metadata: nondet_tick.new_node_metadata(
+                    KeyedStream::<K, V, Tick<L::AfterNondet>, Bounded, O, R>::collection_kind(),
                 ),
             },
         )
+    }
+
+    /// Like [`KeyedStream::batch`], but asserts that the nondeterministic batch boundary
+    /// is absorbed by downstream processing.
+    pub fn batch_same_consistency(
+        self,
+        tick: &Tick<L>,
+        nondet: NonDet,
+    ) -> KeyedStream<K, V, Tick<L>, Bounded, O, R>
+    where
+        L: Location<'a>,
+    {
+        let inner = self.batch(tick, nondet);
+        KeyedStream::new(tick.clone(), inner.ir_node.replace(HydroNode::Placeholder))
     }
 }
 

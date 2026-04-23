@@ -426,6 +426,18 @@ where
         &self.location
     }
 
+    /// Transitions this stream's location to `Nondeterministic` consistency.
+    /// Use when a nondeterministic operation has been introduced.
+    pub fn weaken_consistency(self) -> Stream<T, L::AfterNondet, B, O, R>
+    where
+        L: Location<'a>,
+    {
+        Stream::new(
+            self.location.clone().after_nondet(),
+            self.ir_node.replace(HydroNode::Placeholder),
+        )
+    }
+
     pub(crate) fn collection_kind() -> CollectionKind {
         CollectionKind::Stream {
             bound: B::BOUND_KIND,
@@ -1264,8 +1276,9 @@ where
         let (comb, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
         proof.register_proof(&comb);
 
+        let self_location = self.location.clone();
         let nondet = nondet!(/** the combinator function is commutative and idempotent */);
-        let ordered_etc: Stream<T, L, B> = self.assume_retries(nondet).assume_ordering(nondet);
+        let ordered_etc = self.assume_retries::<ExactlyOnce>(nondet).assume_ordering::<TotalOrder>(nondet);
 
         let core = HydroNode::Fold {
             init,
@@ -1274,12 +1287,11 @@ where
             is_commutative: C::IS_PROVED,
             is_idempotent: Idemp::IS_PROVED,
             is_associative: Assoc::IS_PROVED,
-            metadata: ordered_etc
-                .location
+            metadata: self_location
                 .new_node_metadata(Singleton::<A, L, B2>::collection_kind()),
         };
 
-        Singleton::new(ordered_etc.location.clone(), core)
+        Singleton::new(self_location, core)
     }
 
     /// Combines elements of the stream into an [`Optional`], by starting with the first element in the stream,
@@ -1317,8 +1329,9 @@ where
         let (f, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
         proof.register_proof(&f);
 
+        let self_location = self.location.clone();
         let nondet = nondet!(/** the combinator function is commutative and idempotent */);
-        let ordered_etc: Stream<T, L, B> = self.assume_retries(nondet).assume_ordering(nondet);
+        let ordered_etc = self.assume_retries::<ExactlyOnce>(nondet).assume_ordering::<TotalOrder>(nondet);
 
         let core = HydroNode::Reduce {
             f: f.into(),
@@ -1326,12 +1339,11 @@ where
             is_commutative: C::IS_PROVED,
             is_idempotent: Idemp::IS_PROVED,
             is_associative: Assoc::IS_PROVED,
-            metadata: ordered_etc
-                .location
+            metadata: self_location
                 .new_node_metadata(Optional::<T, L, B>::collection_kind()),
         };
 
-        Optional::new(ordered_etc.location.clone(), core)
+        Optional::new(self_location, core)
     }
 
     /// Computes the maximum element in the stream as an [`Optional`], which
@@ -1357,8 +1369,8 @@ where
     where
         T: Ord,
     {
-        self.assume_retries_trusted::<ExactlyOnce>(nondet!(/** max is idempotent */))
-            .assume_ordering_trusted_bounded::<TotalOrder>(
+        self.assume_retries_same_consistency::<ExactlyOnce>(nondet!(/** max is idempotent */))
+            .assume_ordering_same_consistency_bounded::<TotalOrder>(
                 nondet!(/** max is commutative, but order affects intermediates */),
             )
             .reduce(q!(|curr, new| {
@@ -1391,8 +1403,8 @@ where
     where
         T: Ord,
     {
-        self.assume_retries_trusted::<ExactlyOnce>(nondet!(/** min is idempotent */))
-            .assume_ordering_trusted_bounded::<TotalOrder>(
+        self.assume_retries_same_consistency::<ExactlyOnce>(nondet!(/** min is idempotent */))
+            .assume_ordering_same_consistency_bounded::<TotalOrder>(
                 nondet!(/** max is commutative, but order affects intermediates */),
             )
             .reduce(q!(|curr, new| {
@@ -1429,7 +1441,7 @@ where
         O: IsOrdered,
     {
         self.make_totally_ordered()
-            .assume_retries_trusted::<ExactlyOnce>(nondet!(/** first is idempotent */))
+            .assume_retries_same_consistency::<ExactlyOnce>(nondet!(/** first is idempotent */))
             .generator(q!(|| ()), q!(|_, item| Generate::Return(item)))
             .reduce(q!(|_, _| {}))
     }
@@ -1461,7 +1473,7 @@ where
         O: IsOrdered,
     {
         self.make_totally_ordered()
-            .assume_retries_trusted::<ExactlyOnce>(nondet!(/** last is idempotent */))
+            .assume_retries_same_consistency::<ExactlyOnce>(nondet!(/** last is idempotent */))
             .reduce(q!(|curr, new| *curr = new))
     }
 
@@ -1828,12 +1840,22 @@ where
         L: NoTick + NoAtomic,
     {
         let samples = self.location.source_interval(interval, nondet);
+        let self_location = self.location.clone();
 
         let tick = self.location.tick();
-        self.batch(&tick, nondet)
-            .filter_if(samples.batch(&tick, nondet).first().is_some())
+        let batched = self.batch(&tick, nondet);
+        // Restore to Tick<L> for internal use
+        let batched: Stream<T, Tick<L>, Bounded, O, R> = Stream::new(tick.clone(), batched.ir_node.replace(HydroNode::Placeholder));
+        let sample_batched = samples.batch(&tick, nondet);
+        let sample_batched: Stream<tokio::time::Instant, Tick<L>, Bounded, TotalOrder, ExactlyOnce> = Stream::new(tick.clone(), sample_batched.ir_node.replace(HydroNode::Placeholder));
+
+        let inner = batched
+            .filter_if(sample_batched.first().is_some())
             .all_ticks()
-            .weaken_retries()
+            .weaken_retries::<AtLeastOnce>();
+        // Restore to original location — sample_every is nondeterministic but
+        // the AfterNondet transition is handled by the caller if needed
+        Stream::new(self_location, inner.ir_node.replace(HydroNode::Placeholder))
     }
 
     /// Given a timeout duration, returns an [`Optional`]  which will have a value if the
@@ -1911,16 +1933,31 @@ where
     ///
     /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
-    pub fn batch(self, tick: &Tick<L>, _nondet: NonDet) -> Stream<T, Tick<L>, Bounded, O, R> {
+      pub fn batch(self, tick: &Tick<L>, _nondet: NonDet) -> Stream<T, Tick<L::AfterNondet>, Bounded, O, R>
+    where
+        L: Location<'a>,
+    {
         assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
+        let nondet_tick = tick.clone().after_nondet();
         Stream::new(
-            tick.clone(),
+            nondet_tick.clone(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                metadata: tick
-                    .new_node_metadata(Stream::<T, Tick<L>, Bounded, O, R>::collection_kind()),
+                metadata: nondet_tick
+                    .new_node_metadata(Stream::<T, Tick<L::AfterNondet>, Bounded, O, R>::collection_kind()),
             },
         )
+    }
+
+    /// Like [`Stream::batch`], but asserts that the nondeterministic batch boundary
+    /// is absorbed by downstream processing (e.g. sort, commutative+idempotent fold).
+    /// Returns `Tick<L>` instead of `Tick<L::AfterNondet>`.
+    pub fn batch_same_consistency(self, tick: &Tick<L>, nondet: NonDet) -> Stream<T, Tick<L>, Bounded, O, R>
+    where
+        L: Location<'a>,
+    {
+        let inner = self.batch(tick, nondet);
+        Stream::new(tick.clone(), inner.ir_node.replace(HydroNode::Placeholder))
     }
 
     /// An operator which allows you to "name" a `HydroNode`.
@@ -1942,53 +1979,59 @@ where
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
-    pub fn assume_ordering<O2: Ordering>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
+    pub fn assume_ordering<O2: Ordering>(self, _nondet: NonDet) -> Stream<T, L::AfterNondet, B, O2, R>
+    where
+        L: Location<'a>,
+    {
+        let nd_location = self.location.clone().after_nondet();
         if O::ORDERING_KIND == O2::ORDERING_KIND {
             Stream::new(
-                self.location.clone(),
+                nd_location,
                 self.ir_node.replace(HydroNode::Placeholder),
             )
         } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
-            // We can always weaken the ordering guarantee
             Stream::new(
-                self.location.clone(),
+                nd_location.clone(),
                 HydroNode::Cast {
                     inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    metadata: self
-                        .location
-                        .new_node_metadata(Stream::<T, L, B, O2, R>::collection_kind()),
+                    metadata: nd_location
+                        .new_node_metadata(Stream::<T, L::AfterNondet, B, O2, R>::collection_kind()),
                 },
             )
         } else {
             Stream::new(
-                self.location.clone(),
+                nd_location.clone(),
                 HydroNode::ObserveNonDet {
                     inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                     trusted: false,
-                    metadata: self
-                        .location
-                        .new_node_metadata(Stream::<T, L, B, O2, R>::collection_kind()),
+                    metadata: nd_location
+                        .new_node_metadata(Stream::<T, L::AfterNondet, B, O2, R>::collection_kind()),
                 },
             )
         }
     }
 
-    // like `assume_ordering_trusted`, but only if the input stream is bounded and therefore
+    // like `assume_ordering_same_consistency`, but only if the input stream is bounded and therefore
     // intermediate states will not be revealed
-    fn assume_ordering_trusted_bounded<O2: Ordering>(
+    fn assume_ordering_same_consistency_bounded<O2: Ordering>(
         self,
         nondet: NonDet,
-    ) -> Stream<T, L, B, O2, R> {
+    ) -> Stream<T, L, B, O2, R>
+    where
+        L: Location<'a>,
+    {
         if B::BOUNDED {
-            self.assume_ordering_trusted(nondet)
+            self.assume_ordering_same_consistency(nondet)
         } else {
-            self.assume_ordering(nondet)
+            let self_location = self.location.clone();
+            let inner = self.assume_ordering::<O2>(nondet);
+            Stream::new(self_location, inner.ir_node.replace(HydroNode::Placeholder))
         }
     }
 
     // only for internal APIs that have been carefully vetted to ensure that the non-determinism
     // is not observable
-    pub(crate) fn assume_ordering_trusted<O2: Ordering>(
+    pub fn assume_ordering_same_consistency<O2: Ordering>(
         self,
         _nondet: NonDet,
     ) -> Stream<T, L, B, O2, R> {
@@ -2033,7 +2076,7 @@ where
     /// enforcing that `O2` is weaker than the input ordering guarantee.
     pub fn weaken_ordering<O2: WeakerOrderingThan<O>>(self) -> Stream<T, L, B, O2, R> {
         let nondet = nondet!(/** this is a weaker ordering guarantee, so it is safe to assume */);
-        self.assume_ordering::<O2>(nondet)
+        self.assume_ordering_same_consistency::<O2>(nondet)
     }
 
     /// Strengthens the ordering guarantee to `TotalOrder`, given that `O: IsOrdered`, which
@@ -2042,7 +2085,7 @@ where
     where
         O: IsOrdered,
     {
-        self.assume_ordering(nondet!(/** no-op */))
+        self.assume_ordering_same_consistency(nondet!(/** no-op */))
     }
 
     /// Explicitly "casts" the stream to a type with a different retries
@@ -2086,7 +2129,7 @@ where
 
     // only for internal APIs that have been carefully vetted to ensure that the non-determinism
     // is not observable
-    fn assume_retries_trusted<R2: Retries>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
+    fn assume_retries_same_consistency<R2: Retries>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
         if R::RETRIES_KIND == R2::RETRIES_KIND {
             Stream::new(
                 self.location.clone(),
@@ -2224,7 +2267,7 @@ where
     /// # }
     /// ```
     pub fn count(self) -> Singleton<usize, L, B::StreamToMonotone> {
-        self.assume_ordering_trusted::<TotalOrder>(nondet!(
+        self.assume_ordering_same_consistency::<TotalOrder>(nondet!(
             /// Order does not affect eventual count, and also does not affect intermediate states.
         ))
         .fold(
@@ -2531,7 +2574,7 @@ where
     {
         keys.keys()
             .weaken_retries()
-            .assume_ordering_trusted::<TotalOrder>(
+            .assume_ordering_same_consistency::<TotalOrder>(
                 nondet!(/** keyed stream does not depend on ordering of keys */),
             )
             .cross_product_nested_loop(self.make_bounded())
@@ -2614,7 +2657,7 @@ where
         B: IsBounded,
     {
         self.make_bounded()
-            .assume_ordering_trusted::<TotalOrder>(
+            .assume_ordering_same_consistency::<TotalOrder>(
                 nondet!(/** is_empty intermediates unaffected by order */),
             )
             .first()

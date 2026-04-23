@@ -1330,8 +1330,15 @@ where
         let samples = self.location.source_interval(interval, nondet);
         let tick = self.location.tick();
 
+        let sample_batched = samples.batch(&tick, nondet);
+        // Restore to Tick<L>
+        let sample_batched: super::stream::Stream<tokio::time::Instant, Tick<L>, Bounded, TotalOrder, ExactlyOnce> = super::stream::Stream::new(
+            tick.clone(),
+            sample_batched.ir_node.replace(HydroNode::Placeholder),
+        );
+
         self.snapshot(&tick, nondet)
-            .filter_if(samples.batch(&tick, nondet).first().is_some())
+            .filter_if(sample_batched.first().is_some())
             .all_ticks()
             .weaken_retries()
     }

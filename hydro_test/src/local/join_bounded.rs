@@ -90,7 +90,7 @@ mod tests {
         // Bounded right (batched)
         let right = process
             .source_iter(q!(vec!['a', 'b']))
-            .batch(&tick, nondet!(/** test */))
+            .batch_same_consistency(&tick, nondet!(/** test */))
             .all_ticks();
 
         let out = left.cross_product(right).sim_output();
@@ -118,7 +118,7 @@ mod tests {
         // Bounded right
         let right = process
             .source_iter(q!(vec![(1, 'x'), (2, 'y')]))
-            .batch(&tick, nondet!(/** test */))
+            .batch_same_consistency(&tick, nondet!(/** test */))
             .all_ticks();
 
         let out = left.join(right).sim_output();

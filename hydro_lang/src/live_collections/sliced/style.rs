@@ -115,7 +115,11 @@ impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries> Slicable<'
     fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.batch(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
-        out
+        // Restore to Tick<L> — batch returns Tick<L::AfterNondet>
+        crate::live_collections::Stream::new(
+            tick.clone(),
+            out.ir_node.replace(crate::compile::ir::HydroNode::Placeholder),
+        )
     }
 }
 
@@ -163,7 +167,11 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries> Slicabl
     fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.batch(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
-        out
+        // Restore to Tick<L>
+        crate::live_collections::KeyedStream::new(
+            tick.clone(),
+            out.ir_node.replace(crate::compile::ir::HydroNode::Placeholder),
+          )
     }
 }
 

@@ -24,6 +24,52 @@ use crate::location::LocationKey;
 use crate::location::member_id::TaglessMemberId;
 use crate::staging_util::{Invariant, get_this_crate};
 
+/// Marker trait for cross-member consistency tracking on clusters.
+///
+/// Tracks whether all cluster members are guaranteed to process the same
+/// data in the same order (deterministic) or whether nondeterminism has
+/// been introduced (e.g. by batch, lossy transport, per-member sources).
+#[sealed::sealed]
+pub trait Consistency: 'static {}
+
+/// All cluster members process the same data deterministically.
+/// Combined with ordering info at sinks, this yields:
+/// - TotalOrder stream → SEQ_CONSISTENT
+/// - NoOrder stream → CONVERGENT
+/// - Commutative+idempotent fold → CONVERGENT
+pub enum Deterministic {}
+#[sealed::sealed]
+impl Consistency for Deterministic {}
+
+/// Cross-member determinism has been broken by nondeterminism
+/// (batch boundaries, per-member sources, incomplete delivery, etc.).
+pub enum Nondeterministic {}
+#[sealed::sealed]
+impl Consistency for Nondeterministic {}
+
+/// Computes the weaker of two consistency levels.
+#[sealed::sealed]
+pub trait MinConsistency<Other: Consistency>: Consistency {
+    /// The weaker of the two consistency levels.
+    type Min: Consistency;
+}
+#[sealed::sealed]
+impl MinConsistency<Deterministic> for Deterministic {
+    type Min = Deterministic;
+}
+#[sealed::sealed]
+impl MinConsistency<Nondeterministic> for Deterministic {
+    type Min = Nondeterministic;
+}
+#[sealed::sealed]
+impl MinConsistency<Deterministic> for Nondeterministic {
+    type Min = Nondeterministic;
+}
+#[sealed::sealed]
+impl MinConsistency<Nondeterministic> for Nondeterministic {
+    type Min = Nondeterministic;
+}
+
 /// A multi-node location representing a group of identical processes.
 ///
 /// Each member of the cluster runs the same dataflow program and is assigned a
@@ -33,26 +79,30 @@ use crate::staging_util::{Invariant, get_this_crate};
 /// The `ClusterTag` type parameter is a phantom tag used to distinguish between
 /// different clusters in the type system, preventing accidental mixing of
 /// member IDs across clusters.
-pub struct Cluster<'a, ClusterTag> {
+///
+/// The `Con` parameter tracks cross-member consistency. It defaults to
+/// `Nondeterministic`; broadcast receivers with complete delivery may be
+/// `Deterministic`.
+pub struct Cluster<'a, ClusterTag, Con: Consistency = Deterministic> {
     pub(crate) key: LocationKey,
     pub(crate) flow_state: FlowState,
-    pub(crate) _phantom: Invariant<'a, ClusterTag>,
+    pub(crate) _phantom: Invariant<'a, (ClusterTag, Con)>,
 }
 
-impl<C> Debug for Cluster<'_, C> {
+impl<C, Con: Consistency> Debug for Cluster<'_, C, Con> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "Cluster({})", self.key)
     }
 }
 
-impl<C> Eq for Cluster<'_, C> {}
-impl<C> PartialEq for Cluster<'_, C> {
+impl<C, Con: Consistency> Eq for Cluster<'_, C, Con> {}
+impl<C, Con: Consistency> PartialEq for Cluster<'_, C, Con> {
     fn eq(&self, other: &Self) -> bool {
         self.key == other.key && FlowState::ptr_eq(&self.flow_state, &other.flow_state)
     }
 }
 
-impl<C> Clone for Cluster<'_, C> {
+impl<C, Con: Consistency> Clone for Cluster<'_, C, Con> {
     fn clone(&self) -> Self {
         Cluster {
             key: self.key,
@@ -62,7 +112,7 @@ impl<C> Clone for Cluster<'_, C> {
     }
 }
 
-impl<'a, C> super::dynamic::DynLocation for Cluster<'a, C> {
+impl<'a, C, Con: Consistency> super::dynamic::DynLocation for Cluster<'a, C, Con> {
     fn id(&self) -> LocationId {
         LocationId::Cluster(self.key)
     }
@@ -80,16 +130,25 @@ impl<'a, C> super::dynamic::DynLocation for Cluster<'a, C> {
     }
 }
 
-impl<'a, C> Location<'a> for Cluster<'a, C> {
-    type Root = Cluster<'a, C>;
+impl<'a, C, Con: Consistency> Location<'a> for Cluster<'a, C, Con> {
+    type Root = Cluster<'a, C, Con>;
+    type AfterNondet = Cluster<'a, C, Nondeterministic>;
 
     fn root(&self) -> Self::Root {
         self.clone()
     }
+
+    fn after_nondet(self) -> Self::AfterNondet {
+        Cluster {
+            key: self.key,
+            flow_state: self.flow_state,
+            _phantom: PhantomData,
+        }
+    }
 }
 
 #[cfg(feature = "sim")]
-impl<'a, C> Cluster<'a, C> {
+impl<'a, C, Con: Consistency> Cluster<'a, C, Con> {
     /// Sets up a simulated input port on this cluster for testing.
     ///
     /// Returns a `SimClusterSender` that sends `(member_id, T)` messages targeting
@@ -181,11 +240,11 @@ pub trait IsCluster {
     type Tag;
 }
 
-impl<C> IsCluster for Cluster<'_, C> {
+impl<C, Con: Consistency> IsCluster for Cluster<'_, C, Con> {
     type Tag = C;
 }
 
-impl<C> IsCluster for StaticCluster<'_, C> {
+impl<C, Con: Consistency> IsCluster for StaticCluster<'_, C, Con> {
     type Tag = C;
 }
 
@@ -200,26 +259,26 @@ impl<C> IsCluster for StaticCluster<'_, C> {
 /// The `ClusterTag` type parameter is a phantom tag used to distinguish between
 /// different clusters in the type system, preventing accidental mixing of
 /// member IDs across clusters.
-pub struct StaticCluster<'a, ClusterTag> {
+pub struct StaticCluster<'a, ClusterTag, Con: Consistency = Deterministic> {
     pub(crate) key: LocationKey,
     pub(crate) flow_state: FlowState,
-    pub(crate) _phantom: Invariant<'a, ClusterTag>,
+    pub(crate) _phantom: Invariant<'a, (ClusterTag, Con)>,
 }
 
-impl<C> Debug for StaticCluster<'_, C> {
+impl<C, Con: Consistency> Debug for StaticCluster<'_, C, Con> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "StaticCluster({})", self.key)
     }
 }
 
-impl<C> Eq for StaticCluster<'_, C> {}
-impl<C> PartialEq for StaticCluster<'_, C> {
+impl<C, Con: Consistency> Eq for StaticCluster<'_, C, Con> {}
+impl<C, Con: Consistency> PartialEq for StaticCluster<'_, C, Con> {
     fn eq(&self, other: &Self) -> bool {
         self.key == other.key && FlowState::ptr_eq(&self.flow_state, &other.flow_state)
     }
 }
 
-impl<C> Clone for StaticCluster<'_, C> {
+impl<C, Con: Consistency> Clone for StaticCluster<'_, C, Con> {
     fn clone(&self) -> Self {
         StaticCluster {
             key: self.key,
@@ -229,7 +288,7 @@ impl<C> Clone for StaticCluster<'_, C> {
     }
 }
 
-impl<'a, C> super::dynamic::DynLocation for StaticCluster<'a, C> {
+impl<'a, C, Con: Consistency> super::dynamic::DynLocation for StaticCluster<'a, C, Con> {
     fn id(&self) -> LocationId {
         LocationId::StaticCluster(self.key)
     }
@@ -247,16 +306,25 @@ impl<'a, C> super::dynamic::DynLocation for StaticCluster<'a, C> {
     }
 }
 
-impl<'a, C> Location<'a> for StaticCluster<'a, C> {
-    type Root = StaticCluster<'a, C>;
+impl<'a, C, Con: Consistency> Location<'a> for StaticCluster<'a, C, Con> {
+    type Root = StaticCluster<'a, C, Con>;
+    type AfterNondet = StaticCluster<'a, C, Nondeterministic>;
 
     fn root(&self) -> Self::Root {
         self.clone()
     }
+
+    fn after_nondet(self) -> Self::AfterNondet {
+        StaticCluster {
+            key: self.key,
+            flow_state: self.flow_state,
+            _phantom: PhantomData,
+        }
+    }
 }
 
 #[cfg(feature = "sim")]
-impl<'a, C> StaticCluster<'a, C> {
+impl<'a, C, Con: Consistency> StaticCluster<'a, C, Con> {
     /// Sets up a simulated input port on this static cluster for testing.
     ///
     /// Returns a `SimClusterSender` that sends `(member_id, T)` messages targeting
