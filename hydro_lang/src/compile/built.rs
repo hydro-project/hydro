@@ -49,6 +49,12 @@ impl<'a> BuiltFlow<'a> {
         &self.ir
     }
 
+    /// Serialize the IR as JSON.
+    #[cfg(feature = "runtime_support")]
+    pub fn ir_json(&self) -> Result<String, serde_json::Error> {
+        serde_json::to_string_pretty(&self.ir)
+    }
+
     /// Returns all raw location ID -> location name mappings.
     pub fn location_names(&self) -> &SecondaryMap<LocationKey, String> {
         &self.location_names

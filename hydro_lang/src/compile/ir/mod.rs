@@ -40,6 +40,12 @@ use backtrace::Backtrace;
 #[derive(Clone, Hash)]
 pub struct DebugExpr(pub Box<syn::Expr>);
 
+impl serde::Serialize for DebugExpr {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
 impl From<syn::Expr> for DebugExpr {
     fn from(expr: syn::Expr) -> Self {
         Self(Box::new(expr))
@@ -255,6 +261,12 @@ impl Debug for DebugType {
     }
 }
 
+impl serde::Serialize for DebugType {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&format!("{}", self.0.to_token_stream()))
+    }
+}
+
 pub enum DebugInstantiate {
     Building,
     Finalized(Box<DebugInstantiateFinalized>),
@@ -267,6 +279,16 @@ pub enum DebugInstantiate {
         reason = "sink, source unused without `feature = \"build\"`."
     )
 )]
+
+impl serde::Serialize for DebugInstantiate {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            DebugInstantiate::Building => serializer.serialize_str("building"),
+            DebugInstantiate::Finalized(_) => serializer.serialize_str("finalized"),
+        }
+    }
+}
+
 pub struct DebugInstantiateFinalized {
     sink: syn::Expr,
     source: syn::Expr,
@@ -310,7 +332,7 @@ impl Clone for DebugInstantiate {
 /// All subsequent nodes for the same pair are set to [`Self::Tee`] so that
 /// during code-gen they simply reference the tee output of the first node
 /// instead of creating a redundant `source_stream`.
-#[derive(Debug, Hash, Clone)]
+#[derive(Debug, Hash, Clone, serde::Serialize)]
 pub enum ClusterMembersState {
     /// Not yet instantiated.
     Uninit,
@@ -333,6 +355,20 @@ pub enum HydroSource {
     ClusterMembers(LocationId, ClusterMembersState),
     Embedded(syn::Ident),
     EmbeddedSingleton(syn::Ident),
+}
+
+impl serde::Serialize for HydroSource {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            HydroSource::Stream(e) => serializer.serialize_str(&format!("stream({})", e)),
+            HydroSource::ExternalNetwork() => serializer.serialize_str("external_network"),
+            HydroSource::Iter(e) => serializer.serialize_str(&format!("iter({})", e)),
+            HydroSource::Spin() => serializer.serialize_str("spin"),
+            HydroSource::ClusterMembers(_, _) => serializer.serialize_str("cluster_members"),
+            HydroSource::Embedded(id) => serializer.serialize_str(&format!("embedded({})", id)),
+            HydroSource::EmbeddedSingleton(id) => serializer.serialize_str(&format!("embedded_singleton({})", id)),
+        }
+    }
 }
 
 #[cfg(feature = "build")]
@@ -676,7 +712,7 @@ where
 /// An root in a Hydro graph, which is an pipeline that doesn't emit
 /// any downstream values. Traversals over the dataflow graph and
 /// generating DFIR IR start from roots.
-#[derive(Debug, Hash)]
+#[derive(Debug, Hash, serde::Serialize)]
 pub enum HydroRoot {
     ForEach {
         f: DebugExpr,
@@ -704,6 +740,7 @@ pub enum HydroRoot {
         op_metadata: HydroIrOpMetadata,
     },
     EmbeddedOutput {
+        #[serde(skip)]
         ident: syn::Ident,
         input: Box<HydroNode>,
         op_metadata: HydroIrOpMetadata,
@@ -1625,6 +1662,13 @@ pub fn dbg_dedup_tee<T>(f: impl FnOnce() -> T) -> T {
 
 pub struct SharedNode(pub Rc<RefCell<HydroNode>>);
 
+impl serde::Serialize for SharedNode {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        // Serialize the inner node directly (follows the Rc<RefCell<>>)
+        self.0.borrow().serialize(serializer)
+    }
+}
+
 impl SharedNode {
     pub fn as_ptr(&self) -> *const RefCell<HydroNode> {
         Rc::as_ptr(&self.0)
@@ -1668,25 +1712,25 @@ impl Hash for SharedNode {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
 pub enum BoundKind {
     Unbounded,
     Bounded,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
 pub enum StreamOrder {
     NoOrder,
     TotalOrder,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
 pub enum StreamRetry {
     AtLeastOnce,
     ExactlyOnce,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
 pub enum KeyedSingletonBoundKind {
     Unbounded,
     MonotonicValue,
@@ -1694,14 +1738,14 @@ pub enum KeyedSingletonBoundKind {
     Bounded,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
 pub enum SingletonBoundKind {
     Unbounded,
     Monotonic,
     Bounded,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug, serde::Serialize)]
 pub enum CollectionKind {
     Stream {
         bound: BoundKind,
@@ -1755,7 +1799,7 @@ impl CollectionKind {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize)]
 pub struct HydroIrMetadata {
     pub location_id: LocationId,
     pub collection_kind: CollectionKind,
@@ -1788,8 +1832,9 @@ impl Debug for HydroIrMetadata {
 
 /// Metadata that is specific to the operator itself, rather than its outputs.
 /// This is available on _both_ inner nodes and roots.
-#[derive(Clone)]
+#[derive(Clone, serde::Serialize)]
 pub struct HydroIrOpMetadata {
+    #[serde(skip)]
     pub backtrace: Backtrace,
     pub cpu_usage: Option<f64>,
     pub network_recv_cpu_usage: Option<f64>,
@@ -1827,7 +1872,7 @@ impl Hash for HydroIrOpMetadata {
 
 /// An intermediate node in a Hydro graph, which consumes data
 /// from upstream nodes and emits data to downstream nodes.
-#[derive(Debug, Hash)]
+#[derive(Debug, Hash, serde::Serialize)]
 pub enum HydroNode {
     Placeholder,
 
@@ -2064,6 +2109,7 @@ pub enum HydroNode {
         from_port_id: ExternalPortId,
         from_many: bool,
         codec_type: DebugType,
+        #[serde(skip)]
         port_hint: NetworkHint,
         instantiate_fn: DebugInstantiate,
         deserialize_fn: Option<DebugExpr>,

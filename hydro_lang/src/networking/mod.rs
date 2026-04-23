@@ -138,7 +138,7 @@ pub trait NetworkFor<T: ?Sized> {
 }
 
 /// The fault model for a TCP connection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
 pub enum TcpFault {
     /// Stops sending messages after a failed connection.
     FailStop,
@@ -149,7 +149,7 @@ pub enum TcpFault {
 }
 
 /// Describes the networking configuration for a network channel at the IR level.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
 pub enum NetworkingInfo {
     /// A TCP-based network channel with a specific fault model.
     Tcp {
