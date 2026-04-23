@@ -111,8 +111,9 @@ impl Debug for OperatorConstraints {
 }
 
 /// The code generated and returned by a [`OperatorConstraints::write_fn`].
+/// **Important**: When destructuring this struct in delegating operators, list all fields
+/// explicitly rather than using `..` to ensure new fields are not silently dropped.
 #[derive(Default)]
-#[non_exhaustive]
 pub struct OperatorWriteOutput {
     /// Code which runs once outside any subgraphs, BEFORE subgraphs are initialized,
     /// to set up any external state (state API, chanels, network connections, etc.)
