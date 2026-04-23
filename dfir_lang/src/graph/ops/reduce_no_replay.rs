@@ -1,7 +1,7 @@
 use quote::quote_spanned;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0,
+    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
     RANGE_1, WriteContextArgs,
 };
 
@@ -32,7 +32,6 @@ pub const REDUCE_NO_REPLAY: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
-                   df_ident,
                    op_span,
                    work_fn,
                    work_fn_async,
@@ -47,13 +46,15 @@ pub const REDUCE_NO_REPLAY: OperatorConstraints = OperatorConstraints {
         let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let write_prologue = quote_spanned! {op_span=>
-            let #singleton_output_ident = #df_ident.add_state(::std::cell::RefCell::new(::std::option::Option::None));
+            let #singleton_output_ident = ::std::cell::RefCell::new(::std::option::Option::None);
         };
-        let write_prologue_after = wc
-            .persistence_as_state_lifespan(persistence)
-            .map(|lifespan| quote_spanned! {op_span=>
-                #df_ident.set_state_lifespan_hook(#singleton_output_ident, #lifespan, move |rcell| { rcell.replace(::std::option::Option::None); });
-            }).unwrap_or_default();
+
+        let write_tick_end = match persistence {
+            Persistence::Tick => quote_spanned! {op_span=>
+                #singleton_output_ident.replace(::std::option::Option::None);
+            },
+            _ => Default::default(),
+        };
 
         let func = &arguments[0];
         let accumulator_ident = wc.make_ident("accumulator");
@@ -77,10 +78,7 @@ pub const REDUCE_NO_REPLAY: OperatorConstraints = OperatorConstraints {
 
         let assign_accum_ident = quote_spanned! {op_span=>
             #[allow(unused_mut)]
-            let mut #accumulator_ident = unsafe {
-                // SAFETY: handle from `#df_ident.add_state(..)`.
-                #context.state_ref_unchecked(#singleton_output_ident)
-            }.borrow_mut();
+            let mut #accumulator_ident = #singleton_output_ident.borrow_mut();
         };
 
         let write_iterator = if is_pull {
@@ -123,9 +121,8 @@ pub const REDUCE_NO_REPLAY: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
-            write_prologue_after,
             write_iterator,
-            write_iterator_after: Default::default(),
+            write_tick_end,
             ..Default::default()
         })
     },

@@ -42,8 +42,6 @@ pub const ASSERT_EQ: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
-                   context,
-                   df_ident,
                    op_span,
                    arguments,
                    ..
@@ -60,12 +58,9 @@ pub const ASSERT_EQ: OperatorConstraints = OperatorConstraints {
                     &array[index]
                 }
 
-                unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    let index = #context.state_ref_unchecked(#assert_index_ident).get();
-                    ::std::assert_eq!(__constrain_types(&#arg, index), item, "Item (right) at index {} does not equal expected (left).", index);
-                    #context.state_ref_unchecked(#assert_index_ident).set(index + 1);
-                };
+                let index = #assert_index_ident.get();
+                ::std::assert_eq!(__constrain_types(&#arg, index), item, "Item (right) at index {} does not equal expected (left).", index);
+                #assert_index_ident.set(index + 1);
             }
         };
 
@@ -78,9 +73,7 @@ pub const ASSERT_EQ: OperatorConstraints = OperatorConstraints {
 
         let write_prologue = owo.write_prologue;
         owo.write_prologue = quote_spanned! {op_span=>
-            let #assert_index_ident = #df_ident.add_state(
-                ::std::cell::Cell::new(0usize)
-            );
+            let #assert_index_ident = ::std::cell::Cell::new(0usize);
 
             #write_prologue
         };

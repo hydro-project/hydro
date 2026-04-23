@@ -46,7 +46,6 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
-                   df_ident,
                    op_span,
                    work_fn_async,
                    ident,
@@ -79,21 +78,14 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
         }
 
         let persistdata_ident = wc.make_ident("persistdata");
-        let map_ident = wc.make_ident("persistmap");
         let write_prologue = quote_spanned! {op_span=>
-            let #persistdata_ident = #df_ident.add_state(::std::cell::RefCell::new(
-                #root::rustc_hash::FxHashMap::<_, #root::util::sparse_vec::SparseVec<_>>::default()
-            ));
+            let mut #persistdata_ident =
+                #root::rustc_hash::FxHashMap::<_, #root::util::sparse_vec::SparseVec<_>>::default();
         };
 
         let write_iterator = {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let mut #map_ident = unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    #context.state_ref_unchecked(#persistdata_ident)
-                }.borrow_mut();
-
                 let #ident = {
                     #[inline(always)]
                     fn check_pull<Prev, K, V>(prev: Prev)
@@ -104,14 +96,14 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
                         prev
                     }
 
-                    let iter = if context.is_first_run_this_tick() {
+                    let iter = if #context.is_first_run_this_tick() {
                         let fut = #root::dfir_pipes::pull::Pull::for_each(check_pull(#input), |item| {
                             match item {
                                 #root::util::PersistenceKeyed::Persist(k, v) => {
-                                    #map_ident.entry(k).or_default().push(v);
+                                    #persistdata_ident.entry(k).or_default().push(v);
                                 },
                                 #root::util::PersistenceKeyed::Delete(k) => {
-                                    #map_ident.remove(&k);
+                                    #persistdata_ident.remove(&k);
                                 }
                             }
                         });
@@ -120,7 +112,7 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
                         #[allow(clippy::clone_on_copy)]
                         #[allow(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
                         Some(
-                            #map_ident
+                            #persistdata_ident
                                 .iter()
                                 .flat_map(|(k, v)| v.iter().map(move |v| (k.clone(), v.clone())))
                         )

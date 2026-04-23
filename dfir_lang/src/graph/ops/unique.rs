@@ -1,7 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 
 /// Takes one stream as input and filters out any duplicate occurrences. The output
@@ -59,8 +60,6 @@ pub const UNIQUE: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
-                   context,
-                   df_ident,
                    ident,
                    inputs,
                    outputs,
@@ -76,23 +75,19 @@ pub const UNIQUE: OperatorConstraints = OperatorConstraints {
         let uniquedata_ident = wc.make_ident("uniquedata");
 
         let write_prologue = quote_spanned! {op_span=>
-            let #uniquedata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashSet::default()));
+            let mut #uniquedata_ident = #root::rustc_hash::FxHashSet::default();
         };
-        let write_prologue_after = wc
-            .persistence_as_state_lifespan(persistence)
-            .map(|lifespan| quote_spanned! {op_span=>
-                #df_ident.set_state_lifespan_hook(#uniquedata_ident, #lifespan, |rcell| { rcell.take(); });
-            }).unwrap_or_default();
+        let write_tick_end = match persistence {
+            Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+                #uniquedata_ident.clear();
+            },
+            _ => Default::default(),
+        };
 
         let filter_fn = quote_spanned! {op_span=>
             |item| {
-                let mut set = unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    #context.state_ref_unchecked(#uniquedata_ident)
-                }.borrow_mut();
-
-                if !set.contains(item) {
-                    set.insert(::std::clone::Clone::clone(item));
+                if !#uniquedata_ident.contains(item) {
+                    #uniquedata_ident.insert(::std::clone::Clone::clone(item));
                     true
                 } else {
                     false
@@ -111,8 +106,8 @@ pub const UNIQUE: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
-            write_prologue_after,
             write_iterator,
+            write_tick_end,
             ..Default::default()
         })
     },

@@ -50,8 +50,6 @@ pub const CROSS_SINGLETON: OperatorConstraints = OperatorConstraints {
     },
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
-                   df_ident,
                    ident,
                    op_span,
                    inputs,
@@ -63,29 +61,24 @@ pub const CROSS_SINGLETON: OperatorConstraints = OperatorConstraints {
 
         let item_stream = &inputs[0];
         let singleton_stream = &inputs[1];
-        let singleton_handle_ident = wc.make_ident("singleton_handle");
         let singleton_state_ident = wc.make_ident("singleton_state");
 
         let write_prologue = quote_spanned! {op_span=>
-            let #singleton_handle_ident = #df_ident.add_state(
-                ::std::cell::RefCell::new(::std::option::Option::None)
-            );
-            // Reset the value if it is a new tick. TODO(mingwei): handle other lifespans?
-            #df_ident.set_state_lifespan_hook(#singleton_handle_ident, #root::scheduled::StateLifespan::Tick, |rcell| { rcell.take(); });
+            let mut #singleton_state_ident: ::std::option::Option<_> = ::std::option::Option::None;
+        };
+
+        let write_tick_end = quote_spanned! {op_span=>
+            #singleton_state_ident = ::std::option::Option::None;
         };
 
         let write_iterator = quote_spanned! {op_span=>
-            let mut #singleton_state_ident = unsafe {
-                // SAFETY: handle from `#df_ident.add_state(..)`.
-                #context.state_ref_unchecked(#singleton_handle_ident)
-            }.borrow_mut();
-
-            let #ident = #root::dfir_pipes::pull::Pull::cross_singleton_state(#item_stream, #singleton_stream, &mut *#singleton_state_ident);
+            let #ident = #root::dfir_pipes::pull::Pull::cross_singleton_state(#item_stream, #singleton_stream, &mut #singleton_state_ident);
         };
 
         Ok(OperatorWriteOutput {
             write_prologue,
             write_iterator,
+            write_tick_end,
             ..Default::default()
         })
     },

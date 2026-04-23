@@ -45,14 +45,9 @@ pub fn resolve_futures_writer(
     }: &WriteContextArgs,
 ) -> Result<OperatorWriteOutput, ()> {
     let futures_ident = wc.make_ident("futures");
-    let queue_ident = wc.make_ident("queue");
 
     let write_prologue = quote_spanned! {op_span=>
-        let #futures_ident = df.add_state(
-            ::std::cell::RefCell::new(
-                #root::futures::stream::#future_type::new()
-            )
-        );
+        let mut #futures_ident = #root::futures::stream::#future_type::new();
     };
 
     let opt_waker = if blocking {
@@ -83,13 +78,13 @@ pub fn resolve_futures_writer(
                 let first_item_opt = #work_fn_async(async {
                     // Accumulate all futures.
                     let () = #root::dfir_pipes::pull::Pull::for_each(#input, |fut| {
-                        ::std::iter::Extend::extend(&mut *#queue_ident, ::std::iter::once(fut));
+                        ::std::iter::Extend::extend(&mut #futures_ident, ::std::iter::once(fut));
                     }).await;
 
                     // Ensure the queue starts, by polling it exactly once.
                     // This unfortunately means we also need to store the result of the first poll in `first_item_opt`.
                     if let ::std::task::Poll::Ready(opt) = ::std::future::poll_fn(
-                        |_cx| ::std::task::Poll::Ready(#root::futures::stream::Stream::poll_next(::std::pin::Pin::new(&mut *#queue_ident), #task_cx))
+                        |_cx| ::std::task::Poll::Ready(#root::futures::stream::Stream::poll_next(::std::pin::Pin::new(&mut #futures_ident), #task_cx))
                     ).await {
                         opt
                     } else {
@@ -100,7 +95,7 @@ pub fn resolve_futures_writer(
                 #root::dfir_pipes::pull::Pull::chain(
                     #root::dfir_pipes::pull::iter(first_item_opt),
                     #root::dfir_pipes::pull::poll_fn(|_cx| {
-                        match #root::futures::stream::Stream::poll_next(::std::pin::Pin::new(&mut *#queue_ident), #task_cx) {
+                        match #root::futures::stream::Stream::poll_next(::std::pin::Pin::new(&mut #futures_ident), #task_cx) {
                             ::std::task::Poll::Pending => #if_pending,
                             ::std::task::Poll::Ready(::std::option::Option::Some(item)) => #root::dfir_pipes::pull::PullStep::Ready(item, ()),
                             ::std::task::Poll::Ready(::std::option::Option::None) => #root::dfir_pipes::pull::PullStep::Ended(#root::dfir_pipes::Yes),
@@ -112,14 +107,10 @@ pub fn resolve_futures_writer(
     } else {
         let output = &outputs[0];
         quote_spanned! {op_span=>
-            #root::dfir_pipes::push::resolve_futures_state(&mut *#queue_ident, #opt_waker, #output)
+            #root::dfir_pipes::push::resolve_futures_state(&mut #futures_ident, #opt_waker, #output)
         }
     };
     let write_iterator = quote_spanned! {op_span=>
-        let mut #queue_ident = unsafe {
-            // SAFETY: handle from `#df_ident.add_state(..)`.
-            #context.state_ref_unchecked(#futures_ident).borrow_mut()
-        };
         let #ident = #stream_or_sink;
     };
 

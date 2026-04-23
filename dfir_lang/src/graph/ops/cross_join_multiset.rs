@@ -42,7 +42,6 @@ pub const CROSS_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
-                   df_ident,
                    op_span,
                    work_fn_async,
                    ident,
@@ -58,46 +57,34 @@ pub const CROSS_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
         let lhs_state = wc.make_ident("lhs_state");
         let rhs_state = wc.make_ident("rhs_state");
         let write_prologue = quote_spanned! {op_span=>
-            let #lhs_state = #df_ident.add_state(::std::cell::RefCell::new(::std::vec::Vec::new()));
-            let #rhs_state = #df_ident.add_state(::std::cell::RefCell::new(::std::vec::Vec::new()));
+            let mut #lhs_state: ::std::vec::Vec<_> = ::std::vec::Vec::new();
+            let mut #rhs_state: ::std::vec::Vec<_> = ::std::vec::Vec::new();
         };
 
-        let lhs_write_prologue_after = wc
-            .persistence_as_state_lifespan(lhs_persistence)
-            .map(|lifespan| quote_spanned! {op_span=>
-                #df_ident.set_state_lifespan_hook(#lhs_state, #lifespan, move |rcell| { rcell.borrow_mut().clear(); });
-            }).unwrap_or_default();
-        let rhs_write_prologue_after = wc
-            .persistence_as_state_lifespan(rhs_persistence)
-            .map(|lifespan| quote_spanned! {op_span=>
-                #df_ident.set_state_lifespan_hook(#rhs_state, #lifespan, move |rcell| { rcell.borrow_mut().clear(); });
-            }).unwrap_or_default();
-        let write_prologue_after = quote_spanned! {op_span=>
-            #lhs_write_prologue_after
-            #rhs_write_prologue_after
+        let lhs_write_tick_end = match lhs_persistence {
+            Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+                #lhs_state.clear();
+            },
+            _ => Default::default(),
+        };
+        let rhs_write_tick_end = match rhs_persistence {
+            Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+                #rhs_state.clear();
+            },
+            _ => Default::default(),
         };
 
-        let lhs_borrow = wc.make_ident("lhs_borrow");
-        let rhs_borrow = wc.make_ident("rhs_borrow");
         let lhs_i = wc.make_ident("lhs_i");
         let rhs_i = wc.make_ident("rhs_i");
         let write_iterator = quote_spanned! {op_span=>
-            let (mut #lhs_borrow, mut #rhs_borrow) = unsafe {
-                // SAFETY: handle from `#df_ident.add_state(..)`.
-                (
-                    #context.state_ref_unchecked(#lhs_state).borrow_mut(),
-                    #context.state_ref_unchecked(#rhs_state).borrow_mut(),
-                )
-            };
-
             let (#lhs_i, #rhs_i) = if #context.is_first_run_this_tick() {
                 (0, 0)
             } else {
-                (#lhs_borrow.len(), #rhs_borrow.len())
+                (#lhs_state.len(), #rhs_state.len())
             };
 
-            #work_fn_async(#root::dfir_pipes::pull::Pull::for_each(#lhs, |x| #lhs_borrow.push(x))).await;
-            #work_fn_async(#root::dfir_pipes::pull::Pull::for_each(#rhs, |x| #rhs_borrow.push(x))).await;
+            #work_fn_async(#root::dfir_pipes::pull::Pull::for_each(#lhs, |x| #lhs_state.push(x))).await;
+            #work_fn_async(#root::dfir_pipes::pull::Pull::for_each(#rhs, |x| #rhs_state.push(x))).await;
 
             //       RHS
             //   +-----+-----+
@@ -106,12 +93,12 @@ pub const CROSS_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
             // S | New | New |
             //   +-----+-----+
             let #ident = #root::dfir_pipes::pull::iter(
-                #lhs_borrow
+                #lhs_state
                     .iter()
                     .enumerate()
                     .flat_map(|(i, lhs)| {
                         let j = if i < #lhs_i { #rhs_i } else { 0 };
-                        #rhs_borrow[j..]
+                        #rhs_state[j..]
                             .iter()
                             .map(move |rhs| (::std::clone::Clone::clone(lhs), ::std::clone::Clone::clone(rhs)))
                     })
@@ -135,9 +122,12 @@ pub const CROSS_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
         // Ok(output)
         Ok(OperatorWriteOutput {
             write_prologue,
-            write_prologue_after,
             write_iterator,
             write_iterator_after,
+            write_tick_end: quote_spanned! {op_span=>
+                #lhs_write_tick_end
+                #rhs_write_tick_end
+            },
             ..Default::default()
         })
     },

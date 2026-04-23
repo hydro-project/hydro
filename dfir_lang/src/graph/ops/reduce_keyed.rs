@@ -71,7 +71,6 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| Some(DelayType::Stratum),
     write_fn: |wc @ &WriteContextArgs {
-                   df_ident,
                    context,
                    op_span,
                    ident,
@@ -111,13 +110,15 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
         let hashtable_ident = wc.make_ident("hashtable");
 
         let write_prologue = quote_spanned! {op_span=>
-            let #singleton_output_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default()));
+            let #singleton_output_ident = ::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default());
         };
-        let write_prologue_after = wc
-            .persistence_as_state_lifespan(persistence)
-            .map(|lifespan| quote_spanned! {op_span=>
-                #df_ident.set_state_lifespan_hook(#singleton_output_ident, #lifespan, |rcell| { rcell.take(); });
-            }).unwrap_or_default();
+
+        let write_tick_end = match persistence {
+            Persistence::Tick => quote_spanned! {op_span=>
+                #singleton_output_ident.borrow_mut().clear();
+            },
+            _ => Default::default(),
+        };
 
         let write_iterator = {
             let iter_expr = match persistence {
@@ -153,10 +154,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
             };
 
             quote_spanned! {op_span=>
-                let mut #hashtable_ident = unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    #context.state_ref_unchecked(#singleton_output_ident)
-                }.borrow_mut();
+                let mut #hashtable_ident = #singleton_output_ident.borrow_mut();
 
                 {
                     #[inline(always)]
@@ -205,9 +203,9 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
-            write_prologue_after,
             write_iterator,
             write_iterator_after,
+            write_tick_end,
             ..Default::default()
         })
     },

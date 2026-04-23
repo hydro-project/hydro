@@ -1,7 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 
 /// > 1 input stream of type `T`, 1 output stream of type `(usize, T)`
@@ -37,8 +38,6 @@ pub const ENUMERATE: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
-                   context,
-                   df_ident,
                    ident,
                    inputs,
                    outputs,
@@ -54,21 +53,18 @@ pub const ENUMERATE: OperatorConstraints = OperatorConstraints {
         let counter_ident = wc.make_ident("counterdata");
 
         let write_prologue = quote_spanned! {op_span=>
-            let #counter_ident = #df_ident.add_state(::std::cell::RefCell::new(0..));
+            let mut #counter_ident = 0..;
         };
-        let write_prologue_after = wc
-            .persistence_as_state_lifespan(persistence)
-            .map(|lifespan| quote_spanned! {op_span=>
-                #df_ident.set_state_lifespan_hook(#counter_ident, #lifespan, |rcell| { rcell.replace(0..); });
-            }).unwrap_or_default();
+        let write_tick_end = match persistence {
+            Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+                #counter_ident = 0..;
+            },
+            _ => Default::default(),
+        };
 
         let map_fn = quote_spanned! {op_span=>
             |item| {
-                let mut counter = unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    #context.state_ref_unchecked(#counter_ident)
-                }.borrow_mut();
-                (counter.next().unwrap(), item)
+                (::std::iter::Iterator::next(&mut #counter_ident).unwrap(), item)
             }
         };
         let write_iterator = if is_pull {
@@ -83,8 +79,8 @@ pub const ENUMERATE: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
-            write_prologue_after,
             write_iterator,
+            write_tick_end,
             ..Default::default()
         })
     },

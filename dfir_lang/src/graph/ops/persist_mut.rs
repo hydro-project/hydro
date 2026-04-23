@@ -46,7 +46,6 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
-                   df_ident,
                    op_span,
                    work_fn_async,
                    ident,
@@ -79,21 +78,13 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
         }
 
         let persistdata_ident = wc.make_ident("persistdata");
-        let vec_ident = wc.make_ident("persistvec");
         let write_prologue = quote_spanned! {op_span=>
-            let #persistdata_ident = #df_ident.add_state(::std::cell::RefCell::new(
-                #root::util::sparse_vec::SparseVec::default(),
-            ));
+            let mut #persistdata_ident = #root::util::sparse_vec::SparseVec::default();
         };
 
         let write_iterator = {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let mut #vec_ident = unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    #context.state_ref_unchecked(#persistdata_ident)
-                }.borrow_mut();
-
                 let #ident = {
                     #[inline(always)]
                     fn check_pull<Prev, T: ::std::hash::Hash + ::std::cmp::Eq>(prev: Prev)
@@ -104,16 +95,16 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
                         prev
                     }
 
-                    let iter = if context.is_first_run_this_tick() {
+                    let iter = if #context.is_first_run_this_tick() {
                         let fut = #root::dfir_pipes::pull::Pull::for_each(check_pull(#input), |item| {
                             match item {
-                                #root::util::Persistence::Persist(v) => #vec_ident.push(v),
-                                #root::util::Persistence::Delete(v) => #vec_ident.delete(&v),
+                                #root::util::Persistence::Persist(v) => #persistdata_ident.push(v),
+                                #root::util::Persistence::Delete(v) => #persistdata_ident.delete(&v),
                             }
                         });
                         let () = #work_fn_async(fut).await;
 
-                        Some(#vec_ident.iter().cloned()).into_iter().flatten()
+                        Some(#persistdata_ident.iter().cloned()).into_iter().flatten()
                     } else {
                         None.into_iter().flatten()
                     };

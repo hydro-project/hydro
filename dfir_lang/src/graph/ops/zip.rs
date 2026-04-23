@@ -2,7 +2,8 @@ use quote::quote_spanned;
 use syn::parse_quote;
 
 use super::{
-    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1, WriteContextArgs,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0, RANGE_1,
+    WriteContextArgs,
 };
 
 /// > 2 input streams of type `V1` and `V2`, 1 output stream of type `(V1, V2)`
@@ -37,8 +38,6 @@ pub const ZIP: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
-                   df_ident,
                    op_span,
                    work_fn_async,
                    ident,
@@ -55,61 +54,49 @@ pub const ZIP: OperatorConstraints = OperatorConstraints {
         let rhs_ident = wc.make_ident("rhs");
 
         let write_prologue = quote_spanned! {op_span=>
-            let #lhs_ident = #df_ident.add_state(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
-            let #rhs_ident = #df_ident.add_state(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+            let mut #lhs_ident: ::std::collections::VecDeque<_> = ::std::collections::VecDeque::new();
+            let mut #rhs_ident: ::std::collections::VecDeque<_> = ::std::collections::VecDeque::new();
         };
 
-        let write_prologue_after_lhs = wc
-            .persistence_as_state_lifespan(lhs_persistence)
-            .map(|lifespan| {
-                quote_spanned! {op_span=>
-                    #df_ident.set_state_lifespan_hook(#lhs_ident, #lifespan, |rcell| { rcell.borrow_mut().clear(); });
-                }
-            });
-        let write_prologue_after_rhs = wc
-            .persistence_as_state_lifespan(rhs_persistence)
-            .map(|lifespan| {
-                quote_spanned! {op_span=>
-                    #df_ident.set_state_lifespan_hook(#rhs_ident, #lifespan, |rcell| { rcell.borrow_mut().clear(); });
-                }
-            });
+        let write_tick_end_lhs = match lhs_persistence {
+            Persistence::None | Persistence::Tick => Some(quote_spanned! {op_span=>
+                #lhs_ident.clear();
+            }),
+            _ => None,
+        };
+        let write_tick_end_rhs = match rhs_persistence {
+            Persistence::None | Persistence::Tick => Some(quote_spanned! {op_span=>
+                #rhs_ident.clear();
+            }),
+            _ => None,
+        };
 
-        let lhs_borrow = wc.make_ident("lhs_borrow");
-        let rhs_borrow = wc.make_ident("rhs_borrow");
         let lhs_input = &inputs[0];
         let rhs_input = &inputs[1];
 
         let write_iterator = quote_spanned! {op_span=>
-            let (mut #lhs_borrow, mut #rhs_borrow) = unsafe {
-                // SAFETY: handle from `#df_ident.add_state(..)`.
-                (
-                    #context.state_ref_unchecked(#lhs_ident).borrow_mut(),
-                    #context.state_ref_unchecked(#rhs_ident).borrow_mut(),
-                )
-            };
-
             let #ident = {
                 // Consume input eagerly to avoid short-circuiting, update state.
                 let () = #work_fn_async(#root::dfir_pipes::pull::Pull::for_each(#lhs_input, |item| {
-                    ::std::collections::VecDeque::push_back(&mut *#lhs_borrow, item);
+                    ::std::collections::VecDeque::push_back(&mut #lhs_ident, item);
                 })).await;
                 let () = #work_fn_async(#root::dfir_pipes::pull::Pull::for_each(#rhs_input, |item| {
-                    ::std::collections::VecDeque::push_back(&mut *#rhs_borrow, item);
+                    ::std::collections::VecDeque::push_back(&mut #rhs_ident, item);
                 })).await;
 
-                let len = ::std::cmp::min(#lhs_borrow.len(), #rhs_borrow.len());
-                let iter = #lhs_borrow.drain(..len).zip(#rhs_borrow.drain(..len));
+                let len = ::std::cmp::min(#lhs_ident.len(), #rhs_ident.len());
+                let iter = #lhs_ident.drain(..len).zip(#rhs_ident.drain(..len));
                 #root::dfir_pipes::pull::iter(iter)
             };
         };
 
         Ok(OperatorWriteOutput {
             write_prologue,
-            write_prologue_after: quote_spanned! {op_span=>
-                #write_prologue_after_lhs
-                #write_prologue_after_rhs
-            },
             write_iterator,
+            write_tick_end: quote_spanned! {op_span=>
+                #write_tick_end_lhs
+                #write_tick_end_rhs
+            },
             ..Default::default()
         })
     },

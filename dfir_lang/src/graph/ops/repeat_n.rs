@@ -27,7 +27,6 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
-                   df_ident,
                    op_span,
                    work_fn_async,
                    arguments,
@@ -42,19 +41,14 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
 
         let write_prologue = quote_spanned! {op_span=>
             #[allow(clippy::redundant_closure_call)]
-            let #singleton_output_ident = #df_ident.add_state(
-                ::std::cell::RefCell::new(::std::vec::Vec::new())
-            );
+            let #singleton_output_ident = ::std::cell::RefCell::new(::std::vec::Vec::new());
         };
 
         let vec_ident = wc.make_ident("vec");
 
         let input = &inputs[0];
         let write_iterator = quote_spanned! {op_span=>
-            let mut #vec_ident = unsafe {
-                // SAFETY: handle from `#df_ident.add_state(..)`.
-                #context.state_ref_unchecked(#singleton_output_ident)
-            }.borrow_mut();
+            let mut #vec_ident = #singleton_output_ident.borrow_mut();
 
             if 0 == #context.loop_iter_count() {
                 *#vec_ident = #work_fn_async(

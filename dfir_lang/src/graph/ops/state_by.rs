@@ -55,10 +55,8 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
-    write_fn: |wc @ &WriteContextArgs {
+    write_fn: |&WriteContextArgs {
                    root,
-                   context,
-                   df_ident,
                    op_span,
                    ident,
                    inputs,
@@ -106,14 +104,15 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
             let #state_ident = {
                 let data_struct: #lattice_type = (#factory_fn)();
                 ::std::debug_assert!(#root::lattices::IsBot::is_bot(&data_struct));
-                #df_ident.add_state(::std::cell::RefCell::new(data_struct))
+                ::std::cell::RefCell::new(data_struct)
             };
         };
-        let write_prologue_after = wc
-            .persistence_as_state_lifespan(persistence)
-            .map(|lifespan| quote_spanned! {op_span=>
-                #df_ident.set_state_lifespan_hook(#state_ident, #lifespan, |rcell| { rcell.take(); });
-            }).unwrap_or_default();
+        let write_tick_end = match persistence {
+            Persistence::Tick => quote_spanned! {op_span=>
+                #state_ident.borrow_mut().take();
+            },
+            _ => Default::default(),
+        };
 
         let by_fn = &arguments[0];
 
@@ -122,10 +121,6 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
             let input = &inputs[0];
             quote_spanned! {op_span=>
                 let #ident = {
-                    let state_ref = unsafe {
-                        // SAFETY: handle from `#df_ident.add_state(..)`.
-                        #context.state_ref_unchecked(#state_ident)
-                    };
                     fn check_input<'a, Item, MappingFn, MappedItem, Prev, Lat>(
                         prev: Prev,
                         mapfn: MappingFn,
@@ -145,16 +140,12 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                             },
                         )
                     }
-                    check_input::<_, _, _, _, #lattice_type>(#input, #by_fn, state_ref)
+                    check_input::<_, _, _, _, #lattice_type>(#input, #by_fn, &#state_ident)
                 };
             }
         } else if let Some(output) = outputs.first() {
             quote_spanned! {op_span=>
                 let #ident = {
-                    let state_ref = unsafe {
-                        // SAFETY: handle from `#df_ident.add_state(..)`.
-                        #context.state_ref_unchecked(#state_ident)
-                    };
                     fn check_output<'a, Item, MappingFn, MappedItem, Psh, Lat>(
                         push: Psh,
                         mapfn: MappingFn,
@@ -171,16 +162,12 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                             #root::lattices::Merge::merge(&mut *state, (mapfn)(::std::clone::Clone::clone(item)))
                         }, push)
                     }
-                    check_output::<_, _, _, _, #lattice_type>(#output, #by_fn, state_ref)
+                    check_output::<_, _, _, _, #lattice_type>(#output, #by_fn, &#state_ident)
                 };
             }
         } else {
             quote_spanned! {op_span=>
                 let #ident = {
-                    let state_ref = unsafe {
-                        // SAFETY: handle from `#df_ident.add_state(..)`.
-                        #context.state_ref_unchecked(#state_ident)
-                    };
                     fn check_output<'a, Item, MappingFn, MappedItem, Lat>(
                         state_ref: &'a ::std::cell::RefCell<Lat>,
                         mapfn: MappingFn,
@@ -196,14 +183,14 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                             #root::lattices::Merge::merge(&mut *state, (mapfn)(item));
                         })
                     }
-                    check_output::<_, _, _, #lattice_type>(state_ref, #by_fn)
+                    check_output::<_, _, _, #lattice_type>(&#state_ident, #by_fn)
                 };
             }
         };
         Ok(OperatorWriteOutput {
             write_prologue,
-            write_prologue_after,
             write_iterator,
+            write_tick_end,
             ..Default::default()
         })
     },

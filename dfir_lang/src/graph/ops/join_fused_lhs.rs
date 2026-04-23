@@ -46,7 +46,6 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
-                   df_ident,
                    op_span,
                    work_fn_async,
                    ident,
@@ -60,7 +59,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
 
         let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
 
-        let (lhs_prologue, lhs_prologue_after, lhs_pre_write_iter, lhs_borrow) =
+        let (lhs_prologue, lhs_tick_end, lhs_pre_write_iter, lhs_borrow) =
             make_joindata(wc, persistences[0], "lhs").map_err(|err| diagnostics.push(err))?;
 
         let rhs_joindata_ident = wc.make_ident("rhs_joindata");
@@ -69,9 +68,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
         let rhs_prologue = match persistences[1] {
             Persistence::None | Persistence::Loop | Persistence::Tick => quote_spanned! {op_span=>},
             Persistence::Static => quote_spanned! {op_span=>
-                let #rhs_joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(
-                    ::std::vec::Vec::new()
-                ));
+                let mut #rhs_joindata_ident = ::std::vec::Vec::new();
             },
             Persistence::Mutable => unreachable!(),
         };
@@ -96,10 +93,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
             },
             Persistence::Static => quote_spanned! {op_span=>
                 #lhs_pre_write_iter
-                let mut #rhs_borrow_ident = unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    #context.state_ref_unchecked(#rhs_joindata_ident)
-                }.borrow_mut();
+                let #rhs_borrow_ident = &mut #rhs_joindata_ident;
 
                 let #ident = {
                     // Accumulate LHS.
@@ -148,9 +142,9 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                 #lhs_prologue
                 #rhs_prologue
             },
-            write_prologue_after: lhs_prologue_after,
             write_iterator,
             write_iterator_after,
+            write_tick_end: lhs_tick_end,
             ..Default::default()
         })
     },

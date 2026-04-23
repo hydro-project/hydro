@@ -47,9 +47,9 @@ pub const JOIN_FUSED_RHS: OperatorConstraints = OperatorConstraints {
 
         let OperatorWriteOutput {
             write_prologue,
-            write_prologue_after,
             write_iterator,
             write_iterator_after,
+            write_tick_end,
             ..
         } = (super::join_fused_lhs::JOIN_FUSED_LHS.write_fn)(&wc, diagnostics)?;
 
@@ -60,9 +60,9 @@ pub const JOIN_FUSED_RHS: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
-            write_prologue_after,
             write_iterator,
             write_iterator_after,
+            write_tick_end,
             ..Default::default()
         })
     },

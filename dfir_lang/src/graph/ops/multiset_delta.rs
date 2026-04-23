@@ -53,7 +53,6 @@ pub const MULTISET_DELTA: OperatorConstraints = OperatorConstraints {
                    root,
                    op_span,
                    context,
-                   df_ident,
                    ident,
                    inputs,
                    outputs,
@@ -69,20 +68,17 @@ pub const MULTISET_DELTA: OperatorConstraints = OperatorConstraints {
         let curr_data = wc.make_ident("curr_data");
 
         let write_prologue = quote_spanned! {op_span=>
-            let #prev_data = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::default()));
-            let #curr_data = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::default()));
+            let #prev_data = ::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::default());
+            let #curr_data = ::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::default());
         };
 
         let tick_swap = quote_spanned! {op_span=>
             {
-                if context.is_first_run_this_tick() {
-                    let (mut prev_map, mut curr_map) = unsafe {
-                        // SAFETY: handle from `#df_ident.add_state(..)`.
-                        (
-                            #context.state_ref_unchecked(#prev_data).borrow_mut(),
-                            #context.state_ref_unchecked(#curr_data).borrow_mut(),
-                        )
-                    };
+                if #context.is_first_run_this_tick() {
+                    let (mut prev_map, mut curr_map) = (
+                        #prev_data.borrow_mut(),
+                        #curr_data.borrow_mut(),
+                    );
                     ::std::mem::swap(::std::ops::DerefMut::deref_mut(&mut prev_map), ::std::ops::DerefMut::deref_mut(&mut curr_map));
                     curr_map.clear();
                 }
@@ -91,13 +87,10 @@ pub const MULTISET_DELTA: OperatorConstraints = OperatorConstraints {
 
         let filter_fn = quote_spanned! {op_span=>
             |item| {
-                let (mut prev_map, mut curr_map) = unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    (
-                        #context.state_ref_unchecked(#prev_data).borrow_mut(),
-                        #context.state_ref_unchecked(#curr_data).borrow_mut(),
-                    )
-                };
+                let (mut prev_map, mut curr_map) = (
+                    #prev_data.borrow_mut(),
+                    #curr_data.borrow_mut(),
+                );
 
                 *curr_map.entry(#[allow(clippy::clone_on_copy)] item.clone()).or_insert(0_usize) += 1;
                 if let Some(old_count) = prev_map.get_mut(item) {

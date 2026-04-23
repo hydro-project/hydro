@@ -56,9 +56,8 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: |&WriteContextArgs {
-                   root,
-                   context,
-                   op_span,
+                     root,
+                     op_span,
                    is_pull,
                    ident,
                    inputs,
@@ -78,13 +77,10 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
 
         let write_iterator = quote_spanned! {op_span=>
             let #ident = {
-                let (lhs_state, rhs_state) = unsafe {
-                    // SAFETY: handle from `#df_ident.add_state(..)`.
-                    (
-                        #context.state_ref_unchecked(#lhs_state_handle),
-                        #context.state_ref_unchecked(#rhs_state_handle),
-                    )
-                };
+                let (lhs_state, rhs_state) = (
+                    &#lhs_state_handle,
+                    &#rhs_state_handle,
+                );
                 #[inline(always)]
                 fn check_inputs<'a, Func, LhsPull, RhsPull, LhsState, RhsState, Output>(
                     lhs_pull: LhsPull,

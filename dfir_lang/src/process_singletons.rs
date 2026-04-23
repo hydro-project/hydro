@@ -27,26 +27,22 @@ pub fn preprocess_singletons(tokens: TokenStream, found_idents: &mut Vec<Ident>)
 /// * `resolved_idents` - The context `StateHandle` varnames that correspond 1:1 and in the same
 ///   order as the singleton references within `tokens` (found in-order via [`preprocess_singletons`]).
 ///
-/// Generates borrowing code ([`std::cell::RefCell::borrow_mut`]). Use
-/// [`postprocess_singletons_handles`] for just the `StateHandle`s.
+/// Generates borrowing code ([`std::cell::RefCell::borrow`]). Use
+/// [`postprocess_singletons_handles`] for just the raw idents.
 pub fn postprocess_singletons(
     tokens: TokenStream,
     resolved_idents: impl IntoIterator<Item = Ident>,
-    context: &Ident,
+    _context: &Ident,
 ) -> Punctuated<Expr, Token![,]> {
     let mut resolved_idents_iter = resolved_idents.into_iter();
     let processed = process_singletons(tokens, &mut |singleton_ident| {
         let span = singleton_ident.span();
-        let context = Ident::new(&context.to_string(), span.resolved_at(context.span()));
         let mut resolved_ident = resolved_idents_iter.next().unwrap();
         resolved_ident.set_span(span);
         let mut group = Group::new(
             proc_macro2::Delimiter::Parenthesis,
             quote_spanned! {span=>
-                *(unsafe {
-                    // SAFETY: `handle` is from this instance.
-                    #context.state_ref_unchecked(#resolved_ident)
-                }.borrow_mut())
+                *#resolved_ident.borrow()
             },
         );
         group.set_span(singleton_ident.span());
@@ -55,7 +51,7 @@ pub fn postprocess_singletons(
     parse_terminated(processed).unwrap()
 }
 
-/// Same as [`postprocess_singletons`] but generates just the `StateHandle` ident rather than full
+/// Same as [`postprocess_singletons`] but generates just the raw ident rather than
 /// `RefCell` borrowing code.
 pub fn postprocess_singletons_handles(
     tokens: TokenStream,

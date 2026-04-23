@@ -54,9 +54,9 @@ pub const DIFFERENCE: OperatorConstraints = OperatorConstraints {
                diagnostics| {
         let OperatorWriteOutput {
             write_prologue,
-            write_prologue_after,
             write_iterator,
             write_iterator_after,
+            write_tick_end,
             ..
         } = (super::anti_join::ANTI_JOIN.write_fn)(wc, diagnostics)?;
 
@@ -69,9 +69,9 @@ pub const DIFFERENCE: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
-            write_prologue_after,
             write_iterator,
             write_iterator_after,
+            write_tick_end,
             ..Default::default()
         })
     },

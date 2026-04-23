@@ -52,8 +52,6 @@ pub const SCAN_ASYNC_BLOCKING: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
-                   df_ident,
                    op_span,
                    ident,
                    is_pull,
@@ -83,28 +81,19 @@ pub const SCAN_ASYNC_BLOCKING: OperatorConstraints = OperatorConstraints {
             let mut #initializer_func_ident = #init_fn;
 
             #[allow(clippy::redundant_closure_call)]
-            let #singleton_output_ident = #df_ident.add_state(::std::cell::RefCell::new(
+            let #singleton_output_ident = ::std::cell::RefCell::new(
                 Some(#init)
-            ));
+            );
         };
 
-        let write_prologue_after = wc.persistence_as_state_lifespan(persistence)
-            .map(|lifespan| {
-                quote_spanned! {op_span=>
-                    #[allow(clippy::redundant_closure_call)]
-                    #df_ident.set_state_lifespan_hook(
-                        #singleton_output_ident, #lifespan, move |rcell| {
-                            rcell.replace(Some(#init));
-                        },
-                    );
-                }
-            })
-            .unwrap_or_default();
+        let write_tick_end = match persistence {
+            super::Persistence::Tick => quote_spanned! {op_span=>
+                #[allow(clippy::redundant_closure_call)]
+                #singleton_output_ident.replace(Some(#init));
+            },
+            _ => Default::default(),
+        };
 
-        // The closure for filter_map_async returns a future.
-        // We create the inner future synchronously (borrowing state), then return it.
-        // Note: unlike sync scan, returning None from the future only filters the
-        // current item; it does not terminate the stream.
         let filter_map_async_body = quote_spanned! {op_span=>
             #[inline(always)]
             fn call_scan_async_blocking_fn<Accum, Item, Output, Fut>(
@@ -118,14 +107,10 @@ pub const SCAN_ASYNC_BLOCKING: OperatorConstraints = OperatorConstraints {
                 (func)(accum, item)
             }
 
-            let mut #state_ident = unsafe {
-                // SAFETY: handle from `#df_ident.add_state(..)`.
-                #context.state_ref_unchecked(#singleton_output_ident)
-            }.borrow_mut();
+            let mut #state_ident = #singleton_output_ident.borrow_mut();
 
             #[allow(clippy::redundant_closure_call)]
             call_scan_async_blocking_fn(#state_ident.as_mut().unwrap(), #iterator_item_ident, #func)
-            // borrow dropped here when the future is returned
         };
 
         let write_iterator = if is_pull {
@@ -145,9 +130,8 @@ pub const SCAN_ASYNC_BLOCKING: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
-            write_prologue_after,
             write_iterator,
-            write_iterator_after: Default::default(),
+            write_tick_end,
             ..Default::default()
         })
     },

@@ -127,10 +127,10 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
 
         let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
 
-        let (lhs_prologue, lhs_prologue_after, lhs_pre_write_iter, lhs_borrow) =
+        let (lhs_prologue, lhs_tick_end, lhs_pre_write_iter, lhs_borrow) =
             make_joindata(wc, persistences[0], "lhs").map_err(|err| diagnostics.push(err))?;
 
-        let (rhs_prologue, rhs_prologue_after, rhs_pre_write_iter, rhs_borrow) =
+        let (rhs_prologue, rhs_tick_end, rhs_pre_write_iter, rhs_borrow) =
             make_joindata(wc, persistences[1], "rhs").map_err(|err| diagnostics.push(err))?;
 
         let lhs = &inputs[0];
@@ -185,18 +185,18 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
                 #lhs_prologue
                 #rhs_prologue
             },
-            write_prologue_after: quote_spanned! {op_span=>
-                #lhs_prologue_after
-                #rhs_prologue_after
-            },
             write_iterator,
             write_iterator_after,
+            write_tick_end: quote_spanned! {op_span=>
+                #lhs_tick_end
+                #rhs_tick_end
+            },
             ..Default::default()
         })
     },
 };
 
-/// Returns `(prologue, prologue_after, pre_write_iter, borrow)`.
+/// Returns `(prologue, tick_end, pre_write_iter, borrow_ident)`.
 pub(crate) fn make_joindata(
     wc: &WriteContextArgs,
     persistence: Persistence,
@@ -206,8 +206,6 @@ pub(crate) fn make_joindata(
     let borrow_ident = wc.make_ident(format!("joindata_{}_borrow", side));
 
     let &WriteContextArgs {
-        context,
-        df_ident,
         root,
         op_span,
         ..
@@ -223,20 +221,19 @@ pub(crate) fn make_joindata(
             borrow_ident,
         ),
         Persistence::Tick | Persistence::Loop | Persistence::Static => {
-            let lifespan = wc.persistence_as_state_lifespan(persistence);
+            let tick_end = match persistence {
+                Persistence::Tick => quote_spanned! {op_span=>
+                    #joindata_ident.clear();
+                },
+                _ => Default::default(),
+            };
             (
                 quote_spanned! {op_span=>
-                    let #joindata_ident = #df_ident.add_state(::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::default()));
+                    let mut #joindata_ident = #root::rustc_hash::FxHashMap::default();
                 },
-                lifespan.map(|lifespan| quote_spanned! {op_span=>
-                    // Reset the value to the initializer fn at the end of each tick/loop execution.
-                    #df_ident.set_state_lifespan_hook(#joindata_ident, #lifespan, |rcell| { rcell.take(); });
-                }).unwrap_or_default(),
+                tick_end,
                 quote_spanned! {op_span=>
-                    let mut #borrow_ident = unsafe {
-                        // SAFETY: handles from `#df_ident`.
-                        #context.state_ref_unchecked(#joindata_ident)
-                    }.borrow_mut();
+                    let #borrow_ident = &mut #joindata_ident;
                 },
                 borrow_ident
             )
