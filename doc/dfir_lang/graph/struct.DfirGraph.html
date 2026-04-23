@@ -136,13 +136,13 @@ The output module boundary has elided ports, this is also used to match up the i
     prefix: <a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.TokenStream.html" title="struct proc_macro2::TokenStream">TokenStream</a>,
     diagnostics: &amp;mut <a class="struct" href="../diagnostic/struct.Diagnostics.html" title="struct dfir_lang::diagnostic::Diagnostics">Diagnostics</a>,
 ) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.TokenStream.html" title="struct proc_macro2::TokenStream">TokenStream</a>, <a class="struct" href="../diagnostic/struct.Diagnostics.html" title="struct dfir_lang::diagnostic::Diagnostics">Diagnostics</a>&gt;</h4></section></summary><div class="docblock"><p>Emit this graph as runnable Rust source code tokens that execute inline.
-Generates a flat <code>async move |df: &amp;mut InlineContext|</code> closure where subgraph
+Generates a flat <code>async move |df: &amp;mut Context|</code> closure where subgraph
 blocks are inlined in topological order, using local <code>Vec&lt;T&gt;</code> buffers
 instead of runtime handoffs. Each call to the closure runs one tick.</p>
-<p>The generated code block evaluates to an <code>InlineDfir</code> instance wrapping the
+<p>The generated code block evaluates to a <code>Dfir</code> instance wrapping the
 closure. Operator prologues (<code>add_state</code>, <code>set_state_lifespan_hook</code>)
-run at construction time on the <code>InlineContext</code> before it is moved into
-<code>InlineDfir::new</code>. <code>InlineDfir</code> provides the <code>InlineContext</code> to the closure on
+run at construction time on the <code>Context</code> before it is moved into
+<code>Dfir::new</code>. <code>Dfir</code> provides the <code>Context</code> to the closure on
 each tick run.</p>
 <h5 id="errors"><a class="doc-anchor" href="#errors">§</a>Errors</h5>
 <p>Returns all diagnostics as <code>Err(diagnostics)</code> if any are errors

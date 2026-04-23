@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["RECV","SEND"],"struct":["Port","PortCtx"],"trait":["Polarity"],"type":["RecvCtx","RecvPort","SendCtx","SendPort"]};

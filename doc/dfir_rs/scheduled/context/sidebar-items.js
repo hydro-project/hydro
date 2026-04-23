@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Context"],"type":["InlineDfirErased"]};
+window.SIDEBAR_ITEMS = {"type":["DfirErased"]};

@@ -704,7 +704,7 @@
 <a href=#704 id=704 data-nosnippet>704</a>    </span><span class="kw">let </span><span class="kw-2">mut </span>dfir_into_code_erased = |g: <span class="kw-2">&amp;</span>DfirGraph| -&gt; syn::Expr {
 <a href=#705 id=705 data-nosnippet>705</a>        <span class="kw">let </span>inner = dfir_into_code(g);
 <a href=#706 id=706 data-nosnippet>706</a>        <span class="macro">syn::parse_quote!</span> {
-<a href=#707 id=707 data-nosnippet>707</a>            __root_dfir_rs::scheduled::context::InlineDfir::into_erased(#inner)
+<a href=#707 id=707 data-nosnippet>707</a>            __root_dfir_rs::scheduled::context::Dfir::into_erased(#inner)
 <a href=#708 id=708 data-nosnippet>708</a>        }
 <a href=#709 id=709 data-nosnippet>709</a>    };
 <a href=#710 id=710 data-nosnippet>710</a>
@@ -851,8 +851,8 @@
 <a href=#851 id=851 data-nosnippet>851</a>            __println_handler: <span class="kw">fn</span>(::std::fmt::Arguments&lt;<span class="lifetime">'_</span>&gt;),
 <a href=#852 id=852 data-nosnippet>852</a>            __eprintln_handler: <span class="kw">fn</span>(::std::fmt::Arguments&lt;<span class="lifetime">'_</span>&gt;),
 <a href=#853 id=853 data-nosnippet>853</a>        ) -&gt; (
-<a href=#854 id=854 data-nosnippet>854</a>            Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;, __root_dfir_rs::scheduled::context::InlineDfirErased)&gt;,
-<a href=#855 id=855 data-nosnippet>855</a>            Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;, __root_dfir_rs::scheduled::context::InlineDfirErased)&gt;,
+<a href=#854 id=854 data-nosnippet>854</a>            Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;, __root_dfir_rs::scheduled::context::DfirErased)&gt;,
+<a href=#855 id=855 data-nosnippet>855</a>            Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;, __root_dfir_rs::scheduled::context::DfirErased)&gt;,
 <a href=#856 id=856 data-nosnippet>856</a>            #root::sim::runtime::Hooks&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt;,
 <a href=#857 id=857 data-nosnippet>857</a>            #root::sim::runtime::InlineHooks&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt;,
 <a href=#858 id=858 data-nosnippet>858</a>        ) {
@@ -921,8 +921,8 @@
 <a href=#921 id=921 data-nosnippet>921</a>            __println_handler: <span class="kw">fn</span>(::std::fmt::Arguments&lt;<span class="lifetime">'_</span>&gt;),
 <a href=#922 id=922 data-nosnippet>922</a>            __eprintln_handler: <span class="kw">fn</span>(::std::fmt::Arguments&lt;<span class="lifetime">'_</span>&gt;),
 <a href=#923 id=923 data-nosnippet>923</a>        ) -&gt; (
-<a href=#924 id=924 data-nosnippet>924</a>            Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;, __root_dfir_rs::scheduled::context::InlineDfirErased)&gt;,
-<a href=#925 id=925 data-nosnippet>925</a>            Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;, __root_dfir_rs::scheduled::context::InlineDfirErased)&gt;,
+<a href=#924 id=924 data-nosnippet>924</a>            Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;, __root_dfir_rs::scheduled::context::DfirErased)&gt;,
+<a href=#925 id=925 data-nosnippet>925</a>            Vec&lt;(<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str, <span class="prelude-ty">Option</span>&lt;u32&gt;, __root_dfir_rs::scheduled::context::DfirErased)&gt;,
 <a href=#926 id=926 data-nosnippet>926</a>            #root::sim::runtime::Hooks&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt;,
 <a href=#927 id=927 data-nosnippet>927</a>            #root::sim::runtime::InlineHooks&lt;<span class="kw-2">&amp;</span><span class="lifetime">'static </span>str&gt;,
 <a href=#928 id=928 data-nosnippet>928</a>        ) {

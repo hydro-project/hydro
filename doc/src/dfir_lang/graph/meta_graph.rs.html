@@ -822,14 +822,14 @@
 <a href=#822 id=822 data-nosnippet>822</a>    }
 <a href=#823 id=823 data-nosnippet>823</a>
 <a href=#824 id=824 data-nosnippet>824</a>    <span class="doccomment">/// Emit this graph as runnable Rust source code tokens that execute inline.
-<a href=#825 id=825 data-nosnippet>825</a>    /// Generates a flat `async move |df: &amp;mut InlineContext|` closure where subgraph
+<a href=#825 id=825 data-nosnippet>825</a>    /// Generates a flat `async move |df: &amp;mut Context|` closure where subgraph
 <a href=#826 id=826 data-nosnippet>826</a>    /// blocks are inlined in topological order, using local `Vec&lt;T&gt;` buffers
 <a href=#827 id=827 data-nosnippet>827</a>    /// instead of runtime handoffs. Each call to the closure runs one tick.
 <a href=#828 id=828 data-nosnippet>828</a>    ///
-<a href=#829 id=829 data-nosnippet>829</a>    /// The generated code block evaluates to an `InlineDfir` instance wrapping the
+<a href=#829 id=829 data-nosnippet>829</a>    /// The generated code block evaluates to a `Dfir` instance wrapping the
 <a href=#830 id=830 data-nosnippet>830</a>    /// closure. Operator prologues (`add_state`, `set_state_lifespan_hook`)
-<a href=#831 id=831 data-nosnippet>831</a>    /// run at construction time on the `InlineContext` before it is moved into
-<a href=#832 id=832 data-nosnippet>832</a>    /// `InlineDfir::new`. `InlineDfir` provides the `InlineContext` to the closure on
+<a href=#831 id=831 data-nosnippet>831</a>    /// run at construction time on the `Context` before it is moved into
+<a href=#832 id=832 data-nosnippet>832</a>    /// `Dfir::new`. `Dfir` provides the `Context` to the closure on
 <a href=#833 id=833 data-nosnippet>833</a>    /// each tick run.
 <a href=#834 id=834 data-nosnippet>834</a>    ///
 <a href=#835 id=835 data-nosnippet>835</a>    /// # Errors
@@ -1504,7 +1504,7 @@
 <a href=#1504 id=1504 data-nosnippet>1504</a>                <span class="kw">use </span>#root::{var_expr, var_args};
 <a href=#1505 id=1505 data-nosnippet>1505</a>
 <a href=#1506 id=1506 data-nosnippet>1506</a>                <span class="kw">let </span>__dfir_wake_state = ::std::sync::Arc::new(
-<a href=#1507 id=1507 data-nosnippet>1507</a>                    #root::scheduled::context::InlineWakeState::default()
+<a href=#1507 id=1507 data-nosnippet>1507</a>                    #root::scheduled::context::WakeState::default()
 <a href=#1508 id=1508 data-nosnippet>1508</a>                );
 <a href=#1509 id=1509 data-nosnippet>1509</a>
 <a href=#1510 id=1510 data-nosnippet>1510</a>                <span class="kw">let </span>__dfir_metrics = {
@@ -1514,7 +1514,7 @@
 <a href=#1514 id=1514 data-nosnippet>1514</a>                };
 <a href=#1515 id=1515 data-nosnippet>1515</a>
 <a href=#1516 id=1516 data-nosnippet>1516</a>                <span class="attr">#[allow(unused_mut)]
-<a href=#1517 id=1517 data-nosnippet>1517</a>                </span><span class="kw">let </span><span class="kw-2">mut </span>#df = #root::scheduled::context::InlineContext::new(
+<a href=#1517 id=1517 data-nosnippet>1517</a>                </span><span class="kw">let </span><span class="kw-2">mut </span>#df = #root::scheduled::context::Context::new(
 <a href=#1518 id=1518 data-nosnippet>1518</a>                    ::std::clone::Clone::clone(<span class="kw-2">&amp;</span>__dfir_wake_state),
 <a href=#1519 id=1519 data-nosnippet>1519</a>                    __dfir_metrics,
 <a href=#1520 id=1520 data-nosnippet>1520</a>                );
@@ -1529,7 +1529,7 @@
 <a href=#1529 id=1529 data-nosnippet>1529</a>                // if any handoff buffer has data.
 <a href=#1530 id=1530 data-nosnippet>1530</a>                </span><span class="kw">let </span><span class="kw-2">mut </span>__dfir_work_done = <span class="bool-val">true</span>;
 <a href=#1531 id=1531 data-nosnippet>1531</a>                <span class="attr">#[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref)]
-<a href=#1532 id=1532 data-nosnippet>1532</a>                </span><span class="kw">let </span>__dfir_inline_tick = <span class="kw">async move </span>|#df: <span class="kw-2">&amp;mut </span>#root::scheduled::context::InlineContext| {
+<a href=#1532 id=1532 data-nosnippet>1532</a>                </span><span class="kw">let </span>__dfir_inline_tick = <span class="kw">async move </span>|#df: <span class="kw-2">&amp;mut </span>#root::scheduled::context::Context| {
 <a href=#1533 id=1533 data-nosnippet>1533</a>                    <span class="kw">let </span>__dfir_metrics = #df.metrics();
 <a href=#1534 id=1534 data-nosnippet>1534</a>                    #( #subgraph_blocks )*
 <a href=#1535 id=1535 data-nosnippet>1535</a>
@@ -1548,7 +1548,7 @@
 <a href=#1548 id=1548 data-nosnippet>1548</a>                    #df.__end_tick();
 <a href=#1549 id=1549 data-nosnippet>1549</a>                    ::std::mem::take(<span class="kw-2">&amp;mut </span>__dfir_work_done)
 <a href=#1550 id=1550 data-nosnippet>1550</a>                };
-<a href=#1551 id=1551 data-nosnippet>1551</a>                #root::scheduled::context::InlineDfir::new(
+<a href=#1551 id=1551 data-nosnippet>1551</a>                #root::scheduled::context::Dfir::new(
 <a href=#1552 id=1552 data-nosnippet>1552</a>                    __dfir_inline_tick,
 <a href=#1553 id=1553 data-nosnippet>1553</a>                    #df,
 <a href=#1554 id=1554 data-nosnippet>1554</a>                    <span class="prelude-val">Some</span>(#meta_graph_json),

@@ -71,7 +71,7 @@
 <a href=#71 id=71 data-nosnippet>71</a>                ::std::cell::RefCell::new(::std::option::Option::None)
 <a href=#72 id=72 data-nosnippet>72</a>            );
 <a href=#73 id=73 data-nosnippet>73</a>            <span class="comment">// Reset the value if it is a new tick. TODO(mingwei): handle other lifespans?
-<a href=#74 id=74 data-nosnippet>74</a>            </span>#df_ident.set_state_lifespan_hook(#singleton_handle_ident, #root::scheduled::graph::StateLifespan::Tick, |rcell| { rcell.take(); });
+<a href=#74 id=74 data-nosnippet>74</a>            </span>#df_ident.set_state_lifespan_hook(#singleton_handle_ident, #root::scheduled::StateLifespan::Tick, |rcell| { rcell.take(); });
 <a href=#75 id=75 data-nosnippet>75</a>        };
 <a href=#76 id=76 data-nosnippet>76</a>
 <a href=#77 id=77 data-nosnippet>77</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;

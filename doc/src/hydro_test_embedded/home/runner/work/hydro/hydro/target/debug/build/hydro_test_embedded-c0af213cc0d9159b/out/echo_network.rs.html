@@ -17,14 +17,14 @@
 <a href=#17 id=17 data-nosnippet>17</a>&gt;(
 <a href=#18 id=18 data-nosnippet>18</a>    input: <span class="kw">impl </span>__root_dfir_rs::futures::Stream&lt;Item = std::string::String&gt; + Unpin + <span class="lifetime">'a</span>,
 <a href=#19 id=19 data-nosnippet>19</a>    __network_out: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>echo_sender::EmbeddedNetworkOut&lt;__NetOut0&gt;,
-<a href=#20 id=20 data-nosnippet>20</a>) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::context::InlineDfir&lt;
+<a href=#20 id=20 data-nosnippet>20</a>) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::context::Dfir&lt;
 <a href=#21 id=21 data-nosnippet>21</a>    <span class="kw">impl </span>hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure + <span class="lifetime">'a</span>,
 <a href=#22 id=22 data-nosnippet>22</a>&gt; {
 <a href=#23 id=23 data-nosnippet>23</a>    <span class="kw">let </span><span class="kw-2">mut </span>__network_out_messages = <span class="kw-2">&amp;mut </span>__network_out.messages;
 <a href=#24 id=24 data-nosnippet>24</a>    {
 <a href=#25 id=25 data-nosnippet>25</a>        <span class="kw">use </span>__root_dfir_rs::{var_expr, var_args};
 <a href=#26 id=26 data-nosnippet>26</a>        <span class="kw">let </span>__dfir_wake_state = ::std::sync::Arc::new(
-<a href=#27 id=27 data-nosnippet>27</a>            __root_dfir_rs::scheduled::context::InlineWakeState::default(),
+<a href=#27 id=27 data-nosnippet>27</a>            __root_dfir_rs::scheduled::context::WakeState::default(),
 <a href=#28 id=28 data-nosnippet>28</a>        );
 <a href=#29 id=29 data-nosnippet>29</a>        <span class="kw">let </span>__dfir_metrics = {
 <a href=#30 id=30 data-nosnippet>30</a>            <span class="kw">let </span><span class="kw-2">mut </span>dfir_metrics = __root_dfir_rs::scheduled::metrics::DfirMetrics::default();
@@ -37,7 +37,7 @@
 <a href=#37 id=37 data-nosnippet>37</a>            ::std::rc::Rc::new(dfir_metrics)
 <a href=#38 id=38 data-nosnippet>38</a>        };
 <a href=#39 id=39 data-nosnippet>39</a>        <span class="attr">#[allow(unused_mut)]
-<a href=#40 id=40 data-nosnippet>40</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>df = __root_dfir_rs::scheduled::context::InlineContext::new(
+<a href=#40 id=40 data-nosnippet>40</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>df = __root_dfir_rs::scheduled::context::Context::new(
 <a href=#41 id=41 data-nosnippet>41</a>            ::std::clone::Clone::clone(<span class="kw-2">&amp;</span>__dfir_wake_state),
 <a href=#42 id=42 data-nosnippet>42</a>            __dfir_metrics,
 <a href=#43 id=43 data-nosnippet>43</a>        );
@@ -103,7 +103,7 @@
 <a href=#103 id=103 data-nosnippet>103</a>            clippy::await_holding_refcell_ref
 <a href=#104 id=104 data-nosnippet>104</a>        )]
 <a href=#105 id=105 data-nosnippet>105</a>        </span><span class="kw">let </span>__dfir_inline_tick = <span class="kw">async move </span>|
-<a href=#106 id=106 data-nosnippet>106</a>            df: <span class="kw-2">&amp;mut </span>__root_dfir_rs::scheduled::context::InlineContext|
+<a href=#106 id=106 data-nosnippet>106</a>            df: <span class="kw-2">&amp;mut </span>__root_dfir_rs::scheduled::context::Context|
 <a href=#107 id=107 data-nosnippet>107</a>        {
 <a href=#108 id=108 data-nosnippet>108</a>            <span class="kw">let </span>__dfir_metrics = df.metrics();
 <a href=#109 id=109 data-nosnippet>109</a>            <span class="kw">let </span>sgid_1v1 = <span class="kw">async </span>{
@@ -368,7 +368,7 @@
 <a href=#368 id=368 data-nosnippet>368</a>            df.__end_tick();
 <a href=#369 id=369 data-nosnippet>369</a>            ::std::mem::take(<span class="kw-2">&amp;mut </span>__dfir_work_done)
 <a href=#370 id=370 data-nosnippet>370</a>        };
-<a href=#371 id=371 data-nosnippet>371</a>        __root_dfir_rs::scheduled::context::InlineDfir::new(
+<a href=#371 id=371 data-nosnippet>371</a>        __root_dfir_rs::scheduled::context::Dfir::new(
 <a href=#372 id=372 data-nosnippet>372</a>            __dfir_inline_tick,
 <a href=#373 id=373 data-nosnippet>373</a>            df,
 <a href=#374 id=374 data-nosnippet>374</a>            <span class="prelude-val">Some</span>(
@@ -401,7 +401,7 @@
 <a href=#401 id=401 data-nosnippet>401</a>&gt;(
 <a href=#402 id=402 data-nosnippet>402</a>    __outputs: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>echo_receiver::EmbeddedOutputs&lt;__Out0&gt;,
 <a href=#403 id=403 data-nosnippet>403</a>    __network_in: echo_receiver::EmbeddedNetworkIn&lt;__NetIn0&gt;,
-<a href=#404 id=404 data-nosnippet>404</a>) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::context::InlineDfir&lt;
+<a href=#404 id=404 data-nosnippet>404</a>) -&gt; hydro_lang::runtime_support::dfir_rs::scheduled::context::Dfir&lt;
 <a href=#405 id=405 data-nosnippet>405</a>    <span class="kw">impl </span>hydro_lang::runtime_support::dfir_rs::scheduled::context::TickClosure + <span class="lifetime">'a</span>,
 <a href=#406 id=406 data-nosnippet>406</a>&gt; {
 <a href=#407 id=407 data-nosnippet>407</a>    <span class="kw">let </span><span class="kw-2">mut </span>output = <span class="kw-2">&amp;mut </span>__outputs.output;
@@ -409,7 +409,7 @@
 <a href=#409 id=409 data-nosnippet>409</a>    {
 <a href=#410 id=410 data-nosnippet>410</a>        <span class="kw">use </span>__root_dfir_rs::{var_expr, var_args};
 <a href=#411 id=411 data-nosnippet>411</a>        <span class="kw">let </span>__dfir_wake_state = ::std::sync::Arc::new(
-<a href=#412 id=412 data-nosnippet>412</a>            __root_dfir_rs::scheduled::context::InlineWakeState::default(),
+<a href=#412 id=412 data-nosnippet>412</a>            __root_dfir_rs::scheduled::context::WakeState::default(),
 <a href=#413 id=413 data-nosnippet>413</a>        );
 <a href=#414 id=414 data-nosnippet>414</a>        <span class="kw">let </span>__dfir_metrics = {
 <a href=#415 id=415 data-nosnippet>415</a>            <span class="kw">let </span><span class="kw-2">mut </span>dfir_metrics = __root_dfir_rs::scheduled::metrics::DfirMetrics::default();
@@ -422,7 +422,7 @@
 <a href=#422 id=422 data-nosnippet>422</a>            ::std::rc::Rc::new(dfir_metrics)
 <a href=#423 id=423 data-nosnippet>423</a>        };
 <a href=#424 id=424 data-nosnippet>424</a>        <span class="attr">#[allow(unused_mut)]
-<a href=#425 id=425 data-nosnippet>425</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>df = __root_dfir_rs::scheduled::context::InlineContext::new(
+<a href=#425 id=425 data-nosnippet>425</a>        </span><span class="kw">let </span><span class="kw-2">mut </span>df = __root_dfir_rs::scheduled::context::Context::new(
 <a href=#426 id=426 data-nosnippet>426</a>            ::std::clone::Clone::clone(<span class="kw-2">&amp;</span>__dfir_wake_state),
 <a href=#427 id=427 data-nosnippet>427</a>            __dfir_metrics,
 <a href=#428 id=428 data-nosnippet>428</a>        );
@@ -497,7 +497,7 @@
 <a href=#497 id=497 data-nosnippet>497</a>            clippy::await_holding_refcell_ref
 <a href=#498 id=498 data-nosnippet>498</a>        )]
 <a href=#499 id=499 data-nosnippet>499</a>        </span><span class="kw">let </span>__dfir_inline_tick = <span class="kw">async move </span>|
-<a href=#500 id=500 data-nosnippet>500</a>            df: <span class="kw-2">&amp;mut </span>__root_dfir_rs::scheduled::context::InlineContext|
+<a href=#500 id=500 data-nosnippet>500</a>            df: <span class="kw-2">&amp;mut </span>__root_dfir_rs::scheduled::context::Context|
 <a href=#501 id=501 data-nosnippet>501</a>        {
 <a href=#502 id=502 data-nosnippet>502</a>            <span class="kw">let </span>__dfir_metrics = df.metrics();
 <a href=#503 id=503 data-nosnippet>503</a>            <span class="kw">let </span>sgid_1v1 = <span class="kw">async </span>{
@@ -818,7 +818,7 @@
 <a href=#818 id=818 data-nosnippet>818</a>            df.__end_tick();
 <a href=#819 id=819 data-nosnippet>819</a>            ::std::mem::take(<span class="kw-2">&amp;mut </span>__dfir_work_done)
 <a href=#820 id=820 data-nosnippet>820</a>        };
-<a href=#821 id=821 data-nosnippet>821</a>        __root_dfir_rs::scheduled::context::InlineDfir::new(
+<a href=#821 id=821 data-nosnippet>821</a>        __root_dfir_rs::scheduled::context::Dfir::new(
 <a href=#822 id=822 data-nosnippet>822</a>            __dfir_inline_tick,
 <a href=#823 id=823 data-nosnippet>823</a>            df,
 <a href=#824 id=824 data-nosnippet>824</a>            <span class="prelude-val">Some</span>(
