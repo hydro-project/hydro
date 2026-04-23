@@ -109,7 +109,7 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
         };
         let write_tick_end = match persistence {
             Persistence::Tick => quote_spanned! {op_span=>
-                #state_ident.borrow_mut().take();
+                #state_ident.take();
             },
             _ => Default::default(),
         };
