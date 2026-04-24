@@ -5,11 +5,10 @@ use std::pin::Pin;
 use std::rc::Rc;
 use std::task::{Context, Poll};
 
+use dfir_lang::graph::{GraphNodeId, GraphSubgraphId};
 use pin_project_lite::pin_project;
+use slotmap::SecondaryMap;
 use web_time::{Duration, Instant};
-
-use super::{HandoffTag, SubgraphTag};
-use crate::util::slot_vec::SecondarySlotVec;
 
 /// Metrics for a [`Dfir`](super::context::Dfir) graph instance.
 ///
@@ -20,9 +19,9 @@ use crate::util::slot_vec::SecondarySlotVec;
 #[non_exhaustive]
 pub struct DfirMetrics {
     /// Per-subgraph metrics.
-    pub subgraphs: SecondarySlotVec<SubgraphTag, SubgraphMetrics>,
+    pub subgraphs: SecondaryMap<GraphSubgraphId, SubgraphMetrics>,
     /// Per-handoff metrics.
-    pub handoffs: SecondarySlotVec<HandoffTag, HandoffMetrics>,
+    pub handoffs: SecondaryMap<GraphNodeId, HandoffMetrics>,
 }
 
 impl DfirMetrics {
@@ -222,13 +221,18 @@ where
 
 #[cfg(test)]
 mod test {
+    use dfir_lang::graph::{GraphNodeId, GraphSubgraphId};
+    use slotmap::SlotMap;
+
     use super::*;
-    use crate::scheduled::{HandoffId, SubgraphId};
 
     #[test]
     fn test_dfir_metrics_intervals() {
-        let sg_id = SubgraphId::from_raw(0);
-        let handoff_id = HandoffId::from_raw(0);
+        // Create slotmaps to generate valid keys.
+        let mut sg_map: SlotMap<GraphSubgraphId, ()> = SlotMap::with_key();
+        let mut node_map: SlotMap<GraphNodeId, ()> = SlotMap::with_key();
+        let sg_id = sg_map.insert(());
+        let handoff_id = node_map.insert(());
 
         let mut metrics = DfirMetrics::default();
         metrics.subgraphs.insert(

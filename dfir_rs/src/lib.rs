@@ -27,7 +27,9 @@ pub use ::{
 #[cfg(feature = "meta")]
 #[cfg_attr(docsrs, doc(cfg(feature = "meta")))]
 pub use dfir_lang as lang;
+pub use dfir_lang;
 pub use dfir_pipes::itertools;
+pub use slotmap;
 pub use variadics::{self, var_args, var_expr, var_type};
 
 /// `#[macro_use]` automagically brings the declarative macro export to the crate-level.
