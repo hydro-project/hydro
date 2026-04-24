@@ -10,7 +10,7 @@ use std::rc::Rc;
 use stageleft::{IntoQuotedMut, QuotedWithContext, QuotedWithContextWithProps, q, quote_type};
 use tokio::time::Instant;
 
-use super::boundedness::{Bounded, Boundedness, IsBounded, JoinBoundedness, Unbounded};
+use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::keyed_singleton::KeyedSingleton;
 use super::keyed_stream::{Generate, KeyedStream};
 use super::optional::Optional;
@@ -963,31 +963,12 @@ where
         self.filter_if(other.is_none())
     }
 
-    /// Forms the cross-product (Cartesian product, cross-join) of the items in the 2 input streams, returning all
-    /// tupled pairs in a non-deterministic order.
-    ///
-    /// # Example
-    /// ```rust
-    /// # #[cfg(feature = "deploy")] {
-    /// # use hydro_lang::prelude::*;
-    /// # use std::collections::HashSet;
-    /// # use futures::StreamExt;
-    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
-    /// let tick = process.tick();
-    /// let stream1 = process.source_iter(q!(vec!['a', 'b', 'c']));
-    /// let stream2 = process.source_iter(q!(vec![1, 2, 3]));
-    /// stream1.cross_product(stream2)
-    /// # }, |mut stream| async move {
-    /// # let expected = HashSet::from([('a', 1), ('b', 1), ('c', 1), ('a', 2), ('b', 2), ('c', 2), ('a', 3), ('b', 3), ('c', 3)]);
-    /// # stream.map(|i| assert!(expected.contains(&i)));
-    /// # }));
-    /// # }
-    /// ```
-    /// Forms the cross-product (Cartesian product, cross-join) of the items in the 2 input streams.
+    /// Forms the cross-product (Cartesian product, cross-join) of the items in the 2 input streams,
+    /// returning all tupled pairs.
     ///
     /// When the right side is [`Bounded`], it is accumulated first and the left side streams
-    /// through. When both sides are [`Unbounded`], a symmetric hash join is used.
-    /// The output ordering is always [`NoOrder`].
+    /// through, preserving the left side's ordering. When both sides are [`Unbounded`], a
+    /// symmetric hash join is used and ordering is [`NoOrder`].
     ///
     /// # Example
     /// ```rust
@@ -1009,23 +990,14 @@ where
     pub fn cross_product<T2, B2: Boundedness, O2: Ordering>(
         self,
         other: Stream<T2, L, B2, O2, R>,
-    ) -> Stream<(T, T2), L, B, NoOrder, R>
+    ) -> Stream<(T, T2), L, B, B2::PreserveOrderIfBounded<O>, R>
     where
         T: Clone,
         T2: Clone,
     {
-        check_matching_location(&self.location, &other.location);
-
-        Stream::new(
-            self.location.clone(),
-            HydroNode::CrossProduct {
-                left: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                right: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self
-                    .location
-                    .new_node_metadata(Stream::<(T, T2), L, B, NoOrder, R>::collection_kind()),
-            },
-        )
+        self.map(q!(|v| ((), v)))
+            .join(other.map(q!(|v| ((), v))))
+            .map(q!(|((), (v1, v2))| (v1, v2)))
     }
 
     /// Takes one stream as input and filters out any duplicate occurrences. The output
@@ -2663,16 +2635,10 @@ where
     /// # stream.map(|i| assert!(expected.contains(&i)));
     /// # }));
     /// # }
-    pub fn join<V2, B2: Boundedness + JoinBoundedness<O>, O2: Ordering, R2: Retries>(
+    pub fn join<V2, B2: Boundedness, O2: Ordering, R2: Retries>(
         self,
         n: Stream<(K, V2), L, B2, O2, R2>,
-    ) -> Stream<
-        (K, (V1, V2)),
-        L,
-        B,
-        <B2 as JoinBoundedness<O>>::OutputOrder,
-        <R as MinRetries<R2>>::Min,
-    >
+    ) -> Stream<(K, (V1, V2)), L, B, B2::PreserveOrderIfBounded<O>, <R as MinRetries<R2>>::Min>
     where
         K: Eq + Hash + Clone,
         R: MinRetries<R2>,
@@ -2681,15 +2647,15 @@ where
     {
         check_matching_location(&self.location, &n.location);
 
-        let ir_node = if B2::USE_BOUNDED_JOIN {
-            HydroNode::JoinBounded {
+        let ir_node = if B2::BOUNDED {
+            HydroNode::JoinHalf {
                 left: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 right: Box::new(n.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self.location.new_node_metadata(Stream::<
                     (K, (V1, V2)),
                     L,
                     B,
-                    <B2 as JoinBoundedness<O>>::OutputOrder,
+                    B2::PreserveOrderIfBounded<O>,
                     <R as MinRetries<R2>>::Min,
                 >::collection_kind()),
             }
@@ -2701,7 +2667,7 @@ where
                     (K, (V1, V2)),
                     L,
                     B,
-                    <B2 as JoinBoundedness<O>>::OutputOrder,
+                    B2::PreserveOrderIfBounded<O>,
                     <R as MinRetries<R2>>::Min,
                 >::collection_kind()),
             }
@@ -4135,5 +4101,126 @@ mod tests {
         deployment.start().await.unwrap();
 
         assert_eq!(threshold_out.next().await.unwrap(), 14);
+    }
+
+    // === Compile-time type tests for join/cross_product ordering ===
+
+    #[cfg(any(feature = "deploy", feature = "sim"))]
+    mod join_ordering_type_tests {
+        use crate::live_collections::boundedness::{Bounded, Unbounded};
+        use crate::live_collections::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
+        use crate::location::{Location, Process};
+
+        #[expect(dead_code, reason = "compile-time type test")]
+        fn join_unbounded_with_bounded_preserves_order<'a>(
+            left: Stream<(i32, char), Process<'a>, Unbounded, TotalOrder, ExactlyOnce>,
+            right: Stream<(i32, char), Process<'a>, Bounded, TotalOrder, ExactlyOnce>,
+        ) -> Stream<(i32, (char, char)), Process<'a>, Unbounded, TotalOrder, ExactlyOnce> {
+            left.join(right)
+        }
+
+        #[expect(dead_code, reason = "compile-time type test")]
+        fn join_unbounded_with_unbounded_is_no_order<'a>(
+            left: Stream<(i32, char), Process<'a>, Unbounded, TotalOrder, ExactlyOnce>,
+            right: Stream<(i32, char), Process<'a>, Unbounded, TotalOrder, ExactlyOnce>,
+        ) -> Stream<(i32, (char, char)), Process<'a>, Unbounded, NoOrder, ExactlyOnce> {
+            left.join(right)
+        }
+
+        #[expect(dead_code, reason = "compile-time type test")]
+        fn join_bounded_with_bounded_preserves_order<'a, L: Location<'a>>(
+            left: Stream<(i32, char), L, Bounded, TotalOrder, ExactlyOnce>,
+            right: Stream<(i32, char), L, Bounded, TotalOrder, ExactlyOnce>,
+        ) -> Stream<(i32, (char, char)), L, Bounded, TotalOrder, ExactlyOnce> {
+            left.join(right)
+        }
+
+        #[expect(dead_code, reason = "compile-time type test")]
+        fn join_unbounded_noorder_with_bounded<'a>(
+            left: Stream<(i32, char), Process<'a>, Unbounded, NoOrder, ExactlyOnce>,
+            right: Stream<(i32, char), Process<'a>, Bounded, NoOrder, ExactlyOnce>,
+        ) -> Stream<(i32, (char, char)), Process<'a>, Unbounded, NoOrder, ExactlyOnce> {
+            left.join(right)
+        }
+
+        // === Compile-time type tests for cross_product ordering ===
+
+        #[expect(dead_code, reason = "compile-time type test")]
+        fn cross_product_unbounded_with_bounded_preserves_order<'a>(
+            left: Stream<i32, Process<'a>, Unbounded, TotalOrder, ExactlyOnce>,
+            right: Stream<char, Process<'a>, Bounded, TotalOrder, ExactlyOnce>,
+        ) -> Stream<(i32, char), Process<'a>, Unbounded, TotalOrder, ExactlyOnce> {
+            left.cross_product(right)
+        }
+
+        #[expect(dead_code, reason = "compile-time type test")]
+        fn cross_product_bounded_with_bounded_preserves_order<'a>(
+            left: Stream<i32, Process<'a>, Bounded, TotalOrder, ExactlyOnce>,
+            right: Stream<char, Process<'a>, Bounded, TotalOrder, ExactlyOnce>,
+        ) -> Stream<(i32, char), Process<'a>, Bounded, TotalOrder, ExactlyOnce> {
+            left.cross_product(right)
+        }
+
+        #[expect(dead_code, reason = "compile-time type test")]
+        fn cross_product_unbounded_with_unbounded_is_no_order<'a>(
+            left: Stream<i32, Process<'a>, Unbounded, TotalOrder, ExactlyOnce>,
+            right: Stream<char, Process<'a>, Unbounded, TotalOrder, ExactlyOnce>,
+        ) -> Stream<(i32, char), Process<'a>, Unbounded, NoOrder, ExactlyOnce> {
+            left.cross_product(right)
+        }
+    } // mod join_ordering_type_tests
+
+    // === Runtime correctness tests for bounded join/cross_product ===
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn cross_product_mixed_boundedness_correctness() {
+        use stageleft::q;
+
+        use crate::compile::builder::FlowBuilder;
+        use crate::nondet::nondet;
+
+        let mut flow = FlowBuilder::new();
+        let process = flow.process::<()>();
+        let tick = process.tick();
+
+        let left = process.source_iter(q!(vec![1, 2]));
+        let right = process
+            .source_iter(q!(vec!['a', 'b']))
+            .batch(&tick, nondet!(/** test */))
+            .all_ticks();
+
+        let out = left.cross_product(right).sim_output();
+
+        flow.sim().exhaustive(async || {
+            out.assert_yields_only_unordered(vec![(1, 'a'), (1, 'b'), (2, 'a'), (2, 'b')])
+                .await;
+        });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn join_mixed_boundedness_correctness() {
+        use stageleft::q;
+
+        use crate::compile::builder::FlowBuilder;
+        use crate::nondet::nondet;
+
+        let mut flow = FlowBuilder::new();
+        let process = flow.process::<()>();
+        let tick = process.tick();
+
+        let left = process.source_iter(q!(vec![(1, 'a'), (2, 'b')]));
+        let right = process
+            .source_iter(q!(vec![(1, 'x'), (2, 'y')]))
+            .batch(&tick, nondet!(/** test */))
+            .all_ticks();
+
+        let out = left.join(right).sim_output();
+
+        flow.sim().exhaustive(async || {
+            out.assert_yields_only_unordered(vec![(1, ('a', 'x')), (2, ('b', 'y'))])
+                .await;
+        });
     }
 }

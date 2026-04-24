@@ -119,14 +119,28 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
                 let #ident = {
                     #accum_build
 
+                    // Bound K/V types explicitly to prevent inference failures across subgraph handoffs.
                     #[allow(clippy::clone_on_copy, noop_method_call)]
-                    #root::dfir_pipes::pull::Pull::flat_map(#input_probe, |(k, v_probe)| {
-                        let matches: ::std::vec::Vec<_> = #build_borrow
-                            .get(&k)
-                            .map(|vals| vals.iter().map(|v_build| (k.clone(), (v_probe.clone(), v_build.clone()))).collect())
-                            .unwrap_or_default();
-                        matches.into_iter()
-                    })
+                    #[inline(always)]
+                    fn probe_join<'a, K, V1, V2, I>(
+                        probe: I,
+                        build_state: &'a #root::rustc_hash::FxHashMap<K, ::std::vec::Vec<V1>>,
+                    ) -> impl 'a + #root::dfir_pipes::pull::Pull<Item = (K, (V2, V1)), Meta = ()>
+                    where
+                        K: ::std::cmp::Eq + ::std::hash::Hash + ::std::clone::Clone + 'a,
+                        V1: ::std::clone::Clone + 'a,
+                        V2: ::std::clone::Clone + 'a,
+                        I: 'a + #root::dfir_pipes::pull::Pull<Item = (K, V2), Meta = ()>,
+                    {
+                        #root::dfir_pipes::pull::Pull::flat_map(probe, move |(k, v_probe)| {
+                            build_state
+                                .get(&k)
+                                .map(|vals| vals.iter().map(|v_build| (k.clone(), (v_probe.clone(), v_build.clone()))).collect::<::std::vec::Vec<_>>())
+                                .unwrap_or_default()
+                                .into_iter()
+                        })
+                    }
+                    probe_join(#input_probe, &*#build_borrow)
                 };
             }
         } else {
