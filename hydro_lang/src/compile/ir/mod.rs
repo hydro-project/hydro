@@ -272,14 +272,6 @@ pub enum DebugInstantiate {
     Finalized(Box<DebugInstantiateFinalized>),
 }
 
-#[cfg_attr(
-    not(feature = "build"),
-    expect(
-        dead_code,
-        reason = "sink, source unused without `feature = \"build\"`."
-    )
-)]
-
 impl serde::Serialize for DebugInstantiate {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self {
@@ -289,6 +281,13 @@ impl serde::Serialize for DebugInstantiate {
     }
 }
 
+#[cfg_attr(
+    not(feature = "build"),
+    expect(
+        dead_code,
+        reason = "sink, source unused without `feature = \"build\"`."
+    )
+)]
 pub struct DebugInstantiateFinalized {
     sink: syn::Expr,
     source: syn::Expr,
@@ -358,6 +357,12 @@ pub enum HydroSource {
 }
 
 impl serde::Serialize for HydroSource {
+    /// Serializes the data-source origin as a human-readable string.
+    ///
+    /// `HydroSource` describes *where* a `Source` node gets its data (e.g. a
+    /// Rust iterator, a network stream, cluster membership, etc.) — not the
+    /// live-collection type.  Each variant is serialized as a short tag,
+    /// optionally including the inner expression or identifier.
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self {
             HydroSource::Stream(e) => serializer.serialize_str(&format!("stream({})", e)),
@@ -366,7 +371,9 @@ impl serde::Serialize for HydroSource {
             HydroSource::Spin() => serializer.serialize_str("spin"),
             HydroSource::ClusterMembers(_, _) => serializer.serialize_str("cluster_members"),
             HydroSource::Embedded(id) => serializer.serialize_str(&format!("embedded({})", id)),
-            HydroSource::EmbeddedSingleton(id) => serializer.serialize_str(&format!("embedded_singleton({})", id)),
+            HydroSource::EmbeddedSingleton(id) => {
+                serializer.serialize_str(&format!("embedded_singleton({})", id))
+            }
         }
     }
 }
@@ -1643,6 +1650,11 @@ pub fn deep_clone(ir: &[HydroRoot]) -> Vec<HydroRoot> {
 type PrintedTees = RefCell<Option<(usize, HashMap<*const RefCell<HydroNode>, usize>)>>;
 thread_local! {
     static PRINTED_TEES: PrintedTees = const { RefCell::new(None) };
+    /// Tracks shared nodes already serialized so that `SharedNode::serialize`
+    /// emits the full subtree only once and uses a `"<shared N>"` back-reference
+    /// on subsequent encounters, preventing infinite loops.
+    static SERIALIZED_SHARED: PrintedTees
+        = const { RefCell::new(None) };
 }
 
 pub fn dbg_dedup_tee<T>(f: impl FnOnce() -> T) -> T {
@@ -1660,12 +1672,61 @@ pub fn dbg_dedup_tee<T>(f: impl FnOnce() -> T) -> T {
     })
 }
 
+/// Runs `f` with a fresh shared-node deduplication scope for serialization.
+/// Any `SharedNode` serialized inside `f` will be tracked; the first occurrence
+/// emits the full subtree while later occurrences emit a `"<shared N>"` back-reference.
+/// The tracking state is cleared when `f` returns.
+pub fn serialize_dedup_shared<T>(f: impl FnOnce() -> T) -> T {
+    SERIALIZED_SHARED.with(|cell| {
+        let mut guard = cell.borrow_mut();
+        *guard = Some((0, HashMap::new()));
+        drop(guard);
+
+        let ret = f();
+
+        let mut guard = cell.borrow_mut();
+        *guard = None;
+
+        ret
+    })
+}
+
 pub struct SharedNode(pub Rc<RefCell<HydroNode>>);
 
 impl serde::Serialize for SharedNode {
+    /// Multiple `SharedNode`s can point to the same underlying `HydroNode` (via
+    /// `Tee` / `Partition`).  A naïve recursive serialization would revisit the
+    /// same subtree every time and, if the graph ever contains a cycle, loop
+    /// forever.
+    ///
+    /// We keep a thread-local map (`SERIALIZED_SHARED`) from raw `Rc` pointer →
+    /// integer id.  The first time we see a pointer we assign it the next id and
+    /// emit the full subtree as `{"$shared": <id>, "node": …}`.  Every later
+    /// encounter of the same pointer emits only `"<shared <id>>"`, cutting the
+    /// recursion.
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        // Serialize the inner node directly (follows the Rc<RefCell<>>)
-        self.0.borrow().serialize(serializer)
+        SERIALIZED_SHARED.with(|cell| {
+            let mut guard = cell.borrow_mut();
+            // (next_id, pointer → assigned_id)
+            let state = guard.get_or_insert_with(|| (0, HashMap::new()));
+            let ptr = self.0.as_ptr() as *const RefCell<HydroNode>;
+
+            if let Some(&id) = state.1.get(&ptr) {
+                drop(guard);
+                serializer.serialize_str(&format!("<shared {}>", id))
+            } else {
+                let id = state.0;
+                state.0 += 1;
+                state.1.insert(ptr, id);
+                drop(guard);
+
+                use serde::ser::SerializeMap;
+                let mut map = serializer.serialize_map(Some(2))?;
+                map.serialize_entry("$shared", &id)?;
+                map.serialize_entry("node", &*self.0.borrow())?;
+                map.end()
+            }
+        })
     }
 }
 
