@@ -1291,7 +1291,7 @@ impl HydroNode {
                 right,
                 metadata,
             }
-            | HydroNode::JoinBounded {
+            | HydroNode::JoinHalf {
                 left,
                 right,
                 metadata,

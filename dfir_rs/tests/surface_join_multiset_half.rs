@@ -2,6 +2,50 @@ use dfir_rs::dfir_syntax;
 use dfir_rs::util::{collect_ready, unbounded_channel};
 use multiplatform_test::multiplatform_test;
 
+/// Asserts that keys appear in the expected probe order, but allows values
+/// for each key to appear in any order. This tests the ordering property
+/// (probe order preserved) without over-constraining build-side value order.
+fn assert_key_order_values_unordered<
+    K: Eq + std::fmt::Debug + Clone,
+    V: Ord + std::fmt::Debug + Clone,
+>(
+    actual: &[(K, V)],
+    expected_keys_in_order: &[K],
+    expected_values_per_key: &[(K, Vec<V>)],
+) {
+    // Check keys appear in expected order
+    let actual_keys: Vec<&K> = actual.iter().map(|(k, _)| k).collect();
+    let mut expected_key_iter = expected_keys_in_order.iter();
+    let mut cur_expected = expected_key_iter.next();
+    for actual_key in &actual_keys {
+        if cur_expected.is_some_and(|k| k != *actual_key) {
+            cur_expected = expected_key_iter.next();
+            assert_eq!(
+                cur_expected,
+                Some(*actual_key),
+                "key order mismatch: got {actual_keys:?}, expected order {expected_keys_in_order:?}"
+            );
+        }
+    }
+
+    // Check values per key (unordered)
+    for (key, expected_vals) in expected_values_per_key {
+        let mut actual_vals: Vec<&V> = actual
+            .iter()
+            .filter(|(k, _)| k == key)
+            .map(|(_, v)| v)
+            .collect();
+        actual_vals.sort();
+        let mut sorted_expected = expected_vals.clone();
+        sorted_expected.sort();
+        assert_eq!(
+            actual_vals,
+            sorted_expected.iter().collect::<Vec<_>>(),
+            "values mismatch for key {key:?}"
+        );
+    }
+}
+
 #[multiplatform_test]
 pub fn test_join_multiset_half_basic() {
     let (build_send, build_recv) = unbounded_channel::<(&str, char)>();
@@ -22,11 +66,12 @@ pub fn test_join_multiset_half_basic() {
     probe_send.send(("cat", 3)).unwrap();
 
     flow.run_tick_sync();
-    let mut out: Vec<_> = collect_ready(&mut out_recv);
-    out.sort();
-    assert_eq!(
-        out,
-        vec![("cat", (1, 'x')), ("cat", (3, 'x')), ("dog", (2, 'y'))]
+    let out: Vec<_> = collect_ready(&mut out_recv);
+    // Keys must follow probe order: cat, dog, cat
+    assert_key_order_values_unordered(
+        &out,
+        &["cat", "dog", "cat"],
+        &[("cat", vec![(1, 'x'), (3, 'x')]), ("dog", vec![(2, 'y')])],
     );
 }
 
@@ -91,9 +136,9 @@ pub fn test_join_multiset_half_multiple_build_values() {
     probe_send.send((1, 10)).unwrap();
 
     flow.run_tick_sync();
-    let mut out: Vec<_> = collect_ready(&mut out_recv);
-    out.sort();
-    assert_eq!(out, vec![(1, (10, 'a')), (1, (10, 'b'))]);
+    let out: Vec<_> = collect_ready(&mut out_recv);
+    // Single probe key, but build-side values can appear in any order
+    assert_key_order_values_unordered(&out, &[1], &[(1, vec![(10, 'a'), (10, 'b')])]);
 }
 
 #[multiplatform_test]
@@ -111,16 +156,14 @@ pub fn test_join_multiset_half_tick_static() {
     build_send.send((1, 'a')).unwrap();
     probe_send.send((1, 10)).unwrap();
     flow.run_tick_sync();
-    let mut out: Vec<_> = collect_ready(&mut out_recv);
-    out.sort();
-    assert_eq!(out, vec![(1, (10, 'a'))]);
+    let out: Vec<_> = collect_ready(&mut out_recv);
+    assert_key_order_values_unordered(&out, &[1], &[(1, vec![(10, 'a')])]);
 
     // Tick 2: build side persists ('static), new probe items
     probe_send.send((1, 20)).unwrap();
     flow.run_tick_sync();
-    let mut out: Vec<_> = collect_ready(&mut out_recv);
-    out.sort();
-    assert_eq!(out, vec![(1, (20, 'a'))]);
+    let out: Vec<_> = collect_ready(&mut out_recv);
+    assert_key_order_values_unordered(&out, &[1], &[(1, vec![(20, 'a')])]);
 }
 
 #[multiplatform_test]
