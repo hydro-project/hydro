@@ -850,12 +850,6 @@ impl DfirGraph {
         prefix: TokenStream,
         diagnostics: &mut Diagnostics,
     ) -> Result<TokenStream, Diagnostics> {
-        // Convert a slotmap key to its FFI representation for use in generated code.
-        // The FFI value can reconstruct the key at runtime via `KeyData::from_ffi`.
-        fn slotmap_key_ffi(key: impl Key) -> u64 {
-            key.data().as_ffi()
-        }
-
         let df = Ident::new(GRAPH, Span::call_site());
         let context = Ident::new(CONTEXT, Span::call_site());
 
@@ -996,7 +990,7 @@ impl DfirGraph {
         let mut subgraph_blocks = Vec::new();
         {
             for &(subgraph_id, subgraph_nodes) in all_subgraphs.iter() {
-                let sg_metrics_ffi = slotmap_key_ffi(subgraph_id);
+                let sg_metrics_ffi = subgraph_id.data().as_ffi();
                 let (recv_hoffs, send_hoffs) = &subgraph_handoffs[subgraph_id];
 
                 // Generate buffer ident helpers for this subgraph's handoffs.
@@ -1027,7 +1021,7 @@ impl DfirGraph {
                     .zip(recv_buf_idents.iter())
                     .zip(recv_hoffs.iter())
                     .map(|((port_ident, buf_ident), &hoff_id)| {
-                        let hoff_ffi = slotmap_key_ffi(hoff_id);
+                        let hoff_ffi = hoff_id.data().as_ffi();
                         // Use call_site span for internal identifiers to avoid
                         // hygiene issues when invoked through declarative macros
                         // (e.g. dfir_expect_warnings!). TODO(#2781): define these once.
@@ -1450,7 +1444,7 @@ impl DfirGraph {
                     .iter()
                     .zip(send_buf_idents.iter())
                     .map(|(&hoff_id, buf_ident)| {
-                        let hoff_ffi = slotmap_key_ffi(hoff_id);
+                        let hoff_ffi = hoff_id.data().as_ffi();
                         quote! {
                             __dfir_metrics.handoffs[
                                 #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
@@ -1508,7 +1502,7 @@ impl DfirGraph {
         // Generate metrics initialization: one entry per handoff and per subgraph.
         let metrics_init_code = {
             let handoff_inits = handoff_nodes.iter().map(|&(node_id, _)| {
-                let ffi = slotmap_key_ffi(node_id);
+                let ffi = node_id.data().as_ffi();
                 quote! {
                     dfir_metrics.handoffs.insert(
                         #root::slotmap::KeyData::from_ffi(#ffi).into(),
@@ -1517,7 +1511,7 @@ impl DfirGraph {
                 }
             });
             let subgraph_inits = all_subgraphs.iter().map(|&(sg_id, _)| {
-                let ffi = slotmap_key_ffi(sg_id);
+                let ffi = sg_id.data().as_ffi();
                 quote! {
                     dfir_metrics.subgraphs.insert(
                         #root::slotmap::KeyData::from_ffi(#ffi).into(),
