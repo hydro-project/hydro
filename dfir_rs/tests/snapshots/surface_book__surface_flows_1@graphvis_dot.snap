@@ -25,7 +25,7 @@ digraph {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_1v1\nstratum 0"
+        label = "sg_1v1"
         subgraph sg_1v1_var_my_tee {
             cluster=true
             label="var my_tee"
@@ -37,7 +37,7 @@ digraph {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_2v1\nstratum 0"
+        label = "sg_2v1"
         n3v1
         n4v1
         subgraph sg_2v1_var_my_union {

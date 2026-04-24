@@ -464,6 +464,24 @@ pub fn build_dfir_code(
     };
 
     eliminate_extra_unions_tees(&mut flat_graph);
+
+    // Reject `loop { }` blocks (not yet supported in inline codegen).
+    // TODO(cleanup): find a better home for this check — ideally inside `partition_graph` once
+    // it supports returning multiple diagnostics.
+    for (_loop_id, nodes) in flat_graph.loops() {
+        let span = nodes
+            .first()
+            .map_or_else(Span::call_site, |&n| flat_graph.node(n).span());
+        diagnostics.push(Diagnostic::spanned(
+            span,
+            Level::Error,
+            "`loop { }` blocks are not (yet) supported in `dfir_syntax!`.",
+        ));
+    }
+    if diagnostics.has_error() {
+        return Err(diagnostics);
+    }
+
     let partitioned_graph = match partition_graph(flat_graph) {
         Ok(partitioned_graph) => partitioned_graph,
         Err(d) => {
@@ -471,12 +489,6 @@ pub fn build_dfir_code(
             return Err(diagnostics);
         }
     };
-
-    // Inline-specific validation: reject unsupported features.
-    validate_graph(&partitioned_graph, &mut diagnostics);
-    if diagnostics.has_error() {
-        return Err(diagnostics);
-    }
 
     let code =
         partitioned_graph.as_code(root, true, quote::quote! { #( #uses )* }, &mut diagnostics)?;
@@ -486,93 +498,6 @@ pub fn build_dfir_code(
         code,
         diagnostics,
     })
-}
-
-/// Validates that a partitioned graph is compatible with the inline codegen path.
-/// Rejects: (1) `loop {}` blocks, (2) intra-tick cycles.
-///
-/// TODO(cleanup): This validation is largely redundant with work already done inside
-/// `partition_graph` / `find_subgraph_strata` in `flat_to_partitioned.rs`. See #2794.
-/// `find_subgraph_strata` builds a subgraph-level directed graph (excluding `Tick`/`TickLazy`
-/// back-edges) and runs `topo_sort_scc` on it to assign strata. The intra-tick cycle check
-/// here (part 2) rebuilds a nearly identical subgraph graph and runs its own `topo_sort`.
-///
-/// Both passes exist because the old scheduled DFIR runtime *allowed* intra-tick fixpoint
-/// cycles — stratification would place them in the same stratum and the runtime would iterate
-/// them to convergence. Now that the graph must be a DAG within a tick, stratification is
-/// over-general: it collapses SCCs and assigns strata when a simple topo sort suffices.
-///
-/// The plan is to replace `find_subgraph_strata` with a plain topological sort that rejects
-/// any intra-tick cycle as an error, which would subsume the cycle check here. At that point
-/// this function can be removed entirely (the `loop {}` rejection in part 1 could move into
-/// `partition_graph` or the caller). All callers of `partition_graph` — including the
-/// `hydro_lang` compile and sim paths — would then get cycle validation automatically.
-fn validate_graph(graph: &DfirGraph, diagnostics: &mut Diagnostics) {
-    // 1. Reject `loop { }` blocks.
-    if let Some((_loop_id, nodes)) = graph.loops().next() {
-        let span = nodes
-            .first()
-            .map_or_else(Span::call_site, |&n| graph.node(n).span());
-        diagnostics.push(Diagnostic::spanned(
-            span,
-            Level::Error,
-            "`loop { }` blocks are not (yet) supported in `dfir_syntax!`.",
-        ));
-    }
-
-    // 2. Reject intra-tick cycles.
-    // Build a subgraph-level directed graph, excluding edges where succ_stratum < pred_stratum.
-    // Stratification (find_subgraph_strata) guarantees that strata are non-decreasing along
-    // all non-tick edges: regular edges get non-decreasing strata via topo sort, Stratum
-    // (negative) edges get an increment, and Tick/TickLazy edges are excluded from
-    // stratification entirely and re-introduced at extra_stratum. So succ_stratum < pred_stratum
-    // can only occur for defer_tick/defer_tick_lazy back-edges, which are cross-tick by design.
-    {
-        let predecessors = |sg_id: GraphSubgraphId| -> Vec<GraphSubgraphId> {
-            let mut recv_hoffs = Vec::new();
-            for &node_id in graph.subgraph(sg_id) {
-                for (_edge, pred_id) in graph.node_predecessors(node_id) {
-                    if matches!(graph.node(pred_id), GraphNode::Handoff { .. }) {
-                        recv_hoffs.push(pred_id);
-                    }
-                }
-            }
-            let mut preds = Vec::new();
-            for hoff_id in recv_hoffs {
-                for (_edge, pred_id) in graph.node_predecessors(hoff_id) {
-                    let pred_sg = graph
-                        .node_subgraph(pred_id)
-                        .expect("bug: handoff predecessor must belong to a subgraph");
-                    let pred_stratum = graph
-                        .subgraph_stratum(pred_sg)
-                        .expect("bug: subgraph must have a stratum assigned");
-                    let succ_stratum = graph
-                        .subgraph_stratum(sg_id)
-                        .expect("bug: subgraph must have a stratum assigned");
-                    if succ_stratum < pred_stratum {
-                        continue;
-                    }
-                    preds.push(pred_sg);
-                }
-            }
-            preds
-        };
-
-        let topo_result = graph_algorithms::topo_sort(graph.subgraph_ids(), predecessors);
-        if let Err(cycle) = topo_result {
-            // Find a representative span from the first subgraph in the cycle.
-            let span = cycle
-                .first()
-                .and_then(|&sg_id| graph.subgraph(sg_id).first().copied())
-                .map(|n| graph.node(n).span())
-                .unwrap_or_else(Span::call_site);
-            diagnostics.push(Diagnostic::spanned(
-                span,
-                Level::Error,
-                "Cyclical dataflow within a tick is not supported in `dfir_syntax!`. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks.",
-            ));
-        }
-    }
 }
 
 /// Changes all of token's spans to `span`, recursing into groups.

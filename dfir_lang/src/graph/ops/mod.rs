@@ -21,7 +21,7 @@ use crate::diagnostic::{Diagnostic, Diagnostics, Level};
 use crate::parse::{Operator, PortIndex};
 
 /// The delay (soft barrier) type, for each input to an operator if needed.
-#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum DelayType {
     /// Input must be collected over the preceding stratum.
     Stratum,
@@ -323,7 +323,6 @@ declare_ops![
     union::UNION,
     multiset_delta::MULTISET_DELTA,
     next_iteration::NEXT_ITERATION,
-    next_stratum::NEXT_STRATUM,
     defer_signal::DEFER_SIGNAL,
     defer_tick::DEFER_TICK,
     defer_tick_lazy::DEFER_TICK_LAZY,

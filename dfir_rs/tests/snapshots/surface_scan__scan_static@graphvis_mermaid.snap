@@ -13,7 +13,7 @@ linkStyle default stroke:#aaa
 3v1[/"(3v1) <code>for_each(|v| result_send.send(v).unwrap())</code>"\]:::pushClass
 2v1-->3v1
 1v1-->2v1
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
+subgraph sg_1v1 ["sg_1v1"]
     1v1
     2v1
     3v1

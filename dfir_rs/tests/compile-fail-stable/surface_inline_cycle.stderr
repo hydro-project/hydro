@@ -1,4 +1,4 @@
-error: Cyclical dataflow within a tick is not supported in `dfir_syntax!`. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks.
+error: Cyclical dataflow within a tick is not supported. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks.
  --> tests/compile-fail-stable/surface_inline_cycle.rs:3:9
   |
 3 |         source_iter(0..5_i32) -> my_union;
