@@ -113,7 +113,6 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| Some(DelayType::Stratum),
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
                    op_span,
                    work_fn_async,
                    ident,
@@ -170,23 +169,12 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
             };
         };
 
-        let write_iterator_after =
-            if persistences[0] == Persistence::Static || persistences[1] == Persistence::Static {
-                quote_spanned! {op_span=>
-                    // TODO: Probably only need to schedule if #*_borrow.len() > 0?
-                    
-                }
-            } else {
-                quote_spanned! {op_span=>}
-            };
-
         Ok(OperatorWriteOutput {
             write_prologue: quote_spanned! {op_span=>
                 #lhs_prologue
                 #rhs_prologue
             },
             write_iterator,
-            write_iterator_after,
             write_tick_end: quote_spanned! {op_span=>
                 #lhs_tick_end
                 #rhs_tick_end
