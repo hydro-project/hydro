@@ -135,7 +135,7 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
         };
 
         let write_iterator_after = quote_spanned! {op_span=>
-            #context.schedule_subgraph(false);
+            
         };
 
         Ok(OperatorWriteOutput {

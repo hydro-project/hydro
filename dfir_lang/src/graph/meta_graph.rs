@@ -1578,13 +1578,9 @@ impl DfirGraph {
                     #( #subgraph_blocks )*
 
                     // For non-lazy defer_tick: if any deferred buffer has data,
-                    // signal that another tick should run (sets can_start_tick).
-                    // Inline DFIR doesn't dynamically schedule subgraph IDs, so the
-                    // subgraph ID here is a meaningless placeholder.
+                    // signal that another tick should run.
                     if false #( || !#defer_tick_buf_idents.is_empty() )* {
-                        #df.schedule_subgraph(
-                            true,
-                        );
+                        #df.schedule_subgraph(true);
                     }
 
                     // End-of-tick state reset (e.g. 'tick persistence).

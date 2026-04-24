@@ -131,7 +131,7 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
 
         let write_iterator_after = if Persistence::Static == persistence {
             quote_spanned! {op_span=>
-                #context.schedule_subgraph(false);
+                
             }
         } else {
             Default::default()
