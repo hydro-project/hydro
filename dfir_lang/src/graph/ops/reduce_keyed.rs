@@ -197,7 +197,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
             Persistence::None | Persistence::Tick | Persistence::Loop => Default::default(),
             Persistence::Static | Persistence::Mutable => quote_spanned! {op_span=>
                 // Reschedule the subgraph lazily to ensure replay on later ticks.
-                #context.schedule_subgraph(#context.current_subgraph(), false);
+                #context.schedule_subgraph(false);
             },
         };
 

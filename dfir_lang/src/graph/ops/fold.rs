@@ -141,7 +141,7 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
 
         let write_iterator_after = if let Persistence::Static | Persistence::Tick = persistence {
             quote_spanned! {op_span=>
-                #context.schedule_subgraph(#context.current_subgraph(), false);
+                #context.schedule_subgraph(false);
             }
         } else {
             Default::default()

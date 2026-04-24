@@ -214,7 +214,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
             if persistences[0] == Persistence::Static || persistences[1] == Persistence::Static {
                 quote_spanned! {op_span=>
                     // TODO: Probably only need to schedule if #*_borrow.len() > 0?
-                    #context.schedule_subgraph(#context.current_subgraph(), false);
+                    #context.schedule_subgraph(false);
                 }
             } else {
                 quote_spanned! {op_span=>}

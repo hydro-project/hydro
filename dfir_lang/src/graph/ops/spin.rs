@@ -46,7 +46,7 @@ pub const SPIN: OperatorConstraints = OperatorConstraints {
             let #ident = #root::dfir_pipes::pull::once(());
         };
         let write_iterator_after = quote_spanned! {op_span=>
-            #context.schedule_subgraph(#context.current_subgraph(), true);
+            #context.schedule_subgraph(true);
         };
         Ok(OperatorWriteOutput {
             write_iterator,

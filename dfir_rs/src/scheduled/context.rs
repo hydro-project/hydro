@@ -20,7 +20,7 @@ use dfir_lang::graph::DfirGraph;
 
 use super::metrics::{DfirMetrics, DfirMetricsIntervals};
 use super::state::StateHandle;
-use super::{StateLifespan, StateTag, SubgraphId};
+use super::{StateLifespan, StateTag};
 use crate::scheduled::ticks::TickInstant;
 use crate::util::slot_vec::SlotVec;
 
@@ -192,15 +192,8 @@ impl Context {
         &self.metrics
     }
 
-    /// No-op: inline mode has no subgraph scheduling.
-    pub fn current_subgraph(&self) -> SubgraphId {
-        SubgraphId::from_raw(0)
-    }
-
-    /// In inline mode, every subgraph runs unconditionally each tick, so the `sg_id`
-    /// parameter is ignored. Only `is_external` matters: when `true`, it signals that
-    /// external data has arrived and a new tick should be started.
-    pub fn schedule_subgraph(&self, _sg_id: SubgraphId, is_external: bool) {
+    /// Signals that external data has arrived and a new tick should be started.
+    pub fn schedule_subgraph(&self, is_external: bool) {
         if is_external {
             self.wake_state.wake_by_ref();
         }
