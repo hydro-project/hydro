@@ -267,6 +267,13 @@ impl serde::Serialize for DebugType {
     }
 }
 
+fn serialize_ident<S: serde::Serializer>(
+    ident: &syn::Ident,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(&ident.to_string())
+}
+
 pub enum DebugInstantiate {
     Building,
     Finalized(Box<DebugInstantiateFinalized>),
@@ -747,7 +754,7 @@ pub enum HydroRoot {
         op_metadata: HydroIrOpMetadata,
     },
     EmbeddedOutput {
-        #[serde(skip)]
+        #[serde(serialize_with = "serialize_ident")]
         ident: syn::Ident,
         input: Box<HydroNode>,
         op_metadata: HydroIrOpMetadata,
@@ -1674,21 +1681,35 @@ pub fn dbg_dedup_tee<T>(f: impl FnOnce() -> T) -> T {
 
 /// Runs `f` with a fresh shared-node deduplication scope for serialization.
 /// Any `SharedNode` serialized inside `f` will be tracked; the first occurrence
-/// emits the full subtree while later occurrences emit a `"<shared N>"` back-reference.
-/// The tracking state is cleared when `f` returns.
+/// emits the full subtree while later occurrences emit a `{"$shared_ref": id}`
+/// back-reference.  The tracking state is restored when `f` returns or panics.
 pub fn serialize_dedup_shared<T>(f: impl FnOnce() -> T) -> T {
-    SERIALIZED_SHARED.with(|cell| {
-        let mut guard = cell.borrow_mut();
-        *guard = Some((0, HashMap::new()));
-        drop(guard);
+    let _guard = SerializedSharedGuard::enter();
+    f()
+}
 
-        let ret = f();
+/// RAII guard that saves/restores the `SERIALIZED_SHARED` thread-local,
+/// making `serialize_dedup_shared` re-entrant and panic-safe.
+struct SerializedSharedGuard {
+    previous: Option<(usize, HashMap<*const RefCell<HydroNode>, usize>)>,
+}
 
-        let mut guard = cell.borrow_mut();
-        *guard = None;
+impl SerializedSharedGuard {
+    fn enter() -> Self {
+        let previous = SERIALIZED_SHARED.with(|cell| {
+            let mut guard = cell.borrow_mut();
+            guard.replace((0, HashMap::new()))
+        });
+        Self { previous }
+    }
+}
 
-        ret
-    })
+impl Drop for SerializedSharedGuard {
+    fn drop(&mut self) {
+        SERIALIZED_SHARED.with(|cell| {
+            *cell.borrow_mut() = self.previous.take();
+        });
+    }
 }
 
 pub struct SharedNode(pub Rc<RefCell<HydroNode>>);
@@ -1702,18 +1723,25 @@ impl serde::Serialize for SharedNode {
     /// We keep a thread-local map (`SERIALIZED_SHARED`) from raw `Rc` pointer →
     /// integer id.  The first time we see a pointer we assign it the next id and
     /// emit the full subtree as `{"$shared": <id>, "node": …}`.  Every later
-    /// encounter of the same pointer emits only `"<shared <id>>"`, cutting the
-    /// recursion.
+    /// encounter of the same pointer emits `{"$shared_ref": <id>}`, cutting the
+    /// recursion.  Requires an active `serialize_dedup_shared` scope.
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         SERIALIZED_SHARED.with(|cell| {
             let mut guard = cell.borrow_mut();
             // (next_id, pointer → assigned_id)
-            let state = guard.get_or_insert_with(|| (0, HashMap::new()));
+            let state = guard.as_mut().ok_or_else(|| {
+                serde::ser::Error::custom(
+                    "SharedNode serialization requires an active serialize_dedup_shared scope",
+                )
+            })?;
             let ptr = self.0.as_ptr() as *const RefCell<HydroNode>;
 
             if let Some(&id) = state.1.get(&ptr) {
                 drop(guard);
-                serializer.serialize_str(&format!("<shared {}>", id))
+                use serde::ser::SerializeMap;
+                let mut map = serializer.serialize_map(Some(1))?;
+                map.serialize_entry("$shared_ref", &id)?;
+                map.end()
             } else {
                 let id = state.0;
                 state.0 += 1;
@@ -4637,6 +4665,9 @@ where
     };
     (sink, source, connect_fn)
 }
+
+#[cfg(test)]
+mod serde_test;
 
 #[cfg(test)]
 mod test {

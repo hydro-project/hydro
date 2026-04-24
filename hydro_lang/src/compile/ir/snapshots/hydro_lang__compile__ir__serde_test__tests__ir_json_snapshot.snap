@@ -1,0 +1,142 @@
+---
+source: hydro_lang/src/compile/ir/serde_test.rs
+expression: json
+---
+[
+  {
+    "ForEach": {
+      "f": "q!(| v | println ! (\"{}\" , v))",
+      "input": {
+        "Tee": {
+          "inner": {
+            "$shared": 0,
+            "node": {
+              "Map": {
+                "f": "q!(| x | x * 2)",
+                "input": {
+                  "Source": {
+                    "source": "iter(q!(stageleft :: runtime_support :: type_hint :: < std :: ops :: Range < i32 > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: compile :: ir :: serde_test :: tests :: * ; 0 .. 10 })))",
+                    "metadata": {
+                      "location_id": {
+                        "Process": {
+                          "idx": 1,
+                          "version": 1
+                        }
+                      },
+                      "collection_kind": {
+                        "Stream": {
+                          "bound": "Bounded",
+                          "order": "TotalOrder",
+                          "retry": "ExactlyOnce",
+                          "element_type": "i32"
+                        }
+                      },
+                      "cardinality": null,
+                      "tag": null,
+                      "op": {
+                        "cpu_usage": null,
+                        "network_recv_cpu_usage": null,
+                        "id": null
+                      }
+                    }
+                  }
+                },
+                "metadata": {
+                  "location_id": {
+                    "Process": {
+                      "idx": 1,
+                      "version": 1
+                    }
+                  },
+                  "collection_kind": {
+                    "Stream": {
+                      "bound": "Bounded",
+                      "order": "TotalOrder",
+                      "retry": "ExactlyOnce",
+                      "element_type": "i32"
+                    }
+                  },
+                  "cardinality": null,
+                  "tag": null,
+                  "op": {
+                    "cpu_usage": null,
+                    "network_recv_cpu_usage": null,
+                    "id": null
+                  }
+                }
+              }
+            }
+          },
+          "metadata": {
+            "location_id": {
+              "Process": {
+                "idx": 1,
+                "version": 1
+              }
+            },
+            "collection_kind": {
+              "Stream": {
+                "bound": "Bounded",
+                "order": "TotalOrder",
+                "retry": "ExactlyOnce",
+                "element_type": "i32"
+              }
+            },
+            "cardinality": null,
+            "tag": null,
+            "op": {
+              "cpu_usage": null,
+              "network_recv_cpu_usage": null,
+              "id": null
+            }
+          }
+        }
+      },
+      "op_metadata": {
+        "cpu_usage": null,
+        "network_recv_cpu_usage": null,
+        "id": null
+      }
+    }
+  },
+  {
+    "ForEach": {
+      "f": "q!(| v | eprintln ! (\"{}\" , v))",
+      "input": {
+        "Tee": {
+          "inner": {
+            "$shared_ref": 0
+          },
+          "metadata": {
+            "location_id": {
+              "Process": {
+                "idx": 1,
+                "version": 1
+              }
+            },
+            "collection_kind": {
+              "Stream": {
+                "bound": "Bounded",
+                "order": "TotalOrder",
+                "retry": "ExactlyOnce",
+                "element_type": "i32"
+              }
+            },
+            "cardinality": null,
+            "tag": null,
+            "op": {
+              "cpu_usage": null,
+              "network_recv_cpu_usage": null,
+              "id": null
+            }
+          }
+        }
+      },
+      "op_metadata": {
+        "cpu_usage": null,
+        "network_recv_cpu_usage": null,
+        "id": null
+      }
+    }
+  }
+]
