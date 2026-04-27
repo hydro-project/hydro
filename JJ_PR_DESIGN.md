@@ -302,29 +302,96 @@ This is considered an invalid state, and should be logged, but it is up to the u
 
 ---
 
+## Implementation Details
+
+### Language & Dependencies
+
+Rust standalone binary. Key dependencies:
+- `sapling-renderdag` — graph rendering (same renderer jj uses)
+- `serde` / `serde_json` — parse jj and gh CLI output
+- `clap` — CLI argument parsing
+
+No jj library dependency. All jj interaction is via CLI.
+
+### Reading JJ State
+
+Single `jj log` call with a composite template producing JSONL (one JSON object per line):
+
+```
+jj log --no-graph -r '<revset>' -T '
+  "{\"commit\": " ++ json(self)
+  ++ ", \"local_bookmarks\": " ++ json(local_bookmarks)
+  ++ ", \"immutable\": " ++ json(self.immutable())
+  ++ "}\n"
+'
+```
+
+Each line yields:
+- `commit.commit_id`, `commit.change_id`, `commit.parents` (commit_id strings), `commit.description`
+- `local_bookmarks` — array of `{name, target}` for bookmarks pointing at this commit
+- `immutable` — boolean
+
+The revset should cover all mutable changes plus trunk as an anchor, e.g. `trunk().. | trunk()`.
+
+### Reading GitHub State
+
+Shell out to `gh pr list --json number,headRefName,baseRefName,state,isDraft,url` to get all open PRs in one call.
+
+### PR Trailer Handling
+
+The `PR: #1234` metadata is a git-style trailer in the commit description.
+
+**Reading:** Parse the `description` field from `json(self)` in Rust. jj's template engine has
+`trailers()` support but `Trailer` is not `Serialize`, so it cannot be included in JSON output.
+Parsing in Rust is trivial and keeps all trailer logic in one place.
+
+**Writing:** Read current description, update/append the `PR:` trailer in Rust, write back via
+`jj describe <rev> --stdin`.
+
+### Writing JJ State
+
+All mutations via CLI:
+- `jj describe <rev> --stdin` — update descriptions (PR trailers)
+- `jj bookmark set <name> -r <rev>` / `jj bookmark track <name>@origin` — manage bookmarks
+- `jj rebase -s <child> -d <parent> [-d <other_parent>]` — rebase after merges
+- `jj git push --bookmark <name>` — push PR bookmarks
+
+### Writing GitHub State
+
+All mutations via `gh` CLI:
+- `gh pr create --head <bookmark> --base <parent_bookmark_or_main>` — create PRs
+- `gh pr edit <number> --base <branch>` — update base branch
+- `gh pr ready <number>` / `gh pr ready <number> --undo` — toggle draft/ready
+
+---
+
 ## Implementation Plan
 
 ### Phase 1 (v1)
 
-- Parse `jj log --json`
-- Identify PR bookmarks
-- Extract PR numbers from descriptions (`PR: #123`)
-- Implement `jj pr log` (graph + PR annotations)
-- Implement `jj pr sync`:
-  - push PR bookmarks only
-  - load GitHub PR state
-  - validate mapping (error if missing PR metadata)
+- Scaffold Rust project with clap CLI (`jj-pr log`, `jj-pr sync`, `jj-pr create`)
+- Parse jj graph via `jj log` JSONL template
+- Parse GitHub PR state via `gh pr list --json`
+- Build in-memory PR DAG (bookmark → changes, parent PRs)
+- Extract/write PR trailers from descriptions
+- Implement `jj-pr log` — graph rendering via `sapling-renderdag`
+- Implement `jj-pr sync`:
+  - push changed PR bookmarks
   - update base branches (DAG-aware)
+  - validate mapping (error if missing PR metadata)
+- Implement `jj-pr create`:
+  - create bookmark, push, create GitHub PR with correct base branch
+  - stamp `PR: #N` trailer on all changes in the PR
 
 ---
 
 ### Phase 2
 
 - Draft/ready automation (based on parent PR merge state)
-- Merge detection via GitHub `gh` cli
+- Merge detection via `gh` CLI
 - Rebase children onto merged parents (`jj rebase -s`)
-- Improve DAG handling (non-linear stacks)
-- Optional graph export (e.g., mermaid)
+- Cleanup merged PRs (forget bookmark, abandon changes)
+- `--dry-run` and `--verbose` flags
 
 ---
 
