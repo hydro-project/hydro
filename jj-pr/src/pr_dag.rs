@@ -122,14 +122,19 @@ pub fn build(jj_state: &JjState, gh_prs: &[GhPr]) -> Result<PrDag> {
             .get(tip_entry.commit.commit_id.as_str()).is_none_or(|&n| n != pr_number)
         {
             eprintln!(
-                "warning: bookmark {bookmark} (PR #{pr_number}) tip commit {} has no matching PR trailer",
-                &tip_entry.commit.commit_id[..12]
+                "{}: bookmark {} tip commit {} has no matching PR trailer",
+                crate::style::warn("warning"),
+                crate::style::bookmark(bookmark),
+                crate::style::change_id(&tip_entry.commit.commit_id),
             );
         }
 
         if pr_commits.is_empty() {
             eprintln!(
-                "warning: PR #{pr_number} ({bookmark}) has no commits with matching PR trailer, skipping"
+                "{}: {} ({}) has no commits with matching PR trailer, skipping",
+                crate::style::warn("warning"),
+                crate::style::pr_num(pr_number, None),
+                crate::style::bookmark(bookmark),
             );
             continue;
         }
@@ -157,7 +162,7 @@ pub fn build(jj_state: &JjState, gh_prs: &[GhPr]) -> Result<PrDag> {
 /// Render the PR DAG as a graph to stdout.
 pub fn render_log(dag: &PrDag) -> Result<()> {
     if dag.nodes.is_empty() {
-        eprintln!("No PRs found.");
+        eprintln!("{}", crate::style::warn("No PRs found."));
         return Ok(());
     }
 
@@ -196,13 +201,20 @@ pub fn render_log(dag: &PrDag) -> Result<()> {
     // so we post-process: replace each node ID with our label.
     let mut label_map: BTreeMap<String, String> = BTreeMap::new();
     for (&pr_num, node) in &dag.nodes {
-        let status = if node.is_draft { "draft" } else { "ready" };
         label_map.insert(
             pr_num.to_string(),
-            format!("{}  PR #{}  ({})", node.bookmark, pr_num, status),
+            format!(
+                "{}  {}  {}",
+                crate::style::bookmark(&node.bookmark),
+                crate::style::pr_num(pr_num, Some(&node.url)),
+                crate::style::status(node.is_draft),
+            ),
         );
     }
-    label_map.insert("trunk".to_owned(), "trunk".to_owned());
+    label_map.insert(
+        "trunk".to_owned(),
+        crate::style::bold("trunk"),
+    );
 
     // Replace IDs in output. renderdag puts the ID after the glyph on each row.
     let mut result = output;
@@ -342,14 +354,18 @@ pub fn execute_sync(actions: &[SyncAction]) -> Result<()> {
     for action in actions {
         match action {
             SyncAction::PushBookmark(name) => {
-                eprintln!("Pushing bookmark: {name}");
+        eprintln!("Pushing bookmark: {}", crate::style::bookmark(name));
                 jj::git_push_bookmark(name)?;
             }
             SyncAction::UpdateBase {
                 pr_number,
                 new_base,
             } => {
-                eprintln!("Updating PR #{pr_number} base → {new_base}");
+                eprintln!(
+                    "Updating {} base → {}",
+                    crate::style::pr_num(*pr_number, None),
+                    crate::style::bookmark(new_base),
+                );
                 gh::edit_base(*pr_number, new_base)?;
             }
         }
@@ -441,10 +457,14 @@ pub fn create_pr(
     let body = args.body.clone().unwrap_or_default();
 
     // Create the PR on GitHub.
-    let status = if draft { "draft" } else { "ready" };
-    eprintln!("Creating PR: {title} ({bookmark} → {base}) [{status}]");
+    eprintln!(
+        "Creating PR: {title} ({} → {}) [{}]",
+        crate::style::bookmark(&bookmark),
+        crate::style::bookmark(&base),
+        crate::style::status(draft),
+    );
     let pr_number = gh::create_pr(&bookmark, &base, &title, &body, draft)?;
-    eprintln!("Created PR #{pr_number}: {title}");
+    eprintln!("Created {}: {title}", crate::style::pr_num(pr_number, None));
 
     // Stamp PR trailer on all commits in the PR.
     // For now, stamp the tip commit. Walk ancestors until we hit trunk or another PR.
@@ -457,7 +477,8 @@ pub fn create_pr(
         }
     }
     eprintln!(
-        "Stamped PR: #{pr_number} on {} commit(s)",
+        "Stamped {} on {} commit(s)",
+        crate::style::pr_num(pr_number, None),
         commits_to_stamp.len()
     );
 
@@ -545,8 +566,10 @@ pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<
     for pr in &open_prs {
         let Some(&tip_idx) = bookmark_to_idx.get(pr.head_ref_name.as_str()) else {
             eprintln!(
-                "skip: PR #{} ({}) — no local bookmark",
-                pr.number, pr.head_ref_name
+                "{}: {} ({}) — no local bookmark",
+                crate::style::warn("skip"),
+                crate::style::pr_num(pr.number, Some(&pr.url)),
+                crate::style::bookmark(&pr.head_ref_name),
             );
             continue;
         };
@@ -591,9 +614,8 @@ pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<
     }
 
     // Phase 2: Display plan.
-    eprintln!("{} commit(s) to update:", plan.len());
+    eprintln!("{}", crate::style::bold(&format!("{} commit(s) to update:", plan.len())));
     for (change_id, pr_number) in &plan {
-        let short_id = &change_id[..12.min(change_id.len())];
         let first_line = jj_state
             .by_change
             .get(change_id)
@@ -606,12 +628,19 @@ pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<
                     .unwrap_or("(empty)")
             })
             .unwrap_or("(unknown)");
-        eprintln!("  {short_id} PR #{pr_number} — {first_line}");
+        eprintln!(
+            "  {} {} — {first_line}",
+            crate::style::change_id(change_id),
+            crate::style::pr_num(*pr_number, None),
+        );
     }
 
     // Phase 3: Apply.
     if dry_run {
-        eprintln!("\nDry run: would stamp {} commit(s)", plan.len());
+        eprintln!(
+            "\n{}",
+            crate::style::warn(&format!("Dry run: would stamp {} commit(s)", plan.len()))
+        );
     } else {
         for (change_id, pr_number) in &plan {
             let idx = jj_state.by_change[change_id];

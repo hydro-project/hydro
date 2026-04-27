@@ -3245,6 +3245,8 @@ dependencies = [
 name = "jj-pr"
 version = "0.1.0"
 dependencies = [
+ "anstream",
+ "anstyle",
  "anyhow",
  "clap",
  "renderdag",

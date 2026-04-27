@@ -11,6 +11,8 @@ name = "jj-pr"
 path = "src/main.rs"
 
 [dependencies]
+anstream = "0.6"
+anstyle = "1"
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 renderdag = "0.3.1"

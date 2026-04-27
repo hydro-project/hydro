@@ -2,6 +2,7 @@ mod cli;
 mod gh;
 mod jj;
 mod pr_dag;
+mod style;
 
 use anyhow::Result;
 use clap::Parser;
