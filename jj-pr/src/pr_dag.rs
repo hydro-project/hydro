@@ -523,16 +523,12 @@ fn find_pr_commits(commit_id: &str, jj_state: &JjState, _pr_number: u64) -> Vec<
 
 /// Import existing GitHub PRs by stamping PR trailers on local commits.
 ///
-/// For each open GH PR whose head branch matches a local bookmark:
-/// 1. Walk ancestors from the bookmark tip
-/// 2. Stop at trunk/immutable commits or commits with a different PR trailer
-/// 3. Stamp `PR: #N` on all walked commits
-///
-/// PRs are processed in topological order (parents before children) so that
-/// by the time we process a child PR, the parent's commits already have
-/// trailers and the walk stops at the boundary.
+/// For each open GH PR whose head branch matches a local bookmark,
+/// walk ancestors from the bookmark tip to trunk, stamping `PR: #N`.
+/// Overwrites any existing PR trailer — this means processing order
+/// doesn't matter: if a child is processed before its parent, the
+/// parent will reclaim its commits by overwriting the child's trailer.
 pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<()> {
-    // Match GH PRs to local bookmarks.
     let open_prs: Vec<&GhPr> = gh_prs.iter().filter(|pr| pr.state == "OPEN").collect();
 
     // Build bookmark name → jj entry index.
@@ -543,64 +539,22 @@ pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<
         }
     }
 
-    // Find which PRs have matching local bookmarks.
-    struct PrToImport<'a> {
-        pr: &'a GhPr,
-        tip_idx: usize,
-    }
-    let mut importable: Vec<PrToImport> = Vec::new();
+    // Process each PR: walk ancestors from tip, stamp trailers.
+    let mut total_stamped = 0usize;
     for pr in &open_prs {
-        if let Some(&idx) = bookmark_to_idx.get(pr.head_ref_name.as_str()) {
-            importable.push(PrToImport { pr, tip_idx: idx });
-        } else {
+        let Some(&tip_idx) = bookmark_to_idx.get(pr.head_ref_name.as_str()) else {
             eprintln!(
                 "skip: PR #{} ({}) — no local bookmark",
                 pr.number, pr.head_ref_name
             );
-        }
-    }
+            continue;
+        };
 
-    // Topological sort: process PRs whose base is main first, then those
-    // whose base is another PR's head. This ensures parent trailers exist
-    // before we walk children.
-    let pr_heads: HashSet<&str> = importable
-        .iter()
-        .map(|p| p.pr.head_ref_name.as_str())
-        .collect();
-    let mut sorted: Vec<PrToImport> = Vec::new();
-    let mut remaining = importable;
-    let mut processed_heads: HashSet<String> = HashSet::new();
-    processed_heads.insert("main".to_string());
-    processed_heads.insert("master".to_string());
-
-    loop {
-        let before = remaining.len();
-        let mut next_remaining = Vec::new();
-        for item in remaining {
-            if !pr_heads.contains(item.pr.base_ref_name.as_str())
-                || processed_heads.contains(&item.pr.base_ref_name)
-            {
-                processed_heads.insert(item.pr.head_ref_name.clone());
-                sorted.push(item);
-            } else {
-                next_remaining.push(item);
-            }
-        }
-        remaining = next_remaining;
-        if remaining.is_empty() || remaining.len() == before {
-            sorted.extend(remaining);
-            break;
-        }
-    }
-
-    // Process each PR: walk ancestors, stamp trailers.
-    let mut total_stamped = 0usize;
-    for item in &sorted {
-        let pr_number = item.pr.number;
-        let bookmark = &item.pr.head_ref_name;
+        let pr_number = pr.number;
+        let bookmark = &pr.head_ref_name;
 
         let mut to_stamp: Vec<usize> = Vec::new();
-        let mut queue: Vec<usize> = vec![item.tip_idx];
+        let mut queue: Vec<usize> = vec![tip_idx];
         let mut visited: HashSet<usize> = HashSet::new();
 
         while let Some(idx) = queue.pop() {
@@ -609,21 +563,23 @@ pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<
             }
             let entry = &jj_state.entries[idx];
 
+            // Stop at trunk/immutable.
             if entry.immutable {
                 continue;
             }
 
+            // Check existing trailer.
             if let Some(existing) = jj::parse_pr_trailer(&entry.commit.description) {
                 if existing == pr_number {
-                    // Already stamped correctly — continue walking parents.
+                    // Already correct — skip but keep walking parents.
                     for parent_id in &entry.commit.parents {
                         if let Some(&pidx) = jj_state.by_commit.get(parent_id) {
                             queue.push(pidx);
                         }
                     }
+                    continue;
                 }
-                // Different PR or same PR — either way, don't re-stamp.
-                continue;
+                // Different PR — overwrite it (parent will reclaim later).
             }
 
             to_stamp.push(idx);
