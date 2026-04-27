@@ -415,6 +415,9 @@ pub fn create_pr(
     // Ensure bookmark exists and points to the revision.
     jj::bookmark_set(&bookmark, &rev_str)?;
 
+    // Track the remote bookmark if it exists (needed before push).
+    let _ = jj::bookmark_track(&bookmark, "origin");
+
     // Determine base branch.
     // Walk parents of the commit to find the nearest PR or trunk.
     let base = find_base_for_commit(&commit_id, jj_state, dag);
