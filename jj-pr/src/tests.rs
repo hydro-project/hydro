@@ -248,6 +248,45 @@ mod tests {
     }
 
     #[test]
+    fn import_parent_reclaims_reverse_order() {
+        // Same as above but PRs listed in reverse order — result should be identical.
+        let entries = vec![
+            entry("b1", "chb1", &["a1"], "child\n", &["feat-b"], false),
+            entry("a1", "cha1", &["trunk"], "parent\n", &["feat-a"], false),
+            entry("trunk", "chtrunk", &[], "trunk\n", &["main"], true),
+        ];
+        let jj = JjState::new(entries);
+        let prs = vec![gh_pr(2, "feat-b", "feat-a"), gh_pr(1, "feat-a", "main")];
+
+        let plan = pr_dag::plan_import(&jj, &prs);
+        assert_eq!(plan["cha1"], 1);
+        assert_eq!(plan["chb1"], 2);
+    }
+
+    #[test]
+    fn import_three_deep_stack() {
+        // trunk <- a1 (feat-a) <- b1 (feat-b) <- c1 (feat-c)
+        let entries = vec![
+            entry("c1", "chc1", &["b1"], "c\n", &["feat-c"], false),
+            entry("b1", "chb1", &["a1"], "b\n", &["feat-b"], false),
+            entry("a1", "cha1", &["trunk"], "a\n", &["feat-a"], false),
+            entry("trunk", "chtrunk", &[], "trunk\n", &["main"], true),
+        ];
+        let jj = JjState::new(entries);
+        // Worst case: deepest child first.
+        let prs = vec![
+            gh_pr(3, "feat-c", "feat-b"),
+            gh_pr(2, "feat-b", "feat-a"),
+            gh_pr(1, "feat-a", "main"),
+        ];
+
+        let plan = pr_dag::plan_import(&jj, &prs);
+        assert_eq!(plan["cha1"], 1);
+        assert_eq!(plan["chb1"], 2);
+        assert_eq!(plan["chc1"], 3);
+    }
+
+    #[test]
     fn import_stops_at_trunk() {
         let entries = vec![
             entry("c1", "ch1", &["trunk"], "feat\n", &["feat"], false),
