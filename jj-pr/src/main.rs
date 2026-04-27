@@ -3,6 +3,7 @@ mod gh;
 mod jj;
 mod pr_dag;
 mod style;
+mod tests;
 
 use anyhow::Result;
 use clap::Parser;

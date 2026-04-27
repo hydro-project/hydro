@@ -137,11 +137,23 @@ pub fn load_state_with_revset(revset: &str) -> Result<JjState> {
         entries.push(entry);
     }
 
-    Ok(JjState {
-        entries,
-        by_commit,
-        by_change,
-    })
+    Ok(JjState::new(entries))
+}
+
+impl JjState {
+    pub fn new(entries: Vec<JjLogEntry>) -> Self {
+        let mut by_commit = HashMap::new();
+        let mut by_change = HashMap::new();
+        for (idx, entry) in entries.iter().enumerate() {
+            by_commit.insert(entry.commit.commit_id.clone(), idx);
+            by_change.insert(entry.commit.change_id.clone(), idx);
+        }
+        Self {
+            entries,
+            by_commit,
+            by_change,
+        }
+    }
 }
 
 /// Set the description of a revision via `jj describe --stdin`.

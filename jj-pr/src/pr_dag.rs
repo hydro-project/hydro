@@ -544,18 +544,27 @@ fn find_pr_commits(commit_id: &str, jj_state: &JjState, _pr_number: u64) -> Vec<
     result
 }
 
-/// Import existing GitHub PRs by stamping PR trailers on local commits.
-///
-/// For each open GH PR whose head branch matches a local bookmark,
-/// walk ancestors from the bookmark tip to trunk, stamping `PR: #N`.
-/// Overwrites any existing PR trailer — this means processing order
-/// doesn't matter: if a child is processed before its parent, the
-/// parent will reclaim its commits by overwriting the child's trailer.
-///
-/// Collects all changes into a change_id → pr_number map first,
-/// then applies them in a single pass.
-pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<()> {
+/// Compute the import plan: a map from change_id → pr_number.
+/// Each PR walks from its bookmark tip to trunk, overwriting any existing
+/// trailer assignments. The result is filtered to exclude changes that
+/// already have the correct trailer.
+pub fn plan_import(jj_state: &JjState, gh_prs: &[GhPr]) -> BTreeMap<String, u64> {
     let open_prs: Vec<&GhPr> = gh_prs.iter().filter(|pr| pr.state == gh::PrState::Open).collect();
+
+    // Sort PRs so children are processed before parents (last writer wins).
+    // PRs whose base is another PR's head are children and should come first.
+    let pr_heads: HashSet<&str> = open_prs.iter().map(|pr| pr.head_ref_name.as_str()).collect();
+    let mut children: Vec<&GhPr> = Vec::new();
+    let mut roots: Vec<&GhPr> = Vec::new();
+    for pr in &open_prs {
+        if pr_heads.contains(pr.base_ref_name.as_str()) {
+            children.push(pr);
+        } else {
+            roots.push(pr);
+        }
+    }
+    // Process children first, then roots (parents overwrite children).
+    let sorted_prs: Vec<&GhPr> = children.into_iter().chain(roots).collect();
 
     // Build bookmark name → jj entry index.
     let mut bookmark_to_idx: HashMap<&str, usize> = HashMap::new();
@@ -569,7 +578,7 @@ pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<
     // Later PRs overwrite earlier ones, so parent PRs reclaim their commits.
     let mut plan: BTreeMap<String, u64> = BTreeMap::new();
 
-    for pr in &open_prs {
+    for pr in &sorted_prs {
         let Some(&tip_idx) = bookmark_to_idx.get(pr.head_ref_name.as_str()) else {
             eprintln!(
                 "{}: {} ({}) — no local bookmark",
@@ -603,8 +612,7 @@ pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<
     }
 
     // Filter out changes that already have the correct trailer.
-    let plan: BTreeMap<String, u64> = plan
-        .into_iter()
+    plan.into_iter()
         .filter(|(change_id, pr_number)| {
             let Some(&idx) = jj_state.by_change.get(change_id) else {
                 return true;
@@ -612,7 +620,12 @@ pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<
             let existing = jj::parse_pr_trailer(&jj_state.entries[idx].commit.description);
             existing != Some(*pr_number)
         })
-        .collect();
+        .collect()
+}
+
+/// Import existing GitHub PRs by stamping PR trailers on local commits.
+pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<()> {
+    let plan = plan_import(jj_state, gh_prs);
 
     if plan.is_empty() {
         eprintln!("Nothing to import — all PRs already have correct trailers.");
