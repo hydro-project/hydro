@@ -380,15 +380,30 @@ pub fn execute_sync(actions: &[SyncAction]) -> Result<()> {
 pub fn track_pr(
     dag: &PrDag,
     jj_state: &JjState,
-    _gh_prs: &[GhPr],
+    gh_prs: &[GhPr],
     args: &TrackArgs,
 ) -> Result<()> {
-    // Resolve the revision. If -r is given, use it. Otherwise, if -b is given
-    // and the bookmark exists, use the bookmark. Otherwise default to @.
-    let rev_str = match (&args.revision, &args.bookmark) {
-        (Some(r), _) => r.clone(),
-        (None, Some(bm)) => bm.clone(),
-        (None, None) => "@".to_owned(),
+    // When --pr is given, resolve the bookmark from the GH PR's headRefName.
+    let bookmark = if let Some(pr_num) = args.pr {
+        let gh_pr = gh_prs
+            .iter()
+            .find(|pr| pr.number == pr_num)
+            .with_context(|| format!("PR #{pr_num} not found on GitHub"))?;
+        gh_pr.head_ref_name.clone()
+    } else if let Some(ref bm) = args.bookmark {
+        bm.clone()
+    } else {
+        // No --pr or -b: resolve from the revision's bookmark.
+        String::new() // placeholder, resolved below after commit_id
+    };
+
+    // Resolve the revision.
+    let rev_str = if let Some(ref r) = args.revision {
+        r.clone()
+    } else if !bookmark.is_empty() {
+        bookmark.clone()
+    } else {
+        "@".to_owned()
     };
 
     let rev_output = std::process::Command::new("jj")
@@ -404,10 +419,8 @@ pub fn track_pr(
     }
     let commit_id = String::from_utf8(rev_output.stdout)?.trim().to_owned();
 
-    // Determine bookmark name.
-    let bookmark = if let Some(ref bm) = args.bookmark {
-        bm.clone()
-    } else {
+    // If bookmark was not determined yet, look it up from the commit.
+    let bookmark = if bookmark.is_empty() {
         let idx = jj_state
             .by_commit
             .get(&commit_id)
@@ -421,6 +434,8 @@ pub fn track_pr(
                 rev_str
             );
         }
+    } else {
+        bookmark
     };
 
     // Ensure bookmark exists and points to the revision.

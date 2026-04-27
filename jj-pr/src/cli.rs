@@ -30,10 +30,10 @@ pub enum Command {
 #[derive(clap::Args, Clone)]
 pub struct TrackArgs {
     /// Existing PR number to update (omit to create a new PR)
-    #[arg(long)]
+    #[arg(long, conflicts_with = "bookmark")]
     pub pr: Option<u64>,
 
-    /// Bookmark name (creates one if not specified)
+    /// Bookmark name (creates one if not specified; incompatible with --pr)
     #[arg(short, long)]
     pub bookmark: Option<String>,
 
