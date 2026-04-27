@@ -3242,6 +3242,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "jj-pr"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "renderdag",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "jni"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4600,6 +4611,12 @@ name = "regex-syntax"
 version = "0.8.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
+
+[[package]]
+name = "renderdag"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "059ba6bcca92be2f59df9dae8205bbd7197cab946406f5fff29a5f48244b1105"
 
 [[package]]
 name = "reqwest"

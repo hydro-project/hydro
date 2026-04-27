@@ -46,19 +46,19 @@ pub fn create_pr(
     draft: bool,
 ) -> Result<u64> {
     let mut args = vec![
-        "pr".to_string(),
-        "create".to_string(),
-        "--head".to_string(),
-        head.to_string(),
-        "--base".to_string(),
-        base.to_string(),
-        "--title".to_string(),
-        title.to_string(),
-        "--body".to_string(),
-        body.to_string(),
+        "pr".to_owned(),
+        "create".to_owned(),
+        "--head".to_owned(),
+        head.to_owned(),
+        "--base".to_owned(),
+        base.to_owned(),
+        "--title".to_owned(),
+        title.to_owned(),
+        "--body".to_owned(),
+        body.to_owned(),
     ];
     if draft {
-        args.push("--draft".to_string());
+        args.push("--draft".to_owned());
     }
 
     let str_args: Vec<&str> = args.iter().map(|s| s.as_str()).collect();

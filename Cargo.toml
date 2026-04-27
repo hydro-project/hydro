@@ -24,8 +24,9 @@ members = [
     "variadics_macro",
     "variadics",
     "website_playground",
+    "jj-pr",
 ]
-exclude = ["template", "jj-pr"]
+exclude = ["template"]
 
 resolver = "2"
 

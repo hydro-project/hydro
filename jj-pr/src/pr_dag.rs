@@ -118,9 +118,8 @@ pub fn build(jj_state: &JjState, gh_prs: &[GhPr]) -> Result<PrDag> {
 
         // Also check: if tip itself has no PR trailer, log a warning.
         let tip_entry = &jj_state.entries[tip_idx];
-        if !commit_pr
-            .get(tip_entry.commit.commit_id.as_str())
-            .is_some_and(|&n| n == pr_number)
+        if commit_pr
+            .get(tip_entry.commit.commit_id.as_str()).is_none_or(|&n| n != pr_number)
         {
             eprintln!(
                 "warning: bookmark {bookmark} (PR #{pr_number}) tip commit {} has no matching PR trailer",
@@ -166,7 +165,7 @@ pub fn render_log(dag: &PrDag) -> Result<()> {
     // renderdag wants nodes in topological order (children before parents).
     let sorted = topo_sort_prs(dag);
 
-    let trunk_id = "trunk".to_string();
+    let trunk_id = "trunk".to_owned();
     let mut nodes: Vec<Node> = Vec::new();
 
     for &pr_num in &sorted {
@@ -195,7 +194,7 @@ pub fn render_log(dag: &PrDag) -> Result<()> {
     // The default rendering uses node IDs as labels. We want richer labels.
     // renderdag doesn't support custom labels directly in render_to_string,
     // so we post-process: replace each node ID with our label.
-    let mut label_map: HashMap<String, String> = HashMap::new();
+    let mut label_map: BTreeMap<String, String> = BTreeMap::new();
     for (&pr_num, node) in &dag.nodes {
         let status = if node.is_draft { "draft" } else { "ready" };
         label_map.insert(
@@ -203,13 +202,13 @@ pub fn render_log(dag: &PrDag) -> Result<()> {
             format!("{}  PR #{}  ({})", node.bookmark, pr_num, status),
         );
     }
-    label_map.insert("trunk".to_string(), "trunk".to_string());
+    label_map.insert("trunk".to_owned(), "trunk".to_owned());
 
     // Replace IDs in output. renderdag puts the ID after the glyph on each row.
     let mut result = output;
     // Replace longest IDs first to avoid partial matches.
     let mut ids: Vec<&String> = label_map.keys().collect();
-    ids.sort_by(|a, b| b.len().cmp(&a.len()));
+    ids.sort_by_key(|b| std::cmp::Reverse(b.len()));
     for id in ids {
         let label = &label_map[id];
         result = result.replace(id, label);
@@ -226,7 +225,7 @@ fn topo_sort_prs(dag: &PrDag) -> Vec<u64> {
     // that haven't been emitted yet) come first — but actually we want the reverse:
     // nodes that ARE NOT parents of anything unprocessed come first.
     // This is a standard Kahn's algorithm where edges go child→parent.
-    let mut in_degree: HashMap<u64, usize> = HashMap::new();
+    let mut in_degree: BTreeMap<u64, usize> = BTreeMap::new();
 
     for &pr_num in dag.nodes.keys() {
         in_degree.entry(pr_num).or_insert(0);
@@ -244,7 +243,7 @@ fn topo_sort_prs(dag: &PrDag) -> Vec<u64> {
     }
 
     // child_of: parent → list of children
-    let mut child_of: HashMap<u64, Vec<u64>> = HashMap::new();
+    let mut child_of: BTreeMap<u64, Vec<u64>> = BTreeMap::new();
     for (&pr_num, node) in &dag.nodes {
         for &parent in &node.parent_prs {
             if dag.nodes.contains_key(&parent) {
@@ -312,14 +311,13 @@ pub fn plan_sync(dag: &PrDag, gh_prs: &[GhPr]) -> Result<Vec<SyncAction>> {
 
         // Compute expected base branch.
         let expected_base = compute_expected_base(node, dag);
-        if let Some(gh_pr) = gh_by_number.get(&pr_number) {
-            if gh_pr.base_ref_name != expected_base {
+        if let Some(gh_pr) = gh_by_number.get(&pr_number)
+            && gh_pr.base_ref_name != expected_base {
                 actions.push(SyncAction::UpdateBase {
                     pr_number,
                     new_base: expected_base,
                 });
             }
-        }
     }
 
     Ok(actions)
@@ -371,7 +369,7 @@ pub fn create_pr(
     let rev_str = match (&args.revision, &args.bookmark) {
         (Some(r), _) => r.clone(),
         (None, Some(bm)) => bm.clone(), // jj will resolve bookmark name to its target
-        (None, None) => "@".to_string(),
+        (None, None) => "@".to_owned(),
     };
 
     let rev_output = std::process::Command::new("jj")
@@ -385,7 +383,7 @@ pub fn create_pr(
             String::from_utf8_lossy(&rev_output.stderr)
         );
     }
-    let commit_id = String::from_utf8(rev_output.stdout)?.trim().to_string();
+    let commit_id = String::from_utf8(rev_output.stdout)?.trim().to_owned();
 
     // Determine bookmark name.
     let bookmark = if let Some(ref bm) = args.bookmark {
@@ -436,10 +434,9 @@ pub fn create_pr(
                     .description
                     .lines()
                     .next()
-                    .unwrap_or("untitled")
-                    .to_string()
+                    .unwrap_or("untitled").to_owned()
             })
-            .unwrap_or_else(|| "untitled".to_string())
+            .unwrap_or_else(|| "untitled".to_owned())
     });
     let body = args.body.clone().unwrap_or_default();
 
@@ -477,11 +474,10 @@ fn find_base_for_commit(commit_id: &str, jj_state: &JjState, dag: &PrDag) -> Str
         // Check if parent has a PR trailer pointing to a known PR.
         if let Some(&parent_idx) = jj_state.by_commit.get(parent_id) {
             let parent_entry = &jj_state.entries[parent_idx];
-            if let Some(pr_num) = jj::parse_pr_trailer(&parent_entry.commit.description) {
-                if let Some(node) = dag.nodes.get(&pr_num) {
+            if let Some(pr_num) = jj::parse_pr_trailer(&parent_entry.commit.description)
+                && let Some(node) = dag.nodes.get(&pr_num) {
                     return node.bookmark.clone();
                 }
-            }
         }
     }
     String::from("main")
@@ -491,7 +487,7 @@ fn find_base_for_commit(commit_id: &str, jj_state: &JjState, dag: &PrDag) -> Str
 /// Walk ancestors from commit_id until we hit trunk or another PR.
 fn find_pr_commits(commit_id: &str, jj_state: &JjState, _pr_number: u64) -> Vec<String> {
     let mut result = Vec::new();
-    let mut queue = vec![commit_id.to_string()];
+    let mut queue = vec![commit_id.to_owned()];
     let mut visited = HashSet::new();
 
     while let Some(cid) = queue.pop() {
@@ -569,8 +565,8 @@ pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<
             }
 
             // Check existing trailer.
-            if let Some(existing) = jj::parse_pr_trailer(&entry.commit.description) {
-                if existing == pr_number {
+            if let Some(existing) = jj::parse_pr_trailer(&entry.commit.description)
+                && existing == pr_number {
                     // Already correct — skip but keep walking parents.
                     for parent_id in &entry.commit.parents {
                         if let Some(&pidx) = jj_state.by_commit.get(parent_id) {
@@ -580,7 +576,6 @@ pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<
                     continue;
                 }
                 // Different PR — overwrite it (parent will reclaim later).
-            }
 
             to_stamp.push(idx);
             for parent_id in &entry.commit.parents {

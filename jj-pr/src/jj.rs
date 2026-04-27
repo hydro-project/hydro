@@ -36,11 +36,10 @@ pub fn parse_pr_trailer(description: &str) -> Option<u64> {
         if line.is_empty() {
             break; // End of trailer block (blank line separator).
         }
-        if let Some(value) = line.strip_prefix("PR: #") {
-            if let Ok(n) = value.trim().parse::<u64>() {
+        if let Some(value) = line.strip_prefix("PR: #")
+            && let Ok(n) = value.trim().parse::<u64>() {
                 return Some(n);
             }
-        }
     }
     None
 }
