@@ -12,10 +12,18 @@ pub struct JjCommit {
     pub description: String,
 }
 
-/// Bookmark reference from `json(local_bookmarks)`.
+/// Bookmark reference from `json(local_bookmarks)` or `json(remote_bookmarks)`.
 #[derive(Debug, Deserialize)]
 pub struct JjBookmark {
     pub name: String,
+    pub target: Vec<String>,
+}
+
+/// Remote bookmark reference from `json(remote_bookmarks)`.
+#[derive(Debug, Deserialize)]
+pub struct JjRemoteBookmark {
+    pub name: String,
+    pub remote: Option<String>,
     pub target: Vec<String>,
 }
 
@@ -24,6 +32,7 @@ pub struct JjBookmark {
 pub struct JjLogEntry {
     pub commit: JjCommit,
     pub local_bookmarks: Vec<JjBookmark>,
+    pub remote_bookmarks: Vec<JjRemoteBookmark>,
     pub immutable: bool,
 }
 
@@ -93,7 +102,7 @@ pub struct JjState {
     pub by_change: HashMap<String, usize>,
 }
 
-const JJ_TEMPLATE: &str = r#""{\"commit\": " ++ json(self) ++ ", \"local_bookmarks\": " ++ json(local_bookmarks) ++ ", \"immutable\": " ++ json(self.immutable()) ++ "}\n""#;
+const JJ_TEMPLATE: &str = r#""{\"commit\": " ++ json(self) ++ ", \"local_bookmarks\": " ++ json(local_bookmarks) ++ ", \"remote_bookmarks\": " ++ json(remote_bookmarks) ++ ", \"immutable\": " ++ json(self.immutable()) ++ "}\n""#;
 
 pub fn load_state() -> Result<JjState> {
     load_state_with_revset("trunk().. | trunk()")

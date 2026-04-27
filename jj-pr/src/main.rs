@@ -30,7 +30,7 @@ fn cmd_sync(dry_run: bool, verbose: bool) -> Result<()> {
     let jj_state = jj::load_state()?;
     let gh_state = gh::load_prs()?;
     let dag = pr_dag::build(&jj_state, &gh_state)?;
-    let actions = pr_dag::plan_sync(&dag, &gh_state)?;
+    let actions = pr_dag::plan_sync(&dag, &jj_state, &gh_state)?;
 
     if actions.is_empty() {
         eprintln!("Nothing to sync.");

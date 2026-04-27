@@ -299,13 +299,31 @@ impl fmt::Display for SyncAction {
 }
 
 /// Plan sync actions by comparing local DAG state with GitHub state.
-pub fn plan_sync(dag: &PrDag, gh_prs: &[GhPr]) -> Result<Vec<SyncAction>> {
+pub fn plan_sync(dag: &PrDag, jj_state: &JjState, gh_prs: &[GhPr]) -> Result<Vec<SyncAction>> {
     let gh_by_number: HashMap<u64, &GhPr> = gh_prs.iter().map(|pr| (pr.number, pr)).collect();
     let mut actions = Vec::new();
 
+    // Build bookmark name → local commit_id from jj state.
+    let mut local_targets: HashMap<&str, &str> = HashMap::new();
+    let mut remote_targets: HashMap<&str, &str> = HashMap::new();
+    for entry in &jj_state.entries {
+        for bm in &entry.local_bookmarks {
+            local_targets.insert(&bm.name, &entry.commit.commit_id);
+        }
+        for bm in &entry.remote_bookmarks {
+            if bm.remote.as_deref() == Some("origin") {
+                remote_targets.insert(&bm.name, &entry.commit.commit_id);
+            }
+        }
+    }
+
     for (&pr_number, node) in &dag.nodes {
-        // Always push bookmarks (jj git push is idempotent if nothing changed).
-        actions.push(SyncAction::PushBookmark(node.bookmark.clone()));
+        // Only push if local and remote targets differ.
+        let local = local_targets.get(node.bookmark.as_str());
+        let remote = remote_targets.get(node.bookmark.as_str());
+        if local != remote {
+            actions.push(SyncAction::PushBookmark(node.bookmark.clone()));
+        }
 
         // Compute expected base branch.
         let expected_base = compute_expected_base(node, dag);
