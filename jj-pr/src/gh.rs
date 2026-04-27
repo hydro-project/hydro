@@ -2,13 +2,21 @@ use anyhow::{Context, Result, bail};
 use serde::Deserialize;
 use std::process::Command;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum PrState {
+    Open,
+    Closed,
+    Merged,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GhPr {
     pub number: u64,
     pub head_ref_name: String,
     pub base_ref_name: String,
-    pub state: String,
+    pub state: PrState,
     pub is_draft: bool,
     pub url: String,
 }

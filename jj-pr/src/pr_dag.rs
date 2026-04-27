@@ -21,8 +21,8 @@ pub struct PrNode {
     pub url: String,
     /// Whether the PR is a draft.
     pub is_draft: bool,
-    /// GitHub state (OPEN, MERGED, CLOSED).
-    pub state: String,
+    /// GitHub state.
+    pub state: gh::PrState,
     /// Commit IDs that belong to this PR (tip first).
     pub commit_ids: Vec<String>,
     /// Parent PR numbers (or empty if parent is trunk).
@@ -45,7 +45,7 @@ pub fn build(jj_state: &JjState, gh_prs: &[GhPr]) -> Result<PrDag> {
     // Index: bookmark name → GhPr.
     let gh_by_head: HashMap<&str, &GhPr> = gh_prs
         .iter()
-        .filter(|pr| pr.state == "OPEN")
+        .filter(|pr| pr.state == gh::PrState::Open)
         .map(|pr| (pr.head_ref_name.as_str(), pr))
         .collect();
 
@@ -143,7 +143,7 @@ pub fn build(jj_state: &JjState, gh_prs: &[GhPr]) -> Result<PrDag> {
                 base_ref: gh_pr.base_ref_name.clone(),
                 url: gh_pr.url.clone(),
                 is_draft: gh_pr.is_draft,
-                state: gh_pr.state.clone(),
+                state: gh_pr.state,
                 commit_ids: pr_commits,
                 parent_prs: parent_prs.into_iter().collect(),
                 has_trunk_parent,
@@ -525,7 +525,7 @@ fn find_pr_commits(commit_id: &str, jj_state: &JjState, _pr_number: u64) -> Vec<
 /// doesn't matter: if a child is processed before its parent, the
 /// parent will reclaim its commits by overwriting the child's trailer.
 pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<()> {
-    let open_prs: Vec<&GhPr> = gh_prs.iter().filter(|pr| pr.state == "OPEN").collect();
+    let open_prs: Vec<&GhPr> = gh_prs.iter().filter(|pr| pr.state == gh::PrState::Open).collect();
 
     // Build bookmark name → jj entry index.
     let mut bookmark_to_idx: HashMap<&str, usize> = HashMap::new();
