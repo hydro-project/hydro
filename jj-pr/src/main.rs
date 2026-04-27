@@ -12,7 +12,7 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     match cli.command {
         Command::Log => cmd_log(),
-        Command::Sync { dry_run, verbose } => cmd_sync(dry_run, verbose),
+        Command::Sync { dry_run } => cmd_sync(dry_run),
         Command::Create(args) => cmd_create(args),
         Command::Import { dry_run } => cmd_import(dry_run),
     }
@@ -26,7 +26,7 @@ fn cmd_log() -> Result<()> {
     Ok(())
 }
 
-fn cmd_sync(dry_run: bool, verbose: bool) -> Result<()> {
+fn cmd_sync(dry_run: bool) -> Result<()> {
     let jj_state = jj::load_state()?;
     let gh_state = gh::load_prs()?;
     let dag = pr_dag::build(&jj_state, &gh_state)?;
@@ -38,13 +38,13 @@ fn cmd_sync(dry_run: bool, verbose: bool) -> Result<()> {
     }
 
     for action in &actions {
-        if verbose || dry_run {
-            eprintln!("{action}");
-        }
+        eprintln!("{action}");
     }
 
     if !dry_run {
         pr_dag::execute_sync(&actions)?;
+    } else {
+        eprintln!("\n{}", style::warn("Dry run: no changes applied."));
     }
 
     Ok(())

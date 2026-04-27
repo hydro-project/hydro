@@ -16,9 +16,6 @@ pub enum Command {
         /// Show what would be done without doing it
         #[arg(long)]
         dry_run: bool,
-        /// Show detailed output
-        #[arg(long)]
-        verbose: bool,
     },
     /// Create a new PR from a bookmark
     Create(CreateArgs),

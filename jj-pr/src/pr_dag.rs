@@ -303,7 +303,7 @@ pub fn plan_sync(dag: &PrDag, jj_state: &JjState, gh_prs: &[GhPr]) -> Result<Vec
     let gh_by_number: HashMap<u64, &GhPr> = gh_prs.iter().map(|pr| (pr.number, pr)).collect();
     let mut actions = Vec::new();
 
-    // Build bookmark name → local commit_id from jj state.
+    // Build bookmark name → local commit_id and remote commit_id from jj state.
     let mut local_targets: HashMap<&str, &str> = HashMap::new();
     let mut remote_targets: HashMap<&str, &str> = HashMap::new();
     for entry in &jj_state.entries {
@@ -311,9 +311,8 @@ pub fn plan_sync(dag: &PrDag, jj_state: &JjState, gh_prs: &[GhPr]) -> Result<Vec
             local_targets.insert(&bm.name, &entry.commit.commit_id);
         }
         for bm in &entry.remote_bookmarks {
-            if bm.remote.as_deref() == Some("origin") {
-                remote_targets.insert(&bm.name, &entry.commit.commit_id);
-            }
+            // Use the first remote bookmark we find (typically "git" for colocated repos).
+            remote_targets.entry(&bm.name).or_insert(&entry.commit.commit_id);
         }
     }
 
