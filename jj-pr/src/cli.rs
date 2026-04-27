@@ -41,8 +41,4 @@ pub struct CreateArgs {
     /// PR description/body
     #[arg(long)]
     pub body: Option<String>,
-
-    /// Create as draft
-    #[arg(long)]
-    pub draft: bool,
 }
