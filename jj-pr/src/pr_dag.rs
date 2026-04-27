@@ -520,3 +520,158 @@ fn find_pr_commits(commit_id: &str, jj_state: &JjState, _pr_number: u64) -> Vec<
 
     result
 }
+
+/// Import existing GitHub PRs by stamping PR trailers on local commits.
+///
+/// For each open GH PR whose head branch matches a local bookmark:
+/// 1. Walk ancestors from the bookmark tip
+/// 2. Stop at trunk/immutable commits or commits with a different PR trailer
+/// 3. Stamp `PR: #N` on all walked commits
+///
+/// PRs are processed in topological order (parents before children) so that
+/// by the time we process a child PR, the parent's commits already have
+/// trailers and the walk stops at the boundary.
+pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<()> {
+    // Match GH PRs to local bookmarks.
+    let open_prs: Vec<&GhPr> = gh_prs.iter().filter(|pr| pr.state == "OPEN").collect();
+
+    // Build bookmark name → jj entry index.
+    let mut bookmark_to_idx: HashMap<&str, usize> = HashMap::new();
+    for (idx, entry) in jj_state.entries.iter().enumerate() {
+        for bm in &entry.local_bookmarks {
+            bookmark_to_idx.insert(&bm.name, idx);
+        }
+    }
+
+    // Find which PRs have matching local bookmarks.
+    struct PrToImport<'a> {
+        pr: &'a GhPr,
+        tip_idx: usize,
+    }
+    let mut importable: Vec<PrToImport> = Vec::new();
+    for pr in &open_prs {
+        if let Some(&idx) = bookmark_to_idx.get(pr.head_ref_name.as_str()) {
+            importable.push(PrToImport { pr, tip_idx: idx });
+        } else {
+            eprintln!(
+                "skip: PR #{} ({}) — no local bookmark",
+                pr.number, pr.head_ref_name
+            );
+        }
+    }
+
+    // Topological sort: process PRs whose base is main first, then those
+    // whose base is another PR's head. This ensures parent trailers exist
+    // before we walk children.
+    let pr_heads: HashSet<&str> = importable
+        .iter()
+        .map(|p| p.pr.head_ref_name.as_str())
+        .collect();
+    let mut sorted: Vec<PrToImport> = Vec::new();
+    let mut remaining = importable;
+    let mut processed_heads: HashSet<String> = HashSet::new();
+    processed_heads.insert("main".to_string());
+    processed_heads.insert("master".to_string());
+
+    loop {
+        let before = remaining.len();
+        let mut next_remaining = Vec::new();
+        for item in remaining {
+            if !pr_heads.contains(item.pr.base_ref_name.as_str())
+                || processed_heads.contains(&item.pr.base_ref_name)
+            {
+                processed_heads.insert(item.pr.head_ref_name.clone());
+                sorted.push(item);
+            } else {
+                next_remaining.push(item);
+            }
+        }
+        remaining = next_remaining;
+        if remaining.is_empty() || remaining.len() == before {
+            sorted.extend(remaining);
+            break;
+        }
+    }
+
+    // Process each PR: walk ancestors, stamp trailers.
+    let mut total_stamped = 0usize;
+    for item in &sorted {
+        let pr_number = item.pr.number;
+        let bookmark = &item.pr.head_ref_name;
+
+        let mut to_stamp: Vec<usize> = Vec::new();
+        let mut queue: Vec<usize> = vec![item.tip_idx];
+        let mut visited: HashSet<usize> = HashSet::new();
+
+        while let Some(idx) = queue.pop() {
+            if !visited.insert(idx) {
+                continue;
+            }
+            let entry = &jj_state.entries[idx];
+
+            if entry.immutable {
+                continue;
+            }
+
+            if let Some(existing) = jj::parse_pr_trailer(&entry.commit.description) {
+                if existing == pr_number {
+                    // Already stamped correctly — continue walking parents.
+                    for parent_id in &entry.commit.parents {
+                        if let Some(&pidx) = jj_state.by_commit.get(parent_id) {
+                            queue.push(pidx);
+                        }
+                    }
+                }
+                // Different PR or same PR — either way, don't re-stamp.
+                continue;
+            }
+
+            to_stamp.push(idx);
+            for parent_id in &entry.commit.parents {
+                if let Some(&pidx) = jj_state.by_commit.get(parent_id) {
+                    queue.push(pidx);
+                }
+            }
+        }
+
+        if to_stamp.is_empty() {
+            eprintln!("PR #{pr_number} ({bookmark}): already imported");
+            continue;
+        }
+
+        eprintln!(
+            "PR #{pr_number} ({bookmark}): stamping {} commit(s)",
+            to_stamp.len()
+        );
+
+        if !dry_run {
+            for &idx in &to_stamp {
+                let entry = &jj_state.entries[idx];
+                let new_desc = jj::set_pr_trailer(&entry.commit.description, pr_number);
+                jj::describe_stdin(&entry.commit.change_id, &new_desc)?;
+            }
+        } else {
+            for &idx in &to_stamp {
+                let entry = &jj_state.entries[idx];
+                let short_id = &entry.commit.change_id[..12];
+                let first_line = entry
+                    .commit
+                    .description
+                    .lines()
+                    .next()
+                    .unwrap_or("(empty)");
+                eprintln!("  {short_id} {first_line}");
+            }
+        }
+
+        total_stamped += to_stamp.len();
+    }
+
+    if dry_run {
+        eprintln!("\nDry run: would stamp {total_stamped} commit(s) total");
+    } else {
+        eprintln!("\nStamped {total_stamped} commit(s) total");
+    }
+
+    Ok(())
+}

@@ -22,6 +22,12 @@ pub enum Command {
     },
     /// Create a new PR from a bookmark
     Create(CreateArgs),
+    /// Import existing GitHub PRs by stamping PR trailers on local commits
+    Import {
+        /// Show what would be done without doing it
+        #[arg(long)]
+        dry_run: bool,
+    },
 }
 
 #[derive(clap::Args, Clone)]
