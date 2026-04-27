@@ -524,6 +524,9 @@ fn find_pr_commits(commit_id: &str, jj_state: &JjState, _pr_number: u64) -> Vec<
 /// Overwrites any existing PR trailer — this means processing order
 /// doesn't matter: if a child is processed before its parent, the
 /// parent will reclaim its commits by overwriting the child's trailer.
+///
+/// Collects all changes into a change_id → pr_number map first,
+/// then applies them in a single pass.
 pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<()> {
     let open_prs: Vec<&GhPr> = gh_prs.iter().filter(|pr| pr.state == gh::PrState::Open).collect();
 
@@ -535,8 +538,10 @@ pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<
         }
     }
 
-    // Process each PR: walk ancestors from tip, stamp trailers.
-    let mut total_stamped = 0usize;
+    // Phase 1: Compute change_id → pr_number for all commits.
+    // Later PRs overwrite earlier ones, so parent PRs reclaim their commits.
+    let mut plan: BTreeMap<String, u64> = BTreeMap::new();
+
     for pr in &open_prs {
         let Some(&tip_idx) = bookmark_to_idx.get(pr.head_ref_name.as_str()) else {
             eprintln!(
@@ -546,10 +551,6 @@ pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<
             continue;
         };
 
-        let pr_number = pr.number;
-        let bookmark = &pr.head_ref_name;
-
-        let mut to_stamp: Vec<usize> = Vec::new();
         let mut queue: Vec<usize> = vec![tip_idx];
         let mut visited: HashSet<usize> = HashSet::new();
 
@@ -559,69 +560,66 @@ pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<
             }
             let entry = &jj_state.entries[idx];
 
-            // Stop at trunk/immutable.
             if entry.immutable {
                 continue;
             }
 
-            // Check existing trailer.
-            if let Some(existing) = jj::parse_pr_trailer(&entry.commit.description)
-                && existing == pr_number {
-                    // Already correct — skip but keep walking parents.
-                    for parent_id in &entry.commit.parents {
-                        if let Some(&pidx) = jj_state.by_commit.get(parent_id) {
-                            queue.push(pidx);
-                        }
-                    }
-                    continue;
-                }
-                // Different PR — overwrite it (parent will reclaim later).
-
-            to_stamp.push(idx);
+            plan.insert(entry.commit.change_id.clone(), pr.number);
             for parent_id in &entry.commit.parents {
                 if let Some(&pidx) = jj_state.by_commit.get(parent_id) {
                     queue.push(pidx);
                 }
             }
         }
+    }
 
-        if to_stamp.is_empty() {
-            eprintln!("PR #{pr_number} ({bookmark}): already imported");
-            continue;
-        }
+    // Filter out changes that already have the correct trailer.
+    let plan: BTreeMap<String, u64> = plan
+        .into_iter()
+        .filter(|(change_id, pr_number)| {
+            let Some(&idx) = jj_state.by_change.get(change_id) else {
+                return true;
+            };
+            let existing = jj::parse_pr_trailer(&jj_state.entries[idx].commit.description);
+            existing != Some(*pr_number)
+        })
+        .collect();
 
-        eprintln!(
-            "PR #{pr_number} ({bookmark}): stamping {} commit(s)",
-            to_stamp.len()
-        );
+    if plan.is_empty() {
+        eprintln!("Nothing to import — all PRs already have correct trailers.");
+        return Ok(());
+    }
 
-        if !dry_run {
-            for &idx in &to_stamp {
-                let entry = &jj_state.entries[idx];
-                let new_desc = jj::set_pr_trailer(&entry.commit.description, pr_number);
-                jj::describe_stdin(&entry.commit.change_id, &new_desc)?;
-            }
-        } else {
-            for &idx in &to_stamp {
-                let entry = &jj_state.entries[idx];
-                let short_id = &entry.commit.change_id[..12];
-                let first_line = entry
+    // Phase 2: Display plan.
+    eprintln!("{} commit(s) to update:", plan.len());
+    for (change_id, pr_number) in &plan {
+        let short_id = &change_id[..12.min(change_id.len())];
+        let first_line = jj_state
+            .by_change
+            .get(change_id)
+            .map(|&idx| {
+                jj_state.entries[idx]
                     .commit
                     .description
                     .lines()
                     .next()
-                    .unwrap_or("(empty)");
-                eprintln!("  {short_id} {first_line}");
-            }
-        }
-
-        total_stamped += to_stamp.len();
+                    .unwrap_or("(empty)")
+            })
+            .unwrap_or("(unknown)");
+        eprintln!("  {short_id} PR #{pr_number} — {first_line}");
     }
 
+    // Phase 3: Apply.
     if dry_run {
-        eprintln!("\nDry run: would stamp {total_stamped} commit(s) total");
+        eprintln!("\nDry run: would stamp {} commit(s)", plan.len());
     } else {
-        eprintln!("\nStamped {total_stamped} commit(s) total");
+        for (change_id, pr_number) in &plan {
+            let idx = jj_state.by_change[change_id];
+            let entry = &jj_state.entries[idx];
+            let new_desc = jj::set_pr_trailer(&entry.commit.description, *pr_number);
+            jj::describe_stdin(change_id, &new_desc)?;
+        }
+        eprintln!("\nStamped {} commit(s)", plan.len());
     }
 
     Ok(())
