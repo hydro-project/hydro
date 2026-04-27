@@ -179,9 +179,6 @@ pub fn render_log(dag: &PrDag) -> Result<()> {
     // Sentinel ID for trunk node.
     let trunk_id: u64 = 0;
 
-    // Reserve trunk column first so all PRs indent consistently to the right.
-    renderer.reserve(trunk_id);
-
     for &pr_num in &sorted {
         let node = &dag.nodes[&pr_num];
 
