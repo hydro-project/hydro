@@ -398,12 +398,15 @@ pub fn track_pr(
     };
 
     // Resolve the revision.
+    // With --pr and no -r, default to @ (update PR to current working copy).
+    // With -b and no -r, default to bookmark target.
+    // With neither, default to @.
     let rev_str = if let Some(ref r) = args.revision {
         r.clone()
-    } else if !bookmark.is_empty() {
-        bookmark.clone()
+    } else if args.pr.is_none() && !bookmark.is_empty() {
+        bookmark.clone() // -b without -r: use bookmark target
     } else {
-        "@".to_owned()
+        "@".to_owned() // --pr without -r, or no flags: use @
     };
 
     let rev_output = std::process::Command::new("jj")
