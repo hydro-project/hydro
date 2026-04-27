@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt;
 
 use anyhow::{Context, Result, bail};
-use renderdag::{GraphRenderer, Node, RenderConfig};
+use renderdag::{Ancestor, GraphRowRenderer, Renderer};
 
 use crate::cli::CreateArgs;
 use crate::gh::{self, GhPr};
@@ -166,67 +166,49 @@ pub fn render_log(dag: &PrDag) -> Result<()> {
         return Ok(());
     }
 
-    // Build renderdag Node list. Each PR becomes a node; trunk is the root.
-    // renderdag wants nodes in topological order (children before parents).
     let sorted = topo_sort_prs(dag);
 
-    let trunk_id = "trunk".to_owned();
-    let mut nodes: Vec<Node> = Vec::new();
+    let mut renderer = GraphRowRenderer::new()
+        .output()
+        .with_min_row_height(1)
+        .build_box_drawing();
+
+    // Sentinel ID for trunk node.
+    let trunk_id: u64 = 0;
 
     for &pr_num in &sorted {
         let node = &dag.nodes[&pr_num];
-        let id = pr_num.to_string();
-        let mut parents: Vec<String> = node
+
+        let mut parents: Vec<Ancestor<u64>> = node
             .parent_prs
             .iter()
             .filter(|p| dag.nodes.contains_key(p))
-            .map(|p| p.to_string())
+            .map(|&p| Ancestor::Parent(p))
             .collect();
         if node.has_trunk_parent || parents.is_empty() {
-            parents.push(trunk_id.clone());
+            parents.push(Ancestor::Parent(trunk_id));
         }
-        nodes.push(Node::new(id, parents));
-    }
 
-    // Add trunk as the root node (no parents).
-    nodes.push(Node::new(trunk_id, Vec::new()));
-
-    // Render.
-    let config = RenderConfig::default();
-    let mut renderer = GraphRenderer::new(config);
-    let output = renderer.render_to_string(&nodes);
-
-    // The default rendering uses node IDs as labels. We want richer labels.
-    // renderdag doesn't support custom labels directly in render_to_string,
-    // so we post-process: replace each node ID with our label.
-    let mut label_map: BTreeMap<String, String> = BTreeMap::new();
-    for (&pr_num, node) in &dag.nodes {
-        label_map.insert(
-            pr_num.to_string(),
-            format!(
-                "{}  {}  {}",
-                crate::style::bookmark(&node.bookmark),
-                crate::style::pr_num(pr_num, Some(&node.url)),
-                crate::style::status(node.is_draft),
-            ),
+        let label = format!(
+            "{}  {}  {}",
+            crate::style::bookmark(&node.bookmark),
+            crate::style::pr_num(pr_num, Some(&node.url)),
+            crate::style::status(node.is_draft),
         );
+
+        let row = renderer.next_row(pr_num, parents, String::from("○"), label);
+        print!("{row}");
     }
-    label_map.insert(
-        "trunk".to_owned(),
+
+    // Render trunk node.
+    let row = renderer.next_row(
+        trunk_id,
+        Vec::new(),
+        String::from("◆"),
         crate::style::bold("trunk"),
     );
+    print!("{row}");
 
-    // Replace IDs in output. renderdag puts the ID after the glyph on each row.
-    let mut result = output;
-    // Replace longest IDs first to avoid partial matches.
-    let mut ids: Vec<&String> = label_map.keys().collect();
-    ids.sort_by_key(|b| std::cmp::Reverse(b.len()));
-    for id in ids {
-        let label = &label_map[id];
-        result = result.replace(id, label);
-    }
-
-    print!("{result}");
     Ok(())
 }
 

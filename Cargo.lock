@@ -3249,7 +3249,7 @@ dependencies = [
  "anstyle",
  "anyhow",
  "clap",
- "renderdag",
+ "sapling-renderdag",
  "serde",
  "serde_json",
 ]
@@ -4615,12 +4615,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 
 [[package]]
-name = "renderdag"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "059ba6bcca92be2f59df9dae8205bbd7197cab946406f5fff29a5f48244b1105"
-
-[[package]]
 name = "reqwest"
 version = "0.12.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5004,6 +4998,15 @@ dependencies = [
  "yoke-derive",
  "zerocopy",
  "zerocopy-derive",
+]
+
+[[package]]
+name = "sapling-renderdag"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edffb89cab87bd0901c5749d576f5d37a1f34e05160e936f463f4e94cc447b61"
+dependencies = [
+ "bitflags",
 ]
 
 [[package]]
