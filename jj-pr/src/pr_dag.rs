@@ -19,6 +19,8 @@ pub struct PrNode {
     pub base_ref: String,
     /// GitHub PR URL.
     pub url: String,
+    /// GitHub PR title.
+    pub title: String,
     /// Whether the PR is a draft.
     pub is_draft: bool,
     /// GitHub state.
@@ -147,6 +149,7 @@ pub fn build(jj_state: &JjState, gh_prs: &[GhPr]) -> Result<PrDag> {
                 bookmark: bookmark.clone(),
                 base_ref: gh_pr.base_ref_name.clone(),
                 url: gh_pr.url.clone(),
+                title: gh_pr.title.clone(),
                 is_draft: gh_pr.is_draft,
                 state: gh_pr.state,
                 commit_ids: pr_commits,
@@ -176,6 +179,9 @@ pub fn render_log(dag: &PrDag) -> Result<()> {
     // Sentinel ID for trunk node.
     let trunk_id: u64 = 0;
 
+    // Reserve trunk column first so all PRs indent consistently to the right.
+    renderer.reserve(trunk_id);
+
     for &pr_num in &sorted {
         let node = &dag.nodes[&pr_num];
 
@@ -190,10 +196,11 @@ pub fn render_log(dag: &PrDag) -> Result<()> {
         }
 
         let label = format!(
-            "{}  {}  {}",
-            crate::style::bookmark(&node.bookmark),
+            "{}  {}  {}\n{}",
             crate::style::pr_num(pr_num, Some(&node.url)),
             crate::style::status(node.is_draft),
+            crate::style::bookmark(&node.bookmark),
+            node.title,
         );
 
         let row = renderer.next_row(pr_num, parents, String::from("○"), label);

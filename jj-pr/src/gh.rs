@@ -19,6 +19,7 @@ pub struct GhPr {
     pub state: PrState,
     pub is_draft: bool,
     pub url: String,
+    pub title: String,
 }
 
 pub fn load_prs() -> Result<Vec<GhPr>> {
@@ -27,7 +28,7 @@ pub fn load_prs() -> Result<Vec<GhPr>> {
             "pr",
             "list",
             "--json",
-            "number,headRefName,baseRefName,state,isDraft,url",
+            "number,headRefName,baseRefName,state,isDraft,url,title",
             "--limit",
             "200",
             "--state",
