@@ -425,8 +425,8 @@ pub fn create_pr(
     // Walk parents of the commit to find the nearest PR or trunk.
     let base = find_base_for_commit(&commit_id, jj_state, dag);
 
-    // Determine draft status: draft if base is another PR (not main/trunk).
-    let draft = base != "main";
+    // All new PRs are created as drafts.
+    let draft = true;
 
     // Push the bookmark.
     jj::git_push_bookmark(&bookmark)?;
