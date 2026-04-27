@@ -619,27 +619,33 @@ pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<
         .map(|pr| (pr.number, pr.url.as_str()))
         .collect();
 
-    // Phase 2: Display plan.
-    eprintln!("{}", crate::style::bold(&format!("{} commit(s) to update:", plan.len())));
+    // Phase 2: Display plan grouped by PR.
+    let mut by_pr: BTreeMap<u64, Vec<&str>> = BTreeMap::new();
     for (change_id, pr_number) in &plan {
-        let first_line = jj_state
-            .by_change
-            .get(change_id)
-            .map(|&idx| {
-                jj_state.entries[idx]
-                    .commit
-                    .description
-                    .lines()
-                    .next()
-                    .unwrap_or("(empty)")
-            })
-            .unwrap_or("(unknown)");
+        by_pr.entry(*pr_number).or_default().push(change_id);
+    }
+    // Sort each PR's changes by their position in jj log (topological order).
+    for changes in by_pr.values_mut() {
+        changes.sort_by_key(|cid| *jj_state.by_change.get(*cid).expect("bug: change_id not in jj state"));
+    }
+
+    eprintln!("{}", crate::style::bold(&format!("{} commit(s) to update:", plan.len())));
+    for (pr_number, change_ids) in &by_pr {
         let url = pr_urls.get(pr_number).copied();
-        eprintln!(
-            "  {} {} — {first_line}",
-            crate::style::change_id(change_id),
-            crate::style::pr_num(*pr_number, url),
-        );
+        eprintln!("  {} ({} commit(s))", crate::style::pr_num(*pr_number, url), change_ids.len());
+        for change_id in change_ids {
+            let idx = *jj_state.by_change.get(*change_id).expect("bug: change_id not in jj state");
+            let first_line = jj_state.entries[idx]
+                .commit
+                .description
+                .lines()
+                .next()
+                .unwrap_or("(empty)");
+            eprintln!(
+                "    {} {first_line}",
+                crate::style::change_id(change_id),
+            );
+        }
     }
 
     // Phase 3: Apply.
