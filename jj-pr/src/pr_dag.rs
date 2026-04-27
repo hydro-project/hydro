@@ -416,7 +416,10 @@ pub fn create_pr(
     jj::bookmark_set(&bookmark, &rev_str)?;
 
     // Track the remote bookmark if it exists (needed before push).
-    let _ = jj::bookmark_track(&bookmark, "origin");
+    // Not fatal if it fails — the bookmark may not exist on the remote yet.
+    if let Err(e) = jj::bookmark_track(&bookmark, "origin") {
+        eprintln!("{}: {e:#}", crate::style::warn("note: bookmark track"));
+    }
 
     // Determine base branch.
     // Walk parents of the commit to find the nearest PR or trunk.
