@@ -546,17 +546,40 @@ fn find_pr_commits(commit_id: &str, jj_state: &JjState, _pr_number: u64) -> Vec<
 
 /// Compute the import plan: a map from change_id → pr_number.
 ///
-/// Each PR walks from its bookmark tip toward trunk:
-/// - Unstamped commits are claimed by the current PR.
-/// - If a commit is already assigned to a different PR X in the plan,
-///   reclaim it (overwrite X → current PR) but only while the existing
-///   assignment is X. Stop when hitting a commit assigned to yet another
-///   PR Y (Y ≠ X), which indicates a different PR boundary.
-///
-/// This means processing order doesn't matter: parents reclaim exactly
-/// one layer of child assignments without needing a topological sort.
+/// PRs are processed in topological order (parents before children) using
+/// GitHub's baseRefName to determine the DAG. Each PR walks from its
+/// bookmark tip toward trunk, claiming unstamped commits and stopping
+/// at any commit already assigned to another PR.
 pub fn plan_import(jj_state: &JjState, gh_prs: &[GhPr]) -> BTreeMap<String, u64> {
     let open_prs: Vec<&GhPr> = gh_prs.iter().filter(|pr| pr.state == gh::PrState::Open).collect();
+
+    // Topological sort: parents before children.
+    // A PR whose base is another PR's head is a child and must come after.
+    let pr_heads: HashSet<&str> = open_prs.iter().map(|pr| pr.head_ref_name.as_str()).collect();
+    let mut sorted: Vec<&GhPr> = Vec::new();
+    let mut remaining: Vec<&GhPr> = open_prs;
+    let mut processed: HashSet<&str> = HashSet::new();
+
+    loop {
+        let before = remaining.len();
+        let mut next = Vec::new();
+        for pr in remaining {
+            if !pr_heads.contains(pr.base_ref_name.as_str())
+                || processed.contains(pr.base_ref_name.as_str())
+            {
+                processed.insert(&pr.head_ref_name);
+                sorted.push(pr);
+            } else {
+                next.push(pr);
+            }
+        }
+        remaining = next;
+        if remaining.is_empty() || remaining.len() == before {
+            // Append any remaining (cycles or missing base) at the end.
+            sorted.extend(remaining);
+            break;
+        }
+    }
 
     // Build bookmark name → jj entry index.
     let mut bookmark_to_idx: HashMap<&str, usize> = HashMap::new();
@@ -566,9 +589,10 @@ pub fn plan_import(jj_state: &JjState, gh_prs: &[GhPr]) -> BTreeMap<String, u64>
         }
     }
 
+    // Process each PR: claim unstamped commits, stop at any stamped commit.
     let mut plan: BTreeMap<String, u64> = BTreeMap::new();
 
-    for pr in &open_prs {
+    for pr in &sorted {
         let Some(&tip_idx) = bookmark_to_idx.get(pr.head_ref_name.as_str()) else {
             eprintln!(
                 "{}: {} ({}) — no local bookmark",
@@ -581,11 +605,6 @@ pub fn plan_import(jj_state: &JjState, gh_prs: &[GhPr]) -> BTreeMap<String, u64>
 
         let mut queue: Vec<usize> = vec![tip_idx];
         let mut visited: HashSet<usize> = HashSet::new();
-        // Track claiming mode:
-        // - None: haven't decided yet (at tip)
-        // - Some(None): claiming unstamped only (tip was unstamped)
-        // - Some(Some(X)): reclaiming from PR X (tip was stamped by X)
-        let mut mode: Option<Option<u64>> = None;
 
         while let Some(idx) = queue.pop() {
             if !visited.insert(idx) {
@@ -597,39 +616,15 @@ pub fn plan_import(jj_state: &JjState, gh_prs: &[GhPr]) -> BTreeMap<String, u64>
                 continue;
             }
 
-            let existing = plan.get(&entry.commit.change_id).copied();
-
-            match (existing, &mode) {
+            // Stop at commits already assigned to another PR.
+            if let Some(&existing) = plan.get(&entry.commit.change_id) {
+                if existing != pr.number {
+                    continue;
+                }
                 // Already ours — keep walking.
-                (Some(e), _) if e == pr.number => {}
-
-                // First commit: unstamped → enter unstamped-only mode.
-                (None, None) => {
-                    mode = Some(None);
-                    plan.insert(entry.commit.change_id.clone(), pr.number);
-                }
-
-                // First commit: foreign PR X → enter reclaim mode from X.
-                (Some(x), None) => {
-                    mode = Some(Some(x));
-                    plan.insert(entry.commit.change_id.clone(), pr.number);
-                }
-
-                // Unstamped-only mode: claim unstamped, stop at any stamped.
-                (None, Some(None)) => {
-                    plan.insert(entry.commit.change_id.clone(), pr.number);
-                }
-                (Some(_), Some(None)) => {
-                    continue; // Hit a stamped commit — stop this path.
-                }
-
-                // Reclaim mode: reclaim from X, stop at anything else.
-                (Some(x), Some(Some(from))) if x == *from => {
-                    plan.insert(entry.commit.change_id.clone(), pr.number);
-                }
-                (_, Some(Some(_))) => {
-                    continue; // Different PR or unstamped after reclaim — stop.
-                }
+            } else {
+                // Unstamped — claim it.
+                plan.insert(entry.commit.change_id.clone(), pr.number);
             }
 
             for parent_id in &entry.commit.parents {
