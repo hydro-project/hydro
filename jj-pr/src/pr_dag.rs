@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BinaryHeap, HashMap, HashSet};
 use std::fmt;
 
 use anyhow::{Context, Result, bail};
@@ -251,12 +251,11 @@ fn topo_sort_prs(dag: &PrDag) -> Vec<u64> {
     }
 
     // Start with nodes that have no parents in the DAG (roots / trunk children).
-    let mut queue: Vec<u64> = in_degree
+    let mut queue: BinaryHeap<u64> = in_degree
         .iter()
         .filter(|(_, deg)| **deg == 0)
         .map(|(n, _)| *n)
         .collect();
-    queue.sort();
 
     let mut result = Vec::new();
     while let Some(n) = queue.pop() {
@@ -268,7 +267,6 @@ fn topo_sort_prs(dag: &PrDag) -> Vec<u64> {
                 *d -= 1;
                 if *d == 0 {
                     queue.push(child);
-                    queue.sort();
                 }
             }
         }

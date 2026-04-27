@@ -39,12 +39,17 @@ pub struct JjLogEntry {
 /// Parsed PR trailer value, e.g. `PR: #1234` → `1234`.
 pub fn parse_pr_trailer(description: &str) -> Option<u64> {
     // Trailers are `Key: Value` lines at the end of the description.
-    // We look for `PR: #<number>` anywhere in the trailer block.
+    // We look for `PR: #<number>` in the trailer block, skipping trailing blank lines.
+    let mut in_trailer_block = false;
     for line in description.lines().rev() {
         let line = line.trim();
         if line.is_empty() {
-            break; // End of trailer block (blank line separator).
+            if in_trailer_block {
+                break; // Blank line separator before the trailer block.
+            }
+            continue; // Skip trailing blank lines.
         }
+        in_trailer_block = true;
         if let Some(value) = line.strip_prefix("PR: #")
             && let Ok(n) = value.trim().parse::<u64>() {
                 return Some(n);
@@ -58,12 +63,17 @@ pub fn set_pr_trailer(description: &str, pr_number: u64) -> String {
     let trailer_line = format!("PR: #{pr_number}");
     let lines: Vec<&str> = description.lines().collect();
 
-    // Find existing PR trailer and replace it.
+    // Find existing PR trailer and replace it, skipping trailing blank lines.
+    let mut seen_content = false;
     for (i, line) in lines.iter().enumerate().rev() {
         let trimmed = line.trim();
         if trimmed.is_empty() {
-            break;
+            if seen_content {
+                break;
+            }
+            continue;
         }
+        seen_content = true;
         if trimmed.starts_with("PR: #") {
             let mut new_lines: Vec<&str> = lines[..i].to_vec();
             new_lines.push(&trailer_line);
@@ -275,5 +285,17 @@ mod tests {
     fn set_pr_trailer_empty_description() {
         let result = set_pr_trailer("", 1);
         assert_eq!(result, "PR: #1\n");
+    }
+
+    #[test]
+    fn parse_pr_trailer_trailing_blank_lines() {
+        assert_eq!(parse_pr_trailer("msg\n\nPR: #42\n\n"), Some(42));
+        assert_eq!(parse_pr_trailer("msg\n\nPR: #42\n\n\n"), Some(42));
+    }
+
+    #[test]
+    fn set_pr_trailer_replace_with_trailing_blank_lines() {
+        let result = set_pr_trailer("fix\n\nPR: #10\n\n", 20);
+        assert_eq!(result, "fix\n\nPR: #20\n\n");
     }
 }
