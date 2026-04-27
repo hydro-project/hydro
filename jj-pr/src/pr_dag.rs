@@ -4,7 +4,7 @@ use std::fmt;
 use anyhow::{Context, Result, bail};
 use renderdag::{Ancestor, GraphRowRenderer, Renderer};
 
-use crate::cli::CreateArgs;
+use crate::cli::TrackArgs;
 use crate::gh::{self, GhPr};
 use crate::jj::{self, JjState};
 
@@ -376,18 +376,18 @@ pub fn execute_sync(actions: &[SyncAction]) -> Result<()> {
     Ok(())
 }
 
-/// Create a new PR.
-pub fn create_pr(
+/// Create a new PR or update an existing one.
+pub fn track_pr(
     dag: &PrDag,
     jj_state: &JjState,
     _gh_prs: &[GhPr],
-    args: &CreateArgs,
+    args: &TrackArgs,
 ) -> Result<()> {
     // Resolve the revision. If -r is given, use it. Otherwise, if -b is given
     // and the bookmark exists, use the bookmark. Otherwise default to @.
     let rev_str = match (&args.revision, &args.bookmark) {
         (Some(r), _) => r.clone(),
-        (None, Some(bm)) => bm.clone(), // jj will resolve bookmark name to its target
+        (None, Some(bm)) => bm.clone(),
         (None, None) => "@".to_owned(),
     };
 
@@ -408,7 +408,6 @@ pub fn create_pr(
     let bookmark = if let Some(ref bm) = args.bookmark {
         bm.clone()
     } else {
-        // Check if the commit already has a local bookmark.
         let idx = jj_state
             .by_commit
             .get(&commit_id)
@@ -424,56 +423,70 @@ pub fn create_pr(
         }
     };
 
-    // Check if bookmark already has a PR.
-    if dag.by_bookmark.contains_key(&bookmark) {
-        bail!("Bookmark {bookmark} already has a PR");
-    }
-
     // Ensure bookmark exists and points to the revision.
     jj::bookmark_set(&bookmark, &rev_str)?;
 
     // Track the remote bookmark if it exists (needed before push).
-    // Not fatal if it fails — the bookmark may not exist on the remote yet.
     if let Err(e) = jj::bookmark_track(&bookmark, "origin") {
         eprintln!("{}: {e:#}", crate::style::warn("note: bookmark track"));
     }
 
     // Determine base branch.
-    // Walk parents of the commit to find the nearest PR or trunk.
     let base = find_base_for_commit(&commit_id, jj_state, dag);
 
     // Push the bookmark.
     jj::git_push_bookmark(&bookmark)?;
 
-    // Generate title/body.
-    let title = args.title.clone().unwrap_or_else(|| {
-        jj_state
-            .by_commit
-            .get(&commit_id)
-            .map(|&idx| {
-                jj_state.entries[idx]
-                    .commit
-                    .description
-                    .lines()
-                    .next()
-                    .unwrap_or("untitled").to_owned()
-            })
-            .unwrap_or_else(|| "untitled".to_owned())
-    });
-    let body = args.body.clone().unwrap_or_default();
+    // Either create a new PR or use the existing one.
+    let pr_number = if let Some(n) = args.pr {
+        // Update existing PR — just re-stamp trailers and push.
+        eprintln!(
+            "Updating {} ({} → {})",
+            crate::style::pr_num(n, None),
+            crate::style::bookmark(&bookmark),
+            crate::style::bookmark(&base),
+        );
+        n
+    } else {
+        // Check if bookmark already has a PR.
+        if let Some(&existing) = dag.by_bookmark.get(&bookmark) {
+            bail!(
+                "Bookmark {bookmark} already has {} — use --pr {existing} to update",
+                crate::style::pr_num(existing, None),
+            );
+        }
 
-    // Create the PR on GitHub (always as draft).
-    eprintln!(
-        "Creating PR: {title} ({} → {}) [{}]",
-        crate::style::bookmark(&bookmark),
-        crate::style::bookmark(&base),
-        crate::style::status(true),
-    );
-    let pr_number = gh::create_pr(&bookmark, &base, &title, &body, true)?;
-    eprintln!("Created {}: {title}", crate::style::pr_num(pr_number, None));
+        // Generate title/body.
+        let title = args.title.clone().unwrap_or_else(|| {
+            jj_state
+                .by_commit
+                .get(&commit_id)
+                .map(|&idx| {
+                    jj_state.entries[idx]
+                        .commit
+                        .description
+                        .lines()
+                        .next()
+                        .unwrap_or("untitled")
+                        .to_owned()
+                })
+                .unwrap_or_else(|| "untitled".to_owned())
+        });
+        let body = args.body.clone().unwrap_or_default();
+
+        // Create the PR on GitHub (always as draft).
+        eprintln!(
+            "Creating PR: {title} ({} → {}) [{}]",
+            crate::style::bookmark(&bookmark),
+            crate::style::bookmark(&base),
+            crate::style::status(true),
+        );
+        let n = gh::create_pr(&bookmark, &base, &title, &body, true)?;
+        eprintln!("Created {}: {title}", crate::style::pr_num(n, None));
+        n
+    };
 
     // Stamp PR trailer on all commits in the PR.
-    // For now, stamp the tip commit. Walk ancestors until we hit trunk or another PR.
     let commits_to_stamp = find_pr_commits(&commit_id, jj_state, pr_number);
     for cid in &commits_to_stamp {
         if let Some(&idx) = jj_state.by_commit.get(cid) {

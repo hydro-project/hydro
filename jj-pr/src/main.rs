@@ -14,7 +14,7 @@ fn main() -> Result<()> {
     match cli.command {
         Command::Log => cmd_log(),
         Command::Sync { dry_run } => cmd_sync(dry_run),
-        Command::Create(args) => cmd_create(args),
+        Command::Track(args) => cmd_track(args),
         Command::Import { dry_run } => cmd_import(dry_run),
     }
 }
@@ -51,11 +51,11 @@ fn cmd_sync(dry_run: bool) -> Result<()> {
     Ok(())
 }
 
-fn cmd_create(args: cli::CreateArgs) -> Result<()> {
+fn cmd_track(args: cli::TrackArgs) -> Result<()> {
     let jj_state = jj::load_state()?;
     let gh_state = gh::load_prs()?;
     let dag = pr_dag::build(&jj_state, &gh_state)?;
-    pr_dag::create_pr(&dag, &jj_state, &gh_state, &args)?;
+    pr_dag::track_pr(&dag, &jj_state, &gh_state, &args)?;
     Ok(())
 }
 
