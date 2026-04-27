@@ -366,22 +366,22 @@ pub fn create_pr(
     _gh_prs: &[GhPr],
     args: &CreateArgs,
 ) -> Result<()> {
-    // Resolve the revision.
+    // Resolve the revision. If -r is given, use it. Otherwise, if -b is given
+    // and the bookmark exists, use the bookmark. Otherwise default to @.
+    let rev_str = match (&args.revision, &args.bookmark) {
+        (Some(r), _) => r.clone(),
+        (None, Some(bm)) => bm.clone(), // jj will resolve bookmark name to its target
+        (None, None) => "@".to_string(),
+    };
+
     let rev_output = std::process::Command::new("jj")
-        .args([
-            "log",
-            "--no-graph",
-            "-r",
-            &args.revision,
-            "-T",
-            "commit_id",
-        ])
+        .args(["log", "--no-graph", "-r", &rev_str, "-T", "commit_id"])
         .output()
         .context("Failed to resolve revision")?;
     if !rev_output.status.success() {
         bail!(
             "Failed to resolve revision {}: {}",
-            args.revision,
+            rev_str,
             String::from_utf8_lossy(&rev_output.stderr)
         );
     }
@@ -402,7 +402,7 @@ pub fn create_pr(
         } else {
             bail!(
                 "No bookmark on revision {} — use --bookmark to specify one",
-                args.revision
+                rev_str
             );
         }
     };
@@ -413,7 +413,7 @@ pub fn create_pr(
     }
 
     // Ensure bookmark exists and points to the revision.
-    jj::bookmark_set(&bookmark, &args.revision)?;
+    jj::bookmark_set(&bookmark, &rev_str)?;
 
     // Determine base branch.
     // Walk parents of the commit to find the nearest PR or trunk.

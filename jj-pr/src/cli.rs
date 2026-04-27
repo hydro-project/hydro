@@ -30,9 +30,9 @@ pub struct CreateArgs {
     #[arg(short, long)]
     pub bookmark: Option<String>,
 
-    /// Revision to create the PR from (default: @)
-    #[arg(short, long, default_value = "@")]
-    pub revision: String,
+    /// Revision to create the PR from (default: @ or bookmark target if -b is set)
+    #[arg(short, long)]
+    pub revision: Option<String>,
 
     /// PR title
     #[arg(short, long)]
