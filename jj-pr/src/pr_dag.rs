@@ -425,9 +425,6 @@ pub fn create_pr(
     // Walk parents of the commit to find the nearest PR or trunk.
     let base = find_base_for_commit(&commit_id, jj_state, dag);
 
-    // All new PRs are created as drafts.
-    let draft = true;
-
     // Push the bookmark.
     jj::git_push_bookmark(&bookmark)?;
 
@@ -448,14 +445,14 @@ pub fn create_pr(
     });
     let body = args.body.clone().unwrap_or_default();
 
-    // Create the PR on GitHub.
+    // Create the PR on GitHub (always as draft).
     eprintln!(
         "Creating PR: {title} ({} → {}) [{}]",
         crate::style::bookmark(&bookmark),
         crate::style::bookmark(&base),
-        crate::style::status(draft),
+        crate::style::status(true),
     );
-    let pr_number = gh::create_pr(&bookmark, &base, &title, &body, draft)?;
+    let pr_number = gh::create_pr(&bookmark, &base, &title, &body, true)?;
     eprintln!("Created {}: {title}", crate::style::pr_num(pr_number, None));
 
     // Stamp PR trailer on all commits in the PR.
