@@ -613,6 +613,12 @@ pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<
         return Ok(());
     }
 
+    // Build PR number → URL lookup for display.
+    let pr_urls: HashMap<u64, &str> = gh_prs
+        .iter()
+        .map(|pr| (pr.number, pr.url.as_str()))
+        .collect();
+
     // Phase 2: Display plan.
     eprintln!("{}", crate::style::bold(&format!("{} commit(s) to update:", plan.len())));
     for (change_id, pr_number) in &plan {
@@ -628,10 +634,11 @@ pub fn import_prs(jj_state: &JjState, gh_prs: &[GhPr], dry_run: bool) -> Result<
                     .unwrap_or("(empty)")
             })
             .unwrap_or("(unknown)");
+        let url = pr_urls.get(pr_number).copied();
         eprintln!(
             "  {} {} — {first_line}",
             crate::style::change_id(change_id),
-            crate::style::pr_num(*pr_number, None),
+            crate::style::pr_num(*pr_number, url),
         );
     }
 
