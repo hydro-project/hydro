@@ -47,6 +47,16 @@ pub struct NetworkResources {
     security_group: String,
 }
 
+impl NetworkResources {
+    pub fn new(vpc: String, subnet: String, security_group: String) -> Self {
+        Self {
+            vpc,
+            subnet,
+            security_group,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct AwsNetwork {
     pub region: String,
@@ -910,6 +920,10 @@ echo -e "{cwa_config_esc}" > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwa
                     "associate_public_ip_address": true,
                     "iam_instance_profile": iam_instance_profile_ref, // May be `None`.
                     "user_data": user_data_script, // May be `None`.
+                    "metadata_options": {
+                        "http_tokens": "required",
+                        "http_endpoint": "enabled"
+                    },
                     "tags": {
                         "Name": instance_name
                     }

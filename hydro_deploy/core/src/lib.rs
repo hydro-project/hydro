@@ -29,7 +29,7 @@ pub mod azure;
 pub use azure::AzureHost;
 
 pub mod aws;
-pub use aws::{AwsEc2Host, AwsNetwork};
+pub use aws::{AwsEc2Host, AwsNetwork, NetworkResources};
 
 pub mod rust_crate;
 pub use rust_crate::RustCrate;
