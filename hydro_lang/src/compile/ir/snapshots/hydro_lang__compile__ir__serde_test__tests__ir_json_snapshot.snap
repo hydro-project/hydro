@@ -15,7 +15,9 @@ expression: json
                 "f": "q!(| x | x * 2)",
                 "input": {
                   "Source": {
-                    "source": "iter(q!(stageleft :: runtime_support :: type_hint :: < std :: ops :: Range < i32 > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: compile :: ir :: serde_test :: tests :: * ; 0 .. 10 })))",
+                    "source": {
+                      "Iter": "q!(stageleft :: runtime_support :: type_hint :: < std :: ops :: Range < i32 > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: compile :: ir :: serde_test :: tests :: * ; 0 .. 10 }))"
+                    },
                     "metadata": {
                       "location_id": {
                         "Process": {

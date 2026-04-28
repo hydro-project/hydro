@@ -51,26 +51,27 @@ mod tests {
         let ident = syn::Ident::new("my_ident", Span::call_site());
         let loc = LocationId::Process(LocationKey::TEST_KEY_1);
 
-        // DebugExpr::Display wraps in q!(...), so stream/iter include that
+        // With derive(Serialize), HydroSource serializes as a tagged enum.
+        // DebugExpr::Display wraps in q!(...), so stream/iter include that.
         let cases: Vec<(HydroSource, &str)> = vec![
             (
                 HydroSource::Stream(expr.clone()),
-                r#""stream(q!(my_stream))""#,
+                r#"{"Stream":"q!(my_stream)"}"#,
             ),
-            (HydroSource::ExternalNetwork(), r#""external_network""#),
-            (HydroSource::Iter(expr), r#""iter(q!(my_stream))""#),
-            (HydroSource::Spin(), r#""spin""#),
+            (HydroSource::ExternalNetwork(), r#"{"ExternalNetwork":[]}"#),
+            (HydroSource::Iter(expr), r#"{"Iter":"q!(my_stream)"}"#),
+            (HydroSource::Spin(), r#"{"Spin":[]}"#),
             (
                 HydroSource::ClusterMembers(loc, ClusterMembersState::Uninit),
-                r#""cluster_members""#,
+                r#"{"ClusterMembers":[{"Process":{"idx":1,"version":255}},"Uninit"]}"#,
             ),
             (
                 HydroSource::Embedded(ident.clone()),
-                r#""embedded(my_ident)""#,
+                r#"{"Embedded":"my_ident"}"#,
             ),
             (
                 HydroSource::EmbeddedSingleton(ident),
-                r#""embedded_singleton(my_ident)""#,
+                r#"{"EmbeddedSingleton":"my_ident"}"#,
             ),
         ];
 
