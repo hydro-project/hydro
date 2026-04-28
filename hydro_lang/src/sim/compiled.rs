@@ -811,10 +811,12 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimSender<T, O, R
             )
         });
 
-        let result = thunk(&move |t| sender.send(bincode::serialize(&t).unwrap().into()));
-        quiescent.set(false);
-        resume_notify.notify_waiters();
-        result
+        thunk(&move |t| {
+            let res = sender.send(bincode::serialize(&t).unwrap().into());
+            quiescent.set(false);
+            resume_notify.notify_waiters();
+            res
+        })
     }
 }
 
@@ -954,13 +956,13 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimClusterSender<
             )
         });
 
-        let result = thunk(&move |member_id: u32, t: T| {
+        thunk(&move |member_id: u32, t: T| {
             let payload = bincode::serialize(&t).unwrap();
-            senders[member_id as usize].send(Bytes::from(payload))
-        });
-        quiescent.set(false);
-        resume_notify.notify_waiters();
-        result
+            let res = senders[member_id as usize].send(Bytes::from(payload));
+            quiescent.set(false);
+            resume_notify.notify_waiters();
+            res
+        })
     }
 }
 
