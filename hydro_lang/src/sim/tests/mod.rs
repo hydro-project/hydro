@@ -360,4 +360,3 @@ fn sim_collect_waits_for_all_ticks() {
         assert_eq!(all, vec![1, 2, 3]);
     });
 }
-
