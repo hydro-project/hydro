@@ -1442,6 +1442,7 @@ mod tests {
 
         let mut c_1_produced = false;
         let mut c_2_produced = false;
+        let mut c_1_saw_457_but_not_124 = false;
 
         flow.sim()
             .with_cluster_size(&cluster, 2)
@@ -1458,9 +1459,19 @@ mod tests {
                     assert!(all_out.contains(&(MemberId::from_raw_id(1), 457)));
                     c_2_produced = true;
                 }
+
+                if all_out.contains(&(MemberId::from_raw_id(0), 457))
+                    && !all_out.contains(&(MemberId::from_raw_id(0), 124))
+                {
+                    c_1_saw_457_but_not_124 = true;
+                }
             });
 
         assert!(c_1_produced && c_2_produced); // in at least one execution each, the cluster member received both messages
+
+        // in at least one execution, the cluster member received 457 but not 124, this tests
+        // that the simulator properly explores dynamic membership additions (a member that joins after 123 is broadcast)
+        assert!(c_1_saw_457_but_not_124);
     }
 
     #[cfg(feature = "sim")]
