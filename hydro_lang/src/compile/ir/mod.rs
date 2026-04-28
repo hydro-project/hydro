@@ -282,9 +282,13 @@ pub enum DebugInstantiate {
 impl serde::Serialize for DebugInstantiate {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match self {
-            DebugInstantiate::Building => serializer.serialize_unit_variant("DebugInstantiate", 0, "Building"),
+            DebugInstantiate::Building => {
+                serializer.serialize_unit_variant("DebugInstantiate", 0, "Building")
+            }
             DebugInstantiate::Finalized(_) => {
-                panic!("cannot serialize DebugInstantiate::Finalized: contains non-serializable runtime state (closures)")
+                panic!(
+                    "cannot serialize DebugInstantiate::Finalized: contains non-serializable runtime state (closures)"
+                )
             }
         }
     }
