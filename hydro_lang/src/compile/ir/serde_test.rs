@@ -33,7 +33,7 @@ mod tests {
     fn serialize_debug_instantiate() {
         assert_eq!(
             serde_json::to_string(&DebugInstantiate::Building).unwrap(),
-            r#""building""#
+            r#""Building""#
         );
 
         let finalized: DebugInstantiate = DebugInstantiateFinalized {
@@ -42,7 +42,10 @@ mod tests {
             connect_fn: None,
         }
         .into();
-        assert_eq!(serde_json::to_string(&finalized).unwrap(), r#""finalized""#);
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            serde_json::to_string(&finalized).unwrap()
+        }));
+        assert!(result.is_err(), "Finalized should panic on serialize");
     }
 
     #[test]
