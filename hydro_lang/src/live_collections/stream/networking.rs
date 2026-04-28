@@ -324,8 +324,9 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// (e.g. ECS), use [`Stream::broadcast`] instead.
     ///
     /// In simulation, dynamic member joins are automatically skipped
-    /// when `ClusterIds` is used, so late joiners will not receive data
-    /// and will not be explored by the simulator.
+    /// when `ClusterIds` is used, so the broadcast will send to all cluster members,
+    /// including those that officially join the cluster in the future (according
+    /// to the membership event stream)
     ///
     /// # Example
     /// ```rust
