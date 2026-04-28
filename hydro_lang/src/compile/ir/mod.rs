@@ -352,37 +352,15 @@ pub enum ClusterMembersState {
 }
 
 /// A source in a Hydro graph, where data enters the graph.
-#[derive(Debug, Hash, Clone)]
+#[derive(Debug, Hash, Clone, serde::Serialize)]
 pub enum HydroSource {
     Stream(DebugExpr),
     ExternalNetwork(),
     Iter(DebugExpr),
     Spin(),
     ClusterMembers(LocationId, ClusterMembersState),
-    Embedded(syn::Ident),
-    EmbeddedSingleton(syn::Ident),
-}
-
-impl serde::Serialize for HydroSource {
-    /// Serializes the data-source origin as a human-readable string.
-    ///
-    /// `HydroSource` describes *where* a `Source` node gets its data (e.g. a
-    /// Rust iterator, a network stream, cluster membership, etc.) — not the
-    /// live-collection type.  Each variant is serialized as a short tag,
-    /// optionally including the inner expression or identifier.
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        match self {
-            HydroSource::Stream(e) => serializer.serialize_str(&format!("stream({})", e)),
-            HydroSource::ExternalNetwork() => serializer.serialize_str("external_network"),
-            HydroSource::Iter(e) => serializer.serialize_str(&format!("iter({})", e)),
-            HydroSource::Spin() => serializer.serialize_str("spin"),
-            HydroSource::ClusterMembers(_, _) => serializer.serialize_str("cluster_members"),
-            HydroSource::Embedded(id) => serializer.serialize_str(&format!("embedded({})", id)),
-            HydroSource::EmbeddedSingleton(id) => {
-                serializer.serialize_str(&format!("embedded_singleton({})", id))
-            }
-        }
-    }
+    Embedded(#[serde(serialize_with = "serialize_ident")] syn::Ident),
+    EmbeddedSingleton(#[serde(serialize_with = "serialize_ident")] syn::Ident),
 }
 
 #[cfg(feature = "build")]
