@@ -3246,7 +3246,7 @@ impl HydroNode {
                             unreachable!()
                         };
 
-                        debug_assert!(
+                        assert!(
                             right.metadata().collection_kind.is_bounded(),
                             "JoinHalf requires the right (build) side to be Bounded, got {:?}",
                             right.metadata().collection_kind
