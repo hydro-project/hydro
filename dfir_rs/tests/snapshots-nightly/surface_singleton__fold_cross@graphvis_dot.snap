@@ -36,7 +36,7 @@ digraph {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_1v1\nstratum 0"
+        label = "sg_1v1"
         subgraph sg_1v1_var_stream2 {
             cluster=true
             label="var stream2"
@@ -48,7 +48,7 @@ digraph {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_2v1\nstratum 0"
+        label = "sg_2v1"
         n6v1
         subgraph sg_2v1_var_filtered_stream2 {
             cluster=true
@@ -68,7 +68,7 @@ digraph {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_3v1\nstratum 0"
+        label = "sg_3v1"
         n11v1
         n12v1
         subgraph sg_3v1_var_max_of_stream2 {

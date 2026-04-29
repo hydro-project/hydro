@@ -27,7 +27,6 @@ linkStyle default stroke:#aaa
 17v1[\"<div style=text-align:center>(17v1)</div> <code>map(|data| {<br>    hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into()<br>})</code>"/]:::pullClass
 18v1[/"(18v1) <code>dest_sink(DUMMY_SINK)</code>"\]:::pushClass
 19v1["(19v1) <code>handoff</code>"]:::otherClass
-20v1["(20v1) <code>handoff</code>"]:::otherClass
 1v1-->2v1
 4v1-->1v1
 3v1-->4v1
@@ -37,15 +36,14 @@ linkStyle default stroke:#aaa
 9v1-->10v1
 10v1-->19v1
 11v1-->12v1
-13v1-->20v1
+13v1-->14v1
 14v1-->15v1
 12v1-->|0|16v1
 15v1-->|1|16v1
 17v1-->18v1
 16v1-->17v1
 19v1--x11v1; linkStyle 15 stroke:red
-20v1-->14v1
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
+subgraph sg_1v1 ["sg_1v1"]
     1v1
     2v1
     subgraph sg_1v1_var_cycle_0 ["var <tt>cycle_0</tt>"]
@@ -55,7 +53,7 @@ subgraph sg_1v1 ["sg_1v1 stratum 0"]
         3v1
     end
 end
-subgraph sg_2v1 ["sg_2v1 stratum 0"]
+subgraph sg_2v1 ["sg_2v1"]
     5v1
     6v1
     subgraph sg_2v1_var_cycle_1 ["var <tt>cycle_1</tt>"]
@@ -65,19 +63,20 @@ subgraph sg_2v1 ["sg_2v1 stratum 0"]
         7v1
     end
 end
-subgraph sg_3v1 ["sg_3v1 stratum 0"]
+subgraph sg_3v1 ["sg_3v1"]
     subgraph sg_3v1_var_stream_8 ["var <tt>stream_8</tt>"]
         9v1
         10v1
     end
 end
-subgraph sg_4v1 ["sg_4v1 stratum 1"]
+subgraph sg_4v1 ["sg_4v1"]
     17v1
     18v1
     subgraph sg_4v1_var_stream_12 ["var <tt>stream_12</tt>"]
         12v1
     end
     subgraph sg_4v1_var_stream_13 ["var <tt>stream_13</tt>"]
+        13v1
         14v1
     end
     subgraph sg_4v1_var_stream_14 ["var <tt>stream_14</tt>"]
@@ -88,10 +87,5 @@ subgraph sg_4v1 ["sg_4v1 stratum 1"]
     end
     subgraph sg_4v1_var_stream_9 ["var <tt>stream_9</tt>"]
         11v1
-    end
-end
-subgraph sg_5v1 ["sg_5v1 stratum 0"]
-    subgraph sg_5v1_var_stream_13 ["var <tt>stream_13</tt>"]
-        13v1
     end
 end

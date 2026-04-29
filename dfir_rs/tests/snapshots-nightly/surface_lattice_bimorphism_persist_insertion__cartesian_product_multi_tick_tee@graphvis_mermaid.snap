@@ -37,14 +37,14 @@ linkStyle default stroke:#aaa
 14v1-->10v1; linkStyle 12 stroke:#060
 3v1--x9v1; linkStyle 13 stroke:red
 6v1--x9v1; linkStyle 14 stroke:red
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
+subgraph sg_1v1 ["sg_1v1"]
     subgraph sg_1v1_var_lhs ["var <tt>lhs</tt>"]
         1v1
         2v1
         3v1
     end
 end
-subgraph sg_2v1 ["sg_2v1 stratum 0"]
+subgraph sg_2v1 ["sg_2v1"]
     8v1
     subgraph sg_2v1_var_rhs ["var <tt>rhs</tt>"]
         4v1
@@ -55,12 +55,12 @@ subgraph sg_2v1 ["sg_2v1 stratum 0"]
         7v1
     end
 end
-subgraph sg_3v1 ["sg_3v1 stratum 1"]
+subgraph sg_3v1 ["sg_3v1"]
     subgraph sg_3v1_var_my_join ["var <tt>my_join</tt>"]
         9v1
     end
 end
-subgraph sg_4v1 ["sg_4v1 stratum 1"]
+subgraph sg_4v1 ["sg_4v1"]
     subgraph sg_4v1_var_my_join ["var <tt>my_join</tt>"]
         10v1
         11v1

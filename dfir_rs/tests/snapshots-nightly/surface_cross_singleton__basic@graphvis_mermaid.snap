@@ -19,10 +19,10 @@ linkStyle default stroke:#aaa
 4v1-->6v1
 1v1-->5v1
 6v1--x|single|1v1; linkStyle 4 stroke:red
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
+subgraph sg_1v1 ["sg_1v1"]
     4v1
 end
-subgraph sg_2v1 ["sg_2v1 stratum 1"]
+subgraph sg_2v1 ["sg_2v1"]
     2v1
     3v1
     5v1

@@ -11,7 +11,7 @@ linkStyle default stroke:#aaa
 1v1[\"(1v1) <code>source_stream(lines_recv)</code>"/]:::pullClass
 2v1[/"(2v1) <code>dest_sink(stdout_lines)</code>"\]:::pushClass
 1v1-->2v1
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
+subgraph sg_1v1 ["sg_1v1"]
     1v1
     2v1
 end

@@ -11,7 +11,7 @@ linkStyle default stroke:#aaa
 1v1[/"(1v1) <code>for_each(|v| out_send.send(v).unwrap())</code>"\]:::pushClass
 2v1[\"(2v1) <code>source_iter(0..10)</code>"/]:::pullClass
 2v1-->1v1
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
+subgraph sg_1v1 ["sg_1v1"]
     1v1
     subgraph sg_1v1_var_forward_ref ["var <tt>forward_ref</tt>"]
         2v1
