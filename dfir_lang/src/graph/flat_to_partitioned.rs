@@ -350,29 +350,25 @@ fn order_subgraphs(
     }
 
     // Topological sort — rejects intra-tick cycles.
-    let _topo_sort_order = graph_algorithms::topo_sort(partitioned_graph.subgraph_ids(), |v| {
+    if let Err(cycle) = graph_algorithms::topo_sort(partitioned_graph.subgraph_ids(), |v| {
         sg_preds.get(&v).into_iter().flatten().copied()
-    });
-    match _topo_sort_order {
-        Ok(_) => {}
-        Err(cycle) => {
-            let span = cycle
-                .first()
-                .and_then(|&sg_id| partitioned_graph.subgraph(sg_id).first().copied())
-                .map(|n| partitioned_graph.node(n).span())
-                .unwrap_or_else(Span::call_site);
-            return Err(Diagnostic::spanned(
-                span,
-                Level::Error,
-                "Cyclical dataflow within a tick is not supported. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks.",
-            ));
-        }
+    }) {
+        let span = cycle
+            .first()
+            .and_then(|&sg_id| partitioned_graph.subgraph(sg_id).first().copied())
+            .map(|n| partitioned_graph.node(n).span())
+            .unwrap_or_else(Span::call_site);
+        return Err(Diagnostic::spanned(
+            span,
+            Level::Error,
+            "Cyclical dataflow within a tick is not supported. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks.",
+        ));
     }
 
     // Mark tick-boundary handoffs with their delay type.
-    // The `as_code` topo sort will reverse the ordering constraint for these,
-    // ensuring the consumer runs before the producer so data naturally defers
-    // to the next tick via the handoff buffer.
+    // These handoffs are excluded from the intra-tick topo ordering in
+    // `as_code`; instead, their double-buffered handoff semantics defer data
+    // across the tick boundary to the next tick.
     for (edge_id, delay_type) in tick_edges {
         let (hoff, _dst) = partitioned_graph.edge(edge_id);
         assert!(matches!(

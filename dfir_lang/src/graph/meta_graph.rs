@@ -745,6 +745,16 @@ impl DfirGraph {
         Ident::new(&name, span)
     }
 
+    /// Helper to generate the main buffer `Ident` for a handoff node.
+    fn hoff_buf_ident(&self, hoff_id: GraphNodeId, span: Span) -> Ident {
+        Ident::new(&format!("hoff_{:?}_buf", hoff_id.data()), span)
+    }
+
+    /// Helper to generate the back (double-buffer) `Ident` for a handoff node.
+    fn hoff_back_ident(&self, hoff_id: GraphNodeId, span: Span) -> Ident {
+        Ident::new(&format!("hoff_{:?}_back", hoff_id.data()), span)
+    }
+
     /// For per-node singleton references. Helper to generate a deterministic `Ident` for the given node.
     fn node_as_singleton_ident(&self, node_id: GraphNodeId, span: Span) -> Ident {
         Ident::new(&format!("singleton_op_{:?}", node_id.data()), span)
@@ -848,23 +858,23 @@ impl DfirGraph {
             .iter()
             .map(|&(node_id, (src_span, dst_span))| {
                 let span = src_span.join(dst_span).unwrap_or(src_span);
-                let buf_ident = Ident::new(&format!("hoff_{:?}_buf", node_id.data()), span);
+                let buf_ident = self.hoff_buf_ident(node_id, span);
                 quote_spanned! {span=>
                     let mut #buf_ident: Vec<_> = Vec::new();
                 }
             })
             .collect();
 
-        // For back-edge (defer_tick) handoffs, declare a second "back" buffer for
-        // double-buffering. At the start of each tick, the main buffer and back buffer
-        // are swapped so the consumer reads last tick's data while the producer writes
-        // to a fresh buffer.
+        // For tick-boundary handoffs (`defer_tick` / `defer_tick_lazy`), declare a
+        // second "back" buffer for double-buffering. At the start of each tick, the
+        // main buffer and back buffer are swapped so the consumer reads last tick's
+        // data while the producer writes to a fresh buffer.
         let back_buffer_code: Vec<TokenStream> = handoff_nodes
             .iter()
             .filter(|(node_id, _)| self.handoff_delay_type(*node_id).is_some())
             .map(|&(node_id, (src_span, dst_span))| {
                 let span = src_span.join(dst_span).unwrap_or(src_span);
-                let back_ident = Ident::new(&format!("hoff_{:?}_back", node_id.data()), span);
+                let back_ident = self.hoff_back_ident(node_id, span);
                 quote_spanned! {span=>
                     let mut #back_ident: Vec<_> = Vec::new();
                 }
@@ -911,10 +921,7 @@ impl DfirGraph {
 
                     // Non-lazy tick-boundary: defer_tick (not defer_tick_lazy).
                     if !matches!(delay_type, DelayType::TickLazy) {
-                        defer_tick_buf_idents.push(Ident::new(
-                            &format!("hoff_{:?}_buf", hoff_id.data()),
-                            node.span(),
-                        ));
+                        defer_tick_buf_idents.push(self.hoff_buf_ident(hoff_id, node.span()));
                     }
                 } else {
                     sg_preds.entry(succ_sg).unwrap().or_default().push(pred_sg);
@@ -953,15 +960,15 @@ impl DfirGraph {
                 .collect::<Vec<_>>()
         };
 
-        // Generate swap code for back-edge (defer_tick) handoffs.
+        // Generate swap code for tick-boundary (defer_tick / defer_tick_lazy) handoffs.
         // At the start of each tick, swap the main buffer and back buffer so the
         // consumer reads last tick's data from the back buffer.
         let back_edge_swap_code: Vec<TokenStream> = back_edge_hoff_ids
             .iter()
             .map(|&hoff_id| {
                 let span = self.nodes[hoff_id].span();
-                let buf_ident = Ident::new(&format!("hoff_{:?}_buf", hoff_id.data()), span);
-                let back_ident = Ident::new(&format!("hoff_{:?}_back", hoff_id.data()), span);
+                let buf_ident = self.hoff_buf_ident(hoff_id, span);
+                let back_ident = self.hoff_back_ident(hoff_id, span);
                 quote_spanned! {span=>
                     ::std::mem::swap(&mut #buf_ident, &mut #back_ident);
                 }
@@ -989,17 +996,11 @@ impl DfirGraph {
                 // Map handoff node IDs to buffer idents.
                 let recv_buf_idents: Vec<Ident> = recv_hoffs
                     .iter()
-                    .map(|&hoff_id| {
-                        let span = self.nodes[hoff_id].span();
-                        Ident::new(&format!("hoff_{:?}_buf", hoff_id.data()), span)
-                    })
+                    .map(|&hoff_id| self.hoff_buf_ident(hoff_id, self.nodes[hoff_id].span()))
                     .collect();
                 let send_buf_idents: Vec<Ident> = send_hoffs
                     .iter()
-                    .map(|&hoff_id| {
-                        let span = self.nodes[hoff_id].span();
-                        Ident::new(&format!("hoff_{:?}_buf", hoff_id.data()), span)
-                    })
+                    .map(|&hoff_id| self.hoff_buf_ident(hoff_id, self.nodes[hoff_id].span()))
                     .collect();
 
                 // Recv port code: drain from buffer into iterator, tracking if non-empty.
@@ -1016,9 +1017,9 @@ impl DfirGraph {
                         // (e.g. dfir_expect_warnings!). TODO(#2781): define these once.
                         let work_done = Ident::new("__dfir_work_done", Span::call_site());
                         let metrics = Ident::new("__dfir_metrics", Span::call_site());
-                        // Back-edge handoffs drain from the back buffer (double-buffering).
+                        // Tick-boundary handoffs drain from the back buffer (double-buffering).
                         let drain_ident = if back_edge_hoff_ids.contains(&hoff_id) {
-                            Ident::new(&format!("hoff_{:?}_back", hoff_id.data()), buf_ident.span())
+                            self.hoff_back_ident(hoff_id, buf_ident.span())
                         } else {
                             buf_ident.clone()
                         };
