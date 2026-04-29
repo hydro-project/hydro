@@ -267,6 +267,17 @@ impl serde::Serialize for DebugType {
     }
 }
 
+
+fn serialize_backtrace_as_span<S: serde::Serializer>(
+    backtrace: &Backtrace,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    match backtrace.format_span() {
+        Some(span) => serializer.serialize_some(&span),
+        None => serializer.serialize_none(),
+    }
+}
+
 fn serialize_ident<S: serde::Serializer>(
     ident: &syn::Ident,
     serializer: S,
@@ -1907,7 +1918,7 @@ impl Debug for HydroIrMetadata {
 /// This is available on _both_ inner nodes and roots.
 #[derive(Clone, serde::Serialize)]
 pub struct HydroIrOpMetadata {
-    #[serde(skip)]
+    #[serde(rename = "span", serialize_with = "serialize_backtrace_as_span")]
     pub backtrace: Backtrace,
     pub cpu_usage: Option<f64>,
     pub network_recv_cpu_usage: Option<f64>,
