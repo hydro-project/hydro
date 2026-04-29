@@ -164,11 +164,11 @@
 <a href=#164 id=164 data-nosnippet>164</a>    <span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, _f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
 <a href=#165 id=165 data-nosnippet>165</a>        <span class="kw">match </span><span class="self">self </span>{
 <a href=#166 id=166 data-nosnippet>166</a>            <span class="attr">#[cfg(feature = <span class="string">"deploy_integration"</span>)]
-<a href=#167 id=167 data-nosnippet>167</a>            </span>TaglessMemberId::Legacy { raw_id } =&gt; <span class="macro">write!</span>(_f, <span class="string">"{:?}"</span>, raw_id),
+<a href=#167 id=167 data-nosnippet>167</a>            </span>TaglessMemberId::Legacy { raw_id } =&gt; <span class="macro">write!</span>(_f, <span class="string">"{}"</span>, raw_id),
 <a href=#168 id=168 data-nosnippet>168</a>            <span class="attr">#[cfg(feature = <span class="string">"docker_runtime"</span>)]
-<a href=#169 id=169 data-nosnippet>169</a>            </span>TaglessMemberId::Docker { container_name } =&gt; <span class="macro">write!</span>(_f, <span class="string">"{:?}"</span>, container_name),
+<a href=#169 id=169 data-nosnippet>169</a>            </span>TaglessMemberId::Docker { container_name } =&gt; <span class="macro">write!</span>(_f, <span class="string">"{}"</span>, container_name),
 <a href=#170 id=170 data-nosnippet>170</a>            <span class="attr">#[cfg(feature = <span class="string">"maelstrom_runtime"</span>)]
-<a href=#171 id=171 data-nosnippet>171</a>            </span>TaglessMemberId::Maelstrom { node_id } =&gt; <span class="macro">write!</span>(_f, <span class="string">"{:?}"</span>, node_id),
+<a href=#171 id=171 data-nosnippet>171</a>            </span>TaglessMemberId::Maelstrom { node_id } =&gt; <span class="macro">write!</span>(_f, <span class="string">"{}"</span>, node_id),
 <a href=#172 id=172 data-nosnippet>172</a>            <span class="attr">#[expect(
 <a href=#173 id=173 data-nosnippet>173</a>                clippy::allow_attributes,
 <a href=#174 id=174 data-nosnippet>174</a>                reason = <span class="string">"Only triggers when `TaglessMemberId` is empty."
