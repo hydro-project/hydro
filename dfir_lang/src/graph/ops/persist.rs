@@ -90,15 +90,13 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
         let persistdata_ident = singleton_output_ident;
         let vec_ident = wc.make_ident("persistvec");
         let write_prologue = quote_spanned! {op_span=>
-            let #persistdata_ident = ::std::cell::RefCell::new(
-                ::std::vec::Vec::<#generic_type>::new(),
-            );
+            let mut #persistdata_ident = ::std::vec::Vec::<#generic_type>::new();
         };
 
         let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
-                let mut #vec_ident = #persistdata_ident.borrow_mut();
+                let #vec_ident = &mut #persistdata_ident;
 
                 let #ident = {
                     let replay_idx = if #context.is_first_run_this_tick() {
@@ -119,7 +117,7 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let mut #vec_ident = #persistdata_ident.borrow_mut();
+                let #vec_ident = &mut #persistdata_ident;
 
                 let #ident = {
                     fn constrain_types<'ctx, Psh, Item>(vec: &'ctx mut Vec<Item>, output: Psh, is_new_tick: bool) -> impl 'ctx + #root::dfir_pipes::push::Push<Item, ()>

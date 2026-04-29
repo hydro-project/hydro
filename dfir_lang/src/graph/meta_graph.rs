@@ -816,10 +816,9 @@ impl DfirGraph {
     /// instead of runtime handoffs. Each call to the closure runs one tick.
     ///
     /// The generated code block evaluates to a `Dfir` instance wrapping the
-    /// closure. Operator prologues (`add_state`, `set_state_lifespan_hook`)
-    /// run at construction time on the `Context` before it is moved into
-    /// `Dfir::new`. `Dfir` provides the `Context` to the closure on
-    /// each tick run.
+    /// closure. Operator prologues run at construction time before the `Context`
+    /// is moved into `Dfir::new`. `Dfir` provides the `Context` to the closure
+    /// on each tick run.
     ///
     /// # Errors
     ///
@@ -1163,7 +1162,6 @@ impl DfirGraph {
                             let arguments = &process_singletons::postprocess_singletons(
                                 op_inst.arguments_raw.clone(),
                                 singletons_resolved.clone(),
-                                context,
                             );
                             let arguments_handles =
                                 &process_singletons::postprocess_singletons_handles(

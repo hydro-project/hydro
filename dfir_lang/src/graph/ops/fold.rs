@@ -82,20 +82,20 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
             let mut #initializer_func_ident = #init_fn;
 
             #[allow(clippy::redundant_closure_call)]
-            let #singleton_output_ident = ::std::cell::RefCell::new(#init);
+            let mut #singleton_output_ident = #init;
         };
 
         let write_tick_end = match persistence {
             Persistence::Tick => quote_spanned! {op_span=>
                 #[allow(clippy::redundant_closure_call)]
-                #singleton_output_ident.replace(#init);
+                { #singleton_output_ident = #init; }
             },
             _ => Default::default(),
         };
 
         let assign_accum_ident = quote_spanned! {op_span=>
             #[allow(unused_mut)]
-            let mut #accumulator_ident = #singleton_output_ident.borrow_mut();
+            let mut #accumulator_ident = &mut #singleton_output_ident;
         };
         let foreach_body = quote_spanned! {op_span=>
             #[inline(always)]
