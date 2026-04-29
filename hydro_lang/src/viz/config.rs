@@ -9,6 +9,8 @@ pub enum GraphType {
     Dot,
     /// JSON format for Hydroscope interactive viewer.
     Json,
+    /// Serialized IR JSON for standalone coordination analysis.
+    Ir,
 }
 
 impl GraphType {
@@ -18,6 +20,7 @@ impl GraphType {
             GraphType::Mermaid => "mmd",
             GraphType::Dot => "dot",
             GraphType::Json => "json",
+            GraphType::Ir => "json",
         }
     }
 }

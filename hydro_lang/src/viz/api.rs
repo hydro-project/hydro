@@ -40,6 +40,7 @@ impl<'a> GraphApi<'a> {
             crate::viz::config::GraphType::Mermaid => render_hydro_ir_mermaid(self.ir, config),
             crate::viz::config::GraphType::Dot => render_hydro_ir_dot(self.ir, config),
             crate::viz::config::GraphType::Json => render_hydro_ir_json(self.ir, config),
+            crate::viz::config::GraphType::Ir => panic!("Ir format handled by BuiltFlow::generate_graph"),
         }
     }
 
