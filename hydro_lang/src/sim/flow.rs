@@ -38,6 +38,9 @@ pub struct SimFlow<'a> {
     /// When true, the simulator only tests safety properties (not liveness).
     pub(crate) test_safety_only: bool,
 
+    /// Number of iterations to use for fuzzing, defaults to 8192
+    pub(crate) unit_test_fuzz_iterations: usize,
+
     pub(crate) _phantom: Invariant<'a>,
 }
 
@@ -58,6 +61,13 @@ impl<'a> SimFlow<'a> {
     /// program eventually makes progress.
     pub fn test_safety_only(mut self) -> Self {
         self.test_safety_only = true;
+        self
+    }
+
+    /// Sets the number of fuzz iterations for this test. Overrides the
+    /// the default value of 8192
+    pub fn unit_test_fuzz_iterations(mut self, iterations: usize) -> Self {
+        self.unit_test_fuzz_iterations = iterations;
         self
     }
 
@@ -196,6 +206,7 @@ impl<'a> SimFlow<'a> {
             _path: out,
             lib,
             externals_port_registry: self.externals_port_registry.take(),
+            unit_test_fuzz_iterations: self.unit_test_fuzz_iterations,
         }
     }
 }

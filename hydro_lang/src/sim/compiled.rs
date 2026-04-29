@@ -84,6 +84,7 @@ pub struct CompiledSim {
     pub(super) _path: TempPath,
     pub(super) lib: Library,
     pub(super) externals_port_registry: SimExternalPortRegistry,
+    pub(super) unit_test_fuzz_iterations: usize,
 }
 
 #[sealed::sealed]
@@ -253,8 +254,9 @@ impl CompiledSim {
             });
         } else {
             eprintln!(
-                "Running a fuzz test without `cargo sim` and no reproducer found at {}, defaulting to 8192 iterations with random inputs.",
-                caller_fuzz_repro_path.display()
+                "Running a fuzz test without `cargo sim` and no reproducer found at {}, using {} iterations with random inputs.",
+                caller_fuzz_repro_path.display(),
+                self.unit_test_fuzz_iterations,
             );
             self.with_instantiator(
                 |instantiator| {
@@ -267,7 +269,7 @@ impl CompiledSim {
                         item_path: "<unknown>::__bolero_item_path__",
                         test_name: None,
                     })
-                    .with_iterations(8192)
+                    .with_iterations(self.unit_test_fuzz_iterations)
                     .run(move || {
                         let instance = instantiator();
                         tokio::runtime::Builder::new_current_thread()
