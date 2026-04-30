@@ -320,19 +320,10 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     /// deterministic.
     ///
     /// This is only available in deployment targets with static cluster
-    /// membership (legacy Hydro Deploy and simulation). On dynamic targets
+    /// membership (legacy Hydro Deploy and simulation). There are no late
+    /// joiners in that context, so broadcast receivers are guaranteed to
+    /// get data from the start of the stream. On dynamic targets
     /// (e.g. ECS), use [`Stream::broadcast`] instead.
-    ///
-    /// **Late joiners receive no data.** Members that join the cluster after the
-    /// cross-product has been computed will not receive any elements. This is
-    /// safe: it is future-monotone and eventually consistent (a safe
-    /// under-approximation).
-    ///
-    /// In simulation, [`ClusterIds`] only reflects the initial cluster size set
-    /// at deploy time (via `with_cluster_size`). Members that join the cluster
-    /// dynamically during simulation are not included in `ClusterIds`, so they
-    /// will not receive any broadcasts. Use [`Stream::broadcast`] if you need
-    /// to observe dynamic membership changes in simulation.
     ///
     /// # Example
     /// ```rust
