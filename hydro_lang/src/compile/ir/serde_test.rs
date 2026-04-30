@@ -126,7 +126,9 @@ mod tests {
         let json = serialize_dedup_shared(|| serde_json::to_string_pretty(built.ir()).unwrap());
 
         // Redact absolute paths for CI portability
-        let workspace_root = env!("CARGO_MANIFEST_DIR").strip_suffix("/hydro_lang").unwrap_or(env!("CARGO_MANIFEST_DIR"));
+        let workspace_root = env!("CARGO_MANIFEST_DIR")
+            .strip_suffix("/hydro_lang")
+            .unwrap_or(env!("CARGO_MANIFEST_DIR"));
         let json = json.replace(workspace_root, "[workspace]");
 
         insta::assert_snapshot!(json);
