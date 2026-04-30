@@ -60,7 +60,7 @@ pub fn simple_cluster<'a>(flow: &mut FlowBuilder<'a>) -> (Process<'a, ()>, Clust
             MembershipEvent::Left => None,
         }));
 
-    ids.cross_product(numbers.into())
+    ids.cross_product(numbers)
         .map(q!(|(id, n)| (id.clone(), (id, n))))
         .demux(&cluster, TCP.fail_stop().bincode())
         .inspect(q!(move |n| println!(

@@ -2,4 +2,28 @@ error: `loop { }` blocks are not (yet) supported in `dfir_syntax!`.
  --> tests/compile-fail/surface_inline_loop.rs:6:18
   |
 6 |             x -> batch() -> for_each(|_x: i32| {});
-  |                  ^^^^^
+  |                  ^^^^^^^
+
+warning: variable does not need to be mutable
+ --> tests/compile-fail/surface_inline_loop.rs:3:9
+  |
+3 |     let mut flow = dfir_rs::dfir_syntax! {
+  |         ----^^^^
+  |         |
+  |         help: remove this `mut`
+  |
+  = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `recv`
+ --> tests/compile-fail/surface_inline_loop.rs:2:17
+  |
+2 |     let (_send, recv) = dfir_rs::util::unbounded_channel::<i32>();
+  |                 ^^^^ help: if this is intentional, prefix it with an underscore: `_recv`
+  |
+  = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `flow`
+ --> tests/compile-fail/surface_inline_loop.rs:3:9
+  |
+3 |     let mut flow = dfir_rs::dfir_syntax! {
+  |         ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_flow`

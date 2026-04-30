@@ -267,7 +267,7 @@ linkStyle default stroke:#aaa
 257v1["<div style=text-align:center>(257v1)</div> <code><br>fold_keyed::&lt;<br>    'static,<br>&gt;(<br>    {<br>        || false<br>    },<br>    {<br>        |present, event| {<br>            match event {<br>                MembershipEvent::Joined =&gt; *present = true,<br>                MembershipEvent::Left =&gt; *present = false,<br>            }<br>        }<br>    },<br>)</code>"]:::otherClass
 258v1["<div style=text-align:center>(258v1)</div> <code><br>filter({<br>    let f__free = {<br>        |b| *b<br>    };<br>    {<br>        let orig = f__free;<br>        move |t: &amp;(_, _)| orig(&amp;t.1)<br>    }<br>})</code>"]:::otherClass
 259v1["<div style=text-align:center>(259v1)</div> <code><br>map({<br>    |(k, _)| k<br>})</code>"]:::otherClass
-260v1["<div style=text-align:center>(260v1)</div> <code><br>join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
+260v1["<div style=text-align:center>(260v1)</div> <code><br>join_multiset_half::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
 261v1["<div style=text-align:center>(261v1)</div> <code><br>map({<br>    |(key, (meta, resp))| (key, (meta, resp))<br>})</code>"]:::otherClass
 262v1["<div style=text-align:center>(262v1)</div> <code><br>map({<br>    |((slot, _ballot), (value, _))| (slot, value)<br>})</code>"]:::otherClass
 263v1["<div style=text-align:center>(263v1)</div> <code><br>cross_join_multiset::&lt;'tick, 'tick&gt;()</code>"]:::otherClass
@@ -564,8 +564,8 @@ linkStyle default stroke:#aaa
 256v1--x257v1; linkStyle 286 stroke:red
 257v1-->258v1
 258v1-->259v1
-240v1-->|0|260v1
-244v1-->|1|260v1
+240v1-->|probe|260v1
+244v1--x|build|260v1; linkStyle 290 stroke:red
 260v1-->261v1
 261v1-->262v1
 259v1-->|0|263v1

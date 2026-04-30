@@ -1291,6 +1291,11 @@ impl HydroNode {
                 right,
                 metadata,
             }
+            | HydroNode::JoinHalf {
+                left,
+                right,
+                metadata,
+            }
             | HydroNode::CrossProduct {
                 left,
                 right,

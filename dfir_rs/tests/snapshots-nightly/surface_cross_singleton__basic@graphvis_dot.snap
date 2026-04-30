@@ -20,14 +20,14 @@ digraph {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_1v1\nstratum 0"
+        label = "sg_1v1"
         n4v1
     }
     subgraph sg_2v1 {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_2v1\nstratum 1"
+        label = "sg_2v1"
         n2v1
         n3v1
         n5v1

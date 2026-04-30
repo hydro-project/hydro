@@ -304,3 +304,59 @@ fn sim_cluster_e2m_m2e() {
             assert_eq!(out_recv.next(2).await, Some(30));
         });
 }
+
+#[test]
+fn sim_send_after_assert_yields_only() {
+    let mut flow = FlowBuilder::new();
+    let process = flow.process::<()>();
+
+    let (send_port, input) = process.sim_input();
+    let output = input.atomic().end_atomic();
+    let out_port = output.sim_output();
+
+    flow.sim().exhaustive(async || {
+        send_port.send(1u32);
+        out_port.assert_yields_only([1u32]).await;
+
+        // This previously panicked with SendError because the scheduler terminated on quiescence.
+        send_port.send(2u32);
+        out_port.assert_yields_only([2u32]).await;
+    });
+}
+
+#[test]
+#[should_panic(expected = "unexpected message")]
+fn assert_yields_only_catches_extra_value() {
+    let mut flow = FlowBuilder::new();
+    let process = flow.process::<()>();
+
+    let (send_port, input) = process.sim_input();
+    let out_port = input.atomic().end_atomic().sim_output();
+
+    flow.sim().exhaustive(async || {
+        send_port.send(1u32);
+        send_port.send(2u32);
+        // Expects only [1], but stream also produces 2 → should panic
+        out_port.assert_yields_only([1u32]).await;
+    });
+}
+
+#[test]
+fn sim_collect_waits_for_all_ticks() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let tick = node.tick();
+    let (in_send, input) = node.sim_input();
+    let out_recv = input
+        .batch(&tick, nondet!(/** test */))
+        .all_ticks()
+        .sim_output();
+
+    flow.sim().exhaustive(async || {
+        in_send.send(1);
+        in_send.send(2);
+        in_send.send(3);
+        let all: Vec<i32> = out_recv.collect().await;
+        assert_eq!(all, vec![1, 2, 3]);
+    });
+}

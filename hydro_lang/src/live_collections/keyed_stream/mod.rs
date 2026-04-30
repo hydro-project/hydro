@@ -2084,10 +2084,18 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn join_keyed_stream<V2, O2: Ordering, R2: Retries>(
+    #[expect(clippy::type_complexity, reason = "ordering / retries propagation")]
+    pub fn join_keyed_stream<V2, B2: Boundedness, O2: Ordering, R2: Retries>(
         self,
-        other: KeyedStream<K, V2, L, B, O2, R2>,
-    ) -> KeyedStream<K, (V, V2), L, B, NoOrder, <R as MinRetries<R2>>::Min>
+        other: KeyedStream<K, V2, L, B2, O2, R2>,
+    ) -> KeyedStream<
+        K,
+        (V, V2),
+        L,
+        B,
+        B2::PreserveOrderIfBounded<NoOrder>,
+        <R as MinRetries<R2>>::Min,
+    >
     where
         K: Eq + Hash + Clone,
         R: MinRetries<R2>,
@@ -2275,19 +2283,25 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         K: Eq + Hash + Clone,
         V: Clone,
     {
-        // TODO(shadaj): if DFIR guarantees that joining unbounded keyed stream x bounded keyed stream
-        // always produces deterministic order per key (nested loop join), this could just use
-        // `join_keyed_stream` without constructing IRs manually
-        KeyedStream::new(
-            self.location.clone(),
+        let ir_node = if B2::BOUNDED {
+            HydroNode::JoinHalf {
+                left: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                right: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self
+                    .location
+                    .new_node_metadata(KeyedStream::<K, (V, V2), L, B, O, R>::collection_kind()),
+            }
+        } else {
             HydroNode::Join {
                 left: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 right: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
                     .new_node_metadata(KeyedStream::<K, (V, V2), L, B, O, R>::collection_kind()),
-            },
-        )
+            }
+        };
+
+        KeyedStream::new(self.location.clone(), ir_node)
     }
 
     /// Gets the values associated with a specific key from the keyed stream.

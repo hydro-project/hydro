@@ -7,7 +7,7 @@ use super::keyed_singleton::KeyedSingletonBound;
 use crate::compile::ir::BoundKind;
 use crate::live_collections::singleton::SingletonBound;
 
-/// A marker trait indicating whether a stream’s length is bounded (finite) or unbounded (potentially infinite).
+/// A marker trait indicating whether a stream's length is bounded (finite) or unbounded (potentially infinite).
 ///
 /// Implementors of this trait use it to signal the boundedness property of a stream.
 #[sealed]
@@ -23,6 +23,13 @@ pub trait Boundedness:
     } else {
         BoundKind::Unbounded
     };
+
+    /// Determines the output ordering of a join based on this (right/build) side's boundedness.
+    ///
+    /// When this side is [`Bounded`], the join accumulates this side first and then
+    /// streams the left side through, preserving the left side's ordering `InO`.
+    /// When this side is [`Unbounded`], a symmetric hash join is used and ordering is lost.
+    type PreserveOrderIfBounded<InO: crate::live_collections::stream::Ordering>: crate::live_collections::stream::Ordering;
 }
 
 /// Marks the stream as being unbounded, which means that it is not
@@ -32,6 +39,8 @@ pub enum Unbounded {}
 #[sealed]
 impl Boundedness for Unbounded {
     const BOUNDED: bool = false;
+    type PreserveOrderIfBounded<InO: crate::live_collections::stream::Ordering> =
+        crate::live_collections::stream::NoOrder;
 }
 
 /// Marks the stream as being bounded, which means that it is guaranteed
@@ -41,6 +50,7 @@ pub enum Bounded {}
 #[sealed]
 impl Boundedness for Bounded {
     const BOUNDED: bool = true;
+    type PreserveOrderIfBounded<InO: crate::live_collections::stream::Ordering> = InO;
 }
 
 #[sealed]

@@ -1,7 +1,7 @@
 //! Interfaces for compiled Hydro simulators and concrete simulation instances.
 
 use core::{fmt, panic};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, VecDeque};
 use std::fmt::Debug;
 use std::panic::RefUnwindSafe;
@@ -18,8 +18,8 @@ use libloading::Library;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use tempfile::TempPath;
-use tokio::sync::Mutex;
 use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::{Mutex, Notify};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use super::runtime::{Hooks, InlineHooks};
@@ -30,6 +30,41 @@ use crate::location::dynamic::LocationId;
 use crate::sim::graph::{SimExternalPort, SimExternalPortRegistry};
 use crate::sim::runtime::SimHook;
 
+struct QuiescenceState {
+    /// Set to true when the scheduler reaches quiescence; reset to false when new input is sent.
+    quiescent: Cell<bool>,
+    /// Notified when the scheduler reaches quiescence (wakes receivers waiting for data).
+    quiescence_notify: Notify,
+    /// Notified when new input is sent, signaling the scheduler to resume.
+    resume_notify: Notify,
+}
+
+impl QuiescenceState {
+    /// Signal that new input has been sent, waking the scheduler if it was quiescent.
+    fn resume(&self) {
+        self.quiescent.set(false);
+        self.resume_notify.notify_waiters();
+    }
+
+    /// Whether the scheduler is currently quiescent (no more progress possible without input).
+    fn is_quiescent(&self) -> bool {
+        self.quiescent.get()
+    }
+
+    /// Returns a future that completes when the scheduler next reaches quiescence.
+    fn notified(&self) -> tokio::sync::futures::Notified<'_> {
+        self.quiescence_notify.notified()
+    }
+
+    /// Enter quiescence and wait for new input before continuing.
+    async fn wait_for_resume(&self) {
+        self.quiescent.set(true);
+        self.quiescence_notify.notify_waiters();
+        self.resume_notify.notified().await;
+        self.quiescent.set(false);
+    }
+}
+
 struct SimConnections {
     input_senders: HashMap<SimExternalPort, Rc<UnboundedSender<Bytes>>>,
     output_receivers: HashMap<SimExternalPort, Rc<Mutex<UnboundedReceiverStream<Bytes>>>>,
@@ -37,6 +72,7 @@ struct SimConnections {
     cluster_output_receivers:
         HashMap<SimExternalPort, Vec<Rc<Mutex<UnboundedReceiverStream<Bytes>>>>>,
     external_registered: HashMap<ExternalPortId, SimExternalPort>,
+    quiescence: Rc<QuiescenceState>,
 }
 
 tokio::task_local! {
@@ -389,6 +425,12 @@ impl<'a> CompiledSimInstance<'a> {
 
         let registered = &self.externals_port_registry.registered;
 
+        let quiescence = Rc::new(QuiescenceState {
+            quiescent: Cell::new(false),
+            quiescence_notify: Notify::new(),
+            resume_notify: Notify::new(),
+        });
+
         let mut input_senders = HashMap::new();
         let mut output_receivers = HashMap::new();
         let mut cluster_input_senders = HashMap::new();
@@ -431,6 +473,7 @@ impl<'a> CompiledSimInstance<'a> {
                     cluster_input_senders,
                     cluster_output_receivers,
                     external_registered: self.externals_port_registry.registered.clone(),
+                    quiescence: quiescence.clone(),
                 }),
                 async move {
                     thunk(self).await;
@@ -465,6 +508,11 @@ impl<'a> CompiledSimInstance<'a> {
             .map(|(lid, c_id, _)| (serde_json::from_str(lid).unwrap(), *c_id))
             .collect();
 
+        let quiescence = CURRENT_SIM_CONNECTIONS.with(|connections| {
+            let connections = connections.borrow();
+            connections.quiescence.clone()
+        });
+
         let mut launched = LaunchedSim {
             async_dfirs: async_dfirs
                 .into_iter()
@@ -494,6 +542,7 @@ impl<'a> CompiledSimInstance<'a> {
             } else {
                 LogKind::Null
             },
+            quiescence,
         };
 
         async move { launched.scheduler().await }
@@ -513,22 +562,34 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimReceiver<T, O,
         &self,
         thunk: impl AsyncFnOnce(&mut Pin<&mut dyn Stream<Item = T>>) -> Out,
     ) -> Out {
-        let receiver = CURRENT_SIM_CONNECTIONS.with(|connections| {
-            let connections = &mut *connections.borrow_mut();
-            connections
-                .output_receivers
-                .get(connections.external_registered.get(&self.0).unwrap())
-                .unwrap()
-                .clone()
+        let (receiver, quiescence) = CURRENT_SIM_CONNECTIONS.with(|connections| {
+            let connections = connections.borrow();
+            let port = connections.external_registered.get(&self.0).unwrap();
+            (
+                connections.output_receivers.get(port).unwrap().clone(),
+                connections.quiescence.clone(),
+            )
         });
 
         let mut receiver_stream = receiver.lock().await;
-        thunk(&mut pin!(
-            &mut receiver_stream
-                .by_ref()
-                .map(|b| bincode::deserialize(&b).unwrap())
-        ))
-        .await
+        let mut notified_fut = pin!(quiescence.notified());
+        let mut quiescence_aware = futures::stream::poll_fn(|cx| {
+            use std::task::Poll;
+            match receiver_stream.poll_next_unpin(cx) {
+                Poll::Ready(Some(bytes)) => {
+                    return Poll::Ready(Some(bincode::deserialize(&bytes).unwrap()));
+                }
+                Poll::Ready(None) => return Poll::Ready(None),
+                Poll::Pending => {}
+            }
+            if quiescence.is_quiescent() {
+                return Poll::Ready(None);
+            }
+            let () = ready!(notified_fut.as_mut().poll(cx));
+            notified_fut.set(quiescence.notified());
+            Poll::Ready(None)
+        });
+        thunk(&mut pin!(&mut quiescence_aware)).await
     }
 
     /// Asserts that the stream has ended and no more messages can possibly arrive.
@@ -757,16 +818,23 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimSender<T, O, R
         &self,
         thunk: impl FnOnce(&dyn Fn(T) -> Result<(), tokio::sync::mpsc::error::SendError<Bytes>>) -> Out,
     ) -> Out {
-        let sender = CURRENT_SIM_CONNECTIONS.with(|connections| {
-            let connections = &mut *connections.borrow_mut();
-            connections
-                .input_senders
-                .get(connections.external_registered.get(&self.0).unwrap())
-                .unwrap()
-                .clone()
+        let (sender, quiescence) = CURRENT_SIM_CONNECTIONS.with(|connections| {
+            let connections = connections.borrow();
+            (
+                connections
+                    .input_senders
+                    .get(connections.external_registered.get(&self.0).unwrap())
+                    .unwrap()
+                    .clone(),
+                connections.quiescence.clone(),
+            )
         });
 
-        thunk(&move |t| sender.send(bincode::serialize(&t).unwrap().into()))
+        thunk(&move |t| {
+            let res = sender.send(bincode::serialize(&t).unwrap().into());
+            quiescence.resume();
+            res
+        })
     }
 }
 
@@ -819,20 +887,35 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimClusterReceive
         member_id: u32,
         thunk: impl AsyncFnOnce(&mut Pin<&mut dyn Stream<Item = T>>) -> Out,
     ) -> Out {
-        let receiver = CURRENT_SIM_CONNECTIONS.with(|connections| {
-            let connections = &mut *connections.borrow_mut();
-            let receivers = connections
-                .cluster_output_receivers
-                .get(connections.external_registered.get(&self.0).unwrap())
-                .unwrap();
-            receivers[member_id as usize].clone()
+        let (receiver, quiescence) = CURRENT_SIM_CONNECTIONS.with(|connections| {
+            let connections = connections.borrow();
+            let port = connections.external_registered.get(&self.0).unwrap();
+            let receivers = connections.cluster_output_receivers.get(port).unwrap();
+            (
+                receivers[member_id as usize].clone(),
+                connections.quiescence.clone(),
+            )
         });
 
         let mut lock = receiver.lock().await;
-        thunk(&mut pin!(
-            lock.by_ref().map(|b| bincode::deserialize(&b).unwrap())
-        ))
-        .await
+        let mut notified_fut = pin!(quiescence.notified());
+        let mut quiescence_aware = futures::stream::poll_fn(|cx| {
+            use std::task::Poll;
+            match lock.poll_next_unpin(cx) {
+                Poll::Ready(Some(bytes)) => {
+                    return Poll::Ready(Some(bincode::deserialize(&bytes).unwrap()));
+                }
+                Poll::Ready(None) => return Poll::Ready(None),
+                Poll::Pending => {}
+            }
+            if quiescence.is_quiescent() {
+                return Poll::Ready(None);
+            }
+            let () = ready!(notified_fut.as_mut().poll(cx));
+            notified_fut.set(quiescence.notified());
+            Poll::Ready(None)
+        });
+        thunk(&mut pin!(&mut quiescence_aware)).await
     }
 }
 
@@ -872,18 +955,23 @@ impl<T: Serialize + DeserializeOwned, O: Ordering, R: Retries> SimClusterSender<
             &dyn Fn(u32, T) -> Result<(), tokio::sync::mpsc::error::SendError<Bytes>>,
         ) -> Out,
     ) -> Out {
-        let senders = CURRENT_SIM_CONNECTIONS.with(|connections| {
-            let connections = &mut *connections.borrow_mut();
-            connections
-                .cluster_input_senders
-                .get(connections.external_registered.get(&self.0).unwrap())
-                .unwrap()
-                .clone()
+        let (senders, quiescence) = CURRENT_SIM_CONNECTIONS.with(|connections| {
+            let connections = connections.borrow();
+            (
+                connections
+                    .cluster_input_senders
+                    .get(connections.external_registered.get(&self.0).unwrap())
+                    .unwrap()
+                    .clone(),
+                connections.quiescence.clone(),
+            )
         });
 
         thunk(&move |member_id: u32, t: T| {
             let payload = bincode::serialize(&t).unwrap();
-            senders[member_id as usize].send(Bytes::from(payload))
+            let res = senders[member_id as usize].send(Bytes::from(payload));
+            quiescence.resume();
+            res
         })
     }
 }
@@ -958,6 +1046,8 @@ struct LaunchedSim<W: std::io::Write> {
     /// a tick that block on ordering decisions while the tick DFIR is running.
     inline_hooks: InlineHooks<LocationId>,
     log: LogKind<W>,
+    /// Represents quiescence state of the simulation.
+    quiescence: Rc<QuiescenceState>,
 }
 
 impl<W: std::io::Write> LaunchedSim<W> {
@@ -1033,7 +1123,8 @@ impl<W: std::io::Write> LaunchedSim<W> {
                 if self.possibly_ready_ticks.is_empty()
                     && self.possibly_ready_observation.is_empty()
                 {
-                    break;
+                    // Signal quiescence and wait for new input.
+                    self.quiescence.wait_for_resume().await;
                 } else {
                     let next_tick_or_obs = (0..(self.possibly_ready_ticks.len()
                         + self.possibly_ready_observation.len()))

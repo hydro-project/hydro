@@ -164,11 +164,11 @@ impl Display for TaglessMemberId {
     fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             #[cfg(feature = "deploy_integration")]
-            TaglessMemberId::Legacy { raw_id } => write!(_f, "{:?}", raw_id),
+            TaglessMemberId::Legacy { raw_id } => write!(_f, "{}", raw_id),
             #[cfg(feature = "docker_runtime")]
-            TaglessMemberId::Docker { container_name } => write!(_f, "{:?}", container_name),
+            TaglessMemberId::Docker { container_name } => write!(_f, "{}", container_name),
             #[cfg(feature = "maelstrom_runtime")]
-            TaglessMemberId::Maelstrom { node_id } => write!(_f, "{:?}", node_id),
+            TaglessMemberId::Maelstrom { node_id } => write!(_f, "{}", node_id),
             #[expect(
                 clippy::allow_attributes,
                 reason = "Only triggers when `TaglessMemberId` is empty."

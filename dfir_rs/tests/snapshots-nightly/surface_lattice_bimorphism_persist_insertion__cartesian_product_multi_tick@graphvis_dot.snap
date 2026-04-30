@@ -34,7 +34,7 @@ digraph {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_1v1\nstratum 0"
+        label = "sg_1v1"
         subgraph sg_1v1_var_lhs {
             cluster=true
             label="var lhs"
@@ -47,7 +47,7 @@ digraph {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_2v1\nstratum 0"
+        label = "sg_2v1"
         subgraph sg_2v1_var_rhs {
             cluster=true
             label="var rhs"
@@ -60,7 +60,7 @@ digraph {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_3v1\nstratum 1"
+        label = "sg_3v1"
         subgraph sg_3v1_var_my_join {
             cluster=true
             label="var my_join"
@@ -71,7 +71,7 @@ digraph {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_4v1\nstratum 1"
+        label = "sg_4v1"
         subgraph sg_4v1_var_my_join {
             cluster=true
             label="var my_join"

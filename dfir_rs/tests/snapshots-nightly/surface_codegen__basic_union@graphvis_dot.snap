@@ -16,7 +16,7 @@ digraph {
         cluster=true
         fillcolor="#dddddd"
         style=filled
-        label = "sg_1v1\nstratum 0"
+        label = "sg_1v1"
         n3v1
         n4v1
         subgraph sg_1v1_var_m {

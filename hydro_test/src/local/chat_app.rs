@@ -19,7 +19,7 @@ pub fn chat_app<'a>(
             let users = use(current_users, nondet_user_arrival_broadcast);
             let messages = use(messages, nondet_user_arrival_broadcast);
 
-            users.flatten_ordered().cross_product(messages)
+            users.flatten_ordered().cross_product(messages).weaken_ordering::<NoOrder>()
         }
     }
 }
