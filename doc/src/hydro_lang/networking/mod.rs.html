@@ -138,7 +138,7 @@
 <a href=#138 id=138 data-nosnippet>138</a>}
 <a href=#139 id=139 data-nosnippet>139</a>
 <a href=#140 id=140 data-nosnippet>140</a><span class="doccomment">/// The fault model for a TCP connection.
-<a href=#141 id=141 data-nosnippet>141</a></span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+<a href=#141 id=141 data-nosnippet>141</a></span><span class="attr">#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize)]
 <a href=#142 id=142 data-nosnippet>142</a></span><span class="kw">pub enum </span>TcpFault {
 <a href=#143 id=143 data-nosnippet>143</a>    <span class="doccomment">/// Stops sending messages after a failed connection.
 <a href=#144 id=144 data-nosnippet>144</a>    </span>FailStop,
@@ -149,7 +149,7 @@
 <a href=#149 id=149 data-nosnippet>149</a>}
 <a href=#150 id=150 data-nosnippet>150</a>
 <a href=#151 id=151 data-nosnippet>151</a><span class="doccomment">/// Describes the networking configuration for a network channel at the IR level.
-<a href=#152 id=152 data-nosnippet>152</a></span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+<a href=#152 id=152 data-nosnippet>152</a></span><span class="attr">#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
 <a href=#153 id=153 data-nosnippet>153</a></span><span class="kw">pub enum </span>NetworkingInfo {
 <a href=#154 id=154 data-nosnippet>154</a>    <span class="doccomment">/// A TCP-based network channel with a specific fault model.
 <a href=#155 id=155 data-nosnippet>155</a>    </span>Tcp {
