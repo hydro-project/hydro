@@ -440,6 +440,18 @@ pub trait DfirBuilder {
     );
 
     #[expect(clippy::too_many_arguments, reason = "TODO")]
+    fn merge_ordered(
+        &mut self,
+        location: &LocationId,
+        first_ident: syn::Ident,
+        second_ident: syn::Ident,
+        out_ident: &syn::Ident,
+        in_kind: &CollectionKind,
+        op_meta: &HydroIrOpMetadata,
+        operator_tag: Option<&str>,
+    );
+
+    #[expect(clippy::too_many_arguments, reason = "TODO")]
     fn create_network(
         &mut self,
         from: &LocationId,
@@ -593,6 +605,28 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
             },
             None,
             None,
+        );
+    }
+
+    fn merge_ordered(
+        &mut self,
+        location: &LocationId,
+        first_ident: syn::Ident,
+        second_ident: syn::Ident,
+        out_ident: &syn::Ident,
+        _in_kind: &CollectionKind,
+        _op_meta: &HydroIrOpMetadata,
+        operator_tag: Option<&str>,
+    ) {
+        let builder = self.get_dfir_mut(location);
+        builder.add_dfir(
+            parse_quote! {
+                #out_ident = union();
+                #first_ident -> [0]#out_ident;
+                #second_ident -> [1]#out_ident;
+            },
+            None,
+            operator_tag,
         );
     }
 
@@ -2036,6 +2070,12 @@ pub enum HydroNode {
         metadata: HydroIrMetadata,
     },
 
+    MergeOrdered {
+        first: Box<HydroNode>,
+        second: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
+
     ChainFirst {
         first: Box<HydroNode>,
         second: Box<HydroNode>,
@@ -2312,6 +2352,11 @@ impl HydroNode {
                 transform(second.as_mut(), seen_tees);
             }
 
+            HydroNode::MergeOrdered { first, second, .. } => {
+                transform(first.as_mut(), seen_tees);
+                transform(second.as_mut(), seen_tees);
+            }
+
             HydroNode::ChainFirst { first, second, .. } => {
                 transform(first.as_mut(), seen_tees);
                 transform(second.as_mut(), seen_tees);
@@ -2460,6 +2505,15 @@ impl HydroNode {
                 second,
                 metadata,
             } => HydroNode::Chain {
+                first: Box::new(first.deep_clone(seen_tees)),
+                second: Box::new(second.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::MergeOrdered {
+                first,
+                second,
+                metadata,
+            } => HydroNode::MergeOrdered {
                 first: Box::new(first.deep_clone(seen_tees)),
                 second: Box::new(second.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
@@ -3178,6 +3232,35 @@ impl HydroNode {
                         *next_stmt_id += 1;
 
                         ident_stack.push(chain_ident);
+                    }
+
+                    HydroNode::MergeOrdered { first, metadata, .. } => {
+                        let second_ident = ident_stack.pop().unwrap();
+                        let first_ident = ident_stack.pop().unwrap();
+
+                        let merge_ident =
+                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(graph_builders) => {
+                                graph_builders.merge_ordered(
+                                    &first.metadata().location_id,
+                                    first_ident,
+                                    second_ident,
+                                    &merge_ident,
+                                    &first.metadata().collection_kind,
+                                    &metadata.op,
+                                    Some(&next_stmt_id.to_string()),
+                                );
+                            }
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
+
+                        *next_stmt_id += 1;
+
+                        ident_stack.push(merge_ident);
                     }
 
                     HydroNode::ChainFirst { .. } => {
@@ -4247,6 +4330,7 @@ impl HydroNode {
             | HydroNode::EndAtomic { .. }
             | HydroNode::Batch { .. }
             | HydroNode::Chain { .. }
+            | HydroNode::MergeOrdered { .. }
             | HydroNode::ChainFirst { .. }
             | HydroNode::CrossProduct { .. }
             | HydroNode::CrossSingleton { .. }
@@ -4324,6 +4408,7 @@ impl HydroNode {
             HydroNode::EndAtomic { metadata, .. } => metadata,
             HydroNode::Batch { metadata, .. } => metadata,
             HydroNode::Chain { metadata, .. } => metadata,
+            HydroNode::MergeOrdered { metadata, .. } => metadata,
             HydroNode::ChainFirst { metadata, .. } => metadata,
             HydroNode::CrossProduct { metadata, .. } => metadata,
             HydroNode::CrossSingleton { metadata, .. } => metadata,
@@ -4378,6 +4463,7 @@ impl HydroNode {
             HydroNode::EndAtomic { metadata, .. } => metadata,
             HydroNode::Batch { metadata, .. } => metadata,
             HydroNode::Chain { metadata, .. } => metadata,
+            HydroNode::MergeOrdered { metadata, .. } => metadata,
             HydroNode::ChainFirst { metadata, .. } => metadata,
             HydroNode::CrossProduct { metadata, .. } => metadata,
             HydroNode::CrossSingleton { metadata, .. } => metadata,
@@ -4434,6 +4520,9 @@ impl HydroNode {
                 vec![inner]
             }
             HydroNode::Chain { first, second, .. } => {
+                vec![first, second]
+            }
+            HydroNode::MergeOrdered { first, second, .. } => {
                 vec![first, second]
             }
             HydroNode::ChainFirst { first, second, .. } => {
@@ -4525,6 +4614,13 @@ impl HydroNode {
             HydroNode::Batch { .. } => "Batch()".to_owned(),
             HydroNode::Chain { first, second, .. } => {
                 format!("Chain({}, {})", first.print_root(), second.print_root())
+            }
+            HydroNode::MergeOrdered { first, second, .. } => {
+                format!(
+                    "MergeOrdered({}, {})",
+                    first.print_root(),
+                    second.print_root()
+                )
             }
             HydroNode::ChainFirst { first, second, .. } => {
                 format!(

@@ -1561,6 +1561,11 @@ impl HydroNode {
                 first,
                 second,
                 metadata,
+            }
+            | HydroNode::MergeOrdered {
+                first,
+                second,
+                metadata,
             } => {
                 let first_id = first.build_graph_structure(structure, seen_tees, config);
                 let second_id = second.build_graph_structure(structure, seen_tees, config);

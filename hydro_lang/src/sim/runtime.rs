@@ -98,6 +98,20 @@ impl<'a, T> Debug for ManualDebug<'a, T> {
     }
 }
 
+struct LabeledDebug<'a, T>(&'static str, &'a T, fn(&T) -> Option<String>);
+impl<'a, T> Debug for LabeledDebug<'a, T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(label, v, debug_fn) = self;
+        let value = debug_fn(v).unwrap_or_else(|| "?".to_owned());
+        let color = if *label == "l" {
+            colored::Color::Magenta
+        } else {
+            colored::Color::Yellow
+        };
+        write!(f, "{}", format!("{}: {}", label, value).color(color))
+    }
+}
+
 struct TruncatedVecDebug<'a, T: 'a, I: Iterator<Item = &'a T>>(
     RefCell<Option<I>>,
     usize,
@@ -117,6 +131,35 @@ impl<'a, T, I: Iterator<Item = &'a T>> Debug for TruncatedVecDebug<'a, T, I> {
         } else {
             f.debug_list()
                 .entries(iter.map(|v| ManualDebug(v, *elem_debug)))
+                .finish()
+        }
+    }
+}
+
+struct TruncatedLabeledVecDebug<'a, T: 'a, I: Iterator<Item = (&'static str, &'a T)>>(
+    RefCell<Option<I>>,
+    usize,
+    fn(&T) -> Option<String>,
+);
+impl<'a, T, I: Iterator<Item = (&'static str, &'a T)>> Debug
+    for TruncatedLabeledVecDebug<'a, T, I>
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self(iter, max, elem_debug) = self;
+        let iter = iter.take().unwrap();
+        if let Some(length) = iter.size_hint().1
+            && length > *max
+        {
+            f.debug_list()
+                .entries(
+                    iter.take(*max)
+                        .map(|(l, v)| LabeledDebug(l, v, *elem_debug)),
+                )
+                .finish_non_exhaustive()?;
+            write!(f, " ({} total)", length)
+        } else {
+            f.debug_list()
+                .entries(iter.map(|(l, v)| LabeledDebug(l, v, *elem_debug)))
                 .finish()
         }
     }
@@ -847,6 +890,135 @@ impl<T> SimInlineHook for StreamOrderHook<T> {
     }
 }
 
+pub struct MergeOrderedHook<T> {
+    first: Rc<RefCell<Option<Vec<T>>>>,
+    second: Rc<RefCell<Option<Vec<T>>>>,
+    to_release: Option<Vec<T>>,
+    release_sources: Option<Vec<bool>>,
+    output: UnboundedSender<Vec<T>>,
+    batch_location: HookLocationMeta,
+    format_debug: fn(&T) -> Option<String>,
+}
+
+impl<T> MergeOrderedHook<T> {
+    pub fn new(
+        first: Rc<RefCell<Option<Vec<T>>>>,
+        second: Rc<RefCell<Option<Vec<T>>>>,
+        output: UnboundedSender<Vec<T>>,
+        batch_location: HookLocationMeta,
+        format_debug: fn(&T) -> Option<String>,
+    ) -> Self {
+        Self {
+            first,
+            second,
+            to_release: None,
+            release_sources: None,
+            output,
+            batch_location,
+            format_debug,
+        }
+    }
+}
+
+impl<T> SimInlineHook for MergeOrderedHook<T> {
+    fn pending_decision(&self) -> bool {
+        self.first.borrow().is_some() && self.second.borrow().is_some()
+    }
+
+    fn has_decision(&self) -> bool {
+        self.to_release.is_some()
+    }
+
+    fn autonomous_decision<'a>(&mut self, driver: &mut Borrowed<'a>) {
+        let first_input = self.first.borrow_mut().take().unwrap();
+        let second_input = self.second.borrow_mut().take().unwrap();
+
+        let first_len = first_input.len();
+        let second_len = second_input.len();
+
+        // Generate a valid interleaving preserving per-input order.
+        let mut result = Vec::with_capacity(first_len + second_len);
+        let mut sources = Vec::with_capacity(first_len + second_len);
+        let mut first_iter = first_input.into_iter();
+        let mut second_iter = second_input.into_iter();
+        let mut first_remaining = first_len;
+        let mut second_remaining = second_len;
+
+        while first_remaining > 0 && second_remaining > 0 {
+            let take_second: bool = produce().generate(driver).unwrap();
+            if take_second {
+                result.push(second_iter.next().unwrap());
+                sources.push(true);
+                second_remaining -= 1;
+            } else {
+                result.push(first_iter.next().unwrap());
+                sources.push(false);
+                first_remaining -= 1;
+            }
+        }
+
+        for item in first_iter {
+            result.push(item);
+            sources.push(false);
+        }
+        for item in second_iter {
+            result.push(item);
+            sources.push(true);
+        }
+
+        self.to_release = Some(result);
+        self.release_sources = Some(sources);
+    }
+
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+        if let Some(to_release) = self.to_release.take() {
+            let sources = self.release_sources.take().unwrap();
+            if !to_release.is_empty() {
+                let (batch_location, line, caret_indent) = self.batch_location;
+
+                let labeled_iter =
+                    sources
+                        .iter()
+                        .zip(to_release.iter())
+                        .map(|(is_second, item)| {
+                            let label: &'static str = if *is_second { "r" } else { "l" };
+                            (label, item)
+                        });
+
+                let note_str = format!(
+                    "^ observed non-deterministic merge order: {:?}",
+                    TruncatedLabeledVecDebug(
+                        RefCell::new(Some(labeled_iter)),
+                        8,
+                        self.format_debug
+                    )
+                );
+
+                let _ = writeln!(
+                    log_writer,
+                    "{} {}",
+                    "-->".color(colored::Color::Blue),
+                    batch_location
+                );
+
+                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+                let _ = writeln!(
+                    log_writer,
+                    " {}{}{}",
+                    "|".color(colored::Color::Blue),
+                    caret_indent,
+                    note_str.color(colored::Color::Cyan)
+                );
+            }
+
+            self.output.send(to_release).unwrap();
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}
+
 type KeyedStreamOrderHookInput<K, V> = Rc<RefCell<Option<Vec<(K, V)>>>>;
 
 pub struct KeyedStreamOrderHook<K: Hash + Eq + Clone, V> {
@@ -1346,6 +1518,112 @@ impl<K: Hash + Eq + Clone, V> SimHook for TopLevelPartiallyOrderedStreamHook<K, 
                     "^ observed partially-ordered interleaving: {:?}",
                     TruncatedVecDebug(
                         RefCell::new(Some(to_release.iter())),
+                        8,
+                        self.format_item_debug
+                    )
+                );
+
+                let _ = writeln!(
+                    log_writer,
+                    "\n{} {}",
+                    "-->".color(colored::Color::Blue),
+                    batch_location
+                );
+
+                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+                let _ = writeln!(
+                    log_writer,
+                    " {}{}{}",
+                    "|".color(colored::Color::Blue),
+                    caret_indent,
+                    note_str.color(colored::Color::Green)
+                );
+            }
+
+            for item in to_release {
+                self.output.send(item).unwrap();
+            }
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}
+
+/// Top-level merge-ordered hook. Releases one element at a time, picking from
+/// the front of either the first or second input queue. This preserves per-input
+/// order while allowing feedback cycles to deliver elements between releases.
+pub struct TopLevelMergeOrderedHook<T> {
+    pub first: Rc<RefCell<VecDeque<T>>>,
+    pub second: Rc<RefCell<VecDeque<T>>>,
+    pub to_release: Option<Vec<T>>,
+    pub release_source: Option<&'static str>,
+    pub output: UnboundedSender<T>,
+    pub location: HookLocationMeta,
+    pub format_item_debug: fn(&T) -> Option<String>,
+}
+
+impl<T> SimHook for TopLevelMergeOrderedHook<T> {
+    fn current_decision(&self) -> Option<bool> {
+        self.to_release.as_ref().map(|v| !v.is_empty())
+    }
+
+    fn can_make_nontrivial_decision(&self) -> bool {
+        !self.first.borrow().is_empty() || !self.second.borrow().is_empty()
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        driver: &mut Borrowed<'a>,
+        force_nontrivial: bool,
+    ) -> bool {
+        let first_empty = self.first.borrow().is_empty();
+        let second_empty = self.second.borrow().is_empty();
+
+        if first_empty && second_empty {
+            self.to_release = Some(vec![]);
+            self.release_source = None;
+            return false;
+        }
+
+        if !force_nontrivial && produce().generate(driver).unwrap() {
+            // don't release anything
+            self.to_release = Some(vec![]);
+            self.release_source = None;
+            return false;
+        }
+
+        let (item, source) = if first_empty {
+            (self.second.borrow_mut().pop_front().unwrap(), "r")
+        } else if second_empty {
+            (self.first.borrow_mut().pop_front().unwrap(), "l")
+        } else {
+            let take_second: bool = produce().generate(driver).unwrap();
+            if take_second {
+                (self.second.borrow_mut().pop_front().unwrap(), "r")
+            } else {
+                (self.first.borrow_mut().pop_front().unwrap(), "l")
+            }
+        };
+
+        self.to_release = Some(vec![item]);
+        self.release_source = Some(source);
+        true
+    }
+
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+        if let Some(to_release) = self.to_release.take() {
+            let source = self.release_source.take();
+            if !to_release.is_empty() {
+                let (batch_location, line, caret_indent) = self.location;
+                let source_label = source.unwrap_or("?");
+
+                let labeled_iter = to_release.iter().map(|item| (source_label, item));
+
+                let note_str = format!(
+                    "^ observed non-deterministic merge order: {:?}",
+                    TruncatedLabeledVecDebug(
+                        RefCell::new(Some(labeled_iter)),
                         8,
                         self.format_item_debug
                     )
