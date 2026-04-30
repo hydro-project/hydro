@@ -88,7 +88,7 @@ pub struct Context {
     metrics: Rc<DfirMetrics>,
     /// Tasks buffered via [`Self::request_task`], spawned by [`Dfir::spawn_tasks`]
     /// once the runtime is running inside a tokio `LocalSet`.
-    pub(crate) tasks_to_spawn: Vec<Pin<Box<dyn Future<Output = ()> + 'static>>>,
+    tasks_to_spawn: Vec<Pin<Box<dyn Future<Output = ()> + 'static>>>,
 }
 
 impl Context {
@@ -144,9 +144,10 @@ impl Context {
     /// Buffers an async task to be spawned later by [`Dfir::spawn_tasks`].
     ///
     /// Tasks are deferred because `write_prologue` runs during graph construction,
-    /// which may occur before a tokio `LocalSet` is entered. The buffered tasks are
-    /// drained and spawned via `tokio::task::spawn_local` on the first call to
-    /// [`Dfir::run_tick`].
+    /// which may occur before a tokio `LocalSet` is entered. Buffered tasks are
+    /// drained and spawned via `tokio::task::spawn_local` at the start of
+    /// [`Dfir::run_tick`]. Tasks requested after that point remain buffered until
+    /// the next call to [`Dfir::run_tick`].
     pub fn request_task<Fut>(&mut self, future: Fut)
     where
         Fut: Future<Output = ()> + 'static,
