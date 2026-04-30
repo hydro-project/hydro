@@ -1,5 +1,5 @@
-error: Negative edge creates a negative cycle which must be broken with a `defer_tick()` operator.
- --> tests/compile-fail/surface_negative_loop.rs:7:18
+error: Cyclical dataflow within a tick is not supported. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks.
+ --> tests/compile-fail/surface_negative_loop.rs:6:9
   |
-7 |         diff -> [neg]diff;
-  |                  ^^^
+6 |         source_iter([1]) -> [pos]diff;
+  |         ^^^^^^^^^^^^^^^^

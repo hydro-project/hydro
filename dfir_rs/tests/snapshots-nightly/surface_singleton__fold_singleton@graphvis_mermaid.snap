@@ -25,12 +25,12 @@ linkStyle default stroke:#aaa
 3v1-->7v1
 9v1--x3v1; linkStyle 6 stroke:red
 3v1--x4v1; linkStyle 7 stroke:red
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
+subgraph sg_1v1 ["sg_1v1"]
     subgraph sg_1v1_var_stream2 ["var <tt>stream2</tt>"]
         2v1
     end
 end
-subgraph sg_2v1 ["sg_2v1 stratum 2"]
+subgraph sg_2v1 ["sg_2v1"]
     subgraph sg_2v1_var_filtered_stream1 ["var <tt>filtered_stream1</tt>"]
         4v1
         5v1
@@ -40,7 +40,7 @@ subgraph sg_2v1 ["sg_2v1 stratum 2"]
         1v1
     end
 end
-subgraph sg_3v1 ["sg_3v1 stratum 1"]
+subgraph sg_3v1 ["sg_3v1"]
     7v1
     8v1
     subgraph sg_3v1_var_max_of_stream2 ["var <tt>max_of_stream2</tt>"]

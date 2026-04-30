@@ -7,87 +7,77 @@ expression: built.ir()
         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: many_to_many :: * ; | n | println ! ("cluster received: {:?}" , n) }),
         input: ObserveNonDet {
             inner: Cast {
-                inner: Cast {
-                    inner: Network {
-                        name: Some(
-                            "m2m_broadcast",
-                        ),
-                        networking_info: Tcp {
-                            fault: FailStop,
-                        },
-                        serialize_fn: Some(
-                            hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , i32) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
-                        ),
-                        instantiate_fn: <network instantiate>,
-                        deserialize_fn: Some(
-                            | res | { let (id , b) = res . unwrap () ; (hydro_lang :: __staged :: location :: MemberId :: < () > :: from_tagless (id as hydro_lang :: __staged :: location :: TaglessMemberId) , hydro_lang :: runtime_support :: bincode :: deserialize :: < i32 > (& b) . unwrap ()) },
-                        ),
-                        input: YieldConcat {
-                            inner: Cast {
-                                inner: CrossProduct {
-                                    left: ObserveNonDet {
-                                        inner: Map {
-                                            f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , bool) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
-                                            input: Cast {
-                                                inner: Cast {
-                                                    inner: Filter {
-                                                        f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , bool) , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | b | * b }) ; { let orig = f__free ; move | t : & (_ , _) | orig (& t . 1) } }),
-                                                        input: Batch {
-                                                            inner: FoldKeyed {
-                                                                init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | | false }),
-                                                                acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
-                                                                input: Cast {
-                                                                    inner: Map {
-                                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: TaglessMemberId , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | (k , v) | (MemberId :: from_tagless (k) , v) }),
-                                                                        input: Source {
-                                                                            source: ClusterMembers(
-                                                                                Cluster(loc1v1),
-                                                                                Uninit,
-                                                                            ),
-                                                                            metadata: HydroIrMetadata {
-                                                                                location_id: Cluster(loc1v1),
-                                                                                collection_kind: Stream {
-                                                                                    bound: Unbounded,
-                                                                                    order: TotalOrder,
-                                                                                    retry: ExactlyOnce,
-                                                                                    element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: TaglessMemberId , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent),
-                                                                                },
-                                                                            },
-                                                                        },
+                inner: Network {
+                    name: Some(
+                        "m2m_broadcast",
+                    ),
+                    networking_info: Tcp {
+                        fault: FailStop,
+                    },
+                    serialize_fn: Some(
+                        hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_lang :: __staged :: location :: MemberId < _ > , i32) , _ > (| (id , data) | { (id . into_tagless () , hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into ()) }),
+                    ),
+                    instantiate_fn: <network instantiate>,
+                    deserialize_fn: Some(
+                        | res | { let (id , b) = res . unwrap () ; (hydro_lang :: __staged :: location :: MemberId :: < () > :: from_tagless (id as hydro_lang :: __staged :: location :: TaglessMemberId) , hydro_lang :: runtime_support :: bincode :: deserialize :: < i32 > (& b) . unwrap ()) },
+                    ),
+                    input: YieldConcat {
+                        inner: Cast {
+                            inner: CrossProduct {
+                                left: ObserveNonDet {
+                                    inner: Map {
+                                        f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , bool) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
+                                        input: Cast {
+                                            inner: Cast {
+                                                inner: Filter {
+                                                    f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , bool) , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | b | * b }) ; { let orig = f__free ; move | t : & (_ , _) | orig (& t . 1) } }),
+                                                    input: Batch {
+                                                        inner: FoldKeyed {
+                                                            init: stageleft :: runtime_support :: fn0_type_hint :: < bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | | false }),
+                                                            acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < bool , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: networking :: * ; | present , event | { match event { MembershipEvent :: Joined => * present = true , MembershipEvent :: Left => * present = false , } } }),
+                                                            input: Cast {
+                                                                inner: Map {
+                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: TaglessMemberId , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | (k , v) | (MemberId :: from_tagless (k) , v) }),
+                                                                    input: Source {
+                                                                        source: ClusterMembers(
+                                                                            Cluster(loc1v1),
+                                                                            Uninit,
+                                                                        ),
                                                                         metadata: HydroIrMetadata {
                                                                             location_id: Cluster(loc1v1),
                                                                             collection_kind: Stream {
                                                                                 bound: Unbounded,
                                                                                 order: TotalOrder,
                                                                                 retry: ExactlyOnce,
-                                                                                element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent),
+                                                                                element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: TaglessMemberId , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent),
                                                                             },
                                                                         },
                                                                     },
                                                                     metadata: HydroIrMetadata {
                                                                         location_id: Cluster(loc1v1),
-                                                                        collection_kind: KeyedStream {
+                                                                        collection_kind: Stream {
                                                                             bound: Unbounded,
-                                                                            value_order: TotalOrder,
-                                                                            value_retry: ExactlyOnce,
-                                                                            key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
-                                                                            value_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent,
+                                                                            order: TotalOrder,
+                                                                            retry: ExactlyOnce,
+                                                                            element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent),
                                                                         },
                                                                     },
                                                                 },
                                                                 metadata: HydroIrMetadata {
                                                                     location_id: Cluster(loc1v1),
-                                                                    collection_kind: KeyedSingleton {
+                                                                    collection_kind: KeyedStream {
                                                                         bound: Unbounded,
+                                                                        value_order: TotalOrder,
+                                                                        value_retry: ExactlyOnce,
                                                                         key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
-                                                                        value_type: bool,
+                                                                        value_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent,
                                                                     },
                                                                 },
                                                             },
                                                             metadata: HydroIrMetadata {
-                                                                location_id: Tick(0, Cluster(loc1v1)),
+                                                                location_id: Cluster(loc1v1),
                                                                 collection_kind: KeyedSingleton {
-                                                                    bound: Bounded,
+                                                                    bound: Unbounded,
                                                                     key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
                                                                     value_type: bool,
                                                                 },
@@ -104,10 +94,8 @@ expression: built.ir()
                                                     },
                                                     metadata: HydroIrMetadata {
                                                         location_id: Tick(0, Cluster(loc1v1)),
-                                                        collection_kind: KeyedStream {
+                                                        collection_kind: KeyedSingleton {
                                                             bound: Bounded,
-                                                            value_order: TotalOrder,
-                                                            value_retry: ExactlyOnce,
                                                             key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
                                                             value_type: bool,
                                                         },
@@ -115,11 +103,12 @@ expression: built.ir()
                                                 },
                                                 metadata: HydroIrMetadata {
                                                     location_id: Tick(0, Cluster(loc1v1)),
-                                                    collection_kind: Stream {
+                                                    collection_kind: KeyedStream {
                                                         bound: Bounded,
-                                                        order: NoOrder,
-                                                        retry: ExactlyOnce,
-                                                        element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , bool),
+                                                        value_order: TotalOrder,
+                                                        value_retry: ExactlyOnce,
+                                                        key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
+                                                        value_type: bool,
                                                     },
                                                 },
                                             },
@@ -129,38 +118,38 @@ expression: built.ir()
                                                     bound: Bounded,
                                                     order: NoOrder,
                                                     retry: ExactlyOnce,
-                                                    element_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
+                                                    element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , bool),
                                                 },
                                             },
                                         },
-                                        trusted: true,
                                         metadata: HydroIrMetadata {
                                             location_id: Tick(0, Cluster(loc1v1)),
                                             collection_kind: Stream {
                                                 bound: Bounded,
-                                                order: TotalOrder,
+                                                order: NoOrder,
                                                 retry: ExactlyOnce,
                                                 element_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
                                             },
                                         },
                                     },
-                                    right: Batch {
-                                        inner: Source {
-                                            source: Iter(
-                                                stageleft :: runtime_support :: type_hint :: < std :: ops :: Range < i32 > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: many_to_many :: * ; 0 .. 2 }),
-                                            ),
-                                            metadata: HydroIrMetadata {
-                                                location_id: Cluster(loc1v1),
-                                                collection_kind: Stream {
-                                                    bound: Bounded,
-                                                    order: TotalOrder,
-                                                    retry: ExactlyOnce,
-                                                    element_type: i32,
-                                                },
-                                            },
+                                    trusted: true,
+                                    metadata: HydroIrMetadata {
+                                        location_id: Tick(0, Cluster(loc1v1)),
+                                        collection_kind: Stream {
+                                            bound: Bounded,
+                                            order: TotalOrder,
+                                            retry: ExactlyOnce,
+                                            element_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
                                         },
+                                    },
+                                },
+                                right: Batch {
+                                    inner: Source {
+                                        source: Iter(
+                                            stageleft :: runtime_support :: type_hint :: < std :: ops :: Range < i32 > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: many_to_many :: * ; 0 .. 2 }),
+                                        ),
                                         metadata: HydroIrMetadata {
-                                            location_id: Tick(0, Cluster(loc1v1)),
+                                            location_id: Cluster(loc1v1),
                                             collection_kind: Stream {
                                                 bound: Bounded,
                                                 order: TotalOrder,
@@ -175,25 +164,24 @@ expression: built.ir()
                                             bound: Bounded,
                                             order: TotalOrder,
                                             retry: ExactlyOnce,
-                                            element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32),
+                                            element_type: i32,
                                         },
                                     },
                                 },
                                 metadata: HydroIrMetadata {
                                     location_id: Tick(0, Cluster(loc1v1)),
-                                    collection_kind: KeyedStream {
+                                    collection_kind: Stream {
                                         bound: Bounded,
-                                        value_order: TotalOrder,
-                                        value_retry: ExactlyOnce,
-                                        key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
-                                        value_type: i32,
+                                        order: TotalOrder,
+                                        retry: ExactlyOnce,
+                                        element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32),
                                     },
                                 },
                             },
                             metadata: HydroIrMetadata {
-                                location_id: Cluster(loc1v1),
+                                location_id: Tick(0, Cluster(loc1v1)),
                                 collection_kind: KeyedStream {
-                                    bound: Unbounded,
+                                    bound: Bounded,
                                     value_order: TotalOrder,
                                     value_retry: ExactlyOnce,
                                     key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
@@ -203,11 +191,12 @@ expression: built.ir()
                         },
                         metadata: HydroIrMetadata {
                             location_id: Cluster(loc1v1),
-                            collection_kind: Stream {
+                            collection_kind: KeyedStream {
                                 bound: Unbounded,
-                                order: TotalOrder,
-                                retry: ExactlyOnce,
-                                element_type: (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , i32),
+                                value_order: TotalOrder,
+                                value_retry: ExactlyOnce,
+                                key_type: hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () >,
+                                value_type: i32,
                             },
                         },
                     },

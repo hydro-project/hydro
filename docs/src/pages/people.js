@@ -120,6 +120,12 @@ export default function Home() {
                 url={"https://github.com/MingweiSamuel"}
                 img={mingwei}
               ></PersonCard>
+              <PersonCard
+                name={"Ben Schofield"}
+                role={"Engineer, AWS"}
+                url={"https://www.linkedin.com/in/benjscho"}
+                img={hydroTurtle}
+              ></PersonCard>
             </div>
 
             <div className={styles["subtitle"]}>

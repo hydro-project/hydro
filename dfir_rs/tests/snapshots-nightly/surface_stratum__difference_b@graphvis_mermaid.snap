@@ -15,19 +15,18 @@ linkStyle default stroke:#aaa
 5v1[/"(5v1) <code>for_each(|x| output_inner.borrow_mut().insert(x))</code>"\]:::pushClass
 6v1["(6v1) <code>handoff</code>"]:::otherClass
 7v1["(7v1) <code>handoff</code>"]:::otherClass
-8v1["(8v1) <code>handoff</code>"]:::otherClass
-2v1-->8v1
+2v1-->|pos|1v1
 1v1-->3v1
 4v1-->6v1
 3v1-->|0|7v1
 3v1-->|1|5v1
 6v1--x|neg|1v1; linkStyle 5 stroke:red
 7v1--o4v1; linkStyle 6 stroke:red
-8v1-->|pos|1v1
-subgraph sg_1v1 ["sg_1v1 stratum 0"]
+subgraph sg_1v1 ["sg_1v1"]
     4v1
 end
-subgraph sg_2v1 ["sg_2v1 stratum 1"]
+subgraph sg_2v1 ["sg_2v1"]
+    2v1
     5v1
     subgraph sg_2v1_var_a ["var <tt>a</tt>"]
         1v1
@@ -35,7 +34,4 @@ subgraph sg_2v1 ["sg_2v1 stratum 1"]
     subgraph sg_2v1_var_b ["var <tt>b</tt>"]
         3v1
     end
-end
-subgraph sg_3v1 ["sg_3v1 stratum 0"]
-    2v1
 end
