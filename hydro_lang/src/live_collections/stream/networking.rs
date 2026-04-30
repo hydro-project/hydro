@@ -634,10 +634,13 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
 
             elements
                 .cross_singleton(current_members)
-                .map(q!(|(data, members)| (
-                    members[data.0 % members.len()].clone(),
-                    data.1
-                )))
+                .filter_map(q!(|(data, members)| {
+                    if members.is_empty() {
+                        None
+                    } else {
+                        Some((members[data.0 % members.len()].clone(), data.1))
+                    }
+                }))
         }
         .demux(to, via)
     }
@@ -774,10 +777,13 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
 
             elements
                 .cross_singleton(current_members)
-                .map(q!(|(data, members)| (
-                    members[data.0 % members.len()].clone(),
-                    data.1
-                )))
+                .filter_map(q!(|(data, members)| {
+                    if members.is_empty() {
+                        None
+                    } else {
+                        Some((members[data.0 % members.len()].clone(), data.1))
+                    }
+                }))
         }
         .demux(to, via)
     }
