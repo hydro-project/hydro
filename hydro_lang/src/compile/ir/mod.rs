@@ -267,7 +267,6 @@ impl serde::Serialize for DebugType {
     }
 }
 
-
 fn serialize_backtrace_as_span<S: serde::Serializer>(
     backtrace: &Backtrace,
     serializer: S,
