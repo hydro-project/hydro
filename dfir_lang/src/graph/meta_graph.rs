@@ -822,6 +822,25 @@ impl DfirGraph {
         prefix: TokenStream,
         diagnostics: &mut Diagnostics,
     ) -> Result<TokenStream, Diagnostics> {
+        self.as_code_with_options(root, include_type_guards, true, prefix, diagnostics)
+    }
+
+    /// Like [`Self::as_code`], but with `include_meta` controlling whether
+    /// the runtime meta graph + diagnostics JSON blobs are baked into the
+    /// generated `Dfir::new(...)` call.
+    ///
+    /// The simulator calls Dfir::new() on each iteration, and as a part of that
+    /// it does parsing of the metagraph and diganostics blob. One of them causes spans to get allocated,
+    /// each time a span is allocated, some threadlocal u32 is being incremented, and, on a long simulator run,
+    /// the u32 overflows and panics.
+    pub fn as_code_with_options(
+        &self,
+        root: &TokenStream,
+        include_type_guards: bool,
+        include_meta: bool,
+        prefix: TokenStream,
+        diagnostics: &mut Diagnostics,
+    ) -> Result<TokenStream, Diagnostics> {
         // Extract the slot index from a slotmap key for use as a runtime metrics key.
         // Uses the low 32 bits of `KeyData::as_ffi()` (the idx, ignoring the version).
         // TODO(cleanup): When scheduled Dfir is removed, DfirMetrics could use slotmap
@@ -1433,12 +1452,21 @@ impl DfirGraph {
         }
         let _ = diagnostics; // Ensure no more diagnostics may be added after checking for errors.
 
-        let meta_graph_json = serde_json::to_string(&self).unwrap();
-        let meta_graph_json = Literal::string(&meta_graph_json);
+        let (meta_graph_arg, diagnostics_arg) = if include_meta {
+            let meta_graph_json = serde_json::to_string(&self).unwrap();
+            let meta_graph_json = Literal::string(&meta_graph_json);
 
-        let serde_diagnostics: Vec<_> = diagnostics.iter().map(Diagnostic::to_serde).collect();
-        let diagnostics_json = serde_json::to_string(&*serde_diagnostics).unwrap();
-        let diagnostics_json = Literal::string(&diagnostics_json);
+            let serde_diagnostics: Vec<_> = diagnostics.iter().map(Diagnostic::to_serde).collect();
+            let diagnostics_json = serde_json::to_string(&*serde_diagnostics).unwrap();
+            let diagnostics_json = Literal::string(&diagnostics_json);
+
+            (
+                quote! { Some(#meta_graph_json) },
+                quote! { Some(#diagnostics_json) },
+            )
+        } else {
+            (quote! { None }, quote! { None })
+        };
 
         // Generate metrics initialization: one entry per handoff and per subgraph.
         let metrics_init_code = {
@@ -1519,8 +1547,8 @@ impl DfirGraph {
                 #root::scheduled::context::Dfir::new(
                     __dfir_inline_tick,
                     #df,
-                    Some(#meta_graph_json),
-                    Some(#diagnostics_json),
+                    #meta_graph_arg,
+                    #diagnostics_arg,
                 )
             }
         })
