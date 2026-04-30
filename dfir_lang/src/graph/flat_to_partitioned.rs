@@ -299,8 +299,8 @@ fn can_connect_colorize(
     can_connect
 }
 
-/// Topologically sorts subgraphs and injects intermediate identity subgraphs for `defer_tick`
-/// edges that go forward in the topological order (so they become back-edges).
+/// Topologically sorts subgraphs and marks tick-boundary (`defer_tick` / `defer_tick_lazy`)
+/// handoffs with their delay type for double-buffered codegen in `as_code`.
 ///
 /// Returns an error if there is an intra-tick cycle (i.e. the subgraph DAG has a cycle when
 /// tick-boundary edges are excluded).
@@ -391,7 +391,7 @@ pub fn partition_graph(flat_graph: DfirGraph) -> Result<DfirGraph, Diagnostic> {
     // Partition into subgraphs.
     make_subgraphs(&mut partitioned_graph, &mut barrier_crossers);
 
-    // Topologically order subgraphs and inject intermediate subgraphs for defer_tick edges.
+    // Topologically order subgraphs and mark tick-boundary handoffs for double-buffering.
     order_subgraphs(&mut partitioned_graph, &barrier_crossers)?;
 
     Ok(partitioned_graph)

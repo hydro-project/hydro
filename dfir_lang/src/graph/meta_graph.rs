@@ -1018,6 +1018,7 @@ impl DfirGraph {
                         let work_done = Ident::new("__dfir_work_done", Span::call_site());
                         let metrics = Ident::new("__dfir_metrics", Span::call_site());
                         // Tick-boundary handoffs drain from the back buffer (double-buffering).
+                        // (Sending always writes to the regular buffer — no branch needed there.)
                         let drain_ident = if back_edge_hoff_ids.contains(&hoff_id) {
                             self.hoff_back_ident(hoff_id, buf_ident.span())
                         } else {
