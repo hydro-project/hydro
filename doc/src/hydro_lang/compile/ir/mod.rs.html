@@ -4070,8 +4070,8 @@
 <a href=#4070 id=4070 data-nosnippet>4070</a>                                                                    <span class="kw">return</span>;
 <a href=#4071 id=4071 data-nosnippet>4071</a>                                                                }
 <a href=#4072 id=4072 data-nosnippet>4072</a>                                                            }
-<a href=#4073 id=4073 data-nosnippet>4073</a>                                                            <span class="kw-2">*</span>opt_curr_watermark = opt_watermark;
-<a href=#4074 id=4074 data-nosnippet>4074</a>                                                            map.retain(|k, <span class="kw">_</span>| <span class="kw-2">*</span>k &gt;= watermark);
+<a href=#4073 id=4073 data-nosnippet>4073</a>                                                            map.retain(|k, <span class="kw">_</span>| <span class="kw-2">*</span>k &gt;= watermark);
+<a href=#4074 id=4074 data-nosnippet>4074</a>                                                            <span class="kw-2">*</span>opt_curr_watermark = <span class="prelude-val">Some</span>(watermark);
 <a href=#4075 id=4075 data-nosnippet>4075</a>                                                        }
 <a href=#4076 id=4076 data-nosnippet>4076</a>                                                    }
 <a href=#4077 id=4077 data-nosnippet>4077</a>                                                })
