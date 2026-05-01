@@ -79,23 +79,25 @@
 <a href=#79 id=79 data-nosnippet>79</a>            write_prologue_after,
 <a href=#80 id=80 data-nosnippet>80</a>            write_iterator,
 <a href=#81 id=81 data-nosnippet>81</a>            write_iterator_after,
-<a href=#82 id=82 data-nosnippet>82</a>        } = (<span class="kw">super</span>::dest_sink::DEST_SINK.write_fn)(<span class="kw-2">&amp;</span>wc, diagnostics)<span class="question-mark">?</span>;
-<a href=#83 id=83 data-nosnippet>83</a>
-<a href=#84 id=84 data-nosnippet>84</a>        <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#85 id=85 data-nosnippet>85</a>            #write_prologue
-<a href=#86 id=86 data-nosnippet>86</a>            #write_prologue_sink
-<a href=#87 id=87 data-nosnippet>87</a>        };
-<a href=#88 id=88 data-nosnippet>88</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#89 id=89 data-nosnippet>89</a>            <span class="macro">::std::debug_assert!</span>(#root::tokio::runtime::Handle::try_current().is_ok(), #missing_runtime_msg);
-<a href=#90 id=90 data-nosnippet>90</a>            #write_iterator
-<a href=#91 id=91 data-nosnippet>91</a>        };
-<a href=#92 id=92 data-nosnippet>92</a>
-<a href=#93 id=93 data-nosnippet>93</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#94 id=94 data-nosnippet>94</a>            write_prologue,
-<a href=#95 id=95 data-nosnippet>95</a>            write_prologue_after,
-<a href=#96 id=96 data-nosnippet>96</a>            write_iterator,
-<a href=#97 id=97 data-nosnippet>97</a>            write_iterator_after,
-<a href=#98 id=98 data-nosnippet>98</a>        })
-<a href=#99 id=99 data-nosnippet>99</a>    },
-<a href=#100 id=100 data-nosnippet>100</a>};
+<a href=#82 id=82 data-nosnippet>82</a>            write_tick_end,
+<a href=#83 id=83 data-nosnippet>83</a>        } = (<span class="kw">super</span>::dest_sink::DEST_SINK.write_fn)(<span class="kw-2">&amp;</span>wc, diagnostics)<span class="question-mark">?</span>;
+<a href=#84 id=84 data-nosnippet>84</a>
+<a href=#85 id=85 data-nosnippet>85</a>        <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#86 id=86 data-nosnippet>86</a>            #write_prologue
+<a href=#87 id=87 data-nosnippet>87</a>            #write_prologue_sink
+<a href=#88 id=88 data-nosnippet>88</a>        };
+<a href=#89 id=89 data-nosnippet>89</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#90 id=90 data-nosnippet>90</a>            <span class="macro">::std::debug_assert!</span>(#root::tokio::runtime::Handle::try_current().is_ok(), #missing_runtime_msg);
+<a href=#91 id=91 data-nosnippet>91</a>            #write_iterator
+<a href=#92 id=92 data-nosnippet>92</a>        };
+<a href=#93 id=93 data-nosnippet>93</a>
+<a href=#94 id=94 data-nosnippet>94</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#95 id=95 data-nosnippet>95</a>            write_prologue,
+<a href=#96 id=96 data-nosnippet>96</a>            write_prologue_after,
+<a href=#97 id=97 data-nosnippet>97</a>            write_iterator,
+<a href=#98 id=98 data-nosnippet>98</a>            write_iterator_after,
+<a href=#99 id=99 data-nosnippet>99</a>            write_tick_end,
+<a href=#100 id=100 data-nosnippet>100</a>        })
+<a href=#101 id=101 data-nosnippet>101</a>    },
+<a href=#102 id=102 data-nosnippet>102</a>};
 </code></pre></div></section></main></body></html>

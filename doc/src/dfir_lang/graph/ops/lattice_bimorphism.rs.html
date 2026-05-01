@@ -56,80 +56,76 @@
 <a href=#56 id=56 data-nosnippet>56</a>    ports_out: <span class="prelude-val">None</span>,
 <a href=#57 id=57 data-nosnippet>57</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
 <a href=#58 id=58 data-nosnippet>58</a>    write_fn: |<span class="kw-2">&amp;</span>WriteContextArgs {
-<a href=#59 id=59 data-nosnippet>59</a>                   root,
-<a href=#60 id=60 data-nosnippet>60</a>                   context,
-<a href=#61 id=61 data-nosnippet>61</a>                   op_span,
-<a href=#62 id=62 data-nosnippet>62</a>                   is_pull,
-<a href=#63 id=63 data-nosnippet>63</a>                   ident,
-<a href=#64 id=64 data-nosnippet>64</a>                   inputs,
-<a href=#65 id=65 data-nosnippet>65</a>                   arguments,
-<a href=#66 id=66 data-nosnippet>66</a>                   arguments_handles,
-<a href=#67 id=67 data-nosnippet>67</a>                   ..
-<a href=#68 id=68 data-nosnippet>68</a>               },
-<a href=#69 id=69 data-nosnippet>69</a>               <span class="kw">_</span>| {
-<a href=#70 id=70 data-nosnippet>70</a>        <span class="macro">assert!</span>(is_pull);
-<a href=#71 id=71 data-nosnippet>71</a>
-<a href=#72 id=72 data-nosnippet>72</a>        <span class="kw">let </span>func = <span class="kw-2">&amp;</span>arguments[<span class="number">0</span>];
-<a href=#73 id=73 data-nosnippet>73</a>        <span class="kw">let </span>lhs_state_handle = <span class="kw-2">&amp;</span>arguments_handles[<span class="number">1</span>];
-<a href=#74 id=74 data-nosnippet>74</a>        <span class="kw">let </span>rhs_state_handle = <span class="kw-2">&amp;</span>arguments_handles[<span class="number">2</span>];
-<a href=#75 id=75 data-nosnippet>75</a>
-<a href=#76 id=76 data-nosnippet>76</a>        <span class="kw">let </span>lhs_items = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
-<a href=#77 id=77 data-nosnippet>77</a>        <span class="kw">let </span>rhs_items = <span class="kw-2">&amp;</span>inputs[<span class="number">1</span>];
-<a href=#78 id=78 data-nosnippet>78</a>
-<a href=#79 id=79 data-nosnippet>79</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#80 id=80 data-nosnippet>80</a>            <span class="kw">let </span>#ident = {
-<a href=#81 id=81 data-nosnippet>81</a>                <span class="kw">let </span>(lhs_state, rhs_state) = <span class="kw">unsafe </span>{
-<a href=#82 id=82 data-nosnippet>82</a>                    <span class="comment">// SAFETY: handle from `#df_ident.add_state(..)`.
-<a href=#83 id=83 data-nosnippet>83</a>                    </span>(
-<a href=#84 id=84 data-nosnippet>84</a>                        #context.state_ref_unchecked(#lhs_state_handle),
-<a href=#85 id=85 data-nosnippet>85</a>                        #context.state_ref_unchecked(#rhs_state_handle),
-<a href=#86 id=86 data-nosnippet>86</a>                    )
-<a href=#87 id=87 data-nosnippet>87</a>                };
-<a href=#88 id=88 data-nosnippet>88</a>                <span class="attr">#[inline(always)]
-<a href=#89 id=89 data-nosnippet>89</a>                </span><span class="kw">fn </span>check_inputs&lt;<span class="lifetime">'a</span>, Func, LhsPull, RhsPull, LhsState, RhsState, Output&gt;(
-<a href=#90 id=90 data-nosnippet>90</a>                    lhs_pull: LhsPull,
-<a href=#91 id=91 data-nosnippet>91</a>                    rhs_pull: RhsPull,
-<a href=#92 id=92 data-nosnippet>92</a>                    func: Func,
-<a href=#93 id=93 data-nosnippet>93</a>                    lhs_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>::std::cell::RefCell&lt;LhsState&gt;,
-<a href=#94 id=94 data-nosnippet>94</a>                    rhs_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>::std::cell::RefCell&lt;RhsState&gt;,
-<a href=#95 id=95 data-nosnippet>95</a>                ) -&gt; <span class="kw">impl </span>#root::dfir_pipes::pull::Pull&lt;
-<a href=#96 id=96 data-nosnippet>96</a>                    Item = Output,
-<a href=#97 id=97 data-nosnippet>97</a>                    Meta = (),
-<a href=#98 id=98 data-nosnippet>98</a>                    CanPend = &lt;LhsPull::CanPend <span class="kw">as </span>#root::dfir_pipes::Toggle&gt;::Or&lt;RhsPull::CanPend&gt;,
-<a href=#99 id=99 data-nosnippet>99</a>                    CanEnd = &lt;LhsPull::CanEnd <span class="kw">as </span>#root::dfir_pipes::Toggle&gt;::And&lt;RhsPull::CanEnd&gt;,
-<a href=#100 id=100 data-nosnippet>100</a>                &gt;
-<a href=#101 id=101 data-nosnippet>101</a>                <span class="kw">where
-<a href=#102 id=102 data-nosnippet>102</a>                    </span>Func: <span class="lifetime">'a
-<a href=#103 id=103 data-nosnippet>103</a>                        </span>+ #root::lattices::LatticeBimorphism&lt;LhsState, RhsPull::Item, Output = Output&gt;
-<a href=#104 id=104 data-nosnippet>104</a>                        + #root::lattices::LatticeBimorphism&lt;LhsPull::Item, RhsState, Output = Output&gt;,
-<a href=#105 id=105 data-nosnippet>105</a>                    LhsPull: <span class="lifetime">'a </span>+ #root::dfir_pipes::pull::Pull,
-<a href=#106 id=106 data-nosnippet>106</a>                    RhsPull: <span class="lifetime">'a </span>+ #root::dfir_pipes::pull::Pull,
-<a href=#107 id=107 data-nosnippet>107</a>                    LhsState: <span class="lifetime">'static </span>+ ::std::clone::Clone,
-<a href=#108 id=108 data-nosnippet>108</a>                    RhsState: <span class="lifetime">'static </span>+ ::std::clone::Clone,
-<a href=#109 id=109 data-nosnippet>109</a>                    Output: #root::lattices::Merge&lt;Output&gt;,
-<a href=#110 id=110 data-nosnippet>110</a>                {
-<a href=#111 id=111 data-nosnippet>111</a>                    #root::compiled::pull::LatticeBimorphismPull::new(
-<a href=#112 id=112 data-nosnippet>112</a>                        #root::dfir_pipes::pull::Pull::fuse(lhs_pull),
-<a href=#113 id=113 data-nosnippet>113</a>                        #root::dfir_pipes::pull::Pull::fuse(rhs_pull),
-<a href=#114 id=114 data-nosnippet>114</a>                        func,
-<a href=#115 id=115 data-nosnippet>115</a>                        lhs_state,
-<a href=#116 id=116 data-nosnippet>116</a>                        rhs_state,
-<a href=#117 id=117 data-nosnippet>117</a>                    )
-<a href=#118 id=118 data-nosnippet>118</a>                }
-<a href=#119 id=119 data-nosnippet>119</a>                check_inputs(
-<a href=#120 id=120 data-nosnippet>120</a>                    #lhs_items,
-<a href=#121 id=121 data-nosnippet>121</a>                    #rhs_items,
-<a href=#122 id=122 data-nosnippet>122</a>                    #func,
-<a href=#123 id=123 data-nosnippet>123</a>                    lhs_state,
-<a href=#124 id=124 data-nosnippet>124</a>                    rhs_state,
-<a href=#125 id=125 data-nosnippet>125</a>                )
-<a href=#126 id=126 data-nosnippet>126</a>            };
-<a href=#127 id=127 data-nosnippet>127</a>        };
-<a href=#128 id=128 data-nosnippet>128</a>
-<a href=#129 id=129 data-nosnippet>129</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#130 id=130 data-nosnippet>130</a>            write_iterator,
-<a href=#131 id=131 data-nosnippet>131</a>            ..Default::default()
-<a href=#132 id=132 data-nosnippet>132</a>        })
-<a href=#133 id=133 data-nosnippet>133</a>    },
-<a href=#134 id=134 data-nosnippet>134</a>};
+<a href=#59 id=59 data-nosnippet>59</a>                     root,
+<a href=#60 id=60 data-nosnippet>60</a>                     op_span,
+<a href=#61 id=61 data-nosnippet>61</a>                   is_pull,
+<a href=#62 id=62 data-nosnippet>62</a>                   ident,
+<a href=#63 id=63 data-nosnippet>63</a>                   inputs,
+<a href=#64 id=64 data-nosnippet>64</a>                   arguments,
+<a href=#65 id=65 data-nosnippet>65</a>                   arguments_handles,
+<a href=#66 id=66 data-nosnippet>66</a>                   ..
+<a href=#67 id=67 data-nosnippet>67</a>               },
+<a href=#68 id=68 data-nosnippet>68</a>               <span class="kw">_</span>| {
+<a href=#69 id=69 data-nosnippet>69</a>        <span class="macro">assert!</span>(is_pull);
+<a href=#70 id=70 data-nosnippet>70</a>
+<a href=#71 id=71 data-nosnippet>71</a>        <span class="kw">let </span>func = <span class="kw-2">&amp;</span>arguments[<span class="number">0</span>];
+<a href=#72 id=72 data-nosnippet>72</a>        <span class="kw">let </span>lhs_state_handle = <span class="kw-2">&amp;</span>arguments_handles[<span class="number">1</span>];
+<a href=#73 id=73 data-nosnippet>73</a>        <span class="kw">let </span>rhs_state_handle = <span class="kw-2">&amp;</span>arguments_handles[<span class="number">2</span>];
+<a href=#74 id=74 data-nosnippet>74</a>
+<a href=#75 id=75 data-nosnippet>75</a>        <span class="kw">let </span>lhs_items = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
+<a href=#76 id=76 data-nosnippet>76</a>        <span class="kw">let </span>rhs_items = <span class="kw-2">&amp;</span>inputs[<span class="number">1</span>];
+<a href=#77 id=77 data-nosnippet>77</a>
+<a href=#78 id=78 data-nosnippet>78</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#79 id=79 data-nosnippet>79</a>            <span class="kw">let </span>#ident = {
+<a href=#80 id=80 data-nosnippet>80</a>                <span class="kw">let </span>(lhs_state, rhs_state) = (
+<a href=#81 id=81 data-nosnippet>81</a>                    <span class="kw-2">&amp;</span>#lhs_state_handle,
+<a href=#82 id=82 data-nosnippet>82</a>                    <span class="kw-2">&amp;</span>#rhs_state_handle,
+<a href=#83 id=83 data-nosnippet>83</a>                );
+<a href=#84 id=84 data-nosnippet>84</a>                <span class="attr">#[inline(always)]
+<a href=#85 id=85 data-nosnippet>85</a>                </span><span class="kw">fn </span>check_inputs&lt;<span class="lifetime">'a</span>, Func, LhsPull, RhsPull, LhsState, RhsState, Output&gt;(
+<a href=#86 id=86 data-nosnippet>86</a>                    lhs_pull: LhsPull,
+<a href=#87 id=87 data-nosnippet>87</a>                    rhs_pull: RhsPull,
+<a href=#88 id=88 data-nosnippet>88</a>                    func: Func,
+<a href=#89 id=89 data-nosnippet>89</a>                    lhs_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>::std::cell::RefCell&lt;LhsState&gt;,
+<a href=#90 id=90 data-nosnippet>90</a>                    rhs_state: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>::std::cell::RefCell&lt;RhsState&gt;,
+<a href=#91 id=91 data-nosnippet>91</a>                ) -&gt; <span class="kw">impl </span>#root::dfir_pipes::pull::Pull&lt;
+<a href=#92 id=92 data-nosnippet>92</a>                    Item = Output,
+<a href=#93 id=93 data-nosnippet>93</a>                    Meta = (),
+<a href=#94 id=94 data-nosnippet>94</a>                    CanPend = &lt;LhsPull::CanPend <span class="kw">as </span>#root::dfir_pipes::Toggle&gt;::Or&lt;RhsPull::CanPend&gt;,
+<a href=#95 id=95 data-nosnippet>95</a>                    CanEnd = &lt;LhsPull::CanEnd <span class="kw">as </span>#root::dfir_pipes::Toggle&gt;::And&lt;RhsPull::CanEnd&gt;,
+<a href=#96 id=96 data-nosnippet>96</a>                &gt;
+<a href=#97 id=97 data-nosnippet>97</a>                <span class="kw">where
+<a href=#98 id=98 data-nosnippet>98</a>                    </span>Func: <span class="lifetime">'a
+<a href=#99 id=99 data-nosnippet>99</a>                        </span>+ #root::lattices::LatticeBimorphism&lt;LhsState, RhsPull::Item, Output = Output&gt;
+<a href=#100 id=100 data-nosnippet>100</a>                        + #root::lattices::LatticeBimorphism&lt;LhsPull::Item, RhsState, Output = Output&gt;,
+<a href=#101 id=101 data-nosnippet>101</a>                    LhsPull: <span class="lifetime">'a </span>+ #root::dfir_pipes::pull::Pull,
+<a href=#102 id=102 data-nosnippet>102</a>                    RhsPull: <span class="lifetime">'a </span>+ #root::dfir_pipes::pull::Pull,
+<a href=#103 id=103 data-nosnippet>103</a>                    LhsState: <span class="lifetime">'static </span>+ ::std::clone::Clone,
+<a href=#104 id=104 data-nosnippet>104</a>                    RhsState: <span class="lifetime">'static </span>+ ::std::clone::Clone,
+<a href=#105 id=105 data-nosnippet>105</a>                    Output: #root::lattices::Merge&lt;Output&gt;,
+<a href=#106 id=106 data-nosnippet>106</a>                {
+<a href=#107 id=107 data-nosnippet>107</a>                    #root::compiled::pull::LatticeBimorphismPull::new(
+<a href=#108 id=108 data-nosnippet>108</a>                        #root::dfir_pipes::pull::Pull::fuse(lhs_pull),
+<a href=#109 id=109 data-nosnippet>109</a>                        #root::dfir_pipes::pull::Pull::fuse(rhs_pull),
+<a href=#110 id=110 data-nosnippet>110</a>                        func,
+<a href=#111 id=111 data-nosnippet>111</a>                        lhs_state,
+<a href=#112 id=112 data-nosnippet>112</a>                        rhs_state,
+<a href=#113 id=113 data-nosnippet>113</a>                    )
+<a href=#114 id=114 data-nosnippet>114</a>                }
+<a href=#115 id=115 data-nosnippet>115</a>                check_inputs(
+<a href=#116 id=116 data-nosnippet>116</a>                    #lhs_items,
+<a href=#117 id=117 data-nosnippet>117</a>                    #rhs_items,
+<a href=#118 id=118 data-nosnippet>118</a>                    #func,
+<a href=#119 id=119 data-nosnippet>119</a>                    lhs_state,
+<a href=#120 id=120 data-nosnippet>120</a>                    rhs_state,
+<a href=#121 id=121 data-nosnippet>121</a>                )
+<a href=#122 id=122 data-nosnippet>122</a>            };
+<a href=#123 id=123 data-nosnippet>123</a>        };
+<a href=#124 id=124 data-nosnippet>124</a>
+<a href=#125 id=125 data-nosnippet>125</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#126 id=126 data-nosnippet>126</a>            write_iterator,
+<a href=#127 id=127 data-nosnippet>127</a>            ..Default::default()
+<a href=#128 id=128 data-nosnippet>128</a>        })
+<a href=#129 id=129 data-nosnippet>129</a>    },
+<a href=#130 id=130 data-nosnippet>130</a>};
 </code></pre></div></section></main></body></html>
