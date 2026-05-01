@@ -125,11 +125,17 @@ mod tests {
         let built = flow.finalize();
         let json = serialize_dedup_shared(|| serde_json::to_string_pretty(built.ir()).unwrap());
 
-        // Redact absolute paths for CI portability
+        // Redact absolute paths for CI portability.
+        // In JSON, backslashes are escaped as \\, so we need to replace both
+        // the JSON-escaped version and the raw version of the workspace root.
         let workspace_root = env!("CARGO_MANIFEST_DIR")
             .strip_suffix("/hydro_lang")
+            .or_else(|| env!("CARGO_MANIFEST_DIR").strip_suffix("\\hydro_lang"))
             .unwrap_or(env!("CARGO_MANIFEST_DIR"));
-        let json = json.replace(workspace_root, "[workspace]");
+        let json_escaped_root = workspace_root.replace('\\', "\\\\");
+        let json = json.replace(&json_escaped_root, "[workspace]");
+        // Normalize any remaining JSON-escaped backslashes to forward slashes
+        let json = json.replace("\\\\", "/");
 
         insta::assert_snapshot!(json);
     }

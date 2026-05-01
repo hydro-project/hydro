@@ -1,6 +1,5 @@
 ---
 source: hydro_lang/src/compile/ir/serde_test.rs
-assertion_line: 128
 expression: json
 ---
 [
@@ -37,7 +36,7 @@ expression: json
                       "cardinality": null,
                       "tag": null,
                       "op": {
-                        "span": "[workspace]/hydro_lang/src/compile/ir/serde_test.rs:120:30",
+                        "span": "[workspace]/hydro_lang/src/compile/ir/serde_test.rs:120",
                         "cpu_usage": null,
                         "network_recv_cpu_usage": null,
                         "id": null
@@ -63,7 +62,7 @@ expression: json
                   "cardinality": null,
                   "tag": null,
                   "op": {
-                    "span": "[workspace]/hydro_lang/src/compile/ir/serde_test.rs:120:53",
+                    "span": "[workspace]/hydro_lang/src/compile/ir/serde_test.rs:120",
                     "cpu_usage": null,
                     "network_recv_cpu_usage": null,
                     "id": null
@@ -90,7 +89,7 @@ expression: json
             "cardinality": null,
             "tag": null,
             "op": {
-              "span": "[workspace]/hydro_lang/src/compile/ir/serde_test.rs:121:27",
+              "span": "[workspace]/hydro_lang/src/compile/ir/serde_test.rs:121",
               "cpu_usage": null,
               "network_recv_cpu_usage": null,
               "id": null
@@ -99,7 +98,7 @@ expression: json
         }
       },
       "op_metadata": {
-        "span": "[workspace]/hydro_lang/src/compile/ir/serde_test.rs:122:14",
+        "span": "[workspace]/hydro_lang/src/compile/ir/serde_test.rs:122",
         "cpu_usage": null,
         "network_recv_cpu_usage": null,
         "id": null
@@ -132,7 +131,7 @@ expression: json
             "cardinality": null,
             "tag": null,
             "op": {
-              "span": "[workspace]/hydro_lang/src/compile/ir/serde_test.rs:121:27",
+              "span": "[workspace]/hydro_lang/src/compile/ir/serde_test.rs:121",
               "cpu_usage": null,
               "network_recv_cpu_usage": null,
               "id": null
@@ -141,7 +140,7 @@ expression: json
         }
       },
       "op_metadata": {
-        "span": "[workspace]/hydro_lang/src/compile/ir/serde_test.rs:123:16",
+        "span": "[workspace]/hydro_lang/src/compile/ir/serde_test.rs:123",
         "cpu_usage": null,
         "network_recv_cpu_usage": null,
         "id": null

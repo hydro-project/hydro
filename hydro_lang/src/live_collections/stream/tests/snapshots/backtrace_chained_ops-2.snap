@@ -1,6 +1,6 @@
 ---
 source: hydro_lang/src/live_collections/stream/tests/backtrace_chained_ops.rs
-expression: for_each_meta.backtrace.elements()
+expression: "for_each_meta.backtrace.elements().collect::<Vec<_>>()"
 ---
 [
     BacktraceElement {

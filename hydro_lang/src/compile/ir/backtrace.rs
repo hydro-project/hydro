@@ -141,17 +141,16 @@ impl Backtrace {
     }
 
     #[cfg(feature = "build")]
-    /// Format the first user-code frame as `"file:line:col"`, or `None` if unavailable.
+    /// Format the first user-code frame as `"file:line"`, or `None` if unavailable.
     pub fn format_span(&self) -> Option<String> {
         let elem = self.elements().next()?;
         let file = elem.filename.as_ref()?;
         let line = elem.lineno?;
-        let col = elem.colno.unwrap_or(0);
-        Some(format!("{file}:{line}:{col}"))
+        Some(format!("{file}:{line}"))
     }
 
     #[cfg(not(feature = "build"))]
-    /// Format the first user-code frame as `"file:line:col"`, or `None` if unavailable.
+    /// Format the first user-code frame as `"file:line"`, or `None` if unavailable.
     pub fn format_span(&self) -> Option<String> {
         None
     }
