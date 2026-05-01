@@ -24,7 +24,7 @@ pub fn preprocess_singletons(tokens: TokenStream, found_idents: &mut Vec<Ident>)
 /// Replaces singleton references `#my_var` with the code needed to actually get the value inside.
 ///
 /// * `tokens` - The tokens to update singleton references within.
-/// * `resolved_idents` - The context `StateHandle` varnames that correspond 1:1 and in the same
+/// * `resolved_idents` - The `RefCell<_>` local variable idents that correspond 1:1 and in the same
 ///   order as the singleton references within `tokens` (found in-order via [`preprocess_singletons`]).
 ///
 /// Generates borrowing code ([`std::cell::RefCell::borrow`]). Use

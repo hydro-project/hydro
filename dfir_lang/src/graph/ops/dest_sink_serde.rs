@@ -54,7 +54,7 @@ pub const DEST_SINK_SERDE: OperatorConstraints = OperatorConstraints {
             write_prologue_after,
             write_iterator,
             write_iterator_after,
-            ..
+            write_tick_end,
         } = (super::dest_sink::DEST_SINK.write_fn)(wc, diagnostics)?;
 
         let write_iterator = quote_spanned! {op_span=>
@@ -71,7 +71,7 @@ pub const DEST_SINK_SERDE: OperatorConstraints = OperatorConstraints {
             write_prologue_after,
             write_iterator,
             write_iterator_after,
-            ..Default::default()
+            write_tick_end,
         })
     },
 };

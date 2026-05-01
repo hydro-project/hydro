@@ -432,7 +432,7 @@ pub struct WriteContextArgs<'a> {
     /// These arguments include singleton postprocessing codegen, with
     /// [`std::cell::RefCell::borrow_mut`] code pre-generated.
     pub arguments: &'a Punctuated<Expr, Token![,]>,
-    /// Same as [`Self::arguments`] but with only `StateHandle`s, no borrowing code.
+    /// Same as [`Self::arguments`] but with only raw idents, no borrowing code.
     pub arguments_handles: &'a Punctuated<Expr, Token![,]>,
 }
 impl WriteContextArgs<'_> {

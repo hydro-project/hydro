@@ -60,7 +60,7 @@ pub const CHAIN_FIRST_N: OperatorConstraints = OperatorConstraints {
             write_prologue_after,
             write_iterator,
             write_iterator_after,
-            ..
+            write_tick_end,
         } = (super::union::UNION.write_fn)(wc, diagnostics)?;
 
         let arg_n = &arguments[0];
@@ -75,7 +75,7 @@ pub const CHAIN_FIRST_N: OperatorConstraints = OperatorConstraints {
             write_prologue_after,
             write_iterator,
             write_iterator_after,
-            ..Default::default()
+            write_tick_end,
         })
     },
 };
