@@ -20,7 +20,7 @@ impl GraphType {
             GraphType::Mermaid => "mmd",
             GraphType::Dot => "dot",
             GraphType::Json => "json",
-            GraphType::Ir => "json",
+            GraphType::Ir => "ir.json",
         }
     }
 }

@@ -98,12 +98,6 @@ impl<'a> BuiltFlow<'a> {
         &self,
         config: &crate::viz::config::GraphConfig,
     ) -> Result<Option<String>, Box<dyn std::error::Error>> {
-        if let Some(crate::viz::config::GraphType::Ir) = config.graph {
-            let filename = config.output.clone().unwrap_or_else(|| "hydro_ir.json".to_string());
-            let json = self.ir_json()?;
-            std::fs::write(&filename, &json)?;
-            return Ok(Some(filename));
-        }
         self.graph_api().generate_graph(config)
     }
 
