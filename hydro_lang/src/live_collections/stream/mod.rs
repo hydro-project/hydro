@@ -4000,7 +4000,7 @@ mod tests {
                 out
             );
 
-            first_elements.extend(second_elements.drain(..));
+            first_elements.append(&mut second_elements);
             first_elements.sort();
             assert_eq!(first_elements, vec![1, 2, 3, 4]);
         });
@@ -4080,7 +4080,7 @@ mod tests {
                 saw_cycle_before_second = true;
             }
 
-            let mut sorted = out.clone();
+            let mut sorted = out;
             sorted.sort();
             assert_eq!(sorted, vec![1, 2, 10]);
         });
