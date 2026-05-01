@@ -4153,8 +4153,8 @@ impl HydroNode {
                                                                     return;
                                                                 }
                                                             }
-                                                            *opt_curr_watermark = opt_watermark;
                                                             map.retain(|k, _| *k >= watermark);
+                                                            *opt_curr_watermark = Some(watermark);
                                                         }
                                                     }
                                                 })

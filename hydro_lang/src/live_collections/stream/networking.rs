@@ -16,6 +16,7 @@ use crate::live_collections::sliced::sliced;
 use crate::live_collections::stream::Retries;
 #[cfg(feature = "sim")]
 use crate::location::LocationKey;
+use crate::location::cluster::ClusterIds;
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
 use crate::location::external_process::ExternalBincodeStream;
@@ -307,6 +308,68 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
             elements.repeat_with_keys(current_members)
         }
         .demux(to, via)
+    }
+
+    /// Broadcasts elements of this stream to all members of a cluster,
+    /// assuming membership is closed (fixed at deploy time).
+    ///
+    /// Unlike [`Stream::broadcast`], this does not require a [`NonDet`] guard.
+    /// The membership set is obtained from deploy metadata via
+    /// [`ClusterIds`], producing a
+    /// `Bounded` stream. The cross-product of data × members is fully
+    /// deterministic.
+    ///
+    /// This is only available in deployment targets with static cluster
+    /// membership (legacy Hydro Deploy and simulation). There are no late
+    /// joiners in that context, so broadcast receivers are guaranteed to
+    /// get data from the start of the stream. On dynamic targets
+    /// (e.g. ECS), use [`Stream::broadcast`] instead.
+    ///
+    /// # Example
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::multi_location_test(|flow, p2| {
+    /// let p1 = flow.process::<()>();
+    /// let workers: Cluster<()> = flow.cluster::<()>();
+    /// let numbers: Stream<_, Process<_>, _> = p1.source_iter(q!(vec![123]));
+    /// let on_worker = numbers.broadcast_closed(&workers, TCP.fail_stop().bincode());
+    /// # on_worker.send(&p2, TCP.fail_stop().bincode()).entries()
+    /// // each of the 4 cluster members receives 123
+    /// # }, |mut stream| async move {
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..4 {
+    /// #     results.push(format!("{:?}", stream.next().await.unwrap()));
+    /// # }
+    /// # results.sort();
+    /// # assert_eq!(results, vec!["(MemberId::<()>(0), 123)", "(MemberId::<()>(1), 123)", "(MemberId::<()>(2), 123)", "(MemberId::<()>(3), 123)"]);
+    /// # }));
+    /// # }
+    /// ```
+    pub fn broadcast_closed<L2: 'a, N: NetworkFor<T>>(
+        self,
+        to: &Cluster<'a, L2>,
+        via: N,
+    ) -> Stream<T, Cluster<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
+    where
+        T: Clone + Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
+    {
+        let cluster_ids = ClusterIds {
+            key: to.key,
+            _phantom: PhantomData,
+        };
+        let member_ids = self.location.source_iter(q!(cluster_ids
+            .iter()
+            .map(|id| MemberId::from_tagless(id.clone()))));
+
+        // Late joiners will receive no data from this broadcast, which is
+        // future-monotone and eventually consistent (a safe under-approximation).
+        self.cross_product(member_ids.weaken_retries())
+            .map(q!(|(data, member_id)| (member_id, data)))
+            .into_keyed()
+            .demux(to, via)
     }
 
     /// Sends the elements of this stream to an external (non-Hydro) process, using [`bincode`]
@@ -1571,5 +1634,34 @@ mod tests {
             saw_non_contiguous,
             "Expected at least one execution with a non-contiguous subset of inputs"
         );
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_broadcast_closed_o2m() {
+        let mut flow = FlowBuilder::new();
+        let cluster = flow.cluster::<()>();
+        let node = flow.process::<()>();
+
+        let input = node.source_iter(q!(vec![123, 456]));
+
+        let out_recv = input
+            .broadcast_closed(&cluster, TCP.fail_stop().bincode())
+            .send(&node, TCP.fail_stop().bincode())
+            .entries()
+            .sim_output();
+
+        flow.sim()
+            .with_cluster_size(&cluster, 2)
+            .exhaustive(async || {
+                out_recv
+                    .assert_yields_only_unordered(vec![
+                        (MemberId::from_raw_id(0), 123),
+                        (MemberId::from_raw_id(0), 456),
+                        (MemberId::from_raw_id(1), 123),
+                        (MemberId::from_raw_id(1), 456),
+                    ])
+                    .await
+            });
     }
 }

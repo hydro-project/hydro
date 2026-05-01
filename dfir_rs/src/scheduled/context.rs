@@ -86,6 +86,9 @@ pub struct Context {
     wake_state: Arc<WakeState>,
     /// Live-updating DFIR runtime metrics via interior mutability.
     metrics: Rc<DfirMetrics>,
+    /// Tasks buffered via [`Self::request_task`], spawned by [`Dfir::spawn_tasks`]
+    /// once the runtime is running inside a tokio `LocalSet`.
+    tasks_to_spawn: Vec<Pin<Box<dyn Future<Output = ()> + 'static>>>,
 }
 
 impl Context {
@@ -96,6 +99,7 @@ impl Context {
             current_tick: TickInstant::default(),
             wake_state,
             metrics,
+            tasks_to_spawn: Vec::new(),
         }
     }
 
@@ -135,6 +139,20 @@ impl Context {
             (hook_fn)(state.downcast_mut::<T>().unwrap());
         }));
         state_data.lifespan = Some(_lifespan);
+    }
+
+    /// Buffers an async task to be spawned later by [`Dfir::spawn_tasks`].
+    ///
+    /// Tasks are deferred because `write_prologue` runs during graph construction,
+    /// which may occur before a tokio `LocalSet` is entered. Buffered tasks are
+    /// drained and spawned via `tokio::task::spawn_local` at the start of
+    /// [`Dfir::run_tick`]. Tasks requested after that point remain buffered until
+    /// the next call to [`Dfir::run_tick`].
+    pub fn request_task<Fut>(&mut self, future: Fut)
+    where
+        Fut: Future<Output = ()> + 'static,
+    {
+        self.tasks_to_spawn.push(Box::pin(future));
     }
 
     // --- Methods called as `context.xxx()` in operator iterators ---
@@ -387,11 +405,21 @@ impl<Tick: TickClosure> Dfir<Tick> {
 }
 
 impl<Tick: TickClosure> Dfir<Tick> {
+    /// Spawns all tasks buffered via [`Context::request_task`].
+    ///
+    /// This drains the buffer, so subsequent calls are no-ops until new tasks are requested.
+    fn spawn_tasks(&mut self) {
+        for task in self.context.tasks_to_spawn.drain(..) {
+            tokio::task::spawn_local(task);
+        }
+    }
+
     /// Run a single tick. Returns `true` if any subgraph received input data.
     ///
     /// Checks both handoff buffers (via `work_done` flag set in generated recv port code)
     /// and external events (via `can_start_tick` set by wakers/schedule_subgraph).
     pub async fn run_tick(&mut self) -> bool {
+        self.spawn_tasks();
         let had_external = self
             .wake_state
             .can_start_tick
