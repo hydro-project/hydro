@@ -52,6 +52,7 @@ docker_deploy = [
     "dep:bollard",
     "dep:http-body-util",
     "dep:nanoid",
+    "dep:regex",
     "dep:serde_json",
     "dep:tar",
 ]

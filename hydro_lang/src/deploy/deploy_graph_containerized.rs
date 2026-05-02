@@ -1295,24 +1295,43 @@ const CONTAINER_ALPHABET: [char; 36] = [
     'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 ];
 
+fn is_valid_docker_image_name(name: &str) -> bool {
+    regex::Regex::new(r"^[a-z0-9]+([._-][a-z0-9]+)*$")
+        .unwrap()
+        .is_match(name)
+}
+
 #[instrument(level = "trace", skip_all, ret, fields(%name_hint, %location_key, %deployment_instance))]
 fn get_docker_image_name(
     name_hint: &str,
     location_key: LocationKey,
     deployment_instance: &str,
 ) -> String {
-    let name_hint = name_hint
+    let name_hint: String = name_hint
         .split("::")
         .last()
         .unwrap()
         .to_ascii_lowercase()
-        .replace(".", "-")
-        .replace("_", "-")
-        .replace("::", "-");
+        .split(['.', '_', '-'])
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("-");
 
     let image_unique_tag = nanoid::nanoid!(6, &CONTAINER_ALPHABET);
+    let image_name =
+        format!("hy-{name_hint}-{image_unique_tag}-{deployment_instance}-{location_key}");
 
-    format!("hy-{name_hint}-{image_unique_tag}-{deployment_instance}-{location_key}")
+    if !is_valid_docker_image_name(&image_name) {
+        panic!(
+            "Generated Docker image name '{image_name}' is not a valid Docker image name. \
+             Docker image names may only contain lowercase alphanumeric characters \
+             separated by single '.', '_', or '-' characters, and must start and end \
+             with an alphanumeric character. The most likely cause is your location \
+             struct name '{name_hint}'"
+        );
+    }
+
+    image_name
 }
 
 #[instrument(level = "trace", skip_all, ret, fields(%image_name, ?instance))]
