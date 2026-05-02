@@ -933,6 +933,21 @@ impl HydroRoot {
                 None,
                 NodeLabel::static_label("null".to_owned()),
             ),
+
+            // ExternalSidecar has no dataflow input — render it
+            // as a standalone Network node (it's a port-exposure
+            // directive, not a data sink, and doesn't terminate any
+            // dataflow edge).
+            HydroRoot::ExternalSidecar {
+                external_key,
+                port_id,
+                ..
+            } => structure.add_node_with_backtrace(
+                NodeLabel::static_label(format!("external_sidecar({},{})", external_key, port_id)),
+                HydroNodeType::Network,
+                None,
+                None,
+            ),
         }
     }
 }

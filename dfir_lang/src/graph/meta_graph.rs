@@ -1452,6 +1452,38 @@ impl DfirGraph {
                 // (unlike the scheduled path's `sg_ident`).
                 let sg_fut_ident = subgraph_id.as_ident(Span::call_site());
 
+                // TODO: fix the source map generator.
+                // let subgraph_name = {
+                //     let node_descs: Vec<String> = self
+                //         .subgraph_nodes
+                //         .get(subgraph_id)
+                //         .map(|nodes| {
+                //             nodes
+                //                 .iter()
+                //                 .map(|nid| {
+                //                     let node = self.node(*nid);
+                //                     let name = node.to_name_string();
+                //                     let tag = self
+                //                         .operator_tag
+                //                         .get(*nid)
+                //                         .map(|t| format!("#{t}"))
+                //                         .unwrap_or_default();
+                //                     format!("{name}{tag}")
+                //                 })
+                //                 .collect()
+                //         })
+                //         .unwrap_or_default();
+                //     Literal::string(&format!(
+                //         "Subgraph {:?} [{}]",
+                //         subgraph_id,
+                //         node_descs.join(", ")
+                //     ))
+                // };
+                // let stratum = Literal::usize_unsuffixed(
+                //     self.subgraph_stratum.get(subgraph_id).cloned().unwrap_or(0),
+                // );
+                // let laziness = self.subgraph_laziness(subgraph_id);
+
                 // Generate send-side curr_items_count updates (after subgraph runs).
                 let send_metrics_code: Vec<TokenStream> = send_hoffs
                     .iter()

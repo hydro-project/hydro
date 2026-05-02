@@ -156,6 +156,19 @@ impl<'a> Deploy<'a> for MaelstromDeploy {
         panic!("Maelstrom deployment does not support processes, only clusters")
     }
 
+    fn e2m_listener_bind(
+        _extra_stmts: &mut Vec<syn::Stmt>,
+        _c2: &Self::Cluster,
+        _c2_port: &<Self::Cluster as Node>::Port,
+        _shared_handle: String,
+    ) -> syn::Ident {
+        unimplemented!(
+            "MaelstromDeploy does not support `Location::bidi_external_sidecar` — \
+             Maelstrom's transport is stdin/stdout framing, so there is no TCP \
+             listener to hand to a user-owned sidecar."
+        )
+    }
+
     fn e2o_source(
         _extra_stmts: &mut Vec<syn::Stmt>,
         _p1: &Self::External,

@@ -139,7 +139,14 @@ pub struct DockerDeployCluster {
     next_port: Rc<RefCell<u16>>,
     rust_crate: Rc<RefCell<Option<RustCrate>>>,
 
+    exposed_ports: Rc<RefCell<Vec<u16>>>,
+
     docker_container_name: Rc<RefCell<Vec<String>>>,
+
+    /// Shared reference to the first container name, for external connections.
+    first_container_name: Rc<RefCell<Option<String>>>,
+
+    network: Option<DockerNetwork>,
 
     compilation_options: Option<String>,
 
@@ -216,6 +223,10 @@ pub struct DockerDeployExternal {
 
     #[expect(clippy::type_complexity, reason = "internal code")]
     connection_info: Rc<RefCell<HashMap<u16, (Rc<RefCell<Option<String>>>, u16, DockerNetwork)>>>,
+
+    /// For cluster external connections: all container names + remote port.
+    #[expect(clippy::type_complexity, reason = "internal code")]
+    cluster_connection_info: Rc<RefCell<HashMap<u16, (Rc<RefCell<Vec<String>>>, u16)>>>,
 }
 
 impl Node for DockerDeployExternal {
@@ -255,6 +266,51 @@ type DynSourceSink<Out, In, InErr> = (
     Pin<Box<dyn Stream<Item = Out>>>,
     Pin<Box<dyn Sink<In, Error = InErr>>>,
 );
+
+impl DockerDeployExternal {
+    /// Returns the TCP endpoint `(host, port)` for the given external port
+    /// without establishing a connection. Useful for connecting with a raw
+    /// `TcpStream` instead of the Hydro framed transport.
+    pub async fn get_tcp_endpoint(&self, external_port_id: ExternalPortId) -> (String, u16) {
+        let local_port = *self.ports.borrow().get(&external_port_id).unwrap();
+        let (docker_container_name, remote_port, _) = self
+            .connection_info
+            .borrow()
+            .get(&local_port)
+            .unwrap()
+            .clone();
+        let docker_container_name = docker_container_name.borrow().as_ref().unwrap().clone();
+        let host_port =
+            find_dynamically_allocated_docker_port(&docker_container_name, remote_port).await;
+        ("localhost".to_string(), host_port)
+    }
+
+    /// Returns TCP endpoints for all cluster members behind this external port.
+    /// Falls back to a single-element vec from `get_tcp_endpoint` if the port
+    /// is connected to a process rather than a cluster.
+    pub async fn get_all_tcp_endpoints(
+        &self,
+        external_port_id: ExternalPortId,
+    ) -> Vec<(String, u16)> {
+        let local_port = *self.ports.borrow().get(&external_port_id).unwrap();
+        let cluster_info = self
+            .cluster_connection_info
+            .borrow()
+            .get(&local_port)
+            .cloned();
+        if let Some((container_names, remote_port)) = cluster_info {
+            let names = container_names.borrow().clone();
+            let mut endpoints = Vec::with_capacity(names.len());
+            for name in names {
+                let host_port = find_dynamically_allocated_docker_port(&name, remote_port).await;
+                endpoints.push(("localhost".to_string(), host_port));
+            }
+            endpoints
+        } else {
+            vec![self.get_tcp_endpoint(external_port_id).await]
+        }
+    }
+}
 
 impl<'a> RegisterPort<'a, DockerDeploy> for DockerDeployExternal {
     #[instrument(level = "trace", skip_all, fields(name = self.name, %external_port_id, %port))]
@@ -495,6 +551,7 @@ pub struct DockerDeploy {
     docker_clusters: Vec<DockerDeployClusterSpec>,
     network: DockerNetwork,
     deployment_instance: String,
+    container_env: Vec<String>,
 }
 
 #[instrument(level = "trace", skip_all, fields(%image_name, %container_name, %network_name, %deployment_instance))]
@@ -504,7 +561,16 @@ async fn create_and_start_container(
     image_name: &str,
     network_name: &str,
     deployment_instance: &str,
+    extra_env: &[String],
 ) -> Result<(), anyhow::Error> {
+    let mut env = vec![
+        format!("CONTAINER_NAME={container_name}"),
+        format!("DEPLOYMENT_INSTANCE={deployment_instance}"),
+        format!("RUST_LOG=info"),
+        format!("NO_COLOR=1"),
+    ];
+    env.extend(extra_env.iter().cloned());
+
     let config = ContainerCreateBody {
         image: Some(image_name.to_owned()),
         hostname: Some(container_name.to_owned()),
@@ -514,11 +580,7 @@ async fn create_and_start_container(
             port_bindings: Some(HashMap::new()), /* Due to a bug in docker, if you don't send empty port bindings with publish_all_ports set to true and with a docker image that has EXPOSE directives in it, docker will crash because it will try to write to a map in memory that it has not initialized yet. Setting port_bindings explicitly to an empty map will initialize it first so that it does not break. */
             ..Default::default()
         }),
-        env: Some(vec![
-            format!("CONTAINER_NAME={container_name}"),
-            format!("DEPLOYMENT_INSTANCE={deployment_instance}"),
-            format!("RUST_LOG=trace"),
-        ]),
+        env: Some(env),
         networking_config: Some(NetworkingConfig {
             endpoints_config: Some(HashMap::from([(
                 network_name.to_owned(),
@@ -690,7 +752,15 @@ impl DockerDeploy {
             docker_clusters: Vec::new(),
             network,
             deployment_instance: nanoid!(6, &CONTAINER_ALPHABET),
+            container_env: Vec::new(),
         }
+    }
+
+    /// Add environment variables to be set on all Docker containers.
+    /// Each entry should be in `KEY=VALUE` format.
+    pub fn with_env(mut self, env_vars: Vec<String>) -> Self {
+        self.container_env = env_vars;
+        self
     }
 
     /// Add an internal docker service to the deployment.
@@ -723,6 +793,7 @@ impl DockerDeploy {
             config,
             count,
             deployment_instance: self.deployment_instance.clone(),
+            network: self.network.clone(),
         };
 
         self.docker_clusters.push(cluster.clone());
@@ -761,7 +832,7 @@ impl DockerDeploy {
                 &cluster.rust_crate,
                 cluster.compilation_options.as_deref(),
                 &cluster.config,
-                &[], // clusters don't have exposed ports.
+                &cluster.exposed_ports.borrow(),
                 &cluster.name,
             )
             .await?;
@@ -799,6 +870,7 @@ impl DockerDeploy {
                 &process.name,
                 &self.network.name,
                 &self.deployment_instance,
+                &self.container_env,
             )
             .await?;
         }
@@ -811,12 +883,18 @@ impl DockerDeploy {
                     .borrow_mut()
                     .push(docker_container_name.clone());
 
+                if num == 0 {
+                    *cluster.first_container_name.borrow_mut() =
+                        Some(docker_container_name.clone());
+                }
+
                 create_and_start_container(
                     &docker,
                     &docker_container_name,
                     &cluster.name,
                     &self.network.name,
                     &self.deployment_instance,
+                    &self.container_env,
                 )
                 .await?;
             }
@@ -1105,6 +1183,30 @@ impl<'a> Deploy<'a> for DockerDeploy {
         parse_quote!(#sink_ident)
     }
 
+    #[instrument(level = "trace", skip_all, fields(c2 = c2.name, %c2_port, %shared_handle, extra_stmts = extra_stmts.len()))]
+    fn e2m_listener_bind(
+        extra_stmts: &mut Vec<syn::Stmt>,
+        c2: &Self::Cluster,
+        c2_port: &<Self::Cluster as Node>::Port,
+        shared_handle: String,
+    ) -> syn::Ident {
+        c2.exposed_ports.borrow_mut().push(*c2_port);
+
+        let listener_ident = crate::compile::sidecar_listener_ident(&shared_handle);
+        let bind_addr = format!("0.0.0.0:{}", c2_port);
+
+        // Bind the owned `TcpListener` directly. The ident is
+        // textually referenced at exactly one splice site (the
+        // sidecar-future invocation), so a plain `let` works — the
+        // single splice simply moves the owned listener into the
+        // sidecar closure.
+        extra_stmts.push(syn::parse_quote! {
+            let #listener_ident = tokio::net::TcpListener::bind(#bind_addr).await.unwrap();
+        });
+
+        listener_ident
+    }
+
     #[instrument(level = "trace", skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, %p2_port, %shared_handle))]
     fn e2o_source(
         extra_stmts: &mut Vec<syn::Stmt>,
@@ -1206,6 +1308,95 @@ impl<'a> Deploy<'a> for DockerDeploy {
         parse_quote!(#sink_ident)
     }
 
+    fn e2m_source(
+        extra_stmts: &mut Vec<syn::Stmt>,
+        _p1: &Self::External,
+        _p1_port: &<Self::External as Node>::Port,
+        c2: &Self::Cluster,
+        c2_port: &<Self::Cluster as Node>::Port,
+        codec_type: &syn::Type,
+        shared_handle: String,
+    ) -> syn::Expr {
+        c2.exposed_ports.borrow_mut().push(*c2_port);
+
+        let socket_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_socket", &shared_handle),
+            Span::call_site(),
+        );
+        let source_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_source", &shared_handle),
+            Span::call_site(),
+        );
+        let sink_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_sink", &shared_handle),
+            Span::call_site(),
+        );
+        let membership_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_membership", &shared_handle),
+            Span::call_site(),
+        );
+
+        let bind_addr = format!("0.0.0.0:{}", c2_port);
+
+        extra_stmts.push(syn::parse_quote! {
+            let #socket_ident = tokio::net::TcpListener::bind(#bind_addr).await.unwrap();
+        });
+
+        let root = crate::staging_util::get_this_crate();
+
+        extra_stmts.push(syn::parse_quote! {
+            let (#source_ident, #sink_ident, #membership_ident) = #root::runtime_support::hydro_deploy_integration::multi_connection::tcp_multi_connection::<_, #codec_type>(#socket_ident);
+        });
+
+        parse_quote!(#source_ident)
+    }
+
+    fn e2m_connect(
+        p1: &Self::External,
+        p1_port: &<Self::External as Node>::Port,
+        c2: &Self::Cluster,
+        c2_port: &<Self::Cluster as Node>::Port,
+        server_hint: NetworkHint,
+    ) -> Box<dyn FnOnce()> {
+        if server_hint != NetworkHint::Auto {
+            panic!(
+                "Docker deployment only supports NetworkHint::Auto, got {:?}",
+                server_hint
+            );
+        }
+
+        p1.connection_info.borrow_mut().insert(
+            *p1_port,
+            (
+                c2.first_container_name.clone(),
+                *c2_port,
+                c2.network.clone().expect("cluster network not set"),
+            ),
+        );
+        p1.cluster_connection_info
+            .borrow_mut()
+            .insert(*p1_port, (c2.docker_container_name.clone(), *c2_port));
+
+        let serialized = format!("e2m_connect {}:{p1_port} -> {}:{c2_port}", p1.name, c2.name);
+        Box::new(move || {
+            trace!(name: "e2m_connect thunk", %serialized);
+        })
+    }
+
+    fn m2e_sink(
+        _c1: &Self::Cluster,
+        _c1_port: &<Self::Cluster as Node>::Port,
+        _p2: &Self::External,
+        _p2_port: &<Self::External as Node>::Port,
+        shared_handle: String,
+    ) -> syn::Expr {
+        let sink_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_sink", &shared_handle),
+            Span::call_site(),
+        );
+        parse_quote!(#sink_ident)
+    }
+
     #[instrument(level = "trace", skip_all, fields(%of_cluster))]
     fn cluster_ids(
         of_cluster: LocationKey,
@@ -1300,6 +1491,7 @@ pub struct DockerDeployClusterSpec {
     config: Vec<String>,
     count: usize,
     deployment_instance: String,
+    network: DockerNetwork,
 }
 
 impl<'a> ClusterSpec<'a, DockerDeploy> for DockerDeployClusterSpec {
@@ -1312,7 +1504,13 @@ impl<'a> ClusterSpec<'a, DockerDeploy> for DockerDeployClusterSpec {
             next_port: Rc::new(RefCell::new(1000)),
             rust_crate: Rc::new(RefCell::new(None)),
 
+            exposed_ports: Rc::new(RefCell::new(Vec::new())),
+
             docker_container_name: Rc::new(RefCell::new(Vec::new())),
+
+            first_container_name: Rc::new(RefCell::new(None)),
+
+            network: Some(self.network.clone()),
 
             compilation_options: self.compilation_options,
             config: self.config,
@@ -1335,6 +1533,7 @@ impl<'a> ExternalSpec<'a, DockerDeploy> for DockerDeployExternalSpec {
             next_port: Rc::new(RefCell::new(10000)),
             ports: Rc::new(RefCell::new(HashMap::new())),
             connection_info: Rc::new(RefCell::new(HashMap::new())),
+            cluster_connection_info: Rc::new(RefCell::new(HashMap::new())),
         }
     }
 }

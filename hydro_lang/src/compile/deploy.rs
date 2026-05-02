@@ -255,6 +255,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
             dfir: build_inner(&mut self.ir),
             extra_stmts: SparseSecondaryMap::new(),
             sidecars: SparseSecondaryMap::new(),
+            source_map: Vec::new(),
             _phantom: PhantomData,
         }
     }
@@ -279,6 +280,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
         for leaf in self.ir.iter_mut() {
             leaf.compile_network::<D>(
                 &mut extra_stmts,
+                &mut self.sidecars,
                 &mut seen_tees,
                 &mut seen_cluster_members,
                 &self.processes,
@@ -292,6 +294,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
             dfir: build_inner(&mut self.ir),
             extra_stmts,
             sidecars: std::mem::take(&mut self.sidecars),
+            source_map: Vec::new(),
             _phantom: PhantomData,
         }
     }
@@ -353,6 +356,7 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
             dfir,
             mut extra_stmts,
             mut sidecars,
+            source_map: _,
             _phantom,
         } = self.compile_internal(env);
 
@@ -564,6 +568,30 @@ impl DeployResult<'_, crate::deploy::HydroDeploy> {
             .get(port.process_key)
             .unwrap()
             .raw_port(port.port_id)
+    }
+}
+
+#[cfg(feature = "docker_deploy")]
+#[cfg_attr(docsrs, doc(cfg(feature = "docker_deploy")))]
+impl DeployResult<'_, crate::deploy::DockerDeploy> {
+    /// Returns the TCP endpoint `(host, port)` for the given external port.
+    /// Use this to connect with a raw `TcpStream` instead of the Hydro
+    /// framed transport returned by `connect()`.
+    pub async fn get_tcp_endpoint<M>(&self, port: ExternalBytesPort<M>) -> (String, u16) {
+        self.externals
+            .get(port.process_key)
+            .unwrap()
+            .get_tcp_endpoint(port.port_id)
+            .await
+    }
+
+    /// Returns TCP endpoints for all cluster members behind this external port.
+    pub async fn get_all_tcp_endpoints<M>(&self, port: ExternalBytesPort<M>) -> Vec<(String, u16)> {
+        self.externals
+            .get(port.process_key)
+            .unwrap()
+            .get_all_tcp_endpoints(port.port_id)
+            .await
     }
 }
 

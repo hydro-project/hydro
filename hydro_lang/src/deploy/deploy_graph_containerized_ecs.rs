@@ -429,6 +429,102 @@ impl<'a> Deploy<'a> for EcsDeploy {
     type External = EcsDeployExternal;
     type Meta = ();
 
+    #[instrument(level = "trace", skip_all, fields(c2 = c2.name, %c2_port, %shared_handle, extra_stmts = extra_stmts.len()))]
+    fn e2m_listener_bind(
+        extra_stmts: &mut Vec<syn::Stmt>,
+        c2: &Self::Cluster,
+        c2_port: &<Self::Cluster as Node>::Port,
+        shared_handle: String,
+    ) -> syn::Ident {
+        c2.exposed_ports
+            .borrow_mut()
+            .insert(shared_handle.clone(), PortInfo::Tcp { port: *c2_port });
+
+        let listener_ident = crate::compile::sidecar_listener_ident(&shared_handle);
+        let bind_addr = format!("0.0.0.0:{}", c2_port);
+
+        extra_stmts.push(syn::parse_quote! {
+            let #listener_ident = tokio::net::TcpListener::bind(#bind_addr).await.unwrap();
+        });
+
+        listener_ident
+    }
+
+    fn e2m_source(
+        extra_stmts: &mut Vec<syn::Stmt>,
+        _p1: &Self::External,
+        _p1_port: &<Self::External as Node>::Port,
+        c2: &Self::Cluster,
+        c2_port: &<Self::Cluster as Node>::Port,
+        codec_type: &syn::Type,
+        shared_handle: String,
+    ) -> syn::Expr {
+        c2.exposed_ports
+            .borrow_mut()
+            .insert(shared_handle.clone(), PortInfo::Tcp { port: *c2_port });
+
+        let socket_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_socket", &shared_handle),
+            Span::call_site(),
+        );
+        let source_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_source", &shared_handle),
+            Span::call_site(),
+        );
+        let sink_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_sink", &shared_handle),
+            Span::call_site(),
+        );
+        let membership_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_membership", &shared_handle),
+            Span::call_site(),
+        );
+
+        let bind_addr = format!("0.0.0.0:{}", c2_port);
+
+        extra_stmts.push(syn::parse_quote! {
+            let #socket_ident = tokio::net::TcpListener::bind(#bind_addr).await.unwrap();
+        });
+
+        let root = crate::staging_util::get_this_crate();
+
+        extra_stmts.push(syn::parse_quote! {
+            let (#source_ident, #sink_ident, #membership_ident) = #root::runtime_support::hydro_deploy_integration::multi_connection::tcp_multi_connection::<_, #codec_type>(#socket_ident);
+        });
+
+        parse_quote!(#source_ident)
+    }
+
+    fn e2m_connect(
+        p1: &Self::External,
+        p1_port: &<Self::External as Node>::Port,
+        c2: &Self::Cluster,
+        c2_port: &<Self::Cluster as Node>::Port,
+        _server_hint: NetworkHint,
+    ) -> Box<dyn FnOnce()> {
+        let serialized = format!(
+            "e2m_connect {}:{p1_port:?} -> {}:{c2_port:?}",
+            p1.name, c2.name
+        );
+        Box::new(move || {
+            trace!(name: "e2m_connect thunk", %serialized);
+        })
+    }
+
+    fn m2e_sink(
+        _c1: &Self::Cluster,
+        _c1_port: &<Self::Cluster as Node>::Port,
+        _p2: &Self::External,
+        _p2_port: &<Self::External as Node>::Port,
+        shared_handle: String,
+    ) -> syn::Expr {
+        let sink_ident = syn::Ident::new(
+            &format!("__hydro_deploy_many_{}_sink", &shared_handle),
+            Span::call_site(),
+        );
+        parse_quote!(#sink_ident)
+    }
+
     #[instrument(level = "trace", skip_all, fields(p1 = p1.name, %p1_port, p2 = p2.name, %p2_port))]
     fn o2o_sink_source(
         _env: &mut Self::InstantiateEnv,

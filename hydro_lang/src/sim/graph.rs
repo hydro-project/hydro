@@ -310,6 +310,20 @@ impl<'a> Deploy<'a> for SimDeploy {
         todo!("e2o_many_sink is not yet supported in simulation")
     }
 
+    fn e2m_listener_bind(
+        _extra_stmts: &mut Vec<syn::Stmt>,
+        _c2: &Self::Cluster,
+        _c2_port: &<Self::Cluster as Node>::Port,
+        _shared_handle: String,
+    ) -> syn::Ident {
+        unimplemented!(
+            "`Location::bidi_external_sidecar` is not yet supported in simulation. \
+             For now, test the dataflow core (e.g. `distributed_kvs`) directly \
+             via `sim_input` / `sim_output`, and exercise the full ingress path \
+             via the containerized Docker backend."
+        )
+    }
+
     fn e2o_source(
         _extra_stmts: &mut Vec<syn::Stmt>,
         _p1: &Self::External,
