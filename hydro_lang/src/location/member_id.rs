@@ -33,9 +33,12 @@ pub enum TaglessMemberId {
         /// The raw numeric identifier for this cluster member.
         raw_id: u32,
     },
-    /// A Docker container-based member ID, used with the `docker_runtime` feature.
-    #[cfg(feature = "docker_runtime")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "docker_runtime")))]
+    /// A Docker container-based member ID, used with the `docker_runtime` or `ecs_runtime` feature.
+    #[cfg(any(feature = "docker_runtime", feature = "ecs_runtime"))]
+    #[cfg_attr(
+        docsrs,
+        doc(cfg(any(feature = "docker_runtime", feature = "ecs_runtime")))
+    )]
     Docker {
         /// The Docker container name identifying this cluster member.
         container_name: String,
@@ -96,34 +99,35 @@ impl TaglessMemberId {
     /// Creates a [`TaglessMemberId`] from a Docker container name.
     ///
     /// # Panics
-    /// Panics if the `docker_runtime` feature is not enabled.
+    /// Panics if neither the `docker_runtime` nor `ecs_runtime` feature is enabled.
     pub fn from_container_name(_container_name: impl Into<String>) -> Self {
-        assert_feature! {
-            #[cfg(feature = "docker_runtime")]
+        #[cfg(any(feature = "docker_runtime", feature = "ecs_runtime"))]
+        {
             Self::Docker {
                 container_name: _container_name.into(),
             }
         }
+        #[cfg(not(any(feature = "docker_runtime", feature = "ecs_runtime")))]
+        panic!("Neither \"docker_runtime\" nor \"ecs_runtime\" feature is enabled.");
     }
 
     /// Returns the Docker container name from this member identifier.
     ///
     /// # Panics
-    /// Panics if this is not the `Docker` variant or if the `docker_runtime`
-    /// feature is not enabled.
+    /// Panics if this is not the `Docker` variant or if neither the `docker_runtime`
+    /// nor `ecs_runtime` feature is enabled.
     pub fn get_container_name(&self) -> &str {
-        assert_feature! {
-            #[cfg(feature = "docker_runtime")]
+        #[cfg(any(feature = "docker_runtime", feature = "ecs_runtime"))]
+        {
             #[expect(clippy::allow_attributes, reason = "Depends on features.")]
-            #[allow(
-                irrefutable_let_patterns,
-                reason = "Depends on features."
-            )]
+            #[allow(irrefutable_let_patterns, reason = "Depends on features.")]
             let TaglessMemberId::Docker { container_name } = self else {
                 panic!("Not `Docker` variant.");
-            }
+            };
             container_name
         }
+        #[cfg(not(any(feature = "docker_runtime", feature = "ecs_runtime")))]
+        panic!("Neither \"docker_runtime\" nor \"ecs_runtime\" feature is enabled.");
     }
 
     /// Creates a [`TaglessMemberId`] from a Maelstrom node ID.
