@@ -57,7 +57,6 @@ pub const DIFFERENCE: OperatorConstraints = OperatorConstraints {
             write_iterator,
             write_iterator_after,
             write_tick_end,
-            ..
         } = (super::anti_join::ANTI_JOIN.write_fn)(wc, diagnostics)?;
 
         let pos = &inputs[1];
