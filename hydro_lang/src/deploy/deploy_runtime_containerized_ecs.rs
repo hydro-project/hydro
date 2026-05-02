@@ -522,9 +522,14 @@ async fn resolve_task_family_to_task_id(task_family: &str) -> String {
 fn get_self_task_id() -> String {
     let metadata_uri = std::env::var("ECS_CONTAINER_METADATA_URI_V4")
         .expect("ECS_CONTAINER_METADATA_URI_V4 not set - are we running in ECS?");
-    metadata_uri
-        .rsplit('/')
-        .next()
-        .expect("Invalid ECS metadata URI format")
-        .to_owned()
+    // URI format: http://169.254.170.2/v4/{task_id}-{runtime_id}
+    // task_id is 32 hex chars, runtime_id is a numeric suffix.
+    // We need just the task_id to match ECS task ARNs.
+    let re = regex::Regex::new(r"/v4/(?P<task_id>[0-9a-f]{32})-\d+$").unwrap();
+    re.captures(&metadata_uri)
+        .and_then(|c| c.name("task_id"))
+        .map(|m| m.as_str().to_owned())
+        .unwrap_or_else(|| {
+            panic!("ECS_CONTAINER_METADATA_URI_V4 does not match expected format /v4/{{task_id}}-{{runtime_id}}: {metadata_uri}")
+        })
 }
