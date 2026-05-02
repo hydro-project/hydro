@@ -42,16 +42,16 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
         _else => None,
     },
     write_fn: |wc @ &WriteContextArgs {
-                    root,
-                    context,
-                    op_span,
-                    work_fn_async,
-                    ident,
-                    is_pull,
-                    inputs,
-                    ..
-                },
-                diagnostics| {
+                     root,
+                     context,
+                     op_span,
+                     work_fn_async,
+                     ident,
+                     is_pull,
+                     inputs,
+                     ..
+                 },
+                 diagnostics| {
         assert!(is_pull);
 
         let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
@@ -76,13 +76,13 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
             let mut #build_ident: #root::rustc_hash::FxHashMap<_, ::std::vec::Vec<_>> = #root::rustc_hash::FxHashMap::default();
         };
 
-        let build_tick_end = match persistences[0] {
+        let write_tick_end_build = match persistences[0] {
             Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
                 #build_ident.clear();
             },
             _ => Default::default(),
         };
-        let probe_tick_end = if probe_persist {
+        let write_tick_end_probe = if probe_persist {
             match persistences[1] {
                 Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
                     #probe_ident.clear();
@@ -96,17 +96,13 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
         let input_build = &inputs[0]; // build before probe (stratum-delayed comes first)
         let input_probe = &inputs[1];
 
-        let accum_build = quote_spanned! {op_span=>
-            let fut = #root::dfir_pipes::pull::Pull::for_each(#input_build, |(k, v)| {
-                #build_ident.entry(k).or_insert_with(::std::vec::Vec::new).push(v);
-            });
-            let () = #work_fn_async(fut).await;
-        };
-
         let write_iterator = if !probe_persist {
             quote_spanned! {op_span=>
                 let #ident = {
-                    #accum_build
+                    let fut = #root::dfir_pipes::pull::Pull::for_each(#input_build, |(k, v)| {
+                        #build_ident.entry(k).or_insert_with(::std::vec::Vec::new).push(v);
+                    });
+                    let () = #work_fn_async(fut).await;
 
                     // Bound K/V types explicitly to prevent inference failures across subgraph handoffs.
                     #[allow(clippy::clone_on_copy, noop_method_call)]
@@ -135,7 +131,10 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
         } else {
             quote_spanned! {op_span =>
                 let #ident = {
-                    #accum_build
+                    let fut = #root::dfir_pipes::pull::Pull::for_each(#input_build, |(k, v)| {
+                        #build_ident.entry(k).or_insert_with(::std::vec::Vec::new).push(v);
+                    });
+                    let () = #work_fn_async(fut).await;
 
                     let replay_idx = if #context.is_first_run_this_tick() {
                         0
@@ -171,8 +170,8 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
             },
             write_iterator,
             write_tick_end: quote_spanned! {op_span=>
-                #build_tick_end
-                #probe_tick_end
+                #write_tick_end_build
+                #write_tick_end_probe
             },
             ..Default::default()
         })

@@ -816,9 +816,9 @@ impl DfirGraph {
     /// instead of runtime handoffs. Each call to the closure runs one tick.
     ///
     /// The generated code block evaluates to a `Dfir` instance wrapping the
-    /// closure. Operator prologues run at construction time before the `Context`
-    /// is moved into `Dfir::new`. `Dfir` provides the `Context` to the closure
-    /// on each tick run.
+    /// closure. Operator prologues run at construction time on the `Context`
+    /// before it is moved into `Dfir::new`. `Dfir` provides the `Context`
+    /// to the closure on each tick run.
     ///
     /// # Errors
     ///
@@ -994,7 +994,6 @@ impl DfirGraph {
             .collect();
 
         let mut op_prologue_code = Vec::new();
-        let mut op_prologue_after_code = Vec::new();
         let mut op_tick_end_code = Vec::new();
         let mut subgraph_blocks = Vec::new();
         {
@@ -1236,7 +1235,6 @@ impl DfirGraph {
                                 (op_constraints.write_fn)(&context_args, diagnostics);
                             let OperatorWriteOutput {
                                 write_prologue,
-                                write_prologue_after,
                                 write_iterator,
                                 write_iterator_after,
                                 write_tick_end,
@@ -1268,7 +1266,6 @@ impl DfirGraph {
                                 }
                             });
                             op_prologue_code.push(write_prologue);
-                            op_prologue_after_code.push(write_prologue_after);
                             op_tick_end_code.push(write_tick_end);
                             subgraph_op_iter_code.push(write_iterator);
 
@@ -1560,7 +1557,6 @@ impl DfirGraph {
                 #( #buffer_code )*
                 #( #back_buffer_code )*
                 #( #op_prologue_code )*
-                #( #op_prologue_after_code )*
 
                 // Pre-set to true so the first tick always returns true
                 // (matching Dfir pre-scheduling behavior). Subsequent ticks

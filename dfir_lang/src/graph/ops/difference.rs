@@ -72,7 +72,6 @@ pub const DIFFERENCE: OperatorConstraints = OperatorConstraints {
             write_iterator,
             write_iterator_after,
             write_tick_end,
-            ..Default::default()
         })
     },
 };

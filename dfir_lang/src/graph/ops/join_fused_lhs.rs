@@ -133,8 +133,8 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                 #rhs_prologue
             },
             write_iterator,
+            write_iterator_after: Default::default(),
             write_tick_end: lhs_tick_end,
-            ..Default::default()
         })
     },
 };

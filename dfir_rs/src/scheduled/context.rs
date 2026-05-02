@@ -3,10 +3,7 @@
 //! Provides [`Context`] (the lightweight operator context) and
 //! [`Dfir`] (the dataflow execution wrapper).
 
-use std::any::Any;
 use std::future::Future;
-use std::marker::PhantomData;
-use std::ops::DerefMut;
 use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -19,19 +16,7 @@ use dfir_lang::diagnostic::{Diagnostic, Diagnostics, SerdeSpan};
 use dfir_lang::graph::DfirGraph;
 
 use super::metrics::{DfirMetrics, DfirMetricsIntervals};
-use super::state::StateHandle;
-use super::{StateLifespan, StateTag};
 use crate::scheduled::ticks::TickInstant;
-use crate::util::slot_vec::SlotVec;
-
-/// Internal state storage for operator accumulators.
-struct StateData {
-    state: Box<dyn Any>,
-    lifespan_hook_fn: Option<LifespanResetFn>,
-    /// `None` for static.
-    lifespan: Option<StateLifespan>,
-}
-type LifespanResetFn = Box<dyn FnMut(&mut dyn Any)>;
 
 /// Coordinates waking between [`Context`] (inside the tick closure) and [`Dfir`]
 /// (the external runner). Shared via `Arc` between both.
@@ -71,14 +56,11 @@ impl Wake for WakeState {
 /// A lightweight context for inline codegen that avoids the overhead of the full
 /// [`Context`] (no tokio channels, no scheduler queues, no loop machinery).
 ///
-/// Exposes the same method names that operator-generated code calls on both
-/// `df` (for prologues: `add_state`, `set_state_lifespan_hook`) and
-/// `context` (for iterators: `state_ref_unchecked`, `is_first_run_this_tick`, etc.).
+/// Exposes method names that operator-generated code calls on
+/// `context` (for iterators: `is_first_run_this_tick`, `current_tick`, etc.).
 #[doc(hidden)]
 #[derive(Default)]
 pub struct Context {
-    /// Storage for the operator-facing State API.
-    states: SlotVec<StateTag, StateData>,
     /// Counter for number of ticks run.
     current_tick: TickInstant,
     /// Coordinates waking between [`Context`] (inside the tick closure) and [`Dfir`]
@@ -95,7 +77,6 @@ impl Context {
     /// Create a new inline context with shared wake state and metrics.
     pub fn new(wake_state: Arc<WakeState>, metrics: Rc<DfirMetrics>) -> Self {
         Self {
-            states: SlotVec::new(),
             current_tick: TickInstant::default(),
             wake_state,
             metrics,
@@ -104,42 +85,6 @@ impl Context {
     }
 
     // --- Methods called as `df.xxx()` in operator prologues ---
-
-    /// Adds state and returns a handle.
-    pub fn add_state<T>(&mut self, state: T) -> StateHandle<T>
-    where
-        T: Any,
-    {
-        let state_data = StateData {
-            state: Box::new(state),
-            lifespan_hook_fn: None,
-            lifespan: None,
-        };
-        let state_id = self.states.insert(state_data);
-        StateHandle {
-            state_id,
-            _phantom: PhantomData,
-        }
-    }
-
-    /// Sets a hook to modify state at the end of each tick.
-    pub fn set_state_lifespan_hook<T>(
-        &mut self,
-        handle: StateHandle<T>,
-        _lifespan: StateLifespan,
-        mut hook_fn: impl 'static + FnMut(&mut T),
-    ) where
-        T: Any,
-    {
-        let state_data = self
-            .states
-            .get_mut(handle.state_id)
-            .expect("Failed to find state with given handle.");
-        state_data.lifespan_hook_fn = Some(Box::new(move |state| {
-            (hook_fn)(state.downcast_mut::<T>().unwrap());
-        }));
-        state_data.lifespan = Some(_lifespan);
-    }
 
     /// Buffers an async task to be spawned later by [`Dfir::spawn_tasks`].
     ///
@@ -156,24 +101,6 @@ impl Context {
     }
 
     // --- Methods called as `context.xxx()` in operator iterators ---
-
-    /// Returns a shared reference to the state.
-    ///
-    /// # Safety
-    /// `StateHandle<T>` must be from _this_ instance.
-    pub unsafe fn state_ref_unchecked<T>(&self, handle: StateHandle<T>) -> &'_ T
-    where
-        T: Any,
-    {
-        let state = self
-            .states
-            .get(handle.state_id)
-            .expect("Failed to find state with given handle.")
-            .state
-            .as_ref();
-        debug_assert!(state.is::<T>());
-        unsafe { &*(state as *const dyn Any as *const T) }
-    }
 
     /// Always returns `true` in inline mode. The inline codegen runs the entire DAG
     /// once per tick with no re-execution, so every subgraph is always on its first
@@ -204,21 +131,10 @@ impl Context {
         std::task::Waker::from(self.wake_state.clone())
     }
 
-    /// Runs end-of-tick state hooks and increments the tick counter.
+    /// Increments the tick counter.
     /// Called by the generated tick closure at the end of each tick.
     #[doc(hidden)]
     pub fn __end_tick(&mut self) {
-        for state_data in self.states.values_mut() {
-            let StateData {
-                state,
-                lifespan_hook_fn: Some(lifespan_hook_fn),
-                lifespan: Some(StateLifespan::Tick),
-            } = state_data
-            else {
-                continue;
-            };
-            (lifespan_hook_fn)(Box::deref_mut(state));
-        }
         self.current_tick += crate::scheduled::ticks::TickDuration::SINGLE_TICK;
     }
 }
@@ -231,7 +147,7 @@ impl Context {
 ///
 /// The inline codegen generates an `async move |df: &mut Context|` closure that captures
 /// dataflow-specific state (handoff buffers, source iterators) and receives the [`Context`]
-/// (operator accumulators, tick counter) by reference each tick. `Dfir` owns both the
+/// (tick counter, metrics) by reference each tick. `Dfir` owns both the
 /// closure and the context, and coordinates tick lifecycle and idle/wake behavior.
 ///
 /// We use a single opaque closure rather than generating a bespoke struct per dataflow because:

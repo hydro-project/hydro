@@ -63,7 +63,6 @@ pub const JOIN_FUSED_RHS: OperatorConstraints = OperatorConstraints {
             write_iterator,
             write_iterator_after,
             write_tick_end,
-            ..Default::default()
         })
     },
 };
