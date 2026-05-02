@@ -134,14 +134,9 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
             }
         };
 
-        let write_iterator_after = quote_spanned! {op_span=>
-            
-        };
-
         Ok(OperatorWriteOutput {
             write_prologue,
             write_iterator,
-            write_iterator_after,
             ..Default::default()
         })
     },
