@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+# Standard bashism to fail early if a command fails.
+set -euo pipefail
+
+# Prefer the local install of cargo and cargo-brazil so that macOS works.
+PATH=$(path-allowing-local-dev)
+export PATH
+
+package_root=$("$BRAZIL_BUILD_HOME/bin/brazil-context" package root)
+build_dir="$package_root/build"
+
+mkdir -pv "$build_dir/bin"
+
+cargo-brazil-build run-default-phase install

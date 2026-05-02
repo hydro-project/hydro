@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+package kvs_internal;
+
+// Which ingress produced a given command. Mirrors the Rust
+// `protocol::Ingress` enum. Explicit unknown value lets us distinguish
+// "field unset" from a future ingress that the receiver doesn't yet
+// understand.
+enum IngressTag {
+  INGRESS_TAG_UNKNOWN = 0;
+  INGRESS_TAG_GRPC = 2;
+  INGRESS_TAG_WS = 3;
+  INGRESS_TAG_TEST = 4;
+}
+
+// The dataflow envelope key. Routed alongside every in-flight command
+// and echoed back on every response, letting the ingress layer demux
+// responses back to the originating sidecar.
+message ClientKey {
+  IngressTag ingress = 1;
+  uint64 request_id = 2;
+}
+
+// Router -> Node command.
+message NodeCommand {
+  string trace_id = 1;
+  string key = 2;
+  oneof kind {
+    ClockedPutPayload clocked_put = 3;
+    GetPayload get = 4;
+  }
+}
+
+message GetPayload {}
+
+message ClockedPutPayload {
+  map<string, uint64> vector_clock = 1;
+  repeated string values = 2;
+}
+
+// Node -> Router response.
+message NodeResponse {
+  string trace_id = 1;
+  string key = 2;
+  // Present on both variants; absent means None.
+  optional VectorClockMsg existing_vc = 3;
+  repeated string node_ids = 4;
+  oneof kind {
+    PutOkPayload put_ok = 5;
+    GetResultPayload get_result = 6;
+  }
+}
+
+message PutOkPayload {}
+
+message GetResultPayload {
+  // Absent means None (value list unknown); present-but-empty means empty set.
+  optional ValueSetMsg value = 1;
+}
+
+message VectorClockMsg { map<string, uint64> entries = 1; }
+message ValueSetMsg { repeated string values = 1; }
+
+// Node -> Node rebalance transfer.
+message RebalanceTransfer {
+  string key = 1;
+  map<string, uint64> vector_clock = 2;
+  repeated string values = 3;
+}
+
+// Router -> Node wire envelope. Everything the router sends to a node
+// is encoded as this message, so the application contribution to the
+// wire is entirely protobuf (forward/backward compatible). Only the
+// outer Hydro-framework `MemberId` alongside this payload uses bincode.
+message RouterToNodeEnvelope {
+  ClientKey client_id = 1;
+  NodeCommand inner = 2;
+}
+
+// Node -> Router wire envelope. Mirrors RouterToNodeEnvelope.
+message NodeToRouterEnvelope {
+  ClientKey client_id = 1;
+  NodeResponse inner = 2;
+}

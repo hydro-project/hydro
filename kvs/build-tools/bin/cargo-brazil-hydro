@@ -1,0 +1,34 @@
+#!/bin/bash
+
+echo "ARGS: $@"
+set -euxo pipefail
+
+PATH=$(path-allowing-local-dev)
+export PATH
+
+# Forward to CargoBrazil standard build first and foremost.
+cargo-brazil-build-upstream "$@"
+
+# Exit early for clean/sync targets.
+if [[ $# -gt 0 ]] && [[ "$1" = clean || "$1" = sync* ]]; then
+	exit 0
+fi
+
+# --- Hydro staged build ---
+# 1. Run export to generate the trybuild project + manifest
+# 2. Hand off to Python to build binaries and copy artifacts
+
+HYDRO_ASSETS_DIR="${PWD}/build/hydro-assets"
+echo "Running Hydro export..."
+
+cargo run --locked --features ecs --example kvs -- \
+    --mode export \
+    --output "${HYDRO_ASSETS_DIR}"
+
+MANIFEST="${HYDRO_ASSETS_DIR}/hydro-manifest.json"
+echo "Export complete. Manifest at: ${MANIFEST}"
+
+# Build all trybuild binaries from the manifest.
+python3 build-tools/bin/build-hydro-binaries.py "${MANIFEST}"
+
+echo "Hydro build complete."

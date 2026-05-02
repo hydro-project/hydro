@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package kvs;
+
+// KVS gRPC service definition — PutKey / GetKey operations.
+
+service Kvs {
+  rpc Put(PutRequest) returns (PutResponse);
+  rpc Get(GetRequest) returns (GetResponse);
+}
+
+message PutRequest {
+  string trace_id = 1;
+  string key = 2;
+  string value = 3;
+}
+
+message PutResponse {
+  string trace_id = 1;
+  string key = 2;
+  // Present iff the key existed prior to this put.
+  optional VectorClockMsg existing_vc = 3;
+  repeated string node_ids = 4;
+}
+
+message GetRequest {
+  string trace_id = 1;
+  string key = 2;
+}
+
+message GetResponse {
+  string trace_id = 1;
+  string key = 2;
+  // Present iff the key exists.
+  optional ValueSetMsg value = 3;
+  // Present iff the key exists.
+  optional VectorClockMsg existing_vc = 4;
+  repeated string node_ids = 5;
+}
+
+message VectorClockMsg {
+  map<string, uint64> entries = 1;
+}
+
+message ValueSetMsg {
+  repeated string values = 1;
+}
