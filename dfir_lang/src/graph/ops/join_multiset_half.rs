@@ -42,25 +42,22 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
         _else => None,
     },
     write_fn: |wc @ &WriteContextArgs {
-                   root,
-                   context,
-                   df_ident,
-                   op_span,
-                   work_fn_async,
-                   ident,
-                   is_pull,
-                   inputs,
-                   ..
-               },
-               diagnostics| {
+                    root,
+                    context,
+                    op_span,
+                    work_fn_async,
+                    ident,
+                    is_pull,
+                    inputs,
+                    ..
+                },
+                diagnostics| {
         assert!(is_pull);
 
         let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let probe_ident = wc.make_ident("probe");
         let build_ident = wc.make_ident("build");
-        let probe_borrow = wc.make_ident("probe_borrow");
-        let build_borrow = wc.make_ident("build_borrow");
 
         // persistences[0] = build (first port), persistences[1] = probe (second port)
         let probe_persist = match persistences[1] {
@@ -71,51 +68,43 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
 
         let write_prologue_probe = probe_persist.then(|| {
             quote_spanned! {op_span=>
-                let #probe_ident = #df_ident.add_state(std::cell::RefCell::new(
-                    ::std::vec::Vec::new()
-                ));
+                let mut #probe_ident: ::std::vec::Vec<_> = ::std::vec::Vec::new();
             }
         });
-        let write_prologue_after_probe = probe_persist.then(|| wc
-            .persistence_as_state_lifespan(persistences[1])
-            .map(|lifespan| quote_spanned! {op_span=>
-                #[allow(clippy::redundant_closure_call)]
-                #df_ident.set_state_lifespan_hook(
-                    #probe_ident, #lifespan, move |rcell| { rcell.borrow_mut().clear(); },
-                );
-            })).flatten();
 
         let write_prologue_build = quote_spanned! {op_span=>
-            let #build_ident = #df_ident.add_state(std::cell::RefCell::new(
-                #root::rustc_hash::FxHashMap::default()
-            ));
+            let mut #build_ident: #root::rustc_hash::FxHashMap<_, ::std::vec::Vec<_>> = #root::rustc_hash::FxHashMap::default();
         };
-        let write_prologue_after_build = wc
-            .persistence_as_state_lifespan(persistences[0])
-            .map(|lifespan| quote_spanned! {op_span=>
-                #[allow(clippy::redundant_closure_call)]
-                #df_ident.set_state_lifespan_hook(
-                    #build_ident, #lifespan, move |rcell| { rcell.borrow_mut().clear(); },
-                );
-            }).unwrap_or_default();
+
+        let build_tick_end = match persistences[0] {
+            Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+                #build_ident.clear();
+            },
+            _ => Default::default(),
+        };
+        let probe_tick_end = if probe_persist {
+            match persistences[1] {
+                Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
+                    #probe_ident.clear();
+                },
+                _ => Default::default(),
+            }
+        } else {
+            Default::default()
+        };
 
         let input_build = &inputs[0]; // build before probe (stratum-delayed comes first)
         let input_probe = &inputs[1];
 
         let accum_build = quote_spanned! {op_span=>
             let fut = #root::dfir_pipes::pull::Pull::for_each(#input_build, |(k, v)| {
-                #build_borrow.entry(k).or_insert_with(::std::vec::Vec::new).push(v);
+                #build_ident.entry(k).or_insert_with(::std::vec::Vec::new).push(v);
             });
             let () = #work_fn_async(fut).await;
         };
 
         let write_iterator = if !probe_persist {
             quote_spanned! {op_span=>
-                let mut #build_borrow = unsafe {
-                    // SAFETY: handle from `#df_ident`.
-                    #context.state_ref_unchecked(#build_ident)
-                }.borrow_mut();
-
                 let #ident = {
                     #accum_build
 
@@ -140,38 +129,30 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
                                 .into_iter()
                         })
                     }
-                    probe_join(#input_probe, &*#build_borrow)
+                    probe_join(#input_probe, &#build_ident)
                 };
             }
         } else {
             quote_spanned! {op_span =>
-                let (mut #build_borrow, mut #probe_borrow) = unsafe {
-                    // SAFETY: handles from `#df_ident`.
-                    (
-                        #context.state_ref_unchecked(#build_ident).borrow_mut(),
-                        #context.state_ref_unchecked(#probe_ident).borrow_mut(),
-                    )
-                };
-
                 let #ident = {
                     #accum_build
 
                     let replay_idx = if #context.is_first_run_this_tick() {
                         0
                     } else {
-                        #probe_borrow.len()
+                        #probe_ident.len()
                     };
 
                     // Accum into probe vec
                     let fut = #root::dfir_pipes::pull::Pull::for_each(#input_probe, |kv| {
-                        #probe_borrow.push(kv);
+                        #probe_ident.push(kv);
                     });
                     let () = #work_fn_async(fut).await;
 
                     // Replay out of probe vec
                     #[allow(clippy::clone_on_copy, noop_method_call)]
-                    let iter = #probe_borrow[replay_idx..].iter().flat_map(|(k, v_probe)| {
-                        #build_borrow
+                    let iter = #probe_ident[replay_idx..].iter().flat_map(|(k, v_probe)| {
+                        #build_ident
                             .get(k)
                             .map(|vals: &::std::vec::Vec<_>| {
                                 vals.iter().map(|v_build| (k.clone(), (v_probe.clone(), v_build.clone()))).collect::<::std::vec::Vec<_>>()
@@ -188,11 +169,11 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
                 #write_prologue_probe
                 #write_prologue_build
             },
-            write_prologue_after: quote_spanned! {op_span=>
-                #write_prologue_after_probe
-                #write_prologue_after_build
-            },
             write_iterator,
+            write_tick_end: quote_spanned! {op_span=>
+                #build_tick_end
+                #probe_tick_end
+            },
             ..Default::default()
         })
     },
