@@ -62,7 +62,7 @@ where
     assert_eq!(response, 7);
 }
 
-#[cfg(feature = "docker")]
+#[cfg(feature = "test_docker")]
 async fn docker() {
     use hydro_lang::deploy::{DockerDeploy, DockerNetwork};
 
@@ -215,8 +215,8 @@ async fn aws() {
     println!("successfully deployed and cleaned up");
 }
 
-#[cfg(feature = "ecs")]
-async fn cdk_export(output_path: PathBuf) {
+#[cfg(feature = "test_ecs")]
+async fn export_manifest(output_path: PathBuf) {
     use hydro_lang::deploy::EcsDeploy;
 
     telemetry::initialize_tracing_with_filter(tracing_subscriber::EnvFilter::try_new(
@@ -241,7 +241,7 @@ async fn cdk_export(output_path: PathBuf) {
         .with_external(&external, deployment.add_external("external".to_owned()))
         .deploy(&mut deployment);
 
-    let manifest = deployment.export_for_cdk(&nodes);
+    let manifest = deployment.export(&nodes);
 
     tokio::fs::create_dir_all(&output_path).await.unwrap();
     let manifest_path = output_path.join("hydro-manifest.json");
@@ -250,18 +250,46 @@ async fn cdk_export(output_path: PathBuf) {
         .await
         .unwrap();
 
-    println!("CDK export complete!");
+    println!("Export complete!");
     println!("Manifest written to: {}", manifest_path.display());
+
+    // Build each trybuild binary to verify the generated code compiles.
+    for build in manifest
+        .processes
+        .values()
+        .map(|p| &p.build)
+        .chain(manifest.clusters.values().map(|c| &c.build))
+    {
+        println!("Building trybuild binary: {}", build.bin_name);
+        let status = std::process::Command::new("cargo")
+            .args(["build", "--locked", "--example", &build.bin_name])
+            .args(["--target-dir", &build.target_dir])
+            .args(["--features", &build.features.join(",")])
+            .args([
+                "--manifest-path",
+                &format!("{}/Cargo.toml", build.project_dir),
+            ])
+            .env("STAGELEFT_TRYBUILD_BUILD_STAGED", "1")
+            .status()
+            .expect("failed to invoke cargo build");
+        assert!(
+            status.success(),
+            "cargo build failed for {}",
+            build.bin_name
+        );
+    }
+
+    println!("All trybuild binaries compiled successfully.");
 }
 
 #[derive(clap::ValueEnum, Clone, Debug)]
 enum DeployMode {
-    #[cfg(feature = "docker")]
+    #[cfg(feature = "test_docker")]
     Docker,
     Localhost,
     Aws,
-    #[cfg(feature = "ecs")]
-    CdkExport,
+    #[cfg(feature = "test_ecs")]
+    Export,
 }
 
 #[derive(Parser, Debug)]
@@ -269,7 +297,7 @@ struct Args {
     #[clap(long, value_enum)]
     mode: DeployMode,
 
-    /// Output directory for CDK export (only used with --mode cdk-export)
+    /// Output directory for export (only used with --mode export)
     #[clap(long, default_value = "./hydro-assets")]
     output: PathBuf,
 }
@@ -279,15 +307,16 @@ async fn main() {
     let args = Args::parse();
 
     match args.mode {
-        #[cfg(feature = "docker")]
+        #[cfg(feature = "test_docker")]
         DeployMode::Docker => docker().await,
         DeployMode::Aws => aws().await,
         DeployMode::Localhost => localhost().await,
-        #[cfg(feature = "ecs")]
-        DeployMode::CdkExport => cdk_export(args.output).await,
+        #[cfg(feature = "test_ecs")]
+        DeployMode::Export => export_manifest(args.output).await,
     }
 }
 
+#[cfg(target_os = "linux")]
 #[test]
 fn test_distributed_echo_example_localhost() {
     use example_test::run_current_example;
@@ -296,11 +325,21 @@ fn test_distributed_echo_example_localhost() {
     run.read_string("successfully deployed and cleaned up");
 }
 
-#[cfg(feature = "docker")]
+#[cfg(all(target_os = "linux", feature = "test_docker"))]
 #[test]
 fn test_distributed_echo_example_docker() {
     use example_test::run_current_example;
 
     let mut run = run_current_example!("--mode docker");
     run.read_string("successfully deployed and cleaned up");
+}
+
+#[cfg(all(target_os = "linux", feature = "test_ecs"))]
+#[test]
+fn test_distributed_echo_example_export() {
+    use example_test::run_current_example;
+
+    let mut run = run_current_example!("--mode export --output /tmp/hydro-test-export");
+    run.read_string("All trybuild binaries compiled successfully.");
+    let _ = std::fs::remove_dir_all("/tmp/hydro-test-export");
 }
