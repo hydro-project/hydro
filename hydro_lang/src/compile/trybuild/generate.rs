@@ -265,20 +265,13 @@ pub fn compile_graph_trybuild(
                 use #root::runtime_support::dfir_rs as __root_dfir_rs;
                 pub use #trybuild_crate_name_ident::__staged;
 
-                #[allow(unused)]
-                async fn __hydro_runtime<'a>() -> #root::runtime_support::dfir_rs::scheduled::context::Dfir<impl #root::runtime_support::dfir_rs::scheduled::context::TickClosure + 'a> {
-                    /// extra_stmts
-                    #( #extra_stmts )*
-
-                    /// dfir_expr
-                    #dfir_expr
-                }
-
                 #[#root::runtime_support::tokio::main(crate = #tokio_main_ident, flavor = "current_thread")]
                 async fn main() {
                     #root::telemetry::initialize_tracing();
 
-                    let mut #dfir_ident = __hydro_runtime().await;
+                    #( #extra_stmts )*
+
+                    let mut #dfir_ident = #dfir_expr;
 
                     let local_set = #root::runtime_support::tokio::task::LocalSet::new();
                     #(
@@ -299,21 +292,14 @@ pub fn compile_graph_trybuild(
                 use #root::runtime_support::dfir_rs as __root_dfir_rs;
                 pub use #trybuild_crate_name_ident::__staged;
 
-                #[allow(unused)]
-                fn __hydro_runtime<'a>(
-                    __hydro_lang_trybuild_cli: &'a #root::runtime_support::hydro_deploy_integration::DeployPorts<#root::__staged::deploy::deploy_runtime::HydroMeta>
-                )
-                    -> #root::runtime_support::dfir_rs::scheduled::context::Dfir<impl #root::runtime_support::dfir_rs::scheduled::context::TickClosure + 'a>
-                {
-                    #( #extra_stmts )*
-
-                    #dfir_expr
-                }
-
                 #[#root::runtime_support::tokio::main(crate = #tokio_main_ident, flavor = "current_thread")]
                 async fn main() {
-                    let ports = #root::runtime_support::launch::init_no_ack_start().await;
-                    let mut #dfir_ident = __hydro_runtime(&ports);
+                    let __hydro_lang_trybuild_cli_owned: #root::runtime_support::hydro_deploy_integration::DeployPorts<#root::__staged::deploy::deploy_runtime::HydroMeta> = #root::runtime_support::launch::init_no_ack_start().await;
+                    let __hydro_lang_trybuild_cli = &__hydro_lang_trybuild_cli_owned;
+
+                    #( #extra_stmts )*
+
+                    let mut #dfir_ident = #dfir_expr;
                     println!("ack start");
 
                     // TODO(mingwei): initialize `tracing` at this point in execution.

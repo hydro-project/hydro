@@ -1026,6 +1026,124 @@ pub trait Location<'a>: dynamic::DynLocation {
         )
     }
 
+    /// Bridges user-owned async code to the dataflow as a **bidirectional sidecar**.
+    ///
+    /// The closure is called once at startup and must return a
+    /// `(Stream<InT>, Sink<OutT>)` pair. The framework reads from the stream
+    /// (items flowing *into* the dataflow) and writes to the sink (items flowing
+    /// *out* to the sidecar). The user controls buffering, backpressure, and
+    /// internal lifecycle — Hydro only sees the stream/sink interface.
+    ///
+    /// This will hopefully make it easy to integrate hydro with existing frameworks,
+    /// for example grpc code generated service endpoints.
+    ///
+    /// # Returns
+    /// - A `Stream<InT>` carrying items from the sidecar into the dataflow.
+    /// - A [`ForwardHandle`] expecting a `Stream<OutT>` that the user completes
+    ///   with items destined for the sidecar.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(hydro_lang::test_util::stream_transform_test(|process| {
+    /// // Sidecar that echoes whatever it receives back into the dataflow.
+    /// let (inbound, response_handle) = process.sidecar_bidi::<String, String, _>(q!(|| {
+    ///     let (to_df_tx, to_df_rx) = tokio::sync::mpsc::channel::<String>(16);
+    ///     let (from_df_tx, mut from_df_rx) = tokio::sync::mpsc::channel::<String>(16);
+    ///
+    ///     // Spawn the sidecar: echoes items from the dataflow back into it.
+    ///     tokio::spawn(async move {
+    ///         while let Some(msg) = from_df_rx.recv().await {
+    ///             to_df_tx.send(msg).await.ok();
+    ///         }
+    ///     });
+    ///
+    ///     // Return the framework-facing ends (concrete types, no boxing needed).
+    ///     let stream = tokio_stream::wrappers::ReceiverStream::new(to_df_rx);
+    ///     let sink = tokio_util::sync::PollSender::new(from_df_tx);
+    ///     (stream, sink)
+    /// }));
+    ///
+    /// // Send "hello" into the sidecar via the response channel.
+    /// let input = process.source_stream(q!(futures::stream::iter(vec!["hello".to_string()])));
+    /// response_handle.complete(input);
+    ///
+    /// // The sidecar echoes it back — assert we get "hello" out.
+    /// inbound
+    /// # }, |mut stream| async move {
+    /// #     assert_eq!(stream.next().await.unwrap(), "hello");
+    /// # }));
+    /// # }
+    /// ```
+    #[expect(clippy::type_complexity, reason = "stream markers")]
+    fn sidecar_bidi<InT: 'static, OutT: 'static, F>(
+        &self,
+        sidecar: impl QuotedWithContext<'a, F, Self>,
+    ) -> (
+        Stream<InT, Self, Unbounded, TotalOrder, ExactlyOnce>,
+        ForwardHandle<'a, Stream<OutT, Self, Unbounded, NoOrder, ExactlyOnce>>,
+    )
+    where
+        Self: Sized + NoTick,
+    {
+        let location_key = Location::id(self).key();
+
+        let sidecar_id = self.flow_state().borrow_mut().next_sidecar_id();
+        let (stream_ident, sink_ident) = sidecar_id.idents();
+
+        let sidecar_closure: syn::Expr = sidecar.splice_untyped_ctx(self);
+        self.flow_state()
+            .borrow_mut()
+            .sidecars
+            .push(crate::compile::builder::Sidecar::Bidi {
+                location_key,
+                sidecar_id,
+                sidecar_closure: Box::new(sidecar_closure),
+            });
+
+        // Inbound stream: reads from the stream returned by the sidecar closure
+        let source_expr: syn::Expr = parse_quote! {
+            #stream_ident
+        };
+        let inbound: Stream<InT, Self, Unbounded, TotalOrder, ExactlyOnce> = Stream::new(
+            self.clone(),
+            HydroNode::Source {
+                source: HydroSource::Stream(source_expr.into()),
+                metadata: self.new_node_metadata(Stream::<
+                    InT,
+                    Self,
+                    Unbounded,  // TODO: maybe bounded sidecars are interesting..?
+                    TotalOrder, // TODO: NoOrder..?
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        );
+
+        // Outbound: forward_ref cycle feeding the sink returned by the sidecar closure
+        let (fwd_ref, to_sink): (
+            ForwardHandle<'a, Stream<OutT, Self, Unbounded, NoOrder, ExactlyOnce>>,
+            Stream<OutT, Self, Unbounded, NoOrder, ExactlyOnce>,
+        ) = self.forward_ref();
+
+        let sink_expr: syn::Expr = parse_quote! {
+            #sink_ident
+        };
+
+        let sink_input_ir = to_sink.ir_node.replace(HydroNode::Placeholder);
+        self.flow_state()
+            .borrow_mut()
+            .try_push_root(HydroRoot::DestSink {
+                sink: sink_expr.into(),
+                input: Box::new(sink_input_ir),
+                op_metadata: HydroIrOpMetadata::new(),
+            });
+
+        (inbound, fwd_ref)
+    }
+
     /// Constructs a [`Singleton`] materialized at this location with the given static value.
     ///
     /// See also: [`Tick::singleton`], for creating a singleton _within_ a tick, which requires
