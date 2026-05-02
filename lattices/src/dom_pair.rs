@@ -1,3 +1,5 @@
+//! Dominating pair lattice type.
+
 use std::cmp::Ordering::{self, *};
 
 use crate::{DeepReveal, IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
