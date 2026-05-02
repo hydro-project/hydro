@@ -482,6 +482,7 @@ pub struct SingletonHook<T> {
     input: Rc<RefCell<VecDeque<T>>>,
     to_release: Option<(T, bool)>, // (data, is new)
     last_released: Option<T>,
+    decided_empty: bool,
     skipped_states: Vec<T>,
     output: UnboundedSender<T>,
     batch_location: HookLocationMeta,
@@ -499,6 +500,7 @@ impl<T: Clone> SingletonHook<T> {
             input,
             to_release: None,
             last_released: None,
+            decided_empty: false,
             skipped_states: vec![],
             output,
             batch_location,
@@ -509,7 +511,11 @@ impl<T: Clone> SingletonHook<T> {
 
 impl<T: Clone> SimHook for SingletonHook<T> {
     fn current_decision(&self) -> Option<bool> {
-        self.to_release.as_ref().map(|t| t.1)
+        if self.decided_empty {
+            Some(false) // decided: nothing to release
+        } else {
+            self.to_release.as_ref().map(|t| t.1)
+        }
     }
 
     fn can_make_nontrivial_decision(&self) -> bool {
@@ -521,6 +527,7 @@ impl<T: Clone> SimHook for SingletonHook<T> {
         driver: &mut Borrowed<'a>,
         force_nontrivial: bool,
     ) -> bool {
+        self.decided_empty = false;
         let mut current_input = self.input.borrow_mut();
         if current_input.is_empty() {
             if force_nontrivial {
@@ -532,7 +539,11 @@ impl<T: Clone> SimHook for SingletonHook<T> {
                 self.to_release = Some((last.clone(), false));
                 false
             } else {
-                panic!("No input and no last released item to re-release");
+                // No input has ever arrived (e.g. forward_ref cycle on first tick).
+                // Nothing to release
+                self.to_release = None;
+                self.decided_empty = true;
+                false
             }
         } else if !force_nontrivial
             && let Some(last) = &self.last_released
@@ -597,8 +608,6 @@ impl<T: Clone> SimHook for SingletonHook<T> {
             );
 
             self.output.send(to_release).unwrap();
-        } else {
-            panic!("No decision to release");
         }
     }
 }
