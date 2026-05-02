@@ -117,8 +117,8 @@ impl Backtrace {
             .flat_map(move |frame| frame.symbols())
             .skip(self.skip_count)
             .enumerate()
-            .map(|(idx, symbol)| {
-                let full_fn_name = strip_hash_brackets(&symbol.name().unwrap().to_string());
+            .filter_map(move |(idx, symbol)| {
+                let full_fn_name = symbol.name().map(|n| strip_hash_brackets(&n.to_string()))?;
                 let mut element = BacktraceElement {
                     fn_name: full_fn_name
                         .rfind("::")
@@ -136,7 +136,7 @@ impl Backtrace {
                         .map(|c| c.saturating_sub(self.col_offset as u32));
                 }
 
-                element
+                Some(element)
             })
     }
 
