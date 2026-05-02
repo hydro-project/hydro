@@ -961,7 +961,7 @@ impl HydroRoot {
                                 }
                                 &LocationId::Cluster(cluster_key) => {
                                     let from_node = clusters
-                                        .get(*cluster_key)
+                                        .get(cluster_key)
                                         .unwrap_or_else(|| {
                                             panic!("A cluster used in the graph was not instantiated: {}", cluster_key)
                                         })
@@ -1222,7 +1222,7 @@ impl HydroRoot {
                                 }
                                 &LocationId::Cluster(cluster_key) => {
                                     let to_node = clusters
-                                        .get(*cluster_key)
+                                        .get(cluster_key)
                                         .unwrap_or_else(|| {
                                             panic!("A cluster used in the graph was not instantiated: {}", cluster_key)
                                         })
@@ -1237,7 +1237,7 @@ impl HydroRoot {
                                         (
                                             parse_quote!(DUMMY),
                                             D::e2m_source(
-                                                refcell_extra_stmts.borrow_mut().entry(*cluster_key).expect("location was removed").or_default(),
+                                                refcell_extra_stmts.borrow_mut().entry(cluster_key).expect("location was removed").or_default(),
                                                 &from_node, &sink_port,
                                                 &to_node, &source_port,
                                                 codec_type.0.as_ref(),
