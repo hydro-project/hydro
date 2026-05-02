@@ -24,12 +24,6 @@ linkStyle default stroke:#aaa
 14v1["(14v1) <code>handoff</code>"]:::otherClass
 15v1["(15v1) <code>handoff</code>"]:::otherClass
 16v1["(16v1) <code>handoff</code>"]:::otherClass
-17v1[\"(17v1) <code>identity()</code>"/]:::pullClass
-18v1["(18v1) <code>handoff</code>"]:::otherClass
-19v1[\"(19v1) <code>identity()</code>"/]:::pullClass
-20v1["(20v1) <code>handoff</code>"]:::otherClass
-21v1[\"(21v1) <code>identity()</code>"/]:::pullClass
-22v1["(22v1) <code>handoff</code>"]:::otherClass
 2v1-->12v1
 1v1-->2v1
 3v1-->9v1
@@ -41,16 +35,10 @@ linkStyle default stroke:#aaa
 9v1-->16v1
 10v1-->11v1
 12v1--x|0|10v1; linkStyle 10 stroke:red
-13v1-->17v1
-14v1-->19v1
-15v1-->21v1
+13v1--o5v1; linkStyle 11 stroke:red
+14v1--o8v1; linkStyle 12 stroke:red
+15v1--o7v1; linkStyle 13 stroke:red
 16v1--x|1|10v1; linkStyle 14 stroke:red
-17v1-->18v1
-18v1--o5v1; linkStyle 16 stroke:red
-19v1-->20v1
-20v1--o8v1; linkStyle 18 stroke:red
-21v1-->22v1
-22v1--o7v1; linkStyle 20 stroke:red
 subgraph sg_1v1 ["sg_1v1"]
     1v1
     2v1
@@ -77,13 +65,4 @@ subgraph sg_6v1 ["sg_6v1"]
         10v1
         11v1
     end
-end
-subgraph sg_7v1 ["sg_7v1"]
-    17v1
-end
-subgraph sg_8v1 ["sg_8v1"]
-    19v1
-end
-subgraph sg_9v1 ["sg_9v1"]
-    21v1
 end

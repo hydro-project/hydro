@@ -23,12 +23,6 @@ linkStyle default stroke:#aaa
 13v1["(13v1) <code>handoff</code>"]:::otherClass
 14v1["(14v1) <code>handoff</code>"]:::otherClass
 15v1["(15v1) <code>handoff</code>"]:::otherClass
-16v1[\"(16v1) <code>identity()</code>"/]:::pullClass
-17v1["(17v1) <code>handoff</code>"]:::otherClass
-18v1[\"(18v1) <code>identity()</code>"/]:::pullClass
-19v1["(19v1) <code>handoff</code>"]:::otherClass
-20v1[\"(20v1) <code>identity()</code>"/]:::pullClass
-21v1["(21v1) <code>handoff</code>"]:::otherClass
 2v1-->12v1
 1v1-->2v1
 3v1-->9v1
@@ -40,15 +34,9 @@ linkStyle default stroke:#aaa
 9v1-->|1|10v1
 10v1-->11v1
 12v1--x|0|10v1; linkStyle 10 stroke:red
-13v1-->16v1
-14v1-->18v1
-15v1-->20v1
-16v1-->17v1
-17v1--o5v1; linkStyle 15 stroke:red
-18v1-->19v1
-19v1--o8v1; linkStyle 17 stroke:red
-20v1-->21v1
-21v1--o7v1; linkStyle 19 stroke:red
+13v1--o5v1; linkStyle 11 stroke:red
+14v1--o8v1; linkStyle 12 stroke:red
+15v1--o7v1; linkStyle 13 stroke:red
 subgraph sg_1v1 ["sg_1v1"]
     1v1
     2v1
@@ -73,13 +61,4 @@ subgraph sg_5v1 ["sg_5v1"]
     subgraph sg_5v1_var_unioner ["var <tt>unioner</tt>"]
         9v1
     end
-end
-subgraph sg_6v1 ["sg_6v1"]
-    16v1
-end
-subgraph sg_7v1 ["sg_7v1"]
-    18v1
-end
-subgraph sg_8v1 ["sg_8v1"]
-    20v1
 end
