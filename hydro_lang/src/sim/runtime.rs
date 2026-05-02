@@ -67,6 +67,13 @@ pub trait SimHook {
         force_nontrivial: bool,
     ) -> bool;
     fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write);
+
+    /// Whether this hook is ready to participate in a tick. Returns false if the
+    /// hook has never received any input and cannot produce a value (e.g. a
+    /// singleton whose producing tick hasn't run yet).
+    fn is_ready(&self) -> bool {
+        true
+    }
 }
 
 /// A hook that can make inline decisions during the execution of a tick.
@@ -557,6 +564,10 @@ impl<T: Clone> SimHook for SingletonHook<T> {
 
     fn can_make_nontrivial_decision(&self) -> bool {
         !self.input.borrow().is_empty()
+    }
+
+    fn is_ready(&self) -> bool {
+        !self.input.borrow().is_empty() || self.last_released.is_some()
     }
 
     fn autonomous_decision<'a>(

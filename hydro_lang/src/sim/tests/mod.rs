@@ -660,3 +660,45 @@ fn sim_fold_in_tick_catches_false_commutativity() {
         final_values
     );
 }
+
+/// Minimal repro for the singleton empty-on-first-tick bug.
+///
+/// The bug: when one `sliced!` block emits a singleton that is consumed by
+/// another `sliced!` block, the second tick may be scheduled before the first
+/// has run. At that point the singleton has no value yet, but the IR marks it
+/// as `Singleton` (which must always have a value). The SingletonHook panics
+/// with "No input and no last released item to re-release".
+#[test]
+fn sim_singleton_not_ready_until_producer_runs() {
+    use crate::live_collections::stream::NoOrder;
+
+    let mut flow = FlowBuilder::new();
+    let p = flow.process::<()>();
+
+    let (in_port, in_stream) = p.sim_input::<u32, TotalOrder, _>();
+    let in_no_order = in_stream.weaken_ordering::<NoOrder>();
+
+    // First sliced block: produces an Unbounded Singleton
+    let produced_singleton = sliced! {
+        let batch = use(in_no_order.clone(), nondet!(/** batch */));
+        batch.assume_ordering::<TotalOrder>(nondet!(/** order */))
+            .fold(q!(|| 0u32), q!(|acc, v| *acc += v))
+    };
+
+    // Second sliced block: consumes the singleton via use(singleton, nondet).
+    // If the simulator schedules this tick before the first one has run,
+    // the SingletonHook has no value → panic.
+    let out = sliced! {
+        let trigger = use(in_no_order, nondet!(/** batch */));
+        let snapshot = use(produced_singleton, nondet!(/** snapshot */));
+        trigger.cross_singleton(snapshot)
+    }
+    .assume_ordering::<TotalOrder>(nondet!(/** test */));
+
+    let out_port = out.sim_output();
+
+    flow.sim().exhaustive(async || {
+        in_port.send(42);
+        let _ = out_port.next().await;
+    });
+}
