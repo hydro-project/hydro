@@ -1,0 +1,42 @@
+{
+  "processes": {},
+  "clusters": {
+    "kvs::KvsNode": {
+      "build": {
+        "project_dir": "/local/home/luckykat/git/hydro/target/hydro_trybuild/kvs/",
+        "target_dir": "/local/home/luckykat/git/hydro/target/",
+        "bin_name": "hy-kvsnode-loc3v1_43727FA0",
+        "package_name": "kvs-hydro-trybuild",
+        "features": [
+          "hydro___feature_ecs_runtime"
+        ]
+      },
+      "ports": {},
+      "default_count": 6,
+      "task_family_prefix": "hy-kvsnode-loc3v1"
+    },
+    "kvs::KvsRouter": {
+      "build": {
+        "project_dir": "/local/home/luckykat/git/hydro/target/hydro_trybuild/kvs/",
+        "target_dir": "/local/home/luckykat/git/hydro/target/",
+        "bin_name": "hy-kvsrouter-loc2v1_28FB576C",
+        "package_name": "kvs-hydro-trybuild",
+        "features": [
+          "hydro___feature_ecs_runtime"
+        ]
+      },
+      "ports": {
+        "loc1v1_0": {
+          "protocol": "tcp",
+          "port": 10001
+        },
+        "loc1v1_1": {
+          "protocol": "tcp",
+          "port": 10002
+        }
+      },
+      "default_count": 3,
+      "task_family_prefix": "hy-kvsrouter-loc2v1"
+    }
+  }
+}
