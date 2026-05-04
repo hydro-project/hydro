@@ -982,8 +982,20 @@ impl DfirBuilder for SimBuilder {
         let (assume_location, line, caret) = location_for_op(op_meta);
         let root = get_this_crate();
 
-        let CollectionKind::Stream { element_type, .. } = in_kind else {
-            todo!("merge_ordered not yet supported for kind {:?}", in_kind)
+        let element_type: syn::Type = match in_kind {
+            CollectionKind::Stream { element_type, .. } => parse_quote!(#element_type),
+            CollectionKind::KeyedStream {
+                key_type,
+                value_type,
+                ..
+            } => parse_quote!((#key_type, #value_type)),
+            CollectionKind::Singleton { element_type, .. } => parse_quote!(#element_type),
+            CollectionKind::Optional { element_type, .. } => parse_quote!(#element_type),
+            CollectionKind::KeyedSingleton {
+                key_type,
+                value_type,
+                ..
+            } => parse_quote!((#key_type, #value_type)),
         };
 
         if !location.is_root() || in_kind.is_bounded() {
