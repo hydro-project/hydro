@@ -141,6 +141,35 @@ pub trait Deploy<'a> {
     ) -> syn::Expr;
     fn e2o_many_sink(shared_handle: String) -> syn::Expr;
 
+    /// Expose a TCP port to external processes on every member of a
+    /// cluster and bind a per-member `TcpListener`, **without** wrapping
+    /// it in `tcp_multi_connection`. This is the hook used by
+    /// [`crate::location::Location::bidi_external_sidecar`]: it gives the
+    /// port the same Hydro Deploy visibility as `e2m_source` (so Docker
+    /// / ECS expose the port to the host), but hands the raw listener to
+    /// a user-supplied sidecar (e.g. a hyper + smithy-rs server) instead
+    /// of to the Hydro-internal framing machinery.
+    ///
+    /// Implementations MUST push a `let <ident> =
+    /// tokio::net::TcpListener::bind(<addr>).await.unwrap();`
+    /// statement into `extra_stmts` where `<ident>` equals
+    /// [`sidecar_listener_ident(&shared_handle)`](crate::compile::sidecar_listener_ident)
+    /// and return that same `syn::Ident`. The listener is textually
+    /// referenced at exactly one splice site (the sidecar-future
+    /// invocation emitted by the `ExternalSidecar` IR root), so a
+    /// plain owned binding is sufficient — no `RefCell<Option<_>>`
+    /// wrapping needed.
+    ///
+    /// Backends that do not support user-owned sidecar listeners
+    /// (e.g. sim/localhost) should return [`unimplemented!`] with a
+    /// message identifying the backend.
+    fn e2m_listener_bind(
+        extra_stmts: &mut Vec<syn::Stmt>,
+        c2: &Self::Cluster,
+        c2_port: &<Self::Cluster as Node>::Port,
+        shared_handle: String,
+    ) -> syn::Ident;
+
     fn e2o_source(
         extra_stmts: &mut Vec<syn::Stmt>,
         p1: &Self::External,

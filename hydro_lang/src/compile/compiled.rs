@@ -2,6 +2,7 @@ use dfir_lang::graph::DfirGraph;
 use slotmap::{SecondaryMap, SparseSecondaryMap};
 use syn::Stmt;
 
+use super::ir::SourceMapEntry;
 use crate::location::{Location, LocationKey};
 use crate::staging_util::Invariant;
 
@@ -14,6 +15,9 @@ pub struct CompiledFlow<'a> {
 
     /// `Future` expressions to be run alongside the DFIR graph execution, per-location. See [`crate::telemetry::Sidecar`].
     pub(super) sidecars: SparseSecondaryMap<LocationKey, Vec<syn::Expr>>,
+
+    /// Source map linking DFIR operator tags to Hydro IR node types and backtraces.
+    pub source_map: Vec<SourceMapEntry>,
 
     pub(super) _phantom: Invariant<'a>,
 }

@@ -332,6 +332,19 @@ impl<'a> Deploy<'a> for HydroDeploy {
         parse_quote!(#sink_ident)
     }
 
+    fn e2m_listener_bind(
+        _extra_stmts: &mut Vec<syn::Stmt>,
+        _c2: &Self::Cluster,
+        _c2_port: &<Self::Cluster as Node>::Port,
+        _shared_handle: String,
+    ) -> syn::Ident {
+        unimplemented!(
+            "HydroDeploy does not support `Location::bidi_external_sidecar` — \
+             user-owned TCP sidecars require a containerized backend (e.g. \
+             DockerDeploy or EcsDeploy) that can expose a port to the host."
+        )
+    }
+
     fn e2o_source(
         extra_stmts: &mut Vec<syn::Stmt>,
         _p1: &Self::External,

@@ -1026,6 +1026,187 @@ pub trait Location<'a>: dynamic::DynLocation {
         )
     }
 
+    /// Hosts an **external TCP server** on this location, running as a
+    /// sidecar alongside the DFIR scheduler, and wires it up to the
+    /// dataflow with a pair of bidirectional mpsc channels carrying
+    /// user-chosen payload types.
+    ///
+    /// This is the fused primitive for integrating external async services
+    /// (HTTP servers, gRPC servers, custom socket protocols, etc.) with a
+    /// Hydro dataflow. Unlike [`Location::bidi_external_many_bytes`] /
+    /// [`Location::bidi_external_many_bincode`], which frame the wire
+    /// through a `tokio_util::codec` and route bytes directly in/out of
+    /// the dataflow, this method gives the user-supplied sidecar a raw
+    /// `tokio::net::TcpListener` bound on a Hydro-Deploy-registered
+    /// port. The sidecar owns the socket and decides how to interpret
+    /// incoming connections (e.g. by running `hyper::Server::builder`
+    /// against them). Payload types are fully user-chosen — the
+    /// framework imposes no request-response or correlation pattern.
+    /// If the sidecar needs per-request or per-connection routing
+    /// information, it encodes that directly into its chosen `InT` /
+    /// `OutT` types (for example `(u64, Command)` for a per-request
+    /// correlation id, or `(ConnId, Command)` for per-connection
+    /// routing).
+    ///
+    /// # How it works at runtime
+    ///
+    /// 1. Hydro Deploy exposes the TCP port (via Docker `--publish`,
+    ///    ECS port mapping, etc.) by registering it on the backend's
+    ///    `exposed_ports` map.
+    /// 2. The compiled binary for each member of this cluster location
+    ///    binds an owned `TcpListener` on `0.0.0.0:{port}`, handed
+    ///    directly to the sidecar (no `Arc` wrapping — the sidecar is
+    ///    the sole consumer).
+    /// 3. Two bounded mpsc channel pairs are created for the bidi bridge
+    ///    between the sidecar and the dataflow.
+    /// 4. The DFIR scheduler and the sidecar future run on the same
+    ///    per-member `LocalSet`.
+    ///
+    /// # Parameters
+    /// - `external`: the [`External`] handle for the client population
+    ///   that will connect to this server. At deploy time, attach a
+    ///   `deployment.add_external(...)` to it so `get_all_tcp_endpoints`
+    ///   can discover the bound host-side port for each cluster member.
+    /// - `sidecar`: a [`q!`]-wrapped closure of type
+    ///   `FnOnce(TcpListener, Sender<InT>, Receiver<OutT>)
+    ///    -> impl Future<Output = ()>`.
+    ///   The closure is invoked once per binary at startup and its future
+    ///   is spawned on the local `LocalSet`.
+    ///
+    /// # Returns
+    /// - An [`ExternalBytesPort<Many>`] port handle — pass this to
+    ///   [`DeployResult::get_all_tcp_endpoints`] to discover each cluster
+    ///   member's externally-reachable address.
+    /// - A `Stream<InT>` carrying items from the sidecar into the
+    ///   dataflow.
+    /// - A [`ForwardHandle`] expecting a `Stream<OutT>` that the user
+    ///   completes with items destined for the sidecar.
+    ///
+    /// # Type parameters
+    /// - `Ext`: the external's user-defined tag type.
+    /// - `InT`: the payload type sent from the sidecar into the dataflow.
+    /// - `OutT`: the payload type sent from the dataflow back to the
+    ///   sidecar.
+    #[expect(clippy::type_complexity, reason = "stream markers")]
+    fn bidi_external_sidecar<Ext, InT: 'static, OutT: 'static, F>(
+        &self,
+        external: &External<Ext>,
+        sidecar: impl QuotedWithContext<'a, F, Self>,
+    ) -> (
+        ExternalBytesPort<Many>,
+        Stream<InT, Self, Unbounded, TotalOrder, ExactlyOnce>,
+        ForwardHandle<'a, Stream<OutT, Self, Unbounded, NoOrder, ExactlyOnce>>,
+    )
+    where
+        Self: Sized + NoTick,
+    {
+        let in_t_type = quote_type::<InT>();
+        let out_t_type = quote_type::<OutT>();
+
+        let location_key = Location::id(self).key();
+        let port_id = external.flow_state.borrow_mut().next_external_port();
+
+        // mpsc channel identifier suffix — unique per call.
+        let suffix = format!("{}_{}", external.key, port_id);
+        let cmds_tx_ident = syn::Ident::new(
+            &format!("__hydro_sidecar_cmds_tx_{}", suffix),
+            Span::call_site(),
+        );
+        let cmds_rx_ident = syn::Ident::new(
+            &format!("__hydro_sidecar_cmds_rx_{}", suffix),
+            Span::call_site(),
+        );
+        let resp_tx_ident = syn::Ident::new(
+            &format!("__hydro_sidecar_resp_tx_{}", suffix),
+            Span::call_site(),
+        );
+        let resp_rx_ident = syn::Ident::new(
+            &format!("__hydro_sidecar_resp_rx_{}", suffix),
+            Span::call_site(),
+        );
+
+        // Push the compiler-native IR root. Everything the compiler
+        // needs — the user's closure, the channel idents, the type
+        // parameters — lives inside the IR node itself; there's no
+        // side-channel state.
+        let sidecar_closure: syn::Expr = sidecar.splice_untyped_ctx(self).into();
+        self.flow_state()
+            .borrow_mut()
+            .try_push_root(HydroRoot::ExternalSidecar {
+                external_key: external.key,
+                port_id,
+                cluster_key: location_key,
+                sidecar_closure: sidecar_closure.into(),
+                cmds_tx_ident: cmds_tx_ident.clone().into(),
+                cmds_rx_ident: cmds_rx_ident.clone().into(),
+                resp_tx_ident: resp_tx_ident.clone().into(),
+                resp_rx_ident: resp_rx_ident.clone().into(),
+                in_t_type: in_t_type.into(),
+                out_t_type: out_t_type.into(),
+                op_metadata: HydroIrOpMetadata::new(),
+            });
+
+        // Build the inbound Stream by wrapping `cmds_rx` as a
+        // ReceiverStream source. The channel ident is declared by
+        // `compile_network`'s ExternalSidecar arm at main() scope; this
+        // Source refers to that ident. `cmds_rx` is a plain owned
+        // `mpsc::Receiver` and this is its only splice site, so the
+        // ident is simply moved into the `ReceiverStream::new` call.
+        let root = get_this_crate();
+        let source_expr: syn::Expr = parse_quote! {
+            #root::runtime_support::sidecar_codegen::ReceiverStream::new(#cmds_rx_ident)
+        };
+        let inbound: Stream<InT, Self, Unbounded, TotalOrder, ExactlyOnce> = Stream::new(
+            self.clone(),
+            HydroNode::Source {
+                source: HydroSource::Stream(source_expr.into()),
+                metadata: self.new_node_metadata(Stream::<
+                    InT,
+                    Self,
+                    Unbounded,
+                    TotalOrder,
+                    ExactlyOnce,
+                >::collection_kind()),
+            },
+        );
+
+        // Outbound response stream: ordinary `HydroRoot::DestSink`
+        // feeding `PollSender(resp_tx)`. The user `complete`s the
+        // returned `ForwardHandle` with their response stream, which
+        // pushes a `CycleSink` that pairs with the `ExternalInput`
+        // inside `to_sink` — the standard cycle-resolution flow.
+        let (fwd_ref, to_sink): (
+            ForwardHandle<'a, Stream<OutT, Self, Unbounded, NoOrder, ExactlyOnce>>,
+            Stream<OutT, Self, Unbounded, NoOrder, ExactlyOnce>,
+        ) = self.forward_ref();
+
+        let sink_expr: syn::Expr = parse_quote! {
+            #root::runtime_support::sidecar_codegen::SinkExt::sink_map_err(
+                #root::runtime_support::sidecar_codegen::PollSender::new(#resp_tx_ident),
+                |_| ()
+            )
+        };
+
+        let sink_input_ir = to_sink.ir_node.replace(HydroNode::Placeholder);
+        self.flow_state()
+            .borrow_mut()
+            .try_push_root(HydroRoot::DestSink {
+                sink: sink_expr.into(),
+                input: Box::new(sink_input_ir),
+                op_metadata: HydroIrOpMetadata::new(),
+            });
+
+        (
+            ExternalBytesPort {
+                process_key: external.key,
+                port_id,
+                _phantom: PhantomData,
+            },
+            inbound,
+            fwd_ref,
+        )
+    }
+
     /// Constructs a [`Singleton`] materialized at this location with the given static value.
     ///
     /// See also: [`Tick::singleton`], for creating a singleton _within_ a tick, which requires

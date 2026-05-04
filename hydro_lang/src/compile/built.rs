@@ -8,7 +8,7 @@ use slotmap::{SecondaryMap, SlotMap, SparseSecondaryMap};
 use super::compiled::CompiledFlow;
 use super::deploy::{DeployFlow, DeployResult};
 use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
-use super::ir::{HydroRoot, emit};
+use super::ir::{HydroRoot, SourceMapEntry, SourceMapFrame, emit};
 use crate::location::{Cluster, External, LocationKey, LocationType, Process};
 #[cfg(stageleft_runtime)]
 #[cfg(feature = "sim")]
@@ -108,6 +108,42 @@ impl<'a> BuiltFlow<'a> {
 
     pub fn with_default_optimize<D: Deploy<'a>>(self) -> DeployFlow<'a, D> {
         self.into_deploy()
+    }
+
+    #[cfg(feature = "sim")]
+    /// Generates a source map linking stmt_ids to Hydro IR node types and backtraces.
+    pub fn source_map(&mut self) -> Vec<SourceMapEntry> {
+        let mut source_map = Vec::new();
+        super::ir::traverse_dfir(
+            &mut self.ir,
+            |_root, _id| {},
+            |node, id| {
+                let node_type = format!("{:?}", std::mem::discriminant(node));
+                let node_type = node_type
+                    .strip_prefix("Discriminant(")
+                    .and_then(|s| s.strip_suffix(')'))
+                    .unwrap_or(&node_type)
+                    .to_owned();
+
+                let backtrace_frames: Vec<SourceMapFrame> = node
+                    .op_metadata()
+                    .backtrace
+                    .elements()
+                    .map(|e| SourceMapFrame {
+                        fn_name: e.fn_name.clone(),
+                        filename: e.filename.clone(),
+                        line: e.lineno,
+                    })
+                    .collect();
+
+                source_map.push(SourceMapEntry {
+                    stmt_id: *id,
+                    node_type,
+                    backtrace: backtrace_frames,
+                });
+            },
+        );
+        source_map
     }
 
     #[cfg(feature = "sim")]

@@ -134,6 +134,7 @@ impl<'a> SimFlow<'a> {
         self.ir.iter_mut().for_each(|leaf| {
             leaf.compile_network::<SimDeploy>(
                 &mut SparseSecondaryMap::new(),
+                &mut SparseSecondaryMap::new(),
                 &mut seen_tees_instantiate,
                 &mut seen_cluster_members,
                 &self.processes,

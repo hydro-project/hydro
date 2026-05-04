@@ -265,20 +265,23 @@ pub fn compile_graph_trybuild(
                 use #root::runtime_support::dfir_rs as __root_dfir_rs;
                 pub use #trybuild_crate_name_ident::__staged;
 
-                #[allow(unused)]
-                async fn __hydro_runtime<'a>() -> #root::runtime_support::dfir_rs::scheduled::context::Dfir<impl #root::runtime_support::dfir_rs::scheduled::context::TickClosure + 'a> {
-                    /// extra_stmts
-                    #( #extra_stmts )*
-
-                    /// dfir_expr
-                    #dfir_expr
-                }
-
                 #[#root::runtime_support::tokio::main(crate = #tokio_main_ident, flavor = "current_thread")]
                 async fn main() {
                     #root::telemetry::initialize_tracing();
 
-                    let mut #dfir_ident = __hydro_runtime().await;
+                    // extra_stmts — emitted at main() scope so user-level
+                    // extension APIs (e.g. `Location::local_sidecar_bidi`)
+                    // can declare values (like mpsc channels) that need to
+                    // be in scope for both the DFIR graph construction and
+                    // the sidecar `spawn_local` calls below.
+                    #( #extra_stmts )*
+
+                    // dfir_expr — returns a `Dfir` scheduler using any
+                    // identifiers declared in extra_stmts above. Type is
+                    // inferred to avoid having to name the impl-trait
+                    // lifetime inside an `async fn main()` that doesn't
+                    // expose one.
+                    let mut #dfir_ident = #dfir_expr;
 
                     let local_set = #root::runtime_support::tokio::task::LocalSet::new();
                     #(

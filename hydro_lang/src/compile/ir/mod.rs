@@ -30,6 +30,8 @@ use crate::compile::builder::{CycleId, ExternalPortId};
 use crate::compile::deploy_provider::{Deploy, Node, RegisterPort};
 use crate::location::dynamic::LocationId;
 use crate::location::{LocationKey, NetworkHint};
+#[cfg(feature = "build")]
+use crate::staging_util::get_this_crate;
 
 pub mod backtrace;
 use backtrace::Backtrace;
@@ -80,6 +82,88 @@ impl Display for DebugExpr {
         // For now, just use quote formatting without trying to parse as a statement
         // This avoids the syn::parse_quote! issues entirely
         write!(f, "q!({})", quote::quote!(#simplified))
+    }
+}
+
+/// Wraps `syn::Ident` with `Serialize`, `Debug`, and `Display` impls.
+#[derive(Clone, Hash)]
+pub struct DebugIdent(pub syn::Ident);
+
+impl serde::Serialize for DebugIdent {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.0.to_string())
+    }
+}
+
+impl From<syn::Ident> for DebugIdent {
+    fn from(ident: syn::Ident) -> Self {
+        Self(ident)
+    }
+}
+
+impl Deref for DebugIdent {
+    type Target = syn::Ident;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl ToTokens for DebugIdent {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.0.to_tokens(tokens);
+    }
+}
+
+impl Debug for DebugIdent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Display for DebugIdent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+/// Wraps `syn::Type` with `Serialize`, `Debug`, and `Display` impls.
+#[derive(Clone, PartialEq, Eq, Hash)]
+pub struct DebugType(pub Box<syn::Type>);
+
+impl serde::Serialize for DebugType {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.0.to_token_stream().to_string())
+    }
+}
+
+impl From<syn::Type> for DebugType {
+    fn from(ty: syn::Type) -> Self {
+        Self(Box::new(ty))
+    }
+}
+
+impl Deref for DebugType {
+    type Target = syn::Type;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl ToTokens for DebugType {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.0.to_tokens(tokens);
+    }
+}
+
+impl Debug for DebugType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.to_token_stream())
+    }
+}
+
+impl Display for DebugType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0.to_token_stream())
     }
 }
 
@@ -226,44 +310,6 @@ impl<'ast> Visit<'ast> for ClosureFinder {
                 visit::visit_expr(self, expr);
             }
         }
-    }
-}
-
-/// Debug displays the type's tokens.
-///
-/// Boxes `syn::Type` which is ~320 bytes.
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub struct DebugType(pub Box<syn::Type>);
-
-impl From<syn::Type> for DebugType {
-    fn from(t: syn::Type) -> Self {
-        Self(Box::new(t))
-    }
-}
-
-impl Deref for DebugType {
-    type Target = syn::Type;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl ToTokens for DebugType {
-    fn to_tokens(&self, tokens: &mut TokenStream) {
-        self.0.to_tokens(tokens);
-    }
-}
-
-impl Debug for DebugType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0.to_token_stream())
-    }
-}
-
-impl serde::Serialize for DebugType {
-    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&format!("{}", self.0.to_token_stream()))
     }
 }
 
@@ -737,6 +783,56 @@ pub enum HydroRoot {
         input: Box<HydroNode>,
         op_metadata: HydroIrOpMetadata,
     },
+    /// Compiler-native setup for a user-owned external TCP sidecar
+    /// bridged into the dataflow via
+    /// [`crate::location::Location::bidi_external_sidecar`]. During
+    /// `compile_network` this root:
+    ///
+    /// * Calls [`crate::compile::deploy_provider::Deploy::e2m_listener_bind`]
+    ///   to expose the TCP port and push a `TcpListener::bind`
+    ///   statement into the location's `extra_stmts`.
+    /// * Calls [`crate::compile::deploy_provider::Deploy::e2m_connect`]
+    ///   to register the `(external_port → cluster_member_port)` mapping
+    ///   that `DeployResult::get_all_tcp_endpoints` consults.
+    /// * Pushes a single `let (#cmds_tx, #cmds_rx, #resp_tx, #resp_rx)
+    ///   = ...` mpsc-channel declaration into the location's
+    ///   `extra_stmts` so the four idents are in scope for both the
+    ///   DFIR graph and the sidecar future.
+    /// * Pushes `(#user_sidecar_closure)(listener, cmds_tx, resp_rx)`
+    ///   into the `sidecars` map for the location; the compiler spawns
+    ///   this on the location's `LocalSet` alongside the DFIR
+    ///   scheduler.
+    ///
+    /// The two halves of the bridge flow through the dataflow as
+    /// ordinary IR nodes:
+    ///
+    /// * The inbound `(u64, InT)` stream is a [`HydroNode::Source`]
+    ///   referencing `cmds_rx_ident`, constructed by
+    ///   `bidi_external_sidecar` and returned to the user.
+    /// * The outbound `(u64, OutT)` sink is an ordinary
+    ///   [`HydroRoot::DestSink`] with `sink = PollSender(resp_tx)` that
+    ///   `bidi_external_sidecar` pushes alongside this root; the user
+    ///   `complete`s a [`crate::forward_handle::ForwardHandle`] whose
+    ///   `CycleSink` feeds that `DestSink`.
+    ExternalSidecar {
+        external_key: LocationKey,
+        port_id: ExternalPortId,
+        cluster_key: LocationKey,
+        /// The user-supplied `q!(|listener, cmds_tx, resp_rx| ...)` closure.
+        sidecar_closure: DebugExpr,
+        /// Identifiers for the four mpsc-channel endpoints. The
+        /// compiler emits the `let` binding for all four at once in
+        /// `compile_network`.
+        cmds_tx_ident: DebugIdent,
+        cmds_rx_ident: DebugIdent,
+        resp_tx_ident: DebugIdent,
+        resp_rx_ident: DebugIdent,
+        /// Type parameters for the channel payloads; spliced into the
+        /// `mpsc::channel::<T>(...)` declarations.
+        in_t_type: DebugType,
+        out_t_type: DebugType,
+        op_metadata: HydroIrOpMetadata,
+    },
     DestSink {
         sink: DebugExpr,
         input: Box<HydroNode>,
@@ -765,6 +861,7 @@ impl HydroRoot {
     pub fn compile_network<'a, D>(
         &mut self,
         extra_stmts: &mut SparseSecondaryMap<LocationKey, Vec<syn::Stmt>>,
+        sidecars: &mut SparseSecondaryMap<LocationKey, Vec<syn::Expr>>,
         seen_tees: &mut SeenSharedNodes,
         seen_cluster_members: &mut HashSet<(LocationId, LocationId)>,
         processes: &SparseSecondaryMap<LocationKey, D::Process>,
@@ -775,6 +872,7 @@ impl HydroRoot {
         D: Deploy<'a>,
     {
         let refcell_extra_stmts = RefCell::new(extra_stmts);
+        let refcell_sidecars = RefCell::new(sidecars);
         let refcell_env = RefCell::new(env);
         let refcell_seen_cluster_members = RefCell::new(seen_cluster_members);
         self.transform_bottom_up(
@@ -798,6 +896,7 @@ impl HydroRoot {
                                 })
                                 .clone();
 
+                            #[expect(clippy::match_ref_pats, reason = "destructuring &LocationId avoids changing downstream types")]
                             match input.metadata().location_id.root() {
                                 &LocationId::Process(process_key) => {
                                     if *to_many {
@@ -860,9 +959,9 @@ impl HydroRoot {
                                         )
                                     }
                                 }
-                                LocationId::Cluster(cluster_key) => {
+                                &LocationId::Cluster(cluster_key) => {
                                     let from_node = clusters
-                                        .get(*cluster_key)
+                                        .get(cluster_key)
                                         .unwrap_or_else(|| {
                                             panic!("A cluster used in the graph was not instantiated: {}", cluster_key)
                                         })
@@ -917,6 +1016,117 @@ impl HydroRoot {
                         ident,
                         &element_type,
                     );
+                } else if let HydroRoot::ExternalSidecar {
+                    external_key,
+                    port_id,
+                    cluster_key,
+                    sidecar_closure,
+                    cmds_tx_ident,
+                    cmds_rx_ident,
+                    resp_tx_ident,
+                    resp_rx_ident,
+                    in_t_type,
+                    out_t_type,
+                    ..
+                } = l
+                {
+                    // Compiler-native emission for a user-owned TCP
+                    // sidecar. Emits three pieces of runtime code into
+                    // the location's compiled binary:
+                    //
+                    // 1. A `TcpListener::bind(...)` + port exposure via
+                    //    `D::e2m_listener_bind`.
+                    // 2. Registration of the external-port mapping via
+                    //    `D::e2m_connect` so `get_all_tcp_endpoints`
+                    //    resolves.
+                    // 3. An mpsc-channel declaration for both the
+                    //    inbound and outbound halves of the bridge.
+                    // 4. A sidecar future expression invoking the
+                    //    user-supplied closure with the owned listener
+                    //    and the channel ends.
+                    let from_node = externals
+                        .get(*external_key)
+                        .unwrap_or_else(|| {
+                            panic!("An external used in the graph was not instantiated: {}", external_key)
+                        })
+                        .clone();
+
+                    // We currently only support cluster-targeted sidecar
+                    // listeners (one listener per cluster member). A
+                    // `e2o_listener_bind` for process-targeted sidecars
+                    // would be an analogous addition.
+                    let to_node = clusters
+                        .get(*cluster_key)
+                        .unwrap_or_else(|| {
+                            panic!("A cluster used in the graph was not instantiated: {}", cluster_key)
+                        })
+                        .clone();
+
+                    let sink_port = from_node.next_port();
+                    let source_port = to_node.next_port();
+
+                    from_node.register(*port_id, sink_port.clone());
+
+                    // Step 1: bind the TcpListener. `e2m_listener_bind`
+                    // pushes a `let <ident> = RefCell::new(Some(
+                    // TcpListener::bind(...).await.unwrap()))` into
+                    // extra_stmts and returns the `syn::Ident` of that
+                    // binding.
+                    let listener_ident = D::e2m_listener_bind(
+                        refcell_extra_stmts.borrow_mut().entry(*cluster_key).expect("location was removed").or_default(),
+                        &to_node,
+                        &source_port,
+                        format!("{}_{}", *external_key, *port_id),
+                    );
+
+                    // Step 2: register the mapping. `e2m_connect` has
+                    // the side effect of populating `connection_info` /
+                    // `cluster_connection_info` on the external; the
+                    // returned logging thunk is intentionally dropped.
+                    let _ = D::e2m_connect(
+                        &from_node,
+                        &sink_port,
+                        &to_node,
+                        &source_port,
+                        NetworkHint::Auto,
+                    );
+
+                    // Step 3: declare the four mpsc-channel endpoints
+                    // at main() scope (via extra_stmts). Each endpoint
+                    // is referenced textually at exactly one splice
+                    // site (cmds_rx in the DFIR source_stream, resp_tx
+                    // in the DFIR dest_sink, cmds_tx and resp_rx in
+                    // the sidecar future), so plain owned bindings
+                    // suffice — each splice simply moves its endpoint.
+                    let root = get_this_crate();
+                    let channel_stmt: syn::Stmt = parse_quote! {
+                        let (#cmds_tx_ident, #cmds_rx_ident, #resp_tx_ident, #resp_rx_ident) = {
+                            let (ctx, crx) = #root::runtime_support::tokio::sync::mpsc::channel::<#in_t_type>(1024);
+                            let (rtx, rrx) = #root::runtime_support::tokio::sync::mpsc::channel::<#out_t_type>(1024);
+                            (ctx, crx, rtx, rrx)
+                        };
+                    };
+                    refcell_extra_stmts
+                        .borrow_mut()
+                        .entry(*cluster_key)
+                        .expect("location was removed")
+                        .or_default()
+                        .push(channel_stmt);
+
+                    // Step 4: register the sidecar future. Spliced into
+                    // the compiler's per-location `sidecars` map; the
+                    // compiled binary spawns it on the `LocalSet`
+                    // alongside the DFIR scheduler.
+                    let sidecar_closure_expr: &syn::Expr = &**sidecar_closure;
+                    let sidecar_future: syn::Expr = parse_quote! {
+                        (#sidecar_closure_expr)(#listener_ident, #cmds_tx_ident, #resp_rx_ident)
+                    };
+                    refcell_sidecars
+                        .borrow_mut()
+                        .entry(*cluster_key)
+                        .expect("location was removed")
+                        .or_default()
+                        .push(sidecar_future);
                 }
             },
             &mut |n| {
@@ -972,6 +1182,7 @@ impl HydroRoot {
                                 })
                                 .clone();
 
+                            #[expect(clippy::match_ref_pats, reason = "destructuring &LocationId avoids changing downstream types")]
                             match metadata.location_id.root() {
                                 &LocationId::Process(process_key) => {
                                     let to_node = processes
@@ -1009,9 +1220,9 @@ impl HydroRoot {
                                         D::e2o_connect(&from_node, &sink_port, &to_node, &source_port, *from_many, *port_hint),
                                     )
                                 }
-                                LocationId::Cluster(cluster_key) => {
+                                &LocationId::Cluster(cluster_key) => {
                                     let to_node = clusters
-                                        .get(*cluster_key)
+                                        .get(cluster_key)
                                         .unwrap_or_else(|| {
                                             panic!("A cluster used in the graph was not instantiated: {}", cluster_key)
                                         })
@@ -1026,7 +1237,7 @@ impl HydroRoot {
                                         (
                                             parse_quote!(DUMMY),
                                             D::e2m_source(
-                                                refcell_extra_stmts.borrow_mut().entry(*cluster_key).expect("location was removed").or_default(),
+                                                refcell_extra_stmts.borrow_mut().entry(cluster_key).expect("location was removed").or_default(),
                                                 &from_node, &sink_port,
                                                 &to_node, &source_port,
                                                 codec_type.0.as_ref(),
@@ -1167,6 +1378,7 @@ impl HydroRoot {
             | HydroRoot::Null { input, .. } => {
                 transform(input, seen_tees);
             }
+            HydroRoot::ExternalSidecar { .. } => {}
         }
     }
 
@@ -1229,6 +1441,31 @@ impl HydroRoot {
             },
             HydroRoot::Null { input, op_metadata } => HydroRoot::Null {
                 input: Box::new(input.deep_clone(seen_tees)),
+                op_metadata: op_metadata.clone(),
+            },
+            HydroRoot::ExternalSidecar {
+                external_key,
+                port_id,
+                cluster_key,
+                sidecar_closure,
+                cmds_tx_ident,
+                cmds_rx_ident,
+                resp_tx_ident,
+                resp_rx_ident,
+                in_t_type,
+                out_t_type,
+                op_metadata,
+            } => HydroRoot::ExternalSidecar {
+                external_key: *external_key,
+                port_id: *port_id,
+                cluster_key: *cluster_key,
+                sidecar_closure: sidecar_closure.clone(),
+                cmds_tx_ident: cmds_tx_ident.clone(),
+                cmds_rx_ident: cmds_rx_ident.clone(),
+                resp_tx_ident: resp_tx_ident.clone(),
+                resp_rx_ident: resp_rx_ident.clone(),
+                in_t_type: in_t_type.clone(),
+                out_t_type: out_t_type.clone(),
                 op_metadata: op_metadata.clone(),
             },
         }
@@ -1442,6 +1679,24 @@ impl HydroRoot {
 
                 *next_stmt_id += 1;
             }
+
+            HydroRoot::ExternalSidecar { .. } => {
+                // No DFIR emission: the ExternalSidecar root is purely
+                // for `compile_network` side effects (port exposure,
+                // listener bind, mpsc channel declarations, sidecar
+                // future registration). The inbound `(u64, InT)` stream
+                // visible to user dataflow is a `HydroNode::Source`
+                // referencing the `cmds_rx` ident declared by
+                // `compile_network`; it's emitted normally as part of
+                // its own consumer's IR walk. The outbound `(u64, OutT)`
+                // flow is carried by a separate `HydroRoot::DestSink`
+                // also pushed by `Location::bidi_external_sidecar` — its
+                // emission is independent from this root.
+                if let BuildersOrCallback::Callback(leaf_callback, _) = builders_or_callback {
+                    leaf_callback(self, next_stmt_id);
+                }
+                *next_stmt_id += 1;
+            }
         }
     }
 
@@ -1452,7 +1707,8 @@ impl HydroRoot {
             | HydroRoot::DestSink { op_metadata, .. }
             | HydroRoot::CycleSink { op_metadata, .. }
             | HydroRoot::EmbeddedOutput { op_metadata, .. }
-            | HydroRoot::Null { op_metadata, .. } => op_metadata,
+            | HydroRoot::Null { op_metadata, .. }
+            | HydroRoot::ExternalSidecar { op_metadata, .. } => op_metadata,
         }
     }
 
@@ -1463,19 +1719,35 @@ impl HydroRoot {
             | HydroRoot::DestSink { op_metadata, .. }
             | HydroRoot::CycleSink { op_metadata, .. }
             | HydroRoot::EmbeddedOutput { op_metadata, .. }
-            | HydroRoot::Null { op_metadata, .. } => op_metadata,
+            | HydroRoot::Null { op_metadata, .. }
+            | HydroRoot::ExternalSidecar { op_metadata, .. } => op_metadata,
         }
     }
 
-    pub fn input(&self) -> &HydroNode {
+    /// Returns the dataflow input, or `None` for roots that don't
+    /// participate in the dataflow (e.g. [`HydroRoot::ExternalSidecar`]
+    /// which only drives port-exposure side effects at code-gen time).
+    ///
+    /// Prefer this over [`Self::input`] when a caller may encounter any
+    /// non-dataflow root.
+    pub fn try_input(&self) -> Option<&HydroNode> {
         match self {
             HydroRoot::ForEach { input, .. }
             | HydroRoot::SendExternal { input, .. }
             | HydroRoot::DestSink { input, .. }
             | HydroRoot::CycleSink { input, .. }
             | HydroRoot::EmbeddedOutput { input, .. }
-            | HydroRoot::Null { input, .. } => input,
+            | HydroRoot::Null { input, .. } => Some(input),
+            HydroRoot::ExternalSidecar { .. } => None,
         }
+    }
+
+    /// Returns the input node. Panics for [`HydroRoot::ExternalSidecar`],
+    /// which has no dataflow input. Callers that may encounter that
+    /// variant should use [`Self::try_input`] instead.
+    pub fn input(&self) -> &HydroNode {
+        self.try_input()
+            .expect("HydroRoot::input() called on a non-dataflow root (ExternalSidecar)")
     }
 
     pub fn input_metadata(&self) -> &HydroIrMetadata {
@@ -1492,6 +1764,13 @@ impl HydroRoot {
                 format!("EmbeddedOutput({})", ident)
             }
             HydroRoot::Null { .. } => "Null".to_owned(),
+            HydroRoot::ExternalSidecar {
+                external_key,
+                port_id,
+                ..
+            } => {
+                format!("ExternalSidecar({},{})", external_key, port_id)
+            }
         }
     }
 
@@ -1503,7 +1782,8 @@ impl HydroRoot {
             HydroRoot::SendExternal { .. }
             | HydroRoot::CycleSink { .. }
             | HydroRoot::EmbeddedOutput { .. }
-            | HydroRoot::Null { .. } => {}
+            | HydroRoot::Null { .. }
+            | HydroRoot::ExternalSidecar { .. } => {}
         }
     }
 }
@@ -1585,6 +1865,24 @@ pub fn unify_atomic_ticks(ir: &mut [HydroRoot]) {
         },
         false,
     );
+}
+
+#[cfg(feature = "build")]
+/// An entry in the source map that links a stmt_id to its Hydro IR origin.
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct SourceMapEntry {
+    pub stmt_id: usize,
+    pub node_type: String,
+    pub backtrace: Vec<SourceMapFrame>,
+}
+
+#[cfg(feature = "build")]
+/// A single frame in a source map backtrace.
+#[derive(Clone, Debug, serde::Serialize)]
+pub struct SourceMapFrame {
+    pub fn_name: String,
+    pub filename: Option<String>,
+    pub line: Option<u32>,
 }
 
 #[cfg(feature = "build")]
@@ -1765,17 +2063,12 @@ impl Debug for SharedNode {
             let printed_tees_mut = printed_tees_mut_borrow.as_mut();
 
             if let Some(printed_tees_mut) = printed_tees_mut {
-                if let Some(existing) = printed_tees_mut
-                    .1
-                    .get(&(self.0.as_ref() as *const RefCell<HydroNode>))
-                {
+                if let Some(existing) = printed_tees_mut.1.get(&(self.as_ptr())) {
                     write!(f, "<shared {}>", existing)
                 } else {
                     let next_id = printed_tees_mut.0;
                     printed_tees_mut.0 += 1;
-                    printed_tees_mut
-                        .1
-                        .insert(self.0.as_ref() as *const RefCell<HydroNode>, next_id);
+                    printed_tees_mut.1.insert(self.as_ptr(), next_id);
                     drop(printed_tees_mut_borrow);
                     write!(f, "<shared {}>: ", next_id)?;
                     Debug::fmt(&self.0.borrow(), f)
@@ -3037,7 +3330,7 @@ impl HydroNode {
 
                     HydroNode::Tee { inner, .. } => {
                         let ret_ident = if let Some(built_idents) =
-                            built_tees.get(&(inner.0.as_ref() as *const RefCell<HydroNode>))
+                            built_tees.get(&(inner.as_ptr()))
                         {
                             match builders_or_callback {
                                 BuildersOrCallback::Builders(_) => {}
@@ -3056,7 +3349,7 @@ impl HydroNode {
                                 syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
 
                             built_tees.insert(
-                                inner.0.as_ref() as *const RefCell<HydroNode>,
+                                inner.as_ptr(),
                                 vec![tee_ident.clone()],
                             );
 
@@ -3090,7 +3383,7 @@ impl HydroNode {
                         inner, f, is_true, ..
                     } => {
                         let is_true = *is_true; // need to copy early to avoid borrow checking issues with node
-                        let ptr = inner.0.as_ref() as *const RefCell<HydroNode>;
+                        let ptr = inner.as_ptr();
                         let ret_ident = if let Some(built_idents) = built_tees.get(&ptr) {
                             match builders_or_callback {
                                 BuildersOrCallback::Builders(_) => {}

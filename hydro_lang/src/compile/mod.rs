@@ -3,6 +3,23 @@
 #[expect(missing_docs, reason = "TODO")]
 pub mod ir;
 
+/// Canonical identifier for the per-member `TcpListener` binding
+/// emitted by [`deploy_provider::Deploy::e2m_listener_bind`].
+///
+/// Both the deploy backend (via `e2m_listener_bind`) and consumers of
+/// that binding (e.g. [`crate::location::Location::bidi_external_sidecar`])
+/// must agree on this name. Going through this helper prevents the two
+/// sides from drifting and producing an opaque "cannot find ident" at
+/// code-gen time. Lives in `compile/mod.rs` (unconditional) rather than
+/// `deploy_provider` (gated on `feature = "build"`) so it is reachable
+/// from unconditional locations like `crate::location`.
+pub fn sidecar_listener_ident(shared_handle: &str) -> syn::Ident {
+    syn::Ident::new(
+        &format!("__hydro_deploy_many_{}_listener", shared_handle),
+        proc_macro2::Span::call_site(),
+    )
+}
+
 #[cfg(feature = "build")]
 #[cfg_attr(docsrs, doc(cfg(feature = "build")))]
 #[expect(missing_docs, reason = "TODO")]

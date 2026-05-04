@@ -1,3 +1,5 @@
+//! Ordered lattice types (Max, Min).
+
 use std::cmp::Ordering;
 
 use crate::{DeepReveal, IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
