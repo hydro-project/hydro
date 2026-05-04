@@ -360,3 +360,80 @@ fn sim_collect_waits_for_all_ticks() {
         assert_eq!(all, vec![1, 2, 3]);
     });
 }
+
+#[test]
+fn sim_fold_sample_eager_state_count() {
+    use crate::live_collections::stream::NoOrder;
+    use crate::properties::manual_proof;
+
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+
+    let (in_send, input) = node.sim_input::<i32, NoOrder, ExactlyOnce>();
+
+    let folded = input.fold(
+        q!(|| 0),
+        q!(|acc, v| *acc += v, commutative = manual_proof!(/** integer addition is commutative */)),
+    );
+    let out_recv = sliced! {
+        let snapshot = use(folded, nondet!(/** test */));
+        snapshot.into_stream()
+    }
+    .sim_output();
+
+    let count = flow.sim().exhaustive(async || {
+        in_send.send_many_unordered([1, 2, 3]);
+
+        let all: Vec<i32> = out_recv.collect().await;
+        // The final value must always be 6 (1+2+3)
+        assert_eq!(*all.last().unwrap(), 6);
+    });
+
+    assert_eq!(count, 270, "Exhaustive states explored");
+}
+
+#[test]
+fn sim_fold_commutative_explores_all_subset_sums() {
+    use std::collections::HashSet;
+
+    use crate::live_collections::stream::NoOrder;
+    use crate::properties::manual_proof;
+
+    // With inputs [1, 2, 4], the possible subset sums are:
+    // {1}, {2}, {4}, {1,2}, {1,4}, {2,4}, {1,2,4} → sums: 1, 2, 4, 3, 5, 6, 7
+    // The fold can be snapshotted after processing any prefix of subsets.
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+
+    let (in_send, input) = node.sim_input::<i32, NoOrder, ExactlyOnce>();
+    let folded = input.fold(
+        q!(|| 0),
+        q!(|acc, v| *acc += v, commutative = manual_proof!(/** addition is commutative */)),
+    );
+    let out_recv = sliced! {
+        let snapshot = use(folded, nondet!(/** test */));
+        snapshot.into_stream()
+    }
+    .sim_output();
+
+    let mut observed_values = HashSet::new();
+
+    flow.sim().exhaustive(async || {
+        in_send.send_many_unordered([1, 2, 4]);
+        let all: Vec<i32> = out_recv.collect().await;
+        assert_eq!(*all.last().unwrap(), 7);
+        for &v in &all {
+            observed_values.insert(v);
+        }
+    });
+
+    // The exhaustive exploration should observe every possible subset sum.
+    // With inputs [1, 2, 4], the fold can be snapshotted after processing any
+    // non-empty subset, so all values 1..=7 must appear, plus 0 (initial state).
+    let expected: HashSet<i32> = (0..=7).collect();
+    assert_eq!(
+        observed_values, expected,
+        "Should observe all subset sums across all executions"
+    );
+}
+
