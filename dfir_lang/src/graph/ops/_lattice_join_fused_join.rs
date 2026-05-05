@@ -124,7 +124,6 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
             write_iterator,
             write_iterator_after,
             write_tick_end,
-            ..
         } = (super::join_fused::JOIN_FUSED.write_fn)(&wc, diagnostics).unwrap();
 
         let write_iterator = quote_spanned! {op_span=>
