@@ -1,10 +1,10 @@
-use quote::{ToTokens, quote_spanned};
+use quote::quote_spanned;
 use syn::parse_quote;
 
 use super::join_fused::make_joindata;
 use super::{
     OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence,
-    PortIndexValue, RANGE_0, RANGE_1, WriteContextArgs,
+    RANGE_0, RANGE_1, WriteContextArgs,
 };
 
 /// See `join_fused`
@@ -38,12 +38,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: Some(|| super::PortListSpec::Fixed(parse_quote! { 0, 1 })),
     ports_out: None,
-    input_delaytype_fn: |idx| match idx {
-        PortIndexValue::Int(path) if "0" == path.to_token_stream().to_string() => {
-            None
-        }
-        _ => None,
-    },
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
