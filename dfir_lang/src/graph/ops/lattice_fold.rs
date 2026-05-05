@@ -1,7 +1,7 @@
 use syn::parse_quote_spanned;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, WriteContextArgs,
+    OperatorCategory, OperatorConstraints, WriteContextArgs,
     RANGE_0, RANGE_1,
 };
 
@@ -43,7 +43,7 @@ pub const LATTICE_FOLD: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::MonotoneAccum),
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    is_pull,

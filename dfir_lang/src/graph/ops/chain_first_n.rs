@@ -5,7 +5,7 @@ use crate::graph::{
     ops::{OperatorWriteOutput, WriteContextArgs},
 };
 
-use super::{DelayType, OperatorCategory, OperatorConstraints, RANGE_0, RANGE_1};
+use super::{OperatorCategory, OperatorConstraints, RANGE_0, RANGE_1};
 
 /// > 2 input streams of the same type, 1 output stream of the same type
 ///
@@ -41,7 +41,7 @@ pub const CHAIN_FIRST_N: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |idx| match idx {
         PortIndexValue::Int(idx) if idx.value == 0 => {
             // will no longer be needed once subgraphs are always DAGs (only run once per tick)
-            Some(DelayType::Stratum)
+            None
         }
         _else => None,
     },
