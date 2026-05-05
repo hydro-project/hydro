@@ -37,20 +37,25 @@ pub const SORT: OperatorConstraints = OperatorConstraints {
                    work_fn_async,
                    ident,
                    inputs,
+                   outputs,
                    is_pull,
                    ..
                },
                _| {
-        assert!(is_pull);
-
-        let input = &inputs[0];
-        let write_iterator = quote_spanned! {op_span=>
-            // TODO(mingwei): unnecessary extra handoff into_iter() then collect().
-            let #ident = {
-                let mut tmp = #work_fn_async(#root::dfir_pipes::pull::Pull::collect::<::std::vec::Vec<_>>(#input)).await;
-                <[_]>::sort_unstable(&mut tmp);
-                #root::dfir_pipes::pull::iter(tmp)
-            };
+        let write_iterator = if is_pull {
+            let input = &inputs[0];
+            quote_spanned! {op_span=>
+                let #ident = {
+                    let mut tmp = #work_fn_async(#root::dfir_pipes::pull::Pull::collect::<::std::vec::Vec<_>>(#input)).await;
+                    <[_]>::sort_unstable(&mut tmp);
+                    #root::dfir_pipes::pull::iter(tmp)
+                };
+            }
+        } else {
+            let output = &outputs[0];
+            quote_spanned! {op_span=>
+                let #ident = #root::dfir_pipes::push::Sort::new(#output);
+            }
         };
         Ok(OperatorWriteOutput {
             write_iterator,
