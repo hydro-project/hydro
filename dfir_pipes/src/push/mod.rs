@@ -3,11 +3,14 @@
 //! This module provides push-based operators that mirror the pull-based operators
 //! in the parent module, but work in the opposite direction: items are pushed into
 //! a pipeline rather than pulled from it.
+use core::borrow::BorrowMut;
 use core::pin::Pin;
 use core::task::Waker;
 
 use crate::{Context, Toggle};
 
+mod accumulate;
+mod accum_state;
 mod fanout;
 mod filter;
 mod filter_map;
@@ -45,6 +48,11 @@ pub(crate) mod test_utils;
 #[cfg_attr(docsrs, doc(cfg(feature = "variadics")))]
 pub mod demux_var;
 
+pub use accum_state::{FoldBorrowed, FoldState, ReduceBorrowed, ReduceState};
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+pub use accum_state::SortState;
+pub use accumulate::{AccumState, Accumulate};
 #[cfg(feature = "variadics")]
 #[cfg_attr(docsrs, doc(cfg(feature = "variadics")))]
 pub use demux_var::{DemuxVar, PushVariadic, demux_var};
@@ -325,29 +333,44 @@ where
 
 /// Creates a [`Fold`] push that accumulates all items via a fold function, then emits
 /// the accumulated value downstream on finalize.
-pub const fn fold<Acc, CombFn, Item, Next>(
-    acc: Acc,
+pub const fn fold<AccRef, CombFn, Acc, Item, Next>(
+    acc_ref: AccRef,
     comb_fn: CombFn,
     next: Next,
-) -> Fold<Acc, CombFn, Next>
+) -> Fold<AccRef, CombFn, Acc, Next>
 where
+    AccRef: BorrowMut<Acc>,
     CombFn: FnMut(&mut Acc, Item),
     Next: Push<Acc, ()>,
 {
-    Fold::new(acc, comb_fn, next)
+    Fold::new(acc_ref, comb_fn, next)
 }
 
 /// Creates a [`Reduce`] push that reduces all items into a single value, then emits
 /// it downstream on finalize. If no items were received, nothing is emitted.
-pub const fn reduce<Acc, ReduceFn, Next>(
+pub const fn reduce<AccRef, ReduceFn, Next, Item>(
+    acc_ref: AccRef,
     reduce_fn: ReduceFn,
     next: Next,
-) -> Reduce<Acc, ReduceFn, Next>
+) -> Reduce<AccRef, ReduceFn, Next>
 where
-    ReduceFn: FnMut(&mut Acc, Acc),
-    Next: Push<Acc, ()>,
+    AccRef: BorrowMut<Option<Item>>,
+    ReduceFn: FnMut(&mut Item, Item),
+    Next: Push<Item, ()>,
 {
-    Reduce::new(reduce_fn, next)
+    Reduce::new(acc_ref, reduce_fn, next)
+}
+
+/// Creates an [`Accumulate`] push combinator with the given [`AccumState`].
+///
+/// This is the unified accumulator constructor. Use specific state types
+/// ([`FoldState`], [`ReduceState`], [`SortState`], etc.) to get different behaviors.
+pub const fn accumulate<State, Next>(state: State, next: Next) -> Accumulate<State, Next>
+where
+    State: AccumState,
+    Next: Push<State::Output, ()>,
+{
+    Accumulate::new(state, next)
 }
 
 /// Creates a [`Sort`] push that collects all items, sorts them, then emits them

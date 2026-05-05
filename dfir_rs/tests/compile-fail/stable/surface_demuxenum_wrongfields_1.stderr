@@ -10,6 +10,7 @@ error[E0277]: the trait bound `impl dfir_rs::dfir_pipes::push::Push<u32, (), Can
              `DemuxEnum<Outputs>` implements `dfir_rs::dfir_pipes::push::Push<Item, Meta>`
              `ResolveFutures<Psh, Queue, QueueInner>` implements `dfir_rs::dfir_pipes::push::Push<Fut, ()>`
              `StatePush<'a, Item, MappingFn, ItemsPsh, StatePsh, Lat>` implements `dfir_rs::dfir_pipes::push::Push<Item, ()>`
+             `Sort<Item, Next>` implements `dfir_rs::dfir_pipes::push::Push<Item, ()>`
              `VecPush<Buf>` implements `dfir_rs::dfir_pipes::push::Push<Item, Meta>`
              `dfir_rs::dfir_pipes::push::DemuxVar<Pushes>` implements `dfir_rs::dfir_pipes::push::Push<(usize, Item), Meta>`
              `dfir_rs::dfir_pipes::push::Fanout<P0, P1>` implements `dfir_rs::dfir_pipes::push::Push<Item, Meta>`
@@ -41,6 +42,7 @@ error[E0277]: the trait bound `impl dfir_rs::dfir_pipes::push::Push<u32, (), Can
              `DemuxEnum<Outputs>` implements `dfir_rs::dfir_pipes::push::Push<Item, Meta>`
              `ResolveFutures<Psh, Queue, QueueInner>` implements `dfir_rs::dfir_pipes::push::Push<Fut, ()>`
              `StatePush<'a, Item, MappingFn, ItemsPsh, StatePsh, Lat>` implements `dfir_rs::dfir_pipes::push::Push<Item, ()>`
+             `Sort<Item, Next>` implements `dfir_rs::dfir_pipes::push::Push<Item, ()>`
              `VecPush<Buf>` implements `dfir_rs::dfir_pipes::push::Push<Item, Meta>`
              `dfir_rs::dfir_pipes::push::DemuxVar<Pushes>` implements `dfir_rs::dfir_pipes::push::Push<(usize, Item), Meta>`
              `dfir_rs::dfir_pipes::push::Fanout<P0, P1>` implements `dfir_rs::dfir_pipes::push::Push<Item, Meta>`

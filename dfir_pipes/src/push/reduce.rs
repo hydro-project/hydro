@@ -1,4 +1,5 @@
 //! [`Reduce`] push combinator.
+use core::borrow::BorrowMut;
 use core::pin::Pin;
 
 use pin_project_lite::pin_project;
@@ -11,32 +12,33 @@ pin_project! {
     ///
     /// During `start_send`, items are reduced into the accumulator.
     /// During `poll_finalize`, the accumulated value (if any) is taken and sent downstream.
+    /// `Accum` is typically `&'a mut Option<Item>` — a mutable reference to externally-owned state.
     #[must_use = "`Push`es do nothing unless items are pushed into them"]
-    #[derive(Clone, Debug)]
-    pub struct Reduce<Acc, ReduceFn, Next> {
+    pub struct Reduce<Accum, ReduceFn, Next> {
         #[pin]
         next: Next,
-        acc: Option<Acc>,
+        accum: Accum,
         reduce_fn: ReduceFn,
     }
 }
 
-impl<Acc, ReduceFn, Next> Reduce<Acc, ReduceFn, Next> {
+impl<Accum, ReduceFn, Next> Reduce<Accum, ReduceFn, Next> {
     /// Creates a new `Reduce` push combinator.
-    pub const fn new(reduce_fn: ReduceFn, next: Next) -> Self {
+    pub const fn new(accum: Accum, reduce_fn: ReduceFn, next: Next) -> Self {
         Self {
             next,
-            acc: None,
+            accum,
             reduce_fn,
         }
     }
 }
 
 // TODO(mingwei): support arbitrary metadata.
-impl<Acc, ReduceFn, Next> Push<Acc, ()> for Reduce<Acc, ReduceFn, Next>
+impl<Accum, ReduceFn, Next, Item> Push<Item, ()> for Reduce<Accum, ReduceFn, Next>
 where
-    ReduceFn: FnMut(&mut Acc, Acc),
-    Next: Push<Acc, ()>,
+    Accum: BorrowMut<Option<Item>>,
+    ReduceFn: FnMut(&mut Item, Item),
+    Next: Push<Item, ()>,
 {
     type Ctx<'ctx> = Next::Ctx<'ctx>;
 
@@ -46,19 +48,19 @@ where
         PushStep::Done
     }
 
-    fn start_send(self: Pin<&mut Self>, item: Acc, _meta: ()) {
+    fn start_send(self: Pin<&mut Self>, item: Item, _meta: ()) {
         let this = self.project();
-        match this.acc {
+        match this.accum.borrow_mut() {
             Some(acc) => (this.reduce_fn)(acc, item),
-            None => *this.acc = Some(item),
+            None => *this.accum.borrow_mut() = Some(item),
         }
     }
 
     fn poll_finalize(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         let mut this = self.project();
-        if this.acc.is_some() {
+        if this.accum.borrow().is_some() {
             ready!(this.next.as_mut().poll_ready(ctx));
-            let value = this.acc.take().unwrap();
+            let value = this.accum.borrow_mut().take().unwrap();
             this.next.as_mut().start_send(value, ());
         }
         this.next.poll_finalize(ctx)
@@ -79,10 +81,13 @@ mod tests {
     use crate::push::test_utils::{PushCall, TestPush};
     use crate::push::{Push, PushStep};
 
+    fn is_push<Item>(_: &impl Push<Item, ()>) {}
+
     #[test]
     fn reduce_emits_on_finalize() {
         let mut tp = TestPush::no_pend();
-        let mut r = crate::push::reduce(|acc: &mut i32, x| *acc += x, &mut tp);
+        let mut r = crate::push::reduce(None, |acc, x| *acc += x, &mut tp);
+        is_push(&r);
         let mut r = Pin::new(&mut r);
         r.as_mut().poll_ready(&mut ());
         r.as_mut().start_send(1, ());
@@ -97,7 +102,7 @@ mod tests {
     #[test]
     fn reduce_no_items_no_output() {
         let mut tp = TestPush::no_pend();
-        let mut r = crate::push::reduce(|acc: &mut i32, x| *acc += x, &mut tp);
+        let mut r = crate::push::reduce(None, |acc: &mut i32, x| *acc += x, &mut tp);
         let mut r = Pin::new(&mut r);
         r.as_mut().poll_finalize(&mut ());
         assert_eq!(tp.items(), Vec::<i32>::new());
@@ -106,7 +111,7 @@ mod tests {
     #[test]
     fn reduce_poll_ready_before_send_on_finalize() {
         let mut tp: TestPush<i32, Yes, true> = TestPush::new_fused([PushStep::pending()], []);
-        let mut r = crate::push::reduce(|acc: &mut i32, x| *acc += x, &mut tp);
+        let mut r = crate::push::reduce(None, |acc: &mut i32, x| *acc += x, &mut tp);
         let mut r = Pin::new(&mut r);
         r.as_mut().poll_ready(&mut ());
         r.as_mut().start_send(1, ());
