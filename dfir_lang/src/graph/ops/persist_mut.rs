@@ -1,7 +1,8 @@
 use quote::quote_spanned;
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    DelayType,
+    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
     OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
@@ -61,8 +62,6 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
                    ..
                },
                diagnostics| {
-        assert!(is_pull);
-
         if [Persistence::Mutable] != persistence_args[..] {
             diagnostics.push(Diagnostic::spanned(
                 op_span,
@@ -80,7 +79,7 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
             let mut #persistdata_ident = #root::util::sparse_vec::SparseVec::default();
         };
 
-        let write_iterator = {
+        let write_iterator = if is_pull {
             let input = &inputs[0];
             quote_spanned! {op_span=>
                 let #ident = {
@@ -106,6 +105,15 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
                     };
                     #root::dfir_pipes::pull::iter(iter)
                 };
+            }
+        } else {
+            quote_spanned! {op_span=>
+                let #ident = #root::dfir_pipes::push::for_each(|item| {
+                    match item {
+                        #root::util::Persistence::Persist(v) => #persistdata_ident.push(v),
+                        #root::util::Persistence::Delete(v) => #persistdata_ident.delete(&v),
+                    }
+                });
             }
         };
 
