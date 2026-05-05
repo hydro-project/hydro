@@ -1861,17 +1861,19 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         let (comb, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
         proof.register_proof(&comb);
 
-        let ordered = self
-            .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
-            .assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */));
+        let retried = self
+            .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */));
+
+        let commutativity_proven = O::ORDERING_KIND == StreamOrder::NoOrder;
 
         KeyedSingleton::new(
-            ordered.location.clone(),
+            retried.location.clone(),
             HydroNode::FoldKeyed {
                 init,
                 acc: comb.into(),
-                input: Box::new(ordered.ir_node.replace(HydroNode::Placeholder)),
-                metadata: ordered
+                input: Box::new(retried.ir_node.replace(HydroNode::Placeholder)),
+                commutativity_proven,
+                metadata: retried
                     .location
                     .new_node_metadata(KeyedSingleton::<K, A, L, B2>::collection_kind()),
             },

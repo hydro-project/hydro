@@ -483,6 +483,21 @@ pub trait DfirBuilder {
         serialize: Option<&DebugExpr>,
         tag_id: usize,
     );
+
+    /// Optionally emit a fold hook that buffers and permutes inputs before the fold.
+    /// Returns the new input ident to use for the fold if a hook was emitted.
+    /// The default implementation does nothing (no hook needed outside simulation).
+    #[expect(unused_variables, reason = "default impl ignores all params")]
+    fn emit_fold_hook(
+        &mut self,
+        location: &LocationId,
+        in_ident: &syn::Ident,
+        in_kind: &CollectionKind,
+        commutativity_proven: bool,
+        op_meta: &HydroIrOpMetadata,
+    ) -> Option<syn::Ident> {
+        None
+    }
 }
 
 #[cfg(feature = "build")]
@@ -2187,6 +2202,11 @@ pub enum HydroNode {
         init: DebugExpr,
         acc: DebugExpr,
         input: Box<HydroNode>,
+        /// If true, the fold function has a user-provided commutativity proof,
+        /// so the simulator can skip exploring different input orderings.
+        /// This is set when the input stream is `NoOrder` (which requires the
+        /// user to prove commutativity via the type system).
+        commutativity_proven: bool,
         metadata: HydroIrMetadata,
     },
 
@@ -2206,6 +2226,9 @@ pub enum HydroNode {
         init: DebugExpr,
         acc: DebugExpr,
         input: Box<HydroNode>,
+        /// If true, the fold function has a user-provided commutativity proof,
+        /// so the simulator can skip exploring different input orderings.
+        commutativity_proven: bool,
         metadata: HydroIrMetadata,
     },
 
@@ -2641,11 +2664,13 @@ impl HydroNode {
                 init,
                 acc,
                 input,
+                commutativity_proven,
                 metadata,
             } => HydroNode::Fold {
                 init: init.clone(),
                 acc: acc.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
+                commutativity_proven: *commutativity_proven,
                 metadata: metadata.clone(),
             },
             HydroNode::Scan {
@@ -2674,11 +2699,13 @@ impl HydroNode {
                 init,
                 acc,
                 input,
+                commutativity_proven,
                 metadata,
             } => HydroNode::FoldKeyed {
                 init: init.clone(),
                 acc: acc.clone(),
                 input: Box::new(input.deep_clone(seen_tees)),
+                commutativity_proven: *commutativity_proven,
                 metadata: metadata.clone(),
             },
             HydroNode::ReduceKeyedWatermark {
@@ -3921,6 +3948,15 @@ impl HydroNode {
                                     && graph_builders.singleton_intermediates()
                                     && !node.metadata().collection_kind.is_bounded()
                                 {
+                                    let HydroNode::Fold { input, commutativity_proven, .. } = &*node else { unreachable!() };
+                                    let hooked_input_ident = graph_builders.emit_fold_hook(
+                                        &input.metadata().location_id,
+                                        &input_ident,
+                                        &input.metadata().collection_kind,
+                                        *commutativity_proven,
+                                        &node.metadata().op,
+                                    ).unwrap_or(input_ident);
+
                                     let builder = graph_builders.get_dfir_mut(&out_location);
 
                                     let acc: syn::Expr = parse_quote!({
@@ -3934,7 +3970,7 @@ impl HydroNode {
                                     builder.add_dfir(
                                         parse_quote! {
                                             source_iter([(#init)()]) -> [0]#fold_ident;
-                                            #input_ident -> scan::<#lifetime>(#init, #acc) -> [1]#fold_ident;
+                                            #hooked_input_ident -> scan::<#lifetime>(#init, #acc) -> [1]#fold_ident;
                                             #fold_ident = chain();
                                         },
                                         None,
@@ -3946,6 +3982,14 @@ impl HydroNode {
                                     && graph_builders.singleton_intermediates()
                                     && !node.metadata().collection_kind.is_bounded()
                                 {
+                                    let HydroNode::FoldKeyed { input, commutativity_proven, .. } = &*node else { unreachable!() };
+                                    let hooked_input_ident = graph_builders.emit_fold_hook(
+                                        &input.metadata().location_id,
+                                        &input_ident,
+                                        &input.metadata().collection_kind,
+                                        *commutativity_proven,
+                                        &node.metadata().op,
+                                    ).unwrap_or(input_ident);
                                     let builder = graph_builders.get_dfir_mut(&out_location);
 
                                     let acc: syn::Expr = parse_quote!({
@@ -3963,7 +4007,7 @@ impl HydroNode {
 
                                     builder.add_dfir(
                                         parse_quote! {
-                                            #fold_ident = #input_ident -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #acc);
+                                            #fold_ident = #hooked_input_ident -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #acc);
                                         },
                                         None,
                                         Some(&next_stmt_id.to_string()),

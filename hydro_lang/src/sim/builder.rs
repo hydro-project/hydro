@@ -1481,6 +1481,146 @@ impl DfirBuilder for SimBuilder {
             );
         }
     }
+
+    fn emit_fold_hook(
+        &mut self,
+        location: &LocationId,
+        in_ident: &syn::Ident,
+        in_kind: &CollectionKind,
+        commutativity_proven: bool,
+        op_meta: &HydroIrOpMetadata,
+    ) -> Option<syn::Ident> {
+        // Only emit a hook for top-level unbounded streams.
+        // In-tick folds don't need a hook because:
+        // - NoOrder in-tick inputs require proven commutativity (type system enforces this),
+        //   so order doesn't affect the final fold value within a tick.
+        // - TotalOrder in-tick inputs have a determined order, no non-determinism to explore.
+        if !location.is_top_level() {
+            return None;
+        }
+
+        let (assume_location, line, caret) = location_for_op(op_meta);
+        let root = get_this_crate();
+
+        match in_kind {
+            CollectionKind::Stream {
+                order: StreamOrder::NoOrder,
+                retry: StreamRetry::ExactlyOnce,
+                element_type,
+                ..
+            } => {
+                let hoff_id = self.next_hoff_id;
+                self.next_hoff_id += 1;
+
+                let buffered_ident =
+                    syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                let hoff_send_ident =
+                    syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                let hoff_recv_ident =
+                    syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+                let out_ident =
+                    syn::Ident::new(&format!("__fold_hook_out_{hoff_id}"), Span::call_site());
+
+                self.add_extra_stmt_internal(location, syn::parse_quote! {
+                    let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                });
+                self.add_extra_stmt_internal(location, syn::parse_quote! {
+                    let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+                });
+                self.add_hook(
+                    location,
+                    location,
+                    syn::parse_quote!(
+                        Box::new(#root::sim::runtime::TopLevelFoldHook::<_> {
+                            input: #buffered_ident.clone(),
+                            to_release: None,
+                            output: #hoff_send_ident,
+                            commutativity_proven: #commutativity_proven,
+                            location: (#assume_location, #line, #caret),
+                            format_item_debug: #root::__maybe_debug__!(#element_type),
+                        })
+                    ),
+                );
+
+                self.get_dfir_mut(location).add_dfir(
+                    parse_quote! {
+                        #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
+                    },
+                    None,
+                    None,
+                );
+
+                self.get_dfir_mut(location).add_dfir(
+                    parse_quote! {
+                        #out_ident = source_stream(#hoff_recv_ident);
+                    },
+                    None,
+                    None,
+                );
+
+                Some(out_ident)
+            }
+            CollectionKind::KeyedStream {
+                value_order: StreamOrder::NoOrder,
+                value_retry: StreamRetry::ExactlyOnce,
+                key_type,
+                value_type,
+                ..
+            } => {
+                let hoff_id = self.next_hoff_id;
+                self.next_hoff_id += 1;
+
+                let buffered_ident =
+                    syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                let hoff_send_ident =
+                    syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                let hoff_recv_ident =
+                    syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+                let out_ident =
+                    syn::Ident::new(&format!("__fold_hook_out_{hoff_id}"), Span::call_site());
+
+                self.add_extra_stmt_internal(location, syn::parse_quote! {
+                    let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                });
+                self.add_extra_stmt_internal(location, syn::parse_quote! {
+                    let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+                });
+                self.add_hook(
+                    location,
+                    location,
+                    syn::parse_quote!(
+                        Box::new(#root::sim::runtime::TopLevelFoldHook::<_> {
+                            input: #buffered_ident.clone(),
+                            to_release: None,
+                            output: #hoff_send_ident,
+                            commutativity_proven: #commutativity_proven,
+                            location: (#assume_location, #line, #caret),
+                            format_item_debug: #root::__maybe_debug__!((#key_type, #value_type)),
+                        })
+                    ),
+                );
+
+                self.get_dfir_mut(location).add_dfir(
+                    parse_quote! {
+                        #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
+                    },
+                    None,
+                    None,
+                );
+
+                self.get_dfir_mut(location).add_dfir(
+                    parse_quote! {
+                        #out_ident = source_stream(#hoff_recv_ident);
+                    },
+                    None,
+                    None,
+                );
+
+                Some(out_ident)
+            }
+            _ => None,
+        }
+    }
 }
 
 /// Extract a location string, line, and caret indent from an op's metadata backtrace.

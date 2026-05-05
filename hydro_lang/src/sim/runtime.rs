@@ -1351,6 +1351,121 @@ impl<T> SimHook for TopLevelStreamOrderHook<T> {
     }
 }
 
+/// Hook for top-level folds. Selects a non-empty subset of buffered inputs to release,
+/// optionally permuting them if commutativity is not proven. Unselected elements remain
+/// in the buffer for future releases (modeling delayed/lossy inputs).
+pub struct TopLevelFoldHook<T> {
+    pub input: Rc<RefCell<VecDeque<T>>>,
+    pub to_release: Option<Vec<T>>,
+    pub output: UnboundedSender<T>,
+    /// If true, the user has proven commutativity, so we skip permutation.
+    /// If false, we explore different orderings via Fisher-Yates shuffle.
+    pub commutativity_proven: bool,
+    pub location: HookLocationMeta,
+    pub format_item_debug: fn(&T) -> Option<String>,
+}
+
+impl<T> SimHook for TopLevelFoldHook<T> {
+    fn current_decision(&self) -> Option<bool> {
+        self.to_release.as_ref().map(|v| !v.is_empty())
+    }
+
+    fn can_make_nontrivial_decision(&self) -> bool {
+        !self.input.borrow().is_empty()
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        driver: &mut Borrowed<'a>,
+        force_nontrivial: bool,
+    ) -> bool {
+        let mut current_input = self.input.borrow_mut();
+
+        if current_input.is_empty() {
+            if force_nontrivial {
+                panic!("Cannot make nontrivial decision when there is no input");
+            }
+            self.to_release = Some(vec![]);
+            return false;
+        }
+
+        // Select a non-empty subset: for each element, decide include/exclude.
+        // Only force inclusion on the last element if nothing was selected yet.
+        let mut selected = Vec::new();
+        let mut remaining = VecDeque::new();
+
+        let len = current_input.len();
+        for (i, item) in current_input.drain(..).enumerate() {
+            let is_last = i == len - 1;
+            let must_include = is_last && selected.is_empty();
+            if must_include || produce().generate(driver).unwrap() {
+                selected.push(item);
+            } else {
+                remaining.push_back(item);
+            }
+        }
+
+        // Put unselected elements back
+        *current_input = remaining;
+
+        // Permute selected elements if commutativity is not proven (Fisher-Yates)
+        if !self.commutativity_proven {
+            let slen = selected.len();
+            for i in (1..slen).rev() {
+                let j = (0..=i).generate(driver).unwrap();
+                selected.swap(i, j);
+            }
+        }
+
+        self.to_release = Some(selected);
+        true
+    }
+
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+        if let Some(to_release) = self.to_release.take() {
+            if !to_release.is_empty() {
+                let (batch_location, line, caret_indent) = self.location;
+                let note_str = format!(
+                    "^ fold input batch ({}): {:?}",
+                    if self.commutativity_proven {
+                        "commutative"
+                    } else {
+                        "permuted"
+                    },
+                    TruncatedVecDebug(
+                        RefCell::new(Some(to_release.iter())),
+                        8,
+                        self.format_item_debug
+                    )
+                );
+
+                let _ = writeln!(
+                    log_writer,
+                    "\n{} {}",
+                    "-->".color(colored::Color::Blue),
+                    batch_location
+                );
+
+                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+                let _ = writeln!(
+                    log_writer,
+                    " {}{}{}",
+                    "|".color(colored::Color::Blue),
+                    caret_indent,
+                    note_str.color(colored::Color::Green)
+                );
+            }
+
+            for item in to_release {
+                self.output.send(item).unwrap();
+            }
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}
+
 /// Keyed variant of [`TopLevelStreamOrderHook`]. Same one-at-a-time release
 /// strategy to simulate causal interleavings -- see the comment on
 /// [`TopLevelStreamOrderHook`] for the full explanation.
