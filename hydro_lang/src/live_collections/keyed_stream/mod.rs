@@ -1864,15 +1864,12 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         let retried = self
             .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */));
 
-        let commutativity_proven = O::ORDERING_KIND == StreamOrder::NoOrder;
-
         KeyedSingleton::new(
             retried.location.clone(),
             HydroNode::FoldKeyed {
                 init,
                 acc: comb.into(),
                 input: Box::new(retried.ir_node.replace(HydroNode::Placeholder)),
-                commutativity_proven,
                 metadata: retried
                     .location
                     .new_node_metadata(KeyedSingleton::<K, A, L, B2>::collection_kind()),

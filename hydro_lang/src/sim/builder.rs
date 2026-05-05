@@ -35,10 +35,6 @@ pub struct SimBuilder {
     pub cluster_tick_dfirs: BTreeMap<LocationId, FlatGraphBuilder>,
     pub next_hoff_id: usize,
     pub test_safety_only: bool,
-    /// Idents whose output is controlled by a TopLevelFoldHook (emits exactly one value per hook
-    /// release). When such an ident is batched as a Singleton, we can skip the SingletonHook
-    /// because the fold hook already makes the only meaningful decision.
-    pub fold_hooked_idents: HashSet<String>,
 }
 
 impl SimBuilder {
@@ -131,6 +127,7 @@ impl DfirBuilder for SimBuilder {
         out_ident: &syn::Ident,
         out_location: &LocationId,
         op_meta: &HydroIrOpMetadata,
+        fold_hooked_idents: &HashSet<String>,
     ) {
         if let LocationId::Atomic(_) = in_location {
             let builder = self.get_dfir_mut(in_location);
@@ -284,100 +281,63 @@ impl DfirBuilder for SimBuilder {
                 CollectionKind::Singleton { element_type, .. } => {
                     debug_assert!(in_location.is_top_level());
 
-                    if self.fold_hooked_idents.contains(&in_ident.to_string()) {
+                    let hoff_id = self.next_hoff_id;
+                    self.next_hoff_id += 1;
+
+                    let buffered_ident =
+                        syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+                    let hoff_send_ident =
+                        syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+                    let hoff_recv_ident =
+                        syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+                    let hook_expr: syn::Expr = if fold_hooked_idents.contains(&in_ident.to_string())
+                    {
                         // The fold hook already controls when new values are produced.
                         // Use a PassthroughSingletonHook that always releases the latest
                         // value without non-deterministic decisions.
-                        let hoff_id = self.next_hoff_id;
-                        self.next_hoff_id += 1;
-
-                        let buffered_ident =
-                            syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
-                        let hoff_send_ident =
-                            syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
-                        let hoff_recv_ident =
-                            syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
-
-                        self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                            let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
-                        });
-                        self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                            let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
-                        });
-                        self.add_hook(
-                            in_location,
-                            out_location,
-                            syn::parse_quote! (
-                                Box::new(#root::sim::runtime::PassthroughSingletonHook::<_>::new(
-                                    #buffered_ident.clone(),
-                                    #hoff_send_ident,
-                                    (#batch_location, #line, #caret),
-                                    #root::__maybe_debug__!(#element_type),
-                                ))
-                            ),
-                        );
-
-                        self.get_dfir_mut(in_location).add_dfir(
-                            parse_quote! {
-                                #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
-                            },
-                            None,
-                            None,
-                        );
-
-                        self.get_dfir_mut(out_location).add_dfir(
-                            parse_quote! {
-                                #out_ident = source_stream(#hoff_recv_ident);
-                            },
-                            None,
-                            None,
-                        );
+                        syn::parse_quote!(
+                            Box::new(#root::sim::runtime::PassthroughSingletonHook::<_>::new(
+                                #buffered_ident.clone(),
+                                #hoff_send_ident,
+                                (#batch_location, #line, #caret),
+                                #root::__maybe_debug__!(#element_type),
+                            ))
+                        )
                     } else {
-                        let hoff_id = self.next_hoff_id;
-                        self.next_hoff_id += 1;
+                        syn::parse_quote!(
+                            Box::new(#root::sim::runtime::SingletonHook::<_>::new(
+                                #buffered_ident.clone(),
+                                #hoff_send_ident,
+                                (#batch_location, #line, #caret),
+                                #root::__maybe_debug__!(#element_type),
+                            ))
+                        )
+                    };
 
-                        let buffered_ident =
-                            syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
-                        let hoff_send_ident =
-                            syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
-                        let hoff_recv_ident =
-                            syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
+                        let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+                    });
+                    self.add_extra_stmt_internal(in_location, syn::parse_quote! {
+                        let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+                    });
+                    self.add_hook(in_location, out_location, hook_expr);
 
-                        self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                            let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
-                        });
-                        self.add_extra_stmt_internal(in_location, syn::parse_quote! {
-                            let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
-                        });
-                        self.add_hook(
-                            in_location,
-                            out_location,
-                            syn::parse_quote! (
-                                Box::new(#root::sim::runtime::SingletonHook::<_>::new(
-                                    #buffered_ident.clone(),
-                                    #hoff_send_ident,
-                                    (#batch_location, #line, #caret),
-                                    #root::__maybe_debug__!(#element_type),
-                                ))
-                            ),
-                        );
+                    self.get_dfir_mut(in_location).add_dfir(
+                        parse_quote! {
+                            #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
+                        },
+                        None,
+                        None,
+                    );
 
-                        self.get_dfir_mut(in_location).add_dfir(
-                            parse_quote! {
-                                #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
-                            },
-                            None,
-                            None,
-                        );
-
-                        self.get_dfir_mut(out_location).add_dfir(
-                            parse_quote! {
-                                #out_ident = source_stream(#hoff_recv_ident);
-                            },
-                            None,
-                            None,
-                        );
-                    }
+                    self.get_dfir_mut(out_location).add_dfir(
+                        parse_quote! {
+                            #out_ident = source_stream(#hoff_recv_ident);
+                        },
+                        None,
+                        None,
+                    );
                 }
                 CollectionKind::KeyedSingleton {
                     key_type,
@@ -526,6 +486,7 @@ impl DfirBuilder for SimBuilder {
         out_location: &LocationId,
         op_meta: &HydroIrOpMetadata,
     ) {
+        // Atomic boundaries never involve fold-hooked idents.
         self.batch(
             in_ident,
             in_location,
@@ -533,6 +494,7 @@ impl DfirBuilder for SimBuilder {
             out_ident,
             out_location,
             op_meta,
+            &HashSet::new(),
         );
     }
 
@@ -1541,16 +1503,11 @@ impl DfirBuilder for SimBuilder {
         location: &LocationId,
         in_ident: &syn::Ident,
         in_kind: &CollectionKind,
-        commutativity_proven: bool,
         op_meta: &HydroIrOpMetadata,
     ) -> Option<syn::Ident> {
         if !location.is_top_level() {
-            // For in-tick folds with commutativity_proven on NoOrder input,
+            // For in-tick folds on NoOrder input,
             // emit an inline shuffle hook to permute elements before the fold.
-            if !commutativity_proven {
-                return None;
-            }
-
             let element_type = match in_kind {
                 CollectionKind::Stream {
                     order: StreamOrder::NoOrder,
@@ -1585,9 +1542,12 @@ impl DfirBuilder for SimBuilder {
                 let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident.into_inner()));
             });
 
-            self.add_extra_stmt_internal(tick_location.root(), syn::parse_quote! {
-                let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(None));
-            });
+            self.add_extra_stmt_internal(
+                tick_location.root(),
+                syn::parse_quote! {
+                    let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(None));
+                },
+            );
 
             self.add_inline_hook(
                 tick_location,
@@ -1633,131 +1593,68 @@ impl DfirBuilder for SimBuilder {
         let (assume_location, line, caret) = location_for_op(op_meta);
         let root = get_this_crate();
 
-        match in_kind {
+        let debug_type: syn::Type = match in_kind {
             CollectionKind::Stream {
                 order: StreamOrder::NoOrder,
                 retry: StreamRetry::ExactlyOnce,
                 element_type,
                 ..
-            } => {
-                let hoff_id = self.next_hoff_id;
-                self.next_hoff_id += 1;
-
-                let buffered_ident =
-                    syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
-                let hoff_send_ident =
-                    syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
-                let hoff_recv_ident =
-                    syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
-                let out_ident =
-                    syn::Ident::new(&format!("__fold_hook_out_{hoff_id}"), Span::call_site());
-
-                self.add_extra_stmt_internal(location, syn::parse_quote! {
-                    let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
-                });
-                self.add_extra_stmt_internal(location, syn::parse_quote! {
-                    let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
-                });
-                self.add_hook(
-                    location,
-                    location,
-                    syn::parse_quote!(
-                        Box::new(#root::sim::runtime::TopLevelFoldHook::<_> {
-                            input: #buffered_ident.clone(),
-                            to_release: None,
-                            output: #hoff_send_ident,
-                            location: (#assume_location, #line, #caret),
-                            format_item_debug: #root::__maybe_debug__!(#element_type),
-                        })
-                    ),
-                );
-
-                self.get_dfir_mut(location).add_dfir(
-                    parse_quote! {
-                        #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
-                    },
-                    None,
-                    None,
-                );
-
-                self.get_dfir_mut(location).add_dfir(
-                    parse_quote! {
-                        #out_ident = source_stream(#hoff_recv_ident);
-                    },
-                    None,
-                    None,
-                );
-
-                Some(out_ident)
-            }
+            } => (*element_type.0).clone(),
             CollectionKind::KeyedStream {
                 value_order: StreamOrder::NoOrder,
                 value_retry: StreamRetry::ExactlyOnce,
                 key_type,
                 value_type,
                 ..
-            } => {
-                let hoff_id = self.next_hoff_id;
-                self.next_hoff_id += 1;
+            } => syn::parse_quote!((#key_type, #value_type)),
+            _ => return None,
+        };
 
-                let buffered_ident =
-                    syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
-                let hoff_send_ident =
-                    syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
-                let hoff_recv_ident =
-                    syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
-                let out_ident =
-                    syn::Ident::new(&format!("__fold_hook_out_{hoff_id}"), Span::call_site());
+        let hoff_id = self.next_hoff_id;
+        self.next_hoff_id += 1;
 
-                self.add_extra_stmt_internal(location, syn::parse_quote! {
-                    let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
-                });
-                self.add_extra_stmt_internal(location, syn::parse_quote! {
-                    let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
-                });
-                self.add_hook(
-                    location,
-                    location,
-                    syn::parse_quote!(
-                        Box::new(#root::sim::runtime::TopLevelFoldHook::<_> {
-                            input: #buffered_ident.clone(),
-                            to_release: None,
-                            output: #hoff_send_ident,
-                            location: (#assume_location, #line, #caret),
-                            format_item_debug: #root::__maybe_debug__!((#key_type, #value_type)),
-                        })
-                    ),
-                );
+        let buffered_ident = syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+        let hoff_send_ident = syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+        let hoff_recv_ident = syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+        let out_ident = syn::Ident::new(&format!("__fold_hook_out_{hoff_id}"), Span::call_site());
 
-                self.get_dfir_mut(location).add_dfir(
-                    parse_quote! {
-                        #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
-                    },
-                    None,
-                    None,
-                );
+        self.add_extra_stmt_internal(location, syn::parse_quote! {
+            let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+        });
+        self.add_extra_stmt_internal(location, syn::parse_quote! {
+            let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+        });
+        self.add_hook(
+            location,
+            location,
+            syn::parse_quote!(
+                Box::new(#root::sim::runtime::TopLevelFoldHook::<_> {
+                    input: #buffered_ident.clone(),
+                    to_release: None,
+                    output: #hoff_send_ident,
+                    location: (#assume_location, #line, #caret),
+                    format_item_debug: #root::__maybe_debug__!(#debug_type),
+                })
+            ),
+        );
 
-                self.get_dfir_mut(location).add_dfir(
-                    parse_quote! {
-                        #out_ident = source_stream(#hoff_recv_ident);
-                    },
-                    None,
-                    None,
-                );
+        self.get_dfir_mut(location).add_dfir(
+            parse_quote! {
+                #in_ident -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
+            },
+            None,
+            None,
+        );
 
-                Some(out_ident)
-            }
-            _ => None,
-        }
-    }
+        self.get_dfir_mut(location).add_dfir(
+            parse_quote! {
+                #out_ident = source_stream(#hoff_recv_ident);
+            },
+            None,
+            None,
+        );
 
-    fn register_fold_hooked_output(&mut self, fold_output_ident: &syn::Ident) {
-        self.fold_hooked_idents
-            .insert(fold_output_ident.to_string());
-    }
-
-    fn is_fold_hooked_output(&self, ident: &syn::Ident) -> bool {
-        self.fold_hooked_idents.contains(&ident.to_string())
+        Some(out_ident)
     }
 }
 

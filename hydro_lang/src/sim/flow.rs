@@ -119,7 +119,6 @@ impl<'a> SimFlow<'a> {
             extra_stmts_cluster: BTreeMap::new(),
             next_hoff_id: 0,
             test_safety_only: self.test_safety_only,
-            fold_hooked_idents: HashSet::new(),
         };
 
         // Ensure the default (0) external is always present.
@@ -147,12 +146,14 @@ impl<'a> SimFlow<'a> {
         let mut seen_tees = HashMap::new();
         let mut built_tees = HashMap::new();
         let mut next_stmt_id = 0;
+        let mut fold_hooked_idents = HashSet::new();
         for leaf in &mut self.ir {
             leaf.emit(
                 &mut sim_emit,
                 &mut seen_tees,
                 &mut built_tees,
                 &mut next_stmt_id,
+                &mut fold_hooked_idents,
             );
         }
 

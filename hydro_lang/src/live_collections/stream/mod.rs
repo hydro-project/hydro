@@ -1239,13 +1239,10 @@ where
         let nondet = nondet!(/** the combinator function is commutative and idempotent */);
         let retried: Stream<T, L, B, O, ExactlyOnce> = self.assume_retries(nondet);
 
-        let commutativity_proven = O::ORDERING_KIND == StreamOrder::NoOrder;
-
         let core = HydroNode::Fold {
             init,
             acc: comb.into(),
             input: Box::new(retried.ir_node.replace(HydroNode::Placeholder)),
-            commutativity_proven,
             metadata: retried
                 .location
                 .new_node_metadata(Singleton::<A, L, B2>::collection_kind()),

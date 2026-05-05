@@ -366,6 +366,8 @@ fn sim_fold_sample_eager_state_count() {
     use crate::live_collections::stream::NoOrder;
     use crate::properties::manual_proof;
 
+    // Assert the exact exhaustive state count to detect regressions.
+    // 108 states with batch-fold optimization + passthrough singleton hook + always permute.
     let mut flow = FlowBuilder::new();
     let node = flow.process::<()>();
 
@@ -373,7 +375,10 @@ fn sim_fold_sample_eager_state_count() {
 
     let folded = input.fold(
         q!(|| 0),
-        q!(|acc, v| *acc += v, commutative = manual_proof!(/** integer addition is commutative */)),
+        q!(
+            |acc, v| *acc += v,
+            commutative = manual_proof!(/** integer addition is commutative */)
+        ),
     );
     let out_recv = sliced! {
         let snapshot = use(folded, nondet!(/** test */));
@@ -408,7 +413,10 @@ fn sim_fold_commutative_explores_all_subset_sums() {
     let (in_send, input) = node.sim_input::<i32, NoOrder, ExactlyOnce>();
     let folded = input.fold(
         q!(|| 0),
-        q!(|acc, v| *acc += v, commutative = manual_proof!(/** addition is commutative */)),
+        q!(
+            |acc, v| *acc += v,
+            commutative = manual_proof!(/** addition is commutative */)
+        ),
     );
     let out_recv = sliced! {
         let snapshot = use(folded, nondet!(/** test */));
@@ -473,38 +481,6 @@ fn sim_fold_total_order_no_permutation() {
 }
 
 #[test]
-fn sim_fold_commutative_state_count() {
-    use crate::live_collections::stream::NoOrder;
-    use crate::properties::manual_proof;
-
-    // With commutativity proven, the hook skips Fisher-Yates permutation.
-    // This means fewer states are explored compared to the old ObserveNonDet approach (270).
-    // Assert the exact count to detect regressions in either direction.
-    let mut flow = FlowBuilder::new();
-    let node = flow.process::<()>();
-    let (in_send, input) = node.sim_input::<i32, NoOrder, ExactlyOnce>();
-    let folded = input.fold(
-        q!(|| 0),
-        q!(|acc, v| *acc += v, commutative = manual_proof!(/** commutative */)),
-    );
-    let out_recv = sliced! {
-        let snapshot = use(folded, nondet!(/** test */));
-        snapshot.into_stream()
-    }
-    .sim_output();
-
-    let count = flow.sim().exhaustive(async || {
-        in_send.send_many_unordered([1, 2, 3]);
-        let all: Vec<i32> = out_recv.collect().await;
-        assert_eq!(*all.last().unwrap(), 6);
-    });
-
-    // 108 states with batch-fold optimization + passthrough singleton hook + always permute.
-    // Previously 339 with batch-fold + full SingletonHook + commutativity skip.
-    assert_eq!(count, 108);
-}
-
-#[test]
 fn sim_fold_keyed_no_order() {
     use crate::live_collections::stream::NoOrder;
     use crate::properties::manual_proof;
@@ -515,7 +491,10 @@ fn sim_fold_keyed_no_order() {
 
     let folded = input.into_keyed().fold(
         q!(|| 0),
-        q!(|acc, v| *acc += v, commutative = manual_proof!(/** addition is commutative */)),
+        q!(
+            |acc, v| *acc += v,
+            commutative = manual_proof!(/** addition is commutative */)
+        ),
     );
     let out_recv = sliced! {
         let snapshot = use(folded, nondet!(/** test */));
@@ -576,6 +555,7 @@ fn sim_fold_tee_downstream_sees_different_subsets() {
 
     // There must exist at least one execution where the two downstreams
     // observed different sequences of intermediate states.
+    #[expect(clippy::disallowed_methods, reason = "order is not used in test")]
     let has_divergent = observed_pairs.iter().any(|(a, b)| a != b);
     assert!(
         has_divergent,
@@ -586,7 +566,6 @@ fn sim_fold_tee_downstream_sees_different_subsets() {
 }
 
 /// Demonstrates that the simulator catches a bug in a fold that falsely claims commutativity.
-/// String concatenation is NOT commutative, but we lie with `manual_proof!`.
 /// The exhaustive run should observe different final values (e.g. "ab" vs "ba"),
 /// which would violate the invariant that a commutative fold's result is order-independent.
 #[test]
@@ -600,10 +579,14 @@ fn sim_fold_catches_false_commutativity() {
     let node = flow.process::<()>();
 
     let (in_send, input) = node.sim_input::<String, NoOrder, ExactlyOnce>();
-    // LIE: string concatenation is NOT commutative, but we claim it is.
+    // string concatenation is not commutative, but lets claim it is, what
+    // could go wrong
     let folded = input.fold(
         q!(|| String::new()),
-        q!(|acc, v| acc.push_str(&v), commutative = manual_proof!(/** WRONG */)),
+        q!(
+            |acc, v| acc.push_str(&v),
+            commutative = manual_proof!(/** WRONG */)
+        ),
     );
     let out_recv = sliced! {
         let snapshot = use(folded, nondet!(/** test */));
@@ -616,12 +599,13 @@ fn sim_fold_catches_false_commutativity() {
     flow.sim().exhaustive(async || {
         in_send.send_many_unordered(["a".to_owned(), "b".to_owned()]);
         let all: Vec<String> = out_recv.collect().await;
-        final_values.insert(all.last().unwrap().clone());
+        // Collect the first values we see to verify we're fully exploring
+        // the state space. If we're _not_ then we wouldn't see a "ba"
+        // permutation as the first result
+        final_values.insert(all.first().unwrap().clone());
     });
 
-    // If commutativity held, we'd only ever see "ab" (or only "ba").
-    // Because it doesn't, the simulator explores both orderings via
-    // different subset/batch sequences and observes both final values.
+    // If commutativity held, we wouldn't see "ba"
     assert!(
         final_values.contains("ab") && final_values.contains("ba"),
         "Expected both 'ab' and 'ba' to be observed, got: {:?}",
@@ -635,7 +619,7 @@ fn sim_fold_catches_false_commutativity() {
 /// Top-level folds ARE tested via cross-batch subset selection + permutation
 /// (see `sim_fold_catches_false_commutativity`).
 #[test]
-fn sim_fold_in_tick_does_not_yet_catch_false_commutativity() {
+fn sim_fold_in_tick_catches_false_commutativity() {
     use std::collections::HashSet;
 
     use crate::live_collections::stream::NoOrder;
@@ -651,7 +635,10 @@ fn sim_fold_in_tick_does_not_yet_catch_false_commutativity() {
         .batch(&tick, nondet!(/** test */))
         .fold(
             q!(|| String::new()),
-            q!(|acc, v| acc.push_str(&v), commutative = manual_proof!(/** WRONG */)),
+            q!(
+                |acc, v| acc.push_str(&v),
+                commutative = manual_proof!(/** WRONG */)
+            ),
         )
         .into_stream()
         .all_ticks()
