@@ -27,6 +27,9 @@ mod map;
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 mod persist;
 mod reduce;
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+mod reduce_keyed;
 mod resolve_futures;
 mod sink;
 mod sink_compat;
@@ -68,6 +71,9 @@ pub use map::Map;
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub use persist::Persist;
 pub use reduce::Reduce;
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub use reduce_keyed::ReduceKeyed;
 pub use resolve_futures::ResolveFutures;
 pub use sink::Sink;
 pub use sink_compat::SinkCompat;
