@@ -64,20 +64,20 @@
 <a href=#64 id=64 data-nosnippet>64</a>            </span><span class="kw">let </span><span class="kw-2">mut </span>#initializer_func_ident = #init_fn;
 <a href=#65 id=65 data-nosnippet>65</a>
 <a href=#66 id=66 data-nosnippet>66</a>            <span class="attr">#[allow(clippy::redundant_closure_call)]
-<a href=#67 id=67 data-nosnippet>67</a>            </span><span class="kw">let </span>#singleton_output_ident = ::std::cell::RefCell::new(#init);
+<a href=#67 id=67 data-nosnippet>67</a>            </span><span class="kw">let </span><span class="kw-2">mut </span>#singleton_output_ident = #init;
 <a href=#68 id=68 data-nosnippet>68</a>        };
 <a href=#69 id=69 data-nosnippet>69</a>
 <a href=#70 id=70 data-nosnippet>70</a>        <span class="kw">let </span>write_tick_end = <span class="kw">match </span>persistence {
 <a href=#71 id=71 data-nosnippet>71</a>            Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#72 id=72 data-nosnippet>72</a>                <span class="attr">#[allow(clippy::redundant_closure_call)]
-<a href=#73 id=73 data-nosnippet>73</a>                </span>#singleton_output_ident.replace(#init);
+<a href=#73 id=73 data-nosnippet>73</a>                </span>{ #singleton_output_ident = #init; }
 <a href=#74 id=74 data-nosnippet>74</a>            },
 <a href=#75 id=75 data-nosnippet>75</a>            <span class="kw">_ </span>=&gt; Default::default(),
 <a href=#76 id=76 data-nosnippet>76</a>        };
 <a href=#77 id=77 data-nosnippet>77</a>
 <a href=#78 id=78 data-nosnippet>78</a>        <span class="kw">let </span>assign_accum_ident = <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#79 id=79 data-nosnippet>79</a>            <span class="attr">#[allow(unused_mut)]
-<a href=#80 id=80 data-nosnippet>80</a>            </span><span class="kw">let </span><span class="kw-2">mut </span>#accumulator_ident = #singleton_output_ident.borrow_mut();
+<a href=#80 id=80 data-nosnippet>80</a>            </span><span class="kw">let </span><span class="kw-2">mut </span>#accumulator_ident = <span class="kw-2">&amp;mut </span>#singleton_output_ident;
 <a href=#81 id=81 data-nosnippet>81</a>        };
 <a href=#82 id=82 data-nosnippet>82</a>        <span class="kw">let </span>foreach_body = <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#83 id=83 data-nosnippet>83</a>            <span class="attr">#[inline(always)]

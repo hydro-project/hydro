@@ -62,12 +62,12 @@
 <a href=#62 id=62 data-nosnippet>62</a>        <span class="kw">let </span>[persistence] = wc.persistence_args_disallow_mutable(diagnostics);
 <a href=#63 id=63 data-nosnippet>63</a>
 <a href=#64 id=64 data-nosnippet>64</a>        <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#65 id=65 data-nosnippet>65</a>            <span class="kw">let </span>#singleton_output_ident = ::std::cell::RefCell::new(::std::option::Option::None);
+<a href=#65 id=65 data-nosnippet>65</a>            <span class="kw">let </span><span class="kw-2">mut </span>#singleton_output_ident = ::std::option::Option::None;
 <a href=#66 id=66 data-nosnippet>66</a>        };
 <a href=#67 id=67 data-nosnippet>67</a>
 <a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">let </span>write_tick_end = <span class="kw">match </span>persistence {
 <a href=#69 id=69 data-nosnippet>69</a>            Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#70 id=70 data-nosnippet>70</a>                #singleton_output_ident.replace(::std::option::Option::None);
+<a href=#70 id=70 data-nosnippet>70</a>                #singleton_output_ident = ::std::option::Option::None;
 <a href=#71 id=71 data-nosnippet>71</a>            },
 <a href=#72 id=72 data-nosnippet>72</a>            <span class="kw">_ </span>=&gt; Default::default(),
 <a href=#73 id=73 data-nosnippet>73</a>        };
@@ -94,7 +94,7 @@
 <a href=#94 id=94 data-nosnippet>94</a>
 <a href=#95 id=95 data-nosnippet>95</a>        <span class="kw">let </span>assign_accum_ident = <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#96 id=96 data-nosnippet>96</a>            <span class="attr">#[allow(unused_mut)]
-<a href=#97 id=97 data-nosnippet>97</a>            </span><span class="kw">let </span><span class="kw-2">mut </span>#accumulator_ident = #singleton_output_ident.borrow_mut();
+<a href=#97 id=97 data-nosnippet>97</a>            </span><span class="kw">let </span><span class="kw-2">mut </span>#accumulator_ident = <span class="kw-2">&amp;mut </span>#singleton_output_ident;
 <a href=#98 id=98 data-nosnippet>98</a>        };
 <a href=#99 id=99 data-nosnippet>99</a>
 <a href=#100 id=100 data-nosnippet>100</a>        <span class="kw">let </span>write_iterator = <span class="kw">if </span>is_pull {

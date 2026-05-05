@@ -101,15 +101,15 @@
 <a href=#101 id=101 data-nosnippet>101</a>        <span class="kw">let </span>factory_fn = <span class="kw-2">&amp;</span>arguments[<span class="number">1</span>];
 <a href=#102 id=102 data-nosnippet>102</a>
 <a href=#103 id=103 data-nosnippet>103</a>        <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#104 id=104 data-nosnippet>104</a>            <span class="kw">let </span>#state_ident = {
-<a href=#105 id=105 data-nosnippet>105</a>                <span class="kw">let </span>data_struct: #lattice_type = (#factory_fn)();
+<a href=#104 id=104 data-nosnippet>104</a>            <span class="kw">let </span><span class="kw-2">mut </span>#state_ident: #lattice_type = {
+<a href=#105 id=105 data-nosnippet>105</a>                <span class="kw">let </span>data_struct = (#factory_fn)();
 <a href=#106 id=106 data-nosnippet>106</a>                <span class="macro">::std::debug_assert!</span>(#root::lattices::IsBot::is_bot(<span class="kw-2">&amp;</span>data_struct));
-<a href=#107 id=107 data-nosnippet>107</a>                ::std::cell::RefCell::new(data_struct)
+<a href=#107 id=107 data-nosnippet>107</a>                data_struct
 <a href=#108 id=108 data-nosnippet>108</a>            };
 <a href=#109 id=109 data-nosnippet>109</a>        };
 <a href=#110 id=110 data-nosnippet>110</a>        <span class="kw">let </span>write_tick_end = <span class="kw">match </span>persistence {
 <a href=#111 id=111 data-nosnippet>111</a>            Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#112 id=112 data-nosnippet>112</a>                ::std::cell::RefCell::take(<span class="kw-2">&amp;</span>#state_ident);
+<a href=#112 id=112 data-nosnippet>112</a>                #state_ident = ::std::default::Default::default();
 <a href=#113 id=113 data-nosnippet>113</a>            },
 <a href=#114 id=114 data-nosnippet>114</a>            <span class="kw">_ </span>=&gt; Default::default(),
 <a href=#115 id=115 data-nosnippet>115</a>        };
@@ -124,7 +124,7 @@
 <a href=#124 id=124 data-nosnippet>124</a>                    <span class="kw">fn </span>check_input&lt;<span class="lifetime">'a</span>, Item, MappingFn, MappedItem, Prev, Lat&gt;(
 <a href=#125 id=125 data-nosnippet>125</a>                        prev: Prev,
 <a href=#126 id=126 data-nosnippet>126</a>                        mapfn: MappingFn,
-<a href=#127 id=127 data-nosnippet>127</a>                        state_ref: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>::std::cell::RefCell&lt;Lat&gt;,
+<a href=#127 id=127 data-nosnippet>127</a>                        state_ref: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>Lat,
 <a href=#128 id=128 data-nosnippet>128</a>                    ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ #root::dfir_pipes::pull::Pull&lt;Item = Item, Meta = Prev::Meta&gt;
 <a href=#129 id=129 data-nosnippet>129</a>                    <span class="kw">where
 <a href=#130 id=130 data-nosnippet>130</a>                        </span>Item: ::std::clone::Clone,
@@ -135,64 +135,61 @@
 <a href=#135 id=135 data-nosnippet>135</a>                        #root::dfir_pipes::pull::Pull::filter(
 <a href=#136 id=136 data-nosnippet>136</a>                            prev,
 <a href=#137 id=137 data-nosnippet>137</a>                            <span class="kw">move </span>|item| {
-<a href=#138 id=138 data-nosnippet>138</a>                                <span class="kw">let </span><span class="kw-2">mut </span>state = state_ref.borrow_mut();
-<a href=#139 id=139 data-nosnippet>139</a>                                #root::lattices::Merge::merge(<span class="kw-2">&amp;mut *</span>state, (mapfn)(::std::clone::Clone::clone(item)))
-<a href=#140 id=140 data-nosnippet>140</a>                            },
-<a href=#141 id=141 data-nosnippet>141</a>                        )
-<a href=#142 id=142 data-nosnippet>142</a>                    }
-<a href=#143 id=143 data-nosnippet>143</a>                    check_input::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, #lattice_type&gt;(#input, #by_fn, <span class="kw-2">&amp;</span>#state_ident)
-<a href=#144 id=144 data-nosnippet>144</a>                };
-<a href=#145 id=145 data-nosnippet>145</a>            }
-<a href=#146 id=146 data-nosnippet>146</a>        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(output) = outputs.first() {
-<a href=#147 id=147 data-nosnippet>147</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#148 id=148 data-nosnippet>148</a>                <span class="kw">let </span>#ident = {
-<a href=#149 id=149 data-nosnippet>149</a>                    <span class="kw">fn </span>check_output&lt;<span class="lifetime">'a</span>, Item, MappingFn, MappedItem, Psh, Lat&gt;(
-<a href=#150 id=150 data-nosnippet>150</a>                        push: Psh,
-<a href=#151 id=151 data-nosnippet>151</a>                        mapfn: MappingFn,
-<a href=#152 id=152 data-nosnippet>152</a>                        state_ref: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>::std::cell::RefCell&lt;Lat&gt;,
-<a href=#153 id=153 data-nosnippet>153</a>                    ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ #root::dfir_pipes::push::Push&lt;Item, ()&gt;
-<a href=#154 id=154 data-nosnippet>154</a>                    <span class="kw">where
-<a href=#155 id=155 data-nosnippet>155</a>                        </span>Item: <span class="lifetime">'a </span>+ ::std::clone::Clone,
-<a href=#156 id=156 data-nosnippet>156</a>                        MappingFn: <span class="lifetime">'a </span>+ Fn(Item) -&gt; MappedItem,
-<a href=#157 id=157 data-nosnippet>157</a>                        Psh: <span class="lifetime">'a </span>+ #root::dfir_pipes::push::Push&lt;Item, ()&gt;,
-<a href=#158 id=158 data-nosnippet>158</a>                        Lat: <span class="lifetime">'static </span>+ #root::lattices::Merge&lt;MappedItem&gt;,
-<a href=#159 id=159 data-nosnippet>159</a>                    {
-<a href=#160 id=160 data-nosnippet>160</a>                        #root::dfir_pipes::push::filter(<span class="kw">move </span>|item| {
-<a href=#161 id=161 data-nosnippet>161</a>                            <span class="kw">let </span><span class="kw-2">mut </span>state = state_ref.borrow_mut();
-<a href=#162 id=162 data-nosnippet>162</a>                            #root::lattices::Merge::merge(<span class="kw-2">&amp;mut *</span>state, (mapfn)(::std::clone::Clone::clone(item)))
-<a href=#163 id=163 data-nosnippet>163</a>                        }, push)
-<a href=#164 id=164 data-nosnippet>164</a>                    }
-<a href=#165 id=165 data-nosnippet>165</a>                    check_output::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, #lattice_type&gt;(#output, #by_fn, <span class="kw-2">&amp;</span>#state_ident)
-<a href=#166 id=166 data-nosnippet>166</a>                };
-<a href=#167 id=167 data-nosnippet>167</a>            }
-<a href=#168 id=168 data-nosnippet>168</a>        } <span class="kw">else </span>{
-<a href=#169 id=169 data-nosnippet>169</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#170 id=170 data-nosnippet>170</a>                <span class="kw">let </span>#ident = {
-<a href=#171 id=171 data-nosnippet>171</a>                    <span class="kw">fn </span>check_output&lt;<span class="lifetime">'a</span>, Item, MappingFn, MappedItem, Lat&gt;(
-<a href=#172 id=172 data-nosnippet>172</a>                        state_ref: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>::std::cell::RefCell&lt;Lat&gt;,
-<a href=#173 id=173 data-nosnippet>173</a>                        mapfn: MappingFn,
-<a href=#174 id=174 data-nosnippet>174</a>                    ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ #root::dfir_pipes::push::Push&lt;Item, ()&gt;
-<a href=#175 id=175 data-nosnippet>175</a>                    <span class="kw">where
-<a href=#176 id=176 data-nosnippet>176</a>                        </span>Item: <span class="lifetime">'a</span>,
-<a href=#177 id=177 data-nosnippet>177</a>                        MappedItem: <span class="lifetime">'a</span>,
-<a href=#178 id=178 data-nosnippet>178</a>                        MappingFn: <span class="lifetime">'a </span>+ Fn(Item) -&gt; MappedItem,
-<a href=#179 id=179 data-nosnippet>179</a>                        Lat: <span class="lifetime">'static </span>+ #root::lattices::Merge&lt;MappedItem&gt;,
-<a href=#180 id=180 data-nosnippet>180</a>                    {
-<a href=#181 id=181 data-nosnippet>181</a>                        #root::dfir_pipes::push::for_each(<span class="kw">move </span>|item| {
-<a href=#182 id=182 data-nosnippet>182</a>                            <span class="kw">let </span><span class="kw-2">mut </span>state = state_ref.borrow_mut();
-<a href=#183 id=183 data-nosnippet>183</a>                            #root::lattices::Merge::merge(<span class="kw-2">&amp;mut *</span>state, (mapfn)(item));
-<a href=#184 id=184 data-nosnippet>184</a>                        })
-<a href=#185 id=185 data-nosnippet>185</a>                    }
-<a href=#186 id=186 data-nosnippet>186</a>                    check_output::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, #lattice_type&gt;(<span class="kw-2">&amp;</span>#state_ident, #by_fn)
-<a href=#187 id=187 data-nosnippet>187</a>                };
-<a href=#188 id=188 data-nosnippet>188</a>            }
-<a href=#189 id=189 data-nosnippet>189</a>        };
-<a href=#190 id=190 data-nosnippet>190</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#191 id=191 data-nosnippet>191</a>            write_prologue,
-<a href=#192 id=192 data-nosnippet>192</a>            write_iterator,
-<a href=#193 id=193 data-nosnippet>193</a>            write_tick_end,
-<a href=#194 id=194 data-nosnippet>194</a>            ..Default::default()
-<a href=#195 id=195 data-nosnippet>195</a>        })
-<a href=#196 id=196 data-nosnippet>196</a>    },
-<a href=#197 id=197 data-nosnippet>197</a>};
+<a href=#138 id=138 data-nosnippet>138</a>                                #root::lattices::Merge::merge(state_ref, (mapfn)(::std::clone::Clone::clone(item)))
+<a href=#139 id=139 data-nosnippet>139</a>                            },
+<a href=#140 id=140 data-nosnippet>140</a>                        )
+<a href=#141 id=141 data-nosnippet>141</a>                    }
+<a href=#142 id=142 data-nosnippet>142</a>                    check_input::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, #lattice_type&gt;(#input, #by_fn, <span class="kw-2">&amp;mut </span>#state_ident)
+<a href=#143 id=143 data-nosnippet>143</a>                };
+<a href=#144 id=144 data-nosnippet>144</a>            }
+<a href=#145 id=145 data-nosnippet>145</a>        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(output) = outputs.first() {
+<a href=#146 id=146 data-nosnippet>146</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#147 id=147 data-nosnippet>147</a>                <span class="kw">let </span>#ident = {
+<a href=#148 id=148 data-nosnippet>148</a>                    <span class="kw">fn </span>check_output&lt;<span class="lifetime">'a</span>, Item, MappingFn, MappedItem, Psh, Lat&gt;(
+<a href=#149 id=149 data-nosnippet>149</a>                        push: Psh,
+<a href=#150 id=150 data-nosnippet>150</a>                        mapfn: MappingFn,
+<a href=#151 id=151 data-nosnippet>151</a>                        state_ref: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>Lat,
+<a href=#152 id=152 data-nosnippet>152</a>                    ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ #root::dfir_pipes::push::Push&lt;Item, ()&gt;
+<a href=#153 id=153 data-nosnippet>153</a>                    <span class="kw">where
+<a href=#154 id=154 data-nosnippet>154</a>                        </span>Item: <span class="lifetime">'a </span>+ ::std::clone::Clone,
+<a href=#155 id=155 data-nosnippet>155</a>                        MappingFn: <span class="lifetime">'a </span>+ Fn(Item) -&gt; MappedItem,
+<a href=#156 id=156 data-nosnippet>156</a>                        Psh: <span class="lifetime">'a </span>+ #root::dfir_pipes::push::Push&lt;Item, ()&gt;,
+<a href=#157 id=157 data-nosnippet>157</a>                        Lat: <span class="lifetime">'static </span>+ #root::lattices::Merge&lt;MappedItem&gt;,
+<a href=#158 id=158 data-nosnippet>158</a>                    {
+<a href=#159 id=159 data-nosnippet>159</a>                        #root::dfir_pipes::push::filter(<span class="kw">move </span>|item| {
+<a href=#160 id=160 data-nosnippet>160</a>                            #root::lattices::Merge::merge(state_ref, (mapfn)(::std::clone::Clone::clone(item)))
+<a href=#161 id=161 data-nosnippet>161</a>                        }, push)
+<a href=#162 id=162 data-nosnippet>162</a>                    }
+<a href=#163 id=163 data-nosnippet>163</a>                    check_output::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, #lattice_type&gt;(#output, #by_fn, <span class="kw-2">&amp;mut </span>#state_ident)
+<a href=#164 id=164 data-nosnippet>164</a>                };
+<a href=#165 id=165 data-nosnippet>165</a>            }
+<a href=#166 id=166 data-nosnippet>166</a>        } <span class="kw">else </span>{
+<a href=#167 id=167 data-nosnippet>167</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#168 id=168 data-nosnippet>168</a>                <span class="kw">let </span>#ident = {
+<a href=#169 id=169 data-nosnippet>169</a>                    <span class="kw">fn </span>check_output&lt;<span class="lifetime">'a</span>, Item, MappingFn, MappedItem, Lat&gt;(
+<a href=#170 id=170 data-nosnippet>170</a>                        state_ref: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="kw-2">mut </span>Lat,
+<a href=#171 id=171 data-nosnippet>171</a>                        mapfn: MappingFn,
+<a href=#172 id=172 data-nosnippet>172</a>                    ) -&gt; <span class="kw">impl </span><span class="lifetime">'a </span>+ #root::dfir_pipes::push::Push&lt;Item, ()&gt;
+<a href=#173 id=173 data-nosnippet>173</a>                    <span class="kw">where
+<a href=#174 id=174 data-nosnippet>174</a>                        </span>Item: <span class="lifetime">'a</span>,
+<a href=#175 id=175 data-nosnippet>175</a>                        MappedItem: <span class="lifetime">'a</span>,
+<a href=#176 id=176 data-nosnippet>176</a>                        MappingFn: <span class="lifetime">'a </span>+ Fn(Item) -&gt; MappedItem,
+<a href=#177 id=177 data-nosnippet>177</a>                        Lat: <span class="lifetime">'static </span>+ #root::lattices::Merge&lt;MappedItem&gt;,
+<a href=#178 id=178 data-nosnippet>178</a>                    {
+<a href=#179 id=179 data-nosnippet>179</a>                        #root::dfir_pipes::push::for_each(<span class="kw">move </span>|item| {
+<a href=#180 id=180 data-nosnippet>180</a>                            #root::lattices::Merge::merge(state_ref, (mapfn)(item));
+<a href=#181 id=181 data-nosnippet>181</a>                        })
+<a href=#182 id=182 data-nosnippet>182</a>                    }
+<a href=#183 id=183 data-nosnippet>183</a>                    check_output::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, #lattice_type&gt;(<span class="kw-2">&amp;mut </span>#state_ident, #by_fn)
+<a href=#184 id=184 data-nosnippet>184</a>                };
+<a href=#185 id=185 data-nosnippet>185</a>            }
+<a href=#186 id=186 data-nosnippet>186</a>        };
+<a href=#187 id=187 data-nosnippet>187</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#188 id=188 data-nosnippet>188</a>            write_prologue,
+<a href=#189 id=189 data-nosnippet>189</a>            write_iterator,
+<a href=#190 id=190 data-nosnippet>190</a>            write_tick_end,
+<a href=#191 id=191 data-nosnippet>191</a>            ..Default::default()
+<a href=#192 id=192 data-nosnippet>192</a>        })
+<a href=#193 id=193 data-nosnippet>193</a>    },
+<a href=#194 id=194 data-nosnippet>194</a>};
 </code></pre></div></section></main></body></html>

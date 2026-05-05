@@ -110,12 +110,12 @@
 <a href=#110 id=110 data-nosnippet>110</a>        <span class="kw">let </span>hashtable_ident = wc.make_ident(<span class="string">"hashtable"</span>);
 <a href=#111 id=111 data-nosnippet>111</a>
 <a href=#112 id=112 data-nosnippet>112</a>        <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#113 id=113 data-nosnippet>113</a>            <span class="kw">let </span>#singleton_output_ident = ::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::&lt;#( #generic_type_args ),<span class="kw-2">*</span>&gt;::default());
+<a href=#113 id=113 data-nosnippet>113</a>            <span class="kw">let </span><span class="kw-2">mut </span>#singleton_output_ident = #root::rustc_hash::FxHashMap::&lt;#( #generic_type_args ),<span class="kw-2">*</span>&gt;::default();
 <a href=#114 id=114 data-nosnippet>114</a>        };
 <a href=#115 id=115 data-nosnippet>115</a>
 <a href=#116 id=116 data-nosnippet>116</a>        <span class="kw">let </span>write_tick_end = <span class="kw">match </span>persistence {
 <a href=#117 id=117 data-nosnippet>117</a>            Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#118 id=118 data-nosnippet>118</a>                #singleton_output_ident.borrow_mut().clear();
+<a href=#118 id=118 data-nosnippet>118</a>                #singleton_output_ident.clear();
 <a href=#119 id=119 data-nosnippet>119</a>            },
 <a href=#120 id=120 data-nosnippet>120</a>            <span class="kw">_ </span>=&gt; Default::default(),
 <a href=#121 id=121 data-nosnippet>121</a>        };
@@ -154,7 +154,7 @@
 <a href=#154 id=154 data-nosnippet>154</a>            };
 <a href=#155 id=155 data-nosnippet>155</a>
 <a href=#156 id=156 data-nosnippet>156</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#157 id=157 data-nosnippet>157</a>                <span class="kw">let </span><span class="kw-2">mut </span>#hashtable_ident = #singleton_output_ident.borrow_mut();
+<a href=#157 id=157 data-nosnippet>157</a>                <span class="kw">let </span><span class="kw-2">mut </span>#hashtable_ident = <span class="kw-2">&amp;mut </span>#singleton_output_ident;
 <a href=#158 id=158 data-nosnippet>158</a>
 <a href=#159 id=159 data-nosnippet>159</a>                {
 <a href=#160 id=160 data-nosnippet>160</a>                    <span class="attr">#[inline(always)]
