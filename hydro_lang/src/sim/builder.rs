@@ -1541,15 +1541,93 @@ impl DfirBuilder for SimBuilder {
         location: &LocationId,
         in_ident: &syn::Ident,
         in_kind: &CollectionKind,
-        _commutativity_proven: bool,
+        commutativity_proven: bool,
         op_meta: &HydroIrOpMetadata,
     ) -> Option<syn::Ident> {
-        // Only emit a hook for top-level unbounded streams.
-        // In-tick folds don't need a separate fold hook because the StreamHook<NoOrder>
-        // already explores permutations of the batch before it enters the tick.
-        // - TotalOrder in-tick inputs have a determined order, no non-determinism to explore.
         if !location.is_top_level() {
-            return None;
+            // For in-tick folds with commutativity_proven on NoOrder input,
+            // emit an inline shuffle hook to permute elements before the fold.
+            if !commutativity_proven {
+                return None;
+            }
+
+            let element_type = match in_kind {
+                CollectionKind::Stream {
+                    order: StreamOrder::NoOrder,
+                    retry: StreamRetry::ExactlyOnce,
+                    element_type,
+                    ..
+                } => element_type.clone(),
+                _ => return None,
+            };
+
+            let (assume_location, line, caret) = location_for_op(op_meta);
+            let root = get_this_crate();
+
+            let tick_location = location;
+            let hoff_id = self.next_hoff_id;
+            self.next_hoff_id += 1;
+
+            let buffered_ident =
+                syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+            let hoff_send_ident =
+                syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+            let hoff_recv_ident =
+                syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+            let out_ident =
+                syn::Ident::new(&format!("__fold_hook_out_{hoff_id}"), Span::call_site());
+
+            self.add_extra_stmt_internal(tick_location.root(), syn::parse_quote! {
+                let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+            });
+
+            self.add_extra_stmt_internal(tick_location.root(), syn::parse_quote! {
+                let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident.into_inner()));
+            });
+
+            self.add_extra_stmt_internal(tick_location.root(), syn::parse_quote! {
+                let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(None));
+            });
+
+            self.add_inline_hook(
+                tick_location,
+                syn::parse_quote!(
+                    Box::new(#root::sim::runtime::StreamOrderHook::<_>::new(
+                        #buffered_ident.clone(),
+                        #hoff_send_ident,
+                        (#assume_location, #line, #caret),
+                        #root::__maybe_debug__!(#element_type),
+                    ))
+                ),
+            );
+
+            let builder = self.get_dfir_mut(tick_location);
+            builder.add_dfir(
+                parse_quote! {
+                    #out_ident = #in_ident -> fold::<'tick>(
+                        || ::std::vec::Vec::new(),
+                        |acc, v| {
+                            acc.push(v);
+                        }
+                    ) -> map(|v| {
+                        let #buffered_ident = #buffered_ident.clone();
+                        let #hoff_recv_ident = #hoff_recv_ident.clone();
+                        async move {
+                            fn force_matching_type<T>(a: &mut Option<::std::vec::Vec<T>>, b: ::std::vec::Vec<T>) -> ::std::vec::Vec<T> {
+                                b
+                            }
+
+                            let mut out_holder = Some(v);
+                            *#buffered_ident.borrow_mut() = out_holder.take();
+                            force_matching_type(&mut out_holder, #hoff_recv_ident.borrow_mut().recv().await.unwrap())
+                        }
+                    }) -> resolve_futures_blocking() -> flatten();
+                },
+                None,
+                None,
+            );
+
+            return Some(out_ident);
         }
 
         let (assume_location, line, caret) = location_for_op(op_meta);

@@ -629,10 +629,8 @@ fn sim_fold_catches_false_commutativity() {
     );
 }
 
-/// Documents that the simulator does NOT yet catch false commutativity for in-tick
-/// folds on NoOrder streams. The StreamHook<NoOrder> currently skips within-batch
-/// permutation. A follow-up PR will add full permutation to StreamHook<NoOrder>,
-/// which will enable catching this class of bugs.
+/// Verifies that the simulator catches false commutativity for in-tick folds on
+/// NoOrder streams by permuting the batch before it reaches the fold.
 ///
 /// Top-level folds ARE tested via cross-batch subset selection + permutation
 /// (see `sim_fold_catches_false_commutativity`).
@@ -669,11 +667,9 @@ fn sim_fold_in_tick_does_not_yet_catch_false_commutativity() {
         }
     });
 
-    // Currently "ba" is NOT observed because StreamHook<NoOrder> doesn't permute.
-    // A follow-up PR will add permutation to StreamHook<NoOrder> to fix this.
     assert!(
-        !final_values.contains("ba"),
-        "StreamHook<NoOrder> should not yet permute within a batch, got: {:?}",
+        final_values.contains("ab") && final_values.contains("ba"),
+        "Expected both \"ab\" and \"ba\" to be observed, got: {:?}",
         final_values
     );
 }

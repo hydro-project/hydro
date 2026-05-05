@@ -4083,6 +4083,33 @@ impl HydroNode {
                                             Some(&next_stmt_id.to_string()),
                                         );
                                     }
+                                } else if (matches!(node, HydroNode::Fold { commutativity_proven: true, .. })
+                                    || matches!(node, HydroNode::FoldKeyed { commutativity_proven: true, .. }))
+                                    && !node.metadata().location_id.is_top_level()
+                                    && graph_builders.singleton_intermediates()
+                                {
+                                    let (input_ref, commutativity_proven) = match &*node {
+                                        HydroNode::Fold { input, commutativity_proven, .. } => (input, *commutativity_proven),
+                                        HydroNode::FoldKeyed { input, commutativity_proven, .. } => (input, *commutativity_proven),
+                                        _ => unreachable!(),
+                                    };
+                                    let hooked_input_ident = graph_builders.emit_fold_hook(
+                                        &input_ref.metadata().location_id,
+                                        &input_ident,
+                                        &input_ref.metadata().collection_kind,
+                                        commutativity_proven,
+                                        &node.metadata().op,
+                                    );
+
+                                    let actual_input = hooked_input_ident.as_ref().unwrap_or(&input_ident);
+                                    let builder = graph_builders.get_dfir_mut(&out_location);
+                                    builder.add_dfir(
+                                        parse_quote! {
+                                            #fold_ident = #actual_input -> #operator::<#lifetime>(#init, #acc);
+                                        },
+                                        None,
+                                        Some(&next_stmt_id.to_string()),
+                                    );
                                 } else {
                                     let builder = graph_builders.get_dfir_mut(&out_location);
                                     builder.add_dfir(
