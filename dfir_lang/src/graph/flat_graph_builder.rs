@@ -793,37 +793,6 @@ impl FlatGraphBuilder {
                         "output",
                         &mut self.diagnostics,
                     );
-
-                    // Check that singleton references actually reference *stateful* operators.
-                    {
-                        let singletons_resolved =
-                            self.flat_graph.node_singleton_references(node_id);
-                        for (singleton_node_id, singleton_ident) in singletons_resolved
-                            .iter()
-                            .zip_eq(&*operator.singletons_referenced)
-                        {
-                            let &Some(singleton_node_id) = singleton_node_id else {
-                                // Error already emitted by `connect_operator_links`, "Cannot find referenced name...".
-                                continue;
-                            };
-                            let Some(ref_op_inst) = self.flat_graph.node_op_inst(singleton_node_id)
-                            else {
-                                // Error already emitted by `insert_node_op_insts_all`.
-                                continue;
-                            };
-                            let ref_op_constraints = ref_op_inst.op_constraints;
-                            if !ref_op_constraints.has_singleton_output {
-                                self.diagnostics.push(Diagnostic::spanned(
-                                    singleton_ident.span(),
-                                    Level::Error,
-                                    format!(
-                                        "Cannot reference operator `{}`. Only operators with singleton state can be referenced.",
-                                        ref_op_constraints.name,
-                                    ),
-                                ));
-                            }
-                        }
-                    }
                 }
                 GraphNode::Handoff { .. } => todo!("Node::Handoff"),
                 GraphNode::ModuleBoundary { .. } => {
