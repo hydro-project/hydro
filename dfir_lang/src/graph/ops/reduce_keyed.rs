@@ -73,10 +73,8 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                    op_span,
                    ident,
                    inputs,
-                   is_pull,
                    work_fn_async,
                    root,
-                   op_name,
                    op_inst:
                        OperatorInstance {
                            generics: OpInstGenerics { type_args, .. },
@@ -86,8 +84,6 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                    ..
                },
                diagnostics| {
-        assert!(is_pull, "TODO(mingwei): `{}` only supports pull.", op_name);
-
         let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let generic_type_args = [
