@@ -1,5 +1,3 @@
-use crate::graph::PortIndexValue;
-
 use super::{
     OperatorCategory, OperatorConstraints, RANGE_0, RANGE_1
 };
@@ -34,11 +32,6 @@ pub const CHAIN: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |idx| match idx {
-        PortIndexValue::Int(idx) if idx.value == 0 => {
-            None
-        }
-        _else => None,
-    },
+    input_delaytype_fn: |_| None,
     write_fn: super::union::UNION.write_fn,
 };

@@ -1,9 +1,9 @@
-use quote::{ToTokens, quote_spanned};
+use quote::quote_spanned;
 use syn::parse_quote;
 
 use super::{
     OperatorCategory, OperatorConstraints, OperatorInstance, OperatorWriteOutput,
-    PortIndexValue, RANGE_0, RANGE_1, WriteContextArgs,
+    RANGE_0, RANGE_1, WriteContextArgs,
 };
 
 /// > 2 input streams of the same type T, 1 output stream of type T
@@ -38,12 +38,7 @@ pub const DIFFERENCE: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: Some(|| super::PortListSpec::Fixed(parse_quote! { pos, neg })),
     ports_out: None,
-    input_delaytype_fn: |idx| match idx {
-        PortIndexValue::Path(path) if "neg" == path.to_token_stream().to_string() => {
-            None
-        }
-        _else => None,
-    },
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,

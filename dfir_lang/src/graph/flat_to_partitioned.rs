@@ -28,10 +28,7 @@ impl BarrierCrossers {
             .edge_barrier_crossers
             .iter()
             .map(|(edge_id, &_delay_type)| partitioned_graph.edge(edge_id));
-        let singleton_pairs_iter = self
-            .singleton_barrier_crossers
-            .iter()
-            .copied();
+        let singleton_pairs_iter = self.singleton_barrier_crossers.iter().copied();
         edge_pairs_iter.chain(singleton_pairs_iter)
     }
 
