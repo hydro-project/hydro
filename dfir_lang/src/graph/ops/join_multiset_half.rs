@@ -42,16 +42,16 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
         _else => None,
     },
     write_fn: |wc @ &WriteContextArgs {
-                    root,
-                    context,
-                    op_span,
-                    work_fn_async,
-                    ident,
-                    is_pull,
-                    inputs,
-                    ..
-                },
-                diagnostics| {
+                     root,
+                     context,
+                     op_span,
+                     work_fn_async,
+                     ident,
+                     is_pull,
+                     inputs,
+                     ..
+                 },
+                 diagnostics| {
         assert!(is_pull);
 
         let persistences: [_; 2] = wc.persistence_args_disallow_mutable(diagnostics);
@@ -76,13 +76,13 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
             let mut #build_ident: #root::rustc_hash::FxHashMap<_, ::std::vec::Vec<_>> = #root::rustc_hash::FxHashMap::default();
         };
 
-        let build_tick_end = match persistences[0] {
+        let write_tick_end_build = match persistences[0] {
             Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
                 #build_ident.clear();
             },
             _ => Default::default(),
         };
-        let probe_tick_end = if probe_persist {
+        let write_tick_end_probe = if probe_persist {
             match persistences[1] {
                 Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
                     #probe_ident.clear();
@@ -170,11 +170,11 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
                 #write_prologue_build
             },
             write_iterator,
+            write_iterator_after: Default::default(),
             write_tick_end: quote_spanned! {op_span=>
-                #build_tick_end
-                #probe_tick_end
+                #write_tick_end_build
+                #write_tick_end_probe
             },
-            ..Default::default()
         })
     },
 };

@@ -128,7 +128,6 @@ pub const CROSS_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                 #lhs_write_tick_end
                 #rhs_write_tick_end
             },
-            ..Default::default()
         })
     },
 };

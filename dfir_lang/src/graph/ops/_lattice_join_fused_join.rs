@@ -146,7 +146,6 @@ pub const _LATTICE_JOIN_FUSED_JOIN: OperatorConstraints = OperatorConstraints {
             write_iterator,
             write_iterator_after,
             write_tick_end,
-            ..Default::default()
         })
     },
 };

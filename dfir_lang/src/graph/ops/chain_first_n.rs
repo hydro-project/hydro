@@ -57,7 +57,6 @@ pub const CHAIN_FIRST_N: OperatorConstraints = OperatorConstraints {
 
         let OperatorWriteOutput {
             write_prologue,
-            write_prologue_after,
             write_iterator,
             write_iterator_after,
             write_tick_end,
@@ -72,7 +71,6 @@ pub const CHAIN_FIRST_N: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
-            write_prologue_after,
             write_iterator,
             write_iterator_after,
             write_tick_end,

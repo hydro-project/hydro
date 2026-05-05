@@ -175,11 +175,11 @@ pub const JOIN_FUSED: OperatorConstraints = OperatorConstraints {
                 #rhs_prologue
             },
             write_iterator,
+            write_iterator_after: Default::default(),
             write_tick_end: quote_spanned! {op_span=>
                 #lhs_tick_end
                 #rhs_tick_end
             },
-            ..Default::default()
         })
     },
 };
