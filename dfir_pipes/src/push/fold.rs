@@ -15,23 +15,23 @@ pin_project! {
     /// During `poll_finalize`, the accumulated value is taken and sent downstream,
     /// then the downstream is finalized.
     ///
-    /// `AccRef` is typically `&'a mut AccRef` — a mutable reference to externally-owned state.
+    /// `Accum` is typically `&'a mut Accum` — a mutable reference to externally-owned state.
     #[must_use = "`Push`es do nothing unless items are pushed into them"]
-    pub struct Fold<Next, AccRef, CombFn, Acc> {
+    pub struct Fold<Accum, CombFn, AccumInner, Next> {
         #[pin]
         next: Next,
-        acc_ref: AccRef,
+        accum: Option<Accum>,
         comb_fn: CombFn,
-        _phantom: PhantomData<Acc>,
+        _phantom: PhantomData<AccumInner>,
     }
 }
 
-impl<Next, AccRef, CombFn, Acc> Fold<Next, AccRef, CombFn, Acc> {
+impl<Accum, CombFn, AccumInner, Next> Fold<Accum, CombFn, AccumInner, Next> {
     /// Creates a new `Fold` push combinator with the given initial accumulator value.
-    pub const fn new(acc_ref: AccRef, comb_fn: CombFn, next: Next) -> Self {
+    pub const fn new(accum: Accum, comb_fn: CombFn, next: Next) -> Self {
         Self {
             next,
-            acc_ref,
+            accum: Some(accum),
             comb_fn,
             _phantom: PhantomData,
         }
@@ -39,12 +39,11 @@ impl<Next, AccRef, CombFn, Acc> Fold<Next, AccRef, CombFn, Acc> {
 }
 
 // TODO(mingwei): support arbitrary metadata.
-impl<Next, AccRef, CombFn, Acc, Item, Meta> Push<Item, Meta> for Fold<Next, AccRef, CombFn, Acc>
+impl<Accum, CombFn, AccumInner, Next, Item> Push<Item, ()> for Fold<Accum, CombFn, AccumInner, Next>
 where
-    Next: Push<AccRef, Meta>,
-    AccRef: BorrowMut<Acc>,
-    CombFn: FnMut(&mut Acc, Item),
-    Meta: Copy,
+    Next: Push<Accum, ()>,
+    Accum: BorrowMut<AccumInner>,
+    CombFn: FnMut(&mut AccumInner, Item),
 {
     type Ctx<'ctx> = Next::Ctx<'ctx>;
 
@@ -54,17 +53,21 @@ where
         PushStep::Done
     }
 
-    fn start_send(self: Pin<&mut Self>, item: Item, meta: Meta) {
+    fn start_send(self: Pin<&mut Self>, item: Item, _meta: ()) {
         let this = self.project();
-        (this.comb_fn)(this.acc_ref.borrow_mut(), item);
+        (this.comb_fn)(
+            this.accum.as_mut().expect("already finalized").borrow_mut(),
+            item,
+        );
     }
 
     fn poll_finalize(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         let mut this = self.project();
-        if this.acc_ref.is_some() {
+        if this.accum.is_some() {
             ready!(this.next.as_mut().poll_ready(ctx));
-            let value = this.acc.take().unwrap();
-            this.next.as_mut().start_send(value, ());
+            this.next
+                .as_mut()
+                .start_send(this.accum.take().unwrap(), ());
         }
         this.next.poll_finalize(ctx)
     }
@@ -86,7 +89,7 @@ mod tests {
     #[test]
     fn fold_emits_on_finalize() {
         let mut tp = TestPush::no_pend();
-        let mut f = crate::push::fold(0i32, |acc, x| *acc += x, &mut tp);
+        let mut f = crate::push::fold(0i32, |accum, x| *accum += x, &mut tp);
         let mut f = Pin::new(&mut f);
         f.as_mut().poll_ready(&mut ());
         f.as_mut().start_send(1, ());
@@ -101,7 +104,7 @@ mod tests {
     #[test]
     fn fold_emits_initial_when_no_items() {
         let mut tp = TestPush::no_pend();
-        let mut f = crate::push::fold(0i32, |acc, x: i32| *acc += x, &mut tp);
+        let mut f = crate::push::fold(0i32, |accum, x: i32| *accum += x, &mut tp);
         let mut f = Pin::new(&mut f);
         f.as_mut().poll_finalize(&mut ());
         assert_eq!(tp.items(), vec![0]);
@@ -110,7 +113,7 @@ mod tests {
     #[test]
     fn fold_poll_ready_before_send_on_finalize() {
         let mut tp: TestPush<i32, Yes, true> = TestPush::new_fused([PushStep::pending()], []);
-        let mut f = crate::push::fold(0i32, |acc, x| *acc += x, &mut tp);
+        let mut f = crate::push::fold(0i32, |accum, x| *accum += x, &mut tp);
         let mut f = Pin::new(&mut f);
         f.as_mut().poll_ready(&mut ());
         f.as_mut().start_send(5, ());

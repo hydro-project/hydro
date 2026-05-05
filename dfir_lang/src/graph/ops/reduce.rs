@@ -52,6 +52,7 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
                    work_fn_async,
                    ident,
                    inputs,
+                   outputs,
                    is_pull,
                    arguments,
                    ..
@@ -117,14 +118,26 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
                     )
                 );
             }
-        } else {
-            // Is only push when used as a singleton, so no need to push to `outputs[0]`.
+        } else if outputs.is_empty() {
+            // Terminal push: reduce is a singleton reference target with no downstream.
             quote_spanned! {op_span=>
                 let #ident = #root::dfir_pipes::push::for_each(|#item_ident| {
                     #assign_accum_ident
 
                     #foreach_body
                 });
+            }
+        } else {
+            let output = &outputs[0];
+            quote_spanned! {op_span=>
+                let #ident = #root::dfir_pipes::push::Reduce::new(
+                    &mut #singleton_output_ident,
+                    |#accumulator_ident: &mut _, #item_ident| {
+                        #[allow(clippy::redundant_closure_call)]
+                        (#func)(#accumulator_ident, #item_ident);
+                    },
+                    #output,
+                );
             }
         };
 
