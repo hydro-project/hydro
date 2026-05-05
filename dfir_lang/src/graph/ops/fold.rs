@@ -50,7 +50,6 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| Some(DelayType::Stratum),
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
                    op_span,
                    work_fn,
                    work_fn_async,
@@ -139,18 +138,9 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
             }
         };
 
-        let write_iterator_after = if let Persistence::Static | Persistence::Tick = persistence {
-            quote_spanned! {op_span=>
-                #context.schedule_subgraph(#context.current_subgraph(), false);
-            }
-        } else {
-            Default::default()
-        };
-
         Ok(OperatorWriteOutput {
             write_prologue,
             write_iterator,
-            write_iterator_after,
             write_tick_end,
             ..Default::default()
         })

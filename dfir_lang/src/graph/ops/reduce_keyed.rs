@@ -193,18 +193,9 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
             }
         };
 
-        let write_iterator_after = match persistence {
-            Persistence::None | Persistence::Tick | Persistence::Loop => Default::default(),
-            Persistence::Static | Persistence::Mutable => quote_spanned! {op_span=>
-                // Reschedule the subgraph lazily to ensure replay on later ticks.
-                #context.schedule_subgraph(#context.current_subgraph(), false);
-            },
-        };
-
         Ok(OperatorWriteOutput {
             write_prologue,
             write_iterator,
-            write_iterator_after,
             write_tick_end,
             ..Default::default()
         })
