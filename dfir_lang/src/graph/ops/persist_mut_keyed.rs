@@ -1,7 +1,7 @@
 use quote::quote_spanned;
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
     OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
@@ -42,10 +42,9 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::Stratum),
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
                    op_span,
                    work_fn_async,
                    ident,
@@ -96,7 +95,7 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
                         prev
                     }
 
-                    let iter = if #context.is_first_run_this_tick() {
+                    let iter = {
                         let fut = #root::dfir_pipes::pull::Pull::for_each(check_pull(#input), |item| {
                             match item {
                                 #root::util::PersistenceKeyed::Persist(k, v) => {
@@ -111,15 +110,9 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
 
                         #[allow(clippy::clone_on_copy)]
                         #[allow(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
-                        Some(
-                            #persistdata_ident
-                                .iter()
-                                .flat_map(|(k, v)| v.iter().map(move |v| (k.clone(), v.clone())))
-                        )
-                        .into_iter()
-                        .flatten()
-                    } else {
-                        None.into_iter().flatten()
+                        #persistdata_ident
+                            .iter()
+                            .flat_map(|(k, v)| v.iter().map(move |v| (k.clone(), v.clone())))
                     };
                     #root::dfir_pipes::pull::iter(iter)
                 };

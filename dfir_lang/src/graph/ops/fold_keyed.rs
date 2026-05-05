@@ -1,7 +1,7 @@
 use quote::{ToTokens, quote_spanned};
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
     OperatorWriteOutput, Persistence, RANGE_1, WriteContextArgs,
 };
 
@@ -80,9 +80,8 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::Stratum),
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
-                   context,
                    op_span,
                    work_fn_async,
                    ident,
@@ -202,13 +201,8 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                     )
                 },
                 Persistence::Static => quote_spanned! {op_span=>
-                    // Play everything but only on the first run of this tick/stratum.
-                    // (We know we won't have any more inputs, so it is fine to only play once.
-                    // Because of the `DelayType::Stratum` or `DelayType::MonotoneAccum`).
-                    #context.is_first_run_this_tick()
-                        .then_some(#hashtable_ident.iter())
-                        .into_iter()
-                        .flatten()
+                    // Play everything (each subgraph runs exactly once per tick).
+                    #hashtable_ident.iter()
                         .map(
                             #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
                             |(k, v)| (

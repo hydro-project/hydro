@@ -1,7 +1,7 @@
 use quote::quote_spanned;
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
     OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
 use crate::diagnostic::{Diagnostic, Level};
@@ -42,10 +42,9 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::Stratum),
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
                    op_span,
                    work_fn_async,
                    ident,
@@ -95,7 +94,7 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
                         prev
                     }
 
-                    let iter = if #context.is_first_run_this_tick() {
+                    let iter = {
                         let fut = #root::dfir_pipes::pull::Pull::for_each(check_pull(#input), |item| {
                             match item {
                                 #root::util::Persistence::Persist(v) => #persistdata_ident.push(v),
@@ -104,9 +103,7 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
                         });
                         let () = #work_fn_async(fut).await;
 
-                        Some(#persistdata_ident.iter().cloned()).into_iter().flatten()
-                    } else {
-                        None.into_iter().flatten()
+                        #persistdata_ident.iter().cloned()
                     };
                     #root::dfir_pipes::pull::iter(iter)
                 };

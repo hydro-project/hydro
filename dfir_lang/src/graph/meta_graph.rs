@@ -1769,7 +1769,7 @@ impl DfirGraph {
                     .copied()
                     .flatten()
                 {
-                    let delay_type = Some(DelayType::Stratum);
+                    let delay_type = None;
                     let label = None;
                     graph_write.write_edge(src_ref_id, dst_id, delay_type, label, true)?;
                 }

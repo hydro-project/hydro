@@ -2,7 +2,7 @@ use quote::{ToTokens, quote_spanned};
 use syn::parse_quote;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, PortIndexValue, RANGE_0,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, PortIndexValue, RANGE_0,
     RANGE_1, WriteContextArgs,
 };
 use crate::graph::ops::Persistence;
@@ -37,13 +37,12 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |idx| match idx {
         PortIndexValue::Path(path) if "build" == path.to_token_stream().to_string() => {
-            Some(DelayType::Stratum)
+            None
         }
         _else => None,
     },
     write_fn: |wc @ &WriteContextArgs {
                      root,
-                     context,
                      op_span,
                      work_fn_async,
                      ident,
@@ -137,12 +136,6 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
                 let #ident = {
                     #accum_build
 
-                    let replay_idx = if #context.is_first_run_this_tick() {
-                        0
-                    } else {
-                        #probe_ident.len()
-                    };
-
                     // Accum into probe vec
                     let fut = #root::dfir_pipes::pull::Pull::for_each(#input_probe, |kv| {
                         #probe_ident.push(kv);
@@ -151,7 +144,7 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
 
                     // Replay out of probe vec
                     #[allow(clippy::clone_on_copy, noop_method_call)]
-                    let iter = #probe_ident[replay_idx..].iter().flat_map(|(k, v_probe)| {
+                    let iter = #probe_ident[..].iter().flat_map(|(k, v_probe)| {
                         #build_ident
                             .get(k)
                             .map(|vals: &::std::vec::Vec<_>| {

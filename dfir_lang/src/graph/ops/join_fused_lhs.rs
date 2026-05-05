@@ -3,7 +3,7 @@ use syn::parse_quote;
 
 use super::join_fused::make_joindata;
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence,
     PortIndexValue, RANGE_0, RANGE_1, WriteContextArgs,
 };
 
@@ -39,13 +39,12 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |idx| match idx {
         PortIndexValue::Int(path) if "0" == path.to_token_stream().to_string() => {
-            Some(DelayType::Stratum)
+            None
         }
         _ => None,
     },
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
                    op_span,
                    work_fn_async,
                    ident,
@@ -101,13 +100,6 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                         #root::dfir_pipes::pull::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs),
                     ).await;
 
-                    // RHS replay index.
-                    let replay_idx = if #context.is_first_run_this_tick() {
-                        0
-                    } else {
-                        #rhs_borrow_ident.len()
-                    };
-
                     // Accumulate RHS.
                     let () = #work_fn_async(
                         #root::dfir_pipes::pull::Pull::for_each(#rhs, |kv| {
@@ -118,7 +110,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
 
                     #[allow(clippy::clone_on_copy)]
                     #[allow(suspicious_double_ref_op)]
-                    let iter = #rhs_borrow_ident[replay_idx..]
+                    let iter = #rhs_borrow_ident[..]
                         .iter()
                         .filter_map(|(k, v2)| #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))));
                     #root::dfir_pipes::pull::iter(iter)

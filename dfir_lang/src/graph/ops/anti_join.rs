@@ -2,7 +2,7 @@ use quote::{ToTokens, quote_spanned};
 use syn::parse_quote;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, PortIndexValue, RANGE_0,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, PortIndexValue, RANGE_0,
     RANGE_1, WriteContextArgs,
 };
 use crate::graph::ops::Persistence;
@@ -39,13 +39,12 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |idx| match idx {
         PortIndexValue::Path(path) if "neg" == path.to_token_stream().to_string() => {
-            Some(DelayType::Stratum)
+            None
         }
         _else => None,
     },
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
                    op_span,
                    work_fn_async,
                    ident,
@@ -118,12 +117,6 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                 let #ident = {
                     #accum_neg
 
-                    let replay_idx = if #context.is_first_run_this_tick() {
-                        0
-                    } else {
-                        #pos_ident.len()
-                    };
-
                     // Accum into pos vec
                     let fut = #root::dfir_pipes::pull::Pull::for_each(#input_pos, |kv| {
                         #pos_ident.push(kv);
@@ -131,7 +124,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                     let () = #work_fn_async(fut).await;
 
                     // Replay out of pos vec
-                    let iter = #pos_ident[replay_idx..].iter();
+                    let iter = #pos_ident[..].iter();
                     let iter = ::std::iter::Iterator::filter(iter, |(k, _)| {
                         !#neg_ident.contains(k)
                     });

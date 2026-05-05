@@ -1,7 +1,7 @@
 use quote::quote_spanned;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
     RANGE_1, WriteContextArgs,
 };
 
@@ -29,7 +29,7 @@ pub const FOLD_NO_REPLAY: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::Stratum),
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    context,
@@ -106,7 +106,7 @@ pub const FOLD_NO_REPLAY: OperatorConstraints = OperatorConstraints {
                     let () = #work_fn_async(__fut).await;
                 }
 
-                let #ident = if __was_updated || (#context.current_tick().0 == 0 && #context.is_first_run_this_tick()) {
+                let #ident = if __was_updated || #context.current_tick().0 == 0 {
                     #work_fn(
                         || #root::dfir_pipes::pull::iter(
                             ::std::option::Option::Some(::std::clone::Clone::clone(&*#accumulator_ident))

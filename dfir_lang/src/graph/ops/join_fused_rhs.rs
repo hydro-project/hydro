@@ -2,7 +2,7 @@ use quote::{ToTokens, quote_spanned};
 use syn::parse_quote;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, PortIndexValue, RANGE_0,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, PortIndexValue, RANGE_0,
     RANGE_1, WriteContextArgs,
 };
 
@@ -26,7 +26,7 @@ pub const JOIN_FUSED_RHS: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |idx| match idx {
         PortIndexValue::Int(path) if "1" == path.to_token_stream().to_string() => {
-            Some(DelayType::Stratum)
+            None
         }
         _ => None,
     },
