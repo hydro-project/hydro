@@ -9,25 +9,23 @@ pin_project! {
     /// Push combinator that reduces all items into a single value, then emits
     /// it downstream on flush. If no items were received, nothing is emitted.
     ///
-    /// During `start_send`, items are reduced into the accumulator.
-    /// During `poll_flush`, the accumulated value (if any) is sent downstream.
+    /// `AccRef` is typically `&'a mut Option<Item>` — a mutable reference to externally-owned state.
     #[must_use = "`Push`es do nothing unless items are pushed into them"]
-    #[derive(Clone, Debug)]
-    pub struct Reduce<Acc, ReduceFn, Next> {
+    pub struct Reduce<AccRef, ReduceFn, Next> {
         #[pin]
         next: Next,
-        acc: Option<Acc>,
+        acc: AccRef,
         reduce_fn: ReduceFn,
         flushed: bool,
     }
 }
 
-impl<Acc, ReduceFn, Next> Reduce<Acc, ReduceFn, Next> {
+impl<AccRef, ReduceFn, Next> Reduce<AccRef, ReduceFn, Next> {
     /// Creates a new `Reduce` push combinator.
-    pub const fn new(reduce_fn: ReduceFn, next: Next) -> Self {
+    pub const fn new(acc: AccRef, reduce_fn: ReduceFn, next: Next) -> Self {
         Self {
             next,
-            acc: None,
+            acc,
             reduce_fn,
             flushed: false,
         }
@@ -35,11 +33,11 @@ impl<Acc, ReduceFn, Next> Reduce<Acc, ReduceFn, Next> {
 }
 
 // TODO(mingwei): support arbitrary metadata.
-impl<Acc, ReduceFn, Next> Push<Acc, ()> for Reduce<Acc, ReduceFn, Next>
+impl<Item, ReduceFn, Next> Push<Item, ()> for Reduce<&mut Option<Item>, ReduceFn, Next>
 where
-    Acc: Clone,
-    ReduceFn: FnMut(&mut Acc, Acc),
-    Next: Push<Acc, ()>,
+    Item: Clone,
+    ReduceFn: FnMut(&mut Item, Item),
+    Next: Push<Item, ()>,
 {
     type Ctx<'ctx> = Next::Ctx<'ctx>;
 
@@ -49,11 +47,11 @@ where
         PushStep::Done
     }
 
-    fn start_send(self: Pin<&mut Self>, item: Acc, _meta: ()) {
+    fn start_send(self: Pin<&mut Self>, item: Item, _meta: ()) {
         let this = self.project();
         match this.acc {
             Some(acc) => (this.reduce_fn)(acc, item),
-            None => *this.acc = Some(item),
+            None => **this.acc = Some(item),
         }
         *this.flushed = false;
     }
