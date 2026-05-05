@@ -1,7 +1,6 @@
 use quote::quote_spanned;
 
 use crate::graph::{
-    PortIndexValue,
     ops::{OperatorWriteOutput, WriteContextArgs},
 };
 
@@ -37,13 +36,7 @@ pub const CHAIN_FIRST_N: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |idx| match idx {
-        PortIndexValue::Int(idx) if idx.value == 0 => {
-            // will no longer be needed once subgraphs are always DAGs (only run once per tick)
-            None
-        }
-        _else => None,
-    },
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
