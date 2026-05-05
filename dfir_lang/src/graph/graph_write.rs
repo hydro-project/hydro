@@ -182,7 +182,6 @@ where
             arrow_body = "--",
             arrow_head = match delay_type {
                 None => ">",
-                Some(DelayType::Stratum) => "x",
                 Some(DelayType::Tick | DelayType::TickLazy) => "o",
             },
             label = if let Some(label) = &label {
@@ -200,7 +199,7 @@ where
                 "; linkStyle {} stroke:{}",
                 self.link_count,
                 match delay_type {
-                    DelayType::Stratum | DelayType::Tick | DelayType::TickLazy => "red",
+                    DelayType::Tick | DelayType::TickLazy => "red",
                 }
             )?;
         }

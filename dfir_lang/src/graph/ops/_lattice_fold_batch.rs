@@ -2,7 +2,7 @@ use quote::{quote_spanned, ToTokens};
 use syn::parse_quote;
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
     OperatorWriteOutput, PortListSpec, WriteContextArgs, RANGE_0, RANGE_1,
 };
 
@@ -46,7 +46,7 @@ pub const _LATTICE_FOLD_BATCH: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: Some(|| PortListSpec::Fixed(parse_quote! { input, signal })),
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::MonotoneAccum),
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    ident,
                    op_span,

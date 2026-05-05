@@ -15,26 +15,23 @@ use crate::union_find::UnionFind;
 struct BarrierCrossers {
     /// Edge barrier crossers, including what type.
     pub edge_barrier_crossers: SecondaryMap<GraphEdgeId, DelayType>,
-    /// Singleton reference barrier crossers, considered to be [`DelayType::Stratum`].
+    /// Singleton reference barrier crossers — force subgraph boundaries.
     pub singleton_barrier_crossers: Vec<(GraphNodeId, GraphNodeId)>,
 }
 impl BarrierCrossers {
-    /// Iterate pairs of nodes that are across a barrier. Excludes `DelayType::NextIteration` pairs.
+    /// Iterate pairs of nodes that are across a barrier (subgraph boundary or tick boundary).
     fn iter_node_pairs<'a>(
         &'a self,
         partitioned_graph: &'a DfirGraph,
-    ) -> impl 'a + Iterator<Item = ((GraphNodeId, GraphNodeId), DelayType)> {
+    ) -> impl 'a + Iterator<Item = (GraphNodeId, GraphNodeId)> {
         let edge_pairs_iter = self
             .edge_barrier_crossers
             .iter()
-            .map(|(edge_id, &delay_type)| {
-                let src_dst = partitioned_graph.edge(edge_id);
-                (src_dst, delay_type)
-            });
+            .map(|(edge_id, &_delay_type)| partitioned_graph.edge(edge_id));
         let singleton_pairs_iter = self
             .singleton_barrier_crossers
             .iter()
-            .map(|&src_dst| (src_dst, DelayType::Stratum));
+            .copied();
         edge_pairs_iter.chain(singleton_pairs_iter)
     }
 
@@ -122,7 +119,7 @@ fn find_subgraph_unionfind(
             // Do not connect stratum crossers (next edges).
             if barrier_crossers
                 .iter_node_pairs(partitioned_graph)
-                .any(|((x_src, x_dst), _)| {
+                .any(|(x_src, x_dst)| {
                     (subgraph_unionfind.same_set(x_src, src)
                         && subgraph_unionfind.same_set(x_dst, dst))
                         || (subgraph_unionfind.same_set(x_src, dst)

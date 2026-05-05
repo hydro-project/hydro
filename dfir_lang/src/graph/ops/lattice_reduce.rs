@@ -2,7 +2,7 @@ use quote::quote_spanned;
 use syn::parse_quote_spanned;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
     WriteContextArgs,
 };
 
@@ -44,7 +44,7 @@ pub const LATTICE_REDUCE: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::MonotoneAccum),
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    inputs,

@@ -2,7 +2,7 @@ use quote::{ToTokens, quote_spanned};
 use syn::parse_quote;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, PortIndexValue, RANGE_0,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, PortIndexValue, RANGE_0,
     RANGE_1, WriteContextArgs,
 };
 use crate::graph::ops::Persistence;
@@ -40,7 +40,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |idx| match idx {
         PortIndexValue::Path(path) if "neg" == path.to_token_stream().to_string() => {
-            Some(DelayType::Stratum)
+            None
         }
         _else => None,
     },

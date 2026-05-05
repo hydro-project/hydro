@@ -3,7 +3,7 @@ use syn::parse_quote;
 
 use super::join_fused::make_joindata;
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence,
     PortIndexValue, RANGE_0, RANGE_1, WriteContextArgs,
 };
 
@@ -40,7 +40,7 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |idx| match idx {
         PortIndexValue::Int(path) if "0" == path.to_token_stream().to_string() => {
-            Some(DelayType::Stratum)
+            None
         }
         _ => None,
     },
