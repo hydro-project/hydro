@@ -32,6 +32,7 @@ pub const MAP: OperatorConstraints = OperatorConstraints {
     type_args: RANGE_0,
     is_external_input: false,
     has_singleton_output: false,
+    preserves_singleton: true,
     flo_type: None,
     ports_inn: None,
     ports_out: None,

@@ -34,6 +34,7 @@ pub const DEFER_SIGNAL: OperatorConstraints = OperatorConstraints {
     num_args: 0,
     is_external_input: false,
     has_singleton_output: false,
+    preserves_singleton: false,
     flo_type: None,
     ports_inn: Some(|| super::PortListSpec::Fixed(parse_quote! { input, signal })),
     ports_out: None,

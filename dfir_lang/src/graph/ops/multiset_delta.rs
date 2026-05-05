@@ -45,6 +45,7 @@ pub const MULTISET_DELTA: OperatorConstraints = OperatorConstraints {
     // https://github.com/hydro-project/hydro/issues/1298
     // If `'tick` lifetimes are added.
     has_singleton_output: false,
+    preserves_singleton: false,
     flo_type: None,
     ports_inn: None,
     ports_out: None,

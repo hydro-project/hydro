@@ -20,6 +20,7 @@ pub const PREFIX: OperatorConstraints = OperatorConstraints {
     type_args: RANGE_0,
     is_external_input: false,
     has_singleton_output: true,
+    preserves_singleton: false,
     flo_type: Some(FloType::Windowing),
     ports_inn: None,
     ports_out: None,

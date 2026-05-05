@@ -72,6 +72,9 @@ pub struct OperatorConstraints {
     /// If true, [`WriteContextArgs::singleton_output_ident`] will be set to a meaningful value in
     /// the [`Self::write_fn`] invocation.
     pub has_singleton_output: bool,
+    /// If this operator preserves singleton cardinality: when the input is a single item,
+    /// the output is also a single item. Examples: `map`, `inspect`. Counter-examples: `flat_map`, `flatten`.
+    pub preserves_singleton: bool,
     /// Flo semantics type.
     pub flo_type: Option<FloType>,
 

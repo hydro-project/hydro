@@ -21,6 +21,7 @@ pub const JOIN_FUSED_RHS: OperatorConstraints = OperatorConstraints {
     type_args: RANGE_0,
     is_external_input: false,
     has_singleton_output: false,
+    preserves_singleton: false,
     flo_type: None,
     ports_inn: Some(|| super::PortListSpec::Fixed(parse_quote! { 0, 1 })),
     ports_out: None,

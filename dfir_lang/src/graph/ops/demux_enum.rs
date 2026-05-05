@@ -52,6 +52,7 @@ pub const DEMUX_ENUM: OperatorConstraints = OperatorConstraints {
     type_args: RANGE_1,
     is_external_input: false,
     has_singleton_output: false,
+    preserves_singleton: false,
     flo_type: None,
     ports_inn: None,
     ports_out: Some(|| PortListSpec::Variadic),

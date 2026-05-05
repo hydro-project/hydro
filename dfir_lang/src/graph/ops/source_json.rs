@@ -27,6 +27,7 @@ pub const SOURCE_JSON: OperatorConstraints = OperatorConstraints {
     type_args: &(0..=1),
     is_external_input: true,
     has_singleton_output: false,
+    preserves_singleton: false,
     flo_type: Some(FloType::Source),
     ports_inn: None,
     ports_out: None,
