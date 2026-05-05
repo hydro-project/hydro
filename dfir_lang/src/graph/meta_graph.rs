@@ -1416,8 +1416,10 @@ impl DfirGraph {
                             .span()
                             .join(push_ident.span())
                             .unwrap_or_else(|| push_ident.span());
-                        let pivot_fn_ident =
-                            Ident::new(&format!("pivot_run_sg_{:?}", subgraph_id.0), pivot_span);
+                        let pivot_fn_ident = Ident::new(
+                            &format!("pivot_run_sg_{:?}", subgraph_id.data()),
+                            pivot_span,
+                        );
                         let root = change_spans(root.clone(), pivot_span);
                         subgraph_op_iter_code.push(quote_spanned! {pivot_span=>
                             #[inline(always)]

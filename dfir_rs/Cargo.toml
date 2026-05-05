@@ -14,7 +14,7 @@ workspace = true
 [features]
 default = [ "macros", "debugging", "meta" ]
 
-meta = [ ]
+meta = [ "dfir_lang/codegen" ]
 macros = [ "dfir_macro" ]
 dfir_macro = [ "dep:dfir_macro" ]
 debugging = [ "dfir_lang/debugging" ]
@@ -28,7 +28,7 @@ name = "kvs_bench"
 [dependencies]
 bincode = "1.3.1"
 bytes = "1.1.0"
-dfir_lang = { path = "../dfir_lang", version = "^0.16.0" }
+dfir_lang = { path = "../dfir_lang", version = "^0.16.0", default-features = false }
 dfir_macro = { optional = true, path = "../dfir_macro", version = "^0.16.0" }
 dfir_pipes = { path = "../dfir_pipes", version = "^0.0.1" }
 futures = "0.3.0"

@@ -5,7 +5,7 @@ use std::pin::Pin;
 use std::rc::Rc;
 use std::task::{Context, Poll};
 
-use dfir_lang::graph::{GraphNodeId, GraphSubgraphId};
+use dfir_lang::graph_ids::{GraphNodeId, GraphSubgraphId};
 use pin_project_lite::pin_project;
 use slotmap::SecondaryMap;
 use web_time::{Duration, Instant};
@@ -221,7 +221,7 @@ where
 
 #[cfg(test)]
 mod test {
-    use dfir_lang::graph::{GraphNodeId, GraphSubgraphId};
+    use dfir_lang::graph_ids::{GraphNodeId, GraphSubgraphId};
     use slotmap::SlotMap;
 
     use super::*;
