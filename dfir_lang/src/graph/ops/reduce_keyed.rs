@@ -1,7 +1,7 @@
 use quote::{ToTokens, quote_spanned};
 
 use super::{
-    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
     OperatorWriteOutput, Persistence, RANGE_1, WriteContextArgs,
 };
 
@@ -68,11 +68,13 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::Stratum),
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    op_span,
                    ident,
                    inputs,
+                   outputs,
+                   is_pull,
                    work_fn_async,
                    root,
                    op_inst:
@@ -114,7 +116,16 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
             _ => Default::default(),
         };
 
-        let write_iterator = {
+        let write_iterator = if !is_pull {
+            let output = &outputs[0];
+            quote_spanned! {op_span=>
+                let #ident = #root::dfir_pipes::push::ReduceKeyed::new(
+                    &mut #singleton_output_ident,
+                    #aggfn,
+                    #output,
+                );
+            }
+        } else {
             let iter_expr = match persistence {
                 Persistence::None | Persistence::Tick => quote_spanned! {op_span=>
                     #hashtable_ident.drain()
