@@ -498,6 +498,17 @@ pub trait DfirBuilder {
     ) -> Option<syn::Ident> {
         None
     }
+
+    /// Register a fold output ident as being controlled by a fold hook.
+    /// When this ident is later batched as a Singleton, the batch can skip the SingletonHook.
+    #[expect(unused_variables, reason = "default impl ignores all params")]
+    fn register_fold_hooked_output(&mut self, fold_output_ident: &syn::Ident) {}
+
+    /// Check if an ident is a fold-hooked output (controlled by a TopLevelFoldHook).
+    #[expect(unused_variables, reason = "default impl ignores all params")]
+    fn is_fold_hooked_output(&self, ident: &syn::Ident) -> bool {
+        false
+    }
 }
 
 #[cfg(feature = "build")]
@@ -3143,6 +3154,9 @@ impl HydroNode {
 
                             match builders_or_callback {
                                 BuildersOrCallback::Builders(graph_builders) => {
+                                    if graph_builders.is_fold_hooked_output(&inner_ident) {
+                                        graph_builders.register_fold_hooked_output(&tee_ident);
+                                    }
                                     let builder = graph_builders.get_dfir_mut(&out_location);
                                     builder.add_dfir(
                                         parse_quote! {
@@ -3955,27 +3969,56 @@ impl HydroNode {
                                         &input.metadata().collection_kind,
                                         *commutativity_proven,
                                         &node.metadata().op,
-                                    ).unwrap_or(input_ident);
+                                    );
 
                                     let builder = graph_builders.get_dfir_mut(&out_location);
 
-                                    let acc: syn::Expr = parse_quote!({
-                                        let mut __inner = #acc;
-                                        move |__state, __value| {
-                                            __inner(__state, __value);
-                                            Some(__state.clone())
-                                        }
-                                    });
+                                    if let Some(hooked_input_ident) = hooked_input_ident {
+                                        // Fold hook emitted: input is Vec<T> batches
+                                        let acc: syn::Expr = parse_quote!({
+                                            let mut __inner = #acc;
+                                            move |__state, __batch: Vec<_>| {
+                                                if __batch.is_empty() {
+                                                    return None;
+                                                }
+                                                for __value in __batch {
+                                                    __inner(__state, __value);
+                                                }
+                                                Some(__state.clone())
+                                            }
+                                        });
 
-                                    builder.add_dfir(
-                                        parse_quote! {
-                                            source_iter([(#init)()]) -> [0]#fold_ident;
-                                            #hooked_input_ident -> scan::<#lifetime>(#init, #acc) -> [1]#fold_ident;
-                                            #fold_ident = chain();
-                                        },
-                                        None,
-                                        Some(&next_stmt_id.to_string()),
-                                    );
+                                        builder.add_dfir(
+                                            parse_quote! {
+                                                source_iter([(#init)()]) -> [0]#fold_ident;
+                                                #hooked_input_ident -> scan::<#lifetime>(#init, #acc) -> [1]#fold_ident;
+                                                #fold_ident = chain();
+                                            },
+                                            None,
+                                            Some(&next_stmt_id.to_string()),
+                                        );
+
+                                        graph_builders.register_fold_hooked_output(&fold_ident);
+                                    } else {
+                                        // No fold hook: input is individual elements
+                                        let acc: syn::Expr = parse_quote!({
+                                            let mut __inner = #acc;
+                                            move |__state, __value| {
+                                                __inner(__state, __value);
+                                                Some(__state.clone())
+                                            }
+                                        });
+
+                                        builder.add_dfir(
+                                            parse_quote! {
+                                                source_iter([(#init)()]) -> [0]#fold_ident;
+                                                #input_ident -> scan::<#lifetime>(#init, #acc) -> [1]#fold_ident;
+                                                #fold_ident = chain();
+                                            },
+                                            None,
+                                            Some(&next_stmt_id.to_string()),
+                                        );
+                                    }
                                 } else if matches!(node, HydroNode::FoldKeyed { .. })
                                     && node.metadata().location_id.is_top_level()
                                     && !(matches!(node.metadata().location_id, LocationId::Atomic(_)))
@@ -3989,29 +4032,57 @@ impl HydroNode {
                                         &input.metadata().collection_kind,
                                         *commutativity_proven,
                                         &node.metadata().op,
-                                    ).unwrap_or(input_ident);
+                                    );
                                     let builder = graph_builders.get_dfir_mut(&out_location);
 
-                                    let acc: syn::Expr = parse_quote!({
-                                        let mut __init = #init;
-                                        let mut __inner = #acc;
-                                        move |__state, __kv: (_, _)| {
-                                            // TODO(shadaj): we can avoid the clone when the entry exists
-                                            let __state = __state
-                                                .entry(::std::clone::Clone::clone(&__kv.0))
-                                                .or_insert_with(|| (__init)());
-                                            __inner(__state, __kv.1);
-                                            Some((__kv.0, ::std::clone::Clone::clone(&*__state)))
-                                        }
-                                    });
+                                    if let Some(hooked_input_ident) = hooked_input_ident {
+                                        // Fold hook emitted: input is Vec<(K, V)> batches.
+                                        // Flatten and process per-element to emit per-key updates.
+                                        let acc: syn::Expr = parse_quote!({
+                                            let mut __init = #init;
+                                            let mut __inner = #acc;
+                                            move |__state, __kv: (_, _)| {
+                                                // TODO(shadaj): we can avoid the clone when the entry exists
+                                                let __state = __state
+                                                    .entry(::std::clone::Clone::clone(&__kv.0))
+                                                    .or_insert_with(|| (__init)());
+                                                __inner(__state, __kv.1);
+                                                Some((__kv.0, ::std::clone::Clone::clone(&*__state)))
+                                            }
+                                        });
 
-                                    builder.add_dfir(
-                                        parse_quote! {
-                                            #fold_ident = #hooked_input_ident -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #acc);
-                                        },
-                                        None,
-                                        Some(&next_stmt_id.to_string()),
-                                    );
+                                        builder.add_dfir(
+                                            parse_quote! {
+                                                #fold_ident = #hooked_input_ident -> flatten() -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #acc);
+                                            },
+                                            None,
+                                            Some(&next_stmt_id.to_string()),
+                                        );
+
+                                        graph_builders.register_fold_hooked_output(&fold_ident);
+                                    } else {
+                                        // No fold hook: input is individual (K, V) elements
+                                        let acc: syn::Expr = parse_quote!({
+                                            let mut __init = #init;
+                                            let mut __inner = #acc;
+                                            move |__state, __kv: (_, _)| {
+                                                // TODO(shadaj): we can avoid the clone when the entry exists
+                                                let __state = __state
+                                                    .entry(::std::clone::Clone::clone(&__kv.0))
+                                                    .or_insert_with(|| (__init)());
+                                                __inner(__state, __kv.1);
+                                                Some((__kv.0, ::std::clone::Clone::clone(&*__state)))
+                                            }
+                                        });
+
+                                        builder.add_dfir(
+                                            parse_quote! {
+                                                #fold_ident = #input_ident -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #acc);
+                                            },
+                                            None,
+                                            Some(&next_stmt_id.to_string()),
+                                        );
+                                    }
                                 } else {
                                     let builder = graph_builders.get_dfir_mut(&out_location);
                                     builder.add_dfir(

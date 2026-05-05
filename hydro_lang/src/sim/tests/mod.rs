@@ -389,7 +389,7 @@ fn sim_fold_sample_eager_state_count() {
         assert_eq!(*all.last().unwrap(), 6);
     });
 
-    assert_eq!(count, 432, "Exhaustive states explored");
+    assert_eq!(count, 108, "Exhaustive states explored");
 }
 
 #[test]
@@ -473,7 +473,7 @@ fn sim_fold_total_order_no_permutation() {
 }
 
 #[test]
-fn sim_fold_commutative_skips_permutations() {
+fn sim_fold_commutative_state_count() {
     use crate::live_collections::stream::NoOrder;
     use crate::properties::manual_proof;
 
@@ -499,9 +499,9 @@ fn sim_fold_commutative_skips_permutations() {
         assert_eq!(*all.last().unwrap(), 6);
     });
 
-    // 432 states with subset selection (no permutation).
-    // Previously 270 with ObserveNonDet (one-at-a-time + ordering).
-    assert_eq!(count, 432);
+    // 108 states with batch-fold optimization + passthrough singleton hook + always permute.
+    // Previously 339 with batch-fold + full SingletonHook + commutativity skip.
+    assert_eq!(count, 108);
 }
 
 #[test]
@@ -582,5 +582,98 @@ fn sim_fold_tee_downstream_sees_different_subsets() {
         "Expected at least one execution where downstream consumers see different intermediate states, \
          but all observed pairs were identical: {:?}",
         observed_pairs
+    );
+}
+
+/// Demonstrates that the simulator catches a bug in a fold that falsely claims commutativity.
+/// String concatenation is NOT commutative, but we lie with `manual_proof!`.
+/// The exhaustive run should observe different final values (e.g. "ab" vs "ba"),
+/// which would violate the invariant that a commutative fold's result is order-independent.
+#[test]
+fn sim_fold_catches_false_commutativity() {
+    use std::collections::HashSet;
+
+    use crate::live_collections::stream::NoOrder;
+    use crate::properties::manual_proof;
+
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+
+    let (in_send, input) = node.sim_input::<String, NoOrder, ExactlyOnce>();
+    // LIE: string concatenation is NOT commutative, but we claim it is.
+    let folded = input.fold(
+        q!(|| String::new()),
+        q!(|acc, v| acc.push_str(&v), commutative = manual_proof!(/** WRONG */)),
+    );
+    let out_recv = sliced! {
+        let snapshot = use(folded, nondet!(/** test */));
+        snapshot.into_stream()
+    }
+    .sim_output();
+
+    let mut final_values = HashSet::new();
+
+    flow.sim().exhaustive(async || {
+        in_send.send_many_unordered(["a".to_owned(), "b".to_owned()]);
+        let all: Vec<String> = out_recv.collect().await;
+        final_values.insert(all.last().unwrap().clone());
+    });
+
+    // If commutativity held, we'd only ever see "ab" (or only "ba").
+    // Because it doesn't, the simulator explores both orderings via
+    // different subset/batch sequences and observes both final values.
+    assert!(
+        final_values.contains("ab") && final_values.contains("ba"),
+        "Expected both 'ab' and 'ba' to be observed, got: {:?}",
+        final_values
+    );
+}
+
+/// Documents that the simulator does NOT yet catch false commutativity for in-tick
+/// folds on NoOrder streams. The StreamHook<NoOrder> currently skips within-batch
+/// permutation. A follow-up PR will add full permutation to StreamHook<NoOrder>,
+/// which will enable catching this class of bugs.
+///
+/// Top-level folds ARE tested via cross-batch subset selection + permutation
+/// (see `sim_fold_catches_false_commutativity`).
+#[test]
+fn sim_fold_in_tick_does_not_yet_catch_false_commutativity() {
+    use std::collections::HashSet;
+
+    use crate::live_collections::stream::NoOrder;
+    use crate::properties::manual_proof;
+
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+
+    let (in_send, input) = node.sim_input::<String, NoOrder, ExactlyOnce>();
+
+    let tick = node.tick();
+    let out_recv = input
+        .batch(&tick, nondet!(/** test */))
+        .fold(
+            q!(|| String::new()),
+            q!(|acc, v| acc.push_str(&v), commutative = manual_proof!(/** WRONG */)),
+        )
+        .into_stream()
+        .all_ticks()
+        .sim_output();
+
+    let mut final_values = HashSet::new();
+
+    flow.sim().exhaustive(async || {
+        in_send.send_many_unordered(["a".to_owned(), "b".to_owned()]);
+        let all: Vec<String> = out_recv.collect().await;
+        for v in all {
+            final_values.insert(v);
+        }
+    });
+
+    // Currently "ba" is NOT observed because StreamHook<NoOrder> doesn't permute.
+    // A follow-up PR will add permutation to StreamHook<NoOrder> to fix this.
+    assert!(
+        !final_values.contains("ba"),
+        "StreamHook<NoOrder> should not yet permute within a batch, got: {:?}",
+        final_values
     );
 }

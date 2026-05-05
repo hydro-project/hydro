@@ -119,6 +119,7 @@ impl<'a> SimFlow<'a> {
             extra_stmts_cluster: BTreeMap::new(),
             next_hoff_id: 0,
             test_safety_only: self.test_safety_only,
+            fold_hooked_idents: HashSet::new(),
         };
 
         // Ensure the default (0) external is always present.

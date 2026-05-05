@@ -646,6 +646,92 @@ impl<T: Clone> SimHook for SingletonHook<T> {
     }
 }
 
+/// A passthrough singleton hook for fold outputs that are already controlled by a
+/// `TopLevelFoldHook`. Always releases the latest value without any non-deterministic
+/// decisions, since the fold hook already made the only meaningful choice (which subset
+/// of inputs to process).
+pub struct PassthroughSingletonHook<T> {
+    input: Rc<RefCell<VecDeque<T>>>,
+    to_release: Option<T>,
+    output: UnboundedSender<T>,
+    batch_location: HookLocationMeta,
+    format_item_debug: fn(&T) -> Option<String>,
+}
+
+impl<T> PassthroughSingletonHook<T> {
+    pub fn new(
+        input: Rc<RefCell<VecDeque<T>>>,
+        output: UnboundedSender<T>,
+        batch_location: HookLocationMeta,
+        format_item_debug: fn(&T) -> Option<String>,
+    ) -> Self {
+        Self {
+            input,
+            to_release: None,
+            output,
+            batch_location,
+            format_item_debug,
+        }
+    }
+}
+
+impl<T> SimHook for PassthroughSingletonHook<T> {
+    fn current_decision(&self) -> Option<bool> {
+        self.to_release.as_ref().map(|_| true)
+    }
+
+    fn can_make_nontrivial_decision(&self) -> bool {
+        !self.input.borrow().is_empty()
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        _driver: &mut Borrowed<'a>,
+        _force_nontrivial: bool,
+    ) -> bool {
+        let mut current_input = self.input.borrow_mut();
+        // Always take the last (most recent) value, discard intermediates.
+        if let Some(item) = current_input.pop_back() {
+            current_input.clear();
+            self.to_release = Some(item);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+        if let Some(to_release) = self.to_release.take() {
+            let (batch_location, line, caret_indent) = self.batch_location;
+            let note_str = format!(
+                "^ releasing snapshot: {:?}",
+                ManualDebug(&to_release, self.format_item_debug)
+            );
+
+            let _ = writeln!(
+                log_writer,
+                "{} {}",
+                "-->".color(colored::Color::Blue),
+                batch_location
+            );
+
+            let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+            let _ = writeln!(
+                log_writer,
+                " {}{}{}",
+                "|".color(colored::Color::Blue),
+                caret_indent,
+                note_str.color(colored::Color::Green)
+            );
+
+            self.output.send(to_release).unwrap();
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}
+
 pub struct KeyedSingletonHook<K: Hash + Eq + Clone, V: Clone> {
     input: Rc<RefCell<FxHashMap<K, VecDeque<V>>>>, // FxHasher is deterministic
     to_release: Option<Vec<(K, V, bool)>>,         // (key, data, is new)
@@ -1352,15 +1438,12 @@ impl<T> SimHook for TopLevelStreamOrderHook<T> {
 }
 
 /// Hook for top-level folds. Selects a non-empty subset of buffered inputs to release,
-/// optionally permuting them if commutativity is not proven. Unselected elements remain
+/// always permuting them to explore all orderings. Unselected elements remain
 /// in the buffer for future releases (modeling delayed/lossy inputs).
 pub struct TopLevelFoldHook<T> {
     pub input: Rc<RefCell<VecDeque<T>>>,
     pub to_release: Option<Vec<T>>,
-    pub output: UnboundedSender<T>,
-    /// If true, the user has proven commutativity, so we skip permutation.
-    /// If false, we explore different orderings via Fisher-Yates shuffle.
-    pub commutativity_proven: bool,
+    pub output: UnboundedSender<Vec<T>>,
     pub location: HookLocationMeta,
     pub format_item_debug: fn(&T) -> Option<String>,
 }
@@ -1408,8 +1491,10 @@ impl<T> SimHook for TopLevelFoldHook<T> {
         // Put unselected elements back
         *current_input = remaining;
 
-        // Permute selected elements if commutativity is not proven (Fisher-Yates)
-        if !self.commutativity_proven {
+        // Always permute selected elements (Fisher-Yates) to explore all orderings.
+        // Even if commutativity is claimed via manual_proof!, the simulator is
+        // conservative and does not trust it — it still explores permutations.
+        {
             let slen = selected.len();
             for i in (1..slen).rev() {
                 let j = (0..=i).generate(driver).unwrap();
@@ -1426,12 +1511,7 @@ impl<T> SimHook for TopLevelFoldHook<T> {
             if !to_release.is_empty() {
                 let (batch_location, line, caret_indent) = self.location;
                 let note_str = format!(
-                    "^ fold input batch ({}): {:?}",
-                    if self.commutativity_proven {
-                        "commutative"
-                    } else {
-                        "permuted"
-                    },
+                    "^ fold input batch (permuted): {:?}",
                     TruncatedVecDebug(
                         RefCell::new(Some(to_release.iter())),
                         8,
@@ -1457,9 +1537,7 @@ impl<T> SimHook for TopLevelFoldHook<T> {
                 );
             }
 
-            for item in to_release {
-                self.output.send(item).unwrap();
-            }
+            self.output.send(to_release).unwrap();
         } else {
             panic!("No decision to release");
         }
