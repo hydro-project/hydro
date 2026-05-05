@@ -77,12 +77,19 @@
 <a href=#77 id=77 data-nosnippet>77</a>            arguments: <span class="kw-2">&amp;</span><span class="macro">parse_quote_spanned!</span>(op_span=&gt; #ident_intervalstream),
 <a href=#78 id=78 data-nosnippet>78</a>            ..wc.clone()
 <a href=#79 id=79 data-nosnippet>79</a>        };
-<a href=#80 id=80 data-nosnippet>80</a>        <span class="kw">let </span>write_output = (<span class="kw">super</span>::source_stream::SOURCE_STREAM.write_fn)(<span class="kw-2">&amp;</span>wc, diagnostics)<span class="question-mark">?</span>;
-<a href=#81 id=81 data-nosnippet>81</a>        write_prologue.extend(write_output.write_prologue);
-<a href=#82 id=82 data-nosnippet>82</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#83 id=83 data-nosnippet>83</a>            write_prologue,
-<a href=#84 id=84 data-nosnippet>84</a>            ..write_output
-<a href=#85 id=85 data-nosnippet>85</a>        })
-<a href=#86 id=86 data-nosnippet>86</a>    },
-<a href=#87 id=87 data-nosnippet>87</a>};
+<a href=#80 id=80 data-nosnippet>80</a>        <span class="kw">let </span>OperatorWriteOutput {
+<a href=#81 id=81 data-nosnippet>81</a>            write_prologue: write_prologue_stream,
+<a href=#82 id=82 data-nosnippet>82</a>            write_iterator,
+<a href=#83 id=83 data-nosnippet>83</a>            write_iterator_after,
+<a href=#84 id=84 data-nosnippet>84</a>            write_tick_end,
+<a href=#85 id=85 data-nosnippet>85</a>        } = (<span class="kw">super</span>::source_stream::SOURCE_STREAM.write_fn)(<span class="kw-2">&amp;</span>wc, diagnostics)<span class="question-mark">?</span>;
+<a href=#86 id=86 data-nosnippet>86</a>        write_prologue.extend(write_prologue_stream);
+<a href=#87 id=87 data-nosnippet>87</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#88 id=88 data-nosnippet>88</a>            write_prologue,
+<a href=#89 id=89 data-nosnippet>89</a>            write_iterator,
+<a href=#90 id=90 data-nosnippet>90</a>            write_iterator_after,
+<a href=#91 id=91 data-nosnippet>91</a>            write_tick_end,
+<a href=#92 id=92 data-nosnippet>92</a>        })
+<a href=#93 id=93 data-nosnippet>93</a>    },
+<a href=#94 id=94 data-nosnippet>94</a>};
 </code></pre></div></section></main></body></html>
