@@ -53,7 +53,6 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
                    op_span,
                    ident,
                    is_pull,
@@ -99,18 +98,12 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                 let #vec_ident = &mut #persistdata_ident;
 
                 let #ident = {
-                    let replay_idx = if #context.is_first_run_this_tick() {
-                        0
-                    } else {
-                        #vec_ident.len()
-                    };
-
                     let fut = #root::dfir_pipes::pull::Pull::for_each(#input, |item| {
                         #vec_ident.push(item);
                     });
                     let () = #work_fn_async(fut).await;
 
-                    let iter = #vec_ident[replay_idx..].iter().cloned();
+                    let iter = #vec_ident[..].iter().cloned();
                     #root::dfir_pipes::pull::iter(iter)
                 };
             }
@@ -127,7 +120,7 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                     {
                         #root::dfir_pipes::push::persist_state(vec, is_new_tick, output)
                     }
-                    constrain_types(&mut *#vec_ident, #output, #context.is_first_run_this_tick())
+                    constrain_types(&mut *#vec_ident, #output, true)
                 };
             }
         };

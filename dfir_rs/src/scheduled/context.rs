@@ -56,8 +56,9 @@ impl Wake for WakeState {
 /// A lightweight context for inline codegen that avoids the overhead of the full
 /// [`Context`] (no tokio channels, no scheduler queues, no loop machinery).
 ///
-/// Exposes method names that operator-generated code calls on
-/// `context` (for iterators: `is_first_run_this_tick`, `current_tick`, etc.).
+/// Exposes the same method names that operator-generated code calls on both
+/// `df` (for prologues: `add_state`, `set_state_lifespan_hook`) and
+/// `context` (for iterators: `state_ref_unchecked`, etc.).
 #[doc(hidden)]
 #[derive(Default)]
 pub struct Context {
@@ -101,13 +102,6 @@ impl Context {
     }
 
     // --- Methods called as `context.xxx()` in operator iterators ---
-
-    /// Always returns `true` in inline mode. The inline codegen runs the entire DAG
-    /// once per tick with no re-execution, so every subgraph is always on its first
-    /// (and only) run within each tick.
-    pub fn is_first_run_this_tick(&self) -> bool {
-        true
-    }
 
     /// Gets the current tick count.
     pub fn current_tick(&self) -> TickInstant {

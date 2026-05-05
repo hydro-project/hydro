@@ -106,7 +106,7 @@ pub const FOLD_NO_REPLAY: OperatorConstraints = OperatorConstraints {
                     let () = #work_fn_async(__fut).await;
                 }
 
-                let #ident = if __was_updated || (#context.current_tick().0 == 0 && #context.is_first_run_this_tick()) {
+                let #ident = if __was_updated || #context.current_tick().0 == 0 {
                     #work_fn(
                         || #root::dfir_pipes::pull::iter(
                             ::std::option::Option::Some(::std::clone::Clone::clone(&*#accumulator_ident))
