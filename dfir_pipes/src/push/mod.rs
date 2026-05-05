@@ -16,15 +16,20 @@ mod flat_map;
 mod flat_map_stream;
 mod flatten;
 mod flatten_stream;
+mod fold;
 mod for_each;
 mod inspect;
 mod map;
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 mod persist;
+mod reduce;
 mod resolve_futures;
 mod sink;
 mod sink_compat;
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+mod sort;
 mod unzip;
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
@@ -48,6 +53,7 @@ pub use flat_map::FlatMap;
 pub use flat_map_stream::FlatMapStream;
 pub use flatten::Flatten;
 pub use flatten_stream::FlattenStream;
+pub use fold::Fold;
 pub use for_each::ForEach;
 use futures_core::FusedStream;
 pub use inspect::Inspect;
@@ -55,9 +61,13 @@ pub use map::Map;
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub use persist::Persist;
+pub use reduce::Reduce;
 pub use resolve_futures::ResolveFutures;
 pub use sink::Sink;
 pub use sink_compat::SinkCompat;
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+pub use sort::Sort;
 pub use unzip::Unzip;
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
