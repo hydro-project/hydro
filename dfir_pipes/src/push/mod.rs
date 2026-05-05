@@ -16,18 +16,23 @@ mod flat_map;
 mod flat_map_stream;
 mod flatten;
 mod flatten_stream;
+mod fold;
 mod for_each;
 mod inspect;
 mod map;
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 mod persist;
+mod reduce;
 mod resolve_futures;
 mod sink;
 mod sink_compat;
 #[cfg(feature = "lattices")]
 #[cfg_attr(docsrs, doc(cfg(feature = "lattices")))]
 mod state_push;
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+mod sort;
 mod unzip;
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
@@ -51,6 +56,7 @@ pub use flat_map::FlatMap;
 pub use flat_map_stream::FlatMapStream;
 pub use flatten::Flatten;
 pub use flatten_stream::FlattenStream;
+pub use fold::Fold;
 pub use for_each::ForEach;
 use futures_core::FusedStream;
 pub use inspect::Inspect;
@@ -58,12 +64,16 @@ pub use map::Map;
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub use persist::Persist;
+pub use reduce::Reduce;
 pub use resolve_futures::ResolveFutures;
 pub use sink::Sink;
 pub use sink_compat::SinkCompat;
 #[cfg(feature = "lattices")]
 #[cfg_attr(docsrs, doc(cfg(feature = "lattices")))]
 pub use state_push::{StatePush, state_push};
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+pub use sort::Sort;
 pub use unzip::Unzip;
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
@@ -311,6 +321,45 @@ where
     Next: Push<St::Item, Meta>,
 {
     FlattenStream::new(next)
+}
+
+/// Creates a [`Fold`] push that accumulates all items via a fold function, then emits
+/// the accumulated value downstream on finalize.
+pub const fn fold<Acc, CombFn, Item, Next>(
+    acc: Acc,
+    comb_fn: CombFn,
+    next: Next,
+) -> Fold<Acc, CombFn, Next>
+where
+    CombFn: FnMut(&mut Acc, Item),
+    Next: Push<Acc, ()>,
+{
+    Fold::new(acc, comb_fn, next)
+}
+
+/// Creates a [`Reduce`] push that reduces all items into a single value, then emits
+/// it downstream on finalize. If no items were received, nothing is emitted.
+pub const fn reduce<Acc, ReduceFn, Next>(
+    reduce_fn: ReduceFn,
+    next: Next,
+) -> Reduce<Acc, ReduceFn, Next>
+where
+    ReduceFn: FnMut(&mut Acc, Acc),
+    Next: Push<Acc, ()>,
+{
+    Reduce::new(reduce_fn, next)
+}
+
+/// Creates a [`Sort`] push that collects all items, sorts them, then emits them
+/// downstream in sorted order on finalize.
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+pub const fn sort<Item, Next>(next: Next) -> Sort<Item, Next>
+where
+    Item: Ord,
+    Next: Push<Item, ()>,
+{
+    Sort::new(next)
 }
 
 /// Creates a [`ForEach`] terminal push that consumes each item with a function.
