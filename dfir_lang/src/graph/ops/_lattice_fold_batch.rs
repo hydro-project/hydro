@@ -42,6 +42,7 @@ pub const _LATTICE_FOLD_BATCH: OperatorConstraints = OperatorConstraints {
     num_args: 0,
     is_external_input: false,
     has_singleton_output: false,
+    preserves_singleton: false,
     flo_type: None,
     ports_inn: Some(|| PortListSpec::Fixed(parse_quote! { input, signal })),
     ports_out: None,

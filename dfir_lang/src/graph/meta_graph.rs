@@ -78,6 +78,11 @@ pub struct DfirGraph {
     /// Set by `order_subgraphs` for `defer_tick` / `defer_tick_lazy`, either on handoff nodes
     /// it injects or on existing handoff nodes that it marks as tick-boundary back-edges.
     handoff_delay_type: SparseSecondaryMap<GraphNodeId, DelayType>,
+
+    /// Whether each node produces exactly one item (is a singleton).
+    /// Computed by propagation: a node is a singleton if it has `has_singleton_output`,
+    /// or if all its inputs are singletons and it has `preserves_singleton`.
+    node_is_singleton: SparseSecondaryMap<GraphNodeId, ()>,
 }
 
 /// Basic methods.
@@ -503,6 +508,40 @@ impl DfirGraph {
             .get(node_id)
             .map(std::ops::Deref::deref)
             .unwrap_or_default()
+    }
+
+    /// Returns whether the given node produces exactly one item (is a singleton).
+    pub fn node_is_singleton(&self, node_id: GraphNodeId) -> bool {
+        self.node_is_singleton.contains_key(node_id)
+    }
+
+    /// Computes the `node_is_singleton` field by propagation.
+    /// A node is a singleton if:
+    /// - Its operator has `has_singleton_output: true`, OR
+    /// - All its predecessor nodes are singletons AND its operator has `preserves_singleton: true`.
+    pub fn compute_node_singletons(&mut self) {
+        // Iterate in topological order (node_ids are already topo-sorted after partitioning).
+        let node_ids: Vec<_> = self.node_ids().collect();
+        for node_id in node_ids {
+            let Some(op_inst) = self.operator_instances.get(node_id) else {
+                continue;
+            };
+            let op_constraints = op_inst.op_constraints;
+
+            if op_constraints.has_singleton_output {
+                self.node_is_singleton.insert(node_id, ());
+            } else if op_constraints.preserves_singleton {
+                // Check if all predecessors are singletons.
+                let all_preds_singleton = self
+                    .node_predecessor_nodes(node_id)
+                    .all(|pred_id| self.node_is_singleton.contains_key(pred_id));
+                // Must have at least one predecessor to inherit singleton status.
+                let has_preds = self.node_predecessor_nodes(node_id).next().is_some();
+                if has_preds && all_preds_singleton {
+                    self.node_is_singleton.insert(node_id, ());
+                }
+            }
+        }
     }
 }
 

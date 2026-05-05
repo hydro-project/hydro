@@ -582,6 +582,7 @@ impl FlatGraphBuilder {
     /// Process operators and emit operator errors.
     fn process_operator_errors(&mut self) {
         self.make_operator_instances();
+        self.flat_graph.compute_node_singletons();
         self.check_operator_errors();
         self.warn_unused_port_indexing();
         self.check_loop_errors();
@@ -793,6 +794,36 @@ impl FlatGraphBuilder {
                         "output",
                         &mut self.diagnostics,
                     );
+
+                    // Check that singleton references actually reference singleton-producing nodes.
+                    {
+                        let singletons_resolved =
+                            self.flat_graph.node_singleton_references(node_id);
+                        for (singleton_node_id, singleton_ident) in singletons_resolved
+                            .iter()
+                            .zip_eq(&*operator.singletons_referenced)
+                        {
+                            let &Some(singleton_node_id) = singleton_node_id else {
+                                // Error already emitted by `connect_operator_links`, "Cannot find referenced name...".
+                                continue;
+                            };
+                            if !self.flat_graph.node_is_singleton(singleton_node_id) {
+                                let op_name = self
+                                    .flat_graph
+                                    .node_op_inst(singleton_node_id)
+                                    .map(|inst| inst.op_constraints.name)
+                                    .unwrap_or("unknown");
+                                self.diagnostics.push(Diagnostic::spanned(
+                                    singleton_ident.span(),
+                                    Level::Error,
+                                    format!(
+                                        "Cannot reference operator `{}`. Only singleton-producing operators can be referenced.",
+                                        op_name,
+                                    ),
+                                ));
+                            }
+                        }
+                    }
                 }
                 GraphNode::Handoff { .. } => todo!("Node::Handoff"),
                 GraphNode::ModuleBoundary { .. } => {
