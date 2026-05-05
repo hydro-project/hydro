@@ -96,13 +96,17 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
         let input_build = &inputs[0]; // build before probe (stratum-delayed comes first)
         let input_probe = &inputs[1];
 
+        let accum_build = quote_spanned! {op_span=>
+            let fut = #root::dfir_pipes::pull::Pull::for_each(#input_build, |(k, v)| {
+                #build_ident.entry(k).or_insert_with(::std::vec::Vec::new).push(v);
+            });
+            let () = #work_fn_async(fut).await;
+        };
+
         let write_iterator = if !probe_persist {
             quote_spanned! {op_span=>
                 let #ident = {
-                    let fut = #root::dfir_pipes::pull::Pull::for_each(#input_build, |(k, v)| {
-                        #build_ident.entry(k).or_insert_with(::std::vec::Vec::new).push(v);
-                    });
-                    let () = #work_fn_async(fut).await;
+                    #accum_build
 
                     // Bound K/V types explicitly to prevent inference failures across subgraph handoffs.
                     #[allow(clippy::clone_on_copy, noop_method_call)]
@@ -131,10 +135,7 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
         } else {
             quote_spanned! {op_span =>
                 let #ident = {
-                    let fut = #root::dfir_pipes::pull::Pull::for_each(#input_build, |(k, v)| {
-                        #build_ident.entry(k).or_insert_with(::std::vec::Vec::new).push(v);
-                    });
-                    let () = #work_fn_async(fut).await;
+                    #accum_build
 
                     let replay_idx = if #context.is_first_run_this_tick() {
                         0
@@ -169,11 +170,11 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
                 #write_prologue_build
             },
             write_iterator,
+            write_iterator_after: Default::default(),
             write_tick_end: quote_spanned! {op_span=>
                 #write_tick_end_build
                 #write_tick_end_probe
             },
-            ..Default::default()
         })
     },
 };
