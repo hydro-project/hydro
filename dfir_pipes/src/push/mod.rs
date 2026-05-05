@@ -17,6 +17,9 @@ mod flat_map_stream;
 mod flatten;
 mod flatten_stream;
 mod fold;
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+mod fold_keyed;
 mod for_each;
 mod inspect;
 mod map;
@@ -54,6 +57,9 @@ pub use flat_map_stream::FlatMapStream;
 pub use flatten::Flatten;
 pub use flatten_stream::FlattenStream;
 pub use fold::Fold;
+#[cfg(feature = "std")]
+#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
+pub use fold_keyed::FoldKeyed;
 pub use for_each::ForEach;
 use futures_core::FusedStream;
 pub use inspect::Inspect;
