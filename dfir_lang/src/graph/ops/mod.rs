@@ -23,10 +23,10 @@ use crate::parse::{Operator, PortIndex};
 /// The delay (soft barrier) type, for each input to an operator if needed.
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum DelayType {
-    /// Input must be collected over the preceding stratum.
+    /// Forces a subgraph boundary on this input edge. Used for operators that
+    /// must be on the pull side (they need to consume all input before emitting).
+    /// TODO: Remove once all blocking operators have push-side implementations.
     Stratum,
-    /// Monotone accumulation: can delay to reduce flow rate, but also correct to emit "early"
-    MonotoneAccum,
     /// Input must be collected over the previous tick.
     Tick,
     /// Input must be collected over the previous tick but also not cause a new tick to occur.
