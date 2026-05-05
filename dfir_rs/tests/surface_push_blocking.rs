@@ -30,3 +30,18 @@ pub fn test_reduce_push() {
     df.run_available_sync();
     assert_eq!(&[6], &*collect_ready::<Vec<_>, _>(&mut out_recv));
 }
+
+/// fold_keyed on push side
+#[multiplatform_test]
+pub fn test_fold_keyed_push() {
+    let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<(i32, i32)>();
+    let mut df = dfir_syntax! {
+        my_tee = source_iter([(1, 10), (1, 20), (2, 30)]) -> tee();
+        my_tee -> fold_keyed(|| 0, |a: &mut _, b| *a += b) -> for_each(|v| out_send.send(v).unwrap());
+        my_tee -> null();
+    };
+    df.run_available_sync();
+    let mut out = collect_ready::<Vec<_>, _>(&mut out_recv);
+    out.sort();
+    assert_eq!(&[(1, 30), (2, 30)], &*out);
+}
