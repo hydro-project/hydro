@@ -12,12 +12,13 @@ pin_project! {
     /// During `start_send`, items are folded into the accumulator.
     /// During `poll_flush`, the accumulated value is cloned and sent downstream,
     /// then the downstream is flushed.
+    ///
+    /// `AccRef` is typically `&'a mut Acc` — a mutable reference to externally-owned state.
     #[must_use = "`Push`es do nothing unless items are pushed into them"]
-    #[derive(Clone, Debug)]
-    pub struct Fold<Acc, CombFn, Next> {
+    pub struct Fold<AccRef, CombFn, Next> {
         #[pin]
         next: Next,
-        acc: Acc,
+        acc: AccRef,
         comb_fn: CombFn,
         flushed: bool,
     }
@@ -36,7 +37,7 @@ impl<Acc, CombFn, Next> Fold<Acc, CombFn, Next> {
 }
 
 // TODO(mingwei): support arbitrary metadata.
-impl<Acc, CombFn, Item, Next> Push<Item, ()> for Fold<Acc, CombFn, Next>
+impl<Acc, CombFn, Item, Next> Push<Item, ()> for Fold<&mut Acc, CombFn, Next>
 where
     Acc: Clone,
     CombFn: FnMut(&mut Acc, Item),
