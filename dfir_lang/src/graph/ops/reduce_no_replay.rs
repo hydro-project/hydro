@@ -46,12 +46,12 @@ pub const REDUCE_NO_REPLAY: OperatorConstraints = OperatorConstraints {
         let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let write_prologue = quote_spanned! {op_span=>
-            let #singleton_output_ident = ::std::cell::RefCell::new(::std::option::Option::None);
+            let mut #singleton_output_ident = ::std::option::Option::None;
         };
 
         let write_tick_end = match persistence {
             Persistence::Tick => quote_spanned! {op_span=>
-                #singleton_output_ident.replace(::std::option::Option::None);
+                #singleton_output_ident = ::std::option::Option::None;
             },
             _ => Default::default(),
         };
@@ -78,7 +78,7 @@ pub const REDUCE_NO_REPLAY: OperatorConstraints = OperatorConstraints {
 
         let assign_accum_ident = quote_spanned! {op_span=>
             #[allow(unused_mut)]
-            let mut #accumulator_ident = #singleton_output_ident.borrow_mut();
+            let mut #accumulator_ident = &mut #singleton_output_ident;
         };
 
         let write_iterator = if is_pull {

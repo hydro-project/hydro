@@ -131,18 +131,18 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
         let hashtable_ident = wc.make_ident("hashtable");
 
         let write_prologue = quote_spanned! {op_span=>
-            let #singleton_output_ident = ::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default());
+            let mut #singleton_output_ident = #root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default();
         };
 
         let write_tick_end = match persistence {
             Persistence::Tick => quote_spanned! {op_span=>
-                #singleton_output_ident.borrow_mut().clear();
+                #singleton_output_ident.clear();
             },
             _ => Default::default(),
         };
 
         let assign_hashtable_ident = quote_spanned! {op_span=>
-            let mut #hashtable_ident = #singleton_output_ident.borrow_mut();
+            let mut #hashtable_ident = &mut #singleton_output_ident;
         };
 
         let write_iterator = if Persistence::Mutable == persistence {

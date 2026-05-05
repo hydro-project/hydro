@@ -40,14 +40,14 @@ pub const PREFIX: OperatorConstraints = OperatorConstraints {
 
         let write_prologue = quote_spanned! {op_span=>
             #[allow(clippy::redundant_closure_call)]
-            let #singleton_output_ident = ::std::cell::RefCell::new(::std::vec::Vec::new());
+            let mut #singleton_output_ident = ::std::vec::Vec::new();
         };
 
         let vec_ident = wc.make_ident("vec");
 
         let input = &inputs[0];
         let write_iterator = quote_spanned! {op_span=>
-            let mut #vec_ident = #singleton_output_ident.borrow_mut();
+            let #vec_ident = &mut #singleton_output_ident;
 
             let #ident = {
                 let fut = #root::dfir_pipes::pull::Pull::for_each(#input, |item| {

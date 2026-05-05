@@ -816,10 +816,9 @@ impl DfirGraph {
     /// instead of runtime handoffs. Each call to the closure runs one tick.
     ///
     /// The generated code block evaluates to a `Dfir` instance wrapping the
-    /// closure. Operator prologues (`add_state`, `set_state_lifespan_hook`)
-    /// run at construction time on the `Context` before it is moved into
-    /// `Dfir::new`. `Dfir` provides the `Context` to the closure on
-    /// each tick run.
+    /// closure. Operator prologues run at construction time before the `Context`
+    /// is moved into `Dfir::new`. `Dfir` provides the `Context` to the closure
+    /// on each tick run.
     ///
     /// # Errors
     ///
@@ -1163,7 +1162,6 @@ impl DfirGraph {
                             let arguments = &process_singletons::postprocess_singletons(
                                 op_inst.arguments_raw.clone(),
                                 singletons_resolved.clone(),
-                                context,
                             );
                             let arguments_handles =
                                 &process_singletons::postprocess_singletons_handles(
@@ -1569,7 +1567,7 @@ impl DfirGraph {
                 // start false (from take()) and are set true by recv port code
                 // if any handoff buffer has data.
                 let mut __dfir_work_done = true;
-                #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref)]
+                #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref, clippy::deref_addrof)]
                 let __dfir_inline_tick = async move |#df: &mut #root::scheduled::context::Context| {
                     let __dfir_metrics = #df.metrics();
                     // Double-buffer swap for defer_tick handoffs: move last tick's

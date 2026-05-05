@@ -1,4 +1,3 @@
-use std::cell::RefCell;
 use std::pin::Pin;
 
 use dfir_pipes::pull::{FusedPull, Pull, PullStep};
@@ -17,8 +16,8 @@ pin_project! {
 
         func: Func,
 
-        lhs_state: &'a RefCell<LhsState>,
-        rhs_state: &'a RefCell<RhsState>,
+        lhs_state: &'a LhsState,
+        rhs_state: &'a RhsState,
 
         output: Option<Output>,
     }
@@ -41,8 +40,8 @@ where
         lhs_prev: LhsPrev,
         rhs_prev: RhsPrev,
         func: Func,
-        lhs_state: &'a RefCell<LhsState>,
-        rhs_state: &'a RefCell<RhsState>,
+        lhs_state: &'a LhsState,
+        rhs_state: &'a RhsState,
     ) -> Self {
         Self {
             lhs_prev,
@@ -91,7 +90,7 @@ where
             let lhs_pending = matches!(lhs_step, PullStep::Pending(_));
             if let PullStep::Ready(lhs_item, _meta) = lhs_step {
                 progress = true;
-                let delta = this.func.call(lhs_item, this.rhs_state.borrow().clone());
+                let delta = this.func.call(lhs_item, this.rhs_state.clone());
                 if let Some(output) = this.output.as_mut() {
                     output.merge(delta);
                 } else {
@@ -106,7 +105,7 @@ where
             let rhs_pending = matches!(rhs_step, PullStep::Pending(_));
             if let PullStep::Ready(rhs_item, _meta) = rhs_step {
                 progress = true;
-                let delta = this.func.call(this.lhs_state.borrow().clone(), rhs_item);
+                let delta = this.func.call(this.lhs_state.clone(), rhs_item);
                 if let Some(output) = this.output.as_mut() {
                     output.merge(delta);
                 } else {
