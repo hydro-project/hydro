@@ -1,5 +1,6 @@
 ---
 source: dfir_rs/tests/surface_fold.rs
+assertion_line: 18
 expression: df.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
@@ -9,7 +10,7 @@ classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
 classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
 1v1[\"(1v1) <code>source_stream(items_recv)</code>"/]:::pullClass
-2v1[\"<div style=text-align:center>(2v1)</div> <code>fold::&lt;<br>    'static,<br>&gt;(<br>    Vec::new,<br>    |old: &amp;mut Vec&lt;u32&gt;, mut x: Vec&lt;u32&gt;| {<br>        old.append(&amp;mut x);<br>    },<br>)</code>"/]:::pullClass
+2v1[\"<div style=text-align:center>(2v1)</div> <code>fold::&lt;<br>    'tick,<br>&gt;(<br>    Vec::new,<br>    |old: &amp;mut Vec&lt;u32&gt;, mut x: Vec&lt;u32&gt;| {<br>        old.append(&amp;mut x);<br>    },<br>)</code>"/]:::pullClass
 3v1[/"(3v1) <code>for_each(|v| result_send.send(v).unwrap())</code>"\]:::pushClass
 2v1-->3v1
 1v1-->2v1

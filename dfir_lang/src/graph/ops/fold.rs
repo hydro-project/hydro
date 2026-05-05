@@ -126,14 +126,23 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
                     )
                 );
             }
-        } else {
-            assert_eq!(0, outputs.len());
+        } else if outputs.is_empty() {
+            // Terminal push: fold is a singleton reference target with no downstream.
             quote_spanned! {op_span=>
                 let #ident = #root::dfir_pipes::push::for_each(|#item_ident| {
                     #assign_accum_ident
 
                     #foreach_body
                 });
+            }
+        } else {
+            let output = &outputs[0];
+            quote_spanned! {op_span=>
+                let #ident = #root::dfir_pipes::push::Fold::new(
+                    &mut #singleton_output_ident,
+                    |#accumulator_ident: &mut _, #item_ident| { #foreach_body },
+                    #output,
+                );
             }
         };
 
