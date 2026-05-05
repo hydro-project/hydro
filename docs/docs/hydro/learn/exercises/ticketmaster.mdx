@@ -1,0 +1,113 @@
+---
+sidebar_position: 2
+---
+
+import CodeBlock from '@theme/CodeBlock';
+import Link from "@docusaurus/Link";
+
+import ticketmasterSrc from '!!raw-loader!../../../../../hydro_test/src/cluster/ticketmaster.rs';
+import { getLines } from '../../../../src/util';
+
+# Ticketmaster: Preventing Double-Booking
+
+In this exercise, you'll build a seat-booking service that prevents double-booking. Along the way, you'll see how Hydro's type system catches a class of distributed bugs — race conditions in replicated state — at compile time.
+
+:::learn
+- How Hydro's ordering types prevent non-commutative operations on unordered streams
+- How to use `atomic()` and `scan` to serialize stateful operations
+- How to use `sliced!` with `use::atomic` for consistent reads
+- Why the "independent replicas" architecture is rejected by the compiler
+:::
+
+## The Problem: Double-Booking in Replicated Systems
+
+A common (but buggy) architecture for seat-booking systems uses multiple replicas that each independently process booking requests. When a request arrives, the replica checks if the seat is available locally and books it. The booking is then forwarded to other replicas on a best-effort basis.
+
+This architecture has a critical race condition: if two clients simultaneously book the same seat on *different* replicas, both succeed locally before the forwarded request arrives. Both clients are told they have the seat, and the replicas are permanently inconsistent.
+
+## Why Hydro Rejects the Buggy Architecture
+
+In Hydro, messages arriving from the network have `NoOrder` — their interleaving is non-deterministic. The booking logic (check-if-available-then-reserve) is fundamentally **non-commutative**: the result depends on which request is processed first.
+
+Hydro's type system enforces that `fold` on a `NoOrder` stream must prove commutativity. Since booking logic cannot provide this proof, the code fails to compile:
+
+```rust,compile_fail
+use std::collections::HashSet;
+use hydro_lang::live_collections::stream::NoOrder;
+use hydro_lang::prelude::*;
+
+struct Replica {}
+
+fn buggy_replica_booking<'a>(replicas: &Cluster<'a, Replica>) {
+    // Network messages arrive in NoOrder (non-deterministic interleaving)
+    let bookings: Stream<(u32, u32), Cluster<'a, Replica>, Unbounded, NoOrder> = replicas
+        .source_iter(q!(vec![(1u32, 5u32)]))
+        .weaken_ordering::<NoOrder>();
+
+    // ERROR: fold on NoOrder stream requires commutativity proof.
+    // Booking logic is NOT commutative — who gets the seat depends on order.
+    let _booked = bookings.fold(
+        q!(|| HashSet::<u32>::new()),
+        q!(|booked, (_client, seat)| {
+            booked.insert(seat);
+        }),
+    );
+}
+```
+
+The compiler produces:
+
+```text
+error[E0277]: Because the input stream has ordering `NoOrder`, the closure
+must demonstrate commutativity with a `commutative = ...` annotation.
+```
+
+This means the double-booking race condition literally cannot be expressed in Hydro's type system. You are forced to choose a correct architecture.
+
+## The Correct Architecture
+
+Instead of independent replicas, you route all bookings through a single authoritative process that serializes requests using `atomic()` and `scan`:
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/cluster/ticketmaster.rs">src/cluster/ticketmaster.rs</Link>
+} showLineNumbers={52}>{getLines(ticketmasterSrc, 52, 104)}</CodeBlock>
+
+Let's break down the key design decisions:
+
+### Serializing Bookings with `atomic()` + `scan`
+
+The `book_requests.atomic()` call enters an atomic context. Within it, `entries_partially_ordered` converts the keyed stream into a `TotalOrder` stream (documenting that client interleaving is non-deterministic). Then `scan` processes each request sequentially with a global `HashSet` of booked seats — making double-booking impossible.
+
+The `end_atomic()` call releases booking responses only after the scan has processed them, establishing a consistency boundary.
+
+### Consistent Reads with `use::atomic`
+
+The `booked_seats` fold uses `commutative = manual_proof!` because `HashSet::insert` is genuinely commutative — inserting the same elements in any order produces the same set. This is safe because it only tracks *which* seats are booked, not *who* booked them.
+
+The `get_response` uses `use::atomic(booked_seats, ...)` to ensure that any get request observes a snapshot consistent with previously acknowledged bookings.
+
+### The `nondet!` Annotations
+
+Each `nondet!` documents a source of non-determinism:
+- **Client interleaving**: When two clients book different seats simultaneously, the order they're processed is non-deterministic — but both will succeed regardless of order
+- **Batch boundaries**: Get requests may be batched arbitrarily, but each batch sees a consistent snapshot
+- **Atomic snapshots**: The `use::atomic` guarantees consistency with acknowledged bookings
+
+## Testing
+
+The service is tested with Hydro's exhaustive simulator, which explores all possible execution orderings:
+
+<CodeBlock language="rust" title={
+  <Link href="https://github.com/hydro-project/hydro/tree/main/hydro_test/src/cluster/ticketmaster.rs">src/cluster/ticketmaster.rs</Link>
+} showLineNumbers={134}>{getLines(ticketmasterSrc, 134, 157)}</CodeBlock>
+
+The exhaustive simulator guarantees that across *all* possible execution orderings, the second booking is always rejected. This is the property that the original replicated system could not guarantee.
+
+## Summary
+
+| Bug in original system | How Hydro prevents it |
+|---|---|
+| Double-booking across replicas | `fold` on `NoOrder` stream requires commutativity proof; non-commutative booking logic is rejected at compile time |
+| No rollback on replication failure | Single authoritative process eliminates need for replication |
+| Clients bypassing replication | No `forwarded` flag; the type system enforces the data flow |
+| Stale reads after booking | `use::atomic` guarantees consistent snapshots |
