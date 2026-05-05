@@ -26,8 +26,8 @@ pub fn preprocess_singletons(tokens: TokenStream, found_idents: &mut Vec<Ident>)
 /// * `resolved_idents` - The local variable idents that correspond 1:1 and in the same
 ///   order as the singleton references within `tokens` (found in-order via [`preprocess_singletons`]).
 ///
-/// Generates a direct reference to the local variable. Use [`postprocess_singletons_handles`] for
-/// just the raw idents.
+/// Generates `(*&ident)` — an immutable place expression that prevents consumer mutation.
+/// Use [`postprocess_singletons_handles`] for just the raw idents.
 pub fn postprocess_singletons(
     tokens: TokenStream,
     resolved_idents: impl IntoIterator<Item = Ident>,
@@ -37,7 +37,19 @@ pub fn postprocess_singletons(
         let span = singleton_ident.span();
         let mut resolved_ident = resolved_idents_iter.next().unwrap();
         resolved_ident.set_span(span);
-        TokenTree::Ident(resolved_ident)
+        // Emit `(*&ident)` so consumers get an immutable place expression.
+        // The `&` prevents mutation (can't assign through a shared reference),
+        // and the `*` dereferences back to the original type for ergonomic use.
+        let deref_ref_tokens: TokenStream = [
+            TokenTree::Punct(proc_macro2::Punct::new('*', proc_macro2::Spacing::Alone)),
+            TokenTree::Punct(proc_macro2::Punct::new('&', proc_macro2::Spacing::Alone)),
+            TokenTree::Ident(resolved_ident),
+        ]
+        .into_iter()
+        .collect();
+        let mut group = Group::new(proc_macro2::Delimiter::Parenthesis, deref_ref_tokens);
+        group.set_span(span);
+        TokenTree::Group(group)
     });
     parse_terminated(processed).unwrap()
 }
