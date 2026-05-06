@@ -1,7 +1,6 @@
 use quote::quote_spanned;
 
 use super::{
-    DelayType,
     OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
     OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
@@ -43,7 +42,7 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::Stratum),
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
