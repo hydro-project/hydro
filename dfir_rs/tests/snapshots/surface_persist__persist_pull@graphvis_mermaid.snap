@@ -17,6 +17,7 @@ linkStyle default stroke:#aaa
 7v1[\"(7v1) <code>union()</code>"/]:::pullClass
 8v1[\"(8v1) <code>fold(|| 0, |a: &amp;mut _, b| *a += b)</code>"/]:::pullClass
 9v1[/"(9v1) <code>for_each(|x| result_send.send(x).unwrap())</code>"\]:::pushClass
+10v1["(10v1) <code>handoff</code>"]:::otherClass
 2v1-->4v1
 1v1-->2v1
 3v1-->4v1
@@ -24,7 +25,8 @@ linkStyle default stroke:#aaa
 4v1-->5v1
 6v1-->7v1
 8v1-->9v1
-7v1-->8v1
+7v1-->10v1
+10v1--x8v1; linkStyle 8 stroke:red
 subgraph sg_1v1 ["sg_1v1"]
     1v1
     2v1
@@ -36,6 +38,10 @@ subgraph sg_1v1 ["sg_1v1"]
     end
     subgraph sg_1v1_var_m1 ["var <tt>m1</tt>"]
         7v1
+    end
+end
+subgraph sg_2v1 ["sg_2v1"]
+    subgraph sg_2v1_var_m1 ["var <tt>m1</tt>"]
         8v1
         9v1
     end

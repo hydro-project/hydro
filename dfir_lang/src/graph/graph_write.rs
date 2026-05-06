@@ -181,7 +181,7 @@ where
             src = src_str.trim(),
             arrow_body = "--",
             arrow_head = match delay_type {
-                None => ">",
+                None | Some(DelayType::MonotoneAccum) => ">",
                 Some(DelayType::Stratum) => "x",
                 Some(DelayType::Tick | DelayType::TickLazy) => "o",
             },
@@ -201,6 +201,7 @@ where
                 self.link_count,
                 match delay_type {
                     DelayType::Stratum | DelayType::Tick | DelayType::TickLazy => "red",
+                    DelayType::MonotoneAccum => "#060",
                 }
             )?;
         }
