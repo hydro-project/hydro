@@ -10,13 +10,8 @@ pub mod ticks;
 
 /// Tag for [`SubgraphId`].
 pub enum SubgraphTag {}
-/// A subgraph's ID. Used as a key for metrics tracking.
+/// A subgraph's ID.
 pub type SubgraphId = Key<SubgraphTag>;
-
-/// Tag for [`HandoffId`].
-pub enum HandoffTag {}
-/// A handoff's ID. Used as a key for metrics tracking.
-pub type HandoffId = Key<HandoffTag>;
 
 /// Tag for [`LoopId`].
 pub enum LoopTag {}

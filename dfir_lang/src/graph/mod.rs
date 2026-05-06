@@ -6,7 +6,6 @@ use std::hash::Hash;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::ToTokens;
 use serde::{Deserialize, Serialize};
-use slotmap::new_key_type;
 use syn::punctuated::Punctuated;
 use syn::spanned::Spanned;
 use syn::{Expr, ExprPath, GenericArgument, Token, Type};
@@ -32,22 +31,10 @@ pub use flat_graph_builder::{FlatGraphBuilder, FlatGraphBuilderOutput};
 pub use flat_to_partitioned::partition_graph;
 pub use meta_graph::{DfirGraph, WriteConfig, WriteGraphType};
 
+pub use crate::graph_ids::{GraphEdgeId, GraphLoopId, GraphNodeId, GraphSubgraphId};
+
 pub mod graph_algorithms;
 pub mod ops;
-
-new_key_type! {
-    /// ID to identify a node (operator or handoff) in [`DfirGraph`].
-    pub struct GraphNodeId;
-
-    /// ID to identify an edge.
-    pub struct GraphEdgeId;
-
-    /// ID to identify a subgraph in [`DfirGraph`].
-    pub struct GraphSubgraphId;
-
-    /// ID to identify a loop block in [`DfirGraph`].
-    pub struct GraphLoopId;
-}
 
 impl GraphSubgraphId {
     /// Generate a deterministic `Ident` for the given subgraph ID.

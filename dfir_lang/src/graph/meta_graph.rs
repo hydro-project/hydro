@@ -850,14 +850,6 @@ impl DfirGraph {
         prefix: TokenStream,
         diagnostics: &mut Diagnostics,
     ) -> Result<TokenStream, Diagnostics> {
-        // Extract the slot index from a slotmap key for use as a runtime metrics key.
-        // Uses the low 32 bits of `KeyData::as_ffi()` (the idx, ignoring the version).
-        // TODO(cleanup): When scheduled Dfir is removed, DfirMetrics could use slotmap
-        // SecondaryMaps directly, eliminating this conversion.
-        fn slotmap_raw_idx(key: impl Key) -> usize {
-            (key.data().as_ffi() & 0xFFFF_FFFF) as usize
-        }
-
         let df = Ident::new(GRAPH, Span::call_site());
         let context = Ident::new(CONTEXT, Span::call_site());
 
@@ -998,7 +990,7 @@ impl DfirGraph {
         let mut subgraph_blocks = Vec::new();
         {
             for &(subgraph_id, subgraph_nodes) in all_subgraphs.iter() {
-                let sg_metrics_idx = slotmap_raw_idx(subgraph_id);
+                let sg_metrics_ffi = subgraph_id.data().as_ffi();
                 let (recv_hoffs, send_hoffs) = &subgraph_handoffs[subgraph_id];
 
                 // Generate buffer ident helpers for this subgraph's handoffs.
@@ -1029,7 +1021,7 @@ impl DfirGraph {
                     .zip(recv_buf_idents.iter())
                     .zip(recv_hoffs.iter())
                     .map(|((port_ident, buf_ident), &hoff_id)| {
-                        let hoff_idx = slotmap_raw_idx(hoff_id);
+                        let hoff_ffi = hoff_id.data().as_ffi();
                         // Use call_site span for internal identifiers to avoid
                         // hygiene issues when invoked through declarative macros
                         // (e.g. dfir_expect_warnings!). TODO(#2781): define these once.
@@ -1049,7 +1041,7 @@ impl DfirGraph {
                                     #work_done = true;
                                 }
                                 let hoff_metrics = &#metrics.handoffs[
-                                    #root::util::slot_vec::Key::<#root::scheduled::HandoffTag>::from_raw(#hoff_idx)
+                                    #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
                                 ];
                                 hoff_metrics.total_items_count.update(|x| x + hoff_len);
                                 hoff_metrics.curr_items_count.set(hoff_len);
@@ -1424,8 +1416,10 @@ impl DfirGraph {
                             .span()
                             .join(push_ident.span())
                             .unwrap_or_else(|| push_ident.span());
-                        let pivot_fn_ident =
-                            Ident::new(&format!("pivot_run_sg_{:?}", subgraph_id.0), pivot_span);
+                        let pivot_fn_ident = Ident::new(
+                            &format!("pivot_run_sg_{:?}", subgraph_id.data()),
+                            pivot_span,
+                        );
                         let root = change_spans(root.clone(), pivot_span);
                         subgraph_op_iter_code.push(quote_spanned! {pivot_span=>
                             #[inline(always)]
@@ -1452,10 +1446,10 @@ impl DfirGraph {
                     .iter()
                     .zip(send_buf_idents.iter())
                     .map(|(&hoff_id, buf_ident)| {
-                        let hoff_idx = slotmap_raw_idx(hoff_id);
+                        let hoff_ffi = hoff_id.data().as_ffi();
                         quote! {
                             __dfir_metrics.handoffs[
-                                #root::util::slot_vec::Key::<#root::scheduled::HandoffTag>::from_raw(#hoff_idx)
+                                #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
                             ].curr_items_count.set(#buf_ident.len());
                         }
                     })
@@ -1471,7 +1465,7 @@ impl DfirGraph {
                     };
                     {
                         let sg_metrics = &__dfir_metrics.subgraphs[
-                            #root::util::slot_vec::Key::<#root::scheduled::SubgraphTag>::from_raw(#sg_metrics_idx)
+                            #root::slotmap::KeyData::from_ffi(#sg_metrics_ffi).into()
                         ];
                         #root::scheduled::metrics::InstrumentSubgraph::new(
                             #sg_fut_ident, sg_metrics
@@ -1510,19 +1504,19 @@ impl DfirGraph {
         // Generate metrics initialization: one entry per handoff and per subgraph.
         let metrics_init_code = {
             let handoff_inits = handoff_nodes.iter().map(|&(node_id, _)| {
-                let idx = slotmap_raw_idx(node_id);
+                let ffi = node_id.data().as_ffi();
                 quote! {
                     dfir_metrics.handoffs.insert(
-                        #root::util::slot_vec::Key::from_raw(#idx),
+                        #root::slotmap::KeyData::from_ffi(#ffi).into(),
                         ::std::default::Default::default(),
                     );
                 }
             });
             let subgraph_inits = all_subgraphs.iter().map(|&(sg_id, _)| {
-                let idx = slotmap_raw_idx(sg_id);
+                let ffi = sg_id.data().as_ffi();
                 quote! {
                     dfir_metrics.subgraphs.insert(
-                        #root::util::slot_vec::Key::from_raw(#idx),
+                        #root::slotmap::KeyData::from_ffi(#ffi).into(),
                         ::std::default::Default::default(),
                     );
                 }
