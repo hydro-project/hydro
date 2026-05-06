@@ -1553,16 +1553,7 @@ impl DfirGraph {
                         );
                         let root = change_spans(root.clone(), pivot_span);
                         subgraph_op_iter_code.push(quote_spanned! {pivot_span=>
-                            #[inline(always)]
-                            fn #pivot_fn_ident<Pul, Psh, Item>(pull: Pul, push: Psh)
-                                -> impl ::std::future::Future<Output = ()>
-                            where
-                                Pul: #root::dfir_pipes::pull::Pull<Item = Item>,
-                                Psh: #root::dfir_pipes::push::Push<Item, Pul::Meta>,
-                            {
-                                #root::dfir_pipes::pull::Pull::send_push(pull, push)
-                            }
-                            (#pivot_fn_ident)(#pull_ident, #push_ident).await;
+                            #root::dfir_pipes::pull::Pull::send_push(#pull_ident, #push_ident).await;
                         });
                     }
                 };
