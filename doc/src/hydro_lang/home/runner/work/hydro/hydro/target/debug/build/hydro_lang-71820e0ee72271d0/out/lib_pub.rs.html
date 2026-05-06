@@ -1138,9 +1138,9 @@
 <a href=#1138 id=1138 data-nosnippet>1138</a>                    [<span class="string">"LocationName"</span>, <span class="string">"HandoffId"</span>]], <span class="string">"Metrics" </span>: [{ <span class="string">"Name" </span>:
 <a href=#1139 id=1139 data-nosnippet>1139</a>                    <span class="string">"CurrItemsCount"</span>, <span class="string">"Unit" </span>: Unit::Count }, { <span class="string">"Name" </span>:
 <a href=#1140 id=1140 data-nosnippet>1140</a>                    <span class="string">"TotalItemsCount"</span>, <span class="string">"Unit" </span>: Unit::Count },] }] }, <span class="string">"LocationName" </span>:
-<a href=#1141 id=1141 data-nosnippet>1141</a>                    location_name, <span class="string">"HandoffId" </span>: hoff_id.to_string(), <span class="string">"CurrItemsCount" </span>:
-<a href=#1142 id=1142 data-nosnippet>1142</a>                    hoff_metrics.curr_items_count(), <span class="string">"TotalItemsCount" </span>: hoff_metrics
-<a href=#1143 id=1143 data-nosnippet>1143</a>                    .total_items_count(), }
+<a href=#1141 id=1141 data-nosnippet>1141</a>                    location_name, <span class="string">"HandoffId" </span>: <span class="macro">format!</span>(<span class="string">"{:?}"</span>, hoff_id),
+<a href=#1142 id=1142 data-nosnippet>1142</a>                    <span class="string">"CurrItemsCount" </span>: hoff_metrics.curr_items_count(), <span class="string">"TotalItemsCount"
+<a href=#1143 id=1143 data-nosnippet>1143</a>                    </span>: hoff_metrics.total_items_count(), }
 <a href=#1144 id=1144 data-nosnippet>1144</a>                )
 <a href=#1145 id=1145 data-nosnippet>1145</a>                    .to_string();
 <a href=#1146 id=1146 data-nosnippet>1146</a>                writer.write_all(emf.as_bytes()).<span class="kw">await</span><span class="question-mark">?</span>;
@@ -1156,8 +1156,8 @@
 <a href=#1156 id=1156 data-nosnippet>1156</a>                    <span class="string">"TotalPollCount"</span>, <span class="string">"Unit" </span>: Unit::Count }, { <span class="string">"Name" </span>:
 <a href=#1157 id=1157 data-nosnippet>1157</a>                    <span class="string">"TotalIdleDuration"</span>, <span class="string">"Unit" </span>: Unit::Microseconds }, { <span class="string">"Name" </span>:
 <a href=#1158 id=1158 data-nosnippet>1158</a>                    <span class="string">"TotalIdleCount"</span>, <span class="string">"Unit" </span>: Unit::Count },] }] }, <span class="string">"LocationName" </span>:
-<a href=#1159 id=1159 data-nosnippet>1159</a>                    location_name, <span class="string">"SubgraphId" </span>: sg_id.to_string(), <span class="string">"TotalRunCount" </span>:
-<a href=#1160 id=1160 data-nosnippet>1160</a>                    sg_metrics.total_run_count(), <span class="string">"TotalPollDuration" </span>: sg_metrics
+<a href=#1159 id=1159 data-nosnippet>1159</a>                    location_name, <span class="string">"SubgraphId" </span>: <span class="macro">format!</span>(<span class="string">"{:?}"</span>, sg_id), <span class="string">"TotalRunCount"
+<a href=#1160 id=1160 data-nosnippet>1160</a>                    </span>: sg_metrics.total_run_count(), <span class="string">"TotalPollDuration" </span>: sg_metrics
 <a href=#1161 id=1161 data-nosnippet>1161</a>                    .total_poll_duration().as_micros(), <span class="string">"TotalPollCount" </span>: sg_metrics
 <a href=#1162 id=1162 data-nosnippet>1162</a>                    .total_poll_count(), <span class="string">"TotalIdleDuration" </span>: sg_metrics
 <a href=#1163 id=1163 data-nosnippet>1163</a>                    .total_idle_duration().as_micros(), <span class="string">"TotalIdleCount" </span>: sg_metrics

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["diagnostic","graph","parse","pretty_span","process_singletons","union_find"]};
+window.SIDEBAR_ITEMS = {"mod":["diagnostic","graph","graph_ids","parse","pretty_span","process_singletons","union_find"]};

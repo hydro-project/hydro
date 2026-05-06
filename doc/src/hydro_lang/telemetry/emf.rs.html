@@ -184,7 +184,7 @@
 <a href=#184 id=184 data-nosnippet>184</a>                ]
 <a href=#185 id=185 data-nosnippet>185</a>            },
 <a href=#186 id=186 data-nosnippet>186</a>            <span class="string">"LocationName"</span>: location_name,
-<a href=#187 id=187 data-nosnippet>187</a>            <span class="string">"HandoffId"</span>: hoff_id.to_string(),
+<a href=#187 id=187 data-nosnippet>187</a>            <span class="string">"HandoffId"</span>: <span class="macro">format!</span>(<span class="string">"{:?}"</span>, hoff_id),
 <a href=#188 id=188 data-nosnippet>188</a>            <span class="string">"CurrItemsCount"</span>: hoff_metrics.curr_items_count(),
 <a href=#189 id=189 data-nosnippet>189</a>            <span class="string">"TotalItemsCount"</span>: hoff_metrics.total_items_count(),
 <a href=#190 id=190 data-nosnippet>190</a>        })
@@ -213,7 +213,7 @@
 <a href=#213 id=213 data-nosnippet>213</a>                ]
 <a href=#214 id=214 data-nosnippet>214</a>            },
 <a href=#215 id=215 data-nosnippet>215</a>            <span class="string">"LocationName"</span>: location_name,
-<a href=#216 id=216 data-nosnippet>216</a>            <span class="string">"SubgraphId"</span>: sg_id.to_string(),
+<a href=#216 id=216 data-nosnippet>216</a>            <span class="string">"SubgraphId"</span>: <span class="macro">format!</span>(<span class="string">"{:?}"</span>, sg_id),
 <a href=#217 id=217 data-nosnippet>217</a>            <span class="string">"TotalRunCount"</span>: sg_metrics.total_run_count(),
 <a href=#218 id=218 data-nosnippet>218</a>            <span class="string">"TotalPollDuration"</span>: sg_metrics.total_poll_duration().as_micros(),
 <a href=#219 id=219 data-nosnippet>219</a>            <span class="string">"TotalPollCount"</span>: sg_metrics.total_poll_count(),

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["HandoffTag","LoopTag","SubgraphTag"],"mod":["context","metrics","net","ticks"],"type":["HandoffId","LoopId","SubgraphId"]};
+window.SIDEBAR_ITEMS = {"enum":["LoopTag","SubgraphTag"],"mod":["context","metrics","net","ticks"],"type":["LoopId","SubgraphId"]};

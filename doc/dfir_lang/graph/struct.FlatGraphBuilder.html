@@ -7,7 +7,7 @@ other outputs.</p>
 </div></details><details class="toggle method-toggle" open><summary><section id="method.add_dfir" class="method"><a class="src rightside" href="../../src/dfir_lang/graph/flat_graph_builder.rs.html#125-134">Source</a><h4 class="code-header">pub fn <a href="#method.add_dfir" class="fn">add_dfir</a>(
     &amp;mut self,
     dfir: <a class="struct" href="../parse/struct.DfirCode.html" title="struct dfir_lang::parse::DfirCode">DfirCode</a>,
-    current_loop: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.GraphLoopId.html" title="struct dfir_lang::graph::GraphLoopId">GraphLoopId</a>&gt;,
+    current_loop: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../graph_ids/struct.GraphLoopId.html" title="struct dfir_lang::graph_ids::GraphLoopId">GraphLoopId</a>&gt;,
     operator_tag: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;,
 )</h4></section></summary><div class="docblock"><p>Adds all <a href="../parse/enum.DfirStatement.html" title="enum dfir_lang::parse::DfirStatement"><code>DfirStatement</code></a>s within the <a href="../parse/struct.DfirCode.html" title="struct dfir_lang::parse::DfirCode"><code>DfirCode</code></a> to this <a href="struct.DfirGraph.html" title="struct dfir_lang::graph::DfirGraph"><code>DfirGraph</code></a>.</p>
 <p>Optional configuration:</p>
@@ -21,7 +21,7 @@ other outputs.</p>
     asgn_name: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>&gt;,
     pred_name: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="struct" href="https://docs.rs/proc-macro2/1.0.103/proc_macro2/struct.Ident.html" title="struct proc_macro2::Ident">Ident</a>&gt;,
     pipeline: <a class="enum" href="../parse/enum.Pipeline.html" title="enum dfir_lang::parse::Pipeline">Pipeline</a>,
-    current_loop: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="struct.GraphLoopId.html" title="struct dfir_lang::graph::GraphLoopId">GraphLoopId</a>&gt;,
+    current_loop: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="../graph_ids/struct.GraphLoopId.html" title="struct dfir_lang::graph_ids::GraphLoopId">GraphLoopId</a>&gt;,
     operator_tag: <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;&amp;<a class="primitive" href="https://doc.rust-lang.org/nightly/std/primitive.str.html">str</a>&gt;,
 )</h4></section></summary><div class="docblock"><p>Programatically add an pipeline, optionally adding <code>pred_name</code> as a single predecessor and
 assigning it all to <code>asgn_name</code>.</p>
