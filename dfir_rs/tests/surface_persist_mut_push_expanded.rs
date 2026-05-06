@@ -16,7 +16,13 @@ use dfir_rs::util::sparse_vec::SparseVec;
 async fn repro() {
     // Prologue (outer scope, persists across ticks)
     let mut sg_1v1_node_1v1_iter = {
-        std::iter::IntoIterator::into_iter([Persist(1usize), Persist(2), Persist(3), Persist(4), Delete(2)])
+        std::iter::IntoIterator::into_iter([
+            Persist(1usize),
+            Persist(2),
+            Persist(3),
+            Persist(4),
+            Delete(2),
+        ])
     };
     let mut sg_1v1_node_2v1_persistdata: SparseVec<usize> = SparseVec::default();
     let mut sg_1v1_node_6v1_persistdata: SparseVec<usize> = SparseVec::default();
@@ -33,18 +39,26 @@ async fn repro() {
             let op_1v1 = dfir_pipes::pull::iter(&mut sg_1v1_node_1v1_iter);
 
             // Type guard wrapper (this is what the codegen generates to check types)
-            fn type_guard<Item, Input>(input: Input) -> impl dfir_pipes::pull::Pull<Item = Item, Meta = (), CanPend = Input::CanPend, CanEnd = Input::CanEnd>
-            where Input: dfir_pipes::pull::Pull<Item = Item, Meta = ()>
-            { input }
+            fn type_guard<Item, Input>(
+                input: Input,
+            ) -> impl dfir_pipes::pull::Pull<
+                Item = Item,
+                Meta = (),
+                CanPend = Input::CanPend,
+                CanEnd = Input::CanEnd,
+            >
+            where
+                Input: dfir_pipes::pull::Pull<Item = Item, Meta = ()>,
+            {
+                input
+            }
             let op_1v1 = type_guard(op_1v1);
 
             let op_2v1 = {
                 // persist_mut consumes op_1v1, accumulates, then emits from persistdata
-                let fut = dfir_pipes::pull::Pull::for_each(op_1v1, |item| {
-                    match item {
-                        Persist(v) => sg_1v1_node_2v1_persistdata.push(v),
-                        Delete(v) => sg_1v1_node_2v1_persistdata.delete(&v),
-                    }
+                let fut = dfir_pipes::pull::Pull::for_each(op_1v1, |item| match item {
+                    Persist(v) => sg_1v1_node_2v1_persistdata.push(v),
+                    Delete(v) => sg_1v1_node_2v1_persistdata.delete(&v),
                 });
                 fut.await;
                 dfir_pipes::pull::iter(sg_1v1_node_2v1_persistdata.iter().cloned())
@@ -53,14 +67,18 @@ async fn repro() {
 
             // Push side: for_each (push_tx), flat_map -> persist_mut -> for_each (pull_tx)
             let op_7v1 = dfir_pipes::push::for_each(|v: usize| push_tx.send(v).unwrap());
-            let op_6v1 = dfir_pipes::push::for_each(|item: Persistence<usize>| {
-                match item {
-                    Persist(v) => sg_1v1_node_6v1_persistdata.push(v),
-                    Delete(v) => sg_1v1_node_6v1_persistdata.delete(&v),
-                }
+            let op_6v1 = dfir_pipes::push::for_each(|item: Persistence<usize>| match item {
+                Persist(v) => sg_1v1_node_6v1_persistdata.push(v),
+                Delete(v) => sg_1v1_node_6v1_persistdata.delete(&v),
             });
             let op_5v1 = dfir_pipes::push::flat_map(
-                |x: usize| if x == 3 { vec![Persist(x), Delete(x)] } else { vec![Persist(x)] },
+                |x: usize| {
+                    if x == 3 {
+                        vec![Persist(x), Delete(x)]
+                    } else {
+                        vec![Persist(x)]
+                    }
+                },
                 op_6v1,
             );
             let op_4v1 = dfir_pipes::push::for_each(|v: usize| pull_tx.send(v).unwrap());

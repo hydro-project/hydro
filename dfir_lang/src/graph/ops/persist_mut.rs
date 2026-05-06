@@ -42,13 +42,14 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::Stratum),
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
                    work_fn_async,
                    ident,
                    inputs,
+                   outputs,
                    is_pull,
                    op_name,
                    op_inst:
@@ -107,13 +108,21 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
                 };
             }
         } else {
+            let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::dfir_pipes::push::for_each(|item| {
-                    match item {
-                        #root::util::Persistence::Persist(v) => #persistdata_ident.push(v),
-                        #root::util::Persistence::Delete(v) => #persistdata_ident.delete(&v),
-                    }
-                });
+                let #ident = #root::dfir_pipes::push::Fold::new(
+                    &mut #persistdata_ident,
+                    |state: &mut #root::util::sparse_vec::SparseVec<_>, item| {
+                        match item {
+                            #root::util::Persistence::Persist(v) => state.push(v),
+                            #root::util::Persistence::Delete(v) => state.delete(&v),
+                        }
+                    },
+                    #root::dfir_pipes::push::flat_map(
+                        |state: #root::util::sparse_vec::SparseVec<_>| state.iter().cloned().collect::<::std::vec::Vec<_>>(),
+                        #output,
+                    ),
+                );
             }
         };
 
