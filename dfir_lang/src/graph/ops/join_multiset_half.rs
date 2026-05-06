@@ -144,7 +144,7 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
 
                     // Replay out of probe vec
                     #[allow(clippy::clone_on_copy, noop_method_call)]
-                    let iter = #probe_ident[..].iter().flat_map(|(k, v_probe)| {
+                    let iter = #probe_ident.iter().flat_map(|(k, v_probe)| {
                         #build_ident
                             .get(k)
                             .map(|vals: &::std::vec::Vec<_>| {

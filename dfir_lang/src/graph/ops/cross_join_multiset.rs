@@ -81,9 +81,9 @@ pub const CROSS_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
                 #lhs_state
                     .iter()
                     .flat_map(|lhs| {
-                        #rhs_state[..]
-                            .iter()
-                            .map(move |rhs| (::std::clone::Clone::clone(lhs), ::std::clone::Clone::clone(rhs)))
+                #rhs_state
+                    .iter()
+                    .map(move |rhs| (::std::clone::Clone::clone(lhs), ::std::clone::Clone::clone(rhs)))
                     })
             );
         };

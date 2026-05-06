@@ -124,8 +124,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                     let () = #work_fn_async(fut).await;
 
                     // Replay out of pos vec
-                    let iter = #pos_ident[..].iter();
-                    let iter = ::std::iter::Iterator::filter(iter, |(k, _)| {
+                    let iter = ::std::iter::Iterator::filter(#pos_ident.iter(), |(k, _)| {
                         !#neg_ident.contains(k)
                     });
                     let iter = ::std::iter::Iterator::cloned(iter);

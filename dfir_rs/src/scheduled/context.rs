@@ -54,11 +54,11 @@ impl Wake for WakeState {
 }
 
 /// A lightweight context for inline codegen that avoids the overhead of the full
-/// [`Context`] (no tokio channels, no scheduler queues, no loop machinery).
+/// scheduled graph (no tokio channels, no scheduler queues, no loop machinery).
 ///
-/// Exposes the same method names that operator-generated code calls on both
-/// `df` (for prologues: `add_state`, `set_state_lifespan_hook`) and
-/// `context` (for iterators: `state_ref_unchecked`, etc.).
+/// Exposes methods that operator-generated code calls on both
+/// `df` (for prologues: `request_task`) and
+/// `context` (for iterators: `current_tick`, `schedule_subgraph`, etc.).
 #[doc(hidden)]
 #[derive(Default)]
 pub struct Context {

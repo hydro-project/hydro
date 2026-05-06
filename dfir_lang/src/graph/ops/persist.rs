@@ -103,7 +103,7 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                     });
                     let () = #work_fn_async(fut).await;
 
-                    let iter = #vec_ident[..].iter().cloned();
+                    let iter = #vec_ident.iter().cloned();
                     #root::dfir_pipes::pull::iter(iter)
                 };
             }

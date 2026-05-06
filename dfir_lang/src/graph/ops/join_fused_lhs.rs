@@ -110,9 +110,9 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
 
                     #[allow(clippy::clone_on_copy)]
                     #[allow(suspicious_double_ref_op)]
-                    let iter = #rhs_borrow_ident[..]
-                        .iter()
-                        .filter_map(|(k, v2)| #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))));
+                let iter = #rhs_borrow_ident
+                    .iter()
+                    .filter_map(|(k, v2)| #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))));
                     #root::dfir_pipes::pull::iter(iter)
                 };
             },
