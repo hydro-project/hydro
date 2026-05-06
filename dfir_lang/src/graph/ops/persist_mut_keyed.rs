@@ -41,13 +41,14 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
     flo_type: None,
     ports_inn: None,
     ports_out: None,
-    input_delaytype_fn: |_| Some(DelayType::Stratum),
+    input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
                    work_fn_async,
                    ident,
                    inputs,
+                   outputs,
                    is_pull,
                    op_name,
                    op_inst:
@@ -115,17 +116,34 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
                 };
             }
         } else {
+            let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::dfir_pipes::push::for_each(|item| {
-                    match item {
-                        #root::util::PersistenceKeyed::Persist(k, v) => {
-                            #persistdata_ident.entry(k).or_default().push(v);
-                        },
-                        #root::util::PersistenceKeyed::Delete(k) => {
-                            #persistdata_ident.remove(&k);
+                let #ident = #root::dfir_pipes::push::Fold::new(
+                    &mut #persistdata_ident,
+                    |state: &mut #root::rustc_hash::FxHashMap<_, #root::util::sparse_vec::SparseVec<_>>, item| {
+                        match item {
+                            #root::util::PersistenceKeyed::Persist(k, v) => {
+                                state.entry(k).or_default().push(v);
+                            },
+                            #root::util::PersistenceKeyed::Delete(k) => {
+                                state.remove(&k);
+                            }
                         }
-                    }
-                });
+                    },
+                    #root::dfir_pipes::push::flat_map(
+                        #[allow(clippy::clone_on_copy)]
+                        |state| {
+                            let mut out = ::std::vec::Vec::new();
+                            for (k, v) in <_ as ::std::iter::IntoIterator>::into_iter(state) {
+                                for item in #root::util::sparse_vec::SparseVec::iter(&v) {
+                                    out.push((::std::clone::Clone::clone(&k), ::std::clone::Clone::clone(item)));
+                                }
+                            }
+                            out
+                        },
+                        #output,
+                    ),
+                );
             }
         };
 

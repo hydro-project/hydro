@@ -67,9 +67,8 @@ where
     fn poll_finalize(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         let mut this = self.project();
         if this.flush_items.is_empty() && *this.flush_idx == 0 {
-            this.flush_items.extend(
-                this.map.iter().map(|(k, v)| (k.clone(), v.clone())),
-            );
+            this.flush_items
+                .extend(this.map.iter().map(|(k, v)| (k.clone(), v.clone())));
         }
         while *this.flush_idx < this.flush_items.len() {
             ready!(this.next.as_mut().poll_ready(ctx));
