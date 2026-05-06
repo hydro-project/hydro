@@ -360,3 +360,31 @@ fn sim_collect_waits_for_all_ticks() {
         assert_eq!(all, vec![1, 2, 3]);
     });
 }
+
+/// Regression test for https://github.com/hydro-project/hydro/issues/2602
+/// Verifies that `resolve_futures_blocking` preserves `Bounded`, allowing
+/// its output to be used with APIs that require boundedness (e.g. `cross_singleton`).
+/// If `resolve_futures_blocking` ever regresses to return `Unbounded`, this test
+/// will fail to compile.
+#[test]
+fn resolve_futures_blocking_preserves_bounded() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+    let tick = node.tick();
+
+    let resolved = node
+        .source_iter(q!(vec![1, 2, 3]))
+        .batch(&tick, nondet!(/** test */))
+        .map(q!(|x| async move { x }))
+        .resolve_futures_blocking();
+
+    // cross_singleton requires Bounded — this is the compile-time regression check
+    let crossed = resolved.cross_singleton(node.singleton(q!(10)).clone_into_tick(&tick));
+
+    let out_recv = crossed.all_ticks().sim_output();
+
+    flow.sim().exhaustive(async || {
+        let results: Vec<(i32, i32)> = out_recv.collect_sorted().await;
+        assert_eq!(results, vec![(1, 10), (2, 10), (3, 10)]);
+    });
+}
