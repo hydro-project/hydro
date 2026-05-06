@@ -96,7 +96,6 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
                    loop_id,
                    op_span,
                    work_fn,
@@ -205,7 +204,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                     ).await
                 }
 
-                let fut = check_inputs(#lhs, #rhs, &mut #lhs_joindata_ident, &mut #rhs_joindata_ident, #context.is_first_run_this_tick());
+                let fut = check_inputs(#lhs, #rhs, &mut #lhs_joindata_ident, &mut #rhs_joindata_ident, true);
                 #work_fn_async(fut).await
             };
         };
