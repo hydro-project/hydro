@@ -1606,7 +1606,68 @@ impl DfirBuilder for SimBuilder {
         deserialize: Option<&DebugExpr>,
         tag_id: StmtId,
     ) {
-        if let Some(deserialize_pipeline) = deserialize {
+        if let LocationId::Atomic(tick) = on {
+            // For atomic sources, we need a hook so the scheduler knows items are pending.
+            // The hook always releases all items (no batching choice).
+            let root = get_this_crate();
+
+            let hoff_id = self.next_hoff_id.get_and_increment();
+
+            let buffered_ident =
+                syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
+            let hoff_send_ident =
+                syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+            let hoff_recv_ident =
+                syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+            let root_location = on.root();
+            self.add_extra_stmt_internal(root_location, syn::parse_quote! {
+                let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+            });
+            self.add_extra_stmt_internal(root_location, syn::parse_quote! {
+                let #buffered_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+            });
+
+            self.add_hook(
+                root_location,
+                tick.as_ref(),
+                syn::parse_quote!(
+                    Box::new(#root::sim::runtime::AtomicSourceHook {
+                        input: #buffered_ident.clone(),
+                        to_release: None,
+                        output: #hoff_send_ident,
+                    })
+                ),
+            );
+
+            // Buffer items from the external source
+            if let Some(deserialize_pipeline) = deserialize {
+                self.get_dfir_mut(root_location).add_dfir(
+                    parse_quote! {
+                        source_stream(#source_expr) -> map(|v| -> ::std::result::Result<_, ()> { Ok(v) }) -> map(#deserialize_pipeline) -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
+                    },
+                    None,
+                    Some(&format!("recv{}", tag_id)),
+                );
+            } else {
+                self.get_dfir_mut(root_location).add_dfir(
+                    parse_quote! {
+                        source_stream(#source_expr) -> for_each(|v| #buffered_ident.borrow_mut().push_back(v));
+                    },
+                    None,
+                    Some(&format!("recv{}", tag_id)),
+                );
+            }
+
+            // Feed from hook output into the tick graph
+            self.get_dfir_mut(on).add_dfir(
+                parse_quote! {
+                    #out_ident = source_stream(#hoff_recv_ident);
+                },
+                None,
+                None,
+            );
+        } else if let Some(deserialize_pipeline) = deserialize {
             self.get_dfir_mut(on).add_dfir(
                 parse_quote! {
                     #out_ident = source_stream(#source_expr) -> map(|v| -> ::std::result::Result<_, ()> { Ok(v) }) -> map(#deserialize_pipeline);

@@ -358,8 +358,6 @@ mod tests {
     #[cfg(feature = "sim")]
     use crate::live_collections::sliced::sliced;
     #[cfg(feature = "sim")]
-    use crate::location::Location;
-    #[cfg(feature = "sim")]
     use crate::nondet::nondet;
     #[cfg(feature = "sim")]
     use crate::prelude::FlowBuilder;
@@ -445,5 +443,60 @@ mod tests {
                 assert_eq!(v, 1);
             }
         });
+    }
+
+    /// Tests that sim_atomic_input allows the simulator to explore both:
+    /// 1. The batch for the regular input is non-empty on the first tick (same tick as atomic write)
+    /// 2. The batch for the regular input is empty on the first tick (read comes in a later tick)
+    ///
+    /// This is impossible with the ack pattern because awaiting the ack forces
+    /// the atomic input to always be processed in a separate tick first.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_atomic_input_same_tick() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (write_send, atomic_write) = node.sim_atomic_input();
+        let (read_send, read_req) = node.sim_input::<(), _, _>();
+
+        let current_state = atomic_write.clone().fold(
+            q!(|| 0),
+            q!(|state: &mut i32, v: i32| {
+                *state += v;
+            }),
+        );
+
+        let read_response_recv = sliced! {
+            let batch_of_req = use(read_req, nondet!(/** test */));
+            let latest_singleton = use::atomic(current_state, nondet!(/** test */));
+            batch_of_req.collect_vec().zip(latest_singleton).into_stream()
+        }
+        .sim_output();
+
+        let sim_compiled = flow.sim().compiled();
+        let mut saw_same_tick = false;
+        let mut saw_separate_tick = false;
+        let instances = sim_compiled.exhaustive(async || {
+            write_send.send_atomic(1);
+            read_send.send(());
+            let (batch, state) = read_response_recv.next().await.unwrap();
+            assert_eq!(state, 1);
+            if batch.is_empty() {
+                saw_separate_tick = true;
+            } else {
+                saw_same_tick = true;
+            }
+        });
+
+        assert_eq!(instances, 2);
+        assert!(
+            saw_same_tick,
+            "expected an instance where read is in the same tick as write"
+        );
+        assert!(
+            saw_separate_tick,
+            "expected an instance where read is in a later tick"
+        );
     }
 }
