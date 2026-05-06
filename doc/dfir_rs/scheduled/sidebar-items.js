@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["LoopTag","SubgraphTag"],"mod":["context","metrics","net","ticks"],"type":["LoopId","SubgraphId"]};
+window.SIDEBAR_ITEMS = {"mod":["context","metrics","net","ticks"]};
