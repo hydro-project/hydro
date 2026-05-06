@@ -7,7 +7,10 @@
 //! remaining items. But Rust can't prove the first borrow is dead because `op_2v1`
 //! is an opaque `impl Pull` type.
 
-#![allow(unused)]
+#![expect(
+    unused,
+    reason = "expanded macro reproduction, not all bindings are used"
+)]
 
 use dfir_rs::dfir_pipes;
 use dfir_rs::util::Persistence::{self, *};
@@ -16,13 +19,14 @@ use dfir_rs::util::sparse_vec::SparseVec;
 async fn repro() {
     // Prologue (outer scope, persists across ticks)
     let mut sg_1v1_node_1v1_iter = {
-        std::iter::IntoIterator::into_iter([
+        [
             Persist(1usize),
             Persist(2),
             Persist(3),
             Persist(4),
             Delete(2),
-        ])
+        ]
+        .into_iter()
     };
     let mut sg_1v1_node_2v1_persistdata: SparseVec<usize> = SparseVec::default();
     let mut sg_1v1_node_6v1_persistdata: SparseVec<usize> = SparseVec::default();
@@ -90,6 +94,6 @@ async fn repro() {
         // After the block, the &mut borrow of sg_1v1_node_1v1_iter is provably dead.
 
         // Cleanup: drain remaining items from source_iter
-        std::iter::Iterator::for_each(&mut sg_1v1_node_1v1_iter, std::mem::drop);
+        (&mut sg_1v1_node_1v1_iter).for_each(drop);
     }
 }

@@ -26,7 +26,7 @@ pin_project! {
 
 impl<MapRef, ReduceFn, Next, K, V> ReduceKeyed<MapRef, ReduceFn, Next, K, V> {
     /// Creates a new `ReduceKeyed` push combinator.
-    pub fn new(map: MapRef, reduce_fn: ReduceFn, next: Next) -> Self {
+    pub const fn new(map: MapRef, reduce_fn: ReduceFn, next: Next) -> Self {
         Self {
             next,
             map,
@@ -70,8 +70,14 @@ where
     fn poll_flush(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         let mut this = self.project();
         if this.flush_items.is_empty() && *this.flush_idx == 0 {
-            this.flush_items
-                .extend(this.map.iter().map(|(k, v)| (k.clone(), v.clone())));
+            #[expect(
+                clippy::disallowed_methods,
+                reason = "collected into a Vec; key order is irrelevant"
+            )]
+            {
+                this.flush_items
+                    .extend(this.map.iter().map(|(k, v)| (k.clone(), v.clone())));
+            }
         }
         while *this.flush_idx < this.flush_items.len() {
             ready!(this.next.as_mut().poll_ready(ctx));
