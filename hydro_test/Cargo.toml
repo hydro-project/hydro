@@ -8,8 +8,8 @@ edition = "2024"
 workspace = true
 
 [features]
-docker = ["hydro_lang/docker_deploy"]
-ecs = ["hydro_lang/ecs_deploy"]
+test_docker = ["hydro_lang/docker_deploy"]
+test_ecs = ["hydro_lang/ecs_deploy"]
 maelstrom = ["hydro_lang/maelstrom"]
 stageleft_macro_entrypoint = ["hydro_lang/stageleft_macro_entrypoint"]
 
