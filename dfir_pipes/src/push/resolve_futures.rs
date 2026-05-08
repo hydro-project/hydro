@@ -201,7 +201,8 @@ mod tests {
         let mut queue: Queue = FuturesUnordered::new();
         let mut rf = ResolveFutures::<_, _, Queue>::new(&mut queue, None, &mut mock);
 
-        let result = Push::<core::future::Ready<i32>, ()>::poll_finalize(Pin::new(&mut rf), &mut cx);
+        let result =
+            Push::<core::future::Ready<i32>, ()>::poll_finalize(Pin::new(&mut rf), &mut cx);
         assert!(result.is_done());
 
         drop(rf);
@@ -234,7 +235,8 @@ mod tests {
         );
 
         // Finalize should drain and finalize without violating the ready guard.
-        let result = Push::<core::future::Ready<i32>, ()>::poll_finalize(Pin::new(&mut rf), &mut cx);
+        let result =
+            Push::<core::future::Ready<i32>, ()>::poll_finalize(Pin::new(&mut rf), &mut cx);
         assert!(result.is_done());
     }
 }

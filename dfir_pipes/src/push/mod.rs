@@ -153,7 +153,12 @@ where
     /// Must only be called after [`Push::poll_ready`] returns [`PushStep::Done`].
     fn start_send(self: Pin<&mut Self>, item: Item, meta: Meta);
 
-    /// Finalizes this push pipeline, draining any buffered items downstream.
+    /// Finalizes this push pipeline, signaling that no more items will be sent.
+    ///
+    /// Deferred operators (e.g. sort, fold, reduce) emit their accumulated output
+    /// during this call. Buffering operators drain any remaining internal state
+    /// downstream. This is a one-shot operation — the pipeline should not be
+    /// reused after `poll_finalize` returns [`PushStep::Done`].
     fn poll_finalize(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend>;
 
     /// Informs this push how many items are about to be sent.

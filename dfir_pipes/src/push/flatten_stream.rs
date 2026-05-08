@@ -152,7 +152,8 @@ mod tests {
             (),
         );
 
-        let result = Push::<stream::Iter<vec::IntoIter<i32>>, ()>::poll_finalize(fs.as_mut(), &mut cx);
+        let result =
+            Push::<stream::Iter<vec::IntoIter<i32>>, ()>::poll_finalize(fs.as_mut(), &mut cx);
         assert!(result.is_done());
 
         assert_eq!(tp.items(), vec![1, 2, 3]);

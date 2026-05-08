@@ -75,18 +75,18 @@ where
 
     fn poll_flush(
         self: Pin<&mut Self>,
-        cx: &mut core::task::Context<'_>,
+        _cx: &mut core::task::Context<'_>,
     ) -> Poll<Result<(), Self::Error>> {
-        match self.as_pin_mut().poll_finalize(Context::from_task(cx)) {
-            PushStep::Pending(_) => Poll::Pending,
-            PushStep::Done => Poll::Ready(Ok(())),
-        }
+        Poll::Ready(Ok(()))
     }
 
     fn poll_close(
         self: Pin<&mut Self>,
         cx: &mut core::task::Context<'_>,
     ) -> Poll<Result<(), Self::Error>> {
-        self.poll_flush(cx)
+        match self.as_pin_mut().poll_finalize(Context::from_task(cx)) {
+            PushStep::Pending(_) => Poll::Pending,
+            PushStep::Done => Poll::Ready(Ok(())),
+        }
     }
 }
