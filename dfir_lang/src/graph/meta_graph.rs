@@ -1355,11 +1355,11 @@ impl DfirGraph {
                                                     }
 
                                                     #[inline(always)]
-                                                    fn poll_flush(
+                                                    fn poll_finalize(
                                                         self: ::std::pin::Pin<&mut Self>,
                                                         ctx: &mut Self::Ctx<'_>,
                                                     ) -> #root::dfir_pipes::push::PushStep<Self::CanPend> {
-                                                        #root::dfir_pipes::push::Push::poll_flush(self.project().inner, ctx)
+                                                        #root::dfir_pipes::push::Push::poll_finalize(self.project().inner, ctx)
                                                     }
 
                                                     #[inline(always)]
