@@ -50,7 +50,7 @@ impl<'a> BuiltFlow<'a> {
     }
 
     /// Serialize the IR as JSON.
-    #[cfg(feature = "runtime_support")]
+    #[cfg(feature = "serde_json")]
     pub fn ir_json(&self) -> Result<String, serde_json::Error> {
         super::ir::serialize_dedup_shared(|| serde_json::to_string_pretty(&self.ir))
     }
