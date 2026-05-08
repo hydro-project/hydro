@@ -44,7 +44,7 @@ where
         self.project().buf.borrow_mut().push(item);
     }
 
-    fn poll_flush(self: Pin<&mut Self>, _ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
+    fn poll_finalize(self: Pin<&mut Self>, _ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         PushStep::Done
     }
 

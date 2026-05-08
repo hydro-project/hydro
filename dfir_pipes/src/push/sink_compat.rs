@@ -77,7 +77,7 @@ where
         self: Pin<&mut Self>,
         cx: &mut core::task::Context<'_>,
     ) -> Poll<Result<(), Self::Error>> {
-        match self.as_pin_mut().poll_flush(Context::from_task(cx)) {
+        match self.as_pin_mut().poll_finalize(Context::from_task(cx)) {
             PushStep::Pending(_) => Poll::Pending,
             PushStep::Done => Poll::Ready(Ok(())),
         }

@@ -64,12 +64,12 @@ where
     /// Panics if `idx` is out of bounds (greater than or equal to the number of pushes).
     fn start_send(self: Pin<&mut Self>, idx: usize, item: Item, meta: Meta);
 
-    /// Flush all downstream pushes.
+    /// Finalize all downstream pushes.
     ///
-    /// Calls [`Push::poll_flush`] on each push, passing the appropriate
-    /// unmerged context slice. All pushes are flushed even if one returns
+    /// Calls [`Push::poll_finalize`] on each push, passing the appropriate
+    /// unmerged context slice. All pushes are finalized even if one returns
     /// pending, so that all wakers are registered.
-    fn poll_flush(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend>;
+    fn poll_finalize(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend>;
 
     /// Inform all downstream pushes that approximately `hint` items are about to be sent.
     fn size_hint(self: Pin<&mut Self>, hint: (usize, Option<usize>));
@@ -103,11 +103,11 @@ where
         }
     }
 
-    fn poll_flush(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
+    fn poll_finalize(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         let (push, rest) = pin_project_pair(self);
         ready_both!(
-            push.poll_flush(<P::Ctx<'_> as Context<'_>>::unmerge_self(ctx)),
-            rest.poll_flush(<P::Ctx<'_> as Context<'_>>::unmerge_other(ctx)),
+            push.poll_finalize(<P::Ctx<'_> as Context<'_>>::unmerge_self(ctx)),
+            rest.poll_finalize(<P::Ctx<'_> as Context<'_>>::unmerge_other(ctx)),
         );
         PushStep::Done
     }
@@ -136,7 +136,7 @@ where
         panic!("PushVariadic index out of bounds (len + {idx})");
     }
 
-    fn poll_flush(self: Pin<&mut Self>, _ctx: &mut Self::Ctx<'_>) -> PushStep<No> {
+    fn poll_finalize(self: Pin<&mut Self>, _ctx: &mut Self::Ctx<'_>) -> PushStep<No> {
         PushStep::Done
     }
 
@@ -207,8 +207,8 @@ where
         self.project().pushes.start_send(idx, item, meta);
     }
 
-    fn poll_flush(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
-        self.project().pushes.poll_flush(ctx)
+    fn poll_finalize(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
+        self.project().pushes.poll_finalize(ctx)
     }
 
     fn size_hint(self: Pin<&mut Self>, hint: (usize, Option<usize>)) {
@@ -257,7 +257,7 @@ mod tests {
             demux.as_mut().start_send((0, 40), ());
             demux.as_mut().poll_ready(&mut ());
             demux.as_mut().start_send((2, 50), ());
-            demux.as_mut().poll_flush(&mut ());
+            demux.as_mut().poll_finalize(&mut ());
         }
 
         assert_eq!(tp_a.items(), vec![10, 40]);
@@ -285,6 +285,6 @@ mod tests {
         demux.as_mut().start_send((0, 10), ());
         demux.as_mut().poll_ready(&mut ());
         demux.as_mut().start_send((1, 20), ());
-        demux.as_mut().poll_flush(&mut ());
+        demux.as_mut().poll_finalize(&mut ());
     }
 }
