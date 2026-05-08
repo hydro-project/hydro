@@ -102,7 +102,7 @@ mod tests {
     /// SendPush must not re-poll the pull after it returned Ended,
     /// even if poll_finalize returns Pending.
     #[test]
-    fn send_push_no_repoll_after_ended_on_flush_pending() {
+    fn send_push_no_repoll_after_ended_on_finalize_pending() {
         let pull = TestPull::items(0..2);
         let push = TestPush::<i32, _, _>::new_fused([], [PushStep::Pending(Yes), PushStep::Done]);
         let mut send = core::pin::pin!(SendPush::new(pull, push));

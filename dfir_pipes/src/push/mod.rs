@@ -131,10 +131,10 @@ where
 /// a source, `Push` allows you to send items into a sink. Push operators form
 /// chains where each operator transforms items and passes them downstream.
 ///
-/// The protocol mirrors [`futures_sink::Sink`]:
+/// The protocol is:
 /// 1. Call [`Push::poll_ready`] to check if the push can accept an item.
 /// 2. If ready, call [`Push::start_send`] to send the item.
-/// 3. Call [`Push::poll_finalize`] to finalize the pipeline and drain buffered items.
+/// 3. Call [`Push::poll_finalize`] to signal end-of-epoch and drain deferred output.
 pub trait Push<Item, Meta>
 where
     Meta: Copy,
