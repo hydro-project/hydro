@@ -182,11 +182,7 @@ pin_project! {
 
 impl<Pushes> DemuxVar<Pushes> {
     /// Creates a new [`DemuxVar`] with the given downstream pushes.
-    pub(crate) const fn new<Item, Meta>(pushes: Pushes) -> Self
-    where
-        Meta: Copy,
-        Pushes: PushVariadic<Item, Meta>,
-    {
+    pub(crate) const fn new(pushes: Pushes) -> Self {
         Self { pushes }
     }
 }
@@ -218,11 +214,7 @@ where
 
 /// Creates a [`DemuxVar`] push that dispatches each `(usize, Item)` pair to
 /// one of the downstream pushes in the given variadic, based on the index.
-pub const fn demux_var<Pushes, Item, Meta>(pushes: Pushes) -> DemuxVar<Pushes>
-where
-    Pushes: PushVariadic<Item, Meta>,
-    Meta: Copy,
-{
+pub const fn demux_var<Pushes>(pushes: Pushes) -> DemuxVar<Pushes> {
     DemuxVar::new(pushes)
 }
 
