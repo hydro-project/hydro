@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["BuildConfig","ClusterManifest","EcsDeploy","EcsDeployCluster","EcsDeployClusterSpec","EcsDeployExternal","EcsDeployExternalSpec","EcsDeployProcess","EcsDeployProcessSpec","HydroManifest","PortInfo","ProcessManifest"]};
+window.SIDEBAR_ITEMS = {"enum":["PortInfo"],"struct":["BuildConfig","ClusterManifest","EcsDeploy","EcsDeployCluster","EcsDeployClusterSpec","EcsDeployExternal","EcsDeployExternalSpec","EcsDeployProcess","EcsDeployProcessSpec","HydroManifest","ProcessManifest"]};
