@@ -37,8 +37,8 @@
 <a href=#37 id=37 data-nosnippet>37</a>        Item::start_send(item, meta, <span class="self">self</span>.project().outputs);
 <a href=#38 id=38 data-nosnippet>38</a>    }
 <a href=#39 id=39 data-nosnippet>39</a>
-<a href=#40 id=40 data-nosnippet>40</a>    <span class="kw">fn </span>poll_flush(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;) -&gt; PushStep&lt;<span class="self">Self</span>::CanPend&gt; {
-<a href=#41 id=41 data-nosnippet>41</a>        Item::poll_flush(<span class="self">self</span>.project().outputs, ctx)
+<a href=#40 id=40 data-nosnippet>40</a>    <span class="kw">fn </span>poll_finalize(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;) -&gt; PushStep&lt;<span class="self">Self</span>::CanPend&gt; {
+<a href=#41 id=41 data-nosnippet>41</a>        Item::poll_finalize(<span class="self">self</span>.project().outputs, ctx)
 <a href=#42 id=42 data-nosnippet>42</a>    }
 <a href=#43 id=43 data-nosnippet>43</a>
 <a href=#44 id=44 data-nosnippet>44</a>    <span class="kw">fn </span>size_hint(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, hint: (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;)) {

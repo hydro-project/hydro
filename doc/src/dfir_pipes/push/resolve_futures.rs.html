@@ -136,13 +136,13 @@
 <a href=#136 id=136 data-nosnippet>136</a>        }
 <a href=#137 id=137 data-nosnippet>137</a>    }
 <a href=#138 id=138 data-nosnippet>138</a>
-<a href=#139 id=139 data-nosnippet>139</a>    <span class="kw">fn </span>poll_flush(<span class="kw-2">mut </span><span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;) -&gt; PushStep&lt;<span class="self">Self</span>::CanPend&gt; {
+<a href=#139 id=139 data-nosnippet>139</a>    <span class="kw">fn </span>poll_finalize(<span class="kw-2">mut </span><span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;) -&gt; PushStep&lt;<span class="self">Self</span>::CanPend&gt; {
 <a href=#140 id=140 data-nosnippet>140</a>        <span class="comment">// First drain any ready items from the queue.
 <a href=#141 id=141 data-nosnippet>141</a>        </span><span class="macro">ready!</span>(<span class="self">self</span>.as_mut().empty_ready(ctx));
 <a href=#142 id=142 data-nosnippet>142</a>        <span class="comment">// Then flush the downstream push.
 <a href=#143 id=143 data-nosnippet>143</a>        </span><span class="kw">let </span>this = <span class="self">self</span>.project();
 <a href=#144 id=144 data-nosnippet>144</a>        this.push
-<a href=#145 id=145 data-nosnippet>145</a>            .poll_flush(<span class="kw">crate</span>::Context::from_task(ctx))
+<a href=#145 id=145 data-nosnippet>145</a>            .poll_finalize(<span class="kw">crate</span>::Context::from_task(ctx))
 <a href=#146 id=146 data-nosnippet>146</a>            .convert_into()
 <a href=#147 id=147 data-nosnippet>147</a>    }
 <a href=#148 id=148 data-nosnippet>148</a>
@@ -193,7 +193,7 @@
 <a href=#193 id=193 data-nosnippet>193</a>    }
 <a href=#194 id=194 data-nosnippet>194</a>
 <a href=#195 id=195 data-nosnippet>195</a>    <span class="attr">#[test]
-<a href=#196 id=196 data-nosnippet>196</a>    </span><span class="kw">fn </span>test_poll_flush_calls_downstream_flush() {
+<a href=#196 id=196 data-nosnippet>196</a>    </span><span class="kw">fn </span>test_poll_finalize_calls_downstream_finalize() {
 <a href=#197 id=197 data-nosnippet>197</a>        <span class="kw">let </span>waker = Waker::noop();
 <a href=#198 id=198 data-nosnippet>198</a>        <span class="kw">let </span><span class="kw-2">mut </span>cx = Context::from_waker(waker);
 <a href=#199 id=199 data-nosnippet>199</a>
@@ -201,41 +201,43 @@
 <a href=#201 id=201 data-nosnippet>201</a>        <span class="kw">let </span><span class="kw-2">mut </span>queue: Queue = FuturesUnordered::new();
 <a href=#202 id=202 data-nosnippet>202</a>        <span class="kw">let </span><span class="kw-2">mut </span>rf = ResolveFutures::&lt;<span class="kw">_</span>, <span class="kw">_</span>, Queue&gt;::new(<span class="kw-2">&amp;mut </span>queue, <span class="prelude-val">None</span>, <span class="kw-2">&amp;mut </span>mock);
 <a href=#203 id=203 data-nosnippet>203</a>
-<a href=#204 id=204 data-nosnippet>204</a>        <span class="kw">let </span>result = Push::&lt;core::future::Ready&lt;i32&gt;, ()&gt;::poll_flush(Pin::new(<span class="kw-2">&amp;mut </span>rf), <span class="kw-2">&amp;mut </span>cx);
-<a href=#205 id=205 data-nosnippet>205</a>        <span class="macro">assert!</span>(result.is_done());
-<a href=#206 id=206 data-nosnippet>206</a>
-<a href=#207 id=207 data-nosnippet>207</a>        drop(rf);
-<a href=#208 id=208 data-nosnippet>208</a>        <span class="macro">assert!</span>(
-<a href=#209 id=209 data-nosnippet>209</a>            mock.history
-<a href=#210 id=210 data-nosnippet>210</a>                .iter()
-<a href=#211 id=211 data-nosnippet>211</a>                .any(|c| <span class="macro">matches!</span>(c, PushCall::PollFlush)),
-<a href=#212 id=212 data-nosnippet>212</a>            <span class="string">"downstream poll_flush was not called"
-<a href=#213 id=213 data-nosnippet>213</a>        </span>);
-<a href=#214 id=214 data-nosnippet>214</a>    }
-<a href=#215 id=215 data-nosnippet>215</a>
-<a href=#216 id=216 data-nosnippet>216</a>    <span class="attr">#[test]
-<a href=#217 id=217 data-nosnippet>217</a>    </span><span class="kw">fn </span>resolve_futures_readies_downstream_before_each_send() {
-<a href=#218 id=218 data-nosnippet>218</a>        <span class="kw">let </span>waker = Waker::noop();
-<a href=#219 id=219 data-nosnippet>219</a>        <span class="kw">let </span><span class="kw-2">mut </span>cx = Context::from_waker(waker);
-<a href=#220 id=220 data-nosnippet>220</a>
-<a href=#221 id=221 data-nosnippet>221</a>        <span class="kw">let </span><span class="kw-2">mut </span>guard = TestPush::no_pend();
-<a href=#222 id=222 data-nosnippet>222</a>        <span class="kw">let </span><span class="kw-2">mut </span>queue: Queue = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>].into_iter().map(core::future::ready).collect();
-<a href=#223 id=223 data-nosnippet>223</a>        <span class="kw">let </span><span class="kw-2">mut </span>rf = ResolveFutures::&lt;<span class="kw">_</span>, <span class="kw">_</span>, Queue&gt;::new(<span class="kw-2">&amp;mut </span>queue, <span class="prelude-val">None</span>, <span class="kw-2">&amp;mut </span>guard);
-<a href=#224 id=224 data-nosnippet>224</a>
-<a href=#225 id=225 data-nosnippet>225</a>        <span class="comment">// poll_ready drains resolved futures into downstream, each with poll_ready before start_send.
-<a href=#226 id=226 data-nosnippet>226</a>        </span><span class="kw">let </span>result = Push::&lt;core::future::Ready&lt;i32&gt;, ()&gt;::poll_ready(Pin::new(<span class="kw-2">&amp;mut </span>rf), <span class="kw-2">&amp;mut </span>cx);
-<a href=#227 id=227 data-nosnippet>227</a>        <span class="macro">assert!</span>(result.is_done());
-<a href=#228 id=228 data-nosnippet>228</a>
-<a href=#229 id=229 data-nosnippet>229</a>        <span class="comment">// Send a new immediately-resolving future.
-<a href=#230 id=230 data-nosnippet>230</a>        </span>Push::&lt;core::future::Ready&lt;i32&gt;, ()&gt;::start_send(
-<a href=#231 id=231 data-nosnippet>231</a>            Pin::new(<span class="kw-2">&amp;mut </span>rf),
-<a href=#232 id=232 data-nosnippet>232</a>            core::future::ready(<span class="number">4</span>),
-<a href=#233 id=233 data-nosnippet>233</a>            (),
-<a href=#234 id=234 data-nosnippet>234</a>        );
-<a href=#235 id=235 data-nosnippet>235</a>
-<a href=#236 id=236 data-nosnippet>236</a>        <span class="comment">// Flush should drain and flush without violating the ready guard.
-<a href=#237 id=237 data-nosnippet>237</a>        </span><span class="kw">let </span>result = Push::&lt;core::future::Ready&lt;i32&gt;, ()&gt;::poll_flush(Pin::new(<span class="kw-2">&amp;mut </span>rf), <span class="kw-2">&amp;mut </span>cx);
-<a href=#238 id=238 data-nosnippet>238</a>        <span class="macro">assert!</span>(result.is_done());
-<a href=#239 id=239 data-nosnippet>239</a>    }
-<a href=#240 id=240 data-nosnippet>240</a>}
+<a href=#204 id=204 data-nosnippet>204</a>        <span class="kw">let </span>result =
+<a href=#205 id=205 data-nosnippet>205</a>            Push::&lt;core::future::Ready&lt;i32&gt;, ()&gt;::poll_finalize(Pin::new(<span class="kw-2">&amp;mut </span>rf), <span class="kw-2">&amp;mut </span>cx);
+<a href=#206 id=206 data-nosnippet>206</a>        <span class="macro">assert!</span>(result.is_done());
+<a href=#207 id=207 data-nosnippet>207</a>
+<a href=#208 id=208 data-nosnippet>208</a>        drop(rf);
+<a href=#209 id=209 data-nosnippet>209</a>        <span class="macro">assert!</span>(
+<a href=#210 id=210 data-nosnippet>210</a>            mock.history
+<a href=#211 id=211 data-nosnippet>211</a>                .iter()
+<a href=#212 id=212 data-nosnippet>212</a>                .any(|c| <span class="macro">matches!</span>(c, PushCall::PollFinalize)),
+<a href=#213 id=213 data-nosnippet>213</a>            <span class="string">"downstream poll_finalize was not called"
+<a href=#214 id=214 data-nosnippet>214</a>        </span>);
+<a href=#215 id=215 data-nosnippet>215</a>    }
+<a href=#216 id=216 data-nosnippet>216</a>
+<a href=#217 id=217 data-nosnippet>217</a>    <span class="attr">#[test]
+<a href=#218 id=218 data-nosnippet>218</a>    </span><span class="kw">fn </span>resolve_futures_readies_downstream_before_each_send() {
+<a href=#219 id=219 data-nosnippet>219</a>        <span class="kw">let </span>waker = Waker::noop();
+<a href=#220 id=220 data-nosnippet>220</a>        <span class="kw">let </span><span class="kw-2">mut </span>cx = Context::from_waker(waker);
+<a href=#221 id=221 data-nosnippet>221</a>
+<a href=#222 id=222 data-nosnippet>222</a>        <span class="kw">let </span><span class="kw-2">mut </span>guard = TestPush::no_pend();
+<a href=#223 id=223 data-nosnippet>223</a>        <span class="kw">let </span><span class="kw-2">mut </span>queue: Queue = [<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>].into_iter().map(core::future::ready).collect();
+<a href=#224 id=224 data-nosnippet>224</a>        <span class="kw">let </span><span class="kw-2">mut </span>rf = ResolveFutures::&lt;<span class="kw">_</span>, <span class="kw">_</span>, Queue&gt;::new(<span class="kw-2">&amp;mut </span>queue, <span class="prelude-val">None</span>, <span class="kw-2">&amp;mut </span>guard);
+<a href=#225 id=225 data-nosnippet>225</a>
+<a href=#226 id=226 data-nosnippet>226</a>        <span class="comment">// poll_ready drains resolved futures into downstream, each with poll_ready before start_send.
+<a href=#227 id=227 data-nosnippet>227</a>        </span><span class="kw">let </span>result = Push::&lt;core::future::Ready&lt;i32&gt;, ()&gt;::poll_ready(Pin::new(<span class="kw-2">&amp;mut </span>rf), <span class="kw-2">&amp;mut </span>cx);
+<a href=#228 id=228 data-nosnippet>228</a>        <span class="macro">assert!</span>(result.is_done());
+<a href=#229 id=229 data-nosnippet>229</a>
+<a href=#230 id=230 data-nosnippet>230</a>        <span class="comment">// Send a new immediately-resolving future.
+<a href=#231 id=231 data-nosnippet>231</a>        </span>Push::&lt;core::future::Ready&lt;i32&gt;, ()&gt;::start_send(
+<a href=#232 id=232 data-nosnippet>232</a>            Pin::new(<span class="kw-2">&amp;mut </span>rf),
+<a href=#233 id=233 data-nosnippet>233</a>            core::future::ready(<span class="number">4</span>),
+<a href=#234 id=234 data-nosnippet>234</a>            (),
+<a href=#235 id=235 data-nosnippet>235</a>        );
+<a href=#236 id=236 data-nosnippet>236</a>
+<a href=#237 id=237 data-nosnippet>237</a>        <span class="comment">// Finalize should drain and finalize without violating the ready guard.
+<a href=#238 id=238 data-nosnippet>238</a>        </span><span class="kw">let </span>result =
+<a href=#239 id=239 data-nosnippet>239</a>            Push::&lt;core::future::Ready&lt;i32&gt;, ()&gt;::poll_finalize(Pin::new(<span class="kw-2">&amp;mut </span>rf), <span class="kw-2">&amp;mut </span>cx);
+<a href=#240 id=240 data-nosnippet>240</a>        <span class="macro">assert!</span>(result.is_done());
+<a href=#241 id=241 data-nosnippet>241</a>    }
+<a href=#242 id=242 data-nosnippet>242</a>}
 </code></pre></div></section></main></body></html>

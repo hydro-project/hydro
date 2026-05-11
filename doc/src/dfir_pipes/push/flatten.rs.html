@@ -75,9 +75,9 @@
 <a href=#75 id=75 data-nosnippet>75</a>        <span class="kw-2">*</span>this.buffer = iter.next().map(|next_item| (iter, next_item, meta));
 <a href=#76 id=76 data-nosnippet>76</a>    }
 <a href=#77 id=77 data-nosnippet>77</a>
-<a href=#78 id=78 data-nosnippet>78</a>    <span class="kw">fn </span>poll_flush(<span class="kw-2">mut </span><span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;) -&gt; PushStep&lt;<span class="self">Self</span>::CanPend&gt; {
+<a href=#78 id=78 data-nosnippet>78</a>    <span class="kw">fn </span>poll_finalize(<span class="kw-2">mut </span><span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;) -&gt; PushStep&lt;<span class="self">Self</span>::CanPend&gt; {
 <a href=#79 id=79 data-nosnippet>79</a>        <span class="macro">ready!</span>(<span class="self">self</span>.as_mut().poll_ready(ctx));
-<a href=#80 id=80 data-nosnippet>80</a>        <span class="self">self</span>.project().next.poll_flush(ctx)
+<a href=#80 id=80 data-nosnippet>80</a>        <span class="self">self</span>.project().next.poll_finalize(ctx)
 <a href=#81 id=81 data-nosnippet>81</a>    }
 <a href=#82 id=82 data-nosnippet>82</a>
 <a href=#83 id=83 data-nosnippet>83</a>    <span class="kw">fn </span>size_hint(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, _hint: (usize, <span class="prelude-ty">Option</span>&lt;usize&gt;)) {
@@ -105,7 +105,7 @@
 <a href=#105 id=105 data-nosnippet>105</a>        fl.as_mut().start_send(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>], ());
 <a href=#106 id=106 data-nosnippet>106</a>        fl.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
 <a href=#107 id=107 data-nosnippet>107</a>        fl.as_mut().start_send(<span class="macro">vec!</span>[<span class="number">3</span>], ());
-<a href=#108 id=108 data-nosnippet>108</a>        fl.as_mut().poll_flush(<span class="kw-2">&amp;mut </span>());
+<a href=#108 id=108 data-nosnippet>108</a>        fl.as_mut().poll_finalize(<span class="kw-2">&amp;mut </span>());
 <a href=#109 id=109 data-nosnippet>109</a>    }
 <a href=#110 id=110 data-nosnippet>110</a>}
 </code></pre></div></section></main></body></html>

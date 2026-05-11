@@ -309,13 +309,13 @@
 <a href=#309 id=309 data-nosnippet>309</a>                                )
 <a href=#310 id=310 data-nosnippet>310</a>                            }
 <a href=#311 id=311 data-nosnippet>311</a>                            <span class="attr">#[inline(always)]
-<a href=#312 id=312 data-nosnippet>312</a>                            </span><span class="kw">fn </span>poll_flush(
+<a href=#312 id=312 data-nosnippet>312</a>                            </span><span class="kw">fn </span>poll_finalize(
 <a href=#313 id=313 data-nosnippet>313</a>                                <span class="self">self</span>: ::std::pin::Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
 <a href=#314 id=314 data-nosnippet>314</a>                                ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;,
 <a href=#315 id=315 data-nosnippet>315</a>                            ) -&gt; __root_dfir_rs::dfir_pipes::push::PushStep&lt;
 <a href=#316 id=316 data-nosnippet>316</a>                                <span class="self">Self</span>::CanPend,
 <a href=#317 id=317 data-nosnippet>317</a>                            &gt; {
-<a href=#318 id=318 data-nosnippet>318</a>                                __root_dfir_rs::dfir_pipes::push::Push::poll_flush(
+<a href=#318 id=318 data-nosnippet>318</a>                                __root_dfir_rs::dfir_pipes::push::Push::poll_finalize(
 <a href=#319 id=319 data-nosnippet>319</a>                                    <span class="self">self</span>.project().inner,
 <a href=#320 id=320 data-nosnippet>320</a>                                    ctx,
 <a href=#321 id=321 data-nosnippet>321</a>                                )
@@ -756,13 +756,13 @@
 <a href=#756 id=756 data-nosnippet>756</a>                                )
 <a href=#757 id=757 data-nosnippet>757</a>                            }
 <a href=#758 id=758 data-nosnippet>758</a>                            <span class="attr">#[inline(always)]
-<a href=#759 id=759 data-nosnippet>759</a>                            </span><span class="kw">fn </span>poll_flush(
+<a href=#759 id=759 data-nosnippet>759</a>                            </span><span class="kw">fn </span>poll_finalize(
 <a href=#760 id=760 data-nosnippet>760</a>                                <span class="self">self</span>: ::std::pin::Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;,
 <a href=#761 id=761 data-nosnippet>761</a>                                ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;,
 <a href=#762 id=762 data-nosnippet>762</a>                            ) -&gt; __root_dfir_rs::dfir_pipes::push::PushStep&lt;
 <a href=#763 id=763 data-nosnippet>763</a>                                <span class="self">Self</span>::CanPend,
 <a href=#764 id=764 data-nosnippet>764</a>                            &gt; {
-<a href=#765 id=765 data-nosnippet>765</a>                                __root_dfir_rs::dfir_pipes::push::Push::poll_flush(
+<a href=#765 id=765 data-nosnippet>765</a>                                __root_dfir_rs::dfir_pipes::push::Push::poll_finalize(
 <a href=#766 id=766 data-nosnippet>766</a>                                    <span class="self">self</span>.project().inner,
 <a href=#767 id=767 data-nosnippet>767</a>                                    ctx,
 <a href=#768 id=768 data-nosnippet>768</a>                                )

@@ -53,13 +53,13 @@
 <a href=#53 id=53 data-nosnippet>53</a>        this.push_1.start_send(item1, meta);
 <a href=#54 id=54 data-nosnippet>54</a>    }
 <a href=#55 id=55 data-nosnippet>55</a>
-<a href=#56 id=56 data-nosnippet>56</a>    <span class="kw">fn </span>poll_flush(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;) -&gt; PushStep&lt;<span class="self">Self</span>::CanPend&gt; {
+<a href=#56 id=56 data-nosnippet>56</a>    <span class="kw">fn </span>poll_finalize(<span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;) -&gt; PushStep&lt;<span class="self">Self</span>::CanPend&gt; {
 <a href=#57 id=57 data-nosnippet>57</a>        <span class="kw">let </span>this = <span class="self">self</span>.project();
 <a href=#58 id=58 data-nosnippet>58</a>        <span class="macro">ready_both!</span>(
 <a href=#59 id=59 data-nosnippet>59</a>            this.push_0
-<a href=#60 id=60 data-nosnippet>60</a>                .poll_flush(&lt;P0::Ctx&lt;<span class="lifetime">'_</span>&gt; <span class="kw">as </span>Context&lt;<span class="lifetime">'_</span>&gt;&gt;::unmerge_self(ctx)),
+<a href=#60 id=60 data-nosnippet>60</a>                .poll_finalize(&lt;P0::Ctx&lt;<span class="lifetime">'_</span>&gt; <span class="kw">as </span>Context&lt;<span class="lifetime">'_</span>&gt;&gt;::unmerge_self(ctx)),
 <a href=#61 id=61 data-nosnippet>61</a>            this.push_1
-<a href=#62 id=62 data-nosnippet>62</a>                .poll_flush(&lt;P0::Ctx&lt;<span class="lifetime">'_</span>&gt; <span class="kw">as </span>Context&lt;<span class="lifetime">'_</span>&gt;&gt;::unmerge_other(ctx)),
+<a href=#62 id=62 data-nosnippet>62</a>                .poll_finalize(&lt;P0::Ctx&lt;<span class="lifetime">'_</span>&gt; <span class="kw">as </span>Context&lt;<span class="lifetime">'_</span>&gt;&gt;::unmerge_other(ctx)),
 <a href=#63 id=63 data-nosnippet>63</a>        );
 <a href=#64 id=64 data-nosnippet>64</a>        PushStep::Done
 <a href=#65 id=65 data-nosnippet>65</a>    }
@@ -89,7 +89,7 @@
 <a href=#89 id=89 data-nosnippet>89</a>        u.as_mut().start_send((<span class="number">1</span>, <span class="number">2</span>), ());
 <a href=#90 id=90 data-nosnippet>90</a>        u.as_mut().poll_ready(<span class="kw-2">&amp;mut </span>());
 <a href=#91 id=91 data-nosnippet>91</a>        u.as_mut().start_send((<span class="number">3</span>, <span class="number">4</span>), ());
-<a href=#92 id=92 data-nosnippet>92</a>        u.as_mut().poll_flush(<span class="kw-2">&amp;mut </span>());
+<a href=#92 id=92 data-nosnippet>92</a>        u.as_mut().poll_finalize(<span class="kw-2">&amp;mut </span>());
 <a href=#93 id=93 data-nosnippet>93</a>    }
 <a href=#94 id=94 data-nosnippet>94</a>}
 </code></pre></div></section></main></body></html>

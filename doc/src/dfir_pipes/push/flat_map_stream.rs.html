@@ -112,11 +112,11 @@
 <a href=#112 id=112 data-nosnippet>112</a>        }));
 <a href=#113 id=113 data-nosnippet>113</a>    }
 <a href=#114 id=114 data-nosnippet>114</a>
-<a href=#115 id=115 data-nosnippet>115</a>    <span class="kw">fn </span>poll_flush(<span class="kw-2">mut </span><span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;) -&gt; PushStep&lt;<span class="self">Self</span>::CanPend&gt; {
+<a href=#115 id=115 data-nosnippet>115</a>    <span class="kw">fn </span>poll_finalize(<span class="kw-2">mut </span><span class="self">self</span>: Pin&lt;<span class="kw-2">&amp;mut </span><span class="self">Self</span>&gt;, ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;) -&gt; PushStep&lt;<span class="self">Self</span>::CanPend&gt; {
 <a href=#116 id=116 data-nosnippet>116</a>        <span class="macro">ready!</span>(<span class="self">self</span>.as_mut().poll_ready(ctx));
 <a href=#117 id=117 data-nosnippet>117</a>        <span class="self">self</span>.project()
 <a href=#118 id=118 data-nosnippet>118</a>            .next
-<a href=#119 id=119 data-nosnippet>119</a>            .poll_flush(<span class="kw">crate</span>::Context::from_task(ctx))
+<a href=#119 id=119 data-nosnippet>119</a>            .poll_finalize(<span class="kw">crate</span>::Context::from_task(ctx))
 <a href=#120 id=120 data-nosnippet>120</a>            .convert_into()
 <a href=#121 id=121 data-nosnippet>121</a>    }
 <a href=#122 id=122 data-nosnippet>122</a>}
@@ -156,7 +156,7 @@
 <a href=#156 id=156 data-nosnippet>156</a>
 <a href=#157 id=157 data-nosnippet>157</a>        Push::&lt;i32, ()&gt;::start_send(fms.as_mut(), <span class="number">2</span>, ());
 <a href=#158 id=158 data-nosnippet>158</a>
-<a href=#159 id=159 data-nosnippet>159</a>        <span class="kw">let </span>result = Push::&lt;i32, ()&gt;::poll_flush(fms.as_mut(), <span class="kw-2">&amp;mut </span>cx);
+<a href=#159 id=159 data-nosnippet>159</a>        <span class="kw">let </span>result = Push::&lt;i32, ()&gt;::poll_finalize(fms.as_mut(), <span class="kw-2">&amp;mut </span>cx);
 <a href=#160 id=160 data-nosnippet>160</a>        <span class="macro">assert!</span>(result.is_done());
 <a href=#161 id=161 data-nosnippet>161</a>
 <a href=#162 id=162 data-nosnippet>162</a>        <span class="macro">assert_eq!</span>(tp.items(), <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">11</span>, <span class="number">2</span>, <span class="number">12</span>]);

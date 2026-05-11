@@ -418,7 +418,7 @@
 <a href=#418 id=418 data-nosnippet>418</a>        })
 <a href=#419 id=419 data-nosnippet>419</a>    };
 <a href=#420 id=420 data-nosnippet>420</a>    <span class="kw">let </span>push_poll_ready_body = (push_poll_unwrap_context)(<span class="macro">format_ident!</span>(<span class="string">"poll_ready"</span>));
-<a href=#421 id=421 data-nosnippet>421</a>    <span class="kw">let </span>push_poll_flush_body = (push_poll_unwrap_context)(<span class="macro">format_ident!</span>(<span class="string">"poll_flush"</span>));
+<a href=#421 id=421 data-nosnippet>421</a>    <span class="kw">let </span>push_poll_finalize_body = (push_poll_unwrap_context)(<span class="macro">format_ident!</span>(<span class="string">"poll_finalize"</span>));
 <a href=#422 id=422 data-nosnippet>422</a>
 <a href=#423 id=423 data-nosnippet>423</a>    <span class="kw">let </span>variant_pats_push_send =
 <a href=#424 id=424 data-nosnippet>424</a>        variants
@@ -535,11 +535,11 @@
 <a href=#535 id=535 data-nosnippet>535</a>                }
 <a href=#536 id=536 data-nosnippet>536</a>            }
 <a href=#537 id=537 data-nosnippet>537</a>
-<a href=#538 id=538 data-nosnippet>538</a>            <span class="kw">fn </span>poll_flush(
+<a href=#538 id=538 data-nosnippet>538</a>            <span class="kw">fn </span>poll_finalize(
 <a href=#539 id=539 data-nosnippet>539</a>                ( #( #variant_localvars_push, )* ): <span class="kw-2">&amp;mut </span>#variant_generics_pinned_push_all,
 <a href=#540 id=540 data-nosnippet>540</a>                __ctx: <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Ctx&lt;<span class="lifetime">'_</span>&gt;,
 <a href=#541 id=541 data-nosnippet>541</a>            ) -&gt; #root::dfir_pipes::push::PushStep&lt;<span class="self">Self</span>::CanPend&gt; {
-<a href=#542 id=542 data-nosnippet>542</a>                #push_poll_flush_body
+<a href=#542 id=542 data-nosnippet>542</a>                #push_poll_finalize_body
 <a href=#543 id=543 data-nosnippet>543</a>                #root::dfir_pipes::push::PushStep::Done
 <a href=#544 id=544 data-nosnippet>544</a>            }
 <a href=#545 id=545 data-nosnippet>545</a>

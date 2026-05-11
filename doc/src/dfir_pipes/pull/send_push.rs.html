@@ -77,7 +77,7 @@
 <a href=#77 id=77 data-nosnippet>77</a>        <span class="kw">match </span>this
 <a href=#78 id=78 data-nosnippet>78</a>            .push
 <a href=#79 id=79 data-nosnippet>79</a>            .as_mut()
-<a href=#80 id=80 data-nosnippet>80</a>            .poll_flush(&lt;Psh::Ctx&lt;<span class="lifetime">'_</span>&gt; <span class="kw">as </span>Context&lt;<span class="lifetime">'_</span>&gt;&gt;::from_task(cx))
+<a href=#80 id=80 data-nosnippet>80</a>            .poll_finalize(&lt;Psh::Ctx&lt;<span class="lifetime">'_</span>&gt; <span class="kw">as </span>Context&lt;<span class="lifetime">'_</span>&gt;&gt;::from_task(cx))
 <a href=#81 id=81 data-nosnippet>81</a>        {
 <a href=#82 id=82 data-nosnippet>82</a>            PushStep::Done =&gt; Poll::Ready(()),
 <a href=#83 id=83 data-nosnippet>83</a>            PushStep::Pending(<span class="kw">_</span>) =&gt; Poll::Pending,
@@ -100,9 +100,9 @@
 <a href=#100 id=100 data-nosnippet>100</a>    <span class="kw">use </span><span class="kw">crate</span>::push::test_utils::TestPush;
 <a href=#101 id=101 data-nosnippet>101</a>
 <a href=#102 id=102 data-nosnippet>102</a>    <span class="doccomment">/// SendPush must not re-poll the pull after it returned Ended,
-<a href=#103 id=103 data-nosnippet>103</a>    /// even if poll_flush returns Pending.
+<a href=#103 id=103 data-nosnippet>103</a>    /// even if poll_finalize returns Pending.
 <a href=#104 id=104 data-nosnippet>104</a>    </span><span class="attr">#[test]
-<a href=#105 id=105 data-nosnippet>105</a>    </span><span class="kw">fn </span>send_push_no_repoll_after_ended_on_flush_pending() {
+<a href=#105 id=105 data-nosnippet>105</a>    </span><span class="kw">fn </span>send_push_no_repoll_after_ended_on_finalize_pending() {
 <a href=#106 id=106 data-nosnippet>106</a>        <span class="kw">let </span>pull = TestPull::items(<span class="number">0</span>..<span class="number">2</span>);
 <a href=#107 id=107 data-nosnippet>107</a>        <span class="kw">let </span>push = TestPush::&lt;i32, <span class="kw">_</span>, <span class="kw">_</span>&gt;::new_fused([], [PushStep::Pending(Yes), PushStep::Done]);
 <a href=#108 id=108 data-nosnippet>108</a>        <span class="kw">let </span><span class="kw-2">mut </span>send = <span class="macro">core::pin::pin!</span>(SendPush::new(pull, push));
