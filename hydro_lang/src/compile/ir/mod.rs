@@ -1716,6 +1716,12 @@ pub fn serialize_dedup_shared<T>(f: impl FnOnce() -> T) -> T {
     f()
 }
 
+/// Serialize a slice of [`HydroRoot`]s to a JSON string with shared-node deduplication.
+#[cfg(feature = "viz")]
+pub fn ir_to_json(ir: &[HydroRoot]) -> Result<String, serde_json::Error> {
+    serialize_dedup_shared(|| serde_json::to_string(ir))
+}
+
 /// RAII guard that saves/restores the `SERIALIZED_SHARED` thread-local,
 /// making `serialize_dedup_shared` re-entrant and panic-safe.
 struct SerializedSharedGuard {

@@ -50,9 +50,9 @@ impl<'a> BuiltFlow<'a> {
     }
 
     /// Serialize the IR as JSON.
-    #[cfg(feature = "serde_json")]
+    #[cfg(feature = "viz")]
     pub fn ir_json(&self) -> Result<String, serde_json::Error> {
-        super::ir::serialize_dedup_shared(|| serde_json::to_string_pretty(&self.ir))
+        super::ir::ir_to_json(&self.ir)
     }
 
     /// Returns all raw location ID -> location name mappings.
