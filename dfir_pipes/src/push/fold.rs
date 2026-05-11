@@ -1,4 +1,6 @@
 //! [`Fold`] push combinator.
+use core::borrow::BorrowMut;
+use core::marker::PhantomData;
 use core::pin::Pin;
 
 use pin_project_lite::pin_project;
@@ -13,32 +15,36 @@ pin_project! {
     /// During `poll_finalize`, the accumulated value is taken and sent downstream,
     /// then the downstream is finalized.
     ///
-    /// `AccRef` is typically `&'a mut Acc` — a mutable reference to externally-owned state.
+    /// `AccRef` is typically `&'a mut AccRef` — a mutable reference to externally-owned state.
     #[must_use = "`Push`es do nothing unless items are pushed into them"]
-    pub struct Fold<AccRef, CombFn, Next> {
+    pub struct Fold<Next, AccRef, CombFn, Acc> {
         #[pin]
         next: Next,
-        acc: Option<AccRef>,
+        acc_ref: AccRef,
         comb_fn: CombFn,
+        _phantom: PhantomData<Acc>,
     }
 }
 
-impl<Acc, CombFn, Next> Fold<Acc, CombFn, Next> {
+impl<Next, AccRef, CombFn, Acc> Fold<Next, AccRef, CombFn, Acc> {
     /// Creates a new `Fold` push combinator with the given initial accumulator value.
-    pub const fn new(acc: Acc, comb_fn: CombFn, next: Next) -> Self {
+    pub const fn new(acc_ref: AccRef, comb_fn: CombFn, next: Next) -> Self {
         Self {
             next,
-            acc: Some(acc),
+            acc_ref,
             comb_fn,
+            _phantom: PhantomData,
         }
     }
 }
 
 // TODO(mingwei): support arbitrary metadata.
-impl<Acc, CombFn, Item, Next> Push<Item, ()> for Fold<&mut Acc, CombFn, Next>
+impl<Next, AccRef, CombFn, Acc, Item, Meta> Push<Item, Meta> for Fold<Next, AccRef, CombFn, Acc>
 where
+    Next: Push<AccRef, Meta>,
+    AccRef: BorrowMut<Acc>,
     CombFn: FnMut(&mut Acc, Item),
-    Next: Push<Acc, ()>,
+    Meta: Copy,
 {
     type Ctx<'ctx> = Next::Ctx<'ctx>;
 
@@ -48,17 +54,14 @@ where
         PushStep::Done
     }
 
-    fn start_send(self: Pin<&mut Self>, item: Item, _meta: ()) {
+    fn start_send(self: Pin<&mut Self>, item: Item, meta: Meta) {
         let this = self.project();
-        (this.comb_fn)(
-            this.acc.as_mut().expect("Fold: start_send after finalize"),
-            item,
-        );
+        (this.comb_fn)(this.acc_ref.borrow_mut(), item);
     }
 
     fn poll_finalize(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         let mut this = self.project();
-        if this.acc.is_some() {
+        if this.acc_ref.is_some() {
             ready!(this.next.as_mut().poll_ready(ctx));
             let value = this.acc.take().unwrap();
             this.next.as_mut().start_send(value, ());
