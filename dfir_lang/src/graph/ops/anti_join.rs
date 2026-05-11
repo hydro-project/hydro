@@ -45,7 +45,6 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
     },
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
                    op_span,
                    work_fn_async,
                    ident,
@@ -118,12 +117,6 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                 let #ident = {
                     #accum_neg
 
-                    let replay_idx = if #context.is_first_run_this_tick() {
-                        0
-                    } else {
-                        #pos_ident.len()
-                    };
-
                     // Accum into pos vec
                     let fut = #root::dfir_pipes::pull::Pull::for_each(#input_pos, |kv| {
                         #pos_ident.push(kv);
@@ -131,8 +124,7 @@ pub const ANTI_JOIN: OperatorConstraints = OperatorConstraints {
                     let () = #work_fn_async(fut).await;
 
                     // Replay out of pos vec
-                    let iter = #pos_ident[replay_idx..].iter();
-                    let iter = ::std::iter::Iterator::filter(iter, |(k, _)| {
+                    let iter = ::std::iter::Iterator::filter(#pos_ident.iter(), |(k, _)| {
                         !#neg_ident.contains(k)
                     });
                     let iter = ::std::iter::Iterator::cloned(iter);
