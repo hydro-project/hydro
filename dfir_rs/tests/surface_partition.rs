@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use dfir_rs::dfir_syntax;
 use dfir_rs::util::collect_ready;
 use multiplatform_test::multiplatform_test;
@@ -60,5 +62,25 @@ pub fn test_partition_round() {
             "12 0", "13 1", "14 2", "15 3", "16 0", "17 1", "18 2", "19 3"
         ],
         &*collect_ready::<Vec<_>, _>(out_recv)
+    )
+}
+
+#[multiplatform_test]
+pub fn test_partition_diamond() {
+    let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<usize>();
+
+    let mut df = dfir_syntax! {
+        my_partition = source_iter(0..10)
+            -> partition(|v, len| v % len);
+        my_partition[0] -> [0]my_union;
+        my_partition[1] -> [1]my_union;
+        my_union = union() -> for_each(|v| out_send.send(v).unwrap());
+    };
+
+    df.run_available_sync();
+
+    assert_eq!(
+        BTreeSet::from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),
+        collect_ready::<BTreeSet<_>, _>(out_recv)
     )
 }
