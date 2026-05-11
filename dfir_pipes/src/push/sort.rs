@@ -77,3 +77,47 @@ where
         this.next.size_hint(hint);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use alloc::vec;
+    use core::pin::Pin;
+
+    use crate::Yes;
+    use crate::push::{Push, PushStep};
+    use crate::push::test_utils::TestPush;
+
+    #[test]
+    fn sort_emits_sorted_on_finalize() {
+        let mut tp = TestPush::no_pend();
+        let mut s = crate::push::sort(&mut tp);
+        let mut s = Pin::new(&mut s);
+        s.as_mut().start_send(3, ());
+        s.as_mut().start_send(1, ());
+        s.as_mut().start_send(2, ());
+        s.as_mut().poll_finalize(&mut ());
+        assert_eq!(tp.items(), vec![1, 2, 3]);
+    }
+
+    #[test]
+    fn sort_resumes_from_flush_idx_on_pending() {
+        // poll_ready returns Pending on the second item, then Done on retry.
+        let mut tp: TestPush<i32, Yes, true> = TestPush::new_fused(
+            [PushStep::Done, PushStep::pending(), PushStep::Done, PushStep::Done],
+            [],
+        );
+        let mut s = crate::push::sort(&mut tp);
+        let mut s = Pin::new(&mut s);
+        s.as_mut().start_send(3, ());
+        s.as_mut().start_send(1, ());
+        s.as_mut().start_send(2, ());
+        // First call: sends item 0 (1), then poll_ready returns Pending on item 1.
+        let step = s.as_mut().poll_finalize(&mut ());
+        assert!(step.is_pending());
+        // Second call: resumes from idx 1, sends items 1 and 2.
+        let step = s.as_mut().poll_finalize(&mut ());
+        assert!(step.is_done());
+        drop(s);
+        assert_eq!(tp.items(), vec![1, 2, 3]);
+    }
+}

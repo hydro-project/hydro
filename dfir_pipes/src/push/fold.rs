@@ -3,7 +3,7 @@ use core::pin::Pin;
 
 use pin_project_lite::pin_project;
 
-use crate::push::{Push, PushStep};
+use crate::push::{Push, PushStep, ready};
 
 pin_project! {
     /// Push combinator that accumulates all items via a fold function, then emits
@@ -59,14 +59,65 @@ where
     fn poll_finalize(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         let mut this = self.project();
         if !*this.flushed {
-            *this.flushed = true;
+            ready!(this.next.as_mut().poll_ready(ctx));
             let value = this.acc.clone();
             this.next.as_mut().start_send(value, ());
+            *this.flushed = true;
         }
         this.next.poll_finalize(ctx)
     }
 
     fn size_hint(self: Pin<&mut Self>, _hint: (usize, Option<usize>)) {
         self.project().next.size_hint((1, Some(1)));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use alloc::vec;
+    use core::pin::Pin;
+
+    use crate::Yes;
+    use crate::push::{Push, PushStep};
+    use crate::push::test_utils::{PushCall, TestPush};
+
+    #[test]
+    fn fold_emits_on_finalize() {
+        let mut tp = TestPush::no_pend();
+        let mut f = crate::push::fold(0i32, |acc, x| *acc += x, &mut tp);
+        let mut f = Pin::new(&mut f);
+        f.as_mut().start_send(1, ());
+        f.as_mut().start_send(2, ());
+        f.as_mut().start_send(3, ());
+        f.as_mut().poll_finalize(&mut ());
+        assert_eq!(tp.items(), vec![6]);
+    }
+
+    #[test]
+    fn fold_emits_initial_when_no_items() {
+        let mut tp = TestPush::no_pend();
+        let mut f = crate::push::fold(0i32, |acc, x: i32| *acc += x, &mut tp);
+        let mut f = Pin::new(&mut f);
+        f.as_mut().poll_finalize(&mut ());
+        assert_eq!(tp.items(), vec![0]);
+    }
+
+    #[test]
+    fn fold_poll_ready_before_send_on_finalize() {
+        let mut tp: TestPush<i32, Yes, true> =
+            TestPush::new_fused([PushStep::pending()], []);
+        let mut f = crate::push::fold(0i32, |acc, x| *acc += x, &mut tp);
+        let mut f = Pin::new(&mut f);
+        f.as_mut().start_send(5, ());
+        // First call: poll_ready returns Pending.
+        let step = f.as_mut().poll_finalize(&mut ());
+        assert!(step.is_pending());
+        // Second call: poll_ready returns Done (fused), send proceeds.
+        let step = f.as_mut().poll_finalize(&mut ());
+        assert!(step.is_done());
+        assert_eq!(tp.items(), vec![5]);
+        assert_eq!(tp.history[0], PushCall::PollReady);
+        assert_eq!(tp.history[1], PushCall::PollReady);
+        assert_eq!(tp.history[2], PushCall::SendItem(5));
     }
 }

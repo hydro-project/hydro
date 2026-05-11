@@ -317,6 +317,40 @@ where
     FlattenStream::new(next)
 }
 
+/// Creates a [`Fold`] push that accumulates all items via a fold function, then emits
+/// the accumulated value downstream on finalize.
+pub const fn fold<Acc, CombFn, Item, Next>(acc: Acc, comb_fn: CombFn, next: Next) -> Fold<Acc, CombFn, Next>
+where
+    Acc: Clone,
+    CombFn: FnMut(&mut Acc, Item),
+    Next: Push<Acc, ()>,
+{
+    Fold::new(acc, comb_fn, next)
+}
+
+/// Creates a [`Reduce`] push that reduces all items into a single value, then emits
+/// it downstream on finalize. If no items were received, nothing is emitted.
+pub const fn reduce<Acc, ReduceFn, Next>(reduce_fn: ReduceFn, next: Next) -> Reduce<Acc, ReduceFn, Next>
+where
+    Acc: Clone,
+    ReduceFn: FnMut(&mut Acc, Acc),
+    Next: Push<Acc, ()>,
+{
+    Reduce::new(reduce_fn, next)
+}
+
+/// Creates a [`Sort`] push that collects all items, sorts them, then emits them
+/// downstream in sorted order on finalize.
+#[cfg(feature = "alloc")]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+pub const fn sort<Item, Next>(next: Next) -> Sort<Item, Next>
+where
+    Item: Ord + Clone,
+    Next: Push<Item, ()>,
+{
+    Sort::new(next)
+}
+
 /// Creates a [`ForEach`] terminal push that consumes each item with a function.
 pub const fn for_each<Func, Item>(func: Func) -> ForEach<Func>
 where
