@@ -77,7 +77,7 @@ where
         match this
             .push
             .as_mut()
-            .poll_flush(<Psh::Ctx<'_> as Context<'_>>::from_task(cx))
+            .poll_finalize(<Psh::Ctx<'_> as Context<'_>>::from_task(cx))
         {
             PushStep::Done => Poll::Ready(()),
             PushStep::Pending(_) => Poll::Pending,
@@ -100,9 +100,9 @@ mod tests {
     use crate::push::test_utils::TestPush;
 
     /// SendPush must not re-poll the pull after it returned Ended,
-    /// even if poll_flush returns Pending.
+    /// even if poll_finalize returns Pending.
     #[test]
-    fn send_push_no_repoll_after_ended_on_flush_pending() {
+    fn send_push_no_repoll_after_ended_on_finalize_pending() {
         let pull = TestPull::items(0..2);
         let push = TestPush::<i32, _, _>::new_fused([], [PushStep::Pending(Yes), PushStep::Done]);
         let mut send = core::pin::pin!(SendPush::new(pull, push));

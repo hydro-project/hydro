@@ -52,7 +52,7 @@ where
         }
     }
 
-    fn poll_flush(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
+    fn poll_finalize(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         match self.project().sink.poll_flush(ctx) {
             Poll::Ready(Ok(())) => PushStep::Done,
             Poll::Ready(Err(err)) => panic!("Sink error during poll_flush: {err:?}"),

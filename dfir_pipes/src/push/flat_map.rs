@@ -81,9 +81,9 @@ where
         *this.buffer = iter.next().map(|next_item| (iter, next_item, meta));
     }
 
-    fn poll_flush(mut self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
+    fn poll_finalize(mut self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         ready!(self.as_mut().poll_ready(ctx));
-        self.project().next.poll_flush(ctx)
+        self.project().next.poll_finalize(ctx)
     }
 
     fn size_hint(self: Pin<&mut Self>, _hint: (usize, Option<usize>)) {
@@ -107,6 +107,6 @@ mod tests {
         fm.as_mut().start_send(1, ());
         fm.as_mut().poll_ready(&mut ());
         fm.as_mut().start_send(2, ());
-        fm.as_mut().poll_flush(&mut ());
+        fm.as_mut().poll_finalize(&mut ());
     }
 }

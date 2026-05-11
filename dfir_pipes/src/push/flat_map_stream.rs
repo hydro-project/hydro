@@ -112,11 +112,11 @@ where
         }));
     }
 
-    fn poll_flush(mut self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
+    fn poll_finalize(mut self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         ready!(self.as_mut().poll_ready(ctx));
         self.project()
             .next
-            .poll_flush(crate::Context::from_task(ctx))
+            .poll_finalize(crate::Context::from_task(ctx))
             .convert_into()
     }
 }
@@ -156,7 +156,7 @@ mod tests {
 
         Push::<i32, ()>::start_send(fms.as_mut(), 2, ());
 
-        let result = Push::<i32, ()>::poll_flush(fms.as_mut(), &mut cx);
+        let result = Push::<i32, ()>::poll_finalize(fms.as_mut(), &mut cx);
         assert!(result.is_done());
 
         assert_eq!(tp.items(), vec![1, 11, 2, 12]);
