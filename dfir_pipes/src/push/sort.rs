@@ -16,7 +16,6 @@ pin_project! {
         next: Next,
         buf: Vec<Item>,
         sorted: bool,
-        flush_idx: usize,
     }
 }
 
@@ -27,7 +26,6 @@ impl<Item, Next> Sort<Item, Next> {
             next,
             buf: Vec::new(),
             sorted: false,
-            flush_idx: 0,
         }
     }
 }
@@ -35,7 +33,7 @@ impl<Item, Next> Sort<Item, Next> {
 // TODO(mingwei): support arbitrary metadata.
 impl<Item, Next> Push<Item, ()> for Sort<Item, Next>
 where
-    Item: Ord + Clone,
+    Item: Ord,
     Next: Push<Item, ()>,
 {
     type Ctx<'ctx> = Next::Ctx<'ctx>;
@@ -55,19 +53,14 @@ where
     fn poll_finalize(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         let mut this = self.project();
         if !*this.sorted {
-            this.buf.sort_unstable();
+            this.buf.sort_unstable_by(|a, b| b.cmp(a));
             *this.sorted = true;
-            *this.flush_idx = 0;
         }
-        while *this.flush_idx < this.buf.len() {
+        while !this.buf.is_empty() {
             ready!(this.next.as_mut().poll_ready(ctx));
-            let item = this.buf[*this.flush_idx].clone();
+            let item = this.buf.pop().unwrap();
             this.next.as_mut().start_send(item, ());
-            *this.flush_idx += 1;
         }
-        this.buf.clear();
-        *this.sorted = false;
-        *this.flush_idx = 0;
         this.next.poll_finalize(ctx)
     }
 
@@ -84,40 +77,52 @@ mod tests {
     use core::pin::Pin;
 
     use crate::Yes;
-    use crate::push::{Push, PushStep};
     use crate::push::test_utils::TestPush;
+    use crate::push::{Push, PushStep};
 
     #[test]
     fn sort_emits_sorted_on_finalize() {
         let mut tp = TestPush::no_pend();
         let mut s = crate::push::sort(&mut tp);
         let mut s = Pin::new(&mut s);
+        s.as_mut().poll_ready(&mut ());
         s.as_mut().start_send(3, ());
+        s.as_mut().poll_ready(&mut ());
         s.as_mut().start_send(1, ());
+        s.as_mut().poll_ready(&mut ());
         s.as_mut().start_send(2, ());
         s.as_mut().poll_finalize(&mut ());
         assert_eq!(tp.items(), vec![1, 2, 3]);
     }
 
     #[test]
-    fn sort_resumes_from_flush_idx_on_pending() {
+    fn sort_resumes_on_pending_without_dropping_items() {
         // poll_ready returns Pending on the second item, then Done on retry.
         let mut tp: TestPush<i32, Yes, true> = TestPush::new_fused(
-            [PushStep::Done, PushStep::pending(), PushStep::Done, PushStep::Done],
+            [
+                PushStep::Done,
+                PushStep::pending(),
+                PushStep::Done,
+                PushStep::Done,
+            ],
             [],
         );
-        let mut s = crate::push::sort(&mut tp);
-        let mut s = Pin::new(&mut s);
-        s.as_mut().start_send(3, ());
-        s.as_mut().start_send(1, ());
-        s.as_mut().start_send(2, ());
-        // First call: sends item 0 (1), then poll_ready returns Pending on item 1.
-        let step = s.as_mut().poll_finalize(&mut ());
-        assert!(step.is_pending());
-        // Second call: resumes from idx 1, sends items 1 and 2.
-        let step = s.as_mut().poll_finalize(&mut ());
-        assert!(step.is_done());
-        drop(s);
+        {
+            let mut s = crate::push::sort(&mut tp);
+            let mut s = Pin::new(&mut s);
+            s.as_mut().poll_ready(&mut ());
+            s.as_mut().start_send(3, ());
+            s.as_mut().poll_ready(&mut ());
+            s.as_mut().start_send(1, ());
+            s.as_mut().poll_ready(&mut ());
+            s.as_mut().start_send(2, ());
+            // First call: sends item 1, then poll_ready returns Pending.
+            let step = s.as_mut().poll_finalize(&mut ());
+            assert!(step.is_pending());
+            // Second call: resumes, sends remaining items.
+            let step = s.as_mut().poll_finalize(&mut ());
+            assert!(step.is_done());
+        }
         assert_eq!(tp.items(), vec![1, 2, 3]);
     }
 }

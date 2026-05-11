@@ -319,9 +319,12 @@ where
 
 /// Creates a [`Fold`] push that accumulates all items via a fold function, then emits
 /// the accumulated value downstream on finalize.
-pub const fn fold<Acc, CombFn, Item, Next>(acc: Acc, comb_fn: CombFn, next: Next) -> Fold<Acc, CombFn, Next>
+pub const fn fold<Acc, CombFn, Item, Next>(
+    acc: Acc,
+    comb_fn: CombFn,
+    next: Next,
+) -> Fold<Acc, CombFn, Next>
 where
-    Acc: Clone,
     CombFn: FnMut(&mut Acc, Item),
     Next: Push<Acc, ()>,
 {
@@ -330,9 +333,11 @@ where
 
 /// Creates a [`Reduce`] push that reduces all items into a single value, then emits
 /// it downstream on finalize. If no items were received, nothing is emitted.
-pub const fn reduce<Acc, ReduceFn, Next>(reduce_fn: ReduceFn, next: Next) -> Reduce<Acc, ReduceFn, Next>
+pub const fn reduce<Acc, ReduceFn, Next>(
+    reduce_fn: ReduceFn,
+    next: Next,
+) -> Reduce<Acc, ReduceFn, Next>
 where
-    Acc: Clone,
     ReduceFn: FnMut(&mut Acc, Acc),
     Next: Push<Acc, ()>,
 {
@@ -345,7 +350,7 @@ where
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub const fn sort<Item, Next>(next: Next) -> Sort<Item, Next>
 where
-    Item: Ord + Clone,
+    Item: Ord,
     Next: Push<Item, ()>,
 {
     Sort::new(next)

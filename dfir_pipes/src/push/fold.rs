@@ -10,16 +10,15 @@ pin_project! {
     /// the accumulated value downstream on finalize.
     ///
     /// During `start_send`, items are folded into the accumulator.
-    /// During `poll_finalize`, the accumulated value is cloned and sent downstream,
+    /// During `poll_finalize`, the accumulated value is taken and sent downstream,
     /// then the downstream is finalized.
     #[must_use = "`Push`es do nothing unless items are pushed into them"]
     #[derive(Clone, Debug)]
     pub struct Fold<Acc, CombFn, Next> {
         #[pin]
         next: Next,
-        acc: Acc,
+        acc: Option<Acc>,
         comb_fn: CombFn,
-        flushed: bool,
     }
 }
 
@@ -28,9 +27,8 @@ impl<Acc, CombFn, Next> Fold<Acc, CombFn, Next> {
     pub const fn new(acc: Acc, comb_fn: CombFn, next: Next) -> Self {
         Self {
             next,
-            acc,
+            acc: Some(acc),
             comb_fn,
-            flushed: false,
         }
     }
 }
@@ -38,7 +36,6 @@ impl<Acc, CombFn, Next> Fold<Acc, CombFn, Next> {
 // TODO(mingwei): support arbitrary metadata.
 impl<Acc, CombFn, Item, Next> Push<Item, ()> for Fold<Acc, CombFn, Next>
 where
-    Acc: Clone,
     CombFn: FnMut(&mut Acc, Item),
     Next: Push<Acc, ()>,
 {
@@ -52,17 +49,18 @@ where
 
     fn start_send(self: Pin<&mut Self>, item: Item, _meta: ()) {
         let this = self.project();
-        (this.comb_fn)(this.acc, item);
-        *this.flushed = false;
+        (this.comb_fn)(
+            this.acc.as_mut().expect("Fold: start_send after finalize"),
+            item,
+        );
     }
 
     fn poll_finalize(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         let mut this = self.project();
-        if !*this.flushed {
+        if this.acc.is_some() {
             ready!(this.next.as_mut().poll_ready(ctx));
-            let value = this.acc.clone();
+            let value = this.acc.take().unwrap();
             this.next.as_mut().start_send(value, ());
-            *this.flushed = true;
         }
         this.next.poll_finalize(ctx)
     }
@@ -78,16 +76,19 @@ mod tests {
     use core::pin::Pin;
 
     use crate::Yes;
-    use crate::push::{Push, PushStep};
     use crate::push::test_utils::{PushCall, TestPush};
+    use crate::push::{Push, PushStep};
 
     #[test]
     fn fold_emits_on_finalize() {
         let mut tp = TestPush::no_pend();
         let mut f = crate::push::fold(0i32, |acc, x| *acc += x, &mut tp);
         let mut f = Pin::new(&mut f);
+        f.as_mut().poll_ready(&mut ());
         f.as_mut().start_send(1, ());
+        f.as_mut().poll_ready(&mut ());
         f.as_mut().start_send(2, ());
+        f.as_mut().poll_ready(&mut ());
         f.as_mut().start_send(3, ());
         f.as_mut().poll_finalize(&mut ());
         assert_eq!(tp.items(), vec![6]);
@@ -104,12 +105,12 @@ mod tests {
 
     #[test]
     fn fold_poll_ready_before_send_on_finalize() {
-        let mut tp: TestPush<i32, Yes, true> =
-            TestPush::new_fused([PushStep::pending()], []);
+        let mut tp: TestPush<i32, Yes, true> = TestPush::new_fused([PushStep::pending()], []);
         let mut f = crate::push::fold(0i32, |acc, x| *acc += x, &mut tp);
         let mut f = Pin::new(&mut f);
+        f.as_mut().poll_ready(&mut ());
         f.as_mut().start_send(5, ());
-        // First call: poll_ready returns Pending.
+        // First call: downstream poll_ready returns Pending.
         let step = f.as_mut().poll_finalize(&mut ());
         assert!(step.is_pending());
         // Second call: poll_ready returns Done (fused), send proceeds.
