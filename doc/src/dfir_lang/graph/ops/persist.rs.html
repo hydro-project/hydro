@@ -53,90 +53,83 @@
 <a href=#53 id=53 data-nosnippet>53</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
 <a href=#54 id=54 data-nosnippet>54</a>    write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
 <a href=#55 id=55 data-nosnippet>55</a>                   root,
-<a href=#56 id=56 data-nosnippet>56</a>                   context,
-<a href=#57 id=57 data-nosnippet>57</a>                   op_span,
-<a href=#58 id=58 data-nosnippet>58</a>                   ident,
-<a href=#59 id=59 data-nosnippet>59</a>                   is_pull,
-<a href=#60 id=60 data-nosnippet>60</a>                   inputs,
-<a href=#61 id=61 data-nosnippet>61</a>                   outputs,
-<a href=#62 id=62 data-nosnippet>62</a>                   singleton_output_ident,
-<a href=#63 id=63 data-nosnippet>63</a>                   op_name,
-<a href=#64 id=64 data-nosnippet>64</a>                   work_fn_async,
-<a href=#65 id=65 data-nosnippet>65</a>                   op_inst:
-<a href=#66 id=66 data-nosnippet>66</a>                       OperatorInstance {
-<a href=#67 id=67 data-nosnippet>67</a>                           generics:
-<a href=#68 id=68 data-nosnippet>68</a>                               OpInstGenerics {
-<a href=#69 id=69 data-nosnippet>69</a>                                   persistence_args,
-<a href=#70 id=70 data-nosnippet>70</a>                                   type_args,
-<a href=#71 id=71 data-nosnippet>71</a>                                   ..
-<a href=#72 id=72 data-nosnippet>72</a>                               },
-<a href=#73 id=73 data-nosnippet>73</a>                           ..
-<a href=#74 id=74 data-nosnippet>74</a>                       },
-<a href=#75 id=75 data-nosnippet>75</a>                   ..
-<a href=#76 id=76 data-nosnippet>76</a>               },
-<a href=#77 id=77 data-nosnippet>77</a>               diagnostics| {
-<a href=#78 id=78 data-nosnippet>78</a>        <span class="kw">if </span>[Persistence::Static] != persistence_args[..] {
-<a href=#79 id=79 data-nosnippet>79</a>            diagnostics.push(Diagnostic::spanned(
-<a href=#80 id=80 data-nosnippet>80</a>                op_span,
-<a href=#81 id=81 data-nosnippet>81</a>                Level::Error,
-<a href=#82 id=82 data-nosnippet>82</a>                <span class="macro">format!</span>(<span class="string">"{} only supports `'static`."</span>, op_name),
-<a href=#83 id=83 data-nosnippet>83</a>            ));
-<a href=#84 id=84 data-nosnippet>84</a>        }
-<a href=#85 id=85 data-nosnippet>85</a>        <span class="kw">let </span>generic_type = type_args
-<a href=#86 id=86 data-nosnippet>86</a>            .first()
-<a href=#87 id=87 data-nosnippet>87</a>            .map(quote::ToTokens::to_token_stream)
-<a href=#88 id=88 data-nosnippet>88</a>            .unwrap_or(<span class="macro">quote_spanned!</span>(op_span=&gt; <span class="kw">_</span>));
-<a href=#89 id=89 data-nosnippet>89</a>
-<a href=#90 id=90 data-nosnippet>90</a>        <span class="kw">let </span>persistdata_ident = singleton_output_ident;
-<a href=#91 id=91 data-nosnippet>91</a>        <span class="kw">let </span>vec_ident = wc.make_ident(<span class="string">"persistvec"</span>);
-<a href=#92 id=92 data-nosnippet>92</a>        <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#93 id=93 data-nosnippet>93</a>            <span class="kw">let </span><span class="kw-2">mut </span>#persistdata_ident = ::std::vec::Vec::&lt;#generic_type&gt;::new();
-<a href=#94 id=94 data-nosnippet>94</a>        };
-<a href=#95 id=95 data-nosnippet>95</a>
-<a href=#96 id=96 data-nosnippet>96</a>        <span class="kw">let </span>write_iterator = <span class="kw">if </span>is_pull {
-<a href=#97 id=97 data-nosnippet>97</a>            <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
-<a href=#98 id=98 data-nosnippet>98</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#99 id=99 data-nosnippet>99</a>                <span class="kw">let </span>#vec_ident = <span class="kw-2">&amp;mut </span>#persistdata_ident;
-<a href=#100 id=100 data-nosnippet>100</a>
-<a href=#101 id=101 data-nosnippet>101</a>                <span class="kw">let </span>#ident = {
-<a href=#102 id=102 data-nosnippet>102</a>                    <span class="kw">let </span>replay_idx = <span class="kw">if </span>#context.is_first_run_this_tick() {
-<a href=#103 id=103 data-nosnippet>103</a>                        <span class="number">0
-<a href=#104 id=104 data-nosnippet>104</a>                    </span>} <span class="kw">else </span>{
-<a href=#105 id=105 data-nosnippet>105</a>                        #vec_ident.len()
-<a href=#106 id=106 data-nosnippet>106</a>                    };
-<a href=#107 id=107 data-nosnippet>107</a>
-<a href=#108 id=108 data-nosnippet>108</a>                    <span class="kw">let </span>fut = #root::dfir_pipes::pull::Pull::for_each(#input, |item| {
-<a href=#109 id=109 data-nosnippet>109</a>                        #vec_ident.push(item);
-<a href=#110 id=110 data-nosnippet>110</a>                    });
-<a href=#111 id=111 data-nosnippet>111</a>                    <span class="kw">let </span>() = #work_fn_async(fut).<span class="kw">await</span>;
-<a href=#112 id=112 data-nosnippet>112</a>
-<a href=#113 id=113 data-nosnippet>113</a>                    <span class="kw">let </span>iter = #vec_ident[replay_idx..].iter().cloned();
-<a href=#114 id=114 data-nosnippet>114</a>                    #root::dfir_pipes::pull::iter(iter)
-<a href=#115 id=115 data-nosnippet>115</a>                };
-<a href=#116 id=116 data-nosnippet>116</a>            }
-<a href=#117 id=117 data-nosnippet>117</a>        } <span class="kw">else </span>{
-<a href=#118 id=118 data-nosnippet>118</a>            <span class="kw">let </span>output = <span class="kw-2">&amp;</span>outputs[<span class="number">0</span>];
-<a href=#119 id=119 data-nosnippet>119</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#120 id=120 data-nosnippet>120</a>                <span class="kw">let </span>#vec_ident = <span class="kw-2">&amp;mut </span>#persistdata_ident;
-<a href=#121 id=121 data-nosnippet>121</a>
-<a href=#122 id=122 data-nosnippet>122</a>                <span class="kw">let </span>#ident = {
-<a href=#123 id=123 data-nosnippet>123</a>                    <span class="kw">fn </span>constrain_types&lt;<span class="lifetime">'ctx</span>, Psh, Item&gt;(vec: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span><span class="kw-2">mut </span>Vec&lt;Item&gt;, output: Psh, is_new_tick: bool) -&gt; <span class="kw">impl </span><span class="lifetime">'ctx </span>+ #root::dfir_pipes::push::Push&lt;Item, ()&gt;
-<a href=#124 id=124 data-nosnippet>124</a>                    <span class="kw">where
-<a href=#125 id=125 data-nosnippet>125</a>                        </span>Psh: <span class="lifetime">'ctx </span>+ #root::dfir_pipes::push::Push&lt;Item, ()&gt;,
-<a href=#126 id=126 data-nosnippet>126</a>                        Item: ::std::clone::Clone,
-<a href=#127 id=127 data-nosnippet>127</a>                    {
-<a href=#128 id=128 data-nosnippet>128</a>                        #root::dfir_pipes::push::persist_state(vec, is_new_tick, output)
-<a href=#129 id=129 data-nosnippet>129</a>                    }
-<a href=#130 id=130 data-nosnippet>130</a>                    constrain_types(<span class="kw-2">&amp;mut *</span>#vec_ident, #output, #context.is_first_run_this_tick())
-<a href=#131 id=131 data-nosnippet>131</a>                };
-<a href=#132 id=132 data-nosnippet>132</a>            }
-<a href=#133 id=133 data-nosnippet>133</a>        };
-<a href=#134 id=134 data-nosnippet>134</a>
-<a href=#135 id=135 data-nosnippet>135</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#136 id=136 data-nosnippet>136</a>            write_prologue,
-<a href=#137 id=137 data-nosnippet>137</a>            write_iterator,
-<a href=#138 id=138 data-nosnippet>138</a>            ..Default::default()
-<a href=#139 id=139 data-nosnippet>139</a>        })
-<a href=#140 id=140 data-nosnippet>140</a>    },
-<a href=#141 id=141 data-nosnippet>141</a>};
+<a href=#56 id=56 data-nosnippet>56</a>                   op_span,
+<a href=#57 id=57 data-nosnippet>57</a>                   ident,
+<a href=#58 id=58 data-nosnippet>58</a>                   is_pull,
+<a href=#59 id=59 data-nosnippet>59</a>                   inputs,
+<a href=#60 id=60 data-nosnippet>60</a>                   outputs,
+<a href=#61 id=61 data-nosnippet>61</a>                   singleton_output_ident,
+<a href=#62 id=62 data-nosnippet>62</a>                   op_name,
+<a href=#63 id=63 data-nosnippet>63</a>                   work_fn_async,
+<a href=#64 id=64 data-nosnippet>64</a>                   op_inst:
+<a href=#65 id=65 data-nosnippet>65</a>                       OperatorInstance {
+<a href=#66 id=66 data-nosnippet>66</a>                           generics:
+<a href=#67 id=67 data-nosnippet>67</a>                               OpInstGenerics {
+<a href=#68 id=68 data-nosnippet>68</a>                                   persistence_args,
+<a href=#69 id=69 data-nosnippet>69</a>                                   type_args,
+<a href=#70 id=70 data-nosnippet>70</a>                                   ..
+<a href=#71 id=71 data-nosnippet>71</a>                               },
+<a href=#72 id=72 data-nosnippet>72</a>                           ..
+<a href=#73 id=73 data-nosnippet>73</a>                       },
+<a href=#74 id=74 data-nosnippet>74</a>                   ..
+<a href=#75 id=75 data-nosnippet>75</a>               },
+<a href=#76 id=76 data-nosnippet>76</a>               diagnostics| {
+<a href=#77 id=77 data-nosnippet>77</a>        <span class="kw">if </span>[Persistence::Static] != persistence_args[..] {
+<a href=#78 id=78 data-nosnippet>78</a>            diagnostics.push(Diagnostic::spanned(
+<a href=#79 id=79 data-nosnippet>79</a>                op_span,
+<a href=#80 id=80 data-nosnippet>80</a>                Level::Error,
+<a href=#81 id=81 data-nosnippet>81</a>                <span class="macro">format!</span>(<span class="string">"{} only supports `'static`."</span>, op_name),
+<a href=#82 id=82 data-nosnippet>82</a>            ));
+<a href=#83 id=83 data-nosnippet>83</a>        }
+<a href=#84 id=84 data-nosnippet>84</a>        <span class="kw">let </span>generic_type = type_args
+<a href=#85 id=85 data-nosnippet>85</a>            .first()
+<a href=#86 id=86 data-nosnippet>86</a>            .map(quote::ToTokens::to_token_stream)
+<a href=#87 id=87 data-nosnippet>87</a>            .unwrap_or(<span class="macro">quote_spanned!</span>(op_span=&gt; <span class="kw">_</span>));
+<a href=#88 id=88 data-nosnippet>88</a>
+<a href=#89 id=89 data-nosnippet>89</a>        <span class="kw">let </span>persistdata_ident = singleton_output_ident;
+<a href=#90 id=90 data-nosnippet>90</a>        <span class="kw">let </span>vec_ident = wc.make_ident(<span class="string">"persistvec"</span>);
+<a href=#91 id=91 data-nosnippet>91</a>        <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#92 id=92 data-nosnippet>92</a>            <span class="kw">let </span><span class="kw-2">mut </span>#persistdata_ident = ::std::vec::Vec::&lt;#generic_type&gt;::new();
+<a href=#93 id=93 data-nosnippet>93</a>        };
+<a href=#94 id=94 data-nosnippet>94</a>
+<a href=#95 id=95 data-nosnippet>95</a>        <span class="kw">let </span>write_iterator = <span class="kw">if </span>is_pull {
+<a href=#96 id=96 data-nosnippet>96</a>            <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
+<a href=#97 id=97 data-nosnippet>97</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#98 id=98 data-nosnippet>98</a>                <span class="kw">let </span>#vec_ident = <span class="kw-2">&amp;mut </span>#persistdata_ident;
+<a href=#99 id=99 data-nosnippet>99</a>
+<a href=#100 id=100 data-nosnippet>100</a>                <span class="kw">let </span>#ident = {
+<a href=#101 id=101 data-nosnippet>101</a>                    <span class="kw">let </span>fut = #root::dfir_pipes::pull::Pull::for_each(#input, |item| {
+<a href=#102 id=102 data-nosnippet>102</a>                        #vec_ident.push(item);
+<a href=#103 id=103 data-nosnippet>103</a>                    });
+<a href=#104 id=104 data-nosnippet>104</a>                    <span class="kw">let </span>() = #work_fn_async(fut).<span class="kw">await</span>;
+<a href=#105 id=105 data-nosnippet>105</a>
+<a href=#106 id=106 data-nosnippet>106</a>                    <span class="kw">let </span>iter = #vec_ident.iter().cloned();
+<a href=#107 id=107 data-nosnippet>107</a>                    #root::dfir_pipes::pull::iter(iter)
+<a href=#108 id=108 data-nosnippet>108</a>                };
+<a href=#109 id=109 data-nosnippet>109</a>            }
+<a href=#110 id=110 data-nosnippet>110</a>        } <span class="kw">else </span>{
+<a href=#111 id=111 data-nosnippet>111</a>            <span class="kw">let </span>output = <span class="kw-2">&amp;</span>outputs[<span class="number">0</span>];
+<a href=#112 id=112 data-nosnippet>112</a>            <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#113 id=113 data-nosnippet>113</a>                <span class="kw">let </span>#vec_ident = <span class="kw-2">&amp;mut </span>#persistdata_ident;
+<a href=#114 id=114 data-nosnippet>114</a>
+<a href=#115 id=115 data-nosnippet>115</a>                <span class="kw">let </span>#ident = {
+<a href=#116 id=116 data-nosnippet>116</a>                    <span class="kw">fn </span>constrain_types&lt;<span class="lifetime">'ctx</span>, Psh, Item&gt;(vec: <span class="kw-2">&amp;</span><span class="lifetime">'ctx </span><span class="kw-2">mut </span>Vec&lt;Item&gt;, output: Psh, is_new_tick: bool) -&gt; <span class="kw">impl </span><span class="lifetime">'ctx </span>+ #root::dfir_pipes::push::Push&lt;Item, ()&gt;
+<a href=#117 id=117 data-nosnippet>117</a>                    <span class="kw">where
+<a href=#118 id=118 data-nosnippet>118</a>                        </span>Psh: <span class="lifetime">'ctx </span>+ #root::dfir_pipes::push::Push&lt;Item, ()&gt;,
+<a href=#119 id=119 data-nosnippet>119</a>                        Item: ::std::clone::Clone,
+<a href=#120 id=120 data-nosnippet>120</a>                    {
+<a href=#121 id=121 data-nosnippet>121</a>                        #root::dfir_pipes::push::persist_state(vec, is_new_tick, output)
+<a href=#122 id=122 data-nosnippet>122</a>                    }
+<a href=#123 id=123 data-nosnippet>123</a>                    constrain_types(<span class="kw-2">&amp;mut *</span>#vec_ident, #output, <span class="bool-val">true</span>)
+<a href=#124 id=124 data-nosnippet>124</a>                };
+<a href=#125 id=125 data-nosnippet>125</a>            }
+<a href=#126 id=126 data-nosnippet>126</a>        };
+<a href=#127 id=127 data-nosnippet>127</a>
+<a href=#128 id=128 data-nosnippet>128</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#129 id=129 data-nosnippet>129</a>            write_prologue,
+<a href=#130 id=130 data-nosnippet>130</a>            write_iterator,
+<a href=#131 id=131 data-nosnippet>131</a>            ..Default::default()
+<a href=#132 id=132 data-nosnippet>132</a>        })
+<a href=#133 id=133 data-nosnippet>133</a>    },
+<a href=#134 id=134 data-nosnippet>134</a>};
 </code></pre></div></section></main></body></html>
