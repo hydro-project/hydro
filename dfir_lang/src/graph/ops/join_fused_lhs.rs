@@ -45,7 +45,6 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
     },
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
                    op_span,
                    work_fn_async,
                    ident,
@@ -101,13 +100,6 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                         #root::dfir_pipes::pull::accumulate_all(&mut #lhs_accum, &mut *#lhs_borrow, #lhs),
                     ).await;
 
-                    // RHS replay index.
-                    let replay_idx = if #context.is_first_run_this_tick() {
-                        0
-                    } else {
-                        #rhs_borrow_ident.len()
-                    };
-
                     // Accumulate RHS.
                     let () = #work_fn_async(
                         #root::dfir_pipes::pull::Pull::for_each(#rhs, |kv| {
@@ -118,24 +110,14 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
 
                     #[allow(clippy::clone_on_copy)]
                     #[allow(suspicious_double_ref_op)]
-                    let iter = #rhs_borrow_ident[replay_idx..]
-                        .iter()
-                        .filter_map(|(k, v2)| #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))));
+                let iter = #rhs_borrow_ident
+                    .iter()
+                    .filter_map(|(k, v2)| #lhs_borrow.get(k).map(|v1| (k.clone(), (v1.clone(), v2.clone()))));
                     #root::dfir_pipes::pull::iter(iter)
                 };
             },
             Persistence::Mutable => unreachable!(),
         };
-
-        let write_iterator_after =
-            if persistences[0] == Persistence::Static || persistences[1] == Persistence::Static {
-                quote_spanned! {op_span=>
-                    // TODO: Probably only need to schedule if #*_borrow.len() > 0?
-                    #context.schedule_subgraph(#context.current_subgraph(), false);
-                }
-            } else {
-                quote_spanned! {op_span=>}
-            };
 
         Ok(OperatorWriteOutput {
             write_prologue: quote_spanned! {op_span=>
@@ -143,9 +125,8 @@ pub const JOIN_FUSED_LHS: OperatorConstraints = OperatorConstraints {
                 #rhs_prologue
             },
             write_iterator,
-            write_iterator_after,
+            write_iterator_after: Default::default(),
             write_tick_end: lhs_tick_end,
-            ..Default::default()
         })
     },
 };

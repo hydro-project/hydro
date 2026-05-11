@@ -51,7 +51,6 @@ pub const DEST_SINK_SERDE: OperatorConstraints = OperatorConstraints {
 
         let OperatorWriteOutput {
             write_prologue,
-            write_prologue_after,
             write_iterator,
             write_iterator_after,
             write_tick_end,
@@ -68,7 +67,6 @@ pub const DEST_SINK_SERDE: OperatorConstraints = OperatorConstraints {
 
         Ok(OperatorWriteOutput {
             write_prologue,
-            write_prologue_after,
             write_iterator,
             write_iterator_after,
             write_tick_end,

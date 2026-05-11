@@ -93,21 +93,19 @@ pub const SCAN: OperatorConstraints = OperatorConstraints {
             let mut #initializer_func_ident = #init_fn;
 
             #[allow(clippy::redundant_closure_call)]
-            let #singleton_output_ident = ::std::cell::RefCell::new(
-                Some(#init)
-            );
+            let mut #singleton_output_ident = Some(#init);
         };
 
         let write_tick_end = match persistence {
             super::Persistence::Tick => quote_spanned! {op_span=>
                 #[allow(clippy::redundant_closure_call)]
-                #singleton_output_ident.replace(Some(#init));
+                { #singleton_output_ident = Some(#init); }
             },
             _ => Default::default(),
         };
 
         let assign_accum_ident = quote_spanned! {op_span=>
-            let mut #state_ident = #singleton_output_ident.borrow_mut();
+            let #state_ident = &mut #singleton_output_ident;
 
             if #state_ident.is_none() {
                 return None;

@@ -136,13 +136,13 @@ where
         }
     }
 
-    fn poll_flush(mut self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
+    fn poll_finalize(mut self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         // First drain any ready items from the queue.
         ready!(self.as_mut().empty_ready(ctx));
         // Then flush the downstream push.
         let this = self.project();
         this.push
-            .poll_flush(crate::Context::from_task(ctx))
+            .poll_finalize(crate::Context::from_task(ctx))
             .convert_into()
     }
 
@@ -193,7 +193,7 @@ mod tests {
     }
 
     #[test]
-    fn test_poll_flush_calls_downstream_flush() {
+    fn test_poll_finalize_calls_downstream_finalize() {
         let waker = Waker::noop();
         let mut cx = Context::from_waker(waker);
 
@@ -201,15 +201,16 @@ mod tests {
         let mut queue: Queue = FuturesUnordered::new();
         let mut rf = ResolveFutures::<_, _, Queue>::new(&mut queue, None, &mut mock);
 
-        let result = Push::<core::future::Ready<i32>, ()>::poll_flush(Pin::new(&mut rf), &mut cx);
+        let result =
+            Push::<core::future::Ready<i32>, ()>::poll_finalize(Pin::new(&mut rf), &mut cx);
         assert!(result.is_done());
 
         drop(rf);
         assert!(
             mock.history
                 .iter()
-                .any(|c| matches!(c, PushCall::PollFlush)),
-            "downstream poll_flush was not called"
+                .any(|c| matches!(c, PushCall::PollFinalize)),
+            "downstream poll_finalize was not called"
         );
     }
 
@@ -233,8 +234,9 @@ mod tests {
             (),
         );
 
-        // Flush should drain and flush without violating the ready guard.
-        let result = Push::<core::future::Ready<i32>, ()>::poll_flush(Pin::new(&mut rf), &mut cx);
+        // Finalize should drain and finalize without violating the ready guard.
+        let result =
+            Push::<core::future::Ready<i32>, ()>::poll_finalize(Pin::new(&mut rf), &mut cx);
         assert!(result.is_done());
     }
 }

@@ -12,26 +12,36 @@ license = { workspace = true }
 workspace = true
 
 [features]
-default = []
-debugging = [ "dep:data-encoding", "dep:webbrowser", "clap-derive" ]
-clap-derive = [ "dep:clap" ]
+default = ["codegen"]
+codegen = [
+    "dep:auto_impl",
+    "dep:documented",
+    "dep:itertools",
+    "dep:prettyplease",
+    "dep:proc-macro2",
+    "dep:quote",
+    "dep:serde_json",
+    "dep:syn",
+]
+debugging = [ "codegen", "dep:data-encoding", "dep:webbrowser", "clap-derive" ]
+clap-derive = [ "codegen", "dep:clap" ]
 
 [package.metadata.docs.rs]
 all-features = true
 
 [dependencies]
-auto_impl = "1.0.0"
+auto_impl = { version = "1.0.0", optional = true }
 clap = { version = "4.5.4", features = [ "derive" ], optional = true }
 data-encoding = { version = "2.0.0", optional = true }
-documented = "0.9.1"
-itertools = "0.14.0"
-prettyplease = { version = "0.2.0", features = [ "verbatim" ] }
-proc-macro2 = { version = "1.0.95", features = [ "span-locations" ] }
-quote = "1.0.35"
+documented = { version = "0.9.1", optional = true }
+itertools = { version = "0.14.0", optional = true }
+prettyplease = { version = "0.2.0", features = [ "verbatim" ], optional = true }
+proc-macro2 = { version = "1.0.95", features = [ "span-locations" ], optional = true }
+quote = { version = "1.0.35", optional = true }
 serde = "1.0.197"
-serde_json = "1.0.115"
+serde_json = { version = "1.0.115", optional = true }
 slotmap = { version = "1.1.0", features = ["serde"] }
-syn = { version = "2.0.46", features = [ "extra-traits", "full", "parsing", "visit-mut" ] }
+syn = { version = "2.0.46", features = [ "extra-traits", "full", "parsing", "visit-mut" ], optional = true }
 webbrowser = { version = "1.0.3", optional = true }
 
 # coax cargo-smart-release into publishing this crate.

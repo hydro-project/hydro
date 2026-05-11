@@ -816,10 +816,9 @@ impl DfirGraph {
     /// instead of runtime handoffs. Each call to the closure runs one tick.
     ///
     /// The generated code block evaluates to a `Dfir` instance wrapping the
-    /// closure. Operator prologues (`add_state`, `set_state_lifespan_hook`)
-    /// run at construction time on the `Context` before it is moved into
-    /// `Dfir::new`. `Dfir` provides the `Context` to the closure on
-    /// each tick run.
+    /// closure. Operator prologues run at construction time on the `Context`
+    /// before it is moved into `Dfir::new`. `Dfir` provides the `Context`
+    /// to the closure on each tick run.
     ///
     /// # Errors
     ///
@@ -851,14 +850,6 @@ impl DfirGraph {
         prefix: TokenStream,
         diagnostics: &mut Diagnostics,
     ) -> Result<TokenStream, Diagnostics> {
-        // Extract the slot index from a slotmap key for use as a runtime metrics key.
-        // Uses the low 32 bits of `KeyData::as_ffi()` (the idx, ignoring the version).
-        // TODO(cleanup): When scheduled Dfir is removed, DfirMetrics could use slotmap
-        // SecondaryMaps directly, eliminating this conversion.
-        fn slotmap_raw_idx(key: impl Key) -> usize {
-            (key.data().as_ffi() & 0xFFFF_FFFF) as usize
-        }
-
         let df = Ident::new(GRAPH, Span::call_site());
         let context = Ident::new(CONTEXT, Span::call_site());
 
@@ -995,12 +986,11 @@ impl DfirGraph {
             .collect();
 
         let mut op_prologue_code = Vec::new();
-        let mut op_prologue_after_code = Vec::new();
         let mut op_tick_end_code = Vec::new();
         let mut subgraph_blocks = Vec::new();
         {
             for &(subgraph_id, subgraph_nodes) in all_subgraphs.iter() {
-                let sg_metrics_idx = slotmap_raw_idx(subgraph_id);
+                let sg_metrics_ffi = subgraph_id.data().as_ffi();
                 let (recv_hoffs, send_hoffs) = &subgraph_handoffs[subgraph_id];
 
                 // Generate buffer ident helpers for this subgraph's handoffs.
@@ -1031,7 +1021,7 @@ impl DfirGraph {
                     .zip(recv_buf_idents.iter())
                     .zip(recv_hoffs.iter())
                     .map(|((port_ident, buf_ident), &hoff_id)| {
-                        let hoff_idx = slotmap_raw_idx(hoff_id);
+                        let hoff_ffi = hoff_id.data().as_ffi();
                         // Use call_site span for internal identifiers to avoid
                         // hygiene issues when invoked through declarative macros
                         // (e.g. dfir_expect_warnings!). TODO(#2781): define these once.
@@ -1051,7 +1041,7 @@ impl DfirGraph {
                                     #work_done = true;
                                 }
                                 let hoff_metrics = &#metrics.handoffs[
-                                    #root::util::slot_vec::Key::<#root::scheduled::HandoffTag>::from_raw(#hoff_idx)
+                                    #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
                                 ];
                                 hoff_metrics.total_items_count.update(|x| x + hoff_len);
                                 hoff_metrics.curr_items_count.set(hoff_len);
@@ -1163,7 +1153,6 @@ impl DfirGraph {
                             let arguments = &process_singletons::postprocess_singletons(
                                 op_inst.arguments_raw.clone(),
                                 singletons_resolved.clone(),
-                                context,
                             );
                             let arguments_handles =
                                 &process_singletons::postprocess_singletons_handles(
@@ -1238,7 +1227,6 @@ impl DfirGraph {
                                 (op_constraints.write_fn)(&context_args, diagnostics);
                             let OperatorWriteOutput {
                                 write_prologue,
-                                write_prologue_after,
                                 write_iterator,
                                 write_iterator_after,
                                 write_tick_end,
@@ -1270,7 +1258,6 @@ impl DfirGraph {
                                 }
                             });
                             op_prologue_code.push(write_prologue);
-                            op_prologue_after_code.push(write_prologue_after);
                             op_tick_end_code.push(write_tick_end);
                             subgraph_op_iter_code.push(write_iterator);
 
@@ -1368,11 +1355,11 @@ impl DfirGraph {
                                                     }
 
                                                     #[inline(always)]
-                                                    fn poll_flush(
+                                                    fn poll_finalize(
                                                         self: ::std::pin::Pin<&mut Self>,
                                                         ctx: &mut Self::Ctx<'_>,
                                                     ) -> #root::dfir_pipes::push::PushStep<Self::CanPend> {
-                                                        #root::dfir_pipes::push::Push::poll_flush(self.project().inner, ctx)
+                                                        #root::dfir_pipes::push::Push::poll_finalize(self.project().inner, ctx)
                                                     }
 
                                                     #[inline(always)]
@@ -1429,8 +1416,10 @@ impl DfirGraph {
                             .span()
                             .join(push_ident.span())
                             .unwrap_or_else(|| push_ident.span());
-                        let pivot_fn_ident =
-                            Ident::new(&format!("pivot_run_sg_{:?}", subgraph_id.0), pivot_span);
+                        let pivot_fn_ident = Ident::new(
+                            &format!("pivot_run_sg_{:?}", subgraph_id.data()),
+                            pivot_span,
+                        );
                         let root = change_spans(root.clone(), pivot_span);
                         subgraph_op_iter_code.push(quote_spanned! {pivot_span=>
                             #[inline(always)]
@@ -1457,10 +1446,10 @@ impl DfirGraph {
                     .iter()
                     .zip(send_buf_idents.iter())
                     .map(|(&hoff_id, buf_ident)| {
-                        let hoff_idx = slotmap_raw_idx(hoff_id);
+                        let hoff_ffi = hoff_id.data().as_ffi();
                         quote! {
                             __dfir_metrics.handoffs[
-                                #root::util::slot_vec::Key::<#root::scheduled::HandoffTag>::from_raw(#hoff_idx)
+                                #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
                             ].curr_items_count.set(#buf_ident.len());
                         }
                     })
@@ -1476,7 +1465,7 @@ impl DfirGraph {
                     };
                     {
                         let sg_metrics = &__dfir_metrics.subgraphs[
-                            #root::util::slot_vec::Key::<#root::scheduled::SubgraphTag>::from_raw(#sg_metrics_idx)
+                            #root::slotmap::KeyData::from_ffi(#sg_metrics_ffi).into()
                         ];
                         #root::scheduled::metrics::InstrumentSubgraph::new(
                             #sg_fut_ident, sg_metrics
@@ -1515,19 +1504,19 @@ impl DfirGraph {
         // Generate metrics initialization: one entry per handoff and per subgraph.
         let metrics_init_code = {
             let handoff_inits = handoff_nodes.iter().map(|&(node_id, _)| {
-                let idx = slotmap_raw_idx(node_id);
+                let ffi = node_id.data().as_ffi();
                 quote! {
                     dfir_metrics.handoffs.insert(
-                        #root::util::slot_vec::Key::from_raw(#idx),
+                        #root::slotmap::KeyData::from_ffi(#ffi).into(),
                         ::std::default::Default::default(),
                     );
                 }
             });
             let subgraph_inits = all_subgraphs.iter().map(|&(sg_id, _)| {
-                let idx = slotmap_raw_idx(sg_id);
+                let ffi = sg_id.data().as_ffi();
                 quote! {
                     dfir_metrics.subgraphs.insert(
-                        #root::util::slot_vec::Key::from_raw(#idx),
+                        #root::slotmap::KeyData::from_ffi(#ffi).into(),
                         ::std::default::Default::default(),
                     );
                 }
@@ -1562,14 +1551,13 @@ impl DfirGraph {
                 #( #buffer_code )*
                 #( #back_buffer_code )*
                 #( #op_prologue_code )*
-                #( #op_prologue_after_code )*
 
                 // Pre-set to true so the first tick always returns true
                 // (matching Dfir pre-scheduling behavior). Subsequent ticks
                 // start false (from take()) and are set true by recv port code
                 // if any handoff buffer has data.
                 let mut __dfir_work_done = true;
-                #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref)]
+                #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref, clippy::deref_addrof)]
                 let __dfir_inline_tick = async move |#df: &mut #root::scheduled::context::Context| {
                     let __dfir_metrics = #df.metrics();
                     // Double-buffer swap for defer_tick handoffs: move last tick's
@@ -1578,15 +1566,9 @@ impl DfirGraph {
                     #( #subgraph_blocks )*
 
                     // For non-lazy defer_tick: if any deferred buffer has data,
-                    // signal that another tick should run (sets can_start_tick).
-                    // Inline DFIR doesn't dynamically schedule subgraph IDs, so the
-                    // subgraph ID here is a meaningless placeholder.
-                    // TODO(cleanup): remove the subgraph ID parameter once scheduled DFIR is gone.
+                    // signal that another tick should run.
                     if false #( || !#defer_tick_buf_idents.is_empty() )* {
-                        #df.schedule_subgraph(
-                            #root::scheduled::SubgraphId::from_raw(0),
-                            true,
-                        );
+                        #df.schedule_subgraph(true);
                     }
 
                     // End-of-tick state reset (e.g. 'tick persistence).

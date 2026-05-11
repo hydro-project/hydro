@@ -519,12 +519,50 @@ async fn resolve_task_family_to_task_id(task_family: &str) -> String {
     }
 }
 
+/// Parse the ECS task ID from a metadata URI.
+///
+/// URI format: `http://169.254.170.2/v4/{task_id}-{runtime_id}`
+/// where task_id is 32 hex chars and runtime_id is a numeric suffix.
+fn parse_task_id_from_metadata_uri(metadata_uri: &str) -> Option<String> {
+    let re = regex::Regex::new(r"/v4/(?P<task_id>[0-9a-f]{32})-\d+$").unwrap();
+    re.captures(metadata_uri)
+        .and_then(|c| c.name("task_id"))
+        .map(|m| m.as_str().to_owned())
+}
+
 fn get_self_task_id() -> String {
     let metadata_uri = std::env::var("ECS_CONTAINER_METADATA_URI_V4")
         .expect("ECS_CONTAINER_METADATA_URI_V4 not set - are we running in ECS?");
-    metadata_uri
-        .rsplit('/')
-        .next()
-        .expect("Invalid ECS metadata URI format")
-        .to_owned()
+    parse_task_id_from_metadata_uri(&metadata_uri).unwrap_or_else(|| {
+        panic!("ECS_CONTAINER_METADATA_URI_V4 does not match expected format /v4/{{task_id}}-{{runtime_id}}: {metadata_uri}")
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_task_id_from_metadata_uri() {
+        let uri = "http://169.254.170.2/v4/01234567890abcdef01234567890abcd-123456789";
+        assert_eq!(
+            parse_task_id_from_metadata_uri(uri),
+            Some("01234567890abcdef01234567890abcd".to_owned())
+        );
+    }
+
+    #[test]
+    fn test_parse_task_id_invalid_uri() {
+        assert_eq!(
+            parse_task_id_from_metadata_uri("http://169.254.170.2/v4/tooshort-123"),
+            None
+        );
+        assert_eq!(
+            parse_task_id_from_metadata_uri(
+                "http://169.254.170.2/v3/01234567890abcdef01234567890abcd-123"
+            ),
+            None
+        );
+        assert_eq!(parse_task_id_from_metadata_uri(""), None);
+    }
 }

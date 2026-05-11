@@ -184,7 +184,7 @@ where
                 ]
             },
             "LocationName": location_name,
-            "HandoffId": hoff_id.to_string(),
+            "HandoffId": format!("{:?}", hoff_id),
             "CurrItemsCount": hoff_metrics.curr_items_count(),
             "TotalItemsCount": hoff_metrics.total_items_count(),
         })
@@ -213,7 +213,7 @@ where
                 ]
             },
             "LocationName": location_name,
-            "SubgraphId": sg_id.to_string(),
+            "SubgraphId": format!("{:?}", sg_id),
             "TotalRunCount": sg_metrics.total_run_count(),
             "TotalPollDuration": sg_metrics.total_poll_duration().as_micros(),
             "TotalPollCount": sg_metrics.total_poll_count(),

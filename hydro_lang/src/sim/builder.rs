@@ -963,6 +963,203 @@ impl DfirBuilder for SimBuilder {
         }
     }
 
+    fn merge_ordered(
+        &mut self,
+        location: &LocationId,
+        first_ident: syn::Ident,
+        second_ident: syn::Ident,
+        out_ident: &syn::Ident,
+        in_kind: &CollectionKind,
+        op_meta: &HydroIrOpMetadata,
+        _operator_tag: Option<&str>,
+    ) {
+        let location = if let LocationId::Atomic(tick) = location {
+            tick.as_ref()
+        } else {
+            location
+        };
+
+        let (assume_location, line, caret) = location_for_op(op_meta);
+        let root = get_this_crate();
+
+        let element_type: syn::Type = match in_kind {
+            CollectionKind::Stream { element_type, .. } => parse_quote!(#element_type),
+            CollectionKind::KeyedStream {
+                key_type,
+                value_type,
+                ..
+            } => parse_quote!((#key_type, #value_type)),
+            CollectionKind::Singleton { element_type, .. } => parse_quote!(#element_type),
+            CollectionKind::Optional { element_type, .. } => parse_quote!(#element_type),
+            CollectionKind::KeyedSingleton {
+                key_type,
+                value_type,
+                ..
+            } => parse_quote!((#key_type, #value_type)),
+        };
+
+        if !location.is_root() || in_kind.is_bounded() {
+            // Inside a tick: both inputs are fully materialized batches.
+            // Generate a valid interleaving preserving per-input order.
+            let hoff_id = self.next_hoff_id;
+            self.next_hoff_id += 1;
+
+            let buffered_first_ident =
+                syn::Ident::new(&format!("__buffered_first_{hoff_id}"), Span::call_site());
+            let buffered_second_ident =
+                syn::Ident::new(&format!("__buffered_second_{hoff_id}"), Span::call_site());
+            let hoff_send_ident =
+                syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+            let hoff_recv_ident =
+                syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+            self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+            });
+
+            self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                let #hoff_recv_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(#hoff_recv_ident.into_inner()));
+            });
+
+            self.add_extra_stmt_internal(
+                location.root(),
+                syn::parse_quote! {
+                    let #buffered_first_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(None));
+                },
+            );
+
+            self.add_extra_stmt_internal(location.root(), syn::parse_quote! {
+                let #buffered_second_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(None));
+            });
+
+            self.add_inline_hook(
+                location,
+                syn::parse_quote!(
+                    Box::new(#root::sim::runtime::MergeOrderedHook::<_>::new(
+                        #buffered_first_ident.clone(),
+                        #buffered_second_ident.clone(),
+                        #hoff_send_ident,
+                        (#assume_location, #line, #caret),
+                        #root::__maybe_debug__!(#element_type),
+                    ))
+                ),
+            );
+
+            let builder = self.get_dfir_mut(location);
+
+            // First input: buffer the batch
+            let first_fold_ident =
+                syn::Ident::new(&format!("__merge_first_fold_{hoff_id}"), Span::call_site());
+            builder.add_dfir(
+                parse_quote! {
+                    #first_fold_ident = #first_ident -> fold::<'tick>(
+                        || ::std::vec::Vec::new(),
+                        |acc, v| {
+                            acc.push(v);
+                        }
+                    ) -> for_each(|v| {
+                        *#buffered_first_ident.borrow_mut() = Some(v);
+                    });
+                },
+                None,
+                None,
+            );
+
+            // Second input: buffer the batch
+            let second_fold_ident =
+                syn::Ident::new(&format!("__merge_second_fold_{hoff_id}"), Span::call_site());
+            builder.add_dfir(
+                parse_quote! {
+                    #second_fold_ident = #second_ident -> fold::<'tick>(
+                        || ::std::vec::Vec::new(),
+                        |acc, v| {
+                            acc.push(v);
+                        }
+                    ) -> for_each(|v| {
+                        *#buffered_second_ident.borrow_mut() = Some(v);
+                    });
+                },
+                None,
+                None,
+            );
+
+            // Output: await the hook's interleaved result
+            builder.add_dfir(
+                parse_quote! {
+                    #out_ident = source_iter([{
+                        let #hoff_recv_ident = #hoff_recv_ident.clone();
+                        async move {
+                            #hoff_recv_ident.borrow_mut().recv().await.unwrap()
+                        }
+                    }]) -> resolve_futures_blocking() -> flatten();
+                },
+                None,
+                None,
+            );
+        } else {
+            let hoff_id = self.next_hoff_id;
+            self.next_hoff_id += 1;
+
+            let buffered_first_ident =
+                syn::Ident::new(&format!("__buffered_first_{hoff_id}"), Span::call_site());
+            let buffered_second_ident =
+                syn::Ident::new(&format!("__buffered_second_{hoff_id}"), Span::call_site());
+            let hoff_send_ident =
+                syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
+            let hoff_recv_ident =
+                syn::Ident::new(&format!("__hoff_recv_{hoff_id}"), Span::call_site());
+
+            self.add_extra_stmt_internal(location, syn::parse_quote! {
+                let (#hoff_send_ident, #hoff_recv_ident) = __root_dfir_rs::util::unbounded_channel();
+            });
+            self.add_extra_stmt_internal(location, syn::parse_quote! {
+                let #buffered_first_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+            });
+            self.add_extra_stmt_internal(location, syn::parse_quote! {
+                let #buffered_second_ident = ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::VecDeque::new()));
+            });
+            self.add_hook(
+                location,
+                location,
+                syn::parse_quote!(
+                    Box::new(#root::sim::runtime::TopLevelMergeOrderedHook::<_> {
+                        first: #buffered_first_ident.clone(),
+                        second: #buffered_second_ident.clone(),
+                        to_release: None,
+                        release_source: None,
+                        output: #hoff_send_ident,
+                        location: (#assume_location, #line, #caret),
+                        format_item_debug: #root::__maybe_debug__!(#element_type),
+                    })
+                ),
+            );
+
+            self.get_dfir_mut(location).add_dfir(
+                parse_quote! {
+                    #first_ident -> for_each(|v| #buffered_first_ident.borrow_mut().push_back(v));
+                },
+                None,
+                None,
+            );
+
+            self.get_dfir_mut(location).add_dfir(
+                parse_quote! {
+                    #second_ident -> for_each(|v| #buffered_second_ident.borrow_mut().push_back(v));
+                },
+                None,
+                None,
+            );
+
+            self.get_dfir_mut(location).add_dfir(
+                parse_quote! {
+                    #out_ident = source_stream(#hoff_recv_ident);
+                },
+                None,
+                None,
+            );
+        }
+    }
+
     fn create_network(
         &mut self,
         from: &LocationId,

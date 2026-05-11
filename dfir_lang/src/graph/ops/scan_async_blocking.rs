@@ -81,15 +81,13 @@ pub const SCAN_ASYNC_BLOCKING: OperatorConstraints = OperatorConstraints {
             let mut #initializer_func_ident = #init_fn;
 
             #[allow(clippy::redundant_closure_call)]
-            let #singleton_output_ident = ::std::cell::RefCell::new(
-                Some(#init)
-            );
+            let mut #singleton_output_ident = Some(#init);
         };
 
         let write_tick_end = match persistence {
             super::Persistence::Tick => quote_spanned! {op_span=>
                 #[allow(clippy::redundant_closure_call)]
-                #singleton_output_ident.replace(Some(#init));
+                { #singleton_output_ident = Some(#init); }
             },
             _ => Default::default(),
         };
@@ -107,7 +105,7 @@ pub const SCAN_ASYNC_BLOCKING: OperatorConstraints = OperatorConstraints {
                 (func)(accum, item)
             }
 
-            let mut #state_ident = #singleton_output_ident.borrow_mut();
+            let #state_ident = &mut #singleton_output_ident;
 
             #[allow(clippy::redundant_closure_call)]
             call_scan_async_blocking_fn(#state_ident.as_mut().unwrap(), #iterator_item_ident, #func)

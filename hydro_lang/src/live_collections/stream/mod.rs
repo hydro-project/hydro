@@ -2290,18 +2290,16 @@ impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Stream<T, L, Unbo
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick, R: Retries> Stream<T, L, Unbounded, TotalOrder, R> {
+impl<'a, T, L: Location<'a>, B: Boundedness, R: Retries> Stream<T, L, B, TotalOrder, R> {
     /// Produces a new stream that combines the elements of the two input streams,
     /// preserving the relative order of elements within each input.
     ///
-    /// Currently, both input streams must be [`Unbounded`]. When the streams are
-    /// [`Bounded`], you can use [`Stream::chain`] instead.
-    ///
     /// # Non-Determinism
     /// The order in which elements *across* the two streams will be interleaved is
-    /// non-deterministic, so the order of elements will vary across runs. If the output order
-    /// is irrelevant, use [`Stream::merge_unordered`] instead, which is deterministic but emits an
-    /// unordered stream.
+    /// non-deterministic, so the order of elements will vary across runs. If the output
+    /// order is irrelevant, use [`Stream::merge_unordered`] instead, which is deterministic
+    /// but emits an unordered stream. For deterministic first-then-second ordering on
+    /// bounded streams, use [`Stream::chain`].
     ///
     /// # Example
     /// ```rust
@@ -2322,17 +2320,26 @@ impl<'a, T, L: Location<'a> + NoTick, R: Retries> Stream<T, L, Unbounded, TotalO
     /// ```
     pub fn merge_ordered<R2: Retries>(
         self,
-        other: Stream<T, L, Unbounded, TotalOrder, R2>,
-        nondet: NonDet,
-    ) -> Stream<T, L, Unbounded, TotalOrder, <R as MinRetries<R2>>::Min>
+        other: Stream<T, L, B, TotalOrder, R2>,
+        _nondet: NonDet,
+    ) -> Stream<T, L, B, TotalOrder, <R as MinRetries<R2>>::Min>
     where
         R: MinRetries<R2>,
     {
-        super::sliced::sliced! {
-            let self_batch = use(self, nondet);
-            let other_batch = use(other, nondet);
-            self_batch.chain(other_batch)
-        }
+        Stream::new(
+            self.location.clone(),
+            HydroNode::MergeOrdered {
+                first: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                second: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
+                metadata: self.location.new_node_metadata(Stream::<
+                    T,
+                    L,
+                    B,
+                    TotalOrder,
+                    <R as MinRetries<R2>>::Min,
+                >::collection_kind()),
+            },
+        )
     }
 }
 
@@ -3970,18 +3977,223 @@ mod tests {
             in_send2.send(3);
             in_send2.send(4);
 
-            let mut out = out_recv.collect::<Vec<_>>().await;
+            let out = out_recv.collect::<Vec<_>>().await;
 
             if out == [1, 3, 2, 4] {
                 saw_out_of_order = true;
             }
 
-            out.sort();
-            assert_eq!(out, vec![1, 2, 3, 4]);
+            // Assert ordering preservation: elements from each input must
+            // appear in their original relative order.
+            let mut first_elements = out.iter().filter(|v| **v <= 2).copied().collect::<Vec<_>>();
+            let mut second_elements = out.iter().filter(|v| **v > 2).copied().collect::<Vec<_>>();
+            assert_eq!(
+                first_elements,
+                vec![1, 2],
+                "first input order violated: {:?}",
+                out
+            );
+            assert_eq!(
+                second_elements,
+                vec![3, 4],
+                "second input order violated: {:?}",
+                out
+            );
+
+            first_elements.append(&mut second_elements);
+            first_elements.sort();
+            assert_eq!(first_elements, vec![1, 2, 3, 4]);
         });
 
         assert!(saw_out_of_order);
-        assert_eq!(instances, 26);
+        assert_eq!(instances, 6);
+    }
+
+    /// Tests that merge_ordered passes through elements when only one input
+    /// has data.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_merge_ordered_one_empty() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input();
+        let (_in_send2, input2) = node.sim_input();
+
+        let out_recv = input
+            .merge_ordered(input2, nondet!(/** test */))
+            .sim_output();
+
+        let instances = flow.sim().exhaustive(async || {
+            in_send.send(1);
+            in_send.send(2);
+
+            let out = out_recv.collect::<Vec<_>>().await;
+            assert_eq!(out, vec![1, 2]);
+        });
+
+        // Only one possible interleaving when one input is empty
+        assert_eq!(instances, 1);
+    }
+
+    /// Tests that merge_ordered correctly handles feedback cycles.
+    /// An element output from merge_ordered is filtered and cycled back to
+    /// one of its inputs. The one-at-a-time release must allow the cycled-back
+    /// element to arrive and potentially be emitted before elements still
+    /// waiting on the other input.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_merge_ordered_cycle_back() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input();
+
+        // Create a forward ref for the cycle back
+        let (complete_cycle_back, cycle_back) =
+            node.forward_ref::<super::Stream<_, _, _, TotalOrder>>();
+
+        // merge_ordered: input (external) with cycle_back
+        let merged = input.merge_ordered(cycle_back, nondet!(/** test */));
+
+        // Cycle back: elements equal to 1 get mapped to 10 and fed back
+        complete_cycle_back.complete(merged.clone().filter(q!(|v| *v == 1)).map(q!(|v| v * 10)));
+
+        let out_recv = merged.sim_output();
+
+        // Send 1 and 2. Element 1 should cycle back as 10.
+        // Valid orderings must have 1 before 10 (since 10 depends on 1).
+        let mut saw_cycle_before_second = false;
+        flow.sim().exhaustive(async || {
+            in_send.send(1);
+            in_send.send(2);
+
+            let out = out_recv.collect::<Vec<_>>().await;
+
+            // 10 must always come after 1 (causal dependency)
+            let pos_1 = out.iter().position(|v| *v == 1).unwrap();
+            let pos_10 = out.iter().position(|v| *v == 10).unwrap();
+            assert!(pos_1 < pos_10, "causal order violated: {:?}", out);
+
+            // Check if we see [1, 10, 2] — the cycled element beats the second input
+            if out == [1, 10, 2] {
+                saw_cycle_before_second = true;
+            }
+
+            let mut sorted = out;
+            sorted.sort();
+            assert_eq!(sorted, vec![1, 2, 10]);
+        });
+
+        assert!(
+            saw_cycle_before_second,
+            "never saw the cycled element arrive before the second input element"
+        );
+    }
+
+    /// Tests that merge_ordered correctly interleaves when one input has a
+    /// delayed element. With a: [1, _delay_, 2] and b: [3, 4], the delayed
+    /// element 2 should be able to appear after b's elements.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_merge_ordered_delayed() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in_send, input) = node.sim_input();
+        let (in_send2, input2) = node.sim_input();
+
+        let out_recv = input
+            .merge_ordered(input2, nondet!(/** test */))
+            .sim_output();
+
+        let mut saw_delayed_interleaving = false;
+        flow.sim().exhaustive(async || {
+            // Send 1 from a, and 3, 4 from b
+            in_send.send(1);
+            in_send2.send(3);
+            in_send2.send(4);
+
+            // Collect what's available so far
+            let first_batch = out_recv.collect::<Vec<_>>().await;
+
+            // Now send the delayed element 2 from a
+            in_send.send(2);
+            let second_batch = out_recv.collect::<Vec<_>>().await;
+
+            let mut all: Vec<_> = first_batch
+                .iter()
+                .chain(second_batch.iter())
+                .copied()
+                .collect();
+
+            // Check if we saw [1, 3, 4, 2] — the delayed interleaving
+            if all == [1, 3, 4, 2] {
+                saw_delayed_interleaving = true;
+            }
+
+            all.sort();
+            assert_eq!(all, vec![1, 2, 3, 4]);
+        });
+
+        assert!(saw_delayed_interleaving);
+    }
+
+    /// Deploy test: merge_ordered with a delayed element on one input.
+    /// Sends a=1, b=3, b=4, then after receiving those, sends a=2.
+    /// Expects to see [1, 3, 4] first, then [2] — demonstrating that
+    /// both inputs are pulled and the delayed element arrives later.
+    #[cfg(feature = "deploy")]
+    #[tokio::test]
+    async fn deploy_merge_ordered_delayed() {
+        let mut deployment = Deployment::new();
+
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+        let external = flow.external::<()>();
+
+        let (input_a_port, input_a) = node.source_external_bincode(&external);
+        let (input_b_port, input_b) = node.source_external_bincode(&external);
+
+        let out = input_a
+            .assume_ordering(nondet!(/** test */))
+            .merge_ordered(
+                input_b.assume_ordering(nondet!(/** test */)),
+                nondet!(/** test */),
+            )
+            .send_bincode_external(&external);
+
+        let nodes = flow
+            .with_process(&node, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut ext_a = nodes.connect(input_a_port).await;
+        let mut ext_b = nodes.connect(input_b_port).await;
+        let mut ext_out = nodes.connect(out).await;
+
+        deployment.start().await.unwrap();
+
+        // Send a=1, b=3, b=4
+        ext_a.send(1).await.unwrap();
+        ext_b.send(3).await.unwrap();
+        ext_b.send(4).await.unwrap();
+
+        // Collect the first 3 elements
+        let mut received = Vec::new();
+        for _ in 0..3 {
+            received.push(ext_out.next().await.unwrap());
+        }
+
+        // Now send the delayed a=2
+        ext_a.send(2).await.unwrap();
+        received.push(ext_out.next().await.unwrap());
+
+        // All elements should be present
+        received.sort();
+        assert_eq!(received, vec![1, 2, 3, 4]);
     }
 
     #[cfg(feature = "deploy")]

@@ -57,13 +57,13 @@ where
         this.push_1.start_send(item_clone, meta);
     }
 
-    fn poll_flush(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
+    fn poll_finalize(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         let this = self.project();
         ready_both!(
             this.push_0
-                .poll_flush(<P0::Ctx<'_> as Context<'_>>::unmerge_self(ctx)),
+                .poll_finalize(<P0::Ctx<'_> as Context<'_>>::unmerge_self(ctx)),
             this.push_1
-                .poll_flush(<P0::Ctx<'_> as Context<'_>>::unmerge_other(ctx)),
+                .poll_finalize(<P0::Ctx<'_> as Context<'_>>::unmerge_other(ctx)),
         );
         PushStep::Done
     }
@@ -93,6 +93,6 @@ mod tests {
         f.as_mut().start_send(1, ());
         f.as_mut().poll_ready(&mut ());
         f.as_mut().start_send(2, ());
-        f.as_mut().poll_flush(&mut ());
+        f.as_mut().poll_finalize(&mut ());
     }
 }

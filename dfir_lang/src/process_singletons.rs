@@ -2,7 +2,6 @@
 
 use itertools::Itertools;
 use proc_macro2::{Group, Ident, TokenStream, TokenTree};
-use quote::quote_spanned;
 use syn::punctuated::Punctuated;
 use syn::{Expr, Token};
 
@@ -24,28 +23,32 @@ pub fn preprocess_singletons(tokens: TokenStream, found_idents: &mut Vec<Ident>)
 /// Replaces singleton references `#my_var` with the code needed to actually get the value inside.
 ///
 /// * `tokens` - The tokens to update singleton references within.
-/// * `resolved_idents` - The `RefCell<_>` local variable idents that correspond 1:1 and in the same
+/// * `resolved_idents` - The local variable idents that correspond 1:1 and in the same
 ///   order as the singleton references within `tokens` (found in-order via [`preprocess_singletons`]).
 ///
-/// Generates borrowing code ([`std::cell::RefCell::borrow`]). Use
-/// [`postprocess_singletons_handles`] for just the raw idents.
+/// Generates `(*&ident)` — an immutable place expression that prevents consumer mutation.
+/// Use [`postprocess_singletons_handles`] for just the raw idents.
 pub fn postprocess_singletons(
     tokens: TokenStream,
     resolved_idents: impl IntoIterator<Item = Ident>,
-    _context: &Ident,
 ) -> Punctuated<Expr, Token![,]> {
     let mut resolved_idents_iter = resolved_idents.into_iter();
     let processed = process_singletons(tokens, &mut |singleton_ident| {
         let span = singleton_ident.span();
         let mut resolved_ident = resolved_idents_iter.next().unwrap();
         resolved_ident.set_span(span);
-        let mut group = Group::new(
-            proc_macro2::Delimiter::Parenthesis,
-            quote_spanned! {span=>
-                *#resolved_ident.borrow()
-            },
-        );
-        group.set_span(singleton_ident.span());
+        // Emit `(*&ident)` so consumers get an immutable place expression.
+        // The `&` prevents mutation (can't assign through a shared reference),
+        // and the `*` dereferences back to the original type for ergonomic use.
+        let deref_ref_tokens: TokenStream = [
+            TokenTree::Punct(proc_macro2::Punct::new('*', proc_macro2::Spacing::Alone)),
+            TokenTree::Punct(proc_macro2::Punct::new('&', proc_macro2::Spacing::Alone)),
+            TokenTree::Ident(resolved_ident),
+        ]
+        .into_iter()
+        .collect();
+        let mut group = Group::new(proc_macro2::Delimiter::Parenthesis, deref_ref_tokens);
+        group.set_span(span);
         TokenTree::Group(group)
     });
     parse_terminated(processed).unwrap()

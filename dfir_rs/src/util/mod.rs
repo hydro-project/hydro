@@ -6,7 +6,6 @@
 pub mod demux_enum;
 pub mod multiset;
 pub mod priority_stack;
-pub mod slot_vec;
 pub mod sparse_vec;
 pub mod unsync;
 
