@@ -1389,12 +1389,14 @@ impl HydroNode {
                 acc,
                 input,
                 metadata,
+                ..
             }
             | HydroNode::FoldKeyed {
                 init,
                 acc,
                 input,
                 metadata,
+                ..
             }
             | HydroNode::Scan {
                 init,

@@ -1234,19 +1234,21 @@ where
         let (comb, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
         proof.register_proof(&comb);
 
+        // Only assume_retries (for idempotence), not assume_ordering.
+        // The fold hook in the simulator handles ordering non-determinism directly.
         let nondet = nondet!(/** the combinator function is commutative and idempotent */);
-        let ordered_etc: Stream<T, L, B> = self.assume_retries(nondet).assume_ordering(nondet);
+        let retried: Stream<T, L, B, O, ExactlyOnce> = self.assume_retries(nondet);
 
         let core = HydroNode::Fold {
             init,
             acc: comb.into(),
-            input: Box::new(ordered_etc.ir_node.replace(HydroNode::Placeholder)),
-            metadata: ordered_etc
+            input: Box::new(retried.ir_node.replace(HydroNode::Placeholder)),
+            metadata: retried
                 .location
                 .new_node_metadata(Singleton::<A, L, B2>::collection_kind()),
         };
 
-        Singleton::new(ordered_etc.location.clone(), core)
+        Singleton::new(retried.location.clone(), core)
     }
 
     /// Combines elements of the stream into an [`Optional`], by starting with the first element in the stream,
