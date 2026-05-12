@@ -1044,14 +1044,14 @@ impl DfirGraph {
                         }
                     ) {
                         for (_edge, succ_id) in self.node_successors(src_ref_id) {
-                            if let Some(consumer_sg) = self.node_subgraph(succ_id) {
-                                if consumer_sg != dst_sg {
-                                    sg_preds
-                                        .entry(consumer_sg)
-                                        .unwrap()
-                                        .or_default()
-                                        .push(dst_sg);
-                                }
+                            if let Some(consumer_sg) = self.node_subgraph(succ_id)
+                                && consumer_sg != dst_sg
+                            {
+                                sg_preds
+                                    .entry(consumer_sg)
+                                    .unwrap()
+                                    .or_default()
+                                    .push(dst_sg);
                             }
                         }
                     }
