@@ -27,7 +27,6 @@ pub fn preprocess_singletons(tokens: TokenStream, found_idents: &mut Vec<Ident>)
 ///   order as the singleton references within `tokens` (found in-order via [`preprocess_singletons`]).
 ///
 /// Generates `(*expr)` — an immutable place expression that prevents consumer mutation.
-/// Use [`postprocess_singletons_handles`] for just the raw idents.
 pub fn postprocess_singletons(
     tokens: TokenStream,
     resolved_exprs: impl IntoIterator<Item = TokenStream>,
