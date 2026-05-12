@@ -50,19 +50,17 @@ pub fn postprocess_singletons(
     parse_terminated(processed).unwrap()
 }
 
-/// Same as [`postprocess_singletons`] but generates just the raw expression rather than
-/// wrapping in `(*...)`.
+/// Same as [`postprocess_singletons`] but generates just the raw ident rather than
+/// wrapping in `(*...)`. Used for mutable state handles.
 pub fn postprocess_singletons_handles(
     tokens: TokenStream,
-    resolved_exprs: impl IntoIterator<Item = TokenStream>,
+    resolved_idents: impl IntoIterator<Item = Ident>,
 ) -> Punctuated<Expr, Token![,]> {
-    let mut resolved_exprs_iter = resolved_exprs.into_iter();
+    let mut resolved_idents_iter = resolved_idents.into_iter();
     let processed = process_singletons(tokens, &mut |singleton_ident| {
-        let span = singleton_ident.span();
-        let expr_tokens = resolved_exprs_iter.next().unwrap();
-        let mut group = Group::new(proc_macro2::Delimiter::Parenthesis, expr_tokens);
-        group.set_span(span);
-        TokenTree::Group(group)
+        let mut resolved_ident = resolved_idents_iter.next().unwrap();
+        resolved_ident.set_span(singleton_ident.span().resolved_at(resolved_ident.span()));
+        TokenTree::Ident(resolved_ident)
     });
     parse_terminated(processed).unwrap()
 }
