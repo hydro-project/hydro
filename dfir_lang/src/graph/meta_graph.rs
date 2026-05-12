@@ -242,6 +242,9 @@ impl DfirGraph {
     /// Assign all operator instances if not set. Write diagnostic messages/errors into `diagnostics`.
     pub fn insert_node_op_insts_all(&mut self, diagnostics: &mut Diagnostics) {
         let mut op_insts = Vec::new();
+        // Collect nodes that should be lowered to handoffs (the `handoff()` pseudo-operator).
+        let mut handoff_nodes = Vec::new();
+
         for (node_id, node) in self.nodes() {
             let GraphNode::Operator(operator) = node else {
                 continue;
@@ -249,6 +252,19 @@ impl DfirGraph {
             if self.node_op_inst(node_id).is_some() {
                 continue;
             };
+
+            // Recognize `handoff()` pseudo-operator and lower to GraphNode::Handoff.
+            if operator.name_string() == "handoff" {
+                if !operator.args.is_empty() {
+                    diagnostics.push(Diagnostic::spanned(
+                        operator.path.span(),
+                        Level::Error,
+                        "`handoff` takes no arguments.".to_string(),
+                    ));
+                }
+                handoff_nodes.push((node_id, operator.path.span()));
+                continue;
+            }
 
             // Op constraints.
             let Some(op_constraints) = find_op_op_constraints(operator) else {
@@ -346,6 +362,14 @@ impl DfirGraph {
 
         for (node_id, op_inst) in op_insts {
             self.insert_node_op_inst(node_id, op_inst);
+        }
+
+        // Replace `handoff()` pseudo-operator nodes with GraphNode::Handoff.
+        for (node_id, span) in handoff_nodes {
+            self.nodes[node_id] = GraphNode::Handoff {
+                src_span: span,
+                dst_span: span,
+            };
         }
     }
 

@@ -825,7 +825,9 @@ impl FlatGraphBuilder {
                         }
                     }
                 }
-                GraphNode::Handoff { .. } => todo!("Node::Handoff"),
+                GraphNode::Handoff { .. } => {
+                    // Handoff nodes (including user-inserted `handoff()`) don't need operator checking.
+                }
                 GraphNode::ModuleBoundary { .. } => {
                     // Module boundaries don't require any checking.
                 }
