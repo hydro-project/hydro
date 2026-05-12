@@ -813,16 +813,29 @@ impl DfirGraph {
     }
 
     /// Resolve the singletons via [`Self::node_singleton_references`] for the given `node_id`.
-    fn helper_resolve_singletons(&self, node_id: GraphNodeId, span: Span) -> Vec<Ident> {
+    /// Returns token streams for each reference:
+    /// - For stateful operators: `&singleton_op_XXX` (borrow the operator's state)
+    /// - For HandoffKind::Option: `hoff_XXX_buf.as_ref().unwrap()` (borrow from the slot)
+    fn helper_resolve_singletons(&self, node_id: GraphNodeId, span: Span) -> Vec<TokenStream> {
         self.node_singleton_references(node_id)
             .iter()
             .map(|singleton_node_id| {
                 // TODO(mingwei): this `expect` should be caught in error checking
-                self.node_as_singleton_ident(
-                    singleton_node_id
-                        .expect("Expected singleton to be resolved but was not, this is a bug."),
-                    span,
-                )
+                let ref_node_id = singleton_node_id
+                    .expect("Expected singleton to be resolved but was not, this is a bug.");
+                if matches!(
+                    self.node(ref_node_id),
+                    GraphNode::Handoff {
+                        kind: HandoffKind::Option,
+                        ..
+                    }
+                ) {
+                    let buf_ident = self.hoff_buf_ident(ref_node_id, span);
+                    quote_spanned! {span=> #buf_ident.as_ref().unwrap() }
+                } else {
+                    let singleton_ident = self.node_as_singleton_ident(ref_node_id, span);
+                    quote_spanned! {span=> &#singleton_ident }
+                }
             })
             .collect::<Vec<_>>()
     }
@@ -1285,32 +1298,6 @@ impl DfirGraph {
                             let singletons_resolved =
                                 self.helper_resolve_singletons(node_id, op_span);
 
-                            // For HandoffKind::Option references, generate local bindings
-                            // that unwrap the Option so the `(*&ident)` pattern works.
-                            let handoff_singleton_bindings: Vec<TokenStream> = self
-                                .node_singleton_references(node_id)
-                                .iter()
-                                .zip(singletons_resolved.iter())
-                                .filter_map(|(ref_node_id, resolved_ident)| {
-                                    let ref_node_id = (*ref_node_id)?;
-                                    if !matches!(
-                                        self.node(ref_node_id),
-                                        GraphNode::Handoff {
-                                            kind: HandoffKind::Option,
-                                            ..
-                                        }
-                                    ) {
-                                        return None;
-                                    }
-                                    let buf_ident =
-                                        self.hoff_buf_ident(ref_node_id, resolved_ident.span());
-                                    let singleton_ident = resolved_ident;
-                                    Some(quote_spanned! {op_span=>
-                                        let #singleton_ident = #buf_ident.as_ref().unwrap();
-                                    })
-                                })
-                                .collect();
-
                             let arguments = &process_singletons::postprocess_singletons(
                                 op_inst.arguments_raw.clone(),
                                 singletons_resolved.clone(),
@@ -1420,10 +1407,6 @@ impl DfirGraph {
                             });
                             op_prologue_code.push(write_prologue);
                             op_tick_end_code.push(write_tick_end);
-                            // Emit bindings for HandoffKind::Option singleton references.
-                            for binding in &handoff_singleton_bindings {
-                                subgraph_op_iter_code.push(binding.clone());
-                            }
                             subgraph_op_iter_code.push(write_iterator);
 
                             if include_type_guards {

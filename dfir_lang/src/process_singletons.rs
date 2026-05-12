@@ -23,48 +23,46 @@ pub fn preprocess_singletons(tokens: TokenStream, found_idents: &mut Vec<Ident>)
 /// Replaces singleton references `#my_var` with the code needed to actually get the value inside.
 ///
 /// * `tokens` - The tokens to update singleton references within.
-/// * `resolved_idents` - The local variable idents that correspond 1:1 and in the same
+/// * `resolved_exprs` - Token streams that correspond 1:1 and in the same
 ///   order as the singleton references within `tokens` (found in-order via [`preprocess_singletons`]).
 ///
-/// Generates `(*&ident)` — an immutable place expression that prevents consumer mutation.
+/// Generates `(*expr)` — an immutable place expression that prevents consumer mutation.
 /// Use [`postprocess_singletons_handles`] for just the raw idents.
 pub fn postprocess_singletons(
     tokens: TokenStream,
-    resolved_idents: impl IntoIterator<Item = Ident>,
+    resolved_exprs: impl IntoIterator<Item = TokenStream>,
 ) -> Punctuated<Expr, Token![,]> {
-    let mut resolved_idents_iter = resolved_idents.into_iter();
+    let mut resolved_exprs_iter = resolved_exprs.into_iter();
     let processed = process_singletons(tokens, &mut |singleton_ident| {
         let span = singleton_ident.span();
-        let mut resolved_ident = resolved_idents_iter.next().unwrap();
-        resolved_ident.set_span(span);
-        // Emit `(*&ident)` so consumers get an immutable place expression.
-        // The `&` prevents mutation (can't assign through a shared reference),
-        // and the `*` dereferences back to the original type for ergonomic use.
-        let deref_ref_tokens: TokenStream = [
-            TokenTree::Punct(proc_macro2::Punct::new('*', proc_macro2::Spacing::Alone)),
-            TokenTree::Punct(proc_macro2::Punct::new('&', proc_macro2::Spacing::Alone)),
-            TokenTree::Ident(resolved_ident),
-        ]
-        .into_iter()
+        let expr_tokens = resolved_exprs_iter.next().unwrap();
+        // Emit `(*expr)` so consumers get an immutable place expression.
+        let deref_tokens: TokenStream = std::iter::once(TokenTree::Punct(proc_macro2::Punct::new(
+            '*',
+            proc_macro2::Spacing::Alone,
+        )))
+        .chain(expr_tokens)
         .collect();
-        let mut group = Group::new(proc_macro2::Delimiter::Parenthesis, deref_ref_tokens);
+        let mut group = Group::new(proc_macro2::Delimiter::Parenthesis, deref_tokens);
         group.set_span(span);
         TokenTree::Group(group)
     });
     parse_terminated(processed).unwrap()
 }
 
-/// Same as [`postprocess_singletons`] but generates just the raw ident rather than
-/// `RefCell` borrowing code.
+/// Same as [`postprocess_singletons`] but generates just the raw expression rather than
+/// wrapping in `(*...)`.
 pub fn postprocess_singletons_handles(
     tokens: TokenStream,
-    resolved_idents: impl IntoIterator<Item = Ident>,
+    resolved_exprs: impl IntoIterator<Item = TokenStream>,
 ) -> Punctuated<Expr, Token![,]> {
-    let mut resolved_idents_iter = resolved_idents.into_iter();
+    let mut resolved_exprs_iter = resolved_exprs.into_iter();
     let processed = process_singletons(tokens, &mut |singleton_ident| {
-        let mut resolved_ident = resolved_idents_iter.next().unwrap();
-        resolved_ident.set_span(singleton_ident.span().resolved_at(resolved_ident.span()));
-        TokenTree::Ident(resolved_ident)
+        let span = singleton_ident.span();
+        let expr_tokens = resolved_exprs_iter.next().unwrap();
+        let mut group = Group::new(proc_macro2::Delimiter::Parenthesis, expr_tokens);
+        group.set_span(span);
+        TokenTree::Group(group)
     });
     parse_terminated(processed).unwrap()
 }
