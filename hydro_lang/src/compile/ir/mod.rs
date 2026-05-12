@@ -34,6 +34,36 @@ use crate::location::{LocationKey, NetworkHint};
 pub mod backtrace;
 use backtrace::Backtrace;
 
+/// Rewrites a token stream to prefix certain idents with `#`, turning them into
+/// DFIR singleton references (`#var` syntax). Used when emitting closures that
+/// capture singleton values via `SingletonRef`.
+#[cfg(feature = "build")]
+fn rewrite_singleton_refs_in_tokens(
+    tokens: TokenStream,
+    singleton_idents: &[&syn::Ident],
+) -> TokenStream {
+    use proc_macro2::{Group, TokenTree};
+    tokens
+        .into_iter()
+        .flat_map(|tt| match tt {
+            TokenTree::Ident(ref ident) if singleton_idents.iter().any(|s| *s == ident) => {
+                vec![
+                    TokenTree::Punct(proc_macro2::Punct::new('#', proc_macro2::Spacing::Joint)),
+                    tt,
+                ]
+            }
+            TokenTree::Group(group) => {
+                let rewritten =
+                    rewrite_singleton_refs_in_tokens(group.stream(), singleton_idents);
+                let mut new_group = Group::new(group.delimiter(), rewritten);
+                new_group.set_span(group.span());
+                vec![TokenTree::Group(new_group)]
+            }
+            _ => vec![tt],
+        })
+        .collect()
+}
+
 /// Wrapper that displays only the tokens of a parsed expr.
 ///
 /// Boxes `syn::Type` which is ~240 bytes.
@@ -2452,8 +2482,23 @@ impl HydroNode {
                 transform(watermark.as_mut(), seen_tees);
             }
 
-            HydroNode::Map { input, .. }
-            | HydroNode::ResolveFutures { input, .. }
+            HydroNode::Map { input, singleton_refs, .. } => {
+                // Process singleton references as children (like Tee's inner).
+                for (_ident, ref_node) in singleton_refs.iter_mut() {
+                    if let Some(transformed) = seen_tees.get(&ref_node.as_ptr()) {
+                        *ref_node = SharedNode(transformed.clone());
+                    } else {
+                        let transformed_cell = Rc::new(RefCell::new(HydroNode::Placeholder));
+                        seen_tees.insert(ref_node.as_ptr(), transformed_cell.clone());
+                        let mut orig = ref_node.0.replace(HydroNode::Placeholder);
+                        transform(&mut orig, seen_tees);
+                        *transformed_cell.borrow_mut() = orig;
+                        *ref_node = SharedNode(transformed_cell);
+                    }
+                }
+                transform(input.as_mut(), seen_tees);
+            }
+            HydroNode::ResolveFutures { input, .. }
             | HydroNode::ResolveFuturesBlocking { input, .. }
             | HydroNode::ResolveFuturesOrdered { input, .. }
             | HydroNode::FlatMap { input, .. }
@@ -3667,7 +3712,7 @@ impl HydroNode {
                         ident_stack.push(futures_ident);
                     }
 
-                    HydroNode::Map { f, .. } => {
+                    HydroNode::Map { f, singleton_refs, .. } => {
                         let input_ident = ident_stack.pop().unwrap();
 
                         let map_ident =
@@ -3675,10 +3720,45 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
+                                // Emit singleton() nodes for each captured singleton ref.
+                                for (local_ident, ref_node) in singleton_refs.iter() {
+                                    let ptr = ref_node.0.as_ref() as *const RefCell<HydroNode>;
+                                    let singleton_source_ident = built_tees
+                                        .get(&ptr)
+                                        .expect("singleton ref not yet built — ordering bug")
+                                        [0]
+                                        .clone();
+
+                                    // Emit: local_ident = source_ident -> singleton();
+                                    // The DFIR #var mechanism will resolve #local_ident
+                                    // to borrow from this singleton slot.
+                                    let builder = graph_builders.get_dfir_mut(&out_location);
+                                    builder.add_dfir(
+                                        parse_quote! {
+                                            #local_ident = #singleton_source_ident -> singleton();
+                                        },
+                                        None,
+                                        None,
+                                    );
+                                }
+
+                                // Rewrite the closure to prefix singleton ref idents with #
+                                // so the DFIR parser recognizes them as singleton references.
+                                let f_tokens = if singleton_refs.is_empty() {
+                                    f.0.to_token_stream()
+                                } else {
+                                    let local_idents: Vec<&syn::Ident> =
+                                        singleton_refs.iter().map(|(id, _)| id).collect();
+                                    rewrite_singleton_refs_in_tokens(
+                                        f.0.to_token_stream(),
+                                        &local_idents,
+                                    )
+                                };
+
                                 let builder = graph_builders.get_dfir_mut(&out_location);
                                 builder.add_dfir(
                                     parse_quote! {
-                                        #map_ident = #input_ident -> map(#f);
+                                        #map_ident = #input_ident -> map(#f_tokens);
                                     },
                                     None,
                                     Some(&next_stmt_id.to_string()),
