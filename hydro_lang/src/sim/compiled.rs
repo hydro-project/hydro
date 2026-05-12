@@ -1092,11 +1092,11 @@ impl<W: std::io::Write> LaunchedSim<W> {
                     .possibly_ready_ticks
                     .drain(..)
                     .partition(|(name, cid, _)| {
-                        self.hooks
-                            .get(&(name.clone(), *cid))
-                            .unwrap()
-                            .iter()
-                            .any(|hook| {
+                        let hooks = self.hooks.get(&(name.clone(), *cid)).unwrap();
+                        // All hooks must be ready (have received input or have a last value)
+                        hooks.iter().all(|hook| hook.is_ready())
+                            // And at least one hook must be able to make progress
+                            && hooks.iter().any(|hook| {
                                 hook.current_decision().unwrap_or(false)
                                     || hook.can_make_nontrivial_decision()
                             })
@@ -1125,6 +1125,16 @@ impl<W: std::io::Write> LaunchedSim<W> {
                 if self.possibly_ready_ticks.is_empty()
                     && self.possibly_ready_observation.is_empty()
                 {
+                    // If any tick is blocked because a hook is not ready, that's a
+                    // simulator bug — it means a singleton never received a value.
+                    for (name, cid, _) in &self.not_ready_ticks {
+                        let hooks = self.hooks.get(&(name.clone(), *cid)).unwrap();
+                        assert!(
+                            hooks.iter().all(|hook| hook.is_ready()),
+                            "Simulator bug: tick has a hook that never became ready"
+                        );
+                    }
+
                     // Signal quiescence and wait for new input.
                     self.quiescence.wait_for_resume().await;
                 } else {
