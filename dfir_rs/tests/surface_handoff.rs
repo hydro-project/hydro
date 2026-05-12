@@ -63,3 +63,13 @@ pub async fn test_singleton_with_fold() {
     drop(flow);
     assert_eq!(vec![150], output);
 }
+
+/// Test: singleton() panics if it receives more than one item.
+#[dfir_rs::test]
+#[should_panic(expected = "singleton() received more than one item")]
+pub async fn test_singleton_panics_on_multiple_items() {
+    let mut flow = dfir_rs::dfir_syntax! {
+        source_iter([1_i32, 2, 3]) -> singleton() -> for_each(|_| {});
+    };
+    flow.run_tick().await;
+}

@@ -88,13 +88,24 @@ mod serde_syn {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Varname(#[serde(with = "serde_syn")] pub Ident);
 
+/// The kind of inter-subgraph handoff.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum HandoffKind {
+    /// A `Vec<T>` buffer for streams (zero or more items).
+    Vec,
+    /// An `Option<T>` slot for singletons/optionals (zero or one item).
+    Option,
+}
+
 /// A node, corresponding to an operator or a handoff.
 #[derive(Clone, Serialize, Deserialize)]
 pub enum GraphNode {
     /// An operator.
     Operator(#[serde(with = "serde_syn")] Operator),
-    /// A handoff point, used between subgraphs (or within a subgraph to break a cycle).
+    /// An inter-subgraph handoff point for buffering data between subgraphs.
     Handoff {
+        /// What kind of storage this handoff uses.
+        kind: HandoffKind,
         /// The span of the input into the handoff.
         #[serde(skip, default = "Span::call_site")]
         src_span: Span,
@@ -114,26 +125,20 @@ pub enum GraphNode {
         #[serde(skip, default = "Span::call_site")]
         import_expr: Span,
     },
-
-    /// A singleton materialization point, used between subgraphs.
-    /// Stores exactly one item from the producer subgraph and makes it available
-    /// to consumer subgraphs (either by reference or by move).
-    SingletonSlot {
-        /// The span of the input into the slot.
-        #[serde(skip, default = "Span::call_site")]
-        src_span: Span,
-        /// The span of the output out of the slot.
-        #[serde(skip, default = "Span::call_site")]
-        dst_span: Span,
-    },
 }
 impl GraphNode {
     /// Return the node as a human-readable string.
     pub fn to_pretty_string(&self) -> Cow<'static, str> {
         match self {
             GraphNode::Operator(op) => op.to_pretty_string().into(),
-            GraphNode::Handoff { .. } => HANDOFF_NODE_STR.into(),
-            GraphNode::SingletonSlot { .. } => SINGLETON_SLOT_NODE_STR.into(),
+            GraphNode::Handoff {
+                kind: HandoffKind::Vec,
+                ..
+            } => HANDOFF_NODE_STR.into(),
+            GraphNode::Handoff {
+                kind: HandoffKind::Option,
+                ..
+            } => SINGLETON_SLOT_NODE_STR.into(),
             GraphNode::ModuleBoundary { .. } => MODULE_BOUNDARY_NODE_STR.into(),
         }
     }
@@ -142,20 +147,28 @@ impl GraphNode {
     pub fn to_name_string(&self) -> Cow<'static, str> {
         match self {
             GraphNode::Operator(op) => op.name_string().into(),
-            GraphNode::Handoff { .. } => HANDOFF_NODE_STR.into(),
-            GraphNode::SingletonSlot { .. } => SINGLETON_SLOT_NODE_STR.into(),
+            GraphNode::Handoff {
+                kind: HandoffKind::Vec,
+                ..
+            } => HANDOFF_NODE_STR.into(),
+            GraphNode::Handoff {
+                kind: HandoffKind::Option,
+                ..
+            } => SINGLETON_SLOT_NODE_STR.into(),
             GraphNode::ModuleBoundary { .. } => MODULE_BOUNDARY_NODE_STR.into(),
         }
     }
 
-    /// Return the source code span of the node (for operators) or input/otput spans for handoffs.
+    /// Whether this node is a handoff (any kind).
+    pub fn is_handoff(&self) -> bool {
+        matches!(self, GraphNode::Handoff { .. })
+    }
+
+    /// Return the source code span of the node.
     pub fn span(&self) -> Span {
         match self {
             Self::Operator(op) => op.span(),
             &Self::Handoff {
-                src_span, dst_span, ..
-            }
-            | &Self::SingletonSlot {
                 src_span, dst_span, ..
             } => src_span.join(dst_span).unwrap_or(src_span),
             Self::ModuleBoundary { import_expr, .. } => *import_expr,
@@ -168,8 +181,7 @@ impl std::fmt::Debug for GraphNode {
             Self::Operator(operator) => {
                 write!(f, "Node::Operator({} span)", PrettySpan(operator.span()))
             }
-            Self::Handoff { .. } => write!(f, "Node::Handoff"),
-            Self::SingletonSlot { .. } => write!(f, "Node::SingletonSlot"),
+            Self::Handoff { kind, .. } => write!(f, "Node::Handoff({kind:?})"),
             Self::ModuleBoundary { input, .. } => {
                 write!(f, "Node::ModuleBoundary{{input: {}}}", input)
             }

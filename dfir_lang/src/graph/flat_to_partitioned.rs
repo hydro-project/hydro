@@ -7,7 +7,9 @@ use slotmap::{SecondaryMap, SparseSecondaryMap};
 
 use super::meta_graph::DfirGraph;
 use super::ops::{DelayType, FloType};
-use super::{Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId, graph_algorithms};
+use super::{
+    Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId, HandoffKind, graph_algorithms,
+};
 use crate::diagnostic::{Diagnostic, Level};
 use crate::union_find::UnionFind;
 
@@ -169,14 +171,14 @@ fn make_subgraph_collect(
     let topo_sort = graph_algorithms::topo_sort(
         partitioned_graph
             .nodes()
-            .filter(|&(_, node)| !matches!(node, GraphNode::Handoff { .. } | GraphNode::SingletonSlot { .. }))
+            .filter(|&(_, node)| !matches!(node, GraphNode::Handoff { .. }))
             .map(|(node_id, _)| node_id),
         |v| {
             partitioned_graph
                 .node_predecessor_nodes(v)
                 .filter(|&pred_id| {
                     let pred = partitioned_graph.node(pred_id);
-                    !matches!(pred, GraphNode::Handoff { .. } | GraphNode::SingletonSlot { .. })
+                    !matches!(pred, GraphNode::Handoff { .. })
                 })
         },
     )
@@ -215,13 +217,14 @@ fn make_subgraphs(partitioned_graph: &mut DfirGraph, barrier_crossers: &mut Barr
         // Already has a handoff, no need to insert one.
         let src_node = partitioned_graph.node(src_id);
         let dst_node = partitioned_graph.node(dst_id);
-        if matches!(src_node, GraphNode::Handoff { .. } | GraphNode::SingletonSlot { .. })
-            || matches!(dst_node, GraphNode::Handoff { .. } | GraphNode::SingletonSlot { .. })
+        if matches!(src_node, GraphNode::Handoff { .. })
+            || matches!(dst_node, GraphNode::Handoff { .. })
         {
             continue;
         }
 
         let hoff = GraphNode::Handoff {
+            kind: HandoffKind::Vec,
             src_span: src_node.span(),
             dst_span: dst_node.span(),
         };
@@ -377,7 +380,10 @@ fn order_subgraphs(
         let (hoff, _dst) = partitioned_graph.edge(edge_id);
         assert!(matches!(
             partitioned_graph.node(hoff),
-            GraphNode::Handoff { .. }
+            GraphNode::Handoff {
+                kind: HandoffKind::Vec,
+                ..
+            }
         ));
         partitioned_graph.set_handoff_delay_type(hoff, delay_type);
     }
