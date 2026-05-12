@@ -8,18 +8,20 @@ use proc_macro2::Span;
 use quote::quote;
 use stageleft::runtime_support::{FreeVariableWithContextWithProps, QuoteTokens};
 
-use crate::compile::ir::SharedNode;
+use crate::compile::ir::{HydroNode, SharedNode};
 use crate::location::Location;
 
 /// A lightweight handle to a singleton that can be captured inside `q!()` closures.
 ///
-/// Created via [`Singleton::by_ref()`] or [`Optional::by_ref()`]. When used inside a `q!()`
-/// closure, resolves to a `&T` reference to the singleton's value at runtime.
+/// Created via [`Singleton::by_ref()`]. When used inside a `q!()`
+/// closure, resolves to the singleton's value at runtime.
 ///
-/// This type is `Copy` so it can be freely captured in closures.
+/// This type is `Copy` (required by `q!()` macro internals).
+/// Safety: The pointed-to `RefCell<HydroNode>` is kept alive by the `Tee` node
+/// in the IR, which outlives all `SingletonRef` handles.
 pub struct SingletonRef<'a, T, L> {
-    pub(crate) node: *const RefCell<crate::compile::ir::HydroNode>,
-    pub(crate) _phantom: PhantomData<(&'a T, L)>,
+    pub(crate) node: *const RefCell<HydroNode>,
+    pub(crate) _phantom: PhantomData<(&'a (), T, L)>,
 }
 
 impl<T, L> Copy for SingletonRef<'_, T, L> {}
@@ -50,18 +52,19 @@ pub fn with_singleton_capture<R>(f: impl FnOnce() -> R) -> (R, Vec<(syn::Ident, 
 }
 
 /// Register a singleton reference capture. Called by `SingletonRef::to_tokens`.
-fn register_singleton_ref(ident: syn::Ident, node_ptr: *const RefCell<crate::compile::ir::HydroNode>) {
+fn register_singleton_ref(ident: syn::Ident, node_ptr: *const RefCell<HydroNode>) {
     SINGLETON_REFS.with(|cell| {
         let mut guard = cell.borrow_mut();
         let refs = guard.as_mut().expect(
             "SingletonRef used inside q!() but no singleton capture scope is active. \
              This is a bug — singleton capture should be set up by the operator that uses q!()."
         );
-        // SAFETY: The Rc keeping this alive is held by the Singleton/Tee node in the IR.
-        let node = SharedNode(unsafe { Rc::from_raw(node_ptr) });
-        // Increment refcount since from_raw takes ownership
-        std::mem::forget(node.0.clone());
-        refs.push((ident, node));
+        // Reconstruct the Rc from the raw pointer (incrementing refcount).
+        // Safety: The Rc is kept alive by the Tee node in the IR.
+        let rc = unsafe { Rc::from_raw(node_ptr) };
+        let cloned = rc.clone();
+        std::mem::forget(rc); // Don't decrement the original refcount
+        refs.push((ident, SharedNode(cloned)));
     });
 }
 
