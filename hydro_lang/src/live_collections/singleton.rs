@@ -334,7 +334,7 @@ where
     /// let count_ref = my_count.by_ref();
     /// other_stream.map(q!(|x| x + count_ref))
     /// ```
-    pub fn by_ref(&self) -> crate::singleton_ref::SingletonRef<'_, T, L> {
+    pub fn by_ref(&self) -> crate::singleton_ref::SingletonRef<'a, T, L> {
         use std::ops::Deref;
         // Ensure the IR node is wrapped in a SharedNode (Tee) for identity tracking.
         if !matches!(self.ir_node.borrow().deref(), HydroNode::Tee { .. }) {
@@ -349,7 +349,7 @@ where
             unreachable!()
         };
         crate::singleton_ref::SingletonRef {
-            node: SharedNode(inner.0.clone()),
+            node: Rc::as_ptr(&inner.0),
             _phantom: PhantomData,
         }
     }

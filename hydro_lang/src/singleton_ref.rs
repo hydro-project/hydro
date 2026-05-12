@@ -2,6 +2,7 @@
 
 use std::cell::RefCell;
 use std::marker::PhantomData;
+use std::rc::Rc;
 
 use proc_macro2::Span;
 use quote::quote;
@@ -15,18 +16,16 @@ use crate::location::Location;
 /// Created via [`Singleton::by_ref()`] or [`Optional::by_ref()`]. When used inside a `q!()`
 /// closure, resolves to a `&T` reference to the singleton's value at runtime.
 ///
-/// This type is `Clone` so it can be captured in multiple closures.
+/// This type is `Copy` so it can be freely captured in closures.
 pub struct SingletonRef<'a, T, L> {
-    pub(crate) node: SharedNode,
+    pub(crate) node: *const RefCell<crate::compile::ir::HydroNode>,
     pub(crate) _phantom: PhantomData<(&'a T, L)>,
 }
 
+impl<T, L> Copy for SingletonRef<'_, T, L> {}
 impl<T, L> Clone for SingletonRef<'_, T, L> {
     fn clone(&self) -> Self {
-        Self {
-            node: SharedNode(self.node.0.clone()),
-            _phantom: PhantomData,
-        }
+        *self
     }
 }
 
@@ -51,13 +50,17 @@ pub fn with_singleton_capture<R>(f: impl FnOnce() -> R) -> (R, Vec<(syn::Ident, 
 }
 
 /// Register a singleton reference capture. Called by `SingletonRef::to_tokens`.
-fn register_singleton_ref(ident: syn::Ident, node: SharedNode) {
+fn register_singleton_ref(ident: syn::Ident, node_ptr: *const RefCell<crate::compile::ir::HydroNode>) {
     SINGLETON_REFS.with(|cell| {
         let mut guard = cell.borrow_mut();
         let refs = guard.as_mut().expect(
             "SingletonRef used inside q!() but no singleton capture scope is active. \
              This is a bug — singleton capture should be set up by the operator that uses q!()."
         );
+        // SAFETY: The Rc keeping this alive is held by the Singleton/Tee node in the IR.
+        let node = SharedNode(unsafe { Rc::from_raw(node_ptr) });
+        // Increment refcount since from_raw takes ownership
+        std::mem::forget(node.0.clone());
         refs.push((ident, node));
     });
 }
@@ -86,5 +89,36 @@ where
             },
             (),
         )
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "build")]
+mod tests {
+    use stageleft::q;
+
+    use crate::compile::builder::FlowBuilder;
+    use crate::location::Location;
+
+    struct P1 {}
+
+    /// Compile-only test: verifies that `by_ref()` + `q!()` produces valid IR
+    /// that can be finalized without panicking.
+    #[test]
+    fn singleton_by_ref_compiles() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let my_count = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let count_ref = my_count.by_ref();
+
+        node.source_iter(q!(1..=3i32))
+            .map(q!(|x| x + *count_ref))
+            .for_each(q!(|_| {}));
+
+        // If this doesn't panic, the IR was built successfully with singleton refs.
+        let _built = flow.finalize();
     }
 }
