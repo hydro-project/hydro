@@ -326,6 +326,34 @@ where
         &self.location
     }
 
+    /// Creates a lightweight reference handle to this singleton that can be captured
+    /// inside `q!()` closures. The handle resolves to `&T` at runtime.
+    ///
+    /// ```ignore
+    /// let my_count = stream.fold(|| 0, q!(|acc, x| *acc += x));
+    /// let count_ref = my_count.by_ref();
+    /// other_stream.map(q!(|x| x + count_ref))
+    /// ```
+    pub fn by_ref(&self) -> crate::singleton_ref::SingletonRef<'_, T, L> {
+        use std::ops::Deref;
+        // Ensure the IR node is wrapped in a SharedNode (Tee) for identity tracking.
+        if !matches!(self.ir_node.borrow().deref(), HydroNode::Tee { .. }) {
+            let orig = self.ir_node.replace(HydroNode::Placeholder);
+            *self.ir_node.borrow_mut() = HydroNode::Tee {
+                inner: SharedNode(Rc::new(RefCell::new(orig))),
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
+            };
+        }
+        let borrow = self.ir_node.borrow();
+        let HydroNode::Tee { inner, .. } = borrow.deref() else {
+            unreachable!()
+        };
+        crate::singleton_ref::SingletonRef {
+            node: SharedNode(inner.0.clone()),
+            _phantom: PhantomData,
+        }
+    }
+
     /// Drops the monotonicity property of the [`Singleton`].
     pub fn ignore_monotonic(self) -> Singleton<T, L, B::UnderlyingBound> {
         if B::bound_kind() == B::UnderlyingBound::bound_kind() {
