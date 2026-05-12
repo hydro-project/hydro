@@ -854,13 +854,18 @@ impl FlatGraphBuilder {
                         &mut self.diagnostics,
                     );
                     let out_degree = self.flat_graph.node_degree_out(node_id);
+                    let out_degree_range = match kind {
+                        HandoffKind::Vec => 1..=1,
+                        // `singleton()` may be no-output, only by ref. In the future this will also apply to vec.
+                        HandoffKind::Option => 0..=1,
+                    };
                     emit_arity_error(
                         *src_span,
                         op_name,
                         false,
                         true,
                         out_degree,
-                        &(1..=1),
+                        &out_degree_range,
                         &mut self.diagnostics,
                     );
                 }
