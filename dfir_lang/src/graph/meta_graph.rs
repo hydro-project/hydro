@@ -840,29 +840,6 @@ impl DfirGraph {
             .collect::<Vec<_>>()
     }
 
-    /// Resolve singleton references as raw idents for mutable handle access.
-    /// Used by operators like `lattice_bimorphism` that need direct state access.
-    fn helper_resolve_singletons_handles(&self, node_id: GraphNodeId, span: Span) -> Vec<Ident> {
-        self.node_singleton_references(node_id)
-            .iter()
-            .map(|singleton_node_id| {
-                let ref_node_id = singleton_node_id
-                    .expect("Expected singleton to be resolved but was not, this is a bug.");
-                if matches!(
-                    self.node(ref_node_id),
-                    GraphNode::Handoff {
-                        kind: HandoffKind::Option,
-                        ..
-                    }
-                ) {
-                    self.hoff_buf_ident(ref_node_id, span)
-                } else {
-                    self.node_as_singleton_ident(ref_node_id, span)
-                }
-            })
-            .collect::<Vec<_>>()
-    }
-
     /// Returns each subgraph's receive and send handoffs.
     /// `Map<GraphSubgraphId, (recv handoffs, send handoffs)>`
     fn helper_collect_subgraph_handoffs(
@@ -1325,13 +1302,6 @@ impl DfirGraph {
                                 op_inst.arguments_raw.clone(),
                                 singletons_resolved,
                             );
-                            let singletons_resolved_handles =
-                                self.helper_resolve_singletons_handles(node_id, op_span);
-                            let arguments_handles =
-                                &process_singletons::postprocess_singletons_handles(
-                                    op_inst.arguments_raw.clone(),
-                                    singletons_resolved_handles,
-                                );
 
                             let source_tag = 'a: {
                                 if let Some(tag) = self.operator_tag.get(node_id).cloned() {
@@ -1393,7 +1363,6 @@ impl DfirGraph {
                                 op_name,
                                 op_inst,
                                 arguments,
-                                arguments_handles,
                             };
 
                             let write_result =
