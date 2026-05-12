@@ -70,11 +70,11 @@ fn register_singleton_ref(ident: syn::Ident, node_ptr: *const RefCell<HydroNode>
 
 static SINGLETON_REF_COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
 
-impl<'a, T, L> FreeVariableWithContextWithProps<L, ()> for SingletonRef<'a, T, L>
+impl<'a, T: 'a, L> FreeVariableWithContextWithProps<L, ()> for SingletonRef<'a, T, L>
 where
     L: Location<'a>,
 {
-    type O = T;
+    type O = &'a T;
 
     fn to_tokens(self, _ctx: &L) -> (QuoteTokens, ()) {
         let id = SINGLETON_REF_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -118,7 +118,7 @@ mod tests {
         let count_ref = my_count.by_ref();
 
         node.source_iter(q!(1..=3i32))
-            .map(q!(|x| x + count_ref))
+            .map(q!(|x| x + *count_ref))
             .for_each(q!(|_| {}));
 
         // If this doesn't panic, the IR was built successfully with singleton refs.

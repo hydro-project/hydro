@@ -24,7 +24,7 @@ mod tests {
         // Use the singleton ref in a map on another stream
         let out_port = p1
             .source_iter(q!(1..=3i32))
-            .map(q!(|x| x + count_ref))
+            .map(q!(|x| x + *count_ref))
             .send_bincode_external(&external);
 
         let nodes = builder
