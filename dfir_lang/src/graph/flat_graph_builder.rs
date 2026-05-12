@@ -12,7 +12,9 @@ use syn::{Error, Ident, ItemUse};
 
 use super::ops::next_iteration::NEXT_ITERATION;
 use super::ops::{FloType, Persistence};
-use super::{DfirGraph, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, PortIndexValue};
+use super::{
+    DfirGraph, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, HandoffKind, PortIndexValue,
+};
 use crate::diagnostic::{Diagnostic, Diagnostics, Level};
 use crate::graph::ops::{PortListSpec, RangeTrait};
 use crate::graph::{HandoffKind, graph_algorithms};
@@ -794,7 +796,7 @@ impl FlatGraphBuilder {
                         &mut self.diagnostics,
                     );
 
-                    // Check that singleton references actually reference *stateful* operators.
+                    // Check that singleton references actually reference valid targets.
                     {
                         let singletons_resolved =
                             self.flat_graph.node_singleton_references(node_id);
@@ -806,6 +808,16 @@ impl FlatGraphBuilder {
                                 // Error already emitted by `connect_operator_links`, "Cannot find referenced name...".
                                 continue;
                             };
+                            // HandoffKind::Option nodes are valid singleton reference targets.
+                            if matches!(
+                                self.flat_graph.node(singleton_node_id),
+                                GraphNode::Handoff {
+                                    kind: HandoffKind::Option,
+                                    ..
+                                }
+                            ) {
+                                continue;
+                            }
                             let Some(ref_op_inst) = self.flat_graph.node_op_inst(singleton_node_id)
                             else {
                                 // Error already emitted by `insert_node_op_insts_all`.

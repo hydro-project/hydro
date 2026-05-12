@@ -1017,14 +1017,43 @@ impl DfirGraph {
                     .copied()
                     .flatten()
                 {
-                    let src_sg = self
-                        .node_subgraph(src_ref_id)
-                        .expect("bug: singleton ref node must belong to a subgraph");
+                    // For handoff nodes (no subgraph), use the predecessor's subgraph.
+                    let src_sg = if let Some(sg) = self.node_subgraph(src_ref_id) {
+                        sg
+                    } else {
+                        let (_edge, pred) = self
+                            .node_predecessors(src_ref_id)
+                            .next()
+                            .expect("handoff must have a predecessor");
+                        self.node_subgraph(pred).unwrap()
+                    };
                     let dst_sg = self
                         .node_subgraph(dst_id)
                         .expect("bug: singleton ref consumer must belong to a subgraph");
                     if src_sg != dst_sg {
                         sg_preds.entry(dst_sg).unwrap().or_default().push(src_sg);
+                    }
+
+                    // For HandoffKind::Option references: ensure the borrower runs
+                    // before the pipe consumer (which takes the value via .take()).
+                    if matches!(
+                        self.node(src_ref_id),
+                        GraphNode::Handoff {
+                            kind: HandoffKind::Option,
+                            ..
+                        }
+                    ) {
+                        for (_edge, succ_id) in self.node_successors(src_ref_id) {
+                            if let Some(consumer_sg) = self.node_subgraph(succ_id) {
+                                if consumer_sg != dst_sg {
+                                    sg_preds
+                                        .entry(consumer_sg)
+                                        .unwrap()
+                                        .or_default()
+                                        .push(dst_sg);
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1255,6 +1284,33 @@ impl DfirGraph {
 
                             let singletons_resolved =
                                 self.helper_resolve_singletons(node_id, op_span);
+
+                            // For HandoffKind::Option references, generate local bindings
+                            // that unwrap the Option so the `(*&ident)` pattern works.
+                            let handoff_singleton_bindings: Vec<TokenStream> = self
+                                .node_singleton_references(node_id)
+                                .iter()
+                                .zip(singletons_resolved.iter())
+                                .filter_map(|(ref_node_id, resolved_ident)| {
+                                    let ref_node_id = (*ref_node_id)?;
+                                    if !matches!(
+                                        self.node(ref_node_id),
+                                        GraphNode::Handoff {
+                                            kind: HandoffKind::Option,
+                                            ..
+                                        }
+                                    ) {
+                                        return None;
+                                    }
+                                    let buf_ident =
+                                        self.hoff_buf_ident(ref_node_id, resolved_ident.span());
+                                    let singleton_ident = resolved_ident;
+                                    Some(quote_spanned! {op_span=>
+                                        let #singleton_ident = #buf_ident.as_ref().unwrap();
+                                    })
+                                })
+                                .collect();
+
                             let arguments = &process_singletons::postprocess_singletons(
                                 op_inst.arguments_raw.clone(),
                                 singletons_resolved.clone(),
@@ -1364,6 +1420,10 @@ impl DfirGraph {
                             });
                             op_prologue_code.push(write_prologue);
                             op_tick_end_code.push(write_tick_end);
+                            // Emit bindings for HandoffKind::Option singleton references.
+                            for binding in &handoff_singleton_bindings {
+                                subgraph_op_iter_code.push(binding.clone());
+                            }
                             subgraph_op_iter_code.push(write_iterator);
 
                             if include_type_guards {
