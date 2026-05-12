@@ -2196,6 +2196,16 @@ pub enum HydroNode {
 
     Map {
         f: DebugExpr,
+        /// Singleton references captured by the closure `f` via `SingletonRef`.
+        /// Each entry maps a local ident (used in the closure body) to the IR node
+        /// of the referenced singleton.
+        ///
+        /// TODO: Currently only `Map` has this field. Other closure-bearing variants
+        /// (Filter, FlatMap, Fold, etc.) should be extended similarly. For nodes with
+        /// multiple closures (e.g. Fold has `init` and `acc`), we may need per-closure
+        /// tracking rather than per-node.
+        #[serde(skip)]
+        singleton_refs: Vec<(syn::Ident, SharedNode)>,
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
@@ -2649,8 +2659,9 @@ impl HydroNode {
                     metadata: metadata.clone(),
                 }
             }
-            HydroNode::Map { f, input, metadata } => HydroNode::Map {
+            HydroNode::Map { f, singleton_refs, input, metadata } => HydroNode::Map {
                 f: f.clone(),
+                singleton_refs: singleton_refs.iter().map(|(ident, node)| (ident.clone(), SharedNode(node.0.clone()))).collect(),
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },

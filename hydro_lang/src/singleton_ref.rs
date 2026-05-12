@@ -30,8 +30,8 @@ impl<T, L> Clone for SingletonRef<'_, T, L> {
     }
 }
 
-/// Thread-local storage for singleton references captured during `q!()` expansion.
-/// Maps local ident name -> SharedNode for each singleton captured in the current closure.
+// Thread-local storage for singleton references captured during `q!()` expansion.
+// Maps local ident name -> SharedNode for each singleton captured in the current closure.
 thread_local! {
     static SINGLETON_REFS: RefCell<Option<Vec<(syn::Ident, SharedNode)>>> = const { RefCell::new(None) };
 }

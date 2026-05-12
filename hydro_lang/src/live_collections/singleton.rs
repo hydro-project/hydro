@@ -408,6 +408,7 @@ where
             self.location.clone(),
             HydroNode::Map {
                 f,
+                singleton_refs: Vec::new(),
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
