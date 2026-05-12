@@ -457,12 +457,14 @@ where
     where
         F: Fn(T) -> U + 'a,
     {
-        let f = f.splice_fn1_ctx(&self.location).into();
+        let (f, singleton_refs) = crate::singleton_ref::with_singleton_capture(|| {
+            f.splice_fn1_ctx(&self.location).into()
+        });
         Stream::new(
             self.location.clone(),
             HydroNode::Map {
                 f,
-                singleton_refs: Vec::new(),
+                singleton_refs,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
