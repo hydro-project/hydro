@@ -1252,7 +1252,7 @@ impl HydroNode {
             }),
 
             // Single-expression Transform operations - grouped by node type
-            HydroNode::Map { f, input, metadata }
+            HydroNode::Map { f, input, metadata, .. }
             | HydroNode::Filter { f, input, metadata }
             | HydroNode::FlatMap { f, input, metadata }
             | HydroNode::FlatMapStreamBlocking { f, input, metadata }

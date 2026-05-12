@@ -2484,6 +2484,7 @@ impl HydroNode {
 
             HydroNode::Map { input, singleton_refs, .. } => {
                 // Process singleton references as children (like Tee's inner).
+                // Their idents will be pushed to ident_stack by the codegen closure.
                 for (_ident, ref_node) in singleton_refs.iter_mut() {
                     if let Some(transformed) = seen_tees.get(&ref_node.as_ptr()) {
                         *ref_node = SharedNode(transformed.clone());
@@ -3713,7 +3714,29 @@ impl HydroNode {
                     }
 
                     HydroNode::Map { f, singleton_refs, .. } => {
+                        // Singleton refs were processed by transform_children and their
+                        // idents pushed to ident_stack. Pop them (in reverse order since
+                        // input is processed last by transform_children).
                         let input_ident = ident_stack.pop().unwrap();
+                        let ref_idents: Vec<_> = singleton_refs
+                            .iter()
+                            .rev()
+                            .map(|(_local_ident, ref_node)| {
+                                let ptr = ref_node.0.as_ref() as *const RefCell<HydroNode>;
+                                if let Some(idents) = built_tees.get(&ptr) {
+                                    // Already registered — don't pop (it was a Tee that
+                                    // didn't push a new ident for us).
+                                    idents[0].clone()
+                                } else {
+                                    let ident = ident_stack.pop().unwrap();
+                                    built_tees.insert(ptr, vec![ident.clone()]);
+                                    ident
+                                }
+                            })
+                            .collect::<Vec<_>>()
+                            .into_iter()
+                            .rev()
+                            .collect();
 
                         let map_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -3721,21 +3744,13 @@ impl HydroNode {
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
                                 // Emit singleton() nodes for each captured singleton ref.
-                                for (local_ident, ref_node) in singleton_refs.iter() {
-                                    let ptr = ref_node.0.as_ref() as *const RefCell<HydroNode>;
-                                    let singleton_source_ident = built_tees
-                                        .get(&ptr)
-                                        .expect("singleton ref not yet built — ordering bug")
-                                        [0]
-                                        .clone();
-
-                                    // Emit: local_ident = source_ident -> singleton();
-                                    // The DFIR #var mechanism will resolve #local_ident
-                                    // to borrow from this singleton slot.
+                                for ((local_ident, _ref_node), source_ident) in
+                                    singleton_refs.iter().zip(ref_idents.iter())
+                                {
                                     let builder = graph_builders.get_dfir_mut(&out_location);
                                     builder.add_dfir(
                                         parse_quote! {
-                                            #local_ident = #singleton_source_ident -> singleton();
+                                            #local_ident = #source_ident -> singleton();
                                         },
                                         None,
                                         None,
@@ -3743,7 +3758,6 @@ impl HydroNode {
                                 }
 
                                 // Rewrite the closure to prefix singleton ref idents with #
-                                // so the DFIR parser recognizes them as singleton references.
                                 let f_tokens = if singleton_refs.is_empty() {
                                     f.0.to_token_stream()
                                 } else {
