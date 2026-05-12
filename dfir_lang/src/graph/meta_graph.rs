@@ -21,7 +21,7 @@ use super::ops::{
 use super::{
     CONTEXT, Color, DiMulGraph, GRAPH, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId,
     GraphSubgraphId, HANDOFF_NODE_STR, MODULE_BOUNDARY_NODE_STR, OperatorInstance, PortIndexValue,
-    Varname, change_spans, get_operator_generics,
+    SINGLETON_SLOT_NODE_STR, Varname, change_spans, get_operator_generics,
 };
 use crate::diagnostic::{Diagnostic, Diagnostics, Level};
 use crate::pretty_span::{PrettyRowCol, PrettySpan};
@@ -248,6 +248,8 @@ impl DfirGraph {
         let mut op_insts = Vec::new();
         // Collect nodes that should be lowered to handoffs (the `handoff()` pseudo-operator).
         let mut handoff_nodes = Vec::new();
+        // Collect nodes that should be lowered to singleton slots (the `singleton()` pseudo-operator).
+        let mut singleton_nodes = Vec::new();
 
         for (node_id, node) in self.nodes() {
             let GraphNode::Operator(operator) = node else {
@@ -274,6 +276,19 @@ impl DfirGraph {
                     ));
                 }
                 handoff_nodes.push((node_id, operator.path.span()));
+                continue;
+            }
+
+            // Recognize `singleton()` pseudo-operator and lower to GraphNode::SingletonSlot.
+            if operator.name_string() == "singleton" {
+                if !operator.args.is_empty() {
+                    diagnostics.push(Diagnostic::spanned(
+                        operator.path.span(),
+                        Level::Error,
+                        "`singleton` takes no arguments.".to_owned(),
+                    ));
+                }
+                singleton_nodes.push((node_id, operator.path.span()));
                 continue;
             }
 
@@ -382,6 +397,14 @@ impl DfirGraph {
                 dst_span: span,
             };
         }
+
+        // Replace `singleton()` pseudo-operator nodes with GraphNode::SingletonSlot.
+        for (node_id, span) in singleton_nodes {
+            self.nodes[node_id] = GraphNode::SingletonSlot {
+                src_span: span,
+                dst_span: span,
+            };
+        }
     }
 
     /// Inserts a node between two existing nodes connected by the given `edge_id`.
@@ -484,7 +507,10 @@ impl DfirGraph {
     ///
     /// Note that this does NOT consider `DelayType` barriers (which generally implies `Pull`).
     pub(crate) fn node_color(&self, node_id: GraphNodeId) -> Option<Color> {
-        if matches!(self.node(node_id), GraphNode::Handoff { .. }) {
+        if matches!(
+            self.node(node_id),
+            GraphNode::Handoff { .. } | GraphNode::SingletonSlot { .. }
+        ) {
             return Some(Color::Hoff);
         }
 
@@ -769,12 +795,19 @@ impl DfirGraph {
                 node_id.data(),
                 if is_pred { "recv" } else { "send" }
             ),
+            GraphNode::SingletonSlot { .. } => format!(
+                "singleton_{:?}_{}",
+                node_id.data(),
+                if is_pred { "recv" } else { "send" }
+            ),
             GraphNode::ModuleBoundary { .. } => panic!(),
         };
         let span = match (is_pred, &self.nodes[node_id]) {
             (_, GraphNode::Operator(operator)) => operator.span(),
-            (true, &GraphNode::Handoff { src_span, .. }) => src_span,
-            (false, &GraphNode::Handoff { dst_span, .. }) => dst_span,
+            (true, &GraphNode::Handoff { src_span, .. })
+            | (true, &GraphNode::SingletonSlot { src_span, .. }) => src_span,
+            (false, &GraphNode::Handoff { dst_span, .. })
+            | (false, &GraphNode::SingletonSlot { dst_span, .. }) => dst_span,
             (_, GraphNode::ModuleBoundary { .. }) => panic!(),
         };
         Ident::new(&name, span)
@@ -825,9 +858,9 @@ impl DfirGraph {
             .map(|k| (k, Default::default()))
             .collect();
 
-        // For each handoff node, add it to the `send`/`recv` lists for the corresponding subgraphs.
+        // For each handoff/singleton node, add it to the `send`/`recv` lists for the corresponding subgraphs.
         for (hoff_id, node) in self.nodes() {
-            if !matches!(node, GraphNode::Handoff { .. }) {
+            if !matches!(node, GraphNode::Handoff { .. } | GraphNode::SingletonSlot { .. }) {
                 continue;
             }
             // Receivers from the handoff. (Should really only be one).
@@ -888,14 +921,26 @@ impl DfirGraph {
         let df = Ident::new(GRAPH, Span::call_site());
         let context = Ident::new(CONTEXT, Span::call_site());
 
-        // 1. Generate local Vec buffers for each handoff node.
+        // 1. Generate local Vec buffers for each handoff node and Option buffers for singleton slots.
         let handoff_nodes: Vec<_> = self
             .nodes
             .iter()
             .filter_map(|(node_id, node)| match node {
                 GraphNode::Operator(_) => None,
                 &GraphNode::Handoff { src_span, dst_span } => Some((node_id, (src_span, dst_span))),
+                GraphNode::SingletonSlot { .. } => None,
                 GraphNode::ModuleBoundary { .. } => panic!(),
+            })
+            .collect();
+
+        let singleton_nodes: Vec<_> = self
+            .nodes
+            .iter()
+            .filter_map(|(node_id, node)| match node {
+                &GraphNode::SingletonSlot { src_span, dst_span } => {
+                    Some((node_id, (src_span, dst_span)))
+                }
+                _ => None,
             })
             .collect();
 
@@ -908,6 +953,13 @@ impl DfirGraph {
                     let mut #buf_ident: Vec<_> = Vec::new();
                 }
             })
+            .chain(singleton_nodes.iter().map(|&(node_id, (src_span, dst_span))| {
+                let span = src_span.join(dst_span).unwrap_or(src_span);
+                let buf_ident = self.hoff_buf_ident(node_id, span);
+                quote_spanned! {span=>
+                    let mut #buf_ident: Option<_> = None;
+                }
+            }))
             .collect();
 
         // For tick-boundary handoffs (`defer_tick` / `defer_tick_lazy`), declare a
@@ -1062,26 +1114,47 @@ impl DfirGraph {
                         // (e.g. dfir_expect_warnings!). TODO(#2781): define these once.
                         let work_done = Ident::new("__dfir_work_done", Span::call_site());
                         let metrics = Ident::new("__dfir_metrics", Span::call_site());
-                        // Tick-boundary handoffs drain from the back buffer (double-buffering).
-                        // (Sending always writes to the regular buffer — no branch needed there.)
-                        let drain_ident = if back_edge_hoff_ids.contains(&hoff_id) {
-                            self.hoff_back_ident(hoff_id, buf_ident.span())
-                        } else {
-                            buf_ident.clone()
-                        };
-                        quote_spanned! {port_ident.span()=>
-                            {
-                                let hoff_len = #drain_ident.len();
-                                if hoff_len > 0 {
-                                    #work_done = true;
+
+                        let is_singleton = matches!(self.node(hoff_id), GraphNode::SingletonSlot { .. });
+
+                        if is_singleton {
+                            // Singleton slot: drain the Option into a single-item iterator.
+                            quote_spanned! {port_ident.span()=>
+                                {
+                                    let hoff_len = if #buf_ident.is_some() { 1usize } else { 0usize };
+                                    if hoff_len > 0 {
+                                        #work_done = true;
+                                    }
+                                    let hoff_metrics = &#metrics.handoffs[
+                                        #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
+                                    ];
+                                    hoff_metrics.total_items_count.update(|x| x + hoff_len);
+                                    hoff_metrics.curr_items_count.set(hoff_len);
                                 }
-                                let hoff_metrics = &#metrics.handoffs[
-                                    #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
-                                ];
-                                hoff_metrics.total_items_count.update(|x| x + hoff_len);
-                                hoff_metrics.curr_items_count.set(hoff_len);
+                                let #port_ident = #root::dfir_pipes::pull::iter(#buf_ident.take().into_iter());
                             }
-                            let #port_ident = #root::dfir_pipes::pull::iter(#drain_ident.drain(..));
+                        } else {
+                            // Tick-boundary handoffs drain from the back buffer (double-buffering).
+                            // (Sending always writes to the regular buffer — no branch needed there.)
+                            let drain_ident = if back_edge_hoff_ids.contains(&hoff_id) {
+                                self.hoff_back_ident(hoff_id, buf_ident.span())
+                            } else {
+                                buf_ident.clone()
+                            };
+                            quote_spanned! {port_ident.span()=>
+                                {
+                                    let hoff_len = #drain_ident.len();
+                                    if hoff_len > 0 {
+                                        #work_done = true;
+                                    }
+                                    let hoff_metrics = &#metrics.handoffs[
+                                        #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
+                                    ];
+                                    hoff_metrics.total_items_count.update(|x| x + hoff_len);
+                                    hoff_metrics.curr_items_count.set(hoff_len);
+                                }
+                                let #port_ident = #root::dfir_pipes::pull::iter(#drain_ident.drain(..));
+                            }
                         }
                     })
                     .collect();
@@ -1090,9 +1163,20 @@ impl DfirGraph {
                 let send_port_code: Vec<TokenStream> = send_port_idents
                     .iter()
                     .zip(send_buf_idents.iter())
-                    .map(|(port_ident, buf_ident)| {
-                        quote_spanned! {port_ident.span()=>
-                            let #port_ident = #root::dfir_pipes::push::vec_push(&mut #buf_ident);
+                    .zip(send_hoffs.iter())
+                    .map(|((port_ident, buf_ident), &hoff_id)| {
+                        let is_singleton = matches!(self.node(hoff_id), GraphNode::SingletonSlot { .. });
+                        if is_singleton {
+                            // Singleton slot: store exactly one item.
+                            quote_spanned! {port_ident.span()=>
+                                let #port_ident = #root::dfir_pipes::push::for_each(|__item| {
+                                    #buf_ident = Some(__item);
+                                });
+                            }
+                        } else {
+                            quote_spanned! {port_ident.span()=>
+                                let #port_ident = #root::dfir_pipes::push::vec_push(&mut #buf_ident);
+                            }
                         }
                     })
                     .collect();
@@ -1482,10 +1566,16 @@ impl DfirGraph {
                     .zip(send_buf_idents.iter())
                     .map(|(&hoff_id, buf_ident)| {
                         let hoff_ffi = hoff_id.data().as_ffi();
+                        let is_singleton = matches!(self.node(hoff_id), GraphNode::SingletonSlot { .. });
+                        let len_expr = if is_singleton {
+                            quote! { if #buf_ident.is_some() { 1 } else { 0 } }
+                        } else {
+                            quote! { #buf_ident.len() }
+                        };
                         quote! {
                             __dfir_metrics.handoffs[
                                 #root::slotmap::KeyData::from_ffi(#hoff_ffi).into()
-                            ].curr_items_count.set(#buf_ident.len());
+                            ].curr_items_count.set(#len_expr);
                         }
                     })
                     .collect();
@@ -1536,9 +1626,9 @@ impl DfirGraph {
             (quote! { None }, quote! { None })
         };
 
-        // Generate metrics initialization: one entry per handoff and per subgraph.
+        // Generate metrics initialization: one entry per handoff/singleton and per subgraph.
         let metrics_init_code = {
-            let handoff_inits = handoff_nodes.iter().map(|&(node_id, _)| {
+            let handoff_inits = handoff_nodes.iter().chain(singleton_nodes.iter()).map(|&(node_id, _)| {
                 let ffi = node_id.data().as_ffi();
                 quote! {
                     dfir_metrics.handoffs.insert(
@@ -1901,6 +1991,9 @@ impl DfirGraph {
                 GraphNode::Handoff { .. } => {
                     writeln!(write, "{:?} = handoff();", key.data())?;
                 }
+                GraphNode::SingletonSlot { .. } => {
+                    writeln!(write, "// {:?} = <singleton>;", key.data())?;
+                }
                 GraphNode::ModuleBoundary { .. } => panic!(),
             }
         }
@@ -1940,6 +2033,9 @@ impl DfirGraph {
                 ),
                 GraphNode::Handoff { .. } => {
                     writeln!(write, r#"    {:?}{{"{}"}}"#, key.data(), HANDOFF_NODE_STR)
+                }
+                GraphNode::SingletonSlot { .. } => {
+                    writeln!(write, r#"    {:?}{{"{}"}}"#, key.data(), SINGLETON_SLOT_NODE_STR)
                 }
                 GraphNode::ModuleBoundary { .. } => {
                     writeln!(

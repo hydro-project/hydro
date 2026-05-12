@@ -58,6 +58,7 @@ const CONTEXT: &str = "context";
 const GRAPH: &str = "df";
 
 const HANDOFF_NODE_STR: &str = "handoff";
+const SINGLETON_SLOT_NODE_STR: &str = "singleton";
 const MODULE_BOUNDARY_NODE_STR: &str = "module_boundary";
 
 mod serde_syn {
@@ -113,6 +114,18 @@ pub enum GraphNode {
         #[serde(skip, default = "Span::call_site")]
         import_expr: Span,
     },
+
+    /// A singleton materialization point, used between subgraphs.
+    /// Stores exactly one item from the producer subgraph and makes it available
+    /// to consumer subgraphs (either by reference or by move).
+    SingletonSlot {
+        /// The span of the input into the slot.
+        #[serde(skip, default = "Span::call_site")]
+        src_span: Span,
+        /// The span of the output out of the slot.
+        #[serde(skip, default = "Span::call_site")]
+        dst_span: Span,
+    },
 }
 impl GraphNode {
     /// Return the node as a human-readable string.
@@ -120,6 +133,7 @@ impl GraphNode {
         match self {
             GraphNode::Operator(op) => op.to_pretty_string().into(),
             GraphNode::Handoff { .. } => HANDOFF_NODE_STR.into(),
+            GraphNode::SingletonSlot { .. } => SINGLETON_SLOT_NODE_STR.into(),
             GraphNode::ModuleBoundary { .. } => MODULE_BOUNDARY_NODE_STR.into(),
         }
     }
@@ -129,6 +143,7 @@ impl GraphNode {
         match self {
             GraphNode::Operator(op) => op.name_string().into(),
             GraphNode::Handoff { .. } => HANDOFF_NODE_STR.into(),
+            GraphNode::SingletonSlot { .. } => SINGLETON_SLOT_NODE_STR.into(),
             GraphNode::ModuleBoundary { .. } => MODULE_BOUNDARY_NODE_STR.into(),
         }
     }
@@ -138,6 +153,9 @@ impl GraphNode {
         match self {
             Self::Operator(op) => op.span(),
             &Self::Handoff {
+                src_span, dst_span, ..
+            }
+            | &Self::SingletonSlot {
                 src_span, dst_span, ..
             } => src_span.join(dst_span).unwrap_or(src_span),
             Self::ModuleBoundary { import_expr, .. } => *import_expr,
@@ -151,6 +169,7 @@ impl std::fmt::Debug for GraphNode {
                 write!(f, "Node::Operator({} span)", PrettySpan(operator.span()))
             }
             Self::Handoff { .. } => write!(f, "Node::Handoff"),
+            Self::SingletonSlot { .. } => write!(f, "Node::SingletonSlot"),
             Self::ModuleBoundary { input, .. } => {
                 write!(f, "Node::ModuleBoundary{{input: {}}}", input)
             }
