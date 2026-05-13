@@ -459,14 +459,15 @@ fn p_leader_heartbeat<'a>(
                         .into()
                 )),
                 q!(Duration::from_secs(i_am_leader_check_timeout)),
+            )
+            .batch(
+                proposer_tick,
                 nondet!(
                     /// If the leader 'un-expires' due to non-deterministic delay, we return
                     /// to a stable leader state. If the leader remains expired, non-deterministic
                     /// delay is propagated to the non-determinism of which leader is elected.
-                    nondet_reelection
                 ),
             )
-            .batch(proposer_tick, nondet!(/** absorbed into interval */))
             .first()
             .is_some(),
     );
