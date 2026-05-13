@@ -3795,28 +3795,29 @@ impl HydroNode {
                     }
 
                     HydroNode::Map { f, singleton_refs, .. } => {
-                        // Singleton refs were processed by transform_children and their
-                        // idents pushed to ident_stack. Pop them (in reverse order since
-                        // input is processed last by transform_children).
                         let input_ident = ident_stack.pop().unwrap();
+
+                        // For each singleton ref, look up its ident in built_tees.
+                        // If not found, trigger emit_core on the inner node.
                         let ref_idents: Vec<_> = singleton_refs
                             .iter()
-                            .rev()
                             .map(|(_local_ident, ref_node)| {
                                 let ptr = ref_node.0.as_ref() as *const RefCell<HydroNode>;
                                 if let Some(idents) = built_tees.get(&ptr) {
-                                    // Already registered — don't pop (it was a Tee that
-                                    // didn't push a new ident for us).
                                     idents[0].clone()
                                 } else {
-                                    let ident = ident_stack.pop().unwrap();
-                                    built_tees.insert(ptr, vec![ident.clone()]);
-                                    ident
+                                    // The Singleton IR node hasn't been processed yet.
+                                    // Process it now by calling emit_core on the inner node.
+                                    let singleton_ident = ref_node.0.borrow_mut().emit_core(
+                                        builders_or_callback,
+                                        seen_tees,
+                                        built_tees,
+                                        next_stmt_id,
+                                        fold_hooked_idents,
+                                    );
+                                    singleton_ident
                                 }
                             })
-                            .collect::<Vec<_>>()
-                            .into_iter()
-                            .rev()
                             .collect();
 
                         let map_ident =
