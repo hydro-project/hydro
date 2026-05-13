@@ -48,6 +48,62 @@ mod tests {
         assert_eq!(results, vec![11, 12, 13]);
     }
 
+    /// Test: same singleton ref used in multiple map operators.
+    #[tokio::test]
+    async fn test_singleton_ref_multiple_uses() {
+        let mut deployment = Deployment::new();
+
+        let mut builder = FlowBuilder::new();
+        let external = builder.external::<()>();
+        let p1 = builder.process::<()>();
+
+        let my_count = p1
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+
+        let count_ref = my_count.by_ref();
+
+        // Use the same singleton ref in two different maps
+        let out_port1 = p1
+            .source_iter(q!(1..=3i32))
+            .map(q!(|x| x + *count_ref))
+            .send_bincode_external(&external);
+
+        let out_port2 = p1
+            .source_iter(q!(10..=12i32))
+            .map(q!(|x| x * *count_ref))
+            .send_bincode_external(&external);
+
+        let nodes = builder
+            .with_default_optimize()
+            .with_process(&p1, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut out_recv1 = nodes.connect(out_port1).await;
+        let mut out_recv2 = nodes.connect(out_port2).await;
+
+        deployment.start().await.unwrap();
+
+        let mut results1 = Vec::new();
+        for _ in 0..3 {
+            results1.push(out_recv1.next().await.unwrap());
+        }
+        results1.sort();
+        // fold(0..5) = 10, so results should be 11, 12, 13
+        assert_eq!(results1, vec![11, 12, 13]);
+
+        let mut results2 = Vec::new();
+        for _ in 0..3 {
+            results2.push(out_recv2.next().await.unwrap());
+        }
+        results2.sort();
+        // fold(0..5) = 10, so results should be 100, 110, 120
+        assert_eq!(results2, vec![100, 110, 120]);
+    }
+
     #[tokio::test]
     async fn test_singleton_ref_non_copy() {
         let mut deployment = Deployment::new();
