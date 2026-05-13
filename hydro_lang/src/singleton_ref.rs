@@ -13,12 +13,14 @@ use crate::location::Location;
 
 /// A lightweight handle to a singleton that can be captured inside `q!()` closures.
 ///
-/// Created via [`Singleton::by_ref()`]. When used inside a `q!()`
-/// closure, resolves to the singleton's value at runtime.
+/// Created via [`Singleton::by_ref()`](crate::live_collections::Singleton::by_ref). When used
+/// inside a `q!()` closure, resolves to a reference to the singleton's value (`&T`) at runtime.
 ///
 /// This type is `Copy` (required by `q!()` macro internals).
-/// Safety: The pointed-to `RefCell<HydroNode>` is kept alive by the `Tee` node
-/// in the IR, which outlives all `SingletonRef` handles.
+///
+/// Safety: The pointed-to `RefCell<HydroNode>` should be kept alive by the `Tee` node in the IR.
+/// If the IR is dropped, using this struct can cause UB.
+/// TODO(mingwei): https://github.com/hydro-project/stageleft/issues/73
 pub struct SingletonRef<'a, T, L> {
     pub(crate) node: *const RefCell<HydroNode>,
     pub(crate) _phantom: PhantomData<(&'a (), T, L)>,
@@ -42,12 +44,13 @@ thread_local! {
 pub fn with_singleton_capture<R>(f: impl FnOnce() -> R) -> (R, Vec<(syn::Ident, SharedNode)>) {
     SINGLETON_REFS.with(|cell| {
         let prev = cell.borrow_mut().replace(Vec::new());
-        assert!(prev.is_none(), "nested singleton capture scopes are not supported");
+        assert!(
+            prev.is_none(),
+            "nested singleton capture scopes are not supported"
+        );
     });
     let result = f();
-    let captured = SINGLETON_REFS.with(|cell| {
-        cell.borrow_mut().take().unwrap()
-    });
+    let captured = SINGLETON_REFS.with(|cell| cell.borrow_mut().take().unwrap());
     (result, captured)
 }
 
@@ -57,7 +60,7 @@ fn register_singleton_ref(ident: syn::Ident, node_ptr: *const RefCell<HydroNode>
         let mut guard = cell.borrow_mut();
         let refs = guard.as_mut().expect(
             "SingletonRef used inside q!() but no singleton capture scope is active. \
-             This is a bug — singleton capture should be set up by the operator that uses q!()."
+             This is a bug — singleton capture should be set up by the operator that uses q!().",
         );
         // Reconstruct the Rc from the raw pointer (incrementing refcount).
         // Safety: The Rc is kept alive by the Tee node in the IR.
@@ -68,7 +71,8 @@ fn register_singleton_ref(ident: syn::Ident, node_ptr: *const RefCell<HydroNode>
     });
 }
 
-static SINGLETON_REF_COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+static SINGLETON_REF_COUNTER: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
 
 impl<'a, T: 'a, L> FreeVariableWithContextWithProps<L, ()> for SingletonRef<'a, T, L>
 where
@@ -78,10 +82,7 @@ where
 
     fn to_tokens(self, _ctx: &L) -> (QuoteTokens, ()) {
         let id = SINGLETON_REF_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let ident = syn::Ident::new(
-            &format!("__hydro_singleton_ref_{}", id),
-            Span::call_site(),
-        );
+        let ident = syn::Ident::new(&format!("__hydro_singleton_ref_{}", id), Span::call_site());
 
         register_singleton_ref(ident.clone(), self.node);
 
@@ -134,12 +135,10 @@ mod tests {
         let mut flow = FlowBuilder::new();
         let node = flow.process::<P1>();
 
-        let my_vec = node
-            .source_iter(q!(0..5i32))
-            .fold(
-                q!(|| Vec::<i32>::new()),
-                q!(|acc: &mut Vec<i32>, x| acc.push(x)),
-            );
+        let my_vec = node.source_iter(q!(0..5i32)).fold(
+            q!(|| Vec::<i32>::new()),
+            q!(|acc: &mut Vec<i32>, x| acc.push(x)),
+        );
         let vec_ref = my_vec.by_ref();
 
         node.source_iter(q!(1..=3i32))

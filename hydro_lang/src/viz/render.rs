@@ -1118,7 +1118,7 @@ impl HydroNode {
                 cycle_id, metadata, ..
             } => build_source_node(structure, metadata, format!("cycle_source({})", cycle_id)),
 
-            HydroNode::Tee { inner, metadata } => {
+            HydroNode::Tee { inner, metadata } | HydroNode::Singleton { inner, metadata } => {
                 let ptr = inner.as_ptr();
                 if let Some(&existing_id) = seen_tees.get(&ptr) {
                     return existing_id;
@@ -1252,7 +1252,9 @@ impl HydroNode {
             }),
 
             // Single-expression Transform operations - grouped by node type
-            HydroNode::Map { f, input, metadata, .. }
+            HydroNode::Map {
+                f, input, metadata, ..
+            }
             | HydroNode::Filter { f, input, metadata }
             | HydroNode::FlatMap { f, input, metadata }
             | HydroNode::FlatMapStreamBlocking { f, input, metadata }

@@ -170,9 +170,7 @@ mod tests {
             .send_bincode_external(&external);
 
         // Consume path: pipe the singleton value
-        let out_port2 = my_vec
-            .into_stream()
-            .send_bincode_external(&external);
+        let out_port2 = my_vec.into_stream().send_bincode_external(&external);
 
         let nodes = builder
             .with_default_optimize()

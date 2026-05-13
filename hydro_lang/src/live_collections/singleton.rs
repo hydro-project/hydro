@@ -336,16 +336,17 @@ where
     /// ```
     pub fn by_ref(&self) -> crate::singleton_ref::SingletonRef<'a, T, L> {
         use std::ops::Deref;
-        // Ensure the IR node is wrapped in a SharedNode (Tee) for identity tracking.
-        if !matches!(self.ir_node.borrow().deref(), HydroNode::Tee { .. }) {
+        // Wrap in HydroNode::Singleton for materialization + identity tracking.
+        // If already a Singleton node, reuse it. If a Tee (from clone), wrap inner.
+        if !matches!(self.ir_node.borrow().deref(), HydroNode::Singleton { .. }) {
             let orig = self.ir_node.replace(HydroNode::Placeholder);
-            *self.ir_node.borrow_mut() = HydroNode::Tee {
+            *self.ir_node.borrow_mut() = HydroNode::Singleton {
                 inner: SharedNode(Rc::new(RefCell::new(orig))),
                 metadata: self.location.new_node_metadata(Self::collection_kind()),
             };
         }
         let borrow = self.ir_node.borrow();
-        let HydroNode::Tee { inner, .. } = borrow.deref() else {
+        let HydroNode::Singleton { inner, .. } = borrow.deref() else {
             unreachable!()
         };
         crate::singleton_ref::SingletonRef {
