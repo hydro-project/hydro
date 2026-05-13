@@ -146,6 +146,9 @@ mod tests {
             .map(q!(|x| x + vec_ref.len() as i32))
             .for_each(q!(|_| {}));
 
+        // Also consume the singleton via pipe.
+        my_vec.into_stream().for_each(q!(|_| {}));
+
         let _built = flow.finalize();
     }
 }
