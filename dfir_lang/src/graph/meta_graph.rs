@@ -831,7 +831,10 @@ impl DfirGraph {
                     }
                 ) {
                     let buf_ident = self.hoff_buf_ident(ref_node_id, span);
-                    quote_spanned! {span=> #buf_ident.as_ref().unwrap() }
+                    // Wrapping in &(...) produces &&T so that postprocess_singletons'
+                    // (*expr) deref gives &T — matching `type O = &'a T`.
+                    // TODO(mingwei): Make postprocess_singletons not deref, remove old singletons (the `else` case below).
+                    quote_spanned! {span=> &(#buf_ident.as_ref().unwrap()) }
                 } else {
                     let singleton_ident = self.node_as_singleton_ident(ref_node_id, span);
                     quote_spanned! {span=> &#singleton_ident }

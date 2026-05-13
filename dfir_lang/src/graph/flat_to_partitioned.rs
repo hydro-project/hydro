@@ -322,7 +322,13 @@ fn order_subgraphs(
         if !matches!(hoff, GraphNode::Handoff { .. }) {
             continue;
         }
+
+        // Handoffs may have 0 successors if only used by reference. Skip ordering those.
+        if partitioned_graph.node_degree_out(hoff_id) == 0 {
+            continue;
+        }
         assert_eq!(1, partitioned_graph.node_degree_out(hoff_id));
+
         let (succ_edge, succ) = partitioned_graph.node_successors(hoff_id).next().unwrap();
 
         let succ_edge_delaytype = barrier_crossers
