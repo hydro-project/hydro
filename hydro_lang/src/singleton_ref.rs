@@ -127,4 +127,25 @@ mod tests {
         // If this doesn't panic, the IR was built successfully with singleton refs.
         let _built = flow.finalize();
     }
+
+    /// Test with a non-Copy type (Vec) to ensure we're borrowing, not copying.
+    #[test]
+    fn singleton_by_ref_non_copy() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let my_vec = node
+            .source_iter(q!(0..5i32))
+            .fold(
+                q!(|| Vec::<i32>::new()),
+                q!(|acc: &mut Vec<i32>, x| acc.push(x)),
+            );
+        let vec_ref = my_vec.by_ref();
+
+        node.source_iter(q!(1..=3i32))
+            .map(q!(|x| x + vec_ref.len() as i32))
+            .for_each(q!(|_| {}));
+
+        let _built = flow.finalize();
+    }
 }
