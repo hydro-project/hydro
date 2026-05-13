@@ -121,6 +121,9 @@ mod tests {
             .map(q!(|x| x + *count_ref))
             .for_each(q!(|_| {}));
 
+        // Also consume the singleton via pipe (tests Tee works correctly).
+        my_count.into_stream().for_each(q!(|_| {}));
+
         // If this doesn't panic, the IR was built successfully with singleton refs.
         let _built = flow.finalize();
     }
