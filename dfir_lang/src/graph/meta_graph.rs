@@ -266,6 +266,13 @@ impl DfirGraph {
                         "`handoff` takes no arguments.".to_owned(),
                     ));
                 }
+                if operator.type_arguments().is_some() {
+                    diagnostics.push(Diagnostic::spanned(
+                        operator.path.span(),
+                        Level::Error,
+                        "`handoff` takes no generic arguments.".to_owned(),
+                    ));
+                }
                 handoff_nodes.push((node_id, operator.path.span()));
                 continue;
             }
