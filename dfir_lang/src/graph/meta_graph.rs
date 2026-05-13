@@ -246,10 +246,8 @@ impl DfirGraph {
 
         // Collect operator instances, then assign.
         let mut op_insts = Vec::new();
-        // Collect nodes that should be lowered to handoffs (the `handoff()` pseudo-operator).
-        let mut handoff_nodes = Vec::new();
-        // Collect nodes that should be lowered to singleton slots (the `singleton()` pseudo-operator).
-        let mut singleton_nodes = Vec::new();
+        // Collect nodes that should be lowered to handoffs (the `handoff()`/`singleton()` pseudo-operators).
+        let mut handoff_nodes: Vec<(GraphNodeId, HandoffKind, Span)> = Vec::new();
 
         for (node_id, node) in self.nodes() {
             let GraphNode::Operator(operator) = node else {
@@ -259,36 +257,28 @@ impl DfirGraph {
                 continue;
             };
 
-            // Recognize `handoff()` pseudo-operator and lower to GraphNode::Handoff { kind: HandoffKind::Vec, .. }.
-            if operator.name_string() == "handoff" {
+            // Recognize `handoff()`/`singleton()` pseudo-operators and lower to GraphNode::Handoff.
+            let handoff_kind = match &*operator.name_string() {
+                "handoff" => Some(HandoffKind::Vec),
+                "singleton" => Some(HandoffKind::Option),
+                _ => None,
+            };
+            if let Some(kind) = handoff_kind {
                 if !operator.args.is_empty() {
                     diagnostics.push(Diagnostic::spanned(
                         operator.path.span(),
                         Level::Error,
-                        "`handoff` takes no arguments.".to_owned(),
+                        format!("`{}` takes no arguments.", operator.name_string()),
                     ));
                 }
                 if operator.type_arguments().is_some() {
                     diagnostics.push(Diagnostic::spanned(
                         operator.path.span(),
                         Level::Error,
-                        "`handoff` takes no generic arguments.".to_owned(),
+                        format!("`{}` takes no generic arguments.", operator.name_string()),
                     ));
                 }
-                handoff_nodes.push((node_id, operator.path.span()));
-                continue;
-            }
-
-            // Recognize `singleton()` pseudo-operator and lower to GraphNode::Handoff { kind: HandoffKind::Option, .. }.
-            if operator.name_string() == "singleton" {
-                if !operator.args.is_empty() {
-                    diagnostics.push(Diagnostic::spanned(
-                        operator.path.span(),
-                        Level::Error,
-                        "`singleton` takes no arguments.".to_owned(),
-                    ));
-                }
-                singleton_nodes.push((node_id, operator.path.span()));
+                handoff_nodes.push((node_id, kind, operator.path.span()));
                 continue;
             }
 
@@ -390,19 +380,10 @@ impl DfirGraph {
             self.insert_node_op_inst(node_id, op_inst);
         }
 
-        // Replace `handoff()` pseudo-operator nodes with GraphNode::Handoff { kind: HandoffKind::Vec, .. }.
-        for (node_id, span) in handoff_nodes {
+        // Replace pseudo-operator nodes with GraphNode::Handoff.
+        for (node_id, kind, span) in handoff_nodes {
             self.nodes[node_id] = GraphNode::Handoff {
-                kind: HandoffKind::Vec,
-                src_span: span,
-                dst_span: span,
-            };
-        }
-
-        // Replace `singleton()` pseudo-operator nodes with GraphNode::Handoff { kind: HandoffKind::Option, .. }.
-        for (node_id, span) in singleton_nodes {
-            self.nodes[node_id] = GraphNode::Handoff {
-                kind: HandoffKind::Option,
+                kind,
                 src_span: span,
                 dst_span: span,
             };
@@ -924,58 +905,35 @@ impl DfirGraph {
         let df = Ident::new(GRAPH, Span::call_site());
         let context = Ident::new(CONTEXT, Span::call_site());
 
-        // 1. Generate local Vec buffers for each handoff node and Option buffers for singleton slots.
+        // 1. Generate local buffers for each handoff node (Vec for streams, Option for singletons).
         let handoff_nodes: Vec<_> = self
             .nodes
             .iter()
             .filter_map(|(node_id, node)| match node {
+                &GraphNode::Handoff {
+                    kind,
+                    src_span,
+                    dst_span,
+                } => Some((node_id, kind, (src_span, dst_span))),
                 GraphNode::Operator(_) => None,
-                &GraphNode::Handoff {
-                    kind: HandoffKind::Vec,
-                    src_span,
-                    dst_span,
-                } => Some((node_id, (src_span, dst_span))),
-                GraphNode::Handoff {
-                    kind: HandoffKind::Option,
-                    ..
-                } => None,
                 GraphNode::ModuleBoundary { .. } => panic!(),
-            })
-            .collect();
-
-        let singleton_nodes: Vec<_> = self
-            .nodes
-            .iter()
-            .filter_map(|(node_id, node)| match node {
-                &GraphNode::Handoff {
-                    kind: HandoffKind::Option,
-                    src_span,
-                    dst_span,
-                } => Some((node_id, (src_span, dst_span))),
-                _ => None,
             })
             .collect();
 
         let buffer_code: Vec<TokenStream> = handoff_nodes
             .iter()
-            .map(|&(node_id, (src_span, dst_span))| {
+            .map(|&(node_id, kind, (src_span, dst_span))| {
                 let span = src_span.join(dst_span).unwrap_or(src_span);
                 let buf_ident = self.hoff_buf_ident(node_id, span);
-                quote_spanned! {span=>
-                    let mut #buf_ident: Vec<_> = Vec::new();
+                match kind {
+                    HandoffKind::Vec => quote_spanned! {span=>
+                        let mut #buf_ident: Vec<_> = Vec::new();
+                    },
+                    HandoffKind::Option => quote_spanned! {span=>
+                        let mut #buf_ident: Option<_> = None;
+                    },
                 }
             })
-            .chain(
-                singleton_nodes
-                    .iter()
-                    .map(|&(node_id, (src_span, dst_span))| {
-                        let span = src_span.join(dst_span).unwrap_or(src_span);
-                        let buf_ident = self.hoff_buf_ident(node_id, span);
-                        quote_spanned! {span=>
-                            let mut #buf_ident: Option<_> = None;
-                        }
-                    }),
-            )
             .collect();
 
         // For tick-boundary handoffs (`defer_tick` / `defer_tick_lazy`), declare a
@@ -984,8 +942,10 @@ impl DfirGraph {
         // data while the producer writes to a fresh buffer.
         let back_buffer_code: Vec<TokenStream> = handoff_nodes
             .iter()
-            .filter(|(node_id, _)| self.handoff_delay_type(*node_id).is_some())
-            .map(|&(node_id, (src_span, dst_span))| {
+            .filter(|(node_id, kind, _)| {
+                matches!(kind, HandoffKind::Vec) && self.handoff_delay_type(*node_id).is_some()
+            })
+            .map(|&(node_id, _, (src_span, dst_span))| {
                 let span = src_span.join(dst_span).unwrap_or(src_span);
                 let back_ident = self.hoff_back_ident(node_id, span);
                 quote_spanned! {span=>
@@ -1651,19 +1611,15 @@ impl DfirGraph {
 
         // Generate metrics initialization: one entry per handoff/singleton and per subgraph.
         let metrics_init_code = {
-            let handoff_inits =
-                handoff_nodes
-                    .iter()
-                    .chain(singleton_nodes.iter())
-                    .map(|&(node_id, _)| {
-                        let ffi = node_id.data().as_ffi();
-                        quote! {
-                            dfir_metrics.handoffs.insert(
-                                #root::slotmap::KeyData::from_ffi(#ffi).into(),
-                                ::std::default::Default::default(),
-                            );
-                        }
-                    });
+            let handoff_inits = handoff_nodes.iter().map(|&(node_id, _, _)| {
+                let ffi = node_id.data().as_ffi();
+                quote! {
+                    dfir_metrics.handoffs.insert(
+                        #root::slotmap::KeyData::from_ffi(#ffi).into(),
+                        ::std::default::Default::default(),
+                    );
+                }
+            });
             let subgraph_inits = all_subgraphs.iter().map(|&(sg_id, _)| {
                 let ffi = sg_id.data().as_ffi();
                 quote! {
