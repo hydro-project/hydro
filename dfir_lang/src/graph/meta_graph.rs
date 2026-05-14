@@ -1101,6 +1101,21 @@ impl DfirGraph {
             })
             .collect();
 
+        // Generate drain code for handoffs with no pipe consumer (0 successors).
+        // These are only accessed via #var references and must be cleared each tick.
+        let no_consumer_drain_code: Vec<TokenStream> = handoff_nodes
+            .iter()
+            .filter(|&&(node_id, _, _)| self.node_successors(node_id).len() == 0)
+            .map(|&(node_id, kind, (src_span, dst_span))| {
+                let span = src_span.join(dst_span).unwrap_or(src_span);
+                let buf_ident = self.hoff_buf_ident(node_id, span);
+                match kind {
+                    HandoffKind::Option => quote_spanned! {span=> #buf_ident.take(); },
+                    HandoffKind::Vec => quote_spanned! {span=> #buf_ident.clear(); },
+                }
+            })
+            .collect();
+
         let mut op_prologue_code = Vec::new();
         let mut op_tick_end_code = Vec::new();
         let mut subgraph_blocks = Vec::new();
@@ -1730,6 +1745,11 @@ impl DfirGraph {
 
                     // End-of-tick state reset (e.g. 'tick persistence).
                     #( #op_tick_end_code )*
+
+                    // Drain handoff buffers that have no pipe consumer (e.g. singleton
+                    // used only via #var reference). Without this, the value would
+                    // persist across ticks and cause panics on the next write.
+                    #( #no_consumer_drain_code )*
 
                     #df.__end_tick();
                     ::std::mem::take(&mut __dfir_work_done)

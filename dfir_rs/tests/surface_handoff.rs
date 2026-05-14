@@ -117,7 +117,7 @@ pub async fn test_singleton_multi_tick() {
     flow.run_tick().await;
 }
 
-/// Test: singleton() can be referenced via #var.
+/// Test: `singleton()` can be referenced via `#var`.
 #[dfir_rs::test]
 pub async fn test_singleton_reference() {
     let mut output = Vec::<i32>::new();
@@ -132,7 +132,7 @@ pub async fn test_singleton_reference() {
     assert_eq!(vec![43, 44, 45], output);
 }
 
-/// Test: singleton() referenced via #var with no direct consumer (0 successors).
+/// Test: `singleton()` referenced via `#var` with no direct consumer (0 successors).
 #[dfir_rs::test]
 pub async fn test_singleton_reference_only() {
     let mut output = Vec::<i32>::new();
@@ -146,7 +146,7 @@ pub async fn test_singleton_reference_only() {
     assert_eq!(vec![43, 44, 45], output);
 }
 
-/// Test: singleton() referenced via #var with no direct consumer (0 successors), multiple ticks.
+/// Test: `singleton()` referenced via #var with no direct consumer (0 successors), multiple ticks.
 #[dfir_rs::test]
 pub async fn test_singleton_reference_only_multi_tick() {
     let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
@@ -167,5 +167,5 @@ pub async fn test_singleton_reference_only_multi_tick() {
 
     send.send(100).unwrap();
     flow.run_tick().await;
-    assert_eq!(vec![142], *output.borrow());
+    assert_eq!(vec![43, 45, 142], *output.borrow());
 }
