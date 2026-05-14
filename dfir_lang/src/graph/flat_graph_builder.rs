@@ -596,6 +596,39 @@ impl FlatGraphBuilder {
     /// Validates that operators have valid number of inputs, outputs, & arguments.
     /// Adds errors (and warnings) to `self.diagnostics`.
     fn check_operator_errors(&mut self) {
+        /// Returns true if an error was found.
+        fn emit_arity_error(
+            op_span: Span,
+            op_name: &str,
+            is_in: bool,
+            is_hard: bool,
+            degree: usize,
+            range: &dyn RangeTrait<usize>,
+            diagnostics: &mut Diagnostics,
+        ) -> bool {
+            let message = format!(
+                "`{}` {} have {} {}, actually has {}.",
+                op_name,
+                if is_hard { "must" } else { "should" },
+                range.human_string(),
+                if is_in { "input(s)" } else { "output(s)" },
+                degree,
+            );
+            let out_of_range = !range.contains(&degree);
+            if out_of_range {
+                diagnostics.push(Diagnostic::spanned(
+                    op_span,
+                    if is_hard {
+                        Level::Error
+                    } else {
+                        Level::Warning
+                    },
+                    message,
+                ));
+            }
+            out_of_range
+        }
+
         for (node_id, node) in self.flat_graph.nodes() {
             match node {
                 GraphNode::Operator(operator) => {
@@ -621,39 +654,6 @@ impl FlatGraphBuilder {
                     }
 
                     // Check input/output (port) arity
-                    /// Returns true if an error was found.
-                    fn emit_arity_error(
-                        op_span: Span,
-                        op_name: &str,
-                        is_in: bool,
-                        is_hard: bool,
-                        degree: usize,
-                        range: &dyn RangeTrait<usize>,
-                        diagnostics: &mut Diagnostics,
-                    ) -> bool {
-                        let message = format!(
-                            "`{}` {} have {} {}, actually has {}.",
-                            op_name,
-                            if is_hard { "must" } else { "should" },
-                            range.human_string(),
-                            if is_in { "input(s)" } else { "output(s)" },
-                            degree,
-                        );
-                        let out_of_range = !range.contains(&degree);
-                        if out_of_range {
-                            diagnostics.push(Diagnostic::spanned(
-                                op_span,
-                                if is_hard {
-                                    Level::Error
-                                } else {
-                                    Level::Warning
-                                },
-                                message,
-                            ));
-                        }
-                        out_of_range
-                    }
-
                     let inn_degree = self.flat_graph.node_degree_in(node_id);
                     let _ = emit_arity_error(
                         operator.span(),
@@ -825,7 +825,29 @@ impl FlatGraphBuilder {
                         }
                     }
                 }
-                GraphNode::Handoff { .. } => todo!("Node::Handoff"),
+                GraphNode::Handoff { src_span, .. } => {
+                    // Validate arity: handoff must have exactly 1 input and 1 output.
+                    let inn_degree = self.flat_graph.node_degree_in(node_id);
+                    emit_arity_error(
+                        *src_span,
+                        "handoff",
+                        true,
+                        true,
+                        inn_degree,
+                        &(1..=1),
+                        &mut self.diagnostics,
+                    );
+                    let out_degree = self.flat_graph.node_degree_out(node_id);
+                    emit_arity_error(
+                        *src_span,
+                        "handoff",
+                        false,
+                        true,
+                        out_degree,
+                        &(1..=1),
+                        &mut self.diagnostics,
+                    );
+                }
                 GraphNode::ModuleBoundary { .. } => {
                     // Module boundaries don't require any checking.
                 }
