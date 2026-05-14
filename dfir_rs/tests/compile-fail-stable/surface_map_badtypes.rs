@@ -1,1 +1,0 @@
-../compile-fail/surface_map_badtypes.rs

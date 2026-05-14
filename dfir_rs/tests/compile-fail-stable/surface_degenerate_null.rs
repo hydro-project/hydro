@@ -1,1 +1,0 @@
-../compile-fail/surface_degenerate_null.rs

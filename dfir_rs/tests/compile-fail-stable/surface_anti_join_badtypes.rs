@@ -1,1 +1,0 @@
-../compile-fail/surface_anti_join_badtypes.rs

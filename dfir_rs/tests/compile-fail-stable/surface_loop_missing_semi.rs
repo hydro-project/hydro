@@ -1,1 +1,0 @@
-../compile-fail/surface_loop_missing_semi.rs
