@@ -1,5 +1,10 @@
-error: Adjacent `handoff()` operators are not allowed.
- --> tests/compile-fail-stable/surface_handoff_adjacent.rs:5:44
+error: proc macro panicked
+ --> tests/compile-fail-stable/surface_handoff_adjacent.rs:4:18
   |
-5 |         source_iter(0..10) -> handoff() -> handoff() -> for_each(std::mem::drop);
-  |                                            ^^^^^^^
+4 |       let mut df = dfir_syntax! {
+  |  __________________^
+5 | |         source_iter(0..10) -> handoff() -> handoff() -> for_each(std::mem::drop);
+6 | |     };
+  | |_____^
+  |
+  = help: message: Handoff succ not in subgraph, may be an doubled/adjacent handoff

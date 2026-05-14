@@ -315,12 +315,12 @@ fn order_subgraphs(
     let mut tick_edges: Vec<(GraphEdgeId, DelayType)> = Vec::new();
 
     // Iterate handoffs between subgraphs.
-    for (node_id, node) in partitioned_graph.nodes() {
-        if !matches!(node, GraphNode::Handoff { .. }) {
+    for (hoff_id, hoff) in partitioned_graph.nodes() {
+        if !matches!(hoff, GraphNode::Handoff { .. }) {
             continue;
         }
-        assert_eq!(1, partitioned_graph.node_successors(node_id).len());
-        let (succ_edge, succ) = partitioned_graph.node_successors(node_id).next().unwrap();
+        assert_eq!(1, partitioned_graph.node_degree_out(hoff_id));
+        let (succ_edge, succ) = partitioned_graph.node_successors(hoff_id).next().unwrap();
 
         let succ_edge_delaytype = barrier_crossers
             .edge_barrier_crossers
@@ -332,11 +332,15 @@ fn order_subgraphs(
             continue;
         }
 
-        assert_eq!(1, partitioned_graph.node_predecessors(node_id).len());
-        let (_edge_id, pred) = partitioned_graph.node_predecessors(node_id).next().unwrap();
+        assert_eq!(1, partitioned_graph.node_degree_in(hoff_id));
+        let (_edge_id, pred) = partitioned_graph.node_predecessors(hoff_id).next().unwrap();
 
-        let pred_sg = partitioned_graph.node_subgraph(pred).unwrap();
-        let succ_sg = partitioned_graph.node_subgraph(succ).unwrap();
+        let pred_sg = partitioned_graph
+            .node_subgraph(pred)
+            .expect("Handoff pred not in subgraph, may be an doubled/adjacent handoff");
+        let succ_sg = partitioned_graph
+            .node_subgraph(succ)
+            .expect("Handoff succ not in subgraph, may be an doubled/adjacent handoff");
 
         sg_preds.entry(succ_sg).or_default().push(pred_sg);
     }

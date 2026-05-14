@@ -2,7 +2,7 @@
 
 use dfir_rs::assert_graphvis_snapshots;
 
-/// Test: handoff() pseudo-operator forces a subgraph boundary.
+/// Test: `handoff()` pseudo-operator forces a subgraph boundary.
 #[dfir_rs::test]
 pub async fn test_handoff_basic() {
     let mut output = Vec::<i32>::new();
@@ -16,7 +16,7 @@ pub async fn test_handoff_basic() {
     assert_eq!(vec![0, 1, 2, 3, 4], output);
 }
 
-/// Test: handoff() in the middle of a pipeline with transforms on both sides.
+/// Test: `handoff()` in the middle of a pipeline with transforms on both sides.
 #[dfir_rs::test]
 pub async fn test_handoff_mid_pipeline() {
     let mut output = Vec::<i32>::new();
