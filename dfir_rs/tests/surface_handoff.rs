@@ -139,3 +139,17 @@ pub async fn test_singleton_reference() {
     drop(flow);
     assert_eq!(vec![43, 44, 45], output);
 }
+
+/// Test: singleton() referenced via #var with no direct consumer (0 successors).
+#[dfir_rs::test]
+pub async fn test_singleton_reference_only() {
+    let mut output = Vec::<i32>::new();
+    let out = &mut output;
+    let mut flow = dfir_rs::dfir_syntax! {
+        my_val = source_iter([42_i32]) -> singleton();
+        source_iter(1..=3_i32) -> map(|x| x + #my_val) -> for_each(|v: i32| out.push(v));
+    };
+    flow.run_tick().await;
+    drop(flow);
+    assert_eq!(vec![43, 44, 45], output);
+}
