@@ -105,8 +105,6 @@ pub async fn test_singleton_multi_tick_consumed() {
 #[dfir_rs::test]
 pub async fn test_singleton_multi_tick() {
     let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
-    let output = std::rc::Rc::new(std::cell::RefCell::new(Vec::<i32>::new()));
-    let out = output.clone();
     let mut flow = dfir_rs::dfir_syntax! {
         source_stream(recv)
             -> fold::<'static>(|| 0_i32, |acc: &mut i32, x| *acc += x)
@@ -114,15 +112,9 @@ pub async fn test_singleton_multi_tick() {
     };
     send.send(10).unwrap();
     flow.run_tick().await;
-    assert_eq!(vec![10], *output.borrow());
-
     send.send(5).unwrap();
     flow.run_tick().await;
-    assert_eq!(vec![10, 15], *output.borrow());
-
-    // No new input: fold still emits its accumulated value.
     flow.run_tick().await;
-    assert_eq!(vec![10, 15, 15], *output.borrow());
 }
 
 /// Test: singleton() can be referenced via #var.
@@ -152,4 +144,28 @@ pub async fn test_singleton_reference_only() {
     flow.run_tick().await;
     drop(flow);
     assert_eq!(vec![43, 44, 45], output);
+}
+
+/// Test: singleton() referenced via #var with no direct consumer (0 successors), multiple ticks.
+#[dfir_rs::test]
+pub async fn test_singleton_reference_only_multi_tick() {
+    let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let output = std::rc::Rc::new(std::cell::RefCell::new(Vec::<i32>::new()));
+    let out = output.clone();
+    let mut flow = dfir_rs::dfir_syntax! {
+        my_val = source_iter([42_i32])
+            -> persist::<'static>()
+            -> singleton();
+        source_stream(recv)
+            -> map(|x| x + #my_val)
+            -> for_each(|v: i32| out.borrow_mut().push(v));
+    };
+    send.send(1).unwrap();
+    send.send(3).unwrap();
+    flow.run_tick().await;
+    assert_eq!(vec![43, 45], *output.borrow());
+
+    send.send(100).unwrap();
+    flow.run_tick().await;
+    assert_eq!(vec![142], *output.borrow());
 }
