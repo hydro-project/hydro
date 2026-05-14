@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"macro":["assert_debug_snapshot","assert_snapshot","emit_nightly_configuration","nightly_wrapper"]};
+window.SIDEBAR_ITEMS = {"macro":["assert_debug_snapshot","assert_snapshot","emit_nightly_configuration","nightly_wrapper","trybuild_compile_fail"]};
