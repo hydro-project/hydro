@@ -1,5 +1,5 @@
 error: `singleton` takes no generic arguments.
- --> tests/compile-fail-stable/surface_singleton_generics.rs:5:31
+ --> tests/compile-fail/stable/surface_singleton_generics.rs:5:31
   |
 5 |         source_iter(0..10) -> singleton::<'static>() -> for_each(std::mem::drop);
   |                               ^^^^^^^^^

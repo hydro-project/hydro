@@ -1097,9 +1097,8 @@ impl DfirGraph {
                         let work_done = Ident::new("__dfir_work_done", Span::call_site());
                         let metrics = Ident::new("__dfir_metrics", Span::call_site());
 
-                        let kind = match self.node(hoff_id) {
-                            GraphNode::Handoff { kind, .. } => kind,
-                            _ => unreachable!(),
+                        let GraphNode::Handoff { kind, .. } = self.node(hoff_id) else {
+                            unreachable!()
                         };
 
                         // Compute len and drain expressions based on handoff kind.
@@ -1144,9 +1143,8 @@ impl DfirGraph {
                     .zip(send_buf_idents.iter())
                     .zip(send_hoffs.iter())
                     .map(|((port_ident, buf_ident), &hoff_id)| {
-                        let kind = match self.node(hoff_id) {
-                            GraphNode::Handoff { kind, .. } => kind,
-                            _ => unreachable!(),
+                        let GraphNode::Handoff { kind, .. } = self.node(hoff_id) else {
+                            unreachable!()
                         };
                         match kind {
                             HandoffKind::Option => {
@@ -1553,9 +1551,8 @@ impl DfirGraph {
                     .zip(send_buf_idents.iter())
                     .map(|(&hoff_id, buf_ident)| {
                         let hoff_ffi = hoff_id.data().as_ffi();
-                        let kind = match self.node(hoff_id) {
-                            GraphNode::Handoff { kind, .. } => kind,
-                            _ => unreachable!(),
+                        let GraphNode::Handoff { kind, .. } = self.node(hoff_id) else {
+                            unreachable!()
                         };
                         let len_expr = match kind {
                             HandoffKind::Option => {
