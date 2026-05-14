@@ -55,13 +55,19 @@ macro_rules! trybuild_compile_fail {
         let source_dir = std::path::Path::new("tests/compile-fail");
         let stderr_dir = source_dir.join(if cfg!(nightly) { "nightly" } else { "stable" });
 
+        // Remove any existing .rs files/symlinks in the channel dir first.
+        // Stale broken symlinks (e.g. from rebasing) break trybuild.
+        for entry in std::fs::read_dir(&stderr_dir).unwrap().flatten() {
+            if entry.path().extension().and_then(|e| e.to_str()) == Some("rs") {
+                let _ = std::fs::remove_file(entry.path());
+            }
+        }
         // Symlink all .rs files from the source directory into the channel-specific
         // stderr directory so trybuild can find them next to the .stderr files.
         for entry in std::fs::read_dir(source_dir).unwrap().flatten() {
             let path = entry.path();
             if path.extension().and_then(|e| e.to_str()) == Some("rs") {
                 let dest = stderr_dir.join(entry.file_name());
-                let _ = std::fs::remove_file(&dest);
                 let original = std::path::Path::new("..").join(entry.file_name());
                 #[cfg(unix)]
                 std::os::unix::fs::symlink(&original, &dest).unwrap();

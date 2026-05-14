@@ -536,11 +536,11 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
 
             // Get inputs for this location, sorted by name.
             let mut loc_inputs = env.inputs.get(location_key).cloned().unwrap_or_default();
-            loc_inputs.sort_by(|a, b| a.0.to_string().cmp(&b.0.to_string()));
+            loc_inputs.sort_by(|a, b| a.0.cmp(&b.0));
 
             // Get outputs for this location, sorted by name.
             let mut loc_outputs = env.outputs.get(location_key).cloned().unwrap_or_default();
-            loc_outputs.sort_by(|a, b| a.0.to_string().cmp(&b.0.to_string()));
+            loc_outputs.sort_by(|a, b| a.0.cmp(&b.0));
 
             let mut diagnostics = Diagnostics::new();
             let dfir_tokens = graph
@@ -644,7 +644,7 @@ impl super::deploy::DeployFlow<'_, EmbeddedDeploy> {
                 .get(location_key)
                 .cloned()
                 .unwrap_or_default();
-            loc_singleton_inputs.sort_by(|a, b| a.0.to_string().cmp(&b.0.to_string()));
+            loc_singleton_inputs.sort_by(|a, b| a.0.cmp(&b.0));
 
             let singleton_input_params: Vec<proc_macro2::TokenStream> = loc_singleton_inputs
                 .iter()
