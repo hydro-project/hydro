@@ -1,0 +1,5 @@
+error: `handoff` must have exactly 1 input(s), actually has 0.
+ --> tests/compile-fail-stable/surface_handoff_source.rs:5:9
+  |
+5 |         handoff() -> for_each(std::mem::drop);
+  |         ^^^^^^^

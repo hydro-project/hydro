@@ -1,0 +1,5 @@
+error: `handoff` must have exactly 1 output(s), actually has 0.
+ --> tests/compile-fail-stable/surface_handoff_sink.rs:5:31
+  |
+5 |         source_iter(0..10) -> handoff();
+  |                               ^^^^^^^
