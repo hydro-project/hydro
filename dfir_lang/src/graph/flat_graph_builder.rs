@@ -10,14 +10,13 @@ use quote::ToTokens;
 use syn::spanned::Spanned;
 use syn::{Error, Ident, ItemUse};
 
-use super::ops::next_iteration::NEXT_ITERATION;
-use super::ops::{FloType, Persistence};
-use super::{
-    DfirGraph, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, HandoffKind, PortIndexValue,
-};
 use crate::diagnostic::{Diagnostic, Diagnostics, Level};
-use crate::graph::ops::{PortListSpec, RangeTrait};
-use crate::graph::{HandoffKind, graph_algorithms};
+use crate::graph::ops::next_iteration::NEXT_ITERATION;
+use crate::graph::ops::{FloType, Persistence, PortListSpec, RangeTrait};
+use crate::graph::{
+    DfirGraph, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, HandoffKind, PortIndexValue,
+    graph_algorithms,
+};
 use crate::parse::{DfirCode, DfirStatement, Operator, Pipeline};
 use crate::pretty_span::PrettySpan;
 

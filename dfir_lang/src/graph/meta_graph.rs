@@ -815,7 +815,8 @@ impl DfirGraph {
     /// Resolve the singletons via [`Self::node_singleton_references`] for the given `node_id`.
     /// Returns token streams for each reference:
     /// - For stateful operators: `&singleton_op_XXX` (borrow the operator's state)
-    /// - For HandoffKind::Option: `hoff_XXX_buf.as_ref().unwrap()` (borrow from the slot)
+    /// - For HandoffKind::Option: `&(hoff_XXX_buf.as_ref().unwrap())` (intentionally produce `&&T`
+    ///   so the later `(*expr)` deref yields `&T`) - TODO(mingwei)
     fn helper_resolve_singletons(&self, node_id: GraphNodeId, span: Span) -> Vec<TokenStream> {
         self.node_singleton_references(node_id)
             .iter()
