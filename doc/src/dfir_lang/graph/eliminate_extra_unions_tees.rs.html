@@ -20,8 +20,8 @@
 <a href=#20 id=20 data-nosnippet>20</a>        })
 <a href=#21 id=21 data-nosnippet>21</a>}
 <a href=#22 id=22 data-nosnippet>22</a>
-<a href=#23 id=23 data-nosnippet>23</a><span class="doccomment">/// Removes missing unions and tees. Must be applied BEFORE subgraph partitioning, i.e. on a flat
-<a href=#24 id=24 data-nosnippet>24</a>/// graph.
+<a href=#23 id=23 data-nosnippet>23</a><span class="doccomment">/// Removes unary unions and tees. Must be applied BEFORE subgraph partitioning, i.e. on a flat
+<a href=#24 id=24 data-nosnippet>24</a>/// graph. TODO(mingwei): handle this creating doubled/adjacent handoffs.
 <a href=#25 id=25 data-nosnippet>25</a></span><span class="kw">pub fn </span>eliminate_extra_unions_tees(graph: <span class="kw-2">&amp;mut </span>DfirGraph) {
 <a href=#26 id=26 data-nosnippet>26</a>    <span class="kw">let </span>extra_ops = find_unary_ops(graph, UNION.name)
 <a href=#27 id=27 data-nosnippet>27</a>        .chain(find_unary_ops(graph, TEE.name))
