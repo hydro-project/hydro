@@ -1,0 +1,5 @@
+error: Adjacent `handoff()` operators are not allowed.
+ --> tests/compile-fail-stable/surface_handoff_adjacent.rs:5:44
+  |
+5 |         source_iter(0..10) -> handoff() -> handoff() -> for_each(std::mem::drop);
+  |                                            ^^^^^^^

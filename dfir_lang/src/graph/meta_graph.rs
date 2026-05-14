@@ -1899,7 +1899,7 @@ impl DfirGraph {
                     writeln!(write, "{:?} = {};", key.data(), op.to_token_stream())?;
                 }
                 GraphNode::Handoff { .. } => {
-                    writeln!(write, "// {:?} = <handoff>;", key.data())?;
+                    writeln!(write, "{:?} = handoff();", key.data())?;
                 }
                 GraphNode::ModuleBoundary { .. } => panic!(),
             }

@@ -847,6 +847,18 @@ impl FlatGraphBuilder {
                         &(1..=1),
                         &mut self.diagnostics,
                     );
+
+                    // Validate that adjacent nodes are not handoffs.
+                    for pred_id in self.flat_graph.node_predecessor_nodes(node_id) {
+                        if matches!(self.flat_graph.node(pred_id), GraphNode::Handoff { .. }) {
+                            self.diagnostics.push(Diagnostic::spanned(
+                                *src_span,
+                                Level::Error,
+                                "Adjacent `handoff()` operators are not allowed.".to_owned(),
+                            ));
+                            break;
+                        }
+                    }
                 }
                 GraphNode::ModuleBoundary { .. } => {
                     // Module boundaries don't require any checking.
