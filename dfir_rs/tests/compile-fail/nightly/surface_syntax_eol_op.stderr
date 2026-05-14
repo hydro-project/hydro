@@ -1,5 +1,5 @@
 error: expected `;`
- --> tests/compile-fail/surface_syntax_eol_op.rs:4:18
+ --> tests/compile-fail/nightly/surface_syntax_eol_op.rs:4:18
   |
 4 |       let mut df = dfir_syntax! {
   |  __________________^

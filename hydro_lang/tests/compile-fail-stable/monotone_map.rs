@@ -1,1 +1,0 @@
-../compile-fail/monotone_map.rs

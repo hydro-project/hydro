@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `<Iter<Drain<'_, &str>> as Pull>::Item == (_, _)`
- --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:3:9
+ --> tests/compile-fail/stable/surface_fold_keyed_generics_bad.rs:3:9
   |
 3 |         source_iter(["hello", "world"])
   |         ^^^^^^^^^^^ expected `(_, _)`, found `&str`
@@ -9,13 +9,13 @@ error[E0271]: type mismatch resolving `<Iter<Drain<'_, &str>> as Pull>::Item == 
   = note:  expected tuple `(_, _)`
           found reference `&str`
 note: required by a bound in `check_input`
- --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:16
+ --> tests/compile-fail/stable/surface_fold_keyed_generics_bad.rs:4:16
   |
 4 |             -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {
   |                ^^^^^^^^^^ required by this bound in `check_input`
 
 error[E0271]: type mismatch resolving `<Iter<Drain<'_, &str>> as Pull>::Item == (_, _)`
- --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:16
+ --> tests/compile-fail/stable/surface_fold_keyed_generics_bad.rs:4:16
   |
 4 |             -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {
   |                ^^^^^^^^^^ expected `(_, _)`, found `&str`
@@ -23,13 +23,13 @@ error[E0271]: type mismatch resolving `<Iter<Drain<'_, &str>> as Pull>::Item == 
   = note:  expected tuple `(_, _)`
           found reference `&str`
 note: required by a bound in `check_input`
- --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:16
+ --> tests/compile-fail/stable/surface_fold_keyed_generics_bad.rs:4:16
   |
 4 |             -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {
   |                ^^^^^^^^^^ required by this bound in `check_input`
 
 error[E0271]: expected `new` to return `usize`, but it returns `String`
- --> tests/compile-fail-stable/surface_fold_keyed_generics_bad.rs:4:49
+ --> tests/compile-fail/stable/surface_fold_keyed_generics_bad.rs:4:49
   |
 4 |             -> fold_keyed::<'tick, &str, usize>(String::new, |old: &mut _, val| {
   |                ----------                       ^^^^^^^^^^^ expected `usize`, found `String`

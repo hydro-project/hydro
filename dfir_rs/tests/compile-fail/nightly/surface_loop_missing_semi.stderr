@@ -1,5 +1,5 @@
 error: expected `;`
- --> tests/compile-fail/surface_loop_missing_semi.rs:2:18
+ --> tests/compile-fail/nightly/surface_loop_missing_semi.rs:2:18
   |
 2 |       let mut df = dfir_rs::dfir_syntax! {
   |  __________________^

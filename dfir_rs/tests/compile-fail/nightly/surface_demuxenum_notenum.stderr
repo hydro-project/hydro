@@ -1,23 +1,23 @@
 error[E0277]: the trait bound `Shape: DemuxEnumBase` is not satisfied
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:12:28
+  --> tests/compile-fail/nightly/surface_demuxenum_notenum.rs:12:28
    |
 12 |         ]) -> demux_enum::<Shape>();
    |                            ^^^^^ unsatisfied trait bound
    |
 help: the trait `DemuxEnumBase` is not implemented for `Shape`
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:4:5
+  --> tests/compile-fail/nightly/surface_demuxenum_notenum.rs:4:5
    |
  4 |     struct Shape {
    |     ^^^^^^^^^^^^
    = note: use `#[derive(dfir_rs::DemuxEnum)]`
 note: required by a bound in `check_impl_demux_enum`
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:12:28
+  --> tests/compile-fail/nightly/surface_demuxenum_notenum.rs:12:28
    |
 12 |         ]) -> demux_enum::<Shape>();
    |                            ^^^^^ required by this bound in `check_impl_demux_enum`
 
 error[E0223]: ambiguous associated type
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:14:18
+  --> tests/compile-fail/nightly/surface_demuxenum_notenum.rs:14:18
    |
 14 |         my_demux[Circle] -> for_each(std::mem::drop);
    |                  ^^^^^^
@@ -28,7 +28,7 @@ help: if there were a trait named `Example` with associated type `Circle` implem
    |                  ++++++++++++++++++++
 
 error[E0223]: ambiguous associated type
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:16:18
+  --> tests/compile-fail/nightly/surface_demuxenum_notenum.rs:16:18
    |
 16 |         my_demux[Ellipse] -> for_each(std::mem::drop);
    |                  ^^^^^^^
@@ -39,7 +39,7 @@ help: if there were a trait named `Example` with associated type `Ellipse` imple
    |                  ++++++++++++++++++++
 
 error[E0223]: ambiguous associated type
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:13:18
+  --> tests/compile-fail/nightly/surface_demuxenum_notenum.rs:13:18
    |
 13 |         my_demux[Rectangle] -> for_each(std::mem::drop);
    |                  ^^^^^^^^^
@@ -50,7 +50,7 @@ help: if there were a trait named `Example` with associated type `Rectangle` imp
    |                  ++++++++++++++++++++
 
 error[E0223]: ambiguous associated type
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:15:18
+  --> tests/compile-fail/nightly/surface_demuxenum_notenum.rs:15:18
    |
 15 |         my_demux[Square] -> for_each(std::mem::drop);
    |                  ^^^^^^
@@ -61,45 +61,45 @@ help: if there were a trait named `Example` with associated type `Square` implem
    |                  ++++++++++++++++++++
 
 error[E0277]: the trait bound `Shape: DemuxEnumPush<_, ()>` is not satisfied
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:12:28
+  --> tests/compile-fail/nightly/surface_demuxenum_notenum.rs:12:28
    |
 12 |         ]) -> demux_enum::<Shape>();
    |                            ^^^^^ unsatisfied trait bound
    |
 help: the trait `DemuxEnumPush<_, ()>` is not implemented for `Shape`
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:4:5
+  --> tests/compile-fail/nightly/surface_demuxenum_notenum.rs:4:5
    |
  4 |     struct Shape {
    |     ^^^^^^^^^^^^
    = note: ensure there is exactly one output for each enum variant.
    = note: ensure that the type for each output is a tuple of the field for the variant: `()`, `(a,)`, or `(a, b, ...)`.
 note: required by a bound in `demux_enum_guard`
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:12:15
+  --> tests/compile-fail/nightly/surface_demuxenum_notenum.rs:12:15
    |
 12 |         ]) -> demux_enum::<Shape>();
    |               ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `demux_enum_guard`
 
 error[E0277]: the trait bound `Shape: DemuxEnumPush<(Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>, Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>, Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>, Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>), ()>` is not satisfied
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:12:15
+  --> tests/compile-fail/nightly/surface_demuxenum_notenum.rs:12:15
    |
 12 |         ]) -> demux_enum::<Shape>();
    |               ^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
    |
 help: the trait `DemuxEnumPush<(Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>, Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>, Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>, Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>), ()>` is not implemented for `Shape`
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:4:5
+  --> tests/compile-fail/nightly/surface_demuxenum_notenum.rs:4:5
    |
  4 |     struct Shape {
    |     ^^^^^^^^^^^^
    = note: ensure there is exactly one output for each enum variant.
    = note: ensure that the type for each output is a tuple of the field for the variant: `()`, `(a,)`, or `(a, b, ...)`.
 note: required by a bound in `demux_enum_guard`
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:12:15
+  --> tests/compile-fail/nightly/surface_demuxenum_notenum.rs:12:15
    |
 12 |         ]) -> demux_enum::<Shape>();
    |               ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `demux_enum_guard`
 
 error[E0277]: the trait bound `Shape: DemuxEnumPush<(Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>, Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>, Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>, Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>), ()>` is not satisfied
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:9:20
+  --> tests/compile-fail/nightly/surface_demuxenum_notenum.rs:9:20
    |
  9 |           my_demux = source_iter([
    |  ____________________^
@@ -109,14 +109,14 @@ error[E0277]: the trait bound `Shape: DemuxEnumPush<(Pin<&mut impl dfir_rs::dfir
    | |___________________________________^ unsatisfied trait bound
    |
 help: the trait `DemuxEnumPush<(Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>, Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>, Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>, Pin<&mut impl dfir_rs::dfir_pipes::push::Push<_, (), CanPend = <dfir_rs::dfir_pipes::push::ForEach<fn(_) {std::mem::drop::<_>}> as dfir_rs::dfir_pipes::push::Push<_, ()>>::CanPend>>), ()>` is not implemented for `Shape`
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:4:5
+  --> tests/compile-fail/nightly/surface_demuxenum_notenum.rs:4:5
    |
  4 |     struct Shape {
    |     ^^^^^^^^^^^^
    = note: ensure there is exactly one output for each enum variant.
    = note: ensure that the type for each output is a tuple of the field for the variant: `()`, `(a,)`, or `(a, b, ...)`.
 note: required by a bound in `demux_enum_guard`
-  --> tests/compile-fail/surface_demuxenum_notenum.rs:12:15
+  --> tests/compile-fail/nightly/surface_demuxenum_notenum.rs:12:15
    |
 12 |         ]) -> demux_enum::<Shape>();
    |               ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `demux_enum_guard`

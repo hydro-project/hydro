@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `Shape: SingleVariant` is not satisfied
-  --> tests/compile-fail/surface_demuxenum_port_missing_one.rs:15:28
+  --> tests/compile-fail/nightly/surface_demuxenum_port_missing_one.rs:15:28
    |
 15 |         ]) -> demux_enum::<Shape>();
    |                            ^^^^^ unsatisfied trait bound
    |
 help: the trait `SingleVariant` is not implemented for `Shape`
-  --> tests/compile-fail/surface_demuxenum_port_missing_one.rs:6:5
+  --> tests/compile-fail/nightly/surface_demuxenum_port_missing_one.rs:6:5
    |
  6 |     enum Shape {
    |     ^^^^^^^^^^
@@ -13,13 +13,13 @@ help: the trait `SingleVariant` is not implemented for `Shape`
    = note: ensure there are no missing outputs; there must be exactly one output for each enum variant.
 
 error[E0277]: the trait bound `Shape: SingleVariant` is not satisfied
-  --> tests/compile-fail/surface_demuxenum_port_missing_one.rs:15:15
+  --> tests/compile-fail/nightly/surface_demuxenum_port_missing_one.rs:15:15
    |
 15 |         ]) -> demux_enum::<Shape>();
    |               ^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
    |
 help: the trait `SingleVariant` is not implemented for `Shape`
-  --> tests/compile-fail/surface_demuxenum_port_missing_one.rs:6:5
+  --> tests/compile-fail/nightly/surface_demuxenum_port_missing_one.rs:6:5
    |
  6 |     enum Shape {
    |     ^^^^^^^^^^
@@ -27,7 +27,7 @@ help: the trait `SingleVariant` is not implemented for `Shape`
    = note: ensure there are no missing outputs; there must be exactly one output for each enum variant.
 
 error[E0277]: the trait bound `Shape: SingleVariant` is not satisfied
-  --> tests/compile-fail/surface_demuxenum_port_missing_one.rs:15:15
+  --> tests/compile-fail/nightly/surface_demuxenum_port_missing_one.rs:15:15
    |
 15 |           ]) -> demux_enum::<Shape>();
    |  _______________^
@@ -35,7 +35,7 @@ error[E0277]: the trait bound `Shape: SingleVariant` is not satisfied
    | |_______________________________________________________^ unsatisfied trait bound
    |
 help: the trait `SingleVariant` is not implemented for `Shape`
-  --> tests/compile-fail/surface_demuxenum_port_missing_one.rs:6:5
+  --> tests/compile-fail/nightly/surface_demuxenum_port_missing_one.rs:6:5
    |
  6 |     enum Shape {
    |     ^^^^^^^^^^

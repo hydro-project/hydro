@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `&str: Borrow<{integer}>` is not satisfied
- --> tests/compile-fail-stable/surface_anti_join_badtypes.rs:5:13
+ --> tests/compile-fail/stable/surface_anti_join_badtypes.rs:5:13
   |
 5 |         j = anti_join() -> for_each(std::mem::drop);
   |             ^^^^^^^^^ the trait `Borrow<{integer}>` is not implemented for `&str`

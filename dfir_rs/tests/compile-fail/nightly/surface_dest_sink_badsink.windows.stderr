@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `&str: dfir_rs::futures::Sink<_>` is not satisfied
- --> tests/compile-fail/surface_dest_sink_badsink.rs:6:41
+ --> tests/compile-fail/nightly/surface_dest_sink_badsink.rs:6:41
   |
 6 |         source_iter(0..10) -> dest_sink(sink);
   |                               ----------^^^^-
@@ -18,13 +18,13 @@ error[E0277]: the trait bound `&str: dfir_rs::futures::Sink<_>` is not satisfied
             `FlattenSink<Fut, Si>` implements `dfir_rs::futures::Sink<_Item>`
           and $N others
 note: required by a bound in `main::op_2v1__dest_sink__loc_dfir_rs_tests_compile_fail_surface_dest_sink_badsink_rs_6_31_6_46`
- --> tests/compile-fail/surface_dest_sink_badsink.rs:6:31
+ --> tests/compile-fail/nightly/surface_dest_sink_badsink.rs:6:31
   |
 6 |         source_iter(0..10) -> dest_sink(sink);
   |                               ^^^^^^^^^^^^^^^ required by this bound in `op_2v1__dest_sink__loc_dfir_rs_tests_compile_fail_surface_dest_sink_badsink_rs_6_31_6_46`
 
 error[E0277]: the trait bound `&str: dfir_rs::futures::Sink<_>` is not satisfied
- --> tests/compile-fail/surface_dest_sink_badsink.rs:6:31
+ --> tests/compile-fail/nightly/surface_dest_sink_badsink.rs:6:31
   |
 6 |         source_iter(0..10) -> dest_sink(sink);
   |                               ^^^^^^^^^^^^^^^ the trait `dfir_rs::futures::Sink<_>` is not implemented for `&str`
@@ -40,13 +40,13 @@ error[E0277]: the trait bound `&str: dfir_rs::futures::Sink<_>` is not satisfied
             `FlattenSink<Fut, Si>` implements `dfir_rs::futures::Sink<_Item>`
           and $N others
 note: required by a bound in `main::op_2v1__dest_sink__loc_dfir_rs_tests_compile_fail_surface_dest_sink_badsink_rs_6_31_6_46`
- --> tests/compile-fail/surface_dest_sink_badsink.rs:6:31
+ --> tests/compile-fail/nightly/surface_dest_sink_badsink.rs:6:31
   |
 6 |         source_iter(0..10) -> dest_sink(sink);
   |                               ^^^^^^^^^^^^^^^ required by this bound in `op_2v1__dest_sink__loc_dfir_rs_tests_compile_fail_surface_dest_sink_badsink_rs_6_31_6_46`
 
 error[E0277]: the trait bound `&str: dfir_rs::futures::Sink<_>` is not satisfied
- --> tests/compile-fail/surface_dest_sink_badsink.rs:6:31
+ --> tests/compile-fail/nightly/surface_dest_sink_badsink.rs:6:31
   |
 6 |         source_iter(0..10) -> dest_sink(sink);
   |                               ^^^^^^^^^^^^^^^ the trait `dfir_rs::futures::Sink<_>` is not implemented for `&str`
@@ -62,7 +62,7 @@ error[E0277]: the trait bound `&str: dfir_rs::futures::Sink<_>` is not satisfied
             `FlattenSink<Fut, Si>` implements `dfir_rs::futures::Sink<_Item>`
           and $N others
 note: required by a bound in `main::op_2v1__dest_sink__loc_dfir_rs_tests_compile_fail_surface_dest_sink_badsink_rs_6_31_6_46`
- --> tests/compile-fail/surface_dest_sink_badsink.rs:6:31
+ --> tests/compile-fail/nightly/surface_dest_sink_badsink.rs:6:31
   |
 6 |         source_iter(0..10) -> dest_sink(sink);
   |                               ^^^^^^^^^^^^^^^ required by this bound in `op_2v1__dest_sink__loc_dfir_rs_tests_compile_fail_surface_dest_sink_badsink_rs_6_31_6_46`

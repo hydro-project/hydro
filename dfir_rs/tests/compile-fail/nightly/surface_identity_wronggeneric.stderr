@@ -1,5 +1,5 @@
 error[E0271]: type mismatch resolving `<impl Pull<Item = {integer}, Meta = (), CanPend = <Iter<&mut impl Iterator<Item = {integer}>> as Pull>::CanPend, CanEnd = <Iter<&mut impl Iterator<Item = {integer}>> as Pull>::CanEnd> as Pull>::Item == String`
- --> tests/compile-fail/surface_identity_wronggeneric.rs:5:9
+ --> tests/compile-fail/nightly/surface_identity_wronggeneric.rs:5:9
   |
 5 |         source_iter(0..10) -> identity::<String>() -> for_each(std::mem::drop);
   |         ^^^^^^^^^^^^^^^^^^    -------------------- required by a bound introduced by this call
@@ -7,31 +7,31 @@ error[E0271]: type mismatch resolving `<impl Pull<Item = {integer}, Meta = (), C
   |         expected `String`, found integer
   |
 note: required by a bound in `check_input`
- --> tests/compile-fail/surface_identity_wronggeneric.rs:5:31
+ --> tests/compile-fail/nightly/surface_identity_wronggeneric.rs:5:31
   |
 5 |         source_iter(0..10) -> identity::<String>() -> for_each(std::mem::drop);
   |                               ^^^^^^^^^^^^^^^^^^^^ required by this bound in `check_input`
 
 error[E0271]: type mismatch resolving `<impl Pull<Item = {integer}, Meta = (), CanPend = <Iter<&mut impl Iterator<Item = {integer}>> as Pull>::CanPend, CanEnd = <Iter<&mut impl Iterator<Item = {integer}>> as Pull>::CanEnd> as Pull>::Item == String`
- --> tests/compile-fail/surface_identity_wronggeneric.rs:5:31
+ --> tests/compile-fail/nightly/surface_identity_wronggeneric.rs:5:31
   |
 5 |         source_iter(0..10) -> identity::<String>() -> for_each(std::mem::drop);
   |                               ^^^^^^^^^^^^^^^^^^^^ expected `String`, found integer
   |
 note: required by a bound in `check_input`
- --> tests/compile-fail/surface_identity_wronggeneric.rs:5:31
+ --> tests/compile-fail/nightly/surface_identity_wronggeneric.rs:5:31
   |
 5 |         source_iter(0..10) -> identity::<String>() -> for_each(std::mem::drop);
   |                               ^^^^^^^^^^^^^^^^^^^^ required by this bound in `check_input`
 
 error[E0271]: type mismatch resolving `<impl Pull<Item = {integer}, Meta = (), CanPend = <Iter<&mut impl Iterator<Item = {integer}>> as Pull>::CanPend, CanEnd = <Iter<&mut impl Iterator<Item = {integer}>> as Pull>::CanEnd> as Pull>::Item == String`
- --> tests/compile-fail/surface_identity_wronggeneric.rs:5:31
+ --> tests/compile-fail/nightly/surface_identity_wronggeneric.rs:5:31
   |
 5 |         source_iter(0..10) -> identity::<String>() -> for_each(std::mem::drop);
   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `String`, found integer
   |
 note: required by a bound in `check_input`
- --> tests/compile-fail/surface_identity_wronggeneric.rs:5:31
+ --> tests/compile-fail/nightly/surface_identity_wronggeneric.rs:5:31
   |
 5 |         source_iter(0..10) -> identity::<String>() -> for_each(std::mem::drop);
   |                               ^^^^^^^^^^^^^^^^^^^^ required by this bound in `check_input`

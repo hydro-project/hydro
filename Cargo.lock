@@ -1836,7 +1836,6 @@ dependencies = [
  "tokio-util",
  "tracing",
  "tracing-subscriber",
- "trybuild",
  "variadics",
  "wasm-bindgen-test",
  "web-time",
@@ -2614,6 +2613,7 @@ version = "0.1.0"
 dependencies = [
  "insta",
  "rustc_version",
+ "trybuild",
 ]
 
 [[package]]
@@ -2727,7 +2727,6 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
- "trybuild",
  "trybuild-internals-api",
 ]
 
@@ -3294,7 +3293,6 @@ dependencies = [
  "roaring",
  "sealed",
  "serde",
- "trybuild",
  "variadics",
  "variadics_macro",
 ]
@@ -6263,7 +6261,6 @@ dependencies = [
  "hashbrown 0.14.5",
  "hydro_build_utils",
  "sealed",
- "trybuild",
 ]
 
 [[package]]

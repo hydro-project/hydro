@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `impl dfir_rs::dfir_pipes::push::Push<Shape, (), CanPend = <impl dfir_rs::dfir_pipes::push::Push<Shape, ()> as dfir_rs::dfir_pipes::push::Push<Shape, ()>>::CanPend>: dfir_rs::dfir_pipes::push::Push<{integer}, ()>` is not satisfied
-  --> tests/compile-fail/surface_demuxenum_wrongtype.rs:13:41
+  --> tests/compile-fail/nightly/surface_demuxenum_wrongtype.rs:13:41
    |
 13 |         my_demux = source_iter(0..5) -> demux_enum::<Shape>();
    |                    ---------------------^^^^^^^^^^^^^^^^^^^^^
@@ -19,13 +19,13 @@ error[E0277]: the trait bound `impl dfir_rs::dfir_pipes::push::Push<Shape, (), C
              `dfir_rs::dfir_pipes::push::FilterMap<Next, Func>` implements `dfir_rs::dfir_pipes::push::Push<In, Meta>`
            and $N others
 note: required by a bound in `pivot_run_sg_1v1`
-  --> tests/compile-fail/surface_demuxenum_wrongtype.rs:13:20
+  --> tests/compile-fail/nightly/surface_demuxenum_wrongtype.rs:13:20
    |
 13 |         my_demux = source_iter(0..5) -> demux_enum::<Shape>();
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `pivot_run_sg_1v1`
 
 error[E0277]: the trait bound `impl dfir_rs::dfir_pipes::push::Push<Shape, (), CanPend = <impl dfir_rs::dfir_pipes::push::Push<Shape, ()> as dfir_rs::dfir_pipes::push::Push<Shape, ()>>::CanPend>: dfir_rs::dfir_pipes::push::Push<{integer}, ()>` is not satisfied
-  --> tests/compile-fail/surface_demuxenum_wrongtype.rs:13:20
+  --> tests/compile-fail/nightly/surface_demuxenum_wrongtype.rs:13:20
    |
 13 |         my_demux = source_iter(0..5) -> demux_enum::<Shape>();
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
@@ -42,7 +42,7 @@ error[E0277]: the trait bound `impl dfir_rs::dfir_pipes::push::Push<Shape, (), C
              `dfir_rs::dfir_pipes::push::FilterMap<Next, Func>` implements `dfir_rs::dfir_pipes::push::Push<In, Meta>`
            and $N others
 note: required by a bound in `pivot_run_sg_1v1`
-  --> tests/compile-fail/surface_demuxenum_wrongtype.rs:13:20
+  --> tests/compile-fail/nightly/surface_demuxenum_wrongtype.rs:13:20
    |
 13 |         my_demux = source_iter(0..5) -> demux_enum::<Shape>();
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `pivot_run_sg_1v1`

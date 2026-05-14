@@ -1,5 +1,5 @@
 error[E0277]: `()` is not an iterator
- --> tests/compile-fail/surface_source_iter_badtype.rs:5:21
+ --> tests/compile-fail/nightly/surface_source_iter_badtype.rs:5:21
   |
 5 |         source_iter(()) -> for_each(std::mem::drop);
   |         ------------^^-
@@ -10,13 +10,13 @@ error[E0277]: `()` is not an iterator
   = help: the trait `Iterator` is not implemented for `()`
   = note: required for `()` to implement `IntoIterator`
 note: required by a bound in `check_iter`
- --> tests/compile-fail/surface_source_iter_badtype.rs:5:9
+ --> tests/compile-fail/nightly/surface_source_iter_badtype.rs:5:9
   |
 5 |         source_iter(()) -> for_each(std::mem::drop);
   |         ^^^^^^^^^^^^^^^ required by this bound in `check_iter`
 
 error[E0277]: `()` is not an iterator
- --> tests/compile-fail/surface_source_iter_badtype.rs:5:9
+ --> tests/compile-fail/nightly/surface_source_iter_badtype.rs:5:9
   |
 5 |         source_iter(()) -> for_each(std::mem::drop);
   |         ^^^^^^^^^^^^^^^ `()` is not an iterator
@@ -24,13 +24,13 @@ error[E0277]: `()` is not an iterator
   = help: the trait `Iterator` is not implemented for `()`
   = note: required for `()` to implement `IntoIterator`
 note: required by a bound in `check_iter`
- --> tests/compile-fail/surface_source_iter_badtype.rs:5:9
+ --> tests/compile-fail/nightly/surface_source_iter_badtype.rs:5:9
   |
 5 |         source_iter(()) -> for_each(std::mem::drop);
   |         ^^^^^^^^^^^^^^^ required by this bound in `check_iter`
 
 error[E0277]: `()` is not an iterator
- --> tests/compile-fail/surface_source_iter_badtype.rs:5:9
+ --> tests/compile-fail/nightly/surface_source_iter_badtype.rs:5:9
   |
 5 |         source_iter(()) -> for_each(std::mem::drop);
   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `()` is not an iterator
@@ -38,7 +38,7 @@ error[E0277]: `()` is not an iterator
   = help: the trait `Iterator` is not implemented for `()`
   = note: required for `()` to implement `IntoIterator`
 note: required by a bound in `check_iter`
- --> tests/compile-fail/surface_source_iter_badtype.rs:5:9
+ --> tests/compile-fail/nightly/surface_source_iter_badtype.rs:5:9
   |
 5 |         source_iter(()) -> for_each(std::mem::drop);
   |         ^^^^^^^^^^^^^^^ required by this bound in `check_iter`

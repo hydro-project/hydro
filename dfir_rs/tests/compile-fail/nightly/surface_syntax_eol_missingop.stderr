@@ -1,5 +1,5 @@
 error: expected one of: square brackets, `mod`, identifier, parentheses
- --> tests/compile-fail/surface_syntax_eol_missingop.rs:5:31
+ --> tests/compile-fail/nightly/surface_syntax_eol_missingop.rs:5:31
   |
 5 |         source_iter(0..10) -> ;
   |                               ^
