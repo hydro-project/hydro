@@ -337,10 +337,10 @@ fn order_subgraphs(
 
         let pred_sg = partitioned_graph
             .node_subgraph(pred)
-            .expect("Handoff pred not in subgraph, may be an doubled/adjacent handoff");
+            .expect("Handoff pred not in subgraph, may be a doubled/adjacent handoff");
         let succ_sg = partitioned_graph
             .node_subgraph(succ)
-            .expect("Handoff succ not in subgraph, may be an doubled/adjacent handoff");
+            .expect("Handoff succ not in subgraph, may be a doubled/adjacent handoff");
 
         sg_preds.entry(succ_sg).or_default().push(pred_sg);
     }

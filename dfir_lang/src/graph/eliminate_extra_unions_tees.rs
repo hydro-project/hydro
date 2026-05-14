@@ -20,8 +20,8 @@ fn find_unary_ops<'a>(
         })
 }
 
-/// Removes unary unions and tees, and collapses any adjacent handoffs that result.
-/// Must be applied BEFORE subgraph partitioning, i.e. on a flat graph.
+/// Removes unary unions and tees. Must be applied BEFORE subgraph partitioning, i.e. on a flat
+/// graph. TODO(mingwei): handle this creating doubled/adjacent handoffs.
 pub fn eliminate_extra_unions_tees(graph: &mut DfirGraph) {
     let extra_ops = find_unary_ops(graph, UNION.name)
         .chain(find_unary_ops(graph, TEE.name))
