@@ -171,14 +171,14 @@ fn make_subgraph_collect(
     let topo_sort = graph_algorithms::topo_sort(
         partitioned_graph
             .nodes()
-            .filter(|&(_, node)| !matches!(node, GraphNode::Handoff { .. }))
+            .filter(|&(_, node)| !node.is_handoff())
             .map(|(node_id, _)| node_id),
         |v| {
             partitioned_graph
                 .node_predecessor_nodes(v)
                 .filter(|&pred_id| {
                     let pred = partitioned_graph.node(pred_id);
-                    !matches!(pred, GraphNode::Handoff { .. })
+                    !pred.is_handoff()
                 })
         },
     )
@@ -217,9 +217,7 @@ fn make_subgraphs(partitioned_graph: &mut DfirGraph, barrier_crossers: &mut Barr
         // Already has a handoff, no need to insert one.
         let src_node = partitioned_graph.node(src_id);
         let dst_node = partitioned_graph.node(dst_id);
-        if matches!(src_node, GraphNode::Handoff { .. })
-            || matches!(dst_node, GraphNode::Handoff { .. })
-        {
+        if src_node.is_handoff() || dst_node.is_handoff() {
             continue;
         }
 

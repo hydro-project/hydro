@@ -42,6 +42,7 @@ pub async fn test_singleton_basic() {
     let mut flow = dfir_rs::dfir_syntax! {
         source_iter([42_i32]) -> singleton() -> for_each(|v: i32| out.push(v));
     };
+    assert_graphvis_snapshots!(flow);
     flow.run_tick().await;
     drop(flow);
     assert_eq!(vec![42], output);
@@ -59,6 +60,7 @@ pub async fn test_singleton_with_fold() {
             -> map(|x: i32| x * 10)
             -> for_each(|v: i32| out.push(v));
     };
+    assert_graphvis_snapshots!(flow);
     flow.run_tick().await;
     drop(flow);
     assert_eq!(vec![150], output);
@@ -72,4 +74,29 @@ pub async fn test_singleton_panics_on_multiple_items() {
         source_iter([1_i32, 2, 3]) -> singleton() -> for_each(|_| {});
     };
     flow.run_tick().await;
+}
+
+/// Test: singleton() across multiple ticks verifies the slot is drained each tick.
+#[dfir_rs::test]
+pub async fn test_singleton_multi_tick() {
+    let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let output = std::rc::Rc::new(std::cell::RefCell::new(Vec::<i32>::new()));
+    let out = output.clone();
+    let mut flow = dfir_rs::dfir_syntax! {
+        source_stream(recv)
+            -> fold::<'static>(|| 0_i32, |acc: &mut i32, x| *acc += x)
+            -> singleton()
+            -> for_each(|v: i32| out.borrow_mut().push(v));
+    };
+    send.send(10).unwrap();
+    flow.run_tick().await;
+    assert_eq!(vec![10], *output.borrow());
+
+    send.send(5).unwrap();
+    flow.run_tick().await;
+    assert_eq!(vec![10, 15], *output.borrow());
+
+    // No new input: fold still emits its accumulated value.
+    flow.run_tick().await;
+    assert_eq!(vec![10, 15, 15], *output.borrow());
 }

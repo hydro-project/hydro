@@ -490,7 +490,7 @@ impl DfirGraph {
     ///
     /// Note that this does NOT consider `DelayType` barriers (which generally implies `Pull`).
     pub(crate) fn node_color(&self, node_id: GraphNodeId) -> Option<Color> {
-        if matches!(self.node(node_id), GraphNode::Handoff { .. }) {
+        if self.node(node_id).is_handoff() {
             return Some(Color::Hoff);
         }
 
@@ -844,7 +844,7 @@ impl DfirGraph {
 
         // For each handoff/singleton node, add it to the `send`/`recv` lists for the corresponding subgraphs.
         for (hoff_id, node) in self.nodes() {
-            if !matches!(node, GraphNode::Handoff { .. }) {
+            if !node.is_handoff() {
                 continue;
             }
             // Receivers from the handoff. (Should really only be one).
@@ -927,10 +927,10 @@ impl DfirGraph {
                 let buf_ident = self.hoff_buf_ident(node_id, span);
                 match kind {
                     HandoffKind::Vec => quote_spanned! {span=>
-                        let mut #buf_ident: Vec<_> = Vec::new();
+                        let mut #buf_ident = ::std::vec::Vec::new();
                     },
                     HandoffKind::Option => quote_spanned! {span=>
-                        let mut #buf_ident: Option<_> = None;
+                        let mut #buf_ident = ::std::option::Option::None;
                     },
                 }
             })
@@ -942,10 +942,12 @@ impl DfirGraph {
         // data while the producer writes to a fresh buffer.
         let back_buffer_code: Vec<TokenStream> = handoff_nodes
             .iter()
-            .filter(|(node_id, kind, _)| {
-                matches!(kind, HandoffKind::Vec) && self.handoff_delay_type(*node_id).is_some()
-            })
-            .map(|&(node_id, _, (src_span, dst_span))| {
+            .filter(|(node_id, _kind, _)| self.handoff_delay_type(*node_id).is_some())
+            .map(|&(node_id, kind, (src_span, dst_span))| {
+                assert!(
+                    matches!(kind, HandoffKind::Vec),
+                    "bug: only Vec handoffs should have delay types"
+                );
                 let span = src_span.join(dst_span).unwrap_or(src_span);
                 let back_ident = self.hoff_back_ident(node_id, span);
                 quote_spanned! {span=>
@@ -973,14 +975,12 @@ impl DfirGraph {
             // Build predecessor map for subgraphs.
             let mut sg_preds = SecondaryMap::<_, Vec<_>>::with_capacity(self.subgraph_nodes.len());
             for (hoff_id, node) in self.nodes() {
-                if !matches!(
-                    node,
-                    GraphNode::Handoff {
-                        kind: HandoffKind::Vec,
-                        ..
-                    }
-                ) {
+                if !node.is_handoff() {
                     // Not a handoff; skip.
+                    continue;
+                }
+                if 0 == self.node_successors(hoff_id).len() {
+                    // Is a handoff only used by reference, not consumed.
                     continue;
                 }
                 assert_eq!(1, self.node_successors(hoff_id).len());
@@ -1097,24 +1097,28 @@ impl DfirGraph {
                         let work_done = Ident::new("__dfir_work_done", Span::call_site());
                         let metrics = Ident::new("__dfir_metrics", Span::call_site());
 
-                        let is_singleton = matches!(self.node(hoff_id), GraphNode::Handoff { kind: HandoffKind::Option, .. });
+                        let kind = match self.node(hoff_id) {
+                            GraphNode::Handoff { kind, .. } => kind,
+                            _ => unreachable!(),
+                        };
 
                         // Compute len and drain expressions based on handoff kind.
-                        let (len_expr, drain_expr) = if is_singleton {
-                            (
+                        let (len_expr, drain_expr) = match kind {
+                            HandoffKind::Option => (
                                 quote! { if #buf_ident.is_some() { 1usize } else { 0usize } },
                                 quote! { #root::dfir_pipes::pull::iter(#buf_ident.take().into_iter()) },
-                            )
-                        } else {
-                            let drain_ident = if back_edge_hoff_ids.contains(&hoff_id) {
-                                self.hoff_back_ident(hoff_id, buf_ident.span())
-                            } else {
-                                buf_ident.clone()
-                            };
-                            (
-                                quote! { #drain_ident.len() },
-                                quote! { #root::dfir_pipes::pull::iter(#drain_ident.drain(..)) },
-                            )
+                            ),
+                            HandoffKind::Vec => {
+                                let drain_ident = if back_edge_hoff_ids.contains(&hoff_id) {
+                                    self.hoff_back_ident(hoff_id, buf_ident.span())
+                                } else {
+                                    buf_ident.clone()
+                                };
+                                (
+                                    quote! { #drain_ident.len() },
+                                    quote! { #root::dfir_pipes::pull::iter(#drain_ident.drain(..)) },
+                                )
+                            }
                         };
 
                         quote_spanned! {port_ident.span()=>
@@ -1140,19 +1144,25 @@ impl DfirGraph {
                     .zip(send_buf_idents.iter())
                     .zip(send_hoffs.iter())
                     .map(|((port_ident, buf_ident), &hoff_id)| {
-                        let is_singleton = matches!(self.node(hoff_id), GraphNode::Handoff { kind: HandoffKind::Option, .. });
-                        if is_singleton {
-                            // Singleton slot: store exactly one item, panic on duplicate.
-                            quote_spanned! {port_ident.span()=>
-                                let #port_ident = #root::dfir_pipes::push::for_each(|__item| {
-                                    if #buf_ident.replace(__item).is_some() {
-                                        panic!("singleton() received more than one item");
-                                    }
-                                });
+                        let kind = match self.node(hoff_id) {
+                            GraphNode::Handoff { kind, .. } => kind,
+                            _ => unreachable!(),
+                        };
+                        match kind {
+                            HandoffKind::Option => {
+                                // Singleton slot: store exactly one item, panic on duplicate.
+                                quote_spanned! {port_ident.span()=>
+                                    let #port_ident = #root::dfir_pipes::push::for_each(|__item| {
+                                        if #buf_ident.replace(__item).is_some() {
+                                            panic!("singleton() received more than one item");
+                                        }
+                                    });
+                                }
                             }
-                        } else {
-                            quote_spanned! {port_ident.span()=>
-                                let #port_ident = #root::dfir_pipes::push::vec_push(&mut #buf_ident);
+                            HandoffKind::Vec => {
+                                quote_spanned! {port_ident.span()=>
+                                    let #port_ident = #root::dfir_pipes::push::vec_push(&mut #buf_ident);
+                                }
                             }
                         }
                     })
@@ -1543,17 +1553,17 @@ impl DfirGraph {
                     .zip(send_buf_idents.iter())
                     .map(|(&hoff_id, buf_ident)| {
                         let hoff_ffi = hoff_id.data().as_ffi();
-                        let is_singleton = matches!(
-                            self.node(hoff_id),
-                            GraphNode::Handoff {
-                                kind: HandoffKind::Option,
-                                ..
+                        let kind = match self.node(hoff_id) {
+                            GraphNode::Handoff { kind, .. } => kind,
+                            _ => unreachable!(),
+                        };
+                        let len_expr = match kind {
+                            HandoffKind::Option => {
+                                quote! { if #buf_ident.is_some() { 1 } else { 0 } }
                             }
-                        );
-                        let len_expr = if is_singleton {
-                            quote! { if #buf_ident.is_some() { 1 } else { 0 } }
-                        } else {
-                            quote! { #buf_ident.len() }
+                            HandoffKind::Vec => {
+                                quote! { #buf_ident.len() }
+                            }
                         };
                         quote! {
                             __dfir_metrics.handoffs[
@@ -1609,7 +1619,7 @@ impl DfirGraph {
             (quote! { None }, quote! { None })
         };
 
-        // Generate metrics initialization: one entry per handoff/singleton and per subgraph.
+        // Generate metrics initialization: one entry per handoff and per subgraph.
         let metrics_init_code = {
             let handoff_inits = handoff_nodes.iter().map(|&(node_id, _, _)| {
                 let ffi = node_id.data().as_ffi();
@@ -1796,21 +1806,15 @@ impl DfirGraph {
         let mut skipped_handoffs = BTreeSet::new();
         let mut subgraph_handoffs = <BTreeMap<GraphSubgraphId, Vec<GraphNodeId>>>::new();
         for (node_id, node) in self.nodes() {
-            if matches!(
-                node,
-                GraphNode::Handoff {
-                    kind: HandoffKind::Vec,
-                    ..
-                }
-            ) {
+            if node.is_handoff() {
                 if write_config.no_handoffs {
                     skipped_handoffs.insert(node_id);
                     continue;
                 } else {
                     let pred_node = self.node_predecessor_nodes(node_id).next().unwrap();
                     let pred_sg = self.node_subgraph(pred_node);
-                    let succ_node = self.node_successor_nodes(node_id).next().unwrap();
-                    let succ_sg = self.node_subgraph(succ_node);
+                    let succ_node = self.node_successor_nodes(node_id).next();
+                    let succ_sg = succ_node.and_then(|n| self.node_subgraph(n));
                     if let Some((pred_sg, succ_sg)) = pred_sg.zip(succ_sg)
                         && pred_sg == succ_sg
                     {
