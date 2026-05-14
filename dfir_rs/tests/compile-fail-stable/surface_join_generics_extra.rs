@@ -1,1 +1,0 @@
-../compile-fail/surface_join_generics_extra.rs

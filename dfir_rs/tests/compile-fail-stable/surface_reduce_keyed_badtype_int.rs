@@ -1,1 +1,0 @@
-../compile-fail/surface_reduce_keyed_badtype_int.rs

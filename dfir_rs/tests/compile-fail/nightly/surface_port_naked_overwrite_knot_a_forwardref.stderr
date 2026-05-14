@@ -1,0 +1,11 @@
+error: Indexing on output is overwritten below (dfir_rs/tests/compile-fail/nightly/surface_port_naked_overwrite_knot_a_forwardref.rs:6:15) (1/2).
+ --> tests/compile-fail/nightly/surface_port_naked_overwrite_knot_a_forwardref.rs:9:23
+  |
+9 |         out_0 = pivot[0];
+  |                       ^
+
+error: Cannot index on already-indexed output, previously indexed above (dfir_rs/tests/compile-fail/nightly/surface_port_naked_overwrite_knot_a_forwardref.rs:9:23) (2/2).
+ --> tests/compile-fail/nightly/surface_port_naked_overwrite_knot_a_forwardref.rs:6:15
+  |
+6 |         out_0[0] -> inn_0; // Error: `pivot[0][0]`
+  |               ^

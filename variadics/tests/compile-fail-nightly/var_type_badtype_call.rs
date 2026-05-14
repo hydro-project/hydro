@@ -1,1 +1,0 @@
-../compile-fail/var_type_badtype_call.rs

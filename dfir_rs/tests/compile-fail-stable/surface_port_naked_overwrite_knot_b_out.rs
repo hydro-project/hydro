@@ -1,1 +1,0 @@
-../compile-fail/surface_port_naked_overwrite_knot_b_out.rs

@@ -1,6 +1,8 @@
 #[cfg(feature = "insta")]
 pub use insta;
 pub use rustc_version;
+#[cfg(feature = "trybuild")]
+pub use trybuild;
 
 #[macro_export]
 macro_rules! emit_nightly_configuration {
@@ -44,4 +46,32 @@ macro_rules! assert_debug_snapshot {
     ($($arg:tt)*) => {
         $crate::nightly_wrapper!($crate::insta::assert_debug_snapshot!($($arg)*));
     };
+}
+
+#[cfg(feature = "trybuild")]
+#[macro_export]
+macro_rules! trybuild_compile_fail {
+    ($glob:expr) => {{
+        let source_dir = std::path::Path::new("tests/compile-fail");
+        let stderr_dir = source_dir.join(if cfg!(nightly) { "nightly" } else { "stable" });
+
+        // Symlink all .rs files from the source directory into the channel-specific
+        // stderr directory so trybuild can find them next to the .stderr files.
+        for entry in std::fs::read_dir(source_dir).unwrap().flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|e| e.to_str()) == Some("rs") {
+                let dest = stderr_dir.join(entry.file_name());
+                let _ = std::fs::remove_file(&dest);
+                let original = std::path::Path::new("..").join(entry.file_name());
+                #[cfg(unix)]
+                std::os::unix::fs::symlink(&original, &dest).unwrap();
+                #[cfg(windows)]
+                std::os::windows::fs::symlink_file(&original, &dest).unwrap();
+            }
+        }
+
+        let pattern = stderr_dir.join($glob);
+        let t = $crate::trybuild::TestCases::new();
+        t.compile_fail(pattern.to_str().unwrap());
+    }};
 }

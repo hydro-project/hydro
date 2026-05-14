@@ -1,1 +1,0 @@
-../compile-fail/surface_demuxenum_wrongfields_1.rs

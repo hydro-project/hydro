@@ -1,1 +1,0 @@
-../compile-fail/surface_source_iter_badtype.rs
