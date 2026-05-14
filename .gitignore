@@ -28,6 +28,4 @@ store/
 # Infinity agents
 /.infinity
 
-# Symlinked .rs files for compile-fail tests (generated at test time)
-**/compile-fail-stable/*.rs
-**/compile-fail-nightly/*.rs
+
