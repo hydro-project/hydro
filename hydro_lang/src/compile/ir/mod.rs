@@ -4259,7 +4259,7 @@ impl HydroNode {
                                         &node.metadata().op,
                                     );
 
-                                    let (effective_input, _acc) = if let Some(ref hooked) = hooked_input_ident {
+                                    let (effective_input, wrapped_acc) = if let Some(ref hooked) = hooked_input_ident {
                                         let acc: syn::Expr = parse_quote!({
                                             let mut __inner = #acc_tokens;
                                             move |__state, __batch: Vec<_>| {
@@ -4288,7 +4288,7 @@ impl HydroNode {
                                     builder.add_dfir(
                                         parse_quote! {
                                             source_iter([(#init_tokens)()]) -> [0]#fold_ident;
-                                            #effective_input -> scan::<#lifetime>(#init_tokens, #acc_tokens) -> [1]#fold_ident;
+                                            #effective_input -> scan::<#lifetime>(#init_tokens, #wrapped_acc) -> [1]#fold_ident;
                                             #fold_ident = chain();
                                         },
                                         None,
@@ -4313,7 +4313,7 @@ impl HydroNode {
                                     );
                                     let builder = graph_builders.get_dfir_mut(&out_location);
 
-                                    let _acc: syn::Expr = parse_quote!({
+                                    let wrapped_acc: syn::Expr = parse_quote!({
                                         let mut __init = #init_tokens;
                                         let mut __inner = #acc_tokens;
                                         move |__state, __kv: (_, _)| {
@@ -4329,7 +4329,7 @@ impl HydroNode {
                                     if let Some(hooked_input_ident) = hooked_input_ident {
                                         builder.add_dfir(
                                             parse_quote! {
-                                                #fold_ident = #hooked_input_ident -> flatten() -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #acc_tokens);
+                                                #fold_ident = #hooked_input_ident -> flatten() -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #wrapped_acc);
                                             },
                                             None,
                                             Some(&next_stmt_id.to_string()),
@@ -4339,7 +4339,7 @@ impl HydroNode {
                                     } else {
                                         builder.add_dfir(
                                             parse_quote! {
-                                                #fold_ident = #input_ident -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #acc_tokens);
+                                                #fold_ident = #input_ident -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #wrapped_acc);
                                             },
                                             None,
                                             Some(&next_stmt_id.to_string()),
