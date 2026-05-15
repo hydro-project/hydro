@@ -141,6 +141,20 @@ impl Node for EcsDeployProcess {
     }
 }
 
+impl EcsDeployProcess {
+    /// Expose a TCP port on this process for external access.
+    ///
+    /// This method records the port in the manifest's `ports` map so that
+    /// downstream tooling (CDK, deployment scripts) can configure security
+    /// groups, load balancers, and service discovery accordingly.
+    pub fn expose_port(&self, port: u16) {
+        let port_name = format!("exposed-{}", port);
+        self.exposed_ports
+            .borrow_mut()
+            .insert(port_name, PortInfo::Tcp { port });
+    }
+}
+
 /// Represents a logical cluster, which can be a variable amount of individual containers.
 #[derive(Clone)]
 pub struct EcsDeployCluster {
@@ -237,6 +251,21 @@ impl Node for EcsDeployExternal {
         sidecars: &[syn::Expr],
     ) {
         trace!(name: "surface", surface = graph.surface_syntax_string());
+    }
+}
+
+impl EcsDeployCluster {
+    /// Expose a TCP port on every member of this cluster for external access.
+    ///
+    /// The binary running on this cluster must bind a `TcpListener` on this port.
+    /// This method records the port in the manifest's `ports` map so that
+    /// downstream tooling (CDK, deployment scripts) can configure security
+    /// groups, load balancers, and service discovery accordingly.
+    pub fn expose_port(&self, port: u16) {
+        let port_name = format!("exposed-{}", port);
+        self.exposed_ports
+            .borrow_mut()
+            .insert(port_name, PortInfo::Tcp { port });
     }
 }
 

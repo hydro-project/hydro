@@ -40,9 +40,8 @@ where
     pub(super) clusters: SparseSecondaryMap<LocationKey, D::Cluster>,
     pub(super) externals: SparseSecondaryMap<LocationKey, D::External>,
 
-    /// Sidecars which may be added to each location (process or cluster, not externals).
-    /// See [`crate::telemetry::Sidecar`].
-    pub(super) sidecars: SparseSecondaryMap<LocationKey, Vec<syn::Expr>>,
+    /// Compile-time sidecar directives (both simple futures and external TCP sidecars).
+    pub(super) sidecars: Vec<super::builder::Sidecar>,
 
     /// Application name used in telemetry.
     pub(super) flow_name: String,
@@ -194,18 +193,17 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
 
             let location_name = &self.location_names[location_key];
 
-            let sidecar = sidecar.to_expr(
+            let future_expr = sidecar.to_expr(
                 self.flow_name(),
                 location_key,
                 location_type,
                 location_name,
                 &quote::format_ident!("{}", super::DFIR_IDENT),
             );
-            self.sidecars
-                .entry(location_key)
-                .expect("location was removed")
-                .or_default()
-                .push(sidecar);
+            self.sidecars.push(super::builder::Sidecar::Simple {
+                location_key,
+                future_expr: Box::new(future_expr),
+            });
         }
 
         self
@@ -219,18 +217,17 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
     ) -> Self {
         let location_type = self.locations[location_key];
         let location_name = &self.location_names[location_key];
-        let sidecar = sidecar.to_expr(
+        let future_expr = sidecar.to_expr(
             self.flow_name(),
             location_key,
             location_type,
             location_name,
             &quote::format_ident!("{}", super::DFIR_IDENT),
         );
-        self.sidecars
-            .entry(location_key)
-            .expect("location was removed")
-            .or_default()
-            .push(sidecar);
+        self.sidecars.push(super::builder::Sidecar::Simple {
+            location_key,
+            future_expr: Box::new(future_expr),
+        });
         self
     }
 
@@ -288,10 +285,48 @@ impl<'a, D: Deploy<'a>> DeployFlow<'a, D> {
             );
         }
 
+        // Process sidecar declarations — compile-time directives that
+        // produce futures to spawn on each location's LocalSet.
+        let mut sidecars: SparseSecondaryMap<LocationKey, Vec<syn::Expr>> =
+            SparseSecondaryMap::new();
+        for decl in std::mem::take(&mut self.sidecars) {
+            match decl {
+                super::builder::Sidecar::Simple {
+                    location_key,
+                    future_expr,
+                } => {
+                    sidecars
+                        .entry(location_key)
+                        .expect("location was removed")
+                        .or_default()
+                        .push(*future_expr);
+                }
+                super::builder::Sidecar::Bidi {
+                    location_key,
+                    sidecar_id,
+                    sidecar_closure,
+                } => {
+                    use syn::parse_quote;
+
+                    let (stream_ident, sink_ident) = sidecar_id.idents();
+
+                    let sidecar_closure_expr: &syn::Expr = &sidecar_closure;
+                    let setup_stmt: syn::Stmt = parse_quote! {
+                        let (#stream_ident, #sink_ident) = (#sidecar_closure_expr)();
+                    };
+                    extra_stmts
+                        .entry(location_key)
+                        .expect("location was removed")
+                        .or_default()
+                        .push(setup_stmt);
+                }
+            }
+        }
+
         CompiledFlow {
             dfir: build_inner(&mut self.ir),
             extra_stmts,
-            sidecars: std::mem::take(&mut self.sidecars),
+            sidecars,
             _phantom: PhantomData,
         }
     }
