@@ -490,7 +490,7 @@ impl DfirGraph {
     ///
     /// Note that this does NOT consider `DelayType` barriers (which generally implies `Pull`).
     pub(crate) fn node_color(&self, node_id: GraphNodeId) -> Option<Color> {
-        if self.node(node_id).is_handoff() {
+        if matches!(self.node(node_id), GraphNode::Handoff { .. }) {
             return Some(Color::Hoff);
         }
 
@@ -843,8 +843,8 @@ impl DfirGraph {
             .collect();
 
         // For each handoff/singleton node, add it to the `send`/`recv` lists for the corresponding subgraphs.
-        for (hoff_id, node) in self.nodes() {
-            if !node.is_handoff() {
+        for (hoff_id, hoff) in self.nodes() {
+            if !matches!(hoff, GraphNode::Handoff { .. }) {
                 continue;
             }
             // Receivers from the handoff. (Should really only be one).
@@ -973,9 +973,10 @@ impl DfirGraph {
         let mut back_edge_hoff_ids: BTreeSet<GraphNodeId> = BTreeSet::new();
         let all_subgraphs = {
             // Build predecessor map for subgraphs.
-            let mut sg_preds = SecondaryMap::<_, Vec<_>>::with_capacity(self.subgraph_nodes.len());
-            for (hoff_id, node) in self.nodes() {
-                if !node.is_handoff() {
+            let mut sg_preds: SecondaryMap<GraphSubgraphId, Vec<GraphSubgraphId>> =
+                SecondaryMap::<_, Vec<_>>::with_capacity(self.subgraph_nodes.len());
+            for (hoff_id, hoff) in self.nodes() {
+                if !matches!(hoff, GraphNode::Handoff { .. }) {
                     // Not a handoff; skip.
                     continue;
                 }
@@ -1000,7 +1001,7 @@ impl DfirGraph {
 
                     // Non-lazy tick-boundary: defer_tick (not defer_tick_lazy).
                     if !matches!(delay_type, DelayType::TickLazy) {
-                        defer_tick_buf_idents.push(self.hoff_buf_ident(hoff_id, node.span()));
+                        defer_tick_buf_idents.push(self.hoff_buf_ident(hoff_id, hoff.span()));
                     }
                 } else {
                     sg_preds.entry(succ_sg).unwrap().or_default().push(pred_sg);
@@ -1803,7 +1804,7 @@ impl DfirGraph {
         let mut skipped_handoffs = BTreeSet::new();
         let mut subgraph_handoffs = <BTreeMap<GraphSubgraphId, Vec<GraphNodeId>>>::new();
         for (node_id, node) in self.nodes() {
-            if node.is_handoff() {
+            if matches!(node, GraphNode::Handoff { .. }) {
                 if write_config.no_handoffs {
                     skipped_handoffs.insert(node_id);
                     continue;

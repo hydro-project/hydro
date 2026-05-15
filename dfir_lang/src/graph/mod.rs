@@ -159,11 +159,6 @@ impl GraphNode {
         }
     }
 
-    /// Whether this node is a handoff (any kind).
-    pub fn is_handoff(&self) -> bool {
-        matches!(self, GraphNode::Handoff { .. })
-    }
-
     /// Return the source code span of the node.
     pub fn span(&self) -> Span {
         match self {
