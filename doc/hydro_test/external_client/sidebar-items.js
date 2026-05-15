@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["chat","echo","http_counter","http_hello"]};
+window.SIDEBAR_ITEMS = {"mod":["chat","echo","http_counter","http_hello","sidecar_demo"]};
