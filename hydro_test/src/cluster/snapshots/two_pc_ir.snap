@@ -1870,7 +1870,7 @@ expression: built.ir()
                                                     first: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
                                                         input: Map {
-                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
+                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
                                                             input: Tee {
                                                                 inner: <shared 15>: Reduce {
                                                                     f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < () , () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ , _ | { } }),
@@ -2229,7 +2229,7 @@ expression: built.ir()
                                                     first: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
                                                         input: Map {
-                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
+                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
                                                             input: Tee {
                                                                 inner: <shared 15>,
                                                                 metadata: HydroIrMetadata {
@@ -2390,7 +2390,7 @@ expression: built.ir()
             8,
         ),
         input: Map {
-            f: stageleft :: runtime_support :: fn1_type_hint :: < ((std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , core :: option :: Option < std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > >) , core :: option :: Option < hydro_test :: __staged :: __deps :: tokio :: time :: Instant >) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | ((old , new) , reset) | { if reset . is_some () { old . replace (Histogram :: < u64 > :: new (3) . unwrap ()) ; } if let Some (new) = new { old . borrow_mut () . add (& * new . borrow_mut ()) . expect ("Error adding value to histogram") ; } old } }),
+            f: stageleft :: runtime_support :: fn1_type_hint :: < ((std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , core :: option :: Option < std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > >) , core :: option :: Option < () >) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | ((old , new) , reset) | { if reset . is_some () { old . replace (Histogram :: < u64 > :: new (3) . unwrap ()) ; } if let Some (new) = new { old . borrow_mut () . add (& * new . borrow_mut ()) . expect ("Error adding value to histogram") ; } old } }),
             input: Cast {
                 inner: CrossSingleton {
                     left: Cast {
@@ -2515,7 +2515,7 @@ expression: built.ir()
                                                                                                             first: Map {
                                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
                                                                                                                 input: Map {
-                                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
+                                                                                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
                                                                                                                     input: Tee {
                                                                                                                         inner: <shared 15>,
                                                                                                                         metadata: HydroIrMetadata {
@@ -2783,7 +2783,7 @@ expression: built.ir()
                     right: Cast {
                         inner: ChainFirst {
                             first: Map {
-                                f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , core :: option :: Option < hydro_test :: __staged :: __deps :: tokio :: time :: Instant > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
+                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
                                 input: DeferTick {
                                     input: Tee {
                                         inner: <shared 20>: Reduce {
@@ -2981,7 +2981,7 @@ expression: built.ir()
                                                                     first: Map {
                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
                                                                         input: Map {
-                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
+                                                                            f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
                                                                             input: Tee {
                                                                                 inner: <shared 15>,
                                                                                 metadata: HydroIrMetadata {
@@ -3228,7 +3228,7 @@ expression: built.ir()
                                             first: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
                                                 input: Map {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
+                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
                                                     input: Tee {
                                                         inner: <shared 20>,
                                                         metadata: HydroIrMetadata {
@@ -3379,7 +3379,7 @@ expression: built.ir()
                                         first: Map {
                                             f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
                                             input: Map {
-                                                f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
+                                                f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
                                                 input: Tee {
                                                     inner: <shared 20>,
                                                     metadata: HydroIrMetadata {
@@ -3524,7 +3524,7 @@ expression: built.ir()
                                             first: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
                                                 input: Map {
-                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
+                                                    f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
                                                     input: Tee {
                                                         inner: <shared 20>,
                                                         metadata: HydroIrMetadata {
