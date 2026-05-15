@@ -51,8 +51,11 @@ thread_local! {
 }
 
 /// Activate the singleton reference capture context. Must be called before `q!()` expansion
-/// that may capture singletons. Returns the captured references when the scope ends.
-pub fn with_singleton_capture<R>(f: impl FnOnce() -> R) -> (R, Vec<(syn::Ident, HydroNode)>) {
+/// that may capture singletons. Returns a `ClosureExpr` bundling the expression with any
+/// captured singleton references.
+pub fn with_singleton_capture(
+    f: impl FnOnce() -> crate::compile::ir::DebugExpr,
+) -> crate::compile::ir::ClosureExpr {
     SINGLETON_REFS.with(|cell| {
         let prev = cell.borrow_mut().replace(Vec::new());
         assert!(
@@ -60,9 +63,9 @@ pub fn with_singleton_capture<R>(f: impl FnOnce() -> R) -> (R, Vec<(syn::Ident, 
             "nested singleton capture scopes are not supported"
         );
     });
-    let result = f();
-    let captured = SINGLETON_REFS.with(|cell| cell.borrow_mut().take().unwrap());
-    (result, captured)
+    let expr = f();
+    let singleton_refs = SINGLETON_REFS.with(|cell| cell.borrow_mut().take().unwrap());
+    crate::compile::ir::ClosureExpr::new(expr, singleton_refs)
 }
 
 static SINGLETON_REF_COUNTER: std::sync::atomic::AtomicUsize =

@@ -5,15 +5,20 @@ expression: json
 [
   {
     "ForEach": {
-      "f": "q!(| v | println ! (\"{}\" , v))",
+      "f": {
+        "expr": "q!(| v | println ! (\"{}\" , v))",
+        "singleton_refs": []
+      },
       "input": {
         "Tee": {
           "inner": {
             "$shared": 0,
             "node": {
               "Map": {
-                "f": "q!(| x | x * 2)",
-                "singleton_refs": [],
+                "f": {
+                  "expr": "q!(| x | x * 2)",
+                  "singleton_refs": []
+                },
                 "input": {
                   "Source": {
                     "source": {
@@ -108,7 +113,10 @@ expression: json
   },
   {
     "ForEach": {
-      "f": "q!(| v | eprintln ! (\"{}\" , v))",
+      "f": {
+        "expr": "q!(| v | eprintln ! (\"{}\" , v))",
+        "singleton_refs": []
+      },
       "input": {
         "Tee": {
           "inner": {

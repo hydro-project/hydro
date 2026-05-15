@@ -688,7 +688,6 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
             self.location.clone(),
             HydroNode::Map {
                 f: map_f,
-                singleton_refs: Vec::new(),
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
@@ -748,7 +747,6 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
             self.location.clone(),
             HydroNode::Map {
                 f: map_f,
-                singleton_refs: Vec::new(),
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
@@ -805,7 +803,6 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
             self.location.clone(),
             HydroNode::Map {
                 f: map_f,
-                singleton_refs: Vec::new(),
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location

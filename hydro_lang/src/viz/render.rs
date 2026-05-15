@@ -876,7 +876,7 @@ impl HydroRoot {
                 config,
                 input,
                 None,
-                NodeLabel::with_exprs("for_each".to_owned(), vec![f.clone()]),
+                NodeLabel::with_exprs("for_each".to_owned(), vec![f.expr.clone()]),
             ),
 
             HydroRoot::SendExternal {
@@ -1274,7 +1274,7 @@ impl HydroNode {
                     op_name: extract_op_name(self.print_root()),
                     node_type: HydroNodeType::Transform,
                 },
-                f,
+                &f.expr,
             ),
 
             // Single-expression Aggregation operations - grouped by node type
@@ -1289,7 +1289,7 @@ impl HydroNode {
                     op_name: extract_op_name(self.print_root()),
                     node_type: HydroNodeType::Aggregation,
                 },
-                f,
+                &f.expr,
             ),
 
             // Join-like operations with left/right edge labels - grouped by edge labeling
@@ -1429,8 +1429,8 @@ impl HydroNode {
                         op_name: extract_op_name(self.print_root()),
                         node_type,
                     },
-                    init,
-                    acc,
+                    &init.expr,
+                    &acc.expr,
                 )
             }
 
@@ -1474,7 +1474,7 @@ impl HydroNode {
                 );
 
                 let node_id = structure.add_node_with_backtrace(
-                    NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
+                    NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.expr.clone()]),
                     HydroNodeType::Aggregation,
                     location_key,
                     Some(metadata.op.backtrace.clone()),
