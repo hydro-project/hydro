@@ -624,7 +624,7 @@ impl<W> HydroJson<'_, W> {
         // Create hierarchy structure (single level: locations as parents, nodes as children)
         let mut locs: Vec<(LocationKey, &(String, Vec<VizNodeKey>))> =
             self.locations.iter().collect();
-        locs.sort_by(|a, b| a.0.cmp(&b.0));
+        locs.sort_by_key(|x| x.0);
         let hierarchy: Vec<serde_json::Value> = locs
             .into_iter()
             .map(|(location_key, (label, _))| {
