@@ -1059,16 +1059,15 @@ impl DfirGraph {
                             self.node_degree_out(src_ref_id) <= 1,
                             "handoff should have at most one successor"
                         );
-                        for (_edge, succ_id) in self.node_successors(src_ref_id) {
-                            if let Some(consumer_sg) = self.node_subgraph(succ_id)
-                                && consumer_sg != dst_sg
-                            {
-                                sg_preds
-                                    .entry(consumer_sg)
-                                    .unwrap()
-                                    .or_default()
-                                    .push(dst_sg);
-                            }
+                        if let Some((_edge, succ_id)) = self.node_successors(src_ref_id).next()
+                            && let Some(consumer_sg) = self.node_subgraph(succ_id)
+                            && consumer_sg != dst_sg
+                        {
+                            sg_preds
+                                .entry(consumer_sg)
+                                .unwrap()
+                                .or_default()
+                                .push(dst_sg);
                         }
                     }
                 }

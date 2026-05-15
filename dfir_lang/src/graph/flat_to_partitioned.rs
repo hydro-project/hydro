@@ -380,7 +380,7 @@ fn order_subgraphs(
                 partitioned_graph.node_degree_out(pred) <= 1,
                 "handoff should have at most one successor"
             );
-            for (_edge, consumer) in partitioned_graph.node_successors(pred) {
+            if let Some((_edge, consumer)) = partitioned_graph.node_successors(pred).next() {
                 let consumer_sg = partitioned_graph.node_subgraph(consumer).unwrap();
                 if consumer_sg != succ_sg {
                     sg_preds.entry(consumer_sg).or_default().push(succ_sg);
