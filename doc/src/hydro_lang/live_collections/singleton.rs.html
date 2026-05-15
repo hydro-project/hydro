@@ -1170,7 +1170,7 @@
 <a href=#1170 id=1170 data-nosnippet>1170</a>    <span class="kw">where
 <a href=#1171 id=1171 data-nosnippet>1171</a>        </span>L: NoTick + NoAtomic,
 <a href=#1172 id=1172 data-nosnippet>1172</a>    {
-<a href=#1173 id=1173 data-nosnippet>1173</a>        <span class="kw">let </span>samples = <span class="self">self</span>.location.source_interval(interval, nondet);
+<a href=#1173 id=1173 data-nosnippet>1173</a>        <span class="kw">let </span>samples = <span class="self">self</span>.location.source_interval(interval);
 <a href=#1174 id=1174 data-nosnippet>1174</a>        <span class="macro">sliced!</span> {
 <a href=#1175 id=1175 data-nosnippet>1175</a>            <span class="kw">let </span>snapshot = <span class="kw">use</span>(<span class="self">self</span>, nondet);
 <a href=#1176 id=1176 data-nosnippet>1176</a>            <span class="kw">let </span>sample_batch = <span class="kw">use</span>(samples, nondet);
