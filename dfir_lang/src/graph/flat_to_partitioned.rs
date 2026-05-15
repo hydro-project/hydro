@@ -355,7 +355,7 @@ fn order_subgraphs(
     }
     // Include singleton reference edges.
     for &(pred, succ) in barrier_crossers.singleton_barrier_crossers.iter() {
-        assert_ne!(pred, succ, "TODO(mingwei)");
+        assert_ne!(pred, succ);
         // For handoff nodes (which have no subgraph), use the predecessor's subgraph.
         let pred_sg = if let Some(sg) = partitioned_graph.node_subgraph(pred) {
             sg
@@ -373,14 +373,13 @@ fn order_subgraphs(
         }
         sg_preds.entry(succ_sg).or_default().push(pred_sg);
 
-        // For HandoffKind::Option: borrower must run before pipe consumer.
-        if matches!(
-            partitioned_graph.node(pred),
-            GraphNode::Handoff {
-                kind: HandoffKind::Option,
-                ..
-            }
-        ) {
+        // For handoff nodes: borrower must run before pipe consumer.
+        // All handoffs should have at most one successor.
+        if matches!(partitioned_graph.node(pred), GraphNode::Handoff { .. }) {
+            assert!(
+                partitioned_graph.node_degree_out(pred) <= 1,
+                "handoff should have at most one successor"
+            );
             for (_edge, consumer) in partitioned_graph.node_successors(pred) {
                 let consumer_sg = partitioned_graph.node_subgraph(consumer).unwrap();
                 if consumer_sg != succ_sg {

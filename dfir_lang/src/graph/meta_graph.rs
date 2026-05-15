@@ -1051,15 +1051,14 @@ impl DfirGraph {
                         sg_preds.entry(dst_sg).unwrap().or_default().push(src_sg);
                     }
 
-                    // For HandoffKind::Option references: ensure the borrower runs
-                    // before the pipe consumer (which takes the value via .take()).
-                    if matches!(
-                        self.node(src_ref_id),
-                        GraphNode::Handoff {
-                            kind: HandoffKind::Option,
-                            ..
-                        }
-                    ) {
+                    // Ensure the borrower runs before the pipe consumer
+                    // (which takes/drains the value).
+                    // All handoffs should have at most one successor.
+                    if self.node_subgraph(src_ref_id).is_none() {
+                        assert!(
+                            self.node_degree_out(src_ref_id) <= 1,
+                            "handoff should have at most one successor"
+                        );
                         for (_edge, succ_id) in self.node_successors(src_ref_id) {
                             if let Some(consumer_sg) = self.node_subgraph(succ_id)
                                 && consumer_sg != dst_sg
@@ -1105,7 +1104,7 @@ impl DfirGraph {
         // These are only accessed via #var references and must be cleared each tick.
         let no_consumer_drain_code: Vec<TokenStream> = handoff_nodes
             .iter()
-            .filter(|&&(node_id, _, _)| self.node_successors(node_id).len() == 0)
+            .filter(|&&(node_id, _, _)| self.node_degree_out(node_id) == 0)
             .map(|&(node_id, kind, (src_span, dst_span))| {
                 let span = src_span.join(dst_span).unwrap_or(src_span);
                 let buf_ident = self.hoff_buf_ident(node_id, span);
