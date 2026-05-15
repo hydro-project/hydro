@@ -876,7 +876,7 @@ impl HydroRoot {
                 config,
                 input,
                 None,
-                NodeLabel::with_exprs("for_each".to_owned(), vec![f.expr.clone()]),
+                NodeLabel::with_exprs("for_each".to_owned(), vec![f.clone()]),
             ),
 
             HydroRoot::SendExternal {

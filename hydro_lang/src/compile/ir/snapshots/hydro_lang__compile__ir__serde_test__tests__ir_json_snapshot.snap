@@ -5,10 +5,7 @@ expression: json
 [
   {
     "ForEach": {
-      "f": {
-        "expr": "q!(| v | println ! (\"{}\" , v))",
-        "singleton_refs": []
-      },
+      "f": "q!(| v | println ! (\"{}\" , v))",
       "input": {
         "Tee": {
           "inner": {
@@ -113,10 +110,7 @@ expression: json
   },
   {
     "ForEach": {
-      "f": {
-        "expr": "q!(| v | eprintln ! (\"{}\" , v))",
-        "singleton_refs": []
-      },
+      "f": "q!(| v | eprintln ! (\"{}\" , v))",
       "input": {
         "Tee": {
           "inner": {

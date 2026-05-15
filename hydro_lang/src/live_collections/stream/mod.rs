@@ -1135,9 +1135,7 @@ where
         O: IsOrdered,
         R: IsExactlyOnce,
     {
-        let f = crate::singleton_ref::with_singleton_capture(|| {
-            f.splice_fn1_ctx(&self.location).into()
-        });
+        let f = f.splice_fn1_ctx(&self.location).into();
         self.location
             .flow_state()
             .borrow_mut()
