@@ -40,14 +40,14 @@ use backtrace::Backtrace;
 #[cfg(feature = "build")]
 fn rewrite_singleton_refs_in_tokens(
     tokens: TokenStream,
-    replacements: &[(&syn::Ident, &syn::Ident)],
+    replacements: &HashMap<syn::Ident, &syn::Ident>,
 ) -> TokenStream {
     use proc_macro2::{Group, TokenTree};
     tokens
         .into_iter()
         .flat_map(|tt| match &tt {
             TokenTree::Ident(ident) => {
-                if let Some((_, to_ident)) = replacements.iter().find(|(from, _)| *from == ident) {
+                if let Some(to_ident) = replacements.get(ident) {
                     vec![
                         TokenTree::Punct(proc_macro2::Punct::new('#', proc_macro2::Spacing::Joint)),
                         TokenTree::Ident((*to_ident).clone()),
@@ -315,6 +315,18 @@ fn serialize_ident<S: serde::Serializer>(
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
     serializer.serialize_str(&ident.to_string())
+}
+
+fn serialize_singleton_refs<S: serde::Serializer>(
+    refs: &[(syn::Ident, HydroNode)],
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    use serde::ser::SerializeSeq;
+    let mut seq = serializer.serialize_seq(Some(refs.len()))?;
+    for (ident, node) in refs {
+        seq.serialize_element(&(ident.to_string(), node))?;
+    }
+    seq.end()
 }
 
 pub enum DebugInstantiate {
@@ -2133,7 +2145,9 @@ pub enum HydroNode {
     /// A singleton materialization point. Wraps a SharedNode so that:
     /// - The pipe output delivers the single item to one consumer
     /// - `#var` references can borrow the value from the singleton slot
+    ///
     /// In DFIR codegen, emits `ident = inner_ident -> singleton()`.
+    ///
     /// Uses the same `built_tees` dedup pattern as `Tee`.
     Singleton {
         inner: SharedNode,
@@ -2247,8 +2261,8 @@ pub enum HydroNode {
         /// (Filter, FlatMap, Fold, etc.) should be extended similarly. For nodes with
         /// multiple closures (e.g. Fold has `init` and `acc`), we may need per-closure
         /// tracking rather than per-node.
-        #[serde(skip)]
-        singleton_refs: Vec<(syn::Ident, SharedNode)>,
+        #[serde(serialize_with = "serialize_singleton_refs")]
+        singleton_refs: Vec<(syn::Ident, HydroNode)>,
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
@@ -2425,20 +2439,9 @@ impl HydroNode {
             | HydroNode::CycleSource { .. }
             | HydroNode::ExternalInput { .. } => {}
 
-            HydroNode::Tee { inner, .. } | HydroNode::Singleton { inner, .. } => {
-                if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
-                    *inner = SharedNode(transformed.clone());
-                } else {
-                    let transformed_cell = Rc::new(RefCell::new(HydroNode::Placeholder));
-                    seen_tees.insert(inner.as_ptr(), transformed_cell.clone());
-                    let mut orig = inner.0.replace(HydroNode::Placeholder);
-                    transform(&mut orig, seen_tees);
-                    *transformed_cell.borrow_mut() = orig;
-                    *inner = SharedNode(transformed_cell);
-                }
-            }
-
-            HydroNode::Partition { inner, .. } => {
+            HydroNode::Tee { inner, .. }
+            | HydroNode::Singleton { inner, .. }
+            | HydroNode::Partition { inner, .. } => {
                 if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
                     *inner = SharedNode(transformed.clone());
                 } else {
@@ -2500,19 +2503,9 @@ impl HydroNode {
                 singleton_refs,
                 ..
             } => {
-                // Process singleton references as children (like Tee's inner).
-                // Their idents will be pushed to ident_stack by the codegen closure.
+                // Transform each singleton ref node (these are HydroNode::Singleton wrappers).
                 for (_ident, ref_node) in singleton_refs.iter_mut() {
-                    if let Some(transformed) = seen_tees.get(&ref_node.as_ptr()) {
-                        *ref_node = SharedNode(transformed.clone());
-                    } else {
-                        let transformed_cell = Rc::new(RefCell::new(HydroNode::Placeholder));
-                        seen_tees.insert(ref_node.as_ptr(), transformed_cell.clone());
-                        let mut orig = ref_node.0.replace(HydroNode::Placeholder);
-                        transform(&mut orig, seen_tees);
-                        *transformed_cell.borrow_mut() = orig;
-                        *ref_node = SharedNode(transformed_cell);
-                    }
+                    transform(ref_node, seen_tees);
                 }
                 transform(input.as_mut(), seen_tees);
             }
@@ -2574,36 +2567,24 @@ impl HydroNode {
                 cycle_id: *cycle_id,
                 metadata: metadata.clone(),
             },
-            HydroNode::Tee { inner, metadata } => {
-                if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
-                    HydroNode::Tee {
-                        inner: SharedNode(transformed.clone()),
-                        metadata: metadata.clone(),
-                    }
+            HydroNode::Tee { inner, metadata } | HydroNode::Singleton { inner, metadata } => {
+                let cloned_inner = if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
+                    SharedNode(transformed.clone())
                 } else {
                     let new_rc = Rc::new(RefCell::new(HydroNode::Placeholder));
                     seen_tees.insert(inner.as_ptr(), new_rc.clone());
                     let cloned = inner.0.borrow().deep_clone(seen_tees);
                     *new_rc.borrow_mut() = cloned;
-                    HydroNode::Tee {
-                        inner: SharedNode(new_rc),
-                        metadata: metadata.clone(),
-                    }
-                }
-            }
-            HydroNode::Singleton { inner, metadata } => {
-                if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
+                    SharedNode(new_rc)
+                };
+                if matches!(self, HydroNode::Singleton { .. }) {
                     HydroNode::Singleton {
-                        inner: SharedNode(transformed.clone()),
+                        inner: cloned_inner,
                         metadata: metadata.clone(),
                     }
                 } else {
-                    let new_rc = Rc::new(RefCell::new(HydroNode::Placeholder));
-                    seen_tees.insert(inner.as_ptr(), new_rc.clone());
-                    let cloned = inner.0.borrow().deep_clone(seen_tees);
-                    *new_rc.borrow_mut() = cloned;
-                    HydroNode::Singleton {
-                        inner: SharedNode(new_rc),
+                    HydroNode::Tee {
+                        inner: cloned_inner,
                         metadata: metadata.clone(),
                     }
                 }
@@ -2748,7 +2729,7 @@ impl HydroNode {
                 f: f.clone(),
                 singleton_refs: singleton_refs
                     .iter()
-                    .map(|(ident, node)| (ident.clone(), SharedNode(node.0.clone())))
+                    .map(|(ident, node)| (ident.clone(), node.deep_clone(seen_tees)))
                     .collect(),
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
@@ -3350,6 +3331,8 @@ impl HydroNode {
                             singleton_ident
                         };
 
+                        // we consume a stmt id regardless of if we emit the singleton() operator,
+                        // so that during rewrites we touch all recipients of the singleton()
                         *next_stmt_id += 1;
                         ident_stack.push(ret_ident);
                     }
@@ -3795,29 +3778,14 @@ impl HydroNode {
                     }
 
                     HydroNode::Map { f, singleton_refs, .. } => {
+                        // Pop input ident (pushed last by transform_children).
                         let input_ident = ident_stack.pop().unwrap();
-
-                        // For each singleton ref, look up its ident in built_tees.
-                        // If not found, trigger emit_core on the inner node.
-                        let ref_idents: Vec<_> = singleton_refs
-                            .iter()
-                            .map(|(_local_ident, ref_node)| {
-                                let ptr = ref_node.0.as_ref() as *const RefCell<HydroNode>;
-                                if let Some(idents) = built_tees.get(&ptr) {
-                                    idents[0].clone()
-                                } else {
-                                    // The Singleton IR node hasn't been processed yet.
-                                    // Process it now by calling emit_core on the inner node.
-                                    let singleton_ident = ref_node.0.borrow_mut().emit_core(
-                                        builders_or_callback,
-                                        seen_tees,
-                                        built_tees,
-                                        next_stmt_id,
-                                        fold_hooked_idents,
-                                    );
-                                    singleton_ident
-                                }
-                            })
+                        // Pop singleton ref idents in reverse order (pushed before input).
+                        let ref_idents: Vec<_> = (0..singleton_refs.len())
+                            .map(|_| ident_stack.pop().unwrap())
+                            .collect::<Vec<_>>()
+                            .into_iter()
+                            .rev()
                             .collect();
 
                         let map_ident =
@@ -3826,13 +3794,13 @@ impl HydroNode {
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
                                 // Rewrite the closure: replace local singleton ref idents
-                                // with #dfir_ident (the singleton() node's DFIR variable name).
+                                // with `#dfir_ident` (the `singleton()` node's DFIR variable name).
                                 let f_tokens = if singleton_refs.is_empty() {
                                     f.0.to_token_stream()
                                 } else {
-                                    let replacements: Vec<(&syn::Ident, &syn::Ident)> =
+                                    let replacements: HashMap<syn::Ident, &syn::Ident> =
                                         singleton_refs.iter()
-                                            .map(|(local_ident, _)| local_ident)
+                                            .map(|(local_ident, _)| local_ident.clone())
                                             .zip(ref_idents.iter())
                                             .collect();
                                     rewrite_singleton_refs_in_tokens(
@@ -4910,9 +4878,12 @@ impl HydroNode {
     /// by another consumer and does not need a Null sink.
     pub fn is_shared_with_others(&self) -> bool {
         match self {
-            HydroNode::Tee { inner, .. }
-            | HydroNode::Singleton { inner, .. }
-            | HydroNode::Partition { inner, .. } => Rc::strong_count(&inner.0) > 1,
+            HydroNode::Tee { inner, .. } | HydroNode::Partition { inner, .. } => {
+                Rc::strong_count(&inner.0) > 1
+            }
+            // A zero-output singleton() is valid in DFIR (it drains itself at
+            // end of tick), so it doesn't need to be driven by another consumer.
+            HydroNode::Singleton { .. } => false,
             _ => false,
         }
     }
@@ -4934,8 +4905,11 @@ impl HydroNode {
                 value, first_tick_only
             ),
             HydroNode::CycleSource { cycle_id, .. } => format!("CycleSource({})", cycle_id),
-            HydroNode::Tee { inner, .. } | HydroNode::Singleton { inner, .. } => {
+            HydroNode::Tee { inner, .. } => {
                 format!("Tee({})", inner.0.borrow().print_root())
+            }
+            HydroNode::Singleton { inner, .. } => {
+                format!("Singleton({})", inner.0.borrow().print_root())
             }
             HydroNode::Partition { f, is_true, .. } => {
                 format!("Partition({:?}, is_true={})", f, is_true)

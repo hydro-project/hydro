@@ -196,4 +196,53 @@ mod tests {
         consumed.sort();
         assert_eq!(consumed, vec![0, 1, 2, 3, 4]);
     }
+
+    /// Test: two different singleton refs captured in the same closure.
+    #[tokio::test]
+    async fn test_singleton_ref_two_refs_one_closure() {
+        let mut deployment = Deployment::new();
+
+        let mut builder = FlowBuilder::new();
+        let external = builder.external::<()>();
+        let p1 = builder.process::<()>();
+
+        // Singleton A: fold 0..5 => 10
+        let sum = p1
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+
+        // Singleton B: fold 10..13 => 33
+        let sum2 = p1
+            .source_iter(q!(10..13i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+
+        let ref_a = sum.by_ref();
+        let ref_b = sum2.by_ref();
+
+        // Capture both refs in one closure
+        let out_port = p1
+            .source_iter(q!(1..=2i32))
+            .map(q!(|x| x + *ref_a + *ref_b))
+            .send_bincode_external(&external);
+
+        let nodes = builder
+            .with_default_optimize()
+            .with_process(&p1, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut out_recv = nodes.connect(out_port).await;
+
+        deployment.start().await.unwrap();
+
+        let mut results = Vec::new();
+        for _ in 0..2 {
+            results.push(out_recv.next().await.unwrap());
+        }
+        results.sort();
+        // ref_a = 10, ref_b = 33, so results = 1+10+33=44, 2+10+33=45
+        assert_eq!(results, vec![44, 45]);
+    }
 }

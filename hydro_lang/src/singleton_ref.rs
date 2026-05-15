@@ -20,7 +20,7 @@ use crate::location::Location;
 ///
 /// Safety: The pointed-to `RefCell<HydroNode>` should be kept alive by the `Tee` node in the IR.
 /// If the IR is dropped, using this struct can cause UB.
-/// TODO(mingwei): https://github.com/hydro-project/stageleft/issues/73
+/// TODO(mingwei): <https://github.com/hydro-project/stageleft/issues/73>
 pub struct SingletonRef<'a, T, L> {
     pub(crate) node: *const RefCell<HydroNode>,
     pub(crate) _phantom: PhantomData<(&'a (), T, L)>,
@@ -36,12 +36,12 @@ impl<T, L> Clone for SingletonRef<'_, T, L> {
 // Thread-local storage for singleton references captured during `q!()` expansion.
 // Maps local ident name -> SharedNode for each singleton captured in the current closure.
 thread_local! {
-    static SINGLETON_REFS: RefCell<Option<Vec<(syn::Ident, SharedNode)>>> = const { RefCell::new(None) };
+    static SINGLETON_REFS: RefCell<Option<Vec<(syn::Ident, HydroNode)>>> = const { RefCell::new(None) };
 }
 
 /// Activate the singleton reference capture context. Must be called before `q!()` expansion
 /// that may capture singletons. Returns the captured references when the scope ends.
-pub fn with_singleton_capture<R>(f: impl FnOnce() -> R) -> (R, Vec<(syn::Ident, SharedNode)>) {
+pub fn with_singleton_capture<R>(f: impl FnOnce() -> R) -> (R, Vec<(syn::Ident, HydroNode)>) {
     SINGLETON_REFS.with(|cell| {
         let prev = cell.borrow_mut().replace(Vec::new());
         assert!(
@@ -52,23 +52,6 @@ pub fn with_singleton_capture<R>(f: impl FnOnce() -> R) -> (R, Vec<(syn::Ident, 
     let result = f();
     let captured = SINGLETON_REFS.with(|cell| cell.borrow_mut().take().unwrap());
     (result, captured)
-}
-
-/// Register a singleton reference capture. Called by `SingletonRef::to_tokens`.
-fn register_singleton_ref(ident: syn::Ident, node_ptr: *const RefCell<HydroNode>) {
-    SINGLETON_REFS.with(|cell| {
-        let mut guard = cell.borrow_mut();
-        let refs = guard.as_mut().expect(
-            "SingletonRef used inside q!() but no singleton capture scope is active. \
-             This is a bug — singleton capture should be set up by the operator that uses q!().",
-        );
-        // Reconstruct the Rc from the raw pointer (incrementing refcount).
-        // Safety: The Rc is kept alive by the Tee node in the IR.
-        let rc = unsafe { Rc::from_raw(node_ptr) };
-        let cloned = rc.clone();
-        std::mem::forget(rc); // Don't decrement the original refcount
-        refs.push((ident, SharedNode(cloned)));
-    });
 }
 
 static SINGLETON_REF_COUNTER: std::sync::atomic::AtomicUsize =
@@ -84,7 +67,28 @@ where
         let id = SINGLETON_REF_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let ident = syn::Ident::new(&format!("__hydro_singleton_ref_{}", id), Span::call_site());
 
-        register_singleton_ref(ident.clone(), self.node);
+        SINGLETON_REFS.with(|cell| {
+            let mut guard = cell.borrow_mut();
+            let refs = guard.as_mut().expect(
+                "SingletonRef used inside q!() but no singleton capture scope is active. \
+                 This is a bug — singleton capture should be set up by the operator that uses q!().",
+            );
+            // Reconstruct the Rc from the raw pointer (incrementing refcount).
+            // Safety: The Rc is kept alive by the Singleton node in the IR...
+            // TODO(mingwei): this is UB if the user drops the IR while keeping this alive...
+            let rc = unsafe { Rc::from_raw(self.node) };
+            let cloned = rc.clone();
+            std::mem::forget(rc); // Don't decrement the original refcount
+
+            let metadata = cloned.borrow().metadata().clone(); // TODO(mingwei): wrong metadata!
+            refs.push((
+                ident.clone(),
+                HydroNode::Singleton {
+                    inner: SharedNode(cloned),
+                    metadata,
+                },
+            ));
+        });
 
         (
             QuoteTokens {

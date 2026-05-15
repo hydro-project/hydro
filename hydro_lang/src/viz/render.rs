@@ -1128,9 +1128,14 @@ impl HydroNode {
                     .0
                     .borrow()
                     .build_graph_structure(structure, seen_tees, config);
+                let node_type = if matches!(self, HydroNode::Singleton { .. }) {
+                    HydroNodeType::Aggregation
+                } else {
+                    HydroNodeType::Tee
+                };
                 let tee_id = structure.add_node_with_metadata(
                     NodeLabel::Static(extract_op_name(self.print_root())),
-                    HydroNodeType::Tee,
+                    node_type,
                     metadata,
                 );
 

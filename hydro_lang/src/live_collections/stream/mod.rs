@@ -386,19 +386,18 @@ where
             };
         }
 
-        if let HydroNode::Tee { inner, metadata } = self.ir_node.borrow().deref() {
-            Stream {
-                location: self.location.clone(),
-                flow_state: self.flow_state.clone(),
-                ir_node: HydroNode::Tee {
-                    inner: SharedNode(inner.0.clone()),
-                    metadata: metadata.clone(),
-                }
-                .into(),
-                _phantom: PhantomData,
-            }
-        } else {
+        let HydroNode::Tee { inner, metadata } = &*self.ir_node.borrow() else {
             unreachable!()
+        };
+        Stream {
+            location: self.location.clone(),
+            flow_state: self.flow_state.clone(),
+            ir_node: HydroNode::Tee {
+                inner: SharedNode(inner.0.clone()),
+                metadata: metadata.clone(),
+            }
+            .into(),
+            _phantom: PhantomData,
         }
     }
 }
