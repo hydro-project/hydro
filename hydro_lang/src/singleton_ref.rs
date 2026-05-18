@@ -168,4 +168,82 @@ mod tests {
 
         let _built = flow.finalize();
     }
+
+    /// Compile-only: singleton ref inside filter closure.
+    #[test]
+    fn singleton_by_ref_filter() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let threshold = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let threshold_ref = threshold.by_ref();
+
+        node.source_iter(q!(1..=10i32))
+            .filter(q!(|x| *x > *threshold_ref))
+            .for_each(q!(|_| {}));
+
+        threshold.into_stream().for_each(q!(|_| {}));
+        let _built = flow.finalize();
+    }
+
+    /// Compile-only: singleton ref inside flat_map closure.
+    #[test]
+    fn singleton_by_ref_flat_map() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let count = node
+            .source_iter(q!(0..3i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, _| *acc += 1));
+        let count_ref = count.by_ref();
+
+        node.source_iter(q!(1..=2i32))
+            .flat_map_ordered(q!(|x| (0..*count_ref).map(move |i| x + i)))
+            .for_each(q!(|_| {}));
+
+        count.into_stream().for_each(q!(|_| {}));
+        let _built = flow.finalize();
+    }
+
+    /// Compile-only: singleton ref inside inspect closure.
+    #[test]
+    fn singleton_by_ref_inspect() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let count = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, _| *acc += 1));
+        let count_ref = count.by_ref();
+
+        node.source_iter(q!(1..=3i32))
+            .inspect(q!(|x| println!("count={}, x={}", *count_ref, x)))
+            .for_each(q!(|_| {}));
+
+        count.into_stream().for_each(q!(|_| {}));
+        let _built = flow.finalize();
+    }
+
+    /// Compile-only: singleton ref inside partition predicate.
+    #[test]
+    fn singleton_by_ref_partition() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let threshold = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let threshold_ref = threshold.by_ref();
+
+        let (above, below) = node
+            .source_iter(q!(1..=10i32))
+            .partition(q!(|x| *x > *threshold_ref));
+
+        above.for_each(q!(|_| {}));
+        below.for_each(q!(|_| {}));
+        threshold.into_stream().for_each(q!(|_| {}));
+        let _built = flow.finalize();
+    }
 }

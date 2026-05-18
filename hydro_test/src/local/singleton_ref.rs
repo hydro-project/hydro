@@ -245,4 +245,99 @@ mod tests {
         // ref_a = 10, ref_b = 33, so results = 1+10+33=44, 2+10+33=45
         assert_eq!(results, vec![44, 45]);
     }
+
+    /// Test: singleton ref inside a filter closure.
+    #[tokio::test]
+    async fn test_singleton_ref_filter() {
+        let mut deployment = Deployment::new();
+
+        let mut builder = FlowBuilder::new();
+        let external = builder.external::<()>();
+        let p1 = builder.process::<()>();
+
+        // Singleton: fold 0..5 => 10 (threshold)
+        let threshold = p1
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let threshold_ref = threshold.by_ref();
+
+        // Filter: keep only elements > threshold (10)
+        let out_port = p1
+            .source_iter(q!(vec![5i32, 8, 11, 15, 3]))
+            .filter(q!(|x| *x > *threshold_ref))
+            .send_bincode_external(&external);
+
+        threshold.into_stream().for_each(q!(|_| {}));
+
+        let nodes = builder
+            .with_default_optimize()
+            .with_process(&p1, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut out_recv = nodes.connect(out_port).await;
+
+        deployment.start().await.unwrap();
+
+        let mut results = Vec::new();
+        for _ in 0..2 {
+            results.push(out_recv.next().await.unwrap());
+        }
+        results.sort();
+        // threshold = 10, so only 11 and 15 pass
+        assert_eq!(results, vec![11, 15]);
+    }
+
+    /// Test: singleton ref inside a flat_map closure.
+    #[tokio::test]
+    async fn test_singleton_ref_flat_map() {
+        let mut deployment = Deployment::new();
+
+        let mut builder = FlowBuilder::new();
+        let external = builder.external::<()>();
+        let p1 = builder.process::<()>();
+
+        // Singleton: fold 0..3 => 3 (repeat count)
+        let count = p1
+            .source_iter(q!(0..3i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, _| *acc += 1));
+        let count_ref = count.by_ref();
+
+        // flat_map: for each element, produce a vec of `count` copies
+        let out_port = p1
+            .source_iter(q!(vec![10i32, 20]))
+            .flat_map_ordered(q!(|x| {
+                let n = *count_ref as usize;
+                let mut v = Vec::new();
+                for _ in 0..n {
+                    v.push(x);
+                }
+                v
+            }))
+            .send_bincode_external(&external);
+
+        count.into_stream().for_each(q!(|_| {}));
+
+        let nodes = builder
+            .with_default_optimize()
+            .with_process(&p1, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut out_recv = nodes.connect(out_port).await;
+
+        deployment.start().await.unwrap();
+
+        let mut results = Vec::new();
+        for _ in 0..6 {
+            results.push(out_recv.next().await.unwrap());
+        }
+        results.sort();
+        // count = 3, so [10, 10, 10, 20, 20, 20]
+        assert_eq!(results, vec![10, 10, 10, 20, 20, 20]);
+    }
 }
