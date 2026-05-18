@@ -57,6 +57,10 @@ where
     fn into_iter(self) -> Self::Iter {
         core::iter::once(self.accum)
     }
+
+    fn size_hint(&self, _input_hint: (usize, Option<usize>)) -> (usize, Option<usize>) {
+        (1, Some(1))
+    }
 }
 
 // ============================================================================
@@ -115,6 +119,10 @@ where
     fn into_iter(self) -> Self::Iter {
         core::iter::once(self.accum)
     }
+
+    fn size_hint(&self, _input_hint: (usize, Option<usize>)) -> (usize, Option<usize>) {
+        (1, Some(1))
+    }
 }
 
 // ============================================================================
@@ -143,6 +151,12 @@ impl<T> SortState<T> {
     }
 }
 
+impl<T> Default for SortState<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 impl<T: Ord> AccumState for SortState<T> {
@@ -158,6 +172,14 @@ impl<T: Ord> AccumState for SortState<T> {
         let mut buf = self.buf;
         buf.sort_unstable();
         buf.into_iter()
+    }
+
+    fn size_hint(&self, input_hint: (usize, Option<usize>)) -> (usize, Option<usize>) {
+        // Sort preserves cardinality: output count = current buffer + remaining input.
+        let buffered = self.buf.len();
+        let lower = buffered + input_hint.0;
+        let upper = input_hint.1.map(|u| buffered + u);
+        (lower, upper)
     }
 }
 

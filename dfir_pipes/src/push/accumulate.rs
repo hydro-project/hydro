@@ -17,10 +17,10 @@ use crate::push::{Push, PushStep, ready};
 /// # Two modes
 ///
 /// - **Owned / `'tick` mode**: The state is created fresh each tick and consumed
-///   on finalize. Example: `FoldState<i32, F>` yields `Once<i32>`.
+///   on finalize. Example: `FoldState<i32, F, i32, Item>` yields `Once<i32>`.
 /// - **Borrowed / `'static` mode**: The state borrows externally-owned storage
-///   that persists across ticks. Example: `FoldBorrowed<'a, T, F>` yields
-///   `Once<&'a mut T>`.
+///   that persists across ticks. Example: `FoldState<&'a mut i32, F, i32, Item>`
+///   yields `Once<&'a mut i32>`.
 pub trait AccumState: Sized {
     /// The type of items being accumulated (input to the combinator).
     type Input;
@@ -37,6 +37,27 @@ pub trait AccumState: Sized {
     /// This is called once during `poll_finalize`. Because it takes `self` by
     /// value, borrowed-mode implementations can release their full lifetime.
     fn into_iter(self) -> Self::Iter;
+
+    /// Returns the size hint for the output iterator, given the input's size hint.
+    ///
+    /// This is called during `size_hint` while still in the `Accumulating` phase,
+    /// allowing the combinator to inform downstream of expected output cardinality
+    /// before finalization occurs.
+    ///
+    /// The default returns `(0, None)` (unknown).
+    fn size_hint(&self, _input_hint: (usize, Option<usize>)) -> (usize, Option<usize>) {
+        (0, None)
+    }
+}
+
+/// Internal enum representing the phase of the accumulator.
+enum AccumPhase<State, Iter> {
+    /// Actively accumulating items via `start_send`.
+    Accumulating(State),
+    /// Draining accumulated output into downstream via `poll_finalize`.
+    Draining(Iter),
+    /// Finalization complete — iterator exhausted, awaiting downstream finalize.
+    Done,
 }
 
 pin_project! {
@@ -49,11 +70,11 @@ pin_project! {
     /// # Finalization protocol
     ///
     /// On `poll_finalize`, the combinator:
-    /// 1. Takes the `AccumState` out of its `Option` wrapper.
-    /// 2. Calls [`AccumState::into_iter`] to get an iterator of outputs.
-    /// 3. Drains the iterator into the downstream `Next` push, respecting
+    /// 1. Transitions from `Accumulating` to `Draining` by calling
+    ///    [`AccumState::into_iter`].
+    /// 2. Drains the iterator into the downstream `Next` push, respecting
     ///    backpressure (re-polling on `Pending`).
-    /// 4. Finalizes the downstream push.
+    /// 3. Transitions to `Done` and finalizes the downstream push.
     #[must_use = "`Push`es do nothing unless items are pushed into them"]
     pub struct Accumulate<State, Next>
     where
@@ -61,8 +82,7 @@ pin_project! {
     {
         #[pin]
         next: Next,
-        state: Option<State>,
-        iter: Option<State::Iter>,
+        phase: AccumPhase<State, State::Iter>,
     }
 }
 
@@ -74,8 +94,7 @@ where
     pub const fn new(state: State, next: Next) -> Self {
         Self {
             next,
-            state: Some(state),
-            iter: None,
+            phase: AccumPhase::Accumulating(state),
         }
     }
 }
@@ -96,37 +115,48 @@ where
 
     fn start_send(self: Pin<&mut Self>, item: State::Input, _meta: ()) {
         let this = self.project();
-        this.state
-            .as_mut()
-            .expect("start_send called after finalize")
-            .accumulate(item);
+        let AccumPhase::Accumulating(state) = this.phase else {
+            panic!("start_send called after finalize");
+        };
+        state.accumulate(item);
     }
 
     fn poll_finalize(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         let mut this = self.project();
-        // Lazily initialize the iterator on first poll_finalize call.
-        let iter = this.iter.get_or_insert_with(|| {
-            this.state
-                .take()
-                .expect("poll_finalize called but state already consumed")
-                .into_iter()
-        });
-        // Drain the iterator into downstream, respecting backpressure.
-        // We poll_ready *before* advancing the iterator to avoid consuming
-        // an item we can't yet send.
-        loop {
-            ready!(this.next.as_mut().poll_ready(ctx));
-            match iter.next() {
-                Some(item) => this.next.as_mut().start_send(item, ()),
-                None => break,
-            }
+
+        // Transition from Accumulating -> Draining on first poll_finalize call.
+        if matches!(this.phase, AccumPhase::Accumulating(..)) {
+            let old_phase = core::mem::replace(this.phase, AccumPhase::Done);
+            let AccumPhase::Accumulating(state) = old_phase else {
+                unreachable!()
+            };
+            *this.phase = AccumPhase::Draining(state.into_iter());
         }
+
+        // Drain the iterator into downstream, respecting backpressure.
+        if let AccumPhase::Draining(iter) = this.phase {
+            loop {
+                ready!(this.next.as_mut().poll_ready(ctx));
+                let Some(item) = iter.next() else {
+                    break;
+                };
+                this.next.as_mut().start_send(item, ());
+            }
+            *this.phase = AccumPhase::Done;
+        }
+
+        debug_assert!(matches!(this.phase, AccumPhase::Done));
         this.next.poll_finalize(ctx)
     }
 
-    fn size_hint(self: Pin<&mut Self>, _hint: (usize, Option<usize>)) {
-        // Individual AccumState impls may know their output cardinality,
-        // but we can't express that generically here. Downstream gets no hint.
+    fn size_hint(self: Pin<&mut Self>, hint: (usize, Option<usize>)) {
+        let this = self.project();
+        let output_hint = match this.phase {
+            AccumPhase::Accumulating(state) => state.size_hint(hint),
+            AccumPhase::Draining(iter) => iter.size_hint(),
+            AccumPhase::Done => (0, Some(0)),
+        };
+        this.next.size_hint(output_hint);
     }
 }
 
@@ -136,12 +166,11 @@ mod tests {
     use alloc::vec::Vec;
     use core::pin::Pin;
 
+    use super::super::accum_state::{FoldState, ReduceState};
+    use super::Accumulate;
     use crate::Yes;
     use crate::push::test_utils::TestPush;
     use crate::push::{Push, PushStep};
-
-    use super::super::accum_state::{FoldState, ReduceState};
-    use super::Accumulate;
 
     // ========================================================================
     // Fold owned mode

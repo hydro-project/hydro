@@ -9,8 +9,8 @@ use core::task::Waker;
 
 use crate::{Context, Toggle};
 
-mod accumulate;
 mod accum_state;
+mod accumulate;
 mod fanout;
 mod filter;
 mod filter_map;
@@ -48,10 +48,10 @@ pub(crate) mod test_utils;
 #[cfg_attr(docsrs, doc(cfg(feature = "variadics")))]
 pub mod demux_var;
 
-pub use accum_state::{FoldState, ReduceState};
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub use accum_state::SortState;
+pub use accum_state::{FoldState, ReduceState};
 pub use accumulate::{AccumState, Accumulate};
 #[cfg(feature = "variadics")]
 #[cfg_attr(docsrs, doc(cfg(feature = "variadics")))]
