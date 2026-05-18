@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"macro":["manual_proof","nondet","q"]};
+window.SIDEBAR_ITEMS = {"macro":[["manual_proof",1],["nondet",1],"q"]};

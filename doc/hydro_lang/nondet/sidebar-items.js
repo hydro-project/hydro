@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"macro":["nondet"],"struct":["NonDet"]};
+window.SIDEBAR_ITEMS = {"macro":[["nondet",1]],"struct":["NonDet"]};
