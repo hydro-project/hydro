@@ -322,7 +322,13 @@ fn order_subgraphs(
         if !matches!(hoff, GraphNode::Handoff { .. }) {
             continue;
         }
+
+        // Handoffs may have 0 successors if only used by reference. Skip ordering those.
+        if partitioned_graph.node_degree_out(hoff_id) == 0 {
+            continue;
+        }
         assert_eq!(1, partitioned_graph.node_degree_out(hoff_id));
+
         let (succ_edge, succ) = partitioned_graph.node_successors(hoff_id).next().unwrap();
 
         let succ_edge_delaytype = barrier_crossers
@@ -349,11 +355,38 @@ fn order_subgraphs(
     }
     // Include singleton reference edges.
     for &(pred, succ) in barrier_crossers.singleton_barrier_crossers.iter() {
-        assert_ne!(pred, succ, "TODO(mingwei)");
-        let pred_sg = partitioned_graph.node_subgraph(pred).unwrap();
+        assert_ne!(pred, succ);
+        // For handoff nodes (which have no subgraph), use the predecessor's subgraph.
+        let pred_sg = if let Some(sg) = partitioned_graph.node_subgraph(pred) {
+            sg
+        } else {
+            // pred is a handoff node — find its predecessor operator's subgraph.
+            let (_edge, pred_pred) = partitioned_graph
+                .node_predecessors(pred)
+                .next()
+                .expect("handoff must have a predecessor");
+            partitioned_graph.node_subgraph(pred_pred).unwrap()
+        };
         let succ_sg = partitioned_graph.node_subgraph(succ).unwrap();
-        assert_ne!(pred_sg, succ_sg);
+        if pred_sg == succ_sg {
+            continue;
+        }
         sg_preds.entry(succ_sg).or_default().push(pred_sg);
+
+        // For handoff nodes: borrower must run before pipe consumer.
+        // All handoffs should have at most one successor.
+        if matches!(partitioned_graph.node(pred), GraphNode::Handoff { .. }) {
+            assert!(
+                partitioned_graph.node_degree_out(pred) <= 1,
+                "handoff should have at most one successor"
+            );
+            if let Some((_edge, consumer)) = partitioned_graph.node_successors(pred).next() {
+                let consumer_sg = partitioned_graph.node_subgraph(consumer).unwrap();
+                if consumer_sg != succ_sg {
+                    sg_preds.entry(consumer_sg).or_default().push(succ_sg);
+                }
+            }
+        }
     }
 
     // Topological sort — rejects intra-tick cycles.

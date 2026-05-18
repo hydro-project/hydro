@@ -10,12 +10,13 @@ use quote::ToTokens;
 use syn::spanned::Spanned;
 use syn::{Error, Ident, ItemUse};
 
-use super::ops::next_iteration::NEXT_ITERATION;
-use super::ops::{FloType, Persistence};
-use super::{DfirGraph, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, PortIndexValue};
 use crate::diagnostic::{Diagnostic, Diagnostics, Level};
-use crate::graph::ops::{PortListSpec, RangeTrait};
-use crate::graph::{HandoffKind, graph_algorithms};
+use crate::graph::ops::next_iteration::NEXT_ITERATION;
+use crate::graph::ops::{FloType, Persistence, PortListSpec, RangeTrait};
+use crate::graph::{
+    DfirGraph, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, HandoffKind, PortIndexValue,
+    graph_algorithms,
+};
 use crate::parse::{DfirCode, DfirStatement, Operator, Pipeline};
 use crate::pretty_span::PrettySpan;
 
@@ -794,7 +795,7 @@ impl FlatGraphBuilder {
                         &mut self.diagnostics,
                     );
 
-                    // Check that singleton references actually reference *stateful* operators.
+                    // Check that singleton references actually reference valid targets.
                     {
                         let singletons_resolved =
                             self.flat_graph.node_singleton_references(node_id);
@@ -806,6 +807,16 @@ impl FlatGraphBuilder {
                                 // Error already emitted by `connect_operator_links`, "Cannot find referenced name...".
                                 continue;
                             };
+                            // HandoffKind::Option nodes are valid singleton reference targets.
+                            if matches!(
+                                self.flat_graph.node(singleton_node_id),
+                                GraphNode::Handoff {
+                                    kind: HandoffKind::Option,
+                                    ..
+                                }
+                            ) {
+                                continue;
+                            }
                             let Some(ref_op_inst) = self.flat_graph.node_op_inst(singleton_node_id)
                             else {
                                 // Error already emitted by `insert_node_op_insts_all`.
@@ -842,13 +853,18 @@ impl FlatGraphBuilder {
                         &mut self.diagnostics,
                     );
                     let out_degree = self.flat_graph.node_degree_out(node_id);
+                    let out_degree_range = match kind {
+                        HandoffKind::Vec => 1..=1,
+                        // `singleton()` may be no-output, only by ref. In the future this will also apply to vec.
+                        HandoffKind::Option => 0..=1,
+                    };
                     emit_arity_error(
                         *src_span,
                         op_name,
                         false,
                         true,
                         out_degree,
-                        &(1..=1),
+                        &out_degree_range,
                         &mut self.diagnostics,
                     );
                 }

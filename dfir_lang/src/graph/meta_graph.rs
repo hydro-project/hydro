@@ -813,16 +813,33 @@ impl DfirGraph {
     }
 
     /// Resolve the singletons via [`Self::node_singleton_references`] for the given `node_id`.
-    fn helper_resolve_singletons(&self, node_id: GraphNodeId, span: Span) -> Vec<Ident> {
+    /// Returns token streams for each reference:
+    /// - For stateful operators: `&singleton_op_XXX` (borrow the operator's state)
+    /// - For HandoffKind::Option: `&(hoff_XXX_buf.as_ref().unwrap())` (intentionally produce `&&T`
+    ///   so the later `(*expr)` deref yields `&T`) - TODO(mingwei)
+    fn helper_resolve_singletons(&self, node_id: GraphNodeId, span: Span) -> Vec<TokenStream> {
         self.node_singleton_references(node_id)
             .iter()
             .map(|singleton_node_id| {
                 // TODO(mingwei): this `expect` should be caught in error checking
-                self.node_as_singleton_ident(
-                    singleton_node_id
-                        .expect("Expected singleton to be resolved but was not, this is a bug."),
-                    span,
-                )
+                let ref_node_id = singleton_node_id
+                    .expect("Expected singleton to be resolved but was not, this is a bug.");
+                if matches!(
+                    self.node(ref_node_id),
+                    GraphNode::Handoff {
+                        kind: HandoffKind::Option,
+                        ..
+                    }
+                ) {
+                    let buf_ident = self.hoff_buf_ident(ref_node_id, span);
+                    // Wrapping in &(...) produces &&T so that postprocess_singletons'
+                    // (*expr) deref gives &T — matching `type O = &'a T`.
+                    // TODO(mingwei): Make postprocess_singletons not deref, remove old singletons (the `else` case below).
+                    quote_spanned! {span=> &(#buf_ident.as_ref().unwrap()) }
+                } else {
+                    let singleton_ident = self.node_as_singleton_ident(ref_node_id, span);
+                    quote_spanned! {span=> &#singleton_ident }
+                }
             })
             .collect::<Vec<_>>()
     }
@@ -1017,14 +1034,41 @@ impl DfirGraph {
                     .copied()
                     .flatten()
                 {
-                    let src_sg = self
-                        .node_subgraph(src_ref_id)
-                        .expect("bug: singleton ref node must belong to a subgraph");
+                    // For handoff nodes (no subgraph), use the predecessor's subgraph.
+                    let src_sg = if let Some(sg) = self.node_subgraph(src_ref_id) {
+                        sg
+                    } else {
+                        let (_edge, pred) = self
+                            .node_predecessors(src_ref_id)
+                            .next()
+                            .expect("handoff must have a predecessor");
+                        self.node_subgraph(pred).unwrap()
+                    };
                     let dst_sg = self
                         .node_subgraph(dst_id)
                         .expect("bug: singleton ref consumer must belong to a subgraph");
                     if src_sg != dst_sg {
                         sg_preds.entry(dst_sg).unwrap().or_default().push(src_sg);
+                    }
+
+                    // Ensure the borrower runs before the pipe consumer
+                    // (which takes/drains the value).
+                    // All handoffs should have at most one successor.
+                    if self.node_subgraph(src_ref_id).is_none() {
+                        assert!(
+                            self.node_degree_out(src_ref_id) <= 1,
+                            "handoff should have at most one successor"
+                        );
+                        if let Some((_edge, succ_id)) = self.node_successors(src_ref_id).next()
+                            && let Some(consumer_sg) = self.node_subgraph(succ_id)
+                            && consumer_sg != dst_sg
+                        {
+                            sg_preds
+                                .entry(consumer_sg)
+                                .unwrap()
+                                .or_default()
+                                .push(dst_sg);
+                        }
                     }
                 }
             }
@@ -1051,6 +1095,21 @@ impl DfirGraph {
                 let back_ident = self.hoff_back_ident(hoff_id, span);
                 quote_spanned! {span=>
                     ::std::mem::swap(&mut #buf_ident, &mut #back_ident);
+                }
+            })
+            .collect();
+
+        // Generate drain code for handoffs with no pipe consumer (0 successors).
+        // These are only accessed via #var references and must be cleared each tick.
+        let no_consumer_drain_code: Vec<TokenStream> = handoff_nodes
+            .iter()
+            .filter(|&&(node_id, _, _)| self.node_degree_out(node_id) == 0)
+            .map(|&(node_id, kind, (src_span, dst_span))| {
+                let span = src_span.join(dst_span).unwrap_or(src_span);
+                let buf_ident = self.hoff_buf_ident(node_id, span);
+                match kind {
+                    HandoffKind::Option => quote_spanned! {span=> #buf_ident.take(); },
+                    HandoffKind::Vec => quote_spanned! {span=> #buf_ident.clear(); },
                 }
             })
             .collect();
@@ -1255,15 +1314,11 @@ impl DfirGraph {
 
                             let singletons_resolved =
                                 self.helper_resolve_singletons(node_id, op_span);
+
                             let arguments = &process_singletons::postprocess_singletons(
                                 op_inst.arguments_raw.clone(),
-                                singletons_resolved.clone(),
+                                singletons_resolved,
                             );
-                            let arguments_handles =
-                                &process_singletons::postprocess_singletons_handles(
-                                    op_inst.arguments_raw.clone(),
-                                    singletons_resolved.clone(),
-                                );
 
                             let source_tag = 'a: {
                                 if let Some(tag) = self.operator_tag.get(node_id).cloned() {
@@ -1325,7 +1380,6 @@ impl DfirGraph {
                                 op_name,
                                 op_inst,
                                 arguments,
-                                arguments_handles,
                             };
 
                             let write_result =
@@ -1689,6 +1743,11 @@ impl DfirGraph {
 
                     // End-of-tick state reset (e.g. 'tick persistence).
                     #( #op_tick_end_code )*
+
+                    // Drain handoff buffers that have no pipe consumer (e.g. singleton
+                    // used only via #var reference). Without this, the value would
+                    // persist across ticks and cause panics on the next write.
+                    #( #no_consumer_drain_code )*
 
                     #df.__end_tick();
                     ::std::mem::take(&mut __dfir_work_done)
