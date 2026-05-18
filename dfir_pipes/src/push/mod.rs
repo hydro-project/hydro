@@ -48,7 +48,7 @@ pub(crate) mod test_utils;
 #[cfg_attr(docsrs, doc(cfg(feature = "variadics")))]
 pub mod demux_var;
 
-pub use accum_state::{FoldBorrowed, FoldState, ReduceBorrowed, ReduceState};
+pub use accum_state::{FoldState, ReduceState};
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub use accum_state::SortState;

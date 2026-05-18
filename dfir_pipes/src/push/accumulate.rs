@@ -140,7 +140,7 @@ mod tests {
     use crate::push::test_utils::TestPush;
     use crate::push::{Push, PushStep};
 
-    use super::super::accum_state::{FoldBorrowed, FoldState, ReduceBorrowed, ReduceState};
+    use super::super::accum_state::{FoldState, ReduceState};
     use super::Accumulate;
 
     // ========================================================================
@@ -181,7 +181,7 @@ mod tests {
     fn fold_borrowed_emits_ref_on_finalize() {
         let mut val = 0i32;
         let mut tp = TestPush::no_pend();
-        let state = FoldBorrowed::new(&mut val, |acc: &mut i32, x: i32| *acc += x);
+        let state = FoldState::new(&mut val, |acc: &mut i32, x: i32| *acc += x);
         let mut a = Accumulate::new(state, &mut tp);
         let mut a = Pin::new(&mut a);
         a.as_mut().poll_ready(&mut ());
@@ -191,7 +191,6 @@ mod tests {
         a.as_mut().poll_ready(&mut ());
         a.as_mut().start_send(3, ());
         a.as_mut().poll_finalize(&mut ());
-        // The downstream received &mut i32 pointing to val.
         // After finalize, val should be 6.
         assert_eq!(val, 6);
     }
@@ -202,7 +201,7 @@ mod tests {
         // First tick.
         {
             let mut tp = TestPush::no_pend();
-            let state = FoldBorrowed::new(&mut val, |acc: &mut i32, x: i32| *acc += x);
+            let state = FoldState::new(&mut val, |acc: &mut i32, x: i32| *acc += x);
             let mut a = Accumulate::new(state, &mut tp);
             let mut a = Pin::new(&mut a);
             a.as_mut().start_send(10, ());
@@ -212,7 +211,7 @@ mod tests {
         // Second tick — val persists.
         {
             let mut tp = TestPush::no_pend();
-            let state = FoldBorrowed::new(&mut val, |acc: &mut i32, x: i32| *acc += x);
+            let state = FoldState::new(&mut val, |acc: &mut i32, x: i32| *acc += x);
             let mut a = Accumulate::new(state, &mut tp);
             let mut a = Pin::new(&mut a);
             a.as_mut().start_send(5, ());
@@ -228,24 +227,26 @@ mod tests {
     #[test]
     fn reduce_owned_emits_on_finalize() {
         let mut tp = TestPush::no_pend();
-        let state = ReduceState::new(|acc: &mut i32, x| *acc += x);
+        let state = ReduceState::new(None, |acc: &mut i32, x| *acc += x);
         let mut a = Accumulate::new(state, &mut tp);
         let mut a = Pin::new(&mut a);
         a.as_mut().start_send(1, ());
         a.as_mut().start_send(2, ());
         a.as_mut().start_send(3, ());
         a.as_mut().poll_finalize(&mut ());
-        assert_eq!(tp.items(), vec![6]);
+        assert_eq!(tp.items(), vec![Some(6)]);
     }
 
     #[test]
-    fn reduce_owned_no_items_no_output() {
+    fn reduce_owned_no_items_emits_none() {
         let mut tp = TestPush::no_pend();
-        let state: ReduceState<i32, _> = ReduceState::new(|acc: &mut i32, x| *acc += x);
+        let state: ReduceState<Option<i32>, _, i32> =
+            ReduceState::new(None, |acc: &mut i32, x| *acc += x);
         let mut a = Accumulate::new(state, &mut tp);
         let mut a = Pin::new(&mut a);
         a.as_mut().poll_finalize(&mut ());
-        assert_eq!(tp.items(), Vec::<i32>::new());
+        // Always emits the Accum (Option<T>), downstream filter_map handles None.
+        assert_eq!(tp.items(), vec![None]);
     }
 
     // ========================================================================
@@ -256,7 +257,7 @@ mod tests {
     fn reduce_borrowed_emits_ref_on_finalize() {
         let mut val: Option<i32> = None;
         let mut tp = TestPush::no_pend();
-        let state = ReduceBorrowed::new(&mut val, |acc: &mut i32, x| *acc += x);
+        let state = ReduceState::new(&mut val, |acc: &mut i32, x| *acc += x);
         let mut a = Accumulate::new(state, &mut tp);
         let mut a = Pin::new(&mut a);
         a.as_mut().start_send(1, ());
@@ -273,7 +274,7 @@ mod tests {
         // First tick.
         {
             let mut tp = TestPush::no_pend();
-            let state = ReduceBorrowed::new(&mut val, |acc: &mut i32, x| *acc += x);
+            let state = ReduceState::new(&mut val, |acc: &mut i32, x| *acc += x);
             let mut a = Accumulate::new(state, &mut tp);
             let mut a = Pin::new(&mut a);
             a.as_mut().start_send(10, ());
@@ -283,7 +284,7 @@ mod tests {
         // Second tick — val persists, reduce merges into existing.
         {
             let mut tp = TestPush::no_pend();
-            let state = ReduceBorrowed::new(&mut val, |acc: &mut i32, x| *acc += x);
+            let state = ReduceState::new(&mut val, |acc: &mut i32, x| *acc += x);
             let mut a = Accumulate::new(state, &mut tp);
             let mut a = Pin::new(&mut a);
             a.as_mut().start_send(5, ());
@@ -293,10 +294,10 @@ mod tests {
     }
 
     #[test]
-    fn reduce_borrowed_no_items_no_output() {
+    fn reduce_borrowed_no_items_no_mutation() {
         let mut val: Option<i32> = None;
         let mut tp = TestPush::no_pend();
-        let state = ReduceBorrowed::new(&mut val, |acc: &mut i32, x| *acc += x);
+        let state = ReduceState::new(&mut val, |acc: &mut i32, x| *acc += x);
         let mut a = Accumulate::new(state, &mut tp);
         let mut a = Pin::new(&mut a);
         a.as_mut().poll_finalize(&mut ());
