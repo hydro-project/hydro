@@ -14,8 +14,8 @@ use super::ops::next_iteration::NEXT_ITERATION;
 use super::ops::{FloType, Persistence};
 use super::{DfirGraph, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, PortIndexValue};
 use crate::diagnostic::{Diagnostic, Diagnostics, Level};
-use crate::graph::graph_algorithms;
 use crate::graph::ops::{PortListSpec, RangeTrait};
+use crate::graph::{HandoffKind, graph_algorithms};
 use crate::parse::{DfirCode, DfirStatement, Operator, Pipeline};
 use crate::pretty_span::PrettySpan;
 
@@ -825,12 +825,16 @@ impl FlatGraphBuilder {
                         }
                     }
                 }
-                GraphNode::Handoff { src_span, .. } => {
+                GraphNode::Handoff { kind, src_span, .. } => {
                     // Validate arity: handoff must have exactly 1 input and 1 output.
+                    let op_name = match kind {
+                        HandoffKind::Vec => "handoff",
+                        HandoffKind::Option => "singleton",
+                    };
                     let inn_degree = self.flat_graph.node_degree_in(node_id);
                     emit_arity_error(
                         *src_span,
-                        "handoff",
+                        op_name,
                         true,
                         true,
                         inn_degree,
@@ -840,7 +844,7 @@ impl FlatGraphBuilder {
                     let out_degree = self.flat_graph.node_degree_out(node_id);
                     emit_arity_error(
                         *src_span,
-                        "handoff",
+                        op_name,
                         false,
                         true,
                         out_degree,
