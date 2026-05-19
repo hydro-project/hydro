@@ -64,7 +64,7 @@ where
 
 #[cfg(feature = "test_docker")]
 async fn docker() {
-    use hydro_lang::deploy::{DockerDeploy, DockerNetwork};
+    use hydro_lang::deploy::{DockerDeploy, DockerNetwork, LinuxCompileType};
 
     telemetry::initialize_tracing_with_filter(
         tracing_subscriber::EnvFilter::try_new("trace,hyper=off").unwrap(),
@@ -93,7 +93,13 @@ async fn docker() {
             &c3,
             deployment.add_localhost_docker_cluster(None, config.clone(), CLUSTER_SIZE),
         )
-        .with_process(&p4, deployment.add_localhost_docker(None, config.clone()))
+        .with_process(
+            &p4,
+            deployment
+                .add_localhost_docker(None, config.clone())
+                .base_image("debian:bookworm-slim")
+                .linux_compile_type(LinuxCompileType::Glibc),
+        )
         .with_external(&external, deployment.add_external("external".to_owned()))
         .deploy(&mut deployment);
 

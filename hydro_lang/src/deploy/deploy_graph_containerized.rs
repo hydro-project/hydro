@@ -16,8 +16,10 @@ use bytes::Bytes;
 use dfir_lang::graph::DfirGraph;
 use futures::{Sink, SinkExt, Stream, StreamExt};
 use http_body_util::Full;
+// Re-export LinuxCompileType so users can configure compile type without depending on hydro_deploy directly.
+pub use hydro_deploy::LinuxCompileType;
+use hydro_deploy::RustCrate;
 use hydro_deploy::rust_crate::build::{BuildError, build_crate_memoized};
-use hydro_deploy::{LinuxCompileType, RustCrate};
 use nanoid::nanoid;
 use proc_macro2::Span;
 use sinktools::lazy::LazySink;
@@ -71,6 +73,10 @@ pub struct DockerDeployProcess {
     config: Vec<String>,
 
     network: DockerNetwork,
+
+    base_image: Option<String>,
+
+    linux_compile_type: LinuxCompileType,
 }
 
 impl Node for DockerDeployProcess {
@@ -148,6 +154,10 @@ pub struct DockerDeployCluster {
     config: Vec<String>,
 
     count: usize,
+
+    base_image: Option<String>,
+
+    linux_compile_type: LinuxCompileType,
 }
 
 impl Node for DockerDeployCluster {
@@ -612,6 +622,8 @@ async fn build_and_create_image(
     config: &[String],
     exposed_ports: &[u16],
     image_name: &str,
+    base_image: Option<&str>,
+    linux_compile_type: LinuxCompileType,
 ) -> Result<(), anyhow::Error> {
     let mut rust_crate = rust_crate
         .borrow_mut()
@@ -624,7 +636,7 @@ async fn build_and_create_image(
     }
 
     let build_output = match build_crate_memoized(
-        rust_crate.get_build_params(hydro_deploy::HostTargetType::Linux(LinuxCompileType::Musl)),
+        rust_crate.get_build_params(hydro_deploy::HostTargetType::Linux(linux_compile_type)),
     )
     .await
     {
@@ -687,9 +699,10 @@ Failed to build crate {exit_status:?}
             .collect::<Vec<_>>()
             .join("\n");
 
+        let from_image = base_image.unwrap_or("scratch");
         let dockerfile_content = format!(
             r#"
-                FROM scratch
+                FROM {from_image}
                 {exposed_ports}
                 COPY app /app
                 CMD ["/app"]
@@ -764,6 +777,8 @@ impl DockerDeploy {
             config,
             network: self.network.clone(),
             deployment_instance: self.deployment_instance.clone(),
+            base_image: None,
+            linux_compile_type: LinuxCompileType::Musl,
         };
 
         self.docker_processes.push(process.clone());
@@ -783,6 +798,8 @@ impl DockerDeploy {
             config,
             count,
             deployment_instance: self.deployment_instance.clone(),
+            base_image: None,
+            linux_compile_type: LinuxCompileType::Musl,
         };
 
         self.docker_clusters.push(cluster.clone());
@@ -812,6 +829,8 @@ impl DockerDeploy {
                 &process.config,
                 &exposed_ports,
                 &process.name,
+                process.base_image.as_deref(),
+                process.linux_compile_type,
             )
             .await?;
         }
@@ -824,6 +843,8 @@ impl DockerDeploy {
                 &cluster.config,
                 &exposed_ports,
                 &cluster.name,
+                cluster.base_image.as_deref(),
+                cluster.linux_compile_type,
             )
             .await?;
         }
@@ -1330,6 +1351,8 @@ pub struct DockerDeployProcessSpec {
     config: Vec<String>,
     network: DockerNetwork,
     deployment_instance: String,
+    base_image: Option<String>,
+    linux_compile_type: LinuxCompileType,
 }
 
 impl<'a> ProcessSpec<'a, DockerDeploy> for DockerDeployProcessSpec {
@@ -1350,6 +1373,9 @@ impl<'a> ProcessSpec<'a, DockerDeploy> for DockerDeployProcessSpec {
             config: self.config,
 
             network: self.network.clone(),
+
+            base_image: self.base_image,
+            linux_compile_type: self.linux_compile_type,
         }
     }
 }
@@ -1361,6 +1387,8 @@ pub struct DockerDeployClusterSpec {
     config: Vec<String>,
     count: usize,
     deployment_instance: String,
+    base_image: Option<String>,
+    linux_compile_type: LinuxCompileType,
 }
 
 impl<'a> ClusterSpec<'a, DockerDeploy> for DockerDeployClusterSpec {
@@ -1381,7 +1409,42 @@ impl<'a> ClusterSpec<'a, DockerDeploy> for DockerDeployClusterSpec {
             config: self.config,
 
             count: self.count,
+
+            base_image: self.base_image,
+            linux_compile_type: self.linux_compile_type,
         }
+    }
+}
+
+impl DockerDeployProcessSpec {
+    /// Set the base Docker image for this process.
+    /// Defaults to `scratch` if not specified.
+    pub fn base_image(mut self, image: impl Into<String>) -> Self {
+        self.base_image = Some(image.into());
+        self
+    }
+
+    /// Set the Linux compile type (glibc or musl) for this process.
+    /// Defaults to `Musl` if not specified.
+    pub fn linux_compile_type(mut self, compile_type: LinuxCompileType) -> Self {
+        self.linux_compile_type = compile_type;
+        self
+    }
+}
+
+impl DockerDeployClusterSpec {
+    /// Set the base Docker image for this cluster.
+    /// Defaults to `scratch` if not specified.
+    pub fn base_image(mut self, image: impl Into<String>) -> Self {
+        self.base_image = Some(image.into());
+        self
+    }
+
+    /// Set the Linux compile type (glibc or musl) for this cluster.
+    /// Defaults to `Musl` if not specified.
+    pub fn linux_compile_type(mut self, compile_type: LinuxCompileType) -> Self {
+        self.linux_compile_type = compile_type;
+        self
     }
 }
 
