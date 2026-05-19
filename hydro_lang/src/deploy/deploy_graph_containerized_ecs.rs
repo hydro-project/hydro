@@ -1,7 +1,8 @@
-//! Deployment backend for Hydro that can generate manifests that can be consumed by CDK to deploy cloud formation stacks to aws.
+//! Deployment backend for ECS that generates manifests describing the binaries,
+//! ports, and service naming needed to package and orchestrate Hydro applications.
 
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::pin::Pin;
 use std::rc::Rc;
 
@@ -14,16 +15,16 @@ use stageleft::QuotedWithContext;
 use syn::parse_quote;
 use tracing::{instrument, trace};
 
-/// Manifest for CDK deployment - describes all processes, clusters, and their configuration
+/// Manifest for exporting - describes all processes, clusters, and their configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HydroManifest {
     /// Process definitions (single-instance services)
-    pub processes: HashMap<String, ProcessManifest>,
+    pub processes: BTreeMap<String, ProcessManifest>,
     /// Cluster definitions (multi-instance services)
-    pub clusters: HashMap<String, ClusterManifest>,
+    pub clusters: BTreeMap<String, ClusterManifest>,
 }
 
-/// Build configuration for a Hydro binary
+/// Information the build toolchain needs to compile a trybuild binary.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BuildConfig {
     /// Path to the trybuild project directory
@@ -38,22 +39,24 @@ pub struct BuildConfig {
     pub features: Vec<String>,
 }
 
-/// Information about an exposed port
+/// Information about an exposed port.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PortInfo {
-    /// The port number
-    pub port: u16,
+#[serde(tag = "protocol", rename_all = "lowercase")]
+pub enum PortInfo {
+    /// A TCP listener.
+    Tcp {
+        /// The port number.
+        port: u16,
+    },
 }
 
 /// Manifest entry for a single process
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProcessManifest {
-    /// Build configuration for this process
+    /// Build toolchain info for this binary
     pub build: BuildConfig,
-    /// Internal location ID used for service discovery
-    pub location_key: LocationKey,
     /// Ports that need to be exposed, keyed by external port identifier
-    pub ports: HashMap<String, PortInfo>,
+    pub ports: BTreeMap<String, PortInfo>,
     /// Task family name (used for ECS service discovery)
     pub task_family: String,
 }
@@ -63,10 +66,8 @@ pub struct ProcessManifest {
 pub struct ClusterManifest {
     /// Build configuration for this cluster (same binary for all instances)
     pub build: BuildConfig,
-    /// Internal location ID used for service discovery
-    pub location_key: LocationKey,
-    /// Ports that need to be exposed
-    pub ports: Vec<u16>,
+    /// Ports that need to be exposed, keyed by external port identifier
+    pub ports: BTreeMap<String, PortInfo>,
     /// Default number of instances
     pub default_count: usize,
     /// Task family prefix (instances will be named {prefix}-0, {prefix}-1, etc.)
@@ -91,7 +92,7 @@ pub struct EcsDeployProcess {
     name: String,
     next_port: Rc<RefCell<u16>>,
 
-    exposed_ports: Rc<RefCell<HashMap<String, PortInfo>>>,
+    exposed_ports: Rc<RefCell<BTreeMap<String, PortInfo>>>,
 
     trybuild_config:
         Rc<RefCell<Option<(String, crate::compile::trybuild::generate::TrybuildConfig)>>>,
@@ -135,8 +136,22 @@ impl Node for EcsDeployProcess {
             crate::compile::trybuild::generate::LinkingMode::Static,
         );
 
-        // Store the trybuild config for CDK export
+        // Store the trybuild config for export
         *self.trybuild_config.borrow_mut() = Some((bin_name, config));
+    }
+}
+
+impl EcsDeployProcess {
+    /// Expose a TCP port on this process for external access.
+    ///
+    /// This method records the port in the manifest's `ports` map so that
+    /// downstream tooling (CDK, deployment scripts) can configure security
+    /// groups, load balancers, and service discovery accordingly.
+    pub fn expose_port(&self, port: u16) {
+        let port_name = format!("exposed-{}", port);
+        self.exposed_ports
+            .borrow_mut()
+            .insert(port_name, PortInfo::Tcp { port });
     }
 }
 
@@ -147,9 +162,11 @@ pub struct EcsDeployCluster {
     name: String,
     next_port: Rc<RefCell<u16>>,
 
+    exposed_ports: Rc<RefCell<BTreeMap<String, PortInfo>>>,
+
     count: usize,
 
-    /// Stored trybuild config for CDK export
+    /// Stored trybuild config for export
     trybuild_config:
         Rc<RefCell<Option<(String, crate::compile::trybuild::generate::TrybuildConfig)>>>,
 }
@@ -192,7 +209,7 @@ impl Node for EcsDeployCluster {
             crate::compile::trybuild::generate::LinkingMode::Static,
         );
 
-        // Store the trybuild config for CDK export
+        // Store the trybuild config for export
         *self.trybuild_config.borrow_mut() = Some((bin_name, config));
     }
 }
@@ -234,6 +251,21 @@ impl Node for EcsDeployExternal {
         sidecars: &[syn::Expr],
     ) {
         trace!(name: "surface", surface = graph.surface_syntax_string());
+    }
+}
+
+impl EcsDeployCluster {
+    /// Expose a TCP port on every member of this cluster for external access.
+    ///
+    /// The binary running on this cluster must bind a `TcpListener` on this port.
+    /// This method records the port in the manifest's `ports` map so that
+    /// downstream tooling (CDK, deployment scripts) can configure security
+    /// groups, load balancers, and service discovery accordingly.
+    pub fn expose_port(&self, port: u16) {
+        let port_name = format!("exposed-{}", port);
+        self.exposed_ports
+            .borrow_mut()
+            .insert(port_name, PortInfo::Tcp { port });
     }
 }
 
@@ -321,23 +353,25 @@ impl EcsDeploy {
         EcsDeployExternalSpec { name }
     }
 
-    /// Export deployment configuration for CDK consumption.
+    /// Export a deployment manifest describing each process and cluster: its
+    /// binary name, exposed ports, and ECS task-family naming.
     ///
-    /// This generates a manifest with build instructions that can be consumed
-    /// by CDK constructs. CDK will handle building the binaries and Docker images.
+    /// The returned [`HydroManifest`] is typically serialized to JSON and
+    /// consumed by a build script (to compile the trybuild binaries) and a
+    /// deployment tool (CDK, custom scripts, etc.) to create container images
+    /// and orchestrate services.
     #[instrument(level = "trace", skip_all)]
-    pub fn export_for_cdk(&self, nodes: &DeployResult<'_, Self>) -> HydroManifest {
+    pub fn export(&self, nodes: &DeployResult<'_, Self>) -> HydroManifest {
         let mut manifest = HydroManifest {
-            processes: HashMap::new(),
-            clusters: HashMap::new(),
+            processes: BTreeMap::new(),
+            clusters: BTreeMap::new(),
         };
 
+        // processes
         for (location_id, name_hint, process) in nodes.get_all_processes() {
-            let LocationId::Process(raw_id) = location_id else {
+            let LocationId::Process(_) = location_id else {
                 unreachable!()
             };
-            let task_family = get_ecs_container_name(&process.name, None);
-            let ports = process.exposed_ports.borrow().clone();
 
             let (bin_name, trybuild_config) = process
                 .trybuild_config
@@ -345,41 +379,21 @@ impl EcsDeploy {
                 .clone()
                 .expect("trybuild_config should be set after instantiate");
 
-            let mut features = vec!["hydro___feature_ecs_runtime".to_owned()];
-            if let Some(extra_features) = trybuild_config.features {
-                features.extend(extra_features);
-            }
-
-            let crate_name = trybuild_config
-                .project_dir
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("unknown")
-                .replace("_", "-");
-            let package_name = format!("{}-hydro-trybuild", crate_name);
-
             manifest.processes.insert(
                 name_hint.to_owned(),
                 ProcessManifest {
-                    build: BuildConfig {
-                        project_dir: trybuild_config.project_dir.to_string_lossy().into_owned(),
-                        target_dir: trybuild_config.target_dir.to_string_lossy().into_owned(),
-                        bin_name,
-                        package_name,
-                        features,
-                    },
-                    location_key: raw_id,
-                    ports,
-                    task_family,
+                    build: build_info_from_config(&bin_name, &trybuild_config),
+                    ports: process.exposed_ports.borrow().clone(),
+                    task_family: process.name.clone(),
                 },
             );
         }
 
+        // clusters
         for (location_id, name_hint, cluster) in nodes.get_all_clusters() {
-            let LocationId::Cluster(raw_id) = location_id else {
+            let LocationId::Cluster(_) = location_id else {
                 unreachable!()
             };
-            let task_family_prefix = cluster.name.clone();
 
             let (bin_name, trybuild_config) = cluster
                 .trybuild_config
@@ -387,38 +401,44 @@ impl EcsDeploy {
                 .clone()
                 .expect("trybuild_config should be set after instantiate");
 
-            let mut features = vec!["hydro___feature_ecs_runtime".to_owned()];
-            if let Some(extra_features) = trybuild_config.features {
-                features.extend(extra_features);
-            }
-
-            let crate_name = trybuild_config
-                .project_dir
-                .file_name()
-                .and_then(|n| n.to_str())
-                .unwrap_or("unknown")
-                .replace("_", "-");
-            let package_name = format!("{}-hydro-trybuild", crate_name);
-
             manifest.clusters.insert(
                 name_hint.to_owned(),
                 ClusterManifest {
-                    build: BuildConfig {
-                        project_dir: trybuild_config.project_dir.to_string_lossy().into_owned(),
-                        target_dir: trybuild_config.target_dir.to_string_lossy().into_owned(),
-                        bin_name,
-                        package_name,
-                        features,
-                    },
-                    location_key: raw_id,
-                    ports: vec![],
+                    build: build_info_from_config(&bin_name, &trybuild_config),
+                    ports: cluster.exposed_ports.borrow().clone(),
                     default_count: cluster.count,
-                    task_family_prefix,
+                    task_family_prefix: cluster.name.clone(),
                 },
             );
         }
 
         manifest
+    }
+}
+
+fn build_info_from_config(
+    bin_name: &str,
+    config: &crate::compile::trybuild::generate::TrybuildConfig,
+) -> BuildConfig {
+    let mut features = vec!["hydro___feature_ecs_runtime".to_owned()];
+    if let Some(extra) = &config.features {
+        features.extend(extra.clone());
+    }
+    let crate_name = config
+        .project_dir
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .replace("_", "-");
+
+    let package_name = format!("{}-hydro-trybuild", crate_name);
+
+    BuildConfig {
+        project_dir: config.project_dir.to_string_lossy().into_owned(),
+        target_dir: config.target_dir.to_string_lossy().into_owned(),
+        bin_name: bin_name.to_owned(),
+        package_name,
+        features,
     }
 }
 
@@ -597,7 +617,7 @@ impl<'a> Deploy<'a> for EcsDeploy {
     ) -> syn::Expr {
         p2.exposed_ports
             .borrow_mut()
-            .insert(shared_handle.clone(), PortInfo { port: *p2_port });
+            .insert(shared_handle.clone(), PortInfo::Tcp { port: *p2_port });
 
         let socket_ident = syn::Ident::new(
             &format!("__hydro_deploy_many_{}_socket", &shared_handle),
@@ -656,7 +676,7 @@ impl<'a> Deploy<'a> for EcsDeploy {
         // Record the port for manifest export
         p2.exposed_ports
             .borrow_mut()
-            .insert(shared_handle.clone(), PortInfo { port: *p2_port });
+            .insert(shared_handle.clone(), PortInfo::Tcp { port: *p2_port });
 
         let source_ident = syn::Ident::new(
             &format!("__hydro_deploy_{}_source", &shared_handle),
@@ -761,14 +781,6 @@ fn get_ecs_image_name(name_hint: &str, location: LocationKey) -> String {
     format!("hy-{name_hint}-{location}")
 }
 
-#[instrument(level = "trace", skip_all, ret, fields(%image_name, ?instance))]
-fn get_ecs_container_name(image_name: &str, instance: Option<usize>) -> String {
-    if let Some(instance) = instance {
-        format!("{image_name}-{instance}")
-    } else {
-        image_name.to_owned()
-    }
-}
 /// Represents a Process running in an ecs deployment
 #[derive(Clone)]
 pub struct EcsDeployProcessSpec;
@@ -779,8 +791,8 @@ impl<'a> ProcessSpec<'a, EcsDeploy> for EcsDeployProcessSpec {
         EcsDeployProcess {
             id,
             name: get_ecs_image_name(name_hint, id),
-            next_port: Rc::new(RefCell::new(1000)),
-            exposed_ports: Rc::new(RefCell::new(HashMap::new())),
+            next_port: Rc::new(RefCell::new(10001)),
+            exposed_ports: Rc::new(RefCell::new(BTreeMap::new())),
             trybuild_config: Rc::new(RefCell::new(None)),
         }
     }
@@ -798,7 +810,8 @@ impl<'a> ClusterSpec<'a, EcsDeploy> for EcsDeployClusterSpec {
         EcsDeployCluster {
             id,
             name: get_ecs_image_name(name_hint, id),
-            next_port: Rc::new(RefCell::new(1000)),
+            next_port: Rc::new(RefCell::new(10001)),
+            exposed_ports: Rc::new(RefCell::new(BTreeMap::new())),
             count: self.count,
             trybuild_config: Rc::new(RefCell::new(None)),
         }

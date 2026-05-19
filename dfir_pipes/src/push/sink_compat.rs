@@ -10,7 +10,19 @@ use crate::Context;
 use crate::push::Push;
 
 pin_project! {
-    /// Adapter that wraps a [`Push`] to implement the [`Sink`] trait.
+    /// Adapter that wraps a [`Push`] into a [`futures_sink::Sink`].
+    ///
+    /// # Sink semantics
+    ///
+    /// Because [`Push`] pipelines are single-use (finalized once per epoch),
+    /// the mapping to [`Sink`] is:
+    /// - [`Sink::poll_ready`] → [`Push::poll_ready`]
+    /// - [`Sink::start_send`] → [`Push::start_send`]
+    /// - [`Sink::poll_flush`] → **no-op** (Push has no intermediate flush concept)
+    /// - [`Sink::poll_close`] → [`Push::poll_finalize`]
+    ///
+    /// Callers must use [`Sink::poll_close`] to trigger finalization.
+    /// [`Sink::poll_flush`] always returns `Ready(Ok(()))` immediately.
     #[must_use = "`Sink`s do nothing unless polled"]
     pub struct SinkCompat<Psh> {
         #[pin]
@@ -75,18 +87,18 @@ where
 
     fn poll_flush(
         self: Pin<&mut Self>,
-        cx: &mut core::task::Context<'_>,
+        _cx: &mut core::task::Context<'_>,
     ) -> Poll<Result<(), Self::Error>> {
-        match self.as_pin_mut().poll_flush(Context::from_task(cx)) {
-            PushStep::Pending(_) => Poll::Pending,
-            PushStep::Done => Poll::Ready(Ok(())),
-        }
+        Poll::Ready(Ok(()))
     }
 
     fn poll_close(
         self: Pin<&mut Self>,
         cx: &mut core::task::Context<'_>,
     ) -> Poll<Result<(), Self::Error>> {
-        self.poll_flush(cx)
+        match self.as_pin_mut().poll_finalize(Context::from_task(cx)) {
+            PushStep::Pending(_) => Poll::Pending,
+            PushStep::Done => Poll::Ready(Ok(())),
+        }
     }
 }

@@ -115,13 +115,9 @@ impl Debug for OperatorConstraints {
 /// explicitly rather than using `..` to ensure new fields are not silently dropped.
 #[derive(Default)]
 pub struct OperatorWriteOutput {
-    /// Code which runs once outside any subgraphs, BEFORE subgraphs are initialized,
-    /// to set up any external state (state API, chanels, network connections, etc.)
-    /// to be used by the subgraph.
+    /// Code which runs once outside any subgraphs to set up external state
+    /// (channels, network connections, etc.) to be used by the subgraph.
     pub write_prologue: TokenStream,
-    /// Code which runs once outside the subgraph, AFTER subgraphs are initialized,
-    /// to set up state hooks which may need the subgraph ID.
-    pub write_prologue_after: TokenStream,
     /// Iterator (or pusherator) code inside the subgraphs. The code for each
     /// operator is emitted in order.
     ///
@@ -432,8 +428,6 @@ pub struct WriteContextArgs<'a> {
     /// These arguments include singleton postprocessing codegen, with
     /// [`std::cell::RefCell::borrow_mut`] code pre-generated.
     pub arguments: &'a Punctuated<Expr, Token![,]>,
-    /// Same as [`Self::arguments`] but with only raw idents, no borrowing code.
-    pub arguments_handles: &'a Punctuated<Expr, Token![,]>,
 }
 impl WriteContextArgs<'_> {
     /// Generate a (almost certainly) unique identifier with the given suffix.
@@ -451,17 +445,6 @@ impl WriteContextArgs<'_> {
             ),
             self.op_span,
         )
-    }
-
-    /// Returns `#root::scheduled::StateLifespan::#variant` corresponding to the given
-    /// peristence.
-    pub fn persistence_as_state_lifespan(&self, persistence: Persistence) -> Option<TokenStream> {
-        let root = self.root;
-        let variant =
-            persistence.as_state_lifespan_variant(self.subgraph_id, self.loop_id, self.op_span)?;
-        Some(quote_spanned! {self.op_span=>
-            #root::scheduled::StateLifespan::#variant
-        })
     }
 
     /// Returns the given number of persistence arguments, disallowing mutable lifetimes.
@@ -597,30 +580,6 @@ pub enum Persistence {
     Mutable,
 }
 impl Persistence {
-    /// Returns just the variant of `#root::scheduled::StateLifespan::VARIANT` for use in macros.
-    pub fn as_state_lifespan_variant(
-        self,
-        subgraph_id: GraphSubgraphId,
-        loop_id: Option<GraphLoopId>,
-        span: Span,
-    ) -> Option<TokenStream> {
-        match self {
-            Persistence::None => {
-                let sg_ident = subgraph_id.as_ident(span);
-                Some(quote_spanned!(span=> Subgraph(#sg_ident)))
-            }
-            Persistence::Loop => {
-                let loop_ident = loop_id
-                    .expect("`Persistence::Loop` outside of a loop context.")
-                    .as_ident(span);
-                Some(quote_spanned!(span=> Loop(#loop_ident)))
-            }
-            Persistence::Tick => Some(quote_spanned!(span=> Tick)),
-            Persistence::Static => None,
-            Persistence::Mutable => None,
-        }
-    }
-
     /// Returns a lowercase string for the persistence type.
     pub fn to_str_lowercase(self) -> &'static str {
         match self {

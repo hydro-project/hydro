@@ -45,7 +45,7 @@ where
         (self.project().func)(item);
     }
 
-    fn poll_flush(self: Pin<&mut Self>, _ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
+    fn poll_finalize(self: Pin<&mut Self>, _ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         PushStep::Done
     }
 

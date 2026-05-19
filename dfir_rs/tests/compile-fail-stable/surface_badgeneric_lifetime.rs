@@ -1,1 +1,0 @@
-../compile-fail/surface_badgeneric_lifetime.rs

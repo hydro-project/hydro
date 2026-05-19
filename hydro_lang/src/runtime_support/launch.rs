@@ -145,10 +145,7 @@ pub async fn init_no_ack_start<T: DeserializeOwned + Default>() -> DeployPorts<T
             .collect::<Vec<_>>()
     );
 
-    let all_connected = client_conns
-        .into_iter()
-        .chain(server_conns.into_iter())
-        .collect();
+    let all_connected = client_conns.into_iter().chain(server_conns).collect();
 
     DeployPorts {
         ports: RefCell::new(all_connected),

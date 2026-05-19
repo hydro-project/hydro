@@ -34,7 +34,7 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
     persistence_args: RANGE_1,
     type_args: RANGE_0,
     is_external_input: false,
-    // If this is set to true, the state will need to be cleared using `#context.set_state_lifespan_hook`
+    // If this is set to true, the state will need to be cleared via `write_tick_end`
     // to prevent reading uncleared data if this subgraph doesn't run.
     // https://github.com/hydro-project/hydro/issues/1298
     // If `'tick` lifetimes are added.
@@ -45,7 +45,6 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| Some(DelayType::Stratum),
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
                    op_span,
                    work_fn_async,
                    ident,
@@ -95,7 +94,7 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
                         prev
                     }
 
-                    let iter = if #context.is_first_run_this_tick() {
+                    let iter = {
                         let fut = #root::dfir_pipes::pull::Pull::for_each(check_pull(#input), |item| {
                             match item {
                                 #root::util::Persistence::Persist(v) => #persistdata_ident.push(v),
@@ -104,23 +103,16 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
                         });
                         let () = #work_fn_async(fut).await;
 
-                        Some(#persistdata_ident.iter().cloned()).into_iter().flatten()
-                    } else {
-                        None.into_iter().flatten()
+                        #persistdata_ident.iter().cloned()
                     };
                     #root::dfir_pipes::pull::iter(iter)
                 };
             }
         };
 
-        let write_iterator_after = quote_spanned! {op_span=>
-            #context.schedule_subgraph(#context.current_subgraph(), false);
-        };
-
         Ok(OperatorWriteOutput {
             write_prologue,
             write_iterator,
-            write_iterator_after,
             ..Default::default()
         })
     },

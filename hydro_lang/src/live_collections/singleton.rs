@@ -1170,7 +1170,7 @@ where
     where
         L: NoTick + NoAtomic,
     {
-        let samples = self.location.source_interval(interval, nondet);
+        let samples = self.location.source_interval(interval);
         sliced! {
             let snapshot = use(self, nondet);
             let sample_batch = use(samples, nondet);

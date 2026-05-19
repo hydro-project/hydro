@@ -10,12 +10,13 @@ use quote::ToTokens;
 use syn::spanned::Spanned;
 use syn::{Error, Ident, ItemUse};
 
-use super::ops::next_iteration::NEXT_ITERATION;
-use super::ops::{FloType, Persistence};
-use super::{DfirGraph, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, PortIndexValue};
 use crate::diagnostic::{Diagnostic, Diagnostics, Level};
-use crate::graph::graph_algorithms;
-use crate::graph::ops::{PortListSpec, RangeTrait};
+use crate::graph::ops::next_iteration::NEXT_ITERATION;
+use crate::graph::ops::{FloType, Persistence, PortListSpec, RangeTrait};
+use crate::graph::{
+    DfirGraph, GraphEdgeId, GraphLoopId, GraphNode, GraphNodeId, HandoffKind, PortIndexValue,
+    graph_algorithms,
+};
 use crate::parse::{DfirCode, DfirStatement, Operator, Pipeline};
 use crate::pretty_span::PrettySpan;
 
@@ -596,6 +597,39 @@ impl FlatGraphBuilder {
     /// Validates that operators have valid number of inputs, outputs, & arguments.
     /// Adds errors (and warnings) to `self.diagnostics`.
     fn check_operator_errors(&mut self) {
+        /// Returns true if an error was found.
+        fn emit_arity_error(
+            op_span: Span,
+            op_name: &str,
+            is_in: bool,
+            is_hard: bool,
+            degree: usize,
+            range: &dyn RangeTrait<usize>,
+            diagnostics: &mut Diagnostics,
+        ) -> bool {
+            let message = format!(
+                "`{}` {} have {} {}, actually has {}.",
+                op_name,
+                if is_hard { "must" } else { "should" },
+                range.human_string(),
+                if is_in { "input(s)" } else { "output(s)" },
+                degree,
+            );
+            let out_of_range = !range.contains(&degree);
+            if out_of_range {
+                diagnostics.push(Diagnostic::spanned(
+                    op_span,
+                    if is_hard {
+                        Level::Error
+                    } else {
+                        Level::Warning
+                    },
+                    message,
+                ));
+            }
+            out_of_range
+        }
+
         for (node_id, node) in self.flat_graph.nodes() {
             match node {
                 GraphNode::Operator(operator) => {
@@ -621,39 +655,6 @@ impl FlatGraphBuilder {
                     }
 
                     // Check input/output (port) arity
-                    /// Returns true if an error was found.
-                    fn emit_arity_error(
-                        op_span: Span,
-                        op_name: &str,
-                        is_in: bool,
-                        is_hard: bool,
-                        degree: usize,
-                        range: &dyn RangeTrait<usize>,
-                        diagnostics: &mut Diagnostics,
-                    ) -> bool {
-                        let message = format!(
-                            "`{}` {} have {} {}, actually has {}.",
-                            op_name,
-                            if is_hard { "must" } else { "should" },
-                            range.human_string(),
-                            if is_in { "input(s)" } else { "output(s)" },
-                            degree,
-                        );
-                        let out_of_range = !range.contains(&degree);
-                        if out_of_range {
-                            diagnostics.push(Diagnostic::spanned(
-                                op_span,
-                                if is_hard {
-                                    Level::Error
-                                } else {
-                                    Level::Warning
-                                },
-                                message,
-                            ));
-                        }
-                        out_of_range
-                    }
-
                     let inn_degree = self.flat_graph.node_degree_in(node_id);
                     let _ = emit_arity_error(
                         operator.span(),
@@ -794,7 +795,7 @@ impl FlatGraphBuilder {
                         &mut self.diagnostics,
                     );
 
-                    // Check that singleton references actually reference *stateful* operators.
+                    // Check that singleton references actually reference valid targets.
                     {
                         let singletons_resolved =
                             self.flat_graph.node_singleton_references(node_id);
@@ -806,6 +807,16 @@ impl FlatGraphBuilder {
                                 // Error already emitted by `connect_operator_links`, "Cannot find referenced name...".
                                 continue;
                             };
+                            // HandoffKind::Option nodes are valid singleton reference targets.
+                            if matches!(
+                                self.flat_graph.node(singleton_node_id),
+                                GraphNode::Handoff {
+                                    kind: HandoffKind::Option,
+                                    ..
+                                }
+                            ) {
+                                continue;
+                            }
                             let Some(ref_op_inst) = self.flat_graph.node_op_inst(singleton_node_id)
                             else {
                                 // Error already emitted by `insert_node_op_insts_all`.
@@ -825,7 +836,38 @@ impl FlatGraphBuilder {
                         }
                     }
                 }
-                GraphNode::Handoff { .. } => todo!("Node::Handoff"),
+                GraphNode::Handoff { kind, src_span, .. } => {
+                    // Validate arity: handoff must have exactly 1 input and 1 output.
+                    let op_name = match kind {
+                        HandoffKind::Vec => "handoff",
+                        HandoffKind::Option => "singleton",
+                    };
+                    let inn_degree = self.flat_graph.node_degree_in(node_id);
+                    emit_arity_error(
+                        *src_span,
+                        op_name,
+                        true,
+                        true,
+                        inn_degree,
+                        &(1..=1),
+                        &mut self.diagnostics,
+                    );
+                    let out_degree = self.flat_graph.node_degree_out(node_id);
+                    let out_degree_range = match kind {
+                        HandoffKind::Vec => 1..=1,
+                        // `singleton()` may be no-output, only by ref. In the future this will also apply to vec.
+                        HandoffKind::Option => 0..=1,
+                    };
+                    emit_arity_error(
+                        *src_span,
+                        op_name,
+                        false,
+                        true,
+                        out_degree,
+                        &out_degree_range,
+                        &mut self.diagnostics,
+                    );
+                }
                 GraphNode::ModuleBoundary { .. } => {
                     // Module boundaries don't require any checking.
                 }

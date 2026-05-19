@@ -162,9 +162,7 @@ where
             clippy::disallowed_methods,
             reason = "nondeterministic iteration order, TODO(mingwei)"
         )]
-        self.children
-            .iter()
-            .flat_map(|(_k, vs)| vs.recursive_iter())
+        self.children.values().flat_map(|vs| vs.recursive_iter())
     }
 
     fn find_containing_leaf(

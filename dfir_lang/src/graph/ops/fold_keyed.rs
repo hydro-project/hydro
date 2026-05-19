@@ -82,7 +82,6 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| Some(DelayType::Stratum),
     write_fn: |wc @ &WriteContextArgs {
-                   context,
                    op_span,
                    work_fn_async,
                    ident,
@@ -131,18 +130,18 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
         let hashtable_ident = wc.make_ident("hashtable");
 
         let write_prologue = quote_spanned! {op_span=>
-            let #singleton_output_ident = ::std::cell::RefCell::new(#root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default());
+            let mut #singleton_output_ident = #root::rustc_hash::FxHashMap::<#( #generic_type_args ),*>::default();
         };
 
         let write_tick_end = match persistence {
             Persistence::Tick => quote_spanned! {op_span=>
-                #singleton_output_ident.borrow_mut().clear();
+                #singleton_output_ident.clear();
             },
             _ => Default::default(),
         };
 
         let assign_hashtable_ident = quote_spanned! {op_span=>
-            let mut #hashtable_ident = #singleton_output_ident.borrow_mut();
+            let mut #hashtable_ident = &mut #singleton_output_ident;
         };
 
         let write_iterator = if Persistence::Mutable == persistence {
@@ -202,13 +201,8 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
                     )
                 },
                 Persistence::Static => quote_spanned! {op_span=>
-                    // Play everything but only on the first run of this tick/stratum.
-                    // (We know we won't have any more inputs, so it is fine to only play once.
-                    // Because of the `DelayType::Stratum` or `DelayType::MonotoneAccum`).
-                    #context.is_first_run_this_tick()
-                        .then_some(#hashtable_ident.iter())
-                        .into_iter()
-                        .flatten()
+                    // Play everything (each subgraph runs exactly once per tick).
+                    #hashtable_ident.iter()
                         .map(
                             #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
                             |(k, v)| (
@@ -258,20 +252,11 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
             }
         };
 
-        let write_iterator_after = match persistence {
-            Persistence::None | Persistence::Tick | Persistence::Loop => Default::default(),
-            Persistence::Static | Persistence::Mutable => quote_spanned! {op_span=>
-                // Reschedule the subgraph lazily to ensure replay on later ticks.
-                #context.schedule_subgraph(#context.current_subgraph(), false);
-            },
-        };
-
         Ok(OperatorWriteOutput {
             write_prologue,
             write_iterator,
-            write_iterator_after,
+            write_iterator_after: Default::default(),
             write_tick_end,
-            ..Default::default()
         })
     },
 };

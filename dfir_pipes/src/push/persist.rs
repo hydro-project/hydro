@@ -81,11 +81,11 @@ where
         this.push.start_send(item, ());
     }
 
-    fn poll_flush(mut self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
-        // Ensure all replayed items are sent before flushing the underlying sink.
+    fn poll_finalize(mut self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
+        // Ensure all replayed items are sent before finalizing the underlying sink.
         ready!(self.as_mut().empty_replay(ctx));
-        // Then flush the downstream push.
-        self.project().push.poll_flush(ctx)
+        // Then finalize the downstream push.
+        self.project().push.poll_finalize(ctx)
     }
 
     fn size_hint(self: Pin<&mut Self>, hint: (usize, Option<usize>)) {
@@ -117,7 +117,7 @@ mod tests {
             p.as_mut().start_send(1, ());
             p.as_mut().poll_ready(&mut ());
             p.as_mut().start_send(2, ());
-            p.as_mut().poll_flush(&mut ());
+            p.as_mut().poll_finalize(&mut ());
         }
         // Second pass: replay=true, should replay 1, 2 then accept new item 3.
         {
@@ -126,7 +126,7 @@ mod tests {
             let mut p = Pin::new(&mut p);
             p.as_mut().poll_ready(&mut ());
             p.as_mut().start_send(3, ());
-            p.as_mut().poll_flush(&mut ());
+            p.as_mut().poll_finalize(&mut ());
         }
     }
 }

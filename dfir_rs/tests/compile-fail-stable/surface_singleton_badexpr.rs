@@ -1,1 +1,0 @@
-../compile-fail/surface_singleton_badexpr.rs

@@ -139,6 +139,8 @@ pub struct DockerDeployCluster {
     next_port: Rc<RefCell<u16>>,
     rust_crate: Rc<RefCell<Option<RustCrate>>>,
 
+    exposed_ports: Rc<RefCell<Vec<u16>>>,
+
     docker_container_name: Rc<RefCell<Vec<String>>>,
 
     compilation_options: Option<String>,
@@ -208,9 +210,18 @@ impl Node for DockerDeployCluster {
 
 /// Represents an external process, outside the control of this deployment but still with some communication into this deployment.
 #[derive(Clone, Debug)]
+#[expect(
+    dead_code,
+    reason = "fields used via Rc<RefCell> in RegisterPort impl and ExternalBytesPort construction"
+)]
 pub struct DockerDeployExternal {
+    /// The location key for this external, used for port handle construction.
+    pub(crate) key: LocationKey,
     name: String,
     next_port: Rc<RefCell<u16>>,
+
+    /// Counter for generating ExternalPortId values at deploy time.
+    next_external_port_id: Rc<RefCell<ExternalPortId>>,
 
     ports: Rc<RefCell<HashMap<ExternalPortId, u16>>>,
 
@@ -248,6 +259,55 @@ impl Node for DockerDeployExternal {
         sidecars: &[syn::Expr],
     ) {
         trace!(name: "surface", surface = graph.surface_syntax_string());
+    }
+}
+
+impl DockerDeployProcess {
+    /// Expose a TCP port on this process for external access.
+    ///
+    /// The binary running on this process must bind a `TcpListener` on this port.
+    /// This method ensures the port appears in the Docker image's `EXPOSE` directives
+    /// and is available for endpoint discovery via [`Self::get_tcp_endpoint`].
+    pub fn expose_port(&self, port: u16) {
+        self.exposed_ports.borrow_mut().push(port);
+    }
+
+    /// Returns the TCP endpoint `(host, port)` for this process exposing
+    /// the given container port. Queries Docker for the dynamically allocated
+    /// host port mapping.
+    pub async fn get_tcp_endpoint(&self, container_port: u16) -> (String, u16) {
+        let name = self
+            .docker_container_name
+            .borrow()
+            .as_ref()
+            .expect("container not yet started")
+            .clone();
+        let host_port = find_dynamically_allocated_docker_port(&name, container_port).await;
+        ("localhost".to_owned(), host_port)
+    }
+}
+
+impl DockerDeployCluster {
+    /// Expose a TCP port on every member of this cluster for external access.
+    ///
+    /// The binary running on this cluster must bind a `TcpListener` on this port.
+    /// This method ensures the port appears in the Docker image's `EXPOSE` directives
+    /// and is available for endpoint discovery via [`Self::get_all_tcp_endpoints`].
+    pub fn expose_port(&self, port: u16) {
+        self.exposed_ports.borrow_mut().push(port);
+    }
+
+    /// Returns TCP endpoints `(host, port)` for all cluster members exposing
+    /// the given container port. Queries Docker for the dynamically allocated
+    /// host port mapping.
+    pub async fn get_all_tcp_endpoints(&self, container_port: u16) -> Vec<(String, u16)> {
+        let names = self.docker_container_name.borrow().clone();
+        let mut endpoints = Vec::with_capacity(names.len());
+        for name in names {
+            let host_port = find_dynamically_allocated_docker_port(&name, container_port).await;
+            endpoints.push(("localhost".to_owned(), host_port));
+        }
+        endpoints
     }
 }
 
@@ -757,11 +817,12 @@ impl DockerDeploy {
         }
 
         for (_, _, cluster) in nodes.get_all_clusters() {
+            let exposed_ports = cluster.exposed_ports.borrow().clone();
             build_and_create_image(
                 &cluster.rust_crate,
                 cluster.compilation_options.as_deref(),
                 &cluster.config,
-                &[], // clusters don't have exposed ports.
+                &exposed_ports,
                 &cluster.name,
             )
             .await?;
@@ -1312,6 +1373,8 @@ impl<'a> ClusterSpec<'a, DockerDeploy> for DockerDeployClusterSpec {
             next_port: Rc::new(RefCell::new(1000)),
             rust_crate: Rc::new(RefCell::new(None)),
 
+            exposed_ports: Rc::new(RefCell::new(Vec::new())),
+
             docker_container_name: Rc::new(RefCell::new(Vec::new())),
 
             compilation_options: self.compilation_options,
@@ -1331,8 +1394,10 @@ impl<'a> ExternalSpec<'a, DockerDeploy> for DockerDeployExternalSpec {
     #[instrument(level = "trace", skip_all, fields(%key, %name_hint))]
     fn build(self, key: LocationKey, name_hint: &str) -> <DockerDeploy as Deploy<'a>>::External {
         DockerDeployExternal {
+            key,
             name: self.name,
             next_port: Rc::new(RefCell::new(10000)),
+            next_external_port_id: Rc::new(RefCell::new(ExternalPortId::default())),
             ports: Rc::new(RefCell::new(HashMap::new())),
             connection_info: Rc::new(RefCell::new(HashMap::new())),
         }

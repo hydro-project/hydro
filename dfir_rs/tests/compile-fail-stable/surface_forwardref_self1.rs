@@ -1,1 +1,0 @@
-../compile-fail/surface_forwardref_self1.rs

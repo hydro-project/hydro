@@ -1,1 +1,0 @@
-../compile-fail/surface_merge_badtypes.rs

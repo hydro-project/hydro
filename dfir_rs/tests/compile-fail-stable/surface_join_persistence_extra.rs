@@ -1,1 +1,0 @@
-../compile-fail/surface_join_persistence_extra.rs

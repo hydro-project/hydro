@@ -1,1 +1,0 @@
-../compile-fail/surface_lattice_reduce_wronggeneric.rs

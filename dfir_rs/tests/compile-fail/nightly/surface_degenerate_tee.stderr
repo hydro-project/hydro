@@ -1,0 +1,11 @@
+error: `tee` must have exactly 1 input(s), actually has 0.
+ --> tests/compile-fail/nightly/surface_degenerate_tee.rs:5:9
+  |
+5 |         tee();
+  |         ^^^^^
+
+warning: `tee` should have at least 2 output(s), actually has 0.
+ --> tests/compile-fail/nightly/surface_degenerate_tee.rs:5:9
+  |
+5 |         tee();
+  |         ^^^^^

@@ -1,0 +1,27 @@
+---
+source: dfir_rs/tests/surface_handoff.rs
+expression: flow.meta_graph().unwrap().to_mermaid(cfg)
+---
+%%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
+flowchart TD
+classDef pullClass fill:#8af,stroke:#000,text-align:left,white-space:pre
+classDef pushClass fill:#ff8,stroke:#000,text-align:left,white-space:pre
+classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
+linkStyle default stroke:#aaa
+1v1[\"(1v1) <code>source_iter(0..5_i32)</code>"/]:::pullClass
+2v1[\"(2v1) <code>map(|x| x * 2)</code>"/]:::pullClass
+3v1["(3v1) <code>handoff</code>"]:::otherClass
+4v1[\"(4v1) <code>filter(|x: &amp;i32| *x &gt; 4)</code>"/]:::pullClass
+5v1[/"(5v1) <code>for_each(|v: i32| out.push(v))</code>"\]:::pushClass
+4v1-->5v1
+3v1-->4v1
+2v1-->3v1
+1v1-->2v1
+subgraph sg_1v1 ["sg_1v1"]
+    1v1
+    2v1
+end
+subgraph sg_2v1 ["sg_2v1"]
+    4v1
+    5v1
+end

@@ -37,8 +37,8 @@ where
         Item::start_send(item, meta, self.project().outputs);
     }
 
-    fn poll_flush(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
-        Item::poll_flush(self.project().outputs, ctx)
+    fn poll_finalize(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
+        Item::poll_finalize(self.project().outputs, ctx)
     }
 
     fn size_hint(self: Pin<&mut Self>, hint: (usize, Option<usize>)) {

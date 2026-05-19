@@ -12,6 +12,7 @@ import natacha from "./people-img/natacha.jpeg";
 import shadaj from "./people-img/shadaj.png";
 import lucky from "./people-img/lucky.jpeg";
 import rohit from "./people-img/rohit.jpg";
+import ben from "./people-img/ben.jpg";
 import hydroTurtle from "../../static/img/hydro-turtle.png";
 
 import styles from "./people.module.css";
@@ -124,7 +125,7 @@ export default function Home() {
                 name={"Ben Schofield"}
                 role={"Engineer, AWS"}
                 url={"https://www.linkedin.com/in/benjscho"}
-                img={hydroTurtle}
+                img={ben}
               ></PersonCard>
             </div>
 
@@ -144,7 +145,7 @@ export default function Home() {
                 url={"https://nacrooks.github.io"}
                 img={natacha}
               ></PersonCard>
-              
+
               <PersonCard
                 name={"Mae Milano"}
                 role={"Professor, Princeton University"}
@@ -157,7 +158,7 @@ export default function Home() {
                 url={"https://www.linkedin.com/in/chris-douglas-73333a1"}
                 img={hydroTurtle}
               ></PersonCard>
-              
+
             </div>
 
             <div className={styles["subtitle"]}>Project Alumni</div>

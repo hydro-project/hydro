@@ -96,7 +96,6 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
                    loop_id,
                    op_span,
                    work_fn,
@@ -205,20 +204,10 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                     ).await
                 }
 
-                let fut = check_inputs(#lhs, #rhs, &mut #lhs_joindata_ident, &mut #rhs_joindata_ident, #context.is_first_run_this_tick());
+                let fut = check_inputs(#lhs, #rhs, &mut #lhs_joindata_ident, &mut #rhs_joindata_ident, true);
                 #work_fn_async(fut).await
             };
         };
-
-        let write_iterator_after =
-            if persistences[0] == Persistence::Static || persistences[1] == Persistence::Static {
-                quote_spanned! {op_span=>
-                    // TODO: Probably only need to schedule if #*_borrow.len() > 0?
-                    #context.schedule_subgraph(#context.current_subgraph(), false);
-                }
-            } else {
-                quote_spanned! {op_span=>}
-            };
 
         Ok(OperatorWriteOutput {
             write_prologue: quote_spanned! {op_span=>
@@ -226,12 +215,11 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                 #rhs_prologue
             },
             write_iterator,
-            write_iterator_after,
+            write_iterator_after: Default::default(),
             write_tick_end: quote_spanned! {op_span=>
                 #lhs_tick_end
                 #rhs_tick_end
             },
-            ..Default::default()
         })
     },
 };

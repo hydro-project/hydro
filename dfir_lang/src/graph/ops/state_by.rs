@@ -101,15 +101,15 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
         let factory_fn = &arguments[1];
 
         let write_prologue = quote_spanned! {op_span=>
-            let #state_ident = {
-                let data_struct: #lattice_type = (#factory_fn)();
+            let mut #state_ident: #lattice_type = {
+                let data_struct = (#factory_fn)();
                 ::std::debug_assert!(#root::lattices::IsBot::is_bot(&data_struct));
-                ::std::cell::RefCell::new(data_struct)
+                data_struct
             };
         };
         let write_tick_end = match persistence {
             Persistence::Tick => quote_spanned! {op_span=>
-                ::std::cell::RefCell::take(&#state_ident);
+                #state_ident = ::std::default::Default::default();
             },
             _ => Default::default(),
         };
@@ -124,7 +124,7 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                     fn check_input<'a, Item, MappingFn, MappedItem, Prev, Lat>(
                         prev: Prev,
                         mapfn: MappingFn,
-                        state_ref: &'a ::std::cell::RefCell<Lat>,
+                        state_ref: &'a mut Lat,
                     ) -> impl 'a + #root::dfir_pipes::pull::Pull<Item = Item, Meta = Prev::Meta>
                     where
                         Item: ::std::clone::Clone,
@@ -135,12 +135,11 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         #root::dfir_pipes::pull::Pull::filter(
                             prev,
                             move |item| {
-                                let mut state = state_ref.borrow_mut();
-                                #root::lattices::Merge::merge(&mut *state, (mapfn)(::std::clone::Clone::clone(item)))
+                                #root::lattices::Merge::merge(state_ref, (mapfn)(::std::clone::Clone::clone(item)))
                             },
                         )
                     }
-                    check_input::<_, _, _, _, #lattice_type>(#input, #by_fn, &#state_ident)
+                    check_input::<_, _, _, _, #lattice_type>(#input, #by_fn, &mut #state_ident)
                 };
             }
         } else if let Some(output) = outputs.first() {
@@ -149,7 +148,7 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                     fn check_output<'a, Item, MappingFn, MappedItem, Psh, Lat>(
                         push: Psh,
                         mapfn: MappingFn,
-                        state_ref: &'a ::std::cell::RefCell<Lat>,
+                        state_ref: &'a mut Lat,
                     ) -> impl 'a + #root::dfir_pipes::push::Push<Item, ()>
                     where
                         Item: 'a + ::std::clone::Clone,
@@ -158,18 +157,17 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         Lat: 'static + #root::lattices::Merge<MappedItem>,
                     {
                         #root::dfir_pipes::push::filter(move |item| {
-                            let mut state = state_ref.borrow_mut();
-                            #root::lattices::Merge::merge(&mut *state, (mapfn)(::std::clone::Clone::clone(item)))
+                            #root::lattices::Merge::merge(state_ref, (mapfn)(::std::clone::Clone::clone(item)))
                         }, push)
                     }
-                    check_output::<_, _, _, _, #lattice_type>(#output, #by_fn, &#state_ident)
+                    check_output::<_, _, _, _, #lattice_type>(#output, #by_fn, &mut #state_ident)
                 };
             }
         } else {
             quote_spanned! {op_span=>
                 let #ident = {
                     fn check_output<'a, Item, MappingFn, MappedItem, Lat>(
-                        state_ref: &'a ::std::cell::RefCell<Lat>,
+                        state_ref: &'a mut Lat,
                         mapfn: MappingFn,
                     ) -> impl 'a + #root::dfir_pipes::push::Push<Item, ()>
                     where
@@ -179,11 +177,10 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
                         Lat: 'static + #root::lattices::Merge<MappedItem>,
                     {
                         #root::dfir_pipes::push::for_each(move |item| {
-                            let mut state = state_ref.borrow_mut();
-                            #root::lattices::Merge::merge(&mut *state, (mapfn)(item));
+                            #root::lattices::Merge::merge(state_ref, (mapfn)(item));
                         })
                     }
-                    check_output::<_, _, _, #lattice_type>(&#state_ident, #by_fn)
+                    check_output::<_, _, _, #lattice_type>(&mut #state_ident, #by_fn)
                 };
             }
         };

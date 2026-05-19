@@ -62,15 +62,14 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
                    ident,
                    inputs,
                    arguments,
-                   arguments_handles,
                    ..
                },
                _| {
         assert!(is_pull);
 
         let func = &arguments[0];
-        let lhs_state_handle = &arguments_handles[1];
-        let rhs_state_handle = &arguments_handles[2];
+        let lhs_state = &arguments[1];
+        let rhs_state = &arguments[2];
 
         let lhs_items = &inputs[0];
         let rhs_items = &inputs[1];
@@ -78,16 +77,16 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
         let write_iterator = quote_spanned! {op_span=>
             let #ident = {
                 let (lhs_state, rhs_state) = (
-                    &#lhs_state_handle,
-                    &#rhs_state_handle,
+                    &#lhs_state,
+                    &#rhs_state,
                 );
                 #[inline(always)]
                 fn check_inputs<'a, Func, LhsPull, RhsPull, LhsState, RhsState, Output>(
                     lhs_pull: LhsPull,
                     rhs_pull: RhsPull,
                     func: Func,
-                    lhs_state: &'a ::std::cell::RefCell<LhsState>,
-                    rhs_state: &'a ::std::cell::RefCell<RhsState>,
+                    lhs_state: &'a LhsState,
+                    rhs_state: &'a RhsState,
                 ) -> impl #root::dfir_pipes::pull::Pull<
                     Item = Output,
                     Meta = (),

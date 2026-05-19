@@ -13,12 +13,30 @@ use super::deploy::{DeployFlow, DeployResult};
 use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
 use super::ir::HydroRoot;
 use crate::location::{Cluster, External, LocationKey, LocationType, Process};
+
+/// A compile-time directive to spawn a future on a location's `LocalSet`
+/// alongside the DFIR scheduler.
+pub enum Sidecar {
+    /// A ready-to-go future expression (e.g. telemetry metrics collection).
+    Simple {
+        location_key: LocationKey,
+        future_expr: Box<syn::Expr>,
+    },
+    /// A user-owned sidecar that returns a `(Stream, Sink)` pair to the framework.
+    /// The closure is called at startup; the returned stream feeds items into the
+    /// dataflow and the returned sink receives items from the dataflow.
+    Bidi {
+        location_key: LocationKey,
+        sidecar_id: SidecarId,
+        sidecar_closure: Box<syn::Expr>,
+    },
+}
 #[cfg(feature = "sim")]
 #[cfg(stageleft_runtime)]
 use crate::sim::flow::SimFlow;
 use crate::staging_util::Invariant;
 
-#[stageleft::export(ExternalPortId, CycleId, ClockId)]
+#[stageleft::export(ExternalPortId, CycleId, ClockId, SidecarId)]
 crate::newtype_counter! {
     /// ID for an external output.
     pub struct ExternalPortId(usize);
@@ -28,12 +46,26 @@ crate::newtype_counter! {
 
     /// ID for clocks (ticks).
     pub struct ClockId(usize);
+
+    /// ID for user-owned sidecars.
+    pub struct SidecarId(usize);
 }
 
 impl CycleId {
     #[cfg(feature = "build")]
     pub(crate) fn as_ident(&self) -> syn::Ident {
         syn::Ident::new(&format!("cycle_{}", self), proc_macro2::Span::call_site())
+    }
+}
+
+impl SidecarId {
+    /// Derives the two idents for a bidi sidecar: `(stream, sink)`.
+    pub fn idents(&self) -> (syn::Ident, syn::Ident) {
+        let span = proc_macro2::Span::call_site();
+        (
+            syn::Ident::new(&format!("__hydro_sidecar_{}_stream", self), span),
+            syn::Ident::new(&format!("__hydro_sidecar_{}_sink", self), span),
+        )
     }
 }
 
@@ -53,6 +85,13 @@ pub(crate) struct FlowStateInner {
 
     /// Counters for clock IDs.
     next_clock_id: ClockId,
+
+    /// Counter for generating unique sidecar identifiers, not used for anything else.
+    next_sidecar_id: SidecarId,
+
+    /// Compile-time sidecar directives. Processed during compilation,
+    /// not part of the dataflow IR.
+    pub sidecars: Vec<Sidecar>,
 }
 
 impl FlowStateInner {
@@ -66,6 +105,10 @@ impl FlowStateInner {
 
     pub fn next_clock_id(&mut self) -> ClockId {
         self.next_clock_id.get_and_increment()
+    }
+
+    pub fn next_sidecar_id(&mut self) -> SidecarId {
+        self.next_sidecar_id.get_and_increment()
     }
 
     pub fn push_root(&mut self, root: HydroRoot) {
@@ -144,6 +187,8 @@ impl<'a> FlowBuilder<'a> {
                 next_external_port: ExternalPortId::default(),
                 next_cycle_id: CycleId::default(),
                 next_clock_id: ClockId::default(),
+                next_sidecar_id: SidecarId::default(),
+                sidecars: Vec::new(),
             })),
             locations: SlotMap::with_key(),
             location_names: SecondaryMap::new(),
@@ -195,13 +240,18 @@ impl<'a> FlowBuilder<'a> {
     pub fn finalize(mut self) -> super::built::BuiltFlow<'a> {
         self.finalized = true;
 
-        let mut ir = self.flow_state.borrow_mut().roots.take().unwrap();
+        let mut flow_state = self.flow_state.borrow_mut();
+        let mut ir = flow_state.roots.take().unwrap();
+        let sidecars = std::mem::take(&mut flow_state.sidecars);
+        drop(flow_state);
+
         super::ir::unify_atomic_ticks(&mut ir);
 
         super::built::BuiltFlow {
             ir,
             locations: std::mem::take(&mut self.locations),
             location_names: std::mem::take(&mut self.location_names),
+            sidecars,
             flow_name: std::mem::take(&mut self.flow_name),
             _phantom: PhantomData,
         }
@@ -282,6 +332,8 @@ impl<'a> FlowBuilder<'a> {
                 next_external_port: ExternalPortId::default(),
                 next_cycle_id: CycleId::default(),
                 next_clock_id: ClockId::default(),
+                next_sidecar_id: SidecarId::default(),
+                sidecars: Vec::new(),
             })),
             locations: built.locations.clone(),
             location_names: built.location_names.clone(),

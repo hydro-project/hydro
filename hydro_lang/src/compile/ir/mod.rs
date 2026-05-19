@@ -392,6 +392,7 @@ pub trait DfirBuilder {
     /// Gets the DFIR builder for the given location, creating it if necessary.
     fn get_dfir_mut(&mut self, location: &LocationId) -> &mut FlatGraphBuilder;
 
+    #[expect(clippy::too_many_arguments, reason = "TODO")]
     fn batch(
         &mut self,
         in_ident: syn::Ident,
@@ -400,6 +401,7 @@ pub trait DfirBuilder {
         out_ident: &syn::Ident,
         out_location: &LocationId,
         op_meta: &HydroIrOpMetadata,
+        fold_hooked_idents: &HashSet<String>,
     );
     fn yield_from_tick(
         &mut self,
@@ -483,6 +485,16 @@ pub trait DfirBuilder {
         serialize: Option<&DebugExpr>,
         tag_id: usize,
     );
+
+    /// Optionally emit a fold hook that buffers and permutes inputs before the fold.
+    /// Returns the new input ident to use for the fold if a hook was emitted.
+    fn emit_fold_hook(
+        &mut self,
+        location: &LocationId,
+        in_ident: &syn::Ident,
+        in_kind: &CollectionKind,
+        op_meta: &HydroIrOpMetadata,
+    ) -> Option<syn::Ident>;
 }
 
 #[cfg(feature = "build")]
@@ -505,6 +517,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         out_ident: &syn::Ident,
         _out_location: &LocationId,
         _op_meta: &HydroIrOpMetadata,
+        _fold_hooked_idents: &HashSet<String>,
     ) {
         let builder = self.get_dfir_mut(in_location.root());
         if in_kind.is_bounded()
@@ -738,6 +751,16 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
                 Some(&format!("send{}", tag_id)),
             );
         }
+    }
+
+    fn emit_fold_hook(
+        &mut self,
+        _location: &LocationId,
+        _in_ident: &syn::Ident,
+        _in_kind: &CollectionKind,
+        _op_meta: &HydroIrOpMetadata,
+    ) -> Option<syn::Ident> {
+        None
     }
 }
 
@@ -1275,6 +1298,7 @@ impl HydroRoot {
         seen_tees: &mut SeenSharedNodes,
         built_tees: &mut HashMap<*const RefCell<HydroNode>, Vec<syn::Ident>>,
         next_stmt_id: &mut usize,
+        fold_hooked_idents: &mut HashSet<String>,
     ) {
         self.emit_core(
             &mut BuildersOrCallback::<
@@ -1284,6 +1308,7 @@ impl HydroRoot {
             seen_tees,
             built_tees,
             next_stmt_id,
+            fold_hooked_idents,
         );
     }
 
@@ -1297,11 +1322,17 @@ impl HydroRoot {
         seen_tees: &mut SeenSharedNodes,
         built_tees: &mut HashMap<*const RefCell<HydroNode>, Vec<syn::Ident>>,
         next_stmt_id: &mut usize,
+        fold_hooked_idents: &mut HashSet<String>,
     ) {
         match self {
             HydroRoot::ForEach { f, input, .. } => {
-                let input_ident =
-                    input.emit_core(builders_or_callback, seen_tees, built_tees, next_stmt_id);
+                let input_ident = input.emit_core(
+                    builders_or_callback,
+                    seen_tees,
+                    built_tees,
+                    next_stmt_id,
+                    fold_hooked_idents,
+                );
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
@@ -1329,8 +1360,13 @@ impl HydroRoot {
                 input,
                 ..
             } => {
-                let input_ident =
-                    input.emit_core(builders_or_callback, seen_tees, built_tees, next_stmt_id);
+                let input_ident = input.emit_core(
+                    builders_or_callback,
+                    seen_tees,
+                    built_tees,
+                    next_stmt_id,
+                    fold_hooked_idents,
+                );
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
@@ -1362,8 +1398,13 @@ impl HydroRoot {
             }
 
             HydroRoot::DestSink { sink, input, .. } => {
-                let input_ident =
-                    input.emit_core(builders_or_callback, seen_tees, built_tees, next_stmt_id);
+                let input_ident = input.emit_core(
+                    builders_or_callback,
+                    seen_tees,
+                    built_tees,
+                    next_stmt_id,
+                    fold_hooked_idents,
+                );
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
@@ -1388,8 +1429,13 @@ impl HydroRoot {
             HydroRoot::CycleSink {
                 cycle_id, input, ..
             } => {
-                let input_ident =
-                    input.emit_core(builders_or_callback, seen_tees, built_tees, next_stmt_id);
+                let input_ident = input.emit_core(
+                    builders_or_callback,
+                    seen_tees,
+                    built_tees,
+                    next_stmt_id,
+                    fold_hooked_idents,
+                );
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
@@ -1430,8 +1476,13 @@ impl HydroRoot {
             }
 
             HydroRoot::EmbeddedOutput { ident, input, .. } => {
-                let input_ident =
-                    input.emit_core(builders_or_callback, seen_tees, built_tees, next_stmt_id);
+                let input_ident = input.emit_core(
+                    builders_or_callback,
+                    seen_tees,
+                    built_tees,
+                    next_stmt_id,
+                    fold_hooked_idents,
+                );
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
@@ -1454,8 +1505,13 @@ impl HydroRoot {
             }
 
             HydroRoot::Null { input, .. } => {
-                let input_ident =
-                    input.emit_core(builders_or_callback, seen_tees, built_tees, next_stmt_id);
+                let input_ident = input.emit_core(
+                    builders_or_callback,
+                    seen_tees,
+                    built_tees,
+                    next_stmt_id,
+                    fold_hooked_idents,
+                );
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
@@ -1627,12 +1683,14 @@ pub fn emit(ir: &mut Vec<HydroRoot>) -> SecondaryMap<LocationKey, FlatGraphBuild
     let mut seen_tees = HashMap::new();
     let mut built_tees = HashMap::new();
     let mut next_stmt_id = 0;
+    let mut fold_hooked_idents = HashSet::new();
     for leaf in ir {
         leaf.emit(
             &mut builders,
             &mut seen_tees,
             &mut built_tees,
             &mut next_stmt_id,
+            &mut fold_hooked_idents,
         );
     }
     builders
@@ -1647,6 +1705,7 @@ pub fn traverse_dfir(
     let mut seen_tees = HashMap::new();
     let mut built_tees = HashMap::new();
     let mut next_stmt_id = 0;
+    let mut fold_hooked_idents = HashSet::new();
     let mut callback = BuildersOrCallback::Callback(transform_root, transform_node);
     ir.iter_mut().for_each(|leaf| {
         leaf.emit_core(
@@ -1654,6 +1713,7 @@ pub fn traverse_dfir(
             &mut seen_tees,
             &mut built_tees,
             &mut next_stmt_id,
+            &mut fold_hooked_idents,
         );
     });
 }
@@ -2764,6 +2824,7 @@ impl HydroNode {
         seen_tees: &mut SeenSharedNodes,
         built_tees: &mut HashMap<*const RefCell<HydroNode>, Vec<syn::Ident>>,
         next_stmt_id: &mut usize,
+        fold_hooked_idents: &mut HashSet<String>,
     ) -> syn::Ident {
         let mut ident_stack: Vec<syn::Ident> = Vec::new();
 
@@ -2839,6 +2900,7 @@ impl HydroNode {
                                     &batch_ident,
                                     &out_location,
                                     &metadata.op,
+                                    fold_hooked_idents,
                                 );
                             }
                             BuildersOrCallback::Callback(_, node_callback) => {
@@ -3116,6 +3178,20 @@ impl HydroNode {
 
                             match builders_or_callback {
                                 BuildersOrCallback::Builders(graph_builders) => {
+                                    // NOTE: With `forward_ref`, the fold codegen may not have
+                                    // run yet when we reach this tee, so `fold_hooked_idents`
+                                    // might not contain the inner ident. In that case we won't
+                                    // propagate the "hooked" status to the tee and the
+                                    // downstream singleton batch will use the normal
+                                    // `SingletonHook` instead of `PassthroughSingletonHook`.
+                                    // This is not a soundness issue: the fallback hook still
+                                    // produces correct behavior, just with a redundant decision
+                                    // point. TODO(https://github.com/hydro-project/hydro/issues/2856):
+                                    // fix ordering so forward_ref folds are always processed
+                                    // before their downstream tees.
+                                    if fold_hooked_idents.contains(&inner_ident.to_string()) {
+                                        fold_hooked_idents.insert(tee_ident.to_string());
+                                    }
                                     let builder = graph_builders.get_dfir_mut(&out_location);
                                     builder.add_dfir(
                                         parse_quote! {
@@ -3921,31 +3997,66 @@ impl HydroNode {
                                     && graph_builders.singleton_intermediates()
                                     && !node.metadata().collection_kind.is_bounded()
                                 {
+                                    let HydroNode::Fold { input, .. } = &*node else { unreachable!() };
+                                    let hooked_input_ident = graph_builders.emit_fold_hook(
+                                        &input.metadata().location_id,
+                                        &input_ident,
+                                        &input.metadata().collection_kind,
+                                        &node.metadata().op,
+                                    );
+
+                                    let (effective_input, acc) = if let Some(ref hooked) = hooked_input_ident {
+                                        let acc: syn::Expr = parse_quote!({
+                                            let mut __inner = #acc;
+                                            move |__state, __batch: Vec<_>| {
+                                                if __batch.is_empty() {
+                                                    return None;
+                                                }
+                                                for __value in __batch {
+                                                    __inner(__state, __value);
+                                                }
+                                                Some(__state.clone())
+                                            }
+                                        });
+                                        (hooked, acc)
+                                    } else {
+                                        let acc: syn::Expr = parse_quote!({
+                                            let mut __inner = #acc;
+                                            move |__state, __value| {
+                                                __inner(__state, __value);
+                                                Some(__state.clone())
+                                            }
+                                        });
+                                        (&input_ident, acc)
+                                    };
+
                                     let builder = graph_builders.get_dfir_mut(&out_location);
-
-                                    let acc: syn::Expr = parse_quote!({
-                                        let mut __inner = #acc;
-                                        move |__state, __value| {
-                                            __inner(__state, __value);
-                                            Some(__state.clone())
-                                        }
-                                    });
-
                                     builder.add_dfir(
                                         parse_quote! {
                                             source_iter([(#init)()]) -> [0]#fold_ident;
-                                            #input_ident -> scan::<#lifetime>(#init, #acc) -> [1]#fold_ident;
+                                            #effective_input -> scan::<#lifetime>(#init, #acc) -> [1]#fold_ident;
                                             #fold_ident = chain();
                                         },
                                         None,
                                         Some(&next_stmt_id.to_string()),
                                     );
+
+                                    if hooked_input_ident.is_some() {
+                                        fold_hooked_idents.insert(fold_ident.to_string());
+                                    }
                                 } else if matches!(node, HydroNode::FoldKeyed { .. })
                                     && node.metadata().location_id.is_top_level()
                                     && !(matches!(node.metadata().location_id, LocationId::Atomic(_)))
                                     && graph_builders.singleton_intermediates()
                                     && !node.metadata().collection_kind.is_bounded()
                                 {
+                                    let HydroNode::FoldKeyed { input, .. } = &*node else { unreachable!() };
+                                    let hooked_input_ident = graph_builders.emit_fold_hook(
+                                        &input.metadata().location_id,
+                                        &input_ident,
+                                        &input.metadata().collection_kind,
+                                        &node.metadata().op,
+                                    );
                                     let builder = graph_builders.get_dfir_mut(&out_location);
 
                                     let acc: syn::Expr = parse_quote!({
@@ -3961,9 +4072,47 @@ impl HydroNode {
                                         }
                                     });
 
+                                    if let Some(hooked_input_ident) = hooked_input_ident {
+                                        builder.add_dfir(
+                                            parse_quote! {
+                                                #fold_ident = #hooked_input_ident -> flatten() -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #acc);
+                                            },
+                                            None,
+                                            Some(&next_stmt_id.to_string()),
+                                        );
+
+                                        fold_hooked_idents.insert(fold_ident.to_string());
+                                    } else {
+                                        builder.add_dfir(
+                                            parse_quote! {
+                                                #fold_ident = #input_ident -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #acc);
+                                            },
+                                            None,
+                                            Some(&next_stmt_id.to_string()),
+                                        );
+                                    }
+                                } else if (matches!(node, HydroNode::Fold { .. })
+                                    || matches!(node, HydroNode::FoldKeyed { .. }))
+                                    && !node.metadata().location_id.is_top_level()
+                                    && graph_builders.singleton_intermediates()
+                                {
+                                    let input_ref = match &*node {
+                                        HydroNode::Fold { input, .. } => input,
+                                        HydroNode::FoldKeyed { input, .. } => input,
+                                        _ => unreachable!(),
+                                    };
+                                    let hooked_input_ident = graph_builders.emit_fold_hook(
+                                        &input_ref.metadata().location_id,
+                                        &input_ident,
+                                        &input_ref.metadata().collection_kind,
+                                        &node.metadata().op,
+                                    );
+
+                                    let actual_input = hooked_input_ident.as_ref().unwrap_or(&input_ident);
+                                    let builder = graph_builders.get_dfir_mut(&out_location);
                                     builder.add_dfir(
                                         parse_quote! {
-                                            #fold_ident = #input_ident -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #acc);
+                                            #fold_ident = #actual_input -> #operator::<#lifetime>(#init, #acc);
                                         },
                                         None,
                                         Some(&next_stmt_id.to_string()),

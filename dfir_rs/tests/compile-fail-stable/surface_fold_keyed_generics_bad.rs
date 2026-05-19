@@ -1,1 +1,0 @@
-../compile-fail/surface_fold_keyed_generics_bad.rs

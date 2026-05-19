@@ -9,7 +9,7 @@ expression: ir.surface_syntax_string()
 5v1 = inspect (stageleft :: runtime_support :: fn1_borrow_type_hint :: < (std :: string :: String , i32) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | (string , count) | println ! ("partition count: {} - {}" , string , count) }));
 6v1 = map (hydro_lang :: runtime_support :: stageleft :: runtime_support :: fn1_type_hint :: < (std :: string :: String , i32) , _ > (| data | { hydro_lang :: runtime_support :: bincode :: serialize (& data) . unwrap () . into () }));
 7v1 = dest_sink (DUMMY_SINK);
-// 8v1 = <handoff>;
+8v1 = handoff();
 
 1v1 -> 2v1;
 2v1 -> 3v1;

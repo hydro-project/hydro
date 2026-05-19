@@ -50,7 +50,6 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
     input_delaytype_fn: |_| Some(DelayType::Stratum),
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
                    op_span,
                    work_fn,
                    work_fn_async,
@@ -82,20 +81,20 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
             let mut #initializer_func_ident = #init_fn;
 
             #[allow(clippy::redundant_closure_call)]
-            let #singleton_output_ident = ::std::cell::RefCell::new(#init);
+            let mut #singleton_output_ident = #init;
         };
 
         let write_tick_end = match persistence {
             Persistence::Tick => quote_spanned! {op_span=>
                 #[allow(clippy::redundant_closure_call)]
-                #singleton_output_ident.replace(#init);
+                { #singleton_output_ident = #init; }
             },
             _ => Default::default(),
         };
 
         let assign_accum_ident = quote_spanned! {op_span=>
             #[allow(unused_mut)]
-            let mut #accumulator_ident = #singleton_output_ident.borrow_mut();
+            let mut #accumulator_ident = &mut #singleton_output_ident;
         };
         let foreach_body = quote_spanned! {op_span=>
             #[inline(always)]
@@ -139,20 +138,11 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
             }
         };
 
-        let write_iterator_after = if let Persistence::Static | Persistence::Tick = persistence {
-            quote_spanned! {op_span=>
-                #context.schedule_subgraph(#context.current_subgraph(), false);
-            }
-        } else {
-            Default::default()
-        };
-
         Ok(OperatorWriteOutput {
             write_prologue,
             write_iterator,
-            write_iterator_after,
+            write_iterator_after: Default::default(),
             write_tick_end,
-            ..Default::default()
         })
     },
 };
