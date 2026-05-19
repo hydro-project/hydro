@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["DockerDeploy","DockerDeployCluster","DockerDeployClusterSpec","DockerDeployExternal","DockerDeployExternalSpec","DockerDeployProcess","DockerDeployProcessSpec","DockerNetwork"]};
+window.SIDEBAR_ITEMS = {"enum":["LinuxCompileType"],"struct":["DockerDeploy","DockerDeployCluster","DockerDeployClusterSpec","DockerDeployExternal","DockerDeployExternalSpec","DockerDeployProcess","DockerDeployProcessSpec","DockerNetwork"]};
