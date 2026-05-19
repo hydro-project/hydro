@@ -1338,9 +1338,7 @@ fn get_docker_image_name(
         .collect::<Vec<_>>()
         .join("-");
 
-    let image_unique_tag = nanoid::nanoid!(6, &CONTAINER_ALPHABET);
-    let image_name =
-        format!("hy-{name_hint}-{image_unique_tag}-{deployment_instance}-{location_key}");
+    let image_name = format!("hy-{name_hint}-{deployment_instance}-{location_key}");
 
     if !is_valid_docker_image_name(&image_name) {
         panic!(
