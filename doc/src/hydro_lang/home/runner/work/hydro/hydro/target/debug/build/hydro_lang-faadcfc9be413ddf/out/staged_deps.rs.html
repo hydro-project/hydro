@@ -77,7 +77,7 @@
 <a href=#77 id=77 data-nosnippet>77</a>    </span><span class="kw">pub use </span>aws_sdk_ecs;
 <a href=#78 id=78 data-nosnippet>78</a>    <span class="attr">#[cfg(any(feature = <span class="string">"docker_deploy"</span>))]
 <a href=#79 id=79 data-nosnippet>79</a>    </span><span class="kw">pub use </span>base64;
-<a href=#80 id=80 data-nosnippet>80</a>    <span class="attr">#[cfg(any(feature = <span class="string">"ecs_runtime"</span>))]
+<a href=#80 id=80 data-nosnippet>80</a>    <span class="attr">#[cfg(any(feature = <span class="string">"docker_deploy"</span>, feature = <span class="string">"ecs_runtime"</span>))]
 <a href=#81 id=81 data-nosnippet>81</a>    </span><span class="kw">pub use </span>regex;
 <a href=#82 id=82 data-nosnippet>82</a>    <span class="attr">#[cfg(any(feature = <span class="string">"sim"</span>))]
 <a href=#83 id=83 data-nosnippet>83</a>    </span><span class="kw">pub use </span>bolero;
@@ -727,7 +727,7 @@
 <a href=#727 id=727 data-nosnippet>727</a>                ],
 <a href=#728 id=728 data-nosnippet>728</a>            );
 <a href=#729 id=729 data-nosnippet>729</a>        }
-<a href=#730 id=730 data-nosnippet>730</a>        <span class="attr">#[cfg(any(feature = <span class="string">"ecs_runtime"</span>))]
+<a href=#730 id=730 data-nosnippet>730</a>        <span class="attr">#[cfg(any(feature = <span class="string">"docker_deploy"</span>, feature = <span class="string">"ecs_runtime"</span>))]
 <a href=#731 id=731 data-nosnippet>731</a>        </span>{
 <a href=#732 id=732 data-nosnippet>732</a>            stageleft::internal::add_deps_reexport(
 <a href=#733 id=733 data-nosnippet>733</a>                <span class="macro">vec!</span>[<span class="string">"regex"</span>],
