@@ -34,39 +34,6 @@ use crate::location::{LocationKey, NetworkHint};
 pub mod backtrace;
 use backtrace::Backtrace;
 
-/// Rewrites a token stream to replace singleton ref idents with `#replacement_ident`,
-/// turning them into DFIR singleton references (`#var` syntax). Used when emitting
-/// closures that capture singleton values via `SingletonRef`.
-#[cfg(feature = "build")]
-fn rewrite_singleton_refs_in_tokens(
-    tokens: TokenStream,
-    replacements: &HashMap<syn::Ident, &syn::Ident>,
-) -> TokenStream {
-    use proc_macro2::{Group, TokenTree};
-    tokens
-        .into_iter()
-        .flat_map(|tt| match &tt {
-            TokenTree::Ident(ident) => {
-                if let Some(to_ident) = replacements.get(ident) {
-                    vec![
-                        TokenTree::Punct(proc_macro2::Punct::new('#', proc_macro2::Spacing::Joint)),
-                        TokenTree::Ident((*to_ident).clone()),
-                    ]
-                } else {
-                    vec![tt]
-                }
-            }
-            TokenTree::Group(group) => {
-                let rewritten = rewrite_singleton_refs_in_tokens(group.stream(), replacements);
-                let mut new_group = Group::new(group.delimiter(), rewritten);
-                new_group.set_span(group.span());
-                vec![TokenTree::Group(new_group)]
-            }
-            _ => vec![tt],
-        })
-        .collect()
-}
-
 /// Wrapper that displays only the tokens of a parsed expr.
 ///
 /// Boxes `syn::Type` which is ~240 bytes.
@@ -3781,12 +3748,12 @@ impl HydroNode {
                         // Pop input ident (pushed last by transform_children).
                         let input_ident = ident_stack.pop().unwrap();
                         // Pop singleton ref idents in reverse order (pushed before input).
-                        let ref_idents: Vec<_> = (0..singleton_refs.len())
+                        let ref_idents = (0..singleton_refs.len())
                             .map(|_| ident_stack.pop().unwrap())
                             .collect::<Vec<_>>()
                             .into_iter()
                             .rev()
-                            .collect();
+                            .collect::<Vec<_>>();
 
                         let map_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -3798,15 +3765,19 @@ impl HydroNode {
                                 let f_tokens = if singleton_refs.is_empty() {
                                     f.0.to_token_stream()
                                 } else {
-                                    let replacements: HashMap<syn::Ident, &syn::Ident> =
-                                        singleton_refs.iter()
-                                            .map(|(local_ident, _)| local_ident.clone())
-                                            .zip(ref_idents.iter())
-                                            .collect();
-                                    rewrite_singleton_refs_in_tokens(
-                                        f.0.to_token_stream(),
-                                        &replacements,
-                                    )
+                                    let local_idents = singleton_refs
+                                        .iter()
+                                        .map(|(local_ident, _)| local_ident);
+                                    let hash = proc_macro2::Punct::new('#', proc_macro2::Spacing::Alone);
+                                    let expr = &f.0;
+                                    quote! {
+                                        {
+                                            #(
+                                                let #local_idents = #hash #ref_idents;
+                                            )*
+                                            #expr
+                                        }
+                                    }
                                 };
 
                                 let builder = graph_builders.get_dfir_mut(&out_location);
