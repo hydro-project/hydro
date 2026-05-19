@@ -4545,49 +4545,49 @@ impl HydroNode {
             HydroNode::Placeholder => {
                 panic!()
             }
-            HydroNode::Cast { metadata, .. } => metadata,
-            HydroNode::ObserveNonDet { metadata, .. } => metadata,
-            HydroNode::Source { metadata, .. } => metadata,
-            HydroNode::SingletonSource { metadata, .. } => metadata,
-            HydroNode::CycleSource { metadata, .. } => metadata,
-            HydroNode::Tee { metadata, .. } => metadata,
-            HydroNode::Partition { metadata, .. } => metadata,
-            HydroNode::YieldConcat { metadata, .. } => metadata,
-            HydroNode::BeginAtomic { metadata, .. } => metadata,
-            HydroNode::EndAtomic { metadata, .. } => metadata,
-            HydroNode::Batch { metadata, .. } => metadata,
-            HydroNode::Chain { metadata, .. } => metadata,
-            HydroNode::MergeOrdered { metadata, .. } => metadata,
-            HydroNode::ChainFirst { metadata, .. } => metadata,
-            HydroNode::CrossProduct { metadata, .. } => metadata,
-            HydroNode::CrossSingleton { metadata, .. } => metadata,
-            HydroNode::Join { metadata, .. } => metadata,
-            HydroNode::JoinHalf { metadata, .. } => metadata,
-            HydroNode::Difference { metadata, .. } => metadata,
-            HydroNode::AntiJoin { metadata, .. } => metadata,
-            HydroNode::ResolveFutures { metadata, .. } => metadata,
-            HydroNode::ResolveFuturesBlocking { metadata, .. } => metadata,
-            HydroNode::ResolveFuturesOrdered { metadata, .. } => metadata,
-            HydroNode::Map { metadata, .. } => metadata,
-            HydroNode::FlatMap { metadata, .. } => metadata,
-            HydroNode::FlatMapStreamBlocking { metadata, .. } => metadata,
-            HydroNode::Filter { metadata, .. } => metadata,
-            HydroNode::FilterMap { metadata, .. } => metadata,
-            HydroNode::DeferTick { metadata, .. } => metadata,
-            HydroNode::Enumerate { metadata, .. } => metadata,
-            HydroNode::Inspect { metadata, .. } => metadata,
-            HydroNode::Unique { metadata, .. } => metadata,
-            HydroNode::Sort { metadata, .. } => metadata,
-            HydroNode::Scan { metadata, .. } => metadata,
-            HydroNode::ScanAsyncBlocking { metadata, .. } => metadata,
-            HydroNode::Fold { metadata, .. } => metadata,
-            HydroNode::FoldKeyed { metadata, .. } => metadata,
-            HydroNode::Reduce { metadata, .. } => metadata,
-            HydroNode::ReduceKeyed { metadata, .. } => metadata,
-            HydroNode::ReduceKeyedWatermark { metadata, .. } => metadata,
-            HydroNode::ExternalInput { metadata, .. } => metadata,
-            HydroNode::Network { metadata, .. } => metadata,
-            HydroNode::Counter { metadata, .. } => metadata,
+            HydroNode::Cast { metadata, .. }
+            | HydroNode::ObserveNonDet { metadata, .. }
+            | HydroNode::Source { metadata, .. }
+            | HydroNode::SingletonSource { metadata, .. }
+            | HydroNode::CycleSource { metadata, .. }
+            | HydroNode::Tee { metadata, .. }
+            | HydroNode::Partition { metadata, .. }
+            | HydroNode::YieldConcat { metadata, .. }
+            | HydroNode::BeginAtomic { metadata, .. }
+            | HydroNode::EndAtomic { metadata, .. }
+            | HydroNode::Batch { metadata, .. }
+            | HydroNode::Chain { metadata, .. }
+            | HydroNode::MergeOrdered { metadata, .. }
+            | HydroNode::ChainFirst { metadata, .. }
+            | HydroNode::CrossProduct { metadata, .. }
+            | HydroNode::CrossSingleton { metadata, .. }
+            | HydroNode::Join { metadata, .. }
+            | HydroNode::JoinHalf { metadata, .. }
+            | HydroNode::Difference { metadata, .. }
+            | HydroNode::AntiJoin { metadata, .. }
+            | HydroNode::ResolveFutures { metadata, .. }
+            | HydroNode::ResolveFuturesBlocking { metadata, .. }
+            | HydroNode::ResolveFuturesOrdered { metadata, .. }
+            | HydroNode::Map { metadata, .. }
+            | HydroNode::FlatMap { metadata, .. }
+            | HydroNode::FlatMapStreamBlocking { metadata, .. }
+            | HydroNode::Filter { metadata, .. }
+            | HydroNode::FilterMap { metadata, .. }
+            | HydroNode::DeferTick { metadata, .. }
+            | HydroNode::Enumerate { metadata, .. }
+            | HydroNode::Inspect { metadata, .. }
+            | HydroNode::Unique { metadata, .. }
+            | HydroNode::Sort { metadata, .. }
+            | HydroNode::Scan { metadata, .. }
+            | HydroNode::ScanAsyncBlocking { metadata, .. }
+            | HydroNode::Fold { metadata, .. }
+            | HydroNode::FoldKeyed { metadata, .. }
+            | HydroNode::Reduce { metadata, .. }
+            | HydroNode::ReduceKeyed { metadata, .. }
+            | HydroNode::ReduceKeyedWatermark { metadata, .. }
+            | HydroNode::ExternalInput { metadata, .. }
+            | HydroNode::Network { metadata, .. }
+            | HydroNode::Counter { metadata, .. } => metadata,
         }
     }
 
@@ -4600,49 +4600,49 @@ impl HydroNode {
             HydroNode::Placeholder => {
                 panic!()
             }
-            HydroNode::Cast { metadata, .. } => metadata,
-            HydroNode::ObserveNonDet { metadata, .. } => metadata,
-            HydroNode::Source { metadata, .. } => metadata,
-            HydroNode::SingletonSource { metadata, .. } => metadata,
-            HydroNode::CycleSource { metadata, .. } => metadata,
-            HydroNode::Tee { metadata, .. } => metadata,
-            HydroNode::Partition { metadata, .. } => metadata,
-            HydroNode::YieldConcat { metadata, .. } => metadata,
-            HydroNode::BeginAtomic { metadata, .. } => metadata,
-            HydroNode::EndAtomic { metadata, .. } => metadata,
-            HydroNode::Batch { metadata, .. } => metadata,
-            HydroNode::Chain { metadata, .. } => metadata,
-            HydroNode::MergeOrdered { metadata, .. } => metadata,
-            HydroNode::ChainFirst { metadata, .. } => metadata,
-            HydroNode::CrossProduct { metadata, .. } => metadata,
-            HydroNode::CrossSingleton { metadata, .. } => metadata,
-            HydroNode::Join { metadata, .. } => metadata,
-            HydroNode::JoinHalf { metadata, .. } => metadata,
-            HydroNode::Difference { metadata, .. } => metadata,
-            HydroNode::AntiJoin { metadata, .. } => metadata,
-            HydroNode::ResolveFutures { metadata, .. } => metadata,
-            HydroNode::ResolveFuturesBlocking { metadata, .. } => metadata,
-            HydroNode::ResolveFuturesOrdered { metadata, .. } => metadata,
-            HydroNode::Map { metadata, .. } => metadata,
-            HydroNode::FlatMap { metadata, .. } => metadata,
-            HydroNode::FlatMapStreamBlocking { metadata, .. } => metadata,
-            HydroNode::Filter { metadata, .. } => metadata,
-            HydroNode::FilterMap { metadata, .. } => metadata,
-            HydroNode::DeferTick { metadata, .. } => metadata,
-            HydroNode::Enumerate { metadata, .. } => metadata,
-            HydroNode::Inspect { metadata, .. } => metadata,
-            HydroNode::Unique { metadata, .. } => metadata,
-            HydroNode::Sort { metadata, .. } => metadata,
-            HydroNode::Scan { metadata, .. } => metadata,
-            HydroNode::ScanAsyncBlocking { metadata, .. } => metadata,
-            HydroNode::Fold { metadata, .. } => metadata,
-            HydroNode::FoldKeyed { metadata, .. } => metadata,
-            HydroNode::Reduce { metadata, .. } => metadata,
-            HydroNode::ReduceKeyed { metadata, .. } => metadata,
-            HydroNode::ReduceKeyedWatermark { metadata, .. } => metadata,
-            HydroNode::ExternalInput { metadata, .. } => metadata,
-            HydroNode::Network { metadata, .. } => metadata,
-            HydroNode::Counter { metadata, .. } => metadata,
+            HydroNode::Cast { metadata, .. }
+            | HydroNode::ObserveNonDet { metadata, .. }
+            | HydroNode::Source { metadata, .. }
+            | HydroNode::SingletonSource { metadata, .. }
+            | HydroNode::CycleSource { metadata, .. }
+            | HydroNode::Tee { metadata, .. }
+            | HydroNode::Partition { metadata, .. }
+            | HydroNode::YieldConcat { metadata, .. }
+            | HydroNode::BeginAtomic { metadata, .. }
+            | HydroNode::EndAtomic { metadata, .. }
+            | HydroNode::Batch { metadata, .. }
+            | HydroNode::Chain { metadata, .. }
+            | HydroNode::MergeOrdered { metadata, .. }
+            | HydroNode::ChainFirst { metadata, .. }
+            | HydroNode::CrossProduct { metadata, .. }
+            | HydroNode::CrossSingleton { metadata, .. }
+            | HydroNode::Join { metadata, .. }
+            | HydroNode::JoinHalf { metadata, .. }
+            | HydroNode::Difference { metadata, .. }
+            | HydroNode::AntiJoin { metadata, .. }
+            | HydroNode::ResolveFutures { metadata, .. }
+            | HydroNode::ResolveFuturesBlocking { metadata, .. }
+            | HydroNode::ResolveFuturesOrdered { metadata, .. }
+            | HydroNode::Map { metadata, .. }
+            | HydroNode::FlatMap { metadata, .. }
+            | HydroNode::FlatMapStreamBlocking { metadata, .. }
+            | HydroNode::Filter { metadata, .. }
+            | HydroNode::FilterMap { metadata, .. }
+            | HydroNode::DeferTick { metadata, .. }
+            | HydroNode::Enumerate { metadata, .. }
+            | HydroNode::Inspect { metadata, .. }
+            | HydroNode::Unique { metadata, .. }
+            | HydroNode::Sort { metadata, .. }
+            | HydroNode::Scan { metadata, .. }
+            | HydroNode::ScanAsyncBlocking { metadata, .. }
+            | HydroNode::Fold { metadata, .. }
+            | HydroNode::FoldKeyed { metadata, .. }
+            | HydroNode::Reduce { metadata, .. }
+            | HydroNode::ReduceKeyed { metadata, .. }
+            | HydroNode::ReduceKeyedWatermark { metadata, .. }
+            | HydroNode::ExternalInput { metadata, .. }
+            | HydroNode::Network { metadata, .. }
+            | HydroNode::Counter { metadata, .. } => metadata,
         }
     }
 
