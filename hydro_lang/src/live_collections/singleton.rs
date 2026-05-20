@@ -329,6 +329,8 @@ where
     /// Creates a lightweight reference handle to this singleton that can be captured
     /// inside `q!()` closures. The handle resolves to `&T` at runtime.
     ///
+    /// The singleton must be bounded, otherwise reading it would be non-deterministic.
+    ///
     /// ```rust
     /// # #[cfg(feature = "deploy")] {
     /// # use hydro_lang::prelude::*;
@@ -362,7 +364,10 @@ where
     /// # });
     /// # }
     /// ```
-    pub fn by_ref(&self) -> crate::singleton_ref::SingletonRef<'a, T, L> {
+    pub fn by_ref(&self) -> crate::singleton_ref::SingletonRef<'a, T, L>
+    where
+        B: IsBounded,
+    {
         // Wrap in HydroNode::Singleton for materialization + identity tracking.
         // If already a Singleton node, reuse it. If a Tee (from clone), wrap inner.
         if !matches!(&*self.ir_node.borrow(), HydroNode::Singleton { .. }) {
