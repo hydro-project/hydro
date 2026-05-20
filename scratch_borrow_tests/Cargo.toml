@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+bumpalo = { version = "3", features = ["collections"] }
 tokio = { version = "1", features = ["full"] }
 
 [[bin]]
@@ -111,3 +112,9 @@ path = "src/test34.rs"
 [[bin]]
 name = "test35"
 path = "src/test35.rs"
+[[bin]]
+name = "test36"
+path = "src/test36.rs"
+[[bin]]
+name = "test37"
+path = "src/test37.rs"
