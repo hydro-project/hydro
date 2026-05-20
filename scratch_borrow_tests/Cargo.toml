@@ -1,0 +1,86 @@
+[package]
+name = "borrow_tests"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+
+[[bin]]
+name = "test1"
+path = "src/test1.rs"
+[[bin]]
+name = "test2"
+path = "src/test2.rs"
+[[bin]]
+name = "test3"
+path = "src/test3.rs"
+[[bin]]
+name = "test4"
+path = "src/test4.rs"
+[[bin]]
+name = "test5"
+path = "src/test5.rs"
+[[bin]]
+name = "test6"
+path = "src/test6.rs"
+[[bin]]
+name = "test7"
+path = "src/test7.rs"
+[[bin]]
+name = "test8"
+path = "src/test8.rs"
+[[bin]]
+name = "test9"
+path = "src/test9.rs"
+[[bin]]
+name = "test10"
+path = "src/test10.rs"
+[[bin]]
+name = "test11"
+path = "src/test11.rs"
+[[bin]]
+name = "test12"
+path = "src/test12.rs"
+[[bin]]
+name = "test13"
+path = "src/test13.rs"
+[[bin]]
+name = "test14"
+path = "src/test14.rs"
+[[bin]]
+name = "test15"
+path = "src/test15.rs"
+[[bin]]
+name = "test16"
+path = "src/test16.rs"
+[[bin]]
+name = "test17"
+path = "src/test17.rs"
+[[bin]]
+name = "test18"
+path = "src/test18.rs"
+[[bin]]
+name = "test19"
+path = "src/test19.rs"
+[[bin]]
+name = "test20"
+path = "src/test20.rs"
+[[bin]]
+name = "test21"
+path = "src/test21.rs"
+[[bin]]
+name = "test22"
+path = "src/test22.rs"
+[[bin]]
+name = "test23"
+path = "src/test23.rs"
+[[bin]]
+name = "test24"
+path = "src/test24.rs"
+[[bin]]
+name = "test25"
+path = "src/test25.rs"
+[[bin]]
+name = "test26"
+path = "src/test26.rs"
