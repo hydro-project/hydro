@@ -1,7 +1,7 @@
 //! DFIR syntax
 
 #![warn(missing_docs)]
-#![cfg_attr(nightly, feature(proc_macro_diagnostic, proc_macro_span))]
+#![cfg_attr(all(nightly, feature = "codegen"), feature(proc_macro_diagnostic))]
 
 pub mod graph_ids;
 

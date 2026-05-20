@@ -11,6 +11,7 @@ expression: built.ir()
                     inner: Cast {
                         inner: Map {
                             f: stageleft :: runtime_support :: fn1_type_hint :: < ((u64 , u64) , bool) , (u64 , u64) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | (d , _) | d }),
+                            singleton_refs: [],
                             input: CrossSingleton {
                                 left: Batch {
                                     inner: Reduce {
@@ -18,6 +19,7 @@ expression: built.ir()
                                         input: ObserveNonDet {
                                             inner: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: compute_pi :: Worker > , (u64 , u64)) , (u64 , u64) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
+                                                singleton_refs: [],
                                                 input: Cast {
                                                     inner: Cast {
                                                         inner: Network {
@@ -39,11 +41,14 @@ expression: built.ir()
                                                                         acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (u64 , u64) , bool , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | (inside , total) , sample_inside | { if sample_inside { * inside += 1 ; } * total += 1 ; } }),
                                                                         input: Map {
                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (f64 , f64) , bool > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | (x , y) | x * x + y * y < 1.0 }),
+                                                                            singleton_refs: [],
                                                                             input: Map {
                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < () , (f64 , f64) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; | _ | rand :: random :: < (f64 , f64) > () }),
+                                                                                singleton_refs: [],
                                                                                 input: Batch {
                                                                                     inner: Map {
                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; | _ | () }),
+                                                                                        singleton_refs: [],
                                                                                         input: FlatMap {
                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < () , std :: ops :: Range < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: tick :: * ; let batch_size__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; let batch_size__free = 8192usize ; batch_size__free } ; move | _ | 0 .. batch_size__free }),
                                                                                             input: Source {
@@ -208,23 +213,26 @@ expression: built.ir()
                                     f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | b | * b }),
                                     input: Map {
                                         f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_some () }),
+                                        singleton_refs: [],
                                         input: Cast {
                                             inner: ChainFirst {
                                                 first: Map {
                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
+                                                    singleton_refs: [],
                                                     input: Map {
-                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
+                                                        f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
+                                                        singleton_refs: [],
                                                         input: Reduce {
-                                                            f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: __deps :: tokio :: time :: Instant , hydro_test :: __staged :: __deps :: tokio :: time :: Instant , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ , _ | { } }),
+                                                            f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < () , () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ , _ | { } }),
                                                             input: FlatMap {
-                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < hydro_test :: __staged :: __deps :: tokio :: time :: Instant > , core :: option :: Option < hydro_test :: __staged :: __deps :: tokio :: time :: Instant > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | d | d }),
+                                                                f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | d | d }),
                                                                 input: Scan {
                                                                     init: stageleft :: runtime_support :: fn0_type_hint :: < core :: option :: Option < core :: option :: Option < () > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | | None }),
-                                                                    acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < core :: option :: Option < core :: option :: Option < () > > , hydro_test :: __staged :: __deps :: tokio :: time :: Instant , core :: option :: Option < core :: option :: Option < hydro_test :: __staged :: __deps :: tokio :: time :: Instant > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; let f__free = stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < () , hydro_test :: __staged :: __deps :: tokio :: time :: Instant , hydro_test :: __staged :: __deps :: hydro_lang :: live_collections :: keyed_stream :: Generate < hydro_test :: __staged :: __deps :: tokio :: time :: Instant > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ , item | Generate :: Return (item) }) ; let init__free = stageleft :: runtime_support :: fn0_type_hint :: < () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | | () }) ; move | state : & mut Option < Option < _ > > , v | { if state . is_none () { * state = Some (Some (init__free ())) ; } match state { Some (Some (state_value)) => match f__free (state_value , v) { Generate :: Yield (out) => Some (Some (out)) , Generate :: Return (out) => { * state = Some (None) ; Some (Some (out)) } Generate :: Break => None , Generate :: Continue => Some (None) , } , _ => None , } } }),
+                                                                    acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < core :: option :: Option < core :: option :: Option < () > > , () , core :: option :: Option < core :: option :: Option < () > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; let f__free = stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < () , () , hydro_test :: __staged :: __deps :: hydro_lang :: live_collections :: keyed_stream :: Generate < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ , item | Generate :: Return (item) }) ; let init__free = stageleft :: runtime_support :: fn0_type_hint :: < () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | | () }) ; move | state : & mut Option < Option < _ > > , v | { if state . is_none () { * state = Some (Some (init__free ())) ; } match state { Some (Some (state_value)) => match f__free (state_value , v) { Generate :: Yield (out) => Some (Some (out)) , Generate :: Return (out) => { * state = Some (None) ; Some (Some (out)) } Generate :: Break => None , Generate :: Continue => Some (None) , } , _ => None , } } }),
                                                                     input: Batch {
                                                                         inner: Source {
                                                                             source: Stream(
-                                                                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; Duration :: from_secs (1) } ; tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) },
+                                                                                { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; let interval__free = { use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: compute_pi :: * ; Duration :: from_secs (1) } ; tokio_stream :: StreamExt :: map (tokio_stream :: wrappers :: IntervalStream :: new (tokio :: time :: interval (interval__free)) , | _ | ()) },
                                                                             ),
                                                                             metadata: HydroIrMetadata {
                                                                                 location_id: Process(loc2v1),
@@ -232,7 +240,7 @@ expression: built.ir()
                                                                                     bound: Unbounded,
                                                                                     order: TotalOrder,
                                                                                     retry: ExactlyOnce,
-                                                                                    element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                                                    element_type: (),
                                                                                 },
                                                                             },
                                                                         },
@@ -242,7 +250,7 @@ expression: built.ir()
                                                                                 bound: Bounded,
                                                                                 order: TotalOrder,
                                                                                 retry: ExactlyOnce,
-                                                                                element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                                                element_type: (),
                                                                             },
                                                                         },
                                                                     },
@@ -252,7 +260,7 @@ expression: built.ir()
                                                                             bound: Bounded,
                                                                             order: TotalOrder,
                                                                             retry: ExactlyOnce,
-                                                                            element_type: core :: option :: Option < hydro_test :: __staged :: __deps :: tokio :: time :: Instant >,
+                                                                            element_type: core :: option :: Option < () >,
                                                                         },
                                                                     },
                                                                 },
@@ -262,7 +270,7 @@ expression: built.ir()
                                                                         bound: Bounded,
                                                                         order: TotalOrder,
                                                                         retry: ExactlyOnce,
-                                                                        element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                                        element_type: (),
                                                                     },
                                                                 },
                                                             },
@@ -270,7 +278,7 @@ expression: built.ir()
                                                                 location_id: Tick(1, Process(loc2v1)),
                                                                 collection_kind: Optional {
                                                                     bound: Bounded,
-                                                                    element_type: hydro_test :: __staged :: __deps :: tokio :: time :: Instant,
+                                                                    element_type: (),
                                                                 },
                                                             },
                                                         },

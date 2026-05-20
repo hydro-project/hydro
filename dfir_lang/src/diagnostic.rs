@@ -165,16 +165,9 @@ pub struct SerdeSpan {
 }
 impl From<Span> for SerdeSpan {
     fn from(span: Span) -> Self {
-        #[cfg_attr(
-            not(nightly),
-            expect(unused_labels, reason = "conditional compilation")
-        )]
-        let file = 'a: {
-            #[cfg(nightly)]
-            if proc_macro::is_available() {
-                break 'a Some(span.unwrap().file());
-            }
-
+        let file = if proc_macro::is_available() {
+            Some(span.unwrap().file())
+        } else {
             None
         };
 

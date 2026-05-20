@@ -1,8 +1,3 @@
-#![cfg_attr(
-    nightly,
-    feature(proc_macro_diagnostic, proc_macro_span, proc_macro_def_site)
-)]
-
 use dfir_lang::diagnostic::Level;
 use dfir_lang::graph::{
     BuildDfirCodeOutput, FlatGraphBuilder, FlatGraphBuilderOutput, build_dfir_code, partition_graph,

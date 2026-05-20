@@ -27,6 +27,7 @@ expression: built.ir()
                                 left: ObserveNonDet {
                                     inner: Map {
                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , bool) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
+                                        singleton_refs: [],
                                         input: Cast {
                                             inner: Cast {
                                                 inner: Filter {
@@ -38,6 +39,7 @@ expression: built.ir()
                                                             input: Cast {
                                                                 inner: Map {
                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: TaglessMemberId , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < () > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | (k , v) | (MemberId :: from_tagless (k) , v) }),
+                                                                    singleton_refs: [],
                                                                     input: Source {
                                                                         source: ClusterMembers(
                                                                             Cluster(loc1v1),
