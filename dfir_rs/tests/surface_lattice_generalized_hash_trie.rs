@@ -60,6 +60,8 @@ fn test_join() {
             -> state::<MyGht>();
         R[items] -> [0]my_join;
         S[items] -> [1]my_join;
+        R[state] -> null();
+        S[state] -> null();
         my_join = lattice_bimorphism(MyBim::default(), #R, #S)
             -> lattice_reduce()
             -> for_each(|x| out_send.send(x).unwrap());

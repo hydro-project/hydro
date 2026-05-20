@@ -1210,7 +1210,7 @@ impl DfirGraph {
                             HandoffKind::Option => {
                                 // Singleton slot: store exactly one item, panic on duplicate.
                                 quote_spanned! {port_ident.span()=>
-                                    let #port_ident = #root::dfir_pipes::push::for_each(|__item| {
+                                    let mut #port_ident = #root::dfir_pipes::push::for_each(|__item| {
                                         if #buf_ident.replace(__item).is_some() {
                                             panic!("singleton() received more than one item");
                                         }
@@ -1219,7 +1219,7 @@ impl DfirGraph {
                             }
                             HandoffKind::Vec => {
                                 quote_spanned! {port_ident.span()=>
-                                    let #port_ident = #root::dfir_pipes::push::vec_push(&mut #buf_ident);
+                                    let mut #port_ident = #root::dfir_pipes::push::vec_push(&mut #buf_ident);
                                 }
                             }
                         }
