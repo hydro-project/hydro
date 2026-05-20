@@ -1145,7 +1145,12 @@ impl DfirGraph {
                 let buf_ident = self.hoff_buf_ident(node_id, span);
                 match kind {
                     HandoffKind::Option => quote_spanned! {span=> #buf_ident.take(); },
-                    HandoffKind::Vec => quote_spanned! {span=> #buf_ident.clear(); },
+                    HandoffKind::Vec if defer_hoff_ids.contains(&node_id) => {
+                        quote_spanned! {span=> #buf_ident.clear(); }
+                    }
+                    HandoffKind::Vec => {
+                        quote_spanned! {span=> drop(#buf_ident); }
+                    }
                 }
             })
             .collect();
@@ -1661,6 +1666,20 @@ impl DfirGraph {
                     })
                     .collect();
 
+                // Drop bump-allocated recv handoffs after subgraph completes.
+                // If the handoff is top-of-stack in the bump, this reclaims memory.
+                let recv_drop_code: Vec<TokenStream> = recv_hoffs
+                    .iter()
+                    .filter(|&&hoff_id| {
+                        matches!(self.node(hoff_id), GraphNode::Handoff { kind: HandoffKind::Vec, .. })
+                            && !defer_hoff_ids.contains(&hoff_id)
+                    })
+                    .map(|&hoff_id| {
+                        let buf_ident = self.hoff_buf_ident(hoff_id, self.nodes[hoff_id].span());
+                        quote! { drop(#buf_ident); }
+                    })
+                    .collect();
+
                 subgraph_blocks.push(quote! {
                     let #sg_fut_ident = async {
                         let #context = &#df;
@@ -1679,6 +1698,7 @@ impl DfirGraph {
                         sg_metrics.total_run_count.update(|x| x + 1);
                     }
                     #( #send_metrics_code )*
+                    #( #recv_drop_code )*
                 });
 
                 // Collect per-subgraph prologues into the main prologue lists.
