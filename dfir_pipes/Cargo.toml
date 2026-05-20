@@ -13,8 +13,10 @@ default = ["std", "variadics"]
 std = ["alloc", "futures-core/std", "futures-sink/std", "rustc-hash", "smallvec", "variadics?/std"]
 alloc = ["futures-core/alloc", "futures-sink/alloc"]
 variadics = ["dep:variadics"]
+bumpalo = ["dep:bumpalo"]
 
 [dependencies]
+bumpalo = { version = "3", features = ["collections"], optional = true }
 futures-core = { version = "0.3.0", default-features = false }
 futures-sink = { version = "0.3.0", default-features = false }
 itertools = { version = "0.14", default-features = false }
