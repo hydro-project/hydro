@@ -23,7 +23,7 @@ members = [
     "sinktools",
     "variadics_macro",
     "variadics",
-    "website_playground",
+    "website_playground", "scratch_borrow_tests",
 ]
 exclude = ["template"]
 
