@@ -17,13 +17,24 @@ use crate::location::Location;
 /// inside a `q!()` closure, resolves to a reference to the singleton's value (`&T`) at runtime.
 ///
 /// This type is `Copy` (required by `q!()` macro internals).
-///
-/// Safety: The pointed-to `RefCell<HydroNode>` should be kept alive by the `Tee` node in the IR.
-/// If the IR is dropped, using this struct can cause UB.
 /// TODO(mingwei): <https://github.com/hydro-project/stageleft/issues/73>
 pub struct SingletonRef<'a, T, L> {
     pub(crate) node: *const RefCell<HydroNode>,
-    pub(crate) _phantom: PhantomData<(&'a (), T, L)>,
+    _phantom: PhantomData<(&'a (), T, L)>,
+}
+impl<T, L> SingletonRef<'_, T, L> {
+    /// Creates a `SingletonRef` from a shared node.
+    ///
+    /// Note that this will permanently keep the `Rc` alive, intentionally creating a memory leak
+    /// (like [`Box::leak`]).
+    pub(crate) fn new(rc_ptr: Rc<RefCell<HydroNode>>) -> Self {
+        // SAFETY: `rc_ptr` will now never be dropped, and therefore the count cannot reach zero.
+        let node = Rc::into_raw(rc_ptr);
+        Self {
+            node,
+            _phantom: PhantomData,
+        }
+    }
 }
 
 impl<T, L> Copy for SingletonRef<'_, T, L> {}
@@ -73,9 +84,9 @@ where
                 "SingletonRef used inside q!() but no singleton capture scope is active. \
                  This is a bug — singleton capture should be set up by the operator that uses q!().",
             );
-            // Reconstruct the Rc from the raw pointer (incrementing refcount).
-            // Safety: The Rc is kept alive by the Singleton node in the IR...
-            // TODO(mingwei): this is UB if the user drops the IR while keeping this alive...
+            // Reconstruct the Rc from the raw pointer.
+            // SAFETY: The `Rc` is leaked by `Rc::into_raw` in `Self::new` and is forever valid.
+            // The created `Rc`s `Drop` must not run, that would remove the original refcount.
             let rc = unsafe { Rc::from_raw(self.node) };
             let cloned = rc.clone();
             std::mem::forget(rc); // Don't decrement the original refcount

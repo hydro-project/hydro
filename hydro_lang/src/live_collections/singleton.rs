@@ -376,10 +376,7 @@ where
         let HydroNode::Singleton { inner, .. } = &*borrow else {
             unreachable!()
         };
-        crate::singleton_ref::SingletonRef {
-            node: Rc::as_ptr(&inner.0),
-            _phantom: PhantomData,
-        }
+        crate::singleton_ref::SingletonRef::new(Rc::clone(&inner.0))
     }
 
     /// Drops the monotonicity property of the [`Singleton`].

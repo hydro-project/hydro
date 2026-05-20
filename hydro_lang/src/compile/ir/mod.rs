@@ -3760,8 +3760,8 @@ impl HydroNode {
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                // Rewrite the closure: replace local singleton ref idents
-                                // with `#dfir_ident` (the `singleton()` node's DFIR variable name).
+                                // Wrap the closure: assign local singleton ref idents to
+                                // `#ref_ident` (the `singleton()` node's DFIR variable name).
                                 let f_tokens = if singleton_refs.is_empty() {
                                     f.0.to_token_stream()
                                 } else {
