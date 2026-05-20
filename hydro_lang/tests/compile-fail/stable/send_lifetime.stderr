@@ -1,11 +1,11 @@
 error: lifetime may not live long enough
- --> tests/compile-fail/stable/send_lifetime.rs:7:5
+ --> tests/compile-fail/stable/send_lifetime.rs:9:5
   |
-6 | fn test<'a, 'b>(p1: &Process<'a, P1>, p2: &Process<'b, P2>) {
+8 | fn test<'a, 'b>(p1: &Process<'a, P1>, p2: &Process<'b, P2>) {
   |         --  -- lifetime `'b` defined here
   |         |
   |         lifetime `'a` defined here
-7 |     p1.source_iter(q!(0..10))
+9 |     p1.source_iter(q!(0..10))
   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
   |
   = help: consider adding the following bound: `'b: 'a`
@@ -14,19 +14,19 @@ error: lifetime may not live long enough
   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: lifetime may not live long enough
- --> tests/compile-fail/stable/send_lifetime.rs:7:5
-  |
-6 |   fn test<'a, 'b>(p1: &Process<'a, P1>, p2: &Process<'b, P2>) {
-  |           --  -- lifetime `'b` defined here
-  |           |
-  |           lifetime `'a` defined here
-7 | /     p1.source_iter(q!(0..10))
-8 | |         .send(p2, TCP.fail_stop().bincode())
-  | |____________________________________________^ argument requires that `'a` must outlive `'b`
-  |
-  = help: consider adding the following bound: `'a: 'b`
-  = note: requirement occurs because of the type `hydro_lang::prelude::Process<'_, P2>`, which makes the generic argument `'_` invariant
-  = note: the struct `hydro_lang::prelude::Process<'a, ProcessTag>` is invariant over the parameter `'a`
-  = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
+  --> tests/compile-fail/stable/send_lifetime.rs:9:5
+   |
+ 8 |   fn test<'a, 'b>(p1: &Process<'a, P1>, p2: &Process<'b, P2>) {
+   |           --  -- lifetime `'b` defined here
+   |           |
+   |           lifetime `'a` defined here
+ 9 | /     p1.source_iter(q!(0..10))
+10 | |         .send(p2, TCP.fail_stop().bincode())
+   | |____________________________________________^ argument requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
+   = note: requirement occurs because of the type `hydro_lang::prelude::Process<'_, P2>`, which makes the generic argument `'_` invariant
+   = note: the struct `hydro_lang::prelude::Process<'a, ProcessTag>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 help: `'a` and `'b` must be the same: replace one with the other

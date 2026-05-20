@@ -20,8 +20,6 @@ use quote::quote;
 use slotmap::{SecondaryMap, SparseSecondaryMap};
 #[cfg(feature = "build")]
 use syn::parse_quote;
-use syn::visit::{self, Visit};
-use syn::visit_mut::VisitMut;
 
 #[cfg(feature = "build")]
 use crate::compile::builder::ClockId;
@@ -277,148 +275,39 @@ impl Display for DebugExpr {
 }
 
 /// Simplify expanded q! macro calls back to q!(...) syntax for better readability
-fn simplify_q_macro(mut expr: syn::Expr) -> syn::Expr {
-    // Try to parse the token string as a syn::Expr
-    // Use a visitor to simplify q! macro expansions
-    let mut simplifier = QMacroSimplifier::new();
-    simplifier.visit_expr_mut(&mut expr);
+fn simplify_q_macro(expr: syn::Expr) -> syn::Expr {
+    if let syn::Expr::Call(ref call) = expr && let syn::Expr::Path(path_expr) = call.func.as_ref()
+        // Look for calls to stageleft::runtime_support::fn*
+        && is_stageleft_runtime_support_call(&path_expr.path)
+        && let syn::Expr::Block(b) = &call.args[0]
+        && b.block.stmts.len() == 3
+        && let Some(syn::Stmt::Expr(e, _)) = b.block.stmts.get(2)
+    // skip the first two, which are imports
+    {
+        let mut e = e.clone();
+        while let syn::Expr::Block(ref mut block) = e
+            && block.block.stmts.len() == 1
+            && let syn::Stmt::Expr(inner_e, _) = block.block.stmts.remove(0)
+        {
+            e = inner_e;
+        }
 
-    // If we found and simplified a q! macro, return the simplified version
-    if let Some(simplified) = simplifier.simplified_result {
-        simplified
+        e
     } else {
         expr
     }
 }
 
-/// AST visitor that simplifies q! macro expansions
-#[derive(Default)]
-pub struct QMacroSimplifier {
-    pub simplified_result: Option<syn::Expr>,
-}
-
-impl QMacroSimplifier {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
-impl VisitMut for QMacroSimplifier {
-    fn visit_expr_mut(&mut self, expr: &mut syn::Expr) {
-        // Check if we already found a result to avoid further processing
-        if self.simplified_result.is_some() {
-            return;
-        }
-
-        if let syn::Expr::Call(call) = expr && let syn::Expr::Path(path_expr) = call.func.as_ref()
-            // Look for calls to stageleft::runtime_support::fn*
-            && self.is_stageleft_runtime_support_call(&path_expr.path)
-            // Try to extract the closure from the arguments
-            && let Some(closure) = self.extract_closure_from_args(&call.args)
-        {
-            self.simplified_result = Some(closure);
-            return;
-        }
-
-        // Continue visiting child expressions using the default implementation
-        // Use the default visitor to avoid infinite recursion
-        syn::visit_mut::visit_expr_mut(self, expr);
-    }
-}
-
-impl QMacroSimplifier {
-    fn is_stageleft_runtime_support_call(&self, path: &syn::Path) -> bool {
-        // Check if this is a call to stageleft::runtime_support::fn*
-        if let Some(last_segment) = path.segments.last() {
-            let fn_name = last_segment.ident.to_string();
-            // if fn_name.starts_with("fn") && fn_name.contains("_expr") {
-            fn_name.contains("_type_hint")
-                && path.segments.len() > 2
-                && path.segments[0].ident == "stageleft"
-                && path.segments[1].ident == "runtime_support"
-        } else {
-            false
-        }
-    }
-
-    fn extract_closure_from_args(
-        &self,
-        args: &syn::punctuated::Punctuated<syn::Expr, syn::Token![,]>,
-    ) -> Option<syn::Expr> {
-        // Look through the arguments for a closure expression
-        for arg in args {
-            if let syn::Expr::Closure(_) = arg {
-                return Some(arg.clone());
-            }
-            // Also check for closures nested in other expressions (like blocks)
-            if let Some(closure_expr) = self.find_closure_in_expr(arg) {
-                return Some(closure_expr);
-            }
-        }
-        None
-    }
-
-    fn find_closure_in_expr(&self, expr: &syn::Expr) -> Option<syn::Expr> {
-        let mut visitor = ClosureFinder {
-            found_closure: None,
-            prefer_inner_blocks: true,
-        };
-        visitor.visit_expr(expr);
-        visitor.found_closure
-    }
-}
-
-/// Visitor that finds closures in expressions with special block handling
-struct ClosureFinder {
-    found_closure: Option<syn::Expr>,
-    prefer_inner_blocks: bool,
-}
-
-impl<'ast> Visit<'ast> for ClosureFinder {
-    fn visit_expr(&mut self, expr: &'ast syn::Expr) {
-        // If we already found a closure, don't continue searching
-        if self.found_closure.is_some() {
-            return;
-        }
-
-        match expr {
-            syn::Expr::Closure(_) => {
-                self.found_closure = Some(expr.clone());
-            }
-            syn::Expr::Block(block) if self.prefer_inner_blocks => {
-                // Special handling for blocks - look for inner blocks that contain closures
-                for stmt in &block.block.stmts {
-                    if let syn::Stmt::Expr(stmt_expr, _) = stmt
-                        && let syn::Expr::Block(_) = stmt_expr
-                    {
-                        // Check if this nested block contains a closure
-                        let mut inner_visitor = ClosureFinder {
-                            found_closure: None,
-                            prefer_inner_blocks: false, // Avoid infinite recursion
-                        };
-                        inner_visitor.visit_expr(stmt_expr);
-                        if inner_visitor.found_closure.is_some() {
-                            // Found a closure in an inner block, return that block
-                            self.found_closure = Some(stmt_expr.clone());
-                            return;
-                        }
-                    }
-                }
-
-                // If no inner block with closure found, continue with normal visitation
-                visit::visit_expr(self, expr);
-
-                // If we found a closure, just return the closure itself, not the whole block
-                // unless we're in the special case where we want the containing block
-                if self.found_closure.is_some() {
-                    // The closure was found during visitation, no need to wrap in block
-                }
-            }
-            _ => {
-                // Use default visitor behavior for all other expressions
-                visit::visit_expr(self, expr);
-            }
-        }
+fn is_stageleft_runtime_support_call(path: &syn::Path) -> bool {
+    // Check if this is a call to stageleft::runtime_support::fn*
+    if let Some(last_segment) = path.segments.last() {
+        let fn_name = last_segment.ident.to_string();
+        path.segments.len() > 2
+            && path.segments[0].ident == "stageleft"
+            && path.segments[1].ident == "runtime_support"
+            && fn_name.contains("_type_hint")
+    } else {
+        false
     }
 }
 

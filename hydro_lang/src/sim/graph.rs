@@ -841,6 +841,7 @@ fn compile_sim_graph_trybuild(
 
     let source_ast: syn::File = syn::parse_quote! {
         use #trybuild_crate_name_ident::__root as #orig_crate_name;
+        use #trybuild_crate_name_ident::__root::*;
         use #trybuild_crate_name_ident::__staged::__deps::*;
         use #root::prelude::*;
         use #root::runtime_support::dfir_rs as __root_dfir_rs;
