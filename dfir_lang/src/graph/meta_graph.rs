@@ -1255,9 +1255,7 @@ impl DfirGraph {
                             }
                             HandoffKind::Vec => {
                                 quote_spanned! {port_ident.span()=>
-                                    let #port_ident = #root::dfir_pipes::push::for_each(|__item| {
-                                        #buf_ident.push(__item);
-                                    });
+                                    let #port_ident = #root::dfir_pipes::push::VecPush::new(&mut #buf_ident);
                                 }
                             }
                         }

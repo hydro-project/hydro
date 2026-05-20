@@ -31,7 +31,7 @@ bumpalo = { version = "3", features = ["collections"] }
 bytes = "1.1.0"
 dfir_lang = { path = "../dfir_lang", version = "^0.16.0", default-features = false }
 dfir_macro = { optional = true, path = "../dfir_macro", version = "^0.16.0" }
-dfir_pipes = { path = "../dfir_pipes", version = "^0.0.1" }
+dfir_pipes = { path = "../dfir_pipes", version = "^0.0.1", features = ["bumpalo"] }
 futures = "0.3.0"
 hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.0", features = [ "insta" ] }
 hydro_deploy_integration = { optional = true, path = "../hydro_deploy/hydro_deploy_integration", version = "^0.16.0" }

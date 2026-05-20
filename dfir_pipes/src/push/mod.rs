@@ -61,7 +61,7 @@ pub use sink_compat::SinkCompat;
 pub use unzip::Unzip;
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-pub use vec_push::VecPush;
+pub use vec_push::{PushBuf, VecPush};
 
 /// The result of pushing an item into a [`Push`].
 ///

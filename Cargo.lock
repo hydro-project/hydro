@@ -1790,6 +1790,7 @@ dependencies = [
 name = "dfir_pipes"
 version = "0.0.1"
 dependencies = [
+ "bumpalo",
  "futures-core",
  "futures-sink",
  "futures-util",
