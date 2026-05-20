@@ -17,6 +17,7 @@ pin_project! {
         #[pin]
         push: Psh,
         pull_ended: bool,
+        size_hinted: bool,
     }
 }
 
@@ -30,6 +31,7 @@ where
             pull,
             push,
             pull_ended: false,
+            size_hinted: false,
         }
     }
 }
@@ -47,6 +49,12 @@ where
     fn poll(self: Pin<&mut Self>, cx: &mut core::task::Context<'_>) -> Poll<Self::Output> {
         let mut this = self.project();
         if !*this.pull_ended {
+            // Forward size hint from pull to push once, so the push side
+            // can pre-allocate capacity (e.g., Vec::reserve).
+            if !core::mem::replace(this.size_hinted, true) {
+                let hint = Pull::size_hint(&*this.pull);
+                this.push.as_mut().size_hint(hint);
+            }
             loop {
                 // Ensure push is ready before pulling.
                 match this
