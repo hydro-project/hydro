@@ -1807,6 +1807,7 @@ name = "dfir_rs"
 version = "0.16.0"
 dependencies = [
  "bincode",
+ "bumpalo",
  "bytes",
  "chrono",
  "clap",

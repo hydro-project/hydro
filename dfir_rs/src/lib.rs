@@ -29,6 +29,7 @@ pub use ::{
 pub use dfir_lang as lang;
 pub use dfir_lang;
 pub use dfir_pipes::itertools;
+pub use bumpalo;
 pub use slotmap;
 pub use variadics::{self, var_args, var_expr, var_type};
 

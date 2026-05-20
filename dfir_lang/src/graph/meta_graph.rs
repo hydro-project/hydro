@@ -937,19 +937,55 @@ impl DfirGraph {
             })
             .collect();
 
+        // Determine which handoff nodes are tick-boundary (defer_tick) back-edges.
+        // These must remain as captured Vec<T> since they persist across ticks.
+        // All other Vec handoffs will be bump-allocated (tick-local).
+        let defer_hoff_ids: BTreeSet<GraphNodeId> = handoff_nodes
+            .iter()
+            .filter(|(node_id, _, _)| self.handoff_delay_type(*node_id).is_some())
+            .map(|&(node_id, _, _)| node_id)
+            .collect();
+
+        // Buffer declarations for defer_tick handoffs (captured, persist across ticks)
+        // and Option singletons (captured).
         let buffer_code: Vec<TokenStream> = handoff_nodes
             .iter()
-            .map(|&(node_id, kind, (src_span, dst_span))| {
+            .filter_map(|&(node_id, kind, (src_span, dst_span))| {
                 let span = src_span.join(dst_span).unwrap_or(src_span);
                 let buf_ident = self.hoff_buf_ident(node_id, span);
                 match kind {
-                    HandoffKind::Vec => quote_spanned! {span=>
-                        let mut #buf_ident = ::std::vec::Vec::new();
-                    },
-                    HandoffKind::Option => quote_spanned! {span=>
+                    HandoffKind::Vec if defer_hoff_ids.contains(&node_id) => {
+                        // defer_tick: captured Vec (persists across ticks)
+                        Some(quote_spanned! {span=>
+                            let mut #buf_ident = ::std::vec::Vec::new();
+                        })
+                    }
+                    HandoffKind::Vec => {
+                        // Regular stream handoff: will be bump-allocated tick-locally.
+                        // No captured buffer needed.
+                        None
+                    }
+                    HandoffKind::Option => Some(quote_spanned! {span=>
                         let mut #buf_ident = ::std::option::Option::None;
-                    },
+                    }),
                 }
+            })
+            .collect();
+
+        // Tick-local bump-allocated Vec handoff declarations (inside the tick closure).
+        let bump_ident = Ident::new("__dfir_bump", Span::call_site());
+
+        let bump_buffer_code: Vec<TokenStream> = handoff_nodes
+            .iter()
+            .filter_map(|&(node_id, kind, (src_span, dst_span))| {
+                if !matches!(kind, HandoffKind::Vec) || defer_hoff_ids.contains(&node_id) {
+                    return None;
+                }
+                let span = src_span.join(dst_span).unwrap_or(src_span);
+                let buf_ident = self.hoff_buf_ident(node_id, span);
+                Some(quote_spanned! {span=>
+                    let mut #buf_ident = #root::bumpalo::collections::Vec::new_in(&#bump_ident);
+                })
             })
             .collect();
 
@@ -1219,7 +1255,9 @@ impl DfirGraph {
                             }
                             HandoffKind::Vec => {
                                 quote_spanned! {port_ident.span()=>
-                                    let #port_ident = #root::dfir_pipes::push::vec_push(&mut #buf_ident);
+                                    let #port_ident = #root::dfir_pipes::push::for_each(|__item| {
+                                        #buf_ident.push(__item);
+                                    });
                                 }
                             }
                         }
@@ -1720,6 +1758,7 @@ impl DfirGraph {
 
                 #( #buffer_code )*
                 #( #back_buffer_code )*
+                let mut #bump_ident = #root::bumpalo::Bump::new();
                 #( #op_prologue_code )*
 
                 // Pre-set to true so the first tick always returns true
@@ -1730,6 +1769,10 @@ impl DfirGraph {
                 #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref, clippy::deref_addrof)]
                 let __dfir_inline_tick = async move |#df: &mut #root::scheduled::context::Context| {
                     let __dfir_metrics = #df.metrics();
+                    // Reset the bump allocator — reclaims all tick-local handoff memory.
+                    #bump_ident.reset();
+                    // Tick-local bump-allocated handoff buffers.
+                    #( #bump_buffer_code )*
                     // Double-buffer swap for defer_tick handoffs: move last tick's
                     // producer output into the back buffer for the consumer to drain.
                     #( #back_edge_swap_code )*
