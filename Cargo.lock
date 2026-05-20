@@ -1051,6 +1051,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "borrow_tests"
+version = "0.1.0"
+dependencies = [
+ "tokio",
+]
+
+[[package]]
 name = "brotli"
 version = "8.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
