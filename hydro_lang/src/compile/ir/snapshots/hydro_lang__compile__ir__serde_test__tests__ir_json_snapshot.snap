@@ -13,6 +13,7 @@ expression: json
             "node": {
               "Map": {
                 "f": "q!(| x | x * 2)",
+                "singleton_refs": [],
                 "input": {
                   "Source": {
                     "source": {

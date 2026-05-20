@@ -108,6 +108,8 @@ pub mod forward_handle;
 
 pub mod compile;
 
+pub mod singleton_ref;
+
 mod manual_expr;
 
 #[cfg(stageleft_runtime)]

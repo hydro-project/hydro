@@ -386,19 +386,18 @@ where
             };
         }
 
-        if let HydroNode::Tee { inner, metadata } = self.ir_node.borrow().deref() {
-            Stream {
-                location: self.location.clone(),
-                flow_state: self.flow_state.clone(),
-                ir_node: HydroNode::Tee {
-                    inner: SharedNode(inner.0.clone()),
-                    metadata: metadata.clone(),
-                }
-                .into(),
-                _phantom: PhantomData,
-            }
-        } else {
+        let HydroNode::Tee { inner, metadata } = &*self.ir_node.borrow() else {
             unreachable!()
+        };
+        Stream {
+            location: self.location.clone(),
+            flow_state: self.flow_state.clone(),
+            ir_node: HydroNode::Tee {
+                inner: SharedNode(inner.0.clone()),
+                metadata: metadata.clone(),
+            }
+            .into(),
+            _phantom: PhantomData,
         }
     }
 }
@@ -457,11 +456,14 @@ where
     where
         F: Fn(T) -> U + 'a,
     {
-        let f = f.splice_fn1_ctx(&self.location).into();
+        let (f, singleton_refs) = crate::singleton_ref::with_singleton_capture(|| {
+            f.splice_fn1_ctx(&self.location).into()
+        });
         Stream::new(
             self.location.clone(),
             HydroNode::Map {
                 f,
+                singleton_refs,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location

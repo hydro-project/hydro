@@ -107,6 +107,7 @@ expression: builder.finalize().ir()
             ),
             input: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < u32 , hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; | n | SendOverNetwork { n } }),
+                singleton_refs: [],
                 input: Source {
                     source: Iter(
                         stageleft :: runtime_support :: type_hint :: < std :: ops :: Range < u32 > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; 0 .. 10 }),

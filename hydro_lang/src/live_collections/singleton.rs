@@ -326,6 +326,64 @@ where
         &self.location
     }
 
+    /// Creates a lightweight reference handle to this singleton that can be captured
+    /// inside `q!()` closures. The handle resolves to `&T` at runtime.
+    ///
+    /// The singleton must be bounded, otherwise reading it would be non-deterministic.
+    ///
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(async {
+    /// # let mut deployment = hydro_deploy::Deployment::new();
+    /// # let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
+    /// # let process = builder.process::<()>();
+    /// # let external = builder.external::<()>();
+    /// let my_count = process
+    ///     .source_iter(q!(0..5i32))
+    ///     .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+    /// let count_ref = my_count.by_ref();
+    /// let out_port = process
+    ///     .source_iter(q!(1..=3i32))
+    ///     .map(q!(|x| x + *count_ref))
+    ///     .send_bincode_external(&external);
+    /// # let nodes = builder
+    /// #     .with_default_optimize()
+    /// #     .with_process(&process, deployment.Localhost())
+    /// #     .with_external(&external, deployment.Localhost())
+    /// #     .deploy(&mut deployment);
+    /// # deployment.deploy().await.unwrap();
+    /// # let mut out_recv = nodes.connect(out_port).await;
+    /// # deployment.start().await.unwrap();
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 { results.push(out_recv.next().await.unwrap()); }
+    /// # results.sort();
+    /// // fold(0..5) = 10, so results are 11, 12, 13
+    /// # assert_eq!(results, vec![11, 12, 13]);
+    /// # });
+    /// # }
+    /// ```
+    pub fn by_ref(&self) -> crate::singleton_ref::SingletonRef<'a, T, L>
+    where
+        B: IsBounded,
+    {
+        // Wrap in HydroNode::Singleton for materialization + identity tracking.
+        // If already a Singleton node, reuse it. If a Tee (from clone), wrap inner.
+        if !matches!(&*self.ir_node.borrow(), HydroNode::Singleton { .. }) {
+            let orig = self.ir_node.replace(HydroNode::Placeholder);
+            *self.ir_node.borrow_mut() = HydroNode::Singleton {
+                inner: SharedNode(Rc::new(RefCell::new(orig))),
+                metadata: self.location.new_node_metadata(Self::collection_kind()),
+            };
+        }
+        let borrow = self.ir_node.borrow();
+        let HydroNode::Singleton { inner, .. } = &*borrow else {
+            unreachable!()
+        };
+        crate::singleton_ref::SingletonRef::new(Rc::clone(&inner.0))
+    }
+
     /// Drops the monotonicity property of the [`Singleton`].
     pub fn ignore_monotonic(self) -> Singleton<T, L, B::UnderlyingBound> {
         if B::bound_kind() == B::UnderlyingBound::bound_kind() {
@@ -380,6 +438,7 @@ where
             self.location.clone(),
             HydroNode::Map {
                 f,
+                singleton_refs: Vec::new(),
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location

@@ -378,6 +378,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             self.location.clone(),
             HydroNode::Map {
                 f: map_f,
+                singleton_refs: Vec::new(),
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self.location.new_node_metadata(KeyedSingleton::<
                     K,
@@ -442,6 +443,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             self.location.clone(),
             HydroNode::Map {
                 f: map_f,
+                singleton_refs: Vec::new(),
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self.location.new_node_metadata(KeyedSingleton::<
                     K,
@@ -940,6 +942,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Bounded>>
             self.location.clone(),
             HydroNode::Map {
                 f: map_f,
+                singleton_refs: Vec::new(),
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self.location.new_node_metadata(Stream::<
                     V,

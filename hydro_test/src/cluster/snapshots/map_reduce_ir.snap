@@ -16,6 +16,7 @@ expression: built.ir()
                                     inner: Cast {
                                         inner: Map {
                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , (std :: string :: String , i32)) , (std :: string :: String , i32) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
+                                            singleton_refs: [],
                                             input: Cast {
                                                 inner: Cast {
                                                     inner: Network {
@@ -42,6 +43,7 @@ expression: built.ir()
                                                                                 inner: Cast {
                                                                                     inner: Map {
                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < std :: string :: String , (std :: string :: String , ()) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | string | (string , ()) }),
+                                                                                        singleton_refs: [],
                                                                                         input: Network {
                                                                                             name: None,
                                                                                             networking_info: Tcp {
@@ -63,6 +65,7 @@ expression: built.ir()
                                                                                                                 inner: Enumerate {
                                                                                                                     input: Map {
                                                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < & str , std :: string :: String > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; | s | s . to_owned () }),
+                                                                                                                        singleton_refs: [],
                                                                                                                         input: Source {
                                                                                                                             source: Iter(
                                                                                                                                 stageleft :: runtime_support :: type_hint :: < std :: vec :: Vec < & str > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: map_reduce :: * ; vec ! ["abc" , "abc" , "xyz" , "abc"] }),
@@ -114,6 +117,7 @@ expression: built.ir()
                                                                                                                     input: ObserveNonDet {
                                                                                                                         inner: Map {
                                                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , bool) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
+                                                                                                                            singleton_refs: [],
                                                                                                                             input: Cast {
                                                                                                                                 inner: Cast {
                                                                                                                                     inner: Filter {
@@ -125,6 +129,7 @@ expression: built.ir()
                                                                                                                                                 input: Cast {
                                                                                                                                                     inner: Map {
                                                                                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: TaglessMemberId , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: map_reduce :: Worker > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | (k , v) | (MemberId :: from_tagless (k) , v) }),
+                                                                                                                                                        singleton_refs: [],
                                                                                                                                                         input: Source {
                                                                                                                                                             source: ClusterMembers(
                                                                                                                                                                 Cluster(loc2v1),
