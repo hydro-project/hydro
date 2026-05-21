@@ -878,6 +878,92 @@ impl FlatGraphBuilder {
                 }
             }
         }
+
+        // Validate mutable singleton references:
+        // - Multiple ungrouped `#mut var` to the same singleton is an error.
+        // - `#var` and `#mut var` in the same access group is an error.
+        {
+            use std::collections::HashMap;
+            // Collect all refs: target_node_id -> Vec<(consumer_node_id, is_mut, access_group, span)>
+            let mut refs_by_target: HashMap<
+                GraphNodeId,
+                Vec<(GraphNodeId, bool, Option<u32>, Span)>,
+            > = HashMap::new();
+            for node_id in self.flat_graph.node_ids() {
+                if let GraphNode::Operator(operator) = self.flat_graph.node(node_id) {
+                    let resolved = self.flat_graph.node_singleton_references(node_id);
+                    for (resolved_ref, ref_token) in
+                        resolved.iter().zip(operator.singletons_referenced.iter())
+                    {
+                        if let Some(target_id) = resolved_ref.node_id {
+                            refs_by_target.entry(target_id).or_default().push((
+                                node_id,
+                                ref_token.is_mut,
+                                ref_token.access_group,
+                                ref_token.ident.span(),
+                            ));
+                        }
+                    }
+                }
+            }
+
+            for (_target_id, refs) in &refs_by_target {
+                // Check ungrouped mutable refs.
+                let ungrouped_mut: Vec<_> = refs
+                    .iter()
+                    .filter(|(_, is_mut, group, _)| *is_mut && group.is_none())
+                    .collect();
+                if ungrouped_mut.len() > 1 {
+                    for &&(_, _, _, span) in &ungrouped_mut {
+                        self.diagnostics.push(Diagnostic::spanned(
+                            span,
+                            Level::Error,
+                            "Multiple ungrouped `#mut` references to the same singleton. \
+                             Use access groups `#{N} mut var` to specify ordering."
+                                .to_owned(),
+                        ));
+                    }
+                }
+
+                // Check mixed shared + mutable in the same access group.
+                let mut grouped: HashMap<u32, (Vec<Span>, Vec<Span>)> = HashMap::new();
+                for &(_, is_mut, access_group, span) in refs {
+                    if let Some(group) = access_group {
+                        let entry = grouped.entry(group).or_default();
+                        if is_mut {
+                            entry.1.push(span);
+                        } else {
+                            entry.0.push(span);
+                        }
+                    }
+                }
+                for (_group, (shared_spans, mut_spans)) in &grouped {
+                    if !shared_spans.is_empty() && !mut_spans.is_empty() {
+                        for &span in shared_spans.iter().chain(mut_spans.iter()) {
+                            self.diagnostics.push(Diagnostic::spanned(
+                                span,
+                                Level::Error,
+                                "Cannot mix shared (`#`) and mutable (`#mut`) references \
+                                 in the same access group."
+                                    .to_owned(),
+                            ));
+                        }
+                    }
+                    // Multiple mutable refs in the same group is also an error.
+                    if mut_spans.len() > 1 {
+                        for &span in mut_spans {
+                            self.diagnostics.push(Diagnostic::spanned(
+                                span,
+                                Level::Error,
+                                "Multiple `#mut` references in the same access group. \
+                                 Each mutable reference must be in its own access group."
+                                    .to_owned(),
+                            ));
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /// Warns about unused port indexing referenced in [`Self::varname_ends`].
