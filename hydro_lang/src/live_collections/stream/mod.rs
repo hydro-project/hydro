@@ -456,14 +456,13 @@ where
     where
         F: Fn(T) -> U + 'a,
     {
-        let (f, singleton_refs) = crate::singleton_ref::with_singleton_capture(|| {
+        let f = crate::singleton_ref::with_singleton_capture(|| {
             f.splice_fn1_ctx(&self.location).into()
         });
         Stream::new(
             self.location.clone(),
             HydroNode::Map {
                 f,
-                singleton_refs,
                 input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: self
                     .location
@@ -501,7 +500,9 @@ where
         I: IntoIterator<Item = U>,
         F: Fn(T) -> I + 'a,
     {
-        let f = f.splice_fn1_ctx(&self.location).into();
+        let f = crate::singleton_ref::with_singleton_capture(|| {
+            f.splice_fn1_ctx(&self.location).into()
+        });
         Stream::new(
             self.location.clone(),
             HydroNode::FlatMap {
@@ -548,7 +549,9 @@ where
         I: IntoIterator<Item = U>,
         F: Fn(T) -> I + 'a,
     {
-        let f = f.splice_fn1_ctx(&self.location).into();
+        let f = crate::singleton_ref::with_singleton_capture(|| {
+            f.splice_fn1_ctx(&self.location).into()
+        });
         Stream::new(
             self.location.clone(),
             HydroNode::FlatMap {
@@ -685,7 +688,9 @@ where
     where
         F: Fn(&T) -> bool + 'a,
     {
-        let f = f.splice_fn1_borrow_ctx(&self.location).into();
+        let f = crate::singleton_ref::with_singleton_capture(|| {
+            f.splice_fn1_borrow_ctx(&self.location).into()
+        });
         Stream::new(
             self.location.clone(),
             HydroNode::Filter {
@@ -741,7 +746,9 @@ where
     where
         F: Fn(&T) -> bool + 'a,
     {
-        let f: crate::compile::ir::DebugExpr = f.splice_fn1_borrow_ctx(&self.location).into();
+        let f = crate::singleton_ref::with_singleton_capture(|| {
+            f.splice_fn1_borrow_ctx(&self.location).into()
+        });
         let shared = SharedNode(Rc::new(RefCell::new(
             self.ir_node.replace(HydroNode::Placeholder),
         )));
@@ -1103,7 +1110,9 @@ where
     where
         F: Fn(&T) + 'a,
     {
-        let f = f.splice_fn1_borrow_ctx(&self.location).into();
+        let f = crate::singleton_ref::with_singleton_capture(|| {
+            f.splice_fn1_borrow_ctx(&self.location).into()
+        });
 
         Stream::new(
             self.location.clone(),

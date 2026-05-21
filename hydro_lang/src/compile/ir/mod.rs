@@ -34,6 +34,163 @@ use crate::location::{LocationKey, NetworkHint};
 pub mod backtrace;
 use backtrace::Backtrace;
 
+/// A closure expression bundled with any singleton references it captures.
+///
+/// When a `q!()` closure captures a `SingletonRef`, the reference is recorded here
+/// alongside the closure's expression. This allows per-closure tracking of singleton
+/// captures, which is important for nodes with multiple closures (e.g. Fold has `init` and `acc`).
+pub struct ClosureExpr {
+    pub expr: DebugExpr,
+    pub singleton_refs: Vec<(syn::Ident, HydroNode)>,
+}
+
+impl Clone for ClosureExpr {
+    fn clone(&self) -> Self {
+        Self {
+            expr: self.expr.clone(),
+            singleton_refs: self
+                .singleton_refs
+                .iter()
+                .map(|(ident, node)| {
+                    let cloned_node = match node {
+                        HydroNode::Singleton { inner, metadata } => HydroNode::Singleton {
+                            inner: SharedNode(inner.0.clone()),
+                            metadata: metadata.clone(),
+                        },
+                        _ => panic!("singleton_refs should only contain HydroNode::Singleton"),
+                    };
+                    (ident.clone(), cloned_node)
+                })
+                .collect(),
+        }
+    }
+}
+
+impl Hash for ClosureExpr {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.expr.hash(state);
+        // singleton_refs are structural children (like HydroIrMetadata), not
+        // identity-defining. Two closures with the same expr but different
+        // captured refs are the same closure text — the refs only affect codegen.
+    }
+}
+
+impl serde::Serialize for ClosureExpr {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut s = serializer.serialize_struct("ClosureExpr", 2)?;
+        s.serialize_field("expr", &self.expr)?;
+        s.serialize_field(
+            "singleton_refs",
+            &SerializableSingletonRefs(&self.singleton_refs),
+        )?;
+        s.end()
+    }
+}
+
+struct SerializableSingletonRefs<'a>(&'a [(syn::Ident, HydroNode)]);
+
+impl serde::Serialize for SerializableSingletonRefs<'_> {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeSeq;
+        let mut seq = serializer.serialize_seq(Some(self.0.len()))?;
+        for (ident, node) in self.0 {
+            seq.serialize_element(&(ident.to_string(), node))?;
+        }
+        seq.end()
+    }
+}
+
+impl Debug for ClosureExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Debug::fmt(&self.expr, f)
+    }
+}
+
+impl Display for ClosureExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(&self.expr, f)
+    }
+}
+
+impl From<syn::Expr> for ClosureExpr {
+    fn from(expr: syn::Expr) -> Self {
+        Self {
+            expr: DebugExpr(Box::new(expr)),
+            singleton_refs: Vec::new(),
+        }
+    }
+}
+
+impl From<DebugExpr> for ClosureExpr {
+    fn from(expr: DebugExpr) -> Self {
+        Self {
+            expr,
+            singleton_refs: Vec::new(),
+        }
+    }
+}
+
+impl ClosureExpr {
+    pub fn new(expr: DebugExpr, singleton_refs: Vec<(syn::Ident, HydroNode)>) -> Self {
+        Self {
+            expr,
+            singleton_refs,
+        }
+    }
+
+    pub fn deep_clone(&self, seen_tees: &mut SeenSharedNodes) -> Self {
+        Self {
+            expr: self.expr.clone(),
+            singleton_refs: self
+                .singleton_refs
+                .iter()
+                .map(|(ident, node)| (ident.clone(), node.deep_clone(seen_tees)))
+                .collect(),
+        }
+    }
+
+    pub fn transform_children(
+        &mut self,
+        transform: &mut impl FnMut(&mut HydroNode, &mut SeenSharedNodes),
+        seen_tees: &mut SeenSharedNodes,
+    ) {
+        for (_ident, ref_node) in self.singleton_refs.iter_mut() {
+            transform(ref_node, seen_tees);
+        }
+    }
+
+    /// Pop singleton ref idents from the stack and rewrite the closure's token stream,
+    /// replacing local singleton ref idents with `#dfir_ident` references.
+    #[cfg(feature = "build")]
+    pub fn emit_tokens(&self, ident_stack: &mut Vec<syn::Ident>) -> TokenStream {
+        if self.singleton_refs.is_empty() {
+            self.expr.0.to_token_stream()
+        } else {
+            let ref_idents = (0..self.singleton_refs.len())
+                .map(|_| ident_stack.pop().unwrap())
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .collect::<Vec<_>>();
+            let local_idents = self
+                .singleton_refs
+                .iter()
+                .map(|(local_ident, _)| local_ident);
+            let hash = proc_macro2::Punct::new('#', proc_macro2::Spacing::Alone);
+            let expr = &self.expr.0;
+            quote! {
+                {
+                    #(
+                        let #local_idents = #hash #ref_idents;
+                    )*
+                    #expr
+                }
+            }
+        }
+    }
+}
+
 /// Wrapper that displays only the tokens of a parsed expr.
 ///
 /// Boxes `syn::Type` which is ~240 bytes.
@@ -282,18 +439,6 @@ fn serialize_ident<S: serde::Serializer>(
     serializer: S,
 ) -> Result<S::Ok, S::Error> {
     serializer.serialize_str(&ident.to_string())
-}
-
-fn serialize_singleton_refs<S: serde::Serializer>(
-    refs: &[(syn::Ident, HydroNode)],
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    use serde::ser::SerializeSeq;
-    let mut seq = serializer.serialize_seq(Some(refs.len()))?;
-    for (ident, node) in refs {
-        seq.serialize_element(&(ident.to_string(), node))?;
-    }
-    seq.end()
 }
 
 pub enum DebugInstantiate {
@@ -2123,7 +2268,7 @@ pub enum HydroNode {
 
     Partition {
         inner: SharedNode,
-        f: DebugExpr,
+        f: ClosureExpr,
         is_true: bool,
         metadata: HydroIrMetadata,
     },
@@ -2219,37 +2364,27 @@ pub enum HydroNode {
     },
 
     Map {
-        f: DebugExpr,
-        /// Singleton references captured by the closure `f` via `SingletonRef`.
-        /// Each entry maps a local ident (used in the closure body) to the IR node
-        /// of the referenced singleton.
-        ///
-        /// TODO: Currently only `Map` has this field. Other closure-bearing variants
-        /// (Filter, FlatMap, Fold, etc.) should be extended similarly. For nodes with
-        /// multiple closures (e.g. Fold has `init` and `acc`), we may need per-closure
-        /// tracking rather than per-node.
-        #[serde(serialize_with = "serialize_singleton_refs")]
-        singleton_refs: Vec<(syn::Ident, HydroNode)>,
+        f: ClosureExpr,
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
     FlatMap {
-        f: DebugExpr,
+        f: ClosureExpr,
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
     FlatMapStreamBlocking {
-        f: DebugExpr,
+        f: ClosureExpr,
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
     Filter {
-        f: DebugExpr,
+        f: ClosureExpr,
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
     FilterMap {
-        f: DebugExpr,
+        f: ClosureExpr,
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
@@ -2263,7 +2398,7 @@ pub enum HydroNode {
         metadata: HydroIrMetadata,
     },
     Inspect {
-        f: DebugExpr,
+        f: ClosureExpr,
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
@@ -2278,43 +2413,43 @@ pub enum HydroNode {
         metadata: HydroIrMetadata,
     },
     Fold {
-        init: DebugExpr,
-        acc: DebugExpr,
+        init: ClosureExpr,
+        acc: ClosureExpr,
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
 
     Scan {
-        init: DebugExpr,
-        acc: DebugExpr,
+        init: ClosureExpr,
+        acc: ClosureExpr,
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
     ScanAsyncBlocking {
-        init: DebugExpr,
-        acc: DebugExpr,
+        init: ClosureExpr,
+        acc: ClosureExpr,
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
     FoldKeyed {
-        init: DebugExpr,
-        acc: DebugExpr,
+        init: ClosureExpr,
+        acc: ClosureExpr,
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
 
     Reduce {
-        f: DebugExpr,
+        f: ClosureExpr,
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
     ReduceKeyed {
-        f: DebugExpr,
+        f: ClosureExpr,
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
     ReduceKeyedWatermark {
-        f: DebugExpr,
+        f: ClosureExpr,
         input: Box<HydroNode>,
         watermark: Box<HydroNode>,
         metadata: HydroIrMetadata,
@@ -2406,12 +2541,24 @@ impl HydroNode {
             | HydroNode::CycleSource { .. }
             | HydroNode::ExternalInput { .. } => {}
 
-            HydroNode::Tee { inner, .. }
-            | HydroNode::Singleton { inner, .. }
-            | HydroNode::Partition { inner, .. } => {
+            HydroNode::Tee { inner, .. } | HydroNode::Singleton { inner, .. } => {
                 if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
                     *inner = SharedNode(transformed.clone());
                 } else {
+                    let transformed_cell = Rc::new(RefCell::new(HydroNode::Placeholder));
+                    seen_tees.insert(inner.as_ptr(), transformed_cell.clone());
+                    let mut orig = inner.0.replace(HydroNode::Placeholder);
+                    transform(&mut orig, seen_tees);
+                    *transformed_cell.borrow_mut() = orig;
+                    *inner = SharedNode(transformed_cell);
+                }
+            }
+
+            HydroNode::Partition { inner, f, .. } => {
+                if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
+                    *inner = SharedNode(transformed.clone());
+                } else {
+                    f.transform_children(&mut transform, seen_tees);
                     let transformed_cell = Rc::new(RefCell::new(HydroNode::Placeholder));
                     seen_tees.insert(inner.as_ptr(), transformed_cell.clone());
                     let mut orig = inner.0.replace(HydroNode::Placeholder);
@@ -2458,43 +2605,54 @@ impl HydroNode {
                 transform(neg.as_mut(), seen_tees);
             }
 
+            HydroNode::Map { f, input, .. } => {
+                f.transform_children(&mut transform, seen_tees);
+                transform(input.as_mut(), seen_tees);
+            }
+            HydroNode::FlatMap { f, input, .. }
+            | HydroNode::FlatMapStreamBlocking { f, input, .. }
+            | HydroNode::Filter { f, input, .. }
+            | HydroNode::FilterMap { f, input, .. }
+            | HydroNode::Inspect { f, input, .. }
+            | HydroNode::Reduce { f, input, .. }
+            | HydroNode::ReduceKeyed { f, input, .. } => {
+                f.transform_children(&mut transform, seen_tees);
+                transform(input.as_mut(), seen_tees);
+            }
             HydroNode::ReduceKeyedWatermark {
-                input, watermark, ..
+                f,
+                input,
+                watermark,
+                ..
             } => {
+                f.transform_children(&mut transform, seen_tees);
                 transform(input.as_mut(), seen_tees);
                 transform(watermark.as_mut(), seen_tees);
             }
-
-            HydroNode::Map {
-                input,
-                singleton_refs,
-                ..
+            HydroNode::Fold {
+                init, acc, input, ..
+            }
+            | HydroNode::Scan {
+                init, acc, input, ..
+            }
+            | HydroNode::ScanAsyncBlocking {
+                init, acc, input, ..
+            }
+            | HydroNode::FoldKeyed {
+                init, acc, input, ..
             } => {
-                // Transform each singleton ref node (these are HydroNode::Singleton wrappers).
-                for (_ident, ref_node) in singleton_refs.iter_mut() {
-                    transform(ref_node, seen_tees);
-                }
+                init.transform_children(&mut transform, seen_tees);
+                acc.transform_children(&mut transform, seen_tees);
                 transform(input.as_mut(), seen_tees);
             }
             HydroNode::ResolveFutures { input, .. }
             | HydroNode::ResolveFuturesBlocking { input, .. }
             | HydroNode::ResolveFuturesOrdered { input, .. }
-            | HydroNode::FlatMap { input, .. }
-            | HydroNode::FlatMapStreamBlocking { input, .. }
-            | HydroNode::Filter { input, .. }
-            | HydroNode::FilterMap { input, .. }
             | HydroNode::Sort { input, .. }
             | HydroNode::DeferTick { input, .. }
             | HydroNode::Enumerate { input, .. }
-            | HydroNode::Inspect { input, .. }
             | HydroNode::Unique { input, .. }
             | HydroNode::Network { input, .. }
-            | HydroNode::Fold { input, .. }
-            | HydroNode::Scan { input, .. }
-            | HydroNode::ScanAsyncBlocking { input, .. }
-            | HydroNode::FoldKeyed { input, .. }
-            | HydroNode::Reduce { input, .. }
-            | HydroNode::ReduceKeyed { input, .. }
             | HydroNode::Counter { input, .. } => {
                 transform(input.as_mut(), seen_tees);
             }
@@ -2565,7 +2723,7 @@ impl HydroNode {
                 if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
                     HydroNode::Partition {
                         inner: SharedNode(transformed.clone()),
-                        f: f.clone(),
+                        f: f.deep_clone(seen_tees),
                         is_true: *is_true,
                         metadata: metadata.clone(),
                     }
@@ -2576,7 +2734,7 @@ impl HydroNode {
                     *new_rc.borrow_mut() = cloned;
                     HydroNode::Partition {
                         inner: SharedNode(new_rc),
-                        f: f.clone(),
+                        f: f.deep_clone(seen_tees),
                         is_true: *is_true,
                         metadata: metadata.clone(),
                     }
@@ -2687,39 +2845,30 @@ impl HydroNode {
                     metadata: metadata.clone(),
                 }
             }
-            HydroNode::Map {
-                f,
-                singleton_refs,
-                input,
-                metadata,
-            } => HydroNode::Map {
-                f: f.clone(),
-                singleton_refs: singleton_refs
-                    .iter()
-                    .map(|(ident, node)| (ident.clone(), node.deep_clone(seen_tees)))
-                    .collect(),
+            HydroNode::Map { f, input, metadata } => HydroNode::Map {
+                f: f.deep_clone(seen_tees),
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
             HydroNode::FlatMap { f, input, metadata } => HydroNode::FlatMap {
-                f: f.clone(),
+                f: f.deep_clone(seen_tees),
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
             HydroNode::FlatMapStreamBlocking { f, input, metadata } => {
                 HydroNode::FlatMapStreamBlocking {
-                    f: f.clone(),
+                    f: f.deep_clone(seen_tees),
                     input: Box::new(input.deep_clone(seen_tees)),
                     metadata: metadata.clone(),
                 }
             }
             HydroNode::Filter { f, input, metadata } => HydroNode::Filter {
-                f: f.clone(),
+                f: f.deep_clone(seen_tees),
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
             HydroNode::FilterMap { f, input, metadata } => HydroNode::FilterMap {
-                f: f.clone(),
+                f: f.deep_clone(seen_tees),
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
@@ -2732,7 +2881,7 @@ impl HydroNode {
                 metadata: metadata.clone(),
             },
             HydroNode::Inspect { f, input, metadata } => HydroNode::Inspect {
-                f: f.clone(),
+                f: f.deep_clone(seen_tees),
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
@@ -2750,8 +2899,8 @@ impl HydroNode {
                 input,
                 metadata,
             } => HydroNode::Fold {
-                init: init.clone(),
-                acc: acc.clone(),
+                init: init.deep_clone(seen_tees),
+                acc: acc.deep_clone(seen_tees),
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
@@ -2761,8 +2910,8 @@ impl HydroNode {
                 input,
                 metadata,
             } => HydroNode::Scan {
-                init: init.clone(),
-                acc: acc.clone(),
+                init: init.deep_clone(seen_tees),
+                acc: acc.deep_clone(seen_tees),
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
@@ -2772,8 +2921,8 @@ impl HydroNode {
                 input,
                 metadata,
             } => HydroNode::ScanAsyncBlocking {
-                init: init.clone(),
-                acc: acc.clone(),
+                init: init.deep_clone(seen_tees),
+                acc: acc.deep_clone(seen_tees),
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
@@ -2783,8 +2932,8 @@ impl HydroNode {
                 input,
                 metadata,
             } => HydroNode::FoldKeyed {
-                init: init.clone(),
-                acc: acc.clone(),
+                init: init.deep_clone(seen_tees),
+                acc: acc.deep_clone(seen_tees),
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
@@ -2794,18 +2943,18 @@ impl HydroNode {
                 watermark,
                 metadata,
             } => HydroNode::ReduceKeyedWatermark {
-                f: f.clone(),
+                f: f.deep_clone(seen_tees),
                 input: Box::new(input.deep_clone(seen_tees)),
                 watermark: Box::new(watermark.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
             HydroNode::Reduce { f, input, metadata } => HydroNode::Reduce {
-                f: f.clone(),
+                f: f.deep_clone(seen_tees),
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
             HydroNode::ReduceKeyed { f, input, metadata } => HydroNode::ReduceKeyed {
-                f: f.clone(),
+                f: f.deep_clone(seen_tees),
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
@@ -3323,6 +3472,7 @@ impl HydroNode {
                             // The inner node was already processed by transform_bottom_up,
                             // so its ident is on the stack
                             let inner_ident = ident_stack.pop().unwrap();
+                            let f_tokens = f.emit_tokens(&mut ident_stack);
 
                             let partition_ident = syn::Ident::new(
                                 &format!("stream_{}_partition", *next_stmt_id),
@@ -3347,7 +3497,7 @@ impl HydroNode {
                                     let builder = graph_builders.get_dfir_mut(&out_location);
                                     builder.add_dfir(
                                         parse_quote! {
-                                            #partition_ident = #inner_ident -> partition(|__item, __num_outputs| if (#f)(__item) { 0_usize } else { 1_usize });
+                                            #partition_ident = #inner_ident -> partition(|__item, __num_outputs| if (#f_tokens)(__item) { 0_usize } else { 1_usize });
                                             #true_ident = #partition_ident[0];
                                             #false_ident = #partition_ident[1];
                                         },
@@ -3744,42 +3894,16 @@ impl HydroNode {
                         ident_stack.push(futures_ident);
                     }
 
-                    HydroNode::Map { f, singleton_refs, .. } => {
+                    HydroNode::Map { f, .. } => {
                         // Pop input ident (pushed last by transform_children).
                         let input_ident = ident_stack.pop().unwrap();
-                        // Pop singleton ref idents in reverse order (pushed before input).
-                        let ref_idents = (0..singleton_refs.len())
-                            .map(|_| ident_stack.pop().unwrap())
-                            .collect::<Vec<_>>()
-                            .into_iter()
-                            .rev()
-                            .collect::<Vec<_>>();
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         let map_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
 
                         match builders_or_callback {
                             BuildersOrCallback::Builders(graph_builders) => {
-                                // Wrap the closure: assign local singleton ref idents to
-                                // `#ref_ident` (the `singleton()` node's DFIR variable name).
-                                let f_tokens = if singleton_refs.is_empty() {
-                                    f.0.to_token_stream()
-                                } else {
-                                    let local_idents = singleton_refs
-                                        .iter()
-                                        .map(|(local_ident, _)| local_ident);
-                                    let hash = proc_macro2::Punct::new('#', proc_macro2::Spacing::Alone);
-                                    let expr = &f.0;
-                                    quote! {
-                                        {
-                                            #(
-                                                let #local_idents = #hash #ref_idents;
-                                            )*
-                                            #expr
-                                        }
-                                    }
-                                };
-
                                 let builder = graph_builders.get_dfir_mut(&out_location);
                                 builder.add_dfir(
                                     parse_quote! {
@@ -3801,6 +3925,7 @@ impl HydroNode {
 
                     HydroNode::FlatMap { f, .. } => {
                         let input_ident = ident_stack.pop().unwrap();
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         let flat_map_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -3810,7 +3935,7 @@ impl HydroNode {
                                 let builder = graph_builders.get_dfir_mut(&out_location);
                                 builder.add_dfir(
                                     parse_quote! {
-                                        #flat_map_ident = #input_ident -> flat_map(#f);
+                                        #flat_map_ident = #input_ident -> flat_map(#f_tokens);
                                     },
                                     None,
                                     Some(&next_stmt_id.to_string()),
@@ -3828,6 +3953,7 @@ impl HydroNode {
 
                     HydroNode::FlatMapStreamBlocking { f, .. } => {
                         let input_ident = ident_stack.pop().unwrap();
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         let flat_map_stream_blocking_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -3837,7 +3963,7 @@ impl HydroNode {
                                 let builder = graph_builders.get_dfir_mut(&out_location);
                                 builder.add_dfir(
                                     parse_quote! {
-                                        #flat_map_stream_blocking_ident = #input_ident -> flat_map_stream_blocking(#f);
+                                        #flat_map_stream_blocking_ident = #input_ident -> flat_map_stream_blocking(#f_tokens);
                                     },
                                     None,
                                     Some(&next_stmt_id.to_string()),
@@ -3855,6 +3981,7 @@ impl HydroNode {
 
                     HydroNode::Filter { f, .. } => {
                         let input_ident = ident_stack.pop().unwrap();
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         let filter_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -3864,7 +3991,7 @@ impl HydroNode {
                                 let builder = graph_builders.get_dfir_mut(&out_location);
                                 builder.add_dfir(
                                     parse_quote! {
-                                        #filter_ident = #input_ident -> filter(#f);
+                                        #filter_ident = #input_ident -> filter(#f_tokens);
                                     },
                                     None,
                                     Some(&next_stmt_id.to_string()),
@@ -3882,6 +4009,7 @@ impl HydroNode {
 
                     HydroNode::FilterMap { f, .. } => {
                         let input_ident = ident_stack.pop().unwrap();
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         let filter_map_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -3891,7 +4019,7 @@ impl HydroNode {
                                 let builder = graph_builders.get_dfir_mut(&out_location);
                                 builder.add_dfir(
                                     parse_quote! {
-                                        #filter_map_ident = #input_ident -> filter_map(#f);
+                                        #filter_map_ident = #input_ident -> filter_map(#f_tokens);
                                     },
                                     None,
                                     Some(&next_stmt_id.to_string()),
@@ -3995,6 +4123,7 @@ impl HydroNode {
 
                     HydroNode::Inspect { f, .. } => {
                         let input_ident = ident_stack.pop().unwrap();
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         let inspect_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
@@ -4004,7 +4133,7 @@ impl HydroNode {
                                 let builder = graph_builders.get_dfir_mut(&out_location);
                                 builder.add_dfir(
                                     parse_quote! {
-                                        #inspect_ident = #input_ident -> inspect(#f);
+                                        #inspect_ident = #input_ident -> inspect(#f_tokens);
                                     },
                                     None,
                                     Some(&next_stmt_id.to_string()),
@@ -4102,6 +4231,9 @@ impl HydroNode {
                             unreachable!()
                         };
 
+                        let acc_tokens = acc.emit_tokens(&mut ident_stack);
+                        let init_tokens = init.emit_tokens(&mut ident_stack);
+
                         let fold_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
 
@@ -4121,9 +4253,9 @@ impl HydroNode {
                                         &node.metadata().op,
                                     );
 
-                                    let (effective_input, acc) = if let Some(ref hooked) = hooked_input_ident {
+                                    let (effective_input, wrapped_acc) = if let Some(ref hooked) = hooked_input_ident {
                                         let acc: syn::Expr = parse_quote!({
-                                            let mut __inner = #acc;
+                                            let mut __inner = #acc_tokens;
                                             move |__state, __batch: Vec<_>| {
                                                 if __batch.is_empty() {
                                                     return None;
@@ -4137,7 +4269,7 @@ impl HydroNode {
                                         (hooked, acc)
                                     } else {
                                         let acc: syn::Expr = parse_quote!({
-                                            let mut __inner = #acc;
+                                            let mut __inner = #acc_tokens;
                                             move |__state, __value| {
                                                 __inner(__state, __value);
                                                 Some(__state.clone())
@@ -4149,8 +4281,8 @@ impl HydroNode {
                                     let builder = graph_builders.get_dfir_mut(&out_location);
                                     builder.add_dfir(
                                         parse_quote! {
-                                            source_iter([(#init)()]) -> [0]#fold_ident;
-                                            #effective_input -> scan::<#lifetime>(#init, #acc) -> [1]#fold_ident;
+                                            source_iter([(#init_tokens)()]) -> [0]#fold_ident;
+                                            #effective_input -> scan::<#lifetime>(#init_tokens, #wrapped_acc) -> [1]#fold_ident;
                                             #fold_ident = chain();
                                         },
                                         None,
@@ -4175,9 +4307,9 @@ impl HydroNode {
                                     );
                                     let builder = graph_builders.get_dfir_mut(&out_location);
 
-                                    let acc: syn::Expr = parse_quote!({
-                                        let mut __init = #init;
-                                        let mut __inner = #acc;
+                                    let wrapped_acc: syn::Expr = parse_quote!({
+                                        let mut __init = #init_tokens;
+                                        let mut __inner = #acc_tokens;
                                         move |__state, __kv: (_, _)| {
                                             // TODO(shadaj): we can avoid the clone when the entry exists
                                             let __state = __state
@@ -4191,7 +4323,7 @@ impl HydroNode {
                                     if let Some(hooked_input_ident) = hooked_input_ident {
                                         builder.add_dfir(
                                             parse_quote! {
-                                                #fold_ident = #hooked_input_ident -> flatten() -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #acc);
+                                                #fold_ident = #hooked_input_ident -> flatten() -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #wrapped_acc);
                                             },
                                             None,
                                             Some(&next_stmt_id.to_string()),
@@ -4201,7 +4333,7 @@ impl HydroNode {
                                     } else {
                                         builder.add_dfir(
                                             parse_quote! {
-                                                #fold_ident = #input_ident -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #acc);
+                                                #fold_ident = #input_ident -> scan::<#lifetime>(|| ::std::collections::HashMap::new(), #wrapped_acc);
                                             },
                                             None,
                                             Some(&next_stmt_id.to_string()),
@@ -4228,7 +4360,7 @@ impl HydroNode {
                                     let builder = graph_builders.get_dfir_mut(&out_location);
                                     builder.add_dfir(
                                         parse_quote! {
-                                            #fold_ident = #actual_input -> #operator::<#lifetime>(#init, #acc);
+                                            #fold_ident = #actual_input -> #operator::<#lifetime>(#init_tokens, #acc_tokens);
                                         },
                                         None,
                                         Some(&next_stmt_id.to_string()),
@@ -4237,7 +4369,7 @@ impl HydroNode {
                                     let builder = graph_builders.get_dfir_mut(&out_location);
                                     builder.add_dfir(
                                         parse_quote! {
-                                            #fold_ident = #input_ident -> #operator::<#lifetime>(#init, #acc);
+                                            #fold_ident = #input_ident -> #operator::<#lifetime>(#init_tokens, #acc_tokens);
                                         },
                                         None,
                                         Some(&next_stmt_id.to_string()),
@@ -4295,6 +4427,8 @@ impl HydroNode {
                             unreachable!()
                         };
 
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
+
                         let reduce_ident =
                             syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
 
@@ -4322,7 +4456,7 @@ impl HydroNode {
                                     let builder = graph_builders.get_dfir_mut(&out_location);
                                     builder.add_dfir(
                                         parse_quote! {
-                                            #reduce_ident = #input_ident -> #operator::<#lifetime>(#f);
+                                            #reduce_ident = #input_ident -> #operator::<#lifetime>(#f_tokens);
                                         },
                                         None,
                                         Some(&next_stmt_id.to_string()),
@@ -4354,6 +4488,7 @@ impl HydroNode {
                         // watermark is processed second, so it's on top
                         let watermark_ident = ident_stack.pop().unwrap();
                         let input_ident = ident_stack.pop().unwrap();
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         let chain_ident = syn::Ident::new(
                             &format!("reduce_keyed_watermark_chain_{}", *next_stmt_id),
@@ -4395,7 +4530,7 @@ impl HydroNode {
 
                                             #fold_ident = #chain_ident
                                                 -> #agg_operator::<#lifetime>(|| (::std::collections::HashMap::new(), None), {
-                                                    let __reduce_keyed_fn = #f;
+                                                    let __reduce_keyed_fn = #f_tokens;
                                                     move |(map, opt_curr_watermark), (opt_payload, opt_watermark)| {
                                                         if let Some((k, v)) = opt_payload {
                                                             if let Some(curr_watermark) = *opt_curr_watermark {
@@ -4566,9 +4701,16 @@ impl HydroNode {
             false,
         );
 
-        ident_stack
+        let ret = ident_stack
             .pop()
-            .expect("ident_stack should have exactly one element after traversal")
+            .expect("ident_stack should have exactly one element after traversal");
+        assert!(
+            ident_stack.is_empty(),
+            "ident_stack should be empty after popping the final ident, but has {} remaining element(s). \
+             This indicates a bug in the code gen: some node pushed idents that were never consumed.",
+            ident_stack.len()
+        );
+        ret
     }
 
     pub fn visit_debug_expr(&mut self, mut transform: impl FnMut(&mut DebugExpr)) {
@@ -4621,14 +4763,14 @@ impl HydroNode {
             | HydroNode::Reduce { f, .. }
             | HydroNode::ReduceKeyed { f, .. }
             | HydroNode::ReduceKeyedWatermark { f, .. } => {
-                transform(f);
+                transform(&mut f.expr);
             }
             HydroNode::Fold { init, acc, .. }
             | HydroNode::Scan { init, acc, .. }
             | HydroNode::ScanAsyncBlocking { init, acc, .. }
             | HydroNode::FoldKeyed { init, acc, .. } => {
-                transform(init);
-                transform(acc);
+                transform(&mut init.expr);
+                transform(&mut acc.expr);
             }
             HydroNode::Network {
                 serialize_fn,
@@ -5122,7 +5264,7 @@ mod test {
         ignore = "expects inclusion of feature-gated fields"
     )]
     fn hydro_node_size() {
-        assert_eq!(size_of::<HydroNode>(), 248);
+        assert_eq!(size_of::<HydroNode>(), 256);
     }
 
     #[test]
