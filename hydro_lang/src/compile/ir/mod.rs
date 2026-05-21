@@ -3461,6 +3461,15 @@ impl HydroNode {
                         let ret_ident = if let Some(built_idents) = built_tees.get(&ptr) {
                             // Pop singleton ref idents (if any) that were pushed by transform_children
                             // but won't be used since the partition was already built.
+                            //
+                            // When the second Partition branch is processed, transform_children
+                            // recurses into f.singleton_refs, causing each Singleton node's
+                            // transform_bottom_up to push an ident onto ident_stack. Since the
+                            // partition was already built by the first branch, these idents are
+                            // unused and must be popped to maintain stack invariants.
+                            //
+                            // Removing this pop triggers the ident_stack emptiness assertion at
+                            // the end of emit_core (verified by test_singleton_ref_partition_*).
                             for _ in 0..f.singleton_refs.len() {
                                 ident_stack.pop().unwrap();
                             }
@@ -4707,9 +4716,16 @@ impl HydroNode {
             false,
         );
 
-        ident_stack
+        let ret = ident_stack
             .pop()
-            .expect("ident_stack should have exactly one element after traversal")
+            .expect("ident_stack should have exactly one element after traversal");
+        assert!(
+            ident_stack.is_empty(),
+            "ident_stack should be empty after popping the final ident, but has {} remaining element(s). \
+             This indicates a bug in the code gen: some node pushed idents that were never consumed.",
+            ident_stack.len()
+        );
+        ret
     }
 
     pub fn visit_debug_expr(&mut self, mut transform: impl FnMut(&mut DebugExpr)) {

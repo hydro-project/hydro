@@ -246,4 +246,30 @@ mod tests {
         threshold.into_stream().for_each(q!(|_| {}));
         let _built = flow.finalize();
     }
+
+    /// Compile-only: singleton ref inside partition with downstream operators on both branches.
+    ///
+    /// This exercises the ident_stack pop logic in the "already built" path of Partition
+    /// code generation. When the second branch is processed, singleton ref idents pushed by
+    /// transform_children must be popped to keep the stack consistent for downstream ops.
+    #[test]
+    fn singleton_by_ref_partition_with_downstream_ops() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<P1>();
+
+        let threshold = node
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+        let threshold_ref = threshold.by_ref();
+
+        let (above, below) = node
+            .source_iter(q!(1..=10i32))
+            .partition(q!(|x| *x > *threshold_ref));
+
+        // Downstream operators on both branches — if the pop is missing, these will fail
+        above.map(q!(|x| x * 2)).for_each(q!(|_| {}));
+        below.map(q!(|x| x + 100)).for_each(q!(|_| {}));
+        threshold.into_stream().for_each(q!(|_| {}));
+        let _built = flow.finalize();
+    }
 }
