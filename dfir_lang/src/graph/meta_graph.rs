@@ -833,7 +833,8 @@ impl DfirGraph {
             .iter()
             .map(|resolved_ref| {
                 // TODO(mingwei): this `expect` should be caught in error checking
-                let ref_node_id = resolved_ref.node_id
+                let ref_node_id = resolved_ref
+                    .node_id
                     .expect("Expected singleton to be resolved but was not, this is a bug.");
                 let is_mut = resolved_ref.is_mut;
                 if matches!(

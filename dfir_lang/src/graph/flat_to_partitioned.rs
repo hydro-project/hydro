@@ -96,7 +96,7 @@ fn find_barrier_crossers(partitioned_graph: &DfirGraph) -> BarrierCrossers {
     }
 
     // For each singleton target, add ordering barriers between access groups.
-    for (_target_id, refs) in &refs_by_target {
+    for refs in refs_by_target.values() {
         // Separate into grouped and ungrouped.
         let mut grouped: BTreeMap<u32, Vec<(GraphNodeId, bool)>> = BTreeMap::new();
         let mut ungrouped_shared: Vec<GraphNodeId> = Vec::new();
@@ -104,7 +104,10 @@ fn find_barrier_crossers(partitioned_graph: &DfirGraph) -> BarrierCrossers {
 
         for &(consumer_id, is_mut, access_group) in refs {
             if let Some(group) = access_group {
-                grouped.entry(group).or_default().push((consumer_id, is_mut));
+                grouped
+                    .entry(group)
+                    .or_default()
+                    .push((consumer_id, is_mut));
             } else if is_mut {
                 ungrouped_mut.push(consumer_id);
             } else {
