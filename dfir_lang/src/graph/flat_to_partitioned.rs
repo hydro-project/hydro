@@ -69,8 +69,8 @@ fn find_barrier_crossers(partitioned_graph: &DfirGraph) -> BarrierCrossers {
             partitioned_graph
                 .node_singleton_references(dst)
                 .iter()
-                .flatten()
-                .map(move |&src_ref| (src_ref, dst))
+                .filter_map(|r| r.node_id)
+                .map(move |src_ref| (src_ref, dst))
         })
         .collect();
     BarrierCrossers {

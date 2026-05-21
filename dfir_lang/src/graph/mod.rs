@@ -201,7 +201,7 @@ pub struct OperatorInstance {
     /// Port values used as this operator's output.
     pub output_ports: Vec<PortIndexValue>,
     /// Singleton references within the operator arguments.
-    pub singletons_referenced: Vec<Ident>,
+    pub singletons_referenced: Vec<crate::process_singletons::SingletonRefToken>,
 
     /// Generic arguments.
     pub generics: OpInstGenerics,

@@ -430,7 +430,7 @@ pub struct Operator {
     pub paren_token: Paren,
     pub args_raw: TokenStream,
     pub args: Punctuated<Expr, Token![,]>,
-    pub singletons_referenced: Vec<Ident>,
+    pub singletons_referenced: Vec<crate::process_singletons::SingletonRefToken>,
 }
 
 impl Operator {

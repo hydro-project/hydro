@@ -407,23 +407,28 @@ impl FlatGraphBuilder {
                     .map(|singleton_ref| {
                         let port_det = self
                             .varname_ends
-                            .get(&singleton_ref)
+                            .get(&singleton_ref.ident)
                             .filter(|varname_info| !varname_info.illegal_cycle)
                             .map(|varname_info| &varname_info.ends)
                             .and_then(|ends| ends.out.as_ref())
                             .cloned();
-                        if let Some((_port, node_id)) = self.helper_resolve_name(port_det, false) {
+                        let resolved_node_id = if let Some((_port, node_id)) = self.helper_resolve_name(port_det, false) {
                             Some(node_id)
                         } else {
                             self.diagnostics.push(Diagnostic::spanned(
-                                singleton_ref.span(),
+                                singleton_ref.ident.span(),
                                 Level::Error,
                                 format!(
                                     "Cannot find referenced name `{}`; name was never assigned.",
-                                    singleton_ref
+                                    singleton_ref.ident
                                 ),
                             ));
                             None
+                        };
+                        crate::graph::meta_graph::ResolvedSingletonRef {
+                            node_id: resolved_node_id,
+                            is_mut: singleton_ref.is_mut,
+                            access_group: singleton_ref.access_group,
                         }
                     })
                     .collect();
@@ -799,11 +804,11 @@ impl FlatGraphBuilder {
                     {
                         let singletons_resolved =
                             self.flat_graph.node_singleton_references(node_id);
-                        for (singleton_node_id, singleton_ident) in singletons_resolved
+                        for (resolved_ref, singleton_ref_token) in singletons_resolved
                             .iter()
                             .zip_eq(&*operator.singletons_referenced)
                         {
-                            let &Some(singleton_node_id) = singleton_node_id else {
+                            let Some(singleton_node_id) = resolved_ref.node_id else {
                                 // Error already emitted by `connect_operator_links`, "Cannot find referenced name...".
                                 continue;
                             };
@@ -825,7 +830,7 @@ impl FlatGraphBuilder {
                             let ref_op_constraints = ref_op_inst.op_constraints;
                             if !ref_op_constraints.has_singleton_output {
                                 self.diagnostics.push(Diagnostic::spanned(
-                                    singleton_ident.span(),
+                                    singleton_ref_token.ident.span(),
                                     Level::Error,
                                     format!(
                                         "Cannot reference operator `{}`. Only operators with singleton state can be referenced.",
