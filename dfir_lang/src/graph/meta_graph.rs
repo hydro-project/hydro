@@ -1668,8 +1668,10 @@ impl DfirGraph {
 
                 // Drop bump-allocated recv handoffs after subgraph completes.
                 // If the handoff is top-of-stack in the bump, this reclaims memory.
+                // Drop in reverse order (LIFO) so each successive drop is top-of-stack.
                 let recv_drop_code: Vec<TokenStream> = recv_hoffs
                     .iter()
+                    .rev()
                     .filter(|&&hoff_id| {
                         matches!(self.node(hoff_id), GraphNode::Handoff { kind: HandoffKind::Vec, .. })
                             && !defer_hoff_ids.contains(&hoff_id)
