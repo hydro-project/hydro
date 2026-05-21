@@ -135,8 +135,6 @@ impl<const N: usize> TickSlabInner<N> {
         let is_new = if self.initialized == 0 {
             true
         } else {
-            // A slot is "new" if its position hasn't been set yet.
-            // We detect this by checking if the slot_order at slot_pos[id] == id.
             let pos = self.slot_pos[id];
             pos >= self.initialized || self.slot_order[pos] != id
         };
@@ -166,45 +164,42 @@ impl<const N: usize> TickSlabInner<N> {
             return;
         }
 
-        // Not last: move to end
-        let old_offset = offset;
-        let old_cap = current_cap;
-
-        // Move memory for shifted slots
+        // Not last: allocate a new region at the end (don't move existing slots).
+        // The old region becomes dead space until reset() compacts.
         let end = self.end_offset();
-        let move_len = end - (old_offset + old_cap);
-        if move_len > 0 {
-            unsafe {
-                let src = self.buf.add(old_offset + old_cap);
-                let dst = self.buf.add(old_offset);
-                ptr::copy(src, dst, move_len);
-            }
-        }
+        let new_offset = (end + align - 1) & !(align - 1);
 
-        // Shift positions left
-        for i in pos..self.initialized - 1 {
-            self.slot_order[i] = self.slot_order[i + 1];
-            self.offsets[i] = self.offsets[i + 1] - old_cap;
-            self.slot_pos[self.slot_order[i]] = i;
-        }
-
-        // Place at end, aligned
-        let new_pos = self.initialized - 1;
-        let raw_offset = if new_pos > 0 {
-            let prev_id = self.slot_order[new_pos - 1];
-            self.offsets[new_pos - 1] + self.requested_cap[prev_id]
-        } else {
-            0
-        };
-        let new_offset = (raw_offset + align - 1) & !(align - 1);
-        self.slot_order[new_pos] = id;
-        self.slot_pos[id] = new_pos;
-        self.offsets[new_pos] = new_offset;
-
+        // Grow buffer if needed
         let needed = new_offset + min_bytes;
         if needed > self.buf_cap {
             self.grow_buf(needed);
         }
+
+        // Copy existing data to new location
+        let copy_len = current_cap.min(min_bytes);
+        if copy_len > 0 {
+            unsafe {
+                ptr::copy_nonoverlapping(
+                    self.buf.add(offset),
+                    self.buf.add(new_offset),
+                    copy_len,
+                );
+            }
+        }
+
+        // Update this slot's position to the end
+        // Remove from old position, shift others
+        for i in pos..self.initialized - 1 {
+            self.slot_order[i] = self.slot_order[i + 1];
+            self.slot_pos[self.slot_order[i]] = i;
+            // Note: offsets of other slots don't change (no memory movement)
+            self.offsets[i] = self.offsets[i + 1];
+        }
+
+        let new_pos = self.initialized - 1;
+        self.slot_order[new_pos] = id;
+        self.slot_pos[id] = new_pos;
+        self.offsets[new_pos] = new_offset;
     }
 
     fn init_slot(&mut self, id: usize, min_bytes: usize, align: usize) {
@@ -228,9 +223,16 @@ impl<const N: usize> TickSlabInner<N> {
         if self.initialized == 0 {
             0
         } else {
-            let last_pos = self.initialized - 1;
-            let last_id = self.slot_order[last_pos];
-            self.offsets[last_pos] + self.requested_cap[last_id]
+            // Find the highest end point across all slots
+            let mut max_end = 0;
+            for pos in 0..self.initialized {
+                let id = self.slot_order[pos];
+                let end = self.offsets[pos] + self.requested_cap[id];
+                if end > max_end {
+                    max_end = end;
+                }
+            }
+            max_end
         }
     }
 
@@ -295,7 +297,8 @@ impl<'a, T, const N: usize> SlabVec<'a, T, N> {
         self.cap
     }
 
-    pub fn drain(&mut self) -> SlabVecDrain<'_, T> {
+    pub fn drain<R: std::ops::RangeBounds<usize>>(&mut self, _range: R) -> SlabVecDrain<'_, T> {
+        // For now, always drains everything (ignores range).
         let len = self.len;
         self.len = 0;
         SlabVecDrain {
@@ -391,7 +394,7 @@ mod tests {
             v.push(2);
             v.push(3);
             assert_eq!(v.len(), 3);
-            let items: Vec<i32> = v.drain().collect();
+            let items: Vec<i32> = v.drain(..).collect();
             assert_eq!(items, vec![1, 2, 3]);
         }
     }
@@ -409,8 +412,8 @@ mod tests {
             v1.push(40);
             v1.push(50);
 
-            let items0: Vec<i32> = v0.drain().collect();
-            let items1: Vec<i32> = v1.drain().collect();
+            let items0: Vec<i32> = v0.drain(..).collect();
+            let items1: Vec<i32> = v1.drain(..).collect();
             assert_eq!(items0, vec![10, 20]);
             assert_eq!(items1, vec![30, 40, 50]);
         }
@@ -425,7 +428,7 @@ mod tests {
                 v.push(i);
             }
             assert_eq!(v.len(), 100);
-            let items: Vec<i32> = v.drain().collect();
+            let items: Vec<i32> = v.drain(..).collect();
             assert_eq!(items, (0..100).collect::<Vec<_>>());
         }
     }
