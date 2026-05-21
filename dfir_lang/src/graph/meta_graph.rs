@@ -937,19 +937,60 @@ impl DfirGraph {
             })
             .collect();
 
+        // Identify defer_tick handoffs (must remain as captured Vecs).
+        let defer_hoff_ids: BTreeSet<GraphNodeId> = handoff_nodes
+            .iter()
+            .filter(|(node_id, _, _)| self.handoff_delay_type(*node_id).is_some())
+            .map(|&(node_id, _, _)| node_id)
+            .collect();
+
+        // Assign stable slab slot indices to non-defer Vec handoffs.
+        let slab_slot_map: BTreeMap<GraphNodeId, usize> = handoff_nodes
+            .iter()
+            .filter(|&&(node_id, kind, _)| {
+                matches!(kind, HandoffKind::Vec) && !defer_hoff_ids.contains(&node_id)
+            })
+            .enumerate()
+            .map(|(idx, &(node_id, _, _))| (node_id, idx))
+            .collect();
+        let num_slab_slots = slab_slot_map.len();
+
+        // Buffer declarations: only defer_tick Vecs and Option singletons are captured.
         let buffer_code: Vec<TokenStream> = handoff_nodes
             .iter()
-            .map(|&(node_id, kind, (src_span, dst_span))| {
+            .filter_map(|&(node_id, kind, (src_span, dst_span))| {
                 let span = src_span.join(dst_span).unwrap_or(src_span);
                 let buf_ident = self.hoff_buf_ident(node_id, span);
                 match kind {
-                    HandoffKind::Vec => quote_spanned! {span=>
-                        let mut #buf_ident = ::std::vec::Vec::new();
-                    },
-                    HandoffKind::Option => quote_spanned! {span=>
+                    HandoffKind::Vec if defer_hoff_ids.contains(&node_id) => {
+                        Some(quote_spanned! {span=>
+                            let mut #buf_ident = ::std::vec::Vec::new();
+                        })
+                    }
+                    HandoffKind::Vec => None, // handled by slab
+                    HandoffKind::Option => Some(quote_spanned! {span=>
                         let mut #buf_ident = ::std::option::Option::None;
-                    },
+                    }),
                 }
+            })
+            .collect();
+
+        // Slab ident with call_site span for hygiene.
+        let slab_ident = Ident::new("__dfir_slab", Span::call_site());
+
+        // Tick-local SlabVec declarations (inside the tick closure).
+        let slab_vec_code: Vec<TokenStream> = handoff_nodes
+            .iter()
+            .filter_map(|&(node_id, kind, (src_span, dst_span))| {
+                if !matches!(kind, HandoffKind::Vec) || defer_hoff_ids.contains(&node_id) {
+                    return None;
+                }
+                let span = src_span.join(dst_span).unwrap_or(src_span);
+                let buf_ident = self.hoff_buf_ident(node_id, span);
+                let slot_idx = slab_slot_map[&node_id];
+                Some(quote_spanned! {span=>
+                    let mut #buf_ident = unsafe { #slab_ident.vec(#slot_idx, 0) };
+                })
             })
             .collect();
 
@@ -1109,6 +1150,9 @@ impl DfirGraph {
                 let buf_ident = self.hoff_buf_ident(node_id, span);
                 match kind {
                     HandoffKind::Option => quote_spanned! {span=> #buf_ident.take(); },
+                    HandoffKind::Vec if slab_slot_map.contains_key(&node_id) => {
+                        quote_spanned! {span=> drop(#buf_ident); }
+                    }
                     HandoffKind::Vec => quote_spanned! {span=> #buf_ident.clear(); },
                 }
             })
@@ -1218,8 +1262,18 @@ impl DfirGraph {
                                 }
                             }
                             HandoffKind::Vec => {
-                                quote_spanned! {port_ident.span()=>
-                                    let #port_ident = #root::dfir_pipes::push::vec_push(&mut #buf_ident);
+                                if slab_slot_map.contains_key(&hoff_id) {
+                                    // Slab-allocated: use for_each (SlabVec)
+                                    quote_spanned! {port_ident.span()=>
+                                        let #port_ident = #root::dfir_pipes::push::for_each(|__item| {
+                                            #buf_ident.push(__item);
+                                        });
+                                    }
+                                } else {
+                                    // defer_tick: regular Vec, use vec_push
+                                    quote_spanned! {port_ident.span()=>
+                                        let #port_ident = #root::dfir_pipes::push::vec_push(&mut #buf_ident);
+                                    }
                                 }
                             }
                         }
@@ -1720,6 +1774,7 @@ impl DfirGraph {
 
                 #( #buffer_code )*
                 #( #back_buffer_code )*
+                let #slab_ident = #root::slab_alloc::TickSlab::<#num_slab_slots>::new();
                 #( #op_prologue_code )*
 
                 // Pre-set to true so the first tick always returns true
@@ -1730,6 +1785,10 @@ impl DfirGraph {
                 #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref, clippy::deref_addrof)]
                 let __dfir_inline_tick = async move |#df: &mut #root::scheduled::context::Context| {
                     let __dfir_metrics = #df.metrics();
+                    // Reset the slab allocator — retains capacity from previous tick.
+                    #slab_ident.reset();
+                    // Create tick-local SlabVec handoff buffers.
+                    #( #slab_vec_code )*
                     // Double-buffer swap for defer_tick handoffs: move last tick's
                     // producer output into the back buffer for the consumer to drain.
                     #( #back_edge_swap_code )*
