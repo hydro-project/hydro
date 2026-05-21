@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/deploy/deploy_runtime_containerized.rs`."><title>deploy_runtime_containerized.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.97.0-nightly (e50aa6fba 2026-05-19)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/deploy/</div>deploy_runtime_containerized.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="attr">#![allow(
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/deploy/deploy_runtime_containerized.rs`."><title>deploy_runtime_containerized.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.97.0-nightly (b954122bb 2026-05-20)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/deploy/</div>deploy_runtime_containerized.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="attr">#![allow(
 <a href=#2 id=2 data-nosnippet>2</a>    unused,
 <a href=#3 id=3 data-nosnippet>3</a>    reason = <span class="string">"unused in trybuild but the __staged version is needed"
 <a href=#4 id=4 data-nosnippet>4</a></span>)]
@@ -267,7 +267,7 @@
 <a href=#267 id=267 data-nosnippet>267</a>
 <a href=#268 id=268 data-nosnippet>268</a>                <span class="self">self</span>::send_handshake(<span class="kw-2">&amp;mut </span>sink, channel_name, <span class="prelude-val">None</span>).<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#269 id=269 data-nosnippet>269</a>
-<a href=#270 id=270 data-nosnippet>270</a>                Result::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok(sink)
+<a href=#270 id=270 data-nosnippet>270</a>                <span class="prelude-ty">Result</span>::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok(sink)
 <a href=#271 id=271 data-nosnippet>271</a>            }
 <a href=#272 id=272 data-nosnippet>272</a>        )))
 <a href=#273 id=273 data-nosnippet>273</a>        .splice_untyped_ctx(<span class="kw-2">&amp;</span>()),
@@ -282,7 +282,7 @@
 <a href=#282 id=282 data-nosnippet>282</a>
 <a href=#283 id=283 data-nosnippet>283</a>            <span class="macro">debug!</span>(name: <span class="string">"o2o_channel_connected"</span>, %channel_name);
 <a href=#284 id=284 data-nosnippet>284</a>
-<a href=#285 id=285 data-nosnippet>285</a>            Result::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok(source)
+<a href=#285 id=285 data-nosnippet>285</a>            <span class="prelude-ty">Result</span>::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok(source)
 <a href=#286 id=286 data-nosnippet>286</a>        })))
 <a href=#287 id=287 data-nosnippet>287</a>        .splice_untyped_ctx(<span class="kw-2">&amp;</span>()),
 <a href=#288 id=288 data-nosnippet>288</a>    )
@@ -306,7 +306,7 @@
 <a href=#306 id=306 data-nosnippet>306</a>
 <a href=#307 id=307 data-nosnippet>307</a>                        <span class="self">self</span>::send_handshake(<span class="kw-2">&amp;mut </span>sink, <span class="kw-2">&amp;</span>channel_name, <span class="prelude-val">None</span>).<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#308 id=308 data-nosnippet>308</a>
-<a href=#309 id=309 data-nosnippet>309</a>                        Result::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok(sink)
+<a href=#309 id=309 data-nosnippet>309</a>                        <span class="prelude-ty">Result</span>::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok(sink)
 <a href=#310 id=310 data-nosnippet>310</a>                    })
 <a href=#311 id=311 data-nosnippet>311</a>                })
 <a href=#312 id=312 data-nosnippet>312</a>            }
@@ -323,7 +323,7 @@
 <a href=#323 id=323 data-nosnippet>323</a>
 <a href=#324 id=324 data-nosnippet>324</a>            <span class="macro">debug!</span>(name: <span class="string">"o2m_channel_connected"</span>, %channel_name);
 <a href=#325 id=325 data-nosnippet>325</a>
-<a href=#326 id=326 data-nosnippet>326</a>            Result::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok(source)
+<a href=#326 id=326 data-nosnippet>326</a>            <span class="prelude-ty">Result</span>::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok(source)
 <a href=#327 id=327 data-nosnippet>327</a>        })))
 <a href=#328 id=328 data-nosnippet>328</a>        .splice_untyped_ctx(<span class="kw-2">&amp;</span>()),
 <a href=#329 id=329 data-nosnippet>329</a>    )
@@ -343,7 +343,7 @@
 <a href=#343 id=343 data-nosnippet>343</a>                <span class="kw">let </span>container_name = std::env::var(<span class="string">"CONTAINER_NAME"</span>).unwrap();
 <a href=#344 id=344 data-nosnippet>344</a>                <span class="self">self</span>::send_handshake(<span class="kw-2">&amp;mut </span>sink, channel_name, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>container_name)).<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#345 id=345 data-nosnippet>345</a>
-<a href=#346 id=346 data-nosnippet>346</a>                Result::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok(sink)
+<a href=#346 id=346 data-nosnippet>346</a>                <span class="prelude-ty">Result</span>::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok(sink)
 <a href=#347 id=347 data-nosnippet>347</a>            })
 <a href=#348 id=348 data-nosnippet>348</a>        }))
 <a href=#349 id=349 data-nosnippet>349</a>        .splice_untyped_ctx(<span class="kw-2">&amp;</span>()),
@@ -352,7 +352,7 @@
 <a href=#352 id=352 data-nosnippet>352</a>            <span class="kw">let </span>mux = <span class="self">self</span>::get_or_init_channel_mux();
 <a href=#353 id=353 data-nosnippet>353</a>            <span class="kw">let </span><span class="kw-2">mut </span>rx = mux.register(channel_name.to_owned());
 <a href=#354 id=354 data-nosnippet>354</a>
-<a href=#355 id=355 data-nosnippet>355</a>            Result::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok(
+<a href=#355 id=355 data-nosnippet>355</a>            <span class="prelude-ty">Result</span>::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok(
 <a href=#356 id=356 data-nosnippet>356</a>                futures::stream::unfold(rx, |<span class="kw-2">mut </span>rx| {
 <a href=#357 id=357 data-nosnippet>357</a>                    Box::pin(<span class="kw">async move </span>{
 <a href=#358 id=358 data-nosnippet>358</a>                        <span class="kw">let </span>(sender_id, source) = rx.recv().<span class="kw">await</span><span class="question-mark">?</span>;
@@ -395,7 +395,7 @@
 <a href=#395 id=395 data-nosnippet>395</a>                        <span class="self">self</span>::send_handshake(<span class="kw-2">&amp;mut </span>sink, <span class="kw-2">&amp;</span>channel_name, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>container_name))
 <a href=#396 id=396 data-nosnippet>396</a>                            .<span class="kw">await</span><span class="question-mark">?</span>;
 <a href=#397 id=397 data-nosnippet>397</a>
-<a href=#398 id=398 data-nosnippet>398</a>                        Result::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok(sink)
+<a href=#398 id=398 data-nosnippet>398</a>                        <span class="prelude-ty">Result</span>::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok(sink)
 <a href=#399 id=399 data-nosnippet>399</a>                    })
 <a href=#400 id=400 data-nosnippet>400</a>                })
 <a href=#401 id=401 data-nosnippet>401</a>            }
@@ -406,7 +406,7 @@
 <a href=#406 id=406 data-nosnippet>406</a>            <span class="kw">let </span>mux = <span class="self">self</span>::get_or_init_channel_mux();
 <a href=#407 id=407 data-nosnippet>407</a>            <span class="kw">let </span><span class="kw-2">mut </span>rx = mux.register(channel_name.to_owned());
 <a href=#408 id=408 data-nosnippet>408</a>
-<a href=#409 id=409 data-nosnippet>409</a>            Result::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok(
+<a href=#409 id=409 data-nosnippet>409</a>            <span class="prelude-ty">Result</span>::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok(
 <a href=#410 id=410 data-nosnippet>410</a>                futures::stream::unfold(rx, |<span class="kw-2">mut </span>rx| {
 <a href=#411 id=411 data-nosnippet>411</a>                    Box::pin(<span class="kw">async move </span>{
 <a href=#412 id=412 data-nosnippet>412</a>                        <span class="kw">let </span>(sender_id, source) = rx.recv().<span class="kw">await</span><span class="question-mark">?</span>;
@@ -469,7 +469,7 @@
 <a href=#469 id=469 data-nosnippet>469</a>        <span class="kw">let </span>fr = FramedRead::new(rx, LengthDelimitedCodec::new());
 <a href=#470 id=470 data-nosnippet>470</a>        <span class="kw">let </span>fw = FramedWrite::new(tx, LengthDelimitedCodec::new());
 <a href=#471 id=471 data-nosnippet>471</a>
-<a href=#472 id=472 data-nosnippet>472</a>        Result::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok((fr, fw))
+<a href=#472 id=472 data-nosnippet>472</a>        <span class="prelude-ty">Result</span>::&lt;<span class="kw">_</span>, std::io::Error&gt;::Ok((fr, fw))
 <a href=#473 id=473 data-nosnippet>473</a>    },))
 <a href=#474 id=474 data-nosnippet>474</a>    .splice_untyped_ctx(<span class="kw-2">&amp;</span>())
 <a href=#475 id=475 data-nosnippet>475</a>}
