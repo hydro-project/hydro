@@ -378,12 +378,8 @@ mod tests {
 
         // Apply downstream operators on BOTH branches — this is the key part.
         // If the ident_stack pop is missing, these maps will get wrong idents.
-        let out_above = above
-            .map(q!(|x| x * 2))
-            .send_bincode_external(&external);
-        let out_below = below
-            .map(q!(|x| x + 100))
-            .send_bincode_external(&external);
+        let out_above = above.map(q!(|x| x * 2)).send_bincode_external(&external);
+        let out_below = below.map(q!(|x| x + 100)).send_bincode_external(&external);
 
         threshold.into_stream().for_each(q!(|_| {}));
 

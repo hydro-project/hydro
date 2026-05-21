@@ -2555,10 +2555,10 @@ impl HydroNode {
             }
 
             HydroNode::Partition { inner, f, .. } => {
-                f.transform_children(&mut transform, seen_tees);
                 if let Some(transformed) = seen_tees.get(&inner.as_ptr()) {
                     *inner = SharedNode(transformed.clone());
                 } else {
+                    f.transform_children(&mut transform, seen_tees);
                     let transformed_cell = Rc::new(RefCell::new(HydroNode::Placeholder));
                     seen_tees.insert(inner.as_ptr(), transformed_cell.clone());
                     let mut orig = inner.0.replace(HydroNode::Placeholder);
@@ -3459,21 +3459,6 @@ impl HydroNode {
                         let is_true = *is_true; // need to copy early to avoid borrow checking issues with node
                         let ptr = inner.0.as_ref() as *const RefCell<HydroNode>;
                         let ret_ident = if let Some(built_idents) = built_tees.get(&ptr) {
-                            // Pop singleton ref idents (if any) that were pushed by transform_children
-                            // but won't be used since the partition was already built.
-                            //
-                            // When the second Partition branch is processed, transform_children
-                            // recurses into f.singleton_refs, causing each Singleton node's
-                            // transform_bottom_up to push an ident onto ident_stack. Since the
-                            // partition was already built by the first branch, these idents are
-                            // unused and must be popped to maintain stack invariants.
-                            //
-                            // Removing this pop triggers the ident_stack emptiness assertion at
-                            // the end of emit_core (verified by test_singleton_ref_partition_*).
-                            for _ in 0..f.singleton_refs.len() {
-                                ident_stack.pop().unwrap();
-                            }
-
                             match builders_or_callback {
                                 BuildersOrCallback::Builders(_) => {}
                                 BuildersOrCallback::Callback(_, node_callback) => {
