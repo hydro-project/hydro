@@ -430,7 +430,7 @@ impl FlatGraphBuilder {
                         crate::graph::meta_graph::ResolvedSingletonRef {
                             node_id: resolved_node_id,
                             is_mut: singleton_ref.is_mut,
-                            access_group: singleton_ref.access_group,
+                            access_group: singleton_ref.access_group.as_ref().map(|(_, n)| *n),
                         }
                     })
                     .collect();
@@ -897,7 +897,7 @@ impl FlatGraphBuilder {
                         if let Some(target_id) = resolved_ref.node_id {
                             refs_by_target.entry(target_id).or_default().push((
                                 ref_token.is_mut,
-                                ref_token.access_group,
+                                ref_token.access_group.as_ref().map(|(_, n)| *n),
                                 ref_token.ident.span(),
                             ));
                         }
@@ -918,6 +918,24 @@ impl FlatGraphBuilder {
                             Level::Error,
                             "Multiple ungrouped `#mut` references to the same singleton. \
                              Use access groups `#{N} mut var` to specify ordering."
+                                .to_owned(),
+                        ));
+                    }
+                }
+
+                // Check ungrouped mutable + ungrouped shared coexistence.
+                let ungrouped_shared: Vec<_> = refs
+                    .iter()
+                    .filter(|(is_mut, group, _)| !*is_mut && group.is_none())
+                    .collect();
+                if !ungrouped_mut.is_empty() && !ungrouped_shared.is_empty() {
+                    for &&(_, _, span) in ungrouped_mut.iter().chain(ungrouped_shared.iter()) {
+                        self.diagnostics.push(Diagnostic::spanned(
+                            span,
+                            Level::Error,
+                            "Cannot mix ungrouped shared (`#var`) and mutable (`#mut var`) \
+                             references to the same singleton. Use access groups `#{N}` to \
+                             specify ordering."
                                 .to_owned(),
                         ));
                     }

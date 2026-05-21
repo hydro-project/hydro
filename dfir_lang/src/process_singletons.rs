@@ -14,8 +14,8 @@ pub struct SingletonRefToken {
     pub ident: Ident,
     /// Whether this is a mutable reference (`#mut var` or `#{N} mut var`).
     pub is_mut: bool,
-    /// Optional access group for ordering (`#{N}` prefix).
-    pub access_group: Option<u32>,
+    /// Optional access group for ordering (`#{N}` prefix). Stores the brace group and parsed integer.
+    pub access_group: Option<(Group, u32)>,
 }
 
 /// Finds all the singleton references and appends them to `found`. Returns the
@@ -103,11 +103,11 @@ fn process_singletons(
                             let group_tokens: Vec<TokenTree> =
                                 group.stream().into_iter().collect();
                             if let [TokenTree::Literal(lit)] = group_tokens.as_slice() {
-                                // Parse the integer literal
                                 let lit_str = lit.to_string();
-                                Some(lit_str.parse::<u32>().unwrap_or_else(|_| {
+                                let n = lit_str.parse::<u32>().unwrap_or_else(|_| {
                                     panic!("Expected integer in singleton access group, got `{}`", lit_str)
-                                }))
+                                });
+                                Some((group, n))
                             } else {
                                 panic!("Expected single integer in singleton access group `{{N}}`")
                             }
