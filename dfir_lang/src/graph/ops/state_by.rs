@@ -132,76 +132,13 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
         let state_output = &outputs[1];
 
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = {
-                #[allow(non_camel_case_types)]
-                struct StatePush<'a, Item, MappingFn, ItemsPsh, StatePsh, Lat> {
-                    items_push: ItemsPsh,
-                    state_push: StatePsh,
-                    mapfn: MappingFn,
-                    state_ref: &'a mut Lat,
-                    _phantom: ::std::marker::PhantomData<fn(Item)>,
-                }
-                impl<'a, Item, MappingFn, MappedItem, ItemsPsh, StatePsh, Lat>
-                    #root::dfir_pipes::push::Push<Item, ()>
-                    for StatePush<'a, Item, MappingFn, ItemsPsh, StatePsh, Lat>
-                where
-                    Item: 'a + ::std::clone::Clone,
-                    MappingFn: 'a + ::std::marker::Unpin + Fn(Item) -> MappedItem,
-                    ItemsPsh: 'a + ::std::marker::Unpin + #root::dfir_pipes::push::Push<Item, ()>,
-                    StatePsh: 'a + ::std::marker::Unpin + #root::dfir_pipes::push::Push<Lat, ()>,
-                    Lat: 'a + 'static + ::std::clone::Clone + #root::lattices::Merge<MappedItem>,
-                {
-                    type Ctx<'ctx> = ();
-                    type CanPend = #root::dfir_pipes::No;
-
-                    fn poll_ready(self: ::core::pin::Pin<&mut Self>, _ctx: &mut ()) -> #root::dfir_pipes::push::PushStep<#root::dfir_pipes::No> {
-                        #root::dfir_pipes::push::PushStep::Done
-                    }
-
-                    fn start_send(self: ::core::pin::Pin<&mut Self>, item: Item, _meta: ()) {
-                        // SAFETY: StatePush is Unpin because all fields are Unpin.
-                        let this = unsafe { self.get_unchecked_mut() };
-                        let changed = #root::lattices::Merge::merge(this.state_ref, (this.mapfn)(::std::clone::Clone::clone(&item)));
-                        if changed {
-                            // SAFETY: items_push is Unpin.
-                            unsafe { ::core::pin::Pin::new_unchecked(&mut this.items_push) }.start_send(item, ());
-                        }
-                    }
-
-                    fn poll_finalize(self: ::core::pin::Pin<&mut Self>, _ctx: &mut ()) -> #root::dfir_pipes::push::PushStep<#root::dfir_pipes::No> {
-                        // SAFETY: StatePush is Unpin because all fields are Unpin.
-                        let this = unsafe { self.get_unchecked_mut() };
-                        // Emit the accumulated state to the state output.
-                        unsafe { ::core::pin::Pin::new_unchecked(&mut this.state_push) }.start_send(::std::clone::Clone::clone(this.state_ref), ());
-                        #root::dfir_pipes::push::PushStep::Done
-                    }
-
-                    fn size_hint(self: ::core::pin::Pin<&mut Self>, _hint: (usize, Option<usize>)) {}
-                }
-
-                fn check_output<'a, Item, MappingFn, MappedItem, ItemsPsh, StatePsh, Lat>(
-                    items_push: ItemsPsh,
-                    state_push: StatePsh,
-                    mapfn: MappingFn,
-                    state_ref: &'a mut Lat,
-                ) -> StatePush<'a, Item, MappingFn, ItemsPsh, StatePsh, Lat>
-                where
-                    Item: 'a + ::std::clone::Clone,
-                    MappingFn: 'a + ::std::marker::Unpin + Fn(Item) -> MappedItem,
-                    ItemsPsh: 'a + ::std::marker::Unpin + #root::dfir_pipes::push::Push<Item, ()>,
-                    StatePsh: 'a + ::std::marker::Unpin + #root::dfir_pipes::push::Push<Lat, ()>,
-                    Lat: 'a + 'static + ::std::clone::Clone + #root::lattices::Merge<MappedItem>,
-                {
-                    StatePush {
-                        items_push,
-                        state_push,
-                        mapfn,
-                        state_ref,
-                        _phantom: ::std::marker::PhantomData,
-                    }
-                }
-                check_output::<_, _, _, _, _, #lattice_type>(#items_output, #state_output, #by_fn, &mut #state_ident)
-            };
+            let #ident = #root::dfir_pipes::push::state_push::<_, _, _, _, _, _, #lattice_type>(
+                #items_output,
+                #state_output,
+                #by_fn,
+                #root::lattices::Merge::merge,
+                &mut #state_ident,
+            );
         };
 
         Ok(OperatorWriteOutput {

@@ -1,3 +1,4 @@
+use proc_macro2::Span;
 use syn::parse_quote_spanned;
 use super::{
     OperatorCategory, OperatorConstraints, PortListSpec,
@@ -38,7 +39,7 @@ pub const STATE: OperatorConstraints = OperatorConstraints {
     has_singleton_output: true,
     flo_type: None,
     ports_inn: None,
-    ports_out: Some(|| PortListSpec::Fixed(parse_quote_spanned!(proc_macro2::Span::call_site()=> items, state))),
+    ports_out: Some(|| PortListSpec::Fixed(parse_quote_spanned!(Span::call_site()=> items, state))),
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs { op_span, .. },
                diagnostics| {

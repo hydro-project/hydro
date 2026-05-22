@@ -25,6 +25,7 @@ mod persist;
 mod resolve_futures;
 mod sink;
 mod sink_compat;
+mod state_push;
 mod unzip;
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
@@ -58,6 +59,7 @@ pub use persist::Persist;
 pub use resolve_futures::ResolveFutures;
 pub use sink::Sink;
 pub use sink_compat::SinkCompat;
+pub use state_push::StatePush;
 pub use unzip::Unzip;
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
@@ -379,6 +381,29 @@ where
     Psh: Push<Item, ()>,
 {
     SinkCompat::new(push)
+}
+
+/// Creates a [`StatePush`] that merges items into state.
+///
+/// For each item, `mapfn` maps it and `mergefn` merges the result into `state_ref`,
+/// returning `true` if the state changed. Changed items are forwarded to `items_push`.
+/// On finalize, the accumulated state is emitted to `state_push`.
+pub fn state_push<'a, Item, MappingFn, MappedItem, MergeFn, ItemsPsh, StatePsh, Lat>(
+    items_push: ItemsPsh,
+    state_push: StatePsh,
+    mapfn: MappingFn,
+    mergefn: MergeFn,
+    state_ref: &'a mut Lat,
+) -> StatePush<'a, Item, MappingFn, MergeFn, ItemsPsh, StatePsh, Lat>
+where
+    Item: 'a + Clone,
+    MappingFn: 'a + Fn(Item) -> MappedItem,
+    MergeFn: 'a + Fn(&mut Lat, MappedItem) -> bool,
+    ItemsPsh: 'a + Push<Item, ()>,
+    StatePsh: 'a + Push<Lat, ()>,
+    Lat: 'a + 'static + Clone,
+{
+    state_push::state_push(items_push, state_push, mapfn, mergefn, state_ref)
 }
 
 /// Creates an [`Unzip`] push that splits tuple items into two separate pushes.
