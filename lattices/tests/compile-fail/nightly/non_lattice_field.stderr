@@ -14,8 +14,11 @@ error[E0277]: the trait bound `String: Merge<String>` is not satisfied
             `MapUnionWithTombstones<MapSelf, TombstoneSetSelf>` implements `Merge<MapUnionWithTombstones<MapOther, TombstoneSetOther>>`
             `Max<T>` implements `Merge<Max<T>>`
           and $N others
-  = help: see issue #48214
   = note: this error originates in the derive macro `Lattice` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+  |
+1 + #![feature(trivial_bounds)]
+  |
 
 error[E0277]: the trait bound `String: IsBot` is not satisfied
  --> tests/compile-fail/nightly/non_lattice_field.rs:3:10
@@ -33,8 +36,11 @@ error[E0277]: the trait bound `String: IsBot` is not satisfied
             MapUnionWithTombstones<Map, TombstoneSet>
             Max<()>
           and $N others
-  = help: see issue #48214
   = note: this error originates in the derive macro `Lattice` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+  |
+1 + #![feature(trivial_bounds)]
+  |
 
 error[E0277]: the trait bound `String: IsTop` is not satisfied
  --> tests/compile-fail/nightly/non_lattice_field.rs:3:10
@@ -52,7 +58,6 @@ error[E0277]: the trait bound `String: IsTop` is not satisfied
             MapUnionWithTombstones<Map, TombstoneSet>
             Max<()>
           and $N others
-  = help: see issue #48214
   = note: this error originates in the derive macro `Lattice` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
   |
@@ -75,7 +80,6 @@ error[E0277]: the trait bound `String: LatticeFrom<String>` is not satisfied
             `Min<T>` implements `LatticeFrom<Min<T>>`
             `NotALattice` implements `LatticeFrom<NotALattice>`
           and $N others
-  = help: see issue #48214
   = note: this error originates in the derive macro `Lattice` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
   |
