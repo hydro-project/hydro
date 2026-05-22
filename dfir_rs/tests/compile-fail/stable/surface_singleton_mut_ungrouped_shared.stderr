@@ -1,0 +1,11 @@
+error: Cannot mix ungrouped shared (`#var`) and mutable (`#mut var`) references to the same singleton. Use access groups `#{N}` to specify ordering.
+ --> tests/compile-fail/stable/surface_singleton_mut_ungrouped_shared.rs:7:53
+  |
+7 |         source_iter([2_i32]) -> map(|x| { *#{0} mut my_val += x; x }) -> for_each(|_| {});
+  |                                                     ^^^^^^
+
+error: Cannot mix ungrouped shared (`#var`) and mutable (`#mut var`) references to the same singleton. Use access groups `#{N}` to specify ordering.
+ --> tests/compile-fail/stable/surface_singleton_mut_ungrouped_shared.rs:6:46
+  |
+6 |         source_iter([1_i32]) -> map(|x| x + #my_val) -> for_each(|_| {});
+  |                                              ^^^^^^

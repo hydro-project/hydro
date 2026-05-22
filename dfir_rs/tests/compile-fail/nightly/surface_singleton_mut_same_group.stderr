@@ -1,0 +1,11 @@
+error: Multiple `#mut` references in the same access group. Each mutable reference must be in its own access group.
+ --> tests/compile-fail/nightly/surface_singleton_mut_same_group.rs:6:53
+  |
+6 |         source_iter([1_i32]) -> map(|x| { *#{0} mut my_val += x; x }) -> for_each(|_| {});
+  |                                                     ^^^^^^
+
+error: Multiple `#mut` references in the same access group. Each mutable reference must be in its own access group.
+ --> tests/compile-fail/nightly/surface_singleton_mut_same_group.rs:7:53
+  |
+7 |         source_iter([2_i32]) -> map(|x| { *#{0} mut my_val += x; x }) -> for_each(|_| {});
+  |                                                     ^^^^^^

@@ -923,13 +923,17 @@ impl FlatGraphBuilder {
                     }
                 }
 
-                // Check ungrouped mutable + ungrouped shared coexistence.
+                // Check ungrouped shared refs cannot coexist with any mutable refs.
                 let ungrouped_shared: Vec<_> = refs
                     .iter()
                     .filter(|(is_mut, group, _)| !*is_mut && group.is_none())
                     .collect();
-                if !ungrouped_mut.is_empty() && !ungrouped_shared.is_empty() {
-                    for &&(_, _, span) in ungrouped_mut.iter().chain(ungrouped_shared.iter()) {
+                let any_mut: Vec<_> = refs
+                    .iter()
+                    .filter(|(is_mut, _, _)| *is_mut)
+                    .collect();
+                if !any_mut.is_empty() && !ungrouped_shared.is_empty() {
+                    for &&(_, _, span) in any_mut.iter().chain(ungrouped_shared.iter()) {
                         self.diagnostics.push(Diagnostic::spanned(
                             span,
                             Level::Error,

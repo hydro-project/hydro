@@ -28,7 +28,6 @@ pub fn preprocess_singletons(tokens: TokenStream, found: &mut Vec<SingletonRef>)
 /// * `tokens` - The tokens to update singleton references within.
 /// * `resolved_exprs` - Token streams that correspond 1:1 and in the same
 ///   order as the singleton references within `tokens` (found in-order via [`preprocess_singletons`]).
-/// * `singleton_ref_tokens` - The parsed singleton ref tokens (for mutability info).
 ///
 /// For shared refs: generates `(*expr)` — an immutable place expression.
 /// For mutable refs: generates `(*expr)` — a mutable place expression (expr itself is `&mut`).
