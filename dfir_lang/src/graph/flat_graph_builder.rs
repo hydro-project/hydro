@@ -906,34 +906,29 @@ impl FlatGraphBuilder {
             }
 
             for refs in refs_by_target.values() {
-                // Check ungrouped mutable refs.
-                let ungrouped_mut: Vec<_> = refs
-                    .iter()
-                    .filter(|(is_mut, group, _)| *is_mut && group.is_none())
-                    .collect();
-                if ungrouped_mut.len() > 1 {
-                    for &&(_, _, span) in &ungrouped_mut {
-                        self.diagnostics.push(Diagnostic::spanned(
-                            span,
-                            Level::Error,
-                            "Multiple ungrouped `#mut` references to the same singleton. \
-                             Use access groups `#{N} mut var` to specify ordering."
-                                .to_owned(),
-                        ));
+                // Group refs by access group: Option<u32> -> (shared_spans, mut_spans)
+                let mut by_group: BTreeMap<Option<u32>, (Vec<Span>, Vec<Span>)> =
+                    BTreeMap::new();
+                for &(is_mut, access_group, span) in refs {
+                    let entry = by_group.entry(access_group).or_default();
+                    if is_mut {
+                        entry.1.push(span);
+                    } else {
+                        entry.0.push(span);
                     }
                 }
 
-                // Check ungrouped shared refs cannot coexist with any mutable refs.
-                let ungrouped_shared: Vec<_> = refs
-                    .iter()
-                    .filter(|(is_mut, group, _)| !*is_mut && group.is_none())
+                let ungrouped_shared = by_group
+                    .get(&None)
+                    .map_or(&[][..], |(s, _)| s.as_slice());
+                let all_mut_spans: Vec<Span> = by_group
+                    .values()
+                    .flat_map(|(_, m)| m.iter().copied())
                     .collect();
-                let any_mut: Vec<_> = refs
-                    .iter()
-                    .filter(|(is_mut, _, _)| *is_mut)
-                    .collect();
-                if !any_mut.is_empty() && !ungrouped_shared.is_empty() {
-                    for &&(_, _, span) in any_mut.iter().chain(ungrouped_shared.iter()) {
+
+                // Ungrouped shared refs cannot coexist with any mutable refs.
+                if !ungrouped_shared.is_empty() && !all_mut_spans.is_empty() {
+                    for &span in ungrouped_shared.iter().chain(all_mut_spans.iter()) {
                         self.diagnostics.push(Diagnostic::spanned(
                             span,
                             Level::Error,
@@ -943,41 +938,41 @@ impl FlatGraphBuilder {
                                 .to_owned(),
                         ));
                     }
+                    continue;
                 }
 
-                // Check mixed shared + mutable in the same access group.
-                let mut grouped: BTreeMap<u32, (Vec<Span>, Vec<Span>)> = BTreeMap::new();
-                for &(is_mut, access_group, span) in refs {
-                    if let Some(group) = access_group {
-                        let entry = grouped.entry(group).or_default();
-                        if is_mut {
-                            entry.1.push(span);
-                        } else {
-                            entry.0.push(span);
-                        }
-                    }
-                }
-                for (shared_spans, mut_spans) in grouped.values() {
+                // Per-group checks (including ungrouped mutable-only).
+                for (&group, (shared_spans, mut_spans)) in &by_group {
                     if !shared_spans.is_empty() && !mut_spans.is_empty() {
+                        let msg = if group.is_none() {
+                            "Cannot mix ungrouped shared (`#var`) and mutable (`#mut var`) \
+                             references to the same singleton. Use access groups `#{N}` to \
+                             specify ordering."
+                        } else {
+                            "Cannot mix shared (`#`) and mutable (`#mut`) references \
+                             in the same access group."
+                        };
                         for &span in shared_spans.iter().chain(mut_spans.iter()) {
                             self.diagnostics.push(Diagnostic::spanned(
                                 span,
                                 Level::Error,
-                                "Cannot mix shared (`#`) and mutable (`#mut`) references \
-                                 in the same access group."
-                                    .to_owned(),
+                                msg.to_owned(),
                             ));
                         }
                     }
-                    // Multiple mutable refs in the same group is also an error.
                     if mut_spans.len() > 1 {
+                        let msg = if group.is_none() {
+                            "Multiple ungrouped `#mut` references to the same singleton. \
+                             Use access groups `#{N} mut var` to specify ordering."
+                        } else {
+                            "Multiple `#mut` references in the same access group. \
+                             Each mutable reference must be in its own access group."
+                        };
                         for &span in mut_spans {
                             self.diagnostics.push(Diagnostic::spanned(
                                 span,
                                 Level::Error,
-                                "Multiple `#mut` references in the same access group. \
-                                 Each mutable reference must be in its own access group."
-                                    .to_owned(),
+                                msg.to_owned(),
                             ));
                         }
                     }
