@@ -1,0 +1,5 @@
+error: `singleton` takes no arguments.
+ --> tests/compile-fail/nightly/surface_singleton_args.rs:5:31
+  |
+5 |         source_iter(0..10) -> singleton(42) -> for_each(std::mem::drop);
+  |                               ^^^^^^^^^

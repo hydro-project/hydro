@@ -1325,7 +1325,6 @@ impl DfirGraph {
                                     break 'a tag;
                                 }
 
-                                #[cfg(nightly)]
                                 if proc_macro::is_available() {
                                     let op_span = op_span.unwrap();
                                     break 'a format!(

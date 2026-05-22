@@ -1,8 +1,8 @@
 error[E0277]: The input singleton must be monotonic (`Monotonic`) or bounded (`Bounded`), but has bound `hydro_lang::prelude::Unbounded`. Strengthen the monotonicity upstream or consider a different API.
-  --> tests/compile-fail/nightly/monotone_map.rs:18:13
+  --> tests/compile-fail/nightly/monotone_map.rs:18:32
    |
 18 |     let _ = no_longer_monotone.threshold_greater_or_equal(p1.singleton(q!(0)));
-   |             ^^^^^^^^^^^^^^^^^^ required here
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^ required here
    |
    = help: the trait `IsMonotonic` is not implemented for `hydro_lang::prelude::Unbounded`
    = note: To intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region. This introduces non-determinism so avoid unless necessary.
