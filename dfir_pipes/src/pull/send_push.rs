@@ -17,6 +17,7 @@ pin_project! {
         #[pin]
         push: Psh,
         pull_ended: bool,
+        size_hinted: bool,
     }
 }
 
@@ -30,6 +31,7 @@ where
             pull,
             push,
             pull_ended: false,
+            size_hinted: false,
         }
     }
 }
@@ -47,6 +49,12 @@ where
     fn poll(self: Pin<&mut Self>, cx: &mut core::task::Context<'_>) -> Poll<Self::Output> {
         let mut this = self.project();
         if !*this.pull_ended {
+            // Forward size hint from pull to push once, so the push side
+            // can pre-allocate capacity (e.g., Vec::reserve).
+            if !core::mem::replace(this.size_hinted, true) {
+                let hint = Pull::size_hint(&*this.pull);
+                this.push.as_mut().size_hint(hint);
+            }
             loop {
                 // Ensure push is ready before pulling.
                 match this
@@ -97,7 +105,45 @@ mod tests {
     use crate::Yes;
     use crate::pull::test_utils::TestPull;
     use crate::push::PushStep;
-    use crate::push::test_utils::TestPush;
+    use crate::push::test_utils::{PushCall, TestPush};
+
+    /// size_hint is forwarded exactly once from pull to push, even across multiple polls.
+    #[test]
+    fn send_push_forwards_size_hint_once() {
+        let pull = TestPull::items(0..2);
+        // First poll_ready returns Pending, so SendPush will be polled twice.
+        let push = TestPush::<i32, _, _>::new_fused(
+            [PushStep::Pending(Yes)],
+            [PushStep::Pending(Yes), PushStep::Done],
+        );
+        let mut send = core::pin::pin!(SendPush::new(pull, push));
+
+        let waker = Waker::noop();
+        let mut cx = core::task::Context::from_waker(waker);
+
+        // First poll: size_hint forwarded, then poll_ready returns Pending.
+        let result = send.as_mut().poll(&mut cx);
+        assert!(result.is_pending());
+
+        // Second poll: size_hint must NOT be forwarded again.
+        let result = send.as_mut().poll(&mut cx);
+        assert!(result.is_pending());
+
+        // Third poll: finalize completes.
+        let result = send.as_mut().poll(&mut cx);
+        assert!(result.is_ready());
+
+        let hint_calls: Vec<_> = send
+            .into_ref()
+            .get_ref()
+            .push
+            .history
+            .iter()
+            .filter(|c| matches!(c, PushCall::SizeHint(_, _)))
+            .collect();
+        assert_eq!(hint_calls.len(), 1);
+        assert_eq!(hint_calls[0], &PushCall::SizeHint(2, Some(2)));
+    }
 
     /// SendPush must not re-poll the pull after it returned Ended,
     /// even if poll_finalize returns Pending.
