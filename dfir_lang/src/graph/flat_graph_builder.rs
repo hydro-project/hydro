@@ -429,7 +429,7 @@ impl FlatGraphBuilder {
                         };
                         crate::graph::meta_graph::ResolvedSingletonRef {
                             node_id: resolved_node_id,
-                            is_mut: singleton_ref.is_mut,
+                            is_mut: singleton_ref.token_mut.is_some(),
                             access_group: singleton_ref.access_group.as_ref().map(|(_, n)| *n),
                         }
                     })
@@ -896,7 +896,7 @@ impl FlatGraphBuilder {
                     {
                         if let Some(target_id) = resolved_ref.node_id {
                             refs_by_target.entry(target_id).or_default().push((
-                                ref_token.is_mut,
+                                ref_token.token_mut.is_some(),
                                 ref_token.access_group.as_ref().map(|(_, n)| *n),
                                 ref_token.ident.span(),
                             ));

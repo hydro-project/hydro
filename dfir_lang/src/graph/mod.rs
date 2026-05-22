@@ -12,7 +12,7 @@ use syn::{Expr, ExprPath, GenericArgument, Token, Type};
 
 use self::ops::{OperatorConstraints, Persistence};
 use crate::diagnostic::{Diagnostic, Diagnostics, Level};
-use crate::parse::{DfirCode, IndexInt, Operator, PortIndex, Ported};
+use crate::parse::{DfirCode, IndexInt, Operator, PortIndex, Ported, SingletonRef};
 use crate::pretty_span::PrettySpan;
 
 mod di_mul_graph;
@@ -201,7 +201,7 @@ pub struct OperatorInstance {
     /// Port values used as this operator's output.
     pub output_ports: Vec<PortIndexValue>,
     /// Singleton references within the operator arguments.
-    pub singletons_referenced: Vec<crate::process_singletons::SingletonRefToken>,
+    pub singletons_referenced: Vec<SingletonRef>,
 
     /// Generic arguments.
     pub generics: OpInstGenerics,

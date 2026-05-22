@@ -6,7 +6,8 @@ use std::hash::Hash;
 
 use proc_macro2::{Span, TokenStream};
 use quote::ToTokens;
-use syn::parse::{Parse, ParseStream};
+use syn::parse::discouraged::Speculative;
+use syn::parse::{Parse, ParseStream, Parser};
 use syn::punctuated::Punctuated;
 use syn::token::{Brace, Bracket, Paren};
 use syn::{
@@ -430,7 +431,7 @@ pub struct Operator {
     pub paren_token: Paren,
     pub args_raw: TokenStream,
     pub args: Punctuated<Expr, Token![,]>,
-    pub singletons_referenced: Vec<crate::process_singletons::SingletonRefToken>,
+    pub singletons_referenced: Vec<SingletonRef>,
 }
 
 impl Operator {
@@ -509,8 +510,8 @@ impl Parse for Operator {
         let content;
         let paren_token = parenthesized!(content in input);
         let args_raw: TokenStream = content.parse()?;
-        let mut singletons_referenced = Vec::new();
-        let args = parse_terminated(preprocess_singletons(
+        let mut singletons_referenced: Vec<SingletonRef> = Vec::new();
+        let args = Punctuated::parse_terminated.parse2(preprocess_singletons(
             args_raw.clone(),
             &mut singletons_referenced,
         ))?;
@@ -593,23 +594,65 @@ impl Ord for IndexInt {
     }
 }
 
-pub fn parse_terminated<T, P>(tokens: TokenStream) -> syn::Result<Punctuated<T, P>>
-where
-    T: Parse,
-    P: Parse,
-{
-    struct ParseTerminated<T, P>(pub Punctuated<T, P>);
-    impl<T, P> Parse for ParseTerminated<T, P>
-    where
-        T: Parse,
-        P: Parse,
-    {
-        fn parse(input: ParseStream) -> syn::Result<Self> {
-            Ok(Self(Punctuated::parse_terminated(input)?))
-        }
-    }
+/// A parsed singleton reference token with mutability and optional access group.
+///
+/// Syntax: `#var`, `#mut var`, `#{N} var`, `#{N} mut var`
+#[derive(Clone, Debug)]
+pub struct SingletonRef {
+    /// Hash `#` marking the start of the singleton.
+    pub hash: Token![#],
+    /// Optional access group for ordering (`#{N}` prefix). Stores the brace group and parsed integer.
+    pub access_group: Option<(Brace, u32)>,
+    /// Whether this is a mutable reference (`#mut var` or `#{N} mut var`).
+    pub token_mut: Option<Token![mut]>,
+    /// The variable name being referenced.
+    pub ident: Ident,
+}
 
-    Ok(syn::parse2::<ParseTerminated<T, P>>(tokens)?.0)
+impl SingletonRef {
+    /// Returns a parsed singleton reference token (if valid) and all remaining tokens.
+    pub fn try_parse(input: ParseStream) -> syn::Result<(Option<Self>, TokenStream)> {
+        let this = if input.peek(Token![#]) {
+            let fork = input.fork();
+            if let Ok(this) = fork.parse() {
+                input.advance_to(&fork);
+                Some(this)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        let tokens = input.parse().expect("infallible");
+        Ok((this, tokens))
+    }
+}
+
+impl Parse for SingletonRef {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let hash = input.parse::<Token![#]>()?;
+        let access_group = input
+            .peek(Brace)
+            .then(|| {
+                let inner;
+                let brace = braced!(inner in input);
+                let lit_int = inner.parse::<LitInt>()?;
+                let idx = lit_int.base10_parse::<u32>()?;
+                if !inner.is_empty() {
+                    return Err(inner.error("expected only an integer"));
+                }
+                Ok((brace, idx))
+            })
+            .transpose()?;
+        let token_mut = input.parse()?;
+        let ident = input.parse()?;
+        Ok(Self {
+            hash,
+            token_mut,
+            access_group,
+            ident,
+        })
+    }
 }
 
 #[cfg(test)]

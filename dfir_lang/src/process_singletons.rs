@@ -1,22 +1,11 @@
 //! Utility methods for processing singleton references: `#my_var`, `#mut my_var`, `#{N} my_var`, `#{N} mut my_var`.
 
-use itertools::Itertools;
-use proc_macro2::{Group, Ident, TokenStream, TokenTree};
+use proc_macro2::{Group, TokenStream, TokenTree};
+use syn::parse::Parser;
 use syn::punctuated::Punctuated;
 use syn::{Expr, Token};
 
-use crate::parse::parse_terminated;
-
-/// A parsed singleton reference token with mutability and optional access group.
-#[derive(Clone, Debug)]
-pub struct SingletonRefToken {
-    /// The variable name being referenced.
-    pub ident: Ident,
-    /// Whether this is a mutable reference (`#mut var` or `#{N} mut var`).
-    pub is_mut: bool,
-    /// Optional access group for ordering (`#{N}` prefix). Stores the brace group and parsed integer.
-    pub access_group: Option<(Group, u32)>,
-}
+use crate::parse::SingletonRef;
 
 /// Finds all the singleton references and appends them to `found`. Returns the
 /// `TokenStream` but with the `#`, `{N}`, and `mut` removed from the varnames.
@@ -26,10 +15,7 @@ pub struct SingletonRefToken {
 /// The returned tokens are used for "preflight" parsing, to check that the rest of the syntax is
 /// OK. However the returned tokens are not used in the codegen as we need to use [`postprocess_singletons`]
 /// later to substitute-in the context referencing code for each singleton
-pub fn preprocess_singletons(
-    tokens: TokenStream,
-    found: &mut Vec<SingletonRefToken>,
-) -> TokenStream {
+pub fn preprocess_singletons(tokens: TokenStream, found: &mut Vec<SingletonRef>) -> TokenStream {
     process_singletons(tokens, &mut |ref_token| {
         let ident = ref_token.ident.clone();
         found.push(ref_token);
@@ -67,7 +53,7 @@ pub fn postprocess_singletons(
         group.set_span(span);
         TokenTree::Group(group)
     });
-    parse_terminated(processed).unwrap()
+    Punctuated::parse_terminated.parse2(processed).unwrap()
 }
 
 /// Traverse the token stream, applying the `map_singleton_fn` whenever a singleton is found,
@@ -76,84 +62,36 @@ pub fn postprocess_singletons(
 /// Parses: `#ident`, `#mut ident`, `#{N} ident`, `#{N} mut ident`
 fn process_singletons(
     tokens: TokenStream,
-    map_singleton_fn: &mut impl FnMut(SingletonRefToken) -> TokenTree,
+    map_singleton_fn: &mut impl FnMut(SingletonRef) -> TokenTree,
 ) -> TokenStream {
-    tokens
-        .into_iter()
-        .peekable()
-        .batching(|iter| {
-            let out = match iter.next()? {
-                TokenTree::Group(group) => {
-                    let mut new_group = Group::new(
-                        group.delimiter(),
-                        process_singletons(group.stream(), map_singleton_fn),
-                    );
-                    new_group.set_span(group.span());
-                    TokenTree::Group(new_group)
-                }
-                TokenTree::Ident(ident) => TokenTree::Ident(ident),
-                TokenTree::Punct(punct) => {
-                    if '#' == punct.as_char() {
-                        // Parse optional access group: `{N}`
-                        let access_group = if matches!(iter.peek(), Some(TokenTree::Group(g)) if g.delimiter() == proc_macro2::Delimiter::Brace)
-                        {
-                            let Some(TokenTree::Group(group)) = iter.next() else {
-                                unreachable!()
-                            };
-                            let group_tokens: Vec<TokenTree> =
-                                group.stream().into_iter().collect();
-                            if let [TokenTree::Literal(lit)] = group_tokens.as_slice() {
-                                let lit_str = lit.to_string();
-                                let n = lit_str.parse::<u32>().unwrap_or_else(|_| {
-                                    panic!("Expected integer in singleton access group, got `{}`", lit_str)
-                                });
-                                Some((group, n))
-                            } else {
-                                panic!("Expected single integer in singleton access group `{{N}}`")
-                            }
-                        } else {
-                            None
-                        };
+    let mut iter = tokens.into_iter().peekable();
+    std::iter::from_fn(|| {
+        let out = match iter.peek()? {
+            TokenTree::Group(group) => {
+                let mut new_group = Group::new(
+                    group.delimiter(),
+                    process_singletons(group.stream(), map_singleton_fn),
+                );
+                new_group.set_span(group.span());
 
-                        // Parse optional `mut`
-                        let is_mut = if matches!(iter.peek(), Some(TokenTree::Ident(id)) if id == "mut")
-                        {
-                            iter.next(); // consume `mut`
-                            true
-                        } else {
-                            false
-                        };
-
-                        // Parse the ident
-                        if matches!(iter.peek(), Some(TokenTree::Ident(_))) {
-                            let Some(TokenTree::Ident(mut singleton_ident)) = iter.next() else {
-                                unreachable!()
-                            };
-                            {
-                                // Include the `#` in the span.
-                                let span = singleton_ident
-                                    .span()
-                                    .join(punct.span())
-                                    .unwrap_or(singleton_ident.span());
-                                singleton_ident.set_span(span.resolved_at(singleton_ident.span()));
-                            }
-                            (map_singleton_fn)(SingletonRefToken {
-                                ident: singleton_ident,
-                                is_mut,
-                                access_group,
-                            })
-                        } else {
-                            // No ident after `#` (or `#{N}` / `#mut`) — emit the punct as-is.
-                            // This shouldn't normally happen in valid DFIR syntax.
-                            TokenTree::Punct(punct)
-                        }
-                    } else {
-                        TokenTree::Punct(punct)
-                    }
+                let _ = iter.next().unwrap(); // Advance past the `peek`ed group.
+                TokenTree::Group(new_group)
+            }
+            TokenTree::Punct(punct) if '#' == punct.as_char() => {
+                let tokens = iter.by_ref().collect::<TokenStream>();
+                let (opt_singleton, tokens_rest) = SingletonRef::try_parse
+                    .parse2(tokens)
+                    .expect("bug: should be infallible");
+                iter = tokens_rest.into_iter().peekable();
+                if let Some(singleton) = opt_singleton {
+                    (map_singleton_fn)(singleton)
+                } else {
+                    iter.next().unwrap()
                 }
-                TokenTree::Literal(lit) => TokenTree::Literal(lit),
-            };
-            Some(out)
-        })
-        .collect()
+            }
+            _ => iter.next().unwrap(),
+        };
+        Some(out)
+    })
+    .collect()
 }
