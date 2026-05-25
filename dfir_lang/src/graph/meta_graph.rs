@@ -975,14 +975,15 @@ impl DfirGraph {
             })
             .collect::<SparseSecondaryMap<_, _>>();
 
-        // Back buffer idents, and if they are lazy.
+        // Back buffer idents, buf idents, and if they are lazy.
         let back_buffer_idents_laziness = handoff_nodes
             .iter()
             .filter_map(|&(hoff_id, _kind, (src_span, dst_span))| {
                 back_edge_hoffs_lazyness.get(hoff_id).map(|&is_lazy| {
                     let span = src_span.join(dst_span).unwrap_or(src_span);
                     let back_ident = self.hoff_back_ident(hoff_id, span);
-                    (back_ident, is_lazy)
+                    let buf_ident = self.hoff_buf_ident(hoff_id, span);
+                    (back_ident, buf_ident, is_lazy)
                 })
             })
             .collect::<Vec<_>>();
@@ -1782,22 +1783,13 @@ impl DfirGraph {
         // For creating back-buffer handoff vecs.
         let back_buffer_idents = back_buffer_idents_laziness
             .iter()
-            .map(|(back_ident, _is_lazy)| back_ident);
+            .map(|(back_ident, _, _)| back_ident);
         // For checking if we should start the next tick (`schedule_subgraph`):
         // check the regular (send) buffer for non-lazy defer_tick handoffs, since
         // that's where the producer writes during this tick.
-        let non_lazy_buf_idents: Vec<_> = handoff_nodes
+        let non_lazy_buf_idents = back_buffer_idents_laziness
             .iter()
-            .filter_map(|&(hoff_id, _kind, _)| {
-                back_edge_hoffs_lazyness.get(hoff_id).and_then(|&is_lazy| {
-                    if !is_lazy {
-                        Some(self.hoff_buf_ident(hoff_id, self.nodes[hoff_id].span()))
-                    } else {
-                        None
-                    }
-                })
-            })
-            .collect();
+            .filter_map(|(_, buf_ident, is_lazy)| (!is_lazy).then_some(buf_ident));
 
         // Prologues and buffer declarations persist across ticks (outside the closure).
         // Subgraph blocks run each tick (inside the closure).
