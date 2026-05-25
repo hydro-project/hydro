@@ -1690,12 +1690,16 @@ impl DfirGraph {
                             },
                         }
                     });
-                let recv_hoff_drop_code = recv_buf_idents.iter().map(|buf_ident| {
-                    let span = buf_ident.span();
-                    quote_spanned! {span=>
-                        let _ = #buf_ident;
-                    }
-                });
+                let recv_hoff_drop_code = recv_buf_idents
+                    .iter()
+                    .zip(recv_hoffs.iter())
+                    .filter(|&(_, &hoff_id)| !back_edge_hoffs_lazyness.contains_key(hoff_id))
+                    .map(|(buf_ident, _)| {
+                        let span = buf_ident.span();
+                        quote_spanned! {span=>
+                            let _ = #buf_ident;
+                        }
+                    });
 
                 subgraph_blocks.push(quote! {
                     // Create the send handoffs we will push to.
@@ -1779,10 +1783,21 @@ impl DfirGraph {
         let back_buffer_idents = back_buffer_idents_laziness
             .iter()
             .map(|(back_ident, _is_lazy)| back_ident);
-        // For if we should start the next tick (`schedule_subgraph`).
-        let back_buffer_idents_non_lazy = back_buffer_idents_laziness
+        // For checking if we should start the next tick (`schedule_subgraph`):
+        // check the regular (send) buffer for non-lazy defer_tick handoffs, since
+        // that's where the producer writes during this tick.
+        let non_lazy_buf_idents: Vec<_> = handoff_nodes
             .iter()
-            .filter_map(|(ident, is_lazy)| (!is_lazy).then_some(ident));
+            .filter_map(|&(hoff_id, _kind, _)| {
+                back_edge_hoffs_lazyness.get(hoff_id).and_then(|&is_lazy| {
+                    if !is_lazy {
+                        Some(self.hoff_buf_ident(hoff_id, self.nodes[hoff_id].span()))
+                    } else {
+                        None
+                    }
+                })
+            })
+            .collect();
 
         // Prologues and buffer declarations persist across ticks (outside the closure).
         // Subgraph blocks run each tick (inside the closure).
@@ -1835,7 +1850,7 @@ impl DfirGraph {
 
                     // For non-lazy defer_tick: if any deferred buffer has data,
                     // signal that another tick should run.
-                    if false #( || !#back_buffer_idents_non_lazy.is_empty() )* {
+                    if false #( || !#non_lazy_buf_idents.is_empty() )* {
                         #df.schedule_subgraph(true);
                     }
 
