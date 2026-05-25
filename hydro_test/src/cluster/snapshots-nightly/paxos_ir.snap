@@ -35,7 +35,6 @@ expression: built.ir()
                         },
                         second: Map {
                             f: stageleft :: runtime_support :: fn1_type_hint :: < ((u32 , core :: option :: Option < i32 >) , bool) , (u32 , core :: option :: Option < i32 >) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | (d , _) | d }),
-                            singleton_refs: [],
                             input: CrossSingleton {
                                 left: Cast {
                                     inner: SingletonSource {
@@ -61,15 +60,12 @@ expression: built.ir()
                                     f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | b | * b }),
                                     input: Map {
                                         f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_some () }),
-                                        singleton_refs: [],
                                         input: Cast {
                                             inner: ChainFirst {
                                                 first: Map {
                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                                    singleton_refs: [],
                                                     input: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
-                                                        singleton_refs: [],
                                                         input: SingletonSource {
                                                             value: { use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; () },
                                                             first_tick_only: true,
@@ -271,7 +267,6 @@ expression: built.ir()
         input: Tee {
             inner: <shared 1>: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , u32) , u32 > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_tagless ((__hydro_lang_cluster_self_id_loc1v1) . clone ()) ; move | (received_max_ballot , ballot_num) | { if received_max_ballot > (Ballot { num : ballot_num , proposer_id : CLUSTER_SELF_ID__free . clone () , }) { received_max_ballot . num + 1 } else { ballot_num } } }),
-                singleton_refs: [],
                 input: Cast {
                     inner: CrossSingleton {
                         left: Tee {
@@ -591,7 +586,6 @@ expression: built.ir()
         input: Tee {
             inner: <shared 3>: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
-                singleton_refs: [],
                 input: Cast {
                     inner: Network {
                         name: None,
@@ -612,7 +606,6 @@ expression: built.ir()
                                         inner: Cast {
                                             inner: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , bool) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
-                                                singleton_refs: [],
                                                 input: Cast {
                                                     inner: Cast {
                                                         inner: Filter {
@@ -624,7 +617,6 @@ expression: built.ir()
                                                                     input: Cast {
                                                                         inner: Map {
                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: TaglessMemberId , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | (k , v) | (MemberId :: from_tagless (k) , v) }),
-                                                                            singleton_refs: [],
                                                                             input: Source {
                                                                                 source: ClusterMembers(
                                                                                     Cluster(loc1v1),
@@ -746,13 +738,11 @@ expression: built.ir()
                                                 inner: Cast {
                                                     inner: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , bool) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | (d , _) | d }),
-                                                        singleton_refs: [],
                                                         input: CrossSingleton {
                                                             left: Batch {
                                                                 inner: YieldConcat {
                                                                     inner: Map {
                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , bool) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _) | d }),
-                                                                        singleton_refs: [],
                                                                         input: CrossSingleton {
                                                                             left: Tee {
                                                                                 inner: <shared 4>: Batch {
@@ -760,7 +750,6 @@ expression: built.ir()
                                                                                         inner: Tee {
                                                                                             inner: <shared 5>: Map {
                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < u32 , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_tagless ((__hydro_lang_cluster_self_id_loc1v1) . clone ()) ; move | num | Ballot { num , proposer_id : CLUSTER_SELF_ID__free . clone () } }),
-                                                                                                singleton_refs: [],
                                                                                                 input: Tee {
                                                                                                     inner: <shared 1>,
                                                                                                     metadata: HydroIrMetadata {
@@ -878,15 +867,12 @@ expression: built.ir()
                                                                 f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | b | * b }),
                                                                 input: Map {
                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_some () }),
-                                                                    singleton_refs: [],
                                                                     input: Cast {
                                                                         inner: ChainFirst {
                                                                             first: Map {
                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                                                                singleton_refs: [],
                                                                                 input: Map {
                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
-                                                                                    singleton_refs: [],
                                                                                     input: Reduce {
                                                                                         f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < () , () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ , _ | { } }),
                                                                                         input: FlatMap {
@@ -1184,7 +1170,6 @@ expression: built.ir()
                                 f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , core :: result :: Result < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) , hydro_test :: __staged :: cluster :: paxos :: Ballot >) , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | p1b | println ! ("Proposer received P1b: {:?}" , p1b) }),
                                 input: Map {
                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , (hydro_test :: __staged :: cluster :: paxos :: Ballot , core :: result :: Result < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) , hydro_test :: __staged :: cluster :: paxos :: Ballot >)) , (hydro_test :: __staged :: cluster :: paxos :: Ballot , core :: result :: Result < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) , hydro_test :: __staged :: cluster :: paxos :: Ballot >) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
-                                    singleton_refs: [],
                                     input: Cast {
                                         inner: Network {
                                             name: None,
@@ -1202,14 +1187,12 @@ expression: built.ir()
                                                 inner: YieldConcat {
                                                     inner: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < ((hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot) , (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >)) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , (hydro_test :: __staged :: cluster :: paxos :: Ballot , core :: result :: Result < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) , hydro_test :: __staged :: cluster :: paxos :: Ballot >)) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | ((ballot , max_ballot) , log) | (ballot . proposer_id . clone () , (ballot . clone () , if ballot == max_ballot { Ok (log) } else { Err (max_ballot) })) }),
-                                                        singleton_refs: [],
                                                         input: CrossSingleton {
                                                             left: CrossSingleton {
                                                                 left: Tee {
                                                                     inner: <shared 9>: Batch {
                                                                         inner: Map {
                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
-                                                                            singleton_refs: [],
                                                                             input: Cast {
                                                                                 inner: Network {
                                                                                     name: None,
@@ -1229,7 +1212,6 @@ expression: built.ir()
                                                                                                 left: ObserveNonDet {
                                                                                                     inner: Map {
                                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , bool) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
-                                                                                                        singleton_refs: [],
                                                                                                         input: Cast {
                                                                                                             inner: Cast {
                                                                                                                 inner: Filter {
@@ -1241,7 +1223,6 @@ expression: built.ir()
                                                                                                                             input: Cast {
                                                                                                                                 inner: Map {
                                                                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: TaglessMemberId , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | (k , v) | (MemberId :: from_tagless (k) , v) }),
-                                                                                                                                    singleton_refs: [],
                                                                                                                                     input: Source {
                                                                                                                                         source: ClusterMembers(
                                                                                                                                             Cluster(loc2v1),
@@ -1354,7 +1335,6 @@ expression: built.ir()
                                                                                                             inner: Cast {
                                                                                                                 inner: Map {
                                                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , bool) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _) | d }),
-                                                                                                                    singleton_refs: [],
                                                                                                                     input: CrossSingleton {
                                                                                                                         left: Tee {
                                                                                                                             inner: <shared 4>,
@@ -1370,23 +1350,18 @@ expression: built.ir()
                                                                                                                             f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | b | * b }),
                                                                                                                             input: Map {
                                                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (bool , bool) , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (a , b) | a && b }),
-                                                                                                                                singleton_refs: [],
                                                                                                                                 input: Cast {
                                                                                                                                     inner: CrossSingleton {
                                                                                                                                         left: Map {
                                                                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_some () }),
-                                                                                                                                            singleton_refs: [],
                                                                                                                                             input: Cast {
                                                                                                                                                 inner: ChainFirst {
                                                                                                                                                     first: Map {
                                                                                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                                                                                                                                        singleton_refs: [],
                                                                                                                                                         input: Map {
                                                                                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
-                                                                                                                                                            singleton_refs: [],
                                                                                                                                                             input: Map {
                                                                                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (() , bool) , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | (d , _) | d }),
-                                                                                                                                                                singleton_refs: [],
                                                                                                                                                                 input: CrossSingleton {
                                                                                                                                                                     left: Batch {
                                                                                                                                                                         inner: YieldConcat {
@@ -1464,7 +1439,6 @@ expression: built.ir()
                                                                                                                                                                         f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | b | * b }),
                                                                                                                                                                         input: Map {
                                                                                                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | b | ! b }),
-                                                                                                                                                                            singleton_refs: [],
                                                                                                                                                                             input: Tee {
                                                                                                                                                                                 inner: <shared 6>,
                                                                                                                                                                                 metadata: HydroIrMetadata {
@@ -1569,15 +1543,12 @@ expression: built.ir()
                                                                                                                                         },
                                                                                                                                         right: Map {
                                                                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_some () }),
-                                                                                                                                            singleton_refs: [],
                                                                                                                                             input: Cast {
                                                                                                                                                 inner: ChainFirst {
                                                                                                                                                     first: Map {
                                                                                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                                                                                                                                        singleton_refs: [],
                                                                                                                                                         input: Map {
                                                                                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
-                                                                                                                                                            singleton_refs: [],
                                                                                                                                                             input: Reduce {
                                                                                                                                                                 f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < () , () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ , _ | { } }),
                                                                                                                                                                 input: FlatMap {
@@ -2147,7 +2118,6 @@ expression: built.ir()
             neg: Tee {
                 inner: <shared 11>: Map {
                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , (usize , usize)) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
-                    singleton_refs: [],
                     input: Cast {
                         inner: Cast {
                             inner: Filter {
@@ -2267,7 +2237,6 @@ expression: built.ir()
         input: Difference {
             pos: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , (usize , usize)) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
-                singleton_refs: [],
                 input: Cast {
                     inner: Cast {
                         inner: Filter {
@@ -2354,20 +2323,16 @@ expression: built.ir()
         input: Tee {
             inner: <shared 13>: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (bool , bool) , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (a , b) | a && b }),
-                singleton_refs: [],
                 input: Cast {
                     inner: CrossSingleton {
                         left: Map {
                             f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_some () }),
-                            singleton_refs: [],
                             input: Cast {
                                 inner: ChainFirst {
                                     first: Map {
                                         f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                        singleton_refs: [],
                                         input: Map {
                                             f: stageleft :: runtime_support :: fn1_type_hint :: < std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) > , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
-                                            singleton_refs: [],
                                             input: Tee {
                                                 inner: <shared 14>: FilterMap {
                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < ((hydro_test :: __staged :: cluster :: paxos :: Ballot , std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) >) , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: option :: Option < std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) > > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; move | ((quorum_ballot , quorum_accepted) , my_ballot) | if quorum_ballot == my_ballot { Some (quorum_accepted) } else { None } }),
@@ -2405,7 +2370,6 @@ expression: built.ir()
                                                                                                                 },
                                                                                                                 neg: Map {
                                                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , (usize , usize)) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
-                                                                                                                    singleton_refs: [],
                                                                                                                     input: Cast {
                                                                                                                         inner: Cast {
                                                                                                                             inner: Filter {
@@ -2734,7 +2698,6 @@ expression: built.ir()
                             inner: YieldConcat {
                                 inner: Map {
                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot) , bool > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (received_max_ballot , cur_ballot) | received_max_ballot <= cur_ballot }),
-                                    singleton_refs: [],
                                     input: Cast {
                                         inner: CrossSingleton {
                                             left: Tee {
@@ -2837,7 +2800,6 @@ expression: built.ir()
         ),
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (_ , ballot) | ballot }),
-            singleton_refs: [],
             input: FilterMap {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , core :: result :: Result < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) , hydro_test :: __staged :: cluster :: paxos :: Ballot >) , core :: option :: Option < (hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | (key , res) | match res { Ok (_) => None , Err (e) => Some ((key , e)) , } }),
                 input: Tee {
@@ -2880,7 +2842,6 @@ expression: built.ir()
         ),
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < ((u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) , bool) , (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | (d , _) | d }),
-            singleton_refs: [],
             input: CrossSingleton {
                 left: Tee {
                     inner: <shared 15>: Chain {
@@ -2913,12 +2874,10 @@ expression: built.ir()
                             inner: ObserveNonDet {
                                 inner: Map {
                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , i32) , (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_bench :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos_bench :: Client > :: from_tagless ((__hydro_lang_cluster_self_id_loc3v1) . clone ()) ; move | (virtual_id , payload) | { (virtual_id , (CLUSTER_SELF_ID__free . clone () , payload)) } }),
-                                    singleton_refs: [],
                                     input: Cast {
                                         inner: Tee {
                                             inner: <shared 16>: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , core :: option :: Option < i32 >) , (u32 , i32) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < i32 > , i32 > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_bench :: * ; move | payload | { if let Some (counter) = payload { counter + 1 } else { 0 } } }) ; { let orig = f__free ; move | (k , v) | (k , orig (v)) } }),
-                                                singleton_refs: [],
                                                 input: Chain {
                                                     first: YieldConcat {
                                                         inner: Cast {
@@ -2967,7 +2926,6 @@ expression: built.ir()
                                                     },
                                                     second: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , i32) , (u32 , core :: option :: Option < i32 >) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < i32 , core :: option :: Option < i32 > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | payload | Some (payload) }) ; { let orig = f__free ; move | (k , v) | (k , orig (v)) } }),
-                                                        singleton_refs: [],
                                                         input: CycleSource {
                                                             cycle_id: CycleId(
                                                                 1,
@@ -3092,20 +3050,16 @@ expression: built.ir()
                     f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | b | * b }),
                     input: Map {
                         f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_none () }),
-                        singleton_refs: [],
                         input: Cast {
                             inner: ChainFirst {
                                 first: Map {
                                     f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                    singleton_refs: [],
                                     input: Map {
                                         f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
-                                        singleton_refs: [],
                                         input: Tee {
                                             inner: <shared 17>: Batch {
                                                 inner: Map {
                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | ballot | ballot . proposer_id }),
-                                                    singleton_refs: [],
                                                     input: Reduce {
                                                         f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , hydro_test :: __staged :: cluster :: paxos :: Ballot , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | curr , new | { if new > * curr { * curr = new ; } } }),
                                                         input: ObserveNonDet {
@@ -3113,7 +3067,6 @@ expression: built.ir()
                                                                 f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < hydro_test :: __staged :: cluster :: paxos :: Ballot , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_with_client :: * ; | ballot | println ! ("Client notified that leader was elected: {:?}" , ballot) }),
                                                                 input: Map {
                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
-                                                                    singleton_refs: [],
                                                                     input: Cast {
                                                                         inner: Network {
                                                                             name: None,
@@ -3133,7 +3086,6 @@ expression: built.ir()
                                                                                         left: ObserveNonDet {
                                                                                             inner: Map {
                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , bool) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
-                                                                                                singleton_refs: [],
                                                                                                 input: Cast {
                                                                                                     inner: Cast {
                                                                                                         inner: Filter {
@@ -3145,7 +3097,6 @@ expression: built.ir()
                                                                                                                     input: Cast {
                                                                                                                         inner: Map {
                                                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: TaglessMemberId , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | (k , v) | (MemberId :: from_tagless (k) , v) }),
-                                                                                                                            singleton_refs: [],
                                                                                                                             input: Source {
                                                                                                                                 source: ClusterMembers(
                                                                                                                                     Cluster(loc3v1),
@@ -3256,7 +3207,6 @@ expression: built.ir()
                                                                                                 inner: Cast {
                                                                                                     inner: Map {
                                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , bool) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _) | d }),
-                                                                                                        singleton_refs: [],
                                                                                                         input: CrossSingleton {
                                                                                                             left: Tee {
                                                                                                                 inner: <shared 4>,
@@ -3273,7 +3223,6 @@ expression: built.ir()
                                                                                                                 input: Tee {
                                                                                                                     inner: <shared 18>: Map {
                                                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (bool , bool) , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (a , b) | a && b }),
-                                                                                                                        singleton_refs: [],
                                                                                                                         input: Cast {
                                                                                                                             inner: CrossSingleton {
                                                                                                                                 left: Tee {
@@ -3288,21 +3237,17 @@ expression: built.ir()
                                                                                                                                 },
                                                                                                                                 right: Map {
                                                                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_none () }),
-                                                                                                                                    singleton_refs: [],
                                                                                                                                     input: Cast {
                                                                                                                                         inner: ChainFirst {
                                                                                                                                             first: Map {
                                                                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                                                                                                                                singleton_refs: [],
                                                                                                                                                 input: Map {
                                                                                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
-                                                                                                                                                    singleton_refs: [],
                                                                                                                                                     input: DeferTick {
                                                                                                                                                         input: FilterMap {
                                                                                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | v | v }),
                                                                                                                                                             input: Map {
                                                                                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < bool , core :: option :: Option < () > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | is_leader | is_leader . then_some (()) }),
-                                                                                                                                                                singleton_refs: [],
                                                                                                                                                                 input: Tee {
                                                                                                                                                                     inner: <shared 13>,
                                                                                                                                                                     metadata: HydroIrMetadata {
@@ -3695,7 +3640,6 @@ expression: built.ir()
         ),
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , usize) , usize > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (num_payloads , base_slot) | base_slot + num_payloads }),
-            singleton_refs: [],
             input: Cast {
                 inner: CrossSingleton {
                     left: Fold {
@@ -3704,20 +3648,17 @@ expression: built.ir()
                         input: Tee {
                             inner: <shared 19>: Map {
                                 f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32))) , usize) , (usize , (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32))) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | ((index , payload) , base_slot) | (base_slot + index , payload) }),
-                                singleton_refs: [],
                                 input: CrossSingleton {
                                     left: Enumerate {
                                         input: Batch {
                                             inner: YieldConcat {
                                                 inner: Map {
                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < ((u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) , bool) , (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | (d , _) | d }),
-                                                    singleton_refs: [],
                                                     input: CrossSingleton {
                                                         left: Batch {
                                                             inner: ObserveNonDet {
                                                                 inner: Map {
                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32))) , (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
-                                                                    singleton_refs: [],
                                                                     input: Cast {
                                                                         inner: Network {
                                                                             name: None,
@@ -3734,7 +3675,6 @@ expression: built.ir()
                                                                             input: Cast {
                                                                                 inner: Map {
                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < ((u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer >) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32))) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_with_client :: * ; move | (payload , leader_id) | (leader_id , payload) }),
-                                                                                    singleton_refs: [],
                                                                                     input: YieldConcat {
                                                                                         inner: CrossSingleton {
                                                                                             left: Tee {
@@ -3928,7 +3868,6 @@ expression: built.ir()
                                                 inner: ChainFirst {
                                                     first: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < usize , usize > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | s | s + 1 }),
-                                                        singleton_refs: [],
                                                         input: Batch {
                                                             inner: YieldConcat {
                                                                 inner: Tee {
@@ -3937,13 +3876,11 @@ expression: built.ir()
                                                                         input: ObserveNonDet {
                                                                             inner: Map {
                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , (usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) >)) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
-                                                                                singleton_refs: [],
                                                                                 input: Cast {
                                                                                     inner: Cast {
                                                                                         inner: Tee {
                                                                                             inner: <shared 22>: Map {
                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , (usize , core :: option :: Option < hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >)) , (usize , (usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) >)) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < (usize , core :: option :: Option < hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) , (usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) >) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (count , entry) | (count , entry . unwrap ()) }) ; { let orig = f__free ; move | (k , v) | (k , orig (v)) } }),
-                                                                                                singleton_refs: [],
                                                                                                 input: FoldKeyed {
                                                                                                     init: stageleft :: runtime_support :: fn0_type_hint :: < (usize , core :: option :: Option < hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | | (0 , None) }),
                                                                                                     acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < (usize , core :: option :: Option < hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | curr_entry , new_entry | { if let Some (curr_entry_payload) = & mut curr_entry . 1 { let same_values = new_entry . value == curr_entry_payload . value ; let higher_ballot = new_entry . ballot > curr_entry_payload . ballot ; if same_values { curr_entry . 0 += 1 ; } if higher_ballot { curr_entry_payload . ballot = new_entry . ballot ; if ! same_values { curr_entry . 0 = 1 ; curr_entry_payload . value = new_entry . value ; } } } else { * curr_entry = (1 , Some (new_entry)) ; } } }),
@@ -3952,7 +3889,6 @@ expression: built.ir()
                                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | d | d }),
                                                                                                             input: Map {
                                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (_checkpoint , log) | log }),
-                                                                                                                singleton_refs: [],
                                                                                                                 input: Tee {
                                                                                                                     inner: <shared 23>: FlatMap {
                                                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) > , std :: vec :: Vec < (core :: option :: Option < usize > , std :: collections :: hash_map :: HashMap < usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > >) > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | v }),
@@ -4347,7 +4283,6 @@ expression: built.ir()
                         inner: Tee {
                             inner: <shared 25>: Map {
                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: result :: Result < () , hydro_test :: __staged :: cluster :: paxos :: Ballot >)) , ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: result :: Result < () , hydro_test :: __staged :: cluster :: paxos :: Ballot >) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
-                                singleton_refs: [],
                                 input: Cast {
                                     inner: Network {
                                         name: None,
@@ -4365,13 +4300,11 @@ expression: built.ir()
                                             inner: YieldConcat {
                                                 inner: Map {
                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: P2a < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) , hydro_test :: __staged :: cluster :: paxos :: Proposer > , hydro_test :: __staged :: cluster :: paxos :: Ballot) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: result :: Result < () , hydro_test :: __staged :: cluster :: paxos :: Ballot >)) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (p2a , max_ballot) | (p2a . sender , ((p2a . slot , p2a . ballot . clone ()) , if p2a . ballot == max_ballot { Ok (()) } else { Err (max_ballot) })) }),
-                                                    singleton_refs: [],
                                                     input: CrossSingleton {
                                                         left: Tee {
                                                             inner: <shared 26>: Batch {
                                                                 inner: Map {
                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , hydro_test :: __staged :: cluster :: paxos :: P2a < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) , hydro_test :: __staged :: cluster :: paxos :: Proposer >) , hydro_test :: __staged :: cluster :: paxos :: P2a < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) , hydro_test :: __staged :: cluster :: paxos :: Proposer > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
-                                                                    singleton_refs: [],
                                                                     input: Cast {
                                                                         inner: Network {
                                                                             name: None,
@@ -4391,7 +4324,6 @@ expression: built.ir()
                                                                                         left: ObserveNonDet {
                                                                                             inner: Map {
                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , bool) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
-                                                                                                singleton_refs: [],
                                                                                                 input: Cast {
                                                                                                     inner: Cast {
                                                                                                         inner: Filter {
@@ -4403,7 +4335,6 @@ expression: built.ir()
                                                                                                                     input: Cast {
                                                                                                                         inner: Map {
                                                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: TaglessMemberId , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | (k , v) | (MemberId :: from_tagless (k) , v) }),
-                                                                                                                            singleton_refs: [],
                                                                                                                             input: Source {
                                                                                                                                 source: ClusterMembers(
                                                                                                                                     Cluster(loc2v1),
@@ -4512,18 +4443,15 @@ expression: built.ir()
                                                                                         right: Batch {
                                                                                             inner: Map {
                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: option :: Option < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) >) , hydro_test :: __staged :: cluster :: paxos :: P2a < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) , hydro_test :: __staged :: cluster :: paxos :: Proposer > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; let CLUSTER_SELF_ID__free = hydro_lang :: __staged :: location :: MemberId :: < hydro_test :: __staged :: cluster :: paxos :: Proposer > :: from_tagless ((__hydro_lang_cluster_self_id_loc1v1) . clone ()) ; move | ((slot , ballot) , value) | P2a { sender : CLUSTER_SELF_ID__free . clone () , ballot , slot , value } }),
-                                                                                                singleton_refs: [],
                                                                                                 input: EndAtomic {
                                                                                                     inner: Tee {
                                                                                                         inner: <shared 27>: YieldConcat {
                                                                                                             inner: Map {
                                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: option :: Option < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) >) , bool) , ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: option :: Option < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) >) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | (d , _) | d }),
-                                                                                                                singleton_refs: [],
                                                                                                                 input: CrossSingleton {
                                                                                                                     left: Chain {
                                                                                                                         first: Map {
                                                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32))) , hydro_test :: __staged :: cluster :: paxos :: Ballot) , ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: option :: Option < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) >) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | ((slot , payload) , ballot) | ((slot , ballot) , Some (payload)) }),
-                                                                                                                            singleton_refs: [],
                                                                                                                             input: CrossSingleton {
                                                                                                                                 left: Batch {
                                                                                                                                     inner: YieldConcat {
@@ -4672,7 +4600,6 @@ expression: built.ir()
                                                                                                                                                 inner: ChainFirst {
                                                                                                                                                     first: Map {
                                                                                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < usize , core :: option :: Option < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                                                                                                                                        singleton_refs: [],
                                                                                                                                                         input: Reduce {
                                                                                                                                                             f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | curr , new | { if new > * curr { * curr = new ; } } }),
                                                                                                                                                             input: ObserveNonDet {
@@ -4801,7 +4728,6 @@ expression: built.ir()
                                                                                                                             },
                                                                                                                             second: Map {
                                                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: option :: Option < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) >) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; move | (slot , ballot) | ((slot , ballot) , None) }),
-                                                                                                                                singleton_refs: [],
                                                                                                                                 input: CrossSingleton {
                                                                                                                                     left: Difference {
                                                                                                                                         pos: FlatMap {
@@ -4867,7 +4793,6 @@ expression: built.ir()
                                                                                                                                         },
                                                                                                                                         neg: Map {
                                                                                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , (usize , hydro_test :: __staged :: cluster :: paxos :: LogValue < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) >)) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
-                                                                                                                                            singleton_refs: [],
                                                                                                                                             input: Cast {
                                                                                                                                                 inner: Cast {
                                                                                                                                                     inner: Tee {
@@ -5288,7 +5213,6 @@ expression: built.ir()
             neg: Tee {
                 inner: <shared 29>: Map {
                     f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , (usize , usize)) , (usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
-                    singleton_refs: [],
                     input: Cast {
                         inner: Cast {
                             inner: Filter {
@@ -5586,12 +5510,10 @@ expression: built.ir()
             },
             neg: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , ()) , (usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: request_response :: * ; | (key , _) | key }),
-                singleton_refs: [],
                 input: Tee {
                     inner: <shared 33>: Batch {
                         inner: Map {
                             f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , ()) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | k | (k , ()) }),
-                            singleton_refs: [],
                             input: YieldConcat {
                                 inner: Difference {
                                     pos: Tee {
@@ -5715,7 +5637,6 @@ expression: built.ir()
                             inner: ChainFirst {
                                 first: Map {
                                     f: stageleft :: runtime_support :: fn1_type_hint :: < usize , core :: option :: Option < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                    singleton_refs: [],
                                     input: Tee {
                                         inner: <shared 34>: Batch {
                                             inner: CycleSource {
@@ -5985,7 +5906,6 @@ expression: built.ir()
         ),
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | (_ , ballot) | ballot }),
-            singleton_refs: [],
             input: FilterMap {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , core :: result :: Result < () , hydro_test :: __staged :: cluster :: paxos :: Ballot >) , core :: option :: Option < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , hydro_test :: __staged :: cluster :: paxos :: Ballot) > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: quorum :: * ; move | (key , res) | match res { Ok (_) => None , Err (e) => Some ((key , e)) , } }),
                 input: Tee {
@@ -6027,7 +5947,6 @@ expression: built.ir()
             inner: Cast {
                 inner: Map {
                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: paxos :: Ballot , bool) , hydro_test :: __staged :: cluster :: paxos :: Ballot > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _) | d }),
-                    singleton_refs: [],
                     input: CrossSingleton {
                         left: Tee {
                             inner: <shared 4>,
@@ -6103,7 +6022,6 @@ expression: built.ir()
         ),
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > , usize) , hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: sequence_payloads :: * ; | (sorted_payload , _) | { sorted_payload } }),
-            singleton_refs: [],
             input: Filter {
                 f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > , usize) , bool > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: sequence_payloads :: * ; | (sorted_payload , highest_seq) | sorted_payload . seq > * highest_seq }),
                 input: CrossSingleton {
@@ -6113,13 +6031,10 @@ expression: built.ir()
                                 first: Batch {
                                     inner: Map {
                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , core :: option :: Option < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > >) , hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; | (slot , kv) | SequencedKv { seq : slot , kv } }),
-                                        singleton_refs: [],
                                         input: Map {
                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , core :: option :: Option < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) >) , (usize , core :: option :: Option < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > >) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_bench :: * ; | (index , payload) | (index , payload . map (| (key , value) | KvPayload { key , value })) }),
-                                            singleton_refs: [],
                                             input: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Proposer > , (usize , core :: option :: Option < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) >)) , (usize , core :: option :: Option < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) >) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
-                                                singleton_refs: [],
                                                 input: Cast {
                                                     inner: Network {
                                                         name: None,
@@ -6139,7 +6054,6 @@ expression: built.ir()
                                                                     left: ObserveNonDet {
                                                                         inner: Map {
                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: kv_replica :: Replica > , bool) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: kv_replica :: Replica > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
-                                                                            singleton_refs: [],
                                                                             input: Cast {
                                                                                 inner: Cast {
                                                                                     inner: Filter {
@@ -6151,7 +6065,6 @@ expression: built.ir()
                                                                                                 input: Cast {
                                                                                                     inner: Map {
                                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: TaglessMemberId , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: kv_replica :: Replica > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | (k , v) | (MemberId :: from_tagless (k) , v) }),
-                                                                                                        singleton_refs: [],
                                                                                                         input: Source {
                                                                                                             source: ClusterMembers(
                                                                                                                 Cluster(loc5v1),
@@ -6260,11 +6173,9 @@ expression: built.ir()
                                                                     right: Batch {
                                                                         inner: Map {
                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , (core :: option :: Option < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > , ())) , (usize , core :: option :: Option < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) >) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos :: * ; | ((slot , _ballot) , (value , _)) | (slot , value) }),
-                                                                            singleton_refs: [],
                                                                             input: YieldConcat {
                                                                                 inner: Map {
                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , (core :: option :: Option < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > , ())) , ((usize , hydro_test :: __staged :: cluster :: paxos :: Ballot) , (core :: option :: Option < (u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32)) > , ())) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: request_response :: * ; | (key , (meta , resp)) | (key , (meta , resp)) }),
-                                                                                    singleton_refs: [],
                                                                                     input: JoinHalf {
                                                                                         left: Tee {
                                                                                             inner: <shared 32>,
@@ -6647,7 +6558,6 @@ expression: built.ir()
         input: Tee {
             inner: <shared 37>: Map {
                 f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: collections :: hash_map :: HashMap < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > , usize) , usize > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; | (_kv_store , next_slot) | next_slot }),
-                singleton_refs: [],
                 input: Batch {
                     inner: Fold {
                         init: stageleft :: runtime_support :: fn0_type_hint :: < (std :: collections :: hash_map :: HashMap < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > , usize) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; | | (HashMap :: new () , 0) }),
@@ -6656,7 +6566,6 @@ expression: built.ir()
                             inner: Tee {
                                 inner: <shared 38>: Map {
                                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > , usize) , hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: sequence_payloads :: * ; | (sorted_payload , _) | { sorted_payload } }),
-                                    singleton_refs: [],
                                     input: Filter {
                                         f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < (hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > , usize) , bool > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: sequence_payloads :: * ; | (sorted_payload , highest_seq) | sorted_payload . seq < * highest_seq }),
                                         input: CrossSingleton {
@@ -6788,7 +6697,6 @@ expression: built.ir()
                             inner: ChainFirst {
                                 first: Map {
                                     f: stageleft :: runtime_support :: fn1_type_hint :: < usize , core :: option :: Option < usize > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                    singleton_refs: [],
                                     input: Batch {
                                         inner: Reduce {
                                             f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , usize , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | curr , new | { if new > * curr { * curr = new ; } } }),
@@ -7005,10 +6913,8 @@ expression: built.ir()
                 input: ObserveNonDet {
                     inner: Map {
                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: kv_replica :: Replica > , usize) , usize > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_bench :: * ; | (_sender , seq) | seq }),
-                        singleton_refs: [],
                         input: Map {
                             f: stageleft :: runtime_support :: fn1_type_hint :: < ((hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: kv_replica :: Replica > , usize) , bool) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: kv_replica :: Replica > , usize) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | (d , _) | d }),
-                            singleton_refs: [],
                             input: CrossSingleton {
                                 left: Cast {
                                     inner: Cast {
@@ -7034,7 +6940,6 @@ expression: built.ir()
                                                                     left: ObserveNonDet {
                                                                         inner: Map {
                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , bool) , hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; | (k , _) | k }),
-                                                                            singleton_refs: [],
                                                                             input: Cast {
                                                                                 inner: Cast {
                                                                                     inner: Filter {
@@ -7046,7 +6951,6 @@ expression: built.ir()
                                                                                                 input: Cast {
                                                                                                     inner: Map {
                                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: TaglessMemberId , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos :: Acceptor > , hydro_test :: __staged :: __deps :: hydro_lang :: location :: MembershipEvent) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: location :: * ; | (k , v) | (MemberId :: from_tagless (k) , v) }),
-                                                                                                        singleton_refs: [],
                                                                                                         input: Source {
                                                                                                             source: ClusterMembers(
                                                                                                                 Cluster(loc2v1),
@@ -7290,7 +7194,6 @@ expression: built.ir()
                                     f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | b | * b }),
                                     input: Map {
                                         f: stageleft :: runtime_support :: fn1_type_hint :: < usize , bool > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_bench :: * ; let f__free = 1usize ; move | num_received | num_received == f__free + 1 }),
-                                        singleton_refs: [],
                                         input: Fold {
                                             init: stageleft :: runtime_support :: fn0_type_hint :: < usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | | 0usize }),
                                             acc: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < usize , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: kv_replica :: Replica > , usize) , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | count , _ | * count += 1 }),
@@ -7459,7 +7362,6 @@ expression: built.ir()
                         inner: Tee {
                             inner: <shared 42>: Map {
                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: kv_replica :: Replica > , ((u32 , i32) , core :: result :: Result < () , () >)) , ((u32 , i32) , core :: result :: Result < () , () >) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
-                                singleton_refs: [],
                                 input: Cast {
                                     inner: Network {
                                         name: None,
@@ -7476,7 +7378,6 @@ expression: built.ir()
                                         input: Cast {
                                             inner: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , ((u32 , i32) , core :: result :: Result < () , () >)) > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_bench :: * ; | payload | (payload . value . 0 , ((payload . key , payload . value . 1) , Ok (()))) }),
-                                                singleton_refs: [],
                                                 input: YieldConcat {
                                                     inner: FilterMap {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: cluster :: kv_replica :: SequencedKv < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > , core :: option :: Option < hydro_test :: __staged :: cluster :: kv_replica :: KvPayload < u32 , (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , i32) > > > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: kv_replica :: * ; | payload | payload . kv }),
@@ -7827,7 +7728,6 @@ expression: built.ir()
             inner: ChainFirst {
                 first: Map {
                     f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > >) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | (new , old) | { old . borrow_mut () . add (new) . expect ("Error adding value to histogram") ; old } }),
-                    singleton_refs: [],
                     input: CrossSingleton {
                         left: Tee {
                             inner: <shared 46>: Fold {
@@ -7837,14 +7737,12 @@ expression: built.ir()
                                     inner: <shared 47>: Batch {
                                         inner: Map {
                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , (i32 , core :: time :: Duration)) , core :: time :: Duration > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: cluster :: paxos_bench :: * ; | (_virtual_client_id , (_output , latency)) | latency }),
-                                            singleton_refs: [],
                                             input: Cast {
                                                 inner: YieldConcat {
                                                     inner: Cast {
                                                         inner: Cast {
                                                             inner: Map {
                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , (std :: time :: Instant , (std :: time :: Instant , i32))) , (u32 , (i32 , core :: time :: Duration)) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < (std :: time :: Instant , (std :: time :: Instant , i32)) , (i32 , core :: time :: Duration) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | (start_time , (end_time , output)) | (output , end_time . duration_since (start_time)) }) ; { let orig = f__free ; move | (k , v) | (k , orig (v)) } }),
-                                                                singleton_refs: [],
                                                                 input: Cast {
                                                                     inner: Cast {
                                                                         inner: JoinHalf {
@@ -7920,7 +7818,6 @@ expression: built.ir()
                                                                                 inner: Cast {
                                                                                     inner: Map {
                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (u32 , i32) , (u32 , (std :: time :: Instant , i32)) > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_singleton :: * ; let f__free = stageleft :: runtime_support :: fn1_type_hint :: < i32 , (std :: time :: Instant , i32) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | output | (Instant :: now () , output) }) ; { let orig = f__free ; move | (k , v) | (k , orig (v)) } }),
-                                                                                        singleton_refs: [],
                                                                                         input: ReduceKeyed {
                                                                                             f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < i32 , i32 , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | curr , new | { * curr = new ; } }),
                                                                                             input: ObserveNonDet {
@@ -8131,7 +8028,6 @@ expression: built.ir()
                         right: Tee {
                             inner: <shared 48>: Map {
                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , bool) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _) | d }),
-                                singleton_refs: [],
                                 input: CrossSingleton {
                                     left: Tee {
                                         inner: <shared 49>: Cast {
@@ -8205,15 +8101,12 @@ expression: built.ir()
                                         f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | b | * b }),
                                         input: Map {
                                             f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_none () }),
-                                            singleton_refs: [],
                                             input: Cast {
                                                 inner: ChainFirst {
                                                     first: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                                        singleton_refs: [],
                                                         input: Map {
                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
-                                                            singleton_refs: [],
                                                             input: Tee {
                                                                 inner: <shared 50>: Reduce {
                                                                     f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < () , () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: stream :: * ; | _ , _ | { } }),
@@ -8394,7 +8287,6 @@ expression: built.ir()
                 second: Cast {
                     inner: Map {
                         f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | histogram | Rc :: new (RefCell :: new (histogram)) }),
-                        singleton_refs: [],
                         input: Tee {
                             inner: <shared 46>,
                             metadata: HydroIrMetadata {
@@ -8447,7 +8339,6 @@ expression: built.ir()
             inner: ChainFirst {
                 first: Map {
                     f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , usize) , usize > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | (new , old) | new + old }),
-                    singleton_refs: [],
                     input: CrossSingleton {
                         left: Tee {
                             inner: <shared 51>: Fold {
@@ -8496,7 +8387,6 @@ expression: built.ir()
                         right: Tee {
                             inner: <shared 52>: Map {
                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , bool) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _) | d }),
-                                singleton_refs: [],
                                 input: CrossSingleton {
                                     left: Tee {
                                         inner: <shared 53>: Cast {
@@ -8570,15 +8460,12 @@ expression: built.ir()
                                         f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | b | * b }),
                                         input: Map {
                                             f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_none () }),
-                                            singleton_refs: [],
                                             input: Cast {
                                                 inner: ChainFirst {
                                                     first: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                                        singleton_refs: [],
                                                         input: Map {
                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
-                                                            singleton_refs: [],
                                                             input: Tee {
                                                                 inner: <shared 50>,
                                                                 metadata: HydroIrMetadata {
@@ -8740,7 +8627,6 @@ expression: built.ir()
         ),
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < ((std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , core :: option :: Option < std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > >) , core :: option :: Option < () >) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | ((old , new) , reset) | { if reset . is_some () { old . replace (Histogram :: < u64 > :: new (3) . unwrap ()) ; } if let Some (new) = new { old . borrow_mut () . add (& * new . borrow_mut ()) . expect ("Error adding value to histogram") ; } old } }),
-            singleton_refs: [],
             input: Cast {
                 inner: CrossSingleton {
                     left: Cast {
@@ -8817,17 +8703,14 @@ expression: built.ir()
                                 inner: ChainFirst {
                                     first: Map {
                                         f: stageleft :: runtime_support :: fn1_type_hint :: < std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , core :: option :: Option < std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                        singleton_refs: [],
                                         input: Reduce {
                                             f: stageleft :: runtime_support :: fn2_borrow_mut_type_hint :: < std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | curr , new | { curr . borrow_mut () . add (& * new . borrow_mut ()) . expect ("Error adding value to histogram") ; } }),
                                             input: ObserveNonDet {
                                                 inner: Batch {
                                                     inner: Map {
                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: SerializableHistogramWrapper , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | wrapper | wrapper . histogram }),
-                                                        singleton_refs: [],
                                                         input: Map {
                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: SerializableHistogramWrapper) , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: SerializableHistogramWrapper > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
-                                                            singleton_refs: [],
                                                             input: Cast {
                                                                 inner: Cast {
                                                                     inner: Network {
@@ -8844,12 +8727,10 @@ expression: built.ir()
                                                                         ),
                                                                         input: Map {
                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , hydro_test :: __staged :: __deps :: hydro_std :: bench_client :: SerializableHistogramWrapper > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; | latencies | { SerializableHistogramWrapper { histogram : latencies , } } }),
-                                                                            singleton_refs: [],
                                                                             input: YieldConcat {
                                                                                 inner: Cast {
                                                                                     inner: Map {
                                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , bool) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _) | d }),
-                                                                                        singleton_refs: [],
                                                                                         input: CrossSingleton {
                                                                                             left: Tee {
                                                                                                 inner: <shared 49>,
@@ -8865,15 +8746,12 @@ expression: built.ir()
                                                                                                 f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | b | * b }),
                                                                                                 input: Map {
                                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_some () }),
-                                                                                                    singleton_refs: [],
                                                                                                     input: Cast {
                                                                                                         inner: ChainFirst {
                                                                                                             first: Map {
                                                                                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                                                                                                singleton_refs: [],
                                                                                                                 input: Map {
                                                                                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
-                                                                                                                    singleton_refs: [],
                                                                                                                     input: Tee {
                                                                                                                         inner: <shared 50>,
                                                                                                                         metadata: HydroIrMetadata {
@@ -9142,7 +9020,6 @@ expression: built.ir()
                         inner: ChainFirst {
                             first: Map {
                                 f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                singleton_refs: [],
                                 input: DeferTick {
                                     input: Tee {
                                         inner: <shared 55>: Reduce {
@@ -9302,7 +9179,6 @@ expression: built.ir()
                 first: Batch {
                     inner: Map {
                         f: stageleft :: runtime_support :: fn1_type_hint :: < (hydro_test :: __staged :: __deps :: hydro_lang :: location :: member_id :: MemberId < hydro_test :: __staged :: cluster :: paxos_bench :: Client > , usize) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: keyed_stream :: * ; | (_ , v) | v }),
-                        singleton_refs: [],
                         input: Cast {
                             inner: Cast {
                                 inner: Network {
@@ -9321,7 +9197,6 @@ expression: built.ir()
                                         inner: Cast {
                                             inner: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , bool) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _) | d }),
-                                                singleton_refs: [],
                                                 input: CrossSingleton {
                                                     left: Tee {
                                                         inner: <shared 53>,
@@ -9337,15 +9212,12 @@ expression: built.ir()
                                                         f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | b | * b }),
                                                         input: Map {
                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_some () }),
-                                                            singleton_refs: [],
                                                             input: Cast {
                                                                 inner: ChainFirst {
                                                                     first: Map {
                                                                         f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                                                        singleton_refs: [],
                                                                         input: Map {
                                                                             f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
-                                                                            singleton_refs: [],
                                                                             input: Tee {
                                                                                 inner: <shared 50>,
                                                                                 metadata: HydroIrMetadata {
@@ -9514,7 +9386,6 @@ expression: built.ir()
                 second: Cast {
                     inner: Map {
                         f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , bool) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _) | d }),
-                        singleton_refs: [],
                         input: CrossSingleton {
                             left: Tee {
                                 inner: <shared 56>: Cast {
@@ -9588,15 +9459,12 @@ expression: built.ir()
                                 f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | b | * b }),
                                 input: Map {
                                     f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_none () }),
-                                    singleton_refs: [],
                                     input: Cast {
                                         inner: ChainFirst {
                                             first: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                                singleton_refs: [],
                                                 input: Map {
                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
-                                                    singleton_refs: [],
                                                     input: Tee {
                                                         inner: <shared 55>,
                                                         metadata: HydroIrMetadata {
@@ -9727,7 +9595,6 @@ expression: built.ir()
             inner: Cast {
                 inner: Map {
                     f: stageleft :: runtime_support :: fn1_type_hint :: < (usize , bool) , usize > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _) | d }),
-                    singleton_refs: [],
                     input: CrossSingleton {
                         left: Tee {
                             inner: <shared 56>,
@@ -9743,15 +9610,12 @@ expression: built.ir()
                             f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | b | * b }),
                             input: Map {
                                 f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_some () }),
-                                singleton_refs: [],
                                 input: Cast {
                                     inner: ChainFirst {
                                         first: Map {
                                             f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                            singleton_refs: [],
                                             input: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
-                                                singleton_refs: [],
                                                 input: Tee {
                                                     inner: <shared 55>,
                                                     metadata: HydroIrMetadata {
@@ -9872,12 +9736,10 @@ expression: built.ir()
         f: stageleft :: runtime_support :: fn1_type_hint :: < (f64 , f64 , f64 , u64) , () > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; move | (p50 , p99 , p999 , num_samples) | { println ! ("Latency p50: {:.3} | p99 {:.3} | p999 {:.3} ms ({:} samples)" , p50 , p99 , p999 , num_samples) ; } }),
         input: Map {
             f: stageleft :: runtime_support :: fn1_type_hint :: < std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , (f64 , f64 , f64 , u64) > ({ use hydro_std :: __staged :: __deps :: * ; use hydro_std :: __staged :: bench_client :: * ; move | latencies | (Duration :: from_nanos (latencies . borrow () . value_at_quantile (0.5)) . as_micros () as f64 / 1000.0 , Duration :: from_nanos (latencies . borrow () . value_at_quantile (0.99)) . as_micros () as f64 / 1000.0 , Duration :: from_nanos (latencies . borrow () . value_at_quantile (0.999)) . as_micros () as f64 / 1000.0 , latencies . borrow () . len () ,) }),
-            singleton_refs: [],
             input: YieldConcat {
                 inner: Cast {
                     inner: Map {
                         f: stageleft :: runtime_support :: fn1_type_hint :: < (std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > , bool) , std :: rc :: Rc < core :: cell :: RefCell < hydro_test :: __staged :: __deps :: hydro_std :: __staged :: __deps :: hdrhistogram :: Histogram < u64 > > > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | (d , _) | d }),
-                        singleton_refs: [],
                         input: CrossSingleton {
                             left: Tee {
                                 inner: <shared 54>,
@@ -9893,15 +9755,12 @@ expression: built.ir()
                                 f: stageleft :: runtime_support :: fn1_borrow_type_hint :: < bool , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: singleton :: * ; | b | * b }),
                                 input: Map {
                                     f: stageleft :: runtime_support :: fn1_type_hint :: < core :: option :: Option < () > , bool > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | o | o . is_some () }),
-                                    singleton_refs: [],
                                     input: Cast {
                                         inner: ChainFirst {
                                             first: Map {
                                                 f: stageleft :: runtime_support :: fn1_type_hint :: < () , core :: option :: Option < () > > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | v | Some (v) }),
-                                                singleton_refs: [],
                                                 input: Map {
                                                     f: stageleft :: runtime_support :: fn1_type_hint :: < () , () > ({ use hydro_lang :: __staged :: __deps :: * ; use hydro_lang :: __staged :: live_collections :: optional :: * ; | _ | () }),
-                                                    singleton_refs: [],
                                                     input: Tee {
                                                         inner: <shared 55>,
                                                         metadata: HydroIrMetadata {
