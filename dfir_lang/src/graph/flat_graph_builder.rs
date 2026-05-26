@@ -11,6 +11,7 @@ use syn::spanned::Spanned;
 use syn::{Error, Ident, ItemUse};
 
 use crate::diagnostic::{Diagnostic, Diagnostics, Level};
+use crate::graph::meta_graph::ResolvedSingletonRef;
 use crate::graph::ops::next_iteration::NEXT_ITERATION;
 use crate::graph::ops::{FloType, Persistence, PortListSpec, RangeTrait};
 use crate::graph::{
@@ -389,8 +390,14 @@ impl FlatGraphBuilder {
     fn finalize_connect_operator_links(&mut self) {
         // `->` edges
         for Ends { out, inn } in std::mem::take(&mut self.links) {
-            let out_opt = self.helper_resolve_name(out, false);
-            let inn_opt = self.helper_resolve_name(inn, true);
+            let out_opt = Self::helper_resolve_name(
+                &mut self.varname_ends,
+                out,
+                false,
+                &mut self.diagnostics,
+            );
+            let inn_opt =
+                Self::helper_resolve_name(&mut self.varname_ends, inn, true, &mut self.diagnostics);
             // `None` already have errors in `self.diagnostics`.
             if let (Some((out_port, out_node)), Some((inn_port, inn_node))) = (out_opt, inn_opt) {
                 let _ = self.finalize_connect_operators(out_port, out_node, inn_port, inn_node);
@@ -402,8 +409,7 @@ impl FlatGraphBuilder {
             if let GraphNode::Operator(operator) = self.flat_graph.node(node_id) {
                 let singletons_referenced = operator
                     .singletons_referenced
-                    .clone()
-                    .into_iter()
+                    .iter()
                     .map(|singleton_ref| {
                         let port_det = self
                             .varname_ends
@@ -413,8 +419,12 @@ impl FlatGraphBuilder {
                             .and_then(|ends| ends.out.as_ref())
                             .cloned();
                         let resolved_node_id = if let Some((_port, node_id)) =
-                            self.helper_resolve_name(port_det, false)
-                        {
+                            Self::helper_resolve_name(
+                                &mut self.varname_ends,
+                                port_det,
+                                false,
+                                &mut self.diagnostics,
+                            ) {
                             Some(node_id)
                         } else {
                             self.diagnostics.push(Diagnostic::spanned(
@@ -427,10 +437,22 @@ impl FlatGraphBuilder {
                             ));
                             None
                         };
-                        crate::graph::meta_graph::ResolvedSingletonRef {
+                        ResolvedSingletonRef {
                             node_id: resolved_node_id,
                             is_mut: singleton_ref.token_mut.is_some(),
-                            access_group: singleton_ref.access_group.as_ref().map(|(_, n)| *n),
+                            access_group: singleton_ref.access_group.as_ref().and_then(
+                                |(_, lit_int)| match lit_int.base10_parse::<u32>() {
+                                    Ok(n) => Some(n),
+                                    Err(e) => {
+                                        self.diagnostics.push(Diagnostic::spanned(
+                                            lit_int.span(),
+                                            Level::Error,
+                                            format!("Access group is not a valid `u32`: {}", e),
+                                        ));
+                                        None
+                                    }
+                                },
+                            ),
                         }
                     })
                     .collect();
@@ -448,9 +470,10 @@ impl FlatGraphBuilder {
     ///
     /// `is_in` set to `true` means the _input_ side will be returned. `false` means the _output_ side will be returned.
     fn helper_resolve_name(
-        &mut self,
+        varname_ends: &mut BTreeMap<Ident, VarnameInfo>,
         mut port_det: Option<(PortIndexValue, GraphDet)>,
         is_in: bool,
+        diagnostics: &mut Diagnostics,
     ) -> Option<(PortIndexValue, GraphNodeId)> {
         const BACKUP_RECURSION_LIMIT: usize = 1024;
 
@@ -461,8 +484,8 @@ impl FlatGraphBuilder {
                     return Some((port, node_id));
                 }
                 (port, GraphDet::Undetermined(ident)) => {
-                    let Some(varname_info) = self.varname_ends.get_mut(&ident) else {
-                        self.diagnostics.push(Diagnostic::spanned(
+                    let Some(varname_info) = varname_ends.get_mut(&ident) else {
+                        diagnostics.push(Diagnostic::spanned(
                             ident.span(),
                             Level::Error,
                             format!("Cannot find name `{}`; name was never assigned.", ident),
@@ -477,7 +500,7 @@ impl FlatGraphBuilder {
                     if cycle_found || varname_info.illegal_cycle {
                         let len = names.len();
                         for (i, name) in names.into_iter().enumerate() {
-                            self.diagnostics.push(Diagnostic::spanned(
+                            diagnostics.push(Diagnostic::spanned(
                                 name.span(),
                                 Level::Error,
                                 format!(
@@ -489,7 +512,7 @@ impl FlatGraphBuilder {
                             ));
                             // Set value as `Err(())` to trigger `name_ends_result.is_err()`
                             // diagnostics above if the name is referenced in the future.
-                            self.varname_ends.get_mut(&name).unwrap().illegal_cycle = true;
+                            varname_ends.get_mut(&name).unwrap().illegal_cycle = true;
                         }
                         return None;
                     }
@@ -503,7 +526,7 @@ impl FlatGraphBuilder {
                         &varname_info.ends.out
                     };
                     port_det = Self::helper_combine_end(
-                        &mut self.diagnostics,
+                        diagnostics,
                         prev.clone(),
                         port,
                         if is_in { "input" } else { "output" },
@@ -511,7 +534,7 @@ impl FlatGraphBuilder {
                 }
             }
         }
-        self.diagnostics.push(Diagnostic::spanned(
+        diagnostics.push(Diagnostic::spanned(
             Span::call_site(),
             Level::Error,
             format!(
@@ -881,13 +904,17 @@ impl FlatGraphBuilder {
             }
         }
 
-        // Validate mutable singleton references:
-        // - Multiple ungrouped `#mut var` to the same singleton is an error.
-        // - `#var` and `#mut var` in the same access group is an error.
+        // Validate singleton references.
+        // All singleton references must have unambiguous group orderings.
+        // Rules:
+        // 1. If any singleton reference has an explicit group number, they all must have one.
+        // 2. Every `#mut` must be in its own group.
         {
-            // Collect all refs: target_node_id -> Vec<(is_mut, access_group, span)>
-            let mut refs_by_target: BTreeMap<GraphNodeId, Vec<(bool, Option<u32>, Span)>> =
-                BTreeMap::new();
+            // Collect all refs, grouped by the singleton they're pointing at, then by the access group idx `Option<u32>`.
+            let mut refs_by_target = BTreeMap::<
+                GraphNodeId,
+                BTreeMap<Option<u32>, Vec<(&ResolvedSingletonRef, Span)>>,
+            >::new();
             for node_id in self.flat_graph.node_ids() {
                 if let GraphNode::Operator(operator) = self.flat_graph.node(node_id) {
                     let resolved = self.flat_graph.node_singleton_references(node_id);
@@ -895,90 +922,47 @@ impl FlatGraphBuilder {
                         resolved.iter().zip(operator.singletons_referenced.iter())
                     {
                         if let Some(target_id) = resolved_ref.node_id {
-                            refs_by_target.entry(target_id).or_default().push((
-                                ref_token.token_mut.is_some(),
-                                ref_token.access_group.as_ref().map(|(_, n)| *n),
-                                ref_token.ident.span(),
-                            ));
+                            refs_by_target
+                                .entry(target_id)
+                                .or_default()
+                                .entry(resolved_ref.access_group)
+                                .or_default()
+                                .push((resolved_ref, ref_token.span()));
                         }
                     }
                 }
             }
 
-            for refs in refs_by_target.values() {
-                // Group refs by access group: Option<u32> -> (shared_spans, mut_spans)
-                let mut by_group: BTreeMap<Option<u32>, (Vec<Span>, Vec<Span>)> = BTreeMap::new();
-                for &(is_mut, access_group, span) in refs {
-                    let entry = by_group.entry(access_group).or_default();
-                    if is_mut {
-                        entry.1.push(span);
-                    } else {
-                        entry.0.push(span);
-                    }
-                }
-
-                let (ungrouped_shared, ungrouped_mut) = by_group
-                    .get(&None)
-                    .map_or((&[][..], &[][..]), |(s, m)| (s.as_slice(), m.as_slice()));
-                let all_mut_spans: Vec<Span> = by_group
-                    .values()
-                    .flat_map(|(_, m)| m.iter().copied())
-                    .collect();
-
-                // Ungrouped shared refs cannot coexist with any mutable refs.
-                if !ungrouped_shared.is_empty() && !all_mut_spans.is_empty() {
-                    for &span in ungrouped_shared.iter().chain(all_mut_spans.iter()) {
+            // For each singleton, check the groups.
+            for (_singleton, groups) in refs_by_target {
+                // Rule 1. If any singleton reference has an explicit group number, they all must have one.
+                if 1 < groups.len()
+                    && let Some(ungrouped) = groups.get(&None)
+                {
+                    for &(r, span) in ungrouped {
                         self.diagnostics.push(Diagnostic::spanned(
                             span,
                             Level::Error,
-                            "Cannot mix ungrouped shared (`#var`) and mutable (`#mut var`) \
-                             references to the same singleton. Use access groups `#{N}` to \
-                             specify ordering."
-                                .to_owned(),
+                            format!(
+                                "Must use an explicit group `#{{N}}{}` to reference a singleton when other references use explicit groups.",
+                                if r.is_mut { " mut" } else { "" },
+                            ),
                         ));
                     }
-                    continue;
                 }
-
-                // Ungrouped mutable refs cannot coexist with any other mutable refs.
-                if !ungrouped_mut.is_empty() && all_mut_spans.len() > 1 {
-                    for &span in &all_mut_spans {
-                        self.diagnostics.push(Diagnostic::spanned(
-                            span,
-                            Level::Error,
-                            "Ungrouped `#mut` references cannot coexist with other mutable \
-                             references to the same singleton. Use access groups `#{N} mut var` \
-                             to specify ordering."
-                                .to_owned(),
-                        ));
-                    }
-                    continue;
-                }
-
-                // Per-group checks (ungrouped cases fully handled above).
-                for (group, (shared_spans, mut_spans)) in &by_group {
-                    if group.is_none() {
-                        continue;
-                    }
-                    if !shared_spans.is_empty() && !mut_spans.is_empty() {
-                        for &span in shared_spans.iter().chain(mut_spans.iter()) {
+                // Rule 2. Every `#mut` must be in its own group.
+                for (group_idx, group) in groups {
+                    if 1 < group.len() && group.iter().any(|(r, _)| r.is_mut) {
+                        let group_str = if let Some(n) = group_idx {
+                            format!("`#{{{}}}`", n)
+                        } else {
+                            "<default>".to_owned()
+                        };
+                        for (_mut, span) in group.into_iter().filter(|(r, _)| r.is_mut) {
                             self.diagnostics.push(Diagnostic::spanned(
                                 span,
                                 Level::Error,
-                                "Cannot mix shared (`#`) and mutable (`#mut`) references \
-                                 in the same access group."
-                                    .to_owned(),
-                            ));
-                        }
-                    }
-                    if mut_spans.len() > 1 {
-                        for &span in mut_spans {
-                            self.diagnostics.push(Diagnostic::spanned(
-                                span,
-                                Level::Error,
-                                "Multiple `#mut` references in the same access group. \
-                                 Each mutable reference must be in its own access group."
-                                    .to_owned(),
+                                format!("Mutable singleton references must be the only one in their access group, but group {} has multiple.", group_str),
                             ));
                         }
                     }

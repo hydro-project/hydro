@@ -602,7 +602,7 @@ pub struct SingletonRef {
     /// Hash `#` marking the start of the singleton.
     pub hash: Token![#],
     /// Optional access group for ordering (`#{N}` prefix). Stores the brace group and parsed integer.
-    pub access_group: Option<(Brace, u32)>,
+    pub access_group: Option<(Brace, LitInt)>,
     /// Whether this is a mutable reference (`#mut var` or `#{N} mut var`).
     pub token_mut: Option<Token![mut]>,
     /// The variable name being referenced.
@@ -630,18 +630,17 @@ impl SingletonRef {
 
 impl Parse for SingletonRef {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let hash = input.parse::<Token![#]>()?;
+        let hash = input.parse()?;
         let access_group = input
             .peek(Brace)
             .then(|| {
                 let inner;
                 let brace = braced!(inner in input);
-                let lit_int = inner.parse::<LitInt>()?;
-                let idx = lit_int.base10_parse::<u32>()?;
+                let lit_int = inner.parse()?;
                 if !inner.is_empty() {
                     return Err(inner.error("expected only an integer"));
                 }
-                Ok((brace, idx))
+                Ok((brace, lit_int))
             })
             .transpose()?;
         let token_mut = input.parse()?;
@@ -652,6 +651,19 @@ impl Parse for SingletonRef {
             access_group,
             ident,
         })
+    }
+}
+
+impl ToTokens for SingletonRef {
+    fn to_tokens(&self, tokens: &mut TokenStream) {
+        self.hash.to_tokens(tokens);
+        if let Some((brace, lit_int)) = self.access_group.as_ref() {
+            brace.surround(tokens, |tokens| {
+                lit_int.to_tokens(tokens);
+            });
+        }
+        self.token_mut.to_tokens(tokens);
+        self.ident.to_tokens(tokens);
     }
 }
 

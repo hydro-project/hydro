@@ -1,11 +1,5 @@
-error: Cannot mix shared (`#`) and mutable (`#mut`) references in the same access group.
- --> tests/compile-fail/stable/surface_singleton_mut_mixed_group.rs:6:50
-  |
-6 |         source_iter([1_i32]) -> map(|x| x + #{0} my_val) -> for_each(|_| {});
-  |                                                  ^^^^^^
-
-error: Cannot mix shared (`#`) and mutable (`#mut`) references in the same access group.
- --> tests/compile-fail/stable/surface_singleton_mut_mixed_group.rs:7:53
+error: Mutable singleton references must be the only one in their access group, but group `#{0}` has multiple.
+ --> tests/compile-fail/stable/surface_singleton_mut_mixed_group.rs:7:44
   |
 7 |         source_iter([2_i32]) -> map(|x| { *#{0} mut my_val += x; x }) -> for_each(|_| {});
-  |                                                     ^^^^^^
+  |                                            ^

@@ -30,7 +30,7 @@ use crate::process_singletons;
 /// A resolved singleton reference: the target node ID plus mutability and access group info.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ResolvedSingletonRef {
-    /// The resolved target node ID (None if unresolved/error).
+    /// The resolved target node ID (`None` if unresolved/error).
     pub node_id: Option<GraphNodeId>,
     /// Whether this is a mutable reference (`#mut var`).
     pub is_mut: bool,
