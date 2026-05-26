@@ -1,0 +1,42 @@
+[package]
+name = "hydro_transparent_replicate"
+publish = false
+version = "0.0.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[features]
+default = []
+backend_redb = ["dep:redb"]
+backend_sled = ["dep:sled"]
+backend_fjall = ["dep:fjall"]
+backend_rusqlite = ["dep:rusqlite"]
+
+[dependencies]
+hydro_lang = { path = "../hydro_lang", version = "^0.15.0" }
+hydro_std = { path = "../hydro_std", version = "^0.15.0" }
+hydro_test = { path = "../hydro_test" }
+stageleft.workspace = true
+serde = { version = "1.0.197", features = ["derive"] }
+bincode = "1.3.1"
+tokio = { version = "1.29.0", features = ["net", "io-util", "time"] }
+ctor = "0.2.9"
+
+# Optional backend dependencies
+redb = { version = "2", optional = true }
+sled = { version = "0.34", optional = true }
+fjall = { version = "2", optional = true }
+rusqlite = { version = "0.31", optional = true, features = ["backup"] }
+tempfile = "3"
+
+[build-dependencies]
+stageleft_tool.workspace = true
+
+[dev-dependencies]
+proptest = "1"
+tokio = { version = "1.29.0", features = ["full"] }
+futures = "0.3"
+hydro_lang = { path = "../hydro_lang", version = "^0.15.0", features = ["sim", "deploy"] }
+hydro_deploy = { path = "../hydro_deploy/core" }
