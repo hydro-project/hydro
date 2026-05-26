@@ -3693,9 +3693,9 @@ impl HydroNode {
                                 {
                                     builder.add_dfir(
                                         parse_quote! {
-                                            #cross_ident = cross_singleton();
+                                            #cross_ident = cross_singleton::<'static>();
                                             #left_ident -> [input]#cross_ident;
-                                            #right_ident -> persist::<'static>() -> [single]#cross_ident;
+                                            #right_ident -> [single]#cross_ident;
                                         },
                                         None,
                                         Some(&next_stmt_id.to_string()),

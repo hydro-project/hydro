@@ -1869,4 +1869,33 @@ mod tests {
 
         assert_eq!(count, 4);
     }
+
+    /// Reproducer for simulator hang when using cross_singleton on a top-level
+    /// unbounded stream (not inside sliced!). The exhaustive simulator hangs
+    /// after the first iteration.
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_cross_singleton_top_level_unbounded_hang() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (cmd_port, input) = node.sim_input::<String, _, _>();
+
+        let top_level_singleton = node.singleton(q!(123));
+
+        // cross_singleton on a top-level stream - bug trigger
+        let crossed = input.cross_singleton(top_level_singleton);
+
+        // Output directly
+        let resp_port = crossed.sim_output();
+
+        let count = flow.sim().exhaustive(async || {
+            cmd_port.send("abc".to_owned());
+
+            let responses: Vec<_> = resp_port.collect().await;
+            assert!(!responses.is_empty());
+        });
+
+        assert_eq!(count, 1);
+    }
 }
