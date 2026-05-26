@@ -556,7 +556,37 @@ impl DfirGraph {
             .map(std::ops::Deref::deref)
             .unwrap_or_default()
     }
+
+    /// Collect all refs, grouped by the singleton they're pointing at, then by the access group idx `Option<u32>`.
+    pub fn node_singleton_reference_groups(&self) -> NodeSingletonReferenceGroups<'_> {
+        let mut singleton_references = NodeSingletonReferenceGroups::new();
+        for node_id in self.node_ids() {
+            if let GraphNode::Operator(operator) = self.node(node_id) {
+                let resolved = self.node_singleton_references(node_id);
+                for (resolved_ref, ref_token) in
+                    resolved.iter().zip(operator.singletons_referenced.iter())
+                {
+                    if let Some(target_nid) = resolved_ref.node_id {
+                        singleton_references
+                            .entry(target_nid)
+                            .or_default()
+                            .entry(resolved_ref.access_group)
+                            .or_default()
+                            .push((node_id, resolved_ref, ref_token.span()));
+                    }
+                }
+            }
+        }
+        singleton_references
+    }
 }
+
+/// Per-node singleton references, in turn grouped by access group.
+/// Map: singleton_node_id -> access_group -> (source `GraphNodeId`, `ResolvedSingletonRef`, `#ref` span)
+pub type NodeSingletonReferenceGroups<'a> = BTreeMap<
+    GraphNodeId,
+    BTreeMap<Option<u32>, Vec<(GraphNodeId, &'a ResolvedSingletonRef, Span)>>,
+>;
 
 /// Module methods.
 impl DfirGraph {

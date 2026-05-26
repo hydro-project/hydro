@@ -910,36 +910,14 @@ impl FlatGraphBuilder {
         // 1. If any singleton reference has an explicit group number, they all must have one.
         // 2. Every `#mut` must be in its own group.
         {
-            // Collect all refs, grouped by the singleton they're pointing at, then by the access group idx `Option<u32>`.
-            let mut refs_by_target = BTreeMap::<
-                GraphNodeId,
-                BTreeMap<Option<u32>, Vec<(&ResolvedSingletonRef, Span)>>,
-            >::new();
-            for node_id in self.flat_graph.node_ids() {
-                if let GraphNode::Operator(operator) = self.flat_graph.node(node_id) {
-                    let resolved = self.flat_graph.node_singleton_references(node_id);
-                    for (resolved_ref, ref_token) in
-                        resolved.iter().zip(operator.singletons_referenced.iter())
-                    {
-                        if let Some(target_id) = resolved_ref.node_id {
-                            refs_by_target
-                                .entry(target_id)
-                                .or_default()
-                                .entry(resolved_ref.access_group)
-                                .or_default()
-                                .push((resolved_ref, ref_token.span()));
-                        }
-                    }
-                }
-            }
-
+            let refs_by_target = self.flat_graph.node_singleton_reference_groups();
             // For each singleton, check the groups.
             for (_singleton, groups) in refs_by_target {
                 // Rule 1. If any singleton reference has an explicit group number, they all must have one.
                 if 1 < groups.len()
                     && let Some(ungrouped) = groups.get(&None)
                 {
-                    for &(r, span) in ungrouped {
+                    for &(_src_node, r, span) in ungrouped {
                         self.diagnostics.push(Diagnostic::spanned(
                             span,
                             Level::Error,
@@ -952,13 +930,15 @@ impl FlatGraphBuilder {
                 }
                 // Rule 2. Every `#mut` must be in its own group.
                 for (group_idx, group) in groups {
-                    if 1 < group.len() && group.iter().any(|(r, _)| r.is_mut) {
+                    if 1 < group.len() && group.iter().any(|(_, r, _)| r.is_mut) {
                         let group_str = if let Some(n) = group_idx {
                             format!("`#{{{}}}`", n)
                         } else {
                             "<default>".to_owned()
                         };
-                        for (_mut, span) in group.into_iter().filter(|(r, _)| r.is_mut) {
+                        for (_src_node, _mut_r, span) in
+                            group.into_iter().filter(|(_, r, _)| r.is_mut)
+                        {
                             self.diagnostics.push(Diagnostic::spanned(
                                 span,
                                 Level::Error,

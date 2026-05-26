@@ -2,6 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use itertools::Itertools;
 use proc_macro2::Span;
 use slotmap::{SecondaryMap, SparseSecondaryMap};
 
@@ -79,60 +80,22 @@ fn find_barrier_crossers(partitioned_graph: &DfirGraph) -> BarrierCrossers {
     // Access group ordering barriers: for the same singleton target, operators in
     // lower access groups must run before operators in higher access groups.
     // Also: ungrouped mutable refs must run after ungrouped shared refs.
-    //
-    // Collect all (target_node_id, consumer_node_id, is_mut, access_group) tuples.
-    let mut refs_by_target: BTreeMap<GraphNodeId, Vec<(GraphNodeId, bool, Option<u32>)>> =
-        BTreeMap::new();
-    for consumer_id in partitioned_graph.node_ids() {
-        for resolved_ref in partitioned_graph.node_singleton_references(consumer_id) {
-            if let Some(target_id) = resolved_ref.node_id {
-                refs_by_target.entry(target_id).or_default().push((
-                    consumer_id,
-                    resolved_ref.is_mut,
-                    resolved_ref.access_group,
-                ));
-            }
-        }
-    }
-
-    // For each singleton target, add ordering barriers between access groups.
-    for refs in refs_by_target.values() {
-        // Separate into grouped and ungrouped.
-        let mut grouped: BTreeMap<u32, Vec<(GraphNodeId, bool)>> = BTreeMap::new();
-        let mut ungrouped_shared: Vec<GraphNodeId> = Vec::new();
-        let mut ungrouped_mut: Vec<GraphNodeId> = Vec::new();
-
-        for &(consumer_id, is_mut, access_group) in refs {
-            if let Some(group) = access_group {
-                grouped
-                    .entry(group)
-                    .or_default()
-                    .push((consumer_id, is_mut));
-            } else if is_mut {
-                ungrouped_mut.push(consumer_id);
-            } else {
-                ungrouped_shared.push(consumer_id);
-            }
-        }
-
-        // Grouped: add barriers between consecutive groups.
-        let groups_sorted: Vec<_> = grouped.keys().copied().collect();
-        for window in groups_sorted.windows(2) {
-            let (lower_group, higher_group) = (window[0], window[1]);
-            let lower_nodes = &grouped[&lower_group];
-            let higher_nodes = &grouped[&higher_group];
-            // Every node in the lower group must run before every node in the higher group.
-            for &(lower_node, _) in lower_nodes {
-                for &(higher_node, _) in higher_nodes {
-                    singleton_barrier_crossers.push((lower_node, higher_node));
+    let refs_by_target = partitioned_graph.node_singleton_reference_groups();
+    // For each singleton target...
+    for (_singleton, groups) in refs_by_target {
+        // For sequential access groups...
+        for (group_a, group_b) in groups.values().tuple_windows() {
+            // Add ordering barriers so every node in the lower group must run before every node in the higher group.
+            for &(node_a, _, _) in group_a {
+                for &(node_b, _, _) in group_b {
+                    // TODO(mingwei): handle with diagnostics.
+                    assert_ne!(
+                        node_a, node_b,
+                        "encounted conflicted or cyclical singleton references\n{:?}\n{:?}",
+                        group_a, group_b,
+                    );
+                    singleton_barrier_crossers.push((node_a, node_b));
                 }
-            }
-        }
-
-        // Ungrouped: shared refs must run before mutable refs.
-        for &shared_node in &ungrouped_shared {
-            for &mut_node in &ungrouped_mut {
-                singleton_barrier_crossers.push((shared_node, mut_node));
             }
         }
     }
