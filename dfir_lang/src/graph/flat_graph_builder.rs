@@ -428,7 +428,7 @@ impl FlatGraphBuilder {
                             Some(node_id)
                         } else {
                             self.diagnostics.push(Diagnostic::spanned(
-                                singleton_ref.ident.span(),
+                                singleton_ref.span(),
                                 Level::Error,
                                 format!(
                                     "Cannot find referenced name `{}`; name was never assigned.",
@@ -855,7 +855,7 @@ impl FlatGraphBuilder {
                             let ref_op_constraints = ref_op_inst.op_constraints;
                             if !ref_op_constraints.has_singleton_output {
                                 self.diagnostics.push(Diagnostic::spanned(
-                                    singleton_ref_token.ident.span(),
+                                    singleton_ref_token.span(),
                                     Level::Error,
                                     format!(
                                         "Cannot reference operator `{}`. Only operators with singleton state can be referenced.",
