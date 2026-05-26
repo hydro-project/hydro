@@ -941,7 +941,32 @@ impl FlatGraphBuilder {
                     continue;
                 }
 
-                // Per-group checks (including ungrouped mutable-only).
+                // Ungrouped mutable refs cannot coexist with any other mutable refs (grouped or ungrouped).
+                let ungrouped_mut = by_group
+                    .get(&None)
+                    .map_or(&[][..], |(_, m)| m.as_slice());
+                let grouped_mut_spans: Vec<Span> = by_group
+                    .iter()
+                    .filter(|(k, _)| k.is_some())
+                    .flat_map(|(_, (_, m))| m.iter().copied())
+                    .collect();
+                if !ungrouped_mut.is_empty()
+                    && (!grouped_mut_spans.is_empty() || ungrouped_mut.len() > 1)
+                {
+                    for &span in ungrouped_mut.iter().chain(grouped_mut_spans.iter()) {
+                        self.diagnostics.push(Diagnostic::spanned(
+                            span,
+                            Level::Error,
+                            "Ungrouped `#mut` references cannot coexist with other mutable \
+                             references to the same singleton. Use access groups `#{N} mut var` \
+                             to specify ordering."
+                                .to_owned(),
+                        ));
+                    }
+                    continue;
+                }
+
+                // Per-group checks.
                 for (&group, (shared_spans, mut_spans)) in &by_group {
                     if !shared_spans.is_empty() && !mut_spans.is_empty() {
                         let msg = if group.is_none() {
@@ -960,19 +985,14 @@ impl FlatGraphBuilder {
                             ));
                         }
                     }
-                    if mut_spans.len() > 1 {
-                        let msg = if group.is_none() {
-                            "Multiple ungrouped `#mut` references to the same singleton. \
-                             Use access groups `#{N} mut var` to specify ordering."
-                        } else {
-                            "Multiple `#mut` references in the same access group. \
-                             Each mutable reference must be in its own access group."
-                        };
+                    if group.is_some() && mut_spans.len() > 1 {
                         for &span in mut_spans {
                             self.diagnostics.push(Diagnostic::spanned(
                                 span,
                                 Level::Error,
-                                msg.to_owned(),
+                                "Multiple `#mut` references in the same access group. \
+                                 Each mutable reference must be in its own access group."
+                                    .to_owned(),
                             ));
                         }
                     }

@@ -1,11 +1,11 @@
 error: Ungrouped `#mut` references cannot coexist with other mutable references to the same singleton. Use access groups `#{N} mut var` to specify ordering.
- --> tests/compile-fail/nightly/surface_singleton_mut_ungrouped.rs:6:49
+ --> tests/compile-fail/stable/surface_singleton_mut_ungrouped_grouped.rs:6:49
   |
 6 |         source_iter([1_i32]) -> map(|x| { *#mut my_val += x; x }) -> for_each(|_| {});
   |                                                 ^^^^^^
 
 error: Ungrouped `#mut` references cannot coexist with other mutable references to the same singleton. Use access groups `#{N} mut var` to specify ordering.
- --> tests/compile-fail/nightly/surface_singleton_mut_ungrouped.rs:7:49
+ --> tests/compile-fail/stable/surface_singleton_mut_ungrouped_grouped.rs:7:53
   |
-7 |         source_iter([2_i32]) -> map(|x| { *#mut my_val += x; x }) -> for_each(|_| {});
-  |                                                 ^^^^^^
+7 |         source_iter([2_i32]) -> map(|x| { *#{0} mut my_val += x; x }) -> for_each(|_| {});
+  |                                                     ^^^^^^
