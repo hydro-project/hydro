@@ -907,8 +907,7 @@ impl FlatGraphBuilder {
 
             for refs in refs_by_target.values() {
                 // Group refs by access group: Option<u32> -> (shared_spans, mut_spans)
-                let mut by_group: BTreeMap<Option<u32>, (Vec<Span>, Vec<Span>)> =
-                    BTreeMap::new();
+                let mut by_group: BTreeMap<Option<u32>, (Vec<Span>, Vec<Span>)> = BTreeMap::new();
                 for &(is_mut, access_group, span) in refs {
                     let entry = by_group.entry(access_group).or_default();
                     if is_mut {
@@ -918,9 +917,9 @@ impl FlatGraphBuilder {
                     }
                 }
 
-                let ungrouped_shared = by_group
+                let (ungrouped_shared, ungrouped_mut) = by_group
                     .get(&None)
-                    .map_or(&[][..], |(s, _)| s.as_slice());
+                    .map_or((&[][..], &[][..]), |(s, m)| (s.as_slice(), m.as_slice()));
                 let all_mut_spans: Vec<Span> = by_group
                     .values()
                     .flat_map(|(_, m)| m.iter().copied())
@@ -941,19 +940,9 @@ impl FlatGraphBuilder {
                     continue;
                 }
 
-                // Ungrouped mutable refs cannot coexist with any other mutable refs (grouped or ungrouped).
-                let ungrouped_mut = by_group
-                    .get(&None)
-                    .map_or(&[][..], |(_, m)| m.as_slice());
-                let grouped_mut_spans: Vec<Span> = by_group
-                    .iter()
-                    .filter(|(k, _)| k.is_some())
-                    .flat_map(|(_, (_, m))| m.iter().copied())
-                    .collect();
-                if !ungrouped_mut.is_empty()
-                    && (!grouped_mut_spans.is_empty() || ungrouped_mut.len() > 1)
-                {
-                    for &span in ungrouped_mut.iter().chain(grouped_mut_spans.iter()) {
+                // Ungrouped mutable refs cannot coexist with any other mutable refs.
+                if !ungrouped_mut.is_empty() && all_mut_spans.len() > 1 {
+                    for &span in &all_mut_spans {
                         self.diagnostics.push(Diagnostic::spanned(
                             span,
                             Level::Error,
@@ -966,26 +955,23 @@ impl FlatGraphBuilder {
                     continue;
                 }
 
-                // Per-group checks.
-                for (&group, (shared_spans, mut_spans)) in &by_group {
+                // Per-group checks (ungrouped cases fully handled above).
+                for (group, (shared_spans, mut_spans)) in &by_group {
+                    if group.is_none() {
+                        continue;
+                    }
                     if !shared_spans.is_empty() && !mut_spans.is_empty() {
-                        let msg = if group.is_none() {
-                            "Cannot mix ungrouped shared (`#var`) and mutable (`#mut var`) \
-                             references to the same singleton. Use access groups `#{N}` to \
-                             specify ordering."
-                        } else {
-                            "Cannot mix shared (`#`) and mutable (`#mut`) references \
-                             in the same access group."
-                        };
                         for &span in shared_spans.iter().chain(mut_spans.iter()) {
                             self.diagnostics.push(Diagnostic::spanned(
                                 span,
                                 Level::Error,
-                                msg.to_owned(),
+                                "Cannot mix shared (`#`) and mutable (`#mut`) references \
+                                 in the same access group."
+                                    .to_owned(),
                             ));
                         }
                     }
-                    if group.is_some() && mut_spans.len() > 1 {
+                    if mut_spans.len() > 1 {
                         for &span in mut_spans {
                             self.diagnostics.push(Diagnostic::spanned(
                                 span,
