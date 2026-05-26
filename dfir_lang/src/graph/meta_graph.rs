@@ -1827,7 +1827,7 @@ impl DfirGraph {
                 #( let mut #back_buffer_idents = ::std::vec::Vec::new(); )*
 
                 // Bump allocator for handoffs (except for back-edge handoffs, above).
-                let mut #bump_ident = #root::blink_alloc::BlinkAlloc::new();
+                let mut #bump_ident = #root::blink_alloc::BlinkAlloc::with_chunk_size(4096);
 
                 // Pre-set to true so the first tick always returns true
                 // (matching Dfir pre-scheduling behavior). Subsequent ticks
