@@ -124,6 +124,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
+name = "allocator-api2"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c880a97d28a3681c0267bd29cff89621202715b065127cd445fa0f0fe0aa2880"
+
+[[package]]
 name = "android_system_properties"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -847,6 +853,15 @@ dependencies = [
  "cfg-if",
  "constant_time_eq",
  "cpufeatures",
+]
+
+[[package]]
+name = "blink-alloc"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce4c15bad517bc0fb4a44523adf470e2c3eb3a365769327acdba849948ea3705"
+dependencies = [
+ "allocator-api2 0.4.0",
 ]
 
 [[package]]
@@ -1798,8 +1813,9 @@ dependencies = [
 name = "dfir_rs"
 version = "0.16.0"
 dependencies = [
+ "allocator-api2 0.4.0",
  "bincode",
- "bumpalo",
+ "blink-alloc",
  "bytes",
  "chrono",
  "clap",
@@ -2467,7 +2483,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
 dependencies = [
  "ahash",
- "allocator-api2",
+ "allocator-api2 0.2.21",
 ]
 
 [[package]]

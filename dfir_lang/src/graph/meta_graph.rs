@@ -1684,7 +1684,7 @@ impl DfirGraph {
                         let span = buf_ident.span();
                         match kind {
                             HandoffKind::Vec => quote_spanned! {span=>
-                                let mut #buf_ident = #root::bumpalo::collections::Vec::new_in(&#bump_ident);
+                                let mut #buf_ident = #root::allocator_api2::vec::Vec::new_in(&#bump_ident);
                             },
                             HandoffKind::Option => quote_spanned! {span=>
                                 let mut #buf_ident = ::std::option::Option::None;
@@ -1827,7 +1827,7 @@ impl DfirGraph {
                 #( let mut #back_buffer_idents = ::std::vec::Vec::new(); )*
 
                 // Bump allocator for handoffs (except for back-edge handoffs, above).
-                let mut #bump_ident = #root::bumpalo::Bump::new();
+                let mut #bump_ident = #root::blink_alloc::BlinkAlloc::new();
 
                 // Pre-set to true so the first tick always returns true
                 // (matching Dfir pre-scheduling behavior). Subsequent ticks

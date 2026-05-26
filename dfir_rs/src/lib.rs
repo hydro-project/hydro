@@ -22,9 +22,9 @@ pub mod util;
 
 #[doc(hidden)]
 pub use ::{
-    bincode, bumpalo, bytes, dfir_lang, dfir_lang as lang, dfir_pipes, futures, lattices,
-    pin_project_lite, rustc_hash, serde, serde_json, sinktools, slotmap, tokio, tokio_stream,
-    tokio_util, tracing, variadics, web_time,
+    allocator_api2, bincode, blink_alloc, bytes, dfir_lang, dfir_lang as lang, dfir_pipes, futures,
+    lattices, pin_project_lite, rustc_hash, serde, serde_json, sinktools, slotmap, tokio,
+    tokio_stream, tokio_util, tracing, variadics, web_time,
 };
 #[cfg(feature = "meta")]
 #[cfg_attr(docsrs, doc(cfg(feature = "meta")))]
