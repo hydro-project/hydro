@@ -35,6 +35,7 @@ pub struct SimBuilder {
     pub cluster_tick_dfirs: BTreeMap<LocationId, FlatGraphBuilder>,
     pub next_hoff_id: usize,
     pub test_safety_only: bool,
+    pub skip_consistency_assertions: bool,
 }
 
 impl SimBuilder {
@@ -1655,6 +1656,30 @@ impl DfirBuilder for SimBuilder {
         );
 
         Some(out_ident)
+    }
+
+    fn assert_is_consistent(
+        &mut self,
+        trusted: bool,
+        location: &LocationId,
+        in_ident: syn::Ident,
+        out_ident: &syn::Ident,
+    ) {
+        if self.skip_consistency_assertions || trusted {
+            let builder = self.get_dfir_mut(location);
+            builder.add_dfir(
+                parse_quote! {
+                    #out_ident = #in_ident;
+                },
+                None,
+                None,
+            );
+        } else {
+            // TODO(shadaj): inject assertions that validate consistency in simulation
+            panic!(
+                "validating consistency assertions is not yet supported in the simulator; call `.skip_consistency_assertions()` on the SimFlow to skip them"
+            );
+        }
     }
 }
 

@@ -16,19 +16,20 @@ use crate::live_collections::sliced::sliced;
 use crate::live_collections::stream::Retries;
 #[cfg(feature = "sim")]
 use crate::location::LocationKey;
-use crate::location::cluster::ClusterIds;
+use crate::location::cluster::{ClusterIds, Consistency, EventualConsistency, NoConsistency};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::DynLocation;
 use crate::location::external_process::ExternalBincodeStream;
-use crate::location::{Cluster, External, Location, MemberId, MembershipEvent, NoTick, Process};
+use crate::location::{Cluster, External, Location, MemberId, MembershipEvent, Process};
 use crate::networking::{NetworkFor, TCP};
-use crate::nondet::NonDet;
+use crate::nondet::{NonDet, nondet};
+use crate::properties::manual_proof;
 #[cfg(feature = "sim")]
 use crate::sim::SimReceiver;
 use crate::staging_util::get_this_crate;
 
 // same as the one in `hydro_std`, but internal use only
-fn track_membership<'a, C, L: Location<'a> + NoTick>(
+fn track_membership<'a, C, L: Location<'a>>(
     membership: KeyedStream<MemberId<C>, MembershipEvent, L, Unbounded>,
 ) -> KeyedSingleton<MemberId<C>, bool, L, Unbounded> {
     membership.fold(
@@ -299,7 +300,10 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         T: Clone + Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
-        let ids = track_membership(self.location.source_cluster_members(to));
+        let ids = track_membership(self.location.source_cluster_membership_stream(
+            to,
+            nondet!(/** dropped prefixes don't affect broadcast */),
+        ));
         sliced! {
             let members_snapshot = use(ids, nondet_membership);
             let elements = use(self, nondet_membership);
@@ -310,6 +314,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         .demux(to, via)
     }
 
+    #[expect(clippy::type_complexity, reason = "guarantees eventual consistency")]
     /// Broadcasts elements of this stream to all members of a cluster,
     /// assuming membership is closed (fixed at deploy time).
     ///
@@ -351,7 +356,13 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
         self,
         to: &Cluster<'a, L2>,
         via: N,
-    ) -> Stream<T, Cluster<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
+    ) -> Stream<
+        T,
+        Cluster<'a, L2, EventualConsistency>,
+        Unbounded,
+        <O as MinOrder<N::OrderingGuarantee>>::Min,
+        R,
+    >
     where
         T: Clone + Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
@@ -370,6 +381,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
             .map(q!(|(data, member_id)| (member_id, data)))
             .into_keyed()
             .demux(to, via)
+            .assert_has_consistency_of_trusted(manual_proof!(/** closed broadcast will materialze the same elements on each member */))
     }
 
     /// Sends the elements of this stream to an external (non-Hydro) process, using [`bincode`]
@@ -452,7 +464,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick, B: Boundedness> Stream<T, L, B, TotalOrder, ExactlyOnce> {
+impl<'a, T, L: Location<'a>, B: Boundedness> Stream<T, L, B, TotalOrder, ExactlyOnce> {
     /// Creates an external output for embedded deployment mode.
     ///
     /// The `name` parameter specifies the name of the field in the generated
@@ -559,11 +571,18 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
+    #[expect(clippy::type_complexity, reason = "DropConsistency type")]
     pub fn demux<N: NetworkFor<T>>(
         self,
         to: &Cluster<'a, L2>,
         via: N,
-    ) -> Stream<T, Cluster<'a, L2>, Unbounded, <O as MinOrder<N::OrderingGuarantee>>::Min, R>
+    ) -> Stream<
+        T,
+        Cluster<'a, L2, NoConsistency>,
+        Unbounded,
+        <O as MinOrder<N::OrderingGuarantee>>::Min,
+        R,
+    >
     where
         T: Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
@@ -684,7 +703,10 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     where
         T: Serialize + DeserializeOwned,
     {
-        let ids = track_membership(self.location.source_cluster_members(to));
+        let ids = track_membership(self.location.source_cluster_membership_stream(
+            to,
+            nondet!(/** dropped prefixes don't affect broadcast */),
+        ));
         sliced! {
             let members_snapshot = use(ids, nondet_membership);
             let elements = use(self.enumerate(), nondet_membership);
@@ -709,7 +731,9 @@ impl<'a, T, L, B: Boundedness> Stream<T, Process<'a, L>, B, TotalOrder, ExactlyO
     }
 }
 
-impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyOnce> {
+impl<'a, T, L, B: Boundedness, C: Consistency>
+    Stream<T, Cluster<'a, L, C>, B, TotalOrder, ExactlyOnce>
+{
     #[deprecated = "use Stream::round_robin(..., TCP.fail_stop().bincode()) instead"]
     /// Distributes elements of this stream to cluster members in a round-robin fashion, using
     /// [`bincode`] to serialize/deserialize messages.
@@ -827,7 +851,10 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
     where
         T: Serialize + DeserializeOwned,
     {
-        let ids = track_membership(self.location.source_cluster_members(to));
+        let ids = track_membership(self.location.source_cluster_membership_stream(
+            to,
+            nondet!(/** dropped prefixes don't affect broadcast */),
+        ));
         sliced! {
             let members_snapshot = use(ids, nondet_membership);
             let elements = use(self.enumerate(), nondet_membership);
@@ -852,7 +879,9 @@ impl<'a, T, L, B: Boundedness> Stream<T, Cluster<'a, L>, B, TotalOrder, ExactlyO
     }
 }
 
-impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>, B, O, R> {
+impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
+    Stream<T, Cluster<'a, L, C>, B, O, R>
+{
     #[deprecated = "use Stream::send(..., TCP.fail_stop().bincode()) instead"]
     /// "Moves" elements of this stream from a cluster to a process by sending them over the network,
     /// using [`bincode`] to serialize/deserialize messages.
@@ -1151,7 +1180,10 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
         T: Clone + Serialize + DeserializeOwned,
         O: MinOrder<N::OrderingGuarantee>,
     {
-        let ids = track_membership(self.location.source_cluster_members(to));
+        let ids = track_membership(self.location.source_cluster_membership_stream(
+            to,
+            nondet!(/** dropped prefixes don't affect broadcast */),
+        ));
         sliced! {
             let members_snapshot = use(ids, nondet_membership);
             let elements = use(self, nondet_membership);
@@ -1211,8 +1243,8 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Cluster<'a, L>
     }
 }
 
-impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
-    Stream<(MemberId<L2>, T), Cluster<'a, L>, B, O, R>
+impl<'a, T, L, L2, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
+    Stream<(MemberId<L2>, T), Cluster<'a, L, C>, B, O, R>
 {
     #[deprecated = "use Stream::demux(..., TCP.fail_stop().bincode()) instead"]
     /// Sends elements of this stream at each source member to specific members of a destination
@@ -1324,7 +1356,7 @@ impl<'a, T, L, L2, B: Boundedness, O: Ordering, R: Retries>
     ) -> KeyedStream<
         MemberId<L>,
         T,
-        Cluster<'a, L2>,
+        Cluster<'a, L2, NoConsistency>,
         Unbounded,
         <O as MinOrder<N::OrderingGuarantee>>::Min,
         R,

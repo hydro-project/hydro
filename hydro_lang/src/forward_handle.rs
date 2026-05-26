@@ -50,6 +50,8 @@ where
 {
     type Location: Location<'a>;
 
+    fn location(&self) -> &Self::Location;
+
     fn create_source_with_initial(
         cycle_id: CycleId,
         initial: Self,

@@ -1,7 +1,7 @@
 use hydro_lang::live_collections::boundedness::Boundedness;
 use hydro_lang::live_collections::stream::{NoOrder, Ordering};
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
-use hydro_lang::location::{Location, MemberId, NoTick};
+use hydro_lang::location::{Location, MemberId};
 use hydro_lang::prelude::*;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -71,7 +71,7 @@ where
     }
 }
 
-pub trait DecoupleProcessStream<'a, T, L: Location<'a> + NoTick, B, Order: Ordering> {
+pub trait DecoupleProcessStream<'a, T, L: Location<'a>, B, Order: Ordering> {
     fn decouple_process<P2>(
         self,
         other: &Process<'a, P2>,

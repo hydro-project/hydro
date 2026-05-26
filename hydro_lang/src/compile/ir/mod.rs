@@ -28,7 +28,7 @@ use crate::compile::builder::ClockId;
 use crate::compile::builder::{CycleId, ExternalPortId};
 #[cfg(feature = "build")]
 use crate::compile::deploy_provider::{Deploy, Node, RegisterPort};
-use crate::location::dynamic::LocationId;
+use crate::location::dynamic::{ClusterConsistency, LocationId};
 use crate::location::{LocationKey, NetworkHint};
 
 pub mod backtrace;
@@ -652,6 +652,17 @@ pub trait DfirBuilder {
         in_kind: &CollectionKind,
         op_meta: &HydroIrOpMetadata,
     ) -> Option<syn::Ident>;
+
+    /// Inserts necessary code to validate a manual assertion that at this point the
+    /// input live collection is consistent. In production, this is a no-op, but in simulation
+    /// this will (not yet implemented) inject assertions that validate consistency.
+    fn assert_is_consistent(
+        &mut self,
+        trusted: bool,
+        location: &LocationId,
+        in_ident: syn::Ident,
+        out_ident: &syn::Ident,
+    );
 }
 
 #[cfg(feature = "build")]
@@ -919,6 +930,23 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
     ) -> Option<syn::Ident> {
         None
     }
+
+    fn assert_is_consistent(
+        &mut self,
+        _trusted: bool,
+        location: &LocationId,
+        in_ident: syn::Ident,
+        out_ident: &syn::Ident,
+    ) {
+        let builder = self.get_dfir_mut(location);
+        builder.add_dfir(
+            parse_quote! {
+                #out_ident = #in_ident;
+            },
+            None,
+            None,
+        );
+    }
 }
 
 #[cfg(feature = "build")]
@@ -980,7 +1008,7 @@ impl HydroRoot {
         &mut self,
         extra_stmts: &mut SparseSecondaryMap<LocationKey, Vec<syn::Stmt>>,
         seen_tees: &mut SeenSharedNodes,
-        seen_cluster_members: &mut HashSet<(LocationId, LocationId)>,
+        seen_cluster_members: &mut HashSet<(LocationId, LocationKey)>,
         processes: &SparseSecondaryMap<LocationKey, D::Process>,
         clusters: &SparseSecondaryMap<LocationKey, D::Cluster>,
         externals: &SparseSecondaryMap<LocationKey, D::External>,
@@ -1297,7 +1325,7 @@ impl HydroRoot {
                     match state {
                         ClusterMembersState::Uninit => {
                             let at_location = metadata.location_id.root().clone();
-                            let key = (at_location.clone(), LocationId::Cluster(location_id.key()));
+                            let key = (at_location.clone(), location_id.key());
                             if refcell_seen_cluster_members.borrow_mut().insert(key) {
                                 // First occurrence: call cluster_membership_stream and mark as Stream.
                                 let expr = stageleft::QuotedWithContext::splice_untyped_ctx(
@@ -2137,6 +2165,7 @@ impl CollectionKind {
 pub struct HydroIrMetadata {
     pub location_id: LocationId,
     pub collection_kind: CollectionKind,
+    pub consistency: Option<ClusterConsistency>,
     pub cardinality: Option<usize>,
     pub tag: Option<String>,
     pub op: HydroIrOpMetadata,
@@ -2484,6 +2513,12 @@ pub enum HydroNode {
         input: Box<HydroNode>,
         metadata: HydroIrMetadata,
     },
+
+    AssertIsConsistent {
+        inner: Box<HydroNode>,
+        trusted: bool,
+        metadata: HydroIrMetadata,
+    },
 }
 
 pub type SeenSharedNodes = HashMap<*const RefCell<HydroNode>, Rc<RefCell<HydroNode>>>;
@@ -2573,7 +2608,8 @@ impl HydroNode {
             | HydroNode::BeginAtomic { inner, .. }
             | HydroNode::EndAtomic { inner, .. }
             | HydroNode::Batch { inner, .. }
-            | HydroNode::YieldConcat { inner, .. } => {
+            | HydroNode::YieldConcat { inner, .. }
+            | HydroNode::AssertIsConsistent { inner, .. } => {
                 transform(inner.as_mut(), seen_tees);
             }
 
@@ -2671,6 +2707,15 @@ impl HydroNode {
                 trusted,
                 metadata,
             } => HydroNode::ObserveNonDet {
+                inner: Box::new(inner.deep_clone(seen_tees)),
+                trusted: *trusted,
+                metadata: metadata.clone(),
+            },
+            HydroNode::AssertIsConsistent {
+                inner,
+                trusted,
+                metadata,
+            } => HydroNode::AssertIsConsistent {
                 inner: Box::new(inner.deep_clone(seen_tees)),
                 trusted: *trusted,
                 metadata: metadata.clone(),
@@ -3044,6 +3089,31 @@ impl HydroNode {
 
                         *next_stmt_id += 1;
                         // input_ident stays on stack as output
+                    }
+
+                    HydroNode::AssertIsConsistent { inner, trusted, .. } => {
+                        let inner_ident = ident_stack.pop().unwrap();
+
+                        let out_ident =
+                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(graph_builders) => {
+                                graph_builders.assert_is_consistent(
+                                    *trusted,
+                                    &inner.metadata().location_id,
+                                    inner_ident,
+                                    &out_ident,
+                                );
+                            }
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
+
+                        *next_stmt_id += 1;
+
+                        ident_stack.push(out_ident);
                     }
 
                     HydroNode::ObserveNonDet {
@@ -4718,7 +4788,9 @@ impl HydroNode {
             HydroNode::Placeholder => {
                 panic!()
             }
-            HydroNode::Cast { .. } | HydroNode::ObserveNonDet { .. } => {}
+            HydroNode::Cast { .. }
+            | HydroNode::ObserveNonDet { .. }
+            | HydroNode::AssertIsConsistent { .. } => {}
             HydroNode::Source { source, .. } => match source {
                 HydroSource::Stream(expr) | HydroSource::Iter(expr) => transform(expr),
                 HydroSource::ExternalNetwork()
@@ -4806,6 +4878,7 @@ impl HydroNode {
             }
             HydroNode::Cast { metadata, .. }
             | HydroNode::ObserveNonDet { metadata, .. }
+            | HydroNode::AssertIsConsistent { metadata, .. }
             | HydroNode::Source { metadata, .. }
             | HydroNode::SingletonSource { metadata, .. }
             | HydroNode::CycleSource { metadata, .. }
@@ -4862,6 +4935,7 @@ impl HydroNode {
             }
             HydroNode::Cast { metadata, .. }
             | HydroNode::ObserveNonDet { metadata, .. }
+            | HydroNode::AssertIsConsistent { metadata, .. }
             | HydroNode::Source { metadata, .. }
             | HydroNode::SingletonSource { metadata, .. }
             | HydroNode::CycleSource { metadata, .. }
@@ -4927,7 +5001,8 @@ impl HydroNode {
             | HydroNode::YieldConcat { inner, .. }
             | HydroNode::BeginAtomic { inner, .. }
             | HydroNode::EndAtomic { inner, .. }
-            | HydroNode::Batch { inner, .. } => {
+            | HydroNode::Batch { inner, .. }
+            | HydroNode::AssertIsConsistent { inner, .. } => {
                 vec![inner]
             }
             HydroNode::Chain { first, second, .. } => {
@@ -5008,6 +5083,7 @@ impl HydroNode {
             }
             HydroNode::Cast { .. } => "Cast()".to_owned(),
             HydroNode::ObserveNonDet { .. } => "ObserveNonDet()".to_owned(),
+            HydroNode::AssertIsConsistent { .. } => "AssertIsConsistent()".to_owned(),
             HydroNode::Source { source, .. } => format!("Source({:?})", source),
             HydroNode::SingletonSource {
                 value,
@@ -5264,7 +5340,7 @@ mod test {
         ignore = "expects inclusion of feature-gated fields"
     )]
     fn hydro_node_size() {
-        assert_eq!(size_of::<HydroNode>(), 256);
+        assert_eq!(size_of::<HydroNode>(), 264);
     }
 
     #[test]

@@ -4,7 +4,7 @@ pub mod style;
 
 use super::boundedness::{Bounded, Unbounded};
 use super::stream::{Ordering, Retries};
-use crate::location::{Location, NoTick, Tick};
+use crate::location::{Location, Tick};
 
 #[doc(hidden)]
 #[macro_export]
@@ -190,7 +190,7 @@ pub trait Slicable<'a, L: Location<'a>> {
     type Backtrace;
 
     /// Gets the location associated with this live collection.
-    fn get_location(&self) -> &L;
+    fn get_location(&self) -> L;
 
     /// Creates a tick that is appropriate for the collection's location.
     fn create_tick(&self) -> Tick<L> {
@@ -249,7 +249,7 @@ impl<'a, L: Location<'a>> Slicable<'a, L> for () {
     type Slice = ();
     type Backtrace = ();
 
-    fn get_location(&self) -> &L {
+    fn get_location(&self) -> L {
         unreachable!()
     }
 
@@ -268,7 +268,7 @@ macro_rules! impl_slicable_for_tuple {
             type Slice = ($($T::Slice,)+);
             type Backtrace = ($($T::Backtrace,)+);
 
-            fn get_location(&self) -> &L {
+            fn get_location(&self) -> L {
                 self.0.get_location()
             }
 
@@ -451,7 +451,7 @@ impl<'a, K, V, L: Location<'a>, O: Ordering, R: Retries> Unslicable
 }
 
 // Unslicable implementations for Atomic-wrapped bounded collections
-impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Unslicable
+impl<'a, T, L: Location<'a>, O: Ordering, R: Retries> Unslicable
     for style::Atomic<super::Stream<T, Tick<L>, Bounded, O, R>>
 {
     type Unsliced = super::Stream<T, crate::location::Atomic<L>, Unbounded, O, R>;
@@ -461,9 +461,7 @@ impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Unslicable
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick> Unslicable
-    for style::Atomic<super::Singleton<T, Tick<L>, Bounded>>
-{
+impl<'a, T, L: Location<'a>> Unslicable for style::Atomic<super::Singleton<T, Tick<L>, Bounded>> {
     type Unsliced = super::Singleton<T, crate::location::Atomic<L>, Unbounded>;
 
     fn unslice(self) -> Self::Unsliced {
@@ -471,9 +469,7 @@ impl<'a, T, L: Location<'a> + NoTick> Unslicable
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick> Unslicable
-    for style::Atomic<super::Optional<T, Tick<L>, Bounded>>
-{
+impl<'a, T, L: Location<'a>> Unslicable for style::Atomic<super::Optional<T, Tick<L>, Bounded>> {
     type Unsliced = super::Optional<T, crate::location::Atomic<L>, Unbounded>;
 
     fn unslice(self) -> Self::Unsliced {
@@ -481,7 +477,7 @@ impl<'a, T, L: Location<'a> + NoTick> Unslicable
     }
 }
 
-impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries> Unslicable
+impl<'a, K, V, L: Location<'a>, O: Ordering, R: Retries> Unslicable
     for style::Atomic<super::KeyedStream<K, V, Tick<L>, Bounded, O, R>>
 {
     type Unsliced = super::KeyedStream<K, V, crate::location::Atomic<L>, Unbounded, O, R>;

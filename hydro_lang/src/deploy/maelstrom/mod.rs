@@ -6,7 +6,7 @@ use serde::de::DeserializeOwned;
 use crate::forward_handle::ForwardHandle;
 use crate::live_collections::KeyedStream;
 use crate::live_collections::stream::TotalOrder;
-use crate::location::{Cluster, NoTick};
+use crate::location::Cluster;
 use crate::nondet::nondet;
 
 #[cfg(stageleft_runtime)]
@@ -39,10 +39,7 @@ pub fn maelstrom_bidi_clients<'a, C, In: DeserializeOwned, Out: Serialize>(
 ) -> (
     KeyedStream<String, In, Cluster<'a, C>>,
     ForwardHandle<'a, KeyedStream<String, Out, Cluster<'a, C>>>,
-)
-where
-    Cluster<'a, C>: NoTick,
-{
+) {
     use stageleft::q;
 
     use crate::location::Location;

@@ -15,6 +15,15 @@ use crate::compile::{
 };
 use crate::location::LocationType;
 
+/// An enumeration representing the consistency guarantee of a live collection on a cluster.
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Serialize, Deserialize)]
+pub enum ClusterConsistency {
+    /// No consistency is guaranteed, see [`super::cluster::NoConsistency`].
+    NoConsistency,
+    /// Eventual consistency is guaranteed, see [`super::cluster::EventualConsistency`].
+    EventualConsistency,
+}
+
 /// An enumeration representing a location heirarchy, including "virtual" locations (atomic/tick).
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Hash, Serialize, Deserialize)]
 pub enum LocationId {
@@ -105,7 +114,11 @@ impl LocationId {
         }
     }
 
-    pub fn new_node_metadata(self, collection_kind: CollectionKind) -> HydroIrMetadata {
+    pub fn new_node_metadata(
+        self,
+        collection_kind: CollectionKind,
+        consistency: Option<ClusterConsistency>,
+    ) -> HydroIrMetadata {
         use crate::compile::ir::HydroIrOpMetadata;
         use crate::compile::ir::backtrace::Backtrace;
 
@@ -114,6 +127,7 @@ impl LocationId {
             collection_kind,
             cardinality: None,
             tag: None,
+            consistency,
             op: HydroIrOpMetadata {
                 backtrace: Backtrace::get_backtrace(3),
                 cpu_usage: None,
@@ -126,13 +140,15 @@ impl LocationId {
 
 #[cfg(stageleft_runtime)]
 pub(crate) trait DynLocation: Clone {
-    fn id(&self) -> LocationId;
+    fn dyn_id(&self) -> LocationId;
 
     fn flow_state(&self) -> &FlowState;
     fn is_top_level() -> bool;
     fn multiversioned(&self) -> bool;
+    fn cluster_consistency() -> Option<ClusterConsistency>;
 
     fn new_node_metadata(&self, collection_kind: CollectionKind) -> HydroIrMetadata {
-        self.id().new_node_metadata(collection_kind)
+        self.dyn_id()
+            .new_node_metadata(collection_kind, Self::cluster_consistency())
     }
 }

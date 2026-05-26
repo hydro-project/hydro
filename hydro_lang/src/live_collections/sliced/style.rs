@@ -11,8 +11,8 @@ use crate::live_collections::boundedness::{Bounded, Boundedness, Unbounded};
 use crate::live_collections::keyed_singleton::{BoundedValue, KeyedSingletonBound};
 use crate::live_collections::singleton::SingletonBound;
 use crate::live_collections::stream::{Ordering, Retries};
+use crate::location::Location;
 use crate::location::tick::{DeferTick, Tick};
-use crate::location::{Location, NoTick};
 use crate::nondet::NonDet;
 
 /// Default style wrapper that stores a collection and its non-determinism guard.
@@ -70,14 +70,14 @@ pub fn atomic<T>(t: T, nondet: NonDet) -> Atomic<T> {
 )]
 pub fn state<
     'a,
-    S: CycleCollectionWithInitial<'a, TickCycle, Location = Tick<L>>,
+    S: CycleCollectionWithInitial<'a, TickCycle, Location = Tick<L::DropConsistency>>,
     L: Location<'a>,
 >(
     tick: &Tick<L>,
     initial_fn: impl FnOnce(&Tick<L>) -> S,
 ) -> (TickCycleHandle<'a, S>, S) {
     let initial = initial_fn(tick);
-    tick.cycle_with_initial(initial)
+    initial.location().clone().cycle_with_initial(initial)
 }
 
 /// Creates a stateful cycle without an initial value for use in `sliced!`.
@@ -91,108 +91,114 @@ pub fn state<
 )]
 pub fn state_null<
     'a,
-    S: CycleCollection<'a, TickCycle, Location = Tick<L>> + DeferTick,
-    L: Location<'a> + NoTick,
+    S: CycleCollection<'a, TickCycle, Location = Tick<L::DropConsistency>> + DeferTick,
+    L: Location<'a>,
 >(
     tick: &Tick<L>,
 ) -> (TickCycleHandle<'a, S>, S) {
-    tick.cycle::<S>()
+    tick.cycle::<S, _>()
 }
 
 // ============================================================================
 // Default style Slicable implementations
+//
+// All of these drop consistency because they are performing non-deterministic
+// batching / snapshotting.
 // ============================================================================
 
-impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries> Slicable<'a, L>
-    for Default<crate::live_collections::Stream<T, L, B, O, R>>
+impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    Slicable<'a, L::DropConsistency> for Default<crate::live_collections::Stream<T, L, B, O, R>>
 {
-    type Slice = crate::live_collections::Stream<T, Tick<L>, Bounded, O, R>;
+    type Slice = crate::live_collections::Stream<T, Tick<L::DropConsistency>, Bounded, O, R>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
 
-    fn get_location(&self) -> &L {
-        self.collection.location()
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().drop_consistency()
     }
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.batch(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
 }
 
-impl<'a, T, L: Location<'a>, B: SingletonBound> Slicable<'a, L>
+impl<'a, T, L: Location<'a>, B: SingletonBound> Slicable<'a, L::DropConsistency>
     for Default<crate::live_collections::Singleton<T, L, B>>
 {
-    type Slice = crate::live_collections::Singleton<T, Tick<L>, Bounded>;
+    type Slice = crate::live_collections::Singleton<T, Tick<L::DropConsistency>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
 
-    fn get_location(&self) -> &L {
-        self.collection.location()
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().drop_consistency()
     }
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.snapshot(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
 }
 
-impl<'a, T, L: Location<'a>, B: Boundedness> Slicable<'a, L>
+impl<'a, T, L: Location<'a>, B: Boundedness> Slicable<'a, L::DropConsistency>
     for Default<crate::live_collections::Optional<T, L, B>>
 {
-    type Slice = crate::live_collections::Optional<T, Tick<L>, Bounded>;
+    type Slice = crate::live_collections::Optional<T, Tick<L::DropConsistency>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
 
-    fn get_location(&self) -> &L {
-        self.collection.location()
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().drop_consistency()
     }
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.snapshot(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
 }
 
-impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries> Slicable<'a, L>
+impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    Slicable<'a, L::DropConsistency>
     for Default<crate::live_collections::KeyedStream<K, V, L, B, O, R>>
 {
-    type Slice = crate::live_collections::KeyedStream<K, V, Tick<L>, Bounded, O, R>;
+    type Slice =
+        crate::live_collections::KeyedStream<K, V, Tick<L::DropConsistency>, Bounded, O, R>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
 
-    fn get_location(&self) -> &L {
-        self.collection.location()
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().drop_consistency()
     }
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.batch(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
 }
 
-impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Unbounded>> Slicable<'a, L>
+impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Unbounded>>
+    Slicable<'a, L::DropConsistency>
     for Default<crate::live_collections::KeyedSingleton<K, V, L, B>>
 {
-    type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L>, Bounded>;
+    type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
 
-    fn get_location(&self) -> &L {
-        self.collection.location()
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().drop_consistency()
     }
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.snapshot(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
 }
 
-impl<'a, K, V, L: Location<'a> + NoTick> Slicable<'a, L>
+impl<'a, K, V, L: Location<'a>> Slicable<'a, L::DropConsistency>
     for Default<crate::live_collections::KeyedSingleton<K, V, L, BoundedValue>>
 {
-    type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L>, Bounded>;
+    type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
 
-    fn get_location(&self) -> &L {
-        self.collection.location()
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().drop_consistency()
     }
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.batch(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
@@ -203,99 +209,102 @@ impl<'a, K, V, L: Location<'a> + NoTick> Slicable<'a, L>
 // Atomic style Slicable implementations
 // ============================================================================
 
-impl<'a, T, L: Location<'a> + NoTick, B: Boundedness, O: Ordering, R: Retries> Slicable<'a, L>
+impl<'a, T, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    Slicable<'a, L::DropConsistency>
     for Atomic<crate::live_collections::Stream<T, crate::location::Atomic<L>, B, O, R>>
 {
-    type Slice = crate::live_collections::Stream<T, Tick<L>, Bounded, O, R>;
+    type Slice = crate::live_collections::Stream<T, Tick<L::DropConsistency>, Bounded, O, R>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
-    fn get_location(&self) -> &L {
-        &self.collection.location().tick.l
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().tick.l.drop_consistency()
     }
 
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.batch_atomic(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick, B: SingletonBound> Slicable<'a, L>
+impl<'a, T, L: Location<'a>, B: SingletonBound> Slicable<'a, L::DropConsistency>
     for Atomic<crate::live_collections::Singleton<T, crate::location::Atomic<L>, B>>
 {
-    type Slice = crate::live_collections::Singleton<T, Tick<L>, Bounded>;
+    type Slice = crate::live_collections::Singleton<T, Tick<L::DropConsistency>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
-    fn get_location(&self) -> &L {
-        &self.collection.location().tick.l
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().tick.l.drop_consistency()
     }
 
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.snapshot_atomic(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick, B: Boundedness> Slicable<'a, L>
+impl<'a, T, L: Location<'a>, B: Boundedness> Slicable<'a, L::DropConsistency>
     for Atomic<crate::live_collections::Optional<T, crate::location::Atomic<L>, B>>
 {
-    type Slice = crate::live_collections::Optional<T, Tick<L>, Bounded>;
+    type Slice = crate::live_collections::Optional<T, Tick<L::DropConsistency>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
-    fn get_location(&self) -> &L {
-        &self.collection.location().tick.l
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().tick.l.drop_consistency()
     }
 
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.snapshot_atomic(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
 }
 
-impl<'a, K, V, L: Location<'a> + NoTick, B: Boundedness, O: Ordering, R: Retries> Slicable<'a, L>
+impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
+    Slicable<'a, L::DropConsistency>
     for Atomic<crate::live_collections::KeyedStream<K, V, crate::location::Atomic<L>, B, O, R>>
 {
-    type Slice = crate::live_collections::KeyedStream<K, V, Tick<L>, Bounded, O, R>;
+    type Slice =
+        crate::live_collections::KeyedStream<K, V, Tick<L::DropConsistency>, Bounded, O, R>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
-    fn get_location(&self) -> &L {
-        &self.collection.location().tick.l
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().tick.l.drop_consistency()
     }
 
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.batch_atomic(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
 }
 
-impl<'a, K, V, L: Location<'a> + NoTick, B: KeyedSingletonBound<ValueBound = Unbounded>>
-    Slicable<'a, L>
+impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound<ValueBound = Unbounded>>
+    Slicable<'a, L::DropConsistency>
     for Atomic<crate::live_collections::KeyedSingleton<K, V, crate::location::Atomic<L>, B>>
 {
-    type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L>, Bounded>;
+    type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
-    fn get_location(&self) -> &L {
-        &self.collection.location().tick.l
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().tick.l.drop_consistency()
     }
 
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.snapshot_atomic(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out
     }
 }
 
-impl<'a, K, V, L: Location<'a> + NoTick> Slicable<'a, L>
+impl<'a, K, V, L: Location<'a>> Slicable<'a, L::DropConsistency>
     for Atomic<
         crate::live_collections::KeyedSingleton<K, V, crate::location::Atomic<L>, BoundedValue>,
     >
 {
-    type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L>, Bounded>;
+    type Slice = crate::live_collections::KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded>;
     type Backtrace = crate::compile::ir::backtrace::Backtrace;
-    fn get_location(&self) -> &L {
-        &self.collection.location().tick.l
+    fn get_location(&self) -> L::DropConsistency {
+        self.collection.location().tick.l.drop_consistency()
     }
 
-    fn slice(self, tick: &Tick<L>, backtrace: Self::Backtrace) -> Self::Slice {
+    fn slice(self, tick: &Tick<L::DropConsistency>, backtrace: Self::Backtrace) -> Self::Slice {
         let out = self.collection.batch_atomic(tick, self.nondet);
         out.ir_node.borrow_mut().op_metadata_mut().backtrace = backtrace;
         out

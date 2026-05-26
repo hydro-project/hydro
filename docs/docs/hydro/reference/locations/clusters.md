@@ -124,7 +124,7 @@ on_worker.send(&p2, TCP.fail_stop().bincode())
 # }));
 ```
 
-This API requires a [non-determinism guard](../live-collections/determinism.md#unsafe-operations-in-hydro), because the set of cluster members may asynchronously change over time. Depending on when we are notified of membership changes, we will broadcast to different members. Under the hood, the `broadcast` API uses a list of members of the cluster provided by the deployment system. To manually access this list, you can use the `source_cluster_members` method to get a stream of membership events (cluster members joining or leaving):
+This API requires a [non-determinism guard](../live-collections/determinism.md#unsafe-operations-in-hydro), because the set of cluster members may asynchronously change over time. Depending on when we are notified of membership changes, we will broadcast to different members. Under the hood, the `broadcast` API uses a list of members of the cluster provided by the deployment system. To manually access this list, you can use the `source_cluster_membership_stream` method to get a stream of membership events (cluster members joining or leaving):
 
 ```rust
 # use hydro_lang::prelude::*;
@@ -134,7 +134,7 @@ let p1 = flow.process::<()>();
 let workers: Cluster<()> = flow.cluster::<()>();
 # // do nothing on each worker
 # workers.source_iter(q!(vec![])).for_each(q!(|_: ()| {}));
-let cluster_members = p1.source_cluster_members(&workers);
+let cluster_members = p1.source_cluster_membership_stream(&workers, nondet!(/** late joiners may miss events */));
 # cluster_members.entries().send(&p2, TCP.fail_stop().bincode())
 // if there are 4 members in the cluster, we would see a join event for each
 // { MemberId::<Worker>(0): [MembershipEvent::Join], MemberId::<Worker>(2): [MembershipEvent::Join], ... }
