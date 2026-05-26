@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["LocationType","MembershipEvent","NetworkHint"],"mod":["cluster","dynamic","external_process","member_id","process","tick"],"struct":["LocationKey"],"trait":["Location"]};
+window.SIDEBAR_ITEMS = {"enum":["LocationType","MembershipEvent","NetworkHint"],"mod":["cluster","dynamic","external_process","member_id","process","tick"],"struct":["LocationKey"],"trait":["Location","TopLevel"]};

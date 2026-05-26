@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"static":["CLUSTER_SELF_ID"],"struct":["Cluster","ClusterIds","ClusterSelfId"],"trait":["IsCluster"]};
+window.SIDEBAR_ITEMS = {"enum":["EventualConsistency","NoConsistency"],"static":["CLUSTER_SELF_ID"],"struct":["Cluster","ClusterIds","ClusterSelfId"],"trait":["Consistency","IsCluster"]};

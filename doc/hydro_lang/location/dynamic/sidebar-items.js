@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["LocationId"]};
+window.SIDEBAR_ITEMS = {"enum":["ClusterConsistency","LocationId"]};

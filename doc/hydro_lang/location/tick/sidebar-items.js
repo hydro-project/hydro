@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Atomic","Tick"],"trait":["DeferTick","NoAtomic","NoTick"]};
+window.SIDEBAR_ITEMS = {"struct":["Atomic","Tick"],"trait":["DeferTick"]};

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/location/process.rs`."><title>process.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (423e3d252 2026-05-24)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/location/</div>process.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-2"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Definition of the [`Process`] location type, representing a single-node
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/location/process.rs`."><title>process.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-17e0aaed.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (31a9463c6 2026-05-25)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/location/</div>process.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Definition of the [`Process`] location type, representing a single-node
 <a href=#2 id=2 data-nosnippet>2</a>//! compute location in a distributed Hydro program.
 <a href=#3 id=3 data-nosnippet>3</a>//!
 <a href=#4 id=4 data-nosnippet>4</a>//! A [`Process`] is the simplest kind of location: it corresponds to exactly one
@@ -15,7 +15,7 @@
 <a href=#15 id=15 data-nosnippet>15</a>
 <a href=#16 id=16 data-nosnippet>16</a><span class="kw">use super</span>::{Location, LocationId};
 <a href=#17 id=17 data-nosnippet>17</a><span class="kw">use </span><span class="kw">crate</span>::compile::builder::FlowState;
-<a href=#18 id=18 data-nosnippet>18</a><span class="kw">use </span><span class="kw">crate</span>::location::LocationKey;
+<a href=#18 id=18 data-nosnippet>18</a><span class="kw">use </span><span class="kw">crate</span>::location::{LocationKey, TopLevel};
 <a href=#19 id=19 data-nosnippet>19</a><span class="kw">use </span><span class="kw">crate</span>::staging_util::Invariant;
 <a href=#20 id=20 data-nosnippet>20</a>
 <a href=#21 id=21 data-nosnippet>21</a><span class="doccomment">/// A single-node location in a distributed Hydro program.
@@ -64,7 +64,7 @@
 <a href=#64 id=64 data-nosnippet>64</a>}
 <a href=#65 id=65 data-nosnippet>65</a>
 <a href=#66 id=66 data-nosnippet>66</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, P&gt; <span class="kw">super</span>::dynamic::DynLocation <span class="kw">for </span>Process&lt;<span class="lifetime">'a</span>, P&gt; {
-<a href=#67 id=67 data-nosnippet>67</a>    <span class="kw">fn </span>id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LocationId {
+<a href=#67 id=67 data-nosnippet>67</a>    <span class="kw">fn </span>dyn_id(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LocationId {
 <a href=#68 id=68 data-nosnippet>68</a>        LocationId::Process(<span class="self">self</span>.key)
 <a href=#69 id=69 data-nosnippet>69</a>    }
 <a href=#70 id=70 data-nosnippet>70</a>
@@ -79,13 +79,33 @@
 <a href=#79 id=79 data-nosnippet>79</a>    <span class="kw">fn </span>multiversioned(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
 <a href=#80 id=80 data-nosnippet>80</a>        <span class="bool-val">false </span><span class="comment">// processes are always single-versioned
 <a href=#81 id=81 data-nosnippet>81</a>    </span>}
-<a href=#82 id=82 data-nosnippet>82</a>}
-<a href=#83 id=83 data-nosnippet>83</a>
-<a href=#84 id=84 data-nosnippet>84</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, P&gt; Location&lt;<span class="lifetime">'a</span>&gt; <span class="kw">for </span>Process&lt;<span class="lifetime">'a</span>, P&gt; {
-<a href=#85 id=85 data-nosnippet>85</a>    <span class="kw">type </span>Root = <span class="self">Self</span>;
-<a href=#86 id=86 data-nosnippet>86</a>
-<a href=#87 id=87 data-nosnippet>87</a>    <span class="kw">fn </span>root(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Root {
-<a href=#88 id=88 data-nosnippet>88</a>        <span class="self">self</span>.clone()
-<a href=#89 id=89 data-nosnippet>89</a>    }
-<a href=#90 id=90 data-nosnippet>90</a>}
+<a href=#82 id=82 data-nosnippet>82</a>
+<a href=#83 id=83 data-nosnippet>83</a>    <span class="kw">fn </span>cluster_consistency() -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw">super</span>::dynamic::ClusterConsistency&gt; {
+<a href=#84 id=84 data-nosnippet>84</a>        <span class="prelude-val">None
+<a href=#85 id=85 data-nosnippet>85</a>    </span>}
+<a href=#86 id=86 data-nosnippet>86</a>}
+<a href=#87 id=87 data-nosnippet>87</a>
+<a href=#88 id=88 data-nosnippet>88</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, P&gt; Location&lt;<span class="lifetime">'a</span>&gt; <span class="kw">for </span>Process&lt;<span class="lifetime">'a</span>, P&gt; {
+<a href=#89 id=89 data-nosnippet>89</a>    <span class="kw">type </span>Root = <span class="self">Self</span>;
+<a href=#90 id=90 data-nosnippet>90</a>
+<a href=#91 id=91 data-nosnippet>91</a>    <span class="kw">type </span>DropConsistency = <span class="self">Self</span>;
+<a href=#92 id=92 data-nosnippet>92</a>
+<a href=#93 id=93 data-nosnippet>93</a>    <span class="kw">fn </span>consistency() -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw">super</span>::dynamic::ClusterConsistency&gt; {
+<a href=#94 id=94 data-nosnippet>94</a>        <span class="prelude-val">None
+<a href=#95 id=95 data-nosnippet>95</a>    </span>}
+<a href=#96 id=96 data-nosnippet>96</a>
+<a href=#97 id=97 data-nosnippet>97</a>    <span class="kw">fn </span>root(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Root {
+<a href=#98 id=98 data-nosnippet>98</a>        <span class="self">self</span>.clone()
+<a href=#99 id=99 data-nosnippet>99</a>    }
+<a href=#100 id=100 data-nosnippet>100</a>
+<a href=#101 id=101 data-nosnippet>101</a>    <span class="kw">fn </span>drop_consistency(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::DropConsistency {
+<a href=#102 id=102 data-nosnippet>102</a>        <span class="self">self</span>.clone()
+<a href=#103 id=103 data-nosnippet>103</a>    }
+<a href=#104 id=104 data-nosnippet>104</a>
+<a href=#105 id=105 data-nosnippet>105</a>    <span class="kw">fn </span>from_drop_consistency(l2: <span class="self">Self</span>::DropConsistency) -&gt; <span class="self">Self </span>{
+<a href=#106 id=106 data-nosnippet>106</a>        l2
+<a href=#107 id=107 data-nosnippet>107</a>    }
+<a href=#108 id=108 data-nosnippet>108</a>}
+<a href=#109 id=109 data-nosnippet>109</a>
+<a href=#110 id=110 data-nosnippet>110</a><span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, P&gt; TopLevel&lt;<span class="lifetime">'a</span>&gt; <span class="kw">for </span>Process&lt;<span class="lifetime">'a</span>, P&gt; {}
 </code></pre></div></section></main></body></html>
