@@ -27,6 +27,17 @@ use crate::diagnostic::{Diagnostic, Diagnostics, Level};
 use crate::pretty_span::{PrettyRowCol, PrettySpan};
 use crate::process_singletons;
 
+/// A resolved singleton reference: the target node ID plus mutability and access group info.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ResolvedSingletonRef {
+    /// The resolved target node ID (`None` if unresolved/error).
+    pub node_id: Option<GraphNodeId>,
+    /// Whether this is a mutable reference (`#mut var`).
+    pub is_mut: bool,
+    /// Optional access group for ordering (`#{N} var`).
+    pub access_group: Option<u32>,
+}
+
 /// An abstract "meta graph" representation of a DFIR graph.
 ///
 /// Can be with or without subgraph partitioning, stratification, and handoff insertion. This is
@@ -70,7 +81,7 @@ pub struct DfirGraph {
     subgraph_nodes: SlotMap<GraphSubgraphId, Vec<GraphNodeId>>,
 
     /// Resolved singletons varnames references, per node.
-    node_singleton_references: SparseSecondaryMap<GraphNodeId, Vec<Option<GraphNodeId>>>,
+    node_singleton_references: SparseSecondaryMap<GraphNodeId, Vec<ResolvedSingletonRef>>,
     /// What variable name each graph node belongs to (if any). For debugging (graph writing) purposes only.
     node_varnames: SparseSecondaryMap<GraphNodeId, Varname>,
 
@@ -531,21 +542,51 @@ impl DfirGraph {
     pub fn set_node_singleton_references(
         &mut self,
         node_id: GraphNodeId,
-        singletons_referenced: Vec<Option<GraphNodeId>>,
-    ) -> Option<Vec<Option<GraphNodeId>>> {
+        singletons_referenced: Vec<ResolvedSingletonRef>,
+    ) -> Option<Vec<ResolvedSingletonRef>> {
         self.node_singleton_references
             .insert(node_id, singletons_referenced)
     }
 
-    /// Gets the singletons referenced by a node. Returns an empty iterator for non-operators and
+    /// Gets the singletons referenced by a node. Returns an empty slice for non-operators and
     /// operators that do not reference singletons.
-    pub fn node_singleton_references(&self, node_id: GraphNodeId) -> &[Option<GraphNodeId>] {
+    pub fn node_singleton_references(&self, node_id: GraphNodeId) -> &[ResolvedSingletonRef] {
         self.node_singleton_references
             .get(node_id)
             .map(std::ops::Deref::deref)
             .unwrap_or_default()
     }
+
+    /// Collect all refs, grouped by the singleton they're pointing at, then by the access group idx `Option<u32>`.
+    pub fn node_singleton_reference_groups(&self) -> NodeSingletonReferenceGroups<'_> {
+        let mut singleton_references = NodeSingletonReferenceGroups::new();
+        for node_id in self.node_ids() {
+            if let GraphNode::Operator(operator) = self.node(node_id) {
+                let resolved = self.node_singleton_references(node_id);
+                for (resolved_ref, ref_token) in
+                    resolved.iter().zip(operator.singletons_referenced.iter())
+                {
+                    if let Some(target_nid) = resolved_ref.node_id {
+                        singleton_references
+                            .entry(target_nid)
+                            .or_default()
+                            .entry(resolved_ref.access_group)
+                            .or_default()
+                            .push((node_id, resolved_ref, ref_token.span()));
+                    }
+                }
+            }
+        }
+        singleton_references
+    }
 }
+
+/// Per-node singleton references, in turn grouped by access group.
+/// Map: singleton_node_id -> access_group -> (source `GraphNodeId`, `ResolvedSingletonRef`, `#ref` span)
+pub type NodeSingletonReferenceGroups<'a> = BTreeMap<
+    GraphNodeId,
+    BTreeMap<Option<u32>, Vec<(GraphNodeId, &'a ResolvedSingletonRef, Span)>>,
+>;
 
 /// Module methods.
 impl DfirGraph {
@@ -814,16 +855,18 @@ impl DfirGraph {
 
     /// Resolve the singletons via [`Self::node_singleton_references`] for the given `node_id`.
     /// Returns token streams for each reference:
-    /// - For stateful operators: `&singleton_op_XXX` (borrow the operator's state)
-    /// - For HandoffKind::Option: `&(hoff_XXX_buf.as_ref().unwrap())` (intentionally produce `&&T`
-    ///   so the later `(*expr)` deref yields `&T`) - TODO(mingwei)
+    /// - For stateful operators: `&singleton_op_XXX` or `&mut singleton_op_XXX`
+    /// - For HandoffKind::Option: `&(hoff_XXX_buf.as_ref().unwrap())` (shared) or
+    ///   `&mut(hoff_XXX_buf.as_mut().unwrap())` (mutable)
     fn helper_resolve_singletons(&self, node_id: GraphNodeId, span: Span) -> Vec<TokenStream> {
         self.node_singleton_references(node_id)
             .iter()
-            .map(|singleton_node_id| {
+            .map(|resolved_ref| {
                 // TODO(mingwei): this `expect` should be caught in error checking
-                let ref_node_id = singleton_node_id
+                let ref_node_id = resolved_ref
+                    .node_id
                     .expect("Expected singleton to be resolved but was not, this is a bug.");
+                let is_mut = resolved_ref.is_mut;
                 if matches!(
                     self.node(ref_node_id),
                     GraphNode::Handoff {
@@ -832,13 +875,22 @@ impl DfirGraph {
                     }
                 ) {
                     let buf_ident = self.hoff_buf_ident(ref_node_id, span);
-                    // Wrapping in &(...) produces &&T so that postprocess_singletons'
-                    // (*expr) deref gives &T — matching `type O = &'a T`.
-                    // TODO(mingwei): Make postprocess_singletons not deref, remove old singletons (the `else` case below).
-                    quote_spanned! {span=> &(#buf_ident.as_ref().unwrap()) }
+                    if is_mut {
+                        // `&mut(buf.as_mut().unwrap())` produces `&mut &mut T` so that
+                        // postprocess_singletons' `(*expr)` deref gives `&mut T`.
+                        quote_spanned! {span=> &mut(#buf_ident.as_mut().unwrap()) }
+                    } else {
+                        // `&(buf.as_ref().unwrap())` produces `&&T` so that
+                        // postprocess_singletons' `(*expr)` deref gives `&T`.
+                        quote_spanned! {span=> &(#buf_ident.as_ref().unwrap()) }
+                    }
                 } else {
                     let singleton_ident = self.node_as_singleton_ident(ref_node_id, span);
-                    quote_spanned! {span=> &#singleton_ident }
+                    if is_mut {
+                        quote_spanned! {span=> &mut #singleton_ident }
+                    } else {
+                        quote_spanned! {span=> &#singleton_ident }
+                    }
                 }
             })
             .collect::<Vec<_>>()
@@ -1031,8 +1083,7 @@ impl DfirGraph {
                 for src_ref_id in self
                     .node_singleton_references(dst_id)
                     .iter()
-                    .copied()
-                    .flatten()
+                    .filter_map(|r| r.node_id)
                 {
                     // For handoff nodes (no subgraph), use the predecessor's subgraph.
                     let src_sg = if let Some(sg) = self.node_subgraph(src_ref_id) {
@@ -1934,8 +1985,7 @@ impl DfirGraph {
                 for src_ref_id in self
                     .node_singleton_references(dst_id)
                     .iter()
-                    .copied()
-                    .flatten()
+                    .filter_map(|r| r.node_id)
                 {
                     let delay_type = Some(DelayType::Stratum);
                     let label = None;

@@ -169,3 +169,36 @@ pub async fn test_singleton_reference_only_multi_tick() {
     flow.run_tick().await;
     assert_eq!(vec![43, 45, 142], *output.borrow());
 }
+
+/// Test: `singleton()` can be mutably referenced via `#mut var`.
+#[dfir_rs::test]
+pub async fn test_singleton_mut_reference() {
+    let mut output = Vec::<i32>::new();
+    let out = &mut output;
+    let mut flow = dfir_rs::dfir_syntax! {
+        my_val = source_iter([42_i32]) -> singleton();
+        my_val -> for_each(|_| {});
+        source_iter(1..=3_i32) -> map(|x| { *#mut my_val += x; x }) -> for_each(|v: i32| out.push(v));
+    };
+    flow.run_tick().await;
+    drop(flow);
+    assert_eq!(vec![1, 2, 3], output);
+}
+
+/// Test: `#{N}` access groups enforce ordering between mutable references.
+#[dfir_rs::test]
+pub async fn test_singleton_access_group_ordering() {
+    let mut output = Vec::<i32>::new();
+    let out = &mut output;
+    let mut flow = dfir_rs::dfir_syntax! {
+        my_val = source_iter([0_i32]) -> singleton();
+        my_val -> for_each(|_| {});
+        // Group 0 runs first: adds 10
+        source_iter([10_i32]) -> map(|x| { *#{0} mut my_val += x; x }) -> for_each(|_| {});
+        // Group 1 runs second: reads the value (should be 10)
+        source_iter([1_i32]) -> map(|x| x + #{1} my_val) -> for_each(|v: i32| out.push(v));
+    };
+    flow.run_tick().await;
+    drop(flow);
+    assert_eq!(vec![11], output);
+}

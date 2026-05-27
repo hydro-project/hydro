@@ -1,0 +1,16 @@
+error: proc macro panicked
+ --> tests/compile-fail/stable/surface_singleton_conflicted_closure.rs:3:18
+  |
+3 |       let mut df = dfir_rs::dfir_syntax! {
+  |  __________________^
+4 | |         my_val = source_iter([0_i32]) -> singleton();
+5 | |         my_val -> for_each(|_| {});
+6 | |         source_iter(0..10) -> map(|x| x + #{0} my_val + #{1} my_val) -> for_each(|_| {});
+7 | |     };
+  | |_____^
+  |
+  = help: message: assertion `left != right` failed: encounted conflicted or cyclical singleton references
+          [(GraphNodeId(5v1), ResolvedSingletonRef { node_id: Some(GraphNodeId(2v1)), is_mut: false, access_group: Some(0) }, #0 bytes(252..253))]
+          [(GraphNodeId(5v1), ResolvedSingletonRef { node_id: Some(GraphNodeId(2v1)), is_mut: false, access_group: Some(1) }, #0 bytes(266..267))]
+            left: GraphNodeId(5v1)
+           right: GraphNodeId(5v1)

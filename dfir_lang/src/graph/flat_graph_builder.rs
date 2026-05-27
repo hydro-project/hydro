@@ -11,6 +11,7 @@ use syn::spanned::Spanned;
 use syn::{Error, Ident, ItemUse};
 
 use crate::diagnostic::{Diagnostic, Diagnostics, Level};
+use crate::graph::meta_graph::ResolvedSingletonRef;
 use crate::graph::ops::next_iteration::NEXT_ITERATION;
 use crate::graph::ops::{FloType, Persistence, PortListSpec, RangeTrait};
 use crate::graph::{
@@ -389,8 +390,14 @@ impl FlatGraphBuilder {
     fn finalize_connect_operator_links(&mut self) {
         // `->` edges
         for Ends { out, inn } in std::mem::take(&mut self.links) {
-            let out_opt = self.helper_resolve_name(out, false);
-            let inn_opt = self.helper_resolve_name(inn, true);
+            let out_opt = Self::helper_resolve_name(
+                &mut self.varname_ends,
+                out,
+                false,
+                &mut self.diagnostics,
+            );
+            let inn_opt =
+                Self::helper_resolve_name(&mut self.varname_ends, inn, true, &mut self.diagnostics);
             // `None` already have errors in `self.diagnostics`.
             if let (Some((out_port, out_node)), Some((inn_port, inn_node))) = (out_opt, inn_opt) {
                 let _ = self.finalize_connect_operators(out_port, out_node, inn_port, inn_node);
@@ -402,17 +409,22 @@ impl FlatGraphBuilder {
             if let GraphNode::Operator(operator) = self.flat_graph.node(node_id) {
                 let singletons_referenced = operator
                     .singletons_referenced
-                    .clone()
-                    .into_iter()
+                    .iter()
                     .map(|singleton_ref| {
                         let port_det = self
                             .varname_ends
-                            .get(&singleton_ref)
+                            .get(&singleton_ref.ident)
                             .filter(|varname_info| !varname_info.illegal_cycle)
                             .map(|varname_info| &varname_info.ends)
                             .and_then(|ends| ends.out.as_ref())
                             .cloned();
-                        if let Some((_port, node_id)) = self.helper_resolve_name(port_det, false) {
+                        let resolved_node_id = if let Some((_port, node_id)) =
+                            Self::helper_resolve_name(
+                                &mut self.varname_ends,
+                                port_det,
+                                false,
+                                &mut self.diagnostics,
+                            ) {
                             Some(node_id)
                         } else {
                             self.diagnostics.push(Diagnostic::spanned(
@@ -420,10 +432,27 @@ impl FlatGraphBuilder {
                                 Level::Error,
                                 format!(
                                     "Cannot find referenced name `{}`; name was never assigned.",
-                                    singleton_ref
+                                    singleton_ref.ident
                                 ),
                             ));
                             None
+                        };
+                        ResolvedSingletonRef {
+                            node_id: resolved_node_id,
+                            is_mut: singleton_ref.token_mut.is_some(),
+                            access_group: singleton_ref.access_group.as_ref().and_then(
+                                |(_, lit_int)| match lit_int.base10_parse::<u32>() {
+                                    Ok(n) => Some(n),
+                                    Err(e) => {
+                                        self.diagnostics.push(Diagnostic::spanned(
+                                            lit_int.span(),
+                                            Level::Error,
+                                            format!("Access group is not a valid `u32`: {}", e),
+                                        ));
+                                        None
+                                    }
+                                },
+                            ),
                         }
                     })
                     .collect();
@@ -441,9 +470,10 @@ impl FlatGraphBuilder {
     ///
     /// `is_in` set to `true` means the _input_ side will be returned. `false` means the _output_ side will be returned.
     fn helper_resolve_name(
-        &mut self,
+        varname_ends: &mut BTreeMap<Ident, VarnameInfo>,
         mut port_det: Option<(PortIndexValue, GraphDet)>,
         is_in: bool,
+        diagnostics: &mut Diagnostics,
     ) -> Option<(PortIndexValue, GraphNodeId)> {
         const BACKUP_RECURSION_LIMIT: usize = 1024;
 
@@ -454,8 +484,8 @@ impl FlatGraphBuilder {
                     return Some((port, node_id));
                 }
                 (port, GraphDet::Undetermined(ident)) => {
-                    let Some(varname_info) = self.varname_ends.get_mut(&ident) else {
-                        self.diagnostics.push(Diagnostic::spanned(
+                    let Some(varname_info) = varname_ends.get_mut(&ident) else {
+                        diagnostics.push(Diagnostic::spanned(
                             ident.span(),
                             Level::Error,
                             format!("Cannot find name `{}`; name was never assigned.", ident),
@@ -470,7 +500,7 @@ impl FlatGraphBuilder {
                     if cycle_found || varname_info.illegal_cycle {
                         let len = names.len();
                         for (i, name) in names.into_iter().enumerate() {
-                            self.diagnostics.push(Diagnostic::spanned(
+                            diagnostics.push(Diagnostic::spanned(
                                 name.span(),
                                 Level::Error,
                                 format!(
@@ -482,7 +512,7 @@ impl FlatGraphBuilder {
                             ));
                             // Set value as `Err(())` to trigger `name_ends_result.is_err()`
                             // diagnostics above if the name is referenced in the future.
-                            self.varname_ends.get_mut(&name).unwrap().illegal_cycle = true;
+                            varname_ends.get_mut(&name).unwrap().illegal_cycle = true;
                         }
                         return None;
                     }
@@ -496,7 +526,7 @@ impl FlatGraphBuilder {
                         &varname_info.ends.out
                     };
                     port_det = Self::helper_combine_end(
-                        &mut self.diagnostics,
+                        diagnostics,
                         prev.clone(),
                         port,
                         if is_in { "input" } else { "output" },
@@ -504,7 +534,7 @@ impl FlatGraphBuilder {
                 }
             }
         }
-        self.diagnostics.push(Diagnostic::spanned(
+        diagnostics.push(Diagnostic::spanned(
             Span::call_site(),
             Level::Error,
             format!(
@@ -799,11 +829,11 @@ impl FlatGraphBuilder {
                     {
                         let singletons_resolved =
                             self.flat_graph.node_singleton_references(node_id);
-                        for (singleton_node_id, singleton_ident) in singletons_resolved
+                        for (resolved_ref, singleton_ref_token) in singletons_resolved
                             .iter()
                             .zip_eq(&*operator.singletons_referenced)
                         {
-                            let &Some(singleton_node_id) = singleton_node_id else {
+                            let Some(singleton_node_id) = resolved_ref.node_id else {
                                 // Error already emitted by `connect_operator_links`, "Cannot find referenced name...".
                                 continue;
                             };
@@ -825,7 +855,7 @@ impl FlatGraphBuilder {
                             let ref_op_constraints = ref_op_inst.op_constraints;
                             if !ref_op_constraints.has_singleton_output {
                                 self.diagnostics.push(Diagnostic::spanned(
-                                    singleton_ident.span(),
+                                    singleton_ref_token.span(),
                                     Level::Error,
                                     format!(
                                         "Cannot reference operator `{}`. Only operators with singleton state can be referenced.",
@@ -870,6 +900,52 @@ impl FlatGraphBuilder {
                 }
                 GraphNode::ModuleBoundary { .. } => {
                     // Module boundaries don't require any checking.
+                }
+            }
+        }
+
+        // Validate singleton references.
+        // All singleton references must have unambiguous group orderings.
+        // Rules:
+        // 1. If any singleton reference has an explicit group number, they all must have one.
+        // 2. Every `#mut` must be in its own group.
+        {
+            let refs_by_target = self.flat_graph.node_singleton_reference_groups();
+            // For each singleton, check the groups.
+            for (_singleton, groups) in refs_by_target {
+                // Rule 1. If any singleton reference has an explicit group number, they all must have one.
+                if 1 < groups.len()
+                    && let Some(ungrouped) = groups.get(&None)
+                {
+                    for &(_src_node, r, span) in ungrouped {
+                        self.diagnostics.push(Diagnostic::spanned(
+                            span,
+                            Level::Error,
+                            format!(
+                                "Must use an explicit group `#{{N}}{}` to reference a singleton when other references use explicit groups.",
+                                if r.is_mut { " mut" } else { "" },
+                            ),
+                        ));
+                    }
+                }
+                // Rule 2. Every `#mut` must be in its own group.
+                for (group_idx, group) in groups {
+                    if 1 < group.len() && group.iter().any(|(_, r, _)| r.is_mut) {
+                        let group_str = if let Some(n) = group_idx {
+                            format!("`#{{{}}}`", n)
+                        } else {
+                            "<default>".to_owned()
+                        };
+                        for (_src_node, _mut_r, span) in
+                            group.into_iter().filter(|(_, r, _)| r.is_mut)
+                        {
+                            self.diagnostics.push(Diagnostic::spanned(
+                                span,
+                                Level::Error,
+                                format!("Mutable singleton references must be the only one in their access group, but group {} has multiple.", group_str),
+                            ));
+                        }
+                    }
                 }
             }
         }

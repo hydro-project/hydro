@@ -2,6 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use itertools::Itertools;
 use proc_macro2::Span;
 use slotmap::{SecondaryMap, SparseSecondaryMap};
 
@@ -63,16 +64,42 @@ fn find_barrier_crossers(partitioned_graph: &DfirGraph) -> BarrierCrossers {
             Some((edge_id, input_barrier))
         })
         .collect();
-    let singleton_barrier_crossers = partitioned_graph
+
+    // Basic singleton barriers: producer → consumer.
+    let mut singleton_barrier_crossers: Vec<(GraphNodeId, GraphNodeId)> = partitioned_graph
         .node_ids()
         .flat_map(|dst| {
             partitioned_graph
                 .node_singleton_references(dst)
                 .iter()
-                .flatten()
-                .map(move |&src_ref| (src_ref, dst))
+                .filter_map(|r| r.node_id)
+                .map(move |src_ref| (src_ref, dst))
         })
         .collect();
+
+    // Access group ordering barriers: for the same singleton target, operators in
+    // lower access groups must run before operators in higher access groups.
+    // Also: ungrouped mutable refs must run after ungrouped shared refs.
+    let refs_by_target = partitioned_graph.node_singleton_reference_groups();
+    // For each singleton target...
+    for (_singleton, groups) in refs_by_target {
+        // For sequential access groups...
+        for (group_a, group_b) in groups.values().tuple_windows() {
+            // Add ordering barriers so every node in the lower group must run before every node in the higher group.
+            for &(node_a, _, _) in group_a {
+                for &(node_b, _, _) in group_b {
+                    // TODO(mingwei): handle with diagnostics.
+                    assert_ne!(
+                        node_a, node_b,
+                        "encounted conflicted or cyclical singleton references\n{:?}\n{:?}",
+                        group_a, group_b,
+                    );
+                    singleton_barrier_crossers.push((node_a, node_b));
+                }
+            }
+        }
+    }
+
     BarrierCrossers {
         edge_barrier_crossers,
         singleton_barrier_crossers,
