@@ -132,11 +132,10 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
         let state_output = &outputs[1];
 
         let write_iterator = quote_spanned! {op_span=>
-            let #ident = #root::dfir_pipes::push::state_push::<_, _, _, _, _, _, #lattice_type>(
+            let #ident = #root::dfir_pipes::push::state_push::<_, _, _, _, _, #lattice_type>(
                 #items_output,
                 #state_output,
                 #by_fn,
-                #root::lattices::Merge::merge,
                 &mut #state_ident,
             );
         };
