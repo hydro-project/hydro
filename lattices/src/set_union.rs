@@ -140,6 +140,7 @@ impl<Set> IsTop for SetUnion<Set> {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<Set, Item> Atomize for SetUnion<Set>
 where
     Set: Len + IntoIterator<Item = Item> + Extend<Item>,
@@ -149,10 +150,10 @@ where
     type Atom = SetUnionSingletonSet<Item>;
 
     // TODO: use impl trait, then remove 'static.
-    type AtomIter = Box<dyn Iterator<Item = Self::Atom>>;
+    type AtomIter = alloc::boxed::Box<dyn Iterator<Item = Self::Atom>>;
 
     fn atomize(self) -> Self::AtomIter {
-        Box::new(self.0.into_iter().map(SetUnionSingletonSet::new_from))
+        alloc::boxed::Box::new(self.0.into_iter().map(SetUnionSingletonSet::new_from))
     }
 }
 
@@ -163,7 +164,8 @@ pub type SetUnionHashSet<Item> = SetUnion<HashSet<Item>>;
 pub type SetUnionBTreeSet<Item> = SetUnion<BTreeSet<Item>>;
 
 /// [`Vec`]-backed [`SetUnion`] lattice.
-pub type SetUnionVec<Item> = SetUnion<Vec<Item>>;
+#[cfg(feature = "alloc")]
+pub type SetUnionVec<Item> = SetUnion<alloc::vec::Vec<Item>>;
 
 /// [`crate::collections::ArraySet`]-backed [`SetUnion`] lattice.
 pub type SetUnionArray<Item, const N: usize> = SetUnion<ArraySet<Item, N>>;

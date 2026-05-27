@@ -58,6 +58,7 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<MapSelf, MapOther, K, ValSelf, ValOther> Merge<MapUnion<MapOther>> for MapUnion<MapSelf>
 where
     MapSelf: Keyed<Key = K, Item = ValSelf>
@@ -68,6 +69,8 @@ where
     ValOther: IsBot,
 {
     fn merge(&mut self, other: MapUnion<MapOther>) -> bool {
+        use alloc::vec::Vec;
+
         let mut changed = false;
         // This vec collect is needed to prevent simultaneous mut references `self.0.extend` and
         // `self.0.get_mut`.
@@ -226,6 +229,7 @@ impl<Map> IsTop for MapUnion<Map> {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<Map, K, Val> Atomize for MapUnion<Map>
 where
     Map: 'static
@@ -239,10 +243,10 @@ where
     type Atom = MapUnionSingletonMap<K, Val::Atom>;
 
     // TODO: use impl trait, then remove 'static.
-    type AtomIter = Box<dyn Iterator<Item = Self::Atom>>;
+    type AtomIter = alloc::boxed::Box<dyn Iterator<Item = Self::Atom>>;
 
     fn atomize(self) -> Self::AtomIter {
-        Box::new(self.0.into_iter().flat_map(|(k, val)| {
+        alloc::boxed::Box::new(self.0.into_iter().flat_map(|(k, val)| {
             val.atomize()
                 .map(move |v| MapUnionSingletonMap::new_from((k.clone(), v)))
         }))
@@ -335,8 +339,12 @@ mod test {
         my_map_a.merge(my_map_c);
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn consistency_atomize() {
+        use alloc::vec;
+        use alloc::vec::Vec;
+
         let mut test_vec = Vec::new();
 
         // Size 0.

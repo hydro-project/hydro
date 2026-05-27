@@ -50,8 +50,6 @@
 //! Both implementations are `Send` and `Sync` when their contained types are.
 //! They do not use interior mutability.
 
-use std::collections::HashSet;
-
 use fst::{IntoStreamer, Set as FstSet, SetBuilder, Streamer};
 use roaring::RoaringTreemap;
 
@@ -152,18 +150,21 @@ impl FromIterator<u64> for RoaringTombstoneSet {
 /// - The `extend()` operation rebuilds the entire FST, so batch your insertions when possible
 /// - Union operations are efficient and create a new compressed FST
 /// - Lookups are very fast (logarithmic in the number of keys)
+#[cfg(feature = "alloc")]
 #[derive(Clone, Debug)]
 pub struct FstTombstoneSet<Item> {
-    fst: FstSet<Vec<u8>>,
+    fst: FstSet<alloc::vec::Vec<u8>>,
     _phantom: std::marker::PhantomData<Item>,
 }
 
+#[cfg(feature = "alloc")]
 impl<Item> Default for FstTombstoneSet<Item> {
     fn default() -> Self {
         Self::new()
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<Item> FstTombstoneSet<Item> {
     /// Create a new empty `FstTombstoneSet`.
     pub fn new() -> Self {
@@ -174,7 +175,7 @@ impl<Item> FstTombstoneSet<Item> {
     }
 
     /// Create from an existing FST set.
-    pub(crate) fn from_fst(fst: FstSet<Vec<u8>>) -> Self {
+    pub(crate) fn from_fst(fst: FstSet<alloc::vec::Vec<u8>>) -> Self {
         Self {
             fst,
             _phantom: std::marker::PhantomData,
@@ -218,20 +219,9 @@ impl<Item> FstTombstoneSet<Item> {
     }
 }
 
-/// Helper trait to convert keys to byte slices for FST operations.
-pub trait AsBytes {
-    /// Convert the key to a byte slice.
-    fn as_bytes(&self) -> &[u8];
-}
-
-impl AsBytes for String {
-    fn as_bytes(&self) -> &[u8] {
-        self.as_bytes()
-    }
-}
-
-impl TombstoneSet<String> for FstTombstoneSet<String> {
-    fn contains(&self, key: &String) -> bool {
+#[cfg(feature = "alloc")]
+impl TombstoneSet<&'static str> for FstTombstoneSet<&'static str> {
+    fn contains(&self, key: &&'static str) -> bool {
         self.fst.contains(key.as_bytes())
     }
 
@@ -242,17 +232,19 @@ impl TombstoneSet<String> for FstTombstoneSet<String> {
     }
 }
 
-impl Len for FstTombstoneSet<String> {
+#[cfg(feature = "alloc")]
+impl Len for FstTombstoneSet<&'static str> {
     fn len(&self) -> usize {
         self.fst.len()
     }
 }
 
 // For String items
-impl Extend<String> for FstTombstoneSet<String> {
-    fn extend<T: IntoIterator<Item = String>>(&mut self, iter: T) {
-        let mut keys: Vec<_> = self.fst.stream().into_strs().unwrap();
-        keys.extend(iter);
+#[cfg(feature = "alloc")]
+impl Extend<&'static str> for FstTombstoneSet<&'static str> {
+    fn extend<T: IntoIterator<Item = &'static str>>(&mut self, iter: T) {
+        let mut keys: alloc::vec::Vec<_> = self.fst.stream().into_strs().unwrap();
+        keys.extend(iter.into_iter().map(alloc::borrow::ToOwned::to_owned));
         keys.sort();
         keys.dedup();
 
@@ -273,9 +265,10 @@ impl Extend<String> for FstTombstoneSet<String> {
     }
 }
 
-impl FromIterator<String> for FstTombstoneSet<String> {
-    fn from_iter<T: IntoIterator<Item = String>>(iter: T) -> Self {
-        let mut keys: Vec<_> = iter.into_iter().collect();
+#[cfg(feature = "alloc")]
+impl FromIterator<&'static str> for FstTombstoneSet<&'static str> {
+    fn from_iter<T: IntoIterator<Item = &'static str>>(iter: T) -> Self {
+        let mut keys: alloc::vec::Vec<_> = iter.into_iter().collect();
         keys.sort();
         keys.dedup();
 
@@ -297,9 +290,10 @@ impl FromIterator<String> for FstTombstoneSet<String> {
     }
 }
 
-impl IntoIterator for FstTombstoneSet<String> {
-    type Item = String;
-    type IntoIter = std::vec::IntoIter<String>;
+#[cfg(feature = "alloc")]
+impl IntoIterator for FstTombstoneSet<&'static str> {
+    type Item = alloc::string::String;
+    type IntoIter = alloc::vec::IntoIter<alloc::string::String>;
 
     fn into_iter(self) -> Self::IntoIter {
         // Convert FST keys to strings
@@ -312,12 +306,13 @@ impl IntoIterator for FstTombstoneSet<String> {
 }
 
 // Implement TombstoneSet for HashSet to support generic key types
-impl<K> TombstoneSet<K> for HashSet<K>
+#[cfg(feature = "std")]
+impl<K> TombstoneSet<K> for std::collections::HashSet<K>
 where
     K: Eq + std::hash::Hash + Clone,
 {
     fn contains(&self, key: &K) -> bool {
-        HashSet::contains(self, key)
+        std::collections::HashSet::contains(self, key)
     }
 
     fn union_with(&mut self, other: &Self) -> usize {

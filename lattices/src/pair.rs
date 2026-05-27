@@ -74,9 +74,12 @@ mod test {
     use crate::test::{check_all, check_lattice_bimorphism};
     use crate::{Merge, WithTop};
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn consistency() {
-        let mut test_vec = Vec::new();
+        use alloc::vec;
+
+        let mut test_vec = vec![];
 
         for a in [vec![], vec![0], vec![1], vec![0, 1]] {
             for b in [vec![], vec![0], vec![1], vec![0, 1]] {
@@ -90,9 +93,12 @@ mod test {
         check_all(&test_vec);
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn consistency_withtop() {
-        let mut test_vec = vec![];
+        use alloc::vec::Vec;
+
+        let mut test_vec = Vec::new();
 
         let sub_items = &[
             Some(&[] as &[usize]),

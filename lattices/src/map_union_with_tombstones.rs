@@ -61,7 +61,8 @@ impl<Map, TombstoneSet> MapUnionWithTombstones<Map, TombstoneSet> {
     }
 }
 
-// Merge implementation using TombstoneSet trait for optimized union operations
+/// Merge implementation using TombstoneSet trait for optimized union operations
+#[cfg(feature = "alloc")]
 impl<MapSelf, MapOther, K, ValSelf, ValOther, TombstoneSetSelf, TombstoneSetOther>
     Merge<MapUnionWithTombstones<MapOther, TombstoneSetOther>>
     for MapUnionWithTombstones<MapSelf, TombstoneSetSelf>
@@ -77,6 +78,8 @@ where
     TombstoneSetOther: IntoIterator<Item = K>,
 {
     fn merge(&mut self, other: MapUnionWithTombstones<MapOther, TombstoneSetOther>) -> bool {
+        use alloc::vec::Vec;
+
         let mut changed = false;
 
         // Collect other.tombstones into a vec to avoid borrowing issues
@@ -350,8 +353,10 @@ pub type MapUnionWithTombstonesRoaring<Val> =
 
 /// FST-backed tombstone set with [`HashMap`] for the main map.
 /// Provides space-efficient, collision-free tombstone storage for String keys.
-pub type MapUnionWithTombstonesFstString<Val> =
-    MapUnionWithTombstones<HashMap<String, Val>, FstTombstoneSet<String>>;
+pub type MapUnionWithTombstonesFstString<Val> = MapUnionWithTombstones<
+    HashMap<&'static str, Val>,
+    FstTombstoneSet<&'static str>,
+>;
 
 #[cfg(test)]
 mod test {
@@ -403,8 +408,11 @@ mod test {
         assert_eq!(a.partial_cmp(&b), None);
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn consistency() {
+        use alloc::vec::Vec;
+
         type K = &'static str;
         type V = SetUnion<HashSet<i32>>;
 
@@ -486,21 +494,21 @@ mod test {
     fn fst_string_basic() {
         let mut x = MapUnionWithTombstonesFstString::new_from(
             HashMap::from([
-                ("apple".to_owned(), SetUnionHashSet::new_from([1])),
-                ("banana".to_owned(), SetUnionHashSet::new_from([2])),
+                ("apple", SetUnionHashSet::new_from([1])),
+                ("banana", SetUnionHashSet::new_from([2])),
             ]),
             FstTombstoneSet::new(),
         );
         let mut y = MapUnionWithTombstonesFstString::new_from(
             HashMap::from([
-                ("banana".to_owned(), SetUnionHashSet::new_from([3])),
-                ("cherry".to_owned(), SetUnionHashSet::new_from([4])),
+                ("banana", SetUnionHashSet::new_from([3])),
+                ("cherry", SetUnionHashSet::new_from([4])),
             ]),
             FstTombstoneSet::new(),
         );
 
         // Add tombstone for "banana"
-        y.as_reveal_mut().1.extend(vec!["banana".to_owned()]);
+        y.as_reveal_mut().1.extend(["banana"]);
 
         x.merge(y);
 
@@ -519,12 +527,12 @@ mod test {
                 (1u64, SetUnionHashSet::new_from([1])),
                 (2, SetUnionHashSet::new_from([2])),
             ]),
-            RoaringTombstoneSet::from_iter(vec![10u64, 20]),
+            RoaringTombstoneSet::from_iter([10u64, 20]),
         );
 
         let y = MapUnionWithTombstonesRoaring::new_from(
             HashMap::from([(3u64, SetUnionHashSet::new_from([3]))]),
-            RoaringTombstoneSet::from_iter(vec![30u64, 2]),
+            RoaringTombstoneSet::from_iter([30u64, 2]),
         );
 
         x.merge(y);

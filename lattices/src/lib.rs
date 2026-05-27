@@ -1,7 +1,13 @@
+#![no_std]
 #![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
 
-use std::cmp::Ordering::{self, *};
+#[cfg(any(test, feature = "alloc"))]
+extern crate alloc;
+#[cfg(any(test, feature = "std"))]
+extern crate std;
+
+use core::cmp::Ordering::{self, *};
 
 pub use ::{cc_traits, variadics};
 use sealed::sealed;
