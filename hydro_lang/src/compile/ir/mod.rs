@@ -1837,16 +1837,44 @@ pub fn unify_atomic_ticks(ir: &mut [HydroRoot]) {
     transform_bottom_up(
         ir,
         &mut |_| {},
-        &mut |node: &mut HydroNode| {
-            if let HydroNode::Batch { inner, metadata } | HydroNode::YieldConcat { inner, metadata } =
-                node
-                && let (Some(a), Some(b)) = (
+        &mut |node: &mut HydroNode| match node {
+            HydroNode::Batch { inner, metadata } | HydroNode::YieldConcat { inner, metadata } => {
+                if let (Some(a), Some(b)) = (
                     tick_of(&inner.metadata().location_id),
                     tick_of(&metadata.location_id),
-                )
-            {
-                uf_union(&mut uf, a, b);
+                ) {
+                    uf_union(&mut uf, a, b);
+                }
             }
+            HydroNode::Chain {
+                first,
+                second,
+                metadata,
+            }
+            | HydroNode::ChainFirst {
+                first,
+                second,
+                metadata,
+            }
+            | HydroNode::MergeOrdered {
+                first,
+                second,
+                metadata,
+            } => {
+                if let (Some(a), Some(b)) = (
+                    tick_of(&first.metadata().location_id),
+                    tick_of(&metadata.location_id),
+                ) {
+                    uf_union(&mut uf, a, b);
+                }
+                if let (Some(a), Some(b)) = (
+                    tick_of(&second.metadata().location_id),
+                    tick_of(&metadata.location_id),
+                ) {
+                    uf_union(&mut uf, a, b);
+                }
+            }
+            _ => {}
         },
         false,
     );

@@ -4563,4 +4563,27 @@ mod tests {
                 .await;
         });
     }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_merge_unordered_independent_atomics() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in1_send, input1) = node.sim_input::<_, TotalOrder, _>();
+        let (in2_send, input2) = node.sim_input::<_, TotalOrder, _>();
+
+        let out = input1
+            .atomic()
+            .merge_unordered(input2.atomic())
+            .end_atomic()
+            .sim_output();
+
+        flow.sim().exhaustive(async || {
+            in1_send.send(1);
+            in2_send.send(2);
+
+            out.assert_yields_only_unordered(vec![1, 2]).await;
+        });
+    }
 }
