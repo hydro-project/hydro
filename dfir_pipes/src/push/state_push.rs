@@ -4,14 +4,15 @@ use core::pin::Pin;
 use lattices::Merge;
 use pin_project_lite::pin_project;
 
-use crate::No;
+use super::ready_both;
 use crate::push::{Push, PushStep};
+use crate::{Context, Toggle};
 
 pin_project! {
     /// Push combinator that merges items into state, forwarding changed items
     /// to `items_push` and emitting the accumulated state to `state_push` on finalize.
     ///
-    /// For each item, `map_fn` maps it and `merge_fn` merges the mapped value into `state_ref`.
+    /// For each item, `map_fn` maps it and [`Lat::merge`] merges the mapped value into `state_ref`.
     /// If the merge returns `true` (indicating a change), the original item is forwarded to
     /// `items_push`. On finalize, a clone of the accumulated state is sent to `state_push`.
     #[must_use = "`Push`es do nothing unless items are pushed into them"]
@@ -35,10 +36,17 @@ where
     StatePsh: Push<Lat, ()>,
     Lat: Merge<MappedItem> + Clone,
 {
-    type Ctx<'ctx> = ();
-    type CanPend = No;
+    type Ctx<'ctx> = <ItemsPsh::Ctx<'ctx> as Context<'ctx>>::Merged<StatePsh::Ctx<'ctx>>;
+    type CanPend = <ItemsPsh::CanPend as Toggle>::Or<StatePsh::CanPend>;
 
-    fn poll_ready(self: Pin<&mut Self>, _ctx: &mut ()) -> PushStep<No> {
+    fn poll_ready(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
+        let this = self.project();
+        ready_both!(
+            this.items_push
+                .poll_ready(<ItemsPsh::Ctx<'_> as Context<'_>>::unmerge_self(ctx)),
+            this.state_push
+                .poll_ready(<ItemsPsh::Ctx<'_> as Context<'_>>::unmerge_other(ctx)),
+        );
         PushStep::Done
     }
 
@@ -50,9 +58,17 @@ where
         }
     }
 
-    fn poll_finalize(self: Pin<&mut Self>, _ctx: &mut ()) -> PushStep<No> {
-        let this = self.project();
-        this.state_push.start_send(this.state_ref.clone(), ());
+    fn poll_finalize(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
+        let mut this = self.project();
+        this.state_push
+            .as_mut()
+            .start_send(this.state_ref.clone(), ());
+        ready_both!(
+            this.items_push
+                .poll_finalize(<ItemsPsh::Ctx<'_> as Context<'_>>::unmerge_self(ctx)),
+            this.state_push
+                .poll_finalize(<ItemsPsh::Ctx<'_> as Context<'_>>::unmerge_other(ctx)),
+        );
         PushStep::Done
     }
 
@@ -61,9 +77,9 @@ where
 
 /// Creates a [`StatePush`] that merges items into state.
 ///
-/// For each item, `map_fn` maps it and `merge_fn` merges the result into `state_ref`,
-/// returning `true` if the state changed. Changed items are forwarded to `items_push`.
-/// On finalize, the accumulated state is emitted to `state_push`.
+/// For each item, `map_fn` maps it and [`Lat::merge`](Merge::merge) merges the result
+/// into `state_ref`, returning `true` if the state changed. Changed items are forwarded
+/// to `items_push`. On finalize, the accumulated state is emitted to `state_push`.
 pub fn state_push<Item, MappingFn, MappedItem, ItemsPsh, StatePsh, Lat>(
     items_push: ItemsPsh,
     state_push: StatePsh,

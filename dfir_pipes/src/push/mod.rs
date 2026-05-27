@@ -25,6 +25,8 @@ mod persist;
 mod resolve_futures;
 mod sink;
 mod sink_compat;
+#[cfg(feature = "lattices")]
+#[cfg_attr(docsrs, doc(cfg(feature = "lattices")))]
 mod state_push;
 mod unzip;
 #[cfg(feature = "alloc")]
@@ -60,6 +62,7 @@ pub use resolve_futures::ResolveFutures;
 pub use sink::Sink;
 pub use sink_compat::SinkCompat;
 #[cfg(feature = "lattices")]
+#[cfg_attr(docsrs, doc(cfg(feature = "lattices")))]
 pub use state_push::{StatePush, state_push};
 pub use unzip::Unzip;
 #[cfg(feature = "alloc")]
