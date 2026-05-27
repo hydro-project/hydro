@@ -4563,5 +4563,28 @@
 <a href=#4563 id=4563 data-nosnippet>4563</a>                .<span class="kw">await</span>;
 <a href=#4564 id=4564 data-nosnippet>4564</a>        });
 <a href=#4565 id=4565 data-nosnippet>4565</a>    }
-<a href=#4566 id=4566 data-nosnippet>4566</a>}
+<a href=#4566 id=4566 data-nosnippet>4566</a>
+<a href=#4567 id=4567 data-nosnippet>4567</a>    <span class="attr">#[cfg(feature = <span class="string">"sim"</span>)]
+<a href=#4568 id=4568 data-nosnippet>4568</a>    #[test]
+<a href=#4569 id=4569 data-nosnippet>4569</a>    </span><span class="kw">fn </span>sim_merge_unordered_independent_atomics() {
+<a href=#4570 id=4570 data-nosnippet>4570</a>        <span class="kw">let </span><span class="kw-2">mut </span>flow = FlowBuilder::new();
+<a href=#4571 id=4571 data-nosnippet>4571</a>        <span class="kw">let </span>node = flow.process::&lt;()&gt;();
+<a href=#4572 id=4572 data-nosnippet>4572</a>
+<a href=#4573 id=4573 data-nosnippet>4573</a>        <span class="kw">let </span>(in1_send, input1) = node.sim_input::&lt;<span class="kw">_</span>, TotalOrder, <span class="kw">_</span>&gt;();
+<a href=#4574 id=4574 data-nosnippet>4574</a>        <span class="kw">let </span>(in2_send, input2) = node.sim_input::&lt;<span class="kw">_</span>, TotalOrder, <span class="kw">_</span>&gt;();
+<a href=#4575 id=4575 data-nosnippet>4575</a>
+<a href=#4576 id=4576 data-nosnippet>4576</a>        <span class="kw">let </span>out = input1
+<a href=#4577 id=4577 data-nosnippet>4577</a>            .atomic()
+<a href=#4578 id=4578 data-nosnippet>4578</a>            .merge_unordered(input2.atomic())
+<a href=#4579 id=4579 data-nosnippet>4579</a>            .end_atomic()
+<a href=#4580 id=4580 data-nosnippet>4580</a>            .sim_output();
+<a href=#4581 id=4581 data-nosnippet>4581</a>
+<a href=#4582 id=4582 data-nosnippet>4582</a>        flow.sim().exhaustive(<span class="kw">async </span>|| {
+<a href=#4583 id=4583 data-nosnippet>4583</a>            in1_send.send(<span class="number">1</span>);
+<a href=#4584 id=4584 data-nosnippet>4584</a>            in2_send.send(<span class="number">2</span>);
+<a href=#4585 id=4585 data-nosnippet>4585</a>
+<a href=#4586 id=4586 data-nosnippet>4586</a>            out.assert_yields_only_unordered(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>]).<span class="kw">await</span>;
+<a href=#4587 id=4587 data-nosnippet>4587</a>        });
+<a href=#4588 id=4588 data-nosnippet>4588</a>    }
+<a href=#4589 id=4589 data-nosnippet>4589</a>}
 </code></pre></div></section></main></body></html>
