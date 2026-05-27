@@ -1823,6 +1823,10 @@ impl DfirGraph {
                 let mut __dfir_work_done = true;
                 #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref, clippy::deref_addrof)]
                 let __dfir_inline_tick = async move |#df: &mut #root::scheduled::context::Context| {
+
+                    // Reset arena between ticks (start-of-tick).
+                    #bump_ident.reset();
+
                     {
                         let __dfir_metrics = #df.metrics();
 
@@ -1838,9 +1842,6 @@ impl DfirGraph {
                         // into the back buffer for the consumer to drain.
                         #( #back_edge_swap_code )*
                     }
-
-                    // Reset arena for end-of-tick.
-                    #bump_ident.reset();
 
                     // End-of-tick per-operator state handling (i.e. 'tick persistence).
                     #( #op_tick_end_code )*
