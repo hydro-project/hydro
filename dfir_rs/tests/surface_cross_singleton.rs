@@ -69,3 +69,63 @@ pub fn test_union_defer_tick() {
     let out: Vec<_> = collect_ready(&mut egress_rx);
     assert_eq!(out, vec![(1, 0), (2, 0), (3, 0)]);
 }
+
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_static_persistence() {
+    let (input_tx, input_rx) = dfir_rs::util::unbounded_channel::<i32>();
+    let (egress_tx, mut egress_rx) = dfir_rs::util::unbounded_channel();
+
+    let mut df = dfir_syntax! {
+        join = cross_singleton::<'static>();
+        source_stream(input_rx) -> [input]join;
+        source_iter([42]) -> [single]join;
+
+        join -> for_each(|x| egress_tx.send(x).unwrap());
+    };
+
+    // First tick: singleton value is consumed, but no input yet.
+    df.run_available_sync();
+    let out: Vec<_> = collect_ready(&mut egress_rx);
+    assert_eq!(out, []);
+
+    // Second tick: input arrives, singleton state persists from first tick.
+    input_tx.send(1).unwrap();
+    df.run_available_sync();
+    let out: Vec<_> = collect_ready(&mut egress_rx);
+    assert_eq!(out, vec![(1, 42)]);
+
+    // Third tick: more input, singleton still available.
+    input_tx.send(2).unwrap();
+    input_tx.send(3).unwrap();
+    df.run_available_sync();
+    let out: Vec<_> = collect_ready(&mut egress_rx);
+    assert_eq!(out, vec![(2, 42), (3, 42)]);
+}
+
+#[multiplatform_test(test, wasm, env_tracing)]
+pub fn test_tick_persistence_resets() {
+    let (input_tx, input_rx) = dfir_rs::util::unbounded_channel::<i32>();
+    let (single_tx, single_rx) = dfir_rs::util::unbounded_channel::<i32>();
+    let (egress_tx, mut egress_rx) = dfir_rs::util::unbounded_channel();
+
+    let mut df = dfir_syntax! {
+        join = cross_singleton();
+        source_stream(input_rx) -> [input]join;
+        source_stream(single_rx) -> [single]join;
+
+        join -> for_each(|x| egress_tx.send(x).unwrap());
+    };
+
+    // Send singleton and input together.
+    single_tx.send(10).unwrap();
+    input_tx.send(1).unwrap();
+    df.run_available_sync();
+    let out: Vec<_> = collect_ready(&mut egress_rx);
+    assert_eq!(out, vec![(1, 10)]);
+
+    // Next tick: input but no singleton (default 'tick resets state).
+    input_tx.send(2).unwrap();
+    df.run_available_sync();
+    let out: Vec<_> = collect_ready(&mut egress_rx);
+    assert_eq!(out, []);
+}
