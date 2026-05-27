@@ -1836,24 +1836,29 @@ impl DfirGraph {
                 let mut __dfir_work_done = true;
                 #[allow(unused_qualifications, unused_mut, unused_variables, clippy::await_holding_refcell_ref, clippy::deref_addrof)]
                 let __dfir_inline_tick = async move |#df: &mut #root::scheduled::context::Context| {
-                    let __dfir_metrics = #df.metrics();
+                    {
+                        let __dfir_metrics = #df.metrics();
 
-                    #( #subgraph_blocks )*
+                        #( #subgraph_blocks )*
 
-                    // For non-lazy defer_tick: if any deferred buffer has data,
-                    // signal that another tick should run.
-                    if false #( || !#non_lazy_buf_idents.is_empty() )* {
-                        #df.schedule_subgraph(true);
+                        // For non-lazy defer_tick: if any deferred buffer has data,
+                        // signal that another tick should run.
+                        if false #( || !#non_lazy_buf_idents.is_empty() )* {
+                            #df.schedule_subgraph(true);
+                        }
+
+                        // Double-buffer swap for defer_tick handoffs: move last tick's producer output (regular buffer)
+                        // into the back buffer for the consumer to drain.
+                        #( #back_edge_swap_code )*
                     }
 
-                    // End-of-tick state reset (e.g. 'tick persistence).
+                    // Reset arena for end-of-tick.
+                    #bump_ident.reset();
+
+                    // End-of-tick per-operator state handling (i.e. 'tick persistence).
                     #( #op_tick_end_code )*
 
                     #df.__end_tick();
-
-                    // Double-buffer swap for defer_tick handoffs: move last tick's producer output (regular buffer)
-                    // into the back buffer for the consumer to drain.
-                    #( #back_edge_swap_code )*
 
                     ::std::mem::take(&mut __dfir_work_done)
                 };
