@@ -12,7 +12,7 @@
 <a href=#12 id=12 data-nosnippet>12</a>
 <a href=#13 id=13 data-nosnippet>13</a><span class="kw">use </span><span class="self">self</span>::ops::{OperatorConstraints, Persistence};
 <a href=#14 id=14 data-nosnippet>14</a><span class="kw">use </span><span class="kw">crate</span>::diagnostic::{Diagnostic, Diagnostics, Level};
-<a href=#15 id=15 data-nosnippet>15</a><span class="kw">use </span><span class="kw">crate</span>::parse::{DfirCode, IndexInt, Operator, PortIndex, Ported};
+<a href=#15 id=15 data-nosnippet>15</a><span class="kw">use </span><span class="kw">crate</span>::parse::{DfirCode, IndexInt, Operator, PortIndex, Ported, SingletonRef};
 <a href=#16 id=16 data-nosnippet>16</a><span class="kw">use </span><span class="kw">crate</span>::pretty_span::PrettySpan;
 <a href=#17 id=17 data-nosnippet>17</a>
 <a href=#18 id=18 data-nosnippet>18</a><span class="kw">mod </span>di_mul_graph;
@@ -201,7 +201,7 @@
 <a href=#201 id=201 data-nosnippet>201</a>    <span class="doccomment">/// Port values used as this operator's output.
 <a href=#202 id=202 data-nosnippet>202</a>    </span><span class="kw">pub </span>output_ports: Vec&lt;PortIndexValue&gt;,
 <a href=#203 id=203 data-nosnippet>203</a>    <span class="doccomment">/// Singleton references within the operator arguments.
-<a href=#204 id=204 data-nosnippet>204</a>    </span><span class="kw">pub </span>singletons_referenced: Vec&lt;Ident&gt;,
+<a href=#204 id=204 data-nosnippet>204</a>    </span><span class="kw">pub </span>singletons_referenced: Vec&lt;SingletonRef&gt;,
 <a href=#205 id=205 data-nosnippet>205</a>
 <a href=#206 id=206 data-nosnippet>206</a>    <span class="doccomment">/// Generic arguments.
 <a href=#207 id=207 data-nosnippet>207</a>    </span><span class="kw">pub </span>generics: OpInstGenerics,
