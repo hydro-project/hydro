@@ -38,6 +38,7 @@ pub struct SimBuilder {
     pub next_hoff_id: crate::Counter<HandoffId>,
     pub test_safety_only: bool,
     pub skip_consistency_assertions: bool,
+    pub channel_tables: BTreeMap<u32, syn::Ident>,
 }
 
 impl SimBuilder {
@@ -96,6 +97,168 @@ impl SimBuilder {
                 _ => unreachable!(),
             },
             _ => unreachable!(),
+        }
+    }
+
+    fn channel_elem_ty(from: &LocationId, root: &proc_macro2::TokenStream) -> syn::Type {
+        if matches!(from, LocationId::Cluster(_)) {
+            syn::parse_quote!((#root::__staged::location::TaglessMemberId, __root_dfir_rs::bytes::Bytes))
+        } else {
+            syn::parse_quote!(__root_dfir_rs::bytes::Bytes)
+        }
+    }
+
+    fn channel_table_ident(&mut self, channel_id: u32, elem_ty: &syn::Type) -> syn::Ident {
+        if let Some(ident) = self.channel_tables.get(&channel_id) {
+            return ident.clone();
+        }
+        let ident = syn::Ident::new(
+            &format!("__hydro_channel_{}", channel_id),
+            Span::call_site(),
+        );
+        self.extra_stmts_global.push(syn::parse_quote! {
+            let #ident: ::std::rc::Rc<::std::cell::RefCell<::std::collections::HashMap<u32, __root_dfir_rs::tokio::sync::mpsc::UnboundedSender<#elem_ty>>>> =
+                ::std::rc::Rc::new(::std::cell::RefCell::new(::std::collections::HashMap::new()));
+        });
+        self.channel_tables.insert(channel_id, ident.clone());
+        ident
+    }
+
+    #[expect(clippy::too_many_arguments, reason = "code generation")]
+    fn emit_channel_send_half(
+        &mut self,
+        from: &LocationId,
+        to: &LocationId,
+        input_ident: syn::Ident,
+        serialize: Option<&DebugExpr>,
+        suffix: &str,
+        channel_id: u32,
+        root: &proc_macro2::TokenStream,
+    ) {
+        let from_is_cluster = matches!(from, LocationId::Cluster(_));
+        let to_is_cluster = matches!(to, LocationId::Cluster(_));
+        let elem_ty = Self::channel_elem_ty(from, root);
+        let table = self.channel_table_ident(channel_id, &elem_ty);
+        let send_table = syn::Ident::new(&format!("__channel_send_{suffix}"), Span::call_site());
+
+        let dest_expr: syn::Expr = if to_is_cluster {
+            syn::parse_quote!(#root::__staged::location::TaglessMemberId::get_raw_id(&target_member_id))
+        } else {
+            syn::parse_quote!(0u32)
+        };
+        let payload_expr: syn::Expr = if from_is_cluster {
+            syn::parse_quote!((#root::__staged::location::TaglessMemberId::from_raw_id(__current_cluster_id), v))
+        } else {
+            syn::parse_quote!(v)
+        };
+        let send_pat: syn::Pat = if to_is_cluster {
+            syn::parse_quote!((target_member_id, v))
+        } else {
+            syn::parse_quote!(v)
+        };
+
+        if from_is_cluster {
+            self.extra_stmts_cluster
+                .entry(from.clone())
+                .or_default()
+                .push(syn::parse_quote! {
+                    let #send_table = #table.clone();
+                });
+        } else {
+            self.extra_stmts_global.push(syn::parse_quote! {
+                let #send_table = #table.clone();
+            });
+        }
+
+        let send_body: syn::Expr = syn::parse_quote! {
+            {
+                if let Some(__s) = #send_table.borrow().get(&#dest_expr) {
+                    let _ = __s.send(#payload_expr);
+                }
+            }
+        };
+        if let Some(serialize_pipeline) = serialize {
+            self.get_dfir_mut(from).add_dfir(
+                parse_quote! {
+                    #input_ident -> map(#serialize_pipeline) -> for_each(|#send_pat| #send_body);
+                },
+                None,
+                Some(&format!("send{}", suffix)),
+            );
+        } else {
+            self.get_dfir_mut(from).add_dfir(
+                parse_quote! {
+                    #input_ident -> for_each(|#send_pat| #send_body);
+                },
+                None,
+                Some(&format!("send{}", suffix)),
+            );
+        }
+    }
+
+    fn emit_channel_receive_half(
+        &mut self,
+        to: &LocationId,
+        out_ident: &syn::Ident,
+        deserialize: Option<&DebugExpr>,
+        suffix: &str,
+        channel_id: u32,
+        elem_ty: &syn::Type,
+    ) {
+        let to_is_cluster = matches!(to, LocationId::Cluster(_));
+        let table = self.channel_table_ident(channel_id, elem_ty);
+        let recv_table = syn::Ident::new(&format!("__channel_recv_{suffix}"), Span::call_site());
+        let channel_source =
+            syn::Ident::new(&format!("__channel_source_{suffix}"), Span::call_site());
+
+        let member_key_expr: syn::Expr = if to_is_cluster {
+            syn::parse_quote!(__current_cluster_id)
+        } else {
+            syn::parse_quote!(0u32)
+        };
+        let register_stmt: syn::Stmt = syn::parse_quote! {
+            let #channel_source = {
+                let (__channel_sink, __channel_source) =
+                    __root_dfir_rs::util::unbounded_channel::<#elem_ty>();
+                #recv_table.borrow_mut().insert(#member_key_expr, __channel_sink);
+                __channel_source
+            };
+        };
+
+        if to_is_cluster {
+            self.extra_stmts_cluster
+                .entry(to.clone())
+                .or_default()
+                .push(syn::parse_quote! {
+                    let #recv_table = #table.clone();
+                });
+            self.extra_stmts_cluster
+                .entry(to.clone())
+                .or_default()
+                .push(register_stmt);
+        } else {
+            self.extra_stmts_global.push(syn::parse_quote! {
+                let #recv_table = #table.clone();
+            });
+            self.extra_stmts_global.push(register_stmt);
+        }
+
+        if let Some(deserialize_pipeline) = deserialize {
+            self.get_dfir_mut(to).add_dfir(
+                parse_quote! {
+                    #out_ident = source_stream(#channel_source) -> map(|v| -> ::std::result::Result<_, ()> { Ok(v) }) -> map(#deserialize_pipeline);
+                },
+                None,
+                Some(&format!("recv{}", suffix)),
+            );
+        } else {
+            self.get_dfir_mut(to).add_dfir(
+                parse_quote! {
+                    #out_ident = source_stream(#channel_source);
+                },
+                None,
+                Some(&format!("recv{}", suffix)),
+            );
         }
     }
 }
@@ -1689,6 +1852,49 @@ impl DfirBuilder for SimBuilder {
         let out_kind = in_kind.strict_kind();
         self.observe_nondet(
             false, location, in_ident, in_kind, out_ident, &out_kind, op_meta,
+        );
+    }
+
+    fn create_versioned_network_fork(
+        &mut self,
+        channel_id: u32,
+        dest: &LocationId,
+        senders: Vec<(LocationId, syn::Ident, Option<DebugExpr>)>,
+        tag_id: StmtId,
+    ) {
+        let root = get_this_crate();
+        for (idx, (source, input_ident, serialize)) in senders.into_iter().enumerate() {
+            let suffix = format!("{}_{}", tag_id, idx);
+            self.emit_channel_send_half(
+                &source,
+                dest,
+                input_ident,
+                serialize.as_ref(),
+                &suffix,
+                channel_id,
+                &root,
+            );
+        }
+    }
+
+    fn create_versioned_network(
+        &mut self,
+        channel_id: u32,
+        source: &LocationId,
+        dest: &LocationId,
+        out_ident: &syn::Ident,
+        deserialize: Option<&DebugExpr>,
+        tag_id: StmtId,
+    ) {
+        let root = get_this_crate();
+        let elem_ty = Self::channel_elem_ty(source, &root);
+        self.emit_channel_receive_half(
+            dest,
+            out_ident,
+            deserialize,
+            &tag_id.to_string(),
+            channel_id,
+            &elem_ty,
         );
     }
 }

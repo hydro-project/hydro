@@ -1622,6 +1622,71 @@ impl HydroNode {
                 chain_id
             }
 
+            HydroNode::VersionedNetworkFork {
+                senders, metadata, ..
+            } => {
+                let location_key = Some(setup_location(structure, metadata));
+                let fork_id = structure.add_node_with_backtrace(
+                    NodeLabel::Static(extract_op_name(self.print_root())),
+                    HydroNodeType::NonDeterministic,
+                    location_key,
+                    Some(metadata.op.backtrace.clone()),
+                );
+
+                for (version, sender, _serialize) in senders {
+                    let sender_id = sender.build_graph_structure(structure, seen_tees, config);
+                    let sender_metadata = sender.metadata();
+                    add_edge_with_metadata(
+                        structure,
+                        sender_id,
+                        fork_id,
+                        Some(sender_metadata),
+                        Some(metadata),
+                        Some(format!("send v{version}")),
+                    );
+                }
+
+                fork_id
+            }
+
+            HydroNode::VersionedNetwork {
+                fork,
+                version,
+                metadata,
+                ..
+            } => {
+                let ptr = fork.as_ptr();
+                let fork_id = if let Some(&existing_id) = seen_tees.get(&ptr) {
+                    existing_id
+                } else {
+                    let built = fork
+                        .0
+                        .borrow()
+                        .build_graph_structure(structure, seen_tees, config);
+                    seen_tees.insert(ptr, built);
+                    built
+                };
+
+                let branch_location = Some(setup_location(structure, metadata));
+                let branch_id = structure.add_node_with_backtrace(
+                    NodeLabel::Static(extract_op_name(self.print_root())),
+                    HydroNodeType::NonDeterministic,
+                    branch_location,
+                    Some(metadata.op.backtrace.clone()),
+                );
+
+                add_edge_with_metadata(
+                    structure,
+                    fork_id,
+                    branch_id,
+                    Some(metadata),
+                    Some(metadata),
+                    Some(format!("recv v{version}")),
+                );
+
+                branch_id
+            }
+
             HydroNode::ChainFirst {
                 first,
                 second,

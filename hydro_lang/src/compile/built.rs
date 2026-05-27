@@ -29,6 +29,16 @@ pub struct BuiltFlow<'a> {
     /// Application name used in telemetry.
     pub(super) flow_name: String,
 
+    /// The program version each location belongs to (every location has an entry; 0 unless it is a
+    /// `next_version` successor).
+    #[cfg(feature = "sim")]
+    pub(super) location_version: SecondaryMap<LocationKey, u32>,
+
+    /// Maps from a given location to Version 0 of that location (or itself it is already v0).
+    /// [`Cluster::next_version`](crate::location::Cluster::next_version)).
+    #[cfg(feature = "sim")]
+    pub(super) location_version_group_root: SecondaryMap<LocationKey, LocationKey>,
+
     pub(super) _phantom: Invariant<'a>,
 }
 
@@ -161,6 +171,8 @@ impl<'a> BuiltFlow<'a> {
             externals,
             cluster_max_sizes: SparseSecondaryMap::new(),
             externals_port_registry: Default::default(),
+            location_version: self.location_version,
+            location_version_group_root: self.location_version_group_root,
             test_safety_only: false,
             skip_consistency_assertions: false,
             unit_test_fuzz_iterations: 8192,

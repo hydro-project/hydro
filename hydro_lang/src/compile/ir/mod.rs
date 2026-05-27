@@ -599,6 +599,24 @@ pub trait DfirBuilder {
         out_ident: &syn::Ident,
         op_meta: &HydroIrOpMetadata,
     );
+
+    fn create_versioned_network_fork(
+        &mut self,
+        channel_id: u32,
+        dest: &LocationId,
+        senders: Vec<(LocationId, syn::Ident, Option<DebugExpr>)>,
+        tag_id: StmtId,
+    );
+
+    fn create_versioned_network(
+        &mut self,
+        channel_id: u32,
+        source: &LocationId,
+        dest: &LocationId,
+        out_ident: &syn::Ident,
+        deserialize: Option<&DebugExpr>,
+        tag_id: StmtId,
+    );
 }
 
 #[cfg(feature = "build")]
@@ -899,6 +917,34 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
             },
             None,
             None,
+        );
+    }
+
+    fn create_versioned_network_fork(
+        &mut self,
+        _channel_id: u32,
+        _dest: &LocationId,
+        _senders: Vec<(LocationId, syn::Ident, Option<DebugExpr>)>,
+        _tag_id: StmtId,
+    ) {
+        unreachable!(
+            "HydroNode::VersionedNetworkFork is only produced by the multi-version simulator merge \
+             pass and cannot be emitted by the non-simulation builder"
+        );
+    }
+
+    fn create_versioned_network(
+        &mut self,
+        _channel_id: u32,
+        _source: &LocationId,
+        _dest: &LocationId,
+        _out_ident: &syn::Ident,
+        _deserialize: Option<&DebugExpr>,
+        _tag_id: StmtId,
+    ) {
+        unreachable!(
+            "HydroNode::VersionedNetwork is only produced by the multi-version simulator merge \
+             pass and cannot be emitted by the non-simulation builder"
         );
     }
 }
@@ -2638,6 +2684,20 @@ pub enum HydroNode {
         metadata: HydroIrMetadata,
     },
 
+    VersionedNetworkFork {
+        channel_id: u32,
+        channel_name: String,
+        senders: Vec<(u32, Box<HydroNode>, Option<DebugExpr>)>,
+        metadata: HydroIrMetadata,
+    },
+
+    VersionedNetwork {
+        fork: SharedNode,
+        version: u32,
+        deserialize_fn: Option<DebugExpr>,
+        metadata: HydroIrMetadata,
+    },
+
     ExternalInput {
         from_external_key: LocationKey,
         from_port_id: ExternalPortId,
@@ -2870,6 +2930,25 @@ impl HydroNode {
             | HydroNode::Network { input, .. }
             | HydroNode::Counter { input, .. } => {
                 transform(input.as_mut(), seen_tees);
+            }
+
+            HydroNode::VersionedNetworkFork { senders, .. } => {
+                for (_version, sender, _serialize) in senders.iter_mut() {
+                    transform(sender.as_mut(), seen_tees);
+                }
+            }
+
+            HydroNode::VersionedNetwork { fork, .. } => {
+                if let Some(transformed) = seen_tees.get(&fork.as_ptr()) {
+                    *fork = SharedNode(transformed.clone());
+                } else {
+                    let transformed_cell = Rc::new(RefCell::new(HydroNode::Placeholder));
+                    seen_tees.insert(fork.as_ptr(), transformed_cell.clone());
+                    let mut orig = fork.0.replace(HydroNode::Placeholder);
+                    transform(&mut orig, seen_tees);
+                    *transformed_cell.borrow_mut() = orig;
+                    *fork = SharedNode(transformed_cell);
+                }
             }
         }
     }
@@ -3245,6 +3324,48 @@ impl HydroNode {
                 input: Box::new(input.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
+            HydroNode::VersionedNetworkFork {
+                channel_id,
+                channel_name,
+                senders,
+                metadata,
+            } => HydroNode::VersionedNetworkFork {
+                channel_id: *channel_id,
+                channel_name: channel_name.clone(),
+                senders: senders
+                    .iter()
+                    .map(|(version, sender, serialize)| {
+                        (
+                            *version,
+                            Box::new(sender.deep_clone(seen_tees)),
+                            serialize.clone(),
+                        )
+                    })
+                    .collect(),
+                metadata: metadata.clone(),
+            },
+            HydroNode::VersionedNetwork {
+                fork,
+                version,
+                deserialize_fn,
+                metadata,
+            } => {
+                let cloned_fork = if let Some(transformed) = seen_tees.get(&fork.as_ptr()) {
+                    SharedNode(transformed.clone())
+                } else {
+                    let new_rc = Rc::new(RefCell::new(HydroNode::Placeholder));
+                    seen_tees.insert(fork.as_ptr(), new_rc.clone());
+                    let cloned = fork.0.borrow().deep_clone(seen_tees);
+                    *new_rc.borrow_mut() = cloned;
+                    SharedNode(new_rc)
+                };
+                HydroNode::VersionedNetwork {
+                    fork: cloned_fork,
+                    version: *version,
+                    deserialize_fn: deserialize_fn.clone(),
+                    metadata: metadata.clone(),
+                }
+            }
         }
     }
 
@@ -5036,6 +5157,93 @@ impl HydroNode {
 
                         ident_stack.push(counter_ident);
                     }
+
+                    HydroNode::VersionedNetworkFork {
+                        channel_id,
+                        senders,
+                        metadata,
+                        ..
+                    } => {
+                        // sender idents are pushed in order of the 'senders' member.
+                        let split_at = ident_stack.len() - senders.len();
+                        let sender_idents = ident_stack.split_off(split_at);
+
+                        let stmt_id = next_stmt_id.get_and_increment();
+
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(graph_builders) => {
+                                let sender_args: Vec<(LocationId, syn::Ident, Option<DebugExpr>)> =
+                                    senders
+                                        .iter()
+                                        .zip(sender_idents)
+                                        .map(|((_version, sender, serialize), ident)| {
+                                            (
+                                                sender.metadata().location_id.clone(),
+                                                ident,
+                                                serialize.clone(),
+                                            )
+                                        })
+                                        .collect();
+                                graph_builders.create_versioned_network_fork(
+                                    *channel_id,
+                                    &metadata.location_id,
+                                    sender_args,
+                                    stmt_id,
+                                );
+                            }
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
+                    }
+
+                    HydroNode::VersionedNetwork {
+                        fork,
+                        deserialize_fn,
+                        metadata,
+                        ..
+                    } => {
+                        let stmt_id = next_stmt_id.get_and_increment();
+                        let receiver_stream_ident =
+                            syn::Ident::new(&format!("stream_{}", stmt_id), Span::call_site());
+
+                        // The wire element type is determined by the channel's *source* kind, which
+                        // all senders share; read it from the shared fork's first sender.
+                        let (channel_id, source_loc) = {
+                            let fork_ref = fork.0.borrow();
+                            let HydroNode::VersionedNetworkFork {
+                                channel_id,
+                                senders,
+                                ..
+                            } = &*fork_ref
+                            else {
+                                unreachable!("VersionedNetwork.fork must be a VersionedNetworkFork");
+                            };
+                            let source_loc = senders
+                                .first()
+                                .map(|(_v, sender, _s)| sender.metadata().location_id.clone())
+                                .expect("a VersionedNetworkFork always has at least one sender");
+                            (*channel_id, source_loc)
+                        };
+
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(graph_builders) => {
+                                graph_builders.create_versioned_network(
+                                    channel_id,
+                                    &source_loc,
+                                    &metadata.location_id,
+                                    &receiver_stream_ident,
+                                    deserialize_fn.as_ref(),
+                                    stmt_id,
+                                );
+                            }
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
+
+                        ident_stack.push(receiver_stream_ident);
+                    }
                 }
             },
             seen_tees,
@@ -5096,7 +5304,9 @@ impl HydroNode {
             | HydroNode::DeferTick { .. }
             | HydroNode::Enumerate { .. }
             | HydroNode::Unique { .. }
-            | HydroNode::Sort { .. } => {}
+            | HydroNode::Sort { .. }
+            | HydroNode::VersionedNetworkFork { .. }
+            | HydroNode::VersionedNetwork { .. } => {}
             HydroNode::Map { f, .. }
             | HydroNode::FlatMap { f, .. }
             | HydroNode::FlatMapStreamBlocking { f, .. }
@@ -5148,6 +5358,8 @@ impl HydroNode {
             HydroNode::Placeholder => {
                 panic!()
             }
+            HydroNode::VersionedNetworkFork { metadata, .. }
+            | HydroNode::VersionedNetwork { metadata, .. } => metadata,
             HydroNode::Cast { metadata, .. }
             | HydroNode::ObserveNonDet { metadata, .. }
             | HydroNode::AssertIsConsistent { metadata, .. }
@@ -5206,6 +5418,8 @@ impl HydroNode {
             HydroNode::Placeholder => {
                 panic!()
             }
+            HydroNode::VersionedNetworkFork { metadata, .. }
+            | HydroNode::VersionedNetwork { metadata, .. } => metadata,
             HydroNode::Cast { metadata, .. }
             | HydroNode::ObserveNonDet { metadata, .. }
             | HydroNode::AssertIsConsistent { metadata, .. }
@@ -5266,8 +5480,9 @@ impl HydroNode {
             | HydroNode::CycleSource { .. }
             | HydroNode::Tee { .. }
             | HydroNode::Reference { .. }
-            | HydroNode::Partition { .. } => {
-                // Tee/Partition should find their input in separate special ways
+            | HydroNode::Partition { .. }
+            | HydroNode::VersionedNetwork { .. } => {
+                // Tee/Partition/VersionedNetwork find their input in separate special ways
                 vec![]
             }
             HydroNode::Cast { inner, .. }
@@ -5326,6 +5541,10 @@ impl HydroNode {
             } => {
                 vec![input, watermark]
             }
+            HydroNode::VersionedNetworkFork { senders, .. } => senders
+                .iter()
+                .map(|(_version, sender, _serialize)| sender.as_ref())
+                .collect(),
         }
     }
 
@@ -5452,6 +5671,20 @@ impl HydroNode {
             HydroNode::ExternalInput { .. } => "ExternalInput()".to_owned(),
             HydroNode::Counter { tag, duration, .. } => {
                 format!("Counter({:?}, {:?})", tag, duration)
+            }
+            HydroNode::VersionedNetworkFork {
+                channel_name,
+                senders,
+                ..
+            } => {
+                let versions: Vec<u32> = senders.iter().map(|(v, _, _)| *v).collect();
+                format!(
+                    "VersionedNetworkFork({}, senders={:?})",
+                    channel_name, versions
+                )
+            }
+            HydroNode::VersionedNetwork { version, .. } => {
+                format!("VersionedNetwork(v{})", version)
             }
         }
     }

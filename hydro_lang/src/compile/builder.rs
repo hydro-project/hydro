@@ -139,6 +139,15 @@ pub struct FlowBuilder<'a> {
     locations: SlotMap<LocationKey, LocationType>,
     /// Map from raw location ID to name (including externals).
     location_names: SecondaryMap<LocationKey, String>,
+    /// The program version each location belongs to. Every location has an entry (0 unless it is a
+    /// `next_version` successor); populated eagerly at location creation.
+    #[cfg(feature = "sim")]
+    location_version: SecondaryMap<LocationKey, u32>,
+    /// Maps each location to the root key of its cross-version correspondence group: version 0 of
+    /// the same logical location. Every location has an entry (its own key unless it is a
+    /// `next_version` successor); populated eagerly at location creation.
+    #[cfg(feature = "sim")]
+    location_version_group_root: SecondaryMap<LocationKey, LocationKey>,
 
     /// Application name used in telemetry.
     #[cfg_attr(
@@ -198,6 +207,10 @@ impl<'a> FlowBuilder<'a> {
             })),
             locations: SlotMap::with_key(),
             location_names: SecondaryMap::new(),
+            #[cfg(feature = "sim")]
+            location_version: SecondaryMap::new(),
+            #[cfg(feature = "sim")]
+            location_version_group_root: SecondaryMap::new(),
             flow_name: name.into(),
             finalized: false,
             _phantom: PhantomData,
@@ -208,9 +221,19 @@ impl<'a> FlowBuilder<'a> {
         &self.flow_state
     }
 
+    fn insert_location(&mut self, ty: LocationType, name: String) -> LocationKey {
+        let key = self.locations.insert(ty);
+        self.location_names.insert(key, name);
+        #[cfg(feature = "sim")]
+        {
+            self.location_version.insert(key, 0);
+            self.location_version_group_root.insert(key, key);
+        }
+        key
+    }
+
     pub fn process<P>(&mut self) -> Process<'a, P> {
-        let key = self.locations.insert(LocationType::Process);
-        self.location_names.insert(key, type_name::<P>().to_owned());
+        let key = self.insert_location(LocationType::Process, type_name::<P>().to_owned());
         Process {
             key,
             flow_state: self.flow_state().clone(),
@@ -219,8 +242,7 @@ impl<'a> FlowBuilder<'a> {
     }
 
     pub fn cluster<C>(&mut self) -> Cluster<'a, C> {
-        let key = self.locations.insert(LocationType::Cluster);
-        self.location_names.insert(key, type_name::<C>().to_owned());
+        let key = self.insert_location(LocationType::Cluster, type_name::<C>().to_owned());
         Cluster {
             key,
             flow_state: self.flow_state().clone(),
@@ -229,9 +251,26 @@ impl<'a> FlowBuilder<'a> {
     }
 
     pub fn external<E>(&mut self) -> External<'a, E> {
-        let key = self.locations.insert(LocationType::External);
-        self.location_names.insert(key, type_name::<E>().to_owned());
+        let key = self.insert_location(LocationType::External, type_name::<E>().to_owned());
         External {
+            key,
+            flow_state: self.flow_state().clone(),
+            _phantom: PhantomData,
+        }
+    }
+
+    #[cfg(feature = "sim")]
+    pub fn next_version<C>(&mut self, cluster: &Cluster<'a, C>) -> Cluster<'a, C> {
+        let group_root = self.location_version_group_root[cluster.key];
+        let version = self
+            .location_version_group_root
+            .values()
+            .filter(|&&r| r == group_root)
+            .count() as u32;
+        let key = self.insert_location(LocationType::Cluster, type_name::<C>().to_owned());
+        self.location_version.insert(key, version);
+        self.location_version_group_root.insert(key, group_root);
+        Cluster {
             key,
             flow_state: self.flow_state().clone(),
             _phantom: PhantomData,
@@ -259,6 +298,10 @@ impl<'a> FlowBuilder<'a> {
             location_names: std::mem::take(&mut self.location_names),
             sidecars,
             flow_name: std::mem::take(&mut self.flow_name),
+            #[cfg(feature = "sim")]
+            location_version: std::mem::take(&mut self.location_version),
+            #[cfg(feature = "sim")]
+            location_version_group_root: std::mem::take(&mut self.location_version_group_root),
             _phantom: PhantomData,
         }
     }
@@ -343,6 +386,10 @@ impl<'a> FlowBuilder<'a> {
             })),
             locations: built.locations.clone(),
             location_names: built.location_names.clone(),
+            #[cfg(feature = "sim")]
+            location_version: built.location_version.clone(),
+            #[cfg(feature = "sim")]
+            location_version_group_root: built.location_version_group_root.clone(),
             flow_name: built.flow_name.clone(),
             finalized: false,
             _phantom: PhantomData,
