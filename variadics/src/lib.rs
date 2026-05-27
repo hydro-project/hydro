@@ -1,4 +1,6 @@
+#![no_std]
 #![warn(missing_docs)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc = include_str!("../README.md")]
 //! &nbsp;
 //!
@@ -10,17 +12,16 @@
 #![doc = include_str!("../var_type.md")]
 //! ## [`var_args!`]
 #![doc = include_str!("../var_args.md")]
-#![cfg_attr(docsrs, feature(doc_cfg))]
-#![cfg_attr(not(any(test, feature = "std")), no_std)]
 
+#[cfg(any(test, feature = "alloc"))]
 extern crate alloc;
+#[cfg(any(test, feature = "std"))]
+extern crate std;
 
 use core::any::Any;
 
 use sealed::sealed;
-/// module of collection types for variadics
-#[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-#[cfg(feature = "std")]
+/// Module of collection types for variadics
 pub mod variadic_collections;
 
 #[doc = include_str!("../var_expr.md")]
@@ -195,12 +196,12 @@ pub trait VariadicExt: Variadic {
     fn into_option(self) -> Self::IntoOption;
 
     /// type for all elements of the variadic being wrapped in `Vec`
-    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[cfg(feature = "alloc")]
     type IntoVec: VecVariadic<UnVec = Self> + Default;
     /// wrap all elements of the variadic in a `Vec`
-    #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
-    #[cfg(feature = "std")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
+    #[cfg(feature = "alloc")]
     fn into_singleton_vec(self) -> Self::IntoVec;
 }
 
@@ -287,12 +288,12 @@ where
         var_expr!(Some(item), ...rest.into_option())
     }
 
-    #[cfg(feature = "std")]
-    type IntoVec = (Vec<Item>, Rest::IntoVec);
-    #[cfg(feature = "std")]
+    #[cfg(feature = "alloc")]
+    type IntoVec = (alloc::vec::Vec<Item>, Rest::IntoVec);
+    #[cfg(feature = "alloc")]
     fn into_singleton_vec(self) -> Self::IntoVec {
         let var_args!(item, ...rest) = self;
-        var_expr!(vec!(item), ...rest.into_singleton_vec())
+        var_expr!(alloc::vec!(item), ...rest.into_singleton_vec())
     }
 }
 
@@ -346,9 +347,9 @@ impl VariadicExt for () {
     type IntoOption = ();
     fn into_option(self) -> Self::IntoOption {}
 
-    #[cfg(feature = "std")]
+    #[cfg(feature = "alloc")]
     type IntoVec = ();
-    #[cfg(feature = "std")]
+    #[cfg(feature = "alloc")]
     fn into_singleton_vec(self) -> Self::IntoVec {}
 }
 
@@ -771,7 +772,7 @@ where
 }
 
 /// Trait for Variadic of vecs, as formed by `VariadicExt::into_vec()`.
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 #[sealed]
 pub trait VecVariadic: VariadicExt {
     /// Individual variadic items without the Vec wrapper
@@ -801,9 +802,9 @@ pub trait VecVariadic: VariadicExt {
         R: core::ops::RangeBounds<usize> + Clone;
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 #[sealed]
-impl<Item, Rest> VecVariadic for (Vec<Item>, Rest)
+impl<Item, Rest> VecVariadic for (alloc::vec::Vec<Item>, Rest)
 where
     Rest: VecVariadic,
 {
@@ -849,7 +850,7 @@ where
     }
 }
 
-#[cfg(feature = "std")]
+#[cfg(feature = "alloc")]
 #[sealed]
 impl VecVariadic for () {
     type UnVec = ();
@@ -912,16 +913,24 @@ mod test {
     type _ListB = var_type!(..._ListA, bool, Option<()>);
     type _ListC = var_type!(..._ListA, bool, Option::<()>);
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_as_ref_var() {
+        use alloc::borrow::ToOwned;
+        use alloc::boxed::Box;
+
         let my_owned = var_expr!("Hello".to_owned(), Box::new(5));
         let my_ref_a = my_owned.as_ref_var();
         let my_ref_b = my_owned.as_ref_var();
         assert_eq!(my_ref_a, my_ref_b);
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_as_mut_var() {
+        use alloc::borrow::ToOwned;
+        use alloc::boxed::Box;
+
         let mut my_owned = var_expr!("Hello".to_owned(), Box::new(5));
         let var_args!(mut_str, mut_box) = my_owned.as_mut_var();
         *mut_str += " World";
@@ -930,8 +939,12 @@ mod test {
         assert_eq!(var_expr!("Hello World".to_owned(), Box::new(6)), my_owned);
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_iter_any() {
+        use alloc::borrow::ToOwned;
+        use alloc::string::String;
+
         let mut var = var_expr!(1_i32, false, "Hello".to_owned());
 
         let mut mut_iter = var.iter_any_mut();
@@ -973,9 +986,12 @@ mod test {
         }
     }
 
-    #[cfg(feature = "std")]
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_into_vec() {
+        use alloc::borrow::ToOwned;
+        use alloc::string::String;
+
         use crate::VecVariadic;
 
         type Item = var_type!(i32, String);
@@ -989,8 +1005,12 @@ mod test {
     }
 }
 
+#[cfg(feature = "alloc")]
 #[test]
 fn test_eq_ref_vec() {
+    use alloc::vec;
+    use alloc::vec::Vec;
+
     type MyVar = var_type!(i32, bool, &'static str);
     let vec: Vec<MyVar> = vec![
         var_expr!(0, true, "hello"),
@@ -1015,8 +1035,12 @@ fn test_eq_ref_vec() {
     );
 }
 
+#[cfg(feature = "alloc")]
 #[test]
 fn clone_var_test() {
+    use alloc::borrow::ToOwned;
+    use alloc::{format, vec};
+
     let ref_var = var_expr!(&1, &format!("hello {}", "world"), &vec![1, 2, 3]);
     let clone_var = CloneVariadic::clone_ref_var(ref_var);
     assert_eq!(

@@ -1,9 +1,11 @@
-use std::fmt;
-use std::hash::{BuildHasher, Hash, RandomState};
+use core::fmt;
+use core::hash::{BuildHasher, Hash};
 
 use hashbrown::hash_table::{Entry, HashTable};
 
-use crate::{PartialEqVariadic, VariadicExt, VecVariadic};
+#[cfg(feature = "alloc")]
+use crate::VecVariadic;
+use crate::{PartialEqVariadic, VariadicExt};
 
 /// Trait for a set of Variadic Tuples
 pub trait VariadicCollection: Extend<Self::Schema> {
@@ -32,34 +34,44 @@ pub trait VariadicCollection: Extend<Self::Schema> {
 /// trait for sets or multisets of variadics
 pub trait VariadicSet: VariadicCollection {}
 
+/// Default implementation of a set.
+#[cfg(feature = "std")]
+pub type VariadicHashSetStd<T> = VariadicHashSet<T, std::hash::RandomState>;
+
 /// HashSet that stores Variadics of owned values but allows
 /// for lookups with RefVariadics as well
 #[derive(Clone)]
-pub struct VariadicHashSet<T, S = RandomState> {
+pub struct VariadicHashSet<T, S> {
     table: HashTable<T>,
     hasher: S,
 }
 
-impl<T> VariadicHashSet<T> {
+#[cfg(feature = "std")]
+impl<T> VariadicHashSet<T, std::hash::RandomState> {
     /// Creates a new `VariadicHashSet` with a default hasher.
     pub fn new() -> Self {
         Self {
             table: HashTable::new(),
-            hasher: RandomState::default(),
+            hasher: std::hash::RandomState::default(),
         }
     }
 }
 
-impl<T> Default for VariadicHashSet<T> {
+impl<T, S> Default for VariadicHashSet<T, S>
+where
+    S: Default,
+{
     fn default() -> Self {
-        Self::new()
+        Self::with_hasher(S::default())
     }
 }
 
-impl<T> fmt::Debug for VariadicHashSet<T>
+#[cfg(feature = "alloc")]
+impl<T, S> fmt::Debug for VariadicHashSet<T, S>
 where
     T: fmt::Debug + VariadicExt + PartialEqVariadic + Eq + Hash,
     for<'a> T::AsRefVar<'a>: Hash + fmt::Debug,
+    S: BuildHasher,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set().entries(self.iter()).finish()
@@ -218,13 +230,17 @@ where
     }
 }
 
+/// Default implementation of a counted set.
+#[cfg(feature = "std")]
+pub type VariadicCountedHashSetStd<K> = VariadicCountedHashSet<K, std::hash::RandomState>;
+
 /// Trait for a multiset of Tuples
 pub trait VariadicMultiset: VariadicCollection {}
 
 /// HashMap keyed on Variadics of (owned value, count) pairs, allows
 /// for lookups with RefVariadics.
 #[derive(Clone)]
-pub struct VariadicCountedHashSet<K, S = RandomState>
+pub struct VariadicCountedHashSet<K, S>
 where
     K: VariadicExt,
 {
@@ -233,7 +249,8 @@ where
     len: usize,
 }
 
-impl<K> VariadicCountedHashSet<K>
+#[cfg(feature = "std")]
+impl<K> VariadicCountedHashSet<K, std::hash::RandomState>
 where
     K: VariadicExt,
 {
@@ -241,22 +258,24 @@ where
     pub fn new() -> Self {
         Self {
             table: HashTable::new(),
-            hasher: RandomState::default(),
+            hasher: std::hash::RandomState::default(),
             len: 0,
         }
     }
 }
 
-impl<K> Default for VariadicCountedHashSet<K>
+impl<K, S> Default for VariadicCountedHashSet<K, S>
 where
     K: VariadicExt,
+    S: Default,
 {
     fn default() -> Self {
-        Self::new()
+        Self::with_hasher(S::default())
     }
 }
 
-impl<K> fmt::Debug for VariadicCountedHashSet<K>
+#[cfg(feature = "alloc")]
+impl<K, S> fmt::Debug for VariadicCountedHashSet<K, S>
 where
     K: fmt::Debug + VariadicExt + PartialEqVariadic,
     for<'a> K::AsRefVar<'a>: Hash + fmt::Debug,
@@ -339,7 +358,7 @@ where
 {
 }
 
-impl<T> IntoIterator for VariadicCountedHashSet<T>
+impl<T, S> IntoIterator for VariadicCountedHashSet<T, S>
 where
     T: VariadicExt + PartialEqVariadic + Clone,
 {
@@ -475,6 +494,7 @@ where
 
 /// Column storage for Variadic tuples of type Schema
 /// An alternative to VariadicHashMultiset
+#[cfg(feature = "alloc")]
 #[derive(Clone)]
 pub struct VariadicColumnMultiset<Schema>
 where
@@ -484,6 +504,7 @@ where
     last_offset: usize,
 }
 
+#[cfg(feature = "alloc")]
 impl<T> VariadicColumnMultiset<T>
 where
     T: VariadicExt + Eq + Hash,
@@ -497,6 +518,7 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<T> Default for VariadicColumnMultiset<T>
 where
     T: VariadicExt + Eq + Hash,
@@ -506,6 +528,7 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<Schema> VariadicCollection for VariadicColumnMultiset<Schema>
 where
     Schema: PartialEqVariadic + Eq + Hash,
@@ -546,6 +569,7 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<Schema> VariadicMultiset for VariadicColumnMultiset<Schema>
 where
     Schema: PartialEqVariadic + Eq + Hash,
@@ -553,6 +577,7 @@ where
 {
 }
 
+#[cfg(feature = "alloc")]
 impl<T> fmt::Debug for VariadicColumnMultiset<T>
 where
     T: fmt::Debug + VariadicExt + PartialEqVariadic + Eq + Hash,
@@ -563,6 +588,7 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<Schema> IntoIterator for VariadicColumnMultiset<Schema>
 where
     Schema: PartialEqVariadic + Eq + Hash,
@@ -576,6 +602,7 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<K> Extend<K> for VariadicColumnMultiset<K>
 where
     K: Eq + Hash + PartialEqVariadic,
@@ -589,6 +616,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 #[cfg(test)]
 mod test {
     use super::*;
@@ -598,6 +626,9 @@ mod test {
 
     #[test]
     fn test_collections() {
+        use std::vec;
+        use std::vec::Vec;
+
         let test_data: Vec<TestSchema> = vec![
             var_expr!(1, 1, 1, "hello"),
             var_expr!(1, 1, 1, "hello"),
@@ -605,9 +636,9 @@ mod test {
             var_expr!(1, 1, 2, "world"),
         ];
 
-        let mut hash_set: VariadicHashSet<TestSchema> = Default::default();
+        let mut hash_set: VariadicHashSet<TestSchema, _> = VariadicHashSet::new();
         hash_set.extend(test_data.clone());
-        let mut multi_set: VariadicCountedHashSet<TestSchema> = Default::default();
+        let mut multi_set: VariadicCountedHashSet<TestSchema, _> = VariadicCountedHashSet::new();
         let hash = multi_set
             .hasher
             .hash_one(var_expr!(1, 1, 1, "world").as_ref_var());

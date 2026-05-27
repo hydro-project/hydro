@@ -41,14 +41,14 @@ macro_rules! GhtTypeWithSchema {
 /// # Example
 /// ```
 /// use lattices::GhtType;
-/// use variadics::variadic_collections::VariadicHashSet;
+/// use variadics::variadic_collections::VariadicHashSetStd;
 ///
-/// // This generates a Ght struct with (u16, u32) as key, (u64) as val, and VariadicHashSet as storage
-/// type MyHashGht = GhtType!(u16, u32 => u64: VariadicHashSet);
+/// // This generates a Ght struct with (u16, u32) as key, (u64) as val, and VariadicHashSetStd as storage
+/// type MyHashGht = GhtType!(u16, u32 => u64: VariadicHashSetStd);
 /// let my_ght = MyHashGht::default();
 ///
-/// /// // This generates a Ght struct with (u16, u32) as key, () as val, and VariadicCountedHashSet as storage
-/// type MyMultisetGht = GhtType!(u16, u32 => (): VariadicCountedHashSet);
+/// /// // This generates a Ght struct with (u16, u32) as key, () as val, and VariadicCountedHashSetStd as storage
+/// type MyMultisetGht = GhtType!(u16, u32 => (): VariadicCountedHashSetStd);
 /// let my_ght = MyMultisetGht::default();
 ///
 /// // This generates a Ght struct with (u16, u32) as key, () as val, and VariadicColumnSet as storage
