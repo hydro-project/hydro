@@ -988,25 +988,6 @@ impl DfirGraph {
             })
             .collect::<Vec<_>>();
 
-        // // For tick-boundary handoffs (`defer_tick` / `defer_tick_lazy`), declare a second "back" buffer for double-
-        // // buffering, which survives beyond the tick. At the start of each tick, the regular (inside-tick) buffer and
-        // // this back buffer are swapped so the consumer reads last tick's data while the producer writes to a fresh
-        // // buffer.
-        // let back_buffer_code = handoff_nodes
-        //     .iter()
-        //     .filter(|&&(node_id, _kind, _)| back_edge_hoffs_lazyness.contains_key(node_id))
-        //     .map(|&(node_id, kind, (src_span, dst_span))| {
-        //         assert!(
-        //             matches!(kind, HandoffKind::Vec),
-        //             "bug: only Vec handoffs should have delay types"
-        //         );
-        //         let span = src_span.join(dst_span).unwrap_or(src_span);
-        //         let back_ident = self.hoff_back_ident(node_id, span);
-        //         quote_spanned! {span=>
-        //             let mut #back_ident = #root::bumpalo::collections::Vec::new();
-        //         }
-        //     })
-        //     .collect::<Vec<_>>();
 
         // Generate swap code for tick-boundary (defer_tick / defer_tick_lazy) handoffs.
         // At the end of each tick, swap the regular buffer and back buffer so the
@@ -1019,14 +1000,7 @@ impl DfirGraph {
                 let buf_ident = self.hoff_buf_ident(hoff_id, span);
                 let back_ident = self.hoff_back_ident(hoff_id, span);
                 quote_spanned! {span=>
-                    // TODO(mingwei) - need to unify bumpalo and std::vec::vec.
-                    // TODO(mingwei) - this is terribly inefficient.
-                    {
-                        let x = #back_ident.len();
-                        #back_ident.extend(#buf_ident.drain(..));
-                        #buf_ident.extend(#back_ident.drain(..x));
-                    }
-                    // ::std::mem::swap(&mut #buf_ident, &mut #back_ident);
+                    ::std::mem::swap(&mut #buf_ident, &mut #back_ident);
                 }
             })
             .collect::<Vec<_>>();
@@ -1680,15 +1654,24 @@ impl DfirGraph {
 
                 let send_hoff_make_code = send_buf_idents.iter()
                     .zip(send_kinds.iter())
-                    .map(|(buf_ident, &kind)| {
+                    .zip(send_hoffs.iter())
+                    .map(|((buf_ident, &kind), &hoff_id)| {
                         let span = buf_ident.span();
-                        match kind {
-                            HandoffKind::Vec => quote_spanned! {span=>
-                                let mut #buf_ident = #root::allocator_api2::vec::Vec::new_in(&#bump_ident);
-                            },
-                            HandoffKind::Option => quote_spanned! {span=>
-                                let mut #buf_ident = ::std::option::Option::None;
-                            },
+                        if back_edge_hoffs_lazyness.contains_key(hoff_id) {
+                            // Defer_tick send buffers are declared outside the tick closure
+                            // as std::vec::Vec for O(1) swap. Just clear here.
+                            quote_spanned! {span=>
+                                #buf_ident.clear();
+                            }
+                        } else {
+                            match kind {
+                                HandoffKind::Vec => quote_spanned! {span=>
+                                    let mut #buf_ident = #root::allocator_api2::vec::Vec::new_in(&#bump_ident);
+                                },
+                                HandoffKind::Option => quote_spanned! {span=>
+                                    let mut #buf_ident = ::std::option::Option::None;
+                                },
+                            }
                         }
                     });
                 let recv_hoff_drop_code = recv_buf_idents
@@ -1784,6 +1767,10 @@ impl DfirGraph {
         let back_buffer_idents = back_buffer_idents_laziness
             .iter()
             .map(|(back_ident, _, _)| back_ident);
+        // For creating the send-side buffer for defer_tick handoffs (also outside the closure).
+        let defer_tick_buf_idents = back_buffer_idents_laziness
+            .iter()
+            .map(|(_, buf_ident, _)| buf_ident);
         // For checking if we should start the next tick (`schedule_subgraph`):
         // check the regular (send) buffer for non-lazy defer_tick handoffs, since
         // that's where the producer writes during this tick.
@@ -1820,11 +1807,11 @@ impl DfirGraph {
                 // #( #buffer_code )*
 
 
-                // For tick-boundary handoffs (`defer_tick` / `defer_tick_lazy`), declare a second "back" buffer for double-
-                // buffering, which survives beyond the tick. At the start of each tick, the regular (inside-tick) buffer and
-                // this back buffer are swapped so the consumer reads last tick's data while the producer writes to a fresh
-                // buffer.
+                // For tick-boundary handoffs (`defer_tick` / `defer_tick_lazy`), declare both the
+                // send buffer and the "back" buffer as std::vec::Vec outside the tick closure.
+                // This enables O(1) mem::swap at end of tick for double-buffering.
                 #( let mut #back_buffer_idents = ::std::vec::Vec::new(); )*
+                #( let mut #defer_tick_buf_idents = ::std::vec::Vec::new(); )*
 
                 // Bump allocator for handoffs (except for back-edge handoffs, above).
                 let mut #bump_ident = #root::blink_alloc::BlinkAlloc::with_chunk_size(4096);
