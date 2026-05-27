@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["DuplicateCounted","VariadicColumnMultiset","VariadicCountedHashSet","VariadicHashSet"],"trait":["VariadicCollection","VariadicMultiset","VariadicSet"]};
+window.SIDEBAR_ITEMS = {"struct":["DuplicateCounted","VariadicColumnMultiset","VariadicCountedHashSet","VariadicHashSet"],"trait":["VariadicCollection","VariadicMultiset","VariadicSet"],"type":["VariadicCountedHashSetStd","VariadicHashSetStd"]};
