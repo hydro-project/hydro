@@ -9,7 +9,7 @@ use lattices::map_union::{KeyedBimorphism, MapUnionHashMap, MapUnionSingletonMap
 use lattices::set_union::{CartesianProductBimorphism, SetUnionHashSet, SetUnionSingletonSet};
 use multiplatform_test::multiplatform_test;
 use variadics::CloneVariadic;
-use variadics::variadic_collections::VariadicHashSet;
+use variadics::variadic_collections::VariadicHashSetStd;
 
 #[multiplatform_test]
 pub fn test_cartesian_product() {
@@ -166,13 +166,13 @@ pub fn test_cartesian_product_tick_state() {
 
 #[multiplatform_test]
 fn test_ght_join_bimorphism() {
-    type MyGhtATrie = GhtType!(u32, u64, u16 => &'static str: VariadicHashSet);
-    type MyGhtBTrie = GhtType!(u32, u64, u16 => &'static str: VariadicHashSet);
+    type MyGhtATrie = GhtType!(u32, u64, u16 => &'static str: VariadicHashSetStd);
+    type MyGhtBTrie = GhtType!(u32, u64, u16 => &'static str: VariadicHashSetStd);
 
     type JoinSchema = variadics::var_type!(u32, u64, u16, &'static str, &'static str);
 
     type MyNodeBim = <(MyGhtATrie, MyGhtBTrie) as DeepJoinLatticeBimorphism<
-        VariadicHashSet<JoinSchema>,
+        VariadicHashSetStd<JoinSchema>,
     >>::DeepJoinLatticeBimorphism;
     type MyBim = GhtBimorphism<MyNodeBim>;
 
