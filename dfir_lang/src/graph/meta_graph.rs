@@ -976,23 +976,6 @@ impl DfirGraph {
         // Tick-local bump-allocated Vec handoff declarations (inside the tick closure).
         let bump_ident = Ident::new("__dfir_bump", Span::call_site());
 
-        // // Handoff buffers that live within the tick.
-        // let buffer_code = handoff_nodes
-        //     .iter()
-        //     .map(|&(node_id, kind, (src_span, dst_span))| {
-        //         let span = src_span.join(dst_span).unwrap_or(src_span);
-        //         let buf_ident = self.hoff_buf_ident(node_id, span);
-        //         match kind {
-        //             HandoffKind::Vec => quote_spanned! {span=>
-        //                 let mut #buf_ident = ::std::vec::Vec::new();
-        //             },
-        //             HandoffKind::Option => quote_spanned! {span=>
-        //                 let mut #buf_ident = ::std::option::Option::None;
-        //             },
-        //         }
-        //     })
-        //     .collect::<Vec<_>>();
-
         // 1. Collect all handoff nodes.
         let handoff_nodes = self
             .nodes
@@ -1011,7 +994,7 @@ impl DfirGraph {
         // Determine which handoff nodes are tick-boundary (defer_tick) back-edges.
         // These must remain as captured Vec<T> since they persist across ticks.
         // All other Vec handoffs will be bump-allocated (tick-local).
-        let back_edge_hoffs_lazyness = handoff_nodes
+        let back_edge_hoffs_and_lazyness = handoff_nodes
             .iter()
             .map(|&(node_id, _, _)| node_id)
             .filter_map(|node_id| {
@@ -1031,7 +1014,7 @@ impl DfirGraph {
         let back_buffer_idents_laziness = handoff_nodes
             .iter()
             .filter_map(|&(hoff_id, _kind, (src_span, dst_span))| {
-                back_edge_hoffs_lazyness.get(hoff_id).map(|&is_lazy| {
+                back_edge_hoffs_and_lazyness.get(hoff_id).map(|&is_lazy| {
                     let span = src_span.join(dst_span).unwrap_or(src_span);
                     let back_ident = self.hoff_back_ident(hoff_id, span);
                     let buf_ident = self.hoff_buf_ident(hoff_id, span);
@@ -1040,13 +1023,12 @@ impl DfirGraph {
             })
             .collect::<Vec<_>>();
 
-
         // Generate swap code for tick-boundary (defer_tick / defer_tick_lazy) handoffs.
         // At the end of each tick, swap the regular buffer and back buffer so the
         // consumer reads last tick's data from the back buffer.
         let back_edge_swap_code = handoff_nodes
             .iter()
-            .filter(|&&(node_id, _kind, _)| back_edge_hoffs_lazyness.contains_key(node_id))
+            .filter(|&&(node_id, _kind, _)| back_edge_hoffs_and_lazyness.contains_key(node_id))
             .map(|&(hoff_id, _kind, _)| {
                 let span = self.nodes[hoff_id].span();
                 let buf_ident = self.hoff_buf_ident(hoff_id, span);
@@ -1072,8 +1054,6 @@ impl DfirGraph {
         // can_start_tick so that run_available continues ticking.
         //
         // TODO(mingwei): right now we topo sort more than once in the build process, we should keep a single order.
-        // let mut defer_tick_buf_idents: Vec<Ident> = Vec::new();
-        // let mut back_edge_hoffs_lazyness: BTreeSet<GraphNodeId> = BTreeSet::new();
         let all_subgraphs = {
             // Build predecessor map for subgraphs.
             let mut sg_preds: SecondaryMap<GraphSubgraphId, Vec<GraphSubgraphId>> =
@@ -1097,7 +1077,7 @@ impl DfirGraph {
                     panic!("bug: unexpected subgraph self-handoff cycle");
                 }
                 // Only consider non-back-edges.
-                if !back_edge_hoffs_lazyness.contains_key(hoff_id) {
+                if !back_edge_hoffs_and_lazyness.contains_key(hoff_id) {
                     sg_preds.entry(succ_sg).unwrap().or_default().push(pred_sg);
                 }
             }
@@ -1162,20 +1142,6 @@ impl DfirGraph {
 
         // TODO(mingwei): If a handoff has no pipe consumers we should drop it as soon as possible, after all reference
         // consumers. Right now we just let these handoffs die at the end of the tick.
-        // // Generate drain code for handoffs with no pipe consumer (0 successors).
-        // // These are only accessed via #var references and must be cleared each tick.
-        // let no_consumer_drain_code: Vec<TokenStream> = handoff_nodes
-        //     .iter()
-        //     .filter(|&&(node_id, _, _)| self.node_degree_out(node_id) == 0)
-        //     .map(|&(node_id, kind, (src_span, dst_span))| {
-        //         let span = src_span.join(dst_span).unwrap_or(src_span);
-        //         let buf_ident = self.hoff_buf_ident(node_id, span);
-        //         match kind {
-        //             HandoffKind::Option => quote_spanned! {span=> #buf_ident.take(); },
-        //             HandoffKind::Vec => quote_spanned! {span=> #buf_ident.clear(); },
-        //         }
-        //     })
-        //     .collect();
 
         let mut op_prologue_code = Vec::new();
         let mut op_tick_end_code = Vec::new();
@@ -1251,7 +1217,7 @@ impl DfirGraph {
                                 // Special asymmetric handling for defer tick handoffs, which are double-buffered. We
                                 // _send_ to the back buffer (here) and _recv_ from the regular buffer (regular case
                                 // below).
-                                let drain_ident = if back_edge_hoffs_lazyness.contains_key(hoff_id) {
+                                let drain_ident = if back_edge_hoffs_and_lazyness.contains_key(hoff_id) {
                                     &self.hoff_back_ident(hoff_id, buf_ident.span())
                                 } else {
                                     buf_ident
@@ -1299,8 +1265,8 @@ impl DfirGraph {
                             }
                             HandoffKind::Vec => {
                                 quote_spanned! {port_ident.span()=>
+                                    // TODO(mingwei): use `#root::dfir_pipes::push::vec_push`?
                                     let #port_ident = #root::dfir_pipes::push::for_each(|item| { #buf_ident.push(item); });
-                                    // let #port_ident = #root::dfir_pipes::push::vec_push(&mut #buf_ident);
                                 }
                             }
                         }
@@ -1703,12 +1669,13 @@ impl DfirGraph {
                     })
                     .collect::<Vec<_>>();
 
+                // Create the handoffs we are about to push to (send).
                 let send_hoff_make_code = send_buf_idents.iter()
                     .zip(send_kinds.iter())
                     .zip(send_hoffs.iter())
                     .map(|((buf_ident, &kind), &hoff_id)| {
                         let span = buf_ident.span();
-                        if back_edge_hoffs_lazyness.contains_key(hoff_id) {
+                        if back_edge_hoffs_and_lazyness.contains_key(hoff_id) {
                             // Defer_tick send buffers are declared outside the tick closure
                             // as std::vec::Vec for O(1) swap. Just clear here.
                             quote_spanned! {span=>
@@ -1725,10 +1692,13 @@ impl DfirGraph {
                             }
                         }
                     });
+                // Drop the handoffs we just drained (recv).
+                // TODO(mingwei): we could use `.into_iter()` instead of `.drain(..)` to consume the handoffs directly.
+                // This only works for handoffs within the tick, though, not `defer_tick` handoffs.
                 let recv_hoff_drop_code = recv_buf_idents
                     .iter()
                     .zip(recv_hoffs.iter())
-                    .filter(|&(_, &hoff_id)| !back_edge_hoffs_lazyness.contains_key(hoff_id))
+                    .filter(|&(_, &hoff_id)| !back_edge_hoffs_and_lazyness.contains_key(hoff_id))
                     .map(|(buf_ident, _)| {
                         let span = buf_ident.span();
                         quote_spanned! {span=>
@@ -1737,7 +1707,7 @@ impl DfirGraph {
                     });
 
                 subgraph_blocks.push(quote! {
-                    // Create the send handoffs we will push to.
+                    // Create the handoffs we are about to push to (send).
                     #( #send_hoff_make_code )*
 
                     let #sg_fut_ident = async {
@@ -1760,7 +1730,7 @@ impl DfirGraph {
                         // Update send (output) handoff metrics.
                         #( #send_metrics_code )*
 
-                        // Drop the recv handoffs we just drained.
+                        // Drop the handoffs we just drained (recv).
                         #( #recv_hoff_drop_code )*
                     }
                 });
@@ -1854,9 +1824,6 @@ impl DfirGraph {
                 );
 
                 #( #op_prologue_code )*
-
-                // #( #buffer_code )*
-
 
                 // For tick-boundary handoffs (`defer_tick` / `defer_tick_lazy`), declare both the
                 // send buffer and the "back" buffer as std::vec::Vec outside the tick closure.
