@@ -880,18 +880,13 @@ impl FlatGraphBuilder {
                         &mut self.diagnostics,
                     );
                     let out_degree = self.flat_graph.node_degree_out(node_id);
-                    let out_degree_range = match kind {
-                        // Both `handoff()` and `singleton()` may be no-output, only by ref.
-                        HandoffKind::Vec => 0..=1,
-                        HandoffKind::Option => 0..=1,
-                    };
                     emit_arity_error(
                         *src_span,
                         op_name,
                         false,
                         true,
                         out_degree,
-                        &out_degree_range,
+                        &(0..=1), /* Both `handoff()` and `singleton()` may be no-output, for use by ref. */
                         &mut self.diagnostics,
                     );
                 }
