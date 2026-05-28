@@ -802,11 +802,13 @@ impl<K: Hash + Eq + Clone, V: Clone> SimHook for KeyedSingletonHook<K, V> {
         #[expect(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
         for (key, queue) in current_input.iter_mut() {
             if queue.is_empty() {
-                self.to_release.as_mut().unwrap().push((
-                    key.clone(),
-                    self.last_released.get(key).unwrap().clone(),
-                    false,
-                ));
+                if produce().generate(driver).unwrap() {
+                    self.to_release.as_mut().unwrap().push((
+                        key.clone(),
+                        self.last_released.get(key).unwrap().clone(),
+                        false,
+                    ));
+                }
 
                 continue;
             }

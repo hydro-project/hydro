@@ -730,3 +730,115 @@ fn sim_singleton_not_ready_until_producer_runs() {
         let _ = out_port.next().await;
     });
 }
+
+/// This is a minimal repro of a bug found when implementing a single-value key value store.
+///
+/// The actual implemention of the store is incorrect, it is possible to write one value to one member of
+/// the cluster then read from the other member of the cluster and get two different values. This test showed that
+/// the simulator never caught that bug.
+#[test]
+fn sim_keyed_singleton_null_release() {
+    use crate::location::Cluster;
+    use crate::networking::TCP;
+
+    let mut flow = FlowBuilder::new();
+    let clients: Cluster<()> = flow.cluster::<()>();
+    let servers: Cluster<()> = flow.cluster::<()>();
+    let (inputter, requests) = clients.sim_input::<u32>();
+
+    // Membership as a KeyedSingleton<MemberId, bool>
+    let membership = clients
+        .source_cluster_membership_stream(&servers, nondet!(/** test */))
+        .fold(
+            q!(|| false),
+            q!(|present, event| {
+                match event {
+                    crate::location::MembershipEvent::Joined => *present = true,
+                    crate::location::MembershipEvent::Left => *present = false,
+                }
+            }),
+        );
+
+    // sliced! block: snapshot membership + batch requests, route to max member
+    let (routed, members_out) = sliced! {
+        let members = use(membership, nondet!(/** membership nondet */));
+        let reqs = use(requests, nondet!(/** request batching */));
+
+        let current_members = members
+            .filter(q!(|b| *b))
+            .keys()
+            .assume_ordering::<TotalOrder>(nondet!(/** order */))
+            .collect_vec();
+
+        let routed = reqs
+            .cross_singleton(current_members.clone())
+            .filter_map(q!(|(val, members)| {
+                members.iter().max().map(|m| (m.clone(), val))
+            }));
+
+        (routed, current_members.map(q!(|v| v.len())).into_stream())
+    };
+
+    // Send to servers, process, send back
+    let on_servers = routed.demux(&servers, TCP.fail_stop().bincode());
+    let responses = on_servers
+        .entries()
+        .assume_ordering::<TotalOrder>(nondet!(/** server ordering */))
+        .scan(
+            q!(|| 0u32),
+            q!(|acc, (client_id, val)| {
+                *acc = (*acc).max(val);
+                Some((client_id, *acc))
+            }),
+        )
+        .into_keyed()
+        .demux(&clients, TCP.fail_stop().bincode())
+        .values()
+        .weaken_ordering();
+
+    let output = responses.sim_cluster_output();
+    let membership_output = members_out.sim_cluster_output();
+
+    let mut at_least_one_worked = false;
+    let mut received_stale_value = false;
+
+    flow.sim()
+        .with_cluster_size(&clients, 2)
+        .with_cluster_size(&servers, 2)
+        .compiled()
+        .exhaustive(async || {
+            // Wait for client 0 to see both servers
+            loop {
+                match membership_output.next(0).await {
+                    Some(2) => break,
+                    Some(_) => continue,
+                    None => return,
+                }
+            }
+
+            // Do not wait for client 1 to see both servers, so it is possible that client 1 can have an incomplete membership list.
+
+            // Client 0 sends 1 → routes to Server(1)
+            inputter.send(0, 1u32);
+            match output.collect_sorted::<Vec<_>>(0).await.as_slice() {
+                [1] => {}
+                _ => return,
+            }
+
+            // Client 1 sends 0 — with partial membership routes to Server(0)
+            // which has max=0, so returns 0 (stale)
+            inputter.send(1, 0u32);
+            match output.collect_sorted::<Vec<_>>(1).await.as_slice() {
+                [] => {}
+                [1] => at_least_one_worked = true,
+                [0] => received_stale_value = true,
+                other => panic!("unexpected: {other:?}"),
+            }
+        });
+
+    assert!(at_least_one_worked);
+    assert!(
+        received_stale_value,
+        "Simulator never found a stale read — partial membership not explored."
+    );
+}
