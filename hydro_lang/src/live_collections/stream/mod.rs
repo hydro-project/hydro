@@ -551,10 +551,10 @@ where
     /// ```
     pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Stream<U, L, B, O, R>
     where
-        F: Fn(T) -> U + 'a,
+        F: FnMut(T) -> U + 'a, // TODO(mingwei): `Fn` vs `FnMut`.
     {
         let f = crate::singleton_ref::with_singleton_capture(|| {
-            f.splice_fn1_ctx(&self.location).into()
+            f.splice_fnmut1_ctx(&self.location).into()
         });
         Stream::new(
             self.location.clone(),

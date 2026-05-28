@@ -4,4 +4,5 @@ pub mod count_elems;
 pub mod futures;
 pub mod graph_reachability;
 pub mod singleton_input;
+pub mod singleton_mut;
 pub mod singleton_ref;

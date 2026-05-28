@@ -344,6 +344,19 @@ where
         crate::singleton_ref::SingletonRef::new(&self.ir_node)
     }
 
+    /// Returns a mutable reference handle to this singleton that can be captured inside `q!()`
+    /// closures. The handle resolves to `&mut T` at runtime.
+    ///
+    /// Mutable references are ordered via access groups in the generated DFIR code, ensuring
+    /// exclusive access at each point in the execution order.
+    // TODO(mingwei): Add example here
+    pub fn by_mut(&self) -> crate::singleton_ref::SingletonMut<'a, '_, T, L>
+    where
+        B: IsBounded,
+    {
+        crate::singleton_ref::SingletonMut::new(&self.ir_node)
+    }
+
     /// Weakens the consistency of this live collection to not guarantee any consistency across
     /// cluster members (if this collection is on a cluster).
     pub fn weaken_consistency(self) -> Singleton<T, L::DropConsistency, B>
