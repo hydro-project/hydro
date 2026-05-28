@@ -26,8 +26,6 @@ pub use ::{
     pin_project_lite, rustc_hash, serde, serde_json, sinktools, slotmap, tokio, tokio_stream,
     tokio_util, tracing, variadics, web_time,
 };
-#[cfg(feature = "meta")]
-#[cfg_attr(docsrs, doc(cfg(feature = "meta")))]
 #[doc(hidden)]
 pub use dfir_pipes::itertools;
 #[doc(hidden)]

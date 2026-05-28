@@ -1214,9 +1214,9 @@ impl DfirGraph {
                                 quote! { #root::dfir_pipes::pull::iter(#buf_ident.take().into_iter()) },
                             ),
                             HandoffKind::Vec => {
-                                // Special asymmetric handling for defer tick handoffs, which are double-buffered. We
-                                // _send_ to the back buffer (here) and _recv_ from the regular buffer (regular case
-                                // below).
+                                // Special asymmetric handling for defer tick handoffs, which are double-buffered.
+                                // The producer writes to the regular buffer; at end-of-tick the buffers are swapped,
+                                // so the consumer drains from the back buffer (here).
                                 let drain_ident = if back_edge_hoffs_and_lazyness.contains_key(hoff_id) {
                                     &self.hoff_back_ident(hoff_id, buf_ident.span())
                                 } else {
