@@ -202,3 +202,49 @@ pub async fn test_singleton_access_group_ordering() {
     drop(flow);
     assert_eq!(vec![11], output);
 }
+
+/// Test: `handoff()` can be referenced via `#var`, resolving to `&Vec<T>`.
+#[dfir_rs::test]
+pub async fn test_handoff_reference() {
+    let mut output = Vec::<usize>::new();
+    let out = &mut output;
+    let mut flow = dfir_rs::dfir_syntax! {
+        my_buf = source_iter(1..=5_i32) -> handoff();
+        my_buf -> for_each(|_| {});
+        source_iter([()]) -> map(|_| #my_buf.len()) -> for_each(|v: usize| out.push(v));
+    };
+    flow.run_tick().await;
+    drop(flow);
+    assert_eq!(vec![5], output);
+}
+
+/// Test: `handoff()` referenced via `#var` with no direct consumer (0 successors).
+#[dfir_rs::test]
+pub async fn test_handoff_reference_only() {
+    let mut output = Vec::<usize>::new();
+    let out = &mut output;
+    let mut flow = dfir_rs::dfir_syntax! {
+        my_buf = source_iter(1..=5_i32) -> handoff();
+        source_iter([()]) -> map(|_| #my_buf.len()) -> for_each(|v: usize| out.push(v));
+    };
+    flow.run_tick().await;
+    drop(flow);
+    assert_eq!(vec![5], output);
+}
+
+/// Test: `handoff()` can be mutably referenced via `#mut var`.
+#[dfir_rs::test]
+pub async fn test_handoff_mut_reference() {
+    let mut output = Vec::<i32>::new();
+    let out = &mut output;
+    let mut flow = dfir_rs::dfir_syntax! {
+        my_buf = source_iter(1..=5_i32) -> handoff();
+        my_buf -> for_each(|v: i32| out.push(v));
+        // Mutably reference the buffer to retain only items > 3 before the pipe consumer drains.
+        source_iter([()]) -> map(|_| { #mut my_buf.retain(|x| *x > 3); }) -> for_each(|_| {});
+    };
+    flow.run_tick().await;
+    drop(flow);
+    // The pipe consumer should only see items that survived the retain.
+    assert_eq!(vec![4, 5], output);
+}
