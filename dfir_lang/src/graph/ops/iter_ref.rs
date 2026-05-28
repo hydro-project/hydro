@@ -42,9 +42,18 @@ pub const ITER_REF: OperatorConstraints = OperatorConstraints {
                    op_span,
                    ident,
                    arguments,
+                   op_inst,
                    ..
                },
-               _| {
+               diagnostics| {
+        if op_inst.singletons_referenced.is_empty() {
+            diagnostics.push(crate::diagnostic::Diagnostic::spanned(
+                op_span,
+                crate::diagnostic::Level::Error,
+                "iter_ref() requires a `#handoff_name` reference as its argument.".to_owned(),
+            ));
+        }
+
         let arg = &arguments[0];
         let write_iterator = quote_spanned! {op_span=>
             let #ident = #root::dfir_pipes::pull::iter((#arg).iter());

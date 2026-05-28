@@ -277,3 +277,31 @@ pub async fn test_iter_ref_no_consumer() {
     drop(flow);
     assert_eq!(vec![1, 2, 3], output);
 }
+
+/// Test: `iter_ref(#my_buf)` across multiple ticks with a streaming source.
+#[dfir_rs::test]
+pub async fn test_iter_ref_multi_tick() {
+    let (send, recv) = dfir_rs::util::unbounded_channel::<i32>();
+    let output = std::rc::Rc::new(std::cell::RefCell::new(Vec::<i32>::new()));
+    let out = output.clone();
+    let mut flow = dfir_rs::dfir_syntax! {
+        my_buf = source_stream(recv) -> handoff();
+        my_buf -> for_each(|_| {});
+        iter_ref(#my_buf) -> for_each(|v: &i32| out.borrow_mut().push(*v));
+    };
+
+    send.send(10).unwrap();
+    send.send(20).unwrap();
+    flow.run_tick().await;
+    assert_eq!(vec![10, 20], *output.borrow());
+
+    output.borrow_mut().clear();
+    send.send(30).unwrap();
+    flow.run_tick().await;
+    assert_eq!(vec![30], *output.borrow());
+
+    // No input: handoff is empty, iter_ref emits nothing.
+    output.borrow_mut().clear();
+    flow.run_tick().await;
+    assert_eq!(Vec::<i32>::new(), *output.borrow());
+}
