@@ -904,7 +904,9 @@ where
     where
         F: Fn(T) -> Option<U> + 'a,
     {
-        let f = f.splice_fn1_ctx(&self.location).into();
+        let f = crate::singleton_ref::with_singleton_capture(|| {
+            f.splice_fn1_ctx(&self.location).into()
+        });
         Stream::new(
             self.location.clone(),
             HydroNode::FilterMap {
