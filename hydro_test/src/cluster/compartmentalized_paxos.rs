@@ -56,7 +56,7 @@ impl<'a> PaxosLike<'a> for CoreCompartmentalizedPaxos<'a> {
         ballot.map(q!(|ballot| ballot.proposer_id))
     }
 
-    fn build<P: PaxosPayload>(
+    fn build<P: PaxosPayload + 'a>(
         self,
         with_ballot: impl FnOnce(
             Stream<Ballot, Cluster<'a, Self::PaxosIn>, Unbounded>,
@@ -103,7 +103,7 @@ impl<'a> PaxosLike<'a> for CoreCompartmentalizedPaxos<'a> {
     clippy::too_many_arguments,
     reason = "internal paxos code // TODO"
 )]
-pub fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
+pub fn compartmentalized_paxos_core<'a, P: PaxosPayload + 'a>(
     proposers: &Cluster<'a, Proposer>,
     proxy_leaders: &Cluster<'a, ProxyLeader>,
     acceptors: &Cluster<'a, Acceptor>,
