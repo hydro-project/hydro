@@ -36,7 +36,7 @@ pub enum Sidecar {
 use crate::sim::flow::SimFlow;
 use crate::staging_util::Invariant;
 
-#[stageleft::export(ExternalPortId, CycleId, ClockId, SidecarId)]
+#[stageleft::export(ExternalPortId, CycleId, ClockId, SidecarId, StmtId, HandoffId)]
 crate::newtype_counter! {
     /// ID for an external output.
     pub struct ExternalPortId(usize);
@@ -49,6 +49,12 @@ crate::newtype_counter! {
 
     /// ID for user-owned sidecars.
     pub struct SidecarId(usize);
+
+    /// ID for a statement in the emitted DFIR graph.
+    pub struct StmtId(usize);
+
+    /// ID for a handoff channel in the simulator.
+    pub struct HandoffId(usize);
 }
 
 impl CycleId {

@@ -5,6 +5,7 @@ use proc_macro2::Span;
 use quote::ToTokens;
 use syn::parse_quote;
 
+use crate::compile::builder::{HandoffId, StmtId};
 use crate::compile::ir::{
     CollectionKind, DebugExpr, DfirBuilder, HydroIrOpMetadata, StreamOrder, StreamRetry,
 };
@@ -33,7 +34,7 @@ pub struct SimBuilder {
     pub cluster_graphs: BTreeMap<LocationId, FlatGraphBuilder>,
     pub process_tick_dfirs: BTreeMap<LocationId, FlatGraphBuilder>,
     pub cluster_tick_dfirs: BTreeMap<LocationId, FlatGraphBuilder>,
-    pub next_hoff_id: usize,
+    pub next_hoff_id: HandoffId,
     pub test_safety_only: bool,
     pub skip_consistency_assertions: bool,
 }
@@ -167,8 +168,7 @@ impl DfirBuilder for SimBuilder {
                         }
                     };
 
-                    let hoff_id = self.next_hoff_id;
-                    self.next_hoff_id += 1;
+                    let hoff_id = self.next_hoff_id.get_and_increment();
 
                     let buffered_ident =
                         syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
@@ -232,8 +232,7 @@ impl DfirBuilder for SimBuilder {
                         }
                     };
 
-                    let hoff_id = self.next_hoff_id;
-                    self.next_hoff_id += 1;
+                    let hoff_id = self.next_hoff_id.get_and_increment();
 
                     let buffered_ident =
                         syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
@@ -282,8 +281,7 @@ impl DfirBuilder for SimBuilder {
                 CollectionKind::Singleton { element_type, .. } => {
                     debug_assert!(in_location.is_top_level());
 
-                    let hoff_id = self.next_hoff_id;
-                    self.next_hoff_id += 1;
+                    let hoff_id = self.next_hoff_id.get_and_increment();
 
                     let buffered_ident =
                         syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
@@ -347,8 +345,7 @@ impl DfirBuilder for SimBuilder {
                 } => {
                     debug_assert!(in_location.is_top_level());
 
-                    let hoff_id = self.next_hoff_id;
-                    self.next_hoff_id += 1;
+                    let hoff_id = self.next_hoff_id.get_and_increment();
 
                     let buffered_ident =
                         syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
@@ -427,8 +424,7 @@ impl DfirBuilder for SimBuilder {
                         todo!("atomic yield to a different tick is not yet supported");
                     }
                 } else {
-                    let hoff_id = self.next_hoff_id;
-                    self.next_hoff_id += 1;
+                    let hoff_id = self.next_hoff_id.get_and_increment();
 
                     let hoff_send_ident =
                         syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());
@@ -567,8 +563,7 @@ impl DfirBuilder for SimBuilder {
                         ..
                     },
                 ) => {
-                    let hoff_id = self.next_hoff_id;
-                    self.next_hoff_id += 1;
+                    let hoff_id = self.next_hoff_id.get_and_increment();
 
                     let buffered_ident =
                         syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
@@ -641,8 +636,7 @@ impl DfirBuilder for SimBuilder {
                         ..
                     },
                 ) => {
-                    let hoff_id = self.next_hoff_id;
-                    self.next_hoff_id += 1;
+                    let hoff_id = self.next_hoff_id.get_and_increment();
 
                     let buffered_ident =
                         syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
@@ -716,8 +710,7 @@ impl DfirBuilder for SimBuilder {
                         ..
                     },
                 ) => {
-                    let hoff_id = self.next_hoff_id;
-                    self.next_hoff_id += 1;
+                    let hoff_id = self.next_hoff_id.get_and_increment();
 
                     let buffered_ident =
                         syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
@@ -803,8 +796,7 @@ impl DfirBuilder for SimBuilder {
                         ..
                     },
                 ) => {
-                    let hoff_id = self.next_hoff_id;
-                    self.next_hoff_id += 1;
+                    let hoff_id = self.next_hoff_id.get_and_increment();
 
                     let buffered_ident =
                         syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
@@ -863,8 +855,7 @@ impl DfirBuilder for SimBuilder {
                         ..
                     },
                 ) => {
-                    let hoff_id = self.next_hoff_id;
-                    self.next_hoff_id += 1;
+                    let hoff_id = self.next_hoff_id.get_and_increment();
 
                     let buffered_ident =
                         syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
@@ -923,8 +914,7 @@ impl DfirBuilder for SimBuilder {
                         ..
                     },
                 ) => {
-                    let hoff_id = self.next_hoff_id;
-                    self.next_hoff_id += 1;
+                    let hoff_id = self.next_hoff_id.get_and_increment();
 
                     let buffered_ident =
                         syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
@@ -1018,8 +1008,7 @@ impl DfirBuilder for SimBuilder {
         if !location.is_root() || in_kind.is_bounded() {
             // Inside a tick: both inputs are fully materialized batches.
             // Generate a valid interleaving preserving per-input order.
-            let hoff_id = self.next_hoff_id;
-            self.next_hoff_id += 1;
+            let hoff_id = self.next_hoff_id.get_and_increment();
 
             let buffered_first_ident =
                 syn::Ident::new(&format!("__buffered_first_{hoff_id}"), Span::call_site());
@@ -1114,8 +1103,7 @@ impl DfirBuilder for SimBuilder {
                 None,
             );
         } else {
-            let hoff_id = self.next_hoff_id;
-            self.next_hoff_id += 1;
+            let hoff_id = self.next_hoff_id.get_and_increment();
 
             let buffered_first_ident =
                 syn::Ident::new(&format!("__buffered_first_{hoff_id}"), Span::call_site());
@@ -1187,7 +1175,7 @@ impl DfirBuilder for SimBuilder {
         sink: syn::Expr,
         source: syn::Expr,
         deserialize: Option<&DebugExpr>,
-        tag_id: usize,
+        tag_id: StmtId,
         networking_info: &crate::networking::NetworkingInfo,
     ) {
         use crate::networking::{NetworkingInfo, TcpFault};
@@ -1443,7 +1431,7 @@ impl DfirBuilder for SimBuilder {
         source_expr: syn::Expr,
         out_ident: &syn::Ident,
         deserialize: Option<&DebugExpr>,
-        tag_id: usize,
+        tag_id: StmtId,
     ) {
         if let Some(deserialize_pipeline) = deserialize {
             self.get_dfir_mut(on).add_dfir(
@@ -1470,7 +1458,7 @@ impl DfirBuilder for SimBuilder {
         sink_expr: syn::Expr,
         input_ident: &syn::Ident,
         serialize: Option<&DebugExpr>,
-        tag_id: usize,
+        tag_id: StmtId,
     ) {
         let grabbed_ident = syn::Ident::new(&format!("__sink_{tag_id}"), Span::call_site());
         self.add_extra_stmt_internal(
@@ -1523,8 +1511,7 @@ impl DfirBuilder for SimBuilder {
             let root = get_this_crate();
 
             let tick_location = location;
-            let hoff_id = self.next_hoff_id;
-            self.next_hoff_id += 1;
+            let hoff_id = self.next_hoff_id.get_and_increment();
 
             let buffered_ident =
                 syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
@@ -1611,8 +1598,7 @@ impl DfirBuilder for SimBuilder {
             _ => return None,
         };
 
-        let hoff_id = self.next_hoff_id;
-        self.next_hoff_id += 1;
+        let hoff_id = self.next_hoff_id.get_and_increment();
 
         let buffered_ident = syn::Ident::new(&format!("__buffered_{hoff_id}"), Span::call_site());
         let hoff_send_ident = syn::Ident::new(&format!("__hoff_send_{hoff_id}"), Span::call_site());

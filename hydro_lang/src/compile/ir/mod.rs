@@ -25,6 +25,8 @@ use syn::visit_mut::VisitMut;
 
 #[cfg(feature = "build")]
 use crate::compile::builder::ClockId;
+#[cfg(feature = "build")]
+use crate::compile::builder::StmtId;
 use crate::compile::builder::{CycleId, ExternalPortId};
 #[cfg(feature = "build")]
 use crate::compile::deploy_provider::{Deploy, Node, RegisterPort};
@@ -621,7 +623,7 @@ pub trait DfirBuilder {
         sink: syn::Expr,
         source: syn::Expr,
         deserialize: Option<&DebugExpr>,
-        tag_id: usize,
+        tag_id: StmtId,
         networking_info: &crate::networking::NetworkingInfo,
     );
 
@@ -631,7 +633,7 @@ pub trait DfirBuilder {
         source_expr: syn::Expr,
         out_ident: &syn::Ident,
         deserialize: Option<&DebugExpr>,
-        tag_id: usize,
+        tag_id: StmtId,
     );
 
     fn create_external_output(
@@ -640,7 +642,7 @@ pub trait DfirBuilder {
         sink_expr: syn::Expr,
         input_ident: &syn::Ident,
         serialize: Option<&DebugExpr>,
-        tag_id: usize,
+        tag_id: StmtId,
     );
 
     /// Optionally emit a fold hook that buffers and permutes inputs before the fold.
@@ -821,7 +823,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         sink: syn::Expr,
         source: syn::Expr,
         deserialize: Option<&DebugExpr>,
-        tag_id: usize,
+        tag_id: StmtId,
         _networking_info: &crate::networking::NetworkingInfo,
     ) {
         let sender_builder = self.get_dfir_mut(from);
@@ -870,7 +872,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         source_expr: syn::Expr,
         out_ident: &syn::Ident,
         deserialize: Option<&DebugExpr>,
-        tag_id: usize,
+        tag_id: StmtId,
     ) {
         let receiver_builder = self.get_dfir_mut(on);
         if let Some(deserialize_pipeline) = deserialize {
@@ -898,7 +900,7 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
         sink_expr: syn::Expr,
         input_ident: &syn::Ident,
         serialize: Option<&DebugExpr>,
-        tag_id: usize,
+        tag_id: StmtId,
     ) {
         let sender_builder = self.get_dfir_mut(on);
         if let Some(serialize_fn) = serialize {
@@ -952,8 +954,8 @@ impl DfirBuilder for SecondaryMap<LocationKey, FlatGraphBuilder> {
 #[cfg(feature = "build")]
 pub enum BuildersOrCallback<'a, L, N>
 where
-    L: FnMut(&mut HydroRoot, &mut usize),
-    N: FnMut(&mut HydroNode, &mut usize),
+    L: FnMut(&mut HydroRoot, &mut StmtId),
+    N: FnMut(&mut HydroNode, &mut StmtId),
 {
     Builders(&'a mut dyn DfirBuilder),
     Callback(L, N),
@@ -1482,13 +1484,13 @@ impl HydroRoot {
         graph_builders: &mut dyn DfirBuilder,
         seen_tees: &mut SeenSharedNodes,
         built_tees: &mut HashMap<*const RefCell<HydroNode>, Vec<syn::Ident>>,
-        next_stmt_id: &mut usize,
+        next_stmt_id: &mut StmtId,
         fold_hooked_idents: &mut HashSet<String>,
     ) {
         self.emit_core(
             &mut BuildersOrCallback::<
-                fn(&mut HydroRoot, &mut usize),
-                fn(&mut HydroNode, &mut usize),
+                fn(&mut HydroRoot, &mut StmtId),
+                fn(&mut HydroNode, &mut StmtId),
             >::Builders(graph_builders),
             seen_tees,
             built_tees,
@@ -1501,12 +1503,12 @@ impl HydroRoot {
     pub fn emit_core(
         &mut self,
         builders_or_callback: &mut BuildersOrCallback<
-            impl FnMut(&mut HydroRoot, &mut usize),
-            impl FnMut(&mut HydroNode, &mut usize),
+            impl FnMut(&mut HydroRoot, &mut StmtId),
+            impl FnMut(&mut HydroNode, &mut StmtId),
         >,
         seen_tees: &mut SeenSharedNodes,
         built_tees: &mut HashMap<*const RefCell<HydroNode>, Vec<syn::Ident>>,
-        next_stmt_id: &mut usize,
+        next_stmt_id: &mut StmtId,
         fold_hooked_idents: &mut HashSet<String>,
     ) {
         match self {
@@ -1536,7 +1538,7 @@ impl HydroRoot {
                     }
                 }
 
-                *next_stmt_id += 1;
+                let _ = next_stmt_id.get_and_increment();
             }
 
             HydroRoot::SendExternal {
@@ -1579,7 +1581,7 @@ impl HydroRoot {
                     }
                 }
 
-                *next_stmt_id += 1;
+                let _ = next_stmt_id.get_and_increment();
             }
 
             HydroRoot::DestSink { sink, input, .. } => {
@@ -1608,7 +1610,7 @@ impl HydroRoot {
                     }
                 }
 
-                *next_stmt_id += 1;
+                let _ = next_stmt_id.get_and_increment();
             }
 
             HydroRoot::CycleSink {
@@ -1686,7 +1688,7 @@ impl HydroRoot {
                     }
                 }
 
-                *next_stmt_id += 1;
+                let _ = next_stmt_id.get_and_increment();
             }
 
             HydroRoot::Null { input, .. } => {
@@ -1715,7 +1717,7 @@ impl HydroRoot {
                     }
                 }
 
-                *next_stmt_id += 1;
+                let _ = next_stmt_id.get_and_increment();
             }
         }
     }
@@ -1895,7 +1897,7 @@ pub fn emit(ir: &mut Vec<HydroRoot>) -> SecondaryMap<LocationKey, FlatGraphBuild
     let mut builders = SecondaryMap::new();
     let mut seen_tees = HashMap::new();
     let mut built_tees = HashMap::new();
-    let mut next_stmt_id = 0;
+    let mut next_stmt_id = StmtId::default();
     let mut fold_hooked_idents = HashSet::new();
     for leaf in ir {
         leaf.emit(
@@ -1912,12 +1914,12 @@ pub fn emit(ir: &mut Vec<HydroRoot>) -> SecondaryMap<LocationKey, FlatGraphBuild
 #[cfg(feature = "build")]
 pub fn traverse_dfir(
     ir: &mut [HydroRoot],
-    transform_root: impl FnMut(&mut HydroRoot, &mut usize),
-    transform_node: impl FnMut(&mut HydroNode, &mut usize),
+    transform_root: impl FnMut(&mut HydroRoot, &mut StmtId),
+    transform_node: impl FnMut(&mut HydroNode, &mut StmtId),
 ) {
     let mut seen_tees = HashMap::new();
     let mut built_tees = HashMap::new();
-    let mut next_stmt_id = 0;
+    let mut next_stmt_id = StmtId::default();
     let mut fold_hooked_idents = HashSet::new();
     let mut callback = BuildersOrCallback::Callback(transform_root, transform_node);
     ir.iter_mut().for_each(|leaf| {
@@ -3087,12 +3089,12 @@ impl HydroNode {
     pub fn emit_core(
         &mut self,
         builders_or_callback: &mut BuildersOrCallback<
-            impl FnMut(&mut HydroRoot, &mut usize),
-            impl FnMut(&mut HydroNode, &mut usize),
+            impl FnMut(&mut HydroRoot, &mut StmtId),
+            impl FnMut(&mut HydroNode, &mut StmtId),
         >,
         seen_tees: &mut SeenSharedNodes,
         built_tees: &mut HashMap<*const RefCell<HydroNode>, Vec<syn::Ident>>,
-        next_stmt_id: &mut usize,
+        next_stmt_id: &mut StmtId,
         fold_hooked_idents: &mut HashSet<String>,
     ) -> syn::Ident {
         let mut ident_stack: Vec<syn::Ident> = Vec::new();
@@ -3115,7 +3117,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
                         // input_ident stays on stack as output
                     }
 
@@ -3139,7 +3141,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(out_ident);
                     }
@@ -3172,7 +3174,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(observe_ident);
                     }
@@ -3202,7 +3204,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(batch_ident);
                     }
@@ -3228,7 +3230,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(yield_ident);
                     }
@@ -3255,7 +3257,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(begin_ident);
                     }
@@ -3280,7 +3282,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(end_ident);
                     }
@@ -3377,7 +3379,7 @@ impl HydroNode {
                                 }
                             }
 
-                            *next_stmt_id += 1;
+                            let _ = next_stmt_id.get_and_increment();
 
                             ident_stack.push(source_ident);
                         }
@@ -3424,7 +3426,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(source_ident);
                     }
@@ -3440,7 +3442,7 @@ impl HydroNode {
                         }
 
                         // consume a stmt id even though we did not emit anything so that we can instrument this
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(ident);
                     }
@@ -3506,7 +3508,7 @@ impl HydroNode {
                         // we consume a stmt id regardless of if we emit the tee() operator,
                         // so that during rewrites we touch all recipients of the tee()
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
                         ident_stack.push(ret_ident);
                     }
 
@@ -3547,7 +3549,7 @@ impl HydroNode {
 
                         // we consume a stmt id regardless of if we emit the singleton() operator,
                         // so that during rewrites we touch all recipients of the singleton()
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
                         ident_stack.push(ret_ident);
                     }
 
@@ -3611,7 +3613,7 @@ impl HydroNode {
                             if is_true { true_ident } else { false_ident }
                         };
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
                         ident_stack.push(ret_ident);
                     }
 
@@ -3641,7 +3643,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(chain_ident);
                     }
@@ -3670,7 +3672,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(merge_ident);
                     }
@@ -3700,7 +3702,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(chain_ident);
                     }
@@ -3745,7 +3747,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(cross_ident);
                     }
@@ -3812,7 +3814,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(stream_ident);
                     }
@@ -3860,7 +3862,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(stream_ident);
                     }
@@ -3906,7 +3908,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(stream_ident);
                     }
@@ -3933,7 +3935,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(futures_ident);
                     }
@@ -3960,7 +3962,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(futures_ident);
                     }
@@ -3987,7 +3989,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(futures_ident);
                     }
@@ -4016,7 +4018,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(map_ident);
                     }
@@ -4044,7 +4046,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(flat_map_ident);
                     }
@@ -4072,7 +4074,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(flat_map_stream_blocking_ident);
                     }
@@ -4100,7 +4102,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(filter_ident);
                     }
@@ -4128,7 +4130,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(filter_map_ident);
                     }
@@ -4155,7 +4157,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(sort_ident);
                     }
@@ -4182,7 +4184,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(defer_tick_ident);
                     }
@@ -4214,7 +4216,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(enumerate_ident);
                     }
@@ -4242,7 +4244,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(inspect_ident);
                     }
@@ -4275,7 +4277,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(unique_ident);
                     }
@@ -4479,7 +4481,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(fold_ident);
                     }
@@ -4566,7 +4568,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(reduce_ident);
                     }
@@ -4668,7 +4670,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(fold_ident);
                     }
@@ -4717,7 +4719,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(receiver_stream_ident);
                     }
@@ -4756,7 +4758,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(receiver_stream_ident);
                     }
@@ -4789,7 +4791,7 @@ impl HydroNode {
                             }
                         }
 
-                        *next_stmt_id += 1;
+                        let _ = next_stmt_id.get_and_increment();
 
                         ident_stack.push(counter_ident);
                     }
