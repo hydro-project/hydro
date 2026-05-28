@@ -248,3 +248,32 @@ pub async fn test_handoff_mut_reference() {
     // The pipe consumer should only see items that survived the retain.
     assert_eq!(vec![4, 5], output);
 }
+
+/// Test: `iter_ref(#my_buf)` iterates the handoff buffer each tick, emitting `&T`.
+#[dfir_rs::test]
+pub async fn test_iter_ref_basic() {
+    let mut output = Vec::<i32>::new();
+    let out = &mut output;
+    let mut flow = dfir_rs::dfir_syntax! {
+        my_buf = source_iter(1..=3_i32) -> handoff();
+        my_buf -> for_each(|_| {});
+        iter_ref(#my_buf) -> for_each(|v: &i32| out.push(*v));
+    };
+    flow.run_tick().await;
+    drop(flow);
+    assert_eq!(vec![1, 2, 3], output);
+}
+
+/// Test: `iter_ref(#my_buf)` with no pipe consumer on the handoff.
+#[dfir_rs::test]
+pub async fn test_iter_ref_no_consumer() {
+    let mut output = Vec::<i32>::new();
+    let out = &mut output;
+    let mut flow = dfir_rs::dfir_syntax! {
+        my_buf = source_iter(1..=3_i32) -> handoff();
+        iter_ref(#my_buf) -> for_each(|v: &i32| out.push(*v));
+    };
+    flow.run_tick().await;
+    drop(flow);
+    assert_eq!(vec![1, 2, 3], output);
+}
