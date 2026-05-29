@@ -1898,4 +1898,30 @@ mod tests {
 
         assert_eq!(count, 1);
     }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    #[ignore = "bug reproducer"]
+    fn sim_top_level_singleton_state_count() {
+        let mut flow = FlowBuilder::new();
+        let process = flow.process::<()>();
+
+        let (cmd_port, input) = process.sim_input();
+        {
+            // increases exhaustive inputs from 1 to 2 before we optimized `From`
+            use super::Singleton;
+            use crate::live_collections::boundedness::Unbounded;
+            let _singleton: Singleton<_, _, Unbounded> = process.singleton(q!(false)).into();
+        }
+        let tick = process.tick();
+        let batched_unbatched = input.batch(&tick, nondet!(/** */)).all_ticks();
+        let resp_port = batched_unbatched.sim_output();
+
+        let count = flow.sim().exhaustive(async || {
+            cmd_port.send(());
+            let _responses: Vec<_> = resp_port.collect().await;
+        });
+
+        assert_eq!(count, 1);
+    }
 }
