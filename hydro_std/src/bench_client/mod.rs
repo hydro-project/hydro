@@ -62,7 +62,7 @@ pub fn bench_client<'a, Client, Input, Output>(
 ) -> KeyedStream<u32, (Output, Duration), Cluster<'a, Client>, Unbounded, NoOrder>
 where
     Input: Clone,
-    Output: Clone,
+    Output: 'a + Clone,
 {
     let new_payload_ids = sliced! {
         let num_clients_per_node = use(num_clients_per_node, nondet!(/** This is a constant */));

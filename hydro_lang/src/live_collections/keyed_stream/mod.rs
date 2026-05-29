@@ -1949,7 +1949,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn fold<A, I: Fn() -> A + 'a, F: Fn(&mut A, V), C, Idemp, M, B2: KeyedSingletonBound>(
+    pub fn fold<A, I: Fn() -> A + 'a, F: 'a + Fn(&mut A, V), C, Idemp, M, B2: KeyedSingletonBound>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
         comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp, M>>,

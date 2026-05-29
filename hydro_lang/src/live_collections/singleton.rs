@@ -337,24 +337,11 @@ where
     /// # });
     /// # }
     /// ```
-    pub fn by_ref(&self) -> crate::singleton_ref::SingletonRef<'a, T, L>
+    pub fn by_ref(&self) -> crate::singleton_ref::SingletonRef<'a, '_, T, L>
     where
         B: IsBounded,
     {
-        // Wrap in HydroNode::Singleton for materialization + identity tracking.
-        // If already a Singleton node, reuse it. If a Tee (from clone), wrap inner.
-        if !matches!(&*self.ir_node.borrow(), HydroNode::Singleton { .. }) {
-            let orig = self.ir_node.replace(HydroNode::Placeholder);
-            *self.ir_node.borrow_mut() = HydroNode::Singleton {
-                inner: SharedNode(Rc::new(RefCell::new(orig))),
-                metadata: self.location.new_node_metadata(Self::collection_kind()),
-            };
-        }
-        let borrow = self.ir_node.borrow();
-        let HydroNode::Singleton { inner, .. } = &*borrow else {
-            unreachable!()
-        };
-        crate::singleton_ref::SingletonRef::new(Rc::clone(&inner.0))
+        crate::singleton_ref::SingletonRef::new(&self.ir_node)
     }
 
     /// Weakens the consistency of this live collection to not guarantee any consistency across

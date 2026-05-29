@@ -1334,7 +1334,7 @@ where
     ) -> Singleton<A, L, B2>
     where
         I: Fn() -> A + 'a,
-        F: Fn(&mut A, T),
+        F: 'a + Fn(&mut A, T),
         C: ValidCommutativityFor<O>,
         Idemp: ValidIdempotenceFor<R>,
         B: ApplyMonotoneStream<M, B2>,
