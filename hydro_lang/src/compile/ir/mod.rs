@@ -2549,6 +2549,11 @@ pub enum HydroNode {
         trusted: bool,
         metadata: HydroIrMetadata,
     },
+
+    UnboundSingleton {
+        inner: Box<HydroNode>,
+        metadata: HydroIrMetadata,
+    },
 }
 
 pub type SeenSharedNodes = HashMap<*const RefCell<HydroNode>, Rc<RefCell<HydroNode>>>;
@@ -2639,6 +2644,7 @@ impl HydroNode {
             | HydroNode::EndAtomic { inner, .. }
             | HydroNode::Batch { inner, .. }
             | HydroNode::YieldConcat { inner, .. }
+            | HydroNode::UnboundSingleton { inner, .. }
             | HydroNode::AssertIsConsistent { inner, .. } => {
                 transform(inner.as_mut(), seen_tees);
             }
@@ -2729,6 +2735,10 @@ impl HydroNode {
         match self {
             HydroNode::Placeholder => HydroNode::Placeholder,
             HydroNode::Cast { inner, metadata } => HydroNode::Cast {
+                inner: Box::new(inner.deep_clone(seen_tees)),
+                metadata: metadata.clone(),
+            },
+            HydroNode::UnboundSingleton { inner, metadata } => HydroNode::UnboundSingleton {
                 inner: Box::new(inner.deep_clone(seen_tees)),
                 metadata: metadata.clone(),
             },
@@ -3119,6 +3129,44 @@ impl HydroNode {
 
                         let _ = next_stmt_id.get_and_increment();
                         // input_ident stays on stack as output
+                    }
+
+                    HydroNode::UnboundSingleton { .. } => {
+                        let inner_ident = ident_stack.pop().unwrap();
+
+                        let out_ident =
+                            syn::Ident::new(&format!("stream_{}", *next_stmt_id), Span::call_site());
+
+                        match builders_or_callback {
+                            BuildersOrCallback::Builders(graph_builders) => {
+                                if graph_builders.singleton_intermediates() {
+                                    let builder = graph_builders.get_dfir_mut(&out_location);
+                                    builder.add_dfir(
+                                        parse_quote! {
+                                            #out_ident = #inner_ident;
+                                        },
+                                        None,
+                                        None,
+                                    );
+                                } else {
+                                    let builder = graph_builders.get_dfir_mut(&out_location);
+                                    builder.add_dfir(
+                                        parse_quote! {
+                                            #out_ident = #inner_ident -> persist::<'static>();
+                                        },
+                                        None,
+                                        None,
+                                    );
+                                }
+                            }
+                            BuildersOrCallback::Callback(_, node_callback) => {
+                                node_callback(node, next_stmt_id);
+                            }
+                        }
+
+                        let _ = next_stmt_id.get_and_increment();
+
+                        ident_stack.push(out_ident);
                     }
 
                     HydroNode::AssertIsConsistent { inner, trusted, .. } => {
@@ -4820,6 +4868,7 @@ impl HydroNode {
             }
             HydroNode::Cast { .. }
             | HydroNode::ObserveNonDet { .. }
+            | HydroNode::UnboundSingleton { .. }
             | HydroNode::AssertIsConsistent { .. } => {}
             HydroNode::Source { source, .. } => match source {
                 HydroSource::Stream(expr) | HydroSource::Iter(expr) => transform(expr),
@@ -4909,6 +4958,7 @@ impl HydroNode {
             HydroNode::Cast { metadata, .. }
             | HydroNode::ObserveNonDet { metadata, .. }
             | HydroNode::AssertIsConsistent { metadata, .. }
+            | HydroNode::UnboundSingleton { metadata, .. }
             | HydroNode::Source { metadata, .. }
             | HydroNode::SingletonSource { metadata, .. }
             | HydroNode::CycleSource { metadata, .. }
@@ -4966,6 +5016,7 @@ impl HydroNode {
             HydroNode::Cast { metadata, .. }
             | HydroNode::ObserveNonDet { metadata, .. }
             | HydroNode::AssertIsConsistent { metadata, .. }
+            | HydroNode::UnboundSingleton { metadata, .. }
             | HydroNode::Source { metadata, .. }
             | HydroNode::SingletonSource { metadata, .. }
             | HydroNode::CycleSource { metadata, .. }
@@ -5032,6 +5083,7 @@ impl HydroNode {
             | HydroNode::BeginAtomic { inner, .. }
             | HydroNode::EndAtomic { inner, .. }
             | HydroNode::Batch { inner, .. }
+            | HydroNode::UnboundSingleton { inner, .. }
             | HydroNode::AssertIsConsistent { inner, .. } => {
                 vec![inner]
             }
@@ -5112,6 +5164,7 @@ impl HydroNode {
                 panic!()
             }
             HydroNode::Cast { .. } => "Cast()".to_owned(),
+            HydroNode::UnboundSingleton { .. } => "UnboundSingleton()".to_owned(),
             HydroNode::ObserveNonDet { .. } => "ObserveNonDet()".to_owned(),
             HydroNode::AssertIsConsistent { .. } => "AssertIsConsistent()".to_owned(),
             HydroNode::Source { source, .. } => format!("Source({:?})", source),
