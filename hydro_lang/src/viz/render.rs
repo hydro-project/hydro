@@ -1561,6 +1561,10 @@ impl HydroNode {
                 inner.build_graph_structure(structure, seen_tees, config)
             }
 
+            HydroNode::UnboundSingleton { inner, .. } => {
+                inner.build_graph_structure(structure, seen_tees, config)
+            }
+
             HydroNode::BeginAtomic { inner, .. } => {
                 inner.build_graph_structure(structure, seen_tees, config)
             }

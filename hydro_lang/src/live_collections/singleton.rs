@@ -133,8 +133,15 @@ where
     L: Location<'a>,
 {
     fn from(value: Singleton<T, L, Bounded>) -> Self {
-        let tick = value.location().tick();
-        value.clone_into_tick(&tick).latest()
+        let location = value.location().clone();
+        Singleton::new(
+            location.clone(),
+            HydroNode::UnboundSingleton {
+                inner: Box::new(value.ir_node.replace(HydroNode::Placeholder)),
+                metadata: location
+                    .new_node_metadata(Singleton::<T, L, Unbounded>::collection_kind()),
+            },
+        )
     }
 }
 
@@ -1901,7 +1908,6 @@ mod tests {
 
     #[cfg(feature = "sim")]
     #[test]
-    #[ignore = "bug reproducer"]
     fn sim_top_level_singleton_state_count() {
         let mut flow = FlowBuilder::new();
         let process = flow.process::<()>();
