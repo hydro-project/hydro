@@ -8,13 +8,19 @@ digraph {
     n1v1 [label="(n1v1) source_iter(15..=25)", shape=invhouse, fillcolor="#88aaff"]
     n2v1 [label="(n2v1) map(Max::new)", shape=invhouse, fillcolor="#88aaff"]
     n3v1 [label="(n3v1) state::<'static, Max<_>>()", shape=house, fillcolor="#ffff88"]
+    n4v1 [label="(n4v1) null()", shape=house, fillcolor="#ffff88"]
+    n5v1 [label="(n5v1) null()", shape=house, fillcolor="#ffff88"]
     n1v1 -> n2v1
     n2v1 -> n3v1
+    n3v1 -> n4v1 [label="items"]
+    n3v1 -> n5v1 [label="state"]
     subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1"
+        n4v1
+        n5v1
         subgraph sg_1v1_var_max_of_stream2 {
             cluster=true
             label="var max_of_stream2"

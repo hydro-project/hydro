@@ -23,10 +23,10 @@ pub fn test_state() {
             -> map(|x| (context.current_tick(), x))
             -> for_each(|x| filter_send.send(x).unwrap());
 
-        // Optional:
-        max_of_stream2
-            -> map(|x| (context.current_tick(), x.into_reveal()))
+        max_of_stream2[items]
+            -> map(|x: Max<_>| (context.current_tick(), x.into_reveal()))
             -> for_each(|x| max_send.send(x).unwrap());
+        max_of_stream2[state] -> null();
     };
     assert_graphvis_snapshots!(df);
 
@@ -72,6 +72,8 @@ pub fn test_state_unused() {
     let mut df = dfir_rs::dfir_syntax! {
         stream2 = source_iter(15..=25) -> map(Max::new);
         max_of_stream2 = stream2 -> state::<'static, Max<_>>();
+        max_of_stream2[items] -> null();
+        max_of_stream2[state] -> null();
     };
     assert_graphvis_snapshots!(df);
 
@@ -87,9 +89,10 @@ pub fn test_state_tick() {
         stream2 = source_stream(input_recv) -> map(Max::new);
         max_of_stream2 = stream2 -> state::<'tick, Max<_>>();
 
-        max_of_stream2
-            -> map(|x| (context.current_tick(), x.into_reveal()))
+        max_of_stream2[items]
+            -> map(|x: Max<_>| (context.current_tick(), x.into_reveal()))
             -> for_each(|x| max_send.send(x).unwrap());
+        max_of_stream2[state] -> null();
     };
 
     input_send.send(3).unwrap();
@@ -375,10 +378,10 @@ pub fn test_multi_tick() {
             -> map(|x| (context.current_tick(), x))
             -> for_each(|x| filter_send.send(x).unwrap());
 
-        // Optional:
-        max_of_stream2
-            -> map(|x| (context.current_tick(), x.into_reveal()))
+        max_of_stream2[items]
+            -> map(|x: Max<_>| (context.current_tick(), x.into_reveal()))
             -> for_each(|x| max_send.send(x).unwrap());
+        max_of_stream2[state] -> null();
     };
     assert_graphvis_snapshots!(df);
 

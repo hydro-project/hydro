@@ -23,8 +23,10 @@ pub fn test_cartesian_product() {
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
 
-        lhs -> [0]my_join;
-        rhs -> [1]my_join;
+        lhs[items] -> [0]my_join;
+        rhs[items] -> [1]my_join;
+        lhs[state] -> null();
+        rhs[state] -> null();
 
         my_join = lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), #lhs, #rhs)
             -> for_each(|x| out_send.send(x).unwrap());
@@ -58,8 +60,10 @@ pub fn test_cartesian_product_1401() {
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
 
-        lhs -> [0]my_join;
-        rhs -> [1]my_join;
+        lhs[items] -> [0]my_join;
+        rhs[items] -> [1]my_join;
+        lhs[state] -> null();
+        rhs[state] -> null();
 
         my_join = lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), #lhs, #rhs)
             -> for_each(|x| out_send.send(x).unwrap());
@@ -85,8 +89,10 @@ pub fn test_join() {
             -> map(|(k, v)| MapUnionSingletonMap::new_from((k, SetUnionSingletonSet::new_from(v))))
             -> state::<'static, MapUnionHashMap<usize, SetUnionHashSet<usize>>>();
 
-        lhs -> [0]my_join;
-        rhs -> [1]my_join;
+        lhs[items] -> [0]my_join;
+        rhs[items] -> [1]my_join;
+        lhs[state] -> null();
+        rhs[state] -> null();
 
         my_join = lattice_bimorphism(KeyedBimorphism::<HashMap<_, _>, _>::new(CartesianProductBimorphism::<HashSet<_>>::default()), #lhs, #rhs)
             -> for_each(|x| out_send.send(x).unwrap());
@@ -128,6 +134,8 @@ pub fn test_cartesian_product_tick_state() {
 
         lhs[items] -> [0]my_join;
         rhs[items] -> [1]my_join;
+        lhs[state] -> null();
+        rhs[state] -> null();
 
         my_join = lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), #lhs, #rhs)
             -> inspect(|x| println!("{:?}: {:?}", context.current_tick(), x))
@@ -197,6 +205,8 @@ fn test_ght_join_bimorphism() {
 
         lhs[items] -> [0]my_join;
         rhs[items] -> [1]my_join;
+        lhs[state] -> null();
+        rhs[state] -> null();
 
 
         my_join = lattice_bimorphism(MyBim::default(), #lhs, #rhs)

@@ -55,8 +55,10 @@ pub fn test_cartesian_product_multi_tick() {
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
 
-        lhs -> [0]my_join;
-        rhs -> [1]my_join;
+        lhs[items] -> [0]my_join;
+        rhs[items] -> [1]my_join;
+        lhs[state] -> null();
+        rhs[state] -> null();
 
         my_join = lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), #lhs, #rhs)
             -> lattice_reduce()
@@ -80,10 +82,12 @@ pub fn test_cartesian_product_multi_tick_tee() {
         rhs = source_stream(rhs_recv)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
-        rhs_tee = rhs -> tee();
+        rhs_tee = rhs[items] -> tee();
         rhs_tee -> for_each(|x| println!("tee: {:?}", x));
+        lhs[state] -> null();
+        rhs[state] -> null();
 
-        lhs -> [0]my_join;
+        lhs[items] -> [0]my_join;
         rhs_tee -> [1]my_join;
 
         my_join = lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), #lhs, #rhs)
@@ -108,9 +112,11 @@ pub fn test_cartesian_product_multi_tick_identity() {
         rhs = source_stream(rhs_recv)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
-        rhs_id = rhs -> identity();
+        rhs_id = rhs[items] -> identity();
+        lhs[state] -> null();
+        rhs[state] -> null();
 
-        lhs -> [0]my_join;
+        lhs[items] -> [0]my_join;
         rhs_id -> [1]my_join;
 
         my_join = lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), #lhs, #rhs)

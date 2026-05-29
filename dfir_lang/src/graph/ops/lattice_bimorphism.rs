@@ -26,8 +26,10 @@ use super::{
 ///     -> map(SetUnionSingletonSet::new_from)
 ///     -> state::<'static, SetUnionHashSet<u32>>();
 ///
-/// lhs -> [0]my_join;
-/// rhs -> [1]my_join;
+/// lhs[items] -> [0]my_join;
+/// rhs[items] -> [1]my_join;
+/// lhs[state] -> null();
+/// rhs[state] -> null();
 ///
 /// my_join = lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), #lhs, #rhs)
 ///     -> assert_eq([SetUnionHashSet::new(HashSet::from_iter([
