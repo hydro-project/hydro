@@ -118,7 +118,7 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
                         }
                     },
                     #root::dfir_pipes::push::flat_map(
-                        |state: #root::util::sparse_vec::SparseVec<_>| state.iter().cloned().collect::<::std::vec::Vec<_>>(),
+                        |state: &mut #root::util::sparse_vec::SparseVec<_>| state.iter().cloned().collect::<::std::vec::Vec<_>>(),
                         #output,
                     ),
                 );

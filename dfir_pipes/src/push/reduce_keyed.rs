@@ -67,7 +67,7 @@ where
         }
     }
 
-    fn poll_flush(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
+    fn poll_finalize(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
         let mut this = self.project();
         if this.flush_items.is_empty() && *this.flush_idx == 0 {
             #[expect(
@@ -87,7 +87,7 @@ where
         }
         this.flush_items.clear();
         *this.flush_idx = 0;
-        this.next.poll_flush(ctx)
+        this.next.poll_finalize(ctx)
     }
 
     fn size_hint(self: Pin<&mut Self>, _hint: (usize, Option<usize>)) {}
