@@ -118,32 +118,47 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::dfir_pipes::push::Fold::new(
-                    &mut #persistdata_ident,
-                    |state: &mut #root::rustc_hash::FxHashMap<_, #root::util::sparse_vec::SparseVec<_>>, item| {
-                        match item {
-                            #root::util::PersistenceKeyed::Persist(k, v) => {
-                                state.entry(k).or_default().push(v);
-                            },
-                            #root::util::PersistenceKeyed::Delete(k) => {
-                                state.remove(&k);
-                            }
-                        }
-                    },
-                    #root::dfir_pipes::push::flat_map(
-                        #[allow(clippy::clone_on_copy)]
-                        |state| {
-                            let mut out = ::std::vec::Vec::new();
-                            for (k, v) in <_ as ::std::iter::IntoIterator>::into_iter(state) {
-                                for item in #root::util::sparse_vec::SparseVec::iter(&v) {
-                                    out.push((::std::clone::Clone::clone(&k), ::std::clone::Clone::clone(item)));
+                let #ident = {
+                    #[inline(always)]
+                    fn check_push<'a, Next, K, V>(
+                        persistdata: &'a mut #root::rustc_hash::FxHashMap<K, #root::util::sparse_vec::SparseVec<V>>,
+                        next: Next,
+                    )
+                        -> impl 'a + #root::dfir_pipes::push::Push<#root::util::PersistenceKeyed::<K, V>, ()>
+                    where
+                        Next: 'a + #root::dfir_pipes::push::Push<(K, V), ()>,
+                        K: ::std::clone::Clone + ::std::cmp::Eq + ::std::hash::Hash,
+                        V: ::std::clone::Clone + ::std::cmp::Eq + ::std::hash::Hash,
+                    {
+                        #root::dfir_pipes::push::Fold::new(
+                            persistdata,
+                            |state: &mut #root::rustc_hash::FxHashMap<K, #root::util::sparse_vec::SparseVec<V>>, item| {
+                                match item {
+                                    #root::util::PersistenceKeyed::Persist(k, v) => {
+                                        state.entry(k).or_default().push(v);
+                                    },
+                                    #root::util::PersistenceKeyed::Delete(k) => {
+                                        state.remove(&k);
+                                    }
                                 }
-                            }
-                            out
-                        },
-                        #output,
-                    ),
-                );
+                            },
+                            #root::dfir_pipes::push::flat_map(
+                                #[allow(clippy::clone_on_copy)]
+                                #[allow(clippy::disallowed_methods, reason = "FxHasher is deterministic")]
+                                |state: &mut #root::rustc_hash::FxHashMap<K, #root::util::sparse_vec::SparseVec<V>>| {
+                                    state
+                                        .iter()
+                                        .flat_map(|(k, vec)| {
+                                            vec.iter().map(move |v| (k.clone(), v.clone()))
+                                        })
+                                },
+                                next,
+                            ),
+                        )
+                    }
+
+                    check_push(&mut #persistdata_ident, #output)
+                };
             }
         };
 
