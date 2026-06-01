@@ -85,9 +85,12 @@ where
             this.next.as_mut().start_send(item, ());
             *this.flush_idx += 1;
         }
-        this.flush_items.clear();
-        *this.flush_idx = 0;
-        this.next.poll_finalize(ctx)
+        let step = this.next.poll_finalize(ctx);
+        if step.is_done() {
+            this.flush_items.clear();
+            *this.flush_idx = 0;
+        }
+        step
     }
 
     fn size_hint(self: Pin<&mut Self>, _hint: (usize, Option<usize>)) {}
