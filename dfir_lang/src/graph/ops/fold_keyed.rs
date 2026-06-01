@@ -142,6 +142,10 @@ pub const FOLD_KEYED: OperatorConstraints = OperatorConstraints {
         };
 
         let write_iterator = if !is_pull {
+            assert!(
+                Persistence::Mutable != persistence,
+                "fold_keyed::<'mutable> on push side is not supported ('mutable is being removed)"
+            );
             let output = &outputs[0];
             quote_spanned! {op_span=>
                 let #ident = #root::dfir_pipes::push::FoldKeyed::new(
