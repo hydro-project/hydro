@@ -151,6 +151,7 @@ impl<T> SortState<T> {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<T> Default for SortState<T> {
     fn default() -> Self {
         Self::new()
