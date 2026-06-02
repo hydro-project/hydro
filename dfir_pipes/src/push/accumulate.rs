@@ -263,19 +263,18 @@ mod tests {
         a.as_mut().start_send(2, ());
         a.as_mut().start_send(3, ());
         a.as_mut().poll_finalize(&mut ());
-        assert_eq!(tp.items(), vec![Some(6)]);
+        assert_eq!(tp.items(), vec![6]);
     }
 
     #[test]
-    fn reduce_owned_no_items_emits_none() {
+    fn reduce_owned_no_items_emits_nothing() {
         let mut tp = TestPush::no_pend();
         let state: ReduceState<Option<i32>, _, i32> =
             ReduceState::new(None, |acc: &mut i32, x| *acc += x);
         let mut a = Accumulate::new(state, &mut tp);
         let mut a = Pin::new(&mut a);
         a.as_mut().poll_finalize(&mut ());
-        // Always emits the Accum (Option<T>), downstream filter_map handles None.
-        assert_eq!(tp.items(), vec![None]);
+        assert_eq!(tp.items(), Vec::<i32>::new());
     }
 
     // ========================================================================
@@ -287,13 +286,14 @@ mod tests {
         let mut val: Option<i32> = None;
         let mut tp = TestPush::no_pend();
         let state = ReduceState::new(&mut val, |acc: &mut i32, x| *acc += x);
-        let mut a = Accumulate::new(state, &mut tp);
+        let mut a = Accumulate::new(state, crate::push::map(|v: &mut i32| *v, &mut tp));
         let mut a = Pin::new(&mut a);
         a.as_mut().start_send(1, ());
         a.as_mut().start_send(2, ());
         a.as_mut().start_send(3, ());
         a.as_mut().poll_finalize(&mut ());
-        // Value persists in the external option.
+        // Value persists in external storage.
+        assert_eq!(tp.items(), vec![6]);
         assert_eq!(val, Some(6));
     }
 
@@ -304,32 +304,35 @@ mod tests {
         {
             let mut tp = TestPush::no_pend();
             let state = ReduceState::new(&mut val, |acc: &mut i32, x| *acc += x);
-            let mut a = Accumulate::new(state, &mut tp);
+            let mut a = Accumulate::new(state, crate::push::map(|v: &mut i32| *v, &mut tp));
             let mut a = Pin::new(&mut a);
             a.as_mut().start_send(10, ());
             a.as_mut().poll_finalize(&mut ());
+            assert_eq!(tp.items(), vec![10]);
         }
         assert_eq!(val, Some(10));
         // Second tick — val persists, reduce merges into existing.
         {
             let mut tp = TestPush::no_pend();
             let state = ReduceState::new(&mut val, |acc: &mut i32, x| *acc += x);
-            let mut a = Accumulate::new(state, &mut tp);
+            let mut a = Accumulate::new(state, crate::push::map(|v: &mut i32| *v, &mut tp));
             let mut a = Pin::new(&mut a);
             a.as_mut().start_send(5, ());
             a.as_mut().poll_finalize(&mut ());
+            assert_eq!(tp.items(), vec![15]);
         }
         assert_eq!(val, Some(15));
     }
 
     #[test]
-    fn reduce_borrowed_no_items_no_mutation() {
+    fn reduce_borrowed_no_items_no_output() {
         let mut val: Option<i32> = None;
         let mut tp = TestPush::no_pend();
         let state = ReduceState::new(&mut val, |acc: &mut i32, x| *acc += x);
-        let mut a = Accumulate::new(state, &mut tp);
+        let mut a = Accumulate::new(state, crate::push::map(|v: &mut i32| *v, &mut tp));
         let mut a = Pin::new(&mut a);
         a.as_mut().poll_finalize(&mut ());
+        assert!(tp.items().is_empty());
         assert_eq!(val, None);
     }
 

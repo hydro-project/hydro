@@ -130,7 +130,7 @@ pub const PERSIST_MUT_KEYED: OperatorConstraints = OperatorConstraints {
                         K: ::std::clone::Clone + ::std::cmp::Eq + ::std::hash::Hash,
                         V: ::std::clone::Clone + ::std::cmp::Eq + ::std::hash::Hash,
                     {
-                        #root::dfir_pipes::push::Fold::new(
+                        #root::dfir_pipes::push::fold(
                             persistdata,
                             |state: &mut #root::rustc_hash::FxHashMap<K, #root::util::sparse_vec::SparseVec<V>>, item| {
                                 match item {

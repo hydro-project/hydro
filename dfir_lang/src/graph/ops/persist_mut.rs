@@ -109,7 +109,7 @@ pub const PERSIST_MUT: OperatorConstraints = OperatorConstraints {
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::dfir_pipes::push::Fold::new(
+                let #ident = #root::dfir_pipes::push::fold(
                     &mut #persistdata_ident,
                     |state: &mut #root::util::sparse_vec::SparseVec<_>, item| {
                         match item {

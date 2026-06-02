@@ -130,13 +130,16 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::dfir_pipes::push::Reduce::new(
+                let #ident = #root::dfir_pipes::push::reduce_ref(
                     &mut #singleton_output_ident,
                     |#accumulator_ident: &mut _, #item_ident| {
                         #[allow(clippy::redundant_closure_call)]
                         (#func)(#accumulator_ident, #item_ident);
                     },
-                    #output,
+                    #root::dfir_pipes::push::map(
+                        |__val| ::std::clone::Clone::clone(__val),
+                        #output,
+                    ),
                 );
             }
         };
