@@ -101,11 +101,10 @@ mod tests {
     use std::collections::HashMap;
     use std::pin::Pin;
 
+    use super::ReduceKeyed;
     use crate::Yes;
     use crate::push::test_utils::TestPush;
     use crate::push::{Push, PushStep};
-
-    use super::ReduceKeyed;
 
     #[test]
     fn reduce_keyed_emits_on_finalize() {
@@ -149,10 +148,8 @@ mod tests {
     #[test]
     fn reduce_keyed_resumes_after_pending() {
         let mut map = HashMap::new();
-        let mut tp: TestPush<(i32, i32), Yes, true> = TestPush::new_fused(
-            [PushStep::Done, PushStep::pending(), PushStep::Done],
-            [],
-        );
+        let mut tp: TestPush<(i32, i32), Yes, true> =
+            TestPush::new_fused([PushStep::Done, PushStep::pending(), PushStep::Done], []);
         let mut rk = ReduceKeyed::new(&mut map, |acc: &mut i32, v| *acc += v, &mut tp);
         let mut rk = Pin::new(&mut rk);
         rk.as_mut().start_send((1, 10), ());
