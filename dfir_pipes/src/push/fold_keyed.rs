@@ -98,11 +98,10 @@ mod tests {
     use std::collections::HashMap;
     use std::pin::Pin;
 
+    use super::FoldKeyed;
     use crate::Yes;
     use crate::push::test_utils::TestPush;
     use crate::push::{Push, PushStep};
-
-    use super::FoldKeyed;
 
     #[test]
     fn fold_keyed_emits_on_finalize() {
@@ -126,7 +125,12 @@ mod tests {
     fn fold_keyed_empty_input() {
         let mut map: HashMap<i32, i32> = HashMap::new();
         let mut tp = TestPush::no_pend();
-        let mut fk = FoldKeyed::new(&mut map, || 0i32, |acc: &mut i32, v: i32| *acc += v, &mut tp);
+        let mut fk = FoldKeyed::new(
+            &mut map,
+            || 0i32,
+            |acc: &mut i32, v: i32| *acc += v,
+            &mut tp,
+        );
         let mut fk = Pin::new(&mut fk);
         fk.as_mut().poll_finalize(&mut ());
         assert!(tp.items().is_empty());
@@ -135,10 +139,8 @@ mod tests {
     #[test]
     fn fold_keyed_resumes_after_pending() {
         let mut map = HashMap::new();
-        let mut tp: TestPush<(i32, i32), Yes, true> = TestPush::new_fused(
-            [PushStep::Done, PushStep::pending(), PushStep::Done],
-            [],
-        );
+        let mut tp: TestPush<(i32, i32), Yes, true> =
+            TestPush::new_fused([PushStep::Done, PushStep::pending(), PushStep::Done], []);
         let mut fk = FoldKeyed::new(&mut map, || 0i32, |acc: &mut i32, v| *acc += v, &mut tp);
         let mut fk = Pin::new(&mut fk);
         fk.as_mut().start_send((1, 10), ());
