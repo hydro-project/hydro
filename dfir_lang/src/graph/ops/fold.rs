@@ -138,7 +138,7 @@ pub const FOLD: OperatorConstraints = OperatorConstraints {
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::dfir_pipes::push::Fold::new(
+                let #ident = #root::dfir_pipes::push::fold(
                     &mut #singleton_output_ident,
                     |#accumulator_ident: &mut _, #item_ident| { #foreach_body },
                     #output,

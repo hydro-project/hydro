@@ -54,7 +54,7 @@ pub const SORT_BY_KEY: OperatorConstraints = OperatorConstraints {
         } else {
             let output = &outputs[0];
             quote_spanned! {op_span=>
-                let #ident = #root::dfir_pipes::push::Fold::new(
+                let #ident = #root::dfir_pipes::push::fold(
                     ::std::vec::Vec::new(),
                     |__buf: &mut ::std::vec::Vec<_>, __item| {
                         __buf.push(__item);

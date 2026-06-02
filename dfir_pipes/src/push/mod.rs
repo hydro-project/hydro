@@ -19,7 +19,6 @@ mod flat_map;
 mod flat_map_stream;
 mod flatten;
 mod flatten_stream;
-mod fold;
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 mod fold_keyed;
@@ -29,7 +28,6 @@ mod map;
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 mod persist;
-mod reduce;
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 mod reduce_keyed;
@@ -70,7 +68,6 @@ pub use flat_map::FlatMap;
 pub use flat_map_stream::FlatMapStream;
 pub use flatten::Flatten;
 pub use flatten_stream::FlattenStream;
-pub use fold::Fold;
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use fold_keyed::FoldKeyed;
@@ -81,7 +78,6 @@ pub use map::Map;
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub use persist::Persist;
-pub use reduce::Reduce;
 #[cfg(feature = "std")]
 #[cfg_attr(docsrs, doc(cfg(feature = "std")))]
 pub use reduce_keyed::ReduceKeyed;
@@ -343,34 +339,48 @@ where
     FlattenStream::new(next)
 }
 
-/// Creates a [`Fold`] push that accumulates all items via a fold function, then emits
+/// Creates a fold push that accumulates all items via a fold function, then emits
 /// the accumulated value downstream on finalize.
 pub const fn fold<AccRef, CombFn, Acc, Item, Next>(
     acc_ref: AccRef,
     comb_fn: CombFn,
     next: Next,
-) -> Fold<AccRef, CombFn, Acc, Next>
+) -> Accumulate<FoldState<AccRef, CombFn, Acc, Item>, Next>
 where
     AccRef: BorrowMut<Acc>,
     CombFn: FnMut(&mut Acc, Item),
-    Next: Push<Acc, ()>,
+    Next: Push<AccRef, ()>,
 {
-    Fold::new(acc_ref, comb_fn, next)
+    Accumulate::new(FoldState::new(acc_ref, comb_fn), next)
 }
 
-/// Creates a [`Reduce`] push that reduces all items into a single value, then emits
-/// it downstream on finalize. If no items were received, nothing is emitted.
-pub const fn reduce<AccRef, ReduceFn, Next, Item>(
-    acc_ref: AccRef,
+/// Creates a reduce push (owned mode) that reduces all items into a single value,
+/// then emits it downstream on finalize. If no items were received, nothing is emitted.
+pub const fn reduce<ReduceFn, Next, Item>(
+    acc: Option<Item>,
     reduce_fn: ReduceFn,
     next: Next,
-) -> Reduce<AccRef, ReduceFn, Next>
+) -> Accumulate<ReduceState<Option<Item>, ReduceFn, Item>, Next>
 where
-    AccRef: BorrowMut<Option<Item>>,
     ReduceFn: FnMut(&mut Item, Item),
     Next: Push<Item, ()>,
 {
-    Reduce::new(acc_ref, reduce_fn, next)
+    Accumulate::new(ReduceState::new(acc, reduce_fn), next)
+}
+
+/// Creates a reduce push (borrowed/persistent mode) that reduces all items into
+/// externally-owned state. Emits `&mut Item` downstream on finalize (or nothing
+/// if no items were received). The value persists across ticks.
+pub const fn reduce_ref<'a, ReduceFn, Next, Item>(
+    acc: &'a mut Option<Item>,
+    reduce_fn: ReduceFn,
+    next: Next,
+) -> Accumulate<ReduceState<&'a mut Option<Item>, ReduceFn, Item>, Next>
+where
+    ReduceFn: FnMut(&mut Item, Item),
+    Next: Push<&'a mut Item, ()>,
+{
+    Accumulate::new(ReduceState::new(acc, reduce_fn), next)
 }
 
 /// Creates an [`Accumulate`] push combinator with the given [`AccumState`].

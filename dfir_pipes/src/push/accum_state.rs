@@ -7,6 +7,9 @@ use core::borrow::BorrowMut;
 use core::iter::Once;
 use core::marker::PhantomData;
 
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 use super::accumulate::AccumState;
 
 // ============================================================================
@@ -64,22 +67,17 @@ where
 }
 
 // ============================================================================
-// Reduce (unified: owned Option<T> or borrowed &'a mut Option<T> via BorrowMut)
+// Reduce (owned mode: Option<T>, borrowed mode: &'a mut Option<T>)
 // ============================================================================
 
-/// Accumulator state for reduce, supporting both owned and borrowed modes
-/// via [`BorrowMut`].
+/// Accumulator state for reduce.
 ///
 /// - **Owned mode** (`Accum = Option<T>`): the first item initializes the
-///   accumulator, subsequent items are merged. Emits `Option<T>` downstream
-///   (codegen can filter_map to unwrap).
-/// - **Borrowed mode** (`Accum = &'a mut Option<T>`): same logic, but the
-///   option persists across ticks. Emits `&'a mut Option<T>` downstream
-///   (codegen can map to `.as_mut()` to get `Option<&'a mut T>`).
-///
-/// In both cases, the downstream receives the `Accum` itself (mirroring fold).
-/// The "no items → no output" filtering is handled in codegen via a downstream
-/// `filter_map`.
+///   accumulator, subsequent items are merged. Takes the value on finalize,
+///   emitting 0 or 1 `T` downstream.
+/// - **Borrowed mode** (`Accum = &'a mut Option<T>`): same accumulation logic,
+///   but the option persists across ticks. Emits `&'a mut T` on finalize
+///   (or nothing if no items were received).
 pub struct ReduceState<Accum, F, T> {
     /// The accumulator — either `Option<T>` or `&'a mut Option<T>`.
     pub accum: Accum,
@@ -100,28 +98,54 @@ impl<Accum, F, T> ReduceState<Accum, F, T> {
     }
 }
 
-impl<Accum, F, T> AccumState for ReduceState<Accum, F, T>
+/// Owned mode: accumulates into `Option<T>`, takes value on finalize.
+impl<F, T> AccumState for ReduceState<Option<T>, F, T>
 where
-    Accum: BorrowMut<Option<T>>,
     F: FnMut(&mut T, T),
 {
     type Input = T;
-    type Output = Accum;
-    type Iter = Once<Accum>;
+    type Output = T;
+    type Iter = core::option::IntoIter<T>;
 
     fn accumulate(&mut self, item: T) {
-        match self.accum.borrow_mut() {
+        match &mut self.accum {
             Some(acc) => (self.reduce_fn)(acc, item),
-            None => *self.accum.borrow_mut() = Some(item),
+            None => self.accum = Some(item),
         }
     }
 
     fn into_iter(self) -> Self::Iter {
-        core::iter::once(self.accum)
+        self.accum.into_iter()
     }
 
     fn size_hint(&self, _input_hint: (usize, Option<usize>)) -> (usize, Option<usize>) {
-        (1, Some(1))
+        (0, Some(1))
+    }
+}
+
+/// Borrowed mode: accumulates into `&'a mut Option<T>`, value persists across ticks.
+/// Emits `&'a mut T` on finalize (nothing if empty).
+impl<'a, F, T> AccumState for ReduceState<&'a mut Option<T>, F, T>
+where
+    F: FnMut(&mut T, T),
+{
+    type Input = T;
+    type Output = &'a mut T;
+    type Iter = core::option::IntoIter<&'a mut T>;
+
+    fn accumulate(&mut self, item: T) {
+        match self.accum {
+            Some(acc) => (self.reduce_fn)(acc, item),
+            None => *self.accum = Some(item),
+        }
+    }
+
+    fn into_iter(self) -> Self::Iter {
+        self.accum.as_mut().into_iter()
+    }
+
+    fn size_hint(&self, _input_hint: (usize, Option<usize>)) -> (usize, Option<usize>) {
+        (0, Some(1))
     }
 }
 
@@ -183,6 +207,3 @@ impl<T: Ord> AccumState for SortState<T> {
         (lower, upper)
     }
 }
-
-#[cfg(feature = "alloc")]
-extern crate alloc;

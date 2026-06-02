@@ -104,7 +104,7 @@ linkStyle default stroke:#aaa
 38v1--x|single|39v1; linkStyle 41 stroke:red
 39v1-->40v1
 41v1-->42v1
-42v1--x43v1; linkStyle 44 stroke:red
+42v1-->43v1
 43v1-->44v1
 44v1--x45v1; linkStyle 46 stroke:red
 45v1-->46v1
