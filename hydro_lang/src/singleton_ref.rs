@@ -18,27 +18,23 @@ use crate::location::Location;
 ///
 /// This type is `Copy` (required by `q!()` macro internals).
 /// TODO(mingwei): <https://github.com/hydro-project/stageleft/issues/73>
-pub struct SingletonRef<'a, T, L> {
-    pub(crate) node: *const RefCell<HydroNode>,
-    _phantom: PhantomData<(&'a (), T, L)>,
+pub struct SingletonRef<'a, 'slf, T, L> {
+    /// Will be updated to `HydroNode::Singleton` when used, if not already.
+    pub(crate) ir_node: &'slf RefCell<HydroNode>,
+    _phantom: PhantomData<(&'a T, L)>,
 }
-impl<T, L> SingletonRef<'_, T, L> {
+impl<'slf, T, L> SingletonRef<'_, 'slf, T, L> {
     /// Creates a `SingletonRef` from a shared node.
-    ///
-    /// Note that this will permanently keep the `Rc` alive, intentionally creating a memory leak
-    /// (like [`Box::leak`]).
-    pub(crate) fn new(rc_ptr: Rc<RefCell<HydroNode>>) -> Self {
-        // SAFETY: `rc_ptr` will now never be dropped, and therefore the count cannot reach zero.
-        let node = Rc::into_raw(rc_ptr);
+    pub(crate) fn new(ir_node: &'slf RefCell<HydroNode>) -> Self {
         Self {
-            node,
+            ir_node,
             _phantom: PhantomData,
         }
     }
 }
 
-impl<T, L> Copy for SingletonRef<'_, T, L> {}
-impl<T, L> Clone for SingletonRef<'_, T, L> {
+impl<T, L> Copy for SingletonRef<'_, '_, T, L> {}
+impl<T, L> Clone for SingletonRef<'_, '_, T, L> {
     fn clone(&self) -> Self {
         *self
     }
@@ -71,7 +67,7 @@ pub fn with_singleton_capture(
 static SINGLETON_REF_COUNTER: std::sync::atomic::AtomicUsize =
     std::sync::atomic::AtomicUsize::new(0);
 
-impl<'a, T: 'a, L> FreeVariableWithContextWithProps<L, ()> for SingletonRef<'a, T, L>
+impl<'a, 'slf, T: 'a, L> FreeVariableWithContextWithProps<L, ()> for SingletonRef<'a, 'slf, T, L>
 where
     L: Location<'a>,
 {
@@ -87,18 +83,28 @@ where
                 "SingletonRef used inside q!() but no singleton capture scope is active. \
                  This is a bug — singleton capture should be set up by the operator that uses q!().",
             );
-            // Reconstruct the Rc from the raw pointer.
-            // SAFETY: The `Rc` is leaked by `Rc::into_raw` in `Self::new` and is forever valid.
-            // The created `Rc`s `Drop` must not run, that would remove the original refcount.
-            let rc = unsafe { Rc::from_raw(self.node) };
-            let cloned = rc.clone();
-            std::mem::forget(rc); // Don't decrement the original refcount
 
-            let metadata = cloned.borrow().metadata().clone(); // TODO(mingwei): wrong metadata!
+            let metadata = self.ir_node.borrow().metadata().clone();
+
+            // Wrap in HydroNode::Singleton for materialization + identity tracking. If already a Singleton node,
+            // reuse it.
+            if !matches!(&*self.ir_node.borrow(), HydroNode::Singleton { .. }) {
+                let orig = self.ir_node.replace(HydroNode::Placeholder);
+                *self.ir_node.borrow_mut() = HydroNode::Singleton {
+                    inner: SharedNode(Rc::new(RefCell::new(orig))),
+                    metadata: metadata.clone(),
+                };
+            }
+
+            let borrow: std::cell::Ref<'_, HydroNode> = self.ir_node.borrow();
+            let HydroNode::Singleton { inner, .. } = &*borrow else {
+                unreachable!()
+            };
+
             refs.push((
                 ident.clone(),
                 HydroNode::Singleton {
-                    inner: SharedNode(cloned),
+                    inner: SharedNode(Rc::clone(&inner.0)),
                     metadata,
                 },
             ));
