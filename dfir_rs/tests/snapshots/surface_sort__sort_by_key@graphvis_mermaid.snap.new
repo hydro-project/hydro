@@ -1,5 +1,6 @@
 ---
 source: dfir_rs/tests/surface_sort.rs
+assertion_line: 43
 expression: df.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
