@@ -78,20 +78,93 @@ where
                 this.flush_items
                     .extend(this.map.iter().map(|(k, v)| (k.clone(), v.clone())));
             }
+            *this.flush_idx = 1; // mark as initialized
         }
-        while *this.flush_idx < this.flush_items.len() {
+        while !this.flush_items.is_empty() {
             ready!(this.next.as_mut().poll_ready(ctx));
-            let item = this.flush_items[*this.flush_idx].clone();
+            let item = this.flush_items.pop().unwrap();
             this.next.as_mut().start_send(item, ());
-            *this.flush_idx += 1;
         }
         let step = this.next.poll_finalize(ctx);
         if step.is_done() {
-            this.flush_items.clear();
             *this.flush_idx = 0;
         }
         step
     }
 
     fn size_hint(self: Pin<&mut Self>, _hint: (usize, Option<usize>)) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use alloc::vec;
+    use std::collections::HashMap;
+    use std::pin::Pin;
+
+    use crate::Yes;
+    use crate::push::test_utils::TestPush;
+    use crate::push::{Push, PushStep};
+
+    use super::ReduceKeyed;
+
+    #[test]
+    fn reduce_keyed_emits_on_finalize() {
+        let mut map = HashMap::new();
+        let mut tp = TestPush::no_pend();
+        let mut rk = ReduceKeyed::new(&mut map, |acc: &mut i32, v| *acc += v, &mut tp);
+        let mut rk = Pin::new(&mut rk);
+        rk.as_mut().poll_ready(&mut ());
+        rk.as_mut().start_send((1, 10), ());
+        rk.as_mut().poll_ready(&mut ());
+        rk.as_mut().start_send((1, 20), ());
+        rk.as_mut().poll_ready(&mut ());
+        rk.as_mut().start_send((2, 30), ());
+        rk.as_mut().poll_finalize(&mut ());
+        let mut items = tp.items();
+        items.sort();
+        assert_eq!(items, vec![(1, 30), (2, 30)]);
+    }
+
+    #[test]
+    fn reduce_keyed_empty_input() {
+        let mut map: HashMap<i32, i32> = HashMap::new();
+        let mut tp = TestPush::no_pend();
+        let mut rk = ReduceKeyed::new(&mut map, |acc: &mut i32, v| *acc += v, &mut tp);
+        let mut rk = Pin::new(&mut rk);
+        rk.as_mut().poll_finalize(&mut ());
+        assert!(tp.items().is_empty());
+    }
+
+    #[test]
+    fn reduce_keyed_first_value_is_initial() {
+        let mut map = HashMap::new();
+        let mut tp = TestPush::no_pend();
+        let mut rk = ReduceKeyed::new(&mut map, |acc: &mut i32, v| *acc += v, &mut tp);
+        let mut rk = Pin::new(&mut rk);
+        rk.as_mut().start_send((1, 42), ());
+        rk.as_mut().poll_finalize(&mut ());
+        assert_eq!(tp.items(), vec![(1, 42)]);
+    }
+
+    #[test]
+    fn reduce_keyed_resumes_after_pending() {
+        let mut map = HashMap::new();
+        let mut tp: TestPush<(i32, i32), Yes, true> = TestPush::new_fused(
+            [PushStep::Done, PushStep::pending(), PushStep::Done],
+            [],
+        );
+        let mut rk = ReduceKeyed::new(&mut map, |acc: &mut i32, v| *acc += v, &mut tp);
+        let mut rk = Pin::new(&mut rk);
+        rk.as_mut().start_send((1, 10), ());
+        rk.as_mut().start_send((2, 20), ());
+        // First finalize: sends one item, then Pending
+        let step = rk.as_mut().poll_finalize(&mut ());
+        assert!(step.is_pending());
+        // Second finalize: resumes and sends remaining
+        let step = rk.as_mut().poll_finalize(&mut ());
+        assert!(step.is_done());
+        let mut items = tp.items();
+        items.sort();
+        assert_eq!(items, vec![(1, 10), (2, 20)]);
+    }
 }
