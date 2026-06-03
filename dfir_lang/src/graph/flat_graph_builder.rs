@@ -837,10 +837,10 @@ impl FlatGraphBuilder {
                                 // Error already emitted by `connect_operator_links`, "Cannot find referenced name...".
                                 continue;
                             };
-                            // Handoff nodes (Option or Vec) are valid reference targets.
+                            // Handoff nodes are valid reference targets.
                             if matches!(
                                 self.flat_graph.node(singleton_node_id),
-                                GraphNode::Handoff { .. }
+                                GraphNode::Handoff { .. },
                             ) {
                                 continue;
                             }
@@ -887,7 +887,7 @@ impl FlatGraphBuilder {
                         false,
                         true,
                         out_degree,
-                        &(0..=1), /* Both `handoff()` and `singleton()` may be no-output, for use by ref. */
+                        &(0..=1), // Handoffs may be no-output, for use only by ref.
                         &mut self.diagnostics,
                     );
                 }

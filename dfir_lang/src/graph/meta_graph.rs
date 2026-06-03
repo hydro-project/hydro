@@ -856,11 +856,12 @@ impl DfirGraph {
 
     /// Resolve the singletons via [`Self::node_singleton_references`] for the given `node_id`.
     /// Returns token streams for each reference:
-    /// - For stateful operators: `&singleton_op_XXX` or `&mut singleton_op_XXX`
-    /// - For HandoffKind::Singleton: `&(hoff_XXX_buf.as_ref().unwrap())` (shared) or
-    ///   `&mut(hoff_XXX_buf.as_mut().unwrap())` (mutable)
-    /// - For HandoffKind::Optional: `&(hoff_XXX_buf)` (shared) or `&mut(hoff_XXX_buf)` (mutable)
-    /// - For HandoffKind::Vec: `&(hoff_XXX_buf)` (shared) or `&mut(hoff_XXX_buf)` (mutable)
+    /// - For HandoffKind::Singleton: `buf.as_ref().unwrap()` (shared, `&T`) or
+    ///   `buf.as_mut().unwrap()` (mutable, `&mut T`)
+    /// - For HandoffKind::Optional: `&buf` (shared, `&Option<T>`) or
+    ///   `&mut buf` (mutable, `&mut Option<T>`)
+    /// - For HandoffKind::Vec: `&buf` (shared, `&Vec<T>`) or
+    ///   `&mut buf` (mutable, `&mut Vec<T>`)
     fn helper_resolve_singletons(&self, node_id: GraphNodeId, span: Span) -> Vec<TokenStream> {
         self.node_singleton_references(node_id)
             .iter()
@@ -877,13 +878,9 @@ impl DfirGraph {
                     } => {
                         let buf_ident = self.hoff_buf_ident(ref_node_id, span);
                         if is_mut {
-                            // `&mut(buf.as_mut().unwrap())` produces `&mut &mut T` so that
-                            // postprocess_singletons' `(*expr)` deref gives `&mut T`.
-                            quote_spanned! {span=> &mut(#buf_ident.as_mut().unwrap()) }
+                            quote_spanned! {span=> #buf_ident.as_mut().unwrap() }
                         } else {
-                            // `&(buf.as_ref().unwrap())` produces `&&T` so that
-                            // postprocess_singletons' `(*expr)` deref gives `&T`.
-                            quote_spanned! {span=> &(#buf_ident.as_ref().unwrap()) }
+                            quote_spanned! {span=> #buf_ident.as_ref().unwrap() }
                         }
                     }
                     GraphNode::Handoff {
