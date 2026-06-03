@@ -4,7 +4,7 @@ error: Cannot find referenced name `unknown`; name was never assigned.
 6 |             -> filter(|value| value <= #unknown.as_reveal_ref() && value <= #my_ref.as_reveal_ref())
   |                                        ^
 
-error: Cannot reference operator `null`. Only operators with singleton state can be referenced.
+error: Cannot reference operator `null`. Use `singleton()`, `optional()`, or `handoff()` to create a referenceable name.
  --> tests/compile-fail/stable/surface_singleton_undefined_nostate.rs:6:77
   |
 6 |             -> filter(|value| value <= #unknown.as_reveal_ref() && value <= #my_ref.as_reveal_ref())

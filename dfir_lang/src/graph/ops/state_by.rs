@@ -59,7 +59,6 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
     persistence_args: &(0..=1),
     type_args: &(0..=1),
     is_external_input: false,
-    has_singleton_output: false,
     flo_type: None,
     ports_inn: None,
     ports_out: Some(|| PortListSpec::Fixed(parse_quote!(items, state))),

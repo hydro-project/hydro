@@ -31,7 +31,6 @@ pub const JOIN_MULTISET_HALF: OperatorConstraints = OperatorConstraints {
     persistence_args: &(0..=2),
     type_args: RANGE_0,
     is_external_input: false,
-    has_singleton_output: false,
     flo_type: None,
     ports_inn: Some(|| super::PortListSpec::Fixed(parse_quote! { build, probe })),
     ports_out: None,

@@ -837,10 +837,10 @@ impl FlatGraphBuilder {
                                 // Error already emitted by `connect_operator_links`, "Cannot find referenced name...".
                                 continue;
                             };
-                            // Handoff nodes (Option or Vec) are valid reference targets.
+                            // Handoff nodes are valid reference targets.
                             if matches!(
                                 self.flat_graph.node(singleton_node_id),
-                                GraphNode::Handoff { .. }
+                                GraphNode::Handoff { .. },
                             ) {
                                 continue;
                             }
@@ -850,16 +850,14 @@ impl FlatGraphBuilder {
                                 continue;
                             };
                             let ref_op_constraints = ref_op_inst.op_constraints;
-                            if !ref_op_constraints.has_singleton_output {
-                                self.diagnostics.push(Diagnostic::spanned(
-                                    singleton_ref_token.span(),
-                                    Level::Error,
-                                    format!(
-                                        "Cannot reference operator `{}`. Only operators with singleton state can be referenced.",
-                                        ref_op_constraints.name,
-                                    ),
-                                ));
-                            }
+                            self.diagnostics.push(Diagnostic::spanned(
+                                singleton_ref_token.span(),
+                                Level::Error,
+                                format!(
+                                    "Cannot reference operator `{}`. Use `singleton()`, `optional()`, or `handoff()` to create a referenceable name.",
+                                    ref_op_constraints.name,
+                                ),
+                            ));
                         }
                     }
                 }
@@ -887,7 +885,7 @@ impl FlatGraphBuilder {
                         false,
                         true,
                         out_degree,
-                        &(0..=1), /* Both `handoff()` and `singleton()` may be no-output, for use by ref. */
+                        &(0..=1), // Handoffs may be no-output, for use only by ref.
                         &mut self.diagnostics,
                     );
                 }

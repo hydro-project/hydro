@@ -14,7 +14,6 @@ pub const ALL_ONCE: OperatorConstraints = OperatorConstraints {
     persistence_args: RANGE_0,
     type_args: RANGE_0,
     is_external_input: false,
-    has_singleton_output: false,
     flo_type: Some(FloType::Windowing),
     ports_inn: None,
     ports_out: None,
