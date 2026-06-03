@@ -849,11 +849,6 @@ impl DfirGraph {
         Ident::new(&format!("hoff_{:?}_back", hoff_id.data()), span)
     }
 
-    /// For per-node singleton references. Helper to generate a deterministic `Ident` for the given node.
-    fn node_as_singleton_ident(&self, node_id: GraphNodeId, span: Span) -> Ident {
-        Ident::new(&format!("singleton_op_{:?}", node_id.data()), span)
-    }
-
     /// Resolve the singletons via [`Self::node_singleton_references`] for the given `node_id`.
     /// Returns token streams for each reference:
     /// - For HandoffKind::Singleton: `buf.as_ref().unwrap()` (shared, `&T`) or
@@ -884,43 +879,19 @@ impl DfirGraph {
                         }
                     }
                     GraphNode::Handoff {
-                        kind: HandoffKind::Optional,
+                        kind: HandoffKind::Optional | HandoffKind::Vec,
                         ..
                     } => {
                         let buf_ident = self.hoff_buf_ident(ref_node_id, span);
                         if is_mut {
-                            // `&mut(buf)` produces `&mut Option<T>` so that
-                            // postprocess_singletons' `(*expr)` deref gives `Option<T>` as a place.
-                            quote_spanned! {span=> &mut(#buf_ident) }
+                            quote_spanned! {span=> &mut #buf_ident }
                         } else {
-                            // `&(buf)` produces `&Option<T>` so that
-                            // postprocess_singletons' `(*expr)` deref gives `Option<T>` as a place.
-                            quote_spanned! {span=> &(#buf_ident) }
+                            quote_spanned! {span=> &#buf_ident }
                         }
                     }
-                    GraphNode::Handoff {
-                        kind: HandoffKind::Vec,
-                        ..
-                    } => {
-                        let buf_ident = self.hoff_buf_ident(ref_node_id, span);
-                        if is_mut {
-                            // `&mut(buf)` produces `&mut Vec<T>` so that
-                            // postprocess_singletons' `(*expr)` deref gives `Vec<T>` as a place.
-                            quote_spanned! {span=> &mut(#buf_ident) }
-                        } else {
-                            // `&(buf)` produces `&Vec<T>` so that
-                            // postprocess_singletons' `(*expr)` deref gives `Vec<T>` as a place.
-                            quote_spanned! {span=> &(#buf_ident) }
-                        }
-                    }
-                    _ => {
-                        let singleton_ident = self.node_as_singleton_ident(ref_node_id, span);
-                        if is_mut {
-                            quote_spanned! {span=> &mut #singleton_ident }
-                        } else {
-                            quote_spanned! {span=> &#singleton_ident }
-                        }
-                    }
+                    _ => unreachable!(
+                        "Only handoff nodes should be reachable as singleton references"
+                    ),
                 }
             })
             .collect::<Vec<_>>()
@@ -1381,13 +1352,6 @@ impl DfirGraph {
 
                             let is_pull = idx < pull_to_push_idx;
 
-                            let singleton_output_ident = &if op_constraints.has_singleton_output {
-                                self.node_as_singleton_ident(node_id, op_span)
-                            } else {
-                                // This ident *should* go unused.
-                                Ident::new(&format!("{}_has_no_singleton_output", op_name), op_span)
-                            };
-
                             // There's a bit of dark magic hidden in `Span`s... you'd think it's just a `file:line:column`,
                             // but it has one extra bit of info for _name resolution_, used for `Ident`s. `Span::call_site()`
                             // has the (unhygienic) resolution we want, an ident is just solely determined by its string name,
@@ -1462,7 +1426,6 @@ impl DfirGraph {
                                 is_pull,
                                 inputs: &inputs,
                                 outputs: &outputs,
-                                singleton_output_ident,
                                 op_name,
                                 op_inst,
                                 arguments,
