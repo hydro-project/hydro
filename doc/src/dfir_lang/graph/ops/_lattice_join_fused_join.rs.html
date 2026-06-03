@@ -84,68 +84,67 @@
 <a href=#84 id=84 data-nosnippet>84</a>    persistence_args: <span class="kw-2">&amp;</span>(<span class="number">0</span>..=<span class="number">2</span>),
 <a href=#85 id=85 data-nosnippet>85</a>    type_args: <span class="kw-2">&amp;</span>(<span class="number">2</span>..=<span class="number">2</span>),
 <a href=#86 id=86 data-nosnippet>86</a>    is_external_input: <span class="bool-val">false</span>,
-<a href=#87 id=87 data-nosnippet>87</a>    has_singleton_output: <span class="bool-val">false</span>,
-<a href=#88 id=88 data-nosnippet>88</a>    flo_type: <span class="prelude-val">None</span>,
-<a href=#89 id=89 data-nosnippet>89</a>    ports_inn: <span class="prelude-val">Some</span>(|| <span class="kw">super</span>::PortListSpec::Fixed(<span class="macro">parse_quote!</span> { <span class="number">0</span>, <span class="number">1 </span>})),
-<a href=#90 id=90 data-nosnippet>90</a>    ports_out: <span class="prelude-val">None</span>,
-<a href=#91 id=91 data-nosnippet>91</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">Some</span>(DelayType::MonotoneAccum),
-<a href=#92 id=92 data-nosnippet>92</a>    write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
-<a href=#93 id=93 data-nosnippet>93</a>                   root,
-<a href=#94 id=94 data-nosnippet>94</a>                   op_span,
-<a href=#95 id=95 data-nosnippet>95</a>                   ident,
-<a href=#96 id=96 data-nosnippet>96</a>                   op_inst:
-<a href=#97 id=97 data-nosnippet>97</a>                       OperatorInstance {
-<a href=#98 id=98 data-nosnippet>98</a>                           generics: OpInstGenerics { type_args, .. },
-<a href=#99 id=99 data-nosnippet>99</a>                           ..
-<a href=#100 id=100 data-nosnippet>100</a>                       },
-<a href=#101 id=101 data-nosnippet>101</a>                   ..
-<a href=#102 id=102 data-nosnippet>102</a>               },
-<a href=#103 id=103 data-nosnippet>103</a>               diagnostics| {
-<a href=#104 id=104 data-nosnippet>104</a>        <span class="kw">let </span>lhs_type = <span class="kw-2">&amp;</span>type_args[<span class="number">0</span>];
-<a href=#105 id=105 data-nosnippet>105</a>        <span class="kw">let </span>rhs_type = <span class="kw-2">&amp;</span>type_args[<span class="number">1</span>];
-<a href=#106 id=106 data-nosnippet>106</a>
-<a href=#107 id=107 data-nosnippet>107</a>        <span class="kw">let </span>wc = WriteContextArgs {
-<a href=#108 id=108 data-nosnippet>108</a>            arguments: <span class="kw-2">&amp;</span><span class="macro">parse_quote_spanned!</span> {op_span=&gt;
-<a href=#109 id=109 data-nosnippet>109</a>                #root::dfir_pipes::pull::FoldFrom::new(
-<a href=#110 id=110 data-nosnippet>110</a>                    &lt;#lhs_type <span class="kw">as </span>#root::lattices::LatticeFrom::&lt;<span class="kw">_</span>&gt;&gt;::lattice_from,
-<a href=#111 id=111 data-nosnippet>111</a>                    |state, delta| { #root::lattices::Merge::merge(state, delta); },
-<a href=#112 id=112 data-nosnippet>112</a>                ),
-<a href=#113 id=113 data-nosnippet>113</a>                #root::dfir_pipes::pull::FoldFrom::new(
-<a href=#114 id=114 data-nosnippet>114</a>                    &lt;#rhs_type <span class="kw">as </span>#root::lattices::LatticeFrom::&lt;<span class="kw">_</span>&gt;&gt;::lattice_from,
-<a href=#115 id=115 data-nosnippet>115</a>                    |state, delta| { #root::lattices::Merge::merge(state, delta); },
-<a href=#116 id=116 data-nosnippet>116</a>                ),
-<a href=#117 id=117 data-nosnippet>117</a>            },
-<a href=#118 id=118 data-nosnippet>118</a>            ..wc.clone()
-<a href=#119 id=119 data-nosnippet>119</a>        };
-<a href=#120 id=120 data-nosnippet>120</a>
-<a href=#121 id=121 data-nosnippet>121</a>        <span class="comment">// Use `join_fused`'s codegen.
-<a href=#122 id=122 data-nosnippet>122</a>        </span><span class="kw">let </span>OperatorWriteOutput {
-<a href=#123 id=123 data-nosnippet>123</a>            write_prologue,
-<a href=#124 id=124 data-nosnippet>124</a>            write_iterator,
-<a href=#125 id=125 data-nosnippet>125</a>            write_iterator_after,
-<a href=#126 id=126 data-nosnippet>126</a>            write_tick_end,
-<a href=#127 id=127 data-nosnippet>127</a>        } = (<span class="kw">super</span>::join_fused::JOIN_FUSED.write_fn)(<span class="kw-2">&amp;</span>wc, diagnostics).unwrap();
-<a href=#128 id=128 data-nosnippet>128</a>
-<a href=#129 id=129 data-nosnippet>129</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#130 id=130 data-nosnippet>130</a>            #write_iterator
-<a href=#131 id=131 data-nosnippet>131</a>
-<a href=#132 id=132 data-nosnippet>132</a>            <span class="attr">#[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
-<a href=#133 id=133 data-nosnippet>133</a>            </span><span class="kw">let </span>#ident = #root::dfir_pipes::pull::Pull::map(#ident, |(k, (v1, v2))| {
-<a href=#134 id=134 data-nosnippet>134</a>                #root::lattices::map_union::MapUnionSingletonMap::new_from(
-<a href=#135 id=135 data-nosnippet>135</a>                    (
-<a href=#136 id=136 data-nosnippet>136</a>                        k,
-<a href=#137 id=137 data-nosnippet>137</a>                        #root::lattices::Pair::&lt;#lhs_type, #rhs_type&gt;::new_from(v1, v2),
-<a href=#138 id=138 data-nosnippet>138</a>                    ),
-<a href=#139 id=139 data-nosnippet>139</a>                )
-<a href=#140 id=140 data-nosnippet>140</a>            });
-<a href=#141 id=141 data-nosnippet>141</a>        };
-<a href=#142 id=142 data-nosnippet>142</a>
-<a href=#143 id=143 data-nosnippet>143</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#144 id=144 data-nosnippet>144</a>            write_prologue,
-<a href=#145 id=145 data-nosnippet>145</a>            write_iterator,
-<a href=#146 id=146 data-nosnippet>146</a>            write_iterator_after,
-<a href=#147 id=147 data-nosnippet>147</a>            write_tick_end,
-<a href=#148 id=148 data-nosnippet>148</a>        })
-<a href=#149 id=149 data-nosnippet>149</a>    },
-<a href=#150 id=150 data-nosnippet>150</a>};
+<a href=#87 id=87 data-nosnippet>87</a>    flo_type: <span class="prelude-val">None</span>,
+<a href=#88 id=88 data-nosnippet>88</a>    ports_inn: <span class="prelude-val">Some</span>(|| <span class="kw">super</span>::PortListSpec::Fixed(<span class="macro">parse_quote!</span> { <span class="number">0</span>, <span class="number">1 </span>})),
+<a href=#89 id=89 data-nosnippet>89</a>    ports_out: <span class="prelude-val">None</span>,
+<a href=#90 id=90 data-nosnippet>90</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">Some</span>(DelayType::MonotoneAccum),
+<a href=#91 id=91 data-nosnippet>91</a>    write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
+<a href=#92 id=92 data-nosnippet>92</a>                   root,
+<a href=#93 id=93 data-nosnippet>93</a>                   op_span,
+<a href=#94 id=94 data-nosnippet>94</a>                   ident,
+<a href=#95 id=95 data-nosnippet>95</a>                   op_inst:
+<a href=#96 id=96 data-nosnippet>96</a>                       OperatorInstance {
+<a href=#97 id=97 data-nosnippet>97</a>                           generics: OpInstGenerics { type_args, .. },
+<a href=#98 id=98 data-nosnippet>98</a>                           ..
+<a href=#99 id=99 data-nosnippet>99</a>                       },
+<a href=#100 id=100 data-nosnippet>100</a>                   ..
+<a href=#101 id=101 data-nosnippet>101</a>               },
+<a href=#102 id=102 data-nosnippet>102</a>               diagnostics| {
+<a href=#103 id=103 data-nosnippet>103</a>        <span class="kw">let </span>lhs_type = <span class="kw-2">&amp;</span>type_args[<span class="number">0</span>];
+<a href=#104 id=104 data-nosnippet>104</a>        <span class="kw">let </span>rhs_type = <span class="kw-2">&amp;</span>type_args[<span class="number">1</span>];
+<a href=#105 id=105 data-nosnippet>105</a>
+<a href=#106 id=106 data-nosnippet>106</a>        <span class="kw">let </span>wc = WriteContextArgs {
+<a href=#107 id=107 data-nosnippet>107</a>            arguments: <span class="kw-2">&amp;</span><span class="macro">parse_quote_spanned!</span> {op_span=&gt;
+<a href=#108 id=108 data-nosnippet>108</a>                #root::dfir_pipes::pull::FoldFrom::new(
+<a href=#109 id=109 data-nosnippet>109</a>                    &lt;#lhs_type <span class="kw">as </span>#root::lattices::LatticeFrom::&lt;<span class="kw">_</span>&gt;&gt;::lattice_from,
+<a href=#110 id=110 data-nosnippet>110</a>                    |state, delta| { #root::lattices::Merge::merge(state, delta); },
+<a href=#111 id=111 data-nosnippet>111</a>                ),
+<a href=#112 id=112 data-nosnippet>112</a>                #root::dfir_pipes::pull::FoldFrom::new(
+<a href=#113 id=113 data-nosnippet>113</a>                    &lt;#rhs_type <span class="kw">as </span>#root::lattices::LatticeFrom::&lt;<span class="kw">_</span>&gt;&gt;::lattice_from,
+<a href=#114 id=114 data-nosnippet>114</a>                    |state, delta| { #root::lattices::Merge::merge(state, delta); },
+<a href=#115 id=115 data-nosnippet>115</a>                ),
+<a href=#116 id=116 data-nosnippet>116</a>            },
+<a href=#117 id=117 data-nosnippet>117</a>            ..wc.clone()
+<a href=#118 id=118 data-nosnippet>118</a>        };
+<a href=#119 id=119 data-nosnippet>119</a>
+<a href=#120 id=120 data-nosnippet>120</a>        <span class="comment">// Use `join_fused`'s codegen.
+<a href=#121 id=121 data-nosnippet>121</a>        </span><span class="kw">let </span>OperatorWriteOutput {
+<a href=#122 id=122 data-nosnippet>122</a>            write_prologue,
+<a href=#123 id=123 data-nosnippet>123</a>            write_iterator,
+<a href=#124 id=124 data-nosnippet>124</a>            write_iterator_after,
+<a href=#125 id=125 data-nosnippet>125</a>            write_tick_end,
+<a href=#126 id=126 data-nosnippet>126</a>        } = (<span class="kw">super</span>::join_fused::JOIN_FUSED.write_fn)(<span class="kw-2">&amp;</span>wc, diagnostics).unwrap();
+<a href=#127 id=127 data-nosnippet>127</a>
+<a href=#128 id=128 data-nosnippet>128</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#129 id=129 data-nosnippet>129</a>            #write_iterator
+<a href=#130 id=130 data-nosnippet>130</a>
+<a href=#131 id=131 data-nosnippet>131</a>            <span class="attr">#[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
+<a href=#132 id=132 data-nosnippet>132</a>            </span><span class="kw">let </span>#ident = #root::dfir_pipes::pull::Pull::map(#ident, |(k, (v1, v2))| {
+<a href=#133 id=133 data-nosnippet>133</a>                #root::lattices::map_union::MapUnionSingletonMap::new_from(
+<a href=#134 id=134 data-nosnippet>134</a>                    (
+<a href=#135 id=135 data-nosnippet>135</a>                        k,
+<a href=#136 id=136 data-nosnippet>136</a>                        #root::lattices::Pair::&lt;#lhs_type, #rhs_type&gt;::new_from(v1, v2),
+<a href=#137 id=137 data-nosnippet>137</a>                    ),
+<a href=#138 id=138 data-nosnippet>138</a>                )
+<a href=#139 id=139 data-nosnippet>139</a>            });
+<a href=#140 id=140 data-nosnippet>140</a>        };
+<a href=#141 id=141 data-nosnippet>141</a>
+<a href=#142 id=142 data-nosnippet>142</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#143 id=143 data-nosnippet>143</a>            write_prologue,
+<a href=#144 id=144 data-nosnippet>144</a>            write_iterator,
+<a href=#145 id=145 data-nosnippet>145</a>            write_iterator_after,
+<a href=#146 id=146 data-nosnippet>146</a>            write_tick_end,
+<a href=#147 id=147 data-nosnippet>147</a>        })
+<a href=#148 id=148 data-nosnippet>148</a>    },
+<a href=#149 id=149 data-nosnippet>149</a>};
 </code></pre></div></section></main></body></html>

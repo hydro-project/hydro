@@ -91,45 +91,44 @@
 <a href=#91 id=91 data-nosnippet>91</a>    persistence_args: RANGE_0,
 <a href=#92 id=92 data-nosnippet>92</a>    type_args: RANGE_0,
 <a href=#93 id=93 data-nosnippet>93</a>    is_external_input: <span class="bool-val">false</span>,
-<a href=#94 id=94 data-nosnippet>94</a>    has_singleton_output: <span class="bool-val">false</span>,
-<a href=#95 id=95 data-nosnippet>95</a>    flo_type: <span class="prelude-val">None</span>,
-<a href=#96 id=96 data-nosnippet>96</a>    ports_inn: <span class="prelude-val">None</span>,
-<a href=#97 id=97 data-nosnippet>97</a>    ports_out: <span class="prelude-val">None</span>,
-<a href=#98 id=98 data-nosnippet>98</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
-<a href=#99 id=99 data-nosnippet>99</a>    write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
-<a href=#100 id=100 data-nosnippet>100</a>                   root,
-<a href=#101 id=101 data-nosnippet>101</a>                   op_span,
-<a href=#102 id=102 data-nosnippet>102</a>                   ident,
-<a href=#103 id=103 data-nosnippet>103</a>                   is_pull,
-<a href=#104 id=104 data-nosnippet>104</a>                   arguments,
-<a href=#105 id=105 data-nosnippet>105</a>                   ..
-<a href=#106 id=106 data-nosnippet>106</a>               },
-<a href=#107 id=107 data-nosnippet>107</a>               <span class="kw">_</span>| {
-<a href=#108 id=108 data-nosnippet>108</a>        <span class="macro">assert!</span>(!is_pull);
-<a href=#109 id=109 data-nosnippet>109</a>
-<a href=#110 id=110 data-nosnippet>110</a>        <span class="kw">let </span>sink_arg = <span class="kw-2">&amp;</span>arguments[<span class="number">0</span>];
-<a href=#111 id=111 data-nosnippet>111</a>        <span class="kw">let </span>sink_ident = wc.make_ident(<span class="string">"sink"</span>);
-<a href=#112 id=112 data-nosnippet>112</a>        <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#113 id=113 data-nosnippet>113</a>            <span class="kw">let </span><span class="kw-2">mut </span>#sink_ident = #sink_arg;
-<a href=#114 id=114 data-nosnippet>114</a>        };
-<a href=#115 id=115 data-nosnippet>115</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#116 id=116 data-nosnippet>116</a>            <span class="kw">let </span>#ident = {
-<a href=#117 id=117 data-nosnippet>117</a>                <span class="kw">fn </span>sink_guard&lt;Si, Item&gt;(sink: Si) -&gt; <span class="kw">impl </span>#root::dfir_pipes::push::Push&lt;Item, ()&gt;
-<a href=#118 id=118 data-nosnippet>118</a>                <span class="kw">where
-<a href=#119 id=119 data-nosnippet>119</a>                    </span>Si: #root::futures::sink::Sink&lt;Item&gt;,
-<a href=#120 id=120 data-nosnippet>120</a>                    Si::Error: ::std::fmt::Debug,
-<a href=#121 id=121 data-nosnippet>121</a>                {
-<a href=#122 id=122 data-nosnippet>122</a>                    #root::dfir_pipes::push::sink(&lt;Si <span class="kw">as </span>#root::futures::sink::SinkExt&lt;Item&gt;&gt;::sink_map_err(sink, |e| <span class="macro">panic!</span>(<span class="string">"{:?}"</span>, e)))
-<a href=#123 id=123 data-nosnippet>123</a>                }
-<a href=#124 id=124 data-nosnippet>124</a>                sink_guard(<span class="kw-2">&amp;mut </span>#sink_ident)
-<a href=#125 id=125 data-nosnippet>125</a>            };
-<a href=#126 id=126 data-nosnippet>126</a>        };
-<a href=#127 id=127 data-nosnippet>127</a>
-<a href=#128 id=128 data-nosnippet>128</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#129 id=129 data-nosnippet>129</a>            write_prologue,
-<a href=#130 id=130 data-nosnippet>130</a>            write_iterator,
-<a href=#131 id=131 data-nosnippet>131</a>            ..Default::default()
-<a href=#132 id=132 data-nosnippet>132</a>        })
-<a href=#133 id=133 data-nosnippet>133</a>    },
-<a href=#134 id=134 data-nosnippet>134</a>};
+<a href=#94 id=94 data-nosnippet>94</a>    flo_type: <span class="prelude-val">None</span>,
+<a href=#95 id=95 data-nosnippet>95</a>    ports_inn: <span class="prelude-val">None</span>,
+<a href=#96 id=96 data-nosnippet>96</a>    ports_out: <span class="prelude-val">None</span>,
+<a href=#97 id=97 data-nosnippet>97</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
+<a href=#98 id=98 data-nosnippet>98</a>    write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
+<a href=#99 id=99 data-nosnippet>99</a>                   root,
+<a href=#100 id=100 data-nosnippet>100</a>                   op_span,
+<a href=#101 id=101 data-nosnippet>101</a>                   ident,
+<a href=#102 id=102 data-nosnippet>102</a>                   is_pull,
+<a href=#103 id=103 data-nosnippet>103</a>                   arguments,
+<a href=#104 id=104 data-nosnippet>104</a>                   ..
+<a href=#105 id=105 data-nosnippet>105</a>               },
+<a href=#106 id=106 data-nosnippet>106</a>               <span class="kw">_</span>| {
+<a href=#107 id=107 data-nosnippet>107</a>        <span class="macro">assert!</span>(!is_pull);
+<a href=#108 id=108 data-nosnippet>108</a>
+<a href=#109 id=109 data-nosnippet>109</a>        <span class="kw">let </span>sink_arg = <span class="kw-2">&amp;</span>arguments[<span class="number">0</span>];
+<a href=#110 id=110 data-nosnippet>110</a>        <span class="kw">let </span>sink_ident = wc.make_ident(<span class="string">"sink"</span>);
+<a href=#111 id=111 data-nosnippet>111</a>        <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#112 id=112 data-nosnippet>112</a>            <span class="kw">let </span><span class="kw-2">mut </span>#sink_ident = #sink_arg;
+<a href=#113 id=113 data-nosnippet>113</a>        };
+<a href=#114 id=114 data-nosnippet>114</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#115 id=115 data-nosnippet>115</a>            <span class="kw">let </span>#ident = {
+<a href=#116 id=116 data-nosnippet>116</a>                <span class="kw">fn </span>sink_guard&lt;Si, Item&gt;(sink: Si) -&gt; <span class="kw">impl </span>#root::dfir_pipes::push::Push&lt;Item, ()&gt;
+<a href=#117 id=117 data-nosnippet>117</a>                <span class="kw">where
+<a href=#118 id=118 data-nosnippet>118</a>                    </span>Si: #root::futures::sink::Sink&lt;Item&gt;,
+<a href=#119 id=119 data-nosnippet>119</a>                    Si::Error: ::std::fmt::Debug,
+<a href=#120 id=120 data-nosnippet>120</a>                {
+<a href=#121 id=121 data-nosnippet>121</a>                    #root::dfir_pipes::push::sink(&lt;Si <span class="kw">as </span>#root::futures::sink::SinkExt&lt;Item&gt;&gt;::sink_map_err(sink, |e| <span class="macro">panic!</span>(<span class="string">"{:?}"</span>, e)))
+<a href=#122 id=122 data-nosnippet>122</a>                }
+<a href=#123 id=123 data-nosnippet>123</a>                sink_guard(<span class="kw-2">&amp;mut </span>#sink_ident)
+<a href=#124 id=124 data-nosnippet>124</a>            };
+<a href=#125 id=125 data-nosnippet>125</a>        };
+<a href=#126 id=126 data-nosnippet>126</a>
+<a href=#127 id=127 data-nosnippet>127</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#128 id=128 data-nosnippet>128</a>            write_prologue,
+<a href=#129 id=129 data-nosnippet>129</a>            write_iterator,
+<a href=#130 id=130 data-nosnippet>130</a>            ..Default::default()
+<a href=#131 id=131 data-nosnippet>131</a>        })
+<a href=#132 id=132 data-nosnippet>132</a>    },
+<a href=#133 id=133 data-nosnippet>133</a>};
 </code></pre></div></section></main></body></html>

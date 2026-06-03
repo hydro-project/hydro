@@ -53,43 +53,42 @@
 <a href=#53 id=53 data-nosnippet>53</a>    persistence_args: RANGE_0,
 <a href=#54 id=54 data-nosnippet>54</a>    type_args: RANGE_0,
 <a href=#55 id=55 data-nosnippet>55</a>    is_external_input: <span class="bool-val">true</span>,
-<a href=#56 id=56 data-nosnippet>56</a>    has_singleton_output: <span class="bool-val">false</span>,
-<a href=#57 id=57 data-nosnippet>57</a>    flo_type: <span class="prelude-val">Some</span>(FloType::Source),
-<a href=#58 id=58 data-nosnippet>58</a>    ports_inn: <span class="prelude-val">None</span>,
-<a href=#59 id=59 data-nosnippet>59</a>    ports_out: <span class="prelude-val">None</span>,
-<a href=#60 id=60 data-nosnippet>60</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
-<a href=#61 id=61 data-nosnippet>61</a>    write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
-<a href=#62 id=62 data-nosnippet>62</a>                   root,
-<a href=#63 id=63 data-nosnippet>63</a>                   op_span,
-<a href=#64 id=64 data-nosnippet>64</a>                   arguments,
-<a href=#65 id=65 data-nosnippet>65</a>                   ..
-<a href=#66 id=66 data-nosnippet>66</a>               },
-<a href=#67 id=67 data-nosnippet>67</a>               diagnostics| {
-<a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">let </span>ident_intervalstream = wc.make_ident(<span class="string">"intervalstream"</span>);
-<a href=#69 id=69 data-nosnippet>69</a>        <span class="kw">let </span><span class="kw-2">mut </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#70 id=70 data-nosnippet>70</a>            <span class="kw">let </span>#ident_intervalstream =
-<a href=#71 id=71 data-nosnippet>71</a>                #root::tokio_stream::StreamExt::map(
-<a href=#72 id=72 data-nosnippet>72</a>                    #root::tokio_stream::wrappers::IntervalStream::new(#root::tokio::time::interval(#arguments)),
-<a href=#73 id=73 data-nosnippet>73</a>                    ::std::mem::drop,
-<a href=#74 id=74 data-nosnippet>74</a>                );
-<a href=#75 id=75 data-nosnippet>75</a>        };
-<a href=#76 id=76 data-nosnippet>76</a>        <span class="kw">let </span>wc = WriteContextArgs {
-<a href=#77 id=77 data-nosnippet>77</a>            arguments: <span class="kw-2">&amp;</span><span class="macro">parse_quote_spanned!</span>(op_span=&gt; #ident_intervalstream),
-<a href=#78 id=78 data-nosnippet>78</a>            ..wc.clone()
-<a href=#79 id=79 data-nosnippet>79</a>        };
-<a href=#80 id=80 data-nosnippet>80</a>        <span class="kw">let </span>OperatorWriteOutput {
-<a href=#81 id=81 data-nosnippet>81</a>            write_prologue: write_prologue_stream,
-<a href=#82 id=82 data-nosnippet>82</a>            write_iterator,
-<a href=#83 id=83 data-nosnippet>83</a>            write_iterator_after,
-<a href=#84 id=84 data-nosnippet>84</a>            write_tick_end,
-<a href=#85 id=85 data-nosnippet>85</a>        } = (<span class="kw">super</span>::source_stream::SOURCE_STREAM.write_fn)(<span class="kw-2">&amp;</span>wc, diagnostics)<span class="question-mark">?</span>;
-<a href=#86 id=86 data-nosnippet>86</a>        write_prologue.extend(write_prologue_stream);
-<a href=#87 id=87 data-nosnippet>87</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#88 id=88 data-nosnippet>88</a>            write_prologue,
-<a href=#89 id=89 data-nosnippet>89</a>            write_iterator,
-<a href=#90 id=90 data-nosnippet>90</a>            write_iterator_after,
-<a href=#91 id=91 data-nosnippet>91</a>            write_tick_end,
-<a href=#92 id=92 data-nosnippet>92</a>        })
-<a href=#93 id=93 data-nosnippet>93</a>    },
-<a href=#94 id=94 data-nosnippet>94</a>};
+<a href=#56 id=56 data-nosnippet>56</a>    flo_type: <span class="prelude-val">Some</span>(FloType::Source),
+<a href=#57 id=57 data-nosnippet>57</a>    ports_inn: <span class="prelude-val">None</span>,
+<a href=#58 id=58 data-nosnippet>58</a>    ports_out: <span class="prelude-val">None</span>,
+<a href=#59 id=59 data-nosnippet>59</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
+<a href=#60 id=60 data-nosnippet>60</a>    write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
+<a href=#61 id=61 data-nosnippet>61</a>                   root,
+<a href=#62 id=62 data-nosnippet>62</a>                   op_span,
+<a href=#63 id=63 data-nosnippet>63</a>                   arguments,
+<a href=#64 id=64 data-nosnippet>64</a>                   ..
+<a href=#65 id=65 data-nosnippet>65</a>               },
+<a href=#66 id=66 data-nosnippet>66</a>               diagnostics| {
+<a href=#67 id=67 data-nosnippet>67</a>        <span class="kw">let </span>ident_intervalstream = wc.make_ident(<span class="string">"intervalstream"</span>);
+<a href=#68 id=68 data-nosnippet>68</a>        <span class="kw">let </span><span class="kw-2">mut </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#69 id=69 data-nosnippet>69</a>            <span class="kw">let </span>#ident_intervalstream =
+<a href=#70 id=70 data-nosnippet>70</a>                #root::tokio_stream::StreamExt::map(
+<a href=#71 id=71 data-nosnippet>71</a>                    #root::tokio_stream::wrappers::IntervalStream::new(#root::tokio::time::interval(#arguments)),
+<a href=#72 id=72 data-nosnippet>72</a>                    ::std::mem::drop,
+<a href=#73 id=73 data-nosnippet>73</a>                );
+<a href=#74 id=74 data-nosnippet>74</a>        };
+<a href=#75 id=75 data-nosnippet>75</a>        <span class="kw">let </span>wc = WriteContextArgs {
+<a href=#76 id=76 data-nosnippet>76</a>            arguments: <span class="kw-2">&amp;</span><span class="macro">parse_quote_spanned!</span>(op_span=&gt; #ident_intervalstream),
+<a href=#77 id=77 data-nosnippet>77</a>            ..wc.clone()
+<a href=#78 id=78 data-nosnippet>78</a>        };
+<a href=#79 id=79 data-nosnippet>79</a>        <span class="kw">let </span>OperatorWriteOutput {
+<a href=#80 id=80 data-nosnippet>80</a>            write_prologue: write_prologue_stream,
+<a href=#81 id=81 data-nosnippet>81</a>            write_iterator,
+<a href=#82 id=82 data-nosnippet>82</a>            write_iterator_after,
+<a href=#83 id=83 data-nosnippet>83</a>            write_tick_end,
+<a href=#84 id=84 data-nosnippet>84</a>        } = (<span class="kw">super</span>::source_stream::SOURCE_STREAM.write_fn)(<span class="kw-2">&amp;</span>wc, diagnostics)<span class="question-mark">?</span>;
+<a href=#85 id=85 data-nosnippet>85</a>        write_prologue.extend(write_prologue_stream);
+<a href=#86 id=86 data-nosnippet>86</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#87 id=87 data-nosnippet>87</a>            write_prologue,
+<a href=#88 id=88 data-nosnippet>88</a>            write_iterator,
+<a href=#89 id=89 data-nosnippet>89</a>            write_iterator_after,
+<a href=#90 id=90 data-nosnippet>90</a>            write_tick_end,
+<a href=#91 id=91 data-nosnippet>91</a>        })
+<a href=#92 id=92 data-nosnippet>92</a>    },
+<a href=#93 id=93 data-nosnippet>93</a>};
 </code></pre></div></section></main></body></html>
