@@ -48,17 +48,17 @@ pub fn test_cartesian_product_multi_tick() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
     let df = dfir_syntax! {
-        lhs = source_stream(lhs_recv)
+        lhs_op = source_stream(lhs_recv)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
-        rhs = source_stream(rhs_recv)
+        rhs_op = source_stream(rhs_recv)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
 
-        lhs[items] -> [0]my_join;
-        rhs[items] -> [1]my_join;
-        lhs[state] -> null();
-        rhs[state] -> null();
+        lhs_op[items] -> [0]my_join;
+        rhs_op[items] -> [1]my_join;
+        lhs = lhs_op[state] -> singleton();
+        rhs = rhs_op[state] -> singleton();
 
         my_join = lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), #lhs, #rhs)
             -> lattice_reduce()
@@ -76,18 +76,18 @@ pub fn test_cartesian_product_multi_tick_tee() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
     let df = dfir_syntax! {
-        lhs = source_stream(lhs_recv)
+        lhs_op = source_stream(lhs_recv)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
-        rhs = source_stream(rhs_recv)
+        rhs_op = source_stream(rhs_recv)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
-        rhs_tee = rhs[items] -> tee();
+        rhs_tee = rhs_op[items] -> tee();
         rhs_tee -> for_each(|x| println!("tee: {:?}", x));
-        lhs[state] -> null();
-        rhs[state] -> null();
+        lhs = lhs_op[state] -> singleton();
+        rhs = rhs_op[state] -> singleton();
 
-        lhs[items] -> [0]my_join;
+        lhs_op[items] -> [0]my_join;
         rhs_tee -> [1]my_join;
 
         my_join = lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), #lhs, #rhs)
@@ -106,17 +106,17 @@ pub fn test_cartesian_product_multi_tick_identity() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
     let df = dfir_syntax! {
-        lhs = source_stream(lhs_recv)
+        lhs_op = source_stream(lhs_recv)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
-        rhs = source_stream(rhs_recv)
+        rhs_op = source_stream(rhs_recv)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
-        rhs_id = rhs[items] -> identity();
-        lhs[state] -> null();
-        rhs[state] -> null();
+        rhs_id = rhs_op[items] -> identity();
+        lhs = lhs_op[state] -> singleton();
+        rhs = rhs_op[state] -> singleton();
 
-        lhs[items] -> [0]my_join;
+        lhs_op[items] -> [0]my_join;
         rhs_id -> [1]my_join;
 
         my_join = lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), #lhs, #rhs)

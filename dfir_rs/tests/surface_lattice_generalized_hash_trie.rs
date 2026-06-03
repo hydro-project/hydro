@@ -52,16 +52,16 @@ fn test_join() {
     type MyBim = GhtBimorphism<MyNodeBim>;
 
     let mut df = dfir_syntax! {
-        R = source_iter(r)
+        R_op = source_iter(r)
             -> map(|t| MyGht::new_from([t]))
             -> state::<MyGht>();
-        S = source_iter(s)
+        S_op = source_iter(s)
             -> map(|t| MyGht::new_from([t]))
             -> state::<MyGht>();
-        R[items] -> [0]my_join;
-        S[items] -> [1]my_join;
-        R[state] -> null();
-        S[state] -> null();
+        R_op[items] -> [0]my_join;
+        S_op[items] -> [1]my_join;
+        R = R_op[state] -> singleton();
+        S = S_op[state] -> singleton();
         my_join = lattice_bimorphism(MyBim::default(), #R, #S)
             -> lattice_reduce()
             -> for_each(|x| out_send.send(x).unwrap());

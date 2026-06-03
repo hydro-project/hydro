@@ -46,7 +46,7 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
     persistence_args: RANGE_1,
     type_args: &(0..=1),
     is_external_input: false,
-    has_singleton_output: true,
+    has_singleton_output: false,
     flo_type: None,
     ports_inn: None,
     ports_out: None,
@@ -58,7 +58,6 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                    is_pull,
                    inputs,
                    outputs,
-                   singleton_output_ident,
                    op_name,
                    work_fn_async,
                    op_inst:
@@ -86,7 +85,7 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
             .map(quote::ToTokens::to_token_stream)
             .unwrap_or(quote_spanned!(op_span=> _));
 
-        let persistdata_ident = singleton_output_ident;
+        let persistdata_ident = wc.make_ident("persistdata");
         let vec_ident = wc.make_ident("persistvec");
         let write_prologue = quote_spanned! {op_span=>
             let mut #persistdata_ident = ::std::vec::Vec::<#generic_type>::new();

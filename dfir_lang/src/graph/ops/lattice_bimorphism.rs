@@ -19,17 +19,17 @@ use super::{
 /// use std::collections::HashSet;
 /// use lattices::set_union::{CartesianProductBimorphism, SetUnionHashSet, SetUnionSingletonSet};
 ///
-/// lhs = source_iter(0..3)
+/// lhs_op = source_iter(0..3)
 ///     -> map(SetUnionSingletonSet::new_from)
 ///     -> state::<'static, SetUnionHashSet<u32>>();
-/// rhs = source_iter(3..5)
+/// rhs_op = source_iter(3..5)
 ///     -> map(SetUnionSingletonSet::new_from)
 ///     -> state::<'static, SetUnionHashSet<u32>>();
 ///
-/// lhs[items] -> [0]my_join;
-/// rhs[items] -> [1]my_join;
-/// lhs[state] -> null();
-/// rhs[state] -> null();
+/// lhs_op[items] -> [0]my_join;
+/// rhs_op[items] -> [1]my_join;
+/// lhs = lhs_op[state] -> singleton();
+/// rhs = rhs_op[state] -> singleton();
 ///
 /// my_join = lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), #lhs, #rhs)
 ///     -> assert_eq([SetUnionHashSet::new(HashSet::from_iter([
@@ -79,8 +79,8 @@ pub const LATTICE_BIMORPHISM: OperatorConstraints = OperatorConstraints {
         let write_iterator = quote_spanned! {op_span=>
             let #ident = {
                 let (lhs_state, rhs_state) = (
-                    &#lhs_state,
-                    &#rhs_state,
+                    #lhs_state,
+                    #rhs_state,
                 );
                 #[inline(always)]
                 fn check_inputs<'a, Func, LhsPull, RhsPull, LhsState, RhsState, Output>(

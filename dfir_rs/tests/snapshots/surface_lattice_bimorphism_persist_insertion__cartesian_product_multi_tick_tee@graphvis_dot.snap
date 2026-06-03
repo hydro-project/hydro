@@ -13,8 +13,8 @@ digraph {
     n6v1 [label="(n6v1) state::<'static, SetUnionHashSet<u32>>()", shape=house, fillcolor="#ffff88"]
     n7v1 [label="(n7v1) tee()", shape=house, fillcolor="#ffff88"]
     n8v1 [label="(n8v1) for_each(|x| println!(\"tee: {:?}\", x))", shape=house, fillcolor="#ffff88"]
-    n9v1 [label="(n9v1) null()", shape=house, fillcolor="#ffff88"]
-    n10v1 [label="(n10v1) null()", shape=house, fillcolor="#ffff88"]
+    n9v1 [label="(n9v1) singleton", shape=parallelogram, fillcolor="#ddddff"]
+    n10v1 [label="(n10v1) singleton", shape=parallelogram, fillcolor="#ddddff"]
     n11v1 [label="(n11v1) lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), lhs, rhs)", shape=invhouse, fillcolor="#88aaff"]
     n12v1 [label="(n12v1) lattice_reduce()", shape=invhouse, fillcolor="#88aaff"]
     n13v1 [label="(n13v1) for_each(|x| out_send.send(x).unwrap())", shape=house, fillcolor="#ffff88"]
@@ -36,17 +36,16 @@ digraph {
     n14v1 -> n11v1 [label="0"]
     n15v1 -> n11v1 [label="1"]
     n16v1 -> n12v1 [color=red]
-    n3v1 -> n11v1 [color=red]
-    n6v1 -> n11v1 [color=red]
+    n9v1 -> n11v1 [color=red]
+    n10v1 -> n11v1 [color=red]
     subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
         style=filled
         label = "sg_1v1"
-        n9v1
-        subgraph sg_1v1_var_lhs {
+        subgraph sg_1v1_var_lhs_op {
             cluster=true
-            label="var lhs"
+            label="var lhs_op"
             n1v1
             n2v1
             n3v1
@@ -58,10 +57,9 @@ digraph {
         style=filled
         label = "sg_2v1"
         n8v1
-        n10v1
-        subgraph sg_2v1_var_rhs {
+        subgraph sg_2v1_var_rhs_op {
             cluster=true
-            label="var rhs"
+            label="var rhs_op"
             n4v1
             n5v1
             n6v1
