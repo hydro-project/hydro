@@ -35,7 +35,6 @@ pub const SOURCE_STREAM: OperatorConstraints = OperatorConstraints {
     persistence_args: RANGE_0,
     type_args: RANGE_0,
     is_external_input: true,
-    has_singleton_output: false,
     flo_type: Some(FloType::Source),
     ports_inn: None,
     ports_out: None,

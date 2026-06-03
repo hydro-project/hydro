@@ -68,10 +68,6 @@ pub struct OperatorConstraints {
     /// If this operator receives external inputs and therefore must be in
     /// stratum 0.
     pub is_external_input: bool,
-    /// If this operator has a singleton reference output. For stateful operators.
-    /// If true, [`WriteContextArgs::singleton_output_ident`] will be set to a meaningful value in
-    /// the [`Self::write_fn`] invocation.
-    pub has_singleton_output: bool,
     /// Flo semantics type.
     pub flo_type: Option<FloType>,
 
@@ -416,8 +412,6 @@ pub struct WriteContextArgs<'a> {
     pub inputs: &'a [Ident],
     /// Output `Sink` operator idents (or ref idents; used for push).
     pub outputs: &'a [Ident],
-    /// Ident for the singleton output of this operator, if any.
-    pub singleton_output_ident: &'a Ident,
 
     /// Operator name.
     pub op_name: &'static str,

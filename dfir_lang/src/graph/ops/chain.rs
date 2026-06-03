@@ -29,7 +29,6 @@ pub const CHAIN: OperatorConstraints = OperatorConstraints {
     soft_range_out: RANGE_1,
     num_args: 0,
     is_external_input: false,
-    has_singleton_output: false,
     flo_type: None,
     ports_inn: None,
     ports_out: None,

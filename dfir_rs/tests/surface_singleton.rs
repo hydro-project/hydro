@@ -252,7 +252,7 @@ pub fn test_reduce_singleton() {
             -> persist::<'static>()
             -> filter(|&value| {
                 // This is not monotonic.
-                value <= (*#max_of_stream2).unwrap_or(0)
+                value <= #max_of_stream2.unwrap_or(0)
             })
             -> map(|x| (context.current_tick(), x))
             -> for_each(|x| filter_send.send(x).unwrap());
@@ -294,7 +294,7 @@ pub fn test_reduce_singleton_push() {
             -> persist::<'static>()
             -> filter(|&value| {
                 // This is not monotonic.
-                value <= (*#max_of_stream2).unwrap_or(0)
+                value <= #max_of_stream2.unwrap_or(0)
             })
             -> map(|x| (context.current_tick(), x))
             -> for_each(|x| filter_send.send(x).unwrap());
