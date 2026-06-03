@@ -246,7 +246,7 @@ pub fn test_reduce_singleton() {
     let mut df = dfir_rs::dfir_syntax! {
         stream1 = source_iter(1..=10);
         stream2 = source_iter(3..=5);
-        max_of_stream2 = stream2 -> reduce(|a, b| *a = std::cmp::max(*a, b));
+        max_of_stream2 = stream2 -> reduce(|a, b| *a = std::cmp::max(*a, b)) -> optional();
 
         filtered_stream1 = stream1
             -> persist::<'static>()
@@ -288,7 +288,7 @@ pub fn test_reduce_singleton_push() {
     let mut df = dfir_rs::dfir_syntax! {
         stream1 = source_iter(1..=10);
         stream2 = source_iter(3..=5);
-        max_of_stream2 = stream2 -> reduce(|a, b| *a = std::cmp::max(*a, b));
+        max_of_stream2 = stream2 -> reduce(|a, b| *a = std::cmp::max(*a, b)) -> optional();
 
         filtered_stream1 = stream1
             -> persist::<'static>()

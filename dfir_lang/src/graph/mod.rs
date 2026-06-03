@@ -93,8 +93,12 @@ pub struct Varname(#[serde(with = "serde_syn")] pub Ident);
 pub enum HandoffKind {
     /// A `Vec<T>` buffer for streams (zero or more items).
     Vec,
-    /// An `Option<T>` slot for singletons/optionals (zero or one item).
-    Option,
+    /// An `Option<T>` slot for singletons (exactly one item expected).
+    /// `#varname` gives `&T` (panics if empty).
+    Singleton,
+    /// An `Option<T>` slot for optionals (zero or one item).
+    /// `#varname` gives `&Option<T>`.
+    Optional,
 }
 
 /// A node, corresponding to an operator or a handoff.
@@ -136,7 +140,7 @@ impl GraphNode {
                 ..
             } => HANDOFF_NODE_STR.into(),
             GraphNode::Handoff {
-                kind: HandoffKind::Option,
+                kind: HandoffKind::Singleton | HandoffKind::Optional,
                 ..
             } => SINGLETON_SLOT_NODE_STR.into(),
             GraphNode::ModuleBoundary { .. } => MODULE_BOUNDARY_NODE_STR.into(),
@@ -152,7 +156,7 @@ impl GraphNode {
                 ..
             } => HANDOFF_NODE_STR.into(),
             GraphNode::Handoff {
-                kind: HandoffKind::Option,
+                kind: HandoffKind::Singleton | HandoffKind::Optional,
                 ..
             } => SINGLETON_SLOT_NODE_STR.into(),
             GraphNode::ModuleBoundary { .. } => MODULE_BOUNDARY_NODE_STR.into(),

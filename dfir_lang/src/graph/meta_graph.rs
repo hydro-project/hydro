@@ -271,7 +271,8 @@ impl DfirGraph {
             // Recognize `handoff()`/`singleton()` pseudo-operators and lower to GraphNode::Handoff.
             let handoff_kind = match &*operator.name_string() {
                 "handoff" => Some(HandoffKind::Vec),
-                "singleton" => Some(HandoffKind::Option),
+                "singleton" => Some(HandoffKind::Singleton),
+                "optional" => Some(HandoffKind::Optional),
                 _ => None,
             };
             if let Some(kind) = handoff_kind {
@@ -820,7 +821,7 @@ impl DfirGraph {
                 if is_pred { "recv" } else { "send" }
             ),
             GraphNode::Handoff {
-                kind: HandoffKind::Option,
+                kind: HandoffKind::Singleton | HandoffKind::Optional,
                 ..
             } => format!(
                 "singleton_{:?}_{}",
@@ -858,7 +859,6 @@ impl DfirGraph {
     /// - For stateful operators: `&singleton_op_XXX` or `&mut singleton_op_XXX`
     /// - For HandoffKind::Option: `&(hoff_XXX_buf.as_ref().unwrap())` (shared) or
     ///   `&mut(hoff_XXX_buf.as_mut().unwrap())` (mutable)
-    /// - For HandoffKind::Vec: `&(&#buf)` (shared) or `&mut(&mut #buf)` (mutable)
     fn helper_resolve_singletons(&self, node_id: GraphNodeId, span: Span) -> Vec<TokenStream> {
         self.node_singleton_references(node_id)
             .iter()
@@ -868,48 +868,59 @@ impl DfirGraph {
                     .node_id
                     .expect("Expected singleton to be resolved but was not, this is a bug.");
                 let is_mut = resolved_ref.is_mut;
-                if matches!(
-                    self.node(ref_node_id),
+                match self.node(ref_node_id) {
                     GraphNode::Handoff {
-                        kind: HandoffKind::Option,
+                        kind: HandoffKind::Singleton,
                         ..
+                    } => {
+                        let buf_ident = self.hoff_buf_ident(ref_node_id, span);
+                        if is_mut {
+                            // `&mut(buf.as_mut().unwrap())` produces `&mut &mut T` so that
+                            // postprocess_singletons' `(*expr)` deref gives `&mut T`.
+                            quote_spanned! {span=> &mut(#buf_ident.as_mut().unwrap()) }
+                        } else {
+                            // `&(buf.as_ref().unwrap())` produces `&&T` so that
+                            // postprocess_singletons' `(*expr)` deref gives `&T`.
+                            quote_spanned! {span=> &(#buf_ident.as_ref().unwrap()) }
+                        }
                     }
-                ) {
-                    let buf_ident = self.hoff_buf_ident(ref_node_id, span);
-                    if is_mut {
-                        // `&mut(buf.as_mut().unwrap())` produces `&mut &mut T` so that
-                        // postprocess_singletons' `(*expr)` deref gives `&mut T`.
-                        quote_spanned! {span=> &mut(#buf_ident.as_mut().unwrap()) }
-                    } else {
-                        // `&(buf.as_ref().unwrap())` produces `&&T` so that
-                        // postprocess_singletons' `(*expr)` deref gives `&T`.
-                        quote_spanned! {span=> &(#buf_ident.as_ref().unwrap()) }
+                    GraphNode::Handoff {
+                        kind: HandoffKind::Optional,
+                        ..
+                    } => {
+                        let buf_ident = self.hoff_buf_ident(ref_node_id, span);
+                        if is_mut {
+                            // `&mut(buf)` produces `&mut Vec<T>` so that
+                            // postprocess_singletons' `(*expr)` deref gives `Vec<T>` as a place.
+                            quote_spanned! {span=> &mut(#buf_ident) }
+                        } else {
+                            // `&(buf)` produces `&Vec<T>` so that
+                            // postprocess_singletons' `(*expr)` deref gives `Vec<T>` as a place.
+                            quote_spanned! {span=> &(#buf_ident) }
+                        }
                     }
-                } else if matches!(
-                    self.node(ref_node_id),
                     GraphNode::Handoff {
                         kind: HandoffKind::Vec,
                         ..
+                    } => {
+                        let buf_ident = self.hoff_buf_ident(ref_node_id, span);
+                        if is_mut {
+                            // `&mut(buf)` produces `&mut Option<T>` so that
+                            // postprocess_singletons' `(*expr)` deref gives `Option<T>` as a place.
+                            quote_spanned! {span=> &mut(#buf_ident) }
+                        } else {
+                            // `&(buf)` produces `&Option<T>` so that
+                            // postprocess_singletons' `(*expr)` deref gives `Option<T>` as a place.
+                            quote_spanned! {span=> &(#buf_ident) }
+                        }
                     }
-                ) {
-                    let buf_ident = self.hoff_buf_ident(ref_node_id, span);
-                    if is_mut {
-                        // `&mut(#buf_ident)` produces `&mut Vec<T>` so that
-                        // postprocess_singletons' `(*expr)` deref gives `Vec<T>` as a place.
-                        // But we actually want `&mut Vec<T>`, so we need an extra indirection:
-                        // `&mut(&mut #buf_ident)` produces `&mut &mut Vec<T>`, deref gives `&mut Vec<T>`.
-                        quote_spanned! {span=> &mut(&mut #buf_ident) }
-                    } else {
-                        // `&(&#buf_ident)` produces `&&Vec<T>` so that
-                        // postprocess_singletons' `(*expr)` deref gives `&Vec<T>`.
-                        quote_spanned! {span=> &(&#buf_ident) }
-                    }
-                } else {
-                    let singleton_ident = self.node_as_singleton_ident(ref_node_id, span);
-                    if is_mut {
-                        quote_spanned! {span=> &mut #singleton_ident }
-                    } else {
-                        quote_spanned! {span=> &#singleton_ident }
+                    _ => {
+                        let singleton_ident = self.node_as_singleton_ident(ref_node_id, span);
+                        if is_mut {
+                            quote_spanned! {span=> &mut #singleton_ident }
+                        } else {
+                            quote_spanned! {span=> &#singleton_ident }
+                        }
                     }
                 }
             })
@@ -1229,7 +1240,7 @@ impl DfirGraph {
 
                         // Compute len and drain expressions based on handoff kind.
                         let (len_expr, drain_expr) = match kind {
-                            HandoffKind::Option => (
+                            HandoffKind::Singleton | HandoffKind::Optional => (
                                 quote! { if #buf_ident.is_some() { 1usize } else { 0usize } },
                                 quote! { #root::dfir_pipes::pull::iter(#buf_ident.take().into_iter()) },
                             ),
@@ -1273,12 +1284,22 @@ impl DfirGraph {
                     .zip(send_kinds.iter())
                     .map(|((port_ident, buf_ident), &kind)| {
                         match kind {
-                            HandoffKind::Option => {
+                            HandoffKind::Singleton => {
                                 // Singleton slot: store exactly one item, panic on duplicate.
                                 quote_spanned! {port_ident.span()=>
                                     let #port_ident = #root::dfir_pipes::push::for_each(|__item| {
                                         if #buf_ident.replace(__item).is_some() {
                                             panic!("singleton() received more than one item");
+                                        }
+                                    });
+                                }
+                            }
+                            HandoffKind::Optional => {
+                                // Optional slot: store at most one item, panic on duplicate.
+                                quote_spanned! {port_ident.span()=>
+                                    let #port_ident = #root::dfir_pipes::push::for_each(|__item| {
+                                        if #buf_ident.replace(__item).is_some() {
+                                            panic!("optional() received more than one item");
                                         }
                                     });
                                 }
@@ -1674,7 +1695,7 @@ impl DfirGraph {
                     .map(|((&hoff_id, buf_ident), &kind)| {
                         let hoff_ffi = hoff_id.data().as_ffi();
                         let len_expr = match kind {
-                            HandoffKind::Option => {
+                            HandoffKind::Singleton | HandoffKind::Optional => {
                                 quote! { if #buf_ident.is_some() { 1 } else { 0 } }
                             }
                             HandoffKind::Vec => {
@@ -1706,7 +1727,7 @@ impl DfirGraph {
                                 HandoffKind::Vec => quote_spanned! {span=>
                                     let mut #buf_ident = #root::bumpalo::collections::Vec::new_in(&#bump_ident);
                                 },
-                                HandoffKind::Option => quote_spanned! {span=>
+                                HandoffKind::Singleton | HandoffKind::Optional => quote_spanned! {span=>
                                     let mut #buf_ident = ::std::option::Option::None;
                                 },
                             }
@@ -2179,10 +2200,16 @@ impl DfirGraph {
                     writeln!(write, "{:?} = handoff();", key.data())?;
                 }
                 GraphNode::Handoff {
-                    kind: HandoffKind::Option,
+                    kind: HandoffKind::Singleton,
                     ..
                 } => {
                     writeln!(write, "{:?} = singleton();", key.data())?;
+                }
+                GraphNode::Handoff {
+                    kind: HandoffKind::Optional,
+                    ..
+                } => {
+                    writeln!(write, "{:?} = optional();", key.data())?;
                 }
                 GraphNode::ModuleBoundary { .. } => panic!(),
             }
@@ -2228,7 +2255,7 @@ impl DfirGraph {
                     writeln!(write, r#"    {:?}{{"{}"}}"#, key.data(), HANDOFF_NODE_STR)
                 }
                 GraphNode::Handoff {
-                    kind: HandoffKind::Option,
+                    kind: HandoffKind::Singleton | HandoffKind::Optional,
                     ..
                 } => {
                     writeln!(

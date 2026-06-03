@@ -867,7 +867,8 @@ impl FlatGraphBuilder {
                     // Validate arity: handoff must have exactly 1 input and 1 output.
                     let op_name = match kind {
                         HandoffKind::Vec => "handoff",
-                        HandoffKind::Option => "singleton",
+                        HandoffKind::Singleton => "singleton",
+                        HandoffKind::Optional => "optional",
                     };
                     let inn_degree = self.flat_graph.node_degree_in(node_id);
                     emit_arity_error(
