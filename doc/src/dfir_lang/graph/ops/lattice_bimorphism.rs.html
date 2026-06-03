@@ -19,17 +19,17 @@
 <a href=#19 id=19 data-nosnippet>19</a>/// use std::collections::HashSet;
 <a href=#20 id=20 data-nosnippet>20</a>/// use lattices::set_union::{CartesianProductBimorphism, SetUnionHashSet, SetUnionSingletonSet};
 <a href=#21 id=21 data-nosnippet>21</a>///
-<a href=#22 id=22 data-nosnippet>22</a>/// lhs = source_iter(0..3)
+<a href=#22 id=22 data-nosnippet>22</a>/// lhs_op = source_iter(0..3)
 <a href=#23 id=23 data-nosnippet>23</a>///     -&gt; map(SetUnionSingletonSet::new_from)
 <a href=#24 id=24 data-nosnippet>24</a>///     -&gt; state::&lt;'static, SetUnionHashSet&lt;u32&gt;&gt;();
-<a href=#25 id=25 data-nosnippet>25</a>/// rhs = source_iter(3..5)
+<a href=#25 id=25 data-nosnippet>25</a>/// rhs_op = source_iter(3..5)
 <a href=#26 id=26 data-nosnippet>26</a>///     -&gt; map(SetUnionSingletonSet::new_from)
 <a href=#27 id=27 data-nosnippet>27</a>///     -&gt; state::&lt;'static, SetUnionHashSet&lt;u32&gt;&gt;();
 <a href=#28 id=28 data-nosnippet>28</a>///
-<a href=#29 id=29 data-nosnippet>29</a>/// lhs[items] -&gt; [0]my_join;
-<a href=#30 id=30 data-nosnippet>30</a>/// rhs[items] -&gt; [1]my_join;
-<a href=#31 id=31 data-nosnippet>31</a>/// lhs[state] -&gt; null();
-<a href=#32 id=32 data-nosnippet>32</a>/// rhs[state] -&gt; null();
+<a href=#29 id=29 data-nosnippet>29</a>/// lhs_op[items] -&gt; [0]my_join;
+<a href=#30 id=30 data-nosnippet>30</a>/// rhs_op[items] -&gt; [1]my_join;
+<a href=#31 id=31 data-nosnippet>31</a>/// lhs = lhs_op[state] -&gt; singleton();
+<a href=#32 id=32 data-nosnippet>32</a>/// rhs = rhs_op[state] -&gt; singleton();
 <a href=#33 id=33 data-nosnippet>33</a>///
 <a href=#34 id=34 data-nosnippet>34</a>/// my_join = lattice_bimorphism(CartesianProductBimorphism::&lt;HashSet&lt;_&gt;&gt;::default(), #lhs, #rhs)
 <a href=#35 id=35 data-nosnippet>35</a>///     -&gt; assert_eq([SetUnionHashSet::new(HashSet::from_iter([
@@ -79,8 +79,8 @@
 <a href=#79 id=79 data-nosnippet>79</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#80 id=80 data-nosnippet>80</a>            <span class="kw">let </span>#ident = {
 <a href=#81 id=81 data-nosnippet>81</a>                <span class="kw">let </span>(lhs_state, rhs_state) = (
-<a href=#82 id=82 data-nosnippet>82</a>                    <span class="kw-2">&amp;</span>#lhs_state,
-<a href=#83 id=83 data-nosnippet>83</a>                    <span class="kw-2">&amp;</span>#rhs_state,
+<a href=#82 id=82 data-nosnippet>82</a>                    #lhs_state,
+<a href=#83 id=83 data-nosnippet>83</a>                    #rhs_state,
 <a href=#84 id=84 data-nosnippet>84</a>                );
 <a href=#85 id=85 data-nosnippet>85</a>                <span class="attr">#[inline(always)]
 <a href=#86 id=86 data-nosnippet>86</a>                </span><span class="kw">fn </span>check_inputs&lt;<span class="lifetime">'a</span>, Func, LhsPull, RhsPull, LhsState, RhsState, Output&gt;(

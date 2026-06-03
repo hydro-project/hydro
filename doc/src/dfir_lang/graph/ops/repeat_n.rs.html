@@ -19,7 +19,7 @@
 <a href=#19 id=19 data-nosnippet>19</a>    persistence_args: RANGE_0,
 <a href=#20 id=20 data-nosnippet>20</a>    type_args: RANGE_0,
 <a href=#21 id=21 data-nosnippet>21</a>    is_external_input: <span class="bool-val">false</span>,
-<a href=#22 id=22 data-nosnippet>22</a>    has_singleton_output: <span class="bool-val">true</span>,
+<a href=#22 id=22 data-nosnippet>22</a>    has_singleton_output: <span class="bool-val">false</span>,
 <a href=#23 id=23 data-nosnippet>23</a>    flo_type: <span class="prelude-val">Some</span>(FloType::Windowing),
 <a href=#24 id=24 data-nosnippet>24</a>    ports_inn: <span class="prelude-val">None</span>,
 <a href=#25 id=25 data-nosnippet>25</a>    ports_out: <span class="prelude-val">None</span>,
@@ -33,11 +33,11 @@
 <a href=#33 id=33 data-nosnippet>33</a>                   ident,
 <a href=#34 id=34 data-nosnippet>34</a>                   is_pull,
 <a href=#35 id=35 data-nosnippet>35</a>                   inputs,
-<a href=#36 id=36 data-nosnippet>36</a>                   singleton_output_ident,
-<a href=#37 id=37 data-nosnippet>37</a>                   ..
-<a href=#38 id=38 data-nosnippet>38</a>               },
-<a href=#39 id=39 data-nosnippet>39</a>               _diagnostics| {
-<a href=#40 id=40 data-nosnippet>40</a>        <span class="macro">assert!</span>(is_pull);
+<a href=#36 id=36 data-nosnippet>36</a>                   ..
+<a href=#37 id=37 data-nosnippet>37</a>               },
+<a href=#38 id=38 data-nosnippet>38</a>               _diagnostics| {
+<a href=#39 id=39 data-nosnippet>39</a>        <span class="macro">assert!</span>(is_pull);
+<a href=#40 id=40 data-nosnippet>40</a>        <span class="kw">let </span>singleton_output_ident = wc.make_ident(<span class="string">"singleton_output"</span>);
 <a href=#41 id=41 data-nosnippet>41</a>
 <a href=#42 id=42 data-nosnippet>42</a>        <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
 <a href=#43 id=43 data-nosnippet>43</a>            <span class="attr">#[allow(clippy::redundant_closure_call)]

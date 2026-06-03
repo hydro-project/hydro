@@ -65,7 +65,7 @@
 <a href=#65 id=65 data-nosnippet>65</a>    persistence_args: <span class="kw-2">&amp;</span>(<span class="number">0</span>..=<span class="number">1</span>),
 <a href=#66 id=66 data-nosnippet>66</a>    type_args: <span class="kw-2">&amp;</span>(<span class="number">0</span>..=<span class="number">2</span>),
 <a href=#67 id=67 data-nosnippet>67</a>    is_external_input: <span class="bool-val">false</span>,
-<a href=#68 id=68 data-nosnippet>68</a>    has_singleton_output: <span class="bool-val">true</span>,
+<a href=#68 id=68 data-nosnippet>68</a>    has_singleton_output: <span class="bool-val">false</span>,
 <a href=#69 id=69 data-nosnippet>69</a>    flo_type: <span class="prelude-val">None</span>,
 <a href=#70 id=70 data-nosnippet>70</a>    ports_inn: <span class="prelude-val">None</span>,
 <a href=#71 id=71 data-nosnippet>71</a>    ports_out: <span class="prelude-val">None</span>,
@@ -74,38 +74,38 @@
 <a href=#74 id=74 data-nosnippet>74</a>                   op_span,
 <a href=#75 id=75 data-nosnippet>75</a>                   ident,
 <a href=#76 id=76 data-nosnippet>76</a>                   inputs,
-<a href=#77 id=77 data-nosnippet>77</a>                   singleton_output_ident,
-<a href=#78 id=78 data-nosnippet>78</a>                   is_pull,
-<a href=#79 id=79 data-nosnippet>79</a>                   work_fn_async,
-<a href=#80 id=80 data-nosnippet>80</a>                   root,
-<a href=#81 id=81 data-nosnippet>81</a>                   op_name,
-<a href=#82 id=82 data-nosnippet>82</a>                   op_inst:
-<a href=#83 id=83 data-nosnippet>83</a>                       OperatorInstance {
-<a href=#84 id=84 data-nosnippet>84</a>                           generics: OpInstGenerics { type_args, .. },
-<a href=#85 id=85 data-nosnippet>85</a>                           ..
-<a href=#86 id=86 data-nosnippet>86</a>                       },
-<a href=#87 id=87 data-nosnippet>87</a>                   arguments,
-<a href=#88 id=88 data-nosnippet>88</a>                   ..
-<a href=#89 id=89 data-nosnippet>89</a>               },
-<a href=#90 id=90 data-nosnippet>90</a>               diagnostics| {
-<a href=#91 id=91 data-nosnippet>91</a>        <span class="macro">assert!</span>(is_pull, <span class="string">"TODO(mingwei): `{}` only supports pull."</span>, op_name);
-<a href=#92 id=92 data-nosnippet>92</a>
-<a href=#93 id=93 data-nosnippet>93</a>        <span class="kw">let </span>[persistence] = wc.persistence_args_disallow_mutable(diagnostics);
-<a href=#94 id=94 data-nosnippet>94</a>
-<a href=#95 id=95 data-nosnippet>95</a>        <span class="kw">let </span>generic_type_args = [
-<a href=#96 id=96 data-nosnippet>96</a>            type_args
-<a href=#97 id=97 data-nosnippet>97</a>                .first()
-<a href=#98 id=98 data-nosnippet>98</a>                .map(ToTokens::to_token_stream)
-<a href=#99 id=99 data-nosnippet>99</a>                .unwrap_or(<span class="macro">quote_spanned!</span>(op_span=&gt; <span class="kw">_</span>)),
-<a href=#100 id=100 data-nosnippet>100</a>            type_args
-<a href=#101 id=101 data-nosnippet>101</a>                .get(<span class="number">1</span>)
-<a href=#102 id=102 data-nosnippet>102</a>                .map(ToTokens::to_token_stream)
-<a href=#103 id=103 data-nosnippet>103</a>                .unwrap_or(<span class="macro">quote_spanned!</span>(op_span=&gt; <span class="kw">_</span>)),
-<a href=#104 id=104 data-nosnippet>104</a>        ];
-<a href=#105 id=105 data-nosnippet>105</a>
-<a href=#106 id=106 data-nosnippet>106</a>        <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
-<a href=#107 id=107 data-nosnippet>107</a>        <span class="kw">let </span>aggfn = <span class="kw-2">&amp;</span>arguments[<span class="number">0</span>];
-<a href=#108 id=108 data-nosnippet>108</a>
+<a href=#77 id=77 data-nosnippet>77</a>                   is_pull,
+<a href=#78 id=78 data-nosnippet>78</a>                   work_fn_async,
+<a href=#79 id=79 data-nosnippet>79</a>                   root,
+<a href=#80 id=80 data-nosnippet>80</a>                   op_name,
+<a href=#81 id=81 data-nosnippet>81</a>                   op_inst:
+<a href=#82 id=82 data-nosnippet>82</a>                       OperatorInstance {
+<a href=#83 id=83 data-nosnippet>83</a>                           generics: OpInstGenerics { type_args, .. },
+<a href=#84 id=84 data-nosnippet>84</a>                           ..
+<a href=#85 id=85 data-nosnippet>85</a>                       },
+<a href=#86 id=86 data-nosnippet>86</a>                   arguments,
+<a href=#87 id=87 data-nosnippet>87</a>                   ..
+<a href=#88 id=88 data-nosnippet>88</a>               },
+<a href=#89 id=89 data-nosnippet>89</a>               diagnostics| {
+<a href=#90 id=90 data-nosnippet>90</a>        <span class="macro">assert!</span>(is_pull, <span class="string">"TODO(mingwei): `{}` only supports pull."</span>, op_name);
+<a href=#91 id=91 data-nosnippet>91</a>
+<a href=#92 id=92 data-nosnippet>92</a>        <span class="kw">let </span>[persistence] = wc.persistence_args_disallow_mutable(diagnostics);
+<a href=#93 id=93 data-nosnippet>93</a>
+<a href=#94 id=94 data-nosnippet>94</a>        <span class="kw">let </span>generic_type_args = [
+<a href=#95 id=95 data-nosnippet>95</a>            type_args
+<a href=#96 id=96 data-nosnippet>96</a>                .first()
+<a href=#97 id=97 data-nosnippet>97</a>                .map(ToTokens::to_token_stream)
+<a href=#98 id=98 data-nosnippet>98</a>                .unwrap_or(<span class="macro">quote_spanned!</span>(op_span=&gt; <span class="kw">_</span>)),
+<a href=#99 id=99 data-nosnippet>99</a>            type_args
+<a href=#100 id=100 data-nosnippet>100</a>                .get(<span class="number">1</span>)
+<a href=#101 id=101 data-nosnippet>101</a>                .map(ToTokens::to_token_stream)
+<a href=#102 id=102 data-nosnippet>102</a>                .unwrap_or(<span class="macro">quote_spanned!</span>(op_span=&gt; <span class="kw">_</span>)),
+<a href=#103 id=103 data-nosnippet>103</a>        ];
+<a href=#104 id=104 data-nosnippet>104</a>
+<a href=#105 id=105 data-nosnippet>105</a>        <span class="kw">let </span>input = <span class="kw-2">&amp;</span>inputs[<span class="number">0</span>];
+<a href=#106 id=106 data-nosnippet>106</a>        <span class="kw">let </span>aggfn = <span class="kw-2">&amp;</span>arguments[<span class="number">0</span>];
+<a href=#107 id=107 data-nosnippet>107</a>
+<a href=#108 id=108 data-nosnippet>108</a>        <span class="kw">let </span>singleton_output_ident = wc.make_ident(<span class="string">"singleton_output"</span>);
 <a href=#109 id=109 data-nosnippet>109</a>        <span class="kw">let </span>hashtable_ident = wc.make_ident(<span class="string">"hashtable"</span>);
 <a href=#110 id=110 data-nosnippet>110</a>
 <a href=#111 id=111 data-nosnippet>111</a>        <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;

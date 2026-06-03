@@ -59,93 +59,92 @@
 <a href=#59 id=59 data-nosnippet>59</a>    persistence_args: <span class="kw-2">&amp;</span>(<span class="number">0</span>..=<span class="number">1</span>),
 <a href=#60 id=60 data-nosnippet>60</a>    type_args: <span class="kw-2">&amp;</span>(<span class="number">0</span>..=<span class="number">1</span>),
 <a href=#61 id=61 data-nosnippet>61</a>    is_external_input: <span class="bool-val">false</span>,
-<a href=#62 id=62 data-nosnippet>62</a>    has_singleton_output: <span class="bool-val">true</span>,
+<a href=#62 id=62 data-nosnippet>62</a>    has_singleton_output: <span class="bool-val">false</span>,
 <a href=#63 id=63 data-nosnippet>63</a>    flo_type: <span class="prelude-val">None</span>,
 <a href=#64 id=64 data-nosnippet>64</a>    ports_inn: <span class="prelude-val">None</span>,
 <a href=#65 id=65 data-nosnippet>65</a>    ports_out: <span class="prelude-val">Some</span>(|| PortListSpec::Fixed(<span class="macro">parse_quote!</span>(items, state))),
 <a href=#66 id=66 data-nosnippet>66</a>    input_delaytype_fn: |<span class="kw">_</span>| <span class="prelude-val">None</span>,
-<a href=#67 id=67 data-nosnippet>67</a>    write_fn: |<span class="kw-2">&amp;</span>WriteContextArgs {
+<a href=#67 id=67 data-nosnippet>67</a>    write_fn: |wc @ <span class="kw-2">&amp;</span>WriteContextArgs {
 <a href=#68 id=68 data-nosnippet>68</a>                   root,
 <a href=#69 id=69 data-nosnippet>69</a>                   op_span,
 <a href=#70 id=70 data-nosnippet>70</a>                   ident,
 <a href=#71 id=71 data-nosnippet>71</a>                   inputs: <span class="kw">_</span>,
 <a href=#72 id=72 data-nosnippet>72</a>                   outputs,
 <a href=#73 id=73 data-nosnippet>73</a>                   is_pull,
-<a href=#74 id=74 data-nosnippet>74</a>                   singleton_output_ident,
-<a href=#75 id=75 data-nosnippet>75</a>                   op_name,
-<a href=#76 id=76 data-nosnippet>76</a>                   op_inst:
-<a href=#77 id=77 data-nosnippet>77</a>                       OperatorInstance {
-<a href=#78 id=78 data-nosnippet>78</a>                           generics:
-<a href=#79 id=79 data-nosnippet>79</a>                               OpInstGenerics {
-<a href=#80 id=80 data-nosnippet>80</a>                                   type_args,
-<a href=#81 id=81 data-nosnippet>81</a>                                   persistence_args,
-<a href=#82 id=82 data-nosnippet>82</a>                                   ..
-<a href=#83 id=83 data-nosnippet>83</a>                               },
-<a href=#84 id=84 data-nosnippet>84</a>                           ..
-<a href=#85 id=85 data-nosnippet>85</a>                       },
-<a href=#86 id=86 data-nosnippet>86</a>                   arguments,
-<a href=#87 id=87 data-nosnippet>87</a>                   ..
-<a href=#88 id=88 data-nosnippet>88</a>               },
-<a href=#89 id=89 data-nosnippet>89</a>               diagnostics| {
-<a href=#90 id=90 data-nosnippet>90</a>        <span class="kw">let </span>lattice_type = type_args
-<a href=#91 id=91 data-nosnippet>91</a>            .first()
-<a href=#92 id=92 data-nosnippet>92</a>            .map(ToTokens::to_token_stream)
-<a href=#93 id=93 data-nosnippet>93</a>            .unwrap_or(<span class="macro">quote_spanned!</span>(op_span=&gt; <span class="kw">_</span>));
-<a href=#94 id=94 data-nosnippet>94</a>
-<a href=#95 id=95 data-nosnippet>95</a>        <span class="kw">let </span>persistence = <span class="kw">match </span>persistence_args[..] {
-<a href=#96 id=96 data-nosnippet>96</a>            [] =&gt; Persistence::Tick,
-<a href=#97 id=97 data-nosnippet>97</a>            [Persistence::Mutable] =&gt; {
-<a href=#98 id=98 data-nosnippet>98</a>                diagnostics.push(Diagnostic::spanned(
-<a href=#99 id=99 data-nosnippet>99</a>                    op_span,
-<a href=#100 id=100 data-nosnippet>100</a>                    Level::Error,
-<a href=#101 id=101 data-nosnippet>101</a>                    <span class="macro">format!</span>(<span class="string">"{} does not support `'mut`."</span>, op_name),
-<a href=#102 id=102 data-nosnippet>102</a>                ));
-<a href=#103 id=103 data-nosnippet>103</a>                Persistence::Tick
-<a href=#104 id=104 data-nosnippet>104</a>            }
-<a href=#105 id=105 data-nosnippet>105</a>            [a] =&gt; a,
-<a href=#106 id=106 data-nosnippet>106</a>            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
-<a href=#107 id=107 data-nosnippet>107</a>        };
-<a href=#108 id=108 data-nosnippet>108</a>
-<a href=#109 id=109 data-nosnippet>109</a>        <span class="kw">let </span>state_ident = singleton_output_ident;
-<a href=#110 id=110 data-nosnippet>110</a>        <span class="kw">let </span>factory_fn = <span class="kw-2">&amp;</span>arguments[<span class="number">1</span>];
-<a href=#111 id=111 data-nosnippet>111</a>
-<a href=#112 id=112 data-nosnippet>112</a>        <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#113 id=113 data-nosnippet>113</a>            <span class="kw">let </span><span class="kw-2">mut </span>#state_ident: #lattice_type = {
-<a href=#114 id=114 data-nosnippet>114</a>                <span class="kw">let </span>data_struct = (#factory_fn)();
-<a href=#115 id=115 data-nosnippet>115</a>                <span class="macro">::std::debug_assert!</span>(#root::lattices::IsBot::is_bot(<span class="kw-2">&amp;</span>data_struct));
-<a href=#116 id=116 data-nosnippet>116</a>                data_struct
-<a href=#117 id=117 data-nosnippet>117</a>            };
-<a href=#118 id=118 data-nosnippet>118</a>        };
-<a href=#119 id=119 data-nosnippet>119</a>        <span class="kw">let </span>write_tick_end = <span class="kw">match </span>persistence {
-<a href=#120 id=120 data-nosnippet>120</a>            Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#121 id=121 data-nosnippet>121</a>                #state_ident = ::std::default::Default::default();
-<a href=#122 id=122 data-nosnippet>122</a>            },
-<a href=#123 id=123 data-nosnippet>123</a>            <span class="kw">_ </span>=&gt; Default::default(),
-<a href=#124 id=124 data-nosnippet>124</a>        };
-<a href=#125 id=125 data-nosnippet>125</a>
-<a href=#126 id=126 data-nosnippet>126</a>        <span class="kw">let </span>by_fn = <span class="kw-2">&amp;</span>arguments[<span class="number">0</span>];
-<a href=#127 id=127 data-nosnippet>127</a>
-<a href=#128 id=128 data-nosnippet>128</a>        <span class="comment">// With 2 fixed output ports (items, state), the operator is always push-side.
-<a href=#129 id=129 data-nosnippet>129</a>        // outputs[0] = items (deltas), outputs[1] = state (accumulated lattice).
-<a href=#130 id=130 data-nosnippet>130</a>        </span><span class="macro">assert!</span>(!is_pull, <span class="string">"state_by with 2 outputs must be push-side"</span>);
-<a href=#131 id=131 data-nosnippet>131</a>        <span class="kw">let </span>items_output = <span class="kw-2">&amp;</span>outputs[<span class="number">0</span>];
-<a href=#132 id=132 data-nosnippet>132</a>        <span class="kw">let </span>state_output = <span class="kw-2">&amp;</span>outputs[<span class="number">1</span>];
-<a href=#133 id=133 data-nosnippet>133</a>
-<a href=#134 id=134 data-nosnippet>134</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
-<a href=#135 id=135 data-nosnippet>135</a>            <span class="kw">let </span>#ident = #root::dfir_pipes::push::state_push::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, #lattice_type&gt;(
-<a href=#136 id=136 data-nosnippet>136</a>                #items_output,
-<a href=#137 id=137 data-nosnippet>137</a>                #state_output,
-<a href=#138 id=138 data-nosnippet>138</a>                #by_fn,
-<a href=#139 id=139 data-nosnippet>139</a>                <span class="kw-2">&amp;mut </span>#state_ident,
-<a href=#140 id=140 data-nosnippet>140</a>            );
-<a href=#141 id=141 data-nosnippet>141</a>        };
-<a href=#142 id=142 data-nosnippet>142</a>
-<a href=#143 id=143 data-nosnippet>143</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
-<a href=#144 id=144 data-nosnippet>144</a>            write_prologue,
-<a href=#145 id=145 data-nosnippet>145</a>            write_iterator,
-<a href=#146 id=146 data-nosnippet>146</a>            write_tick_end,
-<a href=#147 id=147 data-nosnippet>147</a>            ..Default::default()
-<a href=#148 id=148 data-nosnippet>148</a>        })
-<a href=#149 id=149 data-nosnippet>149</a>    },
-<a href=#150 id=150 data-nosnippet>150</a>};
+<a href=#74 id=74 data-nosnippet>74</a>                   op_name,
+<a href=#75 id=75 data-nosnippet>75</a>                   op_inst:
+<a href=#76 id=76 data-nosnippet>76</a>                       OperatorInstance {
+<a href=#77 id=77 data-nosnippet>77</a>                           generics:
+<a href=#78 id=78 data-nosnippet>78</a>                               OpInstGenerics {
+<a href=#79 id=79 data-nosnippet>79</a>                                   type_args,
+<a href=#80 id=80 data-nosnippet>80</a>                                   persistence_args,
+<a href=#81 id=81 data-nosnippet>81</a>                                   ..
+<a href=#82 id=82 data-nosnippet>82</a>                               },
+<a href=#83 id=83 data-nosnippet>83</a>                           ..
+<a href=#84 id=84 data-nosnippet>84</a>                       },
+<a href=#85 id=85 data-nosnippet>85</a>                   arguments,
+<a href=#86 id=86 data-nosnippet>86</a>                   ..
+<a href=#87 id=87 data-nosnippet>87</a>               },
+<a href=#88 id=88 data-nosnippet>88</a>               diagnostics| {
+<a href=#89 id=89 data-nosnippet>89</a>        <span class="kw">let </span>lattice_type = type_args
+<a href=#90 id=90 data-nosnippet>90</a>            .first()
+<a href=#91 id=91 data-nosnippet>91</a>            .map(ToTokens::to_token_stream)
+<a href=#92 id=92 data-nosnippet>92</a>            .unwrap_or(<span class="macro">quote_spanned!</span>(op_span=&gt; <span class="kw">_</span>));
+<a href=#93 id=93 data-nosnippet>93</a>
+<a href=#94 id=94 data-nosnippet>94</a>        <span class="kw">let </span>persistence = <span class="kw">match </span>persistence_args[..] {
+<a href=#95 id=95 data-nosnippet>95</a>            [] =&gt; Persistence::Tick,
+<a href=#96 id=96 data-nosnippet>96</a>            [Persistence::Mutable] =&gt; {
+<a href=#97 id=97 data-nosnippet>97</a>                diagnostics.push(Diagnostic::spanned(
+<a href=#98 id=98 data-nosnippet>98</a>                    op_span,
+<a href=#99 id=99 data-nosnippet>99</a>                    Level::Error,
+<a href=#100 id=100 data-nosnippet>100</a>                    <span class="macro">format!</span>(<span class="string">"{} does not support `'mut`."</span>, op_name),
+<a href=#101 id=101 data-nosnippet>101</a>                ));
+<a href=#102 id=102 data-nosnippet>102</a>                Persistence::Tick
+<a href=#103 id=103 data-nosnippet>103</a>            }
+<a href=#104 id=104 data-nosnippet>104</a>            [a] =&gt; a,
+<a href=#105 id=105 data-nosnippet>105</a>            <span class="kw">_ </span>=&gt; <span class="macro">unreachable!</span>(),
+<a href=#106 id=106 data-nosnippet>106</a>        };
+<a href=#107 id=107 data-nosnippet>107</a>
+<a href=#108 id=108 data-nosnippet>108</a>        <span class="kw">let </span>state_ident = wc.make_ident(<span class="string">"state"</span>);
+<a href=#109 id=109 data-nosnippet>109</a>        <span class="kw">let </span>factory_fn = <span class="kw-2">&amp;</span>arguments[<span class="number">1</span>];
+<a href=#110 id=110 data-nosnippet>110</a>
+<a href=#111 id=111 data-nosnippet>111</a>        <span class="kw">let </span>write_prologue = <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#112 id=112 data-nosnippet>112</a>            <span class="kw">let </span><span class="kw-2">mut </span>#state_ident: #lattice_type = {
+<a href=#113 id=113 data-nosnippet>113</a>                <span class="kw">let </span>data_struct = (#factory_fn)();
+<a href=#114 id=114 data-nosnippet>114</a>                <span class="macro">::std::debug_assert!</span>(#root::lattices::IsBot::is_bot(<span class="kw-2">&amp;</span>data_struct));
+<a href=#115 id=115 data-nosnippet>115</a>                data_struct
+<a href=#116 id=116 data-nosnippet>116</a>            };
+<a href=#117 id=117 data-nosnippet>117</a>        };
+<a href=#118 id=118 data-nosnippet>118</a>        <span class="kw">let </span>write_tick_end = <span class="kw">match </span>persistence {
+<a href=#119 id=119 data-nosnippet>119</a>            Persistence::Tick =&gt; <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#120 id=120 data-nosnippet>120</a>                #state_ident = ::std::default::Default::default();
+<a href=#121 id=121 data-nosnippet>121</a>            },
+<a href=#122 id=122 data-nosnippet>122</a>            <span class="kw">_ </span>=&gt; Default::default(),
+<a href=#123 id=123 data-nosnippet>123</a>        };
+<a href=#124 id=124 data-nosnippet>124</a>
+<a href=#125 id=125 data-nosnippet>125</a>        <span class="kw">let </span>by_fn = <span class="kw-2">&amp;</span>arguments[<span class="number">0</span>];
+<a href=#126 id=126 data-nosnippet>126</a>
+<a href=#127 id=127 data-nosnippet>127</a>        <span class="comment">// With 2 fixed output ports (items, state), the operator is always push-side.
+<a href=#128 id=128 data-nosnippet>128</a>        // outputs[0] = items (deltas), outputs[1] = state (accumulated lattice).
+<a href=#129 id=129 data-nosnippet>129</a>        </span><span class="macro">assert!</span>(!is_pull, <span class="string">"state_by with 2 outputs must be push-side"</span>);
+<a href=#130 id=130 data-nosnippet>130</a>        <span class="kw">let </span>items_output = <span class="kw-2">&amp;</span>outputs[<span class="number">0</span>];
+<a href=#131 id=131 data-nosnippet>131</a>        <span class="kw">let </span>state_output = <span class="kw-2">&amp;</span>outputs[<span class="number">1</span>];
+<a href=#132 id=132 data-nosnippet>132</a>
+<a href=#133 id=133 data-nosnippet>133</a>        <span class="kw">let </span>write_iterator = <span class="macro">quote_spanned!</span> {op_span=&gt;
+<a href=#134 id=134 data-nosnippet>134</a>            <span class="kw">let </span>#ident = #root::dfir_pipes::push::state_push::&lt;<span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, #lattice_type&gt;(
+<a href=#135 id=135 data-nosnippet>135</a>                #items_output,
+<a href=#136 id=136 data-nosnippet>136</a>                #state_output,
+<a href=#137 id=137 data-nosnippet>137</a>                #by_fn,
+<a href=#138 id=138 data-nosnippet>138</a>                <span class="kw-2">&amp;mut </span>#state_ident,
+<a href=#139 id=139 data-nosnippet>139</a>            );
+<a href=#140 id=140 data-nosnippet>140</a>        };
+<a href=#141 id=141 data-nosnippet>141</a>
+<a href=#142 id=142 data-nosnippet>142</a>        <span class="prelude-val">Ok</span>(OperatorWriteOutput {
+<a href=#143 id=143 data-nosnippet>143</a>            write_prologue,
+<a href=#144 id=144 data-nosnippet>144</a>            write_iterator,
+<a href=#145 id=145 data-nosnippet>145</a>            write_tick_end,
+<a href=#146 id=146 data-nosnippet>146</a>            ..Default::default()
+<a href=#147 id=147 data-nosnippet>147</a>        })
+<a href=#148 id=148 data-nosnippet>148</a>    },
+<a href=#149 id=149 data-nosnippet>149</a>};
 </code></pre></div></section></main></body></html>
