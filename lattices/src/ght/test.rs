@@ -2,6 +2,7 @@
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
+    use std::vec::Vec;
 
     #[test]
     fn basic_test() {

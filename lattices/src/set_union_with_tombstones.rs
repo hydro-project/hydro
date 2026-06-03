@@ -2,13 +2,17 @@
 //!
 //! See [`crate::tombstone`] for documentation on choosing a tombstone implementation.
 
-use std::cmp::Ordering::{self, *};
-use std::collections::{BTreeSet, HashSet};
+use core::cmp::Ordering::{self, *};
 
+#[cfg(feature = "alloc")]
+use alloc::collections::BTreeSet;
 use cc_traits::{Collection, Get, Remove};
+#[cfg(feature = "std")]
+use std::collections::HashSet;
 
 use crate::cc_traits::{Iter, Len, Set};
 use crate::collections::{ArraySet, EmptySet, OptionSet, SingletonSet};
+#[cfg(feature = "std")]
 use crate::tombstone::{FstTombstoneSet, RoaringTombstoneSet, TombstoneSet};
 use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 
@@ -58,6 +62,7 @@ impl<Set, TombstoneSet> SetUnionWithTombstones<Set, TombstoneSet> {
 }
 
 // Merge implementation using TombstoneSet trait for optimized union operations
+#[cfg(feature = "std")]
 impl<Item, SetSelf, TombstoneSetSelf, SetOther, TombstoneSetOther>
     Merge<SetUnionWithTombstones<SetOther, TombstoneSetOther>>
     for SetUnionWithTombstones<SetSelf, TombstoneSetSelf>
@@ -248,9 +253,11 @@ impl<Set, TombstoneSet> IsTop for SetUnionWithTombstones<Set, TombstoneSet> {
 }
 
 /// [`std::collections::HashSet`]-backed [`SetUnionWithTombstones`] lattice.
+#[cfg(feature = "std")]
 pub type SetUnionWithTombstonesHashSet<Item> = SetUnionWithTombstones<HashSet<Item>, HashSet<Item>>;
 
 /// [`std::collections::BTreeSet`]-backed [`SetUnionWithTombstones`] lattice.
+#[cfg(feature = "alloc")]
 pub type SetUnionWithTombstonesBTreeSet<Item> =
     SetUnionWithTombstones<BTreeSet<Item>, BTreeSet<Item>>;
 
@@ -276,10 +283,12 @@ pub type SetUnionWithTombstonesTombstoneOnlySet<Item> =
 
 /// [`crate::tombstone::RoaringTombstoneSet`]-backed tombstone set with [`std::collections::HashSet`] for the main set.
 /// Provides space-efficient tombstone storage for u64 integer keys.
+#[cfg(feature = "std")]
 pub type SetUnionWithTombstonesRoaring = SetUnionWithTombstones<HashSet<u64>, RoaringTombstoneSet>;
 
 /// FST-backed tombstone set with [`std::collections::HashSet`] for the main set.
 /// Provides space-efficient, collision-free tombstone storage for String keys.
+#[cfg(feature = "std")]
 pub type SetUnionWithTombstonesFstString =
     SetUnionWithTombstones<HashSet<&'static str>, FstTombstoneSet<&'static str>>;
 

@@ -17,6 +17,7 @@ pub mod algebra;
 pub mod collections;
 mod conflict;
 mod dom_pair;
+#[cfg(feature = "std")]
 pub mod ght;
 pub mod map_union;
 pub mod map_union_with_tombstones;
@@ -27,9 +28,12 @@ pub mod semiring_application;
 pub mod set_union;
 pub mod set_union_with_tombstones;
 pub mod test;
+#[cfg(feature = "std")]
 pub mod tombstone;
+#[cfg(feature = "std")]
 pub mod union_find;
 mod unit;
+#[cfg(feature = "alloc")]
 mod vec_union;
 mod with_bot;
 mod with_top;
@@ -40,6 +44,7 @@ pub use lattices_macro::*;
 pub use ord::{Max, Min};
 pub use pair::{Pair, PairBimorphism};
 pub use point::Point;
+#[cfg(feature = "alloc")]
 pub use vec_union::VecUnion;
 pub use with_bot::WithBot;
 pub use with_top::WithTop;

@@ -2,14 +2,16 @@
 //!
 //! See [`crate::tombstone`] for documentation on choosing a tombstone implementation.
 
-use std::cmp::Ordering::{self, *};
-use std::collections::{HashMap, HashSet};
-use std::fmt::Debug;
+use core::cmp::Ordering::{self, *};
+use core::fmt::Debug;
 
 use cc_traits::{Get, Iter, Len, Remove};
+#[cfg(feature = "std")]
+use std::collections::{HashMap, HashSet};
 
 use crate::cc_traits::{GetMut, Keyed, Map, MapIter, SimpleKeyedRef};
 use crate::collections::{EmptyMap, EmptySet, SingletonMap, SingletonSet};
+#[cfg(feature = "std")]
 use crate::tombstone::{FstTombstoneSet, RoaringTombstoneSet, TombstoneSet};
 use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 
@@ -62,7 +64,7 @@ impl<Map, TombstoneSet> MapUnionWithTombstones<Map, TombstoneSet> {
 }
 
 /// Merge implementation using TombstoneSet trait for optimized union operations
-#[cfg(feature = "alloc")]
+#[cfg(feature = "std")]
 impl<MapSelf, MapOther, K, ValSelf, ValOther, TombstoneSetSelf, TombstoneSetOther>
     Merge<MapUnionWithTombstones<MapOther, TombstoneSetOther>>
     for MapUnionWithTombstones<MapSelf, TombstoneSetSelf>
@@ -335,6 +337,7 @@ impl<Map, TombstoneSet> IsTop for MapUnionWithTombstones<Map, TombstoneSet> {
 }
 
 /// [`std::collections::HashMap`]-backed [`MapUnionWithTombstones`] lattice.
+#[cfg(feature = "std")]
 pub type MapUnionHashMapWithTombstoneHashSet<K, Val> =
     MapUnionWithTombstones<HashMap<K, Val>, HashSet<K>>;
 
@@ -348,11 +351,13 @@ pub type MapUnionWithTombstonesTombstoneSingletonSetOnly<K, Val> =
 
 /// [`crate::tombstone::RoaringTombstoneSet`]-backed tombstone set with [`HashMap`] for the main map.
 /// Provides space-efficient tombstone storage for u64 integer keys.
+#[cfg(feature = "std")]
 pub type MapUnionWithTombstonesRoaring<Val> =
     MapUnionWithTombstones<HashMap<u64, Val>, RoaringTombstoneSet>;
 
 /// FST-backed tombstone set with [`HashMap`] for the main map.
 /// Provides space-efficient, collision-free tombstone storage for String keys.
+#[cfg(feature = "std")]
 pub type MapUnionWithTombstonesFstString<Val> = MapUnionWithTombstones<
     HashMap<&'static str, Val>,
     FstTombstoneSet<&'static str>,

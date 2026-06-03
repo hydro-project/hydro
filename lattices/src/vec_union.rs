@@ -1,5 +1,6 @@
-use std::cmp::Ordering::{self, *};
+use core::cmp::Ordering::{self, *};
 
+use alloc::vec::Vec;
 use cc_traits::Iter;
 
 use crate::{DeepReveal, IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};

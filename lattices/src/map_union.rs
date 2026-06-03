@@ -1,14 +1,19 @@
 //! Module containing the [`MapUnion`] lattice and aliases for different datastructures.
 
-use std::cmp::Ordering::{self, *};
-use std::collections::{BTreeMap, HashMap};
-use std::fmt::Debug;
-use std::marker::PhantomData;
+use core::cmp::Ordering::{self, *};
+use core::fmt::Debug;
+use core::marker::PhantomData;
 
+#[cfg(feature = "alloc")]
+use alloc::collections::BTreeMap;
 use cc_traits::{Collection, GetKeyValue, Iter, MapInsert, SimpleCollectionRef};
+#[cfg(feature = "std")]
+use std::collections::HashMap;
 
 use crate::cc_traits::{GetMut, Keyed, Map, MapIter, SimpleKeyedRef};
-use crate::collections::{ArrayMap, MapMapValues, OptionMap, SingletonMap, VecMap};
+#[cfg(feature = "alloc")]
+use crate::collections::VecMap;
+use crate::collections::{ArrayMap, MapMapValues, OptionMap, SingletonMap};
 use crate::{Atomize, DeepReveal, IsBot, IsTop, LatticeBimorphism, LatticeFrom, LatticeOrd, Merge};
 
 /// Map-union compound lattice.
@@ -254,12 +259,15 @@ where
 }
 
 /// [`std::collections::HashMap`]-backed [`MapUnion`] lattice.
+#[cfg(feature = "std")]
 pub type MapUnionHashMap<K, Val> = MapUnion<HashMap<K, Val>>;
 
 /// [`std::collections::BTreeMap`]-backed [`MapUnion`] lattice.
+#[cfg(feature = "alloc")]
 pub type MapUnionBTreeMap<K, Val> = MapUnion<BTreeMap<K, Val>>;
 
 /// [`Vec`]-backed [`MapUnion`] lattice.
+#[cfg(feature = "alloc")]
 pub type MapUnionVec<K, Val> = MapUnion<VecMap<K, Val>>;
 
 /// Array-backed [`MapUnion`] lattice.

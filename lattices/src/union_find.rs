@@ -1,5 +1,6 @@
 //! Module containing the [`UnionFind`] lattice and aliases for different datastructures.
 
+use std::boxed::Box;
 use std::cell::Cell;
 use std::cmp::Ordering::{self, *};
 use std::collections::{BTreeMap, HashMap};

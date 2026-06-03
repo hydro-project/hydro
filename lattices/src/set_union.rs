@@ -1,10 +1,13 @@
 //! Module containing the [`SetUnion`] lattice and aliases for different datastructures.
 
-use std::cmp::Ordering::{self, *};
-use std::collections::{BTreeSet, HashSet};
-use std::marker::PhantomData;
+use core::cmp::Ordering::{self, *};
+use core::marker::PhantomData;
 
+#[cfg(feature = "alloc")]
+use alloc::collections::BTreeSet;
 use cc_traits::SimpleCollectionRef;
+#[cfg(feature = "std")]
+use std::collections::HashSet;
 
 use crate::cc_traits::{Iter, Len, Set};
 use crate::collections::{ArraySet, OptionSet, SingletonSet};
@@ -158,9 +161,11 @@ where
 }
 
 /// [`std::collections::HashSet`]-backed [`SetUnion`] lattice.
+#[cfg(feature = "std")]
 pub type SetUnionHashSet<Item> = SetUnion<HashSet<Item>>;
 
 /// [`std::collections::BTreeSet`]-backed [`SetUnion`] lattice.
+#[cfg(feature = "alloc")]
 pub type SetUnionBTreeSet<Item> = SetUnion<BTreeSet<Item>>;
 
 /// [`Vec`]-backed [`SetUnion`] lattice.

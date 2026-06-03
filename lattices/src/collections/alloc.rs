@@ -130,7 +130,7 @@ impl<K, V> Collection for VecMap<K, V> {
 }
 impl<K, V> Len for VecMap<K, V> {
     fn len(&self) -> usize {
-        std::cmp::min(self.keys.len(), self.vals.len())
+        core::cmp::min(self.keys.len(), self.vals.len())
     }
 
     fn is_empty(&self) -> bool {

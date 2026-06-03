@@ -1,4 +1,4 @@
-use std::cmp::Ordering::{self, *};
+use core::cmp::Ordering::{self, *};
 
 use crate::{DeepReveal, IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 
