@@ -15,8 +15,8 @@ linkStyle default stroke:#aaa
 5v1[\"(5v1) <code>map(SetUnionSingletonSet::new_from)</code>"/]:::pullClass
 6v1[/"(6v1) <code>state::&lt;'static, SetUnionHashSet&lt;u32&gt;&gt;()</code>"\]:::pushClass
 7v1[/"(7v1) <code>identity()</code>"\]:::pushClass
-8v1[/"(8v1) <code>null()</code>"\]:::pushClass
-9v1[/"(9v1) <code>null()</code>"\]:::pushClass
+8v1["(8v1) <code>singleton</code>"]:::otherClass
+9v1["(9v1) <code>singleton</code>"]:::otherClass
 10v1[\"(10v1) <code>lattice_bimorphism(CartesianProductBimorphism::&lt;HashSet&lt;_&gt;&gt;::default(), lhs, rhs)</code>"/]:::pullClass
 11v1[\"(11v1) <code>lattice_reduce()</code>"/]:::pullClass
 12v1[/"(12v1) <code>for_each(|x| out_send.send(x).unwrap())</code>"\]:::pushClass
@@ -37,25 +37,23 @@ linkStyle default stroke:#aaa
 13v1-->|0|10v1
 14v1-->|1|10v1
 15v1-->11v1; linkStyle 13 stroke:#060
-3v1--x10v1; linkStyle 14 stroke:red
-6v1--x10v1; linkStyle 15 stroke:red
+8v1--x10v1; linkStyle 14 stroke:red
+9v1--x10v1; linkStyle 15 stroke:red
 subgraph sg_1v1 ["sg_1v1"]
-    8v1
-    subgraph sg_1v1_var_lhs ["var <tt>lhs</tt>"]
+    subgraph sg_1v1_var_lhs_op ["var <tt>lhs_op</tt>"]
         1v1
         2v1
         3v1
     end
 end
 subgraph sg_2v1 ["sg_2v1"]
-    9v1
-    subgraph sg_2v1_var_rhs ["var <tt>rhs</tt>"]
+    subgraph sg_2v1_var_rhs_id ["var <tt>rhs_id</tt>"]
+        7v1
+    end
+    subgraph sg_2v1_var_rhs_op ["var <tt>rhs_op</tt>"]
         4v1
         5v1
         6v1
-    end
-    subgraph sg_2v1_var_rhs_id ["var <tt>rhs_id</tt>"]
-        7v1
     end
 end
 subgraph sg_3v1 ["sg_3v1"]

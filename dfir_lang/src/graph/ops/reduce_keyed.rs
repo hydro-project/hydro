@@ -65,7 +65,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
     persistence_args: &(0..=1),
     type_args: &(0..=2),
     is_external_input: false,
-    has_singleton_output: true,
+    has_singleton_output: false,
     flo_type: None,
     ports_inn: None,
     ports_out: None,
@@ -74,7 +74,6 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                    op_span,
                    ident,
                    inputs,
-                   singleton_output_ident,
                    is_pull,
                    work_fn_async,
                    root,
@@ -106,6 +105,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
         let input = &inputs[0];
         let aggfn = &arguments[0];
 
+        let singleton_output_ident = wc.make_ident("singleton_output");
         let hashtable_ident = wc.make_ident("hashtable");
 
         let write_prologue = quote_spanned! {op_span=>

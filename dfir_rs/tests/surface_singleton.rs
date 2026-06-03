@@ -12,7 +12,8 @@ pub fn test_state() {
     let mut df = dfir_rs::dfir_syntax! {
         stream1 = source_iter(1..=10);
         stream2 = source_iter(3..=5) -> map(Max::new);
-        max_of_stream2 = stream2 -> state::<'static, Max<_>>();
+        max_of_stream2_op = stream2 -> state::<'static, Max<_>>();
+        max_of_stream2 = max_of_stream2_op[state] -> singleton();
 
         filtered_stream1 = stream1
             -> persist::<'static>()
@@ -23,10 +24,9 @@ pub fn test_state() {
             -> map(|x| (context.current_tick(), x))
             -> for_each(|x| filter_send.send(x).unwrap());
 
-        max_of_stream2[items]
+        max_of_stream2_op[items]
             -> map(|x: Max<_>| (context.current_tick(), x.into_reveal()))
             -> for_each(|x| max_send.send(x).unwrap());
-        max_of_stream2[state] -> null();
     };
     assert_graphvis_snapshots!(df);
 
@@ -170,12 +170,12 @@ pub fn test_fold_singleton() {
     let mut df = dfir_rs::dfir_syntax! {
         stream1 = source_iter(1..=10);
         stream2 = source_iter(3..=5);
-        max_of_stream2 = stream2 -> fold(|| 0, |a, b| *a = std::cmp::max(*a, b));
+        max_of_stream2 = stream2 -> fold(|| 0, |a, b| *a = std::cmp::max(*a, b)) -> singleton();
 
         filtered_stream1 = stream1
             -> filter(|&value| {
                 // This is not monotonic.
-                value <= #max_of_stream2
+                value <= *#max_of_stream2
             })
             -> map(|x| (context.current_tick(), x))
             -> for_each(|x| filter_send.send(x).unwrap());
@@ -211,13 +211,13 @@ pub fn test_fold_singleton_push() {
     let mut df = dfir_rs::dfir_syntax! {
         stream1 = source_iter(1..=10);
         stream2 = source_iter(3..=5);
-        max_of_stream2 = stream2 -> fold(|| 0, |a, b| *a = std::cmp::max(*a, b));
+        max_of_stream2 = stream2 -> fold(|| 0, |a, b| *a = std::cmp::max(*a, b)) -> singleton();
 
         filtered_stream1 = stream1
             -> persist::<'static>()
             -> filter(|&value| {
                 // This is not monotonic.
-                value <= #max_of_stream2
+                value <= *#max_of_stream2
             })
             -> map(|x| (context.current_tick(), x))
             -> for_each(|x| filter_send.send(x).unwrap());
@@ -323,13 +323,13 @@ pub fn test_scheduling() {
     let mut df = dfir_rs::dfir_syntax! {
         stream1 = source_iter(1..=10);
         stream2 = source_stream(inn_recv);
-        max_of_stream2 = stream2 -> fold(|| 0, |a, b| *a = std::cmp::max(*a, b));
+        max_of_stream2 = stream2 -> fold(|| 0, |a, b| *a = std::cmp::max(*a, b)) -> singleton();
 
         filtered_stream1 = stream1
             -> persist::<'static>()
             -> filter(|&value| {
                 // This is not monotonic.
-                value <= #max_of_stream2
+                value <= *#max_of_stream2
             })
             -> map(|x| (context.current_tick(), x))
             -> for_each(|x| out_send.send(x).unwrap());
@@ -368,7 +368,8 @@ pub fn test_multi_tick() {
     let mut df = dfir_rs::dfir_syntax! {
         stream1 = source_iter(1..=10);
         stream2 = source_iter(3..=5) -> map(Max::new);
-        max_of_stream2 = stream2 -> state::<'static, Max<_>>();
+        max_of_stream2_op = stream2 -> state::<'static, Max<_>>();
+        max_of_stream2 = max_of_stream2_op[state] -> singleton();
 
         filtered_stream1 = stream1
             -> filter(|value| {
@@ -378,10 +379,9 @@ pub fn test_multi_tick() {
             -> map(|x| (context.current_tick(), x))
             -> for_each(|x| filter_send.send(x).unwrap());
 
-        max_of_stream2[items]
+        max_of_stream2_op[items]
             -> map(|x: Max<_>| (context.current_tick(), x.into_reveal()))
             -> for_each(|x| max_send.send(x).unwrap());
-        max_of_stream2[state] -> null();
     };
     assert_graphvis_snapshots!(df);
 

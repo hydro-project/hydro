@@ -59,19 +59,18 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
     persistence_args: &(0..=1),
     type_args: &(0..=1),
     is_external_input: false,
-    has_singleton_output: true,
+    has_singleton_output: false,
     flo_type: None,
     ports_inn: None,
     ports_out: Some(|| PortListSpec::Fixed(parse_quote!(items, state))),
     input_delaytype_fn: |_| None,
-    write_fn: |&WriteContextArgs {
+    write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
                    ident,
                    inputs: _,
                    outputs,
                    is_pull,
-                   singleton_output_ident,
                    op_name,
                    op_inst:
                        OperatorInstance {
@@ -106,7 +105,7 @@ pub const STATE_BY: OperatorConstraints = OperatorConstraints {
             _ => unreachable!(),
         };
 
-        let state_ident = singleton_output_ident;
+        let state_ident = wc.make_ident("state");
         let factory_fn = &arguments[1];
 
         let write_prologue = quote_spanned! {op_span=>
