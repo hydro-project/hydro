@@ -857,8 +857,10 @@ impl DfirGraph {
     /// Resolve the singletons via [`Self::node_singleton_references`] for the given `node_id`.
     /// Returns token streams for each reference:
     /// - For stateful operators: `&singleton_op_XXX` or `&mut singleton_op_XXX`
-    /// - For HandoffKind::Option: `&(hoff_XXX_buf.as_ref().unwrap())` (shared) or
+    /// - For HandoffKind::Singleton: `&(hoff_XXX_buf.as_ref().unwrap())` (shared) or
     ///   `&mut(hoff_XXX_buf.as_mut().unwrap())` (mutable)
+    /// - For HandoffKind::Optional: `&(hoff_XXX_buf)` (shared) or `&mut(hoff_XXX_buf)` (mutable)
+    /// - For HandoffKind::Vec: `&(hoff_XXX_buf)` (shared) or `&mut(hoff_XXX_buf)` (mutable)
     fn helper_resolve_singletons(&self, node_id: GraphNodeId, span: Span) -> Vec<TokenStream> {
         self.node_singleton_references(node_id)
             .iter()
@@ -890,12 +892,12 @@ impl DfirGraph {
                     } => {
                         let buf_ident = self.hoff_buf_ident(ref_node_id, span);
                         if is_mut {
-                            // `&mut(buf)` produces `&mut Vec<T>` so that
-                            // postprocess_singletons' `(*expr)` deref gives `Vec<T>` as a place.
+                            // `&mut(buf)` produces `&mut Option<T>` so that
+                            // postprocess_singletons' `(*expr)` deref gives `Option<T>` as a place.
                             quote_spanned! {span=> &mut(#buf_ident) }
                         } else {
-                            // `&(buf)` produces `&Vec<T>` so that
-                            // postprocess_singletons' `(*expr)` deref gives `Vec<T>` as a place.
+                            // `&(buf)` produces `&Option<T>` so that
+                            // postprocess_singletons' `(*expr)` deref gives `Option<T>` as a place.
                             quote_spanned! {span=> &(#buf_ident) }
                         }
                     }
@@ -905,12 +907,12 @@ impl DfirGraph {
                     } => {
                         let buf_ident = self.hoff_buf_ident(ref_node_id, span);
                         if is_mut {
-                            // `&mut(buf)` produces `&mut Option<T>` so that
-                            // postprocess_singletons' `(*expr)` deref gives `Option<T>` as a place.
+                            // `&mut(buf)` produces `&mut Vec<T>` so that
+                            // postprocess_singletons' `(*expr)` deref gives `Vec<T>` as a place.
                             quote_spanned! {span=> &mut(#buf_ident) }
                         } else {
-                            // `&(buf)` produces `&Option<T>` so that
-                            // postprocess_singletons' `(*expr)` deref gives `Option<T>` as a place.
+                            // `&(buf)` produces `&Vec<T>` so that
+                            // postprocess_singletons' `(*expr)` deref gives `Vec<T>` as a place.
                             quote_spanned! {span=> &(#buf_ident) }
                         }
                     }
