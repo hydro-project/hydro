@@ -6,7 +6,7 @@ fn main() {
 
         source_iter(1..=3)
             -> map(|x| {
-                #max_of_stream2 = 999;
+                *#max_of_stream2 = 999;
                 x
             })
             -> for_each(|x| println!("{}", x));
