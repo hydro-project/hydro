@@ -305,6 +305,7 @@ declare_ops![
     identity::IDENTITY,
     initialize::INITIALIZE,
     inspect::INSPECT,
+    iter_ref::ITER_REF,
     join::JOIN,
     join_fused::JOIN_FUSED,
     join_fused_lhs::JOIN_FUSED_LHS,

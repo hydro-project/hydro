@@ -1,4 +1,4 @@
-error: `handoff` must have exactly 1 output(s), actually has 2.
+error: `handoff` must have at least 0 and at most 1 output(s), actually has 2.
  --> tests/compile-fail/stable/surface_handoff_multi_out.rs:6:22
   |
 6 |         my_handoff = handoff();

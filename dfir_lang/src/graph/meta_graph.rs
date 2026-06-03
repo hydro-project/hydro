@@ -858,6 +858,7 @@ impl DfirGraph {
     /// - For stateful operators: `&singleton_op_XXX` or `&mut singleton_op_XXX`
     /// - For HandoffKind::Option: `&(hoff_XXX_buf.as_ref().unwrap())` (shared) or
     ///   `&mut(hoff_XXX_buf.as_mut().unwrap())` (mutable)
+    /// - For HandoffKind::Vec: `&(&#buf)` (shared) or `&mut(&mut #buf)` (mutable)
     fn helper_resolve_singletons(&self, node_id: GraphNodeId, span: Span) -> Vec<TokenStream> {
         self.node_singleton_references(node_id)
             .iter()
@@ -883,6 +884,25 @@ impl DfirGraph {
                         // `&(buf.as_ref().unwrap())` produces `&&T` so that
                         // postprocess_singletons' `(*expr)` deref gives `&T`.
                         quote_spanned! {span=> &(#buf_ident.as_ref().unwrap()) }
+                    }
+                } else if matches!(
+                    self.node(ref_node_id),
+                    GraphNode::Handoff {
+                        kind: HandoffKind::Vec,
+                        ..
+                    }
+                ) {
+                    let buf_ident = self.hoff_buf_ident(ref_node_id, span);
+                    if is_mut {
+                        // `&mut(#buf_ident)` produces `&mut Vec<T>` so that
+                        // postprocess_singletons' `(*expr)` deref gives `Vec<T>` as a place.
+                        // But we actually want `&mut Vec<T>`, so we need an extra indirection:
+                        // `&mut(&mut #buf_ident)` produces `&mut &mut Vec<T>`, deref gives `&mut Vec<T>`.
+                        quote_spanned! {span=> &mut(&mut #buf_ident) }
+                    } else {
+                        // `&(&#buf_ident)` produces `&&Vec<T>` so that
+                        // postprocess_singletons' `(*expr)` deref gives `&Vec<T>`.
+                        quote_spanned! {span=> &(&#buf_ident) }
                     }
                 } else {
                     let singleton_ident = self.node_as_singleton_ident(ref_node_id, span);
