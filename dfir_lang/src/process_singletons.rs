@@ -29,8 +29,8 @@ pub fn preprocess_singletons(tokens: TokenStream, found: &mut Vec<SingletonRef>)
 /// * `resolved_exprs` - Token streams that correspond 1:1 and in the same
 ///   order as the singleton references within `tokens` (found in-order via [`preprocess_singletons`]).
 ///
-/// For shared refs: generates `(*expr)` — an immutable place expression.
-/// For mutable refs: generates `(*expr)` — a mutable place expression (expr itself is `&mut`).
+/// For shared refs: splices the resolved expression directly (e.g. `&T` or `&Option<T>`).
+/// For mutable refs: splices the resolved expression directly (e.g. `&mut T` or `&mut Option<T>`).
 pub fn postprocess_singletons(
     tokens: TokenStream,
     resolved_exprs: impl IntoIterator<Item = TokenStream>,
@@ -39,16 +39,8 @@ pub fn postprocess_singletons(
     let processed = process_singletons(tokens, &mut |_ref_token| {
         let span = _ref_token.ident.span();
         let expr_tokens = resolved_exprs_iter.next().unwrap();
-        // Emit `(*expr)` so consumers get a place expression.
-        // For shared refs, expr is `&T` so `(*expr)` is immutable.
-        // For mutable refs, expr is `&mut T` so `(*expr)` is mutable.
-        let deref_tokens: TokenStream = std::iter::once(TokenTree::Punct(proc_macro2::Punct::new(
-            '*',
-            proc_macro2::Spacing::Alone,
-        )))
-        .chain(expr_tokens)
-        .collect();
-        let mut group = Group::new(proc_macro2::Delimiter::Parenthesis, deref_tokens);
+        // Wrap in parentheses to preserve precedence.
+        let mut group = Group::new(proc_macro2::Delimiter::Parenthesis, expr_tokens);
         group.set_span(span);
         TokenTree::Group(group)
     });
