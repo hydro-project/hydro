@@ -1087,12 +1087,7 @@ mod test {
             |x| 0u32.wrapping_sub(x),
             0,
         );
-        let correct_properties = &[
-            "associativity",
-            "commutativity",
-            "identity",
-            "inverse",
-        ];
+        let correct_properties = &["associativity", "commutativity", "identity", "inverse"];
         assert_eq!(test_properties_satisfied, correct_properties);
 
         // Test that get single function properties on max returns associative, commutative, idempotent, identity, and absorbing element.

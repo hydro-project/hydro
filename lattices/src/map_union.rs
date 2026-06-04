@@ -1,14 +1,14 @@
 //! Module containing the [`MapUnion`] lattice and aliases for different datastructures.
 
+#[cfg(feature = "alloc")]
+use alloc::collections::BTreeMap;
 use core::cmp::Ordering::{self, *};
 use core::fmt::Debug;
 use core::marker::PhantomData;
-
-#[cfg(feature = "alloc")]
-use alloc::collections::BTreeMap;
-use cc_traits::{Collection, GetKeyValue, Iter, MapInsert, SimpleCollectionRef};
 #[cfg(feature = "std")]
 use std::collections::HashMap;
+
+use cc_traits::{Collection, GetKeyValue, Iter, MapInsert, SimpleCollectionRef};
 
 use crate::cc_traits::{GetMut, Keyed, Map, MapIter, SimpleKeyedRef};
 #[cfg(feature = "alloc")]

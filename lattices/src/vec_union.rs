@@ -1,6 +1,6 @@
+use alloc::vec::Vec;
 use core::cmp::Ordering::{self, *};
 
-use alloc::vec::Vec;
 use cc_traits::Iter;
 
 use crate::{DeepReveal, IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
@@ -163,6 +163,8 @@ impl<Lat> IsTop for VecUnion<Lat> {
 #[cfg(test)]
 mod test {
     use std::collections::HashSet;
+    use std::vec;
+    use std::vec::Vec;
 
     use super::*;
     use crate::Max;

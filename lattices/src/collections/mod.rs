@@ -3,12 +3,11 @@
 use core::borrow::Borrow;
 use core::hash::Hash;
 use core::marker::PhantomData;
-
-#[cfg(feature = "alloc")]
-use ::alloc::collections::BTreeMap;
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 
+#[cfg(feature = "alloc")]
+use ::alloc::collections::BTreeMap;
 use cc_traits::{
     Collection, CollectionMut, CollectionRef, Get, GetKeyValue, GetKeyValueMut, GetMut, Iter,
     IterMut, Keyed, KeyedRef, Len, MapIter, MapIterMut, SimpleCollectionRef, SimpleKeyedRef,

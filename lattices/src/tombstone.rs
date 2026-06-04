@@ -50,6 +50,9 @@
 //! Both implementations are `Send` and `Sync` when their contained types are.
 //! They do not use interior mutability.
 
+use std::string::String;
+use std::vec::Vec;
+
 use fst::{IntoStreamer, Set as FstSet, SetBuilder, Streamer};
 use roaring::RoaringTreemap;
 
@@ -154,7 +157,7 @@ impl FromIterator<u64> for RoaringTombstoneSet {
 #[derive(Clone, Debug)]
 pub struct FstTombstoneSet<Item> {
     fst: FstSet<alloc::vec::Vec<u8>>,
-    _phantom: std::marker::PhantomData<Item>,
+    _phantom: core::marker::PhantomData<Item>,
 }
 
 #[cfg(feature = "alloc")]
@@ -170,7 +173,7 @@ impl<Item> FstTombstoneSet<Item> {
     pub fn new() -> Self {
         Self {
             fst: FstSet::default(),
-            _phantom: std::marker::PhantomData,
+            _phantom: core::marker::PhantomData,
         }
     }
 
@@ -178,7 +181,7 @@ impl<Item> FstTombstoneSet<Item> {
     pub(crate) fn from_fst(fst: FstSet<alloc::vec::Vec<u8>>) -> Self {
         Self {
             fst,
-            _phantom: std::marker::PhantomData,
+            _phantom: core::marker::PhantomData,
         }
     }
 
@@ -220,8 +223,8 @@ impl<Item> FstTombstoneSet<Item> {
 }
 
 #[cfg(feature = "alloc")]
-impl TombstoneSet<&'static str> for FstTombstoneSet<&'static str> {
-    fn contains(&self, key: &&'static str) -> bool {
+impl TombstoneSet<String> for FstTombstoneSet<String> {
+    fn contains(&self, key: &String) -> bool {
         self.fst.contains(key.as_bytes())
     }
 
@@ -233,7 +236,7 @@ impl TombstoneSet<&'static str> for FstTombstoneSet<&'static str> {
 }
 
 #[cfg(feature = "alloc")]
-impl Len for FstTombstoneSet<&'static str> {
+impl Len for FstTombstoneSet<String> {
     fn len(&self) -> usize {
         self.fst.len()
     }
@@ -241,10 +244,10 @@ impl Len for FstTombstoneSet<&'static str> {
 
 // For String items
 #[cfg(feature = "alloc")]
-impl Extend<&'static str> for FstTombstoneSet<&'static str> {
-    fn extend<T: IntoIterator<Item = &'static str>>(&mut self, iter: T) {
+impl Extend<String> for FstTombstoneSet<String> {
+    fn extend<T: IntoIterator<Item = String>>(&mut self, iter: T) {
         let mut keys: alloc::vec::Vec<_> = self.fst.stream().into_strs().unwrap();
-        keys.extend(iter.into_iter().map(alloc::borrow::ToOwned::to_owned));
+        keys.extend(iter);
         keys.sort();
         keys.dedup();
 
@@ -252,7 +255,7 @@ impl Extend<&'static str> for FstTombstoneSet<&'static str> {
         for key in keys {
             // FST builder insert only fails if keys are not sorted, which we ensure above
             builder
-                .insert(key)
+                .insert(&key)
                 .expect("keys are sorted, insert should not fail");
         }
         // Memory builder and FST construction should not fail for valid sorted keys
@@ -266,14 +269,14 @@ impl Extend<&'static str> for FstTombstoneSet<&'static str> {
 }
 
 #[cfg(feature = "alloc")]
-impl FromIterator<&'static str> for FstTombstoneSet<&'static str> {
-    fn from_iter<T: IntoIterator<Item = &'static str>>(iter: T) -> Self {
+impl FromIterator<String> for FstTombstoneSet<String> {
+    fn from_iter<T: IntoIterator<Item = String>>(iter: T) -> Self {
         let mut keys: alloc::vec::Vec<_> = iter.into_iter().collect();
         keys.sort();
         keys.dedup();
 
         let mut builder = SetBuilder::memory();
-        for key in keys {
+        for key in &keys {
             // FST builder insert only fails if keys are not sorted, which we ensure above
             builder
                 .insert(key)
@@ -291,7 +294,7 @@ impl FromIterator<&'static str> for FstTombstoneSet<&'static str> {
 }
 
 #[cfg(feature = "alloc")]
-impl IntoIterator for FstTombstoneSet<&'static str> {
+impl IntoIterator for FstTombstoneSet<String> {
     type Item = alloc::string::String;
     type IntoIter = alloc::vec::IntoIter<alloc::string::String>;
 

@@ -4,10 +4,12 @@
 
 use core::cmp::Ordering::{self, *};
 use core::fmt::Debug;
-
-use cc_traits::{Get, Iter, Len, Remove};
 #[cfg(feature = "std")]
 use std::collections::{HashMap, HashSet};
+#[cfg(feature = "std")]
+use std::string::String;
+
+use cc_traits::{Get, Iter, Len, Remove};
 
 use crate::cc_traits::{GetMut, Keyed, Map, MapIter, SimpleKeyedRef};
 use crate::collections::{EmptyMap, EmptySet, SingletonMap, SingletonSet};
@@ -358,13 +360,13 @@ pub type MapUnionWithTombstonesRoaring<Val> =
 /// FST-backed tombstone set with [`HashMap`] for the main map.
 /// Provides space-efficient, collision-free tombstone storage for String keys.
 #[cfg(feature = "std")]
-pub type MapUnionWithTombstonesFstString<Val> = MapUnionWithTombstones<
-    HashMap<&'static str, Val>,
-    FstTombstoneSet<&'static str>,
->;
+pub type MapUnionWithTombstonesFstString<Val> =
+    MapUnionWithTombstones<HashMap<String, Val>, FstTombstoneSet<String>>;
 
 #[cfg(test)]
 mod test {
+    use std::borrow::ToOwned;
+
     use super::*;
     use crate::NaiveLatticeOrd;
     use crate::set_union::{SetUnion, SetUnionHashSet, SetUnionSingletonSet};
@@ -499,21 +501,21 @@ mod test {
     fn fst_string_basic() {
         let mut x = MapUnionWithTombstonesFstString::new_from(
             HashMap::from([
-                ("apple", SetUnionHashSet::new_from([1])),
-                ("banana", SetUnionHashSet::new_from([2])),
+                ("apple".to_owned(), SetUnionHashSet::new_from([1])),
+                ("banana".to_owned(), SetUnionHashSet::new_from([2])),
             ]),
             FstTombstoneSet::new(),
         );
         let mut y = MapUnionWithTombstonesFstString::new_from(
             HashMap::from([
-                ("banana", SetUnionHashSet::new_from([3])),
-                ("cherry", SetUnionHashSet::new_from([4])),
+                ("banana".to_owned(), SetUnionHashSet::new_from([3])),
+                ("cherry".to_owned(), SetUnionHashSet::new_from([4])),
             ]),
             FstTombstoneSet::new(),
         );
 
         // Add tombstone for "banana"
-        y.as_reveal_mut().1.extend(["banana"]);
+        y.as_reveal_mut().1.extend(["banana".to_owned()]);
 
         x.merge(y);
 

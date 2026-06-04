@@ -2,13 +2,15 @@
 //!
 //! See [`crate::tombstone`] for documentation on choosing a tombstone implementation.
 
-use core::cmp::Ordering::{self, *};
-
 #[cfg(feature = "alloc")]
 use alloc::collections::BTreeSet;
-use cc_traits::{Collection, Get, Remove};
+use core::cmp::Ordering::{self, *};
 #[cfg(feature = "std")]
 use std::collections::HashSet;
+#[cfg(feature = "std")]
+use std::string::String;
+
+use cc_traits::{Collection, Get, Remove};
 
 use crate::cc_traits::{Iter, Len, Set};
 use crate::collections::{ArraySet, EmptySet, OptionSet, SingletonSet};
@@ -263,7 +265,8 @@ pub type SetUnionWithTombstonesBTreeSet<Item> =
 
 /// [`Vec`]-backed [`SetUnionWithTombstones`] lattice.
 #[cfg(feature = "alloc")]
-pub type SetUnionWithTombstonesVec<Item> = SetUnionWithTombstones<alloc::vec::Vec<Item>, alloc::vec::Vec<Item>>;
+pub type SetUnionWithTombstonesVec<Item> =
+    SetUnionWithTombstones<alloc::vec::Vec<Item>, alloc::vec::Vec<Item>>;
 
 /// [`crate::collections::ArraySet`]-backed [`SetUnionWithTombstones`] lattice.
 pub type SetUnionWithTombstonesArray<Item, const N: usize> =
@@ -290,10 +293,14 @@ pub type SetUnionWithTombstonesRoaring = SetUnionWithTombstones<HashSet<u64>, Ro
 /// Provides space-efficient, collision-free tombstone storage for String keys.
 #[cfg(feature = "std")]
 pub type SetUnionWithTombstonesFstString =
-    SetUnionWithTombstones<HashSet<&'static str>, FstTombstoneSet<&'static str>>;
+    SetUnionWithTombstones<HashSet<String>, FstTombstoneSet<String>>;
 
 #[cfg(test)]
 mod test {
+    use std::borrow::ToOwned;
+    use std::string::String;
+    use std::vec;
+
     use super::*;
     use crate::test::check_all;
 
@@ -413,16 +420,16 @@ mod test {
     #[test]
     fn fst_string_basic() {
         let mut x = SetUnionWithTombstonesFstString::new_from(
-            HashSet::from(["apple", "banana", "cherry"]),
+            HashSet::from(["apple".to_owned(), "banana".to_owned(), "cherry".to_owned()]),
             FstTombstoneSet::new(),
         );
         let mut y = SetUnionWithTombstonesFstString::new_from(
-            HashSet::from(["banana", "date"]),
+            HashSet::from(["banana".to_owned(), "date".to_owned()]),
             FstTombstoneSet::new(),
         );
 
         // Add tombstone for "banana"
-        y.as_reveal_mut().1.extend(["banana"]);
+        y.as_reveal_mut().1.extend(["banana".to_owned()]);
 
         x.merge(y);
 
@@ -439,17 +446,17 @@ mod test {
         // Test that FST union works correctly with multiple tombstones
         let mut x = SetUnionWithTombstonesFstString::new_from(
             HashSet::from([
-                "a",
-                "b",
-                "c",
-                "d",
+                "a".to_owned(),
+                "b".to_owned(),
+                "c".to_owned(),
+                "d".to_owned(),
             ]),
-            FstTombstoneSet::from_iter(["x", "y"]),
+            FstTombstoneSet::from_iter(["x".to_owned(), "y".to_owned()]),
         );
 
         let y = SetUnionWithTombstonesFstString::new_from(
-            HashSet::from(["e", "f"]),
-            FstTombstoneSet::from_iter(["z", "b"]),
+            HashSet::from(["e".to_owned(), "f".to_owned()]),
+            FstTombstoneSet::from_iter(["z".to_owned(), "b".to_owned()]),
         );
 
         x.merge(y);
@@ -513,12 +520,12 @@ mod test {
     fn fst_commutativity() {
         // Test that merge order doesn't matter
         let a = SetUnionWithTombstonesFstString::new_from(
-            HashSet::from(["a", "b"]),
-            FstTombstoneSet::from_iter(["x"]),
+            HashSet::from(["a".to_owned(), "b".to_owned()]),
+            FstTombstoneSet::from_iter(["x".to_owned()]),
         );
         let b = SetUnionWithTombstonesFstString::new_from(
-            HashSet::from(["c", "d"]),
-            FstTombstoneSet::from_iter(["y"]),
+            HashSet::from(["c".to_owned(), "d".to_owned()]),
+            FstTombstoneSet::from_iter(["y".to_owned()]),
         );
 
         let mut x1 = a.clone();

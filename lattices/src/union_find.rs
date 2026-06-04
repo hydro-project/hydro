@@ -253,6 +253,8 @@ pub type UnionFindOptionMap<K> = UnionFind<OptionMap<K, Cell<K>>>;
 
 #[cfg(test)]
 mod test {
+    use std::println;
+
     use super::*;
     use crate::test::{check_all, check_atomize_each};
 
