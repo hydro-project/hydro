@@ -1093,13 +1093,18 @@ where
     /// # stream.map(|i| assert!(expected.contains(&i)));
     /// # }));
     /// # }
-    pub fn cross_product<T2, B2: Boundedness, O2: Ordering>(
+    #[expect(
+        clippy::type_complexity,
+        reason = "MinRetries projection in return type"
+    )]
+    pub fn cross_product<T2, B2: Boundedness, O2: Ordering, R2: Retries>(
         self,
-        other: Stream<T2, L, B2, O2, R>,
-    ) -> Stream<(T, T2), L, B, B2::PreserveOrderIfBounded<O>, R>
+        other: Stream<T2, L, B2, O2, R2>,
+    ) -> Stream<(T, T2), L, B, B2::PreserveOrderIfBounded<O>, <R as MinRetries<R2>>::Min>
     where
         T: Clone,
         T2: Clone,
+        R: MinRetries<R2>,
     {
         self.map(q!(|v| ((), v)))
             .join(other.map(q!(|v| ((), v))))
@@ -2574,14 +2579,19 @@ where
     /// Forms the cross-product (Cartesian product, cross-join) of the items in the 2 input streams.
     /// Unlike [`Stream::cross_product`], the output order is totally ordered when the inputs are
     /// because this is compiled into a nested loop.
-    pub fn cross_product_nested_loop<T2, O2: Ordering + MinOrder<O>>(
+    #[expect(
+        clippy::type_complexity,
+        reason = "MinRetries projection in return type"
+    )]
+    pub fn cross_product_nested_loop<T2, O2: Ordering + MinOrder<O>, R2: Retries>(
         self,
-        other: Stream<T2, L, Bounded, O2, R>,
-    ) -> Stream<(T, T2), L, Bounded, <O2 as MinOrder<O>>::Min, R>
+        other: Stream<T2, L, Bounded, O2, R2>,
+    ) -> Stream<(T, T2), L, Bounded, <O2 as MinOrder<O>>::Min, <R as MinRetries<R2>>::Min>
     where
         B: IsBounded,
         T: Clone,
         T2: Clone,
+        R: MinRetries<R2>,
     {
         let this = self.make_bounded();
         check_matching_location(&this.location, &other.location);
@@ -2596,7 +2606,7 @@ where
                     L,
                     Bounded,
                     <O2 as MinOrder<O>>::Min,
-                    R,
+                    <R as MinRetries<R2>>::Min,
                 >::collection_kind()),
             },
         )
@@ -2649,7 +2659,6 @@ where
         T: Clone,
     {
         keys.keys()
-            .weaken_retries()
             .assume_ordering_trusted::<TotalOrder>(
                 nondet!(/** keyed stream does not depend on ordering of keys */),
             )
