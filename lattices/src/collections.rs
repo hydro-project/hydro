@@ -1,12 +1,12 @@
 //! Simple singleton or array collection with [`cc_traits`] implementations.
 
+#[cfg(feature = "alloc")]
+use alloc::collections::BTreeMap;
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
 use core::borrow::Borrow;
 use core::hash::Hash;
 use core::marker::PhantomData;
-#[cfg(feature = "alloc")]
-use ::alloc::collections::BTreeMap;
-#[cfg(feature = "alloc")]
-use ::alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::collections::HashMap;
 
@@ -17,7 +17,52 @@ use cc_traits::{
     simple_keyed_ref,
 };
 
-/// A [`Vec`](alloc::vec::Vec)-wrapper representing a naively-implemented set.
+/// Trait for transforming the values of a map without changing the overall type of the data structure.
+pub trait MapMapValues<OldVal> {
+    /// Output type, should be `Self` but with `OldVal` replaced with `NewVal`.
+    type MapValue<NewVal>;
+
+    /// Map the values into using the `map_fn`.
+    fn map_values<NewVal, MapFn>(self, map_fn: MapFn) -> Self::MapValue<NewVal>
+    where
+        MapFn: FnMut(OldVal) -> NewVal;
+}
+
+#[cfg(feature = "std")]
+impl<Key, OldVal> MapMapValues<OldVal> for HashMap<Key, OldVal>
+where
+    Key: Eq + Hash,
+{
+    type MapValue<NewVal> = HashMap<Key, NewVal>;
+
+    fn map_values<NewVal, MapFn>(self, mut map_fn: MapFn) -> Self::MapValue<NewVal>
+    where
+        MapFn: FnMut(OldVal) -> NewVal,
+    {
+        self.into_iter()
+            .map(|(k, val)| (k, (map_fn)(val)))
+            .collect()
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl<Key, OldVal> MapMapValues<OldVal> for BTreeMap<Key, OldVal>
+where
+    Key: Eq + Ord,
+{
+    type MapValue<NewVal> = BTreeMap<Key, NewVal>;
+
+    fn map_values<NewVal, MapFn>(self, mut map_fn: MapFn) -> Self::MapValue<NewVal>
+    where
+        MapFn: FnMut(OldVal) -> NewVal,
+    {
+        self.into_iter()
+            .map(|(k, val)| (k, (map_fn)(val)))
+            .collect()
+    }
+}
+
+/// A [`Vec`]-wrapper representing a naively-implemented set.
 #[cfg(feature = "alloc")]
 #[repr(transparent)]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -26,7 +71,7 @@ pub struct VecSet<T>(pub Vec<T>);
 #[cfg(feature = "alloc")]
 impl<T> IntoIterator for VecSet<T> {
     type Item = T;
-    type IntoIter = ::alloc::vec::IntoIter<T>;
+    type IntoIter = alloc::vec::IntoIter<T>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
@@ -117,7 +162,7 @@ impl<T> IterMut for VecSet<T> {
     }
 }
 
-/// A [`Vec`](alloc::vec::Vec)-wrapper representing a naively implemented map.
+/// A [`Vec`]-wrapper representing a naively implemented map.
 #[cfg(feature = "alloc")]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -140,7 +185,7 @@ impl<K, V> VecMap<K, V> {
 #[cfg(feature = "alloc")]
 impl<K, V> IntoIterator for VecMap<K, V> {
     type Item = (K, V);
-    type IntoIter = core::iter::Zip<::alloc::vec::IntoIter<K>, ::alloc::vec::IntoIter<V>>;
+    type IntoIter = core::iter::Zip<alloc::vec::IntoIter<K>, alloc::vec::IntoIter<V>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.keys.into_iter().zip(self.vals)
@@ -284,51 +329,6 @@ impl<K, OldVal> MapMapValues<OldVal> for VecMap<K, OldVal> {
         let Self { keys, vals } = self;
         let vals = vals.into_iter().map(map_fn).collect();
         VecMap { keys, vals }
-    }
-}
-
-/// Trait for transforming the values of a map without changing the overall type of the data structure.
-pub trait MapMapValues<OldVal> {
-    /// Output type, should be `Self` but with `OldVal` replaced with `NewVal`.
-    type MapValue<NewVal>;
-
-    /// Map the values into using the `map_fn`.
-    fn map_values<NewVal, MapFn>(self, map_fn: MapFn) -> Self::MapValue<NewVal>
-    where
-        MapFn: FnMut(OldVal) -> NewVal;
-}
-
-#[cfg(feature = "std")]
-impl<Key, OldVal> MapMapValues<OldVal> for HashMap<Key, OldVal>
-where
-    Key: Eq + Hash,
-{
-    type MapValue<NewVal> = HashMap<Key, NewVal>;
-
-    fn map_values<NewVal, MapFn>(self, mut map_fn: MapFn) -> Self::MapValue<NewVal>
-    where
-        MapFn: FnMut(OldVal) -> NewVal,
-    {
-        self.into_iter()
-            .map(|(k, val)| (k, (map_fn)(val)))
-            .collect()
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl<Key, OldVal> MapMapValues<OldVal> for BTreeMap<Key, OldVal>
-where
-    Key: Eq + Ord,
-{
-    type MapValue<NewVal> = BTreeMap<Key, NewVal>;
-
-    fn map_values<NewVal, MapFn>(self, mut map_fn: MapFn) -> Self::MapValue<NewVal>
-    where
-        MapFn: FnMut(OldVal) -> NewVal,
-    {
-        self.into_iter()
-            .map(|(k, val)| (k, (map_fn)(val)))
-            .collect()
     }
 }
 
