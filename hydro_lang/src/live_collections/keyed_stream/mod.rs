@@ -349,6 +349,36 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         }
     }
 
+    pub(crate) fn assert_has_consistency_of_trusted<
+        L2: Location<'a, DropConsistency = L::DropConsistency>,
+    >(
+        self,
+        _proof: impl crate::properties::ConsistencyProof,
+    ) -> KeyedStream<K, V, L2, B, O, R>
+    where
+        L: Location<'a>,
+    {
+        if L::consistency() == L2::consistency() {
+            KeyedStream::new(
+                self.location.with_consistency_of(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            KeyedStream::new(
+                self.location.with_consistency_of(),
+                HydroNode::AssertIsConsistent {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    trusted: true,
+                    metadata: self
+                        .location
+                        .clone()
+                        .with_consistency_of::<L2>()
+                        .new_node_metadata(KeyedStream::<K, V, L2, B, O, R>::collection_kind()),
+                },
+            )
+        }
+    }
+
     /// Turns this [`KeyedStream`] into a [`Stream`] preserving ordering, under the invariant
     /// assumption that there is at most one key. If this invariant is broken, the program
     /// may exhibit undefined behavior, so uses must be carefully vetted.
