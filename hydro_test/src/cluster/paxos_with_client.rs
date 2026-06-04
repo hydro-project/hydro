@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 
 use hydro_lang::live_collections::stream::{NoOrder, TotalOrder};
+use hydro_lang::location::cluster::EventualConsistency;
 use hydro_lang::location::{Location, MemberId};
 use hydro_lang::prelude::*;
 use serde::Serialize;
@@ -38,7 +39,12 @@ pub trait PaxosLike<'a>: Sized {
         checkpoints: Optional<usize, Cluster<'a, Self::PaxosLog>, Unbounded>,
         nondet_leader: NonDet,
         nondet_commit: NonDet,
-    ) -> Stream<(usize, Option<P>), Cluster<'a, Self::PaxosOut>, Unbounded, NoOrder>;
+    ) -> Stream<
+        (usize, Option<P>),
+        Cluster<'a, Self::PaxosOut, EventualConsistency>,
+        Unbounded,
+        NoOrder,
+    >;
 
     /// # Non-Determinism
     /// During leader-reelection, the latest known leader may be stale, which may
@@ -52,7 +58,12 @@ pub trait PaxosLike<'a>: Sized {
         checkpoints: Optional<usize, Cluster<'a, Self::PaxosLog>, Unbounded>,
         nondet_commit: NonDet,
         nondet_order: NonDet,
-    ) -> Stream<(usize, Option<P>), Cluster<'a, Self::PaxosOut>, Unbounded, NoOrder> {
+    ) -> Stream<
+        (usize, Option<P>),
+        Cluster<'a, Self::PaxosOut, EventualConsistency>,
+        Unbounded,
+        NoOrder,
+    > {
         let leaders = self.payload_recipients().clone();
 
         self.build(

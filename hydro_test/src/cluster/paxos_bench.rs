@@ -54,7 +54,7 @@ pub fn paxos_bench<'a>(
             );
 
             let sequenced_to_replicas = sequenced_payloads
-                .broadcast(replicas, TCP.fail_stop().bincode(), nondet!(/** TODO */))
+                .broadcast_closed(replicas, TCP.fail_stop().bincode())
                 .values()
                 .map(q!(|(index, payload)| (
                     index,

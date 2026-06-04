@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use hydro_lang::live_collections::stream::NoOrder;
+use hydro_lang::location::cluster::Consistency;
 use hydro_lang::prelude::*;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
@@ -44,20 +45,21 @@ impl<K: KvKey, V: KvValue> PartialOrd for SequencedKv<K, V> {
 
 // Replicas. All relations for replicas will be prefixed with r. Expects ReplicaPayload on p_to_replicas, outputs a stream of (client address, ReplicaPayload) after processing.
 #[expect(clippy::type_complexity, reason = "internal paxos code // TODO")]
-pub fn kv_replica<'a, K: KvKey, V: KvValue>(
+pub fn kv_replica<'a, K: KvKey, V: KvValue, Con: Consistency>(
     replicas: &Cluster<'a, Replica>,
     p_to_replicas: impl Into<
-        Stream<(usize, Option<KvPayload<K, V>>), Cluster<'a, Replica>, Unbounded, NoOrder>,
+        Stream<(usize, Option<KvPayload<K, V>>), Cluster<'a, Replica, Con>, Unbounded, NoOrder>,
     >,
     checkpoint_frequency: usize,
 ) -> (
-    Stream<usize, Cluster<'a, Replica>, Unbounded>,
-    Stream<KvPayload<K, V>, Cluster<'a, Replica>, Unbounded>,
+    Stream<usize, Cluster<'a, Replica, Con>, Unbounded>,
+    Stream<KvPayload<K, V>, Cluster<'a, Replica, Con>, Unbounded>,
 ) {
     let p_to_replicas: Stream<SequencedKv<K, V>, Cluster<'a, Replica>, Unbounded, NoOrder> =
         p_to_replicas
             .into()
-            .map(q!(|(slot, kv)| SequencedKv { seq: slot, kv }));
+            .map(q!(|(slot, kv)| SequencedKv { seq: slot, kv }))
+            .weaken_consistency();
 
     let replica_tick = replicas.tick();
 
@@ -108,5 +110,16 @@ pub fn kv_replica<'a, K: KvKey, V: KvValue>(
     let r_to_clients = r_processable_payloads
         .filter_map(q!(|payload| payload.kv))
         .all_ticks();
-    (r_checkpoint_seq_new.all_ticks(), r_to_clients)
+    (
+        r_checkpoint_seq_new
+            .all_ticks()
+            .assert_has_consistency_of::<Cluster<'a, Replica, Con>>(manual_proof!(
+                /// Checkpoints are a deterministic function of the sequenced log.
+                /// An eventually-consistent input produces eventually-consistent checkpoints.
+            )),
+        r_to_clients.assert_has_consistency_of::<Cluster<'a, Replica, Con>>(manual_proof!(
+            /// Processed payloads are a deterministic function of the sequenced log.
+            /// An eventually-consistent input produces eventually-consistent outputs.
+        )),
+    )
 }

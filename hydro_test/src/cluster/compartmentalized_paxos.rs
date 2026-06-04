@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use hydro_lang::live_collections::stream::NoOrder;
+use hydro_lang::location::cluster::EventualConsistency;
 use hydro_lang::location::{Atomic, Location, MemberId};
 use hydro_lang::prelude::*;
 use hydro_std::quorum::collect_quorum;
@@ -64,7 +65,12 @@ impl<'a> PaxosLike<'a> for CoreCompartmentalizedPaxos<'a> {
         a_checkpoint: Optional<usize, Cluster<'a, Acceptor>, Unbounded>,
         nondet_leader: NonDet,
         nondet_commit: NonDet,
-    ) -> Stream<(usize, Option<P>), Cluster<'a, Self::PaxosOut>, Unbounded, NoOrder> {
+    ) -> Stream<
+        (usize, Option<P>),
+        Cluster<'a, Self::PaxosOut, EventualConsistency>,
+        Unbounded,
+        NoOrder,
+    > {
         compartmentalized_paxos_core(
             &self.proposers,
             &self.proxy_leaders,
@@ -116,7 +122,7 @@ pub fn compartmentalized_paxos_core<'a, P: PaxosPayload>(
     nondet_commit_leader_change: NonDet,
 ) -> (
     Stream<Ballot, Cluster<'a, Proposer>, Unbounded>,
-    Stream<(usize, Option<P>), Cluster<'a, ProxyLeader>, Unbounded, NoOrder>,
+    Stream<(usize, Option<P>), Cluster<'a, ProxyLeader, EventualConsistency>, Unbounded, NoOrder>,
 ) {
     proposers
         .source_iter(q!(["Proposers say hello"]))
@@ -244,7 +250,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
     a_max_ballot: Singleton<Ballot, Tick<Cluster<'a, Acceptor>>, Bounded>,
     nondet_commit_leader_change: NonDet,
 ) -> (
-    Stream<(usize, Option<P>), Cluster<'a, ProxyLeader>, Unbounded, NoOrder>,
+    Stream<(usize, Option<P>), Cluster<'a, ProxyLeader, EventualConsistency>, Unbounded, NoOrder>,
     Singleton<
         (Option<usize>, HashMap<usize, LogValue<P>>),
         Atomic<Cluster<'a, Acceptor>>,
@@ -348,7 +354,16 @@ fn sequence_payload<'a, P: PaxosPayload>(
         .values();
 
     (
-        pl_to_replicas.map(q!(|((slot, _ballot), (value, _))| (slot, value))),
+        pl_to_replicas
+            .map(q!(|((slot, _ballot), (value, _))| (slot, value)))
+            .assert_has_consistency_of::<Cluster<'a, ProxyLeader, EventualConsistency>>(
+                manual_proof!(
+                    /// A value committed at slot s has been accepted by a quorum of acceptors.
+                    /// By quorum intersection, no other value can be committed at the same slot.
+                    /// Therefore all proxy leaders that commit slot s agree on its value, and the set
+                    /// of (slot, value) pairs converges across proxy leaders.
+                ),
+            ),
         a_log,
         pl_failed_p2b_to_proposer,
     )

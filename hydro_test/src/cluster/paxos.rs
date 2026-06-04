@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use hydro_lang::live_collections::sliced::yield_atomic;
 use hydro_lang::live_collections::stream::{AtLeastOnce, NoOrder, TotalOrder};
-use hydro_lang::location::cluster::CLUSTER_SELF_ID;
+use hydro_lang::location::cluster::{CLUSTER_SELF_ID, EventualConsistency};
 use hydro_lang::location::{Atomic, Location, MemberId};
 use hydro_lang::prelude::*;
 use hydro_std::quorum::{collect_quorum, collect_quorum_with_response};
@@ -102,7 +102,12 @@ impl<'a> PaxosLike<'a> for CorePaxos<'a> {
         a_checkpoint: Optional<usize, Cluster<'a, Acceptor>, Unbounded>,
         nondet_leader: NonDet,
         nondet_commit: NonDet,
-    ) -> Stream<(usize, Option<P>), Cluster<'a, Self::PaxosOut>, Unbounded, NoOrder> {
+    ) -> Stream<
+        (usize, Option<P>),
+        Cluster<'a, Self::PaxosOut, EventualConsistency>,
+        Unbounded,
+        NoOrder,
+    > {
         paxos_core(
             &self.proposers,
             &self.acceptors,
@@ -145,7 +150,7 @@ pub fn paxos_core<'a, P: PaxosPayload>(
     nondet_commit: NonDet,
 ) -> (
     Stream<Ballot, Cluster<'a, Proposer>, Unbounded>,
-    Stream<(usize, Option<P>), Cluster<'a, Proposer>, Unbounded, NoOrder>,
+    Stream<(usize, Option<P>), Cluster<'a, Proposer, EventualConsistency>, Unbounded, NoOrder>,
 ) {
     let f = config.f;
 
@@ -691,7 +696,7 @@ fn sequence_payload<'a, P: PaxosPayload>(
 
     nondet_commit: NonDet,
 ) -> (
-    Stream<(usize, Option<P>), Cluster<'a, Proposer>, Unbounded, NoOrder>,
+    Stream<(usize, Option<P>), Cluster<'a, Proposer, EventualConsistency>, Unbounded, NoOrder>,
     Singleton<
         (Option<usize>, HashMap<usize, LogValue<P>>),
         Atomic<Cluster<'a, Acceptor>>,
@@ -763,7 +768,16 @@ fn sequence_payload<'a, P: PaxosPayload>(
     );
 
     (
-        p_to_replicas.map(q!(|((slot, _ballot), (value, _))| (slot, value))),
+        p_to_replicas
+            .map(q!(|((slot, _ballot), (value, _))| (slot, value)))
+            .assert_has_consistency_of::<Cluster<'a, Proposer, EventualConsistency>>(
+                manual_proof!(
+                    /// A value committed at slot s has been accepted by a quorum of acceptors.
+                    /// By quorum intersection, no other value can be committed at the same slot.
+                    /// Therefore all proposers that commit slot s agree on its value, and the set
+                    /// of (slot, value) pairs converges across proposers.
+                ),
+            ),
         a_log,
         fails.map(q!(|(_, ballot)| ballot)),
     )
