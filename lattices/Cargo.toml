@@ -26,7 +26,7 @@ fst = { version = "0.4.0", optional = true }
 lattices_macro = { path = "../lattices_macro", version = "^0.6.0" }
 roaring = { version = "0.11.0", default-features = false }
 sealed = "0.6.0"
-serde = { version = "1.0.197", features = ["derive"], optional = true }
+serde = { version = "1.0.197", features = ["derive"], optional = true, default-features = false }
 variadics = { path = "../variadics", version = "^0.1.0", default-features = false }
 variadics_macro = { path = "../variadics_macro", version = "^0.7.0" }
 
