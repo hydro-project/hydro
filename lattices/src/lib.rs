@@ -1,7 +1,14 @@
+#![no_std]
 #![warn(missing_docs)]
 #![doc = include_str!("../README.md")]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
-use std::cmp::Ordering::{self, *};
+#[cfg(any(test, feature = "alloc"))]
+extern crate alloc;
+#[cfg(any(test, feature = "std"))]
+extern crate std;
+
+use core::cmp::Ordering::{self, *};
 
 pub use ::{cc_traits, variadics};
 use sealed::sealed;
@@ -11,6 +18,7 @@ pub mod algebra;
 pub mod collections;
 mod conflict;
 mod dom_pair;
+#[cfg(feature = "std")]
 pub mod ght;
 pub mod map_union;
 pub mod map_union_with_tombstones;
@@ -21,9 +29,12 @@ pub mod semiring_application;
 pub mod set_union;
 pub mod set_union_with_tombstones;
 pub mod test;
+#[cfg(feature = "std")]
 pub mod tombstone;
+#[cfg(feature = "std")]
 pub mod union_find;
 mod unit;
+#[cfg(feature = "alloc")]
 mod vec_union;
 mod with_bot;
 mod with_top;
@@ -34,6 +45,7 @@ pub use lattices_macro::*;
 pub use ord::{Max, Min};
 pub use pair::{Pair, PairBimorphism};
 pub use point::Point;
+#[cfg(feature = "alloc")]
 pub use vec_union::VecUnion;
 pub use with_bot::WithBot;
 pub use with_top::WithTop;

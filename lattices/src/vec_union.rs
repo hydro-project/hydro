@@ -1,4 +1,5 @@
-use std::cmp::Ordering::{self, *};
+use alloc::vec::Vec;
+use core::cmp::Ordering::{self, *};
 
 use cc_traits::Iter;
 
@@ -162,6 +163,8 @@ impl<Lat> IsTop for VecUnion<Lat> {
 #[cfg(test)]
 mod test {
     use std::collections::HashSet;
+    use std::vec;
+    use std::vec::Vec;
 
     use super::*;
     use crate::Max;

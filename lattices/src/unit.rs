@@ -37,9 +37,9 @@ impl IsTop for () {
 impl Atomize for () {
     type Atom = Self;
 
-    type AtomIter = std::iter::Empty<Self>;
+    type AtomIter = core::iter::Empty<Self>;
 
     fn atomize(self) -> Self::AtomIter {
-        std::iter::empty()
+        core::iter::empty()
     }
 }

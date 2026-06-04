@@ -1,4 +1,4 @@
-use std::cmp::Ordering::{self, *};
+use core::cmp::Ordering::{self, *};
 
 use crate::{DeepReveal, IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 
@@ -173,8 +173,12 @@ mod test {
         check_partial_ord_properties,
     };
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn consistency() {
+        use alloc::vec;
+        use alloc::vec::Vec;
+
         let mut test_vec = Vec::new();
 
         for a in [vec![], vec![0], vec![1], vec![0, 1]] {
@@ -193,8 +197,11 @@ mod test {
         assert!(std::panic::catch_unwind(|| check_lattice_properties(&test_vec)).is_err());
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn consistency_withtop() {
+        use alloc::vec;
+
         let mut test_vec = vec![];
 
         let sub_items = &[
@@ -226,8 +233,12 @@ mod test {
         assert!(std::panic::catch_unwind(|| check_lattice_properties(&test_vec)).is_err());
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn consistency_with_ord_lhs() {
+        use alloc::vec;
+        use alloc::vec::Vec;
+
         let mut test_vec = Vec::new();
 
         for a in [0, 1, 2] {
