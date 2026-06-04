@@ -349,7 +349,43 @@ where
     ///
     /// Mutable references are ordered via access groups in the generated DFIR code, ensuring
     /// exclusive access at each point in the execution order.
-    // TODO(mingwei): Add example here
+    ///
+    /// ```rust
+    /// # #[cfg(feature = "deploy")] {
+    /// # use hydro_lang::prelude::*;
+    /// # use futures::StreamExt;
+    /// # tokio_test::block_on(async {
+    /// # let mut deployment = hydro_deploy::Deployment::new();
+    /// # let mut builder = hydro_lang::compile::builder::FlowBuilder::new();
+    /// # let process = builder.process::<()>();
+    /// # let external = builder.external::<()>();
+    /// let my_count = process
+    ///     .source_iter(q!(0..5i32))
+    ///     .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+    /// let count_mut = my_count.by_mut();
+    /// let out_port = process
+    ///     .source_iter(q!(1..=3i32))
+    ///     .map(q!(|x| {
+    ///         *count_mut += x;
+    ///         *count_mut
+    ///     }, commutative = hydro_lang::__manual_proof__!(/** addition is commutative */)))
+    ///     .send_bincode_external(&external);
+    /// # let nodes = builder
+    /// #     .with_default_optimize()
+    /// #     .with_process(&process, deployment.Localhost())
+    /// #     .with_external(&external, deployment.Localhost())
+    /// #     .deploy(&mut deployment);
+    /// # deployment.deploy().await.unwrap();
+    /// # let mut out_recv = nodes.connect(out_port).await;
+    /// # deployment.start().await.unwrap();
+    /// # let mut results = Vec::new();
+    /// # for _ in 0..3 { results.push(out_recv.next().await.unwrap()); }
+    /// # results.sort();
+    /// // fold(0..5) = 10, then each map adds x: results are 11, 13, 16
+    /// # assert_eq!(results, vec![11, 13, 16]);
+    /// # });
+    /// # }
+    /// ```
     pub fn by_mut(&self) -> crate::singleton_ref::SingletonMut<'a, '_, T, L>
     where
         B: IsBounded,

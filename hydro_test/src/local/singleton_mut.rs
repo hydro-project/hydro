@@ -4,7 +4,7 @@ mod tests {
     use hydro_deploy::Deployment;
     use hydro_lang::compile::builder::FlowBuilder;
     use hydro_lang::location::Location;
-use stageleft::q;
+    use stageleft::q;
 
     #[tokio::test]
     async fn test_singleton_mut() {
@@ -25,10 +25,13 @@ use stageleft::q;
         let out_port = p1
             .source_iter(q!(1..=3i32))
             .weaken_ordering::<hydro_lang::live_collections::stream::NoOrder>()
-            .map(q!(|x| {
-                *count_mut += x;
-                *count_mut
-            }, commutative = hydro_lang::__manual_proof__!(/** addition is commutative */)))
+            .map(q!(
+                |x| {
+                    *count_mut += x;
+                    *count_mut
+                },
+                commutative = hydro_lang::__manual_proof__!(/** addition is commutative */)
+            ))
             .send_bincode_external(&external);
 
         let nodes = builder
