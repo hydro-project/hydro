@@ -730,3 +730,94 @@ fn sim_singleton_not_ready_until_producer_runs() {
         let _ = out_port.next().await;
     });
 }
+
+/// The simulator does not yet support `Unbounded` keyed singletons (where keys can be removed).
+/// This snapshot test verifies the panic message when attempting to simulate one.
+#[test]
+#[cfg_attr(target_os = "windows", ignore)]
+fn sim_unbounded_keyed_singleton_rejected_snapshot() {
+    use crate::compile::ir::KeyedSingletonBoundKind;
+
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+
+    let (input_port, input) = node.sim_input::<(u32, u32), TotalOrder, ExactlyOnce>();
+
+    let monotone_keys_singleton = input
+        .into_keyed()
+        .fold(q!(|| 0u32), q!(|acc, v| *acc = (*acc).max(v)));
+
+    // Patch the IR node's collection_kind to Unbounded.
+    // There's currently no public API that produces an Unbounded keyed singleton.
+    {
+        let mut ir = monotone_keys_singleton.ir_node.borrow_mut();
+        if let crate::compile::ir::CollectionKind::KeyedSingleton { ref mut bound, .. } =
+            ir.metadata_mut().collection_kind
+        {
+            *bound = KeyedSingletonBoundKind::Unbounded;
+        }
+    }
+
+    let output = monotone_keys_singleton
+        .snapshot(&node.tick(), nondet!(/** test */))
+        .entries()
+        .all_ticks()
+        .sim_output();
+
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        flow.sim().exhaustive(async || {
+            input_port.send((1, 100));
+            let _ = output.collect_sorted::<Vec<_>>().await;
+        });
+    }));
+
+    let err = result.unwrap_err();
+    let panic_msg = err
+        .downcast_ref::<String>()
+        .map(|s| s.as_str())
+        .or_else(|| err.downcast_ref::<&str>().copied())
+        .unwrap_or("(non-string panic)");
+
+    hydro_build_utils::assert_snapshot!(panic_msg);
+}
+
+/// The simulator does not yet support non-atomic yield of an Optional (i.e., `latest()`
+/// on a tick-level Optional that produces a top-level Unbounded Optional).
+/// This snapshot test verifies the panic message.
+#[test]
+#[cfg_attr(target_os = "windows", ignore)]
+fn sim_unbounded_optional_rejected_snapshot() {
+    let mut flow = FlowBuilder::new();
+    let node = flow.process::<()>();
+
+    let (input_port, input) = node.sim_input::<u32, TotalOrder, ExactlyOnce>();
+
+    let tick = node.tick();
+    let optional = input
+        .batch(&tick, nondet!(/** test */))
+        .sort()
+        .first()
+        .latest();
+
+    let output = sliced! {
+        let snapshot = use(optional, nondet!(/** test */));
+        snapshot.into_stream()
+    }
+    .sim_output();
+
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        flow.sim().exhaustive(async || {
+            input_port.send(42);
+            let _ = output.collect::<Vec<_>>().await;
+        });
+    }));
+
+    let err = result.unwrap_err();
+    let panic_msg = err
+        .downcast_ref::<String>()
+        .map(|s| s.as_str())
+        .or_else(|| err.downcast_ref::<&str>().copied())
+        .unwrap_or("(non-string panic)");
+
+    hydro_build_utils::assert_snapshot!(panic_msg);
+}

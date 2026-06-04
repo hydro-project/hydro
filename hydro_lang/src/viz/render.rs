@@ -447,6 +447,7 @@ fn add_keyed_singleton_bound_property(
             properties.insert(HydroEdgeProp::Bounded);
         }
         KeyedSingletonBoundKind::BoundedValue
+        | KeyedSingletonBoundKind::MonotonicKeys
         | KeyedSingletonBoundKind::MonotonicValue
         | KeyedSingletonBoundKind::Unbounded => {
             properties.insert(HydroEdgeProp::Unbounded);

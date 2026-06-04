@@ -1,0 +1,5 @@
+---
+source: hydro_lang/src/sim/tests/mod.rs
+expression: panic_msg
+---
+not yet implemented: Simulation of Unbounded keyed singletons is not yet supported. Keys may be removed in Unbounded keyed singletons, which the simulator cannot currently model. Use a fold (which gives MonotonicKeys) or another operator that guarantees keys are never removed.

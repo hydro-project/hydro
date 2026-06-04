@@ -446,7 +446,7 @@ impl<B: Boundedness> ApplyMonotoneStream<Proved, B::StreamToMonotone> for B {}
 pub trait ApplyMonotoneKeyedStream<P, B2: KeyedSingletonBound> {}
 
 #[sealed::sealed]
-impl<B: Boundedness> ApplyMonotoneKeyedStream<NotProved, B> for B {}
+impl<B: Boundedness> ApplyMonotoneKeyedStream<NotProved, B::KeyedStreamToNonMonotone> for B {}
 
 #[sealed::sealed]
 impl<B: Boundedness> ApplyMonotoneKeyedStream<Proved, B::KeyedStreamToMonotone> for B {}

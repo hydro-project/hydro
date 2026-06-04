@@ -2135,6 +2135,7 @@ pub enum StreamRetry {
 #[derive(serde::Serialize, Clone, PartialEq, Eq, Debug)]
 pub enum KeyedSingletonBoundKind {
     Unbounded,
+    MonotonicKeys,
     MonotonicValue,
     BoundedValue,
     Bounded,

@@ -24,4 +24,4 @@ error[E0308]: mismatched types
    |            expected due to this
    |
    = note: expected struct `hydro_lang::prelude::KeyedSingleton<_, _, _, hydro_lang::live_collections::keyed_singleton::MonotonicValue>`
-              found struct `hydro_lang::prelude::KeyedSingleton<{integer}, {integer}, hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::Unbounded>`
+              found struct `hydro_lang::prelude::KeyedSingleton<{integer}, {integer}, hydro_lang::prelude::Process<'a, P1>, hydro_lang::prelude::MonotonicKeys>`
