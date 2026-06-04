@@ -239,7 +239,7 @@ pub type UnionFindHashMap<K> = UnionFind<HashMap<K, Cell<K>>>;
 /// [`std::collections::BTreeMap`]-backed [`UnionFind`] lattice.
 pub type UnionFindBTreeMap<K> = UnionFind<BTreeMap<K, Cell<K>>>;
 
-/// [`Vec`]-backed [`UnionFind`] lattice.
+/// [`Vec`](alloc::vec::Vec)-backed [`UnionFind`] lattice.
 pub type UnionFindVec<K> = UnionFind<VecMap<K, Cell<K>>>;
 
 /// Array-backed [`UnionFind`] lattice.

@@ -266,7 +266,7 @@ pub type MapUnionHashMap<K, Val> = MapUnion<HashMap<K, Val>>;
 #[cfg(feature = "alloc")]
 pub type MapUnionBTreeMap<K, Val> = MapUnion<BTreeMap<K, Val>>;
 
-/// [`Vec`]-backed [`MapUnion`] lattice.
+/// [`Vec`](alloc::vec::Vec)-backed [`MapUnion`] lattice.
 #[cfg(feature = "alloc")]
 pub type MapUnionVec<K, Val> = MapUnion<VecMap<K, Val>>;
 

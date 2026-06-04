@@ -1,5 +1,5 @@
-use alloc::borrow::Borrow;
 use alloc::vec::Vec;
+use core::borrow::Borrow;
 use core::hash::Hash;
 
 use cc_traits::{

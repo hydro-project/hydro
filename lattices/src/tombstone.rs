@@ -51,7 +51,6 @@
 //! They do not use interior mutability.
 
 use std::string::String;
-use std::vec::Vec;
 
 use fst::{IntoStreamer, Set as FstSet, SetBuilder, Streamer};
 use roaring::RoaringTreemap;
@@ -295,8 +294,8 @@ impl FromIterator<String> for FstTombstoneSet<String> {
 
 #[cfg(feature = "alloc")]
 impl IntoIterator for FstTombstoneSet<String> {
-    type Item = alloc::string::String;
-    type IntoIter = alloc::vec::IntoIter<alloc::string::String>;
+    type Item = String;
+    type IntoIter = std::vec::IntoIter<String>;
 
     fn into_iter(self) -> Self::IntoIter {
         // Convert FST keys to strings

@@ -263,7 +263,7 @@ pub type SetUnionWithTombstonesHashSet<Item> = SetUnionWithTombstones<HashSet<It
 pub type SetUnionWithTombstonesBTreeSet<Item> =
     SetUnionWithTombstones<BTreeSet<Item>, BTreeSet<Item>>;
 
-/// [`Vec`]-backed [`SetUnionWithTombstones`] lattice.
+/// [`Vec`](alloc::vec::Vec)-backed [`SetUnionWithTombstones`] lattice.
 #[cfg(feature = "alloc")]
 pub type SetUnionWithTombstonesVec<Item> =
     SetUnionWithTombstones<alloc::vec::Vec<Item>, alloc::vec::Vec<Item>>;
@@ -298,8 +298,6 @@ pub type SetUnionWithTombstonesFstString =
 #[cfg(test)]
 mod test {
     use std::borrow::ToOwned;
-    use std::string::String;
-    use std::vec;
 
     use super::*;
     use crate::test::check_all;

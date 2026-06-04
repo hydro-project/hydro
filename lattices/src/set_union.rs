@@ -168,7 +168,7 @@ pub type SetUnionHashSet<Item> = SetUnion<HashSet<Item>>;
 #[cfg(feature = "alloc")]
 pub type SetUnionBTreeSet<Item> = SetUnion<BTreeSet<Item>>;
 
-/// [`Vec`]-backed [`SetUnion`] lattice.
+/// [`Vec`](alloc::vec::Vec)-backed [`SetUnion`] lattice.
 #[cfg(feature = "alloc")]
 pub type SetUnionVec<Item> = SetUnion<alloc::vec::Vec<Item>>;
 
