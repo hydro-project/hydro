@@ -3,30 +3,33 @@ use hydro_lang::live_collections::stream::{NoOrder, Ordering};
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 use hydro_lang::location::{Location, MemberId};
 use hydro_lang::prelude::*;
+use hydro_lang::properties::StreamMapFuncAlgebra;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use stageleft::IntoQuotedMut;
 
-pub trait PartitionStream<'a, T, C1, C2, Order> {
-    fn send_partitioned<F: Fn((MemberId<C2>, T)) -> (MemberId<C2>, T) + 'a>(
+pub trait PartitionStream<'a, T, C1, C2, Order: Ordering> {
+    fn send_partitioned<F>(
         self,
         other: &Cluster<'a, C2>,
-        dist_policy: impl IntoQuotedMut<'a, F, Cluster<'a, C1>>,
+        dist_policy: impl IntoQuotedMut<'a, F, Cluster<'a, C1>, StreamMapFuncAlgebra>,
     ) -> Stream<T, Cluster<'a, C2>, Unbounded, NoOrder>
     where
-        T: Clone + Serialize + DeserializeOwned;
+        T: Clone + Serialize + DeserializeOwned,
+        F: Fn((MemberId<C2>, T)) -> (MemberId<C2>, T) + 'a;
 }
 
 impl<'a, T, C1, C2, Order: Ordering> PartitionStream<'a, T, C1, C2, Order>
     for Stream<(MemberId<C2>, T), Cluster<'a, C1>, Unbounded, Order>
 {
-    fn send_partitioned<F: Fn((MemberId<C2>, T)) -> (MemberId<C2>, T) + 'a>(
+    fn send_partitioned<F>(
         self,
         other: &Cluster<'a, C2>,
-        dist_policy: impl IntoQuotedMut<'a, F, Cluster<'a, C1>>,
+        dist_policy: impl IntoQuotedMut<'a, F, Cluster<'a, C1>, StreamMapFuncAlgebra>,
     ) -> Stream<T, Cluster<'a, C2>, Unbounded, NoOrder>
     where
         T: Clone + Serialize + DeserializeOwned,
+        F: Fn((MemberId<C2>, T)) -> (MemberId<C2>, T) + 'a,
     {
         self.map(dist_policy)
             .demux(other, TCP.fail_stop().bincode())

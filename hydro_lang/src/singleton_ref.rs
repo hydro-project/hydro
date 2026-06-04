@@ -43,7 +43,7 @@ impl<'slf, T, L, const IS_MUT: bool> SingletonRef<'_, 'slf, T, L, IS_MUT> {
         }
     }
 
-    /// Converts this singleton into a exclusive (`mut`) `SingletonRef`.
+    /// Converts this singleton into an exclusive (`mut`) `SingletonRef`.
     pub fn as_mut(&self) -> SingletonRef<'_, 'slf, T, L, true> {
         SingletonRef {
             ir_node: self.ir_node,
