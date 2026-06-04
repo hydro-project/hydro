@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["FstTombstoneSet","RoaringTombstoneSet"],"trait":["AsBytes","TombstoneSet"]};
+window.SIDEBAR_ITEMS = {"struct":["FstTombstoneSet","RoaringTombstoneSet"],"trait":["TombstoneSet"]};

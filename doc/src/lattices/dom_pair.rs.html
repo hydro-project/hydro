@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `lattices/src/dom_pair.rs`."><title>dom_pair.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-74eb0058.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="lattices" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (b354133fb 2026-06-03)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../static.files/storage-41dd4d93.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">lattices/</div>dom_pair.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>std::cmp::Ordering::{<span class="self">self</span>, <span class="kw-2">*</span>};
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `lattices/src/dom_pair.rs`."><title>dom_pair.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-74eb0058.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="lattices" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (b354133fb 2026-06-03)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../static.files/storage-41dd4d93.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">lattices/</div>dom_pair.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="kw">use </span>core::cmp::Ordering::{<span class="self">self</span>, <span class="kw-2">*</span>};
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a><span class="kw">use crate</span>::{DeepReveal, IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 <a href=#4 id=4 data-nosnippet>4</a>
@@ -173,75 +173,86 @@
 <a href=#173 id=173 data-nosnippet>173</a>        check_partial_ord_properties,
 <a href=#174 id=174 data-nosnippet>174</a>    };
 <a href=#175 id=175 data-nosnippet>175</a>
-<a href=#176 id=176 data-nosnippet>176</a>    <span class="attr">#[test]
-<a href=#177 id=177 data-nosnippet>177</a>    </span><span class="kw">fn </span>consistency() {
-<a href=#178 id=178 data-nosnippet>178</a>        <span class="kw">let </span><span class="kw-2">mut </span>test_vec = Vec::new();
-<a href=#179 id=179 data-nosnippet>179</a>
-<a href=#180 id=180 data-nosnippet>180</a>        <span class="kw">for </span>a <span class="kw">in </span>[<span class="macro">vec!</span>[], <span class="macro">vec!</span>[<span class="number">0</span>], <span class="macro">vec!</span>[<span class="number">1</span>], <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>]] {
-<a href=#181 id=181 data-nosnippet>181</a>            <span class="kw">for </span>b <span class="kw">in </span>[<span class="macro">vec!</span>[], <span class="macro">vec!</span>[<span class="number">0</span>], <span class="macro">vec!</span>[<span class="number">1</span>], <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>]] {
-<a href=#182 id=182 data-nosnippet>182</a>                test_vec.push(DomPair::new(
-<a href=#183 id=183 data-nosnippet>183</a>                    SetUnionHashSet::new_from(HashSet::from_iter(a.clone())),
-<a href=#184 id=184 data-nosnippet>184</a>                    SetUnionHashSet::new_from(HashSet::from_iter(b.clone())),
-<a href=#185 id=185 data-nosnippet>185</a>                ));
-<a href=#186 id=186 data-nosnippet>186</a>            }
-<a href=#187 id=187 data-nosnippet>187</a>        }
-<a href=#188 id=188 data-nosnippet>188</a>
-<a href=#189 id=189 data-nosnippet>189</a>        check_lattice_ord(<span class="kw-2">&amp;</span>test_vec);
-<a href=#190 id=190 data-nosnippet>190</a>        check_partial_ord_properties(<span class="kw-2">&amp;</span>test_vec);
-<a href=#191 id=191 data-nosnippet>191</a>        check_lattice_is_bot(<span class="kw-2">&amp;</span>test_vec);
-<a href=#192 id=192 data-nosnippet>192</a>        <span class="comment">// DomPair is not actually a lattice.
-<a href=#193 id=193 data-nosnippet>193</a>        </span><span class="macro">assert!</span>(std::panic::catch_unwind(|| check_lattice_properties(<span class="kw-2">&amp;</span>test_vec)).is_err());
-<a href=#194 id=194 data-nosnippet>194</a>    }
-<a href=#195 id=195 data-nosnippet>195</a>
-<a href=#196 id=196 data-nosnippet>196</a>    <span class="attr">#[test]
-<a href=#197 id=197 data-nosnippet>197</a>    </span><span class="kw">fn </span>consistency_withtop() {
-<a href=#198 id=198 data-nosnippet>198</a>        <span class="kw">let </span><span class="kw-2">mut </span>test_vec = <span class="macro">vec!</span>[];
+<a href=#176 id=176 data-nosnippet>176</a>    <span class="attr">#[cfg(feature = <span class="string">"alloc"</span>)]
+<a href=#177 id=177 data-nosnippet>177</a>    #[test]
+<a href=#178 id=178 data-nosnippet>178</a>    </span><span class="kw">fn </span>consistency() {
+<a href=#179 id=179 data-nosnippet>179</a>        <span class="kw">use </span>alloc::vec;
+<a href=#180 id=180 data-nosnippet>180</a>        <span class="kw">use </span>alloc::vec::Vec;
+<a href=#181 id=181 data-nosnippet>181</a>
+<a href=#182 id=182 data-nosnippet>182</a>        <span class="kw">let </span><span class="kw-2">mut </span>test_vec = Vec::new();
+<a href=#183 id=183 data-nosnippet>183</a>
+<a href=#184 id=184 data-nosnippet>184</a>        <span class="kw">for </span>a <span class="kw">in </span>[<span class="macro">vec!</span>[], <span class="macro">vec!</span>[<span class="number">0</span>], <span class="macro">vec!</span>[<span class="number">1</span>], <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>]] {
+<a href=#185 id=185 data-nosnippet>185</a>            <span class="kw">for </span>b <span class="kw">in </span>[<span class="macro">vec!</span>[], <span class="macro">vec!</span>[<span class="number">0</span>], <span class="macro">vec!</span>[<span class="number">1</span>], <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>]] {
+<a href=#186 id=186 data-nosnippet>186</a>                test_vec.push(DomPair::new(
+<a href=#187 id=187 data-nosnippet>187</a>                    SetUnionHashSet::new_from(HashSet::from_iter(a.clone())),
+<a href=#188 id=188 data-nosnippet>188</a>                    SetUnionHashSet::new_from(HashSet::from_iter(b.clone())),
+<a href=#189 id=189 data-nosnippet>189</a>                ));
+<a href=#190 id=190 data-nosnippet>190</a>            }
+<a href=#191 id=191 data-nosnippet>191</a>        }
+<a href=#192 id=192 data-nosnippet>192</a>
+<a href=#193 id=193 data-nosnippet>193</a>        check_lattice_ord(<span class="kw-2">&amp;</span>test_vec);
+<a href=#194 id=194 data-nosnippet>194</a>        check_partial_ord_properties(<span class="kw-2">&amp;</span>test_vec);
+<a href=#195 id=195 data-nosnippet>195</a>        check_lattice_is_bot(<span class="kw-2">&amp;</span>test_vec);
+<a href=#196 id=196 data-nosnippet>196</a>        <span class="comment">// DomPair is not actually a lattice.
+<a href=#197 id=197 data-nosnippet>197</a>        </span><span class="macro">assert!</span>(std::panic::catch_unwind(|| check_lattice_properties(<span class="kw-2">&amp;</span>test_vec)).is_err());
+<a href=#198 id=198 data-nosnippet>198</a>    }
 <a href=#199 id=199 data-nosnippet>199</a>
-<a href=#200 id=200 data-nosnippet>200</a>        <span class="kw">let </span>sub_items = <span class="kw-2">&amp;</span>[
-<a href=#201 id=201 data-nosnippet>201</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[] <span class="kw">as </span><span class="kw-2">&amp;</span>[usize]),
-<a href=#202 id=202 data-nosnippet>202</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[<span class="number">0</span>]),
-<a href=#203 id=203 data-nosnippet>203</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[<span class="number">1</span>]),
-<a href=#204 id=204 data-nosnippet>204</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[<span class="number">0</span>, <span class="number">1</span>]),
-<a href=#205 id=205 data-nosnippet>205</a>            <span class="prelude-val">None</span>,
-<a href=#206 id=206 data-nosnippet>206</a>        ];
-<a href=#207 id=207 data-nosnippet>207</a>
-<a href=#208 id=208 data-nosnippet>208</a>        <span class="kw">for </span>a <span class="kw">in </span>sub_items {
-<a href=#209 id=209 data-nosnippet>209</a>            <span class="kw">for </span>b <span class="kw">in </span>sub_items {
-<a href=#210 id=210 data-nosnippet>210</a>                test_vec.push(DomPair::new(
-<a href=#211 id=211 data-nosnippet>211</a>                    WithTop::new(
-<a href=#212 id=212 data-nosnippet>212</a>                        a.map(|x| SetUnionHashSet::new_from(HashSet::from_iter(x.iter().cloned()))),
-<a href=#213 id=213 data-nosnippet>213</a>                    ),
-<a href=#214 id=214 data-nosnippet>214</a>                    WithTop::new(
-<a href=#215 id=215 data-nosnippet>215</a>                        b.map(|x| SetUnionHashSet::new_from(HashSet::from_iter(x.iter().cloned()))),
-<a href=#216 id=216 data-nosnippet>216</a>                    ),
-<a href=#217 id=217 data-nosnippet>217</a>                ));
-<a href=#218 id=218 data-nosnippet>218</a>            }
-<a href=#219 id=219 data-nosnippet>219</a>        }
-<a href=#220 id=220 data-nosnippet>220</a>
-<a href=#221 id=221 data-nosnippet>221</a>        check_lattice_ord(<span class="kw-2">&amp;</span>test_vec);
-<a href=#222 id=222 data-nosnippet>222</a>        check_partial_ord_properties(<span class="kw-2">&amp;</span>test_vec);
-<a href=#223 id=223 data-nosnippet>223</a>        check_lattice_is_bot(<span class="kw-2">&amp;</span>test_vec);
-<a href=#224 id=224 data-nosnippet>224</a>        check_lattice_is_top(<span class="kw-2">&amp;</span>test_vec);
-<a href=#225 id=225 data-nosnippet>225</a>        <span class="comment">// DomPair is not actually a lattice.
-<a href=#226 id=226 data-nosnippet>226</a>        </span><span class="macro">assert!</span>(std::panic::catch_unwind(|| check_lattice_properties(<span class="kw-2">&amp;</span>test_vec)).is_err());
-<a href=#227 id=227 data-nosnippet>227</a>    }
-<a href=#228 id=228 data-nosnippet>228</a>
-<a href=#229 id=229 data-nosnippet>229</a>    <span class="attr">#[test]
-<a href=#230 id=230 data-nosnippet>230</a>    </span><span class="kw">fn </span>consistency_with_ord_lhs() {
-<a href=#231 id=231 data-nosnippet>231</a>        <span class="kw">let </span><span class="kw-2">mut </span>test_vec = Vec::new();
-<a href=#232 id=232 data-nosnippet>232</a>
-<a href=#233 id=233 data-nosnippet>233</a>        <span class="kw">for </span>a <span class="kw">in </span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>] {
-<a href=#234 id=234 data-nosnippet>234</a>            <span class="kw">for </span>b <span class="kw">in </span>[<span class="macro">vec!</span>[], <span class="macro">vec!</span>[<span class="number">0</span>], <span class="macro">vec!</span>[<span class="number">1</span>], <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>]] {
-<a href=#235 id=235 data-nosnippet>235</a>                test_vec.push(DomPair::new(
-<a href=#236 id=236 data-nosnippet>236</a>                    Max::new(a),
-<a href=#237 id=237 data-nosnippet>237</a>                    SetUnionHashSet::new_from(HashSet::from_iter(b.clone())),
-<a href=#238 id=238 data-nosnippet>238</a>                ));
-<a href=#239 id=239 data-nosnippet>239</a>            }
-<a href=#240 id=240 data-nosnippet>240</a>        }
+<a href=#200 id=200 data-nosnippet>200</a>    <span class="attr">#[cfg(feature = <span class="string">"alloc"</span>)]
+<a href=#201 id=201 data-nosnippet>201</a>    #[test]
+<a href=#202 id=202 data-nosnippet>202</a>    </span><span class="kw">fn </span>consistency_withtop() {
+<a href=#203 id=203 data-nosnippet>203</a>        <span class="kw">use </span>alloc::vec;
+<a href=#204 id=204 data-nosnippet>204</a>
+<a href=#205 id=205 data-nosnippet>205</a>        <span class="kw">let </span><span class="kw-2">mut </span>test_vec = <span class="macro">vec!</span>[];
+<a href=#206 id=206 data-nosnippet>206</a>
+<a href=#207 id=207 data-nosnippet>207</a>        <span class="kw">let </span>sub_items = <span class="kw-2">&amp;</span>[
+<a href=#208 id=208 data-nosnippet>208</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[] <span class="kw">as </span><span class="kw-2">&amp;</span>[usize]),
+<a href=#209 id=209 data-nosnippet>209</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[<span class="number">0</span>]),
+<a href=#210 id=210 data-nosnippet>210</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[<span class="number">1</span>]),
+<a href=#211 id=211 data-nosnippet>211</a>            <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>[<span class="number">0</span>, <span class="number">1</span>]),
+<a href=#212 id=212 data-nosnippet>212</a>            <span class="prelude-val">None</span>,
+<a href=#213 id=213 data-nosnippet>213</a>        ];
+<a href=#214 id=214 data-nosnippet>214</a>
+<a href=#215 id=215 data-nosnippet>215</a>        <span class="kw">for </span>a <span class="kw">in </span>sub_items {
+<a href=#216 id=216 data-nosnippet>216</a>            <span class="kw">for </span>b <span class="kw">in </span>sub_items {
+<a href=#217 id=217 data-nosnippet>217</a>                test_vec.push(DomPair::new(
+<a href=#218 id=218 data-nosnippet>218</a>                    WithTop::new(
+<a href=#219 id=219 data-nosnippet>219</a>                        a.map(|x| SetUnionHashSet::new_from(HashSet::from_iter(x.iter().cloned()))),
+<a href=#220 id=220 data-nosnippet>220</a>                    ),
+<a href=#221 id=221 data-nosnippet>221</a>                    WithTop::new(
+<a href=#222 id=222 data-nosnippet>222</a>                        b.map(|x| SetUnionHashSet::new_from(HashSet::from_iter(x.iter().cloned()))),
+<a href=#223 id=223 data-nosnippet>223</a>                    ),
+<a href=#224 id=224 data-nosnippet>224</a>                ));
+<a href=#225 id=225 data-nosnippet>225</a>            }
+<a href=#226 id=226 data-nosnippet>226</a>        }
+<a href=#227 id=227 data-nosnippet>227</a>
+<a href=#228 id=228 data-nosnippet>228</a>        check_lattice_ord(<span class="kw-2">&amp;</span>test_vec);
+<a href=#229 id=229 data-nosnippet>229</a>        check_partial_ord_properties(<span class="kw-2">&amp;</span>test_vec);
+<a href=#230 id=230 data-nosnippet>230</a>        check_lattice_is_bot(<span class="kw-2">&amp;</span>test_vec);
+<a href=#231 id=231 data-nosnippet>231</a>        check_lattice_is_top(<span class="kw-2">&amp;</span>test_vec);
+<a href=#232 id=232 data-nosnippet>232</a>        <span class="comment">// DomPair is not actually a lattice.
+<a href=#233 id=233 data-nosnippet>233</a>        </span><span class="macro">assert!</span>(std::panic::catch_unwind(|| check_lattice_properties(<span class="kw-2">&amp;</span>test_vec)).is_err());
+<a href=#234 id=234 data-nosnippet>234</a>    }
+<a href=#235 id=235 data-nosnippet>235</a>
+<a href=#236 id=236 data-nosnippet>236</a>    <span class="attr">#[cfg(feature = <span class="string">"alloc"</span>)]
+<a href=#237 id=237 data-nosnippet>237</a>    #[test]
+<a href=#238 id=238 data-nosnippet>238</a>    </span><span class="kw">fn </span>consistency_with_ord_lhs() {
+<a href=#239 id=239 data-nosnippet>239</a>        <span class="kw">use </span>alloc::vec;
+<a href=#240 id=240 data-nosnippet>240</a>        <span class="kw">use </span>alloc::vec::Vec;
 <a href=#241 id=241 data-nosnippet>241</a>
-<a href=#242 id=242 data-nosnippet>242</a>        check_lattice_ord(<span class="kw-2">&amp;</span>test_vec);
-<a href=#243 id=243 data-nosnippet>243</a>        check_lattice_properties(<span class="kw-2">&amp;</span>test_vec);
-<a href=#244 id=244 data-nosnippet>244</a>        check_partial_ord_properties(<span class="kw-2">&amp;</span>test_vec);
-<a href=#245 id=245 data-nosnippet>245</a>    }
-<a href=#246 id=246 data-nosnippet>246</a>}
+<a href=#242 id=242 data-nosnippet>242</a>        <span class="kw">let </span><span class="kw-2">mut </span>test_vec = Vec::new();
+<a href=#243 id=243 data-nosnippet>243</a>
+<a href=#244 id=244 data-nosnippet>244</a>        <span class="kw">for </span>a <span class="kw">in </span>[<span class="number">0</span>, <span class="number">1</span>, <span class="number">2</span>] {
+<a href=#245 id=245 data-nosnippet>245</a>            <span class="kw">for </span>b <span class="kw">in </span>[<span class="macro">vec!</span>[], <span class="macro">vec!</span>[<span class="number">0</span>], <span class="macro">vec!</span>[<span class="number">1</span>], <span class="macro">vec!</span>[<span class="number">0</span>, <span class="number">1</span>]] {
+<a href=#246 id=246 data-nosnippet>246</a>                test_vec.push(DomPair::new(
+<a href=#247 id=247 data-nosnippet>247</a>                    Max::new(a),
+<a href=#248 id=248 data-nosnippet>248</a>                    SetUnionHashSet::new_from(HashSet::from_iter(b.clone())),
+<a href=#249 id=249 data-nosnippet>249</a>                ));
+<a href=#250 id=250 data-nosnippet>250</a>            }
+<a href=#251 id=251 data-nosnippet>251</a>        }
+<a href=#252 id=252 data-nosnippet>252</a>
+<a href=#253 id=253 data-nosnippet>253</a>        check_lattice_ord(<span class="kw-2">&amp;</span>test_vec);
+<a href=#254 id=254 data-nosnippet>254</a>        check_lattice_properties(<span class="kw-2">&amp;</span>test_vec);
+<a href=#255 id=255 data-nosnippet>255</a>        check_partial_ord_properties(<span class="kw-2">&amp;</span>test_vec);
+<a href=#256 id=256 data-nosnippet>256</a>    }
+<a href=#257 id=257 data-nosnippet>257</a>}
 </code></pre></div></section></main></body></html>

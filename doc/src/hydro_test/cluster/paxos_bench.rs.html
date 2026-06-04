@@ -54,7 +54,7 @@
 <a href=#54 id=54 data-nosnippet>54</a>            );
 <a href=#55 id=55 data-nosnippet>55</a>
 <a href=#56 id=56 data-nosnippet>56</a>            <span class="kw">let </span>sequenced_to_replicas = sequenced_payloads
-<a href=#57 id=57 data-nosnippet>57</a>                .broadcast_closed(replicas, TCP.fail_stop().bincode())
+<a href=#57 id=57 data-nosnippet>57</a>                .broadcast(replicas, TCP.fail_stop().bincode(), <span class="macro">nondet!</span>(<span class="doccomment">/** TODO */</span>))
 <a href=#58 id=58 data-nosnippet>58</a>                .values()
 <a href=#59 id=59 data-nosnippet>59</a>                .map(<span class="macro">q!</span>(|(index, payload)| (
 <a href=#60 id=60 data-nosnippet>60</a>                    index,

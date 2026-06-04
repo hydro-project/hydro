@@ -1,6 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `lattices/src/test.rs`."><title>test.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../static.files/rustdoc-74eb0058.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="lattices" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (b354133fb 2026-06-03)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../static.files/storage-41dd4d93.js"></script><script defer src="../../static.files/src-script-813739b1.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">lattices/</div>test.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Helper test utils to test lattice implementation correctness.
 <a href=#2 id=2 data-nosnippet>2</a>
-<a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">use </span>std::fmt::Debug;
+<a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">use </span>core::fmt::Debug;
 <a href=#4 id=4 data-nosnippet>4</a>
 <a href=#5 id=5 data-nosnippet>5</a><span class="kw">use crate</span>::{
 <a href=#6 id=6 data-nosnippet>6</a>    Atomize, IsBot, IsTop, Lattice, LatticeBimorphism, LatticeMorphism, LatticeOrd, Merge,
@@ -36,7 +36,7 @@
 <a href=#36 id=36 data-nosnippet>36</a>    reason = <span class="string">"testing comparison properties"
 <a href=#37 id=37 data-nosnippet>37</a></span>)]
 <a href=#38 id=38 data-nosnippet>38</a></span><span class="kw">pub fn </span>check_partial_ord_properties&lt;T: PartialOrd + PartialEq + Debug&gt;(items: <span class="kw-2">&amp;</span>[T]) {
-<a href=#39 id=39 data-nosnippet>39</a>    <span class="kw">use </span>std::cmp::Ordering::<span class="kw-2">*</span>;
+<a href=#39 id=39 data-nosnippet>39</a>    <span class="kw">use </span>core::cmp::Ordering::<span class="kw-2">*</span>;
 <a href=#40 id=40 data-nosnippet>40</a>
 <a href=#41 id=41 data-nosnippet>41</a>    <span class="comment">// PartialEq:
 <a href=#42 id=42 data-nosnippet>42</a>    // reflexive: a == a;
@@ -283,7 +283,7 @@
 <a href=#283 id=283 data-nosnippet>283</a>) -&gt; <span class="kw">impl </span>ExactSizeIterator&lt;Item = [<span class="kw-2">&amp;</span>T; N]&gt; + Clone {
 <a href=#284 id=284 data-nosnippet>284</a>    <span class="kw">struct </span>CartesianPower&lt;<span class="lifetime">'a</span>, T, <span class="kw">const </span>N: usize&gt; {
 <a href=#285 id=285 data-nosnippet>285</a>        items: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[T],
-<a href=#286 id=286 data-nosnippet>286</a>        iters: [std::iter::Peekable&lt;std::slice::Iter&lt;<span class="lifetime">'a</span>, T&gt;&gt;; N],
+<a href=#286 id=286 data-nosnippet>286</a>        iters: [core::iter::Peekable&lt;core::slice::Iter&lt;<span class="lifetime">'a</span>, T&gt;&gt;; N],
 <a href=#287 id=287 data-nosnippet>287</a>    }
 <a href=#288 id=288 data-nosnippet>288</a>    <span class="kw">impl</span>&lt;<span class="lifetime">'a</span>, T, <span class="kw">const </span>N: usize&gt; Iterator <span class="kw">for </span>CartesianPower&lt;<span class="lifetime">'a</span>, T, N&gt; {
 <a href=#289 id=289 data-nosnippet>289</a>        <span class="kw">type </span>Item = [<span class="kw-2">&amp;</span><span class="lifetime">'a </span>T; N];
@@ -294,7 +294,7 @@
 <a href=#294 id=294 data-nosnippet>294</a>            }
 <a href=#295 id=295 data-nosnippet>295</a>
 <a href=#296 id=296 data-nosnippet>296</a>            <span class="kw">let </span><span class="kw-2">mut </span>go_next = <span class="bool-val">true</span>;
-<a href=#297 id=297 data-nosnippet>297</a>            <span class="kw">let </span>out = std::array::from_fn::&lt;<span class="kw">_</span>, N, <span class="kw">_</span>&gt;(|i| {
+<a href=#297 id=297 data-nosnippet>297</a>            <span class="kw">let </span>out = core::array::from_fn::&lt;<span class="kw">_</span>, N, <span class="kw">_</span>&gt;(|i| {
 <a href=#298 id=298 data-nosnippet>298</a>                <span class="kw">let </span>iter = <span class="kw-2">&amp;mut </span><span class="self">self</span>.iters[i];
 <a href=#299 id=299 data-nosnippet>299</a>                <span class="kw">let </span><span class="kw-2">&amp;</span>item = iter.peek().unwrap();
 <a href=#300 id=300 data-nosnippet>300</a>                <span class="kw">if </span>go_next {
@@ -338,7 +338,7 @@
 <a href=#338 id=338 data-nosnippet>338</a>            }
 <a href=#339 id=339 data-nosnippet>339</a>        }
 <a href=#340 id=340 data-nosnippet>340</a>    }
-<a href=#341 id=341 data-nosnippet>341</a>    <span class="kw">let </span>iters = std::array::from_fn::&lt;<span class="kw">_</span>, N, <span class="kw">_</span>&gt;(|<span class="kw">_</span>| items.iter().peekable());
+<a href=#341 id=341 data-nosnippet>341</a>    <span class="kw">let </span>iters = core::array::from_fn::&lt;<span class="kw">_</span>, N, <span class="kw">_</span>&gt;(|<span class="kw">_</span>| items.iter().peekable());
 <a href=#342 id=342 data-nosnippet>342</a>    CartesianPower { items, iters }
 <a href=#343 id=343 data-nosnippet>343</a>}
 <a href=#344 id=344 data-nosnippet>344</a>

@@ -8,7 +8,7 @@
     // Required methods
     fn <a href="#tymethod.get" class="fn">get</a>(self, head: &amp;Self::<a class="associatedtype" href="trait.ColtGet.html#associatedtype.Head" title="type lattices::ght::colt::ColtGet::Head">Head</a>) -&gt; Self::<a class="associatedtype" href="trait.ColtGet.html#associatedtype.Get" title="type lattices::ght::colt::ColtGet::Get">Get</a>;
 <span class="item-spacer"></span>    fn <a href="#tymethod.iter" class="fn">iter</a>(&amp;self) -&gt; impl <a class="trait" href="https://doc.rust-lang.org/nightly/core/iter/traits/iterator/trait.Iterator.html" title="trait core::iter::traits::iterator::Iterator">Iterator</a>&lt;Item = Self::<a class="associatedtype" href="trait.ColtGet.html#associatedtype.Head" title="type lattices::ght::colt::ColtGet::Head">Head</a>&gt;;
-}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Emulate the <code>get</code> and iter<code> functions for a single Ght node [</code>GhtGet`] across a forest of ColtForestNodes.</p>
+}</code></pre><span class="item-info"><div class="stab portability">Available on <strong>crate feature <code>std</code></strong> only.</div></span><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Emulate the <code>get</code> and iter<code> functions for a single Ght node [</code>GhtGet`] across a forest of ColtForestNodes.</p>
 <p>The “current” ColtGet node (corresponding to the “current” GhtGet node) at depth
 d from the root is a variadic list of nodes, each at depth d in its their
 respective trie in the forest, Tries of height d or smaller are omitted,

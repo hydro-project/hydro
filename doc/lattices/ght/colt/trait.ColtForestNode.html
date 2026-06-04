@@ -4,7 +4,7 @@
     // Required methods
     fn <a href="#tymethod.force" class="fn">force</a>(self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self::<a class="associatedtype" href="trait.ColtForestNode.html#associatedtype.Force" title="type lattices::ght::colt::ColtForestNode::Force">Force</a>&gt;;
 <span class="item-spacer"></span>    fn <a href="#tymethod.force_drain" class="fn">force_drain</a>(&amp;mut self) -&gt; <a class="enum" href="https://doc.rust-lang.org/nightly/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;Self::<a class="associatedtype" href="trait.ColtForestNode.html#associatedtype.Force" title="type lattices::ght::colt::ColtForestNode::Force">Force</a>&gt;;
-}</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Data structure design for our COLT is unique.</p>
+}</code></pre><span class="item-info"><div class="stab portability">Available on <strong>crate feature <code>std</code></strong> only.</div></span><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Data structure design for our COLT is unique.</p>
 <p>In the paper, the COLT is an unbalanced trie that “grows upward” from leaves lazily
 on access via the <code>force</code> method.
 Unfortunately, unbalanced tries break our types: a node’s type to be defined via the
