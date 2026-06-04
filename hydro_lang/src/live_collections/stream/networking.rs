@@ -1231,7 +1231,7 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
             .source_iter(q!(cluster_ids
                 .iter()
                 .map(|id| MemberId::from_tagless(id.clone()))))
-            .assert_has_consistency_of::<Cluster<'a, L, C>>(manual_proof!(
+            .assert_has_consistency_of_trusted::<Cluster<'a, L, C>>(manual_proof!(
                 /// ClusterIds is deploy-time metadata, identical on every cluster member.
             ));
 
