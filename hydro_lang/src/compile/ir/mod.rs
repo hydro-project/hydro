@@ -32,6 +32,8 @@ use crate::compile::builder::{CycleId, ExternalPortId};
 use crate::compile::deploy_provider::{Deploy, Node, RegisterPort};
 use crate::location::dynamic::{ClusterConsistency, LocationId};
 use crate::location::{LocationKey, NetworkHint};
+#[cfg(feature = "build")]
+use crate::singleton_ref::singleton_ref_ident;
 
 pub mod backtrace;
 use backtrace::Backtrace;
@@ -42,9 +44,10 @@ use backtrace::Backtrace;
 /// alongside the closure's expression. This allows per-closure tracking of singleton
 /// captures, which is important for nodes with multiple closures (e.g. Fold has `init` and `acc`).
 pub struct ClosureExpr {
-    pub expr: DebugExpr,
-    /// Each entry is `(local_ident, singleton_node, is_mut)`.
-    pub singleton_refs: Vec<(syn::Ident, HydroNode, bool)>,
+    pub(crate) expr: DebugExpr,
+    /// Each entry is `(singleton_node, is_mut)`.
+    /// The index in the Vec determines the ident name via [`singleton_ref_ident`].
+    pub(crate) singleton_refs: Vec<(HydroNode, bool)>,
 }
 
 impl Clone for ClosureExpr {
@@ -54,15 +57,17 @@ impl Clone for ClosureExpr {
             singleton_refs: self
                 .singleton_refs
                 .iter()
-                .map(|(ident, node, is_mut)| {
-                    let cloned_node = match node {
-                        HydroNode::Singleton { inner, metadata } => HydroNode::Singleton {
-                            inner: SharedNode(inner.0.clone()),
+                .map(|(node, is_mut)| {
+                    let HydroNode::Singleton { inner, metadata } = node else {
+                        panic!("singleton_refs should only contain HydroNode::Singleton");
+                    };
+                    (
+                        HydroNode::Singleton {
+                            inner: SharedNode(Rc::clone(&inner.0)),
                             metadata: metadata.clone(),
                         },
-                        _ => panic!("singleton_refs should only contain HydroNode::Singleton"),
-                    };
-                    (ident.clone(), cloned_node, *is_mut)
+                        *is_mut,
+                    )
                 })
                 .collect(),
         }
@@ -91,14 +96,14 @@ impl serde::Serialize for ClosureExpr {
     }
 }
 
-struct SerializableSingletonRefs<'a>(&'a [(syn::Ident, HydroNode, bool)]);
+struct SerializableSingletonRefs<'a>(&'a [(HydroNode, bool)]);
 
 impl serde::Serialize for SerializableSingletonRefs<'_> {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         use serde::ser::SerializeSeq;
         let mut seq = serializer.serialize_seq(Some(self.0.len()))?;
-        for (ident, node, is_mut) in self.0 {
-            seq.serialize_element(&(ident.to_string(), node, is_mut))?;
+        for (node, is_mut) in self.0.iter() {
+            seq.serialize_element(&(node, is_mut))?;
         }
         seq.end()
     }
@@ -135,7 +140,7 @@ impl From<DebugExpr> for ClosureExpr {
 }
 
 impl ClosureExpr {
-    pub fn new(expr: DebugExpr, singleton_refs: Vec<(syn::Ident, HydroNode, bool)>) -> Self {
+    pub fn new(expr: DebugExpr, singleton_refs: Vec<(HydroNode, bool)>) -> Self {
         Self {
             expr,
             singleton_refs,
@@ -148,7 +153,7 @@ impl ClosureExpr {
             singleton_refs: self
                 .singleton_refs
                 .iter()
-                .map(|(ident, node, is_mut)| (ident.clone(), node.deep_clone(seen_tees), *is_mut))
+                .map(|(node, is_mut)| (node.deep_clone(seen_tees), *is_mut))
                 .collect(),
         }
     }
@@ -158,7 +163,7 @@ impl ClosureExpr {
         transform: &mut impl FnMut(&mut HydroNode, &mut SeenSharedNodes),
         seen_tees: &mut SeenSharedNodes,
     ) {
-        for (_ident, ref_node, _is_mut) in self.singleton_refs.iter_mut() {
+        for (ref_node, _is_mut) in self.singleton_refs.iter_mut() {
             transform(ref_node, seen_tees);
         }
     }
@@ -174,16 +179,11 @@ impl ClosureExpr {
         if self.singleton_refs.is_empty() {
             self.expr.0.to_token_stream()
         } else {
-            let ref_idents = (0..self.singleton_refs.len())
-                .map(|_| ident_stack.pop().unwrap())
-                .collect::<Vec<_>>()
-                .into_iter()
-                .rev()
-                .collect::<Vec<_>>();
+            let ref_idents = ident_stack.drain(ident_stack.len() - self.singleton_refs.len()..);
 
             let mut let_bindings = Vec::new();
-            for ((local_ident, node, is_mut), ref_ident) in
-                self.singleton_refs.iter().zip(ref_idents.iter())
+            for ((i, (node, is_mut)), ref_ident) in
+                self.singleton_refs.iter().enumerate().zip(ref_idents)
             {
                 let HydroNode::Singleton { inner, .. } = node else {
                     panic!("singleton_refs should only contain HydroNode::Singleton");
@@ -200,8 +200,9 @@ impl ClosureExpr {
                 };
 
                 // TODO(mingwei): proper spanning?
-                let group_lit = proc_macro2::Literal::u32_unsuffixed(group);
+                let local_ident = singleton_ref_ident(i);
                 let hash = proc_macro2::Punct::new('#', proc_macro2::Spacing::Alone);
+                let group_lit = proc_macro2::Literal::u32_unsuffixed(group);
                 let mut_token = is_mut.then(|| quote!(mut));
                 let binding = quote! {
                     let #local_ident = #hash {#group_lit} #mut_token #ref_ident;
