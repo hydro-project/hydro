@@ -1,0 +1,13 @@
+error: iter_ref() requires a `#handoff_name` reference as its argument.
+ --> tests/compile-fail/nightly/surface_iter_ref_no_hash.rs:5:9
+  |
+5 |         iter_ref(my_vec) -> for_each(|v: &i32| println!("{v}"));
+  |         ^^^^^^^^^^^^^^^^
+
+warning: unused variable: `my_vec`
+ --> tests/compile-fail/nightly/surface_iter_ref_no_hash.rs:3:9
+  |
+3 |     let my_vec = vec![1_i32, 2, 3];
+  |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_my_vec`
+  |
+  = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default

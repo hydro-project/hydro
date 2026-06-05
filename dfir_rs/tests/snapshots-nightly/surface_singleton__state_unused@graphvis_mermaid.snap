@@ -11,9 +11,15 @@ linkStyle default stroke:#aaa
 1v1[\"(1v1) <code>source_iter(15..=25)</code>"/]:::pullClass
 2v1[\"(2v1) <code>map(Max::new)</code>"/]:::pullClass
 3v1[/"(3v1) <code>state::&lt;'static, Max&lt;_&gt;&gt;()</code>"\]:::pushClass
+4v1[/"(4v1) <code>null()</code>"\]:::pushClass
+5v1[/"(5v1) <code>null()</code>"\]:::pushClass
 1v1-->2v1
 2v1-->3v1
+3v1-->|items|4v1
+3v1-->|state|5v1
 subgraph sg_1v1 ["sg_1v1"]
+    4v1
+    5v1
     subgraph sg_1v1_var_max_of_stream2 ["var <tt>max_of_stream2</tt>"]
         3v1
     end
