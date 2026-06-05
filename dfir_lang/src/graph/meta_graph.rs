@@ -2076,32 +2076,50 @@ impl DfirGraph {
         for (key, node) in self.nodes.iter() {
             match node {
                 GraphNode::Operator(op) => {
-                    writeln!(write, "{:?} = {};", key.data(), op.to_token_stream())?;
+                    writeln!(write, "_{:?} = {};", key.data(), op.to_token_stream())?;
                 }
                 GraphNode::Handoff {
                     kind: HandoffKind::Vec,
                     ..
                 } => {
-                    writeln!(write, "{:?} = handoff();", key.data())?;
+                    writeln!(write, "_{:?} = handoff();", key.data())?;
                 }
                 GraphNode::Handoff {
                     kind: HandoffKind::Singleton,
                     ..
                 } => {
-                    writeln!(write, "{:?} = singleton();", key.data())?;
+                    writeln!(write, "_{:?} = singleton();", key.data())?;
                 }
                 GraphNode::Handoff {
                     kind: HandoffKind::Optional,
                     ..
                 } => {
-                    writeln!(write, "{:?} = optional();", key.data())?;
+                    writeln!(write, "_{:?} = optional();", key.data())?;
                 }
                 GraphNode::ModuleBoundary { .. } => panic!(),
             }
         }
         writeln!(write)?;
-        for (_e, (src_key, dst_key)) in self.graph.edges() {
-            writeln!(write, "{:?} -> {:?};", src_key.data(), dst_key.data())?;
+        for (e, (src_key, dst_key)) in self.graph.edges() {
+            let (src_port, dst_port) = self.edge_ports(e);
+            let src_port_str = if src_port.is_specified() {
+                format!("[{}]", src_port)
+            } else {
+                String::new()
+            };
+            let dst_port_str = if dst_port.is_specified() {
+                format!("[{}]", dst_port)
+            } else {
+                String::new()
+            };
+            writeln!(
+                write,
+                "_{:?}{} -> {}_{:?};",
+                src_key.data(),
+                src_port_str,
+                dst_port_str,
+                dst_key.data()
+            )?;
         }
         Ok(())
     }
