@@ -318,5 +318,4 @@ mod tests {
         threshold.into_stream().for_each(q!(|_| {}));
         let _built = flow.finalize();
     }
-
 }

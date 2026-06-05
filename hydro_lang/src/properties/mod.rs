@@ -205,7 +205,10 @@ impl<O, C, I> SingletonMapFuncAlgebra<O, C, I> {
     }
 
     /// Marks the function as being idempotent, with the given proof mechanism.
-    pub fn idempotent(self, proof: impl IdempotentProof + 'static) -> SingletonMapFuncAlgebra<O, C, Proved> {
+    pub fn idempotent(
+        self,
+        proof: impl IdempotentProof + 'static,
+    ) -> SingletonMapFuncAlgebra<O, C, Proved> {
         SingletonMapFuncAlgebra(self.0, self.1, Some(Box::new(proof)), PhantomData)
     }
 
@@ -225,12 +228,7 @@ impl<O, C, I> Property for SingletonMapFuncAlgebra<O, C, I> {
     }
 }
 
-/// Deprecated alias for [`SingletonMapFuncAlgebra`].
-#[deprecated(note = "use `SingletonMapFuncAlgebra` instead")]
-pub type MapFuncAlgebra<OrderPreserving = NotProved, Commutative = NotProved, Idempotent = NotProved> =
-    SingletonMapFuncAlgebra<OrderPreserving, Commutative, Idempotent>;
-
-/// Algebraic properties for a map function of type T -> U.
+/// Algebraic properties for a stream map function of type T -> U.
 pub struct StreamMapFuncAlgebra<Commutative = NotProved, Idempotent = NotProved>(
     Option<Box<dyn CommutativeProof>>,
     Option<Box<dyn IdempotentProof>>,

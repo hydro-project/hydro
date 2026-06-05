@@ -363,13 +363,13 @@ where
     ///     .source_iter(q!(0..5i32))
     ///     .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
     /// let count_mut = my_count.by_mut();
-/// let out_port = process
-///     .source_iter(q!(1..=3i32))
-///     .map(q!(|x| {
-///         *count_mut += x;
-///         *count_mut
-///     }))
-///     .send_bincode_external(&external);
+    /// let out_port = process
+    ///     .source_iter(q!(1..=3i32))
+    ///     .map(q!(|x| {
+    ///         *count_mut += x;
+    ///         *count_mut
+    ///     }))
+    ///     .send_bincode_external(&external);
     /// # let nodes = builder
     /// #     .with_default_optimize()
     /// #     .with_process(&process, deployment.Localhost())
