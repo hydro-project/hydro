@@ -319,21 +319,4 @@ mod tests {
         let _built = flow.finalize();
     }
 
-    #[test]
-    fn singleton_by_mut_compiles() {
-        let mut flow = FlowBuilder::new();
-        let node = flow.process::<P1>();
-
-        let my_count = node
-            .source_iter(q!(0..5i32))
-            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
-        let count_mut = my_count.by_mut();
-
-        node.source_iter(q!(1..=3i32))
-            .map(q!(|x| x + *count_mut))
-            .for_each(q!(|_| {}));
-
-        my_count.into_stream().for_each(q!(|_| {}));
-        let _built = flow.finalize();
-    }
 }

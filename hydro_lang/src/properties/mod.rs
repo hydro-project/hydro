@@ -173,10 +173,10 @@ impl<C, I, M> Property for AggFuncAlgebra<C, I, M> {
     }
 }
 
-/// Algebraic properties for a map function of type T -> U.
+/// Algebraic properties for a singleton map function of type T -> U.
 ///
 /// Order-preserving means that if the input grows monotonically, the output also grows monotonically.
-pub struct MapFuncAlgebra<
+pub struct SingletonMapFuncAlgebra<
     OrderPreserving = NotProved,
     Commutative = NotProved,
     Idempotent = NotProved,
@@ -187,26 +187,26 @@ pub struct MapFuncAlgebra<
     PhantomData<(OrderPreserving, Commutative, Idempotent)>,
 );
 
-impl<O, C, I> MapFuncAlgebra<O, C, I> {
+impl<O, C, I> SingletonMapFuncAlgebra<O, C, I> {
     /// Marks the function as being order-preserving, with the given proof mechanism.
     pub fn order_preserving(
         self,
         proof: impl OrderPreservingProof + 'static,
-    ) -> MapFuncAlgebra<Proved, C, I> {
-        MapFuncAlgebra(Some(Box::new(proof)), self.1, self.2, PhantomData)
+    ) -> SingletonMapFuncAlgebra<Proved, C, I> {
+        SingletonMapFuncAlgebra(Some(Box::new(proof)), self.1, self.2, PhantomData)
     }
 
     /// Marks the function as being commutative, with the given proof mechanism.
     pub fn commutative(
         self,
         proof: impl CommutativeProof + 'static,
-    ) -> MapFuncAlgebra<O, Proved, I> {
-        MapFuncAlgebra(self.0, Some(Box::new(proof)), self.2, PhantomData)
+    ) -> SingletonMapFuncAlgebra<O, Proved, I> {
+        SingletonMapFuncAlgebra(self.0, Some(Box::new(proof)), self.2, PhantomData)
     }
 
     /// Marks the function as being idempotent, with the given proof mechanism.
-    pub fn idempotent(self, proof: impl IdempotentProof + 'static) -> MapFuncAlgebra<O, C, Proved> {
-        MapFuncAlgebra(self.0, self.1, Some(Box::new(proof)), PhantomData)
+    pub fn idempotent(self, proof: impl IdempotentProof + 'static) -> SingletonMapFuncAlgebra<O, C, Proved> {
+        SingletonMapFuncAlgebra(self.0, self.1, Some(Box::new(proof)), PhantomData)
     }
 
     /// Registers the expression with the underlying proof mechanisms.
@@ -217,13 +217,18 @@ impl<O, C, I> MapFuncAlgebra<O, C, I> {
     }
 }
 
-impl<O, C, I> Property for MapFuncAlgebra<O, C, I> {
-    type Root = MapFuncAlgebra;
+impl<O, C, I> Property for SingletonMapFuncAlgebra<O, C, I> {
+    type Root = SingletonMapFuncAlgebra;
 
     fn make_root(_target: &mut Option<Self>) -> Self::Root {
-        MapFuncAlgebra(None, None, None, PhantomData)
+        SingletonMapFuncAlgebra(None, None, None, PhantomData)
     }
 }
+
+/// Deprecated alias for [`SingletonMapFuncAlgebra`].
+#[deprecated(note = "use `SingletonMapFuncAlgebra` instead")]
+pub type MapFuncAlgebra<OrderPreserving = NotProved, Commutative = NotProved, Idempotent = NotProved> =
+    SingletonMapFuncAlgebra<OrderPreserving, Commutative, Idempotent>;
 
 /// Algebraic properties for a map function of type T -> U.
 pub struct StreamMapFuncAlgebra<Commutative = NotProved, Idempotent = NotProved>(
