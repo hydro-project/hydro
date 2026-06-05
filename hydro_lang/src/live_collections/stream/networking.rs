@@ -1194,6 +1194,57 @@ impl<'a, T, L, B: Boundedness, C: Consistency, O: Ordering, R: Retries>
         .demux(to, via)
     }
 
+    /// Broadcasts elements of this stream at each source member to all members of a destination
+    /// cluster, assuming membership is closed (fixed at deploy time).
+    ///
+    /// Unlike [`Stream::broadcast`], this does not require a [`NonDet`] guard.
+    /// The membership set is obtained from deploy metadata via [`ClusterIds`], making the
+    /// broadcast fully deterministic. Since all source members send to all destination members
+    /// and membership is fixed, every destination member receives the same set of elements
+    /// from each source, guaranteeing [`EventualConsistency`].
+    ///
+    /// This is only available in deployment targets with static cluster membership
+    /// (legacy Hydro Deploy and simulation). On dynamic targets, use [`Stream::broadcast`].
+    #[expect(clippy::type_complexity, reason = "MinOrder projection in return type")]
+    pub fn broadcast_closed<L2: 'a, N: NetworkFor<T>>(
+        self,
+        to: &Cluster<'a, L2>,
+        via: N,
+    ) -> KeyedStream<
+        MemberId<L>,
+        T,
+        Cluster<'a, L2, EventualConsistency>,
+        Unbounded,
+        <O as MinOrder<N::OrderingGuarantee>>::Min,
+        R,
+    >
+    where
+        T: Clone + Serialize + DeserializeOwned,
+        O: MinOrder<N::OrderingGuarantee>,
+    {
+        let cluster_ids = ClusterIds {
+            key: to.key,
+            _phantom: PhantomData,
+        };
+        let member_ids = self
+            .location
+            .source_iter(q!(cluster_ids
+                .iter()
+                .map(|id| MemberId::from_tagless(id.clone()))))
+            .assert_has_consistency_of_trusted::<Cluster<'a, L, C>>(manual_proof!(
+                /// ClusterIds is deploy-time metadata, identical on every cluster member.
+            ));
+
+        self.cross_product(member_ids)
+            .map(q!(|(data, member_id)| (member_id, data)))
+            .into_keyed()
+            .demux(to, via)
+            .assert_has_consistency_of_trusted(manual_proof!(
+                /// Closed broadcast with fixed membership: every source member sends to every
+                /// destination member, so all destinations materialize the same elements.
+            ))
+    }
+
     #[cfg(feature = "sim")]
     /// Sends elements of this cluster stream to an external location using bincode serialization.
     fn send_bincode_external<L2>(self, other: &External<L2>) -> ExternalBincodeStream<T, O, R>
@@ -1692,6 +1743,42 @@ mod tests {
                         (MemberId::from_raw_id(0), 456),
                         (MemberId::from_raw_id(1), 123),
                         (MemberId::from_raw_id(1), 456),
+                    ])
+                    .await
+            });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_broadcast_closed_m2m() {
+        let mut flow = FlowBuilder::new();
+        let source = flow.cluster::<()>();
+        let dest: crate::location::Cluster<'_, ()> = flow.cluster::<()>();
+        let node = flow.process::<()>();
+
+        let input = source.source_iter(q!(vec![123]));
+
+        // Broadcast from source cluster to dest cluster, then collect at a process.
+        let out_recv = input
+            .broadcast_closed(&dest, TCP.fail_stop().bincode())
+            .entries()
+            .send(&node, TCP.fail_stop().bincode())
+            .entries()
+            .sim_output();
+
+        flow.sim()
+            .with_cluster_size(&source, 2)
+            .with_cluster_size(&dest, 2)
+            .exhaustive(async || {
+                // Each source member (0, 1) broadcasts 123 to each dest member (0, 1).
+                // The dest members then send to the process keyed by dest member id.
+                // Each dest member receives (source_0, 123) and (source_1, 123).
+                out_recv
+                    .assert_yields_only_unordered(vec![
+                        (MemberId::from_raw_id(0), (MemberId::from_raw_id(0), 123)),
+                        (MemberId::from_raw_id(0), (MemberId::from_raw_id(1), 123)),
+                        (MemberId::from_raw_id(1), (MemberId::from_raw_id(0), 123)),
+                        (MemberId::from_raw_id(1), (MemberId::from_raw_id(1), 123)),
                     ])
                     .await
             });
