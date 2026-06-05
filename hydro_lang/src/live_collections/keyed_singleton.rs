@@ -113,6 +113,18 @@ impl KeyedSingletonBound for BoundedValue {
 
 /// A variation of boundedness specific to [`KeyedSingleton`], which indicates that once a key appears,
 /// it will never be removed, and the corresponding value will only increase monotonically.
+///
+/// Produced when [`KeyedStream::fold`] is annotated with `monotone = manual_proof!(/** ... */)`:
+///
+/// ```rust,ignore
+/// let counts: KeyedSingleton<u32, usize, _, MonotonicValue> = keyed_stream.fold(
+///     q!(|| 0),
+///     q!(|acc, _| *acc += 1, monotone = manual_proof!(/** +1 is monotone */)),
+/// );
+/// ```
+///
+/// Enables [`KeyedSingleton::threshold_greater_or_equal`] and
+/// [`KeyedSingleton::threshold_greater_or_equal_uniform`] for deterministic per-key threshold detection.
 pub struct MonotonicValue;
 
 impl KeyedSingletonBound for MonotonicValue {
@@ -153,6 +165,10 @@ impl KeyedSingletonBound for MonotonicKeys {
 )]
 /// Marker trait that is implemented for [`KeyedSingletonBound`] types whose per-key values
 /// are monotonically non-decreasing (or bounded).
+///
+/// Required by [`KeyedSingleton::threshold_greater_or_equal`] and
+/// [`KeyedSingleton::threshold_greater_or_equal_uniform`]. Satisfied by [`MonotonicValue`]
+/// (from `fold` with `monotone` proof) and [`Bounded`] (trivially, since values are fixed).
 pub trait IsKeyedMonotonic: KeyedSingletonBound {}
 
 #[sealed]
@@ -175,6 +191,12 @@ impl<B: IsBounded + KeyedSingletonBound> IsKeyedMonotonic for B {}
 /// keyed singletons can use [`BoundedValue`] to declare that new keys may be added over time, but
 /// keys cannot be removed and the value for each key is immutable.
 ///
+/// When the bound is [`MonotonicValue`], per-key values only grow over time. This enables
+/// deterministic threshold-based coordination via [`KeyedSingleton::threshold_greater_or_equal`]
+/// and [`KeyedSingleton::threshold_greater_or_equal_uniform`]. A `MonotonicValue` keyed singleton
+/// is produced by calling [`KeyedStream::fold`] with a `monotone = manual_proof!(/** ... */)`
+/// annotation in the `q!()` closure.
+///
 /// Type Parameters:
 /// - `K`: the type of the key for each entry
 /// - `V`: the type of the value for each entry
@@ -183,6 +205,7 @@ impl<B: IsBounded + KeyedSingletonBound> IsKeyedMonotonic for B {}
 ///     - [`Bounded`] (local and finite)
 ///     - [`Unbounded`] (asynchronous with entries added / removed / changed over time)
 ///     - [`BoundedValue`] (asynchronous with immutable values for each key and no removals)
+///     - [`MonotonicValue`] (values per key only grow; enables threshold APIs)
 pub struct KeyedSingleton<K, V, Loc, Bound: KeyedSingletonBound> {
     pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,

@@ -53,3 +53,10 @@ When working with asynchronous futures in a stream, the choice of resolution str
 - **`resolve_futures_blocking`** preserves the input stream's boundedness. It freezes the tick until all futures in the batch resolve, making the results synchronously available within the same tick. This allows the output to be used with bounded-only APIs like `cross_singleton` or `clone_into_tick`.
 
 **When to use which:** In most cases, prefer `resolve_futures` — it allows you to process results as they stream in without blocking. Use `resolve_futures_blocking` only when you need the bounded guarantee, for example to combine the resolved results with other bounded collections in the same tick.
+
+## Monotonicity
+Beyond `Bounded` and `Unbounded`, Hydro also supports a third boundedness marker: **`Monotonic`**. A `Monotonic` singleton is one whose value only grows (according to `PartialOrd`) over time. This enables deterministic threshold-based coordination — for example, detecting when a counter crosses a value fires exactly once regardless of message ordering.
+
+`Monotonic` singletons are produced by annotating aggregation closures with monotonicity proofs, and they unlock APIs like `threshold_greater_or_equal` that would be non-deterministic on an `Unbounded` singleton.
+
+See [Monotonicity](../algebraic-properties/monotonicity.md) for full details on declaring and preserving monotonicity.

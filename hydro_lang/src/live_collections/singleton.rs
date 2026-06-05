@@ -67,6 +67,25 @@ impl SingletonBound for Bounded {
 }
 
 /// Marks that the [`Singleton`] is monotonic, which means that its value will only grow over time.
+///
+/// A `Monotonic` singleton is produced when an aggregation function (e.g. in [`Stream::fold`])
+/// is annotated with a `monotone` proof inside `q!()`:
+///
+/// ```rust,ignore
+/// stream.fold(
+///     q!(|| 0),
+///     q!(|acc, v| *acc += v, monotone = manual_proof!(/** addition is monotone */)),
+/// )
+/// // → Singleton<_, _, Monotonic>
+/// ```
+///
+/// The `Monotonic` bound enables APIs like [`Singleton::threshold_greater_or_equal`] which
+/// require deterministic growth to fire exactly once. To preserve `Monotonic` through a
+/// `.map()`, annotate with `order_preserving`:
+///
+/// ```rust,ignore
+/// monotonic_singleton.map(q!(|x| x * 2, order_preserving = manual_proof!(/** ... */)))
+/// ```
 pub struct Monotonic;
 
 impl SingletonBound for Monotonic {
@@ -99,7 +118,13 @@ impl<B: IsBounded> IsMonotonic for B {}
 /// A single Rust value that can asynchronously change over time.
 ///
 /// If the singleton is [`Bounded`], the value is frozen and will not change. But if it is
-/// [`Unbounded`], the value will asynchronously change over time.
+/// [`Unbounded`], the value will asynchronously change over time. If it is [`Monotonic`],
+/// the value will only grow over time (according to `PartialOrd`), enabling deterministic
+/// threshold-based coordination via [`Singleton::threshold_greater_or_equal`].
+///
+/// A `Monotonic` singleton is produced by annotating the closure in [`Stream::fold`] with
+/// `monotone = manual_proof!(/** ... */)` inside `q!()`. To preserve monotonicity through
+/// a subsequent `.map()`, use `order_preserving = manual_proof!(/** ... */)`.
 ///
 /// Singletons are often used to capture state in a Hydro program, such as an event counter which is
 /// a single number that will asynchronously change as events are processed. Singletons also appear
@@ -109,7 +134,8 @@ impl<B: IsBounded> IsMonotonic for B {}
 /// Type Parameters:
 /// - `Type`: the type of the value in this singleton
 /// - `Loc`: the [`Location`] where the singleton is materialized
-/// - `Bound`: tracks whether the value is [`Bounded`] (fixed) or [`Unbounded`] (changing asynchronously)
+/// - `Bound`: tracks whether the value is [`Bounded`] (fixed), [`Unbounded`] (changing asynchronously),
+///   or [`Monotonic`] (only growing)
 pub struct Singleton<Type, Loc, Bound: SingletonBound> {
     pub(crate) location: Loc,
     pub(crate) ir_node: RefCell<HydroNode>,
@@ -481,6 +507,17 @@ where
 
     /// Transforms the singleton value by applying a function `f` to it,
     /// continuously as the input is updated.
+    ///
+    /// # Preserving Monotonicity
+    /// If the input singleton is [`Monotonic`] and the map function preserves order
+    /// (i.e. if `a <= b` implies `f(a) <= f(b)`), annotate the closure with
+    /// `order_preserving = manual_proof!(/** ... */)` to keep the output `Monotonic`:
+    ///
+    /// ```rust,ignore
+    /// monotonic.map(q!(|x| x * 2, order_preserving = manual_proof!(/** doubling preserves order */)))
+    /// ```
+    ///
+    /// Without this annotation, mapping a `Monotonic` singleton produces an `Unbounded` singleton.
     ///
     /// # Example
     /// ```rust
