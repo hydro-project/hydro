@@ -377,7 +377,7 @@ impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Process<'a, L>
 
         // Late joiners will receive no data from this broadcast, which is
         // future-monotone and eventually consistent (a safe under-approximation).
-        self.cross_product(member_ids.weaken_retries())
+        self.cross_product(member_ids)
             .map(q!(|(data, member_id)| (member_id, data)))
             .into_keyed()
             .demux(to, via)
