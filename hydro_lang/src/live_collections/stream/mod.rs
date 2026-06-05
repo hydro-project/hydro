@@ -1340,8 +1340,8 @@ where
     where
         I: Fn() -> A + 'a,
         F: 'a + Fn(&mut A, T),
-        C: ValidCommutativityFor<O>,
-        Idemp: ValidIdempotenceFor<R>,
+        C: ValidCommutativityFor<O> + crate::properties::IsProved,
+        Idemp: ValidIdempotenceFor<R> + crate::properties::IsProved,
         B: ApplyMonotoneStream<M, B2>,
     {
         let init = init.splice_fn0_ctx(&self.location).into();
@@ -1357,6 +1357,8 @@ where
             init,
             acc: comb.into(),
             input: Box::new(retried.ir_node.replace(HydroNode::Placeholder)),
+            is_commutative: C::IS_PROVED,
+            is_idempotent: Idemp::IS_PROVED,
             metadata: retried
                 .location
                 .new_node_metadata(Singleton::<A, L::DropConsistency, B2>::collection_kind()),
@@ -1398,8 +1400,8 @@ where
     ) -> Optional<T, L, B>
     where
         F: Fn(&mut T, T) + 'a,
-        C: ValidCommutativityFor<O>,
-        Idemp: ValidIdempotenceFor<R>,
+        C: ValidCommutativityFor<O> + crate::properties::IsProved,
+        Idemp: ValidIdempotenceFor<R> + crate::properties::IsProved,
     {
         let (f, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
         proof.register_proof(&f);
@@ -1411,6 +1413,8 @@ where
         let core = HydroNode::Reduce {
             f: f.into(),
             input: Box::new(ordered_etc.ir_node.replace(HydroNode::Placeholder)),
+            is_commutative: C::IS_PROVED,
+            is_idempotent: Idemp::IS_PROVED,
             metadata: ordered_etc
                 .location
                 .new_node_metadata(Optional::<T, L::DropConsistency, B>::collection_kind()),

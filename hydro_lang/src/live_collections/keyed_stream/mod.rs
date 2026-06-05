@@ -1986,8 +1986,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ) -> KeyedSingleton<K, A, L, B2>
     where
         K: Eq + Hash,
-        C: ValidCommutativityFor<O>,
-        Idemp: ValidIdempotenceFor<R>,
+        C: ValidCommutativityFor<O> + crate::properties::IsProved,
+        Idemp: ValidIdempotenceFor<R> + crate::properties::IsProved,
         B: ApplyMonotoneKeyedStream<M, B2>,
     {
         let init = init.splice_fn0_ctx(&self.location).into();
@@ -2003,6 +2003,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 init,
                 acc: comb.into(),
                 input: Box::new(retried.ir_node.replace(HydroNode::Placeholder)),
+                is_commutative: C::IS_PROVED,
+                is_idempotent: Idemp::IS_PROVED,
                 metadata: retried
                     .location
                     .new_node_metadata(KeyedSingleton::<K, A, L, B2>::collection_kind()),
@@ -2051,8 +2053,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ) -> KeyedSingleton<K, V, L, B>
     where
         K: Eq + Hash,
-        C: ValidCommutativityFor<O>,
-        Idemp: ValidIdempotenceFor<R>,
+        C: ValidCommutativityFor<O> + crate::properties::IsProved,
+        Idemp: ValidIdempotenceFor<R> + crate::properties::IsProved,
     {
         let (f, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
         proof.register_proof(&f);
@@ -2066,6 +2068,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
             HydroNode::ReduceKeyed {
                 f: f.into(),
                 input: Box::new(ordered.ir_node.replace(HydroNode::Placeholder)),
+                is_commutative: C::IS_PROVED,
+                is_idempotent: Idemp::IS_PROVED,
                 metadata: ordered
                     .location
                     .new_node_metadata(KeyedSingleton::<K, V, L, B>::collection_kind()),
@@ -2111,8 +2115,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         K: Eq + Hash,
         O2: Clone,
         F: Fn(&mut V, V) + 'a,
-        C: ValidCommutativityFor<O>,
-        Idemp: ValidIdempotenceFor<R>,
+        C: ValidCommutativityFor<O> + crate::properties::IsProved,
+        Idemp: ValidIdempotenceFor<R> + crate::properties::IsProved,
     {
         let other: Optional<O2, Tick<L::Root>, Bounded> = other.into();
         check_matching_location(&self.location.root(), other.location.outer());
@@ -2129,6 +2133,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 f: f.into(),
                 input: Box::new(ordered.ir_node.replace(HydroNode::Placeholder)),
                 watermark: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
+                is_commutative: C::IS_PROVED,
+                is_idempotent: Idemp::IS_PROVED,
                 metadata: ordered
                     .location
                     .new_node_metadata(KeyedSingleton::<K, V, L, B>::collection_kind()),

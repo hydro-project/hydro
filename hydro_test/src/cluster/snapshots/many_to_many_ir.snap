@@ -74,6 +74,8 @@ expression: built.ir()
                                                                     },
                                                                 },
                                                             },
+                                                            is_commutative: false,
+                                                            is_idempotent: false,
                                                             metadata: HydroIrMetadata {
                                                                 location_id: Cluster(loc1v1),
                                                                 collection_kind: KeyedSingleton {

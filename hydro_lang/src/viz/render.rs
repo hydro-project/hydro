@@ -1281,8 +1281,12 @@ impl HydroNode {
             ),
 
             // Single-expression Aggregation operations - grouped by node type
-            HydroNode::Reduce { f, input, metadata }
-            | HydroNode::ReduceKeyed { f, input, metadata } => build_single_expr_transform(
+            HydroNode::Reduce {
+                f, input, metadata, ..
+            }
+            | HydroNode::ReduceKeyed {
+                f, input, metadata, ..
+            } => build_single_expr_transform(
                 TransformParams {
                     structure,
                     seen_tees,
@@ -1443,6 +1447,7 @@ impl HydroNode {
                 input,
                 watermark,
                 metadata,
+                ..
             } => {
                 let input_id = input.build_graph_structure(structure, seen_tees, config);
                 let watermark_id = watermark.build_graph_structure(structure, seen_tees, config);

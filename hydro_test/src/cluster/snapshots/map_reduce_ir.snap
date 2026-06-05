@@ -161,6 +161,8 @@ expression: built.ir()
                                                                                                                                                         },
                                                                                                                                                     },
                                                                                                                                                 },
+                                                                                                                                                is_commutative: false,
+                                                                                                                                                is_idempotent: false,
                                                                                                                                                 metadata: HydroIrMetadata {
                                                                                                                                                     location_id: Process(loc1v1),
                                                                                                                                                     collection_kind: KeyedSingleton {
@@ -230,6 +232,8 @@ expression: built.ir()
                                                                                                                             },
                                                                                                                         },
                                                                                                                     },
+                                                                                                                    is_commutative: false,
+                                                                                                                    is_idempotent: false,
                                                                                                                     metadata: HydroIrMetadata {
                                                                                                                         location_id: Tick(0, Process(loc1v1)),
                                                                                                                         collection_kind: Singleton {
@@ -329,6 +333,8 @@ expression: built.ir()
                                                                                     },
                                                                                 },
                                                                             },
+                                                                            is_commutative: false,
+                                                                            is_idempotent: false,
                                                                             metadata: HydroIrMetadata {
                                                                                 location_id: Tick(1, Cluster(loc2v1)),
                                                                                 collection_kind: KeyedSingleton {
@@ -443,6 +449,8 @@ expression: built.ir()
                                         },
                                     },
                                 },
+                                is_commutative: true,
+                                is_idempotent: false,
                                 metadata: HydroIrMetadata {
                                     location_id: Process(loc1v1),
                                     collection_kind: KeyedSingleton {
