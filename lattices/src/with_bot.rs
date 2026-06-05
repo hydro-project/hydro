@@ -1,4 +1,4 @@
-use std::cmp::Ordering::{self, *};
+use core::cmp::Ordering::{self, *};
 
 use crate::{Atomize, DeepReveal, IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 
@@ -142,6 +142,7 @@ where
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<Inner> Atomize for WithBot<Inner>
 where
     Inner: 'static + Atomize + LatticeFrom<<Inner as Atomize>::Atom>,
@@ -149,10 +150,10 @@ where
     type Atom = WithBot<Inner::Atom>;
 
     // TODO: use impl trait, then remove 'static.
-    type AtomIter = Box<dyn Iterator<Item = Self::Atom>>;
+    type AtomIter = alloc::boxed::Box<dyn Iterator<Item = Self::Atom>>;
 
     fn atomize(self) -> Self::AtomIter {
-        Box::new(
+        alloc::boxed::Box::new(
             self.0
                 .into_iter()
                 .flat_map(Atomize::atomize)

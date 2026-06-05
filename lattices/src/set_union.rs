@@ -1,8 +1,11 @@
 //! Module containing the [`SetUnion`] lattice and aliases for different datastructures.
 
-use std::cmp::Ordering::{self, *};
-use std::collections::{BTreeSet, HashSet};
-use std::marker::PhantomData;
+#[cfg(feature = "alloc")]
+use alloc::collections::BTreeSet;
+use core::cmp::Ordering::{self, *};
+use core::marker::PhantomData;
+#[cfg(feature = "std")]
+use std::collections::HashSet;
 
 use cc_traits::SimpleCollectionRef;
 
@@ -140,6 +143,7 @@ impl<Set> IsTop for SetUnion<Set> {
     }
 }
 
+#[cfg(feature = "alloc")]
 impl<Set, Item> Atomize for SetUnion<Set>
 where
     Set: Len + IntoIterator<Item = Item> + Extend<Item>,
@@ -149,21 +153,24 @@ where
     type Atom = SetUnionSingletonSet<Item>;
 
     // TODO: use impl trait, then remove 'static.
-    type AtomIter = Box<dyn Iterator<Item = Self::Atom>>;
+    type AtomIter = alloc::boxed::Box<dyn Iterator<Item = Self::Atom>>;
 
     fn atomize(self) -> Self::AtomIter {
-        Box::new(self.0.into_iter().map(SetUnionSingletonSet::new_from))
+        alloc::boxed::Box::new(self.0.into_iter().map(SetUnionSingletonSet::new_from))
     }
 }
 
 /// [`std::collections::HashSet`]-backed [`SetUnion`] lattice.
+#[cfg(feature = "std")]
 pub type SetUnionHashSet<Item> = SetUnion<HashSet<Item>>;
 
 /// [`std::collections::BTreeSet`]-backed [`SetUnion`] lattice.
+#[cfg(feature = "alloc")]
 pub type SetUnionBTreeSet<Item> = SetUnion<BTreeSet<Item>>;
 
-/// [`Vec`]-backed [`SetUnion`] lattice.
-pub type SetUnionVec<Item> = SetUnion<Vec<Item>>;
+/// [`Vec`](alloc::vec::Vec)-backed [`SetUnion`] lattice.
+#[cfg(feature = "alloc")]
+pub type SetUnionVec<Item> = SetUnion<alloc::vec::Vec<Item>>;
 
 /// [`crate::collections::ArraySet`]-backed [`SetUnion`] lattice.
 pub type SetUnionArray<Item, const N: usize> = SetUnion<ArraySet<Item, N>>;

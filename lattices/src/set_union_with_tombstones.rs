@@ -2,13 +2,19 @@
 //!
 //! See [`crate::tombstone`] for documentation on choosing a tombstone implementation.
 
-use std::cmp::Ordering::{self, *};
-use std::collections::{BTreeSet, HashSet};
+#[cfg(feature = "alloc")]
+use alloc::collections::BTreeSet;
+use core::cmp::Ordering::{self, *};
+#[cfg(feature = "std")]
+use std::collections::HashSet;
+#[cfg(feature = "std")]
+use std::string::String;
 
 use cc_traits::{Collection, Get, Remove};
 
 use crate::cc_traits::{Iter, Len, Set};
 use crate::collections::{ArraySet, EmptySet, OptionSet, SingletonSet};
+#[cfg(feature = "std")]
 use crate::tombstone::{FstTombstoneSet, RoaringTombstoneSet, TombstoneSet};
 use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 
@@ -58,6 +64,7 @@ impl<Set, TombstoneSet> SetUnionWithTombstones<Set, TombstoneSet> {
 }
 
 // Merge implementation using TombstoneSet trait for optimized union operations
+#[cfg(feature = "std")]
 impl<Item, SetSelf, TombstoneSetSelf, SetOther, TombstoneSetOther>
     Merge<SetUnionWithTombstones<SetOther, TombstoneSetOther>>
     for SetUnionWithTombstones<SetSelf, TombstoneSetSelf>
@@ -248,14 +255,18 @@ impl<Set, TombstoneSet> IsTop for SetUnionWithTombstones<Set, TombstoneSet> {
 }
 
 /// [`std::collections::HashSet`]-backed [`SetUnionWithTombstones`] lattice.
+#[cfg(feature = "std")]
 pub type SetUnionWithTombstonesHashSet<Item> = SetUnionWithTombstones<HashSet<Item>, HashSet<Item>>;
 
 /// [`std::collections::BTreeSet`]-backed [`SetUnionWithTombstones`] lattice.
+#[cfg(feature = "alloc")]
 pub type SetUnionWithTombstonesBTreeSet<Item> =
     SetUnionWithTombstones<BTreeSet<Item>, BTreeSet<Item>>;
 
-/// [`Vec`]-backed [`SetUnionWithTombstones`] lattice.
-pub type SetUnionWithTombstonesVec<Item> = SetUnionWithTombstones<Vec<Item>, Vec<Item>>;
+/// [`Vec`](alloc::vec::Vec)-backed [`SetUnionWithTombstones`] lattice.
+#[cfg(feature = "alloc")]
+pub type SetUnionWithTombstonesVec<Item> =
+    SetUnionWithTombstones<alloc::vec::Vec<Item>, alloc::vec::Vec<Item>>;
 
 /// [`crate::collections::ArraySet`]-backed [`SetUnionWithTombstones`] lattice.
 pub type SetUnionWithTombstonesArray<Item, const N: usize> =
@@ -275,15 +286,19 @@ pub type SetUnionWithTombstonesTombstoneOnlySet<Item> =
 
 /// [`crate::tombstone::RoaringTombstoneSet`]-backed tombstone set with [`std::collections::HashSet`] for the main set.
 /// Provides space-efficient tombstone storage for u64 integer keys.
+#[cfg(feature = "std")]
 pub type SetUnionWithTombstonesRoaring = SetUnionWithTombstones<HashSet<u64>, RoaringTombstoneSet>;
 
 /// FST-backed tombstone set with [`std::collections::HashSet`] for the main set.
 /// Provides space-efficient, collision-free tombstone storage for String keys.
+#[cfg(feature = "std")]
 pub type SetUnionWithTombstonesFstString =
     SetUnionWithTombstones<HashSet<String>, FstTombstoneSet<String>>;
 
 #[cfg(test)]
 mod test {
+    use std::borrow::ToOwned;
+
     use super::*;
     use crate::test::check_all;
 
@@ -412,7 +427,7 @@ mod test {
         );
 
         // Add tombstone for "banana"
-        y.as_reveal_mut().1.extend(vec!["banana".to_owned()]);
+        y.as_reveal_mut().1.extend(["banana".to_owned()]);
 
         x.merge(y);
 
@@ -434,12 +449,12 @@ mod test {
                 "c".to_owned(),
                 "d".to_owned(),
             ]),
-            FstTombstoneSet::from_iter(vec!["x".to_owned(), "y".to_owned()]),
+            FstTombstoneSet::from_iter(["x".to_owned(), "y".to_owned()]),
         );
 
         let y = SetUnionWithTombstonesFstString::new_from(
             HashSet::from(["e".to_owned(), "f".to_owned()]),
-            FstTombstoneSet::from_iter(vec!["z".to_owned(), "b".to_owned()]),
+            FstTombstoneSet::from_iter(["z".to_owned(), "b".to_owned()]),
         );
 
         x.merge(y);
@@ -482,7 +497,7 @@ mod test {
         );
         let y = SetUnionWithTombstonesRoaring::new_from(
             HashSet::from([2u64, 3, 4]),
-            RoaringTombstoneSet::from_iter(vec![2u64]),
+            RoaringTombstoneSet::from_iter([2u64]),
         );
         let z = y.clone();
 
@@ -504,11 +519,11 @@ mod test {
         // Test that merge order doesn't matter
         let a = SetUnionWithTombstonesFstString::new_from(
             HashSet::from(["a".to_owned(), "b".to_owned()]),
-            FstTombstoneSet::from_iter(vec!["x".to_owned()]),
+            FstTombstoneSet::from_iter(["x".to_owned()]),
         );
         let b = SetUnionWithTombstonesFstString::new_from(
             HashSet::from(["c".to_owned(), "d".to_owned()]),
-            FstTombstoneSet::from_iter(vec!["y".to_owned()]),
+            FstTombstoneSet::from_iter(["y".to_owned()]),
         );
 
         let mut x1 = a.clone();
