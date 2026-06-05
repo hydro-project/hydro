@@ -2475,6 +2475,10 @@ pub enum HydroNode {
         init: ClosureExpr,
         acc: ClosureExpr,
         input: Box<HydroNode>,
+        /// Whether the accumulator was proven commutative.
+        is_commutative: bool,
+        /// Whether the accumulator was proven idempotent.
+        is_idempotent: bool,
         metadata: HydroIrMetadata,
     },
 
@@ -2494,6 +2498,10 @@ pub enum HydroNode {
         init: ClosureExpr,
         acc: ClosureExpr,
         input: Box<HydroNode>,
+        /// Whether the accumulator was proven commutative.
+        is_commutative: bool,
+        /// Whether the accumulator was proven idempotent.
+        is_idempotent: bool,
         metadata: HydroIrMetadata,
     },
 
@@ -2982,11 +2990,15 @@ impl HydroNode {
                 init,
                 acc,
                 input,
+                is_commutative,
+                is_idempotent,
                 metadata,
             } => HydroNode::Fold {
                 init: init.deep_clone(seen_tees),
                 acc: acc.deep_clone(seen_tees),
                 input: Box::new(input.deep_clone(seen_tees)),
+                is_commutative: *is_commutative,
+                is_idempotent: *is_idempotent,
                 metadata: metadata.clone(),
             },
             HydroNode::Scan {
@@ -3015,11 +3027,15 @@ impl HydroNode {
                 init,
                 acc,
                 input,
+                is_commutative,
+                is_idempotent,
                 metadata,
             } => HydroNode::FoldKeyed {
                 init: init.deep_clone(seen_tees),
                 acc: acc.deep_clone(seen_tees),
                 input: Box::new(input.deep_clone(seen_tees)),
+                is_commutative: *is_commutative,
+                is_idempotent: *is_idempotent,
                 metadata: metadata.clone(),
             },
             HydroNode::ReduceKeyedWatermark {

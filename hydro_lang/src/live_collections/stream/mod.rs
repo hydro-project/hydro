@@ -1340,8 +1340,8 @@ where
     where
         I: Fn() -> A + 'a,
         F: 'a + Fn(&mut A, T),
-        C: ValidCommutativityFor<O>,
-        Idemp: ValidIdempotenceFor<R>,
+        C: ValidCommutativityFor<O> + crate::properties::IsProved,
+        Idemp: ValidIdempotenceFor<R> + crate::properties::IsProved,
         B: ApplyMonotoneStream<M, B2>,
     {
         let init = init.splice_fn0_ctx(&self.location).into();
@@ -1357,6 +1357,8 @@ where
             init,
             acc: comb.into(),
             input: Box::new(retried.ir_node.replace(HydroNode::Placeholder)),
+            is_commutative: C::IS_PROVED,
+            is_idempotent: Idemp::IS_PROVED,
             metadata: retried
                 .location
                 .new_node_metadata(Singleton::<A, L::DropConsistency, B2>::collection_kind()),

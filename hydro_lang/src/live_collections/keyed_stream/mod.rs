@@ -1986,8 +1986,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ) -> KeyedSingleton<K, A, L, B2>
     where
         K: Eq + Hash,
-        C: ValidCommutativityFor<O>,
-        Idemp: ValidIdempotenceFor<R>,
+        C: ValidCommutativityFor<O> + crate::properties::IsProved,
+        Idemp: ValidIdempotenceFor<R> + crate::properties::IsProved,
         B: ApplyMonotoneKeyedStream<M, B2>,
     {
         let init = init.splice_fn0_ctx(&self.location).into();
@@ -2003,6 +2003,8 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 init,
                 acc: comb.into(),
                 input: Box::new(retried.ir_node.replace(HydroNode::Placeholder)),
+                is_commutative: C::IS_PROVED,
+                is_idempotent: Idemp::IS_PROVED,
                 metadata: retried
                     .location
                     .new_node_metadata(KeyedSingleton::<K, A, L, B2>::collection_kind()),
