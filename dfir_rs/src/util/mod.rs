@@ -5,7 +5,6 @@
 #[cfg_attr(docsrs, doc(cfg(feature = "dfir_macro")))]
 pub mod demux_enum;
 pub mod multiset;
-pub mod priority_stack;
 pub mod sparse_vec;
 pub mod unsync;
 
