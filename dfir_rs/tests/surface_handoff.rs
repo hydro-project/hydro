@@ -158,19 +158,20 @@ pub async fn test_singleton_reference_no_handoffs() {
         my_val -> for_each(|_| {});
         source_iter(1..=3_i32) -> map(|x| x + #my_val) -> for_each(|v: i32| out.push(v));
     };
-    assert_graphvis_snapshots!(flow, &dfir_lang::graph::WriteConfig {
-        no_handoffs: true,
-        ..Default::default()
-    });
+    assert_graphvis_snapshots!(
+        flow,
+        &dfir_lang::graph::WriteConfig {
+            no_handoffs: true,
+            ..Default::default()
+        }
+    );
     flow.run_tick().await;
     drop(flow);
     assert_eq!(vec![43, 44, 45], output);
 }
 
 /// Test: singleton reference (ref-only, 0 successors) rendered with `no_handoffs: true`.
-/// Currently panics because `write_graph` assumes all handoffs have exactly 1 successor.
 #[dfir_rs::test]
-#[should_panic(expected = "assertion `left == right` failed")]
 pub async fn test_singleton_reference_only_no_handoffs() {
     let mut output = Vec::<i32>::new();
     let out = &mut output;
@@ -178,10 +179,13 @@ pub async fn test_singleton_reference_only_no_handoffs() {
         my_val = source_iter([42_i32]) -> singleton();
         source_iter(1..=3_i32) -> map(|x| x + #my_val) -> for_each(|v: i32| out.push(v));
     };
-    assert_graphvis_snapshots!(flow, &dfir_lang::graph::WriteConfig {
-        no_handoffs: true,
-        ..Default::default()
-    });
+    assert_graphvis_snapshots!(
+        flow,
+        &dfir_lang::graph::WriteConfig {
+            no_handoffs: true,
+            ..Default::default()
+        }
+    );
     flow.run_tick().await;
     drop(flow);
     assert_eq!(vec![43, 44, 45], output);

@@ -6,16 +6,12 @@ digraph {
     node [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace", style=filled];
     edge [fontname="Monaco,Menlo,Consolas,&quot;Droid Sans Mono&quot;,Inconsolata,&quot;Courier New&quot;,monospace"];
     n1v1 [label="(n1v1) source_iter([42_i32])", shape=invhouse, fillcolor="#88aaff"]
-    n2v1 [label="(n2v1) singleton", shape=parallelogram, fillcolor="#ddddff"]
-    n3v1 [label="(n3v1) for_each(|_| {})", shape=house, fillcolor="#ffff88"]
-    n4v1 [label="(n4v1) source_iter(1..=3_i32)", shape=invhouse, fillcolor="#88aaff"]
-    n5v1 [label="(n5v1) map(|x| x + my_val)", shape=invhouse, fillcolor="#88aaff"]
-    n6v1 [label="(n6v1) for_each(|v: i32| out.push(v))", shape=house, fillcolor="#ffff88"]
-    n1v1 -> n2v1
-    n2v1 -> n3v1
-    n5v1 -> n6v1
+    n3v1 [label="(n3v1) source_iter(1..=3_i32)", shape=invhouse, fillcolor="#88aaff"]
+    n4v1 [label="(n4v1) map(|x| x + my_val)", shape=invhouse, fillcolor="#88aaff"]
+    n5v1 [label="(n5v1) for_each(|v: i32| out.push(v))", shape=house, fillcolor="#ffff88"]
     n4v1 -> n5v1
-    n2v1 -> n5v1 [color=red]
+    n3v1 -> n4v1
+    n1v1 -> n4v1 [color=red]
     subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
@@ -32,15 +28,8 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_2v1"
+        n3v1
         n4v1
         n5v1
-        n6v1
-    }
-    subgraph sg_3v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_3v1"
-        n3v1
     }
 }

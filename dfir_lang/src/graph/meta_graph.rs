@@ -1902,23 +1902,10 @@ impl DfirGraph {
 
         // Define nodes.
         let mut skipped_handoffs = BTreeSet::new();
-        let mut subgraph_handoffs = <BTreeMap<GraphSubgraphId, Vec<GraphNodeId>>>::new();
         for (node_id, node) in self.nodes() {
-            if matches!(node, GraphNode::Handoff { .. }) {
-                if write_config.no_handoffs {
-                    skipped_handoffs.insert(node_id);
-                    continue;
-                } else {
-                    let pred_node = self.node_predecessor_nodes(node_id).next().unwrap();
-                    let pred_sg = self.node_subgraph(pred_node);
-                    let succ_node = self.node_successor_nodes(node_id).next();
-                    let succ_sg = succ_node.and_then(|n| self.node_subgraph(n));
-                    if let Some((pred_sg, succ_sg)) = pred_sg.zip(succ_sg)
-                        && pred_sg == succ_sg
-                    {
-                        subgraph_handoffs.entry(pred_sg).or_default().push(node_id);
-                    }
-                }
+            if matches!(node, GraphNode::Handoff { .. }) && write_config.no_handoffs {
+                skipped_handoffs.insert(node_id);
+                continue;
             }
             graph_write.write_node_definition(
                 node_id,
@@ -1956,8 +1943,13 @@ impl DfirGraph {
 
             let (src_port, mut dst_port) = self.edge_ports(edge_id);
             if skipped_handoffs.contains(&dst_id) {
+                // The destination is a hidden handoff. If it has a successor, skip through.
+                // If it has 0 successors (ref-only singleton), drop this edge entirely —
+                // the data dependency is captured via the reference edge instead.
                 let mut handoff_succs = self.node_successors(dst_id);
-                assert_eq!(1, handoff_succs.len());
+                if handoff_succs.len() == 0 {
+                    continue;
+                }
                 let (succ_edge, succ_node) = handoff_succs.next().unwrap();
                 dst_id = succ_node;
                 dst_port = self.edge_ports(succ_edge).1;
@@ -1978,9 +1970,19 @@ impl DfirGraph {
                     .iter()
                     .filter_map(|r| r.node_id)
                 {
+                    // When handoffs are hidden, resolve through to the predecessor of
+                    // the singleton handoff so the edge points from the actual writer.
+                    let resolved_src = if skipped_handoffs.contains(&src_ref_id) {
+                        self.node_predecessor_nodes(src_ref_id).next()
+                    } else {
+                        Some(src_ref_id)
+                    };
+                    let Some(resolved_src) = resolved_src else {
+                        continue;
+                    };
                     let delay_type = Some(DelayType::Stratum);
                     let label = None;
-                    graph_write.write_edge(src_ref_id, dst_id, delay_type, label, true)?;
+                    graph_write.write_edge(resolved_src, dst_id, delay_type, label, true)?;
                 }
             }
         }
