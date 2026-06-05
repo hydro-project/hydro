@@ -89,14 +89,12 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
     persistence_args: &(0..=2),
     type_args: &(0..=1),
     is_external_input: false,
-    has_singleton_output: false,
     flo_type: None,
     ports_inn: Some(|| super::PortListSpec::Fixed(parse_quote! { 0, 1 })),
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
                    loop_id,
                    op_span,
                    work_fn,
@@ -205,7 +203,7 @@ pub const JOIN: OperatorConstraints = OperatorConstraints {
                     ).await
                 }
 
-                let fut = check_inputs(#lhs, #rhs, &mut #lhs_joindata_ident, &mut #rhs_joindata_ident, #context.is_first_run_this_tick());
+                let fut = check_inputs(#lhs, #rhs, &mut #lhs_joindata_ident, &mut #rhs_joindata_ident, true);
                 #work_fn_async(fut).await
             };
         };

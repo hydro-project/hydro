@@ -26,8 +26,8 @@ use crate::live_collections::batch_atomic::BatchAtomic;
 use crate::live_collections::singleton::SingletonBound;
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
-use crate::location::tick::{Atomic, DeferTick, NoAtomic};
-use crate::location::{Location, NoTick, Tick, check_matching_location};
+use crate::location::tick::{Atomic, DeferTick};
+use crate::location::{Location, Tick, TopLevel, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 use crate::prelude::manual_proof;
@@ -294,6 +294,10 @@ where
 {
     type Location = Tick<L>;
 
+    fn location(&self) -> &Self::Location {
+        self.location()
+    }
+
     fn create_source_with_initial(cycle_id: CycleId, initial: Self, location: Tick<L>) -> Self {
         let from_previous_tick: Stream<T, Tick<L>, Bounded, O, R> = Stream::new(
             location.clone(),
@@ -335,7 +339,7 @@ where
 impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> CycleCollection<'a, ForwardRef>
     for Stream<T, L, B, O, R>
 where
-    L: Location<'a> + NoTick,
+    L: Location<'a>,
 {
     type Location = L;
 
@@ -353,7 +357,7 @@ where
 impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> ReceiverComplete<'a, ForwardRef>
     for Stream<T, L, B, O, R>
 where
-    L: Location<'a> + NoTick,
+    L: Location<'a>,
 {
     fn complete(self, cycle_id: CycleId, expected_location: LocationId) {
         assert_eq!(
@@ -386,19 +390,18 @@ where
             };
         }
 
-        if let HydroNode::Tee { inner, metadata } = self.ir_node.borrow().deref() {
-            Stream {
-                location: self.location.clone(),
-                flow_state: self.flow_state.clone(),
-                ir_node: HydroNode::Tee {
-                    inner: SharedNode(inner.0.clone()),
-                    metadata: metadata.clone(),
-                }
-                .into(),
-                _phantom: PhantomData,
-            }
-        } else {
+        let HydroNode::Tee { inner, metadata } = &*self.ir_node.borrow() else {
             unreachable!()
+        };
+        Stream {
+            location: self.location.clone(),
+            flow_state: self.flow_state.clone(),
+            ir_node: HydroNode::Tee {
+                inner: SharedNode(inner.0.clone()),
+                metadata: metadata.clone(),
+            }
+            .into(),
+            _phantom: PhantomData,
         }
     }
 }
@@ -423,6 +426,99 @@ where
     /// Returns the [`Location`] where this stream is being materialized.
     pub fn location(&self) -> &L {
         &self.location
+    }
+
+    /// Weakens the consistency of this live collection to not guarantee any consistency across
+    /// cluster members (if this collection is on a cluster).
+    pub fn weaken_consistency(self) -> Stream<T, L::DropConsistency, B, O, R>
+    where
+        L: Location<'a>,
+    {
+        if L::consistency()
+            .is_none_or(|c| c == crate::location::dynamic::ClusterConsistency::NoConsistency)
+        {
+            // already no consistency
+            Stream::new(
+                self.location.drop_consistency(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            Stream::new(
+                self.location.drop_consistency(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: self.location.drop_consistency().new_node_metadata(Stream::<
+                        T,
+                        L::DropConsistency,
+                        B,
+                        O,
+                        R,
+                    >::collection_kind(
+                    )),
+                },
+            )
+        }
+    }
+
+    /// Casts this live collection to have the consistency guarantees specified in the given
+    /// location type parameter. The developer must ensure that the strengthened consistency
+    /// is actually guaranteed, via the proof field (see [`crate::prelude::manual_proof`]).
+    pub fn assert_has_consistency_of<L2: Location<'a, DropConsistency = L::DropConsistency>>(
+        self,
+        _proof: impl crate::properties::ConsistencyProof,
+    ) -> Stream<T, L2, B, O, R>
+    where
+        L: Location<'a>,
+    {
+        if L::consistency() == L2::consistency() {
+            Stream::new(
+                self.location.with_consistency_of(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            Stream::new(
+                self.location.with_consistency_of(),
+                HydroNode::AssertIsConsistent {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    trusted: false,
+                    metadata: self
+                        .location
+                        .clone()
+                        .with_consistency_of::<L2>()
+                        .new_node_metadata(Stream::<T, L2, B, O, R>::collection_kind()),
+                },
+            )
+        }
+    }
+
+    pub(crate) fn assert_has_consistency_of_trusted<
+        L2: Location<'a, DropConsistency = L::DropConsistency>,
+    >(
+        self,
+        _proof: impl crate::properties::ConsistencyProof,
+    ) -> Stream<T, L2, B, O, R>
+    where
+        L: Location<'a>,
+    {
+        if L::consistency() == L2::consistency() {
+            Stream::new(
+                self.location.with_consistency_of(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            Stream::new(
+                self.location.with_consistency_of(),
+                HydroNode::AssertIsConsistent {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    trusted: true,
+                    metadata: self
+                        .location
+                        .clone()
+                        .with_consistency_of::<L2>()
+                        .new_node_metadata(Stream::<T, L2, B, O, R>::collection_kind()),
+                },
+            )
+        }
     }
 
     pub(crate) fn collection_kind() -> CollectionKind {
@@ -457,7 +553,9 @@ where
     where
         F: Fn(T) -> U + 'a,
     {
-        let f = f.splice_fn1_ctx(&self.location).into();
+        let f = crate::singleton_ref::with_singleton_capture(|| {
+            f.splice_fn1_ctx(&self.location).into()
+        });
         Stream::new(
             self.location.clone(),
             HydroNode::Map {
@@ -499,7 +597,9 @@ where
         I: IntoIterator<Item = U>,
         F: Fn(T) -> I + 'a,
     {
-        let f = f.splice_fn1_ctx(&self.location).into();
+        let f = crate::singleton_ref::with_singleton_capture(|| {
+            f.splice_fn1_ctx(&self.location).into()
+        });
         Stream::new(
             self.location.clone(),
             HydroNode::FlatMap {
@@ -546,7 +646,9 @@ where
         I: IntoIterator<Item = U>,
         F: Fn(T) -> I + 'a,
     {
-        let f = f.splice_fn1_ctx(&self.location).into();
+        let f = crate::singleton_ref::with_singleton_capture(|| {
+            f.splice_fn1_ctx(&self.location).into()
+        });
         Stream::new(
             self.location.clone(),
             HydroNode::FlatMap {
@@ -683,7 +785,9 @@ where
     where
         F: Fn(&T) -> bool + 'a,
     {
-        let f = f.splice_fn1_borrow_ctx(&self.location).into();
+        let f = crate::singleton_ref::with_singleton_capture(|| {
+            f.splice_fn1_borrow_ctx(&self.location).into()
+        });
         Stream::new(
             self.location.clone(),
             HydroNode::Filter {
@@ -739,7 +843,9 @@ where
     where
         F: Fn(&T) -> bool + 'a,
     {
-        let f: crate::compile::ir::DebugExpr = f.splice_fn1_borrow_ctx(&self.location).into();
+        let f = crate::singleton_ref::with_singleton_capture(|| {
+            f.splice_fn1_borrow_ctx(&self.location).into()
+        });
         let shared = SharedNode(Rc::new(RefCell::new(
             self.ir_node.replace(HydroNode::Placeholder),
         )));
@@ -987,13 +1093,18 @@ where
     /// # stream.map(|i| assert!(expected.contains(&i)));
     /// # }));
     /// # }
-    pub fn cross_product<T2, B2: Boundedness, O2: Ordering>(
+    #[expect(
+        clippy::type_complexity,
+        reason = "MinRetries projection in return type"
+    )]
+    pub fn cross_product<T2, B2: Boundedness, O2: Ordering, R2: Retries>(
         self,
-        other: Stream<T2, L, B2, O2, R>,
-    ) -> Stream<(T, T2), L, B, B2::PreserveOrderIfBounded<O>, R>
+        other: Stream<T2, L, B2, O2, R2>,
+    ) -> Stream<(T, T2), L, B, B2::PreserveOrderIfBounded<O>, <R as MinRetries<R2>>::Min>
     where
         T: Clone,
         T2: Clone,
+        R: MinRetries<R2>,
     {
         self.map(q!(|v| ((), v)))
             .join(other.map(q!(|v| ((), v))))
@@ -1097,11 +1208,14 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Self
+    pub fn inspect<F>(self, f: impl IntoQuotedMut<'a, F, L::DropConsistency>) -> Self
     where
         F: Fn(&T) + 'a,
     {
-        let f = f.splice_fn1_borrow_ctx(&self.location).into();
+        let f = crate::singleton_ref::with_singleton_capture(|| {
+            f.splice_fn1_borrow_ctx(&self.location.drop_consistency())
+                .into()
+        });
 
         Stream::new(
             self.location.clone(),
@@ -1225,7 +1339,7 @@ where
     ) -> Singleton<A, L, B2>
     where
         I: Fn() -> A + 'a,
-        F: Fn(&mut A, T),
+        F: 'a + Fn(&mut A, T),
         C: ValidCommutativityFor<O>,
         Idemp: ValidIdempotenceFor<R>,
         B: ApplyMonotoneStream<M, B2>,
@@ -1234,19 +1348,26 @@ where
         let (comb, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
         proof.register_proof(&comb);
 
+        // Only assume_retries (for idempotence), not assume_ordering.
+        // The fold hook in the simulator handles ordering non-determinism directly.
         let nondet = nondet!(/** the combinator function is commutative and idempotent */);
-        let ordered_etc: Stream<T, L, B> = self.assume_retries(nondet).assume_ordering(nondet);
+        let retried: Stream<T, L::DropConsistency, B, O, ExactlyOnce> = self.assume_retries(nondet);
 
         let core = HydroNode::Fold {
             init,
             acc: comb.into(),
-            input: Box::new(ordered_etc.ir_node.replace(HydroNode::Placeholder)),
-            metadata: ordered_etc
+            input: Box::new(retried.ir_node.replace(HydroNode::Placeholder)),
+            metadata: retried
                 .location
-                .new_node_metadata(Singleton::<A, L, B2>::collection_kind()),
+                .new_node_metadata(Singleton::<A, L::DropConsistency, B2>::collection_kind()),
+            // we do not guarantee consistency at this point because if the algebraic properties
+            // do not hold in practice, replica consistency may fail to be maintained, so we
+            // would like the simulator to assert consistency; in the future, this will be dynamic
+            // based on the proof mechanism
         };
 
-        Singleton::new(ordered_etc.location.clone(), core)
+        Singleton::new(retried.location.clone(), core)
+            .assert_has_consistency_of(manual_proof!(/** algebraic properties */))
     }
 
     /// Combines elements of the stream into an [`Optional`], by starting with the first element in the stream,
@@ -1284,17 +1405,19 @@ where
         proof.register_proof(&f);
 
         let nondet = nondet!(/** the combinator function is commutative and idempotent */);
-        let ordered_etc: Stream<T, L, B> = self.assume_retries(nondet).assume_ordering(nondet);
+        let ordered_etc: Stream<T, L::DropConsistency, B> =
+            self.assume_retries(nondet).assume_ordering(nondet);
 
         let core = HydroNode::Reduce {
             f: f.into(),
             input: Box::new(ordered_etc.ir_node.replace(HydroNode::Placeholder)),
             metadata: ordered_etc
                 .location
-                .new_node_metadata(Optional::<T, L, B>::collection_kind()),
+                .new_node_metadata(Optional::<T, L::DropConsistency, B>::collection_kind()),
         };
 
         Optional::new(ordered_etc.location.clone(), core)
+            .assert_has_consistency_of(manual_proof!(/** algebraic properties */))
     }
 
     /// Computes the maximum element in the stream as an [`Optional`], which
@@ -1786,11 +1909,11 @@ where
         self,
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
         nondet: NonDet,
-    ) -> Stream<T, L, Unbounded, O, AtLeastOnce>
+    ) -> Stream<T, L::DropConsistency, Unbounded, O, AtLeastOnce>
     where
-        L: NoTick + NoAtomic,
+        L: TopLevel<'a>,
     {
-        let samples = self.location.source_interval(interval, nondet);
+        let samples = self.location.source_interval(interval);
 
         let tick = self.location.tick();
         self.batch(&tick, nondet)
@@ -1810,11 +1933,11 @@ where
     /// detected based on when the next sample is taken.
     pub fn timeout(
         self,
-        duration: impl QuotedWithContext<'a, std::time::Duration, Tick<L>> + Copy + 'a,
+        duration: impl QuotedWithContext<'a, std::time::Duration, Tick<L::DropConsistency>> + Copy + 'a,
         nondet: NonDet,
-    ) -> Optional<(), L, Unbounded>
+    ) -> Optional<(), L::DropConsistency, Unbounded>
     where
-        L: NoTick + NoAtomic,
+        L: TopLevel<'a>,
     {
         let tick = self.location.tick();
 
@@ -1874,10 +1997,14 @@ where
     ///
     /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
-    pub fn batch(self, tick: &Tick<L>, _nondet: NonDet) -> Stream<T, Tick<L>, Bounded, O, R> {
+    pub fn batch<L2: Location<'a, DropConsistency = L::DropConsistency>>(
+        self,
+        tick: &Tick<L2>,
+        _nondet: NonDet,
+    ) -> Stream<T, Tick<L::DropConsistency>, Bounded, O, R> {
         assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
         Stream::new(
-            tick.clone(),
+            tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: tick
@@ -1938,28 +2065,31 @@ where
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
-    pub fn assume_ordering<O2: Ordering>(self, _nondet: NonDet) -> Stream<T, L, B, O2, R> {
+    pub fn assume_ordering<O2: Ordering>(
+        self,
+        _nondet: NonDet,
+    ) -> Stream<T, L::DropConsistency, B, O2, R> {
         if O::ORDERING_KIND == O2::ORDERING_KIND {
-            self.use_ordering_type()
+            self.use_ordering_type().weaken_consistency()
         } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
             // We can always weaken the ordering guarantee
+            let target_location = self.location().drop_consistency();
             Stream::new(
-                self.location.clone(),
+                target_location.clone(),
                 HydroNode::Cast {
                     inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    metadata: self
-                        .location
+                    metadata: target_location
                         .new_node_metadata(Stream::<T, L, B, O2, R>::collection_kind()),
                 },
             )
         } else {
+            let target_location = self.location().drop_consistency();
             Stream::new(
-                self.location.clone(),
+                target_location.clone(),
                 HydroNode::ObserveNonDet {
                     inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                     trusted: false,
-                    metadata: self
-                        .location
+                    metadata: target_location
                         .new_node_metadata(Stream::<T, L, B, O2, R>::collection_kind()),
                 },
             )
@@ -1975,7 +2105,9 @@ where
         if B::BOUNDED {
             self.assume_ordering_trusted(nondet)
         } else {
-            self.assume_ordering(nondet)
+            let self_location = self.location.clone();
+            let inner: Stream<T, L::DropConsistency, B, O2, R> = self.assume_ordering(nondet);
+            Stream::new(self_location, inner.ir_node.replace(HydroNode::Placeholder))
         }
     }
 
@@ -1986,10 +2118,7 @@ where
         _nondet: NonDet,
     ) -> Stream<T, L, B, O2, R> {
         if O::ORDERING_KIND == O2::ORDERING_KIND {
-            Stream::new(
-                self.location.clone(),
-                self.ir_node.replace(HydroNode::Placeholder),
-            )
+            self.use_ordering_type()
         } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
             // We can always weaken the ordering guarantee
             Stream::new(
@@ -2026,7 +2155,7 @@ where
     /// enforcing that `O2` is weaker than the input ordering guarantee.
     pub fn weaken_ordering<O2: WeakerOrderingThan<O>>(self) -> Stream<T, L, B, O2, R> {
         let nondet = nondet!(/** this is a weaker ordering guarantee, so it is safe to assume */);
-        self.assume_ordering::<O2>(nondet)
+        self.assume_ordering_trusted::<O2>(nondet)
     }
 
     /// Strengthens the ordering guarantee to `TotalOrder`, given that `O: IsOrdered`, which
@@ -2035,7 +2164,7 @@ where
     where
         O: IsOrdered,
     {
-        self.assume_ordering(nondet!(/** no-op */))
+        self.assume_ordering_trusted(nondet!(/** no-op */))
     }
 
     /// Explicitly "casts" the stream to a type with a different retries
@@ -2046,31 +2175,34 @@ where
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
-    pub fn assume_retries<R2: Retries>(self, _nondet: NonDet) -> Stream<T, L, B, O, R2> {
+    pub fn assume_retries<R2: Retries>(
+        self,
+        _nondet: NonDet,
+    ) -> Stream<T, L::DropConsistency, B, O, R2> {
         if R::RETRIES_KIND == R2::RETRIES_KIND {
             Stream::new(
-                self.location.clone(),
+                self.location.drop_consistency(),
                 self.ir_node.replace(HydroNode::Placeholder),
             )
         } else if R2::RETRIES_KIND == StreamRetry::AtLeastOnce {
             // We can always weaken the retries guarantee
+            let target_location = self.location.drop_consistency();
             Stream::new(
-                self.location.clone(),
+                target_location.clone(),
                 HydroNode::Cast {
                     inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    metadata: self
-                        .location
+                    metadata: target_location
                         .new_node_metadata(Stream::<T, L, B, O, R2>::collection_kind()),
                 },
             )
         } else {
+            let target_location = self.location.drop_consistency();
             Stream::new(
-                self.location.clone(),
+                target_location.clone(),
                 HydroNode::ObserveNonDet {
                     inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                     trusted: false,
-                    metadata: self
-                        .location
+                    metadata: target_location
                         .new_node_metadata(Stream::<T, L, B, O, R2>::collection_kind()),
                 },
             )
@@ -2121,7 +2253,7 @@ where
     /// enforcing that `R2` is weaker than the input retries guarantee.
     pub fn weaken_retries<R2: WeakerRetryThan<R>>(self) -> Stream<T, L, B, O, R2> {
         let nondet = nondet!(/** this is a weaker retry guarantee, so it is safe to assume */);
-        self.assume_retries::<R2>(nondet)
+        self.assume_retries_trusted::<R2>(nondet)
     }
 
     /// Strengthens the retry guarantee to `ExactlyOnce`, given that `R: IsExactlyOnce`, which
@@ -2130,7 +2262,7 @@ where
     where
         R: IsExactlyOnce,
     {
-        self.assume_retries(nondet!(/** no-op */))
+        self.assume_retries_trusted(nondet!(/** no-op */))
     }
 
     /// Strengthens the boundedness guarantee to `Bounded`, given that `B: IsBounded`, which
@@ -2230,7 +2362,7 @@ where
     }
 }
 
-impl<'a, T, L: Location<'a> + NoTick, O: Ordering, R: Retries> Stream<T, L, Unbounded, O, R> {
+impl<'a, T, L: Location<'a>, O: Ordering, R: Retries> Stream<T, L, Unbounded, O, R> {
     /// Produces a new stream that merges the elements of the two input streams.
     /// The result has [`NoOrder`] because the order of merging is not guaranteed.
     ///
@@ -2322,18 +2454,19 @@ impl<'a, T, L: Location<'a>, B: Boundedness, R: Retries> Stream<T, L, B, TotalOr
         self,
         other: Stream<T, L, B, TotalOrder, R2>,
         _nondet: NonDet,
-    ) -> Stream<T, L, B, TotalOrder, <R as MinRetries<R2>>::Min>
+    ) -> Stream<T, L::DropConsistency, B, TotalOrder, <R as MinRetries<R2>>::Min>
     where
         R: MinRetries<R2>,
     {
+        let target_location = self.location().drop_consistency();
         Stream::new(
-            self.location.clone(),
+            target_location.clone(),
             HydroNode::MergeOrdered {
                 first: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 second: Box::new(other.ir_node.replace(HydroNode::Placeholder)),
-                metadata: self.location.new_node_metadata(Stream::<
+                metadata: target_location.new_node_metadata(Stream::<
                     T,
-                    L,
+                    L::DropConsistency,
                     B,
                     TotalOrder,
                     <R as MinRetries<R2>>::Min,
@@ -2446,14 +2579,19 @@ where
     /// Forms the cross-product (Cartesian product, cross-join) of the items in the 2 input streams.
     /// Unlike [`Stream::cross_product`], the output order is totally ordered when the inputs are
     /// because this is compiled into a nested loop.
-    pub fn cross_product_nested_loop<T2, O2: Ordering + MinOrder<O>>(
+    #[expect(
+        clippy::type_complexity,
+        reason = "MinRetries projection in return type"
+    )]
+    pub fn cross_product_nested_loop<T2, O2: Ordering + MinOrder<O>, R2: Retries>(
         self,
-        other: Stream<T2, L, Bounded, O2, R>,
-    ) -> Stream<(T, T2), L, Bounded, <O2 as MinOrder<O>>::Min, R>
+        other: Stream<T2, L, Bounded, O2, R2>,
+    ) -> Stream<(T, T2), L, Bounded, <O2 as MinOrder<O>>::Min, <R as MinRetries<R2>>::Min>
     where
         B: IsBounded,
         T: Clone,
         T2: Clone,
+        R: MinRetries<R2>,
     {
         let this = self.make_bounded();
         check_matching_location(&this.location, &other.location);
@@ -2468,7 +2606,7 @@ where
                     L,
                     Bounded,
                     <O2 as MinOrder<O>>::Min,
-                    R,
+                    <R as MinRetries<R2>>::Min,
                 >::collection_kind()),
             },
         )
@@ -2521,7 +2659,6 @@ where
         T: Clone,
     {
         keys.keys()
-            .weaken_retries()
             .assume_ordering_trusted::<TotalOrder>(
                 nondet!(/** keyed stream does not depend on ordering of keys */),
             )
@@ -2811,7 +2948,7 @@ where
 
 impl<'a, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<T, Atomic<L>, B, O, R>
 where
-    L: Location<'a> + NoTick,
+    L: Location<'a>,
 {
     /// Returns a stream corresponding to the latest batch of elements being atomically
     /// processed. These batches are guaranteed to be contiguous across ticks and preserve
@@ -2819,13 +2956,13 @@ where
     ///
     /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
-    pub fn batch_atomic(
+    pub fn batch_atomic<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
-        tick: &Tick<L>,
+        tick: &Tick<L2>,
         _nondet: NonDet,
-    ) -> Stream<T, Tick<L>, Bounded, O, R> {
+    ) -> Stream<T, Tick<L::DropConsistency>, Bounded, O, R> {
         Stream::new(
-            tick.clone(),
+            tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: tick
@@ -2853,7 +2990,7 @@ where
 
 impl<'a, F, T, L, B: Boundedness, O: Ordering, R: Retries> Stream<F, L, B, O, R>
 where
-    L: Location<'a> + NoTick + NoAtomic,
+    L: TopLevel<'a>,
     F: Future<Output = T>,
 {
     /// Consumes a stream of `Future<T>`, produces a new stream of the resulting `T` outputs.
@@ -3016,7 +3153,7 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn across_ticks<Out: BatchAtomic>(
+    pub fn across_ticks<Out: BatchAtomic<'a>>(
         self,
         thunk: impl FnOnce(Stream<T, Atomic<L>, Unbounded, O, R>) -> Out,
     ) -> Out::Batched {
@@ -4433,6 +4570,29 @@ mod tests {
         flow.sim().exhaustive(async || {
             out.assert_yields_only_unordered(vec![(1, ('a', 'x')), (2, ('b', 'y'))])
                 .await;
+        });
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn sim_merge_unordered_independent_atomics() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (in1_send, input1) = node.sim_input::<_, TotalOrder, _>();
+        let (in2_send, input2) = node.sim_input::<_, TotalOrder, _>();
+
+        let out = input1
+            .atomic()
+            .merge_unordered(input2.atomic())
+            .end_atomic()
+            .sim_output();
+
+        flow.sim().exhaustive(async || {
+            in1_send.send(1);
+            in2_send.send(2);
+
+            out.assert_yields_only_unordered(vec![1, 2]).await;
         });
     }
 }

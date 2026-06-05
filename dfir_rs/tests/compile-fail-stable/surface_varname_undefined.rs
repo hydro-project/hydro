@@ -1,1 +1,0 @@
-../compile-fail/surface_varname_undefined.rs

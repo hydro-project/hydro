@@ -68,10 +68,6 @@ pub struct OperatorConstraints {
     /// If this operator receives external inputs and therefore must be in
     /// stratum 0.
     pub is_external_input: bool,
-    /// If this operator has a singleton reference output. For stateful operators.
-    /// If true, [`WriteContextArgs::singleton_output_ident`] will be set to a meaningful value in
-    /// the [`Self::write_fn`] invocation.
-    pub has_singleton_output: bool,
     /// Flo semantics type.
     pub flo_type: Option<FloType>,
 
@@ -305,6 +301,7 @@ declare_ops![
     identity::IDENTITY,
     initialize::INITIALIZE,
     inspect::INSPECT,
+    iter_ref::ITER_REF,
     join::JOIN,
     join_fused::JOIN_FUSED,
     join_fused_lhs::JOIN_FUSED_LHS,
@@ -415,8 +412,6 @@ pub struct WriteContextArgs<'a> {
     pub inputs: &'a [Ident],
     /// Output `Sink` operator idents (or ref idents; used for push).
     pub outputs: &'a [Ident],
-    /// Ident for the singleton output of this operator, if any.
-    pub singleton_output_ident: &'a Ident,
 
     /// Operator name.
     pub op_name: &'static str,
@@ -428,8 +423,6 @@ pub struct WriteContextArgs<'a> {
     /// These arguments include singleton postprocessing codegen, with
     /// [`std::cell::RefCell::borrow_mut`] code pre-generated.
     pub arguments: &'a Punctuated<Expr, Token![,]>,
-    /// Same as [`Self::arguments`] but with only raw idents, no borrowing code.
-    pub arguments_handles: &'a Punctuated<Expr, Token![,]>,
 }
 impl WriteContextArgs<'_> {
     /// Generate a (almost certainly) unique identifier with the given suffix.

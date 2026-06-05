@@ -1,0 +1,7 @@
+error[E0594]: cannot assign to data in a `&` reference
+ --> tests/compile-fail/stable/surface_singleton_mutation.rs:9:17
+  |
+8 |             -> map(|x| {
+  |                --- this cannot be written to
+9 |                 *#max_of_stream2 = 999;
+  |                 ^^^^^^^^^^^^^^^^^^^^^^ cannot assign

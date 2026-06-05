@@ -1,7 +1,7 @@
 use std::hash::Hash;
 
 use hydro_lang::live_collections::stream::NoOrder;
-use hydro_lang::location::{Location, NoTick};
+use hydro_lang::location::Location;
 use hydro_lang::prelude::*;
 
 type JoinResponses<K, M, V, L> = Stream<(K, (M, V)), L, Unbounded, NoOrder>;
@@ -12,10 +12,10 @@ type JoinResponses<K, M, V, L> = Stream<(K, (M, V)), L, Unbounded, NoOrder>;
 /// The metadata must be generated in the same or a previous tick than the response,
 /// typically at request time. Only one response element should be produced with a given
 /// key, same for the metadata stream.
-pub fn join_responses<'a, K: Clone + Eq + Hash, M: Clone, V: Clone, L: Location<'a> + NoTick>(
+pub fn join_responses<'a, K: Clone + Eq + Hash, M: Clone, V: Clone, L: Location<'a>>(
     responses: Stream<(K, V), L, Unbounded, NoOrder>,
     metadata: Stream<(K, M), Tick<L>, Bounded, NoOrder>,
-) -> JoinResponses<K, M, V, L> {
+) -> JoinResponses<K, M, V, L::DropConsistency> {
     sliced! {
         let mut remaining_to_join = use::state_null::<Stream<(K, M), _, _, NoOrder>>();
 

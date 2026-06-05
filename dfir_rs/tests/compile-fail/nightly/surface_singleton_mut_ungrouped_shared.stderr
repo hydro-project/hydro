@@ -1,0 +1,5 @@
+error: Must use an explicit group `#{N}` to reference a singleton when other references use explicit groups.
+ --> tests/compile-fail/nightly/surface_singleton_mut_ungrouped_shared.rs:6:45
+  |
+6 |         source_iter([1_i32]) -> map(|x| x + #my_val) -> for_each(|_| {});
+  |                                             ^^^^^^^

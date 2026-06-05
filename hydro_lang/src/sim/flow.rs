@@ -12,6 +12,7 @@ use slotmap::SparseSecondaryMap;
 use super::builder::SimBuilder;
 use super::compiled::{CompiledSim, CompiledSimInstance};
 use super::graph::{SimDeploy, SimExternal, SimNode, compile_sim, create_sim_graph_trybuild};
+use crate::compile::builder::{HandoffId, StmtId};
 use crate::compile::ir::HydroRoot;
 use crate::location::LocationKey;
 use crate::location::dynamic::LocationId;
@@ -38,6 +39,11 @@ pub struct SimFlow<'a> {
     /// When true, the simulator only tests safety properties (not liveness).
     pub(crate) test_safety_only: bool,
 
+    /// When true, consistency assertions are skipped (treated as identity no-ops).
+    /// When false (default), encountering a consistency assertion panics because
+    /// validating consistency assertions is not yet supported in the simulator.
+    pub(crate) skip_consistency_assertions: bool,
+
     /// Number of iterations to use for fuzzing, defaults to 8192
     pub(crate) unit_test_fuzz_iterations: usize,
 
@@ -61,6 +67,15 @@ impl<'a> SimFlow<'a> {
     /// program eventually makes progress.
     pub fn test_safety_only(mut self) -> Self {
         self.test_safety_only = true;
+        self
+    }
+
+    /// Opts in to skipping consistency assertions. When enabled, `assert_is_consistent`
+    /// nodes are treated as identity no-ops in the simulator. When disabled (the default),
+    /// encountering a consistency assertion will panic because validating consistency
+    /// assertions is not yet supported in the simulator.
+    pub fn skip_consistency_assertions(mut self) -> Self {
+        self.skip_consistency_assertions = true;
         self
     }
 
@@ -117,8 +132,9 @@ impl<'a> SimFlow<'a> {
             cluster_tick_dfirs: BTreeMap::new(),
             extra_stmts_global: vec![],
             extra_stmts_cluster: BTreeMap::new(),
-            next_hoff_id: 0,
+            next_hoff_id: HandoffId::default(),
             test_safety_only: self.test_safety_only,
+            skip_consistency_assertions: self.skip_consistency_assertions,
         };
 
         // Ensure the default (0) external is always present.
@@ -145,13 +161,15 @@ impl<'a> SimFlow<'a> {
 
         let mut seen_tees = HashMap::new();
         let mut built_tees = HashMap::new();
-        let mut next_stmt_id = 0;
+        let mut next_stmt_id = StmtId::default();
+        let mut fold_hooked_idents = HashSet::new();
         for leaf in &mut self.ir {
             leaf.emit(
                 &mut sim_emit,
                 &mut seen_tees,
                 &mut built_tees,
                 &mut next_stmt_id,
+                &mut fold_hooked_idents,
             );
         }
 

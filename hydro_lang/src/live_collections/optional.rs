@@ -19,8 +19,8 @@ use crate::forward_handle::{ForwardRef, TickCycle};
 use crate::live_collections::singleton::SingletonBound;
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
-use crate::location::tick::{Atomic, DeferTick, NoAtomic};
-use crate::location::{Location, NoTick, Tick, check_matching_location};
+use crate::location::tick::{Atomic, DeferTick};
+use crate::location::{Location, Tick, TopLevel, check_matching_location};
 use crate::nondet::{NonDet, nondet};
 use crate::prelude::KeyedSingleton;
 
@@ -60,7 +60,7 @@ impl<T, L, B: Boundedness> Drop for Optional<T, L, B> {
 impl<'a, T, L> From<Optional<T, L, Bounded>> for Optional<T, L, Unbounded>
 where
     T: Clone,
-    L: Location<'a> + NoTick,
+    L: Location<'a>,
 {
     fn from(value: Optional<T, L, Bounded>) -> Self {
         let tick = value.location().tick();
@@ -100,6 +100,10 @@ where
 {
     type Location = Tick<L>;
 
+    fn location(&self) -> &Self::Location {
+        self.location()
+    }
+
     fn create_source_with_initial(cycle_id: CycleId, initial: Self, location: Tick<L>) -> Self {
         let from_previous_tick: Optional<T, Tick<L>, Bounded> = Optional::new(
             location.clone(),
@@ -138,47 +142,9 @@ where
     }
 }
 
-impl<'a, T, L> CycleCollection<'a, ForwardRef> for Optional<T, Tick<L>, Bounded>
-where
-    L: Location<'a>,
-{
-    type Location = Tick<L>;
-
-    fn create_source(cycle_id: CycleId, location: Tick<L>) -> Self {
-        Optional::new(
-            location.clone(),
-            HydroNode::CycleSource {
-                cycle_id,
-                metadata: location.new_node_metadata(Self::collection_kind()),
-            },
-        )
-    }
-}
-
-impl<'a, T, L> ReceiverComplete<'a, ForwardRef> for Optional<T, Tick<L>, Bounded>
-where
-    L: Location<'a>,
-{
-    fn complete(self, cycle_id: CycleId, expected_location: LocationId) {
-        assert_eq!(
-            Location::id(&self.location),
-            expected_location,
-            "locations do not match"
-        );
-        self.location
-            .flow_state()
-            .borrow_mut()
-            .push_root(HydroRoot::CycleSink {
-                cycle_id,
-                input: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                op_metadata: HydroIrOpMetadata::new(),
-            });
-    }
-}
-
 impl<'a, T, L, B: Boundedness> CycleCollection<'a, ForwardRef> for Optional<T, L, B>
 where
-    L: Location<'a> + NoTick,
+    L: Location<'a>,
 {
     type Location = L;
 
@@ -195,7 +161,7 @@ where
 
 impl<'a, T, L, B: Boundedness> ReceiverComplete<'a, ForwardRef> for Optional<T, L, B>
 where
-    L: Location<'a> + NoTick,
+    L: Location<'a>,
 {
     fn complete(self, cycle_id: CycleId, expected_location: LocationId) {
         assert_eq!(
@@ -326,6 +292,66 @@ where
     /// Returns the [`Location`] where this optional is being materialized.
     pub fn location(&self) -> &L {
         &self.location
+    }
+
+    /// Weakens the consistency of this live collection to not guarantee any consistency across
+    /// cluster members (if this collection is on a cluster).
+    pub fn weaken_consistency(self) -> Optional<T, L::DropConsistency, B>
+    where
+        L: Location<'a>,
+    {
+        if L::consistency()
+            .is_none_or(|c| c == crate::location::dynamic::ClusterConsistency::NoConsistency)
+        {
+            // already no consistency
+            Optional::new(
+                self.location.drop_consistency(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            Optional::new(
+                self.location.drop_consistency(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: self
+                        .location
+                        .clone()
+                        .drop_consistency()
+                        .new_node_metadata(Optional::<T, L::DropConsistency, B>::collection_kind()),
+                },
+            )
+        }
+    }
+
+    /// Casts this live collection to have the consistency guarantees specified in the given
+    /// location type parameter. The developer must ensure that the strengthened consistency
+    /// is actually guaranteed, via the proof field (see [`crate::prelude::manual_proof`]).
+    pub fn assert_has_consistency_of<L2: Location<'a, DropConsistency = L::DropConsistency>>(
+        self,
+        _proof: impl crate::properties::ConsistencyProof,
+    ) -> Optional<T, L2, B>
+    where
+        L: Location<'a>,
+    {
+        if L::consistency() == L2::consistency() {
+            Optional::new(
+                self.location.with_consistency_of(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            Optional::new(
+                self.location.with_consistency_of(),
+                HydroNode::AssertIsConsistent {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    trusted: false,
+                    metadata: self
+                        .location
+                        .clone()
+                        .with_consistency_of::<L2>()
+                        .new_node_metadata(Optional::<T, L2, B>::collection_kind()),
+                },
+            )
+        }
     }
 
     /// Transforms the optional value by applying a function `f` to it,
@@ -635,16 +661,14 @@ where
         if L::is_top_level()
             && let Some(tick) = self.location.try_tick()
         {
+            let self_location = self.location().clone();
             let out = zip_inside_tick(
                 self.snapshot(&tick, nondet!(/** eventually stabilizes */)),
                 other.snapshot(&tick, nondet!(/** eventually stabilizes */)),
             )
             .latest();
 
-            Optional::new(
-                out.location.clone(),
-                out.ir_node.replace(HydroNode::Placeholder),
-            )
+            Optional::new(self_location, out.ir_node.replace(HydroNode::Placeholder))
         } else {
             zip_inside_tick(self, other)
         }
@@ -687,16 +711,14 @@ where
             && !B::BOUNDED // only if unbounded we need to use a tick
             && let Some(tick) = self.location.try_tick()
         {
+            let self_location = self.location().clone();
             let out = or_inside_tick(
                 self.snapshot(&tick, nondet!(/** eventually stabilizes */)),
                 other.snapshot(&tick, nondet!(/** eventually stabilizes */)),
             )
             .latest();
 
-            Optional::new(
-                out.location.clone(),
-                out.ir_node.replace(HydroNode::Placeholder),
-            )
+            Optional::new(self_location, out.ir_node.replace(HydroNode::Placeholder))
         } else {
             Optional::new(
                 self.location.clone(),
@@ -955,10 +977,11 @@ where
         T: Clone,
     {
         // TODO(shadaj): avoid printing simulator logs for this snapshot
-        self.snapshot(
+        let inner = self.snapshot(
             tick,
             nondet!(/** bounded top-level optional so deterministic */),
-        )
+        );
+        Optional::new(tick.clone(), inner.ir_node.replace(HydroNode::Placeholder))
     }
 
     /// Converts this optional into a [`Stream`] containing a single element, the value, if it is
@@ -1206,7 +1229,7 @@ where
 
 impl<'a, T, L, B: Boundedness> Optional<T, Atomic<L>, B>
 where
-    L: Location<'a> + NoTick,
+    L: Location<'a>,
 {
     /// Returns an optional value corresponding to the latest snapshot of the optional
     /// being atomically processed. The snapshot at tick `t + 1` is guaranteed to include
@@ -1218,9 +1241,13 @@ where
     /// Because this picks a snapshot of a optional whose value is continuously changing,
     /// the output optional has a non-deterministic value since the snapshot can be at an
     /// arbitrary point in time.
-    pub fn snapshot_atomic(self, tick: &Tick<L>, _nondet: NonDet) -> Optional<T, Tick<L>, Bounded> {
+    pub fn snapshot_atomic<L2: Location<'a, DropConsistency = L::DropConsistency>>(
+        self,
+        tick: &Tick<L2>,
+        _nondet: NonDet,
+    ) -> Optional<T, Tick<L::DropConsistency>, Bounded> {
         Optional::new(
-            tick.clone(),
+            tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: tick
@@ -1283,10 +1310,14 @@ where
     /// Because this picks a snapshot of a optional whose value is continuously changing,
     /// the output optional has a non-deterministic value since the snapshot can be at an
     /// arbitrary point in time.
-    pub fn snapshot(self, tick: &Tick<L>, _nondet: NonDet) -> Optional<T, Tick<L>, Bounded> {
+    pub fn snapshot<L2: Location<'a, DropConsistency = L::DropConsistency>>(
+        self,
+        tick: &Tick<L2>,
+        _nondet: NonDet,
+    ) -> Optional<T, Tick<L::DropConsistency>, Bounded> {
         assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
         Optional::new(
-            tick.clone(),
+            tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: tick
@@ -1302,10 +1333,10 @@ where
     /// At runtime, the optional will be arbitrarily sampled as fast as possible, but due
     /// to non-deterministic batching and arrival of inputs, the output stream is
     /// non-deterministic.
-    pub fn sample_eager(self, nondet: NonDet) -> Stream<T, L, Unbounded, TotalOrder, AtLeastOnce>
-    where
-        L: NoTick,
-    {
+    pub fn sample_eager(
+        self,
+        nondet: NonDet,
+    ) -> Stream<T, L::DropConsistency, Unbounded, TotalOrder, AtLeastOnce> {
         let tick = self.location.tick();
         self.snapshot(&tick, nondet).all_ticks().weaken_retries()
     }
@@ -1323,11 +1354,11 @@ where
         self,
         interval: impl QuotedWithContext<'a, std::time::Duration, L> + Copy + 'a,
         nondet: NonDet,
-    ) -> Stream<T, L, Unbounded, TotalOrder, AtLeastOnce>
+    ) -> Stream<T, L::DropConsistency, Unbounded, TotalOrder, AtLeastOnce>
     where
-        L: NoTick + NoAtomic,
+        L: TopLevel<'a>,
     {
-        let samples = self.location.source_interval(interval, nondet);
+        let samples = self.location.source_interval(interval);
         let tick = self.location.tick();
 
         self.snapshot(&tick, nondet)

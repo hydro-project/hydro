@@ -41,7 +41,6 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
     persistence_args: &(0..=1),
     type_args: RANGE_0,
     is_external_input: false,
-    has_singleton_output: true,
     flo_type: None,
     ports_inn: None,
     ports_out: None,
@@ -54,12 +53,13 @@ pub const REDUCE: OperatorConstraints = OperatorConstraints {
                    ident,
                    inputs,
                    is_pull,
-                   singleton_output_ident,
                    arguments,
                    ..
                },
                diagnostics| {
         let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
+
+        let singleton_output_ident = wc.make_ident("singleton_output");
 
         let write_prologue = quote_spanned! {op_span=>
             let mut #singleton_output_ident = ::std::option::Option::None;

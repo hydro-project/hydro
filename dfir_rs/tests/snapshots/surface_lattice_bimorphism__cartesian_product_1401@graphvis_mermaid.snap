@@ -10,34 +10,38 @@ classDef otherClass fill:#fdc,stroke:#000,text-align:left,white-space:pre
 linkStyle default stroke:#aaa
 1v1[\"(1v1) <code>source_iter(0..1)</code>"/]:::pullClass
 2v1[\"(2v1) <code>map(SetUnionSingletonSet::new_from)</code>"/]:::pullClass
-3v1[\"(3v1) <code>state::&lt;'static, SetUnionHashSet&lt;u32&gt;&gt;()</code>"/]:::pullClass
+3v1[/"(3v1) <code>state::&lt;'static, SetUnionHashSet&lt;u32&gt;&gt;()</code>"\]:::pushClass
 4v1[\"(4v1) <code>source_iter(1..2)</code>"/]:::pullClass
 5v1[\"(5v1) <code>map(SetUnionSingletonSet::new_from)</code>"/]:::pullClass
-6v1[\"(6v1) <code>state::&lt;'static, SetUnionHashSet&lt;u32&gt;&gt;()</code>"/]:::pullClass
-7v1[\"(7v1) <code>lattice_bimorphism(CartesianProductBimorphism::&lt;HashSet&lt;_&gt;&gt;::default(), lhs, rhs)</code>"/]:::pullClass
-8v1[/"(8v1) <code>for_each(|x| out_send.send(x).unwrap())</code>"\]:::pushClass
-9v1["(9v1) <code>handoff</code>"]:::otherClass
-10v1["(10v1) <code>handoff</code>"]:::otherClass
+6v1[/"(6v1) <code>state::&lt;'static, SetUnionHashSet&lt;u32&gt;&gt;()</code>"\]:::pushClass
+7v1["(7v1) <code>singleton</code>"]:::otherClass
+8v1["(8v1) <code>singleton</code>"]:::otherClass
+9v1[\"(9v1) <code>lattice_bimorphism(CartesianProductBimorphism::&lt;HashSet&lt;_&gt;&gt;::default(), lhs, rhs)</code>"/]:::pullClass
+10v1[/"(10v1) <code>for_each(|x| out_send.send(x).unwrap())</code>"\]:::pushClass
+11v1["(11v1) <code>handoff</code>"]:::otherClass
+12v1["(12v1) <code>handoff</code>"]:::otherClass
 2v1-->3v1
 1v1-->2v1
 5v1-->6v1
 4v1-->5v1
-3v1-->9v1
-6v1-->10v1
-7v1-->8v1
-9v1-->|0|7v1
-10v1-->|1|7v1
-3v1--x7v1; linkStyle 9 stroke:red
-6v1--x7v1; linkStyle 10 stroke:red
+3v1-->|items|11v1
+6v1-->|items|12v1
+3v1-->|state|7v1
+6v1-->|state|8v1
+9v1-->10v1
+11v1-->|0|9v1
+12v1-->|1|9v1
+7v1--x9v1; linkStyle 11 stroke:red
+8v1--x9v1; linkStyle 12 stroke:red
 subgraph sg_1v1 ["sg_1v1"]
-    subgraph sg_1v1_var_lhs ["var <tt>lhs</tt>"]
+    subgraph sg_1v1_var_lhs_op ["var <tt>lhs_op</tt>"]
         1v1
         2v1
         3v1
     end
 end
 subgraph sg_2v1 ["sg_2v1"]
-    subgraph sg_2v1_var_rhs ["var <tt>rhs</tt>"]
+    subgraph sg_2v1_var_rhs_op ["var <tt>rhs_op</tt>"]
         4v1
         5v1
         6v1
@@ -45,7 +49,7 @@ subgraph sg_2v1 ["sg_2v1"]
 end
 subgraph sg_3v1 ["sg_3v1"]
     subgraph sg_3v1_var_my_join ["var <tt>my_join</tt>"]
-        7v1
-        8v1
+        9v1
+        10v1
     end
 end

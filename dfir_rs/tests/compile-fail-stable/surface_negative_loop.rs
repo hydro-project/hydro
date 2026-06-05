@@ -1,1 +1,0 @@
-../compile-fail/surface_negative_loop.rs

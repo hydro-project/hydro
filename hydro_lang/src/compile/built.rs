@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use dfir_lang::graph::{
     DfirGraph, FlatGraphBuilderOutput, eliminate_extra_unions_tees, partition_graph,
 };
-use slotmap::{SecondaryMap, SlotMap, SparseSecondaryMap};
+use slotmap::{SecondaryMap, SlotMap};
 
 use super::compiled::CompiledFlow;
 use super::deploy::{DeployFlow, DeployResult};
@@ -22,6 +22,9 @@ pub struct BuiltFlow<'a> {
     pub(super) ir: Vec<HydroRoot>,
     pub(super) locations: SlotMap<LocationKey, LocationType>,
     pub(super) location_names: SecondaryMap<LocationKey, String>,
+
+    /// Compile-time sidecar directives extracted from the flow state.
+    pub(super) sidecars: Vec<super::builder::Sidecar>,
 
     /// Application name used in telemetry.
     pub(super) flow_name: String,
@@ -159,6 +162,7 @@ impl<'a> BuiltFlow<'a> {
             cluster_max_sizes: SparseSecondaryMap::new(),
             externals_port_registry: Default::default(),
             test_safety_only: false,
+            skip_consistency_assertions: false,
             unit_test_fuzz_iterations: 8192,
             _phantom: PhantomData,
         }
@@ -173,7 +177,7 @@ impl<'a> BuiltFlow<'a> {
             processes,
             clusters,
             externals,
-            sidecars: SparseSecondaryMap::new(),
+            sidecars: self.sidecars,
             flow_name: self.flow_name,
             _phantom: PhantomData,
         }

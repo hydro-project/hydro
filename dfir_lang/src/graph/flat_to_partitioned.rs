@@ -2,12 +2,15 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use itertools::Itertools;
 use proc_macro2::Span;
 use slotmap::{SecondaryMap, SparseSecondaryMap};
 
 use super::meta_graph::DfirGraph;
 use super::ops::{DelayType, FloType};
-use super::{Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId, graph_algorithms};
+use super::{
+    Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId, HandoffKind, graph_algorithms,
+};
 use crate::diagnostic::{Diagnostic, Level};
 use crate::union_find::UnionFind;
 
@@ -61,16 +64,42 @@ fn find_barrier_crossers(partitioned_graph: &DfirGraph) -> BarrierCrossers {
             Some((edge_id, input_barrier))
         })
         .collect();
-    let singleton_barrier_crossers = partitioned_graph
+
+    // Basic singleton barriers: producer → consumer.
+    let mut singleton_barrier_crossers: Vec<(GraphNodeId, GraphNodeId)> = partitioned_graph
         .node_ids()
         .flat_map(|dst| {
             partitioned_graph
                 .node_singleton_references(dst)
                 .iter()
-                .flatten()
-                .map(move |&src_ref| (src_ref, dst))
+                .filter_map(|r| r.node_id)
+                .map(move |src_ref| (src_ref, dst))
         })
         .collect();
+
+    // Access group ordering barriers: for the same singleton target, operators in
+    // lower access groups must run before operators in higher access groups.
+    // Also: ungrouped mutable refs must run after ungrouped shared refs.
+    let refs_by_target = partitioned_graph.node_singleton_reference_groups();
+    // For each singleton target...
+    for (_singleton, groups) in refs_by_target {
+        // For sequential access groups...
+        for (group_a, group_b) in groups.values().tuple_windows() {
+            // Add ordering barriers so every node in the lower group must run before every node in the higher group.
+            for &(node_a, _, _) in group_a {
+                for &(node_b, _, _) in group_b {
+                    // TODO(mingwei): handle with diagnostics.
+                    assert_ne!(
+                        node_a, node_b,
+                        "encounted conflicted or cyclical singleton references\n{:?}\n{:?}",
+                        group_a, group_b,
+                    );
+                    singleton_barrier_crossers.push((node_a, node_b));
+                }
+            }
+        }
+    }
+
     BarrierCrossers {
         edge_barrier_crossers,
         singleton_barrier_crossers,
@@ -222,6 +251,7 @@ fn make_subgraphs(partitioned_graph: &mut DfirGraph, barrier_crossers: &mut Barr
         }
 
         let hoff = GraphNode::Handoff {
+            kind: HandoffKind::Vec,
             src_span: src_node.span(),
             dst_span: dst_node.span(),
         };
@@ -315,12 +345,18 @@ fn order_subgraphs(
     let mut tick_edges: Vec<(GraphEdgeId, DelayType)> = Vec::new();
 
     // Iterate handoffs between subgraphs.
-    for (node_id, node) in partitioned_graph.nodes() {
-        if !matches!(node, GraphNode::Handoff { .. }) {
+    for (hoff_id, hoff) in partitioned_graph.nodes() {
+        if !matches!(hoff, GraphNode::Handoff { .. }) {
             continue;
         }
-        assert_eq!(1, partitioned_graph.node_successors(node_id).len());
-        let (succ_edge, succ) = partitioned_graph.node_successors(node_id).next().unwrap();
+
+        // Handoffs may have 0 successors if only used by reference. Skip ordering those.
+        if partitioned_graph.node_degree_out(hoff_id) == 0 {
+            continue;
+        }
+        assert_eq!(1, partitioned_graph.node_degree_out(hoff_id));
+
+        let (succ_edge, succ) = partitioned_graph.node_successors(hoff_id).next().unwrap();
 
         let succ_edge_delaytype = barrier_crossers
             .edge_barrier_crossers
@@ -332,21 +368,52 @@ fn order_subgraphs(
             continue;
         }
 
-        assert_eq!(1, partitioned_graph.node_predecessors(node_id).len());
-        let (_edge_id, pred) = partitioned_graph.node_predecessors(node_id).next().unwrap();
+        assert_eq!(1, partitioned_graph.node_degree_in(hoff_id));
+        let (_edge_id, pred) = partitioned_graph.node_predecessors(hoff_id).next().unwrap();
 
-        let pred_sg = partitioned_graph.node_subgraph(pred).unwrap();
-        let succ_sg = partitioned_graph.node_subgraph(succ).unwrap();
+        let pred_sg = partitioned_graph
+            .node_subgraph(pred)
+            .expect("Handoff pred not in subgraph, may be a doubled/adjacent handoff");
+        let succ_sg = partitioned_graph
+            .node_subgraph(succ)
+            .expect("Handoff succ not in subgraph, may be a doubled/adjacent handoff");
 
         sg_preds.entry(succ_sg).or_default().push(pred_sg);
     }
     // Include singleton reference edges.
     for &(pred, succ) in barrier_crossers.singleton_barrier_crossers.iter() {
-        assert_ne!(pred, succ, "TODO(mingwei)");
-        let pred_sg = partitioned_graph.node_subgraph(pred).unwrap();
+        assert_ne!(pred, succ);
+        // For handoff nodes (which have no subgraph), use the predecessor's subgraph.
+        let pred_sg = if let Some(sg) = partitioned_graph.node_subgraph(pred) {
+            sg
+        } else {
+            // pred is a handoff node — find its predecessor operator's subgraph.
+            let (_edge, pred_pred) = partitioned_graph
+                .node_predecessors(pred)
+                .next()
+                .expect("handoff must have a predecessor");
+            partitioned_graph.node_subgraph(pred_pred).unwrap()
+        };
         let succ_sg = partitioned_graph.node_subgraph(succ).unwrap();
-        assert_ne!(pred_sg, succ_sg);
+        if pred_sg == succ_sg {
+            continue;
+        }
         sg_preds.entry(succ_sg).or_default().push(pred_sg);
+
+        // For handoff nodes: borrower must run before pipe consumer.
+        // All handoffs should have at most one successor.
+        if matches!(partitioned_graph.node(pred), GraphNode::Handoff { .. }) {
+            assert!(
+                partitioned_graph.node_degree_out(pred) <= 1,
+                "handoff should have at most one successor"
+            );
+            if let Some((_edge, consumer)) = partitioned_graph.node_successors(pred).next() {
+                let consumer_sg = partitioned_graph.node_subgraph(consumer).unwrap();
+                if consumer_sg != succ_sg {
+                    sg_preds.entry(consumer_sg).or_default().push(succ_sg);
+                }
+            }
+        }
     }
 
     // Topological sort — rejects intra-tick cycles.
@@ -373,7 +440,10 @@ fn order_subgraphs(
         let (hoff, _dst) = partitioned_graph.edge(edge_id);
         assert!(matches!(
             partitioned_graph.node(hoff),
-            GraphNode::Handoff { .. }
+            GraphNode::Handoff {
+                kind: HandoffKind::Vec,
+                ..
+            }
         ));
         partitioned_graph.set_handoff_delay_type(hoff, delay_type);
     }

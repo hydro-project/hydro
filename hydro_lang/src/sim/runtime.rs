@@ -67,6 +67,13 @@ pub trait SimHook {
         force_nontrivial: bool,
     ) -> bool;
     fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write);
+
+    /// Whether this hook is ready to participate in a tick. Returns false if the
+    /// hook has never received any input and cannot produce a value (e.g. a
+    /// singleton whose producing tick hasn't run yet).
+    fn is_ready(&self) -> bool {
+        true
+    }
 }
 
 /// A hook that can make inline decisions during the execution of a tick.
@@ -559,6 +566,10 @@ impl<T: Clone> SimHook for SingletonHook<T> {
         !self.input.borrow().is_empty()
     }
 
+    fn is_ready(&self) -> bool {
+        !self.input.borrow().is_empty() || self.last_released.is_some()
+    }
+
     fn autonomous_decision<'a>(
         &mut self,
         driver: &mut Borrowed<'a>,
@@ -621,6 +632,92 @@ impl<T: Clone> SimHook for SingletonHook<T> {
                         .collect::<Vec<_>>()
                 )
             };
+
+            let _ = writeln!(
+                log_writer,
+                "{} {}",
+                "-->".color(colored::Color::Blue),
+                batch_location
+            );
+
+            let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+            let _ = writeln!(
+                log_writer,
+                " {}{}{}",
+                "|".color(colored::Color::Blue),
+                caret_indent,
+                note_str.color(colored::Color::Green)
+            );
+
+            self.output.send(to_release).unwrap();
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}
+
+/// A passthrough singleton hook for fold outputs that are already controlled by a
+/// `TopLevelFoldHook`. Always releases the latest value without any non-deterministic
+/// decisions, since the fold hook already made the only meaningful choice (which subset
+/// of inputs to process).
+pub struct PassthroughSingletonHook<T> {
+    input: Rc<RefCell<VecDeque<T>>>,
+    to_release: Option<T>,
+    output: UnboundedSender<T>,
+    batch_location: HookLocationMeta,
+    format_item_debug: fn(&T) -> Option<String>,
+}
+
+impl<T> PassthroughSingletonHook<T> {
+    pub fn new(
+        input: Rc<RefCell<VecDeque<T>>>,
+        output: UnboundedSender<T>,
+        batch_location: HookLocationMeta,
+        format_item_debug: fn(&T) -> Option<String>,
+    ) -> Self {
+        Self {
+            input,
+            to_release: None,
+            output,
+            batch_location,
+            format_item_debug,
+        }
+    }
+}
+
+impl<T> SimHook for PassthroughSingletonHook<T> {
+    fn current_decision(&self) -> Option<bool> {
+        self.to_release.as_ref().map(|_| true)
+    }
+
+    fn can_make_nontrivial_decision(&self) -> bool {
+        !self.input.borrow().is_empty()
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        _driver: &mut Borrowed<'a>,
+        _force_nontrivial: bool,
+    ) -> bool {
+        let mut current_input = self.input.borrow_mut();
+        // Always take the last (most recent) value, discard intermediates.
+        if let Some(item) = current_input.pop_back() {
+            current_input.clear();
+            self.to_release = Some(item);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+        if let Some(to_release) = self.to_release.take() {
+            let (batch_location, line, caret_indent) = self.batch_location;
+            let note_str = format!(
+                "^ releasing snapshot: {:?}",
+                ManualDebug(&to_release, self.format_item_debug)
+            );
 
             let _ = writeln!(
                 log_writer,
@@ -1345,6 +1442,113 @@ impl<T> SimHook for TopLevelStreamOrderHook<T> {
             for item in to_release {
                 self.output.send(item).unwrap();
             }
+        } else {
+            panic!("No decision to release");
+        }
+    }
+}
+
+/// Hook for top-level folds. Selects a non-empty subset of buffered inputs to release,
+/// always permuting them to explore all orderings. Unselected elements remain
+/// in the buffer for future releases (modeling delayed/lossy inputs).
+pub struct TopLevelFoldHook<T> {
+    pub input: Rc<RefCell<VecDeque<T>>>,
+    pub to_release: Option<Vec<T>>,
+    pub output: UnboundedSender<Vec<T>>,
+    pub location: HookLocationMeta,
+    pub format_item_debug: fn(&T) -> Option<String>,
+}
+
+impl<T> SimHook for TopLevelFoldHook<T> {
+    fn current_decision(&self) -> Option<bool> {
+        self.to_release.as_ref().map(|v| !v.is_empty())
+    }
+
+    fn can_make_nontrivial_decision(&self) -> bool {
+        !self.input.borrow().is_empty()
+    }
+
+    fn autonomous_decision<'a>(
+        &mut self,
+        driver: &mut Borrowed<'a>,
+        force_nontrivial: bool,
+    ) -> bool {
+        let mut current_input = self.input.borrow_mut();
+
+        if current_input.is_empty() {
+            if force_nontrivial {
+                panic!("Cannot make nontrivial decision when there is no input");
+            }
+            self.to_release = Some(vec![]);
+            return false;
+        }
+
+        // Select a non-empty subset: for each element, decide include/exclude.
+        // Only force inclusion on the last element if nothing was selected yet.
+        let mut selected = Vec::new();
+        let mut remaining = VecDeque::new();
+
+        let len = current_input.len();
+        for (i, item) in current_input.drain(..).enumerate() {
+            let is_last = i == len - 1;
+            let must_include = is_last && selected.is_empty();
+            if must_include || produce().generate(driver).unwrap() {
+                selected.push(item);
+            } else {
+                remaining.push_back(item);
+            }
+        }
+
+        // Put unselected elements back
+        *current_input = remaining;
+
+        // Always permute selected elements (Fisher-Yates) to explore all orderings.
+        // Even if commutativity is claimed via manual_proof!, the simulator is
+        // conservative and does not trust it — it still explores permutations.
+        {
+            let slen = selected.len();
+            for i in (1..slen).rev() {
+                let j = (0..=i).generate(driver).unwrap();
+                selected.swap(i, j);
+            }
+        }
+
+        self.to_release = Some(selected);
+        true
+    }
+
+    fn release_decision(&mut self, log_writer: &mut dyn std::fmt::Write) {
+        if let Some(to_release) = self.to_release.take() {
+            if !to_release.is_empty() {
+                let (batch_location, line, caret_indent) = self.location;
+                let note_str = format!(
+                    "^ fold input batch (permuted): {:?}",
+                    TruncatedVecDebug(
+                        RefCell::new(Some(to_release.iter())),
+                        8,
+                        self.format_item_debug
+                    )
+                );
+
+                let _ = writeln!(
+                    log_writer,
+                    "\n{} {}",
+                    "-->".color(colored::Color::Blue),
+                    batch_location
+                );
+
+                let _ = writeln!(log_writer, " {}{}", "|".color(colored::Color::Blue), line);
+
+                let _ = writeln!(
+                    log_writer,
+                    " {}{}{}",
+                    "|".color(colored::Color::Blue),
+                    caret_indent,
+                    note_str.color(colored::Color::Green)
+                );
+            }
+
+            self.output.send(to_release).unwrap();
         } else {
             panic!("No decision to release");
         }

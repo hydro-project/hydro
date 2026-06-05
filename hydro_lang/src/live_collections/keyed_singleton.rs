@@ -25,7 +25,7 @@ use crate::live_collections::stream::{Ordering, Retries};
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::DeferTick;
-use crate::location::{Atomic, Location, NoTick, Tick, check_matching_location};
+use crate::location::{Atomic, Location, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 use crate::properties::manual_proof;
@@ -183,7 +183,7 @@ impl<'a, K: Clone, V: Clone, Loc: Location<'a>, Bound: KeyedSingletonBound> Clon
 impl<'a, K, V, L, B: KeyedSingletonBound> CycleCollection<'a, ForwardRef>
     for KeyedSingleton<K, V, L, B>
 where
-    L: Location<'a> + NoTick,
+    L: Location<'a>,
 {
     type Location = L;
 
@@ -229,7 +229,7 @@ where
 impl<'a, K, V, L, B: KeyedSingletonBound> ReceiverComplete<'a, ForwardRef>
     for KeyedSingleton<K, V, L, B>
 where
-    L: Location<'a> + NoTick,
+    L: Location<'a>,
 {
     fn complete(self, cycle_id: CycleId, expected_location: LocationId) {
         assert_eq!(
@@ -286,6 +286,68 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
     /// Returns the [`Location`] where this keyed singleton is being materialized.
     pub fn location(&self) -> &L {
         &self.location
+    }
+
+    /// Weakens the consistency of this live collection to not guarantee any consistency across
+    /// cluster members (if this collection is on a cluster).
+    pub fn weaken_consistency(self) -> KeyedSingleton<K, V, L::DropConsistency, B>
+    where
+        L: Location<'a>,
+    {
+        if L::consistency()
+            .is_none_or(|c| c == crate::location::dynamic::ClusterConsistency::NoConsistency)
+        {
+            // already no consistency
+            KeyedSingleton::new(
+                self.location.drop_consistency(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            KeyedSingleton::new(
+                self.location.drop_consistency(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: self
+                        .location
+                        .drop_consistency()
+                        .new_node_metadata(
+                            KeyedSingleton::<K, V, L::DropConsistency, B>::collection_kind(),
+                        ),
+                },
+            )
+        }
+    }
+
+    /// Casts this live collection to have the consistency guarantees specified in the given
+    /// location type parameter. The developer must ensure that the strengthened consistency
+    /// is actually guaranteed, via the proof field (see [`crate::prelude::manual_proof`]).
+    pub fn assert_has_consistency_of<L2: Location<'a, DropConsistency = L::DropConsistency>>(
+        self,
+        _proof: impl crate::properties::ConsistencyProof,
+    ) -> KeyedSingleton<K, V, L2, B>
+    where
+        L: Location<'a>,
+    {
+        if L::consistency() == L2::consistency() {
+            // already consistent
+            KeyedSingleton::new(
+                self.location.with_consistency_of(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            KeyedSingleton::new(
+                self.location.with_consistency_of(),
+                HydroNode::AssertIsConsistent {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    trusted: false,
+                    metadata: self
+                        .location
+                        .clone()
+                        .with_consistency_of::<L2>()
+                        .new_node_metadata(KeyedSingleton::<K, V, L2, B>::collection_kind()),
+                },
+            )
+        }
     }
 }
 
@@ -503,7 +565,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
                 key_count_inside_tick(me.snapshot(&tick, nondet!(/** eventually stabilizes */)))
                     .latest();
             Singleton::new(
-                out.location.clone(),
+                self.location.clone(),
                 out.ir_node.replace(HydroNode::Placeholder),
             )
         } else {
@@ -578,7 +640,7 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             )
             .latest();
             Singleton::new(
-                out.location.clone(),
+                self.location.clone(),
                 out.ir_node.replace(HydroNode::Placeholder),
             )
         } else {
@@ -1251,7 +1313,7 @@ where
 
 impl<'a, K, V, L, B: KeyedSingletonBound> KeyedSingleton<K, V, Atomic<L>, B>
 where
-    L: Location<'a> + NoTick,
+    L: Location<'a>,
 {
     /// Yields the elements of this keyed singleton back into a top-level, asynchronous execution context.
     /// See [`KeyedSingleton::atomic`] for more details.
@@ -1334,14 +1396,14 @@ where
     /// # Non-Determinism
     /// Because this picks a snapshot of each entry, which is continuously changing, each output has a
     /// non-deterministic set of entries since each snapshot can be at an arbitrary point in time.
-    pub fn snapshot(
+    pub fn snapshot<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
-        tick: &Tick<L>,
+        tick: &Tick<L2>,
         _nondet: NonDet,
-    ) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
+    ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
         assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
         KeyedSingleton::new(
-            tick.clone(),
+            tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: tick
@@ -1353,7 +1415,7 @@ where
 
 impl<'a, K, V, L, B: KeyedSingletonBound<ValueBound = Unbounded>> KeyedSingleton<K, V, Atomic<L>, B>
 where
-    L: Location<'a> + NoTick,
+    L: Location<'a>,
 {
     /// Returns a keyed singleton with a snapshot of each key-value entry, consistent with the
     /// state of the keyed singleton being atomically processed.
@@ -1361,13 +1423,13 @@ where
     /// # Non-Determinism
     /// Because this picks a snapshot of each entry, which is continuously changing, each output has a
     /// non-deterministic set of entries since each snapshot can be at an arbitrary point in time.
-    pub fn snapshot_atomic(
+    pub fn snapshot_atomic<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
-        tick: &Tick<L>,
+        tick: &Tick<L2>,
         _nondet: NonDet,
-    ) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
+    ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
         KeyedSingleton::new(
-            tick.clone(),
+            tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: tick
@@ -1509,13 +1571,14 @@ where
     /// # Non-Determinism
     /// Because this picks a batch of asynchronously added entries, each output keyed singleton
     /// has a non-deterministic set of key-value pairs.
-    pub fn batch(self, tick: &Tick<L>, _nondet: NonDet) -> KeyedSingleton<K, V, Tick<L>, Bounded>
-    where
-        L: NoTick,
-    {
+    pub fn batch<L2: Location<'a, DropConsistency = L::DropConsistency>>(
+        self,
+        tick: &Tick<L2>,
+        _nondet: NonDet,
+    ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
         assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
         KeyedSingleton::new(
-            tick.clone(),
+            tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: tick
@@ -1527,7 +1590,7 @@ where
 
 impl<'a, K, V, L, B: KeyedSingletonBound<ValueBound = Bounded>> KeyedSingleton<K, V, Atomic<L>, B>
 where
-    L: Location<'a> + NoTick,
+    L: Location<'a>,
 {
     /// Returns a keyed singleton with entries consisting of _new_ key-value pairs that are being
     /// atomically processed.
@@ -1538,14 +1601,14 @@ where
     /// # Non-Determinism
     /// Because this picks a batch of asynchronously added entries, each output keyed singleton
     /// has a non-deterministic set of key-value pairs.
-    pub fn batch_atomic(
+    pub fn batch_atomic<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
-        tick: &Tick<L>,
+        tick: &Tick<L2>,
         nondet: NonDet,
-    ) -> KeyedSingleton<K, V, Tick<L>, Bounded> {
+    ) -> KeyedSingleton<K, V, Tick<L::DropConsistency>, Bounded> {
         let _ = nondet;
         KeyedSingleton::new(
-            tick.clone(),
+            tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: tick

@@ -52,6 +52,7 @@ docker_deploy = [
     "dep:bollard",
     "dep:http-body-util",
     "dep:nanoid",
+    "dep:regex",
     "dep:serde_json",
     "dep:tar",
 ]
@@ -190,7 +191,6 @@ hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.0" }
 
 [dev-dependencies]
 ctor = "0.2"
-hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.0", features = ["insta"] }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.0", features = ["insta", "trybuild"] }
 tokio-test = "0.4.4"
-trybuild = "1"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }

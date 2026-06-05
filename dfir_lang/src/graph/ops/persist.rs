@@ -46,20 +46,17 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
     persistence_args: RANGE_1,
     type_args: &(0..=1),
     is_external_input: false,
-    has_singleton_output: true,
     flo_type: None,
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
                    op_span,
                    ident,
                    is_pull,
                    inputs,
                    outputs,
-                   singleton_output_ident,
                    op_name,
                    work_fn_async,
                    op_inst:
@@ -87,7 +84,7 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
             .map(quote::ToTokens::to_token_stream)
             .unwrap_or(quote_spanned!(op_span=> _));
 
-        let persistdata_ident = singleton_output_ident;
+        let persistdata_ident = wc.make_ident("persistdata");
         let vec_ident = wc.make_ident("persistvec");
         let write_prologue = quote_spanned! {op_span=>
             let mut #persistdata_ident = ::std::vec::Vec::<#generic_type>::new();
@@ -99,18 +96,12 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                 let #vec_ident = &mut #persistdata_ident;
 
                 let #ident = {
-                    let replay_idx = if #context.is_first_run_this_tick() {
-                        0
-                    } else {
-                        #vec_ident.len()
-                    };
-
                     let fut = #root::dfir_pipes::pull::Pull::for_each(#input, |item| {
                         #vec_ident.push(item);
                     });
                     let () = #work_fn_async(fut).await;
 
-                    let iter = #vec_ident[replay_idx..].iter().cloned();
+                    let iter = #vec_ident.iter().cloned();
                     #root::dfir_pipes::pull::iter(iter)
                 };
             }
@@ -127,7 +118,7 @@ pub const PERSIST: OperatorConstraints = OperatorConstraints {
                     {
                         #root::dfir_pipes::push::persist_state(vec, is_new_tick, output)
                     }
-                    constrain_types(&mut *#vec_ident, #output, #context.is_first_run_this_tick())
+                    constrain_types(&mut *#vec_ident, #output, true)
                 };
             }
         };

@@ -1,4 +1,5 @@
 //! GHT from the Wang/Willsey/Suciu Freejoin work
+use std::boxed::Box;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -162,9 +163,7 @@ where
             clippy::disallowed_methods,
             reason = "nondeterministic iteration order, TODO(mingwei)"
         )]
-        self.children
-            .iter()
-            .flat_map(|(_k, vs)| vs.recursive_iter())
+        self.children.values().flat_map(|vs| vs.recursive_iter())
     }
 
     fn find_containing_leaf(

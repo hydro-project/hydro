@@ -1,5 +1,6 @@
 //! Module containing the [`UnionFind`] lattice and aliases for different datastructures.
 
+use std::boxed::Box;
 use std::cell::Cell;
 use std::cmp::Ordering::{self, *};
 use std::collections::{BTreeMap, HashMap};
@@ -238,7 +239,7 @@ pub type UnionFindHashMap<K> = UnionFind<HashMap<K, Cell<K>>>;
 /// [`std::collections::BTreeMap`]-backed [`UnionFind`] lattice.
 pub type UnionFindBTreeMap<K> = UnionFind<BTreeMap<K, Cell<K>>>;
 
-/// [`Vec`]-backed [`UnionFind`] lattice.
+/// [`Vec`](alloc::vec::Vec)-backed [`UnionFind`] lattice.
 pub type UnionFindVec<K> = UnionFind<VecMap<K, Cell<K>>>;
 
 /// Array-backed [`UnionFind`] lattice.
@@ -252,6 +253,8 @@ pub type UnionFindOptionMap<K> = UnionFind<OptionMap<K, Cell<K>>>;
 
 #[cfg(test)]
 mod test {
+    use std::println;
+
     use super::*;
     use crate::test::{check_all, check_atomize_each};
 

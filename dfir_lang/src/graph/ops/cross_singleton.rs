@@ -2,8 +2,8 @@ use quote::{ToTokens, quote_spanned};
 use syn::parse_quote;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, RANGE_0, RANGE_1,
-    WriteContextArgs,
+    DelayType, OpInstGenerics, OperatorCategory, OperatorConstraints, OperatorInstance,
+    OperatorWriteOutput, Persistence, RANGE_0, RANGE_1, WriteContextArgs,
 };
 use crate::graph::PortIndexValue;
 
@@ -30,7 +30,7 @@ use crate::graph::PortIndexValue;
 pub const CROSS_SINGLETON: OperatorConstraints = OperatorConstraints {
     name: "cross_singleton",
     categories: &[OperatorCategory::MultiIn],
-    persistence_args: RANGE_0,
+    persistence_args: &(0..=1),
     type_args: RANGE_0,
     hard_range_inn: &(2..=2),
     soft_range_inn: &(2..=2),
@@ -38,7 +38,6 @@ pub const CROSS_SINGLETON: OperatorConstraints = OperatorConstraints {
     soft_range_out: RANGE_1,
     num_args: 0,
     is_external_input: false,
-    has_singleton_output: false,
     flo_type: None,
     ports_inn: Some(|| super::PortListSpec::Fixed(parse_quote! { input, single })),
     ports_out: None,
@@ -54,10 +53,21 @@ pub const CROSS_SINGLETON: OperatorConstraints = OperatorConstraints {
                    op_span,
                    inputs,
                    is_pull,
+                   op_inst:
+                       OperatorInstance {
+                           generics: OpInstGenerics { persistence_args, .. },
+                           ..
+                       },
                    ..
                },
                _diagnostics| {
         assert!(is_pull);
+
+        let persistence = match persistence_args[..] {
+            [] => Persistence::Tick,
+            [p] => p,
+            _ => panic!(),
+        };
 
         let item_stream = &inputs[0];
         let singleton_stream = &inputs[1];
@@ -67,8 +77,11 @@ pub const CROSS_SINGLETON: OperatorConstraints = OperatorConstraints {
             let mut #singleton_state_ident: ::std::option::Option<_> = ::std::option::Option::None;
         };
 
-        let write_tick_end = quote_spanned! {op_span=>
-            #singleton_state_ident = ::std::option::Option::None;
+        let write_tick_end = match persistence {
+            Persistence::Static => Default::default(),
+            _ => quote_spanned! {op_span=>
+                #singleton_state_ident = ::std::option::Option::None;
+            },
         };
 
         let write_iterator = quote_spanned! {op_span=>

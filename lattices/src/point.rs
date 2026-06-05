@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use core::marker::PhantomData;
 
 use crate::{DeepReveal, IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 
@@ -69,11 +69,11 @@ impl<T, Provenance> PartialOrd<Point<T, Provenance>> for Point<T, Provenance>
 where
     T: PartialEq,
 {
-    fn partial_cmp(&self, other: &Point<T, Provenance>) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Point<T, Provenance>) -> Option<core::cmp::Ordering> {
         if self.val != other.val {
             panic!("The `Point` lattice does not have a partial order between inequal elements.");
         }
-        Some(std::cmp::Ordering::Equal)
+        Some(core::cmp::Ordering::Equal)
     }
 }
 impl<T, Provenance> LatticeOrd<Point<T, Provenance>> for Point<T, Provenance> where

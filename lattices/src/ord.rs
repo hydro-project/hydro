@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use core::cmp::Ordering;
 
 use crate::{DeepReveal, IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 
@@ -319,15 +319,23 @@ mod test {
         check_all(items);
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn consistency_max_char() {
-        let items: Vec<_> = "\x00\u{10FFFF}✨🤦‍♀️踊るx".chars().map(Max::new).collect();
+        let items = "\x00\u{10FFFF}✨🤦‍♀️踊るx"
+            .chars()
+            .map(Max::new)
+            .collect::<alloc::vec::Vec<_>>();
         check_all(&items);
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn consistency_min_char() {
-        let items: Vec<_> = "\x00\u{10FFFF}✨🤦‍♀️踊るx".chars().map(Min::new).collect();
+        let items = "\x00\u{10FFFF}✨🤦‍♀️踊るx"
+            .chars()
+            .map(Min::new)
+            .collect::<alloc::vec::Vec<_>>();
         check_all(&items);
     }
 

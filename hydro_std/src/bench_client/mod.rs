@@ -62,7 +62,7 @@ pub fn bench_client<'a, Client, Input, Output>(
 ) -> KeyedStream<u32, (Output, Duration), Cluster<'a, Client>, Unbounded, NoOrder>
 where
     Input: Clone,
-    Output: Clone,
+    Output: 'a + Clone,
 {
     let new_payload_ids = sliced! {
         let num_clients_per_node = use(num_clients_per_node, nondet!(/** This is a constant */));
@@ -139,10 +139,7 @@ pub fn compute_throughput_latency<'a, Client: 'a>(
     interval_millis: u64,
     nondet_measurement_window: NonDet,
 ) -> BenchResult<Cluster<'a, Client>> {
-    let punctuation = clients.source_interval(
-        q!(Duration::from_millis(interval_millis)),
-        nondet_measurement_window,
-    );
+    let punctuation = clients.source_interval(q!(Duration::from_millis(interval_millis)));
 
     let (interval_throughput, interval_latency) = sliced! {
         let punctuation = use(punctuation, nondet_measurement_window);
@@ -207,10 +204,7 @@ pub fn aggregate_bench_results<'a, Client: 'a, Aggregator>(
     output_interval_millis: u64,
 ) -> BenchResult<Process<'a, Aggregator>> {
     let nondet_sampling = nondet!(/** non-deterministic samping only affects logging */);
-    let punctuation = aggregator.source_interval(
-        q!(Duration::from_millis(output_interval_millis)),
-        nondet_sampling,
-    );
+    let punctuation = aggregator.source_interval(q!(Duration::from_millis(output_interval_millis)));
 
     let a_throughputs = results
         .throughput

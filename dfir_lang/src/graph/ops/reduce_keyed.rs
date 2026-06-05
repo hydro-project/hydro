@@ -65,17 +65,14 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
     persistence_args: &(0..=1),
     type_args: &(0..=2),
     is_external_input: false,
-    has_singleton_output: true,
     flo_type: None,
     ports_inn: None,
     ports_out: None,
     input_delaytype_fn: |_| Some(DelayType::Stratum),
     write_fn: |wc @ &WriteContextArgs {
-                   context,
                    op_span,
                    ident,
                    inputs,
-                   singleton_output_ident,
                    is_pull,
                    work_fn_async,
                    root,
@@ -107,6 +104,7 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
         let input = &inputs[0];
         let aggfn = &arguments[0];
 
+        let singleton_output_ident = wc.make_ident("singleton_output");
         let hashtable_ident = wc.make_ident("hashtable");
 
         let write_prologue = quote_spanned! {op_span=>
@@ -135,13 +133,8 @@ pub const REDUCE_KEYED: OperatorConstraints = OperatorConstraints {
                     )
                 },
                 Persistence::Static => quote_spanned! {op_span=>
-                    // Play everything but only on the first run of this tick/stratum.
-                    // (We know we won't have any more inputs, so it is fine to only play once.
-                    // Because of the `DelayType::Stratum` or `DelayType::MonotoneAccum`).
-                    #context.is_first_run_this_tick()
-                        .then_some(#hashtable_ident.iter())
-                        .into_iter()
-                        .flatten()
+                    // Play everything (each subgraph runs exactly once per tick).
+                    #hashtable_ident.iter()
                         .map(
                             #[allow(suspicious_double_ref_op, clippy::clone_on_copy)]
                             |(k, v)| (

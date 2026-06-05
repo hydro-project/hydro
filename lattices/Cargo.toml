@@ -12,21 +12,23 @@ license = { workspace = true }
 workspace = true
 
 [features]
-default = []
+default = ["std"]
+std = ["alloc", "serde?/std", "variadics/std", "roaring/std", "dep:fst", "cc-traits/std"]
+alloc = ["serde?/alloc", "variadics/alloc", "cc-traits/alloc"]
 serde = ["dep:serde"]
 
 [package.metadata.docs.rs]
 all-features = true
 
 [dependencies]
-cc-traits = "2.0.0"
-sealed = "0.6.0"
-serde = { version = "1.0.197", features = ["derive"], optional = true }
+cc-traits = { version = "2.0.0", default-features = false }
+fst = { version = "0.4.0", optional = true }
 lattices_macro = { path = "../lattices_macro", version = "^0.6.0" }
-variadics = { path = "../variadics", version = "^0.1.0" }
+roaring = { version = "0.11.0", default-features = false }
+sealed = "0.6.0"
+serde = { version = "1.0.197", features = ["derive"], optional = true, default-features = false }
+variadics = { path = "../variadics", version = "^0.1.0", default-features = false }
 variadics_macro = { path = "../variadics_macro", version = "^0.7.0" }
-roaring = "0.10"
-fst = "0.4"
 
 # coax cargo-smart-release into publishing this crate.
 # https://github.com/hydro-project/hydro/blob/main/RELEASING.md#addendum-adding-new-crates
@@ -34,7 +36,7 @@ fst = "0.4"
 hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.0", optional = true }
 
 [dev-dependencies]
-trybuild = "1.0.0"
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.0", features = ["trybuild"] }
 
 [build-dependencies]
 hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.0" }

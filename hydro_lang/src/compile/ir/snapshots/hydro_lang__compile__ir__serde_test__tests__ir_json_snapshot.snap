@@ -12,7 +12,10 @@ expression: json
             "$shared": 0,
             "node": {
               "Map": {
-                "f": "q!(| x | x * 2)",
+                "f": {
+                  "expr": "q!(| x | x * 2)",
+                  "singleton_refs": []
+                },
                 "input": {
                   "Source": {
                     "source": {
@@ -33,6 +36,7 @@ expression: json
                           "element_type": "i32"
                         }
                       },
+                      "consistency": null,
                       "cardinality": null,
                       "tag": null,
                       "op": {
@@ -59,6 +63,7 @@ expression: json
                       "element_type": "i32"
                     }
                   },
+                  "consistency": null,
                   "cardinality": null,
                   "tag": null,
                   "op": {
@@ -86,6 +91,7 @@ expression: json
                 "element_type": "i32"
               }
             },
+            "consistency": null,
             "cardinality": null,
             "tag": null,
             "op": {
@@ -128,6 +134,7 @@ expression: json
                 "element_type": "i32"
               }
             },
+            "consistency": null,
             "cardinality": null,
             "tag": null,
             "op": {

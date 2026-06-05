@@ -1,1 +1,0 @@
-../compile-fail/surface_syntax_paren_arrow.rs

@@ -1,8 +1,3 @@
-#![cfg_attr(
-    nightly,
-    feature(proc_macro_diagnostic, proc_macro_span, proc_macro_def_site)
-)]
-
 use dfir_lang::diagnostic::Level;
 use dfir_lang::graph::{
     BuildDfirCodeOutput, FlatGraphBuilder, FlatGraphBuilderOutput, build_dfir_code, partition_graph,
@@ -418,7 +413,7 @@ pub fn derive_demux_enum(item: proc_macro::TokenStream) -> proc_macro::TokenStre
         })
     };
     let push_poll_ready_body = (push_poll_unwrap_context)(format_ident!("poll_ready"));
-    let push_poll_flush_body = (push_poll_unwrap_context)(format_ident!("poll_flush"));
+    let push_poll_finalize_body = (push_poll_unwrap_context)(format_ident!("poll_finalize"));
 
     let variant_pats_push_send =
         variants
@@ -535,11 +530,11 @@ pub fn derive_demux_enum(item: proc_macro::TokenStream) -> proc_macro::TokenStre
                 }
             }
 
-            fn poll_flush(
+            fn poll_finalize(
                 ( #( #variant_localvars_push, )* ): &mut #variant_generics_pinned_push_all,
                 __ctx: &mut Self::Ctx<'_>,
             ) -> #root::dfir_pipes::push::PushStep<Self::CanPend> {
-                #push_poll_flush_body
+                #push_poll_finalize_body
                 #root::dfir_pipes::push::PushStep::Done
             }
 

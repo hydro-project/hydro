@@ -58,7 +58,7 @@ pub mod prelude {
     pub use crate::location::{Cluster, External, Location as _, Process, Tick};
     pub use crate::networking::TCP;
     pub use crate::nondet::{NonDet, nondet};
-    pub use crate::properties::{ManualProof, manual_proof};
+    pub use crate::properties::{ConsistencyProof, ManualProof, manual_proof};
 
     /// A macro to set up a Hydro crate.
     #[macro_export]
@@ -107,6 +107,8 @@ pub mod sim;
 pub mod forward_handle;
 
 pub mod compile;
+
+pub mod singleton_ref;
 
 mod manual_expr;
 

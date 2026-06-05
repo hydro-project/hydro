@@ -30,7 +30,7 @@ use crate::live_collections::stream::{
 #[cfg(stageleft_runtime)]
 use crate::location::dynamic::{DynLocation, LocationId};
 use crate::location::tick::DeferTick;
-use crate::location::{Atomic, Location, NoTick, Tick, check_matching_location};
+use crate::location::{Atomic, Location, Tick, check_matching_location};
 use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 use crate::properties::{
@@ -174,7 +174,7 @@ where
 impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> CycleCollection<'a, ForwardRef>
     for KeyedStream<K, V, L, B, O, R>
 where
-    L: Location<'a> + NoTick,
+    L: Location<'a>,
 {
     type Location = L;
 
@@ -195,7 +195,7 @@ where
 impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> ReceiverComplete<'a, ForwardRef>
     for KeyedStream<K, V, L, B, O, R>
 where
-    L: Location<'a> + NoTick,
+    L: Location<'a>,
 {
     fn complete(self, cycle_id: CycleId, expected_location: LocationId) {
         assert_eq!(
@@ -288,6 +288,97 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         &self.location
     }
 
+    /// Weakens the consistency of this live collection to not guarantee any consistency across
+    /// cluster members (if this collection is on a cluster).
+    pub fn weaken_consistency(self) -> KeyedStream<K, V, L::DropConsistency, B, O, R>
+    where
+        L: Location<'a>,
+    {
+        if L::consistency()
+            .is_none_or(|c| c == crate::location::dynamic::ClusterConsistency::NoConsistency)
+        {
+            // already no consistency
+            KeyedStream::new(
+                self.location.drop_consistency(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            KeyedStream::new(
+                self.location.drop_consistency(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: self
+                        .location
+                        .drop_consistency()
+                        .new_node_metadata(
+                            KeyedStream::<K, V, L::DropConsistency, B>::collection_kind(),
+                        ),
+                },
+            )
+        }
+    }
+
+    /// Casts this live collection to have the consistency guarantees specified in the given
+    /// location type parameter. The developer must ensure that the strengthened consistency
+    /// is actually guaranteed, via the proof field (see [`crate::prelude::manual_proof`]).
+    pub fn assert_has_consistency_of<L2: Location<'a, DropConsistency = L::DropConsistency>>(
+        self,
+        _proof: impl crate::properties::ConsistencyProof,
+    ) -> KeyedStream<K, V, L2, B, O, R>
+    where
+        L: Location<'a>,
+    {
+        if L::consistency() == L2::consistency() {
+            KeyedStream::new(
+                self.location.with_consistency_of(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            KeyedStream::new(
+                self.location.with_consistency_of(),
+                HydroNode::AssertIsConsistent {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    trusted: false,
+                    metadata: self
+                        .location
+                        .clone()
+                        .with_consistency_of::<L2>()
+                        .new_node_metadata(KeyedStream::<K, V, L2, B, O, R>::collection_kind()),
+                },
+            )
+        }
+    }
+
+    pub(crate) fn assert_has_consistency_of_trusted<
+        L2: Location<'a, DropConsistency = L::DropConsistency>,
+    >(
+        self,
+        _proof: impl crate::properties::ConsistencyProof,
+    ) -> KeyedStream<K, V, L2, B, O, R>
+    where
+        L: Location<'a>,
+    {
+        if L::consistency() == L2::consistency() {
+            KeyedStream::new(
+                self.location.with_consistency_of(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else {
+            KeyedStream::new(
+                self.location.with_consistency_of(),
+                HydroNode::AssertIsConsistent {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    trusted: true,
+                    metadata: self
+                        .location
+                        .clone()
+                        .with_consistency_of::<L2>()
+                        .new_node_metadata(KeyedStream::<K, V, L2, B, O, R>::collection_kind()),
+                },
+            )
+        }
+    }
+
     /// Turns this [`KeyedStream`] into a [`Stream`] preserving ordering, under the invariant
     /// assumption that there is at most one key. If this invariant is broken, the program
     /// may exhibit undefined behavior, so uses must be carefully vetted.
@@ -346,31 +437,31 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided ordering guarantee will propagate into the guarantees
     /// for the rest of the program.
-    pub fn assume_ordering<O2: Ordering>(self, _nondet: NonDet) -> KeyedStream<K, V, L, B, O2, R> {
+    pub fn assume_ordering<O2: Ordering>(
+        self,
+        _nondet: NonDet,
+    ) -> KeyedStream<K, V, L::DropConsistency, B, O2, R> {
         if O::ORDERING_KIND == O2::ORDERING_KIND {
-            KeyedStream::new(
-                self.location.clone(),
-                self.ir_node.replace(HydroNode::Placeholder),
-            )
+            self.use_ordering_type().weaken_consistency()
         } else if O2::ORDERING_KIND == StreamOrder::NoOrder {
             // We can always weaken the ordering guarantee
+            let target_location = self.location.drop_consistency();
             KeyedStream::new(
-                self.location.clone(),
+                target_location.clone(),
                 HydroNode::Cast {
                     inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    metadata: self
-                        .location
+                    metadata: target_location
                         .new_node_metadata(KeyedStream::<K, V, L, B, O2, R>::collection_kind()),
                 },
             )
         } else {
+            let target_location = self.location.drop_consistency();
             KeyedStream::new(
-                self.location.clone(),
+                target_location.clone(),
                 HydroNode::ObserveNonDet {
                     inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                     trusted: false,
-                    metadata: self
-                        .location
+                    metadata: target_location
                         .new_node_metadata(KeyedStream::<K, V, L, B, O2, R>::collection_kind()),
                 },
             )
@@ -422,7 +513,16 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// enforcing that `O2` is weaker than the input ordering guarantee.
     pub fn weaken_ordering<O2: WeakerOrderingThan<O>>(self) -> KeyedStream<K, V, L, B, O2, R> {
         let nondet = nondet!(/** this is a weaker ordering guarantee, so it is safe to assume */);
-        self.assume_ordering::<O2>(nondet)
+        self.assume_ordering_trusted::<O2>(nondet)
+    }
+
+    /// Strengthens the ordering guarantee to `TotalOrder`, given that `O: IsOrdered`, which
+    /// implies that `O == TotalOrder`.
+    pub fn make_totally_ordered(self) -> KeyedStream<K, V, L, B, TotalOrder, R>
+    where
+        O: IsOrdered,
+    {
+        self.assume_ordering_trusted(nondet!(/** no-op */))
     }
 
     /// Explicitly "casts" the keyed stream to a type with a different retries
@@ -433,7 +533,46 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// This function is used as an escape hatch, and any mistakes in the
     /// provided retries guarantee will propagate into the guarantees
     /// for the rest of the program.
-    pub fn assume_retries<R2: Retries>(self, _nondet: NonDet) -> KeyedStream<K, V, L, B, O, R2> {
+    pub fn assume_retries<R2: Retries>(
+        self,
+        _nondet: NonDet,
+    ) -> KeyedStream<K, V, L::DropConsistency, B, O, R2> {
+        if R::RETRIES_KIND == R2::RETRIES_KIND {
+            KeyedStream::new(
+                self.location.drop_consistency(),
+                self.ir_node.replace(HydroNode::Placeholder),
+            )
+        } else if R2::RETRIES_KIND == StreamRetry::AtLeastOnce {
+            // We can always weaken the retries guarantee
+            let target_location = self.location.drop_consistency();
+            KeyedStream::new(
+                target_location.clone(),
+                HydroNode::Cast {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    metadata: target_location
+                        .new_node_metadata(KeyedStream::<K, V, L, B, O, R2>::collection_kind()),
+                },
+            )
+        } else {
+            let target_location = self.location.drop_consistency();
+            KeyedStream::new(
+                target_location.clone(),
+                HydroNode::ObserveNonDet {
+                    inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
+                    trusted: false,
+                    metadata: target_location
+                        .new_node_metadata(KeyedStream::<K, V, L, B, O, R2>::collection_kind()),
+                },
+            )
+        }
+    }
+
+    // only for internal APIs that have been carefully vetted to ensure that the non-determinism
+    // is not observable
+    fn assume_retries_trusted<R2: Retries>(
+        self,
+        _nondet: NonDet,
+    ) -> KeyedStream<K, V, L, B, O, R2> {
         if R::RETRIES_KIND == R2::RETRIES_KIND {
             KeyedStream::new(
                 self.location.clone(),
@@ -455,7 +594,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                 self.location.clone(),
                 HydroNode::ObserveNonDet {
                     inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
-                    trusted: false,
+                    trusted: true,
                     metadata: self
                         .location
                         .new_node_metadata(KeyedStream::<K, V, L, B, O, R2>::collection_kind()),
@@ -475,16 +614,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// enforcing that `R2` is weaker than the input retries guarantee.
     pub fn weaken_retries<R2: WeakerRetryThan<R>>(self) -> KeyedStream<K, V, L, B, O, R2> {
         let nondet = nondet!(/** this is a weaker retries guarantee, so it is safe to assume */);
-        self.assume_retries::<R2>(nondet)
-    }
-
-    /// Strengthens the ordering guarantee to `TotalOrder`, given that `O: IsOrdered`, which
-    /// implies that `O == TotalOrder`.
-    pub fn make_totally_ordered(self) -> KeyedStream<K, V, L, B, TotalOrder, R>
-    where
-        O: IsOrdered,
-    {
-        self.assume_ordering(nondet!(/** no-op */))
+        self.assume_retries_trusted::<R2>(nondet)
     }
 
     /// Strengthens the retry guarantee to `ExactlyOnce`, given that `R: IsExactlyOnce`, which
@@ -493,7 +623,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     where
         R: IsExactlyOnce,
     {
-        self.assume_retries(nondet!(/** no-op */))
+        self.assume_retries_trusted(nondet!(/** no-op */))
     }
 
     /// Strengthens the boundedness guarantee to `Bounded`, given that `B: IsBounded`, which
@@ -571,17 +701,20 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # Non-Determinism
     /// The interleaving of entries across different keys is non-deterministic.
     /// Within each key, the original order is preserved.
-    pub fn entries_partially_ordered(self, _nondet: NonDet) -> Stream<(K, V), L, B, TotalOrder, R>
+    pub fn entries_partially_ordered(
+        self,
+        _nondet: NonDet,
+    ) -> Stream<(K, V), L::DropConsistency, B, TotalOrder, R>
     where
         O: IsOrdered,
     {
+        let target_location = self.location.drop_consistency();
         Stream::new(
-            self.location.clone(),
+            target_location.clone(),
             HydroNode::ObserveNonDet {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 trusted: false,
-                metadata: self
-                    .location
+                metadata: target_location
                     .new_node_metadata(Stream::<(K, V), L, B, TotalOrder, R>::collection_kind()),
             },
         )
@@ -1846,7 +1979,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     /// # }));
     /// # }
     /// ```
-    pub fn fold<A, I: Fn() -> A + 'a, F: Fn(&mut A, V), C, Idemp, M, B2: KeyedSingletonBound>(
+    pub fn fold<A, I: Fn() -> A + 'a, F: 'a + Fn(&mut A, V), C, Idemp, M, B2: KeyedSingletonBound>(
         self,
         init: impl IntoQuotedMut<'a, I, L>,
         comb: impl IntoQuotedMut<'a, F, L, AggFuncAlgebra<C, Idemp, M>>,
@@ -1861,21 +1994,21 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         let (comb, proof) = comb.splice_fn2_borrow_mut_ctx_props(&self.location);
         proof.register_proof(&comb);
 
-        let ordered = self
-            .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */))
-            .assume_ordering::<TotalOrder>(nondet!(/** the combinator function is commutative */));
+        let retried = self
+            .assume_retries::<ExactlyOnce>(nondet!(/** the combinator function is idempotent */));
 
         KeyedSingleton::new(
-            ordered.location.clone(),
+            retried.location.clone(),
             HydroNode::FoldKeyed {
                 init,
                 acc: comb.into(),
-                input: Box::new(ordered.ir_node.replace(HydroNode::Placeholder)),
-                metadata: ordered
+                input: Box::new(retried.ir_node.replace(HydroNode::Placeholder)),
+                metadata: retried
                     .location
                     .new_node_metadata(KeyedSingleton::<K, A, L, B2>::collection_kind()),
             },
         )
+        .assert_has_consistency_of(manual_proof!(/** algebraic properties */))
     }
 
     /// Like [`Stream::reduce`] but in the spirit of SQL `GROUP BY`, aggregates the values in each
@@ -1938,6 +2071,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                     .new_node_metadata(KeyedSingleton::<K, V, L, B>::collection_kind()),
             },
         )
+        .assert_has_consistency_of(manual_proof!(/** algebraic properties */))
     }
 
     /// A special case of [`KeyedStream::reduce`] where tuples with keys less than the watermark
@@ -2000,6 +2134,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
                     .new_node_metadata(KeyedSingleton::<K, V, L, B>::collection_kind()),
             },
         )
+        .assert_has_consistency_of(manual_proof!(/** algebraic properties */))
     }
 
     /// Given a bounded stream of keys `K`, returns a new keyed stream containing only the groups
@@ -2396,11 +2531,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         V: Eq + Hash + Clone,
         V2: Clone,
     {
-        self.lookup_keyed_stream(
-            lookup
-                .into_keyed_stream()
-                .assume_retries::<R>(nondet!(/** Retries are irrelevant for keyed singletons */)),
-        )
+        self.lookup_keyed_stream(lookup.into_keyed_stream().weaken_retries::<R>())
     }
 
     /// For each value in `self`, find the matching key in `lookup`.
@@ -2502,15 +2633,15 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     ///
     /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
-    pub fn batch(
+    pub fn batch<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
-        tick: &Tick<L>,
+        tick: &Tick<L2>,
         nondet: NonDet,
-    ) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
+    ) -> KeyedStream<K, V, Tick<L::DropConsistency>, Bounded, O, R> {
         let _ = nondet;
         assert_eq!(Location::id(tick.outer()), Location::id(&self.location));
         KeyedStream::new(
-            tick.clone(),
+            tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: tick.new_node_metadata(
@@ -2559,9 +2690,7 @@ impl<'a, K1, K2, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
     }
 }
 
-impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries>
-    KeyedStream<K, V, L, Unbounded, O, R>
-{
+impl<'a, K, V, L: Location<'a>, O: Ordering, R: Retries> KeyedStream<K, V, L, Unbounded, O, R> {
     /// Produces a new keyed stream that "merges" the inputs by interleaving the elements
     /// of any overlapping groups. The result has [`NoOrder`] on each group because the
     /// order of interleaving is not guaranteed. If the keys across both inputs do not overlap,
@@ -2631,7 +2760,7 @@ impl<'a, K, V, L: Location<'a> + NoTick, O: Ordering, R: Retries>
 
 impl<'a, K, V, L, B: Boundedness, O: Ordering, R: Retries> KeyedStream<K, V, Atomic<L>, B, O, R>
 where
-    L: Location<'a> + NoTick,
+    L: Location<'a>,
 {
     /// Returns a keyed stream corresponding to the latest batch of elements being atomically
     /// processed. These batches are guaranteed to be contiguous across ticks and preserve
@@ -2640,14 +2769,14 @@ where
     ///
     /// # Non-Determinism
     /// The batch boundaries are non-deterministic and may change across executions.
-    pub fn batch_atomic(
+    pub fn batch_atomic<L2: Location<'a, DropConsistency = L::DropConsistency>>(
         self,
-        tick: &Tick<L>,
+        tick: &Tick<L2>,
         nondet: NonDet,
-    ) -> KeyedStream<K, V, Tick<L>, Bounded, O, R> {
+    ) -> KeyedStream<K, V, Tick<L::DropConsistency>, Bounded, O, R> {
         let _ = nondet;
         KeyedStream::new(
-            tick.clone(),
+            tick.drop_consistency(),
             HydroNode::Batch {
                 inner: Box::new(self.ir_node.replace(HydroNode::Placeholder)),
                 metadata: tick.new_node_metadata(
@@ -2775,7 +2904,7 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn across_ticks<Out: BatchAtomic>(
+    pub fn across_ticks<Out: BatchAtomic<'a>>(
         self,
         thunk: impl FnOnce(KeyedStream<K, V, Atomic<L>, Unbounded, O, R>) -> Out,
     ) -> Out::Batched {

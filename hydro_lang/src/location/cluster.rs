@@ -20,9 +20,35 @@ use stageleft::{QuotedWithContextWithProps, quote_type};
 use super::dynamic::LocationId;
 use super::{Location, MemberId};
 use crate::compile::builder::FlowState;
-use crate::location::LocationKey;
+use crate::location::dynamic::ClusterConsistency;
 use crate::location::member_id::TaglessMemberId;
+use crate::location::{LocationKey, TopLevel};
 use crate::staging_util::{Invariant, get_this_crate};
+
+/// A marker trait for levels of consistency that can be guaranteed for a live collection placed
+/// across members of a cluster.
+pub trait Consistency {
+    /// Gets the runtime enum variant associated with this consistency level.
+    fn consistency() -> ClusterConsistency;
+}
+
+/// No consistency is guaranteed across cluster members, which means that the live collection
+/// may take on arbitrarily different values across members.
+pub enum NoConsistency {}
+impl Consistency for NoConsistency {
+    fn consistency() -> ClusterConsistency {
+        ClusterConsistency::NoConsistency
+    }
+}
+
+/// Eventual consistency is guaranteed across cluster members, which means that at steady-state
+/// the live collection will always resolve to the same value across all members of the cluster.
+pub enum EventualConsistency {}
+impl Consistency for EventualConsistency {
+    fn consistency() -> ClusterConsistency {
+        ClusterConsistency::EventualConsistency
+    }
+}
 
 /// A multi-node location representing a group of identical processes.
 ///
@@ -33,26 +59,26 @@ use crate::staging_util::{Invariant, get_this_crate};
 /// The `ClusterTag` type parameter is a phantom tag used to distinguish between
 /// different clusters in the type system, preventing accidental mixing of
 /// member IDs across clusters.
-pub struct Cluster<'a, ClusterTag> {
+pub struct Cluster<'a, ClusterTag, Con: Consistency = NoConsistency> {
     pub(crate) key: LocationKey,
     pub(crate) flow_state: FlowState,
-    pub(crate) _phantom: Invariant<'a, ClusterTag>,
+    pub(crate) _phantom: Invariant<'a, (ClusterTag, Con)>,
 }
 
-impl<C> Debug for Cluster<'_, C> {
+impl<C, Con: Consistency> Debug for Cluster<'_, C, Con> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "Cluster({})", self.key)
     }
 }
 
-impl<C> Eq for Cluster<'_, C> {}
-impl<C> PartialEq for Cluster<'_, C> {
+impl<C, Con: Consistency> Eq for Cluster<'_, C, Con> {}
+impl<C, Con: Consistency> PartialEq for Cluster<'_, C, Con> {
     fn eq(&self, other: &Self) -> bool {
         self.key == other.key && FlowState::ptr_eq(&self.flow_state, &other.flow_state)
     }
 }
 
-impl<C> Clone for Cluster<'_, C> {
+impl<C, Con: Consistency> Clone for Cluster<'_, C, Con> {
     fn clone(&self) -> Self {
         Cluster {
             key: self.key,
@@ -62,8 +88,8 @@ impl<C> Clone for Cluster<'_, C> {
     }
 }
 
-impl<'a, C> super::dynamic::DynLocation for Cluster<'a, C> {
-    fn id(&self) -> LocationId {
+impl<'a, C, Con: Consistency> super::dynamic::DynLocation for Cluster<'a, C, Con> {
+    fn dyn_id(&self) -> LocationId {
         LocationId::Cluster(self.key)
     }
 
@@ -78,15 +104,43 @@ impl<'a, C> super::dynamic::DynLocation for Cluster<'a, C> {
     fn multiversioned(&self) -> bool {
         false // TODO(shadaj): enable multiversioning support for clusters
     }
+
+    fn cluster_consistency() -> Option<ClusterConsistency> {
+        Some(Con::consistency())
+    }
 }
 
-impl<'a, C> Location<'a> for Cluster<'a, C> {
-    type Root = Cluster<'a, C>;
+impl<'a, C, Con: Consistency> Location<'a> for Cluster<'a, C, Con> {
+    type Root = Cluster<'a, C, Con>;
+
+    type DropConsistency = Cluster<'a, C, NoConsistency>;
+
+    fn consistency() -> Option<ClusterConsistency> {
+        Some(Con::consistency())
+    }
 
     fn root(&self) -> Self::Root {
         self.clone()
     }
+
+    fn drop_consistency(&self) -> Self::DropConsistency {
+        Cluster {
+            key: self.key,
+            flow_state: self.flow_state.clone(),
+            _phantom: PhantomData,
+        }
+    }
+
+    fn from_drop_consistency(l2: Self::DropConsistency) -> Self {
+        Cluster {
+            key: l2.key,
+            flow_state: l2.flow_state,
+            _phantom: PhantomData,
+        }
+    }
 }
+
+impl<'a, C, Con: Consistency> TopLevel<'a> for Cluster<'a, C, Con> {}
 
 #[cfg(feature = "sim")]
 impl<'a, C> Cluster<'a, C> {
@@ -339,7 +393,7 @@ mod tests {
         let node = flow.process::<()>();
 
         let out_recv = node
-            .source_cluster_members(&cluster)
+            .source_cluster_membership_stream(&cluster, nondet!(/** test */))
             .entries()
             .map(q!(|(id, v)| (id, v)))
             .sim_output();

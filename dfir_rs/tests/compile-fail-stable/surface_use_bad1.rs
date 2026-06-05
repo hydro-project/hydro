@@ -1,1 +1,0 @@
-../compile-fail/surface_use_bad1.rs

@@ -10,7 +10,9 @@ license = { workspace = true }
 
 [features]
 insta = ["dep:insta"]
+trybuild = ["dep:trybuild"]
 
 [dependencies]
 rustc_version = "0.4.0"
 insta = { version = "1.39", optional = true }
+trybuild = { version = "1", optional = true }

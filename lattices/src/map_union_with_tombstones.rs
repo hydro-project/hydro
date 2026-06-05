@@ -2,14 +2,18 @@
 //!
 //! See [`crate::tombstone`] for documentation on choosing a tombstone implementation.
 
-use std::cmp::Ordering::{self, *};
+use core::cmp::Ordering::{self, *};
+use core::fmt::Debug;
+#[cfg(feature = "std")]
 use std::collections::{HashMap, HashSet};
-use std::fmt::Debug;
+#[cfg(feature = "std")]
+use std::string::String;
 
 use cc_traits::{Get, Iter, Len, Remove};
 
 use crate::cc_traits::{GetMut, Keyed, Map, MapIter, SimpleKeyedRef};
 use crate::collections::{EmptyMap, EmptySet, SingletonMap, SingletonSet};
+#[cfg(feature = "std")]
 use crate::tombstone::{FstTombstoneSet, RoaringTombstoneSet, TombstoneSet};
 use crate::{IsBot, IsTop, LatticeFrom, LatticeOrd, Merge};
 
@@ -61,7 +65,8 @@ impl<Map, TombstoneSet> MapUnionWithTombstones<Map, TombstoneSet> {
     }
 }
 
-// Merge implementation using TombstoneSet trait for optimized union operations
+/// Merge implementation using TombstoneSet trait for optimized union operations
+#[cfg(feature = "std")]
 impl<MapSelf, MapOther, K, ValSelf, ValOther, TombstoneSetSelf, TombstoneSetOther>
     Merge<MapUnionWithTombstones<MapOther, TombstoneSetOther>>
     for MapUnionWithTombstones<MapSelf, TombstoneSetSelf>
@@ -77,6 +82,8 @@ where
     TombstoneSetOther: IntoIterator<Item = K>,
 {
     fn merge(&mut self, other: MapUnionWithTombstones<MapOther, TombstoneSetOther>) -> bool {
+        use alloc::vec::Vec;
+
         let mut changed = false;
 
         // Collect other.tombstones into a vec to avoid borrowing issues
@@ -332,6 +339,7 @@ impl<Map, TombstoneSet> IsTop for MapUnionWithTombstones<Map, TombstoneSet> {
 }
 
 /// [`std::collections::HashMap`]-backed [`MapUnionWithTombstones`] lattice.
+#[cfg(feature = "std")]
 pub type MapUnionHashMapWithTombstoneHashSet<K, Val> =
     MapUnionWithTombstones<HashMap<K, Val>, HashSet<K>>;
 
@@ -345,16 +353,20 @@ pub type MapUnionWithTombstonesTombstoneSingletonSetOnly<K, Val> =
 
 /// [`crate::tombstone::RoaringTombstoneSet`]-backed tombstone set with [`HashMap`] for the main map.
 /// Provides space-efficient tombstone storage for u64 integer keys.
+#[cfg(feature = "std")]
 pub type MapUnionWithTombstonesRoaring<Val> =
     MapUnionWithTombstones<HashMap<u64, Val>, RoaringTombstoneSet>;
 
 /// FST-backed tombstone set with [`HashMap`] for the main map.
 /// Provides space-efficient, collision-free tombstone storage for String keys.
+#[cfg(feature = "std")]
 pub type MapUnionWithTombstonesFstString<Val> =
     MapUnionWithTombstones<HashMap<String, Val>, FstTombstoneSet<String>>;
 
 #[cfg(test)]
 mod test {
+    use std::borrow::ToOwned;
+
     use super::*;
     use crate::NaiveLatticeOrd;
     use crate::set_union::{SetUnion, SetUnionHashSet, SetUnionSingletonSet};
@@ -403,8 +415,11 @@ mod test {
         assert_eq!(a.partial_cmp(&b), None);
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn consistency() {
+        use alloc::vec::Vec;
+
         type K = &'static str;
         type V = SetUnion<HashSet<i32>>;
 
@@ -500,7 +515,7 @@ mod test {
         );
 
         // Add tombstone for "banana"
-        y.as_reveal_mut().1.extend(vec!["banana".to_owned()]);
+        y.as_reveal_mut().1.extend(["banana".to_owned()]);
 
         x.merge(y);
 
@@ -519,12 +534,12 @@ mod test {
                 (1u64, SetUnionHashSet::new_from([1])),
                 (2, SetUnionHashSet::new_from([2])),
             ]),
-            RoaringTombstoneSet::from_iter(vec![10u64, 20]),
+            RoaringTombstoneSet::from_iter([10u64, 20]),
         );
 
         let y = MapUnionWithTombstonesRoaring::new_from(
             HashMap::from([(3u64, SetUnionHashSet::new_from([3]))]),
-            RoaringTombstoneSet::from_iter(vec![30u64, 2]),
+            RoaringTombstoneSet::from_iter([30u64, 2]),
         );
 
         x.merge(y);

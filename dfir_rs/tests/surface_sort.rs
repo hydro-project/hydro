@@ -72,7 +72,7 @@ fn test_sort_by_owned() {
     };
     df.run_available_sync();
     let results = collect_ready::<Vec<_>, _>(&mut out_recv);
-    dummies_saved.sort_unstable_by(|d1, d2| d1.y.cmp(&d2.y));
+    dummies_saved.sort_unstable_by_key(|d| d.y);
     assert_ne!(&dummies_saved, &*results);
     dummies_saved.sort_unstable_by(|d1, d2| d1.x.cmp(&d2.x));
     assert_eq!(&dummies_saved, &*results);

@@ -1,12 +1,10 @@
-use std::fmt::Debug;
-
 use crate::test::cartesian_power;
 
 /// Defines a monoid structure.
 ///
 /// A monoid is a set of items along with an associative binary operation `f` and an identity element `zero`.
 /// The `f` operation combines two items and the `zero` element acts as the identity for `f`.
-pub fn monoid<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn monoid<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: &impl Fn(S, S) -> S,
     zero: S, // zero is the identity element of f
@@ -19,7 +17,7 @@ pub fn monoid<S: Debug + PartialEq + Clone, const N: usize>(
 /// Defines a semigroup structure.
 ///
 /// A semigroup is a set of items along with an associative binary operation `f`.
-pub fn semigroup<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn semigroup<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: &impl Fn(S, S) -> S,
 ) -> Result<(), &'static str> {
@@ -33,7 +31,7 @@ pub fn semigroup<S: Debug + PartialEq + Clone, const N: usize>(
 /// and two identity elements `zero` and `one`.
 /// f must be commutative and g must distribute over f.
 /// the zero of f must also be absorbing with respect to g.
-pub fn semiring<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn semiring<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: &impl Fn(S, S) -> S,
     g: &impl Fn(S, S) -> S,
@@ -53,7 +51,7 @@ pub fn semiring<S: Debug + PartialEq + Clone, const N: usize>(
 /// Defines a ring structure.
 ///
 /// A ring is a semiring with an inverse operation on f.
-pub fn ring<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn ring<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: &impl Fn(S, S) -> S,
     g: &impl Fn(S, S) -> S,
@@ -69,7 +67,7 @@ pub fn ring<S: Debug + PartialEq + Clone, const N: usize>(
 /// Defines an integral domain structure.
 ///
 /// An integral domain is a nonzero commutative ring with no nonzero zero divisors.
-pub fn integral_domain<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn integral_domain<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: &impl Fn(S, S) -> S,
     g: &impl Fn(S, S) -> S,
@@ -85,7 +83,7 @@ pub fn integral_domain<S: Debug + PartialEq + Clone, const N: usize>(
 /// Defines a no-nonzero-zero-divisors property.
 ///
 /// x is a nonzero divisor if xy = 0 and y is also a nonzero element.
-pub fn no_nonzero_zero_divisors<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn no_nonzero_zero_divisors<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: &impl Fn(S, S) -> S,
     zero: S,
@@ -108,7 +106,7 @@ pub fn no_nonzero_zero_divisors<S: Debug + PartialEq + Clone, const N: usize>(
 /// Defines a commutative ring structure.
 ///
 /// A commutative ring is a ring where the multiplication operation g is commutative.
-pub fn commutative_ring<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn commutative_ring<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: &impl Fn(S, S) -> S, // addition operation
     g: &impl Fn(S, S) -> S, // multiplication operation
@@ -125,7 +123,7 @@ pub fn commutative_ring<S: Debug + PartialEq + Clone, const N: usize>(
 /// Defines a field structure.
 ///
 /// A field is a commutative ring where every element has a multiplicative inverse.
-pub fn field<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn field<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: &impl Fn(S, S) -> S,
     g: &impl Fn(S, S) -> S,
@@ -142,7 +140,7 @@ pub fn field<S: Debug + PartialEq + Clone, const N: usize>(
 /// Defines a commutative monoid structure.
 ///
 /// A commutative monoid is a monoid where the operation f is commutative.
-pub fn commutative_monoid<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn commutative_monoid<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: &impl Fn(S, S) -> S,
     zero: S,
@@ -157,7 +155,7 @@ pub fn commutative_monoid<S: Debug + PartialEq + Clone, const N: usize>(
 /// A group is a set of items along with an associative binary operation `f`
 /// an identity element `zero`
 /// and every element has an inverse element with respect to `f`
-pub fn group<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn group<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: &impl Fn(S, S) -> S,
     zero: S,             // zero is the identity element of f
@@ -171,7 +169,7 @@ pub fn group<S: Debug + PartialEq + Clone, const N: usize>(
 /// Defines an abelian group structure.
 ///
 /// An abelian group is a group where the operation f is commutative.
-pub fn abelian_group<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn abelian_group<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: &impl Fn(S, S) -> S,
     zero: S,
@@ -187,7 +185,7 @@ pub fn abelian_group<S: Debug + PartialEq + Clone, const N: usize>(
 ///
 /// a(b+c) = ab + ac
 /// and (b+c)a = ba + ca
-pub fn distributive<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn distributive<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: &impl Fn(S, S) -> S,
     g: &impl Fn(S, S) -> S,
@@ -200,7 +198,7 @@ pub fn distributive<S: Debug + PartialEq + Clone, const N: usize>(
 /// Defines the left distributive property
 ///
 /// a(b+c) = ab + ac
-pub fn left_distributes<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn left_distributes<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: impl Fn(S, S) -> S,
     g: impl Fn(S, S) -> S,
@@ -218,7 +216,7 @@ pub fn left_distributes<S: Debug + PartialEq + Clone, const N: usize>(
 /// Defines the right distributive property.
 ///
 /// (b+c)a = ba + ca
-pub fn right_distributes<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn right_distributes<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: impl Fn(S, S) -> S,
     g: impl Fn(S, S) -> S,
@@ -236,7 +234,7 @@ pub fn right_distributes<S: Debug + PartialEq + Clone, const N: usize>(
 /// Defines the absorbing_element property.
 ///
 /// An element z is absorbing if az = z and za = z for all a.
-pub fn absorbing_element<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn absorbing_element<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: impl Fn(S, S) -> S,
     z: S, // absorbing element (anything multiplied by z is z e.g. 0 in integers)
@@ -258,7 +256,7 @@ pub fn absorbing_element<S: Debug + PartialEq + Clone, const N: usize>(
 /// Defines the inverse property.
 ///
 /// An element b is the inverse of a if ab = e and ba = e for some identity element e.
-pub fn inverse<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn inverse<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: impl Fn(S, S) -> S,
     e: S,               // e is the identity element of f
@@ -279,7 +277,7 @@ pub fn inverse<S: Debug + PartialEq + Clone, const N: usize>(
 /// Defines the non_zero inverse property.
 ///
 /// Every element except zero must have an inverse.
-pub fn nonzero_inverse<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn nonzero_inverse<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: impl Fn(S, S) -> S,
     e: S,
@@ -303,7 +301,7 @@ pub fn nonzero_inverse<S: Debug + PartialEq + Clone, const N: usize>(
 /// Defines the identity property.
 ///
 /// An element e is the identity of f if ae = a and ea = a for all a.
-pub fn identity<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn identity<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: impl Fn(S, S) -> S,
     e: S,
@@ -323,7 +321,7 @@ pub fn identity<S: Debug + PartialEq + Clone, const N: usize>(
 /// Defines the associativity property.
 ///
 /// a(bc) = (ab)c
-pub fn associativity<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn associativity<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: impl Fn(S, S) -> S,
 ) -> Result<(), &'static str> {
@@ -341,7 +339,7 @@ pub fn associativity<S: Debug + PartialEq + Clone, const N: usize>(
 /// Defines the commutativity property.
 ///
 /// xy = yx
-pub fn commutativity<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn commutativity<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: impl Fn(S, S) -> S,
 ) -> Result<(), &'static str> {
@@ -357,7 +355,7 @@ pub fn commutativity<S: Debug + PartialEq + Clone, const N: usize>(
 /// Defines the idempotency property.
 ///
 /// xx = x
-pub fn idempotency<S: Debug + PartialEq + Clone, const N: usize>(
+pub fn idempotency<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: impl Fn(S, S) -> S,
 ) -> Result<(), &'static str> {
@@ -377,7 +375,7 @@ pub fn idempotency<S: Debug + PartialEq + Clone, const N: usize>(
 /// Input parameters f, g, and q represent (f) the base operation of the algebraic structure for state,
 /// (g) the base operation of the algebraic structure the query q outputs to
 /// and (q) the query over f that we want to check for linearity (to incrementalize) respectively
-pub fn linearity<S: Debug + PartialEq + Clone, R: Debug + PartialEq + Clone>(
+pub fn linearity<S: PartialEq + Clone, R: PartialEq + Clone>(
     items: &[S],
     f: impl Fn(S, S) -> S,
     g: impl Fn(R, R) -> R,
@@ -401,11 +399,7 @@ pub fn linearity<S: Debug + PartialEq + Clone, R: Debug + PartialEq + Clone>(
 /// (h) the base operation of the algebraic structure on the right input to the query q,
 /// (g) the base operation of the algebraic structure the query q outputs to,
 /// and (q) The query over (f,g) that we want to check for bilinearity (to incrementalize)
-pub fn bilinearity<
-    S: Debug + PartialEq + Clone,
-    R: Debug + PartialEq + Clone,
-    T: Debug + PartialEq + Clone,
->(
+pub fn bilinearity<S: PartialEq + Clone, R: PartialEq + Clone, T: PartialEq + Clone>(
     items_f: &[S],
     items_h: &[T],
     f: impl Fn(S, S) -> S,
@@ -441,7 +435,8 @@ pub fn bilinearity<
 //     ("absorbing_element", absorbing_element)];
 
 /// Loop through each algebraic property in SINGLE_FUNCTION_PROPERTIES and test for them.
-pub fn get_single_function_properties<S: Debug + PartialEq + Clone, const N: usize>(
+#[cfg(feature = "alloc")]
+pub fn get_single_function_properties<S: PartialEq + Clone, const N: usize>(
     items: &[S; N],
     f: impl Fn(S, S) -> S,
     // identity element (TODO make optional parameter)
@@ -450,28 +445,28 @@ pub fn get_single_function_properties<S: Debug + PartialEq + Clone, const N: usi
     b: impl Fn(S) -> S,
     // absorbing element (TODO make optional parameter)
     z: S,
-) -> Vec<String> {
+) -> alloc::vec::Vec<&'static str> {
     // store the list of properties (strings) that are satisfied to be returned
-    let mut properties_satisfied: Vec<String> = Vec::new();
+    let mut properties_satisfied = alloc::vec::Vec::new();
 
     // TODO make this a loop through the SINGLE_FUNCTION_PROPERTIES array
     if associativity(items, &f).is_ok() {
-        properties_satisfied.push("associativity".to_owned());
+        properties_satisfied.push("associativity");
     }
     if commutativity(items, &f).is_ok() {
-        properties_satisfied.push("commutativity".to_owned());
+        properties_satisfied.push("commutativity");
     }
     if idempotency(items, &f).is_ok() {
-        properties_satisfied.push("idempotency".to_owned());
+        properties_satisfied.push("idempotency");
     }
     if identity(items, &f, e.clone()).is_ok() {
-        properties_satisfied.push("identity".to_owned());
+        properties_satisfied.push("identity");
     }
     if inverse(items, &f, e, b).is_ok() {
-        properties_satisfied.push("inverse".to_owned());
+        properties_satisfied.push("inverse");
     }
     if absorbing_element(items, &f, z).is_ok() {
-        properties_satisfied.push("absorbing_element".to_owned());
+        properties_satisfied.push("absorbing_element");
     }
 
     properties_satisfied
@@ -1012,8 +1007,12 @@ mod test {
         );
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_semiring() {
+        use alloc::borrow::ToOwned;
+        use alloc::format;
+
         // Test +, x is a semiring
         assert!(semiring(TEST_ITEMS, &u32::wrapping_add, &u32::wrapping_mul, 0, 1).is_ok());
 
@@ -1088,12 +1087,7 @@ mod test {
             |x| 0u32.wrapping_sub(x),
             0,
         );
-        let correct_properties = vec![
-            "associativity".to_owned(),
-            "commutativity".to_owned(),
-            "identity".to_owned(),
-            "inverse".to_owned(),
-        ];
+        let correct_properties = &["associativity", "commutativity", "identity", "inverse"];
         assert_eq!(test_properties_satisfied, correct_properties);
 
         // Test that get single function properties on max returns associative, commutative, idempotent, identity, and absorbing element.
@@ -1104,12 +1098,12 @@ mod test {
             |x| x,
             f64::INFINITY,
         );
-        let correct_properties = vec![
-            "associativity".to_owned(),
-            "commutativity".to_owned(),
-            "idempotency".to_owned(),
-            "identity".to_owned(),
-            "absorbing_element".to_owned(),
+        let correct_properties = &[
+            "associativity",
+            "commutativity",
+            "idempotency",
+            "identity",
+            "absorbing_element",
         ];
         assert_eq!(test_properties_satisfied, correct_properties);
 
@@ -1117,7 +1111,7 @@ mod test {
         let f = |x: u32, _y: u32| x;
         let test_properties_satisfied =
             get_single_function_properties(TEST_ITEMS, f, 0, |x| 0u32.wrapping_sub(x), 0);
-        let correct_properties = vec!["associativity".to_owned(), "idempotency".to_owned()];
+        let correct_properties = &["associativity", "idempotency"];
         assert_eq!(test_properties_satisfied, correct_properties);
     }
 }

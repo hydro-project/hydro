@@ -118,12 +118,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "allocator-api2"
-version = "0.2.21"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
-
-[[package]]
 name = "android_system_properties"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1787,6 +1781,7 @@ dependencies = [
  "futures-util",
  "hydro_build_utils",
  "itertools 0.14.0",
+ "lattices",
  "pin-project-lite",
  "rustc-hash 2.1.1",
  "sealed",
@@ -1799,6 +1794,7 @@ name = "dfir_rs"
 version = "0.16.0"
 dependencies = [
  "bincode",
+ "bumpalo",
  "bytes",
  "chrono",
  "clap",
@@ -1836,7 +1832,6 @@ dependencies = [
  "tokio-util",
  "tracing",
  "tracing-subscriber",
- "trybuild",
  "variadics",
  "wasm-bindgen-test",
  "web-time",
@@ -2466,8 +2461,7 @@ version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
 dependencies = [
- "ahash",
- "allocator-api2",
+ "rustc-std-workspace-alloc",
 ]
 
 [[package]]
@@ -2614,6 +2608,7 @@ version = "0.1.0"
 dependencies = [
  "insta",
  "rustc_version",
+ "trybuild",
 ]
 
 [[package]]
@@ -2727,7 +2722,6 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
- "trybuild",
  "trybuild-internals-api",
 ]
 
@@ -3294,7 +3288,6 @@ dependencies = [
  "roaring",
  "sealed",
  "serde",
- "trybuild",
  "variadics",
  "variadics_macro",
 ]
@@ -4677,9 +4670,9 @@ dependencies = [
 
 [[package]]
 name = "roaring"
-version = "0.10.12"
+version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19e8d2cfa184d94d0726d650a9f4a1be7f9b76ac9fdb954219878dc00c1c1e7b"
+checksum = "1dedc5658c6ecb3bdb5ef5f3295bb9253f42dcf3fd1402c03f6b1f7659c3c4a9"
 dependencies = [
  "bytemuck",
  "byteorder",
@@ -4829,6 +4822,12 @@ name = "rustc-hash"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "357703d41365b4b27c590e3ed91eabb1b663f07c4c084095e60cbed4362dff0d"
+
+[[package]]
+name = "rustc-std-workspace-alloc"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9d441c3b2ebf55cebf796bfdc265d67fa09db17b7bb6bd4be75c509e1e8fec3"
 
 [[package]]
 name = "rustc_version"
@@ -5415,9 +5414,9 @@ checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 
 [[package]]
 name = "stageleft"
-version = "0.13.5"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2c4e51b7913fbb07d1a575e23618fff6ac4cfd8705865e95e0984b884511ec9"
+checksum = "22031b9d645815e5b3169ade69433c284b48df797882a30e6be87584efec3ef2"
 dependencies = [
  "ctor 0.4.3",
  "parking_lot",
@@ -5430,9 +5429,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_macro"
-version = "0.13.5"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f66d0c988d22a7cc51495e8d8a6f46ba5352d1424437b244716bb71c5160a07"
+checksum = "71d26dbe0848def4b7321df73217dbbc8ebf823b8d8bc94c700f3851edb67a25"
 dependencies = [
  "proc-macro-crate 3.4.0",
  "proc-macro2",
@@ -5443,9 +5442,9 @@ dependencies = [
 
 [[package]]
 name = "stageleft_tool"
-version = "0.13.5"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba88edb18395d26627c6480435a08a30a84056b16ec5e920775716f5f4d92375"
+checksum = "ab9d0ec35c71f510a76f93d5d404983a968c5337dcb9a0161cdfb676d2497256"
 dependencies = [
  "prettyplease",
  "proc-macro-crate 3.4.0",
@@ -6263,7 +6262,6 @@ dependencies = [
  "hashbrown 0.14.5",
  "hydro_build_utils",
  "sealed",
- "trybuild",
 ]
 
 [[package]]

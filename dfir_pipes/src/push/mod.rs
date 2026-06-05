@@ -25,6 +25,9 @@ mod persist;
 mod resolve_futures;
 mod sink;
 mod sink_compat;
+#[cfg(feature = "lattices")]
+#[cfg_attr(docsrs, doc(cfg(feature = "lattices")))]
+mod state_push;
 mod unzip;
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
@@ -58,6 +61,9 @@ pub use persist::Persist;
 pub use resolve_futures::ResolveFutures;
 pub use sink::Sink;
 pub use sink_compat::SinkCompat;
+#[cfg(feature = "lattices")]
+#[cfg_attr(docsrs, doc(cfg(feature = "lattices")))]
+pub use state_push::{StatePush, state_push};
 pub use unzip::Unzip;
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
@@ -131,10 +137,10 @@ where
 /// a source, `Push` allows you to send items into a sink. Push operators form
 /// chains where each operator transforms items and passes them downstream.
 ///
-/// The protocol mirrors [`futures_sink::Sink`]:
+/// The protocol is:
 /// 1. Call [`Push::poll_ready`] to check if the push can accept an item.
 /// 2. If ready, call [`Push::start_send`] to send the item.
-/// 3. Call [`Push::poll_flush`] to flush buffered items.
+/// 3. Call [`Push::poll_finalize`] to signal end-of-epoch and drain deferred output.
 pub trait Push<Item, Meta>
 where
     Meta: Copy,
@@ -153,8 +159,13 @@ where
     /// Must only be called after [`Push::poll_ready`] returns [`PushStep::Done`].
     fn start_send(self: Pin<&mut Self>, item: Item, meta: Meta);
 
-    /// Flushes any buffered items in this push pipeline.
-    fn poll_flush(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend>;
+    /// Finalizes this push pipeline, signaling that no more items will be sent.
+    ///
+    /// Deferred operators (e.g. sort, fold, reduce) emit their accumulated output
+    /// during this call. Buffering operators drain any remaining internal state
+    /// downstream. This is a one-shot operation — the pipeline should not be
+    /// reused after `poll_finalize` returns [`PushStep::Done`].
+    fn poll_finalize(self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend>;
 
     /// Informs this push how many items are about to be sent.
     ///
@@ -188,8 +199,8 @@ where
         Pin::new(&mut **self).start_send(item, meta)
     }
 
-    fn poll_flush(mut self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
-        Pin::new(&mut **self).poll_flush(ctx)
+    fn poll_finalize(mut self: Pin<&mut Self>, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend> {
+        Pin::new(&mut **self).poll_finalize(ctx)
     }
 
     fn size_hint(mut self: Pin<&mut Self>, hint: (usize, Option<usize>)) {

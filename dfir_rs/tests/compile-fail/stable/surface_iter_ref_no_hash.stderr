@@ -1,0 +1,5 @@
+error: iter_ref() requires a `#handoff_name` reference as its argument.
+ --> tests/compile-fail/stable/surface_iter_ref_no_hash.rs:5:9
+  |
+5 |         iter_ref(my_vec) -> for_each(|v: &i32| println!("{v}"));
+  |         ^^^^^^^^

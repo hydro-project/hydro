@@ -1,5 +1,0 @@
-error: Unknown operator `hydro_lab`
- --> tests/compile-fail/surface_unknown_operators.rs:5:9
-  |
-5 |         hydro_lab() -> for_each(std::mem::drop);
-  |         ^^^^^^^^^

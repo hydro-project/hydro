@@ -1,6 +1,6 @@
 //! Helper test utils to test lattice implementation correctness.
 
-use std::fmt::Debug;
+use core::fmt::Debug;
 
 use crate::{
     Atomize, IsBot, IsTop, Lattice, LatticeBimorphism, LatticeMorphism, LatticeOrd, Merge,
@@ -36,7 +36,7 @@ pub fn check_lattice_ord<T: LatticeOrd + NaiveLatticeOrd + Debug>(items: &[T]) {
     reason = "testing comparison properties"
 )]
 pub fn check_partial_ord_properties<T: PartialOrd + PartialEq + Debug>(items: &[T]) {
-    use std::cmp::Ordering::*;
+    use core::cmp::Ordering::*;
 
     // PartialEq:
     // reflexive: a == a;
@@ -283,7 +283,7 @@ pub fn cartesian_power<T, const N: usize>(
 ) -> impl ExactSizeIterator<Item = [&T; N]> + Clone {
     struct CartesianPower<'a, T, const N: usize> {
         items: &'a [T],
-        iters: [std::iter::Peekable<std::slice::Iter<'a, T>>; N],
+        iters: [core::iter::Peekable<core::slice::Iter<'a, T>>; N],
     }
     impl<'a, T, const N: usize> Iterator for CartesianPower<'a, T, N> {
         type Item = [&'a T; N];
@@ -294,7 +294,7 @@ pub fn cartesian_power<T, const N: usize>(
             }
 
             let mut go_next = true;
-            let out = std::array::from_fn::<_, N, _>(|i| {
+            let out = core::array::from_fn::<_, N, _>(|i| {
                 let iter = &mut self.iters[i];
                 let &item = iter.peek().unwrap();
                 if go_next {
@@ -338,7 +338,7 @@ pub fn cartesian_power<T, const N: usize>(
             }
         }
     }
-    let iters = std::array::from_fn::<_, N, _>(|_| items.iter().peekable());
+    let iters = core::array::from_fn::<_, N, _>(|_| items.iter().peekable());
     CartesianPower { items, iters }
 }
 

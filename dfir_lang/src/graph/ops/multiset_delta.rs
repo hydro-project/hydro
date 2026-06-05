@@ -44,7 +44,6 @@ pub const MULTISET_DELTA: OperatorConstraints = OperatorConstraints {
     // to prevent reading uncleared data if this subgraph doesn't run.
     // https://github.com/hydro-project/hydro/issues/1298
     // If `'tick` lifetimes are added.
-    has_singleton_output: false,
     flo_type: None,
     ports_inn: None,
     ports_out: None,
@@ -52,7 +51,6 @@ pub const MULTISET_DELTA: OperatorConstraints = OperatorConstraints {
     write_fn: |wc @ &WriteContextArgs {
                    root,
                    op_span,
-                   context,
                    ident,
                    inputs,
                    outputs,
@@ -74,14 +72,12 @@ pub const MULTISET_DELTA: OperatorConstraints = OperatorConstraints {
 
         let tick_swap = quote_spanned! {op_span=>
             {
-                if #context.is_first_run_this_tick() {
-                    let (mut prev_map, mut curr_map) = (
-                        #prev_data.borrow_mut(),
-                        #curr_data.borrow_mut(),
-                    );
-                    ::std::mem::swap(::std::ops::DerefMut::deref_mut(&mut prev_map), ::std::ops::DerefMut::deref_mut(&mut curr_map));
-                    curr_map.clear();
-                }
+                let (mut prev_map, mut curr_map) = (
+                    #prev_data.borrow_mut(),
+                    #curr_data.borrow_mut(),
+                );
+                ::std::mem::swap(::std::ops::DerefMut::deref_mut(&mut prev_map), ::std::ops::DerefMut::deref_mut(&mut curr_map));
+                curr_map.clear();
             }
         };
 

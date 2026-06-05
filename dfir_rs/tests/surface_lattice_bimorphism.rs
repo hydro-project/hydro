@@ -9,22 +9,24 @@ use lattices::map_union::{KeyedBimorphism, MapUnionHashMap, MapUnionSingletonMap
 use lattices::set_union::{CartesianProductBimorphism, SetUnionHashSet, SetUnionSingletonSet};
 use multiplatform_test::multiplatform_test;
 use variadics::CloneVariadic;
-use variadics::variadic_collections::VariadicHashSet;
+use variadics::variadic_collections::VariadicHashSetStd;
 
 #[multiplatform_test]
 pub fn test_cartesian_product() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
     let mut df = dfir_syntax! {
-        lhs = source_iter(0..3)
+        lhs_op = source_iter(0..3)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
-        rhs = source_iter(3..5)
+        rhs_op = source_iter(3..5)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
 
-        lhs -> [0]my_join;
-        rhs -> [1]my_join;
+        lhs_op[items] -> [0]my_join;
+        rhs_op[items] -> [1]my_join;
+        lhs = lhs_op[state] -> singleton();
+        rhs = rhs_op[state] -> singleton();
 
         my_join = lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), #lhs, #rhs)
             -> for_each(|x| out_send.send(x).unwrap());
@@ -51,15 +53,17 @@ pub fn test_cartesian_product_1401() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
     let mut df = dfir_syntax! {
-        lhs = source_iter(0..1)
+        lhs_op = source_iter(0..1)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
-        rhs = source_iter(1..2)
+        rhs_op = source_iter(1..2)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'static, SetUnionHashSet<u32>>();
 
-        lhs -> [0]my_join;
-        rhs -> [1]my_join;
+        lhs_op[items] -> [0]my_join;
+        rhs_op[items] -> [1]my_join;
+        lhs = lhs_op[state] -> singleton();
+        rhs = rhs_op[state] -> singleton();
 
         my_join = lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), #lhs, #rhs)
             -> for_each(|x| out_send.send(x).unwrap());
@@ -78,15 +82,17 @@ pub fn test_join() {
     let (out_send, out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
     let mut df = dfir_syntax! {
-        lhs = source_iter([(7, 1), (7, 2)])
+        lhs_op = source_iter([(7, 1), (7, 2)])
             -> map(|(k, v)| MapUnionSingletonMap::new_from((k, SetUnionSingletonSet::new_from(v))))
             -> state::<'static, MapUnionHashMap<usize, SetUnionHashSet<usize>>>();
-        rhs = source_iter([(7, 0), (7, 1), (7, 2)])
+        rhs_op = source_iter([(7, 0), (7, 1), (7, 2)])
             -> map(|(k, v)| MapUnionSingletonMap::new_from((k, SetUnionSingletonSet::new_from(v))))
             -> state::<'static, MapUnionHashMap<usize, SetUnionHashSet<usize>>>();
 
-        lhs -> [0]my_join;
-        rhs -> [1]my_join;
+        lhs_op[items] -> [0]my_join;
+        rhs_op[items] -> [1]my_join;
+        lhs = lhs_op[state] -> singleton();
+        rhs = rhs_op[state] -> singleton();
 
         my_join = lattice_bimorphism(KeyedBimorphism::<HashMap<_, _>, _>::new(CartesianProductBimorphism::<HashSet<_>>::default()), #lhs, #rhs)
             -> for_each(|x| out_send.send(x).unwrap());
@@ -119,15 +125,17 @@ pub fn test_cartesian_product_tick_state() {
     let (out_send, mut out_recv) = dfir_rs::util::unbounded_channel::<_>();
 
     let mut df = dfir_syntax! {
-        lhs = source_stream(lhs_recv)
+        lhs_op = source_stream(lhs_recv)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'tick, SetUnionHashSet<u32>>();
-        rhs = source_stream(rhs_recv)
+        rhs_op = source_stream(rhs_recv)
             -> map(SetUnionSingletonSet::new_from)
             -> state::<'tick, SetUnionHashSet<u32>>();
 
-        lhs[items] -> [0]my_join;
-        rhs[items] -> [1]my_join;
+        lhs_op[items] -> [0]my_join;
+        rhs_op[items] -> [1]my_join;
+        lhs = lhs_op[state] -> singleton();
+        rhs = rhs_op[state] -> singleton();
 
         my_join = lattice_bimorphism(CartesianProductBimorphism::<HashSet<_>>::default(), #lhs, #rhs)
             -> inspect(|x| println!("{:?}: {:?}", context.current_tick(), x))
@@ -166,18 +174,18 @@ pub fn test_cartesian_product_tick_state() {
 
 #[multiplatform_test]
 fn test_ght_join_bimorphism() {
-    type MyGhtATrie = GhtType!(u32, u64, u16 => &'static str: VariadicHashSet);
-    type MyGhtBTrie = GhtType!(u32, u64, u16 => &'static str: VariadicHashSet);
+    type MyGhtATrie = GhtType!(u32, u64, u16 => &'static str: VariadicHashSetStd);
+    type MyGhtBTrie = GhtType!(u32, u64, u16 => &'static str: VariadicHashSetStd);
 
     type JoinSchema = variadics::var_type!(u32, u64, u16, &'static str, &'static str);
 
     type MyNodeBim = <(MyGhtATrie, MyGhtBTrie) as DeepJoinLatticeBimorphism<
-        VariadicHashSet<JoinSchema>,
+        VariadicHashSetStd<JoinSchema>,
     >>::DeepJoinLatticeBimorphism;
     type MyBim = GhtBimorphism<MyNodeBim>;
 
     let mut hf = dfir_syntax! {
-        lhs = source_iter([
+        lhs_op = source_iter([
                 var_expr!(123, 2, 5, "hello"),
                 var_expr!(50, 1, 1, "hi"),
                 var_expr!(5, 1, 7, "hi"),
@@ -185,7 +193,7 @@ fn test_ght_join_bimorphism() {
             ])
             -> map(|row| MyGhtATrie::new_from([row]))
             -> state::<'tick, MyGhtATrie>();
-        rhs = source_iter([
+        rhs_op = source_iter([
                 var_expr!(5, 1, 8, "hi"),
                 var_expr!(5, 1, 7, "world"),
                 var_expr!(5, 1, 7, "folks"),
@@ -195,8 +203,10 @@ fn test_ght_join_bimorphism() {
             -> map(|row| MyGhtBTrie::new_from([row]))
             -> state::<'tick, MyGhtBTrie>();
 
-        lhs[items] -> [0]my_join;
-        rhs[items] -> [1]my_join;
+        lhs_op[items] -> [0]my_join;
+        rhs_op[items] -> [1]my_join;
+        lhs = lhs_op[state] -> singleton();
+        rhs = rhs_op[state] -> singleton();
 
 
         my_join = lattice_bimorphism(MyBim::default(), #lhs, #rhs)

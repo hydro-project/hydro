@@ -1,1 +1,0 @@
-../compile-fail/sliced_missing_arg.rs

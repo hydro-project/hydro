@@ -1118,7 +1118,7 @@ impl HydroNode {
                 cycle_id, metadata, ..
             } => build_source_node(structure, metadata, format!("cycle_source({})", cycle_id)),
 
-            HydroNode::Tee { inner, metadata } => {
+            HydroNode::Tee { inner, metadata } | HydroNode::Singleton { inner, metadata } => {
                 let ptr = inner.as_ptr();
                 if let Some(&existing_id) = seen_tees.get(&ptr) {
                     return existing_id;
@@ -1128,9 +1128,14 @@ impl HydroNode {
                     .0
                     .borrow()
                     .build_graph_structure(structure, seen_tees, config);
+                let node_type = if matches!(self, HydroNode::Singleton { .. }) {
+                    HydroNodeType::Aggregation
+                } else {
+                    HydroNodeType::Tee
+                };
                 let tee_id = structure.add_node_with_metadata(
                     NodeLabel::Static(extract_op_name(self.print_root())),
-                    HydroNodeType::Tee,
+                    node_type,
                     metadata,
                 );
 
@@ -1203,6 +1208,9 @@ impl HydroNode {
 
             // Transform operations with Stream edges - grouped by node/edge type
             HydroNode::Cast { inner, metadata }
+            | HydroNode::AssertIsConsistent {
+                inner, metadata, ..
+            }
             | HydroNode::DeferTick {
                 input: inner,
                 metadata,
@@ -1252,7 +1260,9 @@ impl HydroNode {
             }),
 
             // Single-expression Transform operations - grouped by node type
-            HydroNode::Map { f, input, metadata }
+            HydroNode::Map {
+                f, input, metadata, ..
+            }
             | HydroNode::Filter { f, input, metadata }
             | HydroNode::FlatMap { f, input, metadata }
             | HydroNode::FlatMapStreamBlocking { f, input, metadata }
@@ -1267,7 +1277,7 @@ impl HydroNode {
                     op_name: extract_op_name(self.print_root()),
                     node_type: HydroNodeType::Transform,
                 },
-                f,
+                &f.expr,
             ),
 
             // Single-expression Aggregation operations - grouped by node type
@@ -1282,7 +1292,7 @@ impl HydroNode {
                     op_name: extract_op_name(self.print_root()),
                     node_type: HydroNodeType::Aggregation,
                 },
-                f,
+                &f.expr,
             ),
 
             // Join-like operations with left/right edge labels - grouped by edge labeling
@@ -1389,12 +1399,14 @@ impl HydroNode {
                 acc,
                 input,
                 metadata,
+                ..
             }
             | HydroNode::FoldKeyed {
                 init,
                 acc,
                 input,
                 metadata,
+                ..
             }
             | HydroNode::Scan {
                 init,
@@ -1420,8 +1432,8 @@ impl HydroNode {
                         op_name: extract_op_name(self.print_root()),
                         node_type,
                     },
-                    init,
-                    acc,
+                    &init.expr,
+                    &acc.expr,
                 )
             }
 
@@ -1465,7 +1477,7 @@ impl HydroNode {
                 );
 
                 let node_id = structure.add_node_with_backtrace(
-                    NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.clone()]),
+                    NodeLabel::with_exprs(extract_op_name(self.print_root()), vec![f.expr.clone()]),
                     HydroNodeType::Aggregation,
                     location_key,
                     Some(metadata.op.backtrace.clone()),
@@ -1546,6 +1558,10 @@ impl HydroNode {
 
             HydroNode::YieldConcat { inner, .. } => {
                 // Unpersist is typically optimized away, just pass through
+                inner.build_graph_structure(structure, seen_tees, config)
+            }
+
+            HydroNode::UnboundSingleton { inner, .. } => {
                 inner.build_graph_structure(structure, seen_tees, config)
             }
 

@@ -6,7 +6,7 @@ use std::time::Duration;
 use hydro_lang::live_collections::sliced::yield_atomic;
 use hydro_lang::live_collections::stream::{AtLeastOnce, NoOrder, TotalOrder};
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
-use hydro_lang::location::{Atomic, Location, MemberId, NoTick};
+use hydro_lang::location::{Atomic, Location, MemberId};
 use hydro_lang::prelude::*;
 use hydro_std::quorum::{collect_quorum, collect_quorum_with_response};
 use hydro_std::request_response::join_responses;
@@ -459,14 +459,15 @@ fn p_leader_heartbeat<'a>(
                         .into()
                 )),
                 q!(Duration::from_secs(i_am_leader_check_timeout)),
+            )
+            .batch(
+                proposer_tick,
                 nondet!(
                     /// If the leader 'un-expires' due to non-deterministic delay, we return
                     /// to a stable leader state. If the leader remains expired, non-deterministic
                     /// delay is propagated to the non-determinism of which leader is elected.
-                    nondet_reelection
                 ),
             )
-            .batch(proposer_tick, nondet!(/** absorbed into interval */))
             .first()
             .is_some(),
     );
@@ -769,10 +770,10 @@ fn sequence_payload<'a, P: PaxosPayload>(
 }
 
 // Proposer logic to send p2as, outputting the next slot and the p2as to send to acceptors.
-pub fn index_payloads<'a, L: Location<'a> + NoTick, P: PaxosPayload>(
+pub fn index_payloads<'a, L: Location<'a>, P: PaxosPayload>(
     p_max_slot: Optional<usize, Tick<L>, Bounded>,
     c_to_proposers: Stream<P, Tick<L>, Bounded>,
-) -> Stream<(usize, P), Tick<L>, Bounded> {
+) -> Stream<(usize, P), Tick<L::DropConsistency>, Bounded> {
     let tick = c_to_proposers.location().clone();
     let sliced_result = sliced! {
         let mut next_slot = use::state(|l| l.singleton(q!(0)));

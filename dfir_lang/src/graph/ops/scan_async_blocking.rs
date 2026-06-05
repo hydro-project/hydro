@@ -45,7 +45,6 @@ pub const SCAN_ASYNC_BLOCKING: OperatorConstraints = OperatorConstraints {
     persistence_args: &(0..=1),
     type_args: RANGE_0,
     is_external_input: false,
-    has_singleton_output: true,
     flo_type: None,
     ports_inn: None,
     ports_out: None,
@@ -58,12 +57,12 @@ pub const SCAN_ASYNC_BLOCKING: OperatorConstraints = OperatorConstraints {
                    inputs,
                    outputs,
                    arguments,
-                   singleton_output_ident,
                    ..
                },
                diagnostics| {
         let init_fn = &arguments[0];
         let func = &arguments[1];
+        let singleton_output_ident = wc.make_ident("singleton_output");
 
         let initializer_func_ident = wc.make_ident("initializer_func");
         let init = quote_spanned! {op_span=>

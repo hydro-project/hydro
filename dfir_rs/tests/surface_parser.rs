@@ -249,3 +249,19 @@ pub fn test_flo_syntax() {
         };
     }
 }
+
+/// Tests that the singleton gets parsed as a singleton, and the attribute gets parsed as an attribute.
+#[multiplatform_test]
+pub fn test_singleton() {
+    dfir_parser! {
+        x = source_stream([0]) -> singleton();
+        source_stream(0..100)
+            -> map(|_| {
+                #[cfg(nightly)]
+                {}
+
+                #{0}x
+            })
+            -> null();
+    }
+}

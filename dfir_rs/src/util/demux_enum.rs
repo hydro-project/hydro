@@ -57,8 +57,8 @@ pub trait DemuxEnumPush<Outputs, Meta: Copy>: DemuxEnumBase {
     /// Pushes `self` into the corresponding output push in `outputs`.
     fn start_send(self, meta: Meta, outputs: &mut Outputs);
 
-    /// Flushes all output pushes.
-    fn poll_flush(outputs: &mut Outputs, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend>;
+    /// Finalizes all output pushes.
+    fn poll_finalize(outputs: &mut Outputs, ctx: &mut Self::Ctx<'_>) -> PushStep<Self::CanPend>;
 
     /// Supplies all outputs with bounds on the number of items about to be sent.
     fn size_hint(outputs: &mut Outputs, hint: (usize, Option<usize>));

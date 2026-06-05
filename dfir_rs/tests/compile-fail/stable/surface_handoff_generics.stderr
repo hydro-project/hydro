@@ -1,0 +1,5 @@
+error: `handoff` takes no generic arguments.
+ --> tests/compile-fail/stable/surface_handoff_generics.rs:5:31
+  |
+5 |         source_iter(0..10) -> handoff::<'static>() -> for_each(std::mem::drop);
+  |                               ^^^^^^^

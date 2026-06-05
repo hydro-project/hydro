@@ -17,7 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::forward_handle::TickCycleHandle;
 use crate::live_collections::stream::NoOrder;
-use crate::location::{Location, NoTick};
+use crate::location::Location;
 use crate::prelude::*;
 
 #[derive(Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone, Debug)]
@@ -26,15 +26,15 @@ struct SequencedKv {
 }
 
 #[expect(clippy::type_complexity, reason = "Paxos internals")]
-fn sequence_payloads_old<'a, L: Location<'a> + NoTick>(
+fn sequence_payloads_old<'a, L: Location<'a>>(
     replica_tick: &Tick<L>,
     p_to_replicas: Stream<SequencedKv, L, Unbounded, NoOrder>,
 ) -> (
-    Stream<SequencedKv, Tick<L>, Bounded>,
-    TickCycleHandle<'a, Optional<usize, Tick<L>, Bounded>>,
+    Stream<SequencedKv, Tick<L::DropConsistency>, Bounded>,
+    TickCycleHandle<'a, Optional<usize, Tick<L::DropConsistency>, Bounded>>,
 ) {
     let (r_buffered_payloads_complete_cycle, r_buffered_payloads) =
-        replica_tick.cycle::<Stream<SequencedKv, Tick<L>, Bounded>>();
+        replica_tick.cycle::<Stream<SequencedKv, Tick<L::DropConsistency>, Bounded>, _>();
 
     let r_sorted_payloads = p_to_replicas
         .batch(replica_tick, nondet!(
@@ -45,7 +45,7 @@ fn sequence_payloads_old<'a, L: Location<'a> + NoTick>(
         .sort();
     // Create a cycle since we'll use this seq before we define it
     let (r_highest_seq_complete_cycle, r_highest_seq) =
-        replica_tick.cycle::<Optional<usize, _, _>>();
+        replica_tick.cycle::<Optional<usize, Tick<L::DropConsistency>, _>, _>();
     // Find highest the sequence number of any payload that can be processed in this tick. This is the payload right before a hole.
     let r_highest_seq_processable_payload = r_sorted_payloads
         .clone()

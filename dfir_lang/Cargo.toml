@@ -12,8 +12,13 @@ license = { workspace = true }
 workspace = true
 
 [features]
-default = ["codegen"]
+default = ["std", "codegen"]
+std = ["alloc", "serde?/std", "slotmap/std"]
+alloc = ["serde?/alloc"]
+serde = ["dep:serde", "slotmap/serde"]
 codegen = [
+    "std",
+    "serde",
     "dep:auto_impl",
     "dep:documented",
     "dep:itertools",
@@ -38,9 +43,9 @@ itertools = { version = "0.14.0", optional = true }
 prettyplease = { version = "0.2.0", features = [ "verbatim" ], optional = true }
 proc-macro2 = { version = "1.0.95", features = [ "span-locations" ], optional = true }
 quote = { version = "1.0.35", optional = true }
-serde = "1.0.197"
+serde = { version = "1.0.197", default-features = false, optional = true }
 serde_json = { version = "1.0.115", optional = true }
-slotmap = { version = "1.1.0", features = ["serde"] }
+slotmap = { version = "1.1.0", default-features = false }
 syn = { version = "2.0.46", features = [ "extra-traits", "full", "parsing", "visit-mut" ], optional = true }
 webbrowser = { version = "1.0.3", optional = true }
 

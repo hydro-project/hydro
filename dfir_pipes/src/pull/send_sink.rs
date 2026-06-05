@@ -63,7 +63,7 @@ where
                 }
             }
         }
-        this.push.as_mut().poll_flush(cx)
+        this.push.as_mut().poll_close(cx)
     }
 }
 

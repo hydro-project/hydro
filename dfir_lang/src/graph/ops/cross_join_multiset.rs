@@ -34,14 +34,12 @@ pub const CROSS_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
     persistence_args: &(0..=2),
     type_args: &(0..=1),
     is_external_input: false,
-    has_singleton_output: false,
     flo_type: None,
     ports_inn: Some(|| super::PortListSpec::Fixed(parse_quote! { 0, 1 })),
     ports_out: None,
     input_delaytype_fn: |_| None,
     write_fn: |wc @ &WriteContextArgs {
                    root,
-                   context,
                    op_span,
                    work_fn_async,
                    ident,
@@ -74,33 +72,17 @@ pub const CROSS_JOIN_MULTISET: OperatorConstraints = OperatorConstraints {
             _ => Default::default(),
         };
 
-        let lhs_i = wc.make_ident("lhs_i");
-        let rhs_i = wc.make_ident("rhs_i");
         let write_iterator = quote_spanned! {op_span=>
-            let (#lhs_i, #rhs_i) = if #context.is_first_run_this_tick() {
-                (0, 0)
-            } else {
-                (#lhs_state.len(), #rhs_state.len())
-            };
-
             #work_fn_async(#root::dfir_pipes::pull::Pull::for_each(#lhs, |x| #lhs_state.push(x))).await;
             #work_fn_async(#root::dfir_pipes::pull::Pull::for_each(#rhs, |x| #rhs_state.push(x))).await;
 
-            //       RHS
-            //   +-----+-----+
-            // L | Old | New |
-            // H +-----+-----+
-            // S | New | New |
-            //   +-----+-----+
             let #ident = #root::dfir_pipes::pull::iter(
                 #lhs_state
                     .iter()
-                    .enumerate()
-                    .flat_map(|(i, lhs)| {
-                        let j = if i < #lhs_i { #rhs_i } else { 0 };
-                        #rhs_state[j..]
-                            .iter()
-                            .map(move |rhs| (::std::clone::Clone::clone(lhs), ::std::clone::Clone::clone(rhs)))
+                    .flat_map(|lhs| {
+                #rhs_state
+                    .iter()
+                    .map(move |rhs| (::std::clone::Clone::clone(lhs), ::std::clone::Clone::clone(rhs)))
                     })
             );
         };

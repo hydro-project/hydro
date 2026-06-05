@@ -19,7 +19,6 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
     persistence_args: RANGE_0,
     type_args: RANGE_0,
     is_external_input: false,
-    has_singleton_output: true,
     flo_type: Some(FloType::Windowing),
     ports_inn: None,
     ports_out: None,
@@ -33,11 +32,11 @@ pub const REPEAT_N: OperatorConstraints = OperatorConstraints {
                    ident,
                    is_pull,
                    inputs,
-                   singleton_output_ident,
                    ..
                },
                _diagnostics| {
         assert!(is_pull);
+        let singleton_output_ident = wc.make_ident("singleton_output");
 
         let write_prologue = quote_spanned! {op_span=>
             #[allow(clippy::redundant_closure_call)]

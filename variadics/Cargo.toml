@@ -16,11 +16,12 @@ all-features = true
 
 [features]
 default = ["std"]
-std = []
+std = ["alloc"]
+alloc = ["hashbrown/alloc"]
 
 [dependencies]
 sealed = "0.6.0"
-hashbrown = "0.14.0"
+hashbrown = { version = "0.14.0", default-features = false }
 
 # coax cargo-smart-release into publishing this crate.
 # https://github.com/hydro-project/hydro/blob/main/RELEASING.md#addendum-adding-new-crates
@@ -28,7 +29,7 @@ hashbrown = "0.14.0"
 hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.0", optional = true }
 
 [dev-dependencies]
-trybuild = "1.0"
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.0", features = ["trybuild"] }
 
 [build-dependencies]
 hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.0" }

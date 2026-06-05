@@ -21,7 +21,7 @@ use crate::live_collections::keyed_stream::KeyedStream;
 use crate::live_collections::stream::{ExactlyOnce, NoOrder, TotalOrder};
 use crate::location::dynamic::LocationId;
 use crate::location::member_id::TaglessMemberId;
-use crate::location::{Cluster, LocationKey, MembershipEvent, NoTick};
+use crate::location::{Cluster, LocationKey, MembershipEvent};
 use crate::nondet::nondet;
 
 /// Maelstrom message envelope structure.
