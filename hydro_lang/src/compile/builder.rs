@@ -228,6 +228,14 @@ impl<'a> FlowBuilder<'a> {
         }
     }
 
+    /// Create a cluster with a specific consistency guarantee.
+    pub fn cluster_with_consistency<C, Con: crate::location::cluster::Consistency>(
+        &mut self,
+    ) -> Cluster<'a, C, Con> {
+        use crate::location::Location;
+        Cluster::from_drop_consistency(self.cluster::<C>())
+    }
+
     pub fn external<E>(&mut self) -> External<'a, E> {
         let key = self.locations.insert(LocationType::External);
         self.location_names.insert(key, type_name::<E>().to_owned());
