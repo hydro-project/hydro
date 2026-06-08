@@ -29,14 +29,14 @@ where
         }
     }
 
-    /// Combines two items `a` and `b` as equivalent, in the same set.
-    pub fn union(&mut self, a: K, b: K) {
+    /// Combines two items `a` and `b` as equivalent, in the same set. Returns the (new) "representative" for both.
+    ///
+    /// Prefers to keep `a`'s representative unchanged.
+    pub fn union(&mut self, a: K, b: K) -> K {
         let i = self.find(a);
         let j = self.find(b);
-        if i == j {
-            return;
-        }
-        self.links[i] = j;
+        self.links[j] = i;
+        i
     }
 
     /// Finds the "representative" item for `k`. Each set of equivalent items is represented by one

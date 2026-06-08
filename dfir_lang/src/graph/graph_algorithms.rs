@@ -1,6 +1,8 @@
 //! General graph algorithm utility functions
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
+
+use slotmap::{Key, SecondaryMap, SparseSecondaryMap};
 
 /// Topologically sorts a set of nodes. Returns a list where the order of `Id`s will agree with
 /// the order of any path through the graph.
@@ -71,11 +73,144 @@ where
     Ok(order)
 }
 
+/// Datastructure for merging subgraphs while maintaining topological sort order.
+pub struct SubgraphMerge<K>
+where
+    K: Key,
+{
+    subgraph_preds: SecondaryMap<K, Vec<K>>,
+    subgraph_topo_order: SecondaryMap<K, usize>,
+    subgraph_unionfind: crate::union_find::UnionFind<K>,
+}
+
+impl<K> SubgraphMerge<K>
+where
+    K: Key,
+{
+    pub fn new<PredsIter>(
+        keys: impl IntoIterator<Item = K>,
+        mut preds_fn: impl FnMut(K) -> PredsIter,
+    ) -> Self
+    where
+        PredsIter: IntoIterator<Item = K>,
+    {
+        let subgraph_preds = keys
+            .into_iter()
+            .map(|k| (k, (preds_fn)(k).into_iter().collect()))
+            .collect::<SecondaryMap<K, Vec<K>>>();
+        let subgraph_topo_order =
+            topo_sort(subgraph_preds.keys(), |k| subgraph_preds[k].iter().copied())
+                .expect("Input is not a DAG.")
+                .into_iter()
+                .enumerate()
+                .map(|(i, k)| (k, i))
+                .collect::<SecondaryMap<K, usize>>();
+        let subgraph_unionfind =
+            crate::union_find::UnionFind::with_capacity(subgraph_topo_order.len());
+        Self {
+            subgraph_preds,
+            subgraph_topo_order,
+            subgraph_unionfind,
+        }
+    }
+
+    pub fn find(&mut self, k: K) -> K {
+        self.subgraph_unionfind.find(k)
+    }
+
+    pub fn same_set(&mut self, u: K, v: K) -> bool {
+        self.subgraph_unionfind.same_set(u, v)
+    }
+
+    pub fn try_merge(&mut self, u: K, v: K) -> bool {
+        let u = self.subgraph_unionfind.find(u);
+        let v = self.subgraph_unionfind.find(v);
+
+        if u == v {
+            return true;
+        }
+
+        // Ensure u is "before" v in topo order (heuristic normalization)
+        let (u, v) = {
+            let ou = self.subgraph_topo_order[u];
+            let ov = self.subgraph_topo_order[v];
+            if ou <= ov { (u, v) } else { (v, u) }
+        };
+
+        // ------------------------------------------------------------
+        // 1. Cycle check in meta-graph using bounded backward search
+        // ------------------------------------------------------------
+
+        // We check whether v can reach u through predecessor edges (excluding the direct path).
+        // We prune using topo order: only nodes in `u..=v` matter.
+
+        // TODO(mingwei): clean up this mess.
+        let mut visited = std::collections::HashSet::<K>::from_iter(
+            self.subgraph_preds[v]
+                .iter()
+                .map(|&p| self.subgraph_unionfind.find(p)),
+        );
+        visited.remove(&u);
+        let mut stack = visited.iter().copied().collect::<Vec<_>>();
+        let u_ord = self.subgraph_topo_order[u];
+        let v_ord = self.subgraph_topo_order[v];
+
+        while let Some(x) = stack.pop() {
+            if x == u {
+                // Found path v -> u => merging would create cycle
+                return false;
+            }
+
+            for &p in self.subgraph_preds[x].iter() {
+                let root_p = self.subgraph_unionfind.find(p);
+
+                // only consider active window (important pruning)
+                let ord = self.subgraph_topo_order[root_p];
+                if (u_ord..=v_ord).contains(&ord) && visited.insert(root_p) {
+                    stack.push(root_p);
+                }
+            }
+        }
+
+        // ------------------------------------------------------------
+        // 2. Perform merge in union-find
+        // ------------------------------------------------------------
+
+        let new_root = self.subgraph_unionfind.union(u, v);
+
+        // ------------------------------------------------------------
+        // 3. Update topo order (local heuristic)
+        // ------------------------------------------------------------
+
+        // Simple stable heuristic:
+        // place merged node at min position of its components
+        // remove old entries (not strictly needed for correcness).
+        let new_order = self.subgraph_topo_order.remove(u).unwrap();
+        let __v_order = self.subgraph_topo_order.remove(v).unwrap();
+        self.subgraph_topo_order.insert(new_root, new_order);
+
+        // ------------------------------------------------------------
+        // 4. Rewire predecessor lists
+        // ------------------------------------------------------------
+
+        let mut preds = Vec::new();
+        preds.append(&mut self.subgraph_preds.remove(u).unwrap());
+        preds.append(&mut self.subgraph_preds.remove(v).unwrap());
+        // Remove self-loops after union
+        preds.retain(|x| self.subgraph_unionfind.find(*x) != new_root);
+
+        self.subgraph_preds.insert(new_root, preds);
+
+        true
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::collections::{BTreeMap, BTreeSet};
 
     use itertools::Itertools;
+    use slotmap::SlotMap;
 
     use super::*;
 
@@ -161,5 +296,42 @@ mod test {
                 permutation
             );
         }
+    }
+
+    #[test]
+    pub fn test_subgraph_merge_basic() {
+        let mut preds = SlotMap::new();
+
+        let a = preds.insert(vec![]);
+        let b = preds.insert(vec![]);
+        let c = preds.insert(vec![]);
+        let d = preds.insert(vec![]);
+        let e = preds.insert(vec![]);
+        let f = preds.insert(vec![]);
+
+        preds[b].push(a);
+        preds[c].push(b);
+        preds[d].push(b);
+        preds[e].push(c);
+        preds[e].push(d);
+        preds[f].push(e);
+
+        let mut merge = SubgraphMerge::new(preds.keys(), |v| preds[v].iter().copied());
+
+        assert!(merge.try_merge(a, a)); // No-op.
+        //        ┌──► C ──┐
+        //        │        ▼
+        // A ───► B        E ───► F
+        //        │        ▲
+        //        └──► D ──┘
+        assert!(merge.try_merge(b, c));
+        assert!(merge.try_merge(b, c)); // No-op.
+        // A ───► BC ────► E ───► F
+        //        │        ▲
+        //        └──► D ──┘
+        assert!(!merge.try_merge(c, e)); // Rejected due to `D` self-edge.
+
+        assert!(merge.try_merge(d, e));
+        assert!(merge.try_merge(c, e));
     }
 }

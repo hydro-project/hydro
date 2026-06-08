@@ -12,6 +12,7 @@ use super::{
     Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId, HandoffKind, graph_algorithms,
 };
 use crate::diagnostic::{Diagnostic, Level};
+use crate::graph::graph_algorithms::SubgraphMerge;
 use crate::union_find::UnionFind;
 
 /// Helper struct for tracking barrier crossers, see [`find_barrier_crossers`].
@@ -109,7 +110,7 @@ fn find_barrier_crossers(partitioned_graph: &DfirGraph) -> BarrierCrossers {
 fn find_subgraph_unionfind(
     partitioned_graph: &DfirGraph,
     barrier_crossers: &BarrierCrossers,
-) -> (UnionFind<GraphNodeId>, BTreeSet<GraphEdgeId>) {
+) -> (SubgraphMerge<GraphNodeId>, BTreeSet<GraphEdgeId>) {
     // Modality (color) of nodes, push or pull.
     // TODO(mingwei)? This does NOT consider `DelayType` barriers (which generally imply `Pull`),
     // which makes it inconsistant with the final output in `as_code()`. But this doesn't create
@@ -122,8 +123,15 @@ fn find_subgraph_unionfind(
         })
         .collect::<SparseSecondaryMap<_, _>>();
 
-    let mut subgraph_unionfind: UnionFind<GraphNodeId> =
-        UnionFind::with_capacity(partitioned_graph.nodes().len());
+    let mut subgraph_unionfind = SubgraphMerge::<GraphNodeId>::new(partitioned_graph.node_ids(), |node_id| {
+        partitioned_graph.node_predecessor_nodes(node_id).chain(
+            barrier_crossers
+                .iter_node_pairs(partitioned_graph)
+                .filter_map(move |((src, dst), _)| (node_id == dst).then_some(src)),
+        )
+    });
+    // let mut subgraph_unionfind: UnionFind<GraphNodeId> =
+    //     UnionFind::with_capacity(partitioned_graph.nodes().len());
 
     // Will contain all edges which are handoffs. Starts out with all edges and
     // we remove from this set as we combine nodes into subgraphs.
@@ -175,9 +183,11 @@ fn find_subgraph_unionfind(
             if can_connect_colorize(&mut node_color, src, dst) {
                 // At this point we have selected this edge and its src & dst to be
                 // within a single subgraph.
-                subgraph_unionfind.union(src, dst);
-                assert!(handoff_edges.remove(&edge_id));
-                progress = true;
+                let ok = subgraph_unionfind.try_merge(src, dst);
+                if ok {
+                    assert!(handoff_edges.remove(&edge_id));
+                    progress = true;
+                }
             }
         }
     }
@@ -190,7 +200,7 @@ fn find_subgraph_unionfind(
 /// This list of nodes in each subgraph are returned in topological sort order.
 fn make_subgraph_collect(
     partitioned_graph: &DfirGraph,
-    mut subgraph_unionfind: UnionFind<GraphNodeId>,
+    mut subgraph_unionfind: SubgraphMerge<GraphNodeId>,
 ) -> SecondaryMap<GraphNodeId, Vec<GraphNodeId>> {
     // We want the nodes of each subgraph to be listed in topo-sort order.
     // We could do this on each subgraph, or we could do it all at once on the
