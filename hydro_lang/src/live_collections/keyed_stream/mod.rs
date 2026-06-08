@@ -1193,7 +1193,7 @@ impl<'a, K, V, L: Location<'a>, B: Boundedness, O: Ordering, R: Retries>
         let other: Optional<O2, L, Bounded> = other.into();
         check_matching_location(&self.location, &other.location);
 
-        Stream::new(
+        Stream::<((K, V), O2), L, B, O, R>::new(
             self.location.clone(),
             HydroNode::CrossSingleton {
                 left: Box::new(self.ir_node.replace(HydroNode::Placeholder)),

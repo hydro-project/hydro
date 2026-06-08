@@ -173,21 +173,43 @@ impl<C, I, M> Property for AggFuncAlgebra<C, I, M> {
     }
 }
 
-/// Algebraic properties for a map function of type T -> U.
+/// Algebraic properties for a singleton map function of type T -> U.
 ///
 /// Order-preserving means that if the input grows monotonically, the output also grows monotonically.
-pub struct MapFuncAlgebra<OrderPreserving = NotProved>(
+pub struct SingletonMapFuncAlgebra<
+    OrderPreserving = NotProved,
+    Commutative = NotProved,
+    Idempotent = NotProved,
+>(
     Option<Box<dyn OrderPreservingProof>>,
-    PhantomData<OrderPreserving>,
+    Option<Box<dyn CommutativeProof>>,
+    Option<Box<dyn IdempotentProof>>,
+    PhantomData<(OrderPreserving, Commutative, Idempotent)>,
 );
 
-impl<O> MapFuncAlgebra<O> {
+impl<O, C, I> SingletonMapFuncAlgebra<O, C, I> {
     /// Marks the function as being order-preserving, with the given proof mechanism.
     pub fn order_preserving(
         self,
         proof: impl OrderPreservingProof + 'static,
-    ) -> MapFuncAlgebra<Proved> {
-        MapFuncAlgebra(Some(Box::new(proof)), PhantomData)
+    ) -> SingletonMapFuncAlgebra<Proved, C, I> {
+        SingletonMapFuncAlgebra(Some(Box::new(proof)), self.1, self.2, PhantomData)
+    }
+
+    /// Marks the function as being commutative, with the given proof mechanism.
+    pub fn commutative(
+        self,
+        proof: impl CommutativeProof + 'static,
+    ) -> SingletonMapFuncAlgebra<O, Proved, I> {
+        SingletonMapFuncAlgebra(self.0, Some(Box::new(proof)), self.2, PhantomData)
+    }
+
+    /// Marks the function as being idempotent, with the given proof mechanism.
+    pub fn idempotent(
+        self,
+        proof: impl IdempotentProof + 'static,
+    ) -> SingletonMapFuncAlgebra<O, C, Proved> {
+        SingletonMapFuncAlgebra(self.0, self.1, Some(Box::new(proof)), PhantomData)
     }
 
     /// Registers the expression with the underlying proof mechanisms.
@@ -198,11 +220,54 @@ impl<O> MapFuncAlgebra<O> {
     }
 }
 
-impl<O> Property for MapFuncAlgebra<O> {
-    type Root = MapFuncAlgebra;
+impl<O, C, I> Property for SingletonMapFuncAlgebra<O, C, I> {
+    type Root = SingletonMapFuncAlgebra;
 
     fn make_root(_target: &mut Option<Self>) -> Self::Root {
-        MapFuncAlgebra(None, PhantomData)
+        SingletonMapFuncAlgebra(None, None, None, PhantomData)
+    }
+}
+
+/// Algebraic properties for a stream map function of type T -> U.
+pub struct StreamMapFuncAlgebra<Commutative = NotProved, Idempotent = NotProved>(
+    Option<Box<dyn CommutativeProof>>,
+    Option<Box<dyn IdempotentProof>>,
+    PhantomData<(Commutative, Idempotent)>,
+);
+
+impl<C, I> StreamMapFuncAlgebra<C, I> {
+    /// Marks the function as being commutative, with the given proof mechanism.
+    pub fn commutative(
+        self,
+        proof: impl CommutativeProof + 'static,
+    ) -> StreamMapFuncAlgebra<Proved, I> {
+        StreamMapFuncAlgebra(Some(Box::new(proof)), self.1, PhantomData)
+    }
+
+    /// Marks the function as being idempotent, with the given proof mechanism.
+    pub fn idempotent(
+        self,
+        proof: impl IdempotentProof + 'static,
+    ) -> StreamMapFuncAlgebra<C, Proved> {
+        StreamMapFuncAlgebra(self.0, Some(Box::new(proof)), PhantomData)
+    }
+
+    /// Registers the expression with the underlying proof mechanisms.
+    pub(crate) fn register_proof(self, expr: &syn::Expr) {
+        if let Some(proof) = self.0 {
+            proof.register_proof(expr);
+        }
+        if let Some(proof) = self.1 {
+            proof.register_proof(expr);
+        }
+    }
+}
+
+impl<C, I> Property for StreamMapFuncAlgebra<C, I> {
+    type Root = StreamMapFuncAlgebra;
+
+    fn make_root(_target: &mut Option<Self>) -> Self::Root {
+        StreamMapFuncAlgebra(None, None, PhantomData)
     }
 }
 
@@ -231,6 +296,64 @@ pub trait ValidIdempotenceFor<R: Retries> {}
 impl ValidIdempotenceFor<ExactlyOnce> for NotProved {}
 #[sealed::sealed]
 impl<R: Retries> ValidIdempotenceFor<R> for Proved {}
+
+/// Marker trait identifying that the commutativity property is valid for the given stream ordering.
+#[sealed::sealed]
+#[diagnostic::on_unimplemented(
+    message = "Because the input stream has ordering `{O}`, the closure must demonstrate commutativity with a `commutative = ...` annotation.",
+    label = "required for this call",
+    note = "To intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
+)]
+pub trait ValidMutCommutativityFor<F: FnMut(In) -> Out, In, Out, O: Ordering, const WAS_MUT: bool> {}
+#[sealed::sealed]
+impl<In, Out, F: FnMut(In) -> Out> ValidMutCommutativityFor<F, In, Out, TotalOrder, true>
+    for NotProved
+{
+}
+#[sealed::sealed]
+impl<In, Out, F: Fn(In) -> Out, O: Ordering> ValidMutCommutativityFor<F, In, Out, O, false>
+    for NotProved
+{
+}
+#[sealed::sealed]
+impl<In, Out, F: FnMut(In) -> Out, O: Ordering> ValidMutCommutativityFor<F, In, Out, O, true>
+    for Proved
+{
+}
+#[sealed::sealed]
+impl<In, Out, F: Fn(In) -> Out, O: Ordering> ValidMutCommutativityFor<F, In, Out, O, false>
+    for Proved
+{
+}
+
+/// Marker trait identifying that the idempotence property is valid for the given stream ordering.
+#[diagnostic::on_unimplemented(
+    message = "Because the input stream has retries `{R}`, the closure must demonstrate idempotence with an `idempotent = ...` annotation.",
+    label = "required for this call",
+    note = "To intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
+)]
+#[sealed::sealed]
+pub trait ValidMutIdempotenceFor<F: FnMut(In) -> Out, In, Out, R: Retries, const WAS_MUT: bool> {}
+#[sealed::sealed]
+impl<In, Out, F: FnMut(In) -> Out> ValidMutIdempotenceFor<F, In, Out, ExactlyOnce, true>
+    for NotProved
+{
+}
+#[sealed::sealed]
+impl<In, Out, F: Fn(In) -> Out, R: Retries> ValidMutIdempotenceFor<F, In, Out, R, false>
+    for NotProved
+{
+}
+#[sealed::sealed]
+impl<In, Out, F: FnMut(In) -> Out, R: Retries> ValidMutIdempotenceFor<F, In, Out, R, true>
+    for Proved
+{
+}
+#[sealed::sealed]
+impl<In, Out, F: Fn(In) -> Out, R: Retries> ValidMutIdempotenceFor<F, In, Out, R, false>
+    for Proved
+{
+}
 
 /// Marker trait identifying the boundedness of a singleton given a monotonicity property of
 /// an aggregation on a stream.

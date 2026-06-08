@@ -32,7 +32,8 @@ use crate::manual_expr::ManualExpr;
 use crate::nondet::{NonDet, nondet};
 use crate::prelude::manual_proof;
 use crate::properties::{
-    AggFuncAlgebra, ApplyMonotoneStream, ValidCommutativityFor, ValidIdempotenceFor,
+    AggFuncAlgebra, ApplyMonotoneStream, StreamMapFuncAlgebra, ValidCommutativityFor,
+    ValidIdempotenceFor, ValidMutCommutativityFor, ValidMutIdempotenceFor,
 };
 
 pub mod networking;
@@ -549,12 +550,19 @@ where
     /// # }));
     /// # }
     /// ```
-    pub fn map<U, F>(self, f: impl IntoQuotedMut<'a, F, L>) -> Stream<U, L, B, O, R>
+    pub fn map<U, F, C, I, const WAS_MUT: bool>(
+        self,
+        f: impl IntoQuotedMut<'a, F, L, StreamMapFuncAlgebra<C, I>>,
+    ) -> Stream<U, L, B, O, R>
     where
-        F: Fn(T) -> U + 'a,
+        F: FnMut(T) -> U + 'a,
+        C: ValidMutCommutativityFor<F, T, U, O, WAS_MUT>,
+        I: ValidMutIdempotenceFor<F, T, U, R, WAS_MUT>,
     {
         let f = crate::singleton_ref::with_singleton_capture(|| {
-            f.splice_fn1_ctx(&self.location).into()
+            let (expr, proof) = f.splice_fnmut1_ctx_props(&self.location);
+            proof.register_proof(&expr);
+            expr.into()
         });
         Stream::new(
             self.location.clone(),

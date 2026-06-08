@@ -18,12 +18,15 @@ use crate::location::Location;
 ///
 /// This type is `Copy` (required by `q!()` macro internals).
 /// TODO(mingwei): <https://github.com/hydro-project/stageleft/issues/73>
-pub struct SingletonRef<'a, 'slf, T, L> {
+pub struct SingletonRef<'a, 'slf, T, L, const IS_MUT: bool = false> {
     /// Will be updated to `HydroNode::Singleton` when used, if not already.
     pub(crate) ir_node: &'slf RefCell<HydroNode>,
     _phantom: PhantomData<(&'a T, L)>,
 }
-impl<'slf, T, L> SingletonRef<'_, 'slf, T, L> {
+/// Alias for [`SingletonRef`] with `IS_MUT = true`.
+pub type SingletonMut<'a, 'slf, T, L> = SingletonRef<'a, 'slf, T, L, true>;
+
+impl<'slf, T, L, const IS_MUT: bool> SingletonRef<'_, 'slf, T, L, IS_MUT> {
     /// Creates a `SingletonRef` from a shared node.
     pub(crate) fn new(ir_node: &'slf RefCell<HydroNode>) -> Self {
         Self {
@@ -31,19 +34,35 @@ impl<'slf, T, L> SingletonRef<'_, 'slf, T, L> {
             _phantom: PhantomData,
         }
     }
+
+    /// Converts this singleton into a shared (non-`mut`) `SingletonRef`.
+    pub fn as_ref(&self) -> SingletonRef<'_, 'slf, T, L, false> {
+        SingletonRef {
+            ir_node: self.ir_node,
+            _phantom: PhantomData,
+        }
+    }
+
+    /// Converts this singleton into an exclusive (`mut`) `SingletonRef`.
+    pub fn as_mut(&self) -> SingletonRef<'_, 'slf, T, L, true> {
+        SingletonRef {
+            ir_node: self.ir_node,
+            _phantom: PhantomData,
+        }
+    }
 }
 
-impl<T, L> Copy for SingletonRef<'_, '_, T, L> {}
-impl<T, L> Clone for SingletonRef<'_, '_, T, L> {
+impl<T, L, const IS_MUT: bool> Copy for SingletonRef<'_, '_, T, L, IS_MUT> {}
+impl<T, L, const IS_MUT: bool> Clone for SingletonRef<'_, '_, T, L, IS_MUT> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
 // Thread-local storage for singleton references captured during `q!()` expansion.
-// Maps local ident name -> SharedNode for each singleton captured in the current closure.
+// Maps local ident name -> (SharedNode, is_mut) for each singleton captured in the current closure.
 thread_local! {
-    static SINGLETON_REFS: RefCell<Option<Vec<(syn::Ident, HydroNode)>>> = const { RefCell::new(None) };
+    static SINGLETON_REFS: RefCell<Option<Vec<(syn::Ident, HydroNode, bool)>>> = const { RefCell::new(None) };
 }
 
 /// Activate the singleton reference capture context. Must be called before `q!()` expansion
@@ -59,7 +78,7 @@ pub fn with_singleton_capture(
             "nested singleton capture scopes are not supported"
         );
     });
-    let expr = f();
+    let expr = (f)();
     let singleton_refs = SINGLETON_REFS.with(|cell| cell.borrow_mut().take().unwrap());
     crate::compile::ir::ClosureExpr::new(expr, singleton_refs)
 }
@@ -67,13 +86,11 @@ pub fn with_singleton_capture(
 static SINGLETON_REF_COUNTER: std::sync::atomic::AtomicUsize =
     std::sync::atomic::AtomicUsize::new(0);
 
-impl<'a, 'slf, T: 'a, L> FreeVariableWithContextWithProps<L, ()> for SingletonRef<'a, 'slf, T, L>
+impl<'a, 'slf, T: 'a, L, const IS_MUT: bool> SingletonRef<'a, 'slf, T, L, IS_MUT>
 where
     L: Location<'a>,
 {
-    type O = &'a T;
-
-    fn to_tokens(self, _ctx: &L) -> (QuoteTokens, ()) {
+    fn to_tokens_helper(self, _ctx: &L) -> (QuoteTokens, ()) {
         let id = SINGLETON_REF_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let ident = syn::Ident::new(&format!("__hydro_singleton_ref_{}", id), Span::call_site());
 
@@ -107,6 +124,7 @@ where
                     inner: SharedNode(Rc::clone(&inner.0)),
                     metadata,
                 },
+                IS_MUT,
             ));
         });
 
@@ -117,6 +135,28 @@ where
             },
             (),
         )
+    }
+}
+
+impl<'a, 'slf, T: 'a, L> FreeVariableWithContextWithProps<L, ()> for SingletonRef<'a, 'slf, T, L>
+where
+    L: Location<'a>,
+{
+    type O = &'a T;
+
+    fn to_tokens(self, ctx: &L) -> (QuoteTokens, ()) {
+        self.to_tokens_helper(ctx)
+    }
+}
+
+impl<'a, 'slf, T: 'a, L> FreeVariableWithContextWithProps<L, ()> for SingletonMut<'a, 'slf, T, L>
+where
+    L: Location<'a>,
+{
+    type O = &'a mut T;
+
+    fn to_tokens(self, ctx: &L) -> (QuoteTokens, ()) {
+        self.to_tokens_helper(ctx)
     }
 }
 

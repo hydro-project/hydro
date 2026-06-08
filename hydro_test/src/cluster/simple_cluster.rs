@@ -2,14 +2,18 @@ use hydro_lang::live_collections::stream::TotalOrder;
 use hydro_lang::location::MemberId;
 use hydro_lang::location::cluster::CLUSTER_SELF_ID;
 use hydro_lang::prelude::*;
+use hydro_lang::properties::StreamMapFuncAlgebra;
 use hydro_std::compartmentalize::{DecoupleClusterStream, DecoupleProcessStream, PartitionStream};
 use stageleft::IntoQuotedMut;
 
-pub fn partition<'a, F: Fn((MemberId<()>, String)) -> (MemberId<()>, String) + 'a>(
+pub fn partition<'a, F>(
     cluster1: Cluster<'a, ()>,
     cluster2: Cluster<'a, ()>,
-    dist_policy: impl IntoQuotedMut<'a, F, Cluster<'a, ()>>,
-) -> (Cluster<'a, ()>, Cluster<'a, ()>) {
+    dist_policy: impl IntoQuotedMut<'a, F, Cluster<'a, ()>, StreamMapFuncAlgebra>,
+) -> (Cluster<'a, ()>, Cluster<'a, ()>)
+where
+    F: Fn((MemberId<()>, String)) -> (MemberId<()>, String) + 'a,
+{
     cluster1
         .source_stream(q!(tokio_stream::iter(vec!(CLUSTER_SELF_ID))))
         .map(q!(move |id| (id.clone(), format!("Hello from {}", id))))
