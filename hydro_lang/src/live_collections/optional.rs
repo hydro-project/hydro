@@ -294,6 +294,26 @@ where
         &self.location
     }
 
+    /// Creates a shared reference handle to this optional that can be captured inside `q!()`
+    /// closures. The handle resolves to `&Option<T>` at runtime.
+    ///
+    /// The optional must be bounded, otherwise reading it would be non-deterministic.
+    pub fn by_ref(&self) -> crate::handoff_ref::OptionalRef<'a, '_, T, L>
+    where
+        B: IsBounded,
+    {
+        crate::handoff_ref::OptionalRef::new(&self.ir_node)
+    }
+
+    /// Returns a mutable reference handle to this optional that can be captured inside `q!()`
+    /// closures. The handle resolves to `&mut Option<T>` at runtime.
+    pub fn by_mut(&self) -> crate::handoff_ref::OptionalMut<'a, '_, T, L>
+    where
+        B: IsBounded,
+    {
+        crate::handoff_ref::OptionalMut::new(&self.ir_node)
+    }
+
     /// Weakens the consistency of this live collection to not guarantee any consistency across
     /// cluster members (if this collection is on a cluster).
     pub fn weaken_consistency(self) -> Optional<T, L::DropConsistency, B>

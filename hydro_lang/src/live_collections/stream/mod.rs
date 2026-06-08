@@ -429,6 +429,26 @@ where
         &self.location
     }
 
+    /// Creates a shared reference handle to this stream's handoff buffer that can be captured
+    /// inside `q!()` closures. The handle resolves to `&Vec<T>` at runtime.
+    ///
+    /// The stream must be bounded, otherwise reading it would be non-deterministic.
+    pub fn by_ref(&self) -> crate::handoff_ref::StreamRef<'a, '_, T, L>
+    where
+        B: IsBounded,
+    {
+        crate::handoff_ref::StreamRef::new(&self.ir_node)
+    }
+
+    /// Returns a mutable reference handle to this stream's handoff buffer that can be captured
+    /// inside `q!()` closures. The handle resolves to `&mut Vec<T>` at runtime.
+    pub fn by_mut(&self) -> crate::handoff_ref::StreamMut<'a, '_, T, L>
+    where
+        B: IsBounded,
+    {
+        crate::handoff_ref::StreamMut::new(&self.ir_node)
+    }
+
     /// Weakens the consistency of this live collection to not guarantee any consistency across
     /// cluster members (if this collection is on a cluster).
     pub fn weaken_consistency(self) -> Stream<T, L::DropConsistency, B, O, R>
@@ -559,7 +579,7 @@ where
         C: ValidMutCommutativityFor<F, T, U, O, WAS_MUT>,
         I: ValidMutIdempotenceFor<F, T, U, R, WAS_MUT>,
     {
-        let f = crate::singleton_ref::with_singleton_capture(|| {
+        let f = crate::handoff_ref::with_ref_capture(|| {
             let (expr, proof) = f.splice_fnmut1_ctx_props(&self.location);
             proof.register_proof(&expr);
             expr.into()
@@ -605,9 +625,7 @@ where
         I: IntoIterator<Item = U>,
         F: Fn(T) -> I + 'a,
     {
-        let f = crate::singleton_ref::with_singleton_capture(|| {
-            f.splice_fn1_ctx(&self.location).into()
-        });
+        let f = crate::handoff_ref::with_ref_capture(|| f.splice_fn1_ctx(&self.location).into());
         Stream::new(
             self.location.clone(),
             HydroNode::FlatMap {
@@ -654,9 +672,7 @@ where
         I: IntoIterator<Item = U>,
         F: Fn(T) -> I + 'a,
     {
-        let f = crate::singleton_ref::with_singleton_capture(|| {
-            f.splice_fn1_ctx(&self.location).into()
-        });
+        let f = crate::handoff_ref::with_ref_capture(|| f.splice_fn1_ctx(&self.location).into());
         Stream::new(
             self.location.clone(),
             HydroNode::FlatMap {
@@ -793,9 +809,8 @@ where
     where
         F: Fn(&T) -> bool + 'a,
     {
-        let f = crate::singleton_ref::with_singleton_capture(|| {
-            f.splice_fn1_borrow_ctx(&self.location).into()
-        });
+        let f =
+            crate::handoff_ref::with_ref_capture(|| f.splice_fn1_borrow_ctx(&self.location).into());
         Stream::new(
             self.location.clone(),
             HydroNode::Filter {
@@ -851,9 +866,8 @@ where
     where
         F: Fn(&T) -> bool + 'a,
     {
-        let f = crate::singleton_ref::with_singleton_capture(|| {
-            f.splice_fn1_borrow_ctx(&self.location).into()
-        });
+        let f =
+            crate::handoff_ref::with_ref_capture(|| f.splice_fn1_borrow_ctx(&self.location).into());
         let shared = SharedNode(Rc::new(RefCell::new(
             self.ir_node.replace(HydroNode::Placeholder),
         )));
@@ -1220,7 +1234,7 @@ where
     where
         F: Fn(&T) + 'a,
     {
-        let f = crate::singleton_ref::with_singleton_capture(|| {
+        let f = crate::handoff_ref::with_ref_capture(|| {
             f.splice_fn1_borrow_ctx(&self.location.drop_consistency())
                 .into()
         });

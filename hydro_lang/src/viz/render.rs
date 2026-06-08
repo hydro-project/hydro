@@ -1118,7 +1118,10 @@ impl HydroNode {
                 cycle_id, metadata, ..
             } => build_source_node(structure, metadata, format!("cycle_source({})", cycle_id)),
 
-            HydroNode::Tee { inner, metadata } | HydroNode::Singleton { inner, metadata } => {
+            HydroNode::Tee { inner, metadata }
+            | HydroNode::Reference {
+                inner, metadata, ..
+            } => {
                 let ptr = inner.as_ptr();
                 if let Some(&existing_id) = seen_tees.get(&ptr) {
                     return existing_id;
@@ -1128,7 +1131,7 @@ impl HydroNode {
                     .0
                     .borrow()
                     .build_graph_structure(structure, seen_tees, config);
-                let node_type = if matches!(self, HydroNode::Singleton { .. }) {
+                let node_type = if matches!(self, HydroNode::Reference { .. }) {
                     HydroNodeType::Aggregation
                 } else {
                     HydroNodeType::Tee
