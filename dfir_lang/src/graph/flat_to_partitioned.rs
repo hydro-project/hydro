@@ -123,13 +123,32 @@ fn find_subgraph_unionfind(
         })
         .collect::<SparseSecondaryMap<_, _>>();
 
-    let mut subgraph_unionfind = SubgraphMerge::<GraphNodeId>::new(partitioned_graph.node_ids(), |node_id| {
-        partitioned_graph.node_predecessor_nodes(node_id).chain(
-            barrier_crossers
-                .iter_node_pairs(partitioned_graph)
-                .filter_map(move |((src, dst), _)| (node_id == dst).then_some(src)),
-        )
-    });
+    let mut subgraph_unionfind =
+        SubgraphMerge::<GraphNodeId>::new(partitioned_graph.node_ids(), |node_id| {
+            partitioned_graph
+                .node_predecessors(node_id)
+                .filter_map(|(succ_edge, pred_id)| {
+                    let succ_edge_delaytype = barrier_crossers
+                        .edge_barrier_crossers
+                        .get(succ_edge)
+                        .copied();
+                    // Tick edges are excluded from the topo sort — they are cross-tick by design.
+                    if let Some(_delay_type @ (DelayType::Tick | DelayType::TickLazy)) =
+                        succ_edge_delaytype
+                    {
+                        None
+                    } else {
+                        Some(pred_id)
+                    }
+                })
+                .chain(
+                    partitioned_graph
+                        .node_singleton_references(node_id)
+                        .iter()
+                        .filter_map(|r| r.node_id),
+                )
+        })
+        .expect("Not a DAG");
     // let mut subgraph_unionfind: UnionFind<GraphNodeId> =
     //     UnionFind::with_capacity(partitioned_graph.nodes().len());
 

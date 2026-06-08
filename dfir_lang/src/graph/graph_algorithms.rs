@@ -90,7 +90,7 @@ where
     pub fn new<PredsIter>(
         keys: impl IntoIterator<Item = K>,
         mut preds_fn: impl FnMut(K) -> PredsIter,
-    ) -> Self
+    ) -> Result<Self, Vec<K>>
     where
         PredsIter: IntoIterator<Item = K>,
     {
@@ -99,19 +99,18 @@ where
             .map(|k| (k, (preds_fn)(k).into_iter().collect()))
             .collect::<SecondaryMap<K, Vec<K>>>();
         let subgraph_topo_order =
-            topo_sort(subgraph_preds.keys(), |k| subgraph_preds[k].iter().copied())
-                .expect("Input is not a DAG.")
+            topo_sort(subgraph_preds.keys(), |k| subgraph_preds[k].iter().copied())?
                 .into_iter()
                 .enumerate()
                 .map(|(i, k)| (k, i))
                 .collect::<SecondaryMap<K, usize>>();
         let subgraph_unionfind =
             crate::union_find::UnionFind::with_capacity(subgraph_topo_order.len());
-        Self {
+        Ok(Self {
             subgraph_preds,
             subgraph_topo_order,
             subgraph_unionfind,
-        }
+        })
     }
 
     pub fn find(&mut self, k: K) -> K {
@@ -316,7 +315,7 @@ mod test {
         preds[e].push(d);
         preds[f].push(e);
 
-        let mut merge = SubgraphMerge::new(preds.keys(), |v| preds[v].iter().copied());
+        let mut merge = SubgraphMerge::new(preds.keys(), |v| preds[v].iter().copied()).unwrap();
 
         assert!(merge.try_merge(a, a)); // No-op.
         //        ┌──► C ──┐
