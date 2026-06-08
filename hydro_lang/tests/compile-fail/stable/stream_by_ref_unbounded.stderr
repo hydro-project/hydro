@@ -1,0 +1,16 @@
+error[E0277]: The input collection must be bounded (`Bounded`), but has bound `hydro_lang::prelude::Unbounded`. Strengthen the boundedness upstream or consider a different API.
+ --> tests/compile-fail/stable/stream_by_ref_unbounded.rs:7:23
+  |
+7 |     let _ = unbounded.by_ref();
+  |                       ^^^^^^ required here
+  |
+  = help: the trait `IsBounded` is not implemented for `hydro_lang::prelude::Unbounded`
+  = note: To intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region. This introduces non-determinism so avoid unless necessary.
+note: required by a bound in `hydro_lang::prelude::Stream::<T, L, B, O, R>::by_ref`
+ --> src/live_collections/stream/mod.rs
+  |
+  |     pub fn by_ref(&self) -> crate::handoff_ref::StreamRef<'a, '_, T, L>
+  |            ------ required by a bound in this associated function
+  |     where
+  |         B: IsBounded,
+  |            ^^^^^^^^^ required by this bound in `Stream::<T, L, B, O, R>::by_ref`
