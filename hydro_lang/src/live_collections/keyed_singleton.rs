@@ -7,12 +7,14 @@ use std::marker::PhantomData;
 use std::ops::Deref;
 use std::rc::Rc;
 
+use sealed::sealed;
 use stageleft::{IntoQuotedMut, QuotedWithContext, q};
 
 use super::boundedness::{Bounded, Boundedness, IsBounded, Unbounded};
 use super::keyed_stream::KeyedStream;
 use super::optional::Optional;
 use super::singleton::Singleton;
+use super::sliced::sliced;
 use super::stream::{ExactlyOnce, NoOrder, Stream, TotalOrder};
 use crate::compile::builder::{CycleId, FlowState};
 use crate::compile::ir::{
@@ -114,6 +116,28 @@ impl KeyedSingletonBound for MonotonicValue {
         KeyedSingletonBoundKind::MonotonicValue
     }
 }
+
+#[sealed]
+#[diagnostic::on_unimplemented(
+    message = "The keyed singleton must have monotonic values (`MonotonicValue`) or be bounded (`Bounded`), but has bound `{Self}`. Strengthen the monotonicity upstream or consider a different API.",
+    label = "required here",
+    note = "To intentionally process a non-deterministic snapshot or batch, you may want to use a `sliced!` region. This introduces non-determinism so avoid unless necessary."
+)]
+/// Marker trait that is implemented for [`KeyedSingletonBound`] types whose per-key values
+/// are monotonically non-decreasing (or bounded).
+pub trait IsKeyedMonotonic: KeyedSingletonBound {}
+
+#[sealed]
+#[diagnostic::do_not_recommend]
+impl IsKeyedMonotonic for MonotonicValue {}
+
+#[sealed]
+#[diagnostic::do_not_recommend]
+impl IsKeyedMonotonic for BoundedValue {}
+
+#[sealed]
+#[diagnostic::do_not_recommend]
+impl<B: IsBounded + KeyedSingletonBound> IsKeyedMonotonic for B {}
 
 /// Mapping from keys of type `K` to values of type `V`.
 ///
@@ -925,6 +949,264 @@ impl<'a, K, V, L: Location<'a>, B: KeyedSingletonBound> KeyedSingleton<K, V, L, 
             .weaken_retries::<R>() // TODO: Once weaken_retries() is implemented for KeyedSingleton, remove entries() and into_keyed()
             .into_keyed()
             .lookup_keyed_stream(lookup)
+    }
+
+    /// For each key present in both `self` and `thresholds`, emits a [`KeyedStream`] event the first
+    /// time that key's value becomes greater than or equal to the corresponding threshold value.
+    /// The emitted value for each key is the threshold value itself.
+    ///
+    /// This requires the keyed singleton to have monotonic values ([`MonotonicValue`] or [`Bounded`]),
+    /// because otherwise the threshold detection would be non-deterministic.
+    ///
+    /// The `thresholds` parameter is a [`BoundedValue`] keyed singleton mapping each key to its
+    /// threshold. Thresholds may arrive asynchronously (new keys appear over time), but once set
+    /// for a key, the threshold value is fixed. Late-arriving thresholds are checked against the
+    /// current snapshot value immediately.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// use hydro_lang::prelude::*;
+    ///
+    /// // Given a monotonically increasing keyed singleton (e.g. from fold with monotone proof)
+    /// let counts: KeyedSingleton<u32, usize, _, MonotonicValue> = events.into_keyed()
+    ///     .fold(q!(|| 0), q!(|acc, _| *acc += 1, monotone = manual_proof!(/** +1 is monotone */)));
+    ///
+    /// // BoundedValue keyed singleton of thresholds (from .first())
+    /// let thresholds = threshold_source.into_keyed().first();
+    ///
+    /// // Emits (key, threshold_value) the first time each key's value >= threshold
+    /// let crossed = counts.threshold_greater_or_equal(thresholds);
+    /// ```
+    pub fn threshold_greater_or_equal(
+        self,
+        thresholds: KeyedSingleton<K, V, L, BoundedValue>,
+    ) -> KeyedStream<K, V, L, B::UnderlyingBound, NoOrder, ExactlyOnce>
+    where
+        K: Clone + Eq + Hash,
+        V: Clone + PartialOrd,
+        B: IsKeyedMonotonic,
+    {
+        let self_location = self.location.clone();
+        match B::bound_kind() {
+            KeyedSingletonBoundKind::Bounded => {
+                // Bounded case: self is already fixed, just join and filter
+                let me: KeyedSingleton<K, V, L, Bounded> = KeyedSingleton::new(
+                    self.location.clone(),
+                    self.ir_node.replace(HydroNode::Placeholder),
+                );
+                let result = me
+                    .entries()
+                    .join(thresholds.entries())
+                    .filter_map(q!(|(k, (val, thresh))| {
+                        if val >= thresh {
+                            Some((k, thresh))
+                        } else {
+                            None
+                        }
+                    }))
+                    .into_keyed();
+                KeyedStream::new(
+                    result.location.clone(),
+                    result.ir_node.replace(HydroNode::Placeholder),
+                )
+            }
+            KeyedSingletonBoundKind::MonotonicValue => {
+                let me: KeyedSingleton<K, V, L, MonotonicValue> = KeyedSingleton::new(
+                    self.location.clone(),
+                    self.ir_node.replace(HydroNode::Placeholder),
+                );
+
+                let result = sliced! {
+                    let snapshot = use(me, nondet!(/** thresholds are deterministic */));
+                    let thresh_snapshot =
+                        use(thresholds, nondet!(/** thresholds are deterministic */));
+                    let mut already_crossed =
+                        use::state_null::<Stream<K, Tick<_>, Bounded, NoOrder>>();
+
+                    let joined = thresh_snapshot.entries().join(snapshot.entries());
+                    let passed = joined
+                        .filter(q!(|(_, (thresh, val))| *val >= *thresh))
+                        .map(q!(|(k, (thresh, _))| (k, thresh)));
+
+                    let newly_crossed = passed.anti_join(already_crossed.clone());
+                    already_crossed =
+                        already_crossed.chain(newly_crossed.clone().map(q!(|(k, _)| k)));
+
+                    newly_crossed.into_keyed()
+                };
+
+                KeyedStream::new(
+                    self_location,
+                    result.ir_node.replace(HydroNode::Placeholder),
+                )
+            }
+            KeyedSingletonBoundKind::BoundedValue => {
+                let me: KeyedSingleton<K, V, L, BoundedValue> = KeyedSingleton::new(
+                    self.location.clone(),
+                    self.ir_node.replace(HydroNode::Placeholder),
+                );
+
+                let result = sliced! {
+                    let snapshot = use(me, nondet!(/** thresholds are deterministic */));
+                    let thresh_snapshot =
+                        use(thresholds, nondet!(/** thresholds are deterministic */));
+                    let mut already_crossed =
+                        use::state_null::<Stream<K, Tick<_>, Bounded, NoOrder>>();
+
+                    let joined = thresh_snapshot.entries().join(snapshot.entries());
+                    let passed = joined
+                        .filter(q!(|(_, (thresh, val))| *val >= *thresh))
+                        .map(q!(|(k, (thresh, _))| (k, thresh)));
+
+                    let newly_crossed = passed.anti_join(already_crossed.clone());
+                    already_crossed =
+                        already_crossed.chain(newly_crossed.clone().map(q!(|(k, _)| k)));
+
+                    newly_crossed.into_keyed()
+                };
+
+                KeyedStream::new(
+                    self_location,
+                    result.ir_node.replace(HydroNode::Placeholder),
+                )
+            }
+            _ => {
+                unreachable!(
+                    "IsKeyedMonotonic is only implemented for Bounded, BoundedValue, and MonotonicValue"
+                )
+            }
+        }
+    }
+
+    /// Like [`Self::threshold_greater_or_equal`], but uses a single [`Singleton`] threshold
+    /// shared across all keys. Emits a `(K, V)` event for each key the first time that key's
+    /// value becomes >= the threshold. The emitted value is the threshold itself.
+    ///
+    /// Because the threshold is a [`Bounded`] singleton, it is a compile-time constant and
+    /// does not carry ongoing memory cost.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// use hydro_lang::prelude::*;
+    ///
+    /// let counts: KeyedSingleton<u32, usize, _, MonotonicValue> = events.into_keyed()
+    ///     .fold(q!(|| 0), q!(|acc, _| *acc += 1, monotone = manual_proof!(/** +1 */)));
+    ///
+    /// let threshold = process.singleton(q!(5usize));
+    /// let crossed = counts.threshold_greater_or_equal_uniform(threshold);
+    /// ```
+    pub fn threshold_greater_or_equal_uniform(
+        self,
+        threshold: Singleton<V, L, Bounded>,
+    ) -> KeyedStream<K, V, L, B::UnderlyingBound, NoOrder, ExactlyOnce>
+    where
+        K: Clone + Eq + Hash,
+        V: Clone + PartialOrd,
+        B: IsKeyedMonotonic,
+    {
+        let self_location = self.location.clone();
+        match B::bound_kind() {
+            KeyedSingletonBoundKind::Bounded => {
+                let me: KeyedSingleton<K, V, L, Bounded> = KeyedSingleton::new(
+                    self.location.clone(),
+                    self.ir_node.replace(HydroNode::Placeholder),
+                );
+                let result = me
+                    .entries()
+                    .cross_singleton(threshold)
+                    .filter_map(q!(|((k, val), thresh)| {
+                        if val >= thresh {
+                            Some((k, thresh))
+                        } else {
+                            None
+                        }
+                    }))
+                    .into_keyed();
+                KeyedStream::new(
+                    result.location.clone(),
+                    result.ir_node.replace(HydroNode::Placeholder),
+                )
+            }
+            KeyedSingletonBoundKind::MonotonicValue => {
+                let me: KeyedSingleton<K, V, L, MonotonicValue> = KeyedSingleton::new(
+                    self.location.clone(),
+                    self.ir_node.replace(HydroNode::Placeholder),
+                );
+
+                let result = sliced! {
+                    let snapshot = use(me, nondet!(/** thresholds are deterministic */));
+                    let mut already_crossed =
+                        use::state_null::<Stream<K, Tick<_>, Bounded, NoOrder>>();
+
+                    let tick = snapshot.location().clone();
+                    let thresh_in_tick = threshold.clone_into_tick(&tick);
+
+                    let crossing = snapshot
+                        .entries()
+                        .cross_singleton(thresh_in_tick)
+                        .filter_map(q!(|((k, val), thresh)| {
+                            if val >= thresh {
+                                Some((k, thresh))
+                            } else {
+                                None
+                            }
+                        }));
+
+                    let newly_crossed = crossing.anti_join(already_crossed.clone());
+                    already_crossed =
+                        already_crossed.chain(newly_crossed.clone().map(q!(|(k, _)| k)));
+
+                    newly_crossed.into_keyed()
+                };
+
+                KeyedStream::new(
+                    self_location,
+                    result.ir_node.replace(HydroNode::Placeholder),
+                )
+            }
+            KeyedSingletonBoundKind::BoundedValue => {
+                let me: KeyedSingleton<K, V, L, BoundedValue> = KeyedSingleton::new(
+                    self.location.clone(),
+                    self.ir_node.replace(HydroNode::Placeholder),
+                );
+
+                let result = sliced! {
+                    let snapshot = use(me, nondet!(/** thresholds are deterministic */));
+                    let mut already_crossed =
+                        use::state_null::<Stream<K, Tick<_>, Bounded, NoOrder>>();
+
+                    let tick = snapshot.location().clone();
+                    let thresh_in_tick = threshold.clone_into_tick(&tick);
+
+                    let crossing = snapshot
+                        .entries()
+                        .cross_singleton(thresh_in_tick)
+                        .filter_map(q!(|((k, val), thresh)| {
+                            if val >= thresh {
+                                Some((k, thresh))
+                            } else {
+                                None
+                            }
+                        }));
+
+                    let newly_crossed = crossing.anti_join(already_crossed.clone());
+                    already_crossed =
+                        already_crossed.chain(newly_crossed.clone().map(q!(|(k, _)| k)));
+
+                    newly_crossed.into_keyed()
+                };
+
+                KeyedStream::new(
+                    self_location,
+                    result.ir_node.replace(HydroNode::Placeholder),
+                )
+            }
+            _ => {
+                unreachable!(
+                    "IsKeyedMonotonic is only implemented for Bounded, BoundedValue, and MonotonicValue"
+                )
+            }
+        }
     }
 }
 
@@ -1902,5 +2184,217 @@ mod tests {
         results.sort();
 
         assert_eq!(results, vec![(1, (10, 100)), (2, (20, 200))]);
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn threshold_greater_or_equal_monotonic() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (input_port, input) = node.sim_input::<(u32, usize), _, _>();
+        let (thresh_port, thresh_input) = node.sim_input::<(u32, usize), _, _>();
+
+        // Create a monotonically increasing keyed singleton via fold with monotone proof
+        let counts: super::KeyedSingleton<u32, usize, _, super::MonotonicValue> =
+            input.into_keyed().fold(
+                q!(|| 0usize),
+                q!(
+                    |acc, v| *acc += v,
+                    monotone = crate::properties::manual_proof!(/** += is monotonic */)
+                ),
+            );
+
+        // BoundedValue keyed singleton of thresholds (from .first() on unbounded stream)
+        let thresholds = thresh_input.into_keyed().first();
+
+        let output = counts
+            .threshold_greater_or_equal(thresholds)
+            .entries()
+            .sim_output();
+
+        let count = flow.sim().exhaustive(async || {
+            // Set thresholds: key 1 needs value >= 5, key 2 needs value >= 10
+            thresh_port.send((1, 5));
+            thresh_port.send((2, 10));
+
+            // key 1 gets increments: 3 + 3 = 6, which is >= 5 ✓
+            input_port.send((1, 3));
+            input_port.send((1, 3));
+            // key 2 gets increments: 3 + 3 = 6, which is < 10 ✗
+            input_port.send((2, 3));
+            input_port.send((2, 3));
+
+            let results = output.collect_sorted::<Vec<_>>().await;
+            assert_eq!(results, vec![(1, 5)]);
+        });
+
+        assert!(count > 0);
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn threshold_greater_or_equal_uniform() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (input_port, input) = node.sim_input::<(u32, usize), _, _>();
+
+        let counts: super::KeyedSingleton<u32, usize, _, super::MonotonicValue> =
+            input.into_keyed().fold(
+                q!(|| 0usize),
+                q!(
+                    |acc, v| *acc += v,
+                    monotone = crate::properties::manual_proof!(/** += is monotonic */)
+                ),
+            );
+
+        // Uniform threshold: all keys need value >= 5
+        let threshold = node.singleton(q!(5usize));
+
+        let output = counts
+            .threshold_greater_or_equal_uniform(threshold)
+            .entries()
+            .sim_output();
+
+        let count = flow.sim().exhaustive(async || {
+            // key 1: 3 + 3 = 6 >= 5 ✓
+            input_port.send((1, 3));
+            input_port.send((1, 3));
+            // key 2: 2 + 2 = 4 < 5 ✗
+            input_port.send((2, 2));
+            input_port.send((2, 2));
+
+            let results = output.collect_sorted::<Vec<_>>().await;
+            assert_eq!(results, vec![(1, 5)]);
+        });
+
+        assert!(count > 0);
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn threshold_greater_or_equal_bounded_value() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (input_port, input) = node.sim_input::<(u32, usize), _, _>();
+        let (thresh_port, thresh_input) = node.sim_input::<(u32, usize), _, _>();
+
+        // BoundedValue keyed singleton (values fixed once per key via .first())
+        let values = input.into_keyed().first();
+
+        // BoundedValue keyed singleton of thresholds
+        let thresholds = thresh_input.into_keyed().first();
+
+        let output = values
+            .threshold_greater_or_equal(thresholds)
+            .entries()
+            .sim_output();
+
+        let count = flow.sim().exhaustive(async || {
+            // Set thresholds: key 1 needs >= 3, key 2 needs >= 10
+            thresh_port.send((1, 3));
+            thresh_port.send((2, 10));
+
+            // key 1 gets value 5 >= 3 ✓, key 2 gets value 4 < 10 ✗
+            input_port.send((1, 5));
+            input_port.send((2, 4));
+
+            let results = output.collect_sorted::<Vec<_>>().await;
+            assert_eq!(results, vec![(1, 3)]);
+        });
+
+        assert!(count > 0);
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn threshold_greater_or_equal_uniform_bounded_value() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let (input_port, input) = node.sim_input::<(u32, usize), _, _>();
+
+        // BoundedValue keyed singleton (values fixed once per key via .first())
+        let values = input.into_keyed().first();
+
+        // Uniform threshold: all keys need value >= 5
+        let threshold = node.singleton(q!(5usize));
+
+        let output = values
+            .threshold_greater_or_equal_uniform(threshold)
+            .entries()
+            .sim_output();
+
+        let count = flow.sim().exhaustive(async || {
+            // key 1 gets value 7 >= 5 ✓, key 2 gets value 3 < 5 ✗
+            input_port.send((1, 7));
+            input_port.send((2, 3));
+
+            let results = output.collect_sorted::<Vec<_>>().await;
+            assert_eq!(results, vec![(1, 5)]);
+        });
+
+        assert!(count > 0);
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn threshold_greater_or_equal_bounded() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        // Bounded keyed singleton (fully known upfront)
+        let values = node
+            .source_iter(q!(vec![(1, 6usize), (2, 4usize)]))
+            .into_keyed()
+            .first();
+
+        // BoundedValue thresholds (from async source)
+        let (thresh_port, thresh_input) = node.sim_input::<(u32, usize), _, _>();
+        let thresholds = thresh_input.into_keyed().first();
+
+        let output = values
+            .threshold_greater_or_equal(thresholds)
+            .entries()
+            .sim_output();
+
+        let count = flow.sim().exhaustive(async || {
+            thresh_port.send((1, 5));
+            thresh_port.send((2, 10));
+
+            // key 1: 6 >= 5 ✓, key 2: 4 < 10 ✗
+            let results = output.collect_sorted::<Vec<_>>().await;
+            assert_eq!(results, vec![(1, 5)]);
+        });
+
+        assert!(count > 0);
+    }
+
+    #[cfg(feature = "sim")]
+    #[test]
+    fn threshold_greater_or_equal_uniform_bounded() {
+        let mut flow = FlowBuilder::new();
+        let node = flow.process::<()>();
+
+        let values = node
+            .source_iter(q!(vec![(1, 6usize), (2, 4usize)]))
+            .into_keyed()
+            .first();
+        let threshold = node.singleton(q!(5usize));
+
+        let output = values
+            .threshold_greater_or_equal_uniform(threshold)
+            .entries()
+            .sim_output();
+
+        let count = flow.sim().exhaustive(async || {
+            // key 1: 6 >= 5 ✓, key 2: 4 < 5 ✗
+            let results = output.collect_sorted::<Vec<_>>().await;
+            assert_eq!(results, vec![(1, 5)]);
+        });
+
+        assert!(count > 0);
     }
 }
