@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/properties/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-74eb0058.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (e7815e522 2026-06-04)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/properties/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Types for reasoning about algebraic properties for Rust closures.
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_lang/src/properties/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-74eb0058.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_lang" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (f20a92ec0 2026-06-07)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_lang/properties/</div>mod.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-3"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="doccomment">//! Types for reasoning about algebraic properties for Rust closures.
 <a href=#2 id=2 data-nosnippet>2</a>
 <a href=#3 id=3 data-nosnippet>3</a></span><span class="kw">use </span>std::marker::PhantomData;
 <a href=#4 id=4 data-nosnippet>4</a>
@@ -173,95 +173,218 @@
 <a href=#173 id=173 data-nosnippet>173</a>    }
 <a href=#174 id=174 data-nosnippet>174</a>}
 <a href=#175 id=175 data-nosnippet>175</a>
-<a href=#176 id=176 data-nosnippet>176</a><span class="doccomment">/// Algebraic properties for a map function of type T -&gt; U.
+<a href=#176 id=176 data-nosnippet>176</a><span class="doccomment">/// Algebraic properties for a singleton map function of type T -&gt; U.
 <a href=#177 id=177 data-nosnippet>177</a>///
 <a href=#178 id=178 data-nosnippet>178</a>/// Order-preserving means that if the input grows monotonically, the output also grows monotonically.
-<a href=#179 id=179 data-nosnippet>179</a></span><span class="kw">pub struct </span>MapFuncAlgebra&lt;OrderPreserving = NotProved&gt;(
-<a href=#180 id=180 data-nosnippet>180</a>    <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>OrderPreservingProof&gt;&gt;,
-<a href=#181 id=181 data-nosnippet>181</a>    PhantomData&lt;OrderPreserving&gt;,
-<a href=#182 id=182 data-nosnippet>182</a>);
-<a href=#183 id=183 data-nosnippet>183</a>
-<a href=#184 id=184 data-nosnippet>184</a><span class="kw">impl</span>&lt;O&gt; MapFuncAlgebra&lt;O&gt; {
-<a href=#185 id=185 data-nosnippet>185</a>    <span class="doccomment">/// Marks the function as being order-preserving, with the given proof mechanism.
-<a href=#186 id=186 data-nosnippet>186</a>    </span><span class="kw">pub fn </span>order_preserving(
-<a href=#187 id=187 data-nosnippet>187</a>        <span class="self">self</span>,
-<a href=#188 id=188 data-nosnippet>188</a>        proof: <span class="kw">impl </span>OrderPreservingProof + <span class="lifetime">'static</span>,
-<a href=#189 id=189 data-nosnippet>189</a>    ) -&gt; MapFuncAlgebra&lt;Proved&gt; {
-<a href=#190 id=190 data-nosnippet>190</a>        MapFuncAlgebra(<span class="prelude-val">Some</span>(Box::new(proof)), PhantomData)
-<a href=#191 id=191 data-nosnippet>191</a>    }
-<a href=#192 id=192 data-nosnippet>192</a>
-<a href=#193 id=193 data-nosnippet>193</a>    <span class="doccomment">/// Registers the expression with the underlying proof mechanisms.
-<a href=#194 id=194 data-nosnippet>194</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>register_proof(<span class="self">self</span>, expr: <span class="kw-2">&amp;</span>syn::Expr) {
-<a href=#195 id=195 data-nosnippet>195</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(proof) = <span class="self">self</span>.<span class="number">0 </span>{
-<a href=#196 id=196 data-nosnippet>196</a>            proof.register_proof(expr);
-<a href=#197 id=197 data-nosnippet>197</a>        }
-<a href=#198 id=198 data-nosnippet>198</a>    }
-<a href=#199 id=199 data-nosnippet>199</a>}
-<a href=#200 id=200 data-nosnippet>200</a>
-<a href=#201 id=201 data-nosnippet>201</a><span class="kw">impl</span>&lt;O&gt; Property <span class="kw">for </span>MapFuncAlgebra&lt;O&gt; {
-<a href=#202 id=202 data-nosnippet>202</a>    <span class="kw">type </span>Root = MapFuncAlgebra;
-<a href=#203 id=203 data-nosnippet>203</a>
-<a href=#204 id=204 data-nosnippet>204</a>    <span class="kw">fn </span>make_root(_target: <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self</span>::Root {
-<a href=#205 id=205 data-nosnippet>205</a>        MapFuncAlgebra(<span class="prelude-val">None</span>, PhantomData)
-<a href=#206 id=206 data-nosnippet>206</a>    }
-<a href=#207 id=207 data-nosnippet>207</a>}
-<a href=#208 id=208 data-nosnippet>208</a>
-<a href=#209 id=209 data-nosnippet>209</a><span class="doccomment">/// Marker trait identifying that the commutativity property is valid for the given stream ordering.
-<a href=#210 id=210 data-nosnippet>210</a></span><span class="attr">#[diagnostic::on_unimplemented(
-<a href=#211 id=211 data-nosnippet>211</a>    message = <span class="string">"Because the input stream has ordering `{O}`, the closure must demonstrate commutativity with a `commutative = ...` annotation."</span>,
-<a href=#212 id=212 data-nosnippet>212</a>    label = <span class="string">"required for this call"</span>,
-<a href=#213 id=213 data-nosnippet>213</a>    note = <span class="string">"To intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
-<a href=#214 id=214 data-nosnippet>214</a></span>)]
-<a href=#215 id=215 data-nosnippet>215</a>#[sealed::sealed]
-<a href=#216 id=216 data-nosnippet>216</a></span><span class="kw">pub trait </span>ValidCommutativityFor&lt;O: Ordering&gt; {}
-<a href=#217 id=217 data-nosnippet>217</a><span class="attr">#[sealed::sealed]
-<a href=#218 id=218 data-nosnippet>218</a></span><span class="kw">impl </span>ValidCommutativityFor&lt;TotalOrder&gt; <span class="kw">for </span>NotProved {}
-<a href=#219 id=219 data-nosnippet>219</a><span class="attr">#[sealed::sealed]
-<a href=#220 id=220 data-nosnippet>220</a></span><span class="kw">impl</span>&lt;O: Ordering&gt; ValidCommutativityFor&lt;O&gt; <span class="kw">for </span>Proved {}
-<a href=#221 id=221 data-nosnippet>221</a>
-<a href=#222 id=222 data-nosnippet>222</a><span class="doccomment">/// Marker trait identifying that the idempotence property is valid for the given stream ordering.
-<a href=#223 id=223 data-nosnippet>223</a></span><span class="attr">#[diagnostic::on_unimplemented(
-<a href=#224 id=224 data-nosnippet>224</a>    message = <span class="string">"Because the input stream has retries `{R}`, the closure must demonstrate idempotence with an `idempotent = ...` annotation."</span>,
-<a href=#225 id=225 data-nosnippet>225</a>    label = <span class="string">"required for this call"</span>,
-<a href=#226 id=226 data-nosnippet>226</a>    note = <span class="string">"To intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
-<a href=#227 id=227 data-nosnippet>227</a></span>)]
-<a href=#228 id=228 data-nosnippet>228</a>#[sealed::sealed]
-<a href=#229 id=229 data-nosnippet>229</a></span><span class="kw">pub trait </span>ValidIdempotenceFor&lt;R: Retries&gt; {}
-<a href=#230 id=230 data-nosnippet>230</a><span class="attr">#[sealed::sealed]
-<a href=#231 id=231 data-nosnippet>231</a></span><span class="kw">impl </span>ValidIdempotenceFor&lt;ExactlyOnce&gt; <span class="kw">for </span>NotProved {}
-<a href=#232 id=232 data-nosnippet>232</a><span class="attr">#[sealed::sealed]
-<a href=#233 id=233 data-nosnippet>233</a></span><span class="kw">impl</span>&lt;R: Retries&gt; ValidIdempotenceFor&lt;R&gt; <span class="kw">for </span>Proved {}
-<a href=#234 id=234 data-nosnippet>234</a>
-<a href=#235 id=235 data-nosnippet>235</a><span class="doccomment">/// Marker trait identifying the boundedness of a singleton given a monotonicity property of
-<a href=#236 id=236 data-nosnippet>236</a>/// an aggregation on a stream.
-<a href=#237 id=237 data-nosnippet>237</a></span><span class="attr">#[sealed::sealed]
-<a href=#238 id=238 data-nosnippet>238</a></span><span class="kw">pub trait </span>ApplyMonotoneStream&lt;P, B2: SingletonBound&gt; {}
-<a href=#239 id=239 data-nosnippet>239</a>
-<a href=#240 id=240 data-nosnippet>240</a><span class="attr">#[sealed::sealed]
-<a href=#241 id=241 data-nosnippet>241</a></span><span class="kw">impl</span>&lt;B: Boundedness&gt; ApplyMonotoneStream&lt;NotProved, B&gt; <span class="kw">for </span>B {}
-<a href=#242 id=242 data-nosnippet>242</a>
-<a href=#243 id=243 data-nosnippet>243</a><span class="attr">#[sealed::sealed]
-<a href=#244 id=244 data-nosnippet>244</a></span><span class="kw">impl</span>&lt;B: Boundedness&gt; ApplyMonotoneStream&lt;Proved, B::StreamToMonotone&gt; <span class="kw">for </span>B {}
-<a href=#245 id=245 data-nosnippet>245</a>
-<a href=#246 id=246 data-nosnippet>246</a><span class="doccomment">/// Marker trait identifying the boundedness of a singleton given a monotonicity property of
-<a href=#247 id=247 data-nosnippet>247</a>/// an aggregation on a keyed stream.
-<a href=#248 id=248 data-nosnippet>248</a></span><span class="attr">#[sealed::sealed]
-<a href=#249 id=249 data-nosnippet>249</a></span><span class="kw">pub trait </span>ApplyMonotoneKeyedStream&lt;P, B2: KeyedSingletonBound&gt; {}
-<a href=#250 id=250 data-nosnippet>250</a>
-<a href=#251 id=251 data-nosnippet>251</a><span class="attr">#[sealed::sealed]
-<a href=#252 id=252 data-nosnippet>252</a></span><span class="kw">impl</span>&lt;B: Boundedness&gt; ApplyMonotoneKeyedStream&lt;NotProved, B&gt; <span class="kw">for </span>B {}
-<a href=#253 id=253 data-nosnippet>253</a>
-<a href=#254 id=254 data-nosnippet>254</a><span class="attr">#[sealed::sealed]
-<a href=#255 id=255 data-nosnippet>255</a></span><span class="kw">impl</span>&lt;B: Boundedness&gt; ApplyMonotoneKeyedStream&lt;Proved, B::KeyedStreamToMonotone&gt; <span class="kw">for </span>B {}
-<a href=#256 id=256 data-nosnippet>256</a>
-<a href=#257 id=257 data-nosnippet>257</a><span class="doccomment">/// Marker trait identifying the boundedness of a singleton after a map operation,
-<a href=#258 id=258 data-nosnippet>258</a>/// given an order-preserving property.
-<a href=#259 id=259 data-nosnippet>259</a></span><span class="attr">#[sealed::sealed]
-<a href=#260 id=260 data-nosnippet>260</a></span><span class="kw">pub trait </span>ApplyOrderPreservingSingleton&lt;P, B2: SingletonBound&gt; {}
-<a href=#261 id=261 data-nosnippet>261</a>
-<a href=#262 id=262 data-nosnippet>262</a><span class="attr">#[sealed::sealed]
-<a href=#263 id=263 data-nosnippet>263</a></span><span class="kw">impl</span>&lt;B: SingletonBound&gt; ApplyOrderPreservingSingleton&lt;NotProved, B::UnderlyingBound&gt; <span class="kw">for </span>B {}
-<a href=#264 id=264 data-nosnippet>264</a>
-<a href=#265 id=265 data-nosnippet>265</a><span class="attr">#[sealed::sealed]
-<a href=#266 id=266 data-nosnippet>266</a></span><span class="kw">impl</span>&lt;B: SingletonBound&gt; ApplyOrderPreservingSingleton&lt;Proved, B&gt; <span class="kw">for </span>B {}
+<a href=#179 id=179 data-nosnippet>179</a></span><span class="kw">pub struct </span>SingletonMapFuncAlgebra&lt;
+<a href=#180 id=180 data-nosnippet>180</a>    OrderPreserving = NotProved,
+<a href=#181 id=181 data-nosnippet>181</a>    Commutative = NotProved,
+<a href=#182 id=182 data-nosnippet>182</a>    Idempotent = NotProved,
+<a href=#183 id=183 data-nosnippet>183</a>&gt;(
+<a href=#184 id=184 data-nosnippet>184</a>    <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>OrderPreservingProof&gt;&gt;,
+<a href=#185 id=185 data-nosnippet>185</a>    <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>CommutativeProof&gt;&gt;,
+<a href=#186 id=186 data-nosnippet>186</a>    <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>IdempotentProof&gt;&gt;,
+<a href=#187 id=187 data-nosnippet>187</a>    PhantomData&lt;(OrderPreserving, Commutative, Idempotent)&gt;,
+<a href=#188 id=188 data-nosnippet>188</a>);
+<a href=#189 id=189 data-nosnippet>189</a>
+<a href=#190 id=190 data-nosnippet>190</a><span class="kw">impl</span>&lt;O, C, I&gt; SingletonMapFuncAlgebra&lt;O, C, I&gt; {
+<a href=#191 id=191 data-nosnippet>191</a>    <span class="doccomment">/// Marks the function as being order-preserving, with the given proof mechanism.
+<a href=#192 id=192 data-nosnippet>192</a>    </span><span class="kw">pub fn </span>order_preserving(
+<a href=#193 id=193 data-nosnippet>193</a>        <span class="self">self</span>,
+<a href=#194 id=194 data-nosnippet>194</a>        proof: <span class="kw">impl </span>OrderPreservingProof + <span class="lifetime">'static</span>,
+<a href=#195 id=195 data-nosnippet>195</a>    ) -&gt; SingletonMapFuncAlgebra&lt;Proved, C, I&gt; {
+<a href=#196 id=196 data-nosnippet>196</a>        SingletonMapFuncAlgebra(<span class="prelude-val">Some</span>(Box::new(proof)), <span class="self">self</span>.<span class="number">1</span>, <span class="self">self</span>.<span class="number">2</span>, PhantomData)
+<a href=#197 id=197 data-nosnippet>197</a>    }
+<a href=#198 id=198 data-nosnippet>198</a>
+<a href=#199 id=199 data-nosnippet>199</a>    <span class="doccomment">/// Marks the function as being commutative, with the given proof mechanism.
+<a href=#200 id=200 data-nosnippet>200</a>    </span><span class="kw">pub fn </span>commutative(
+<a href=#201 id=201 data-nosnippet>201</a>        <span class="self">self</span>,
+<a href=#202 id=202 data-nosnippet>202</a>        proof: <span class="kw">impl </span>CommutativeProof + <span class="lifetime">'static</span>,
+<a href=#203 id=203 data-nosnippet>203</a>    ) -&gt; SingletonMapFuncAlgebra&lt;O, Proved, I&gt; {
+<a href=#204 id=204 data-nosnippet>204</a>        SingletonMapFuncAlgebra(<span class="self">self</span>.<span class="number">0</span>, <span class="prelude-val">Some</span>(Box::new(proof)), <span class="self">self</span>.<span class="number">2</span>, PhantomData)
+<a href=#205 id=205 data-nosnippet>205</a>    }
+<a href=#206 id=206 data-nosnippet>206</a>
+<a href=#207 id=207 data-nosnippet>207</a>    <span class="doccomment">/// Marks the function as being idempotent, with the given proof mechanism.
+<a href=#208 id=208 data-nosnippet>208</a>    </span><span class="kw">pub fn </span>idempotent(
+<a href=#209 id=209 data-nosnippet>209</a>        <span class="self">self</span>,
+<a href=#210 id=210 data-nosnippet>210</a>        proof: <span class="kw">impl </span>IdempotentProof + <span class="lifetime">'static</span>,
+<a href=#211 id=211 data-nosnippet>211</a>    ) -&gt; SingletonMapFuncAlgebra&lt;O, C, Proved&gt; {
+<a href=#212 id=212 data-nosnippet>212</a>        SingletonMapFuncAlgebra(<span class="self">self</span>.<span class="number">0</span>, <span class="self">self</span>.<span class="number">1</span>, <span class="prelude-val">Some</span>(Box::new(proof)), PhantomData)
+<a href=#213 id=213 data-nosnippet>213</a>    }
+<a href=#214 id=214 data-nosnippet>214</a>
+<a href=#215 id=215 data-nosnippet>215</a>    <span class="doccomment">/// Registers the expression with the underlying proof mechanisms.
+<a href=#216 id=216 data-nosnippet>216</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>register_proof(<span class="self">self</span>, expr: <span class="kw-2">&amp;</span>syn::Expr) {
+<a href=#217 id=217 data-nosnippet>217</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(proof) = <span class="self">self</span>.<span class="number">0 </span>{
+<a href=#218 id=218 data-nosnippet>218</a>            proof.register_proof(expr);
+<a href=#219 id=219 data-nosnippet>219</a>        }
+<a href=#220 id=220 data-nosnippet>220</a>    }
+<a href=#221 id=221 data-nosnippet>221</a>}
+<a href=#222 id=222 data-nosnippet>222</a>
+<a href=#223 id=223 data-nosnippet>223</a><span class="kw">impl</span>&lt;O, C, I&gt; Property <span class="kw">for </span>SingletonMapFuncAlgebra&lt;O, C, I&gt; {
+<a href=#224 id=224 data-nosnippet>224</a>    <span class="kw">type </span>Root = SingletonMapFuncAlgebra;
+<a href=#225 id=225 data-nosnippet>225</a>
+<a href=#226 id=226 data-nosnippet>226</a>    <span class="kw">fn </span>make_root(_target: <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self</span>::Root {
+<a href=#227 id=227 data-nosnippet>227</a>        SingletonMapFuncAlgebra(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, PhantomData)
+<a href=#228 id=228 data-nosnippet>228</a>    }
+<a href=#229 id=229 data-nosnippet>229</a>}
+<a href=#230 id=230 data-nosnippet>230</a>
+<a href=#231 id=231 data-nosnippet>231</a><span class="doccomment">/// Algebraic properties for a stream map function of type T -&gt; U.
+<a href=#232 id=232 data-nosnippet>232</a></span><span class="kw">pub struct </span>StreamMapFuncAlgebra&lt;Commutative = NotProved, Idempotent = NotProved&gt;(
+<a href=#233 id=233 data-nosnippet>233</a>    <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>CommutativeProof&gt;&gt;,
+<a href=#234 id=234 data-nosnippet>234</a>    <span class="prelude-ty">Option</span>&lt;Box&lt;<span class="kw">dyn </span>IdempotentProof&gt;&gt;,
+<a href=#235 id=235 data-nosnippet>235</a>    PhantomData&lt;(Commutative, Idempotent)&gt;,
+<a href=#236 id=236 data-nosnippet>236</a>);
+<a href=#237 id=237 data-nosnippet>237</a>
+<a href=#238 id=238 data-nosnippet>238</a><span class="kw">impl</span>&lt;C, I&gt; StreamMapFuncAlgebra&lt;C, I&gt; {
+<a href=#239 id=239 data-nosnippet>239</a>    <span class="doccomment">/// Marks the function as being commutative, with the given proof mechanism.
+<a href=#240 id=240 data-nosnippet>240</a>    </span><span class="kw">pub fn </span>commutative(
+<a href=#241 id=241 data-nosnippet>241</a>        <span class="self">self</span>,
+<a href=#242 id=242 data-nosnippet>242</a>        proof: <span class="kw">impl </span>CommutativeProof + <span class="lifetime">'static</span>,
+<a href=#243 id=243 data-nosnippet>243</a>    ) -&gt; StreamMapFuncAlgebra&lt;Proved, I&gt; {
+<a href=#244 id=244 data-nosnippet>244</a>        StreamMapFuncAlgebra(<span class="prelude-val">Some</span>(Box::new(proof)), <span class="self">self</span>.<span class="number">1</span>, PhantomData)
+<a href=#245 id=245 data-nosnippet>245</a>    }
+<a href=#246 id=246 data-nosnippet>246</a>
+<a href=#247 id=247 data-nosnippet>247</a>    <span class="doccomment">/// Marks the function as being idempotent, with the given proof mechanism.
+<a href=#248 id=248 data-nosnippet>248</a>    </span><span class="kw">pub fn </span>idempotent(
+<a href=#249 id=249 data-nosnippet>249</a>        <span class="self">self</span>,
+<a href=#250 id=250 data-nosnippet>250</a>        proof: <span class="kw">impl </span>IdempotentProof + <span class="lifetime">'static</span>,
+<a href=#251 id=251 data-nosnippet>251</a>    ) -&gt; StreamMapFuncAlgebra&lt;C, Proved&gt; {
+<a href=#252 id=252 data-nosnippet>252</a>        StreamMapFuncAlgebra(<span class="self">self</span>.<span class="number">0</span>, <span class="prelude-val">Some</span>(Box::new(proof)), PhantomData)
+<a href=#253 id=253 data-nosnippet>253</a>    }
+<a href=#254 id=254 data-nosnippet>254</a>
+<a href=#255 id=255 data-nosnippet>255</a>    <span class="doccomment">/// Registers the expression with the underlying proof mechanisms.
+<a href=#256 id=256 data-nosnippet>256</a>    </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>register_proof(<span class="self">self</span>, expr: <span class="kw-2">&amp;</span>syn::Expr) {
+<a href=#257 id=257 data-nosnippet>257</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(proof) = <span class="self">self</span>.<span class="number">0 </span>{
+<a href=#258 id=258 data-nosnippet>258</a>            proof.register_proof(expr);
+<a href=#259 id=259 data-nosnippet>259</a>        }
+<a href=#260 id=260 data-nosnippet>260</a>        <span class="kw">if let </span><span class="prelude-val">Some</span>(proof) = <span class="self">self</span>.<span class="number">1 </span>{
+<a href=#261 id=261 data-nosnippet>261</a>            proof.register_proof(expr);
+<a href=#262 id=262 data-nosnippet>262</a>        }
+<a href=#263 id=263 data-nosnippet>263</a>    }
+<a href=#264 id=264 data-nosnippet>264</a>}
+<a href=#265 id=265 data-nosnippet>265</a>
+<a href=#266 id=266 data-nosnippet>266</a><span class="kw">impl</span>&lt;C, I&gt; Property <span class="kw">for </span>StreamMapFuncAlgebra&lt;C, I&gt; {
+<a href=#267 id=267 data-nosnippet>267</a>    <span class="kw">type </span>Root = StreamMapFuncAlgebra;
+<a href=#268 id=268 data-nosnippet>268</a>
+<a href=#269 id=269 data-nosnippet>269</a>    <span class="kw">fn </span>make_root(_target: <span class="kw-2">&amp;mut </span><span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self</span>::Root {
+<a href=#270 id=270 data-nosnippet>270</a>        StreamMapFuncAlgebra(<span class="prelude-val">None</span>, <span class="prelude-val">None</span>, PhantomData)
+<a href=#271 id=271 data-nosnippet>271</a>    }
+<a href=#272 id=272 data-nosnippet>272</a>}
+<a href=#273 id=273 data-nosnippet>273</a>
+<a href=#274 id=274 data-nosnippet>274</a><span class="doccomment">/// Marker trait identifying that the commutativity property is valid for the given stream ordering.
+<a href=#275 id=275 data-nosnippet>275</a></span><span class="attr">#[diagnostic::on_unimplemented(
+<a href=#276 id=276 data-nosnippet>276</a>    message = <span class="string">"Because the input stream has ordering `{O}`, the closure must demonstrate commutativity with a `commutative = ...` annotation."</span>,
+<a href=#277 id=277 data-nosnippet>277</a>    label = <span class="string">"required for this call"</span>,
+<a href=#278 id=278 data-nosnippet>278</a>    note = <span class="string">"To intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
+<a href=#279 id=279 data-nosnippet>279</a></span>)]
+<a href=#280 id=280 data-nosnippet>280</a>#[sealed::sealed]
+<a href=#281 id=281 data-nosnippet>281</a></span><span class="kw">pub trait </span>ValidCommutativityFor&lt;O: Ordering&gt; {}
+<a href=#282 id=282 data-nosnippet>282</a><span class="attr">#[sealed::sealed]
+<a href=#283 id=283 data-nosnippet>283</a></span><span class="kw">impl </span>ValidCommutativityFor&lt;TotalOrder&gt; <span class="kw">for </span>NotProved {}
+<a href=#284 id=284 data-nosnippet>284</a><span class="attr">#[sealed::sealed]
+<a href=#285 id=285 data-nosnippet>285</a></span><span class="kw">impl</span>&lt;O: Ordering&gt; ValidCommutativityFor&lt;O&gt; <span class="kw">for </span>Proved {}
+<a href=#286 id=286 data-nosnippet>286</a>
+<a href=#287 id=287 data-nosnippet>287</a><span class="doccomment">/// Marker trait identifying that the idempotence property is valid for the given stream ordering.
+<a href=#288 id=288 data-nosnippet>288</a></span><span class="attr">#[diagnostic::on_unimplemented(
+<a href=#289 id=289 data-nosnippet>289</a>    message = <span class="string">"Because the input stream has retries `{R}`, the closure must demonstrate idempotence with an `idempotent = ...` annotation."</span>,
+<a href=#290 id=290 data-nosnippet>290</a>    label = <span class="string">"required for this call"</span>,
+<a href=#291 id=291 data-nosnippet>291</a>    note = <span class="string">"To intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
+<a href=#292 id=292 data-nosnippet>292</a></span>)]
+<a href=#293 id=293 data-nosnippet>293</a>#[sealed::sealed]
+<a href=#294 id=294 data-nosnippet>294</a></span><span class="kw">pub trait </span>ValidIdempotenceFor&lt;R: Retries&gt; {}
+<a href=#295 id=295 data-nosnippet>295</a><span class="attr">#[sealed::sealed]
+<a href=#296 id=296 data-nosnippet>296</a></span><span class="kw">impl </span>ValidIdempotenceFor&lt;ExactlyOnce&gt; <span class="kw">for </span>NotProved {}
+<a href=#297 id=297 data-nosnippet>297</a><span class="attr">#[sealed::sealed]
+<a href=#298 id=298 data-nosnippet>298</a></span><span class="kw">impl</span>&lt;R: Retries&gt; ValidIdempotenceFor&lt;R&gt; <span class="kw">for </span>Proved {}
+<a href=#299 id=299 data-nosnippet>299</a>
+<a href=#300 id=300 data-nosnippet>300</a><span class="doccomment">/// Marker trait identifying that the commutativity property is valid for the given stream ordering.
+<a href=#301 id=301 data-nosnippet>301</a></span><span class="attr">#[sealed::sealed]
+<a href=#302 id=302 data-nosnippet>302</a>#[diagnostic::on_unimplemented(
+<a href=#303 id=303 data-nosnippet>303</a>    message = <span class="string">"Because the input stream has ordering `{O}`, the closure must demonstrate commutativity with a `commutative = ...` annotation."</span>,
+<a href=#304 id=304 data-nosnippet>304</a>    label = <span class="string">"required for this call"</span>,
+<a href=#305 id=305 data-nosnippet>305</a>    note = <span class="string">"To intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
+<a href=#306 id=306 data-nosnippet>306</a></span>)]
+<a href=#307 id=307 data-nosnippet>307</a></span><span class="kw">pub trait </span>ValidMutCommutativityFor&lt;F: FnMut(In) -&gt; Out, In, Out, O: Ordering, <span class="kw">const </span>WAS_MUT: bool&gt; {}
+<a href=#308 id=308 data-nosnippet>308</a><span class="attr">#[sealed::sealed]
+<a href=#309 id=309 data-nosnippet>309</a></span><span class="kw">impl</span>&lt;In, Out, F: FnMut(In) -&gt; Out&gt; ValidMutCommutativityFor&lt;F, In, Out, TotalOrder, <span class="bool-val">true</span>&gt;
+<a href=#310 id=310 data-nosnippet>310</a>    <span class="kw">for </span>NotProved
+<a href=#311 id=311 data-nosnippet>311</a>{
+<a href=#312 id=312 data-nosnippet>312</a>}
+<a href=#313 id=313 data-nosnippet>313</a><span class="attr">#[sealed::sealed]
+<a href=#314 id=314 data-nosnippet>314</a></span><span class="kw">impl</span>&lt;In, Out, F: Fn(In) -&gt; Out, O: Ordering&gt; ValidMutCommutativityFor&lt;F, In, Out, O, <span class="bool-val">false</span>&gt;
+<a href=#315 id=315 data-nosnippet>315</a>    <span class="kw">for </span>NotProved
+<a href=#316 id=316 data-nosnippet>316</a>{
+<a href=#317 id=317 data-nosnippet>317</a>}
+<a href=#318 id=318 data-nosnippet>318</a><span class="attr">#[sealed::sealed]
+<a href=#319 id=319 data-nosnippet>319</a></span><span class="kw">impl</span>&lt;In, Out, F: FnMut(In) -&gt; Out, O: Ordering&gt; ValidMutCommutativityFor&lt;F, In, Out, O, <span class="bool-val">true</span>&gt;
+<a href=#320 id=320 data-nosnippet>320</a>    <span class="kw">for </span>Proved
+<a href=#321 id=321 data-nosnippet>321</a>{
+<a href=#322 id=322 data-nosnippet>322</a>}
+<a href=#323 id=323 data-nosnippet>323</a><span class="attr">#[sealed::sealed]
+<a href=#324 id=324 data-nosnippet>324</a></span><span class="kw">impl</span>&lt;In, Out, F: Fn(In) -&gt; Out, O: Ordering&gt; ValidMutCommutativityFor&lt;F, In, Out, O, <span class="bool-val">false</span>&gt;
+<a href=#325 id=325 data-nosnippet>325</a>    <span class="kw">for </span>Proved
+<a href=#326 id=326 data-nosnippet>326</a>{
+<a href=#327 id=327 data-nosnippet>327</a>}
+<a href=#328 id=328 data-nosnippet>328</a>
+<a href=#329 id=329 data-nosnippet>329</a><span class="doccomment">/// Marker trait identifying that the idempotence property is valid for the given stream ordering.
+<a href=#330 id=330 data-nosnippet>330</a></span><span class="attr">#[diagnostic::on_unimplemented(
+<a href=#331 id=331 data-nosnippet>331</a>    message = <span class="string">"Because the input stream has retries `{R}`, the closure must demonstrate idempotence with an `idempotent = ...` annotation."</span>,
+<a href=#332 id=332 data-nosnippet>332</a>    label = <span class="string">"required for this call"</span>,
+<a href=#333 id=333 data-nosnippet>333</a>    note = <span class="string">"To intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
+<a href=#334 id=334 data-nosnippet>334</a></span>)]
+<a href=#335 id=335 data-nosnippet>335</a>#[sealed::sealed]
+<a href=#336 id=336 data-nosnippet>336</a></span><span class="kw">pub trait </span>ValidMutIdempotenceFor&lt;F: FnMut(In) -&gt; Out, In, Out, R: Retries, <span class="kw">const </span>WAS_MUT: bool&gt; {}
+<a href=#337 id=337 data-nosnippet>337</a><span class="attr">#[sealed::sealed]
+<a href=#338 id=338 data-nosnippet>338</a></span><span class="kw">impl</span>&lt;In, Out, F: FnMut(In) -&gt; Out&gt; ValidMutIdempotenceFor&lt;F, In, Out, ExactlyOnce, <span class="bool-val">true</span>&gt;
+<a href=#339 id=339 data-nosnippet>339</a>    <span class="kw">for </span>NotProved
+<a href=#340 id=340 data-nosnippet>340</a>{
+<a href=#341 id=341 data-nosnippet>341</a>}
+<a href=#342 id=342 data-nosnippet>342</a><span class="attr">#[sealed::sealed]
+<a href=#343 id=343 data-nosnippet>343</a></span><span class="kw">impl</span>&lt;In, Out, F: Fn(In) -&gt; Out, R: Retries&gt; ValidMutIdempotenceFor&lt;F, In, Out, R, <span class="bool-val">false</span>&gt;
+<a href=#344 id=344 data-nosnippet>344</a>    <span class="kw">for </span>NotProved
+<a href=#345 id=345 data-nosnippet>345</a>{
+<a href=#346 id=346 data-nosnippet>346</a>}
+<a href=#347 id=347 data-nosnippet>347</a><span class="attr">#[sealed::sealed]
+<a href=#348 id=348 data-nosnippet>348</a></span><span class="kw">impl</span>&lt;In, Out, F: FnMut(In) -&gt; Out, R: Retries&gt; ValidMutIdempotenceFor&lt;F, In, Out, R, <span class="bool-val">true</span>&gt;
+<a href=#349 id=349 data-nosnippet>349</a>    <span class="kw">for </span>Proved
+<a href=#350 id=350 data-nosnippet>350</a>{
+<a href=#351 id=351 data-nosnippet>351</a>}
+<a href=#352 id=352 data-nosnippet>352</a><span class="attr">#[sealed::sealed]
+<a href=#353 id=353 data-nosnippet>353</a></span><span class="kw">impl</span>&lt;In, Out, F: Fn(In) -&gt; Out, R: Retries&gt; ValidMutIdempotenceFor&lt;F, In, Out, R, <span class="bool-val">false</span>&gt;
+<a href=#354 id=354 data-nosnippet>354</a>    <span class="kw">for </span>Proved
+<a href=#355 id=355 data-nosnippet>355</a>{
+<a href=#356 id=356 data-nosnippet>356</a>}
+<a href=#357 id=357 data-nosnippet>357</a>
+<a href=#358 id=358 data-nosnippet>358</a><span class="doccomment">/// Marker trait identifying the boundedness of a singleton given a monotonicity property of
+<a href=#359 id=359 data-nosnippet>359</a>/// an aggregation on a stream.
+<a href=#360 id=360 data-nosnippet>360</a></span><span class="attr">#[sealed::sealed]
+<a href=#361 id=361 data-nosnippet>361</a></span><span class="kw">pub trait </span>ApplyMonotoneStream&lt;P, B2: SingletonBound&gt; {}
+<a href=#362 id=362 data-nosnippet>362</a>
+<a href=#363 id=363 data-nosnippet>363</a><span class="attr">#[sealed::sealed]
+<a href=#364 id=364 data-nosnippet>364</a></span><span class="kw">impl</span>&lt;B: Boundedness&gt; ApplyMonotoneStream&lt;NotProved, B&gt; <span class="kw">for </span>B {}
+<a href=#365 id=365 data-nosnippet>365</a>
+<a href=#366 id=366 data-nosnippet>366</a><span class="attr">#[sealed::sealed]
+<a href=#367 id=367 data-nosnippet>367</a></span><span class="kw">impl</span>&lt;B: Boundedness&gt; ApplyMonotoneStream&lt;Proved, B::StreamToMonotone&gt; <span class="kw">for </span>B {}
+<a href=#368 id=368 data-nosnippet>368</a>
+<a href=#369 id=369 data-nosnippet>369</a><span class="doccomment">/// Marker trait identifying the boundedness of a singleton given a monotonicity property of
+<a href=#370 id=370 data-nosnippet>370</a>/// an aggregation on a keyed stream.
+<a href=#371 id=371 data-nosnippet>371</a></span><span class="attr">#[sealed::sealed]
+<a href=#372 id=372 data-nosnippet>372</a></span><span class="kw">pub trait </span>ApplyMonotoneKeyedStream&lt;P, B2: KeyedSingletonBound&gt; {}
+<a href=#373 id=373 data-nosnippet>373</a>
+<a href=#374 id=374 data-nosnippet>374</a><span class="attr">#[sealed::sealed]
+<a href=#375 id=375 data-nosnippet>375</a></span><span class="kw">impl</span>&lt;B: Boundedness&gt; ApplyMonotoneKeyedStream&lt;NotProved, B&gt; <span class="kw">for </span>B {}
+<a href=#376 id=376 data-nosnippet>376</a>
+<a href=#377 id=377 data-nosnippet>377</a><span class="attr">#[sealed::sealed]
+<a href=#378 id=378 data-nosnippet>378</a></span><span class="kw">impl</span>&lt;B: Boundedness&gt; ApplyMonotoneKeyedStream&lt;Proved, B::KeyedStreamToMonotone&gt; <span class="kw">for </span>B {}
+<a href=#379 id=379 data-nosnippet>379</a>
+<a href=#380 id=380 data-nosnippet>380</a><span class="doccomment">/// Marker trait identifying the boundedness of a singleton after a map operation,
+<a href=#381 id=381 data-nosnippet>381</a>/// given an order-preserving property.
+<a href=#382 id=382 data-nosnippet>382</a></span><span class="attr">#[sealed::sealed]
+<a href=#383 id=383 data-nosnippet>383</a></span><span class="kw">pub trait </span>ApplyOrderPreservingSingleton&lt;P, B2: SingletonBound&gt; {}
+<a href=#384 id=384 data-nosnippet>384</a>
+<a href=#385 id=385 data-nosnippet>385</a><span class="attr">#[sealed::sealed]
+<a href=#386 id=386 data-nosnippet>386</a></span><span class="kw">impl</span>&lt;B: SingletonBound&gt; ApplyOrderPreservingSingleton&lt;NotProved, B::UnderlyingBound&gt; <span class="kw">for </span>B {}
+<a href=#387 id=387 data-nosnippet>387</a>
+<a href=#388 id=388 data-nosnippet>388</a><span class="attr">#[sealed::sealed]
+<a href=#389 id=389 data-nosnippet>389</a></span><span class="kw">impl</span>&lt;B: SingletonBound&gt; ApplyOrderPreservingSingleton&lt;Proved, B&gt; <span class="kw">for </span>B {}
 </code></pre></div></section></main></body></html>

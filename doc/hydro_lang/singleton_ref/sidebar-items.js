@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["with_singleton_capture"],"struct":["SingletonRef"]};
+window.SIDEBAR_ITEMS = {"fn":["with_singleton_capture"],"struct":["SingletonRef"],"type":["SingletonMut"]};

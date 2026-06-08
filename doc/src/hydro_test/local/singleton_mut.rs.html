@@ -1,0 +1,57 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `hydro_test/src/local/singleton_mut.rs`."><title>singleton_mut.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-6b053e98.ttf.woff2,FiraSans-Italic-81dc35de.woff2,FiraSans-Regular-0fe48ade.woff2,FiraSans-MediumItalic-ccf7e434.woff2,FiraSans-Medium-e1aa3f0a.woff2,SourceCodePro-Regular-8badfe75.ttf.woff2,SourceCodePro-Semibold-aa29a496.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2"href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-9960930a.css"><link rel="stylesheet" href="../../../static.files/rustdoc-74eb0058.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="hydro_test" data-themes="" data-resource-suffix="" data-rustdoc-version="1.98.0-nightly (f20a92ec0 2026-06-07)" data-channel="nightly" data-search-js="search-fd9372ac.js" data-stringdex-js="stringdex-2da4960a.js" data-settings-js="settings-170eb4bf.js" ><script src="../../../static.files/storage-41dd4d93.js"></script><script defer src="../../../static.files/src-script-813739b1.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-fcd733ba.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-f7c3ffd8.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-eab170b8.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-044be391.svg"></head><body class="rustdoc src"><a class="skip-main-content" href="#main-content">Skip to main content</a><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer" title="Drag to resize sidebar"></div><main><section id="main-content" class="content" tabindex="-1"><div class="main-heading"><h1><div class="sub-heading">hydro_test/local/</div>singleton_mut.rs</h1><rustdoc-toolbar></rustdoc-toolbar></div><div class="example-wrap digits-2"><pre class="rust"><code><a href=#1 id=1 data-nosnippet>1</a><span class="attr">#[cfg(test)]
+<a href=#2 id=2 data-nosnippet>2</a></span><span class="kw">mod </span>tests {
+<a href=#3 id=3 data-nosnippet>3</a>    <span class="kw">use </span>futures::StreamExt;
+<a href=#4 id=4 data-nosnippet>4</a>    <span class="kw">use </span>hydro_deploy::Deployment;
+<a href=#5 id=5 data-nosnippet>5</a>    <span class="kw">use </span>hydro_lang::compile::builder::FlowBuilder;
+<a href=#6 id=6 data-nosnippet>6</a>    <span class="kw">use </span>hydro_lang::location::Location;
+<a href=#7 id=7 data-nosnippet>7</a>    <span class="kw">use </span>stageleft::q;
+<a href=#8 id=8 data-nosnippet>8</a>
+<a href=#9 id=9 data-nosnippet>9</a>    <span class="attr">#[tokio::test]
+<a href=#10 id=10 data-nosnippet>10</a>    </span><span class="kw">async fn </span>test_singleton_mut() {
+<a href=#11 id=11 data-nosnippet>11</a>        <span class="kw">let </span><span class="kw-2">mut </span>deployment = Deployment::new();
+<a href=#12 id=12 data-nosnippet>12</a>
+<a href=#13 id=13 data-nosnippet>13</a>        <span class="kw">let </span><span class="kw-2">mut </span>builder = FlowBuilder::new();
+<a href=#14 id=14 data-nosnippet>14</a>        <span class="kw">let </span>external = builder.external::&lt;()&gt;();
+<a href=#15 id=15 data-nosnippet>15</a>        <span class="kw">let </span>p1 = builder.process::&lt;()&gt;();
+<a href=#16 id=16 data-nosnippet>16</a>
+<a href=#17 id=17 data-nosnippet>17</a>        <span class="comment">// Create a singleton: fold 0..5 =&gt; 10
+<a href=#18 id=18 data-nosnippet>18</a>        </span><span class="kw">let </span>my_count = p1
+<a href=#19 id=19 data-nosnippet>19</a>            .source_iter(<span class="macro">q!</span>(<span class="number">0</span>..<span class="number">5i32</span>))
+<a href=#20 id=20 data-nosnippet>20</a>            .fold(<span class="macro">q!</span>(|| <span class="number">0i32</span>), <span class="macro">q!</span>(|acc: <span class="kw-2">&amp;mut </span>i32, x| <span class="kw-2">*</span>acc += x));
+<a href=#21 id=21 data-nosnippet>21</a>
+<a href=#22 id=22 data-nosnippet>22</a>        <span class="kw">let </span>count_mut = my_count.by_mut();
+<a href=#23 id=23 data-nosnippet>23</a>
+<a href=#24 id=24 data-nosnippet>24</a>        <span class="comment">// Use the singleton mut in a map on another stream
+<a href=#25 id=25 data-nosnippet>25</a>        </span><span class="kw">let </span>out_port = p1
+<a href=#26 id=26 data-nosnippet>26</a>            .source_iter(<span class="macro">q!</span>(<span class="number">1</span>..=<span class="number">3i32</span>))
+<a href=#27 id=27 data-nosnippet>27</a>            .weaken_ordering::&lt;hydro_lang::live_collections::stream::NoOrder&gt;()
+<a href=#28 id=28 data-nosnippet>28</a>            .map(<span class="macro">q!</span>(
+<a href=#29 id=29 data-nosnippet>29</a>                |x| {
+<a href=#30 id=30 data-nosnippet>30</a>                    <span class="kw-2">*</span>count_mut += x;
+<a href=#31 id=31 data-nosnippet>31</a>                    <span class="kw-2">*</span>count_mut
+<a href=#32 id=32 data-nosnippet>32</a>                },
+<a href=#33 id=33 data-nosnippet>33</a>                commutative = <span class="macro">hydro_lang::__manual_proof__!</span>(<span class="doccomment">/** addition is commutative */</span>)
+<a href=#34 id=34 data-nosnippet>34</a>            ))
+<a href=#35 id=35 data-nosnippet>35</a>            .send_bincode_external(<span class="kw-2">&amp;</span>external);
+<a href=#36 id=36 data-nosnippet>36</a>
+<a href=#37 id=37 data-nosnippet>37</a>        <span class="kw">let </span>nodes = builder
+<a href=#38 id=38 data-nosnippet>38</a>            .with_default_optimize()
+<a href=#39 id=39 data-nosnippet>39</a>            .with_process(<span class="kw-2">&amp;</span>p1, deployment.Localhost())
+<a href=#40 id=40 data-nosnippet>40</a>            .with_external(<span class="kw-2">&amp;</span>external, deployment.Localhost())
+<a href=#41 id=41 data-nosnippet>41</a>            .deploy(<span class="kw-2">&amp;mut </span>deployment);
+<a href=#42 id=42 data-nosnippet>42</a>
+<a href=#43 id=43 data-nosnippet>43</a>        deployment.deploy().<span class="kw">await</span>.unwrap();
+<a href=#44 id=44 data-nosnippet>44</a>
+<a href=#45 id=45 data-nosnippet>45</a>        <span class="kw">let </span><span class="kw-2">mut </span>out_recv = nodes.connect(out_port).<span class="kw">await</span>;
+<a href=#46 id=46 data-nosnippet>46</a>
+<a href=#47 id=47 data-nosnippet>47</a>        deployment.start().<span class="kw">await</span>.unwrap();
+<a href=#48 id=48 data-nosnippet>48</a>
+<a href=#49 id=49 data-nosnippet>49</a>        <span class="kw">let </span><span class="kw-2">mut </span>results = Vec::new();
+<a href=#50 id=50 data-nosnippet>50</a>        <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">3 </span>{
+<a href=#51 id=51 data-nosnippet>51</a>            results.push(out_recv.next().<span class="kw">await</span>.unwrap());
+<a href=#52 id=52 data-nosnippet>52</a>        }
+<a href=#53 id=53 data-nosnippet>53</a>        results.sort();
+<a href=#54 id=54 data-nosnippet>54</a>        <span class="macro">assert_eq!</span>(results, <span class="macro">vec!</span>[<span class="number">11</span>, <span class="number">13</span>, <span class="number">16</span>]);
+<a href=#55 id=55 data-nosnippet>55</a>    }
+<a href=#56 id=56 data-nosnippet>56</a>}
+</code></pre></div></section></main></body></html>
