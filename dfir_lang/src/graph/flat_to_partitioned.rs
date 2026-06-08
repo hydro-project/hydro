@@ -428,7 +428,8 @@ fn order_subgraphs(
         return Err(Diagnostic::spanned(
             span,
             Level::Error,
-            "Cyclical dataflow within a tick is not supported. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks.",
+            format!("Cyclical dataflow within a tick is not supported. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks.
+Cycle: {:?}", cycle),
         ));
     }
 
