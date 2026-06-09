@@ -7,4 +7,4 @@ error: proc macro panicked
 6 | |     };
   | |_____^
   |
-  = help: message: Handoff succ not in subgraph, may be a doubled/adjacent handoff
+  = help: message: called `Option::unwrap()` on a `None` value

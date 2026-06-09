@@ -147,16 +147,18 @@ where
     /// Iterates all subgraph representatives with their topo-sorted operator slices,
     /// in topological order (by position in `toposort_node`).
     pub fn subgraphs(&self) -> impl Iterator<Item = &[K]> {
-        let mut groups: Vec<(usize, usize)> = self
-            .node_toposort
-            .values()
-            .filter(|(_, len)| *len > 0)
-            .copied()
-            .collect();
-        groups.sort_unstable_by_key(|&(start, _)| start);
-        groups
-            .into_iter()
-            .map(|(start, len)| &self.toposort_node[start..start + len])
+        let mut i = 0;
+        std::iter::from_fn(move || {
+            let Some(&sg_node) = self.toposort_node.get(i) else {
+                debug_assert_eq!(i, self.toposort_node.len());
+                return None;
+            };
+            let (_sg_idx, sg_len) = self.node_toposort[sg_node];
+            debug_assert_eq!(i, _sg_idx);
+            let sg_slice = &self.toposort_node[i..i + sg_len];
+            i += sg_len;
+            Some(sg_slice)
+        })
     }
 
     /// Attempts to merge the subgraphs containing `u` and `v`.
@@ -169,7 +171,7 @@ where
             return true;
         }
 
-        // Ensure u is "before" v in topo order.
+        // Ensure `u` is before `v` in topo order.
         let (u, v) = {
             let (u_start, _) = self.node_toposort[u];
             let (v_start, _) = self.node_toposort[v];
@@ -215,11 +217,16 @@ where
         // 2. Perform merge in union-find and rewire predecessors
         // ------------------------------------------------------------
 
+        // `u` is before `v` in the topo order, and `UnionFind::union` ensures the first arg's (`u`'s) group
+        // will represent the merge. This ensures that the representative stays at the *start* of the
+        // subgraph's `toposort_node` sub-slice.
         let new_root = self.subgraph_unionfind.union(u, v);
 
-        let mut preds = Vec::new();
-        preds.append(&mut self.subgraph_preds.remove(u).unwrap());
-        preds.append(&mut self.subgraph_preds.remove(v).unwrap());
+        let u_preds = &mut self.subgraph_preds.remove(u).unwrap();
+        let v_preds = &mut self.subgraph_preds.remove(v).unwrap();
+        let mut preds = Vec::with_capacity(u_preds.len() + v_preds.len());
+        preds.append(u_preds);
+        preds.append(v_preds);
         preds.retain(|x| self.subgraph_unionfind.find(*x) != new_root);
         self.subgraph_preds.insert(new_root, preds);
 

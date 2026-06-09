@@ -38,8 +38,8 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_2v1"
-        n3v1
         n4v1
+        n3v1
         subgraph sg_2v1_var_my_union {
             cluster=true
             label="var my_union"

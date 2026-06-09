@@ -34,24 +34,24 @@ linkStyle default stroke:#aaa
 12v1--o7v1; linkStyle 10 stroke:red
 13v1--o6v1; linkStyle 11 stroke:red
 subgraph sg_1v1 ["sg_1v1"]
-    3v1
-end
-subgraph sg_2v1 ["sg_2v1"]
-    5v1
-end
-subgraph sg_3v1 ["sg_3v1"]
-    6v1
-end
-subgraph sg_4v1 ["sg_4v1"]
-    1v1
-    2v1
-    4v1
     7v1
-    subgraph sg_4v1_var_my_join ["var <tt>my_join</tt>"]
+    4v1
+    2v1
+    1v1
+    subgraph sg_1v1_var_my_join ["var <tt>my_join</tt>"]
         9v1
         10v1
     end
-    subgraph sg_4v1_var_unioner ["var <tt>unioner</tt>"]
+    subgraph sg_1v1_var_unioner ["var <tt>unioner</tt>"]
         8v1
     end
+end
+subgraph sg_2v1 ["sg_2v1"]
+    3v1
+end
+subgraph sg_3v1 ["sg_3v1"]
+    5v1
+end
+subgraph sg_4v1 ["sg_4v1"]
+    6v1
 end

@@ -124,20 +124,17 @@ fn find_subgraph_unionfind(
     let mut extra_preds: SecondaryMap<GraphNodeId, Vec<GraphNodeId>> = SecondaryMap::new();
     for node_id in partitioned_graph.node_ids() {
         for singleton_ref in partitioned_graph.node_singleton_references(node_id).iter() {
-            if let Some(ref_target) = singleton_ref.node_id {
-                if matches!(
-                    partitioned_graph.node(ref_target),
-                    GraphNode::Handoff { .. }
-                ) {
-                    // ref_target is a handoff; find its pipe consumer(s).
-                    for (_edge, consumer) in partitioned_graph.node_successors(ref_target) {
-                        // consumer depends on node_id (the borrower).
-                        extra_preds
-                            .entry(consumer)
-                            .unwrap()
-                            .or_default()
-                            .push(node_id);
-                    }
+            if let Some(ref_target) = singleton_ref.node_id
+                && let GraphNode::Handoff { .. } = partitioned_graph.node(ref_target)
+            {
+                // ref_target is a handoff; find its pipe consumer(s).
+                for (_edge, consumer) in partitioned_graph.node_successors(ref_target) {
+                    // consumer depends on node_id (the borrower).
+                    extra_preds
+                        .entry(consumer)
+                        .unwrap()
+                        .or_default()
+                        .push(node_id);
                 }
             }
         }
@@ -266,6 +263,9 @@ fn make_subgraphs(
     // 2. Collect edges. (Future optimization: sort so edges which should not be split across a handoff come first).
     // 3. For each edge, try to join `(to, from)` into the same subgraph.
 
+    // TODO(mingwei):
+    // self.partitioned_graph.assert_valid();
+
     let (subgraph_merge, handoff_edges) =
         find_subgraph_unionfind(partitioned_graph, barrier_crossers)?;
 
@@ -301,7 +301,10 @@ fn make_subgraphs(
             continue;
         }
         // Skip single-node "subgraphs" that are handoff nodes.
-        if nodes.iter().any(|&n| matches!(partitioned_graph.node(n), GraphNode::Handoff { .. })) {
+        if nodes
+            .iter()
+            .any(|&n| matches!(partitioned_graph.node(n), GraphNode::Handoff { .. }))
+        {
             continue;
         }
         let sg_id = partitioned_graph.insert_subgraph(nodes.to_vec()).unwrap();
