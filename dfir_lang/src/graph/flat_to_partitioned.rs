@@ -152,7 +152,7 @@ fn find_subgraph_unionfind(
     // let mut subgraph_unionfind: UnionFind<GraphNodeId> =
     //     UnionFind::with_capacity(partitioned_graph.nodes().len());
 
-    // Will contain all edges which are handoffs. Starts out with all edges and
+    // Will contain all edges which need handoffs added. Starts out with all edges and
     // we remove from this set as we combine nodes into subgraphs.
     let mut handoff_edges: BTreeSet<GraphEdgeId> = partitioned_graph.edge_ids().collect();
     // Would sort edges here for priority (for now, no sort/priority).
@@ -168,6 +168,14 @@ fn find_subgraph_unionfind(
         progress = false;
         // TODO(mingwei): Could this iterate `handoff_edges` instead? (Modulo ownership). Then no case (1) below.
         for (edge_id, (src, dst)) in partitioned_graph.edges().collect::<Vec<_>>() {
+            // Ignore existing handoffs, remove `edge_id` from `handoff_edges`.
+            if matches!(partitioned_graph.node(src), GraphNode::Handoff { .. })
+                || matches!(partitioned_graph.node(dst), GraphNode::Handoff { .. })
+            {
+                handoff_edges.remove(&edge_id);
+                continue;
+            }
+
             // Ignore (1) already added edges as well as (2) new self-cycles. (Unless reference edge).
             if subgraph_unionfind.same_set(src, dst) {
                 // Note that the _edge_ `edge_id` might not be in the subgraph even when both `src` and `dst` are. This prevents case 2.
@@ -263,7 +271,7 @@ fn make_subgraphs(partitioned_graph: &mut DfirGraph, barrier_crossers: &mut Barr
     // TODO(mingwei):
     // self.partitioned_graph.assert_valid();
 
-    let (subgraph_unionfind, handoff_edges) =
+    let (subgraph_merge, handoff_edges) =
         find_subgraph_unionfind(partitioned_graph, barrier_crossers);
 
     // Insert handoffs between subgraphs (or on subgraph self-loop edges)
@@ -293,7 +301,7 @@ fn make_subgraphs(partitioned_graph: &mut DfirGraph, barrier_crossers: &mut Barr
     // Determine node's subgraph and subgraph's nodes.
     // This list of nodes in each subgraph are to be in topological sort order.
     // Eventually returned directly in the [`DfirGraph`].
-    let grouped_nodes = make_subgraph_collect(partitioned_graph, subgraph_unionfind);
+    let grouped_nodes = make_subgraph_collect(partitioned_graph, subgraph_merge);
     for (_repr_node, member_nodes) in grouped_nodes {
         partitioned_graph.insert_subgraph(member_nodes).unwrap();
     }
