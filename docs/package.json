@@ -20,6 +20,7 @@
     "@docusaurus/plugin-ideal-image": "^3.9.2",
     "@docusaurus/preset-classic": "^3.9.2",
     "@docusaurus/theme-mermaid": "^3.9.2",
+    "@hydro-project/docusaurus-theme": "file:../hydro-docusaurus-theme",
     "@hydro-project/hydroscope": "^2.0.0",
     "@mdx-js/react": "^3.1.1",
     "@monaco-editor/react": "^4.7.0",
