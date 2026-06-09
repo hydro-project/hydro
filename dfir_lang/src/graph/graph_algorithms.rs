@@ -1,8 +1,8 @@
 //! General graph algorithm utility functions
 
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::BTreeMap;
 
-use slotmap::{Key, SecondaryMap, SparseSecondaryMap};
+use slotmap::{Key, SecondaryMap};
 
 /// Topologically sorts a set of nodes. Returns a list where the order of `Id`s will agree with
 /// the order of any path through the graph.
@@ -79,7 +79,8 @@ where
     K: Key,
 {
     subgraph_preds: SecondaryMap<K, Vec<K>>,
-    subgraph_topo_order: SecondaryMap<K, usize>,
+    /// (min_order, max_order) for each merged group.
+    subgraph_topo_order: SecondaryMap<K, (usize, usize)>,
     subgraph_unionfind: crate::union_find::UnionFind<K>,
 }
 
@@ -98,12 +99,13 @@ where
             .into_iter()
             .map(|k| (k, (preds_fn)(k).into_iter().collect()))
             .collect::<SecondaryMap<K, Vec<K>>>();
-        let subgraph_topo_order =
-            topo_sort(subgraph_preds.keys(), |k| subgraph_preds[k].iter().copied())?
-                .into_iter()
-                .enumerate()
-                .map(|(i, k)| (k, i))
-                .collect::<SecondaryMap<K, usize>>();
+        let topo_order =
+            topo_sort(subgraph_preds.keys(), |k| subgraph_preds[k].iter().copied())?;
+        let subgraph_topo_order = topo_order
+            .iter()
+            .enumerate()
+            .map(|(i, &k)| (k, (i, i)))
+            .collect::<SecondaryMap<K, (usize, usize)>>();
         let subgraph_unionfind =
             crate::union_find::UnionFind::with_capacity(subgraph_topo_order.len());
         Ok(Self {
@@ -129,21 +131,19 @@ where
             return true;
         }
 
-        // Ensure u is "before" v in topo order (heuristic normalization)
+        // Ensure u is "before" v in topo order (by min_order)
         let (u, v) = {
-            let ou = self.subgraph_topo_order[u];
-            let ov = self.subgraph_topo_order[v];
+            let ou = self.subgraph_topo_order[u].0;
+            let ov = self.subgraph_topo_order[v].0;
             if ou <= ov { (u, v) } else { (v, u) }
         };
 
         // ------------------------------------------------------------
-        // 1. Cycle check in meta-graph using bounded backward search
+        // 1. Cycle check: can v reach u via predecessor edges?
         // ------------------------------------------------------------
+        // Pruning: a merged node with max_order < u_min cannot reach u.
+        //          a merged node with min_order > v_max is past v.
 
-        // We check whether v can reach u through predecessor edges (excluding the direct path).
-        // We prune using topo order: only nodes in `u..=v` matter.
-
-        // TODO(mingwei): clean up this mess.
         let mut visited = std::collections::HashSet::<K>::from_iter(
             self.subgraph_preds[v]
                 .iter()
@@ -151,42 +151,38 @@ where
         );
         visited.remove(&u);
         let mut stack = visited.iter().copied().collect::<Vec<_>>();
-        let u_ord = self.subgraph_topo_order[u];
-        let v_ord = self.subgraph_topo_order[v];
+        let u_min_ord = self.subgraph_topo_order[u].0;
+        let v_max_ord = self.subgraph_topo_order[v].1;
 
         while let Some(x) = stack.pop() {
             if x == u {
-                // Found path v -> u => merging would create cycle
                 return false;
             }
 
             for &p in self.subgraph_preds[x].iter() {
                 let root_p = self.subgraph_unionfind.find(p);
 
-                // only consider active window (important pruning)
-                let ord = self.subgraph_topo_order[root_p];
-                if (u_ord..=v_ord).contains(&ord) && visited.insert(root_p) {
+                let (p_min, p_max) = self.subgraph_topo_order[root_p];
+                if p_max >= u_min_ord && p_min <= v_max_ord && visited.insert(root_p) {
                     stack.push(root_p);
                 }
             }
         }
 
         // ------------------------------------------------------------
-        // 2. Perform merge in union-find
+        // 2. Perform merge
         // ------------------------------------------------------------
 
         let new_root = self.subgraph_unionfind.union(u, v);
 
         // ------------------------------------------------------------
-        // 3. Update topo order (local heuristic)
+        // 3. Update topo order (track min and max)
         // ------------------------------------------------------------
 
-        // Simple stable heuristic:
-        // place merged node at min position of its components
-        // remove old entries (not strictly needed for correcness).
-        let new_order = self.subgraph_topo_order.remove(u).unwrap();
-        let __v_order = self.subgraph_topo_order.remove(v).unwrap();
-        self.subgraph_topo_order.insert(new_root, new_order);
+        let (u_min, u_max) = self.subgraph_topo_order.remove(u).unwrap();
+        let (v_min, v_max) = self.subgraph_topo_order.remove(v).unwrap();
+        self.subgraph_topo_order
+            .insert(new_root, (u_min.min(v_min), u_max.max(v_max)));
 
         // ------------------------------------------------------------
         // 4. Rewire predecessor lists
@@ -195,9 +191,7 @@ where
         let mut preds = Vec::new();
         preds.append(&mut self.subgraph_preds.remove(u).unwrap());
         preds.append(&mut self.subgraph_preds.remove(v).unwrap());
-        // Remove self-loops after union
         preds.retain(|x| self.subgraph_unionfind.find(*x) != new_root);
-
         self.subgraph_preds.insert(new_root, preds);
 
         true

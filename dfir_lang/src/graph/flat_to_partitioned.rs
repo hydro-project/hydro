@@ -13,7 +13,6 @@ use super::{
 };
 use crate::diagnostic::{Diagnostic, Level};
 use crate::graph::graph_algorithms::SubgraphMerge;
-use crate::union_find::UnionFind;
 
 /// Helper struct for tracking barrier crossers, see [`find_barrier_crossers`].
 struct BarrierCrossers {
