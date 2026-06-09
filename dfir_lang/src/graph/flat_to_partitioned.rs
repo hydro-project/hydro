@@ -253,11 +253,14 @@ fn make_subgraphs(partitioned_graph: &mut DfirGraph, barrier_crossers: &mut Barr
     }
 
     // Register subgraphs. SubgraphMerge maintains operators in topo-sorted order per subgraph.
+    let mut subgraph_toposort = Vec::new();
     for nodes in subgraph_merge.subgraphs() {
         if !nodes.is_empty() {
-            partitioned_graph.insert_subgraph(nodes.to_vec()).unwrap();
+            let sg_id = partitioned_graph.insert_subgraph(nodes.to_vec()).unwrap();
+            subgraph_toposort.push(sg_id);
         }
     }
+    partitioned_graph.set_subgraph_toposort(subgraph_toposort);
 }
 
 /// Set `src` or `dst` color if `None` based on the other (if possible):
