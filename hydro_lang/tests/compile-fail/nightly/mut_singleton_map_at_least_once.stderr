@@ -1,0 +1,10 @@
+error[E0594]: cannot assign to `*count_mut__free`, as it is a captured variable in a `Fn` closure
+  --> tests/compile-fail/nightly/mut_singleton_map_at_least_once.rs:16:13
+   |
+ 6 | fn test<'a>(p1: &Process<'a, P1>) {
+   |    ----                          - change this to return `FnMut` instead of `Fn`
+...
+15 |         .map(q!(|x| {
+   |                 --- in this closure
+16 |             *count_mut += x;
+   |             ^^^^^^^^^^^^^^^ cannot assign
