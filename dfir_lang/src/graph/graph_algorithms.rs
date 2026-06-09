@@ -1,6 +1,6 @@
 //! General graph algorithm utility functions
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use slotmap::{Key, SecondaryMap};
 
@@ -166,7 +166,7 @@ where
         let (u_start, u_len) = self.node_toposort[u];
         let (v_start, v_len) = self.node_toposort[v];
         let window_lo = u_start;
-        let window_hi = v_start + v_len - 1;
+        let window_hi = v_start + (v_len - 1);
 
         // ------------------------------------------------------------
         // 1. Cycle check: can v reach u via predecessor edges?
@@ -175,9 +175,9 @@ where
         // Direct predecessor edges from v to u become self-loops after
         // merge and are not real cycles, so we skip u as a direct pred.
 
-        let mut visited = std::collections::HashSet::<K>::new();
-        visited.insert(v);
         let mut stack = vec![v];
+        let mut visited = HashSet::<K>::new();
+        visited.insert(v);
 
         while let Some(x) = stack.pop() {
             for &p in self.subgraph_preds[x].iter() {
@@ -221,16 +221,10 @@ where
         // 3. Re-sort groups in window [window_lo..=window_hi]
         // ------------------------------------------------------------
 
-        // Identify distinct groups in the window (in current order).
-        let mut group_order: Vec<K> = Vec::new();
-        {
-            let mut seen = std::collections::HashSet::<K>::new();
-            for &node in &self.toposort_node[window_lo..=window_hi] {
-                let rep = self.subgraph_unionfind.find(node);
-                if seen.insert(rep) {
-                    group_order.push(rep);
-                }
-            }
+        // Identify distinct groups in the window.
+        let mut groups_in_window = HashSet::<K>::new();
+        for &node in &self.toposort_node[window_lo..=window_hi] {
+            groups_in_window.insert(self.subgraph_unionfind.find(node));
         }
 
         // Topo-sort groups in the window by their contracted DAG edges.
@@ -241,7 +235,7 @@ where
         let subgraph_preds = &self.subgraph_preds;
         let subgraph_unionfind = &mut self.subgraph_unionfind;
         let node_toposort = &self.node_toposort;
-        let sorted_groups = topo_sort(group_order.iter().copied(), |k| {
+        let sorted_groups = topo_sort(groups_in_window.iter().copied(), |k| {
             subgraph_preds[k]
                 .iter()
                 .map(|&p| subgraph_unionfind.find(p))
@@ -269,12 +263,11 @@ where
         }
         self.toposort_node[window_lo..=window_hi].copy_from_slice(&buf);
 
-        // Update reverse index: positions and group ranges (len already correct).
+        // Update reverse index: start positions (len already correct).
         let mut pos = window_lo;
         for &group in &sorted_groups {
-            let g_len = self.node_toposort[group].1;
-            self.node_toposort[group] = (pos, g_len);
-            pos += g_len;
+            self.node_toposort[group].0 = pos;
+            pos += self.node_toposort[group].1;
         }
 
         true
