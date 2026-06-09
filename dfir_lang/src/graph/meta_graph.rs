@@ -751,7 +751,7 @@ impl DfirGraph {
     }
 
     /// Subgraph IDs in topological sort order.
-    pub fn subgraph_ids_topo(&self) -> &[GraphSubgraphId] {
+    pub fn subgraph_toposort(&self) -> &[GraphSubgraphId] {
         &self.subgraph_toposort
     }
 
@@ -1057,7 +1057,7 @@ impl DfirGraph {
 
         // 3. Use pre-computed subgraph topological order.
         let all_subgraphs: Vec<_> = self
-            .subgraph_ids_topo()
+            .subgraph_toposort()
             .iter()
             .map(|&sg_id| (sg_id, self.subgraph(sg_id)))
             .collect();
