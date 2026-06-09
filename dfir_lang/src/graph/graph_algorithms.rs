@@ -233,22 +233,29 @@ where
             group_nodes_map.entry(rep).or_default().push(node);
         }
 
-        // Topo-sort groups in the window by their pred edges (filtered to window).
-        let group_set: std::collections::HashSet<K> =
-            group_order.iter().copied().collect();
+        // Topo-sort groups in the window by their contracted DAG edges.
+        // We borrow fields separately to allow the closure to call find() (which
+        // needs &mut unionfind) while also reading subgraph_preds and node_toposort.
+        // Only predecessor groups whose range overlaps the window are included —
+        // groups entirely outside the window have their ordering already satisfied.
         let subgraph_preds = &self.subgraph_preds;
         let subgraph_unionfind = &mut self.subgraph_unionfind;
+        let node_toposort = &self.node_toposort;
         let sorted_groups = topo_sort(group_order.iter().copied(), |k| {
             subgraph_preds[k]
                 .iter()
                 .map(|&p| subgraph_unionfind.find(p))
-                .filter(|p| group_set.contains(p))
+                .filter(|&p| {
+                    let (p_start, p_len) = node_toposort[p];
+                    p_start + p_len > window_lo && p_start <= window_hi
+                })
                 .collect::<Vec<_>>()
                 .into_iter()
         })
         .expect("cycle check passed but re-toposort found cycle");
 
         // Rebuild the window: lay out each group's operators in sorted group order.
+        // Uses a temporary buffer to avoid in-place permutation complexity.
         let mut buf: Vec<K> = Vec::with_capacity(window_hi - window_lo + 1);
         for &group in &sorted_groups {
             buf.extend_from_slice(&group_nodes_map[&group]);
