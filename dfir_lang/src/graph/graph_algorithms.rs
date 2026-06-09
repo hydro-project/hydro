@@ -236,22 +236,15 @@ where
         // Topo-sort groups in the window by their pred edges (filtered to window).
         let group_set: std::collections::HashSet<K> =
             group_order.iter().copied().collect();
-        let group_preds: Vec<(K, Vec<K>)> = group_order
-            .iter()
-            .map(|&g| {
-                let preds: Vec<K> = self.subgraph_preds[g]
-                    .iter()
-                    .map(|&p| self.subgraph_unionfind.find(p))
-                    .filter(|p| group_set.contains(p))
-                    .collect();
-                (g, preds)
-            })
-            .collect();
-        let group_preds_lookup: std::collections::HashMap<K, &Vec<K>> =
-            group_preds.iter().map(|(k, v)| (*k, v)).collect();
-
+        let subgraph_preds = &self.subgraph_preds;
+        let subgraph_unionfind = &mut self.subgraph_unionfind;
         let sorted_groups = topo_sort(group_order.iter().copied(), |k| {
-            group_preds_lookup[&k].iter().copied()
+            subgraph_preds[k]
+                .iter()
+                .map(|&p| subgraph_unionfind.find(p))
+                .filter(|p| group_set.contains(p))
+                .collect::<Vec<_>>()
+                .into_iter()
         })
         .expect("cycle check passed but re-toposort found cycle");
 
