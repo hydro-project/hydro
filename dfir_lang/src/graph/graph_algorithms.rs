@@ -163,7 +163,7 @@ where
             let (v_start, _) = self.node_toposort[v];
             if u_start <= v_start { (u, v) } else { (v, u) }
         };
-        let (u_start, _u_len) = self.node_toposort[u];
+        let (u_start, u_len) = self.node_toposort[u];
         let (v_start, v_len) = self.node_toposort[v];
         let window_lo = u_start;
         let window_hi = v_start + v_len - 1;
@@ -211,26 +211,26 @@ where
         preds.retain(|x| self.subgraph_unionfind.find(*x) != new_root);
         self.subgraph_preds.insert(new_root, preds);
 
-        // Update the merged group's range temporarily for group identification.
+        // Mark the subsumed node and set merged group's length.
         let subsumed = if new_root == u { v } else { u };
         self.node_toposort[subsumed] = (0, 0);
+        // Set new_root's len to the combined size (start is temporary, fixed after re-sort).
+        self.node_toposort[new_root] = (u_start, u_len + v_len);
 
         // ------------------------------------------------------------
         // 3. Re-sort groups in window [window_lo..=window_hi]
         // ------------------------------------------------------------
 
-        // Identify distinct groups in the window and collect their operator slices.
-        // Groups' operators are contiguous within the window (except new_root which
-        // has u's and v's operators at separate positions — but both within the window).
+        // Identify distinct groups in the window (in current order).
         let mut group_order: Vec<K> = Vec::new();
-        let mut group_nodes_map: std::collections::HashMap<K, Vec<K>> =
-            std::collections::HashMap::new();
-        for &node in &self.toposort_node[window_lo..=window_hi] {
-            let rep = self.subgraph_unionfind.find(node);
-            if !group_nodes_map.contains_key(&rep) {
-                group_order.push(rep);
+        {
+            let mut seen = std::collections::HashSet::<K>::new();
+            for &node in &self.toposort_node[window_lo..=window_hi] {
+                let rep = self.subgraph_unionfind.find(node);
+                if seen.insert(rep) {
+                    group_order.push(rep);
+                }
             }
-            group_nodes_map.entry(rep).or_default().push(node);
         }
 
         // Topo-sort groups in the window by their contracted DAG edges.
@@ -255,17 +255,24 @@ where
         .expect("cycle check passed but re-toposort found cycle");
 
         // Rebuild the window: lay out each group's operators in sorted group order.
-        // Uses a temporary buffer to avoid in-place permutation complexity.
+        // All groups except new_root have contiguous operators at their current range.
+        // new_root's operators are u's slice followed by v's slice (not yet contiguous).
         let mut buf: Vec<K> = Vec::with_capacity(window_hi - window_lo + 1);
         for &group in &sorted_groups {
-            buf.extend_from_slice(&group_nodes_map[&group]);
+            if group == new_root {
+                buf.extend_from_slice(&self.toposort_node[u_start..u_start + u_len]);
+                buf.extend_from_slice(&self.toposort_node[v_start..v_start + v_len]);
+            } else {
+                let (g_start, g_len) = self.node_toposort[group];
+                buf.extend_from_slice(&self.toposort_node[g_start..g_start + g_len]);
+            }
         }
         self.toposort_node[window_lo..=window_hi].copy_from_slice(&buf);
 
-        // Update reverse index: positions and group ranges.
+        // Update reverse index: positions and group ranges (len already correct).
         let mut pos = window_lo;
         for &group in &sorted_groups {
-            let g_len = group_nodes_map[&group].len();
+            let g_len = self.node_toposort[group].1;
             self.node_toposort[group] = (pos, g_len);
             pos += g_len;
         }
