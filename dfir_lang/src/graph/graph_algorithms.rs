@@ -74,15 +74,23 @@ where
 }
 
 /// Datastructure for merging subgraphs while maintaining topological sort order.
+///
+/// Maintains a global topo-sorted Vec of all operators. Each subgraph (merged group)
+/// occupies a contiguous range in this Vec. Merging two groups combines their ranges
+/// and re-sorts the affected window so groups remain contiguous and correctly ordered.
 pub struct SubgraphMerge<K>
 where
     K: Key,
 {
+    /// Predecessor edges in the contracted DAG (per representative).
     subgraph_preds: SecondaryMap<K, Vec<K>>,
-    /// Ordered list of subgraph representatives: position → node.
-    toposort_subgraph: Vec<K>,
-    /// Reverse index: node → position in `toposort_subgraph`.
-    subgraph_toposort: SecondaryMap<K, usize>,
+    /// All operators in global topo-sort order (fixed length, reshuffled in windows).
+    toposort_node: Vec<K>,
+    /// Reverse index: node → (start, len).
+    /// Non-representatives: len=1, start=their position.
+    /// Representatives: start=first operator in group, len=number of operators in group.
+    node_toposort: SecondaryMap<K, (usize, usize)>,
+    /// Union-find for subgraph membership.
     subgraph_unionfind: crate::union_find::UnionFind<K>,
 }
 
@@ -101,19 +109,19 @@ where
             .into_iter()
             .map(|k| (k, (preds_fn)(k).into_iter().collect()))
             .collect::<SecondaryMap<K, Vec<K>>>();
-        let toposort_subgraph =
+        let toposort_node =
             topo_sort(subgraph_preds.keys(), |k| subgraph_preds[k].iter().copied())?;
-        let subgraph_toposort = toposort_subgraph
+        let node_toposort = toposort_node
             .iter()
             .enumerate()
-            .map(|(i, &k)| (k, i))
-            .collect::<SecondaryMap<K, usize>>();
+            .map(|(i, &k)| (k, (i, 1)))
+            .collect::<SecondaryMap<K, (usize, usize)>>();
         let subgraph_unionfind =
-            crate::union_find::UnionFind::with_capacity(toposort_subgraph.len());
+            crate::union_find::UnionFind::with_capacity(toposort_node.len());
         Ok(Self {
             subgraph_preds,
-            toposort_subgraph,
-            subgraph_toposort,
+            toposort_node,
+            node_toposort,
             subgraph_unionfind,
         })
     }
@@ -126,6 +134,21 @@ where
         self.subgraph_unionfind.same_set(u, v)
     }
 
+    /// Returns the topo-sorted operators for a given subgraph representative.
+    pub fn subgraph_nodes(&mut self, k: K) -> &[K] {
+        let rep = self.subgraph_unionfind.find(k);
+        let (start, len) = self.node_toposort[rep];
+        &self.toposort_node[start..start + len]
+    }
+
+    /// Iterates all subgraph representatives with their topo-sorted operator slices.
+    pub fn subgraphs(&self) -> impl Iterator<Item = &[K]> {
+        self.node_toposort
+            .values()
+            .filter(|(_, len)| *len > 0)
+            .map(|&(start, len)| &self.toposort_node[start..start + len])
+    }
+
     pub fn try_merge(&mut self, u: K, v: K) -> bool {
         let u = self.subgraph_unionfind.find(u);
         let v = self.subgraph_unionfind.find(v);
@@ -136,17 +159,19 @@ where
 
         // Ensure u is "before" v in topo order.
         let (u, v) = {
-            let pu = self.subgraph_toposort[u];
-            let pv = self.subgraph_toposort[v];
-            if pu <= pv { (u, v) } else { (v, u) }
+            let (u_start, _) = self.node_toposort[u];
+            let (v_start, _) = self.node_toposort[v];
+            if u_start <= v_start { (u, v) } else { (v, u) }
         };
-        let p_u = self.subgraph_toposort[u];
-        let p_v = self.subgraph_toposort[v];
+        let (u_start, _u_len) = self.node_toposort[u];
+        let (v_start, v_len) = self.node_toposort[v];
+        let window_lo = u_start;
+        let window_hi = v_start + v_len - 1;
 
         // ------------------------------------------------------------
         // 1. Cycle check: can v reach u via predecessor edges?
         // ------------------------------------------------------------
-        // Only nodes in positions [p_u, p_v] can be on such a path.
+        // Only groups whose range overlaps [window_lo, window_hi] can be on such a path.
         // Direct predecessor edges from v to u become self-loops after
         // merge and are not real cycles, so we skip u as a direct pred.
 
@@ -166,8 +191,9 @@ where
                     return false;
                 }
 
-                let pos = self.subgraph_toposort[root_p];
-                if pos >= p_u && pos <= p_v && visited.insert(root_p) {
+                let (p_start, p_len) = self.node_toposort[root_p];
+                // Prune: group range [p_start, p_start+p_len-1] must overlap [window_lo, window_hi].
+                if p_start + p_len > window_lo && p_start <= window_hi && visited.insert(root_p) {
                     stack.push(root_p);
                 }
             }
@@ -185,54 +211,63 @@ where
         preds.retain(|x| self.subgraph_unionfind.find(*x) != new_root);
         self.subgraph_preds.insert(new_root, preds);
 
+        // Update the merged group's range temporarily for group identification.
+        let subsumed = if new_root == u { v } else { u };
+        self.node_toposort[subsumed] = (0, 0);
+
         // ------------------------------------------------------------
-        // 3. Re-toposort the range [p_u..=p_v] and splice
+        // 3. Re-sort groups in window [window_lo..=window_hi]
         // ------------------------------------------------------------
 
-        // Collect the nodes in the affected range (excluding u and v, replaced by new_root).
-        let range_set: std::collections::HashSet<K> = self.toposort_subgraph[p_u..=p_v]
-            .iter()
-            .copied()
-            .filter(|&k| k != u && k != v)
-            .chain(std::iter::once(new_root))
-            .collect();
+        // Identify distinct groups in the window and collect their operator slices.
+        // Groups' operators are contiguous within the window (except new_root which
+        // has u's and v's operators at separate positions — but both within the window).
+        let mut group_order: Vec<K> = Vec::new();
+        let mut group_nodes_map: std::collections::HashMap<K, Vec<K>> =
+            std::collections::HashMap::new();
+        for &node in &self.toposort_node[window_lo..=window_hi] {
+            let rep = self.subgraph_unionfind.find(node);
+            if !group_nodes_map.contains_key(&rep) {
+                group_order.push(rep);
+            }
+            group_nodes_map.entry(rep).or_default().push(node);
+        }
 
-        // Topo-sort the range (new_root + other nodes in between).
-        // Collect local preds for the range to avoid borrow conflicts.
-        let range_preds: Vec<(K, Vec<K>)> = range_set
+        // Topo-sort groups in the window by their pred edges (filtered to window).
+        let group_set: std::collections::HashSet<K> =
+            group_order.iter().copied().collect();
+        let group_preds: Vec<(K, Vec<K>)> = group_order
             .iter()
-            .map(|&k| {
-                let preds: Vec<K> = self.subgraph_preds[k]
+            .map(|&g| {
+                let preds: Vec<K> = self.subgraph_preds[g]
                     .iter()
                     .map(|&p| self.subgraph_unionfind.find(p))
-                    .filter(|p| range_set.contains(p))
+                    .filter(|p| group_set.contains(p))
                     .collect();
-                (k, preds)
+                (g, preds)
             })
             .collect();
-        let range_preds_map: std::collections::HashMap<K, &Vec<K>> =
-            range_preds.iter().map(|(k, v)| (*k, v)).collect();
+        let group_preds_lookup: std::collections::HashMap<K, &Vec<K>> =
+            group_preds.iter().map(|(k, v)| (*k, v)).collect();
 
-        let sorted_range = topo_sort(range_set.iter().copied(), |k| {
-            range_preds_map[&k].iter().copied()
+        let sorted_groups = topo_sort(group_order.iter().copied(), |k| {
+            group_preds_lookup[&k].iter().copied()
         })
         .expect("cycle check passed but re-toposort found cycle");
 
-        // Splice the new sorted range into toposort_subgraph.
-        self.toposort_subgraph
-            .splice(p_u..=p_v, sorted_range.iter().copied());
-
-        // Update reverse index for all affected positions.
-        for (i, &k) in self.toposort_subgraph[p_u..].iter().enumerate() {
-            self.subgraph_toposort[k] = p_u + i;
+        // Rebuild the window: lay out each group's operators in sorted group order.
+        let mut buf: Vec<K> = Vec::with_capacity(window_hi - window_lo + 1);
+        for &group in &sorted_groups {
+            buf.extend_from_slice(&group_nodes_map[&group]);
         }
+        self.toposort_node[window_lo..=window_hi].copy_from_slice(&buf);
 
-        // Remove stale entries for u and v (they're now new_root).
-        if new_root != u {
-            self.subgraph_toposort.remove(u);
-        }
-        if new_root != v {
-            self.subgraph_toposort.remove(v);
+        // Update reverse index: positions and group ranges.
+        let mut pos = window_lo;
+        for &group in &sorted_groups {
+            let g_len = group_nodes_map[&group].len();
+            self.node_toposort[group] = (pos, g_len);
+            pos += g_len;
         }
 
         true

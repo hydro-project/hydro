@@ -225,35 +225,14 @@ fn find_subgraph_unionfind(
 /// after handoffs have already been inserted to partition subgraphs.
 /// This list of nodes in each subgraph are returned in topological sort order.
 fn make_subgraph_collect(
-    partitioned_graph: &DfirGraph,
-    mut subgraph_unionfind: SubgraphMerge<GraphNodeId>,
+    subgraph_merge: &mut SubgraphMerge<GraphNodeId>,
 ) -> SecondaryMap<GraphNodeId, Vec<GraphNodeId>> {
-    // We want the nodes of each subgraph to be listed in topo-sort order.
-    // We could do this on each subgraph, or we could do it all at once on the
-    // whole node graph by ignoring handoffs, which is what we do here:
-    let topo_sort = graph_algorithms::topo_sort(
-        partitioned_graph
-            .nodes()
-            .filter(|&(_, node)| !matches!(node, GraphNode::Handoff { .. }))
-            .map(|(node_id, _)| node_id),
-        |v| {
-            partitioned_graph
-                .node_predecessor_nodes(v)
-                .filter(|&pred_id| {
-                    let pred = partitioned_graph.node(pred_id);
-                    !matches!(pred, GraphNode::Handoff { .. })
-                })
-        },
-    )
-    .expect("Subgraphs are in-out trees.");
-
+    // The SubgraphMerge already maintains operators in topo-sorted order per subgraph.
     let mut grouped_nodes: SecondaryMap<GraphNodeId, Vec<GraphNodeId>> = Default::default();
-    for node_id in topo_sort {
-        let repr_node = subgraph_unionfind.find(node_id);
-        if !grouped_nodes.contains_key(repr_node) {
-            grouped_nodes.insert(repr_node, Default::default());
+    for nodes in subgraph_merge.subgraphs() {
+        if let Some(&first) = nodes.first() {
+            grouped_nodes.insert(first, nodes.to_vec());
         }
-        grouped_nodes[repr_node].push(node_id);
     }
     grouped_nodes
 }
@@ -270,7 +249,7 @@ fn make_subgraphs(partitioned_graph: &mut DfirGraph, barrier_crossers: &mut Barr
     // TODO(mingwei):
     // self.partitioned_graph.assert_valid();
 
-    let (subgraph_merge, handoff_edges) =
+    let (mut subgraph_merge, handoff_edges) =
         find_subgraph_unionfind(partitioned_graph, barrier_crossers);
 
     // Insert handoffs between subgraphs (or on subgraph self-loop edges)
@@ -300,7 +279,7 @@ fn make_subgraphs(partitioned_graph: &mut DfirGraph, barrier_crossers: &mut Barr
     // Determine node's subgraph and subgraph's nodes.
     // This list of nodes in each subgraph are to be in topological sort order.
     // Eventually returned directly in the [`DfirGraph`].
-    let grouped_nodes = make_subgraph_collect(partitioned_graph, subgraph_merge);
+    let grouped_nodes = make_subgraph_collect(&mut subgraph_merge);
     for (_repr_node, member_nodes) in grouped_nodes {
         partitioned_graph.insert_subgraph(member_nodes).unwrap();
     }
