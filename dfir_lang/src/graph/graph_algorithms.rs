@@ -1,6 +1,6 @@
 //! General graph algorithm utility functions
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 
 use slotmap::{Key, SecondaryMap};
 
@@ -98,6 +98,8 @@ impl<K> SubgraphMerge<K>
 where
     K: Key,
 {
+    /// Creates a new `SubgraphMerge` from nodes and their predecessor edges.
+    /// Returns `Err` with a cycle if the input graph is not a DAG.
     pub fn new<PredsIter>(
         keys: impl IntoIterator<Item = K>,
         mut preds_fn: impl FnMut(K) -> PredsIter,
@@ -116,8 +118,7 @@ where
             .enumerate()
             .map(|(i, &k)| (k, (i, 1)))
             .collect::<SecondaryMap<K, (usize, usize)>>();
-        let subgraph_unionfind =
-            crate::union_find::UnionFind::with_capacity(toposort_node.len());
+        let subgraph_unionfind = crate::union_find::UnionFind::with_capacity(toposort_node.len());
         Ok(Self {
             subgraph_preds,
             toposort_node,
@@ -126,10 +127,12 @@ where
         })
     }
 
+    /// Find the representative of the subgraph containing `k`.
     pub fn find(&mut self, k: K) -> K {
         self.subgraph_unionfind.find(k)
     }
 
+    /// Returns true if `u` and `v` are in the same subgraph.
     pub fn same_set(&mut self, u: K, v: K) -> bool {
         self.subgraph_unionfind.same_set(u, v)
     }
@@ -149,6 +152,8 @@ where
             .map(|&(start, len)| &self.toposort_node[start..start + len])
     }
 
+    /// Attempts to merge the subgraphs containing `u` and `v`.
+    /// Returns `false` if merging would create a cycle in the subgraph DAG.
     pub fn try_merge(&mut self, u: K, v: K) -> bool {
         let u = self.subgraph_unionfind.find(u);
         let v = self.subgraph_unionfind.find(v);
@@ -176,7 +181,7 @@ where
         // merge and are not real cycles, so we skip u as a direct pred.
 
         let mut stack = vec![v];
-        let mut visited = HashSet::<K>::new();
+        let mut visited = BTreeSet::<K>::new();
         visited.insert(v);
 
         while let Some(x) = stack.pop() {
@@ -222,9 +227,13 @@ where
         // ------------------------------------------------------------
 
         // Identify distinct groups in the window.
-        let mut groups_in_window = HashSet::<K>::new();
+        let mut groups_in_window: Vec<K> = Vec::new();
+        let mut seen = BTreeSet::<K>::new();
         for &node in &self.toposort_node[window_lo..=window_hi] {
-            groups_in_window.insert(self.subgraph_unionfind.find(node));
+            let rep = self.subgraph_unionfind.find(node);
+            if seen.insert(rep) {
+                groups_in_window.push(rep);
+            }
         }
 
         // Topo-sort groups in the window by their contracted DAG edges.
@@ -235,7 +244,7 @@ where
         let subgraph_preds = &self.subgraph_preds;
         let subgraph_unionfind = &mut self.subgraph_unionfind;
         let node_toposort = &self.node_toposort;
-        let sorted_groups = topo_sort(groups_in_window.iter().copied(), |k| {
+        let sorted_groups = topo_sort(groups_in_window, |k| {
             subgraph_preds[k]
                 .iter()
                 .map(|&p| subgraph_unionfind.find(p))
