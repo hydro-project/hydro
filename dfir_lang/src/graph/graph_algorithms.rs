@@ -144,12 +144,19 @@ where
         &self.toposort_node[start..start + len]
     }
 
-    /// Iterates all subgraph representatives with their topo-sorted operator slices.
+    /// Iterates all subgraph representatives with their topo-sorted operator slices,
+    /// in topological order (by position in `toposort_node`).
     pub fn subgraphs(&self) -> impl Iterator<Item = &[K]> {
-        self.node_toposort
+        let mut groups: Vec<(usize, usize)> = self
+            .node_toposort
             .values()
             .filter(|(_, len)| *len > 0)
-            .map(|&(start, len)| &self.toposort_node[start..start + len])
+            .copied()
+            .collect();
+        groups.sort_unstable_by_key(|&(start, _)| start);
+        groups
+            .into_iter()
+            .map(|(start, len)| &self.toposort_node[start..start + len])
     }
 
     /// Attempts to merge the subgraphs containing `u` and `v`.

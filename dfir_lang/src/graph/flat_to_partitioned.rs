@@ -8,7 +8,7 @@ use slotmap::{SecondaryMap, SparseSecondaryMap};
 use super::meta_graph::DfirGraph;
 use super::ops::{DelayType, FloType};
 use super::{Color, GraphEdgeId, GraphNode, GraphNodeId, HandoffKind};
-use crate::diagnostic::Diagnostic;
+use crate::diagnostic::{Diagnostic, Level};
 use crate::graph::graph_algorithms::SubgraphMerge;
 
 /// Helper struct for tracking barrier crossers, see [`find_barrier_crossers`].
@@ -106,7 +106,7 @@ fn find_barrier_crossers(partitioned_graph: &DfirGraph) -> BarrierCrossers {
 fn find_subgraph_unionfind(
     partitioned_graph: &DfirGraph,
     barrier_crossers: &BarrierCrossers,
-) -> (SubgraphMerge<GraphNodeId>, BTreeSet<GraphEdgeId>) {
+) -> Result<(SubgraphMerge<GraphNodeId>, BTreeSet<GraphEdgeId>), Diagnostic> {
     // Modality (color) of nodes, push or pull.
     // TODO(mingwei)? This does NOT consider `DelayType` barriers (which generally imply `Pull`),
     // which makes it inconsistant with the final output in `as_code()`. But this doesn't create
@@ -118,6 +118,30 @@ fn find_subgraph_unionfind(
             Some((node_id, op_color))
         })
         .collect::<SparseSecondaryMap<_, _>>();
+
+    // Pre-compute extra ordering edges: if node A references handoff H via singleton ref,
+    // and H has a pipe successor C, then C depends on A (borrower runs before consumer).
+    let mut extra_preds: SecondaryMap<GraphNodeId, Vec<GraphNodeId>> = SecondaryMap::new();
+    for node_id in partitioned_graph.node_ids() {
+        for singleton_ref in partitioned_graph.node_singleton_references(node_id).iter() {
+            if let Some(ref_target) = singleton_ref.node_id {
+                if matches!(
+                    partitioned_graph.node(ref_target),
+                    GraphNode::Handoff { .. }
+                ) {
+                    // ref_target is a handoff; find its pipe consumer(s).
+                    for (_edge, consumer) in partitioned_graph.node_successors(ref_target) {
+                        // consumer depends on node_id (the borrower).
+                        extra_preds
+                            .entry(consumer)
+                            .unwrap()
+                            .or_default()
+                            .push(node_id);
+                    }
+                }
+            }
+        }
+    }
 
     let mut subgraph_unionfind =
         SubgraphMerge::<GraphNodeId>::new(partitioned_graph.node_ids(), |node_id| {
@@ -143,8 +167,22 @@ fn find_subgraph_unionfind(
                         .iter()
                         .filter_map(|r| r.node_id),
                 )
+                .chain(
+                    extra_preds
+                        .get(node_id)
+                        .map(|v| v.as_slice())
+                        .unwrap_or(&[])
+                        .iter()
+                        .copied(),
+                )
         })
-        .expect("Not a DAG");
+        .map_err(|cycle| {
+            let span = cycle
+                .first()
+                .map(|&node_id| partitioned_graph.node(node_id).span())
+                .unwrap_or_else(proc_macro2::Span::call_site);
+            Diagnostic::spanned(span, Level::Error, format!("Not a DAG: {:?}", cycle))
+        })?;
 
     // Will contain all edges which need handoffs added. Starts out with all edges and
     // we remove from this set as we combine nodes into subgraphs.
@@ -213,20 +251,23 @@ fn find_subgraph_unionfind(
         }
     }
 
-    (subgraph_unionfind, handoff_edges)
+    Ok((subgraph_unionfind, handoff_edges))
 }
 
 /// Find subgraph and insert handoffs.
 /// Modifies barrier_crossers so that the edge OUT of an inserted handoff has
 /// the DelayType data.
-fn make_subgraphs(partitioned_graph: &mut DfirGraph, barrier_crossers: &mut BarrierCrossers) {
+fn make_subgraphs(
+    partitioned_graph: &mut DfirGraph,
+    barrier_crossers: &mut BarrierCrossers,
+) -> Result<(), Diagnostic> {
     // Algorithm:
     // 1. Each node begins as its own subgraph.
     // 2. Collect edges. (Future optimization: sort so edges which should not be split across a handoff come first).
     // 3. For each edge, try to join `(to, from)` into the same subgraph.
 
     let (subgraph_merge, handoff_edges) =
-        find_subgraph_unionfind(partitioned_graph, barrier_crossers);
+        find_subgraph_unionfind(partitioned_graph, barrier_crossers)?;
 
     // Insert handoffs between subgraphs (or on subgraph self-loop edges)
     for edge_id in handoff_edges {
@@ -253,14 +294,21 @@ fn make_subgraphs(partitioned_graph: &mut DfirGraph, barrier_crossers: &mut Barr
     }
 
     // Register subgraphs. SubgraphMerge maintains operators in topo-sorted order per subgraph.
+    // Filter out handoff nodes — they are not part of any subgraph.
     let mut subgraph_toposort = Vec::new();
     for nodes in subgraph_merge.subgraphs() {
-        if !nodes.is_empty() {
-            let sg_id = partitioned_graph.insert_subgraph(nodes.to_vec()).unwrap();
-            subgraph_toposort.push(sg_id);
+        if nodes.is_empty() {
+            continue;
         }
+        // Skip single-node "subgraphs" that are handoff nodes.
+        if nodes.iter().any(|&n| matches!(partitioned_graph.node(n), GraphNode::Handoff { .. })) {
+            continue;
+        }
+        let sg_id = partitioned_graph.insert_subgraph(nodes.to_vec()).unwrap();
+        subgraph_toposort.push(sg_id);
     }
     partitioned_graph.set_subgraph_toposort(subgraph_toposort);
+    Ok(())
 }
 
 /// Set `src` or `dst` color if `None` based on the other (if possible):
@@ -363,7 +411,7 @@ pub fn partition_graph(flat_graph: DfirGraph) -> Result<DfirGraph, Diagnostic> {
     let mut partitioned_graph = flat_graph;
 
     // Partition into subgraphs and insert handoffs.
-    make_subgraphs(&mut partitioned_graph, &mut barrier_crossers);
+    make_subgraphs(&mut partitioned_graph, &mut barrier_crossers)?;
 
     // Mark tick-boundary handoffs for double-buffering.
     mark_tick_boundary_handoffs(&mut partitioned_graph, &barrier_crossers);
