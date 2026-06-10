@@ -1,7 +1,7 @@
 [package]
 name = "hydro_build_utils"
 publish = true
-version = "0.1.0"
+version = "0.1.1-alpha.0"
 description = "build and test utils for hydro"
 documentation = "https://docs.rs/hydro_build_utils/"
 edition = { workspace = true }

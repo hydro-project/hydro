@@ -23,11 +23,11 @@ syn = { version = "2.0.46", features = [ "full", "parsing", "visit-mut" ] }
 # coax cargo-smart-release into publishing this crate.
 # https://github.com/hydro-project/hydro/blob/main/RELEASING.md#addendum-adding-new-crates
 # https://github.com/GitoxideLabs/cargo-smart-release/issues/36
-hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.0", optional = true }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.0", optional = true }
 
 [dev-dependencies]
 prettyplease = { version = "0.2.0", features = [ "verbatim" ] }
-hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.0", features = [ "insta" ] }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.0", features = [ "insta" ] }
 
 [build-dependencies]
-hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.0" }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.0" }

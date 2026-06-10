@@ -1,5 +1,7 @@
 
 
+## v0.2.0-alpha.0 (2026-06-10)
+
 ## v0.1.0 (2026-05-01)
 
 <csr-id-d60ebfb6fd5b935beb5fee9b72238a815553b88e/>
@@ -20,21 +22,11 @@
  - <csr-id-045b88d66b5f74e4dacb9a28d1f75b541c26f01b/> make an unreachable state more explicitly unreachable
  - <csr-id-be5e52299c249442dac0b7b30785ef0915e76470/> make lazy source have additional trait bounds to make type inference more reliable
 
-### Refactor
-
- - <csr-id-d60ebfb6fd5b935beb5fee9b72238a815553b88e/> remove unused buffered_lazy_sink_source
-
-### Chore (BREAKING)
-
- - <csr-id-efaa8f61c124c4b3c691b92a58df1686751cf45c/> update pinned rust to 1.92, add lints/fixes for redundant cloning, string handling
-   Somewhat waiting on https://github.com/hydro-project/stageleft/pull/56
-   to be published
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 10 commits contributed to the release.
+ - 11 commits contributed to the release.
  - 156 days passed between releases.
  - 9 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 9 unique issues were worked on: [#2179](https://github.com/hydro-project/hydro/issues/2179), [#2326](https://github.com/hydro-project/hydro/issues/2326), [#2327](https://github.com/hydro-project/hydro/issues/2327), [#2329](https://github.com/hydro-project/hydro/issues/2329), [#2422](https://github.com/hydro-project/hydro/issues/2422), [#2424](https://github.com/hydro-project/hydro/issues/2424), [#2511](https://github.com/hydro-project/hydro/issues/2511), [#2525](https://github.com/hydro-project/hydro/issues/2525), [#2606](https://github.com/hydro-project/hydro/issues/2606)
@@ -64,6 +56,7 @@
  * **[#2606](https://github.com/hydro-project/hydro/issues/2606)**
     - Fix `#[no_std]` handling ([`edaa383`](https://github.com/hydro-project/hydro/commit/edaa3835df9f3ad32071998f1f0daa658321e547))
  * **Uncategorized**
+    - Release dfir_pipes v0.0.1, example_test v0.0.1, sinktools v0.1.0, hydro_deploy_integration v0.16.0, lattices_macro v0.6.0, variadics_macro v0.7.0, lattices v0.7.0, multiplatform_test v0.7.0, dfir_rs v0.16.0, copy_span v0.1.1, hydro_deploy v0.16.0, hydro_lang v0.16.0, hydro_std v0.16.0 ([`118b356`](https://github.com/hydro-project/hydro/commit/118b356447d92e778313d72a351e5a8d2814aa1a))
     - Release hydro_build_utils v0.1.0, dfir_lang v0.16.0, dfir_macro v0.16.0, variadics v0.1.0, dfir_pipes v0.0.1, example_test v0.0.1, sinktools v0.1.0, hydro_deploy_integration v0.16.0, lattices_macro v0.6.0, variadics_macro v0.7.0, lattices v0.7.0, multiplatform_test v0.7.0, dfir_rs v0.16.0, copy_span v0.1.1, hydro_deploy v0.16.0, hydro_lang v0.16.0, hydro_std v0.16.0, safety bump 13 crates ([`c20757a`](https://github.com/hydro-project/hydro/commit/c20757ae0e9e10463b2a499de4b7d37ab02269d0))
 </details>
 

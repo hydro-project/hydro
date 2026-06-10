@@ -5,21 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.8.0-alpha.0 (2026-06-10)
+
 ## 0.7.0 (2026-05-01)
 
 <csr-id-bbe8617b47a059d36e55ac1be1940023083cf6cb/>
 
 Unchanged from previous release.
 
-### Chore
-
- - <csr-id-bbe8617b47a059d36e55ac1be1940023083cf6cb/> prepare for release
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
+ - 3 commits contributed to the release.
  - 156 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -31,6 +29,7 @@ Unchanged from previous release.
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release dfir_pipes v0.0.1, example_test v0.0.1, sinktools v0.1.0, hydro_deploy_integration v0.16.0, lattices_macro v0.6.0, variadics_macro v0.7.0, lattices v0.7.0, multiplatform_test v0.7.0, dfir_rs v0.16.0, copy_span v0.1.1, hydro_deploy v0.16.0, hydro_lang v0.16.0, hydro_std v0.16.0 ([`118b356`](https://github.com/hydro-project/hydro/commit/118b356447d92e778313d72a351e5a8d2814aa1a))
     - Release hydro_build_utils v0.1.0, dfir_lang v0.16.0, dfir_macro v0.16.0, variadics v0.1.0, dfir_pipes v0.0.1, example_test v0.0.1, sinktools v0.1.0, hydro_deploy_integration v0.16.0, lattices_macro v0.6.0, variadics_macro v0.7.0, lattices v0.7.0, multiplatform_test v0.7.0, dfir_rs v0.16.0, copy_span v0.1.1, hydro_deploy v0.16.0, hydro_lang v0.16.0, hydro_std v0.16.0, safety bump 13 crates ([`c20757a`](https://github.com/hydro-project/hydro/commit/c20757ae0e9e10463b2a499de4b7d37ab02269d0))
     - Prepare for release ([`bbe8617`](https://github.com/hydro-project/hydro/commit/bbe8617b47a059d36e55ac1be1940023083cf6cb))
 </details>
@@ -67,10 +66,6 @@ Unchanged from previous release.
 
 <csr-id-3d40d1a65c41dca3893867fb567993a27491fa0c/>
 
-### Chore
-
- - <csr-id-3d40d1a65c41dca3893867fb567993a27491fa0c/> update `proc-macro-crate`
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
@@ -97,31 +92,8 @@ Unchanged from previous release.
 <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/>
 <csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/>
 
-### Chore
-
- - <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/> upgrade to Rust 2024 edition
-   - Updates `Cargo.toml` to use new shared workspace keys
-   - Updates lint settings (in workspace `Cargo.toml`)
-   - `rustfmt` has changed slightly, resulting in a big diff - there are no
-   actual code changes
-   - Adds a script to `rustfmt` the template src files
-
-### Chore
-
- - <csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/> upgrade to Rust 2024 edition
-   - Updates `Cargo.toml` to use new shared workspace keys
-   - Updates lint settings (in workspace `Cargo.toml`)
-   - `rustfmt` has changed slightly, resulting in a big diff - there are no
-   actual code changes
-   - Adds a script to `rustfmt` the template src files
-
 ### Bug Fixes (BREAKING)
 
- - <csr-id-c49a4913cfdae021404a86e5a4d0597aa4db9fbe/> reduce where `#[cfg(stageleft_runtime)]` needs to be used
-   Simplifies the logic for generating the public clone of the code, which
-   eliminates the need to sprinkle `#[cfg(stageleft_runtime)]` (renamed
-   from `#[stageleft::runtime]`) everywhere. Also adds logic to pass
-   through `cfg` attrs when re-exporting public types.
  - <csr-id-a7e22cdd312b8483163aa89751833e1657703b8d/> reduce where `#[cfg(stageleft_runtime)]` needs to be used
    Simplifies the logic for generating the public clone of the code, which
    eliminates the need to sprinkle `#[cfg(stageleft_runtime)]` (renamed
@@ -155,14 +127,6 @@ Unchanged from previous release.
 
 ### Documentation
 
- - <csr-id-28cd220c68e3660d9ebade113949a2346720cd04/> add `repository` field to `Cargo.toml`s, fix #1452
-   #1452 
-   
-   Will trigger new releases of the following:
-   `unchanged = 'hydroflow_deploy_integration', 'variadics',
-   'variadics_macro', 'pusherator'`
-   
-   (All other crates already have changes, so would be released anyway)
  - <csr-id-204bd117ca3a8845b4986539efb91a0c612dfa05/> add `repository` field to `Cargo.toml`s, fix #1452
    #1452 
    
@@ -197,15 +161,6 @@ Unchanged from previous release.
 
 ### New Features
 
- - <csr-id-f7e740fb2ba36d0fcf3fd196d60333552911e3a4/> generalized hash trie indexes for relational tuples
-   Generalized Hash Tries are part of the SIGMOD '23 FreeJoin
-   [paper](https://dl.acm.org/doi/abs/10.1145/3589295) by
-   Wang/Willsey/Suciu. They provide a compressed ("factorized")
-   representation of relations. By operating in the factorized domain, join
-   algorithms can defer cross-products and achieve asymptotically optimal
-   performance.
-   
-   ---------
  - <csr-id-48e4eb28a9ce652037ac81b580d30f93159dae9b/> generalized hash trie indexes for relational tuples
    Generalized Hash Tries are part of the SIGMOD '23 FreeJoin
    [paper](https://dl.acm.org/doi/abs/10.1145/3589295) by

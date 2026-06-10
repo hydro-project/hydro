@@ -1,7 +1,7 @@
 [package]
 name = "hydro_deploy"
 publish = true
-version = "0.16.0"
+version = "0.17.0-alpha.0"
 documentation = "https://docs.rs/hydro_deploy/"
 description = "Hydro Deploy"
 edition = { workspace = true }
@@ -28,7 +28,7 @@ bytes = "1.1.0"
 cargo_metadata = "0.18.0"
 dunce = "1.0.0"
 futures = "0.3.0"
-hydro_deploy_integration = { path = "../hydro_deploy_integration", version = "^0.16.0" }
+hydro_deploy_integration = { path = "../hydro_deploy_integration", version = "^0.17.0-alpha.0" }
 indicatif = "0.17.0"
 inferno = { version = "0.11.0", default-features = false, optional = true }
 memo-map = "0.3.0"

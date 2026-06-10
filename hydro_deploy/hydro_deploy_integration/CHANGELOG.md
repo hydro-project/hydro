@@ -5,6 +5,8 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.17.0-alpha.0 (2026-06-10)
+
 ## 0.16.0 (2026-05-01)
 
 <csr-id-d2fcb582cf7836fda546eb9b24fa0d039b3329fb/>
@@ -35,26 +37,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    Out of an abundance of caution, the `hydro_lang` IR `Demux` variants
    containing `HashMap<u32 ...>` have been replaced with `BTreeMap`
 
-### Refactor
-
- - <csr-id-d2fcb582cf7836fda546eb9b24fa0d039b3329fb/> remove unused `#[async_trait]`
-
-### Refactor (BREAKING)
-
- - <csr-id-cb73aea75b6c5c5ec25caa121a04e261be290404/> use `&self` to avoid `RwLock` where possible
-   * Updates the `async-ssh2-russh` dependency.
-   * Use `&self` in `Service`, `LaunchedBinary` traits to avoid needing to
-   wrap in locks
-   * Removed `async` from `DeployCrateWrapper`
-   * Other stuff (below)
-   
-   Waiting on #2179 before merging
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 6 commits contributed to the release.
+ - 7 commits contributed to the release.
  - 156 days passed between releases.
  - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 5 unique issues were worked on: [#2370](https://github.com/hydro-project/hydro/issues/2370), [#2372](https://github.com/hydro-project/hydro/issues/2372), [#2495](https://github.com/hydro-project/hydro/issues/2495), [#2499](https://github.com/hydro-project/hydro/issues/2499), [#2511](https://github.com/hydro-project/hydro/issues/2511)
@@ -76,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#2511](https://github.com/hydro-project/hydro/issues/2511)**
     - Flag non-determinstic hashmap iterators, fix hydro_lang codegen nondeterminism fix #2464 ([`c16e13a`](https://github.com/hydro-project/hydro/commit/c16e13a8bdae3b099d498f9b7f1f43872cfdc939))
  * **Uncategorized**
+    - Release dfir_pipes v0.0.1, example_test v0.0.1, sinktools v0.1.0, hydro_deploy_integration v0.16.0, lattices_macro v0.6.0, variadics_macro v0.7.0, lattices v0.7.0, multiplatform_test v0.7.0, dfir_rs v0.16.0, copy_span v0.1.1, hydro_deploy v0.16.0, hydro_lang v0.16.0, hydro_std v0.16.0 ([`118b356`](https://github.com/hydro-project/hydro/commit/118b356447d92e778313d72a351e5a8d2814aa1a))
     - Release hydro_build_utils v0.1.0, dfir_lang v0.16.0, dfir_macro v0.16.0, variadics v0.1.0, dfir_pipes v0.0.1, example_test v0.0.1, sinktools v0.1.0, hydro_deploy_integration v0.16.0, lattices_macro v0.6.0, variadics_macro v0.7.0, lattices v0.7.0, multiplatform_test v0.7.0, dfir_rs v0.16.0, copy_span v0.1.1, hydro_deploy v0.16.0, hydro_lang v0.16.0, hydro_std v0.16.0, safety bump 13 crates ([`c20757a`](https://github.com/hydro-project/hydro/commit/c20757ae0e9e10463b2a499de4b7d37ab02269d0))
 </details>
 
@@ -127,10 +115,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    
    Finally, we show an end-to-end example using this interface to write a
    simple HTTP server.
-
-### Refactor (BREAKING)
-
- - <csr-id-97b879db93081b9dda3eecc834d06b55e5636030/> remove unnecessary `ConnectedSourceSink` trait
 
 ### Commit Statistics
 
@@ -189,16 +173,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
  - <csr-id-ca704e500245ee4ac0a528e2cf78e0dd2944f3a1/> leftover logging when setting up Unix sockets
    Oops!
-
-### Refactor
-
- - <csr-id-59041df58be2de0717b851cc1c3355479cd722f2/> minimize Tokio feature flags
-   Now that `hydro_lang` no longer needs multi-threaded runtime, we can
-   eliminate it from the features used in `trybuild` compilation. Minimizes
-   Tokio features elsewhere too.
- - <csr-id-903fbdada5f3d729f6564915d77c4e15812aa1be/> eliminate `pin-project` proc macro dependency
-   This was the only use of the proc-macro version along the Hydro
-   dependencies, we can just use the declarative macro version.
 
 ### Commit Statistics
 
@@ -264,16 +238,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-id-260902b210378af5291ec71a574256d7a5bcb463/>
 <csr-id-7dd71d67da162d2e4f3043b271a52037a3c983c0/>
-
-### Chore
-
- - <csr-id-260902b210378af5291ec71a574256d7a5bcb463/> set `hydro_deploy_integration` to release as `0.12.1`
-
-### Refactor (BREAKING)
-
- - <csr-id-7dd71d67da162d2e4f3043b271a52037a3c983c0/> remove "hydroflow" for `hydro_deploy_integration`, `hydro_deploy::rust_crate`, fix #1712
-   Opted to use `RustCrate` as the replacement prefix with the expectation
-   that @shadaj may have a more coincise name in mind?
 
 ### Commit Statistics
 

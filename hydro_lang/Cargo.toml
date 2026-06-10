@@ -1,7 +1,7 @@
 [package]
 name = "hydro_lang"
 publish = true
-version = "0.16.0"
+version = "0.17.0-alpha.0"
 documentation = "https://docs.rs/hydro_lang/"
 description = "A Rust framework for correct and performant distributed systems"
 edition = { workspace = true }
@@ -113,11 +113,11 @@ clap = { version = "4.0", features = ["derive"], optional = true }
 colored = { version = "3" }
 copy_span = { path = "../copy_span", version = "^0.1.1" }
 ctor = { version = "0.2", optional = true }
-dfir_lang = { path = "../dfir_lang", version = "^0.16.0", optional = true }
-dfir_rs = { path = "../dfir_rs", version = "^0.16.0", default-features = false, optional = true }
+dfir_lang = { path = "../dfir_lang", version = "^1.0.0-alpha.0", optional = true }
+dfir_rs = { path = "../dfir_rs", version = "^0.17.0-alpha.0", default-features = false, optional = true }
 futures = "0.3.0"
-hydro_deploy = { path = "../hydro_deploy/core", version = "^0.16.0", optional = true }
-hydro_deploy_integration = { path = "../hydro_deploy/hydro_deploy_integration", version = "^0.16.0", optional = true }
+hydro_deploy = { path = "../hydro_deploy/core", version = "^0.17.0-alpha.0", optional = true }
+hydro_deploy_integration = { path = "../hydro_deploy/hydro_deploy_integration", version = "^0.17.0-alpha.0", optional = true }
 nameof = { version = "1.0.0", optional = true }
 prettyplease = { version = "0.2.0", features = ["verbatim"], optional = true }
 proc-macro-crate = "3.3"
@@ -126,7 +126,7 @@ quote = "1.0.35"
 sealed = "0.6.0"
 serde = { version = "1.0.197", features = ["derive"] }
 sha2 = { version = "0.10.0", optional = true }
-sinktools = { path = "../sinktools", version = "^0.1.0" }
+sinktools = { path = "../sinktools", version = "^0.2.0-alpha.0" }
 slotmap = { version = "1.1.0", features = ["serde"] }
 stageleft_tool = { workspace = true, optional = true }
 stageleft.workspace = true
@@ -180,17 +180,17 @@ tempfile = { version = "3", optional = true }
 # coax cargo-smart-release into publishing this crate.
 # https://github.com/hydro-project/hydro/blob/main/RELEASING.md#addendum-adding-new-crates
 # https://github.com/GitoxideLabs/cargo-smart-release/issues/36
-hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.0", optional = true }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.0", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 procfs = { version = "0.17.0", optional = true }
 
 [build-dependencies]
 stageleft_tool.workspace = true
-hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.0" }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.0" }
 
 [dev-dependencies]
 ctor = "0.2"
-hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.0", features = ["insta", "trybuild"] }
+hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.0", features = ["insta", "trybuild"] }
 tokio-test = "0.4.4"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
