@@ -3,7 +3,6 @@ mod tests {
     use futures::StreamExt;
     use hydro_deploy::Deployment;
     use hydro_lang::compile::builder::FlowBuilder;
-    use hydro_lang::location::Location;
     use stageleft::q;
 
     #[tokio::test]
@@ -96,7 +95,7 @@ mod tests {
         let external = builder.external::<()>();
         let p1 = builder.process::<()>();
 
-        // Use fold (produces Singleton) -> into Optional, to avoid cycle issues
+        // Use reduce to produce an Optional
         let my_opt = p1.source_iter(q!(0..5i32)).reduce(q!(|a, b| *a += b));
 
         let opt_ref = my_opt.by_ref();

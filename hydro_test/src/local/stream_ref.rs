@@ -3,7 +3,6 @@ mod tests {
     use futures::StreamExt;
     use hydro_deploy::Deployment;
     use hydro_lang::compile::builder::FlowBuilder;
-    use hydro_lang::location::Location;
     use stageleft::q;
 
     #[tokio::test]
