@@ -1,5 +1,5 @@
 error[E0277]: The input collection must be bounded (`Bounded`), but has bound `hydro_lang::prelude::Unbounded`. Strengthen the boundedness upstream or consider a different API.
- --> tests/compile-fail/stable/stream_by_ref_unbounded.rs:9:23
+ --> tests/compile-fail/nightly/stream_by_ref_unbounded.rs:9:23
   |
 9 |     let _ = unbounded.by_ref();
   |                       ^^^^^^ required here

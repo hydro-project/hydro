@@ -27,7 +27,7 @@ pub enum HandoffRefKind {
     Vec,
 }
 
-// Thread-local storage for slot references captured during `q!()` expansion.
+// Thread-local storage for handoff references captured during `q!()` expansion.
 // Stores the HydroNode `(node, is_mut)` for each reference captured in the current closure.
 // The index determines the ident name via `handoff_ref_ident`.
 thread_local! {
@@ -43,7 +43,7 @@ pub(crate) fn handoff_ref_ident(index: usize) -> syn::Ident {
 }
 
 /// Activate the reference capture context. Must be called before `q!()` expansion
-/// that may capture slot references. Returns a `ClosureExpr` bundling the expression with any
+/// that may capture handoff references. Returns a `ClosureExpr` bundling the expression with any
 /// captured references.
 pub fn with_ref_capture(
     f: impl FnOnce() -> crate::compile::ir::DebugExpr,
@@ -52,7 +52,7 @@ pub fn with_ref_capture(
         let prev = cell.borrow_mut().replace(Vec::new());
         assert!(
             prev.is_none(),
-            "nested slot reference capture scopes are not supported"
+            "nested handoff reference capture scopes are not supported"
         );
     });
     let expr = (f)();
@@ -70,7 +70,7 @@ fn register_handoff_ref(
     CAPTURED_REFS.with(|cell| {
         let mut guard = cell.borrow_mut();
         let refs = guard.as_mut().expect(
-            "SlotRef used inside q!() but no reference capture scope is active. \
+            "HandoffRef used inside q!() but no reference capture scope is active. \
              This is a bug — reference capture should be set up by the operator that uses q!().",
         );
 
@@ -108,7 +108,7 @@ fn register_handoff_ref(
     })
 }
 
-/// Macro to define a slot reference struct with all necessary trait impls.
+/// Macro to define a handoff reference struct with all necessary trait impls.
 macro_rules! define_handoff_ref {
     (
         $(#[$meta:meta])*
