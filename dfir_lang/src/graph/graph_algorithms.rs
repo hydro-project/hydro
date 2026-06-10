@@ -107,7 +107,7 @@ where
 {
     /// Creates a new `SubgraphMerge` from nodes and their predecessor edges.
     ///
-    /// `no_merge_pairs` specifies pairs of nodes that must never be placed in the same subgraph.
+    /// `enemies` specifies pairs of nodes that must never be placed in the same subgraph.
     /// These are checked in O(1) during [`Self::try_merge`] and maintained as representatives
     /// change.
     ///
@@ -115,7 +115,7 @@ where
     pub fn new<PredsIter>(
         keys: impl IntoIterator<Item = K>,
         mut preds_fn: impl FnMut(K) -> PredsIter,
-        no_merge_pairs: impl IntoIterator<Item = (K, K)>,
+        enemies_iter: impl IntoIterator<Item = (K, K)>,
     ) -> Result<Self, Vec<K>>
     where
         PredsIter: IntoIterator<Item = K>,
@@ -134,8 +134,8 @@ where
         let sg_len = toposort_node.iter().map(|&k| (k, 1)).collect();
         let subgraph_unionfind = crate::union_find::UnionFind::with_capacity(toposort_node.len());
 
-        let mut enemies: SecondaryMap<K, HashSet<K>> = SecondaryMap::new();
-        for (a, b) in no_merge_pairs {
+        let mut enemies = SecondaryMap::<K, HashSet<K>>::new();
+        for (a, b) in enemies_iter {
             assert_ne!(a, b, "no-merge pair must not contain the same node twice");
             enemies.entry(a).unwrap().or_default().insert(b);
             enemies.entry(b).unwrap().or_default().insert(a);
