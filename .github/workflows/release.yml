@@ -76,8 +76,17 @@ jobs:
       - name: Install cargo-smart-release
         run: cargo install cargo-smart-release --git https://github.com/hydro-project/cargo-smart-release.git --rev e2f3dc4eb4f5
 
+      - name: Determine crates to publish
+        id: crates
+        run: |
+          if [ "${{ inputs.bump }}" = "auto" ]; then
+            CRATES=$(cargo metadata --format-version 1 --no-deps | jq -r '.packages[] | select(.publish != []) | .name' | tr '\n' ' ')
+          else
+            CRATES="dfir_rs dfir_pipes dfir_lang dfir_macro hydro_lang hydro_std hydro_deploy hydro_deploy_integration multiplatform_test"
+          fi
+          echo "list=$CRATES" >> "$GITHUB_OUTPUT"
+
       - name: Run cargo smart-release
-        # list lockstep-versioned packages at the end of this command
         run: >-
           set -eo pipefail;
           cargo smart-release --update-crates-index --no-changelog-preview
@@ -85,10 +94,7 @@ jobs:
           --bump ${{ inputs.bump }} --bump-dependencies auto
           ${{ inputs.execute && '--execute' || '' }}
           ${{ inputs.pre-id && format('--pre-id {0}', inputs.pre-id) || '' }}
-          dfir_rs dfir_pipes dfir_lang dfir_macro
-          hydro_lang hydro_std
-          hydro_deploy hydro_deploy_integration
-          multiplatform_test
+          ${{ steps.crates.outputs.list }}
           |& tee release.log
         env:
           # Make sure to set this so the `gh` CLI works using our token.
