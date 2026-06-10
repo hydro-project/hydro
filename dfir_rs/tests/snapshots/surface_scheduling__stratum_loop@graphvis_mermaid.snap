@@ -1,5 +1,6 @@
 ---
 source: dfir_rs/tests/surface_scheduling.rs
+assertion_line: 22
 expression: df.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
@@ -11,7 +12,7 @@ linkStyle default stroke:#aaa
 1v1[\"(1v1) <code>source_iter([TickInstant::new(0)])</code>"/]:::pullClass
 2v1[\"(2v1) <code>union()</code>"/]:::pullClass
 3v1[/"(3v1) <code>tee()</code>"\]:::pushClass
-4v1[/"(4v1) <code>map(|n| n + TickDuration::SINGLE_TICK)</code>"\]:::pushClass
+4v1[\"(4v1) <code>map(|n| n + TickDuration::SINGLE_TICK)</code>"/]:::pullClass
 5v1[\"(5v1) <code>filter(|&amp;n| n &lt; TickInstant::new(10))</code>"/]:::pullClass
 6v1[\"(6v1) <code>defer_tick()</code>"/]:::pullClass
 7v1[/"(7v1) <code>for_each(|v| out_send.send(v).unwrap())</code>"\]:::pushClass
@@ -21,15 +22,14 @@ linkStyle default stroke:#aaa
 2v1-->3v1
 6v1-->2v1
 5v1-->8v1
-4v1-->9v1
-3v1-->4v1
+4v1-->5v1
+3v1-->9v1
 3v1-->7v1
 8v1--o6v1; linkStyle 7 stroke:red
-9v1-->5v1
+9v1-->4v1
 subgraph sg_1v1 ["sg_1v1"]
     6v1
     1v1
-    4v1
     7v1
     subgraph sg_1v1_var_union_tee ["var <tt>union_tee</tt>"]
         2v1
@@ -37,5 +37,6 @@ subgraph sg_1v1 ["sg_1v1"]
     end
 end
 subgraph sg_2v1 ["sg_2v1"]
+    4v1
     5v1
 end

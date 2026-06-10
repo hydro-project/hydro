@@ -19,25 +19,6 @@ struct BarrierCrossers {
     pub singleton_barrier_crossers: Vec<(GraphNodeId, GraphNodeId)>,
 }
 impl BarrierCrossers {
-    /// Iterate pairs of nodes that are across a barrier. Excludes `DelayType::NextIteration` pairs.
-    fn iter_node_pairs<'a>(
-        &'a self,
-        partitioned_graph: &'a DfirGraph,
-    ) -> impl 'a + Iterator<Item = ((GraphNodeId, GraphNodeId), DelayType)> {
-        let edge_pairs_iter = self
-            .edge_barrier_crossers
-            .iter()
-            .map(|(edge_id, &delay_type)| {
-                let src_dst = partitioned_graph.edge(edge_id);
-                (src_dst, delay_type)
-            });
-        let singleton_pairs_iter = self
-            .singleton_barrier_crossers
-            .iter()
-            .map(|&src_dst| (src_dst, DelayType::Stratum));
-        edge_pairs_iter.chain(singleton_pairs_iter)
-    }
-
     /// Insert/replace edge.
     fn replace_edge(&mut self, old_edge_id: GraphEdgeId, new_edge_id: GraphEdgeId) {
         if let Some(delay_type) = self.edge_barrier_crossers.remove(old_edge_id) {
@@ -45,7 +26,6 @@ impl BarrierCrossers {
         }
     }
 }
-
 /// Find all the barrier crossers.
 fn find_barrier_crossers(partitioned_graph: &DfirGraph) -> BarrierCrossers {
     let edge_barrier_crossers = partitioned_graph
@@ -140,39 +120,68 @@ fn find_subgraph_unionfind(
         }
     }
 
+    // Pre-compute access group ordering as a per-node predecessor map (for topo-sort).
+    let mut access_group_preds: SecondaryMap<GraphNodeId, Vec<GraphNodeId>> = SecondaryMap::new();
+    for &(src, dst) in &barrier_crossers.singleton_barrier_crossers {
+        access_group_preds
+            .entry(dst)
+            .unwrap()
+            .or_default()
+            .push(src);
+    }
+
+    // Build no-merge pairs: all barrier crosser pairs that must not be in the same subgraph.
+    let no_merge_pairs = barrier_crossers
+        .edge_barrier_crossers
+        .iter()
+        .map(|(edge_id, _)| partitioned_graph.edge(edge_id))
+        .chain(barrier_crossers.singleton_barrier_crossers.iter().copied());
+
     let mut subgraph_unionfind =
-        SubgraphMerge::<GraphNodeId>::new(partitioned_graph.node_ids(), |node_id| {
-            partitioned_graph
-                .node_predecessors(node_id)
-                .filter_map(|(succ_edge, pred_id)| {
-                    let succ_edge_delaytype = barrier_crossers
-                        .edge_barrier_crossers
-                        .get(succ_edge)
-                        .copied();
-                    // Tick edges are excluded from the topo sort — they are cross-tick by design.
-                    if let Some(_delay_type @ (DelayType::Tick | DelayType::TickLazy)) =
-                        succ_edge_delaytype
-                    {
-                        None
-                    } else {
-                        Some(pred_id)
-                    }
-                })
-                .chain(
-                    partitioned_graph
-                        .node_singleton_references(node_id)
-                        .iter()
-                        .filter_map(|r| r.node_id),
-                )
-                .chain(
-                    extra_preds
-                        .get(node_id)
-                        .map(|v| v.as_slice())
-                        .unwrap_or(&[])
-                        .iter()
-                        .copied(),
-                )
-        })
+        SubgraphMerge::<GraphNodeId>::new(
+            partitioned_graph.node_ids(),
+            |node_id| {
+                partitioned_graph
+                    .node_predecessors(node_id)
+                    .filter_map(|(succ_edge, pred_id)| {
+                        let succ_edge_delaytype = barrier_crossers
+                            .edge_barrier_crossers
+                            .get(succ_edge)
+                            .copied();
+                        // Tick edges are excluded from the topo sort — they are cross-tick by design.
+                        if let Some(_delay_type @ (DelayType::Tick | DelayType::TickLazy)) =
+                            succ_edge_delaytype
+                        {
+                            None
+                        } else {
+                            Some(pred_id)
+                        }
+                    })
+                    .chain(
+                        partitioned_graph
+                            .node_singleton_references(node_id)
+                            .iter()
+                            .filter_map(|r| r.node_id),
+                    )
+                    .chain(
+                        extra_preds
+                            .get(node_id)
+                            .map(|v| v.as_slice())
+                            .unwrap_or(&[])
+                            .iter()
+                            .copied(),
+                    )
+                    .chain(
+                        access_group_preds
+                            .get(node_id)
+                            .map(|v| v.as_slice())
+                            .unwrap_or(&[])
+                            .iter()
+                            .copied(),
+                    )
+            },
+            no_merge_pairs,
+        )
         .map_err(|cycle| {
             let span = cycle
                 .first()
@@ -209,19 +218,6 @@ fn find_subgraph_unionfind(
             if subgraph_unionfind.same_set(src, dst) {
                 // Note that the _edge_ `edge_id` might not be in the subgraph even when both `src` and `dst` are. This prevents case 2.
                 // Handoffs will be inserted later for this self-loop.
-                continue;
-            }
-
-            // Do not connect stratum crossers (next edges).
-            if barrier_crossers
-                .iter_node_pairs(partitioned_graph)
-                .any(|((x_src, x_dst), _)| {
-                    (subgraph_unionfind.same_set(x_src, src)
-                        && subgraph_unionfind.same_set(x_dst, dst))
-                        || (subgraph_unionfind.same_set(x_src, dst)
-                            && subgraph_unionfind.same_set(x_dst, src))
-                })
-            {
                 continue;
             }
 

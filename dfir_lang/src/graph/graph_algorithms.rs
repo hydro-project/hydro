@@ -95,6 +95,10 @@ where
 
     /// Union-find for subgraph membership.
     subgraph_unionfind: crate::union_find::UnionFind<K>,
+
+    /// Per-representative: set of representatives that this subgraph must not merge with.
+    /// Maintained symmetrically: if `enemies[a]` contains `b`, then `enemies[b]` contains `a`.
+    enemies: SecondaryMap<K, HashSet<K>>,
 }
 
 impl<K> SubgraphMerge<K>
@@ -102,10 +106,16 @@ where
     K: Key,
 {
     /// Creates a new `SubgraphMerge` from nodes and their predecessor edges.
+    ///
+    /// `no_merge_pairs` specifies pairs of nodes that must never be placed in the same subgraph.
+    /// These are checked in O(1) during [`Self::try_merge`] and maintained as representatives
+    /// change.
+    ///
     /// Returns `Err` with a cycle if the input graph is not a DAG.
     pub fn new<PredsIter>(
         keys: impl IntoIterator<Item = K>,
         mut preds_fn: impl FnMut(K) -> PredsIter,
+        no_merge_pairs: impl IntoIterator<Item = (K, K)>,
     ) -> Result<Self, Vec<K>>
     where
         PredsIter: IntoIterator<Item = K>,
@@ -123,12 +133,21 @@ where
             .collect();
         let sg_len = toposort_node.iter().map(|&k| (k, 1)).collect();
         let subgraph_unionfind = crate::union_find::UnionFind::with_capacity(toposort_node.len());
+
+        let mut enemies: SecondaryMap<K, HashSet<K>> = SecondaryMap::new();
+        for (a, b) in no_merge_pairs {
+            assert_ne!(a, b, "no-merge pair must not contain the same node twice");
+            enemies.entry(a).unwrap().or_default().insert(b);
+            enemies.entry(b).unwrap().or_default().insert(a);
+        }
+
         Ok(Self {
             subgraph_preds,
             toposort_node,
             sg_idx,
             sg_len,
             subgraph_unionfind,
+            enemies,
         })
     }
 
@@ -160,7 +179,8 @@ where
     }
 
     /// Attempts to merge the subgraphs containing `u` and `v`.
-    /// Returns `false` if merging would create a cycle in the subgraph DAG.
+    /// Returns `false` if merging would create a cycle in the subgraph DAG,
+    /// or if the merge is forbidden by a no-merge constraint.
     pub fn try_merge(&mut self, u: K, v: K) -> bool {
         // 0. Set up `u` and `v` to be in order, and subgraph representatives.
 
@@ -170,6 +190,15 @@ where
         if u == v {
             // Short circuit no-op case. Guards against weird `u == v` aliasing.
             return true;
+        }
+
+        // O(1) no-merge constraint check.
+        if self
+            .enemies
+            .get(u)
+            .is_some_and(|enemy_set| enemy_set.contains(&v))
+        {
+            return false;
         }
 
         // Ensure `u` is before `v` in topo order.
@@ -233,12 +262,27 @@ where
                 *x = self.subgraph_unionfind.find(*x);
                 *x != u // Retain only non-self edges.
             });
-            // Remove any duplicates (may have be created from past unioning).
-            u_preds.sort_unstable();
-            u_preds.dedup();
-        }
-        // Remove subsumed `v` and grow `u`'s length.
-        {
+              // Remove any duplicates (may have be created from past unioning).
+              u_preds.sort_unstable();
+              u_preds.dedup();
+          }
+          // Merge enemies: remap v's enemies to point to u.
+          {
+              if let Some(v_enemies) = self.enemies.remove(v) {
+                  for w in v_enemies {
+                      debug_assert_ne!(w, u, "enemy of v should have been caught by the check above");
+                      // Guaranteed to exist by the symmetric invariant: if v's enemies contain w,
+                      // then w's enemies contain v.
+                      let w_enemies = self.enemies.get_mut(w).unwrap();
+                      w_enemies.remove(&v);
+                      w_enemies.insert(u);
+                      // Add w to u's enemies.
+                      self.enemies.entry(u).unwrap().or_default().insert(w);
+                  }
+              }
+          }
+          // Remove subsumed `v` and grow `u`'s length.
+          {
             self.sg_idx.remove(v).unwrap();
             let v_len = self.sg_len.remove(v).unwrap();
             // Set `u`'s len to the combined size. (Note: `sg_idx[u]` still needs updating, below after re-sort).
@@ -412,7 +456,9 @@ mod test {
         preds[e].push(d);
         preds[f].push(e);
 
-        let mut merge = SubgraphMerge::new(preds.keys(), |v| preds[v].iter().copied()).unwrap();
+        let mut merge =
+            SubgraphMerge::new(preds.keys(), |v| preds[v].iter().copied(), std::iter::empty())
+                .unwrap();
 
         assert!(merge.try_merge(a, a)); // No-op.
         //        ┌──► C ──┐
@@ -429,5 +475,41 @@ mod test {
 
         assert!(merge.try_merge(d, e));
         assert!(merge.try_merge(c, e)); // Now valid since `D` is no longer outside.
+    }
+
+    #[test]
+    pub fn test_subgraph_merge_enemies() {
+        let mut preds = SlotMap::new();
+
+        // A ───► B ───► C ───► D
+        let a = preds.insert(vec![]);
+        let b = preds.insert(vec![]);
+        let c = preds.insert(vec![]);
+        let d = preds.insert(vec![]);
+
+        preds[b].push(a);
+        preds[c].push(b);
+        preds[d].push(c);
+
+        // B and C are enemies (must not merge).
+        let mut merge =
+            SubgraphMerge::new(preds.keys(), |v| preds[v].iter().copied(), [(b, c)]).unwrap();
+
+        // Direct enemy pair: rejected.
+        assert!(!merge.try_merge(b, c));
+
+        // Non-enemy pairs: allowed.
+        assert!(merge.try_merge(a, b));
+
+        // Now A and B are merged. C is still an enemy of the AB group.
+        assert!(!merge.try_merge(a, c));
+        assert!(!merge.try_merge(b, c));
+
+        // D is not an enemy of anyone.
+        assert!(merge.try_merge(c, d));
+
+        // After C and D merge, the CD group is still an enemy of AB.
+        assert!(!merge.try_merge(a, d));
+        assert!(!merge.try_merge(b, d));
     }
 }

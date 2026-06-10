@@ -1,5 +1,6 @@
 ---
 source: dfir_rs/tests/surface_cross_singleton.rs
+assertion_line: 58
 expression: df.meta_graph().unwrap().to_mermaid(cfg)
 ---
 %%{init:{'theme':'base','themeVariables':{'clusterBkg':'#ddd','clusterBorder':'#888'}}}%%
@@ -30,7 +31,6 @@ linkStyle default stroke:#aaa
 20v1["(20v1) <code>handoff</code>"]:::otherClass
 21v1["(21v1) <code>handoff</code>"]:::otherClass
 22v1["(22v1) <code>handoff</code>"]:::otherClass
-23v1["(23v1) <code>handoff</code>"]:::otherClass
 2v1-->3v1
 1v1-->15v1
 3v1-->16v1
@@ -44,8 +44,8 @@ linkStyle default stroke:#aaa
 9v1-->19v1
 3v1-->20v1
 11v1-->21v1
-13v1-->22v1
-12v1-->23v1
+13v1-->14v1
+12v1-->22v1
 15v1--x2v1; linkStyle 15 stroke:red
 16v1-->|input|8v1
 17v1--o4v1; linkStyle 17 stroke:red
@@ -53,8 +53,7 @@ linkStyle default stroke:#aaa
 19v1--x11v1; linkStyle 19 stroke:red
 20v1-->|input|12v1
 21v1--x|single|12v1; linkStyle 21 stroke:red
-22v1-->14v1
-23v1--x13v1; linkStyle 23 stroke:red
+22v1--x13v1; linkStyle 22 stroke:red
 subgraph sg_1v1 ["sg_1v1"]
     subgraph sg_1v1_var_teed_in ["var <tt>teed_in</tt>"]
         1v1
@@ -96,10 +95,6 @@ end
 subgraph sg_7v1 ["sg_7v1"]
     subgraph sg_7v1_var_deferred_stream ["var <tt>deferred_stream</tt>"]
         13v1
-    end
-end
-subgraph sg_8v1 ["sg_8v1"]
-    subgraph sg_8v1_var_deferred_stream ["var <tt>deferred_stream</tt>"]
         14v1
     end
 end
