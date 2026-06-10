@@ -246,6 +246,74 @@ mod tests {
         assert_eq!(results, vec![44, 45]);
     }
 
+    /// Test: two singleton refs of *different incompatible types* captured in one closure.
+    ///
+    /// This catches bugs where singleton refs get mixed up (e.g., wrong ident_stack ordering).
+    /// If ref_a (i32) and ref_b (String) are swapped, the code won't compile or will
+    /// produce a type error at runtime — which is exactly the failure mode we want to guard.
+    #[tokio::test]
+    async fn test_singleton_ref_two_different_types_one_closure() {
+        let mut deployment = Deployment::new();
+
+        let mut builder = FlowBuilder::new();
+        let external = builder.external::<()>();
+        let p1 = builder.process::<()>();
+
+        // Singleton A: i32, fold 0..5 => 10
+        let sum = p1
+            .source_iter(q!(0..5i32))
+            .fold(q!(|| 0i32), q!(|acc: &mut i32, x| *acc += x));
+
+        // Singleton B: String, fold ["hello", " ", "world"] => "hello world"
+        let greeting = p1
+            .source_iter(q!(vec![
+                "hello".to_owned(),
+                " ".to_owned(),
+                "world".to_owned(),
+            ]))
+            .fold(
+                q!(|| String::new()),
+                q!(|acc: &mut String, x| acc.push_str(&x)),
+            );
+
+        let ref_a = sum.by_ref();
+        let ref_b = greeting.by_ref();
+
+        // Capture both refs in one closure — ref_a is &i32, ref_b is &String.
+        // If they get swapped, this won't type-check.
+        let out_port = p1
+            .source_iter(q!(1..=2i32))
+            .map(q!(|x| {
+                let numeric = *ref_a; // should be 10
+                let text = ref_b.clone(); // should be "hello world"
+                format!("{}-{}-{}", text, numeric, x)
+            }))
+            .send_bincode_external(&external);
+
+        let nodes = builder
+            .with_default_optimize()
+            .with_process(&p1, deployment.Localhost())
+            .with_external(&external, deployment.Localhost())
+            .deploy(&mut deployment);
+
+        deployment.deploy().await.unwrap();
+
+        let mut out_recv = nodes.connect(out_port).await;
+
+        deployment.start().await.unwrap();
+
+        let mut results: Vec<String> = Vec::new();
+        for _ in 0..2 {
+            results.push(out_recv.next().await.unwrap());
+        }
+        results.sort();
+        // ref_a = 10, ref_b = "hello world", so results = "hello world-10-1", "hello world-10-2"
+        assert_eq!(
+            results,
+            vec!["hello world-10-1".to_owned(), "hello world-10-2".to_owned()],
+        );
+    }
+
     /// Test: singleton ref inside a filter closure.
     #[tokio::test]
     async fn test_singleton_ref_filter() {

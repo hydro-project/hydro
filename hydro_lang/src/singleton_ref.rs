@@ -60,9 +60,18 @@ impl<T, L, const IS_MUT: bool> Clone for SingletonRef<'_, '_, T, L, IS_MUT> {
 }
 
 // Thread-local storage for singleton references captured during `q!()` expansion.
-// Maps local ident name -> (SharedNode, is_mut) for each singleton captured in the current closure.
+// Stores the HydroNode `(SharedNode, is_mut)` for each singleton captured in the current closure.
+// The index in the Vec determines the ident name via `singleton_ref_ident`.
 thread_local! {
-    static SINGLETON_REFS: RefCell<Option<Vec<(syn::Ident, HydroNode, bool)>>> = const { RefCell::new(None) };
+    static SINGLETON_REFS: RefCell<Option<Vec<(HydroNode, bool)>>> = const { RefCell::new(None) };
+}
+
+/// Returns the canonical ident for a singleton ref at the given index within a closure.
+pub(crate) fn singleton_ref_ident(index: usize) -> syn::Ident {
+    syn::Ident::new(
+        &format!("__hydro_singleton_ref_{}", index),
+        Span::call_site(),
+    )
 }
 
 /// Activate the singleton reference capture context. Must be called before `q!()` expansion
@@ -83,23 +92,20 @@ pub fn with_singleton_capture(
     crate::compile::ir::ClosureExpr::new(expr, singleton_refs)
 }
 
-static SINGLETON_REF_COUNTER: std::sync::atomic::AtomicUsize =
-    std::sync::atomic::AtomicUsize::new(0);
-
 impl<'a, 'slf, T: 'a, L, const IS_MUT: bool> SingletonRef<'a, 'slf, T, L, IS_MUT>
 where
     L: Location<'a>,
 {
     fn to_tokens_helper(self, _ctx: &L) -> (QuoteTokens, ()) {
-        let id = SINGLETON_REF_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let ident = syn::Ident::new(&format!("__hydro_singleton_ref_{}", id), Span::call_site());
-
-        SINGLETON_REFS.with(|cell| {
+        let ident = SINGLETON_REFS.with(|cell| {
             let mut guard = cell.borrow_mut();
             let refs = guard.as_mut().expect(
                 "SingletonRef used inside q!() but no singleton capture scope is active. \
                  This is a bug — singleton capture should be set up by the operator that uses q!().",
             );
+
+            let index = refs.len();
+            let ident = singleton_ref_ident(index);
 
             let metadata = self.ir_node.borrow().metadata().clone();
 
@@ -119,13 +125,14 @@ where
             };
 
             refs.push((
-                ident.clone(),
                 HydroNode::Singleton {
                     inner: SharedNode(Rc::clone(&inner.0)),
                     metadata,
                 },
                 IS_MUT,
             ));
+
+            ident
         });
 
         (
