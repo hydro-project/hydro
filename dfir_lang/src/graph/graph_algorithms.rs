@@ -1,8 +1,9 @@
 //! General graph algorithm utility functions
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
+use std::hash::Hash;
 
-use slotmap::{Key, SecondaryMap};
+use slotmap::{Key, SecondaryMap, SparseSecondaryMap};
 
 /// Topologically sorts a set of nodes. Returns a list where the order of `Id`s will agree with
 /// the order of any path through the graph.
@@ -12,28 +13,25 @@ use slotmap::{Key, SecondaryMap};
 /// If the input has a cycle, an `Err` will be returned containing the cycle. Each node in the
 /// cycle will be listed exactly once.
 ///
-/// <https://en.wikipedia.org/wiki/Topological_sorting>
-pub fn topo_sort<Id, NodeIds, PredsFn, PredsIter>(
-    node_ids: NodeIds,
-    mut preds_fn: PredsFn,
+/// <https://en.wikipedia.org/wiki/Topological_sorting#Depth-first_search>
+pub fn topo_sort<Id, PredsIter>(
+    node_ids: impl IntoIterator<Item = Id>,
+    mut preds_fn: impl FnMut(Id) -> PredsIter,
 ) -> Result<Vec<Id>, Vec<Id>>
 where
-    Id: Copy + Eq + Ord,
-    NodeIds: IntoIterator<Item = Id>,
-    PredsFn: FnMut(Id) -> PredsIter,
+    Id: Copy + Eq + Hash,
     PredsIter: IntoIterator<Item = Id>,
 {
     let (mut marked, mut order) = Default::default();
 
-    fn pred_dfs_postorder<Id, PredsFn, PredsIter>(
+    fn pred_dfs_postorder<Id, PredsIter>(
         node_id: Id,
-        preds_fn: &mut PredsFn,
-        marked: &mut BTreeMap<Id, bool>, // `false` => temporary, `true` => permanent.
+        preds_fn: &mut impl FnMut(Id) -> PredsIter,
+        marked: &mut HashMap<Id, bool>, // `false` => temporary, `true` => permanent.
         order: &mut Vec<Id>,
     ) -> Result<(), ()>
     where
-        Id: Copy + Eq + Ord,
-        PredsFn: FnMut(Id) -> PredsIter,
+        Id: Copy + Eq + Hash,
         PredsIter: IntoIterator<Item = Id>,
     {
         match marked.get(&node_id) {
@@ -82,14 +80,19 @@ pub struct SubgraphMerge<K>
 where
     K: Key,
 {
-    /// Predecessor edges in the contracted DAG (per representative).
+    /// Predecessor edges in the quotient DAG (per representative).
     subgraph_preds: SecondaryMap<K, Vec<K>>,
     /// All operators in global topo-sort order (fixed length, reshuffled in windows).
+    /// Invariant: subgraphs are contiguous & non-overlapping ranges in this vec.
     toposort_node: Vec<K>,
-    /// Reverse index: node → (start, len).
-    /// Non-representatives: len=1, start=their position.
-    /// Representatives: start=first operator in group, len=number of operators in group.
-    node_toposort: SecondaryMap<K, (usize, usize)>,
+    /// Reverse index: SG representative node -> index (in toposort_node).
+    /// Invariant: `K` is both the representative node and the first node in the SG.
+    sg_idx: SparseSecondaryMap<K, usize>,
+    /// SG representative node -> SG len.
+    /// The subgraph's nodes are `toposort_node[index..index+len]`.
+    /// Invariant: the subgraph ranges are complete and non-overlapping.
+    sg_len: SparseSecondaryMap<K, usize>,
+
     /// Union-find for subgraph membership.
     subgraph_unionfind: crate::union_find::UnionFind<K>,
 }
@@ -113,16 +116,18 @@ where
             .collect::<SecondaryMap<K, Vec<K>>>();
         let toposort_node =
             topo_sort(subgraph_preds.keys(), |k| subgraph_preds[k].iter().copied())?;
-        let node_toposort = toposort_node
+        let sg_idx = toposort_node
             .iter()
             .enumerate()
-            .map(|(i, &k)| (k, (i, 1)))
-            .collect::<SecondaryMap<K, (usize, usize)>>();
+            .map(|(i, &k)| (k, i))
+            .collect();
+        let sg_len = toposort_node.iter().map(|&k| (k, 1)).collect();
         let subgraph_unionfind = crate::union_find::UnionFind::with_capacity(toposort_node.len());
         Ok(Self {
             subgraph_preds,
             toposort_node,
-            node_toposort,
+            sg_idx,
+            sg_len,
             subgraph_unionfind,
         })
     }
@@ -137,13 +142,6 @@ where
         self.subgraph_unionfind.same_set(u, v)
     }
 
-    /// Returns the topo-sorted operators for a given subgraph representative.
-    pub fn subgraph_nodes(&mut self, k: K) -> &[K] {
-        let rep = self.subgraph_unionfind.find(k);
-        let (start, len) = self.node_toposort[rep];
-        &self.toposort_node[start..start + len]
-    }
-
     /// Iterates all subgraph representatives with their topo-sorted operator slices,
     /// in topological order (by position in `toposort_node`).
     pub fn subgraphs(&self) -> impl Iterator<Item = &[K]> {
@@ -153,8 +151,8 @@ where
                 debug_assert_eq!(i, self.toposort_node.len());
                 return None;
             };
-            let (_sg_idx, sg_len) = self.node_toposort[sg_node];
-            debug_assert_eq!(i, _sg_idx);
+            debug_assert_eq!(i, self.sg_idx[sg_node]);
+            let sg_len = self.sg_len[sg_node];
             let sg_slice = &self.toposort_node[i..i + sg_len];
             i += sg_len;
             Some(sg_slice)
@@ -164,133 +162,139 @@ where
     /// Attempts to merge the subgraphs containing `u` and `v`.
     /// Returns `false` if merging would create a cycle in the subgraph DAG.
     pub fn try_merge(&mut self, u: K, v: K) -> bool {
+        // 0. Set up `u` and `v` to be in order, and subgraph representatives.
+
+        // Ensure `u` and `v` are subgraph representatives.
         let u = self.subgraph_unionfind.find(u);
         let v = self.subgraph_unionfind.find(v);
-
         if u == v {
+            // Short circuit no-op case. Guards against weird `u == v` aliasing.
             return true;
         }
 
         // Ensure `u` is before `v` in topo order.
-        let (u, v) = {
-            let (u_start, _) = self.node_toposort[u];
-            let (v_start, _) = self.node_toposort[v];
-            if u_start <= v_start { (u, v) } else { (v, u) }
+        let (u, v) = if self.sg_idx[u] < self.sg_idx[v] {
+            (u, v)
+        } else {
+            (v, u)
         };
-        let (u_start, u_len) = self.node_toposort[u];
-        let (v_start, v_len) = self.node_toposort[v];
-        let window_lo = u_start;
-        let window_hi = v_start + (v_len - 1);
+        // Get the member nodes of `u` and `v`, and the `window`. Pulling references here does ensure that
+        // `toposort_node` remains unchanged until we properly merge `u_nodes` and `v_nodes`.
+        let (u_nodes, v_nodes, window) = {
+            let (u_idx, u_len) = (self.sg_idx[u], self.sg_len[u]);
+            let (v_idx, v_len) = (self.sg_idx[v], self.sg_len[v]);
+            (
+                &self.toposort_node[u_idx..u_idx + u_len],
+                &self.toposort_node[v_idx..v_idx + v_len],
+                u_idx..v_idx + v_len,
+            )
+        };
 
-        // ------------------------------------------------------------
-        // 1. Cycle check: can v reach u via predecessor edges?
-        // ------------------------------------------------------------
-        // Only groups whose range overlaps [window_lo, window_hi] can be on such a path.
-        // Direct predecessor edges from v to u become self-loops after
-        // merge and are not real cycles, so we skip u as a direct pred.
+        // 1. Cycle check: can `v` reach `u` via predecessor edges?
+        // Only groups within `window` can be on such a path. Direct predecessor edges from `v` to `u` become
+        // self-loops after merge and are not real cycles, so we skip direct `u -> v` edges.
 
         let mut stack = vec![v];
-        let mut visited = BTreeSet::<K>::new();
-        visited.insert(v);
+        let mut visited = HashSet::<_>::from_iter([v]);
 
         while let Some(x) = stack.pop() {
             for &p in self.subgraph_preds[x].iter() {
                 let root_p = self.subgraph_unionfind.find(p);
 
-                // Direct pred edge from v to u is not a real cycle.
-                if root_p == u && x == v {
-                    continue;
-                }
                 if root_p == u {
+                    if x == v {
+                        // Ignore `u -> v` direct edge, not a real cycle.
+                        continue;
+                    }
+                    // Cycle found, return false.
                     return false;
                 }
 
-                let (p_start, p_len) = self.node_toposort[root_p];
-                // Prune: group range [p_start, p_start+p_len-1] must overlap [window_lo, window_hi].
-                if p_start + p_len > window_lo && p_start <= window_hi && visited.insert(root_p) {
+                // Prune: group must be within the `window`.
+                if window.contains(&self.sg_idx[root_p]) && visited.insert(root_p) {
                     stack.push(root_p);
                 }
             }
         }
 
-        // ------------------------------------------------------------
-        // 2. Perform merge in union-find and rewire predecessors
-        // ------------------------------------------------------------
-
-        // `u` is before `v` in the topo order, and `UnionFind::union` ensures the first arg's (`u`'s) group
-        // will represent the merge. This ensures that the representative stays at the *start* of the
-        // subgraph's `toposort_node` sub-slice.
-        let new_root = self.subgraph_unionfind.union(u, v);
-
-        let u_preds = &mut self.subgraph_preds.remove(u).unwrap();
-        let v_preds = &mut self.subgraph_preds.remove(v).unwrap();
-        let mut preds = Vec::with_capacity(u_preds.len() + v_preds.len());
-        preds.append(u_preds);
-        preds.append(v_preds);
-        preds.retain(|x| self.subgraph_unionfind.find(*x) != new_root);
-        self.subgraph_preds.insert(new_root, preds);
-
-        // Mark the subsumed node and set merged group's length.
-        let subsumed = if new_root == u { v } else { u };
-        self.node_toposort[subsumed] = (0, 0);
-        // Set new_root's len to the combined size (start is temporary, fixed after re-sort).
-        self.node_toposort[new_root] = (u_start, u_len + v_len);
-
-        // ------------------------------------------------------------
-        // 3. Re-sort groups in window [window_lo..=window_hi]
-        // ------------------------------------------------------------
-
-        // Identify distinct groups in the window.
-        let mut groups_in_window: Vec<K> = Vec::new();
-        let mut seen = BTreeSet::<K>::new();
-        for &node in &self.toposort_node[window_lo..=window_hi] {
-            let rep = self.subgraph_unionfind.find(node);
-            if seen.insert(rep) {
-                groups_in_window.push(rep);
-            }
+        // 2. Perform merge in union-find and append predecessors.
+        // `u` will be the new representative.
+        {
+            // `UnionFind::union` ensures the first arg's representative will represent the new merged group. `u` is before
+            // `v` in the topo order, and `u` is already its own representative. This ensures that `u` stays at the *start*
+            // of its subgraph group, so the `idx..idx+len` slice is the whole subgraph.
+            let _new_root = self.subgraph_unionfind.union(u, v);
+            debug_assert_eq!(u, _new_root);
+            let v_preds = &mut self.subgraph_preds.remove(v).unwrap();
+            let u_preds = &mut self.subgraph_preds[u];
+            u_preds.append(v_preds);
+            // Update all preds to be representatives (from past unioning). Delete any self-edges.
+            u_preds.retain_mut(|x| {
+                *x = self.subgraph_unionfind.find(*x);
+                *x != u // Retain only non-self edges.
+            });
+            // Remove any duplicates (may have be created from past unioning).
+            u_preds.sort_unstable();
+            u_preds.dedup();
+        }
+        // Remove subsumed `v` and grow `u`'s length.
+        {
+            self.sg_idx.remove(v).unwrap();
+            let v_len = self.sg_len.remove(v).unwrap();
+            // Set `u`'s len to the combined size. (Note: `sg_idx[u]` still needs updating, below after re-sort).
+            self.sg_len[u] += v_len;
         }
 
-        // Topo-sort groups in the window by their contracted DAG edges.
-        // We borrow fields separately to allow the closure to call find() (which
-        // needs &mut unionfind) while also reading subgraph_preds and node_toposort.
-        // Only predecessor groups whose range overlaps the window are included —
-        // groups entirely outside the window have their ordering already satisfied.
-        let subgraph_preds = &self.subgraph_preds;
-        let subgraph_unionfind = &mut self.subgraph_unionfind;
-        let node_toposort = &self.node_toposort;
-        let sorted_groups = topo_sort(groups_in_window, |k| {
-            subgraph_preds[k]
-                .iter()
-                .map(|&p| subgraph_unionfind.find(p))
-                .filter(|&p| {
-                    let (p_start, p_len) = node_toposort[p];
-                    p_start + p_len > window_lo && p_start <= window_hi
+        // 3. Re-sort groups in `window`.
+        // Topo-sort groups in the window by their quotient edges.
+        {
+            let sorted_groups = {
+                let reps_in_window = self.toposort_node[window.clone()]
+                    .iter()
+                    .map(|&k| self.subgraph_unionfind.find(k))
+                    .collect::<BTreeSet<_>>();
+
+                // We borrow fields separately to allow the closure to call `find()` (which needs `&mut`) while also reading
+                // `subgraph_preds` and `sg_idx` (via `&`).
+                // Only predecessor groups whose range overlaps the window are included - groups entirely outside the window
+                // have their ordering already satisfied.
+                let subgraph_preds = &self.subgraph_preds;
+                let subgraph_unionfind = &mut self.subgraph_unionfind;
+                let sg_idx = &self.sg_idx;
+                topo_sort(reps_in_window, |k| {
+                    subgraph_preds[k]
+                    .iter()
+                    .map(|&p| subgraph_unionfind.find(p))
+                    .filter(|&p| window.contains(&sg_idx[p])) // Prune to window.
+                    .collect::<Vec<_>>()
+                    .into_iter()
                 })
-                .collect::<Vec<_>>()
-                .into_iter()
-        })
-        .expect("cycle check passed but re-toposort found cycle");
+                .expect("bug: cycle check passed but re-toposort found cycle")
+            };
 
-        // Rebuild the window: lay out each group's operators in sorted group order.
-        // All groups except new_root have contiguous operators at their current range.
-        // new_root's operators are u's slice followed by v's slice (not yet contiguous).
-        let mut buf: Vec<K> = Vec::with_capacity(window_hi - window_lo + 1);
-        for &group in &sorted_groups {
-            if group == new_root {
-                buf.extend_from_slice(&self.toposort_node[u_start..u_start + u_len]);
-                buf.extend_from_slice(&self.toposort_node[v_start..v_start + v_len]);
-            } else {
-                let (g_start, g_len) = self.node_toposort[group];
-                buf.extend_from_slice(&self.toposort_node[g_start..g_start + g_len]);
+            // Rebuild the window: lay out each group's operators in sorted group order.
+            // All groups except `u` (new root) have contiguous operators at their current range. `u`'s operators will be
+            // `u_nodes` *and* `v_nodes`.
+            let mut buf = Vec::with_capacity(window.len());
+            for &group in &sorted_groups {
+                if group == u {
+                    buf.extend_from_slice(u_nodes);
+                    buf.extend_from_slice(v_nodes);
+                } else {
+                    let g_idx = self.sg_idx[group];
+                    let g_len = self.sg_len[group];
+                    buf.extend_from_slice(&self.toposort_node[g_idx..g_idx + g_len]);
+                }
             }
-        }
-        self.toposort_node[window_lo..=window_hi].copy_from_slice(&buf);
+            self.toposort_node[window.clone()].copy_from_slice(&buf);
 
-        // Update reverse index: start positions (len already correct).
-        let mut pos = window_lo;
-        for &group in &sorted_groups {
-            self.node_toposort[group].0 = pos;
-            pos += self.node_toposort[group].1;
+            // Update reverse index `sg_idx` start positions (`sg_len` already correct).
+            let mut pos = window.start;
+            for &group in &sorted_groups {
+                self.sg_idx[group] = pos;
+                pos += self.sg_len[group];
+            }
+            debug_assert_eq!(window.end, pos);
         }
 
         true
@@ -421,9 +425,9 @@ mod test {
         // A ───► BC ────► E ───► F
         //        │        ▲
         //        └──► D ──┘
-        assert!(!merge.try_merge(c, e)); // Rejected due to `D` self-edge.
+        assert!(!merge.try_merge(c, e)); // Rejected due to `D` outside-cycle.
 
         assert!(merge.try_merge(d, e));
-        assert!(merge.try_merge(c, e));
+        assert!(merge.try_merge(c, e)); // Now valid since `D` is no longer outside.
     }
 }
