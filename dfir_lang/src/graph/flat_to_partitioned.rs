@@ -104,31 +104,35 @@ fn find_subgraph_unionfind(
         })
         .collect::<SparseSecondaryMap<_, _>>();
 
-    // Pre-compute extra ordering edges: if node A references handoff H via singleton ref,
-    // and H has a pipe successor C, then C depends on A (borrower runs before consumer).
-    let mut extra_preds: SecondaryMap<GraphNodeId, Vec<GraphNodeId>> = SecondaryMap::new();
+    // Pre-compute all predecessor edges for the topological sort.
+    let mut all_preds: SecondaryMap<GraphNodeId, Vec<GraphNodeId>> = SecondaryMap::new();
+
+    // Pipe predecessors (excluding tick edges which are cross-tick).
+    for (edge_id, (src, dst)) in partitioned_graph.edges() {
+        if !tick_edges.contains_key(edge_id) {
+            all_preds.entry(dst).unwrap().or_default().push(src);
+        }
+    }
+
+    // Singleton references: producer must run before consumer.
     for node_id in partitioned_graph.node_ids() {
         for singleton_ref in partitioned_graph.node_singleton_references(node_id).iter() {
-            if let Some(ref_target) = singleton_ref.node_id
-                && let GraphNode::Handoff { .. } = partitioned_graph.node(ref_target)
-            {
-                // ref_target is a handoff; find its pipe consumer(s).
-                for (_edge, consumer) in partitioned_graph.node_successors(ref_target) {
-                    // consumer depends on node_id (the borrower).
-                    extra_preds
-                        .entry(consumer)
-                        .unwrap()
-                        .or_default()
-                        .push(node_id);
+            if let Some(src) = singleton_ref.node_id {
+                all_preds.entry(node_id).unwrap().or_default().push(src);
+                // Extra ordering: if the ref target is a handoff, its pipe consumers
+                // depend on the borrower (borrower runs before consumer).
+                if let GraphNode::Handoff { .. } = partitioned_graph.node(src) {
+                    for (_edge, consumer) in partitioned_graph.node_successors(src) {
+                        all_preds.entry(consumer).unwrap().or_default().push(node_id);
+                    }
                 }
             }
         }
     }
 
-    // Pre-compute singleton ordering as a per-node predecessor map (for topo-sort).
-    let mut singleton_preds: SecondaryMap<GraphNodeId, Vec<GraphNodeId>> = SecondaryMap::new();
+    // Singleton ordering pairs (access group ordering).
     for &(src, dst) in singleton_pairs {
-        singleton_preds.entry(dst).unwrap().or_default().push(src);
+        all_preds.entry(dst).unwrap().or_default().push(src);
     }
 
     // Build enemies: all node pairs that must not be in the same subgraph.
@@ -141,38 +145,11 @@ fn find_subgraph_unionfind(
         SubgraphMerge::<GraphNodeId>::new(
             partitioned_graph.node_ids(),
             |node_id| {
-                partitioned_graph
-                    .node_predecessors(node_id)
-                    .filter_map(|(succ_edge, pred_id)| {
-                        // Tick edges are excluded from the topo sort — they are cross-tick by design.
-                        if tick_edges.contains_key(succ_edge) {
-                            None
-                        } else {
-                            Some(pred_id)
-                        }
-                    })
-                    .chain(
-                        partitioned_graph
-                            .node_singleton_references(node_id)
-                            .iter()
-                            .filter_map(|r| r.node_id),
-                    )
-                    .chain(
-                        extra_preds
-                            .get(node_id)
-                            .map(|v| v.as_slice())
-                            .unwrap_or(&[])
-                            .iter()
-                            .copied(),
-                    )
-                    .chain(
-                        singleton_preds
-                            .get(node_id)
-                            .map(|v| v.as_slice())
-                            .unwrap_or(&[])
-                            .iter()
-                            .copied(),
-                    )
+                all_preds
+                    .get(node_id)
+                    .into_iter()
+                    .flatten()
+                    .copied()
             },
             enemies,
         )
