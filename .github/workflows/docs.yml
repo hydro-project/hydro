@@ -40,6 +40,9 @@ jobs:
       - name: Install nightly Rust channel
         run: rustup toolchain add nightly
 
+      - name: Install libcurl dev (needed by rdkafka-sys)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libcurl4-openssl-dev > /dev/null
+
       - env:
           RUSTDOCFLAGS: --cfg docsrs -Dwarnings
         run: cargo +nightly doc --no-deps --all-features

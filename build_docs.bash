@@ -1,5 +1,7 @@
 set -e
 
+sudo apt-get update -qq && sudo apt-get install -y -qq libcurl4-openssl-dev > /dev/null
+
 echo "========================================="
 echo "Step 1/7: Downloading LLVM..."
 echo "========================================="

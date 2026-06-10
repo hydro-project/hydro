@@ -9,6 +9,9 @@ pub mod local;
 pub mod maelstrom;
 pub mod tutorials;
 
+#[cfg(feature = "kafka")]
+pub mod kafka;
+
 #[doc(hidden)]
 #[cfg(doctest)]
 mod docs {

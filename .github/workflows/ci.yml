@@ -64,6 +64,10 @@ jobs:
       - if: matrix.rust_release == 'latest-stable' && matrix.os == 'ubuntu-latest'
         uses: ./.github/actions/use-sccache
 
+      - name: Install libcurl dev (needed by rdkafka-sys)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq libcurl4-openssl-dev > /dev/null
+
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo clippy --all-targets --no-default-features -- -D warnings
       - run: cargo clippy --all-targets --all-features -- -D warnings
