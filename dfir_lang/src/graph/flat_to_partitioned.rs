@@ -19,7 +19,10 @@ use crate::graph::graph_algorithms::SubgraphMerge;
 /// - All barrier (src, dst) node pairs (for the enemies set).
 fn find_edge_barriers(
     partitioned_graph: &DfirGraph,
-) -> (SecondaryMap<GraphEdgeId, DelayType>, Vec<(GraphNodeId, GraphNodeId)>) {
+) -> (
+    SecondaryMap<GraphEdgeId, DelayType>,
+    Vec<(GraphNodeId, GraphNodeId)>,
+) {
     let mut tick_edges = SecondaryMap::new();
     let mut barrier_pairs = Vec::new();
 
@@ -45,30 +48,13 @@ fn find_edge_barriers(
     (tick_edges, barrier_pairs)
 }
 
-/// Find singleton ordering constraints: pairs `(src, dst)` where `src` must run before `dst`.
-/// Includes basic singleton references and access group ordering.
-fn find_singleton_ordering_pairs(partitioned_graph: &DfirGraph) -> Vec<(GraphNodeId, GraphNodeId)> {
-    // Basic singleton barriers: producer → consumer.
-    let mut pairs: Vec<(GraphNodeId, GraphNodeId)> = partitioned_graph
-        .node_ids()
-        .flat_map(|dst| {
-            partitioned_graph
-                .node_singleton_references(dst)
-                .iter()
-                .filter_map(|r| r.node_id)
-                .map(move |src_ref| (src_ref, dst))
-        })
-        .collect();
-
-    // Access group ordering barriers: for the same singleton target, operators in
-    // lower access groups must run before operators in higher access groups.
-    // Also: ungrouped mutable refs must run after ungrouped shared refs.
+/// Find access group ordering constraints: for the same singleton target, operators in
+/// lower access groups must run before operators in higher access groups.
+fn find_access_group_ordering(partitioned_graph: &DfirGraph) -> Vec<(GraphNodeId, GraphNodeId)> {
+    let mut pairs = Vec::new();
     let refs_by_target = partitioned_graph.node_singleton_reference_groups();
-    // For each singleton target...
     for (_singleton, groups) in refs_by_target {
-        // For sequential access groups...
         for (group_a, group_b) in groups.values().tuple_windows() {
-            // Add ordering barriers so every node in the lower group must run before every node in the higher group.
             for &(node_a, _, _) in group_a {
                 for &(node_b, _, _) in group_b {
                     // TODO(mingwei): handle with diagnostics.
@@ -82,7 +68,6 @@ fn find_singleton_ordering_pairs(partitioned_graph: &DfirGraph) -> Vec<(GraphNod
             }
         }
     }
-
     pairs
 }
 
@@ -90,7 +75,7 @@ fn find_subgraph_unionfind(
     partitioned_graph: &DfirGraph,
     tick_edges: &SecondaryMap<GraphEdgeId, DelayType>,
     edge_barrier_pairs: &[(GraphNodeId, GraphNodeId)],
-    singleton_pairs: &[(GraphNodeId, GraphNodeId)],
+    access_group_pairs: &[(GraphNodeId, GraphNodeId)],
 ) -> Result<(SubgraphMerge<GraphNodeId>, BTreeSet<GraphEdgeId>), Diagnostic> {
     // Modality (color) of nodes, push or pull.
     // TODO(mingwei)? This does NOT consider `DelayType` barriers (which generally imply `Pull`),
@@ -123,15 +108,19 @@ fn find_subgraph_unionfind(
                 // depend on the borrower (borrower runs before consumer).
                 if let GraphNode::Handoff { .. } = partitioned_graph.node(src) {
                     for (_edge, consumer) in partitioned_graph.node_successors(src) {
-                        all_preds.entry(consumer).unwrap().or_default().push(node_id);
+                        all_preds
+                            .entry(consumer)
+                            .unwrap()
+                            .or_default()
+                            .push(node_id);
                     }
                 }
             }
         }
     }
 
-    // Singleton ordering pairs (access group ordering).
-    for &(src, dst) in singleton_pairs {
+    // Access group ordering.
+    for &(src, dst) in access_group_pairs {
         all_preds.entry(dst).unwrap().or_default().push(src);
     }
 
@@ -139,27 +128,27 @@ fn find_subgraph_unionfind(
     let enemies = edge_barrier_pairs
         .iter()
         .copied()
-        .chain(singleton_pairs.iter().copied());
+        .chain(access_group_pairs.iter().copied())
+        .chain(partitioned_graph.node_ids().flat_map(|dst| {
+            partitioned_graph
+                .node_singleton_references(dst)
+                .iter()
+                .filter_map(|r| r.node_id)
+                .map(move |src| (src, dst))
+        }));
 
-    let mut subgraph_unionfind =
-        SubgraphMerge::<GraphNodeId>::new(
-            partitioned_graph.node_ids(),
-            |node_id| {
-                all_preds
-                    .get(node_id)
-                    .into_iter()
-                    .flatten()
-                    .copied()
-            },
-            enemies,
-        )
-        .map_err(|cycle| {
-            let span = cycle
-                .first()
-                .map(|&node_id| partitioned_graph.node(node_id).span())
-                .unwrap_or_else(proc_macro2::Span::call_site);
-            Diagnostic::spanned(span, Level::Error, format!("Not a DAG: {:?}", cycle))
-        })?;
+    let mut subgraph_unionfind = SubgraphMerge::<GraphNodeId>::new(
+        partitioned_graph.node_ids(),
+        |node_id| all_preds.get(node_id).into_iter().flatten().copied(),
+        enemies,
+    )
+    .map_err(|cycle| {
+        let span = cycle
+            .first()
+            .map(|&node_id| partitioned_graph.node(node_id).span())
+            .unwrap_or_else(proc_macro2::Span::call_site);
+        Diagnostic::spanned(span, Level::Error, format!("Not a DAG: {:?}", cycle))
+    })?;
 
     // Will contain all edges which need handoffs added. Starts out with all edges and
     // we remove from this set as we combine nodes into subgraphs.
@@ -223,7 +212,7 @@ fn make_subgraphs(
     partitioned_graph: &mut DfirGraph,
     tick_edges: &mut SecondaryMap<GraphEdgeId, DelayType>,
     edge_barrier_pairs: &[(GraphNodeId, GraphNodeId)],
-    singleton_pairs: &[(GraphNodeId, GraphNodeId)],
+    access_group_pairs: &[(GraphNodeId, GraphNodeId)],
 ) -> Result<(), Diagnostic> {
     // Algorithm:
     // 1. Each node begins as its own subgraph.
@@ -233,8 +222,12 @@ fn make_subgraphs(
     // TODO(mingwei):
     // self.partitioned_graph.assert_valid();
 
-    let (subgraph_merge, handoff_edges) =
-        find_subgraph_unionfind(partitioned_graph, tick_edges, edge_barrier_pairs, singleton_pairs)?;
+    let (subgraph_merge, handoff_edges) = find_subgraph_unionfind(
+        partitioned_graph,
+        tick_edges,
+        edge_barrier_pairs,
+        access_group_pairs,
+    )?;
 
     // Insert handoffs between subgraphs (or on subgraph self-loop edges)
     for edge_id in handoff_edges {
@@ -373,11 +366,16 @@ fn mark_tick_boundary_handoffs(
 /// Returns an error if an intra-tick cycle exists in the graph.
 pub fn partition_graph(flat_graph: DfirGraph) -> Result<DfirGraph, Diagnostic> {
     let (mut tick_edges, edge_barrier_pairs) = find_edge_barriers(&flat_graph);
-    let singleton_pairs = find_singleton_ordering_pairs(&flat_graph);
+    let access_group_pairs = find_access_group_ordering(&flat_graph);
     let mut partitioned_graph = flat_graph;
 
     // Partition into subgraphs and insert handoffs.
-    make_subgraphs(&mut partitioned_graph, &mut tick_edges, &edge_barrier_pairs, &singleton_pairs)?;
+    make_subgraphs(
+        &mut partitioned_graph,
+        &mut tick_edges,
+        &edge_barrier_pairs,
+        &access_group_pairs,
+    )?;
 
     // Mark tick-boundary handoffs for double-buffering.
     mark_tick_boundary_handoffs(&mut partitioned_graph, &tick_edges);
