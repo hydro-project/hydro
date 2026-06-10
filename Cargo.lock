@@ -3294,7 +3294,7 @@ dependencies = [
 
 [[package]]
 name = "lattices_macro"
-version = "0.6.0"
+version = "0.6.1-alpha.0"
 dependencies = [
  "hydro_build_utils",
  "prettyplease",

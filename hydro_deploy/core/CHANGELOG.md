@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.17.0-alpha.0 (2026-06-10)
 
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 40 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release hydro_build_utils v0.1.1-alpha.0, dfir_lang v1.0.0-alpha.0, dfir_macro v0.17.0-alpha.0, variadics v1.0.0-alpha.0, variadics_macro v0.8.0-alpha.0, lattices v0.8.0-alpha.0, dfir_pipes v0.1.0-alpha.0, sinktools v0.2.0-alpha.0, hydro_deploy_integration v0.17.0-alpha.0, dfir_rs v0.17.0-alpha.0, hydro_deploy v0.17.0-alpha.0, hydro_lang v0.17.0-alpha.0, hydro_std v0.17.0-alpha.0, safety bump 10 crates ([`12e7666`](https://github.com/hydro-project/hydro/commit/12e76666f7104f81b48de5ddf397b8e72c8a6711))
+</details>
+
 ## 0.16.0 (2026-05-01)
 
 <csr-id-2d58215f99353e5b00066d66320fc54718e039c3/>
@@ -778,6 +797,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
    * #1395
    * __->__ #1394
+ - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
 
 ### Refactor (BREAKING)
 
@@ -1026,6 +1053,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
    * #1395
    * __->__ #1394
+ - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
 
 ### Refactor (BREAKING)
 
@@ -1059,6 +1094,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * __->__ #1394
    * #1395
    * __->__ #1394
+   * #1395
+   * __->__ #1394
+ - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
    * #1395
    * __->__ #1394
  - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
@@ -1114,6 +1157,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
    * #1395
    * __->__ #1394
+ - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
 
 ### Refactor (BREAKING)
 
@@ -1151,6 +1202,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    * __->__ #1394
    * #1395
    * __->__ #1394
+   * #1395
+   * __->__ #1394
+ - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
    * #1395
    * __->__ #1394
  - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
@@ -1240,6 +1299,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
    * #1395
    * __->__ #1394
+ - <csr-id-10bd978793ccde8fc287aedd77729c0c6e5f1784/> simplify process/cluster specs
+   ---
+   [//]: # (BEGIN SAPLING FOOTER)
+   Stack created with [Sapling](https://sapling-scm.com). Best reviewed
+   with
+   [ReviewStack](https://reviewstack.dev/hydro-project/hydroflow/pull/1394).
+   * #1395
+   * __->__ #1394
 
 ### Commit Statistics
 
@@ -1295,9 +1362,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Release hydroflow_lang v0.9.0, hydroflow_datalog_core v0.9.0, hydroflow_datalog v0.9.0, hydroflow_deploy_integration v0.9.0, hydroflow_macro v0.9.0, lattices_macro v0.5.6, lattices v0.5.7, multiplatform_test v0.2.0, variadics v0.0.6, pusherator v0.0.8, hydroflow v0.9.0, stageleft_macro v0.3.0, stageleft v0.4.0, stageleft_tool v0.3.0, hydroflow_plus v0.9.0, hydro_deploy v0.9.0, hydro_cli v0.9.0, hydroflow_plus_deploy v0.9.0, safety bump 8 crates ([`1d54331`](https://github.com/hydro-project/hydro/commit/1d54331976040c049e4c97a9fba0e66930efee52))
     - Manually set versions for crates renamed in #1413 ([`3508f5a`](https://github.com/hydro-project/hydro/commit/3508f5aeda3e18a6857df4ceb77e5e1015c02a17))
 </details>
-
-<csr-unknown>
- simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack. simplify process/cluster specsStack created with https://sapling-scm.comSapling. Best reviewedwithhttps://reviewstack.dev/hydro-project/hydroflow/pull/1394ReviewStack.<csr-unknown/>
 
 ## v0.8.0 (2024-07-23)
 

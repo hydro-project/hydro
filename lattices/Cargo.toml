@@ -23,7 +23,7 @@ all-features = true
 [dependencies]
 cc-traits = { version = "2.0.0", default-features = false }
 fst = { version = "0.4.0", optional = true }
-lattices_macro = { path = "../lattices_macro", version = "^0.6.0" }
+lattices_macro = { path = "../lattices_macro", version = "^0.6.1-alpha.0" }
 roaring = { version = "0.11.0", default-features = false }
 sealed = "0.6.0"
 serde = { version = "1.0.197", features = ["derive"], optional = true, default-features = false }
