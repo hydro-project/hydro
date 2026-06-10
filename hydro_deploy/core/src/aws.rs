@@ -47,6 +47,13 @@ pub struct NetworkResources {
     security_group: String,
 }
 
+impl NetworkResources {
+    /// Construct from existing AWS resource IDs.
+    pub fn new(vpc: impl Into<String>, subnet: impl Into<String>, security_group: impl Into<String>) -> Self {
+        Self { vpc: vpc.into(), subnet: subnet.into(), security_group: security_group.into() }
+    }
+}
+
 #[derive(Debug)]
 pub struct AwsNetwork {
     pub region: String,
@@ -750,7 +757,7 @@ impl Host for AwsEc2Host {
             instance_name.push('-');
             display_name = display_name.replace("_", "-").to_lowercase();
 
-            let num_chars_to_cut = instance_name.len() + display_name.len() - 63;
+            let num_chars_to_cut = (instance_name.len() + display_name.len()).saturating_sub(63);
             if num_chars_to_cut > 0 {
                 display_name.drain(0..num_chars_to_cut);
             }
