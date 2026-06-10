@@ -262,31 +262,32 @@ where
                 *x = self.subgraph_unionfind.find(*x);
                 *x != u // Retain only non-self edges.
             });
-              // Remove any duplicates (may have be created from past unioning).
-              u_preds.sort_unstable();
-              u_preds.dedup();
-          }
-          // Merge enemies: remap v's enemies to point to u.
-          {
-              if let Some(v_enemies) = self.enemies.remove(v) {
-                  for w in v_enemies {
-                      debug_assert_ne!(w, u, "enemy of v should have been caught by the check above");
-                      // Guaranteed to exist by the symmetric invariant: if v's enemies contain w,
-                      // then w's enemies contain v.
-                      let w_enemies = self.enemies.get_mut(w).unwrap();
-                      w_enemies.remove(&v);
-                      w_enemies.insert(u);
-                      // Add w to u's enemies.
-                      self.enemies.entry(u).unwrap().or_default().insert(w);
-                  }
-              }
-          }
-          // Remove subsumed `v` and grow `u`'s length.
-          {
+            // Remove any duplicates (may have be created from past unioning).
+            u_preds.sort_unstable();
+            u_preds.dedup();
+        }
+        // Remove subsumed `v` and grow `u`'s length.
+        {
             self.sg_idx.remove(v).unwrap();
             let v_len = self.sg_len.remove(v).unwrap();
             // Set `u`'s len to the combined size. (Note: `sg_idx[u]` still needs updating, below after re-sort).
             self.sg_len[u] += v_len;
+        }
+        // Merge enemies: remap v's enemies to point to u.
+        for w in self.enemies.remove(v).into_iter().flatten() {
+            debug_assert_ne!(
+                w, u,
+                "`w` in an enemy of `v`, so it can't be `w == u`, since we are merging `u` and `v`"
+            );
+            // Add `w`` to `u`'s enemies.
+            self.enemies.entry(u).unwrap().or_default().insert(w);
+            // Add `u` to `w`'s enemies. Remove `v`.
+            // `w` enemies guaranteed to exist by the symmetric invariant: if `v`'s enemies contain `w``, then `w`'s
+            // enemies contain `v`.
+            let w_enemies = self.enemies.get_mut(w).unwrap();
+            let _removed = w_enemies.remove(&v);
+            debug_assert!(_removed);
+            w_enemies.insert(u);
         }
 
         // 3. Re-sort groups in `window`.
@@ -456,9 +457,12 @@ mod test {
         preds[e].push(d);
         preds[f].push(e);
 
-        let mut merge =
-            SubgraphMerge::new(preds.keys(), |v| preds[v].iter().copied(), std::iter::empty())
-                .unwrap();
+        let mut merge = SubgraphMerge::new(
+            preds.keys(),
+            |v| preds[v].iter().copied(),
+            std::iter::empty(),
+        )
+        .unwrap();
 
         assert!(merge.try_merge(a, a)); // No-op.
         //        ┌──► C ──┐
