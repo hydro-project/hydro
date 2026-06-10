@@ -11,22 +11,38 @@ use super::{Color, GraphEdgeId, GraphNode, GraphNodeId, HandoffKind};
 use crate::diagnostic::{Diagnostic, Level};
 use crate::graph::graph_algorithms::SubgraphMerge;
 
-/// Find edge barrier crossers: edges whose destination operator declares an input delay type.
+/// Find edge barriers: edges whose destination operator declares an input delay type.
 /// Excludes edges within `loop {}` blocks.
-fn find_edge_barriers(partitioned_graph: &DfirGraph) -> SecondaryMap<GraphEdgeId, DelayType> {
-    partitioned_graph
-        .edges()
-        .filter(|&(_, (_src, dst))| {
-            // Ignore barriers within `loop {` blocks.
-            partitioned_graph.node_loop(dst).is_none()
-        })
-        .filter_map(|(edge_id, (_src, dst))| {
-            let (_src_port, dst_port) = partitioned_graph.edge_ports(edge_id);
-            let op_constraints = partitioned_graph.node_op_inst(dst)?.op_constraints;
-            let input_barrier = (op_constraints.input_delaytype_fn)(dst_port)?;
-            Some((edge_id, input_barrier))
-        })
-        .collect()
+///
+/// Returns:
+/// - Tick/TickLazy edges keyed by edge ID (for topo-sort exclusion and handoff marking).
+/// - All barrier (src, dst) node pairs (for the enemies set).
+fn find_edge_barriers(
+    partitioned_graph: &DfirGraph,
+) -> (SecondaryMap<GraphEdgeId, DelayType>, Vec<(GraphNodeId, GraphNodeId)>) {
+    let mut tick_edges = SecondaryMap::new();
+    let mut barrier_pairs = Vec::new();
+
+    for (edge_id, (src, dst)) in partitioned_graph.edges() {
+        // Ignore barriers within `loop {` blocks.
+        if partitioned_graph.node_loop(dst).is_some() {
+            continue;
+        }
+        let Some(op_inst) = partitioned_graph.node_op_inst(dst) else {
+            continue;
+        };
+        let (_src_port, dst_port) = partitioned_graph.edge_ports(edge_id);
+        let Some(delay_type) = (op_inst.op_constraints.input_delaytype_fn)(dst_port) else {
+            continue;
+        };
+
+        barrier_pairs.push((src, dst));
+        if matches!(delay_type, DelayType::Tick | DelayType::TickLazy) {
+            tick_edges.insert(edge_id, delay_type);
+        }
+    }
+
+    (tick_edges, barrier_pairs)
 }
 
 /// Find singleton ordering constraints: pairs `(src, dst)` where `src` must run before `dst`.
@@ -72,7 +88,8 @@ fn find_singleton_ordering_pairs(partitioned_graph: &DfirGraph) -> Vec<(GraphNod
 
 fn find_subgraph_unionfind(
     partitioned_graph: &DfirGraph,
-    edge_barriers: &SecondaryMap<GraphEdgeId, DelayType>,
+    tick_edges: &SecondaryMap<GraphEdgeId, DelayType>,
+    edge_barrier_pairs: &[(GraphNodeId, GraphNodeId)],
     singleton_pairs: &[(GraphNodeId, GraphNodeId)],
 ) -> Result<(SubgraphMerge<GraphNodeId>, BTreeSet<GraphEdgeId>), Diagnostic> {
     // Modality (color) of nodes, push or pull.
@@ -115,9 +132,9 @@ fn find_subgraph_unionfind(
     }
 
     // Build enemies: all node pairs that must not be in the same subgraph.
-    let enemies = edge_barriers
+    let enemies = edge_barrier_pairs
         .iter()
-        .map(|(edge_id, _)| partitioned_graph.edge(edge_id))
+        .copied()
         .chain(singleton_pairs.iter().copied());
 
     let mut subgraph_unionfind =
@@ -127,11 +144,8 @@ fn find_subgraph_unionfind(
                 partitioned_graph
                     .node_predecessors(node_id)
                     .filter_map(|(succ_edge, pred_id)| {
-                        let succ_edge_delaytype = edge_barriers.get(succ_edge).copied();
                         // Tick edges are excluded from the topo sort — they are cross-tick by design.
-                        if let Some(_delay_type @ (DelayType::Tick | DelayType::TickLazy)) =
-                            succ_edge_delaytype
-                        {
+                        if tick_edges.contains_key(succ_edge) {
                             None
                         } else {
                             Some(pred_id)
@@ -230,7 +244,8 @@ fn find_subgraph_unionfind(
 /// Find subgraphs and insert handoffs.
 fn make_subgraphs(
     partitioned_graph: &mut DfirGraph,
-    edge_barriers: &mut SecondaryMap<GraphEdgeId, DelayType>,
+    tick_edges: &mut SecondaryMap<GraphEdgeId, DelayType>,
+    edge_barrier_pairs: &[(GraphNodeId, GraphNodeId)],
     singleton_pairs: &[(GraphNodeId, GraphNodeId)],
 ) -> Result<(), Diagnostic> {
     // Algorithm:
@@ -242,7 +257,7 @@ fn make_subgraphs(
     // self.partitioned_graph.assert_valid();
 
     let (subgraph_merge, handoff_edges) =
-        find_subgraph_unionfind(partitioned_graph, edge_barriers, singleton_pairs)?;
+        find_subgraph_unionfind(partitioned_graph, tick_edges, edge_barrier_pairs, singleton_pairs)?;
 
     // Insert handoffs between subgraphs (or on subgraph self-loop edges)
     for edge_id in handoff_edges {
@@ -264,9 +279,9 @@ fn make_subgraphs(
         };
         let (_node_id, out_edge_id) = partitioned_graph.insert_intermediate_node(edge_id, hoff);
 
-        // Update edge_barriers for inserted node.
-        if let Some(delay_type) = edge_barriers.remove(edge_id) {
-            edge_barriers.insert(out_edge_id, delay_type);
+        // Update tick_edges for inserted node.
+        if let Some(delay_type) = tick_edges.remove(edge_id) {
+            tick_edges.insert(out_edge_id, delay_type);
         }
     }
 
@@ -354,7 +369,7 @@ fn can_connect_colorize(
 /// for double-buffered codegen in `as_code`.
 fn mark_tick_boundary_handoffs(
     partitioned_graph: &mut DfirGraph,
-    edge_barriers: &SecondaryMap<GraphEdgeId, DelayType>,
+    tick_edges: &SecondaryMap<GraphEdgeId, DelayType>,
 ) {
     let tick_handoffs: Vec<_> = partitioned_graph
         .nodes()
@@ -366,11 +381,8 @@ fn mark_tick_boundary_handoffs(
                 return None;
             }
             let (succ_edge, _) = partitioned_graph.node_successors(hoff_id).next().unwrap();
-            let delay_type = edge_barriers.get(succ_edge).copied()?;
-            match delay_type {
-                DelayType::Tick | DelayType::TickLazy => Some((hoff_id, delay_type)),
-                _ => None,
-            }
+            let &delay_type = tick_edges.get(succ_edge)?;
+            Some((hoff_id, delay_type))
         })
         .collect();
 
@@ -383,15 +395,15 @@ fn mark_tick_boundary_handoffs(
 ///
 /// Returns an error if an intra-tick cycle exists in the graph.
 pub fn partition_graph(flat_graph: DfirGraph) -> Result<DfirGraph, Diagnostic> {
-    let mut edge_barriers = find_edge_barriers(&flat_graph);
+    let (mut tick_edges, edge_barrier_pairs) = find_edge_barriers(&flat_graph);
     let singleton_pairs = find_singleton_ordering_pairs(&flat_graph);
     let mut partitioned_graph = flat_graph;
 
     // Partition into subgraphs and insert handoffs.
-    make_subgraphs(&mut partitioned_graph, &mut edge_barriers, &singleton_pairs)?;
+    make_subgraphs(&mut partitioned_graph, &mut tick_edges, &edge_barrier_pairs, &singleton_pairs)?;
 
     // Mark tick-boundary handoffs for double-buffering.
-    mark_tick_boundary_handoffs(&mut partitioned_graph, &edge_barriers);
+    mark_tick_boundary_handoffs(&mut partitioned_graph, &tick_edges);
 
     Ok(partitioned_graph)
 }
