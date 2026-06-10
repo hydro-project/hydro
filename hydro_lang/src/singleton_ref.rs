@@ -97,7 +97,7 @@ where
     L: Location<'a>,
 {
     fn to_tokens_helper(self, _ctx: &L) -> (QuoteTokens, ()) {
-        let ident =SINGLETON_REFS.with(|cell| {
+        let ident = SINGLETON_REFS.with(|cell| {
             let mut guard = cell.borrow_mut();
             let refs = guard.as_mut().expect(
                 "SingletonRef used inside q!() but no singleton capture scope is active. \

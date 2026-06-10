@@ -179,6 +179,12 @@ impl ClosureExpr {
         if self.singleton_refs.is_empty() {
             self.expr.0.to_token_stream()
         } else {
+            assert!(
+                ident_stack.len() >= self.singleton_refs.len(),
+                "ident_stack has {} entries but expected at least {} for singleton_refs",
+                ident_stack.len(),
+                self.singleton_refs.len()
+            );
             let ref_idents = ident_stack.drain(ident_stack.len() - self.singleton_refs.len()..);
 
             let mut let_bindings = Vec::new();
