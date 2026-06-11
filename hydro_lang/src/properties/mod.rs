@@ -362,25 +362,33 @@ impl<In, Out, F: Fn(In) -> Out, R: Retries> ValidMutIdempotenceFor<F, In, Out, R
     label = "required for this call",
     note = "To intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
 )]
-pub trait ValidMutBorrowCommutativityFor<F: FnMut(&In) -> Out, In: ?Sized, Out, O: Ordering, const WAS_MUT: bool> {}
-#[sealed::sealed]
-impl<In: ?Sized, Out, F: FnMut(&In) -> Out> ValidMutBorrowCommutativityFor<F, In, Out, TotalOrder, true>
-    for NotProved
+pub trait ValidMutBorrowCommutativityFor<
+    F: FnMut(&In) -> Out,
+    In: ?Sized,
+    Out,
+    O: Ordering,
+    const WAS_MUT: bool,
+>
 {
 }
 #[sealed::sealed]
-impl<In: ?Sized, Out, F: Fn(&In) -> Out, O: Ordering> ValidMutBorrowCommutativityFor<F, In, Out, O, false>
-    for NotProved
+impl<In: ?Sized, Out, F: FnMut(&In) -> Out>
+    ValidMutBorrowCommutativityFor<F, In, Out, TotalOrder, true> for NotProved
 {
 }
 #[sealed::sealed]
-impl<In: ?Sized, Out, F: FnMut(&In) -> Out, O: Ordering> ValidMutBorrowCommutativityFor<F, In, Out, O, true>
-    for Proved
+impl<In: ?Sized, Out, F: Fn(&In) -> Out, O: Ordering>
+    ValidMutBorrowCommutativityFor<F, In, Out, O, false> for NotProved
 {
 }
 #[sealed::sealed]
-impl<In: ?Sized, Out, F: Fn(&In) -> Out, O: Ordering> ValidMutBorrowCommutativityFor<F, In, Out, O, false>
-    for Proved
+impl<In: ?Sized, Out, F: FnMut(&In) -> Out, O: Ordering>
+    ValidMutBorrowCommutativityFor<F, In, Out, O, true> for Proved
+{
+}
+#[sealed::sealed]
+impl<In: ?Sized, Out, F: Fn(&In) -> Out, O: Ordering>
+    ValidMutBorrowCommutativityFor<F, In, Out, O, false> for Proved
 {
 }
 
@@ -391,25 +399,33 @@ impl<In: ?Sized, Out, F: Fn(&In) -> Out, O: Ordering> ValidMutBorrowCommutativit
     note = "To intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
 )]
 #[sealed::sealed]
-pub trait ValidMutBorrowIdempotenceFor<F: FnMut(&In) -> Out, In: ?Sized, Out, R: Retries, const WAS_MUT: bool> {}
-#[sealed::sealed]
-impl<In: ?Sized, Out, F: FnMut(&In) -> Out> ValidMutBorrowIdempotenceFor<F, In, Out, ExactlyOnce, true>
-    for NotProved
+pub trait ValidMutBorrowIdempotenceFor<
+    F: FnMut(&In) -> Out,
+    In: ?Sized,
+    Out,
+    R: Retries,
+    const WAS_MUT: bool,
+>
 {
 }
 #[sealed::sealed]
-impl<In: ?Sized, Out, F: Fn(&In) -> Out, R: Retries> ValidMutBorrowIdempotenceFor<F, In, Out, R, false>
-    for NotProved
+impl<In: ?Sized, Out, F: FnMut(&In) -> Out>
+    ValidMutBorrowIdempotenceFor<F, In, Out, ExactlyOnce, true> for NotProved
 {
 }
 #[sealed::sealed]
-impl<In: ?Sized, Out, F: FnMut(&In) -> Out, R: Retries> ValidMutBorrowIdempotenceFor<F, In, Out, R, true>
-    for Proved
+impl<In: ?Sized, Out, F: Fn(&In) -> Out, R: Retries>
+    ValidMutBorrowIdempotenceFor<F, In, Out, R, false> for NotProved
 {
 }
 #[sealed::sealed]
-impl<In: ?Sized, Out, F: Fn(&In) -> Out, R: Retries> ValidMutBorrowIdempotenceFor<F, In, Out, R, false>
-    for Proved
+impl<In: ?Sized, Out, F: FnMut(&In) -> Out, R: Retries>
+    ValidMutBorrowIdempotenceFor<F, In, Out, R, true> for Proved
+{
+}
+#[sealed::sealed]
+impl<In: ?Sized, Out, F: Fn(&In) -> Out, R: Retries>
+    ValidMutBorrowIdempotenceFor<F, In, Out, R, false> for Proved
 {
 }
 

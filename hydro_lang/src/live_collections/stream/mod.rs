@@ -1305,12 +1305,16 @@ where
     /// ([`TotalOrder`]) and no retries ([`ExactlyOnce`]). If the side effects can tolerate
     /// out-of-order or duplicate execution, use [`Stream::assume_ordering`] and
     /// [`Stream::assume_retries`] with an explanation for why this is the case.
+    ///
+    /// The closure may capture singletons via `by_ref()` or `by_mut()`. No commutativity
+    /// or idempotence proofs are needed because the `TotalOrder + ExactlyOnce` requirements
+    /// already guarantee deterministic execution.
     pub fn for_each<F: FnMut(T) + 'a>(self, f: impl IntoQuotedMut<'a, F, L>)
     where
         O: IsOrdered,
         R: IsExactlyOnce,
     {
-        let f = f.splice_fnmut1_ctx(&self.location).into();
+        let f = crate::handoff_ref::with_ref_capture(|| f.splice_fnmut1_ctx(&self.location).into());
         self.location
             .flow_state()
             .borrow_mut()

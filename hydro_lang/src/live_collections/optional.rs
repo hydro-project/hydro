@@ -23,9 +23,7 @@ use crate::location::tick::{Atomic, DeferTick};
 use crate::location::{Location, Tick, TopLevel, check_matching_location};
 use crate::nondet::{NonDet, nondet};
 use crate::prelude::KeyedSingleton;
-use crate::properties::{
-    StreamMapFuncAlgebra, ValidMutCommutativityFor, ValidMutIdempotenceFor,
-};
+use crate::properties::{StreamMapFuncAlgebra, ValidMutCommutativityFor, ValidMutIdempotenceFor};
 
 /// A *nullable* Rust value that can asynchronously change over time.
 ///

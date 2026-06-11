@@ -64,7 +64,7 @@ expression: builder.finalize().ir()
         op_metadata: HydroIrOpMetadata,
     },
     ForEach {
-        f: stageleft :: runtime_support :: fn1_type_hint :: < std :: string :: String , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_distributed_first_ten_rs_19_33 ! ([] [| n | println ! ("hi: {:?}" , n)]) }),
+        f: stageleft :: runtime_support :: fnmut1_type_hint :: < std :: string :: String , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_distributed_first_ten_rs_19_33 ! ([] [| n | println ! ("hi: {:?}" , n)]) }),
         input: ExternalInput {
             from_external_key: LocationKey(
                 1v1,
@@ -92,7 +92,7 @@ expression: builder.finalize().ir()
         op_metadata: HydroIrOpMetadata,
     },
     ForEach {
-        f: stageleft :: runtime_support :: fn1_type_hint :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_distributed_first_ten_rs_25_21 ! ([] [| n | println ! ("{}" , n . n)]) }),
+        f: stageleft :: runtime_support :: fnmut1_type_hint :: < hydro_test :: __staged :: distributed :: first_ten :: SendOverNetwork , () > ({ use crate :: __staged :: __deps :: * ; use crate :: __staged :: distributed :: first_ten :: * ; # [allow (unused_imports)] use crate :: * ; __stageleft_quote_src_distributed_first_ten_rs_25_21 ! ([] [| n | println ! ("{}" , n . n)]) }),
         input: Network {
             name: None,
             networking_info: Tcp {

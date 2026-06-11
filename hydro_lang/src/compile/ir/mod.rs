@@ -896,7 +896,7 @@ where
 #[derive(Debug, Hash, serde::Serialize)]
 pub enum HydroRoot {
     ForEach {
-        f: DebugExpr,
+        f: ClosureExpr,
         input: Box<HydroNode>,
         op_metadata: HydroIrOpMetadata,
     },
@@ -1332,8 +1332,11 @@ impl HydroRoot {
         seen_tees: &mut SeenSharedNodes,
     ) {
         match self {
-            HydroRoot::ForEach { input, .. }
-            | HydroRoot::SendExternal { input, .. }
+            HydroRoot::ForEach { f, input, .. } => {
+                f.transform_children(&mut transform, seen_tees);
+                transform(input, seen_tees);
+            }
+            HydroRoot::SendExternal { input, .. }
             | HydroRoot::DestSink { input, .. }
             | HydroRoot::CycleSink { input, .. }
             | HydroRoot::EmbeddedOutput { input, .. }
@@ -1350,7 +1353,7 @@ impl HydroRoot {
                 input,
                 op_metadata,
             } => HydroRoot::ForEach {
-                f: f.clone(),
+                f: f.deep_clone(seen_tees),
                 input: Box::new(input.deep_clone(seen_tees)),
                 op_metadata: op_metadata.clone(),
             },
@@ -1452,11 +1455,30 @@ impl HydroRoot {
 
                 match builders_or_callback {
                     BuildersOrCallback::Builders(graph_builders) => {
+                        let mut ident_stack: Vec<syn::Ident> = Vec::new();
+                        let mut singleton_access_counters: HashMap<*const RefCell<HydroNode>, u32> =
+                            HashMap::new();
+
+                        // Look up each captured ref's ident from built_tees
+                        for (ref_node, _is_mut) in f.singleton_refs.iter() {
+                            let HydroNode::Reference { inner, .. } = ref_node else {
+                                panic!("singleton_refs should only contain HydroNode::Reference");
+                            };
+                            let ptr = inner.0.as_ref() as *const RefCell<HydroNode>;
+                            let idents = built_tees.get(&ptr).expect(
+                                "ForEach singleton ref not found in built_tees — ref node was not emitted",
+                            );
+                            ident_stack.push(idents[0].clone());
+                        }
+
+                        let f_tokens =
+                            f.emit_tokens(&mut ident_stack, &mut singleton_access_counters);
+
                         graph_builders
                             .get_dfir_mut(&input.metadata().location_id)
                             .add_dfir(
                                 parse_quote! {
-                                    #input_ident -> for_each(#f);
+                                    #input_ident -> for_each(#f_tokens);
                                 },
                                 None,
                                 Some(&next_stmt_id.to_string()),
@@ -1703,8 +1725,11 @@ impl HydroRoot {
 
     pub fn visit_debug_expr(&mut self, mut transform: impl FnMut(&mut DebugExpr)) {
         match self {
-            HydroRoot::ForEach { f, .. } | HydroRoot::DestSink { sink: f, .. } => {
-                transform(f);
+            HydroRoot::ForEach { f, .. } => {
+                transform(&mut f.expr);
+            }
+            HydroRoot::DestSink { sink, .. } => {
+                transform(sink);
             }
             HydroRoot::SendExternal { .. }
             | HydroRoot::CycleSink { .. }
