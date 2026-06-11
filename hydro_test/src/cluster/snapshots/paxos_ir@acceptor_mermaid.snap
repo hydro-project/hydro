@@ -116,12 +116,12 @@ linkStyle default stroke:#aaa
 50v1--x51v1; linkStyle 53 stroke:red
 51v1-->52v1
 2v1
+34v1
+35v1
 16v1
 17v1
 24v1
 25v1
-35v1
-34v1
 subgraph var_cycle_2 ["var <tt>cycle_2</tt>"]
     style var_cycle_2 fill:transparent
     52v1

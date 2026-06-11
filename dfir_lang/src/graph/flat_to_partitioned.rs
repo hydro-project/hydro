@@ -1,115 +1,82 @@
 //! Subgraph partioning algorithm
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use itertools::Itertools;
-use proc_macro2::Span;
 use slotmap::{SecondaryMap, SparseSecondaryMap};
 
 use super::meta_graph::DfirGraph;
 use super::ops::{DelayType, FloType};
-use super::{
-    Color, GraphEdgeId, GraphNode, GraphNodeId, GraphSubgraphId, HandoffKind, graph_algorithms,
-};
+use super::{Color, GraphEdgeId, GraphNode, GraphNodeId, HandoffKind};
 use crate::diagnostic::{Diagnostic, Level};
-use crate::union_find::UnionFind;
+use crate::graph::graph_algorithms::SubgraphMerge;
 
-/// Helper struct for tracking barrier crossers, see [`find_barrier_crossers`].
-struct BarrierCrossers {
-    /// Edge barrier crossers, including what type.
-    pub edge_barrier_crossers: SecondaryMap<GraphEdgeId, DelayType>,
-    /// Singleton reference barrier crossers, considered to be [`DelayType::Stratum`].
-    pub singleton_barrier_crossers: Vec<(GraphNodeId, GraphNodeId)>,
-}
-impl BarrierCrossers {
-    /// Iterate pairs of nodes that are across a barrier. Excludes `DelayType::NextIteration` pairs.
-    fn iter_node_pairs<'a>(
-        &'a self,
-        partitioned_graph: &'a DfirGraph,
-    ) -> impl 'a + Iterator<Item = ((GraphNodeId, GraphNodeId), DelayType)> {
-        let edge_pairs_iter = self
-            .edge_barrier_crossers
-            .iter()
-            .map(|(edge_id, &delay_type)| {
-                let src_dst = partitioned_graph.edge(edge_id);
-                (src_dst, delay_type)
-            });
-        let singleton_pairs_iter = self
-            .singleton_barrier_crossers
-            .iter()
-            .map(|&src_dst| (src_dst, DelayType::Stratum));
-        edge_pairs_iter.chain(singleton_pairs_iter)
-    }
+/// Find edge barriers: edges whose destination operator declares an input delay type.
+/// Excludes edges within `loop {}` blocks.
+///
+/// Returns:
+/// - Tick/TickLazy edges keyed by edge ID (for topo-sort exclusion and handoff marking).
+/// - All barrier (src, dst) node pairs (for the enemies set).
+fn find_edge_barriers(
+    partitioned_graph: &DfirGraph,
+) -> (
+    SecondaryMap<GraphEdgeId, DelayType>,
+    Vec<(GraphNodeId, GraphNodeId)>,
+) {
+    let mut tick_edges = SecondaryMap::new();
+    let mut barrier_pairs = Vec::new();
 
-    /// Insert/replace edge.
-    fn replace_edge(&mut self, old_edge_id: GraphEdgeId, new_edge_id: GraphEdgeId) {
-        if let Some(delay_type) = self.edge_barrier_crossers.remove(old_edge_id) {
-            self.edge_barrier_crossers.insert(new_edge_id, delay_type);
+    for (edge_id, (src, dst)) in partitioned_graph.edges() {
+        // Ignore barriers within `loop {` blocks.
+        if partitioned_graph.node_loop(dst).is_some() {
+            continue;
+        }
+        let Some(op_inst) = partitioned_graph.node_op_inst(dst) else {
+            continue;
+        };
+        let (_src_port, dst_port) = partitioned_graph.edge_ports(edge_id);
+        let Some(delay_type) = (op_inst.op_constraints.input_delaytype_fn)(dst_port) else {
+            continue;
+        };
+
+        barrier_pairs.push((src, dst));
+        if matches!(delay_type, DelayType::Tick | DelayType::TickLazy) {
+            tick_edges.insert(edge_id, delay_type);
         }
     }
+
+    (tick_edges, barrier_pairs)
 }
 
-/// Find all the barrier crossers.
-fn find_barrier_crossers(partitioned_graph: &DfirGraph) -> BarrierCrossers {
-    let edge_barrier_crossers = partitioned_graph
-        .edges()
-        .filter(|&(_, (_src, dst))| {
-            // Ignore barriers within `loop {` blocks.
-            partitioned_graph.node_loop(dst).is_none()
-        })
-        .filter_map(|(edge_id, (_src, dst))| {
-            let (_src_port, dst_port) = partitioned_graph.edge_ports(edge_id);
-            let op_constraints = partitioned_graph.node_op_inst(dst)?.op_constraints;
-            let input_barrier = (op_constraints.input_delaytype_fn)(dst_port)?;
-            Some((edge_id, input_barrier))
-        })
-        .collect();
-
-    // Basic singleton barriers: producer → consumer.
-    let mut singleton_barrier_crossers: Vec<(GraphNodeId, GraphNodeId)> = partitioned_graph
-        .node_ids()
-        .flat_map(|dst| {
-            partitioned_graph
-                .node_singleton_references(dst)
-                .iter()
-                .filter_map(|r| r.node_id)
-                .map(move |src_ref| (src_ref, dst))
-        })
-        .collect();
-
-    // Access group ordering barriers: for the same singleton target, operators in
-    // lower access groups must run before operators in higher access groups.
-    // Also: ungrouped mutable refs must run after ungrouped shared refs.
-    let refs_by_target = partitioned_graph.node_singleton_reference_groups();
-    // For each singleton target...
-    for (_singleton, groups) in refs_by_target {
-        // For sequential access groups...
+/// Find handoff reference access group ordering constraints: for the same handoff target, operators in
+/// lower access groups must run before operators in higher access groups.
+fn find_access_group_ordering(partitioned_graph: &DfirGraph) -> Vec<(GraphNodeId, GraphNodeId)> {
+    let mut pairs = Vec::new();
+    let refs_by_target = partitioned_graph.node_handoff_reference_groups();
+    for (_handoff, groups) in refs_by_target {
         for (group_a, group_b) in groups.values().tuple_windows() {
-            // Add ordering barriers so every node in the lower group must run before every node in the higher group.
             for &(node_a, _, _) in group_a {
                 for &(node_b, _, _) in group_b {
                     // TODO(mingwei): handle with diagnostics.
                     assert_ne!(
                         node_a, node_b,
-                        "encounted conflicted or cyclical singleton references\n{:?}\n{:?}",
+                        "encounted conflicted or cyclical handoff references\n{:?}\n{:?}",
                         group_a, group_b,
                     );
-                    singleton_barrier_crossers.push((node_a, node_b));
+                    pairs.push((node_a, node_b));
                 }
             }
         }
     }
-
-    BarrierCrossers {
-        edge_barrier_crossers,
-        singleton_barrier_crossers,
-    }
+    pairs
 }
 
 fn find_subgraph_unionfind(
     partitioned_graph: &DfirGraph,
-    barrier_crossers: &BarrierCrossers,
-) -> (UnionFind<GraphNodeId>, BTreeSet<GraphEdgeId>) {
+    tick_edges: &SecondaryMap<GraphEdgeId, DelayType>,
+    edge_barrier_pairs: &[(GraphNodeId, GraphNodeId)],
+    access_group_pairs: &[(GraphNodeId, GraphNodeId)],
+) -> Result<(SubgraphMerge<GraphNodeId>, BTreeSet<GraphEdgeId>), Diagnostic> {
     // Modality (color) of nodes, push or pull.
     // TODO(mingwei)? This does NOT consider `DelayType` barriers (which generally imply `Pull`),
     // which makes it inconsistant with the final output in `as_code()`. But this doesn't create
@@ -122,10 +89,80 @@ fn find_subgraph_unionfind(
         })
         .collect::<SparseSecondaryMap<_, _>>();
 
-    let mut subgraph_unionfind: UnionFind<GraphNodeId> =
-        UnionFind::with_capacity(partitioned_graph.nodes().len());
+    // Pre-compute all predecessor edges for the topological sort.
+    let mut all_preds: SecondaryMap<GraphNodeId, Vec<GraphNodeId>> = SecondaryMap::new();
 
-    // Will contain all edges which are handoffs. Starts out with all edges and
+    // Pipe predecessors (excluding tick edges which are cross-tick).
+    for (edge_id, (src, dst)) in partitioned_graph.edges() {
+        if !tick_edges.contains_key(edge_id) {
+            all_preds.entry(dst).unwrap().or_default().push(src);
+        }
+    }
+
+    // Handoff references: producer must run before consumer.
+    for node_id in partitioned_graph.node_ids() {
+        for handoff_ref in partitioned_graph.node_handoff_references(node_id).iter() {
+            if let Some(src) = handoff_ref.node_id {
+                all_preds.entry(node_id).unwrap().or_default().push(src);
+                // Extra ordering: if the ref target is a handoff, its pipe consumers
+                // depend on the borrower (borrower runs before consumer).
+                if let GraphNode::Handoff { .. } = partitioned_graph.node(src) {
+                    for (_edge, consumer) in partitioned_graph.node_successors(src) {
+                        all_preds
+                            .entry(consumer)
+                            .unwrap()
+                            .or_default()
+                            .push(node_id);
+                    }
+                }
+            }
+        }
+    }
+
+    // Access group ordering.
+    for &(src, dst) in access_group_pairs {
+        all_preds.entry(dst).unwrap().or_default().push(src);
+    }
+
+    // Build enemies: all node pairs that must not be in the same subgraph.
+    let enemies = edge_barrier_pairs
+        .iter()
+        .copied()
+        .chain(access_group_pairs.iter().copied())
+        .chain(partitioned_graph.node_ids().flat_map(|dst| {
+            partitioned_graph
+                .node_handoff_references(dst)
+                .iter()
+                .filter_map(|r| r.node_id)
+                .map(move |src| (src, dst))
+        }));
+
+    let mut subgraph_unionfind = SubgraphMerge::<GraphNodeId>::new(
+        partitioned_graph.node_ids(),
+        |node_id| all_preds.get(node_id).into_iter().flatten().copied(),
+        enemies,
+    )
+    .map_err(|cycle| {
+        let span = cycle
+            .first()
+            .map(|&node_id| partitioned_graph.node(node_id).span())
+            .unwrap_or_else(proc_macro2::Span::call_site);
+        let node_cycle = cycle
+            .iter()
+            .map(|&node_id| partitioned_graph.node(node_id).to_pretty_string())
+            .collect::<Vec<_>>();
+        Diagnostic::spanned(
+            span,
+            Level::Error,
+            format!(
+                "Cyclical dataflow within a tick is not supported. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks. \
+                Cycle: {:?}",
+                node_cycle,
+            ),
+        )
+    })?;
+
+    // Will contain all edges which need handoffs added. Starts out with all edges and
     // we remove from this set as we combine nodes into subgraphs.
     let mut handoff_edges: BTreeSet<GraphEdgeId> = partitioned_graph.edge_ids().collect();
     // Would sort edges here for priority (for now, no sort/priority).
@@ -141,23 +178,18 @@ fn find_subgraph_unionfind(
         progress = false;
         // TODO(mingwei): Could this iterate `handoff_edges` instead? (Modulo ownership). Then no case (1) below.
         for (edge_id, (src, dst)) in partitioned_graph.edges().collect::<Vec<_>>() {
+            // Ignore existing handoffs, remove `edge_id` from `handoff_edges`.
+            if matches!(partitioned_graph.node(src), GraphNode::Handoff { .. })
+                || matches!(partitioned_graph.node(dst), GraphNode::Handoff { .. })
+            {
+                handoff_edges.remove(&edge_id);
+                continue;
+            }
+
             // Ignore (1) already added edges as well as (2) new self-cycles. (Unless reference edge).
             if subgraph_unionfind.same_set(src, dst) {
                 // Note that the _edge_ `edge_id` might not be in the subgraph even when both `src` and `dst` are. This prevents case 2.
                 // Handoffs will be inserted later for this self-loop.
-                continue;
-            }
-
-            // Do not connect stratum crossers (next edges).
-            if barrier_crossers
-                .iter_node_pairs(partitioned_graph)
-                .any(|((x_src, x_dst), _)| {
-                    (subgraph_unionfind.same_set(x_src, src)
-                        && subgraph_unionfind.same_set(x_dst, dst))
-                        || (subgraph_unionfind.same_set(x_src, dst)
-                            && subgraph_unionfind.same_set(x_dst, src))
-                })
-            {
                 continue;
             }
 
@@ -175,57 +207,25 @@ fn find_subgraph_unionfind(
             if can_connect_colorize(&mut node_color, src, dst) {
                 // At this point we have selected this edge and its src & dst to be
                 // within a single subgraph.
-                subgraph_unionfind.union(src, dst);
-                assert!(handoff_edges.remove(&edge_id));
-                progress = true;
+                let ok = subgraph_unionfind.try_merge(src, dst);
+                if ok {
+                    assert!(handoff_edges.remove(&edge_id));
+                    progress = true;
+                }
             }
         }
     }
 
-    (subgraph_unionfind, handoff_edges)
+    Ok((subgraph_unionfind, handoff_edges))
 }
 
-/// Builds the datastructures for checking which subgraph each node belongs to
-/// after handoffs have already been inserted to partition subgraphs.
-/// This list of nodes in each subgraph are returned in topological sort order.
-fn make_subgraph_collect(
-    partitioned_graph: &DfirGraph,
-    mut subgraph_unionfind: UnionFind<GraphNodeId>,
-) -> SecondaryMap<GraphNodeId, Vec<GraphNodeId>> {
-    // We want the nodes of each subgraph to be listed in topo-sort order.
-    // We could do this on each subgraph, or we could do it all at once on the
-    // whole node graph by ignoring handoffs, which is what we do here:
-    let topo_sort = graph_algorithms::topo_sort(
-        partitioned_graph
-            .nodes()
-            .filter(|&(_, node)| !matches!(node, GraphNode::Handoff { .. }))
-            .map(|(node_id, _)| node_id),
-        |v| {
-            partitioned_graph
-                .node_predecessor_nodes(v)
-                .filter(|&pred_id| {
-                    let pred = partitioned_graph.node(pred_id);
-                    !matches!(pred, GraphNode::Handoff { .. })
-                })
-        },
-    )
-    .expect("Subgraphs are in-out trees.");
-
-    let mut grouped_nodes: SecondaryMap<GraphNodeId, Vec<GraphNodeId>> = Default::default();
-    for node_id in topo_sort {
-        let repr_node = subgraph_unionfind.find(node_id);
-        if !grouped_nodes.contains_key(repr_node) {
-            grouped_nodes.insert(repr_node, Default::default());
-        }
-        grouped_nodes[repr_node].push(node_id);
-    }
-    grouped_nodes
-}
-
-/// Find subgraph and insert handoffs.
-/// Modifies barrier_crossers so that the edge OUT of an inserted handoff has
-/// the DelayType data.
-fn make_subgraphs(partitioned_graph: &mut DfirGraph, barrier_crossers: &mut BarrierCrossers) {
+/// Find subgraphs and insert handoffs.
+fn make_subgraphs(
+    partitioned_graph: &mut DfirGraph,
+    tick_edges: &mut SecondaryMap<GraphEdgeId, DelayType>,
+    edge_barrier_pairs: &[(GraphNodeId, GraphNodeId)],
+    access_group_pairs: &[(GraphNodeId, GraphNodeId)],
+) -> Result<(), Diagnostic> {
     // Algorithm:
     // 1. Each node begins as its own subgraph.
     // 2. Collect edges. (Future optimization: sort so edges which should not be split across a handoff come first).
@@ -234,8 +234,12 @@ fn make_subgraphs(partitioned_graph: &mut DfirGraph, barrier_crossers: &mut Barr
     // TODO(mingwei):
     // self.partitioned_graph.assert_valid();
 
-    let (subgraph_unionfind, handoff_edges) =
-        find_subgraph_unionfind(partitioned_graph, barrier_crossers);
+    let (subgraph_merge, handoff_edges) = find_subgraph_unionfind(
+        partitioned_graph,
+        tick_edges,
+        edge_barrier_pairs,
+        access_group_pairs,
+    )?;
 
     // Insert handoffs between subgraphs (or on subgraph self-loop edges)
     for edge_id in handoff_edges {
@@ -257,17 +261,31 @@ fn make_subgraphs(partitioned_graph: &mut DfirGraph, barrier_crossers: &mut Barr
         };
         let (_node_id, out_edge_id) = partitioned_graph.insert_intermediate_node(edge_id, hoff);
 
-        // Update barrier_crossers for inserted node.
-        barrier_crossers.replace_edge(edge_id, out_edge_id);
+        // Update tick_edges for inserted node.
+        if let Some(delay_type) = tick_edges.remove(edge_id) {
+            tick_edges.insert(out_edge_id, delay_type);
+        }
     }
 
-    // Determine node's subgraph and subgraph's nodes.
-    // This list of nodes in each subgraph are to be in topological sort order.
-    // Eventually returned directly in the [`DfirGraph`].
-    let grouped_nodes = make_subgraph_collect(partitioned_graph, subgraph_unionfind);
-    for (_repr_node, member_nodes) in grouped_nodes {
-        partitioned_graph.insert_subgraph(member_nodes).unwrap();
+    // Register subgraphs. SubgraphMerge maintains operators in topo-sorted order per subgraph.
+    // Filter out handoff nodes — they are not part of any subgraph.
+    let mut subgraph_toposort = Vec::new();
+    for nodes in subgraph_merge.subgraphs() {
+        if nodes.is_empty() {
+            continue;
+        }
+        // Skip single-node "subgraphs" that are handoff nodes.
+        if nodes
+            .iter()
+            .any(|&n| matches!(partitioned_graph.node(n), GraphNode::Handoff { .. }))
+        {
+            continue;
+        }
+        let sg_id = partitioned_graph.insert_subgraph(nodes.to_vec()).unwrap();
+        subgraph_toposort.push(sg_id);
     }
+    partitioned_graph.set_subgraph_toposort(subgraph_toposort);
+    Ok(())
 }
 
 /// Set `src` or `dst` color if `None` based on the other (if possible):
@@ -329,141 +347,50 @@ fn can_connect_colorize(
     can_connect
 }
 
-/// Topologically sorts subgraphs and marks tick-boundary (`defer_tick` / `defer_tick_lazy`)
-/// handoffs with their delay type for double-buffered codegen in `as_code`.
-///
-/// Returns an error if there is an intra-tick cycle (i.e. the subgraph DAG has a cycle when
-/// tick-boundary edges are excluded).
-fn order_subgraphs(
+/// Marks tick-boundary (`defer_tick` / `defer_tick_lazy`) handoffs with their delay type
+/// for double-buffered codegen in `as_code`.
+fn mark_tick_boundary_handoffs(
     partitioned_graph: &mut DfirGraph,
-    barrier_crossers: &BarrierCrossers,
-) -> Result<(), Diagnostic> {
-    // Build a subgraph-level directed graph, excluding tick-boundary edges.
-    let mut sg_preds: BTreeMap<GraphSubgraphId, Vec<GraphSubgraphId>> = Default::default();
-
-    // Track which handoff edges are tick-boundary, keyed by (src_sg, dst_sg).
-    let mut tick_edges: Vec<(GraphEdgeId, DelayType)> = Vec::new();
-
-    // Iterate handoffs between subgraphs.
-    for (hoff_id, hoff) in partitioned_graph.nodes() {
-        if !matches!(hoff, GraphNode::Handoff { .. }) {
-            continue;
-        }
-
-        // Handoffs may have 0 successors if only used by reference. Skip ordering those.
-        if partitioned_graph.node_degree_out(hoff_id) == 0 {
-            continue;
-        }
-        assert_eq!(1, partitioned_graph.node_degree_out(hoff_id));
-
-        let (succ_edge, succ) = partitioned_graph.node_successors(hoff_id).next().unwrap();
-
-        let succ_edge_delaytype = barrier_crossers
-            .edge_barrier_crossers
-            .get(succ_edge)
-            .copied();
-        // Tick edges are excluded from the topo sort — they are cross-tick by design.
-        if let Some(delay_type @ (DelayType::Tick | DelayType::TickLazy)) = succ_edge_delaytype {
-            tick_edges.push((succ_edge, delay_type));
-            continue;
-        }
-
-        assert_eq!(1, partitioned_graph.node_degree_in(hoff_id));
-        let (_edge_id, pred) = partitioned_graph.node_predecessors(hoff_id).next().unwrap();
-
-        let pred_sg = partitioned_graph
-            .node_subgraph(pred)
-            .expect("Handoff pred not in subgraph, may be a doubled/adjacent handoff");
-        let succ_sg = partitioned_graph
-            .node_subgraph(succ)
-            .expect("Handoff succ not in subgraph, may be a doubled/adjacent handoff");
-
-        sg_preds.entry(succ_sg).or_default().push(pred_sg);
-    }
-    // Include singleton reference edges.
-    for &(pred, succ) in barrier_crossers.singleton_barrier_crossers.iter() {
-        assert_ne!(pred, succ);
-        // For handoff nodes (which have no subgraph), use the predecessor's subgraph.
-        let pred_sg = if let Some(sg) = partitioned_graph.node_subgraph(pred) {
-            sg
-        } else {
-            // pred is a handoff node — find its predecessor operator's subgraph.
-            let (_edge, pred_pred) = partitioned_graph
-                .node_predecessors(pred)
-                .next()
-                .expect("handoff must have a predecessor");
-            partitioned_graph.node_subgraph(pred_pred).unwrap()
-        };
-        let succ_sg = partitioned_graph.node_subgraph(succ).unwrap();
-        if pred_sg == succ_sg {
-            continue;
-        }
-        sg_preds.entry(succ_sg).or_default().push(pred_sg);
-
-        // For handoff nodes: borrower must run before pipe consumer.
-        // All handoffs should have at most one successor.
-        if matches!(partitioned_graph.node(pred), GraphNode::Handoff { .. }) {
-            assert!(
-                partitioned_graph.node_degree_out(pred) <= 1,
-                "handoff should have at most one successor"
-            );
-            if let Some((_edge, consumer)) = partitioned_graph.node_successors(pred).next() {
-                let consumer_sg = partitioned_graph.node_subgraph(consumer).unwrap();
-                if consumer_sg != succ_sg {
-                    sg_preds.entry(consumer_sg).or_default().push(succ_sg);
-                }
+    tick_edges: &SecondaryMap<GraphEdgeId, DelayType>,
+) {
+    let tick_handoffs: Vec<_> = partitioned_graph
+        .nodes()
+        .filter_map(|(hoff_id, hoff)| {
+            if !matches!(hoff, GraphNode::Handoff { .. }) {
+                return None;
             }
-        }
-    }
-
-    // Topological sort — rejects intra-tick cycles.
-    if let Err(cycle) = graph_algorithms::topo_sort(partitioned_graph.subgraph_ids(), |v| {
-        sg_preds.get(&v).into_iter().flatten().copied()
-    }) {
-        let span = cycle
-            .first()
-            .and_then(|&sg_id| partitioned_graph.subgraph(sg_id).first().copied())
-            .map(|n| partitioned_graph.node(n).span())
-            .unwrap_or_else(Span::call_site);
-        return Err(Diagnostic::spanned(
-            span,
-            Level::Error,
-            format!("Cyclical dataflow within a tick is not supported. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks.
-Cycle: {:?}", cycle),
-        ));
-    }
-
-    // Mark tick-boundary handoffs with their delay type.
-    // These handoffs are excluded from the intra-tick topo ordering in
-    // `as_code`; instead, their double-buffered handoff semantics defer data
-    // across the tick boundary to the next tick.
-    for (edge_id, delay_type) in tick_edges {
-        let (hoff, _dst) = partitioned_graph.edge(edge_id);
-        assert!(matches!(
-            partitioned_graph.node(hoff),
-            GraphNode::Handoff {
-                kind: HandoffKind::Vec,
-                ..
+            if partitioned_graph.node_degree_out(hoff_id) == 0 {
+                return None;
             }
-        ));
-        partitioned_graph.set_handoff_delay_type(hoff, delay_type);
+            let (succ_edge, _) = partitioned_graph.node_successors(hoff_id).next().unwrap();
+            let &delay_type = tick_edges.get(succ_edge)?;
+            Some((hoff_id, delay_type))
+        })
+        .collect();
+
+    for (hoff_id, delay_type) in tick_handoffs {
+        partitioned_graph.set_handoff_delay_type(hoff_id, delay_type);
     }
-    Ok(())
 }
 
 /// Main method for this module. Partitions a flat [`DfirGraph`] into one with subgraphs.
 ///
 /// Returns an error if an intra-tick cycle exists in the graph.
 pub fn partition_graph(flat_graph: DfirGraph) -> Result<DfirGraph, Diagnostic> {
-    // Pre-find barrier crossers (input edges with a `DelayType`).
-    let mut barrier_crossers = find_barrier_crossers(&flat_graph);
+    let (mut tick_edges, edge_barrier_pairs) = find_edge_barriers(&flat_graph);
+    let access_group_pairs = find_access_group_ordering(&flat_graph);
     let mut partitioned_graph = flat_graph;
 
-    // Partition into subgraphs.
-    make_subgraphs(&mut partitioned_graph, &mut barrier_crossers);
+    // Partition into subgraphs and insert handoffs.
+    make_subgraphs(
+        &mut partitioned_graph,
+        &mut tick_edges,
+        &edge_barrier_pairs,
+        &access_group_pairs,
+    )?;
 
-    // Topologically order subgraphs and mark tick-boundary handoffs for double-buffering.
-    order_subgraphs(&mut partitioned_graph, &barrier_crossers)?;
+    // Mark tick-boundary handoffs for double-buffering.
+    mark_tick_boundary_handoffs(&mut partitioned_graph, &tick_edges);
 
     Ok(partitioned_graph)
 }

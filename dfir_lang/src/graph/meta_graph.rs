@@ -27,9 +27,9 @@ use crate::diagnostic::{Diagnostic, Diagnostics, Level};
 use crate::pretty_span::{PrettyRowCol, PrettySpan};
 use crate::process_singletons;
 
-/// A resolved singleton reference: the target node ID plus mutability and access group info.
+/// A resolved handoff reference: the target node ID plus mutability and access group info.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct ResolvedSingletonRef {
+pub struct ResolvedHandoffRef {
     /// The resolved target node ID (`None` if unresolved/error).
     pub node_id: Option<GraphNodeId>,
     /// Whether this is a mutable reference (`#mut var`).
@@ -79,9 +79,11 @@ pub struct DfirGraph {
 
     /// Which nodes belong to each subgraph.
     subgraph_nodes: SlotMap<GraphSubgraphId, Vec<GraphNodeId>>,
+    /// Subgraph IDs in topological sort order (set during partitioning).
+    subgraph_toposort: Vec<GraphSubgraphId>,
 
-    /// Resolved singletons varnames references, per node.
-    node_singleton_references: SparseSecondaryMap<GraphNodeId, Vec<ResolvedSingletonRef>>,
+    /// Resolved handoff varnames references, per node.
+    node_handoff_references: SparseSecondaryMap<GraphNodeId, Vec<ResolvedHandoffRef>>,
     /// What variable name each graph node belongs to (if any). For debugging (graph writing) purposes only.
     node_varnames: SparseSecondaryMap<GraphNodeId, Varname>,
 
@@ -536,39 +538,39 @@ impl DfirGraph {
     }
 }
 
-/// Singleton references.
+/// Handoff references.
 impl DfirGraph {
-    /// Set the singletons referenced for the `node_id` operator. Each reference corresponds to the
+    /// Set the handoff references for the `node_id` operator. Each reference corresponds to the
     /// same index in the [`crate::parse::Operator::singletons_referenced`] vec.
-    pub fn set_node_singleton_references(
+    pub fn set_node_handoff_references(
         &mut self,
         node_id: GraphNodeId,
-        singletons_referenced: Vec<ResolvedSingletonRef>,
-    ) -> Option<Vec<ResolvedSingletonRef>> {
-        self.node_singleton_references
+        singletons_referenced: Vec<ResolvedHandoffRef>,
+    ) -> Option<Vec<ResolvedHandoffRef>> {
+        self.node_handoff_references
             .insert(node_id, singletons_referenced)
     }
 
-    /// Gets the singletons referenced by a node. Returns an empty slice for non-operators and
-    /// operators that do not reference singletons.
-    pub fn node_singleton_references(&self, node_id: GraphNodeId) -> &[ResolvedSingletonRef] {
-        self.node_singleton_references
+    /// Gets the handoff references for a node. Returns an empty slice for non-operators and
+    /// operators that do not reference handoffs.
+    pub fn node_handoff_references(&self, node_id: GraphNodeId) -> &[ResolvedHandoffRef] {
+        self.node_handoff_references
             .get(node_id)
             .map(std::ops::Deref::deref)
             .unwrap_or_default()
     }
 
-    /// Collect all refs, grouped by the singleton they're pointing at, then by the access group idx `Option<u32>`.
-    pub fn node_singleton_reference_groups(&self) -> NodeSingletonReferenceGroups<'_> {
-        let mut singleton_references = NodeSingletonReferenceGroups::new();
+    /// Collect all refs, grouped by the handoff they're pointing at, then by the access group idx `Option<u32>`.
+    pub fn node_handoff_reference_groups(&self) -> NodeHandoffReferenceGroups<'_> {
+        let mut handoff_references = NodeHandoffReferenceGroups::new();
         for node_id in self.node_ids() {
             if let GraphNode::Operator(operator) = self.node(node_id) {
-                let resolved = self.node_singleton_references(node_id);
+                let resolved = self.node_handoff_references(node_id);
                 for (resolved_ref, ref_token) in
                     resolved.iter().zip(operator.singletons_referenced.iter())
                 {
                     if let Some(target_nid) = resolved_ref.node_id {
-                        singleton_references
+                        handoff_references
                             .entry(target_nid)
                             .or_default()
                             .entry(resolved_ref.access_group)
@@ -578,16 +580,14 @@ impl DfirGraph {
                 }
             }
         }
-        singleton_references
+        handoff_references
     }
 }
 
-/// Per-node singleton references, in turn grouped by access group.
-/// Map: singleton_node_id -> access_group -> (source `GraphNodeId`, `ResolvedSingletonRef`, `#ref` span)
-pub type NodeSingletonReferenceGroups<'a> = BTreeMap<
-    GraphNodeId,
-    BTreeMap<Option<u32>, Vec<(GraphNodeId, &'a ResolvedSingletonRef, Span)>>,
->;
+/// Per-node handoff references, in turn grouped by access group.
+/// Map: handoff_node_id -> access_group -> (source `GraphNodeId`, `ResolvedHandoffRef`, `#ref` span)
+pub type NodeHandoffReferenceGroups<'a> =
+    BTreeMap<GraphNodeId, BTreeMap<Option<u32>, Vec<(GraphNodeId, &'a ResolvedHandoffRef, Span)>>>;
 
 /// Module methods.
 impl DfirGraph {
@@ -748,6 +748,16 @@ impl DfirGraph {
         self.subgraph_nodes.keys()
     }
 
+    /// Subgraph IDs in topological sort order.
+    pub fn subgraph_toposort(&self) -> &[GraphSubgraphId] {
+        &self.subgraph_toposort
+    }
+
+    /// Set the topological sort order for subgraphs.
+    pub fn set_subgraph_toposort(&mut self, order: Vec<GraphSubgraphId>) {
+        self.subgraph_toposort = order;
+    }
+
     /// Iterator over all subgraphs, ID and members: `(GraphSubgraphId, Vec<GraphNodeId>)`.
     pub fn subgraphs(&self) -> slotmap::basic::Iter<'_, GraphSubgraphId, Vec<GraphNodeId>> {
         self.subgraph_nodes.iter()
@@ -849,7 +859,7 @@ impl DfirGraph {
         Ident::new(&format!("hoff_{:?}_back", hoff_id.data()), span)
     }
 
-    /// Resolve the singletons via [`Self::node_singleton_references`] for the given `node_id`.
+    /// Resolve the handoff references via [`Self::node_handoff_references`] for the given `node_id`.
     /// Returns token streams for each reference:
     /// - For HandoffKind::Singleton: `buf.as_ref().unwrap()` (shared, `&T`) or
     ///   `buf.as_mut().unwrap()` (mutable, `&mut T`)
@@ -858,7 +868,7 @@ impl DfirGraph {
     /// - For HandoffKind::Vec: `&buf` (shared, `&Vec<T>`) or
     ///   `&mut buf` (mutable, `&mut Vec<T>`)
     fn helper_resolve_singletons(&self, node_id: GraphNodeId, span: Span) -> Vec<TokenStream> {
-        self.node_singleton_references(node_id)
+        self.node_handoff_references(node_id)
             .iter()
             .map(|resolved_ref| {
                 // TODO(mingwei): this `expect` should be caught in error checking
@@ -889,9 +899,9 @@ impl DfirGraph {
                             quote_spanned! {span=> &#buf_ident }
                         }
                     }
-                    _ => unreachable!(
-                        "Only handoff nodes should be reachable as singleton references"
-                    ),
+                    _ => {
+                        unreachable!("Only handoff nodes should be reachable as handoff references")
+                    }
                 }
             })
             .collect::<Vec<_>>()
@@ -919,12 +929,16 @@ impl DfirGraph {
             }
             // Receivers from the handoff. (Should really only be one).
             for (_edge, succ_id) in self.node_successors(hoff_id) {
-                let succ_sg = self.node_subgraph(succ_id).unwrap();
+                let succ_sg = self
+                    .node_subgraph(succ_id)
+                    .expect("bug: successor not in subgraph, may be a doubled/adjacent handoff");
                 subgraph_handoffs[succ_sg].0.push(hoff_id);
             }
             // Senders into the handoff. (Should really only be one).
             for (_edge, pred_id) in self.node_predecessors(hoff_id) {
-                let pred_sg = self.node_subgraph(pred_id).unwrap();
+                let pred_sg = self
+                    .node_subgraph(pred_id)
+                    .expect("bug: predecessor not in subgraph, may be a doubled/adjacent handoff");
                 subgraph_handoffs[pred_sg].1.push(hoff_id);
             }
         }
@@ -1043,103 +1057,12 @@ impl DfirGraph {
         // 2. Collect per-subgraph recv & send handoffs.
         let subgraph_handoffs = self.helper_collect_subgraph_handoffs();
 
-        // 3. Sort subgraphs topologically and collect non-lazy defer_tick buffer idents.
-        //
-        // Handoffs marked with a `DelayType` (Tick/TickLazy) are tick-boundary back-edges.
-        // These are excluded from the topo sort (no ordering constraint). Double-buffering
-        // ensures data written by the producer in tick N is only visible to the consumer
-        // in tick N+1, regardless of execution order.
-        //
-        // While iterating handoffs, we also collect buffer idents for non-lazy tick-boundary
-        // edges (defer_tick). When these buffers are non-empty at end of tick, we set
-        // can_start_tick so that run_available continues ticking.
-        //
-        // TODO(mingwei): right now we topo sort more than once in the build process, we should keep a single order.
-        let all_subgraphs = {
-            // Build predecessor map for subgraphs.
-            let mut sg_preds: SecondaryMap<GraphSubgraphId, Vec<GraphSubgraphId>> =
-                SecondaryMap::<_, Vec<_>>::with_capacity(self.subgraph_nodes.len());
-            for (hoff_id, hoff) in self.nodes() {
-                if !matches!(hoff, GraphNode::Handoff { .. }) {
-                    // Not a handoff; skip.
-                    continue;
-                }
-                if 0 == self.node_successors(hoff_id).len() {
-                    // Is a handoff only used by reference, not consumed.
-                    continue;
-                }
-                assert_eq!(1, self.node_successors(hoff_id).len());
-                assert_eq!(1, self.node_predecessors(hoff_id).len());
-                let (_edge_id, pred) = self.node_predecessors(hoff_id).next().unwrap();
-                let (_edge_id, succ) = self.node_successors(hoff_id).next().unwrap();
-                let pred_sg = self.node_subgraph(pred).unwrap();
-                let succ_sg = self.node_subgraph(succ).unwrap();
-                if pred_sg == succ_sg {
-                    panic!("bug: unexpected subgraph self-handoff cycle");
-                }
-                // Only consider non-back-edges.
-                if !back_edge_hoffs_and_lazyness.contains_key(hoff_id) {
-                    sg_preds.entry(succ_sg).unwrap().or_default().push(pred_sg);
-                }
-            }
-
-            // Include singleton reference edges: if node A references the
-            // singleton output of node B, then A's subgraph must run after B's.
-            for dst_id in self.node_ids() {
-                for src_ref_id in self
-                    .node_singleton_references(dst_id)
-                    .iter()
-                    .filter_map(|r| r.node_id)
-                {
-                    // For handoff nodes (no subgraph), use the predecessor's subgraph.
-                    let src_sg = if let Some(sg) = self.node_subgraph(src_ref_id) {
-                        sg
-                    } else {
-                        let (_edge, pred) = self
-                            .node_predecessors(src_ref_id)
-                            .next()
-                            .expect("handoff must have a predecessor");
-                        self.node_subgraph(pred).unwrap()
-                    };
-                    let dst_sg = self
-                        .node_subgraph(dst_id)
-                        .expect("bug: singleton ref consumer must belong to a subgraph");
-                    if src_sg != dst_sg {
-                        sg_preds.entry(dst_sg).unwrap().or_default().push(src_sg);
-                    }
-
-                    // Ensure the borrower runs before the pipe consumer
-                    // (which takes/drains the value).
-                    // All handoffs should have at most one successor.
-                    if self.node_subgraph(src_ref_id).is_none() {
-                        assert!(
-                            self.node_degree_out(src_ref_id) <= 1,
-                            "handoff should have at most one successor"
-                        );
-                        if let Some((_edge, succ_id)) = self.node_successors(src_ref_id).next()
-                            && let Some(consumer_sg) = self.node_subgraph(succ_id)
-                            && consumer_sg != dst_sg
-                        {
-                            sg_preds
-                                .entry(consumer_sg)
-                                .unwrap()
-                                .or_default()
-                                .push(dst_sg);
-                        }
-                    }
-                }
-            }
-
-            let topo_sort = super::graph_algorithms::topo_sort(self.subgraph_ids(), |sg_id| {
-                sg_preds.get(sg_id).into_iter().flatten().copied()
-            })
-            .expect("bug: unexpected cycle between subgraphs within the tick");
-
-            topo_sort
-                .into_iter()
-                .map(|sg_id| (sg_id, self.subgraph(sg_id)))
-                .collect::<Vec<_>>()
-        };
+        // 3. Use pre-computed subgraph topological order.
+        let all_subgraphs: Vec<_> = self
+            .subgraph_toposort()
+            .iter()
+            .map(|&sg_id| (sg_id, self.subgraph(sg_id)))
+            .collect();
 
         // TODO(mingwei): If a handoff has no pipe consumers we should drop it as soon as possible, after all reference
         // consumers. Right now we just let these handoffs die at the end of the tick.
@@ -2051,7 +1974,7 @@ impl DfirGraph {
         if !write_config.no_references {
             for dst_id in self.node_ids() {
                 for src_ref_id in self
-                    .node_singleton_references(dst_id)
+                    .node_handoff_references(dst_id)
                     .iter()
                     .filter_map(|r| r.node_id)
                 {

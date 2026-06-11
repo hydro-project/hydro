@@ -1,6 +1,5 @@
-error: Cyclical dataflow within a tick is not supported. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks.
-       Cycle: [GraphSubgraphId(1v1)]
- --> tests/compile-fail/stable/surface_negative_loop.rs:6:9
+error: Cyclical dataflow within a tick is not supported. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks. Cycle: ["difference()"]
+ --> tests/compile-fail/stable/surface_negative_loop.rs:5:16
   |
-6 |         source_iter([1]) -> [pos]diff;
-  |         ^^^^^^^^^^^
+5 |         diff = difference();
+  |                ^^^^^^^^^^

@@ -1,5 +1,6 @@
 ---
 source: dfir_rs/tests/surface_cross_singleton.rs
+assertion_line: 58
 expression: df.meta_graph().unwrap().to_dot(cfg)
 ---
 digraph {
@@ -27,7 +28,6 @@ digraph {
     n20v1 [label="(n20v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n21v1 [label="(n21v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n22v1 [label="(n22v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
-    n23v1 [label="(n23v1) handoff", shape=parallelogram, fillcolor="#ddddff"]
     n2v1 -> n3v1
     n1v1 -> n15v1
     n3v1 -> n16v1
@@ -41,8 +41,8 @@ digraph {
     n9v1 -> n19v1
     n3v1 -> n20v1
     n11v1 -> n21v1
-    n13v1 -> n22v1
-    n12v1 -> n23v1
+    n13v1 -> n14v1
+    n12v1 -> n22v1
     n15v1 -> n2v1 [color=red]
     n16v1 -> n8v1 [label="input"]
     n17v1 -> n4v1 [color=red]
@@ -50,8 +50,7 @@ digraph {
     n19v1 -> n11v1 [color=red]
     n20v1 -> n12v1 [label="input"]
     n21v1 -> n12v1 [label="single", color=red]
-    n22v1 -> n14v1
-    n23v1 -> n13v1 [color=red]
+    n22v1 -> n13v1 [color=red]
     subgraph sg_1v1 {
         cluster=true
         fillcolor="#dddddd"
@@ -137,16 +136,6 @@ digraph {
             cluster=true
             label="var deferred_stream"
             n13v1
-        }
-    }
-    subgraph sg_8v1 {
-        cluster=true
-        fillcolor="#dddddd"
-        style=filled
-        label = "sg_8v1"
-        subgraph sg_8v1_var_deferred_stream {
-            cluster=true
-            label="var deferred_stream"
             n14v1
         }
     }

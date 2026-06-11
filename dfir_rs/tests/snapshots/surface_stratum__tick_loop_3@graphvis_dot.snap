@@ -46,9 +46,9 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_3v1"
-        n3v1
         n6v1
         n7v1
+        n3v1
         n8v1
         subgraph sg_3v1_var_a {
             cluster=true

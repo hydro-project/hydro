@@ -1,10 +1,17 @@
-error: proc macro panicked
- --> tests/compile-fail/nightly/surface_handoff_adjacent.rs:4:18
+error: Adjacent handoff/singleton operators are not allowed. Remove one or insert an operator between them.
+ --> tests/compile-fail/nightly/surface_handoff_adjacent.rs:5:53
   |
-4 |       let mut df = dfir_syntax! {
-  |  __________________^
-5 | |         source_iter(0..10) -> handoff() -> tee() -> handoff() -> for_each(std::mem::drop);
-6 | |     };
-  | |_____^
+5 |         source_iter(0..10) -> handoff() -> tee() -> handoff() -> for_each(std::mem::drop);
+  |                                                     ^^^^^^^
+
+warning: use of deprecated struct `main::diagnostic_11426154708734257887::Warning`: `tee` should have at least 2 output(s), actually has 1.
+ --> tests/compile-fail/nightly/surface_handoff_adjacent.rs:5:44
   |
-  = help: message: Handoff succ not in subgraph, may be a doubled/adjacent handoff
+5 |         source_iter(0..10) -> handoff() -> tee() -> handoff() -> for_each(std::mem::drop);
+  |                                            ^^^
+  |
+note: the lint level is defined here
+ --> tests/compile-fail/nightly/surface_handoff_adjacent.rs:5:44
+  |
+5 |         source_iter(0..10) -> handoff() -> tee() -> handoff() -> for_each(std::mem::drop);
+  |                                            ^^^
