@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["topo_sort"]};
+window.SIDEBAR_ITEMS = {"fn":["topo_sort"],"struct":["SubgraphMerge"]};
