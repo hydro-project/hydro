@@ -22,7 +22,7 @@ hydro_test = { path = "../hydro_test", version = "0.0.0", features = ["stageleft
 stageleft = { workspace = true, optional = true }
 
 [dev-dependencies]
-dfir_rs = { path = "../dfir_rs", version = "^0.17.0-alpha.0", default-features = false }
+dfir_rs = { path = "../dfir_rs", version = "^0.17.0-alpha.1", default-features = false }
 tokio = { version = "1.29.0", features = ["full"] }
 
 [build-dependencies]

@@ -28,7 +28,7 @@ roaring = { version = "0.11.0", default-features = false }
 sealed = "0.6.0"
 serde = { version = "1.0.197", features = ["derive"], optional = true, default-features = false }
 variadics = { path = "../variadics", version = "^0.2.0-alpha.1", default-features = false }
-variadics_macro = { path = "../variadics_macro", version = "^0.8.0-alpha.0" }
+variadics_macro = { path = "../variadics_macro", version = "^0.8.0-alpha.1" }
 
 # coax cargo-smart-release into publishing this crate.
 # https://github.com/hydro-project/hydro/blob/main/RELEASING.md#addendum-adding-new-crates

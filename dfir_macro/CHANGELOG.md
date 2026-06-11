@@ -5,6 +5,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.17.0-alpha.1 (2026-06-11)
+
+### Chore
+
+ - <csr-id-e70eab6a0c793ef095e2cd747220d5419f7bf1a4/> revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version ([`e70eab6`](https://github.com/hydro-project/hydro/commit/e70eab6a0c793ef095e2cd747220d5419f7bf1a4))
+</details>
+
+## 0.17.0-alpha.0 (2026-06-10)
+
+### Bug Fixes
+
+ - <csr-id-938cf91f4adff7b96f3f3536f4427f38f07f4ea6/> gate proc_macro_diagnostics behind codegen feature, remove several stabilized features. [ci-full]
+
+### Refactor (BREAKING)
+
+ - <csr-id-bfec02db5b1176505770eb30db6d0ce537696f8b/> rename Push::poll_flush to Push::poll_finalize in dfir_pipes
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release.
+ - 40 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 2 unique issues were worked on: [#2853](https://github.com/hydro-project/hydro/issues/2853), [#2878](https://github.com/hydro-project/hydro/issues/2878)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2853](https://github.com/hydro-project/hydro/issues/2853)**
+    - Rename Push::poll_flush to Push::poll_finalize in dfir_pipes ([`bfec02d`](https://github.com/hydro-project/hydro/commit/bfec02db5b1176505770eb30db6d0ce537696f8b))
+ * **[#2878](https://github.com/hydro-project/hydro/issues/2878)**
+    - Gate proc_macro_diagnostics behind codegen feature, remove several stabilized features. [ci-full] ([`938cf91`](https://github.com/hydro-project/hydro/commit/938cf91f4adff7b96f3f3536f4427f38f07f4ea6))
+ * **Uncategorized**
+    - Release hydro_build_utils v0.1.1-alpha.0, dfir_lang v1.0.0-alpha.0, dfir_macro v0.17.0-alpha.0, variadics v1.0.0-alpha.0, variadics_macro v0.8.0-alpha.0, lattices v0.8.0-alpha.0, dfir_pipes v0.1.0-alpha.0, sinktools v0.2.0-alpha.0, hydro_deploy_integration v0.17.0-alpha.0, dfir_rs v0.17.0-alpha.0, hydro_deploy v0.17.0-alpha.0, hydro_lang v0.17.0-alpha.0, hydro_std v0.17.0-alpha.0, safety bump 10 crates ([`12e7666`](https://github.com/hydro-project/hydro/commit/12e76666f7104f81b48de5ddf397b8e72c8a6711))
+</details>
+
 ## 0.16.0 (2026-05-01)
 
 ### New Features
@@ -14,18 +71,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    
    1. feat(dfir_rs): expose `current_tick()` on `InlineDfir` via shared
    `Rc<Cell<TickInstant>>`
-      - Resolves #2741
+   - Resolves #2741
    - Shares tick counter between InlineContext (inside closure) and
    InlineDfir (outer handle)
-      - Updated codegen in dfir_lang and dfir_macro
+   - Updated codegen in dfir_lang and dfir_macro
    
    2. refactor(dfir_rs): convert 55+ non-blocked tests to
    dfir_syntax_inline!
-      - surface_scan.rs (8/8), surface_state_scheduling.rs (8/8),
-        surface_difference.rs (8/10), surface_codegen.rs (17/20),
-        surface_fold.rs (6/7), surface_fold_keyed.rs (4/5),
-        surface_reduce_keyed.rs (3/4), surface_unique.rs (5/6),
-        surface_zip_unzip.rs (3/5), surface_lattice_fold.rs (1/3)
+   - surface_scan.rs (8/8), surface_state_scheduling.rs (8/8),
+   surface_difference.rs (8/10), surface_codegen.rs (17/20),
+   surface_fold.rs (6/7), surface_fold_keyed.rs (4/5),
+   surface_reduce_keyed.rs (3/4), surface_unique.rs (5/6),
+   surface_zip_unzip.rs (3/5), surface_lattice_fold.rs (1/3)
    - Tests with loop {} blocks or intra-tick cycles remain on dfir_syntax!
    
    3. fix(dfir_lang): include singleton reference edges in inline
@@ -34,7 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    surface_singleton.rs
    - Singleton refs (`#name`) now create ordering constraints in the topo
    sort
-      - Converts surface_singleton.rs (10/10 tests) to dfir_syntax_inline!
+   - Converts surface_singleton.rs (10/10 tests) to dfir_syntax_inline!
    
    ---------
  - <csr-id-2633db89ef2768285219a0e5af18f5a971a9aa1c/> port runtime metrics to inline codegen path
@@ -108,7 +165,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    ### Runtime support
    - **launch.rs** — Added `Runnable` trait with impls for both `Dfir` and
    `InlineFlow`, making `run_stdin_commands` generic
-     - (likely will be removed in a future PR)
+   - (likely will be removed in a future PR)
    - **InlineDfir** — A new wrapper around the tick closure provides an API
    which matches the existing `Dfir<'_>` API. Of note: `run_tick()` returns
    `bool` (whether subgraphs were run in a meaningful way, [see
@@ -137,27 +194,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    ### Core changes
    - Add `InlineContext`: lightweight alternative to `Dfir` & `Context`
    with just the state
-     API — no tokio channels, scheduler queues, or handoff infrastructure
+   API — no tokio channels, scheduler queues, or handoff infrastructure
    - Add `DfirGraph::as_code_inline()`: generates an `AsyncFnMut` closure
    where
-     each call runs one tick, with subgraph blocks inlined in stratum order
-     (sorted by `(stratum, !is_source)` tuple)
+   each call runs one tick, with subgraph blocks inlined in stratum order
+   (sorted by `(stratum, !is_source)` tuple)
    - Add `build_dfir_code_inline()` and `dfir_syntax_inline!` /
-     `dfir_syntax_inline_noemit!` proc macros
+   `dfir_syntax_inline_noemit!` proc macros
    - State persists across ticks in the closure's captured environment;
-     `__end_tick()` handles tick-scoped state reset between invocations
+   `__end_tick()` handles tick-scoped state reset between invocations
    - Operators using `.await` (e.g. `fold`) work naturally inside the async
-     closure without synchronous wrappers
+   closure without synchronous wrappers
    - Cross-referencing doc comments between `as_code` and `as_code_inline`
    
    ### Tests & benchmarks
    - 14 passing tests covering: linear pipelines, diamonds, intertwined
-     diamonds, joins, multi-stratum cascades, W-mesh, `source_stream`,
-     `resolve_futures_blocking`, multi-tick with `fold::<'static>`/`'tick`,
-     and `defer_tick` cycles
+   diamonds, joins, multi-stratum cascades, W-mesh, `source_stream`,
+   `resolve_futures_blocking`, multi-tick with `fold::<'static>`/`'tick`,
+   and `defer_tick` cycles
    - 4 benchmark suites with inline variants (`words_diamond`, `fan_in`,
    `fan_out`, `micro_ops`) using `iter_batched` for fair comparison against
-     scheduler-based benchmarks
+   scheduler-based benchmarks
 
 ### Bug Fixes
 
@@ -195,12 +252,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    `Pull` trait. Key to this more powerful iterator trait is the step enum:
    ```rust
    pub enum Step<Item, Meta, CanPend: Toggle, CanEnd: Toggle> {
-       /// An item is ready with associated metadata.
-       Ready(Item, Meta),
-       /// The pull is not ready yet (only possible when `CanPend = Yes`).
-       Pending(CanPend),
-       /// The pull has ended (only possible when `CanEnd = Yes`).
-       Ended(CanEnd),
+   /// An item is ready with associated metadata.
+   Ready(Item, Meta),
+   /// The pull is not ready yet (only possible when `CanPend = Yes`).
+   Pending(CanPend),
+   /// The pull has ended (only possible when `CanEnd = Yes`).
+   Ended(CanEnd),
    }
    ```
    This abstraction allows `Pull` to represent both synchronous `Iterator`s
@@ -235,7 +292,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 16 commits contributed to the release.
+ - 17 commits contributed to the release.
  - 156 days passed between releases.
  - 16 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 16 unique issues were worked on: [#2511](https://github.com/hydro-project/hydro/issues/2511), [#2525](https://github.com/hydro-project/hydro/issues/2525), [#2541](https://github.com/hydro-project/hydro/issues/2541), [#2618](https://github.com/hydro-project/hydro/issues/2618), [#2644](https://github.com/hydro-project/hydro/issues/2644), [#2678](https://github.com/hydro-project/hydro/issues/2678), [#2716](https://github.com/hydro-project/hydro/issues/2716), [#2732](https://github.com/hydro-project/hydro/issues/2732), [#2737](https://github.com/hydro-project/hydro/issues/2737), [#2740](https://github.com/hydro-project/hydro/issues/2740), [#2769](https://github.com/hydro-project/hydro/issues/2769), [#2776](https://github.com/hydro-project/hydro/issues/2776), [#2779](https://github.com/hydro-project/hydro/issues/2779), [#2782](https://github.com/hydro-project/hydro/issues/2782), [#2795](https://github.com/hydro-project/hydro/issues/2795), [#2797](https://github.com/hydro-project/hydro/issues/2797)
@@ -278,6 +335,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Remove scheduled Dfir runtime, rename Inline types ([`16f1c0b`](https://github.com/hydro-project/hydro/commit/16f1c0bf960c3b4238adb020a833f214bd3fd064))
  * **[#2797](https://github.com/hydro-project/hydro/issues/2797)**
     - Replace stratification with plain topo sort, remove next_stratum ([`bafcb57`](https://github.com/hydro-project/hydro/commit/bafcb57e02f0b538a2bedc9051dd36a05f3ad7e9))
+ * **Uncategorized**
+    - Release hydro_build_utils v0.1.0, dfir_lang v0.16.0, dfir_macro v0.16.0, variadics v0.1.0, dfir_pipes v0.0.1, example_test v0.0.1, sinktools v0.1.0, hydro_deploy_integration v0.16.0, lattices_macro v0.6.0, variadics_macro v0.7.0, lattices v0.7.0, multiplatform_test v0.7.0, dfir_rs v0.16.0, copy_span v0.1.1, hydro_deploy v0.16.0, hydro_lang v0.16.0, hydro_std v0.16.0, safety bump 13 crates ([`c20757a`](https://github.com/hydro-project/hydro/commit/c20757ae0e9e10463b2a499de4b7d37ab02269d0))
 </details>
 
 ## 0.15.0 (2025-11-25)
@@ -286,30 +345,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-806a6239a649e24fe10c3c90dd30bd18debd41d2/>
 <csr-id-9d943ac294a8735452f8535ad13767c60ce46ec7/>
 
-### Chore
-
- - <csr-id-97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71/> update pinned nightly to 2025-08-20, fix lints
-
 ### Bug Fixes
 
  - <csr-id-c40876ec4bd3b31254d683e479b9a235f3d11f67/> refactor github actions workflows, make stable the default toolchain
  - <csr-id-5ec8b3b9b10b30f3c1b7bd8949874f0b4b7da7e9/> hardcoded crate name issues
-
-### Other
-
- - <csr-id-806a6239a649e24fe10c3c90dd30bd18debd41d2/> ensure `hydro_build_utils` is published in the correct order
-
-### Refactor (BREAKING)
-
- - <csr-id-9d943ac294a8735452f8535ad13767c60ce46ec7/> Make DFIR use `sinktools` for pushing to outputs [ci-bench]
-   This allows DFIR to handle `dest_sink` directly instead of having to
-   offload to a separate task, which causes latency and unwanted batching
-   (on single threaded runtimes)
-   
-   `pusherator` crate is no longer depended upon and is on a path to removal as it has been
-   replaced with `Sink`s
-   
-   Fixes some spanning bugs in codegen that using `Sink`s revealed
 
 ### Commit Statistics
 
@@ -344,11 +383,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-3d40d1a65c41dca3893867fb567993a27491fa0c/>
 <csr-id-98baec71a6f1d01d55a3c983fdbb7824c45305cd/>
 
-### Chore
-
- - <csr-id-3d40d1a65c41dca3893867fb567993a27491fa0c/> update `proc-macro-crate`
- - <csr-id-98baec71a6f1d01d55a3c983fdbb7824c45305cd/> update pinned nightly to 2025-04-27, update span API usage
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
@@ -375,10 +409,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## 0.13.0 (2025-04-11)
 
 <csr-id-7f3ec9dcce0ef9d52af03083970c8d26b9993fc0/>
-
-### Other
-
- - <csr-id-7f3ec9dcce0ef9d52af03083970c8d26b9993fc0/> fix `docsrs` broken stable test, actually run `dfir_lang` op doc tests
 
 ### Commit Statistics
 
@@ -420,14 +450,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    
    Also set `--all-features` for the docsrs build
 
-### Refactor
-
- - <csr-id-8058d2d6fe45e0286feb8ad48a44b1228f56d9bc/> move markdown doctesting macro into own crate, fix #1651
-
-### Style
-
- - <csr-id-056ac62611319b7bd10a751d7e231423a1b8dc4e/> cleanup old clippy lints, remove deprecated `relalg` crate
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
@@ -462,62 +484,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-8fc582d54ebc7dc974d2fd849b9de59134c1428d/>
 <csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/>
 
-### Chore
-
- - <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/> upgrade to Rust 2024 edition
-   - Updates `Cargo.toml` to use new shared workspace keys
-   - Updates lint settings (in workspace `Cargo.toml`)
-   - `rustfmt` has changed slightly, resulting in a big diff - there are no
-   actual code changes
-   - Adds a script to `rustfmt` the template src files
-
-### Chore (BREAKING)
-
- - <csr-id-3966d9063dae52e65b077321e0bd1150f2b0c3f1/> use DFIR name instead of Hydroflow in some places, fix #1644
-   Fix partially #1712
-   
-   * Renames `WriteContextArgs.hydroflow` to `WriteContextArgs.df_ident`
-   for DFIR operator codegen
-   * Removes some dead code/files
-
-### Test
-
- - <csr-id-8fc582d54ebc7dc974d2fd849b9de59134c1428d/> add globbing utility for testing Markdown as doctests
-
-### Chore
-
- - <csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/> upgrade to Rust 2024 edition
-   - Updates `Cargo.toml` to use new shared workspace keys
-   - Updates lint settings (in workspace `Cargo.toml`)
-   - `rustfmt` has changed slightly, resulting in a big diff - there are no
-   actual code changes
-   - Adds a script to `rustfmt` the template src files
-
 ### Documentation
 
- - <csr-id-19784f5bef45a823549bb9084d0f51a2b7ce0981/> fix extraneous `\<` escaping introduced in #1558, fix #1614
-   Previous code also inserted `\<` into code blocks. This fixes the
-   original issue of unescaped `<`s by ensuring all op docs have them in
-   `code blocks`, removes the escaping.
- - <csr-id-f8313b018f6a1101935e4c06abbe5af3aafb400c/> fix broken links, fix #1613
  - <csr-id-8e612917f97edbb3739381ceb7f20daa1e4403b1/> fix extraneous `\<` escaping introduced in #1558, fix #1614
    Previous code also inserted `\<` into code blocks. This fixes the
    original issue of unescaped `<`s by ensuring all op docs have them in
    `code blocks`, removes the escaping.
  - <csr-id-d45273943b0ca087b05f0fe4331b12cbe2ff4e90/> fix broken links, fix #1613
-
-### Test
-
- - <csr-id-3343fe2d58d8b7a7aa2766bfba9fbb4955114706/> add globbing utility for testing Markdown as doctests
-
-### Chore (BREAKING)
-
- - <csr-id-44fb2806cf2d165d86695910f4755e0944c11832/> use DFIR name instead of Hydroflow in some places, fix #1644
-   Fix partially #1712
-   
-   * Renames `WriteContextArgs.hydroflow` to `WriteContextArgs.df_ident`
-   for DFIR operator codegen
-   * Removes some dead code/files
 
 ### Commit Statistics
 
@@ -560,38 +533,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-a6f60c92ae7168eb86eb311ca7b7afb10025c7de/>
 <csr-id-5e58e346612a094c7e637919c84ab1e78b59be27/>
 
-### Chore
-
- - <csr-id-c58f13cff39b838fa283fae2711501c8b7894ff4/> upgrade to Docusaurus v3
-   Main breaking change is MDX parsing, which trips up on unescaped `<` in
-   the generated docs, so we have to adjust the generator logic.
-
-### Chore
-
- - <csr-id-84ee06755a0ed7cabf32b334f1696bb600797c92/> update links for renamed repo (excluding `CHANGELOG.md`s), fix #1571
- - <csr-id-a6f60c92ae7168eb86eb311ca7b7afb10025c7de/> bump versions manually for renamed crates, per `RELEASING.md`
- - <csr-id-5e58e346612a094c7e637919c84ab1e78b59be27/> Rename Hydroflow -> DFIR
-   Work In Progress:
-   - [x] hydroflow_macro
-   - [x] hydroflow_datalog_core
-   - [x] hydroflow_datalog
-   - [x] hydroflow_lang
-   - [x] hydroflow
-
 ### Documentation
 
- - <csr-id-28cd220c68e3660d9ebade113949a2346720cd04/> add `repository` field to `Cargo.toml`s, fix #1452
-   #1452 
-   
-   Will trigger new releases of the following:
-   `unchanged = 'hydroflow_deploy_integration', 'variadics',
-   'variadics_macro', 'pusherator'`
-   
-   (All other crates already have changes, so would be released anyway)
- - <csr-id-c707659afe188a2b46b093ce3438f64c6b0e1e30/> fix some broken github tree/main links
- - <csr-id-e1a08e5d165fbc80da2ae695e507078a97a9031f/> update `CHANGELOG.md`s for big rename
-   Generated before rename per `RELEASING.md` instructions.
- - <csr-id-6ab625273d822812e83a333e928c3dea1c3c9ccb/> cleanups for the rename, fixing links
  - <csr-id-204bd117ca3a8845b4986539efb91a0c612dfa05/> add `repository` field to `Cargo.toml`s, fix #1452
    #1452 
    
@@ -604,36 +547,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-27c40e2ca5a822f6ebd31c7f01213aa6d407418a/> update `CHANGELOG.md`s for big rename
    Generated before rename per `RELEASING.md` instructions.
  - <csr-id-987f7ad8668d9740ceea577a595035228898d530/> cleanups for the rename, fixing links
-
-### Chore
-
- - <csr-id-5196f247e0124a31567af940541044ce1906cdc1/> update links for renamed repo (excluding `CHANGELOG.md`s), fix #1571
- - <csr-id-03b3a349013a71b324276bca5329c33d400a73ff/> bump versions manually for renamed crates, per `RELEASING.md`
- - <csr-id-3291c07b37c9f9031837a2a32953e8f8854ec298/> Rename Hydroflow -> DFIR
-   Work In Progress:
-   - [x] hydroflow_macro
-   - [x] hydroflow_datalog_core
-   - [x] hydroflow_datalog
-   - [x] hydroflow_lang
-   - [x] hydroflow
-
-### New Features (BREAKING)
-
- - <csr-id-f2a4bee8cd6945937bed5bc22fd85efd8d0aef0a/> remove `import!`, fix #1110
-   in prep for rust stable #1587
-   
-   No good way to resolve the source file paths on stable
-   
-   No way to get good diagnostics on external files in general, at all
-
-### Refactor (BREAKING)
-
- - <csr-id-251b1039c71d45d3f86123dba1926026ded80824/> use `cfg(nightly)` instead of feature, remove `-Z` flag, use `Diagnostic::try_emit`
-   Previous PR (#1587) website build did not work because `panic = "abort"`
-   is set on wasm, leading to aborts for `proc_macro2::Span::unwrap()`
-   calls.
-   
-   All tests except trybuild seem to pass on stable, WIP #1587 next
 
 ### `hydroflow_macro` Commit Statistics
 

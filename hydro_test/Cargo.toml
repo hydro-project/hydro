@@ -57,7 +57,7 @@ hydro_build_utils = { path = "../hydro_build_utils", version = "^0.1.1-alpha.0",
 regex = "1"
 tokio = { version = "1.29.0", features = ["full"] }
 tokio-test = "0.4.4"
-dfir_rs = { path = "../dfir_rs", version = "^0.17.0-alpha.0", default-features = false }
+dfir_rs = { path = "../dfir_rs", version = "^0.17.0-alpha.1", default-features = false }
 tracing-subscriber = { version = "0.3.20", features = ["env-filter"] }
 
 [[bench]]

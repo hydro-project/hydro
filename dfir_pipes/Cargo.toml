@@ -24,7 +24,7 @@ rustc-hash = { version = "2.0.0", optional = true }
 sealed = "0.6.0"
 smallvec = { version = "1.0", optional = true }
 variadics = { optional = true, path = "../variadics", default-features = false, version = "^0.2.0-alpha.1" }
-lattices = { optional = true, path = "../lattices", default-features = false, version = "^0.8.0-alpha.0" } # TODO(mingwei): feature-gate std/alloc
+lattices = { optional = true, path = "../lattices", default-features = false, version = "^0.8.0-alpha.1" } # TODO(mingwei): feature-gate std/alloc
 
 # coax cargo-smart-release into publishing this crate.
 # https://github.com/hydro-project/hydro/blob/main/RELEASING.md#addendum-adding-new-crates

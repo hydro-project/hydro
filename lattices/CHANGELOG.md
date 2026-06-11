@@ -5,15 +5,126 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.8.0-alpha.1 (2026-06-11)
+
+### Chore
+
+ - <csr-id-e70eab6a0c793ef095e2cd747220d5419f7bf1a4/> revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version ([`e70eab6`](https://github.com/hydro-project/hydro/commit/e70eab6a0c793ef095e2cd747220d5419f7bf1a4))
+</details>
+
+## 0.8.0-alpha.0 (2026-06-10)
+
+### Chore
+
+ - <csr-id-33a606afb3f123f01e4b9ce916c75cf9aa03e5fd/> update to rust 1.95.0
+   - Bump `rust-toolchain.toml` from Rust 1.93.1 to 1.95.0.
+   - Apply minor iterator/sort refactors to satisfy newer clippy lints and
+   keep deterministic ordering where relevant.
+   - Refresh trybuild compile-fail `.stderr` snapshots to match Rust 1.95
+   diagnostic formatting.
+
+### New Features
+
+ - <csr-id-abf5d747bcea29588edc8ab5c3accee0225fba58/> support `#[no_std]` via `std` and `alloc` default features
+   Also removes unused `AsBytes` trait
+   
+   ---------
+
+### Bug Fixes
+
+ - <csr-id-938cf91f4adff7b96f3f3536f4427f38f07f4ea6/> gate proc_macro_diagnostics behind codegen feature, remove several stabilized features. [ci-full]
+
+### Test
+
+ - <csr-id-7161b32a4dca04ca7c163a974d792552308b3a13/> cleanup trybuild stable vs nightly handling
+   Previous setup meant you had to wrangle symlinks every time you added
+   more tests, and they were tracked in git. This has the test helper set
+   up the symlinks, and they are no longer tracked in git.
+   
+   **Structure per crate:**
+   ```
+   tests/compile-fail/
+   ├─ .gitignore    # ignores stable/*.rs and nightly/*.rs
+   ├─ *.rs          # source test files (single canonical copy)
+   ├─ stable/
+   │  └─ *.stderr   # expected errors for stable rustc
+   └─ nightly/
+      └─ *.stderr   # expected errors for nightly rustc
+   ```
+   
+   **Usage in each test file:**
+   ```rust
+   #[test]
+   fn test_all() {
+       hydro_build_utils::trybuild_compile_fail!("surface_*.rs"); // or "*.rs"
+   }
+   ```
+   
+   **How it works:**
+   - The macro symlinks `.rs` files into the active channel's subdir at
+   test time
+   - Trybuild runs against the channel subdir, making `.rs` symlinks next
+   to the `.stderr` files
+   - `TRYBUILD=overwrite` writes updated `.stderr` directly into the
+   correct committed directory
+
+### New Features (BREAKING)
+
+ - <csr-id-dcef67d9572055f7eeb64f92fa95fa4babebd6c8/> `#[no_std]` support
+   Adds default `std` and `alloc` features
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 7 commits contributed to the release.
+ - 40 days passed between releases.
+ - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 5 unique issues were worked on: [#2869](https://github.com/hydro-project/hydro/issues/2869), [#2870](https://github.com/hydro-project/hydro/issues/2870), [#2878](https://github.com/hydro-project/hydro/issues/2878), [#2893](https://github.com/hydro-project/hydro/issues/2893), [#2919](https://github.com/hydro-project/hydro/issues/2919)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2869](https://github.com/hydro-project/hydro/issues/2869)**
+    - Cleanup trybuild stable vs nightly handling ([`7161b32`](https://github.com/hydro-project/hydro/commit/7161b32a4dca04ca7c163a974d792552308b3a13))
+ * **[#2870](https://github.com/hydro-project/hydro/issues/2870)**
+    - Update to rust 1.95.0 ([`33a606a`](https://github.com/hydro-project/hydro/commit/33a606afb3f123f01e4b9ce916c75cf9aa03e5fd))
+ * **[#2878](https://github.com/hydro-project/hydro/issues/2878)**
+    - Gate proc_macro_diagnostics behind codegen feature, remove several stabilized features. [ci-full] ([`938cf91`](https://github.com/hydro-project/hydro/commit/938cf91f4adff7b96f3f3536f4427f38f07f4ea6))
+ * **[#2893](https://github.com/hydro-project/hydro/issues/2893)**
+    - `#[no_std]` support ([`dcef67d`](https://github.com/hydro-project/hydro/commit/dcef67d9572055f7eeb64f92fa95fa4babebd6c8))
+ * **[#2919](https://github.com/hydro-project/hydro/issues/2919)**
+    - Support `#[no_std]` via `std` and `alloc` default features ([`abf5d74`](https://github.com/hydro-project/hydro/commit/abf5d747bcea29588edc8ab5c3accee0225fba58))
+ * **Uncategorized**
+    - Release lattices_macro v0.6.1-alpha.0, lattices v0.8.0-alpha.0, dfir_pipes v0.1.0-alpha.0, sinktools v0.2.0-alpha.0, hydro_deploy_integration v0.17.0-alpha.0, dfir_rs v0.17.0-alpha.0, hydro_deploy v0.17.0-alpha.0, hydro_lang v0.17.0-alpha.0, hydro_std v0.17.0-alpha.0 ([`2fabf68`](https://github.com/hydro-project/hydro/commit/2fabf6839e34f9275b5d698f396c1864e1539082))
+    - Release hydro_build_utils v0.1.1-alpha.0, dfir_lang v1.0.0-alpha.0, dfir_macro v0.17.0-alpha.0, variadics v1.0.0-alpha.0, variadics_macro v0.8.0-alpha.0, lattices v0.8.0-alpha.0, dfir_pipes v0.1.0-alpha.0, sinktools v0.2.0-alpha.0, hydro_deploy_integration v0.17.0-alpha.0, dfir_rs v0.17.0-alpha.0, hydro_deploy v0.17.0-alpha.0, hydro_lang v0.17.0-alpha.0, hydro_std v0.17.0-alpha.0, safety bump 10 crates ([`12e7666`](https://github.com/hydro-project/hydro/commit/12e76666f7104f81b48de5ddf397b8e72c8a6711))
+</details>
+
 ## 0.7.0 (2026-05-01)
 
 <csr-id-e26d40c96f0aa022ee90388aad0a51ecd23ae345/>
 <csr-id-1c8f85366c592b2768df65ba1ee2e98d2c06d496/>
 <csr-id-efaa8f61c124c4b3c691b92a58df1686751cf45c/>
-
-### Chore
-
- - <csr-id-e26d40c96f0aa022ee90388aad0a51ecd23ae345/> remove unused deps
 
 ### Bug Fixes
 
@@ -21,23 +132,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    Out of an abundance of caution, the `hydro_lang` IR `Demux` variants
    containing `HashMap<u32 ...>` have been replaced with `BTreeMap`
 
-### Style
-
- - <csr-id-1c8f85366c592b2768df65ba1ee2e98d2c06d496/> leading colons to workaround rustfmt change
-   Workaround change introduced in
-   https://github.com/rust-lang/rustfmt/pull/6784
-
-### Chore (BREAKING)
-
- - <csr-id-efaa8f61c124c4b3c691b92a58df1686751cf45c/> update pinned rust to 1.92, add lints/fixes for redundant cloning, string handling
-   Somewhat waiting on https://github.com/hydro-project/stageleft/pull/56
-   to be published
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 5 commits contributed to the release over the course of 105 calendar days.
+ - 6 commits contributed to the release over the course of 105 calendar days.
  - 156 days passed between releases.
  - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 4 unique issues were worked on: [#2448](https://github.com/hydro-project/hydro/issues/2448), [#2511](https://github.com/hydro-project/hydro/issues/2511), [#2525](https://github.com/hydro-project/hydro/issues/2525), [#2623](https://github.com/hydro-project/hydro/issues/2623)
@@ -57,6 +156,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **[#2623](https://github.com/hydro-project/hydro/issues/2623)**
     - Leading colons to workaround rustfmt change ([`1c8f853`](https://github.com/hydro-project/hydro/commit/1c8f85366c592b2768df65ba1ee2e98d2c06d496))
  * **Uncategorized**
+    - Release dfir_pipes v0.0.1, example_test v0.0.1, sinktools v0.1.0, hydro_deploy_integration v0.16.0, lattices_macro v0.6.0, variadics_macro v0.7.0, lattices v0.7.0, multiplatform_test v0.7.0, dfir_rs v0.16.0, copy_span v0.1.1, hydro_deploy v0.16.0, hydro_lang v0.16.0, hydro_std v0.16.0 ([`118b356`](https://github.com/hydro-project/hydro/commit/118b356447d92e778313d72a351e5a8d2814aa1a))
     - Release hydro_build_utils v0.1.0, dfir_lang v0.16.0, dfir_macro v0.16.0, variadics v0.1.0, dfir_pipes v0.0.1, example_test v0.0.1, sinktools v0.1.0, hydro_deploy_integration v0.16.0, lattices_macro v0.6.0, variadics_macro v0.7.0, lattices v0.7.0, multiplatform_test v0.7.0, dfir_rs v0.16.0, copy_span v0.1.1, hydro_deploy v0.16.0, hydro_lang v0.16.0, hydro_std v0.16.0, safety bump 13 crates ([`c20757a`](https://github.com/hydro-project/hydro/commit/c20757ae0e9e10463b2a499de4b7d37ab02269d0))
 </details>
 
@@ -64,10 +164,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-id-97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71/>
 <csr-id-806a6239a649e24fe10c3c90dd30bd18debd41d2/>
-
-### Chore
-
- - <csr-id-97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71/> update pinned nightly to 2025-08-20, fix lints
 
 ### New Features
 
@@ -84,10 +180,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
  - <csr-id-c40876ec4bd3b31254d683e479b9a235f3d11f67/> refactor github actions workflows, make stable the default toolchain
-
-### Other
-
- - <csr-id-806a6239a649e24fe10c3c90dd30bd18debd41d2/> ensure `hydro_build_utils` is published in the correct order
 
 ### Commit Statistics
 
@@ -166,38 +258,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/>
 <csr-id-8f4426089dcbbe5d1098f89e367c7be49a03e401/>
 
-### Chore
-
- - <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/> upgrade to Rust 2024 edition
-   - Updates `Cargo.toml` to use new shared workspace keys
-   - Updates lint settings (in workspace `Cargo.toml`)
-   - `rustfmt` has changed slightly, resulting in a big diff - there are no
-   actual code changes
-   - Adds a script to `rustfmt` the template src files
- - <csr-id-2fd6aa7417dfa29f389c04c5b9674b80bfed6cf2/> update pinned nightly to 2025-02-10, cleanups for clippy
-
-### Style
-
- - <csr-id-edffa95f5fe44f4e0cbb4b6c93754e9047f0fd3d/> fix small format issue
-   after upgrading to edition 2024
- - <csr-id-fd85262930c678601a80c080fb79778675124964/> clippy cleanups for latest stable rust
-
-### Chore
-
- - <csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/> upgrade to Rust 2024 edition
-   - Updates `Cargo.toml` to use new shared workspace keys
-   - Updates lint settings (in workspace `Cargo.toml`)
-   - `rustfmt` has changed slightly, resulting in a big diff - there are no
-   actual code changes
-   - Adds a script to `rustfmt` the template src files
- - <csr-id-8f4426089dcbbe5d1098f89e367c7be49a03e401/> update pinned nightly to 2025-02-10, cleanups for clippy
-
-### Style
-
- - <csr-id-39a2963518a9cc63c7e60a5c542cfa2509064a0c/> fix small format issue
-   after upgrading to edition 2024
- - <csr-id-c1983308743d912e5bf2583b7cccbb47d8a8b5d1/> clippy cleanups for latest stable rust
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
@@ -230,37 +290,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-3291c07b37c9f9031837a2a32953e8f8854ec298/>
 <csr-id-5e58e346612a094c7e637919c84ab1e78b59be27/>
 
-### Chore
-
- - <csr-id-3291c07b37c9f9031837a2a32953e8f8854ec298/> Rename Hydroflow -> DFIR
-   Work In Progress:
-   - [x] hydroflow_macro
-   - [x] hydroflow_datalog_core
-   - [x] hydroflow_datalog
-   - [x] hydroflow_lang
-   - [x] hydroflow
-
-### Chore
-
- - <csr-id-5e58e346612a094c7e637919c84ab1e78b59be27/> Rename Hydroflow -> DFIR
-   Work In Progress:
-   - [x] hydroflow_macro
-   - [x] hydroflow_datalog_core
-   - [x] hydroflow_datalog
-   - [x] hydroflow_lang
-   - [x] hydroflow
-
 ### Documentation
 
- - <csr-id-28cd220c68e3660d9ebade113949a2346720cd04/> add `repository` field to `Cargo.toml`s, fix #1452
-   #1452 
-   
-   Will trigger new releases of the following:
-   `unchanged = 'hydroflow_deploy_integration', 'variadics',
-   'variadics_macro', 'pusherator'`
-   
-   (All other crates already have changes, so would be released anyway)
- - <csr-id-6ab625273d822812e83a333e928c3dea1c3c9ccb/> cleanups for the rename, fixing links
  - <csr-id-204bd117ca3a8845b4986539efb91a0c612dfa05/> add `repository` field to `Cargo.toml`s, fix #1452
    #1452 
    
@@ -303,32 +334,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-cebd1dc35282514f025e047a9b94800f546dd62f/>
 <csr-id-014ebb2628b5b80ea1b6426b58c4d62706edb9ef/>
 
-### Chore
-
- - <csr-id-d5677604e93c07a5392f4229af94a0b736eca382/> update pinned rust version, clippy lints, remove some dead code
-
-### Style
-
- - <csr-id-cebd1dc35282514f025e047a9b94800f546dd62f/> fixes for nightly clippy
-   a couple few spurious `too_many_arguments` and a spurious
-   `zombie_processes` still on current nightly (`clippy 0.1.84 (4392847410
-   2024-10-21)`)
-
-### Chore
-
- - <csr-id-014ebb2628b5b80ea1b6426b58c4d62706edb9ef/> update pinned rust version, clippy lints, remove some dead code
-
 ### New Features
 
- - <csr-id-f7e740fb2ba36d0fcf3fd196d60333552911e3a4/> generalized hash trie indexes for relational tuples
-   Generalized Hash Tries are part of the SIGMOD '23 FreeJoin
-   [paper](https://dl.acm.org/doi/abs/10.1145/3589295) by
-   Wang/Willsey/Suciu. They provide a compressed ("factorized")
-   representation of relations. By operating in the factorized domain, join
-   algorithms can defer cross-products and achieve asymptotically optimal
-   performance.
-   
-   ---------
  - <csr-id-48e4eb28a9ce652037ac81b580d30f93159dae9b/> generalized hash trie indexes for relational tuples
    Generalized Hash Tries are part of the SIGMOD '23 FreeJoin
    [paper](https://dl.acm.org/doi/abs/10.1145/3589295) by
@@ -338,13 +345,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    performance.
    
    ---------
-
-### Style
-
- - <csr-id-47cb703e771f7d1c451ceb9d185ada96410949da/> fixes for nightly clippy
-   a couple few spurious `too_many_arguments` and a spurious
-   `zombie_processes` still on current nightly (`clippy 0.1.84 (4392847410
-   2024-10-21)`)
 
 ### Commit Statistics
 
@@ -376,23 +376,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-11af32828bab6e4a4264d2635ff71a12bb0bb778/>
 <csr-id-2c04f51f1ec44f7898307b6610371dcb490ea686/>
 
-### Chore
-
- - <csr-id-11af32828bab6e4a4264d2635ff71a12bb0bb778/> lower min dependency versions where possible, update `Cargo.lock`
-   Moved from #1418
-   
-   ---------
-
-### Chore
-
- - <csr-id-2c04f51f1ec44f7898307b6610371dcb490ea686/> lower min dependency versions where possible, update `Cargo.lock`
-   Moved from #1418
-   
-   ---------
-
 ### Documentation
 
- - <csr-id-f5f1eb0c612f5c0c1752360d972ef6853c5e12f0/> cleanup doc comments for clippy latest
  - <csr-id-1766c8b0aa23df83ad242b581184b37e85afe27b/> cleanup doc comments for clippy latest
 
 ### Commit Statistics
@@ -423,34 +408,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-3098f77fd99882aae23c4b31017aa4b761306197/>
 <csr-id-45091d413f6da32927b640df781ce671a6e17c15/>
 
-### Chore
-
- - <csr-id-3098f77fd99882aae23c4b31017aa4b761306197/> update pinned rust version to 2024-06-17
-
-### Chore
-
- - <csr-id-45091d413f6da32927b640df781ce671a6e17c15/> update pinned rust version to 2024-06-17
-
 ### New Features
 
- - <csr-id-b3d01c20cae2335a3da2c02343debe677f17786b/> add `#[derive(Lattice)]` derive macros, fix #1247
-   This adds derive macros to allow user-created macros. Each field must be
-   a lattice.
-   
-   Example usage:
-   ```rust
-   struct MyLattice<KeySet, Epoch>
-   where
-   KeySet: Collection,
-   Epoch: Ord,
-   {
-   keys: SetUnion<KeySet>,
-   epoch: Max<Epoch>,
-   }
-   ```
-   
-   Uses `#[derive(Lattice)]` for the `lattices` library `Pair` lattice.
-   Also contains some cleanup in the `lattices` crate.
  - <csr-id-33b9795f207804e9561f228fa0307c5973745241/> add `#[derive(Lattice)]` derive macros, fix #1247
    This adds derive macros to allow user-created macros. Each field must be
    a lattice.
@@ -472,12 +431,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
- - <csr-id-9c834406efcc3839a2a0d48b514146d06bb6e35d/> change fuzz test bounds to require `PartialEq` instead of `Eq`, fix #1302
- - <csr-id-1ad690b993f38ac6a03667fdce56e6603076b1d2/> Make inner for `WithTop` & `WithBot` private
-   `Option<T>` is not a lattice, so it is unsafe to expose as public.
-   
-   I also updated documentation to lead with intention before
-   implementation (minor cleanup).
  - <csr-id-7fd17b3f5504719467d119f64cd7bfe17c2660a7/> change fuzz test bounds to require `PartialEq` instead of `Eq`, fix #1302
  - <csr-id-c163909795d6be2e887daa57bb2057fc9ba74b7c/> Make inner for `WithTop` & `WithBot` private
    `Option<T>` is not a lattice, so it is unsafe to expose as public.
@@ -516,8 +469,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
- - <csr-id-0d2f14b9237c0eaa8131d1d1118768357ac8133b/> Updating CONTRIBUTING.md with some info about feature branches
-   Also updating GitHub workflows to run on feature branches as well.
  - <csr-id-147eea51dec2ff764351d5915fbe3e8b995c6db4/> Updating CONTRIBUTING.md with some info about feature branches
    Also updating GitHub workflows to run on feature branches as well.
 
@@ -531,14 +482,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-41bf0a78b97c1373724af6063aff5c4133e8dbdd/>
 <csr-id-e97e8c33a323db87959d86084cd679015d1cb5f2/>
 
- - <csr-id-0ed1f26b485894d3f24bd4d3251f6d3134fd1947/> Make Pair<> members public
-   Summary of types examined:
-   
-   - `Min<T>`: T is not a lattice
 
 ### Bug Fixes
 
- - <csr-id-c0a06bbd20e1621de46ab835dd27df162f689411/> typos in lattice docs
  - <csr-id-67ad8e269a2b7af5277775ac60edf414e53237a7/> typos in lattice docs
 
 ### Commit Statistics
@@ -582,14 +528,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Unchanged from previous release.
 
-### Chore
-
- - <csr-id-4e3c188dbe7cb83401fa3df537f7f8e83d1c9641/> mark `lattices` as unchanged for `0.6.1` release
-
-### Chore
-
- - <csr-id-2a10c4f395bbf3a320bdde6ec24c3c6abd5d6ed0/> mark `lattices` as unchanged for `0.6.1` release
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
@@ -619,28 +557,10 @@ Unchanged from previous release.
 <csr-id-6b0a78ba0b4fd58302f7151254976c158a61b18c/>
 <csr-id-65c7ebe3d64c478e7a4f0d8eb12e2bb3c1b267a3/>
 
-### Chore
-
- - <csr-id-39ab8b0278e9e3fe96552ace0a4ae768a6bc10d8/> appease various clippy lints
-
-### Style
-
- - <csr-id-6b0a78ba0b4fd58302f7151254976c158a61b18c/> fix imports for clippy
-
-### Chore
-
- - <csr-id-65c7ebe3d64c478e7a4f0d8eb12e2bb3c1b267a3/> appease various clippy lints
-
 ### New Features
 
- - <csr-id-ff158dbb57ef3a754ed1cc834a19e30bb2895488/> impl missing `SimpleCollectionRef` for various collections types
- - <csr-id-c8d6985cc99e623432d609e1e1bc4cfd4c31feb7/> add `Lattice[Bi]Morphism` traits, impls for cartesian product, pair, and keyed
  - <csr-id-8d3286ac1d099e78fa1590b7749cc6316730164e/> impl missing `SimpleCollectionRef` for various collections types
  - <csr-id-17da2726ff302e3e9bd70824e4cdf4ba808df7ec/> add `Lattice[Bi]Morphism` traits, impls for cartesian product, pair, and keyed
-
-### Style
-
- - <csr-id-71353f0d4dfd9766dfdc715c4a91a028081f910f/> fix imports for clippy
 
 ### Commit Statistics
 
@@ -672,7 +592,6 @@ Unchanged from previous release.
 
 ### New Features
 
- - <csr-id-87e86a2ab9e068634ebed17616b7482b3e69d539/> add map_union_with_tombstones, fix #336
  - <csr-id-c636fd073a070a3e4ca67a8e33908d4c9be7a536/> add map_union_with_tombstones, fix #336
 
 ### Commit Statistics
@@ -704,34 +623,13 @@ Unchanged from previous release.
 <csr-id-d08ceffdbe87215d942b8c24815cabc7909822f5/>
 <csr-id-18c1fa5c6602dbf660bffbb06290f6db373312cc/>
 
-### Chore
-
- - <csr-id-1b555e57c8c812bed4d6495d2960cbf77fb0b3ef/> manually set lockstep-versioned crates (and `lattices`) to version `0.5.1`
-   Setting manually since
-   https://github.com/frewsxcv/rust-crates-index/issues/159 is messing with
-   smart-release
- - <csr-id-ba6afab8416ad66eee4fdb9d0c73e62d45752617/> fix clippy lints on latest nightly
- - <csr-id-f6a729925ddeb6063fa8c4b03d6621c1c35f0cc8/> fix `clippy::items_after_test_module`, simplify rustdoc links
-
-### Chore
-
- - <csr-id-7c48faf0d8301b498fa59e5eee5cddf5fa341229/> manually set lockstep-versioned crates (and `lattices`) to version `0.5.1`
-   Setting manually since
-   https://github.com/frewsxcv/rust-crates-index/issues/159 is messing with
-   smart-release
- - <csr-id-d08ceffdbe87215d942b8c24815cabc7909822f5/> fix clippy lints on latest nightly
- - <csr-id-18c1fa5c6602dbf660bffbb06290f6db373312cc/> fix `clippy::items_after_test_module`, simplify rustdoc links
-
 ### New Features
 
- - <csr-id-e30602e6a3210a4ea4fe8a65aedb9469e79e3c37/> Add `DeepReveal` trait
- - <csr-id-3f701997ec1e6ca2a364537fbd2ef39cf96ce0f1/> add set_union_with_tombstones
  - <csr-id-9846d82567e6d7c129e6962c874e552e363af2fa/> Add `DeepReveal` trait
  - <csr-id-5c63873430ecefb10302f8e4f47a5a70d01a748b/> add set_union_with_tombstones
 
 ### Bug Fixes
 
- - <csr-id-0539e2a91eb3ba71ed1c9fbe8d0c74b6344ad1bf/> chat and two_pc no longer replay
  - <csr-id-b4b8ca9bf35793dbc4d7e351898522d76e4ab0a3/> chat and two_pc no longer replay
 
 ### Commit Statistics
@@ -768,29 +666,17 @@ Unchanged from previous release.
 <csr-id-e788989737fbd501173bc99c6f9f5f5ba514ec9c/>
 <csr-id-e89dcfcdd2d3ad072ae3ddb8211116fec9332fed/>
 
-### Chore
-
- - <csr-id-e788989737fbd501173bc99c6f9f5f5ba514ec9c/> Fix `clippy::implied_bounds_in_impls` from latest nightlies
-
-### Chore
-
- - <csr-id-e89dcfcdd2d3ad072ae3ddb8211116fec9332fed/> Fix `clippy::implied_bounds_in_impls` from latest nightlies
-
 ### Documentation
 
- - <csr-id-6b82126347e2ae3c11cc10fea4f3fbcb463734e6/> fix lattice math link
  - <csr-id-d780f08767a8e632ebcadcc4d780cdff633cdea9/> fix lattice math link
 
 ### New Features
 
- - <csr-id-488d6dd448e10e2bf217693dd2a29973488c838a/> Add serde derives to collections
- - <csr-id-35c2606f2df16a428a5c163d5582923ecd5998c4/> Add `UnionFind` lattice
  - <csr-id-f80490e6e2d9967471c670e5100d9af502bbabd2/> Add serde derives to collections
  - <csr-id-7ad05ead59c4b334536bb50c99ef17b4a0dba07f/> Add `UnionFind` lattice
 
 ### Bug Fixes (BREAKING)
 
- - <csr-id-18e9cfaa8b1415d72d67a69d7b0fecc997b5670a/> fix some types and semantics for atomization
  - <csr-id-53be8c8bd7eba970ffbba27995f0c93f1f8a6ea5/> fix some types and semantics for atomization
 
 ### Commit Statistics
@@ -831,66 +717,25 @@ Unchanged from previous release.
 <csr-id-4a8f46a3f8f46e9493acf0900a4ac09ce4dc9dfb/>
 <csr-id-dd270adee8ed4d29a20628c4082b0f29cfd6ebac/>
 
-### Chore
-
- - <csr-id-f60053f70da3071c54de4a0eabb059a143aa2ccc/> fix lint, format errors for latest nightly version (without updated pinned)
-   For nightly version (d9c13cd45 2023-07-05)
-
-### Refactor (BREAKING)
-
- - <csr-id-f36ccd34f349b85ec39ad432b9f68b6f34dde532/> Rename `Seq` -> `VecUnion`
-
-### Refactor
-
- - <csr-id-e0d1061908f94ea8282be08598d783393512bb34/> fix new clippy lints on latest nightly 1.73.0-nightly (db7ff98a7 2023-07-31)
- - <csr-id-4a8f46a3f8f46e9493acf0900a4ac09ce4dc9dfb/> Change `Atomize` to require returning empty iff lattice is bottom
-   Previously was the opposite, `Atomize` always had to return non-empty.
-   
-   Not breaking since `Atomize` has not yet been published.
-
-### Chore
-
- - <csr-id-dd270adee8ed4d29a20628c4082b0f29cfd6ebac/> fix lint, format errors for latest nightly version (without updated pinned)
-   For nightly version (d9c13cd45 2023-07-05)
-
 ### Documentation
 
- - <csr-id-a8b0d2d10eef3e45669f77a1f2460cd31a95d15b/> Improve `Atomize` docs
  - <csr-id-8a4528c31a9c6c9407e94a6b999b41cb0c5b4407/> Improve `Atomize` docs
 
 ### New Features
 
- - <csr-id-7282457e383407eabbeb1f931c130edb095c33ca/> formalize `Default::default()` as returning bottom for lattice types
-   Not a breaking change since changed names were introduced only since last release
- - <csr-id-b2406994a703f028724cc30065fec60f7f8a7247/> Implement `SimpleKeyedRef` for map types
- - <csr-id-8ec75c6d8998b7d7e5a0ae24ee53b0cdb6932683/> Add atomize trait, impls, tests
  - <csr-id-c07254d4bcdc89b12a90a990de13eacafe8b06a4/> formalize `Default::default()` as returning bottom for lattice types
    Not a breaking change since changed names were introduced only since last release
  - <csr-id-90714dbe0df85db84b1929e5d1a037a98ba2cc4f/> Implement `SimpleKeyedRef` for map types
  - <csr-id-a5014a435094bc1475f1fc34b5b947a21497f7d9/> Add atomize trait, impls, tests
 
-### Refactor
-
- - <csr-id-6a2ad6b770c2ccf470548320d8753025b3a66c0a/> fix new clippy lints on latest nightly 1.73.0-nightly (db7ff98a7 2023-07-31)
- - <csr-id-262166e7cecf8ffb5a2c7bc989e8cf66c4524a68/> Change `Atomize` to require returning empty iff lattice is bottom
-   Previously was the opposite, `Atomize` always had to return non-empty.
-   
-   Not breaking since `Atomize` has not yet been published.
-
 ### New Features (BREAKING)
 
- - <csr-id-7b752f743cbedc632b127dddf3f9a84e839eb47a/> Add bottom (+top) collapsing, implement `IsBot`/`IsTop` for all lattice types
-   * `WithBot(Some(BOTTOM))` and `WithBot(None)` are now considered to both be bottom, equal. Also, `MapUnion({})` and `MapUnion({key: BOTTOM})` are considered to both be bottom, equal.
 * `WithTop(Some(TOP))` and `WithTop(None)` are now considered to both be top, equal.
 * `check_lattice_bot/top` now check that `is_bot` and `is_top` must be consistent among all equal elements
  - <csr-id-e09ac1cc2cb5c75e47ee2c7403ade7bf8d78cf1a/> Add bottom (+top) collapsing, implement `IsBot`/`IsTop` for all lattice types
    * `WithBot(Some(BOTTOM))` and `WithBot(None)` are now considered to both be bottom, equal. Also, `MapUnion({})` and `MapUnion({key: BOTTOM})` are considered to both be bottom, equal.
 * `WithTop(Some(TOP))` and `WithTop(None)` are now considered to both be top, equal.
 * `check_lattice_bot/top` now check that `is_bot` and `is_top` must be consistent among all equal elements
-
-### Refactor (BREAKING)
-
- - <csr-id-7b0485b20939ec86ed8e74ecc9c75ac1b5d01072/> Rename `Seq` -> `VecUnion`
 
 ### Commit Statistics
 
@@ -943,16 +788,10 @@ Unchanged from previous release.
 
 ### Documentation
 
- - <csr-id-ac4fd827ccede0ad53dfc59079cdb7df5928e491/> List `WithTop` in README 4/4
  - <csr-id-8ecc14760210fe0d715123548a61d0406a03ffde/> List `WithTop` in README 4/4
 
 ### New Features
 
- - <csr-id-016abeea3ecd390a976dd8dbec371b08fe744655/> make unit `()` a point lattice
- - <csr-id-dc99c021640a47b704905d087eadcbc477f033f0/> impl `IsTop`, `IsBot` for `Min`, `Max` over numeric types
- - <csr-id-f5e0d19e8531c250bc4492b61b9731c947916daf/> Add `Conflict<T>` lattice
- - <csr-id-fc4dcbdfa703d79a0c183a2eb3f5dbb42260b67a/> add top lattice, opposite of bottom
- - <csr-id-153cbabd462d776eae395e371470abb4662642cd/> Add `Seq` lattice.
  - <csr-id-6cc1079f2587dfa85555efba6c122ec19f5a0751/> make unit `()` a point lattice
  - <csr-id-8f8c148ca34b0c4a909c4486a77f4272c1cb899e/> impl `IsTop`, `IsBot` for `Min`, `Max` over numeric types
  - <csr-id-a173f8396f4b67df9b407702457fb47308eb6323/> Add `Conflict<T>` lattice
@@ -961,36 +800,11 @@ Unchanged from previous release.
 
 ### Bug Fixes
 
- - <csr-id-9bb5528d99e83fdae5aeca9456802379131c2f90/> removed unused nightly features `impl_trait_in_assoc_type`, `type_alias_impl_trait`
- - <csr-id-3c4eb16833160f8813b812487a1297c023400138/> fix ConvertFrom for bottom to actually convert the type
-   * fix: fix type inference with doubly-nested bottom types
 * fix: address comments
  - <csr-id-902d426dfec7754cbe949d80c669e3d3f1a1d262/> removed unused nightly features `impl_trait_in_assoc_type`, `type_alias_impl_trait`
  - <csr-id-dd95beacee1ab67047c964643762b8364073b6a2/> fix ConvertFrom for bottom to actually convert the type
    * fix: fix type inference with doubly-nested bottom types
 * fix: address comments
-
-### Refactor
-
- - <csr-id-0cbbaeaec5e192e2539771bb247926271c2dc4a3/> Rename `bottom.rs` -> `with_bot.rs`, `top.rs` -> `with_top.rs` 1/4
-
-### Refactor (BREAKING)
-
- - <csr-id-336172dcaa31ea281ff534a09e13f9ff1c41e154/> Rename `ConvertFrom::from` -> `LatticeFrom::lattice_from`
- - <csr-id-fe38515c456625c5374843d2f766f401e76dc51a/> Rename `Bottom` -> `WithBot`, `Top` -> `WithTop`, constructors now take `Option`s 2/4
- - <csr-id-0f2e768fcf359de671bc6289a1d44502057c2656/> Rename `Immut` -> `Point` lattice.
-
-### Style
-
- - <csr-id-618a18b89a699f9272241ef97994e9dbbfe724ad/> `warn` missing docs (instead of `deny`) to allow code before docs
-
-### Refactor
-
- - <csr-id-1c739496f8286269a0cd47753468998fd759bf4e/> Rename `bottom.rs` -> `with_bot.rs`, `top.rs` -> `with_top.rs` 1/4
-
-### Style
-
- - <csr-id-70c88a51c4c83a4dc2fc67a0cd344786a4ff26f7/> `warn` missing docs (instead of `deny`) to allow code before docs
 
 ### New Features (BREAKING)
 
@@ -999,22 +813,11 @@ Unchanged from previous release.
 <csr-id-37e90cd9bf917b5ffa724e79791c5e87db4c1450/>
 <csr-id-6d49db05d30692b70825b4cd6af1590913913ae4/>
 
- - <csr-id-931d93887c238025596cb22226e16d43e16a7425/> Add `reveal` methods, make fields private
- - <csr-id-7aec1ac884e01a560770dfab7e0ba64d520415f6/> Add `Provenance` generic param token to `Point`.
-   - Use `()` provenance for `kvs_bench` example.
 
 ### Bug Fixes (BREAKING)
 
- - <csr-id-5cfd2a0f48f11f6185070cab932f50b630e1f800/> Remove `Default` impl for `WithTop` 3/4
-   Is confusing, probably not what users want.
  - <csr-id-87cc3c83847da4e616b502a638337c51bb6bf9bf/> Remove `Default` impl for `WithTop` 3/4
    Is confusing, probably not what users want.
-
-### Refactor (BREAKING)
-
- - <csr-id-4a727ecf1232e0f03f5300547282bfbe73342cfa/> Rename `ConvertFrom::from` -> `LatticeFrom::lattice_from`
- - <csr-id-5c7e4d3aea1dfb61d51bcb0291740281824e3090/> Rename `Bottom` -> `WithBot`, `Top` -> `WithTop`, constructors now take `Option`s 2/4
- - <csr-id-1bdadb82b25941d11f3fa24eaac35109927c852f/> Rename `Immut` -> `Point` lattice.
 
 ### Commit Statistics
 
@@ -1071,22 +874,6 @@ Unchanged from previous release.
 <csr-id-c0f165e32a1dcdcadefe6cdcf0b068a31ef9d1d7/>
 <csr-id-b94cf68343c5dcaaaa0c18bb068f435441f32b09/>
 
-### Chore
-
- - <csr-id-fd896fbe925fbd8ef1d16be7206ac20ba585081a/> manually bump versions for v0.2.0 release
-
-### Refactor (BREAKING)
-
- - <csr-id-c0f165e32a1dcdcadefe6cdcf0b068a31ef9d1d7/> rename `Fake` -> `Immut`
-
-### Chore
-
- - <csr-id-b94cf68343c5dcaaaa0c18bb068f435441f32b09/> manually bump versions for v0.2.0 release
-
-### Refactor (BREAKING)
-
- - <csr-id-10b308532245db8f4480ce53b67aea050ae1918d/> rename `Fake` -> `Immut`
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
@@ -1112,7 +899,6 @@ Unchanged from previous release.
 
 ### New Features
 
- - <csr-id-ecff609a0153446efc1809230ae100964bb9f89b/> print out items when lattice identity tests fail
  - <csr-id-efde5811ba9b3ded39ea30e2f84579521cc092e5/> print out items when lattice identity tests fail
 
 ### Commit Statistics
@@ -1143,18 +929,8 @@ Unchanged from previous release.
 
 ### Documentation
 
- - <csr-id-720744fc90fa05a11e0b79c96baba2eb6fd1c7f3/> simplified explanations, fixed typos, removed dead named links
- - <csr-id-4bc1ac1ea2fa6257219ec7fae94a2b039ec7eb7b/> update links from old to new book
  - <csr-id-d4d3d42438a3885002a5c07483e7ff364219e5c1/> simplified explanations, fixed typos, removed dead named links
  - <csr-id-e7927026703fc7f12faacefb1e10b1531de7359e/> update links from old to new book
-
-### Refactor
-
- - <csr-id-3bee6f858a78d82b7431e124ef9792002c8d77ce/> update cc-traits to v2, remove `SimpleKeyedRef` shim
-
-### Refactor
-
- - <csr-id-0d8930b94a1ff3e3f22924a505721d217f632446/> update cc-traits to v2, remove `SimpleKeyedRef` shim
 
 ### Commit Statistics
 
@@ -1195,27 +971,11 @@ Unchanged from previous release.
 
 <csr-id-fc8f73980d0cf711bf6ac3fcb8558540d0f05acd/>
 
- - <csr-id-95d23eaf8218002ad0a6a8c4c6e6c76e6b8f785b/> Update docs, add book chapter for `lattices` crate
-   - Adds `mdbook-katex` to the book build for latex support.
 
 ### New Features
 
- - <csr-id-15f9688ff4dc816a374ed9068d98bee0a4d51b2c/> Make lattice test helpers public, restructure
-   Also impl `LatticeOrd` for `SetUnion`
  - <csr-id-8ad06384c88aea30fbb168901d5ba5ec25d9d2bb/> Make lattice test helpers public, restructure
    Also impl `LatticeOrd` for `SetUnion`
-
-### Style
-
- - <csr-id-cd0a86d9271d0e3daab59c46f079925f863424e1/> Warn lint `unused_qualifications`
- - <csr-id-20a1b2c0cd04a8b495a02ce345db3d48a99ea0e9/> rustfmt group imports
- - <csr-id-1eda91a2ef8794711ef037240f15284e8085d863/> rustfmt prescribe flat-module `use` format
-
-### Style
-
- - <csr-id-7818bafa3361890101864f82815b1c94130d97f4/> Warn lint `unused_qualifications`
- - <csr-id-21a503e795593173b1fd114d70a7cfad3e79ecfe/> rustfmt group imports
- - <csr-id-2a144a622682a958d44377df71a71b59cf1b39c4/> rustfmt prescribe flat-module `use` format
 
 ### Commit Statistics
 

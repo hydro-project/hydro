@@ -5,6 +5,89 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.2.0-alpha.1 (2026-06-11)
+
+### Chore
+
+ - <csr-id-e70eab6a0c793ef095e2cd747220d5419f7bf1a4/> revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version
+ - <csr-id-33a606afb3f123f01e4b9ce916c75cf9aa03e5fd/> update to rust 1.95.0
+   - Bump `rust-toolchain.toml` from Rust 1.93.1 to 1.95.0.
+   - Apply minor iterator/sort refactors to satisfy newer clippy lints and
+   keep deterministic ordering where relevant.
+   - Refresh trybuild compile-fail `.stderr` snapshots to match Rust 1.95
+   diagnostic formatting.
+
+### Bug Fixes
+
+ - <csr-id-938cf91f4adff7b96f3f3536f4427f38f07f4ea6/> gate proc_macro_diagnostics behind codegen feature, remove several stabilized features. [ci-full]
+
+### Test
+
+ - <csr-id-7161b32a4dca04ca7c163a974d792552308b3a13/> cleanup trybuild stable vs nightly handling
+   Previous setup meant you had to wrangle symlinks every time you added
+   more tests, and they were tracked in git. This has the test helper set
+   up the symlinks, and they are no longer tracked in git.
+   
+   **Structure per crate:**
+   ```
+   tests/compile-fail/
+   ├─ .gitignore    # ignores stable/*.rs and nightly/*.rs
+   ├─ *.rs          # source test files (single canonical copy)
+   ├─ stable/
+   │  └─ *.stderr   # expected errors for stable rustc
+   └─ nightly/
+      └─ *.stderr   # expected errors for nightly rustc
+   ```
+   
+   **Usage in each test file:**
+   ```rust
+   #[test]
+   fn test_all() {
+       hydro_build_utils::trybuild_compile_fail!("surface_*.rs"); // or "*.rs"
+   }
+   ```
+   
+   **How it works:**
+   - The macro symlinks `.rs` files into the active channel's subdir at
+   test time
+   - Trybuild runs against the channel subdir, making `.rs` symlinks next
+   to the `.stderr` files
+   - `TRYBUILD=overwrite` writes updated `.stderr` directly into the
+   correct committed directory
+
+### New Features (BREAKING)
+
+ - <csr-id-dcef67d9572055f7eeb64f92fa95fa4babebd6c8/> `#[no_std]` support
+   Adds default `std` and `alloc` features
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 6 commits contributed to the release.
+ - 40 days passed between releases.
+ - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 4 unique issues were worked on: [#2869](https://github.com/hydro-project/hydro/issues/2869), [#2870](https://github.com/hydro-project/hydro/issues/2870), [#2878](https://github.com/hydro-project/hydro/issues/2878), [#2893](https://github.com/hydro-project/hydro/issues/2893)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2869](https://github.com/hydro-project/hydro/issues/2869)**
+    - Cleanup trybuild stable vs nightly handling ([`7161b32`](https://github.com/hydro-project/hydro/commit/7161b32a4dca04ca7c163a974d792552308b3a13))
+ * **[#2870](https://github.com/hydro-project/hydro/issues/2870)**
+    - Update to rust 1.95.0 ([`33a606a`](https://github.com/hydro-project/hydro/commit/33a606afb3f123f01e4b9ce916c75cf9aa03e5fd))
+ * **[#2878](https://github.com/hydro-project/hydro/issues/2878)**
+    - Gate proc_macro_diagnostics behind codegen feature, remove several stabilized features. [ci-full] ([`938cf91`](https://github.com/hydro-project/hydro/commit/938cf91f4adff7b96f3f3536f4427f38f07f4ea6))
+ * **[#2893](https://github.com/hydro-project/hydro/issues/2893)**
+    - `#[no_std]` support ([`dcef67d`](https://github.com/hydro-project/hydro/commit/dcef67d9572055f7eeb64f92fa95fa4babebd6c8))
+ * **Uncategorized**
+    - Revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version ([`e70eab6`](https://github.com/hydro-project/hydro/commit/e70eab6a0c793ef095e2cd747220d5419f7bf1a4))
+    - Release hydro_build_utils v0.1.1-alpha.0, dfir_lang v1.0.0-alpha.0, dfir_macro v0.17.0-alpha.0, variadics v1.0.0-alpha.0, variadics_macro v0.8.0-alpha.0, lattices v0.8.0-alpha.0, dfir_pipes v0.1.0-alpha.0, sinktools v0.2.0-alpha.0, hydro_deploy_integration v0.17.0-alpha.0, dfir_rs v0.17.0-alpha.0, hydro_deploy v0.17.0-alpha.0, hydro_lang v0.17.0-alpha.0, hydro_std v0.17.0-alpha.0, safety bump 10 crates ([`12e7666`](https://github.com/hydro-project/hydro/commit/12e76666f7104f81b48de5ddf397b8e72c8a6711))
+</details>
+
 ## 0.1.0 (2026-05-01)
 
 ### Chore
@@ -35,7 +118,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 5 commits contributed to the release.
+ - 6 commits contributed to the release.
  - 156 days passed between releases.
  - 5 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 5 unique issues were worked on: [#2406](https://github.com/hydro-project/hydro/issues/2406), [#2501](https://github.com/hydro-project/hydro/issues/2501), [#2525](https://github.com/hydro-project/hydro/issues/2525), [#2606](https://github.com/hydro-project/hydro/issues/2606), [#2668](https://github.com/hydro-project/hydro/issues/2668)
@@ -56,6 +139,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Fix `#[no_std]` handling ([`edaa383`](https://github.com/hydro-project/hydro/commit/edaa3835df9f3ad32071998f1f0daa658321e547))
  * **[#2668](https://github.com/hydro-project/hydro/issues/2668)**
     - Update pinned Rust stable version from 1.92.0 to 1.93.1 ([`5bccb09`](https://github.com/hydro-project/hydro/commit/5bccb09b69199639d3265dbbe90a96e02bad7f1d))
+ * **Uncategorized**
+    - Release hydro_build_utils v0.1.0, dfir_lang v0.16.0, dfir_macro v0.16.0, variadics v0.1.0, dfir_pipes v0.0.1, example_test v0.0.1, sinktools v0.1.0, hydro_deploy_integration v0.16.0, lattices_macro v0.6.0, variadics_macro v0.7.0, lattices v0.7.0, multiplatform_test v0.7.0, dfir_rs v0.16.0, copy_span v0.1.1, hydro_deploy v0.16.0, hydro_lang v0.16.0, hydro_std v0.16.0, safety bump 13 crates ([`c20757a`](https://github.com/hydro-project/hydro/commit/c20757ae0e9e10463b2a499de4b7d37ab02269d0))
 </details>
 
 ## 0.0.10 (2025-11-25)
@@ -63,11 +148,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-d22507cf6064e4b9f6a02404d58f644cde3dcf0b/>
 <csr-id-97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71/>
 <csr-id-806a6239a649e24fe10c3c90dd30bd18debd41d2/>
-
-### Chore
-
- - <csr-id-d22507cf6064e4b9f6a02404d58f644cde3dcf0b/> update to rust 1.91.1
- - <csr-id-97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71/> update pinned nightly to 2025-08-20, fix lints
 
 ### New Features
 
@@ -80,10 +160,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Bug Fixes
 
  - <csr-id-c40876ec4bd3b31254d683e479b9a235f3d11f67/> refactor github actions workflows, make stable the default toolchain
-
-### Other
-
- - <csr-id-806a6239a649e24fe10c3c90dd30bd18debd41d2/> ensure `hydro_build_utils` is published in the correct order
 
 ### Commit Statistics
 
@@ -122,34 +198,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/>
 <csr-id-8f4426089dcbbe5d1098f89e367c7be49a03e401/>
 
-### Chore
-
- - <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/> upgrade to Rust 2024 edition
-   - Updates `Cargo.toml` to use new shared workspace keys
-   - Updates lint settings (in workspace `Cargo.toml`)
-   - `rustfmt` has changed slightly, resulting in a big diff - there are no
-   actual code changes
-   - Adds a script to `rustfmt` the template src files
- - <csr-id-2fd6aa7417dfa29f389c04c5b9674b80bfed6cf2/> update pinned nightly to 2025-02-10, cleanups for clippy
-
-### Refactor
-
- - <csr-id-5cd0a9625822620dcc99b99356edfecbf0549497/> enable lints, cleanups for Rust 2024 #1732
-
-### Chore
-
- - <csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/> upgrade to Rust 2024 edition
-   - Updates `Cargo.toml` to use new shared workspace keys
-   - Updates lint settings (in workspace `Cargo.toml`)
-   - `rustfmt` has changed slightly, resulting in a big diff - there are no
-   actual code changes
-   - Adds a script to `rustfmt` the template src files
- - <csr-id-8f4426089dcbbe5d1098f89e367c7be49a03e401/> update pinned nightly to 2025-02-10, cleanups for clippy
-
-### Refactor
-
- - <csr-id-c293cca6855695107e9cef5c5df99fb04a571934/> enable lints, cleanups for Rust 2024 #1732
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
@@ -179,14 +227,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 
- - <csr-id-28cd220c68e3660d9ebade113949a2346720cd04/> add `repository` field to `Cargo.toml`s, fix #1452
-   #1452 
-   
-   Will trigger new releases of the following:
-   `unchanged = 'hydroflow_deploy_integration', 'variadics',
-   'variadics_macro', 'pusherator'`
-   
-   (All other crates already have changes, so would be released anyway)
  - <csr-id-204bd117ca3a8845b4986539efb91a0c612dfa05/> add `repository` field to `Cargo.toml`s, fix #1452
    #1452 
    
@@ -226,47 +266,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-cebd1dc35282514f025e047a9b94800f546dd62f/>
 <csr-id-014ebb2628b5b80ea1b6426b58c4d62706edb9ef/>
 
-### Chore
-
- - <csr-id-d5677604e93c07a5392f4229af94a0b736eca382/> update pinned rust version, clippy lints, remove some dead code
-
-### Test
-
- - <csr-id-595ea2555803b9ed7f0a113f399fcdbf0574a317/> ignore trybuild tests inconsistent on latest nightly
-
-### Style
-
- - <csr-id-cebd1dc35282514f025e047a9b94800f546dd62f/> fixes for nightly clippy
-   a couple few spurious `too_many_arguments` and a spurious
-   `zombie_processes` still on current nightly (`clippy 0.1.84 (4392847410
-   2024-10-21)`)
-
-### Chore
-
- - <csr-id-014ebb2628b5b80ea1b6426b58c4d62706edb9ef/> update pinned rust version, clippy lints, remove some dead code
-
 ### New Features
 
- - <csr-id-f7e740fb2ba36d0fcf3fd196d60333552911e3a4/> generalized hash trie indexes for relational tuples
-   Generalized Hash Tries are part of the SIGMOD '23 FreeJoin
-   [paper](https://dl.acm.org/doi/abs/10.1145/3589295) by
-   Wang/Willsey/Suciu. They provide a compressed ("factorized")
-   representation of relations. By operating in the factorized domain, join
-   algorithms can defer cross-products and achieve asymptotically optimal
-   performance.
-   
-   ---------
- - <csr-id-1c2825942f8a326699a7fb68b5372b49918851b5/> additions to variadics including collection types
-   adds a number of features:
-   
-   collection types for variadics (sets, multisets) that allow search via
-   RefVars (variadic of refs)
-   into_option (convert a variadic to a variadic of options)
-   into_vec (convert a variadic to a variadic of vecs)
- - <csr-id-8afd3266dac43c04c3fc29065a13c9c9a6a55afe/> additions to variadics including collection types
-   adds a number of features:
-   - collection types for variadics (sets, multisets) that allow search via
-   RefVars (variadic of refs)
  - <csr-id-48e4eb28a9ce652037ac81b580d30f93159dae9b/> generalized hash trie indexes for relational tuples
    Generalized Hash Tries are part of the SIGMOD '23 FreeJoin
    [paper](https://dl.acm.org/doi/abs/10.1145/3589295) by
@@ -289,17 +290,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    RefVars (variadic of refs)
    - into_option (convert a variadic to a variadic of options)
    - into_vec (convert a variadic to a variadic of vecs)
-
-### Style
-
- - <csr-id-47cb703e771f7d1c451ceb9d185ada96410949da/> fixes for nightly clippy
-   a couple few spurious `too_many_arguments` and a spurious
-   `zombie_processes` still on current nightly (`clippy 0.1.84 (4392847410
-   2024-10-21)`)
-
-### Test
-
- - <csr-id-656ee328c8710bce7370c851437a80ca3db46a5a/> ignore trybuild tests inconsistent on latest nightly
 
 ### Commit Statistics
 
@@ -338,24 +328,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-11af32828bab6e4a4264d2635ff71a12bb0bb778/>
 <csr-id-2c04f51f1ec44f7898307b6610371dcb490ea686/>
 
-### Chore
-
- - <csr-id-11af32828bab6e4a4264d2635ff71a12bb0bb778/> lower min dependency versions where possible, update `Cargo.lock`
-   Moved from #1418
-   
-   ---------
-
-### Chore
-
- - <csr-id-2c04f51f1ec44f7898307b6610371dcb490ea686/> lower min dependency versions where possible, update `Cargo.lock`
-   Moved from #1418
-   
-   ---------
-
 ### Bug Fixes
 
- - <csr-id-43ff49d72789d78535717d2db04cf595cc511274/> allow `PartialEqVariadic::eq_ref` to take `AsRefVar`s with different lifetimes
-   Bug found while working on GHTs
  - <csr-id-9646d3e0ffe7d8d3b0bac2c47df9cfe88e3afd1d/> allow `PartialEqVariadic::eq_ref` to take `AsRefVar`s with different lifetimes
    Bug found while working on GHTs
 
@@ -386,17 +360,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New Features
 
- - <csr-id-20080cb7ceb5b5d3ba349dfd822a37288e40add6/> add traits for dealing with variadics of references
-   Renames some traits, but not a breaking change since there hasn't been a
-   release that includes those traits.
- - <csr-id-b92dfc7460c985db6935e79d612f42b9b87e746f/> add `iter_any_ref` and `iter_any_mut` to `VariadicsExt`
-   Depends on #1241
-   
-   This isn't needed for the current GHT implementation, but is useful in
-   general
- - <csr-id-1a6228f2db081af68890e2e64b3a91f15dd9214f/> add traits for referencing variadics
-   This adds a way to convert a reference to a variadic into a variadic of
-   references. I.e. `&var_expr!(a, b, c) -> var_expr!(&a, &b, &c)`
  - <csr-id-91259f1eaa0e742a6a10f03306b3aa09c0bcd557/> add traits for dealing with variadics of references
    Renames some traits, but not a breaking change since there hasn't been a
    release that includes those traits.
@@ -411,8 +374,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
- - <csr-id-bbef0705d509831415d3bb5ce003116af06b6ffb/> `EitherRefVariadic` is `Variadic`
- - <csr-id-c70114d836e5bc36e2104188867e548e90ab38f4/> fix `HomogenousVariadic` `get` and `get_mut` only returning `None`
  - <csr-id-617e98796dc0359978ba8f487503dbf1317012aa/> `EitherRefVariadic` is `Variadic`
  - <csr-id-fd1104bbdd1c284191088ae77160818db2e91cfd/> fix `HomogenousVariadic` `get` and `get_mut` only returning `None`
 
@@ -454,24 +415,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-ae69ce53657104745764fd278153e965182223c4/>
 <csr-id-591fcc99a9b4d7c7cb14a9a0e97d5729834e19c4/>
 
-### Chore
-
- - <csr-id-5a451ac4ae75024153a06416fc81d834d1fdae6f/> prep for 0.0.4 release
- - <csr-id-7103e77d0da1d73f1c93fcdb260b6a4c9a18ff66/> update pinned rust to 2024-04-24
-
-### Style
-
- - <csr-id-894962b540fd67a6ac7fa510e548a903478c62a0/> fix dead code lint
-
-### Chore
-
- - <csr-id-ae69ce53657104745764fd278153e965182223c4/> prep for 0.0.4 release
- - <csr-id-591fcc99a9b4d7c7cb14a9a0e97d5729834e19c4/> update pinned rust to 2024-04-24
-
-### Style
-
- - <csr-id-b4683450a273d510a11338f07920a5558033b31f/> fix dead code lint
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
@@ -500,36 +443,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-3ea3fd5b123b1b088cb94e24fb726ef05114a069/>
 <csr-id-7c48faf0d8301b498fa59e5eee5cddf5fa341229/>
 
-### Chore
-
- - <csr-id-1b555e57c8c812bed4d6495d2960cbf77fb0b3ef/> manually set lockstep-versioned crates (and `lattices`) to version `0.5.1`
-   Setting manually since
-   https://github.com/frewsxcv/rust-crates-index/issues/159 is messing with
-   smart-release
-
-### Refactor
-
- - <csr-id-3ea3fd5b123b1b088cb94e24fb726ef05114a069/> Improvements prepping for release
-   - Adds the "spread"/"splat" `...` syntax to the three variadics macros.
-   - Adds `#[sealed]` traits.
-   - Adds testing of error messages.
-   - Improves docs: `README.md` and Rust docs.
-
-### Chore
-
- - <csr-id-7c48faf0d8301b498fa59e5eee5cddf5fa341229/> manually set lockstep-versioned crates (and `lattices`) to version `0.5.1`
-   Setting manually since
-   https://github.com/frewsxcv/rust-crates-index/issues/159 is messing with
-   smart-release
-
-### Refactor
-
- - <csr-id-7e65a08711775656e435e854777c5f089dd31a05/> Improvements prepping for release
-   - Adds the "spread"/"splat" `...` syntax to the three variadics macros.
-   - Adds `#[sealed]` traits.
-   - Adds testing of error messages.
-   - Improves docs: `README.md` and Rust docs.
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
@@ -555,14 +468,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-id-5a3c2949653685de1e33cf7412057a70880283df/>
 <csr-id-92e17e59de26473f99fd83454668045aaddc691a/>
-
-### Style
-
- - <csr-id-5a3c2949653685de1e33cf7412057a70880283df/> rustfmt format code comments
-
-### Style
-
- - <csr-id-92e17e59de26473f99fd83454668045aaddc691a/> rustfmt format code comments
 
 ### Commit Statistics
 

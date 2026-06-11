@@ -1,5 +1,123 @@
 
 
+## v0.17.0-alpha.1 (2026-06-11)
+
+### Chore
+
+ - <csr-id-e70eab6a0c793ef095e2cd747220d5419f7bf1a4/> revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version ([`e70eab6`](https://github.com/hydro-project/hydro/commit/e70eab6a0c793ef095e2cd747220d5419f7bf1a4))
+</details>
+
+## v0.17.0-alpha.0 (2026-06-10)
+
+### New Features
+
+ - <csr-id-35f8a3b758172fc09b3cf248f5df869c7250aa41/> Add mutable singleton references (`by_mut`) to `Stream::map`
+   Adds support for `#{N} mut var` mutable singleton references in Hydro,
+   building on the existing DFIR-level infrastructure.
+   
+   Key changes:
+   
+   1. hydro_lang/src/singleton_ref.rs:
+   - Changed thread-local `SINGLETON_REFS` to track mutability:
+   `Vec<(Ident, HydroNode, bool)>`
+   - Added `IS_MUT: bool` const generic to `SingletonRef<'a, T, L, IS_MUT =
+   false>`
+   - Added `SingletonMut`alias to `SingletonRef<'a, T, L, IS_MUT = true>`
+   
+   2. hydro_lang/src/compile/ir/mod.rs:
+   - Changed `ClosureExpr.singleton_refs` to `Vec<(Ident, HydroNode,
+   bool)>`
+   - Updated Clone, Serialize, deep_clone, transform_children accordingly
+   - `emit_tokens` now accepts `&mut HashMap<*const RefCell<HydroNode>,
+   u32>` for
+   per-singleton access counters and generates `#{N} var` or `#{N} mut var`
+   syntax
+   - Access group assignment: immutable refs get current counter value;
+   mutable refs
+        increment before and after (ensuring isolation in their own group)
+   - Added `singleton_access_counters` local in `emit_core`, threaded to
+   all
+   `emit_tokens` call sites (Map, FlatMap, Filter, FilterMap, Inspect,
+   Fold,
+        Scan, Reduce, ReduceKeyed, ReduceKeyedWatermark, Partition, etc.)
+   
+   3. hydro_lang/src/live_collections/singleton.rs:
+   - Added `by_ref_mut()` method mirroring `by_ref()` but returning
+   `SingletonRefMut`
+
+### Refactor
+
+ - <csr-id-5caf0235cea8cf4e83614e0c31bbb3c8d5aa417e/> singleton `by_ref()` proper lifetime, update to stageleft 0.14.0
+   Blocked on https://github.com/hydro-project/stageleft/pull/77/
+   
+   Also an improvement in that `by_ref()` is now a no-op if the
+   `SingletonRef` is unused - only changes the IR at quoting time.
+
+### New Features (BREAKING)
+
+ - <csr-id-881a101cbf91011ab9262a6ba72c489d03197780/> replace `NoTick`/`NoAtomic` with `TopLevel`, track consistency in the type system
+   Breaking Changes:
+   - Removed `NoTick` and `NoAtomic`, enforcement of no nested ticks is now
+   handled at staging time. Added `TopLevel` to restrict I/O operators to
+   be outside a `Tick` / `Atomic`.
+   - Added a type parameter to `Cluster` and a field to
+   `LocationId::Cluster` that tracks the consistency guarantee of the live
+   collection at that location
+   - `Location::source_cluster_membership_stream` (renamed + deprecated
+   from `Location::source_cluster_members`) now requires a `nondet!` since
+   late-joiners will see a non-deterministic suffix of the stream. In a
+   follow up PR, we will replace the now-deprecated
+   `source_cluster_members` to instead offer an API that aggregates into a
+   `KeyedSingleton`, which will be guaranteed deterministic and consistent
+   - `Location::current_tick_instant` has been moved to be on `Tick`, since
+   wall clock time can only be read in a tick context
+ - <csr-id-d4ff79f02f6ab1981f671e364e02c089a4990735/> Make `source_interval` emit `()` and add `current_tick_instant`
+   …for wall-clock time
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 5 commits contributed to the release.
+ - 40 days passed between releases.
+ - 4 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 4 unique issues were worked on: [#2796](https://github.com/hydro-project/hydro/issues/2796), [#2867](https://github.com/hydro-project/hydro/issues/2867), [#2899](https://github.com/hydro-project/hydro/issues/2899), [#2907](https://github.com/hydro-project/hydro/issues/2907)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2796](https://github.com/hydro-project/hydro/issues/2796)**
+    - Replace `NoTick`/`NoAtomic` with `TopLevel`, track consistency in the type system ([`881a101`](https://github.com/hydro-project/hydro/commit/881a101cbf91011ab9262a6ba72c489d03197780))
+ * **[#2867](https://github.com/hydro-project/hydro/issues/2867)**
+    - Make `source_interval` emit `()` and add `current_tick_instant` ([`d4ff79f`](https://github.com/hydro-project/hydro/commit/d4ff79f02f6ab1981f671e364e02c089a4990735))
+ * **[#2899](https://github.com/hydro-project/hydro/issues/2899)**
+    - Add mutable singleton references (`by_mut`) to `Stream::map` ([`35f8a3b`](https://github.com/hydro-project/hydro/commit/35f8a3b758172fc09b3cf248f5df869c7250aa41))
+ * **[#2907](https://github.com/hydro-project/hydro/issues/2907)**
+    - Singleton `by_ref()` proper lifetime, update to stageleft 0.14.0 ([`5caf023`](https://github.com/hydro-project/hydro/commit/5caf0235cea8cf4e83614e0c31bbb3c8d5aa417e))
+ * **Uncategorized**
+    - Release hydro_build_utils v0.1.1-alpha.0, dfir_lang v1.0.0-alpha.0, dfir_macro v0.17.0-alpha.0, variadics v1.0.0-alpha.0, variadics_macro v0.8.0-alpha.0, lattices v0.8.0-alpha.0, dfir_pipes v0.1.0-alpha.0, sinktools v0.2.0-alpha.0, hydro_deploy_integration v0.17.0-alpha.0, dfir_rs v0.17.0-alpha.0, hydro_deploy v0.17.0-alpha.0, hydro_lang v0.17.0-alpha.0, hydro_std v0.17.0-alpha.0, safety bump 10 crates ([`12e7666`](https://github.com/hydro-project/hydro/commit/12e76666f7104f81b48de5ddf397b8e72c8a6711))
+</details>
+
 ## v0.16.0 (2026-05-01)
 
 <csr-id-2f38e7eddf0363f818aa4b204c7bf549c317428a/>
@@ -68,89 +186,6 @@
    same key is created, which is effectively the moment the previous output
    is received. This overwrites the actual start time of the previous
    payload and results in unnaturally small latencies.
-
-### Refactor
-
- - <csr-id-2f38e7eddf0363f818aa4b204c7bf549c317428a/> Generalize bench_client
-   Previous behavior:
-   - `bench_client` generates virtual client IDs. Payloads are assigned to
-   each ID via `workload_generator`, then fed to the protocol via
-   `transaction_cycle`. Both `workload_generator` and `transaction_cycle`
-   are lambdas passed into `bench_client`.
-   - This fixes the input/output streams of the protocol so it can only
-   have 1 input and 1 output. Not ideal if
-   - Multiple input streams types are more ergonomic. For example, a Put
-   and a Get stream
-   - Latencies aren't necessary bound by 1 round trip. For example, a lock
-   request's latency may be the total of "acquire (success) + release" or
-   "acquire (fail) + retry + release"
-     - Multiple output streams that should get their own graphs
-   
-   New behavior:
-   - `bench_client` outputs per-payload latency with the output payload
-   attached, so the benchmark can choose to graph partition outputs onto
-   separate graphs based on request type
-   - Latency can be fed into `compute_throughput_latency` to generate part
-   of the latency histogram and batched throughput numbers (`BenchResult`).
-   - The protocol's benchmark client has flexibility on when to calculate
-   latency (and any other metric), and which aggregator to feed the results
-   to.
-   - `BenchResult` is fed to `print_bench_results` so the aggregator prints
-   throughput/latency once per second.
-   
-   ## Note
-   `bench_client` contains an unused variable in `sliced!` because `sliced`
-   requires at least 1 `use` statement. The error is currently suppressed
-   but the requirement should probably be removed from `sliced`?
- - <csr-id-59f5216642e3f08eae896ea67cfc5b213ad86e4a/> port `bench_client` to use sliced!, introduce `Stream::merge_ordered`
-   This also fixes a bug where the throughput reset timer would cause a
-   batch of payloads to be not counted in the throughput.
-   
-   We add support for tick-cycles / `use::state` to `Optional` and
-   `KeyedSingleton` to support this code more cleanly.
-   
-   To further simplify the code, we add `merge_ordered` to combine two
-   streams while preserving order. This makes it possible to implement
-   throughput windowing without slices.
- - <csr-id-fcce19b958bbc39ccef94277ca146baafc98ce59/> port quorum to use `sliced!`
-
-## Note
-   `bench_client` contains an unused variable in `sliced!` because `sliced`
-   requires at least 1 `use` statement. The error is currently suppressed
-   but the requirement should probably be removed from `sliced`?
- - <csr-id-59f5216642e3f08eae896ea67cfc5b213ad86e4a/> port `bench_client` to use sliced!, introduce `Stream::merge_ordered`
-   This also fixes a bug where the throughput reset timer would cause a
-   batch of payloads to be not counted in the throughput.
-   
-   We add support for tick-cycles / `use::state` to `Optional` and
-   `KeyedSingleton` to support this code more cleanly.
-   
-   To further simplify the code, we add `merge_ordered` to combine two
-   streams while preserving order. This makes it possible to implement
-   throughput windowing without slices.
- - <csr-id-fcce19b958bbc39ccef94277ca146baafc98ce59/> port quorum to use `sliced!`
-
-## Note
-   `bench_client` contains an unused variable in `sliced!` because `sliced`
-   requires at least 1 `use` statement. The error is currently suppressed
-   but the requirement should probably be removed from `sliced`?
- - <csr-id-59f5216642e3f08eae896ea67cfc5b213ad86e4a/> port `bench_client` to use sliced!, introduce `Stream::merge_ordered`
-   This also fixes a bug where the throughput reset timer would cause a
-   batch of payloads to be not counted in the throughput.
-   
-   We add support for tick-cycles / `use::state` to `Optional` and
-   `KeyedSingleton` to support this code more cleanly.
-   
-   To further simplify the code, we add `merge_ordered` to combine two
-   streams while preserving order. This makes it possible to implement
-   throughput windowing without slices.
- - <csr-id-fcce19b958bbc39ccef94277ca146baafc98ce59/> port quorum to use `sliced!`
-
-### Chore (BREAKING)
-
- - <csr-id-efaa8f61c124c4b3c691b92a58df1686751cf45c/> update pinned rust to 1.92, add lints/fixes for redundant cloning, string handling
-   Somewhat waiting on https://github.com/hydro-project/stageleft/pull/56
-   to be published
 
 ### New Features (BREAKING)
 
@@ -228,20 +263,11 @@
    the UDF. This also paves the path for configurable verification methods
    such as Kani.
 
-### Refactor (BREAKING)
-
- - <csr-id-502e26470cbc5f9c645d7907eb6addf95b5c5533/> Refactor client_aggregator so printing is a separate function
-   Preparing for a custom throughput/latency printer in hydro_optimize so I
-   can parse the results
- - <csr-id-1b947b3dab7a93fcb83b732eca968c3f2b049301/> convert locations (Cluster/Process/External) to use slotmaps, new key type
-   This improves code quality by ensuring `LocationKey` types are
-   explicitly locations intead of magic `usize` fields.
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 28 commits contributed to the release.
+ - 29 commits contributed to the release.
  - 156 days passed between releases.
  - 26 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 26 unique issues were worked on: [#2330](https://github.com/hydro-project/hydro/issues/2330), [#2373](https://github.com/hydro-project/hydro/issues/2373), [#2379](https://github.com/hydro-project/hydro/issues/2379), [#2381](https://github.com/hydro-project/hydro/issues/2381), [#2394](https://github.com/hydro-project/hydro/issues/2394), [#2400](https://github.com/hydro-project/hydro/issues/2400), [#2405](https://github.com/hydro-project/hydro/issues/2405), [#2412](https://github.com/hydro-project/hydro/issues/2412), [#2435](https://github.com/hydro-project/hydro/issues/2435), [#2465](https://github.com/hydro-project/hydro/issues/2465), [#2492](https://github.com/hydro-project/hydro/issues/2492), [#2508](https://github.com/hydro-project/hydro/issues/2508), [#2522](https://github.com/hydro-project/hydro/issues/2522), [#2525](https://github.com/hydro-project/hydro/issues/2525), [#2531](https://github.com/hydro-project/hydro/issues/2531), [#2550](https://github.com/hydro-project/hydro/issues/2550), [#2554](https://github.com/hydro-project/hydro/issues/2554), [#2558](https://github.com/hydro-project/hydro/issues/2558), [#2578](https://github.com/hydro-project/hydro/issues/2578), [#2607](https://github.com/hydro-project/hydro/issues/2607), [#2614](https://github.com/hydro-project/hydro/issues/2614), [#2619](https://github.com/hydro-project/hydro/issues/2619), [#2626](https://github.com/hydro-project/hydro/issues/2626), [#2669](https://github.com/hydro-project/hydro/issues/2669), [#2692](https://github.com/hydro-project/hydro/issues/2692), [#2700](https://github.com/hydro-project/hydro/issues/2700)
@@ -305,9 +331,13 @@
  * **[#2700](https://github.com/hydro-project/hydro/issues/2700)**
     - Virtual clients off-by-one error ([`f104f2b`](https://github.com/hydro-project/hydro/commit/f104f2b3d4f78ccd05465d2af69b1be34d5ea7a5))
  * **Uncategorized**
+    - Release hydro_lang v0.16.0, hydro_std v0.16.0 ([`f96e4d2`](https://github.com/hydro-project/hydro/commit/f96e4d2590875352ad560f79e96dff1a04a4727a))
     - Release dfir_pipes v0.0.1, example_test v0.0.1, sinktools v0.1.0, hydro_deploy_integration v0.16.0, lattices_macro v0.6.0, variadics_macro v0.7.0, lattices v0.7.0, multiplatform_test v0.7.0, dfir_rs v0.16.0, copy_span v0.1.1, hydro_deploy v0.16.0, hydro_lang v0.16.0, hydro_std v0.16.0 ([`118b356`](https://github.com/hydro-project/hydro/commit/118b356447d92e778313d72a351e5a8d2814aa1a))
     - Release hydro_build_utils v0.1.0, dfir_lang v0.16.0, dfir_macro v0.16.0, variadics v0.1.0, dfir_pipes v0.0.1, example_test v0.0.1, sinktools v0.1.0, hydro_deploy_integration v0.16.0, lattices_macro v0.6.0, variadics_macro v0.7.0, lattices v0.7.0, multiplatform_test v0.7.0, dfir_rs v0.16.0, copy_span v0.1.1, hydro_deploy v0.16.0, hydro_lang v0.16.0, hydro_std v0.16.0, safety bump 13 crates ([`c20757a`](https://github.com/hydro-project/hydro/commit/c20757ae0e9e10463b2a499de4b7d37ab02269d0))
 </details>
+
+<csr-unknown>
+Notebench_client contains an unused variable in sliced! because slicedrequires at least 1 use statement. The error is currently suppressedbut the requirement should probably be removed from sliced?Notebench_client contains an unused variable in sliced! because slicedrequires at least 1 use statement. The error is currently suppressedbut the requirement should probably be removed from sliced?<csr-unknown/>
 
 ## v0.15.0 (2025-11-25)
 
@@ -438,26 +468,6 @@
  - <csr-id-c40876ec4bd3b31254d683e479b9a235f3d11f67/> refactor github actions workflows, make stable the default toolchain
  - <csr-id-ab22c44aaabf2140315ba26104d9155e357a34ac/> remove strange use of batching in bench_client
 
-### Refactor
-
- - <csr-id-0be5729dd87a91a70001f88283b380d3da8df7d0/> reduce syntactic overhead of connecting test inputs / outputs
-   Rather than having separate `source` / `sink` / `bytes` / `bincode`
-   APIs, we use a single `connect` method that uses a trait to resolve the
-   appropriate connection result.
- - <csr-id-057192afde1373caedbbfc24516c28a96d12928c/> reduce atomic pollution in quorum counting
-   Also fixes a sync bug in Compartmentalized Paxos. Due to batching
-   semantics, we could end up in a situation where responses have missing
-   metadata (for example if the batch refuses to release any elements).
-   
-   The simulator would hopefully have caught this, we can use this as an
-   example.
- - <csr-id-2e2cd770fd18cd219ec1acdd2c74d46a5ee1b2de/> remove uses of legacy `*_keyed` APIs
-   Also adds missing doctests to the aggregation APIs on `KeyedStream`.
-
-### Test
-
- - <csr-id-1fc751515d5fd4b6ec07fec8e83b4aff70b3acca/> add test for collecting unordered quorum
-
 ### Documentation (BREAKING)
 
  - <csr-id-1af3a666b1d0787f0c023411b7f88ad3f8da5423/> add docs for `for_each` / `dest_sink`, restrict to strict streams
@@ -510,95 +520,6 @@
    We also rewrite some `Singleton` logic to use `Optional` under the hood,
    which reduces the places where we deal with chaining in the IR,
    hopefully avoiding future incidents.
-
-### Refactor (BREAKING)
-
- - <csr-id-b256cba932a8d6d7a6be7b1c98c2f8c20b299375/> don't return results from `SimSender::send`
-   Also makes the `assert_*` APIs on `SimReceiver` more general to support
-   asymmetric `PartialEq`
- - <csr-id-fa4e9d9914ed52aa5a7237c32a0dc57d713ec14a/> allow `sim` feature without `deploy` feature
-   Also removes leftover prototype "properties" code.
- - <csr-id-a4d8af603e6ad14659d1d43ca168495c883a58eb/> migrate Hydro IR to have Flo semantics at all levels
-   Previously, the Hydro -> Hydro IR layer did a bunch of work to translate
-   between Flo semantics and DFIR semantics, so that Hydro IR -> DFIR was
-   generally 1:1. In preparation for the simulator and DFIR's migration to
-   Flo semantics, we now use Flo semantics in the Hydro IR (top level
-   operators do not reset their state on batch boundaries), and shift the
-   Flo -> DFIR semantics translation to the IR -> DFIR layer.
-   
-   This also comes with a breaking API change to clean up naming and avoid
-   function overloading. In particular, `batch` / `snapshot` are renamed to
-   `batch_atomic` and `snapshot_atomic` for the case where the batched
-   result is supposed to be in-sync with the atomic execution context.
-   
-   There were a couple of bugs during the transition to the new IR
-   semantics that were not caught by existing unit tests, so I added
-   additional tests that cover each of them.
-   
-   Also makes some minor improvements / bug fixes the way:
-   - Restricts `KeyedSingleton::snapshot` to unbounded-value only, since
-   bounded value keyed singletons do not replay their elements
-   - Groups together definitions for `resolve_futures` and
-   `resolve_futures_ordered`
-   - Removes various unnecessary `NoAtomic` trait bounds
- - <csr-id-537309f9aac44498aa617c8517fdbc21616cbebf/> rename `continue_if*` to `filter_if*` and document
-   Eventually, we will want to change these APIs to take a "Condition" live
-   collection instead of an optional, but this at least improves the naming
-   for now.
- - <csr-id-5f8a4da212eba8b673f9c7a464c9e92d7c0602cd/> clean up API for cycles / forward references, document
-   Ongoing quest to reduce the public API surface. Moves the `DeferTick` IR
-   node to be at the root of the output side of the cycle, rather than
-   inserted at the sink.
- - <csr-id-4bf1c05583c838e7e4d183382fd72743402f889d/> move `boundedness` module under `live_collections`
-   Type tags for boundedness are only used in the type parameters for live
-   collections.
- - <csr-id-05145bf191bf0fcc794d282c3b18c0bd378a20ac/> set up prelude, move collections under `live_collections` module
-   Bigger refactor to clean up the top-level namespace for `hydro_lang`.
-   First, we move all the definitions for different live collections into
-   the `live_collections` module.
-   
-   We also rename the `unsafety` module to `nondet`.
-   
-   Then, instead of having a bunch of types exported directly from
-   `hydro_lang`, we instead create a `prelude` module that exports them.
-   This reduces the pollution of the namespace when importing from
-   `hydro_lang`.
- - <csr-id-4925e2c77a8e57d45d200c98a31859571a04d150/> reduce namespace pollution
- - <csr-id-628c1c870f1833dd05b3f57ee3e2e1235183cecb/> rename `ClusterId` to `MemberId`
-   Will allow us to use this for external clients as well.
- - <csr-id-1c26bc7899f29cb5b75446381ac5545f7ce017d8/> adjust cluster membership APIs to allow dynamic clusters
- - <csr-id-381be86c8729403d60575bbd7297b852b6b09ec0/> remove `KeyedOptional`
-   Keyed optionals don't make sense to distinguish from keyed singleton,
-   since a null optional is equivalent to the key not being present at all.
-   So we can capture all cases with just a keyed singleton.
-   
-   Eventually... we may want to re-distinguish these if we have keys with a
-   null value. But right now we don't need that so avoid unnecessary code.
- - <csr-id-804f9955dfc9ea64cb0f5177bcda5b9347fafe80/> nondet instead of unsafe, snapshot instead of latest_tick, batch instead of tick_batch
-   Pulled together into one big PR to avoid conflicts, this makes three
-   significant changes to the core Hydro APIs. No semantic changes, only
-   syntax and naming.
-   
-   1. Instead of non-deterministic functions being marked with the `unsafe`
-   keyword, which conflates non-determinism with memory unsafety, we now
-   pass around "non-determinism guards" that act as tokens forcing
-   developers to be aware of the non-determinism. With the VSCode Highlight
-   extension, we preserve highlighting of these instances.
-   2. We unify naming for "collection-like" types (Stream, KeyedStream) to
-   use `.batch` to batch elements
-   3. We unify naming for "floating-value-like" types (Singleton, Optional,
-   KeyedSingleton, KeyedOptional) to use `.snapshot` to grab an instance of
-   the value (or its contents)
- - <csr-id-1a344a98fce99d004e0ba86a67c7509d807c37bb/> simplify networking APIs according to Process/Cluster types
-   Breaking change: when sending to a cluster, you must use
-   `demux_bincode`. The `*_anonymous` APIs have been removed in favor of
-   the `.values()` API on keyed streams. This also eliminates the
-   `send_bytes` APIs, in favor of the bidirectional external client APIs.
-   
-   This refactors the networking APIs to rely less on complex traits and
-   instead use `Process` and `Cluster` types to determine the input /
-   output type restrictions. We also now emit `KeyedStream` whenever the
-   sender is a `Cluster`.
 
 ### Commit Statistics
 
@@ -721,10 +642,6 @@
    based on contents, so we were never benefitting from incremental
    compilation anyways. This reduces the disk space used significantly.
 
-### Refactor
-
- - <csr-id-5ab815f3567d51e9bd114f90af8e837fe0732cd8/> use `async-ssh2-russh` (instead of `libssh2` bindings), fix #1463
-
 ### New Features (BREAKING)
 
  - <csr-id-45bd6e9759410dcb747c9224758c82f9874378d2/> add stream markers for tracking non-deterministic retries
@@ -819,11 +736,6 @@
 
 <csr-id-38e6721be69f6a41aa47a01a9d06d56a01be1355/>
 
-### Chore
-
- - <csr-id-38e6721be69f6a41aa47a01a9d06d56a01be1355/> remove stageleft from repo, fix #1764
-   They grow up so fast 🥹
-
 ### Documentation
 
  - <csr-id-b235a42a3071e55da7b09bdc8bc710b18e0fe053/> demote python deploy docs, fix docsrs configs, fix #1392, fix #1629
@@ -877,44 +789,12 @@
 <csr-id-524fa67232b54f5faeb797b43070f2f197c558dd/>
 <csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/>
 
-### Chore
-
- - <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/> upgrade to Rust 2024 edition
-   - Updates `Cargo.toml` to use new shared workspace keys
-   - Updates lint settings (in workspace `Cargo.toml`)
-   - `rustfmt` has changed slightly, resulting in a big diff - there are no
-   actual code changes
-   - Adds a script to `rustfmt` the template src files
-
-### Refactor (BREAKING)
-
- - <csr-id-2fd6119afed850a0c50ecc69e5c4d8de61a2f4cb/> rename `_interleaved` to `_anonymous`
-   Also address docs feedback for streams.
- - <csr-id-524fa67232b54f5faeb797b43070f2f197c558dd/> rename timestamp to atomic and provide batching shortcuts
-
-### Chore
-
- - <csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/> upgrade to Rust 2024 edition
-   - Updates `Cargo.toml` to use new shared workspace keys
-   - Updates lint settings (in workspace `Cargo.toml`)
-   - `rustfmt` has changed slightly, resulting in a big diff - there are no
-   actual code changes
-   - Adds a script to `rustfmt` the template src files
-
 ### Documentation
 
- - <csr-id-73444373dabeedd7a03a8231952684fb01bdf895/> add initial Rustdoc for some Stream APIs
  - <csr-id-d7741d55a3ea9b172e962e7398f0414d0427c3f9/> add initial Rustdoc for some Stream APIs
 
 ### New Features
 
- - <csr-id-eee28d3a17ea542c69a2d7e535c38333f42d4398/> Add metadata field to HydroNode
- - <csr-id-6d77db9e52ece0b668587187c59f2862670db7cf/> send_partitioned operator and move decoupling
-   Allows specifying a distribution policy (for deciding which partition to
-   send each message to) before networking. Designed to be as easy as
-   possible to inject (so the distribution policy function definition takes
-   in the cluster ID, for example, even though it doesn't need to, because
-   this way we can avoid project->map->join)
  - <csr-id-69831f9dc724ba7915b8ade8134839c42786ac76/> Add metadata field to HydroNode
  - <csr-id-ca291dd618fc4065c4e30097c5ea605226383cec/> send_partitioned operator and move decoupling
    Allows specifying a distribution policy (for deciding which partition to
@@ -925,12 +805,6 @@
 
 ### Bug Fixes
 
- - <csr-id-75eb323a612fd5d2609e464fe7690bc2b6a8457a/> use correct `__staged` path when rewriting `crate::` imports
-   Previously, a rewrite would first turn `crate` into `crate::__staged`,
-   and another would rewrite `crate::__staged` into `hydro_test::__staged`.
-   The latter global rewrite is unnecessary because the stageleft logic
-   already will use the full crate name when handling public types, so we
-   drop it.
  - <csr-id-48b275c1247f4f6fe7e6b63a5ae184c5d85b6fa1/> use correct `__staged` path when rewriting `crate::` imports
    Previously, a rewrite would first turn `crate` into `crate::__staged`,
    and another would rewrite `crate::__staged` into `hydro_test::__staged`.
@@ -940,22 +814,11 @@
 
 ### Bug Fixes (BREAKING)
 
- - <csr-id-c49a4913cfdae021404a86e5a4d0597aa4db9fbe/> reduce where `#[cfg(stageleft_runtime)]` needs to be used
-   Simplifies the logic for generating the public clone of the code, which
-   eliminates the need to sprinkle `#[cfg(stageleft_runtime)]` (renamed
-   from `#[stageleft::runtime]`) everywhere. Also adds logic to pass
-   through `cfg` attrs when re-exporting public types.
  - <csr-id-a7e22cdd312b8483163aa89751833e1657703b8d/> reduce where `#[cfg(stageleft_runtime)]` needs to be used
    Simplifies the logic for generating the public clone of the code, which
    eliminates the need to sprinkle `#[cfg(stageleft_runtime)]` (renamed
    from `#[stageleft::runtime]`) everywhere. Also adds logic to pass
    through `cfg` attrs when re-exporting public types.
-
-### Refactor (BREAKING)
-
- - <csr-id-41e5bb93eb9c19a88167a63bce0ceb800f8f300d/> rename `_interleaved` to `_anonymous`
-   Also address docs feedback for streams.
- - <csr-id-80407a2f0fdaa8b8a81688d181166a0da8aa7b52/> rename timestamp to atomic and provide batching shortcuts
 
 ### Commit Statistics
 
@@ -999,27 +862,8 @@
 <csr-id-a6f60c92ae7168eb86eb311ca7b7afb10025c7de/>
 <csr-id-54f461acfce091276b8ce7574c0690e6d648546d/>
 
-### Chore
-
- - <csr-id-03b3a349013a71b324276bca5329c33d400a73ff/> bump versions manually for renamed crates, per `RELEASING.md`
- - <csr-id-162e49cf8a8cf944cded7f775d6f78afe4a89837/> Rename HydroflowPlus to Hydro
-
-### Chore
-
- - <csr-id-a6f60c92ae7168eb86eb311ca7b7afb10025c7de/> bump versions manually for renamed crates, per `RELEASING.md`
- - <csr-id-54f461acfce091276b8ce7574c0690e6d648546d/> Rename HydroflowPlus to Hydro
-
 ### Documentation
 
- - <csr-id-28cd220c68e3660d9ebade113949a2346720cd04/> add `repository` field to `Cargo.toml`s, fix #1452
-   #1452 
-   
-   Will trigger new releases of the following:
-   `unchanged = 'hydroflow_deploy_integration', 'variadics',
-   'variadics_macro', 'pusherator'`
-   
-   (All other crates already have changes, so would be released anyway)
- - <csr-id-6ab625273d822812e83a333e928c3dea1c3c9ccb/> cleanups for the rename, fixing links
  - <csr-id-204bd117ca3a8845b4986539efb91a0c612dfa05/> add `repository` field to `Cargo.toml`s, fix #1452
    #1452 
    

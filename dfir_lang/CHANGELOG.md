@@ -5,6 +5,375 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.17.0-alpha.1 (2026-06-11)
+
+### Chore
+
+ - <csr-id-e70eab6a0c793ef095e2cd747220d5419f7bf1a4/> revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version
+
+### New Features
+
+ - <csr-id-aab1516fa017bf9bc35d7f344c0e5b55f1d15ad9/> slightly more detailed error when cycle is detected
+ - <csr-id-041fd5f33474ddd8d5c100b7514f685f156eb8d4/> support graph_ids `#[no_std]` via `std`, `alloc`, `serde` features
+   Add `std`/`alloc`/`serde` feature flags. The only non-codegen module
+   (`graph_ids`) now compiles on bare-metal targets with zero std
+   dependencies.
+   
+   - Add `#![cfg_attr(not(feature = "std"), no_std)]` to `lib.rs`
+   - Make `serde` optional (only needed for `slotmap` key serialization,
+     pulled in by `codegen` feature)
+   - Set `slotmap` to `default-features = false`
+   - `codegen` feature implies `std` + `serde`
+ - <csr-id-f4605f58b45220266b0a5c5a9a5bc283404b5f26/> Add `optional()` handoff, migrate `reduce()` tests, all `has_singleton_output` are `false`
+   Introduced `HandoffKind::Optional` as a new handoff variant alongside
+   `HandoffKind::Singleton` (renamed from the former
+   `HandoffKind::Option`).
+   
+   Both use `Option<T>` storage and panic on >1 items. The difference is in
+   `#varname` resolution:
+   - `singleton()`: `#var` gives `&T` (unwraps, panics if empty)
+   - `optional()`: `#var` gives `&Option<T>` (exposes optionality)
+ - <csr-id-8fba413ea9181c6d927f5a0c8d74f68afd27079b/> add vec handoff reference support via `#var` and `#mut var` syntax
+   Extends the existing singleton reference mechanism to work with vec
+   handoffs.
+   Previously only `singleton()` (Option<T>) could be referenced in
+   closures;
+   now `handoff()` (Vec<T>) can also be referenced.
+ - <csr-id-8ea3bd064c2d6654e8c7413abb434d882737e214/> use `bumpalo` for intra-tick handoffs [ci-bench]
+   To put references in handoffs, we must scope our handoffs to within the
+   tick.
+   Don't want to re-alloc every tick, so we use the `bumpalo` arena
+   allocator.
+   We call `reset()` between each tick to free memory.
+   
+   Prerequisite for
+   * #2880 - `&` references in handoffs
+   * #2708 - `#[no_std]` DFIR
+ - <csr-id-142612b247f76389ef986c1fcb27e204b2e2e722/> add `#mut` and `#{N}` syntax for mutable/ordered singleton references
+   Adds mutable singleton references and explicit access group ordering to
+   DFIR's `#var` reference system.
+   
+   ## New Syntax
+   
+   ```rust
+   #var              // shared reference (&T) — unchanged
+   #mut var          // mutable reference (&mut T) — single owner only
+   #{0} var          // shared reference, access group 0
+   #{1} mut var      // mutable reference, access group 1
+   ```
+   
+   Access groups execute in ascending order, enforced by subgraph
+   partitioning barriers.
+   
+   ## Validation Rules
+   
+   - Multiple ungrouped `#mut var` to the same singleton → **error**
+   (ambiguous ordering)
+   - Mixed `#var` and `#mut var` in the same access group → **error**
+   - Multiple `#mut var` in the same access group → **error**
+   
+   ## Changes
+   
+   | File | Change |
+   |------|--------|
+   | `process_singletons.rs` | New `SingletonRefToken` struct; parser
+   handles `#{N}` and `mut` |
+   | `parse.rs` | `Operator::singletons_referenced` →
+   `Vec<SingletonRefToken>` |
+   | `graph/mod.rs` | `OperatorInstance::singletons_referenced` →
+   `Vec<SingletonRefToken>` |
+   | `graph/meta_graph.rs` | New `ResolvedSingletonRef`; codegen emits
+   `&mut` for mutable refs |
+   | `graph/flat_graph_builder.rs` | Constructs `ResolvedSingletonRef`;
+   validation for mut conflicts |
+   | `graph/flat_to_partitioned.rs` | Pairwise barriers between access
+   groups |
+   
+   ## Tests
+   
+   - `test_singleton_mut_reference` — basic `#mut var` usage
+   - `test_singleton_access_group_ordering` — `#{0} mut` then `#{1}`
+   ordering
+   - `surface_singleton_mut_ungrouped.rs` — compile-fail for ambiguous mut
+   refs
+   - `surface_singleton_mut_mixed_group.rs` — compile-fail for mixed group
+   
+   ## Related
+   
+   Part of #2713 (mutable singletons with single/multiple owners).
+   
+   ---------
+ - <csr-id-918c42881c6b7474c6dfed3dee2bb76f8a66630e/> support `#var` references to `singleton()` handoffs
+   Removes the `arguments_handles` / `postprocess_singletons_handles`
+   codepath, unifying singleton reference resolution into a single
+   mechanism.
+   
+   Also allows `singleton()` handoff to have no output consumer - would
+   only have referencers
+   
+   ## Motivation
+   
+   Previously there were two parallel paths for resolving `#var` singleton
+   references in operator codegen:
+   - `arguments` via `postprocess_singletons` — generates `(*expr)`
+   (immutable place expression)
+   - `arguments_handles` via `postprocess_singletons_handles` — generates
+   raw idents for operators that manage their own borrowing
+   
+   Only `lattice_bimorphism` used the `_handles` path. It did
+   `&#state_handle` to get `&T`. With the unified path, it now does
+   `&#state` where `#state` = `(*&singleton_op_XXX)`, so
+   `&(*&singleton_op_XXX)` = `&T`. Same result, one codepath.
+   
+   ## Changes
+   
+   - `dfir_lang/src/graph/ops/mod.rs` — Remove `arguments_handles` field
+   from `WriteContextArgs`
+   - `dfir_lang/src/graph/ops/lattice_bimorphism.rs` — Use `arguments`
+   instead of `arguments_handles`
+   - `dfir_lang/src/process_singletons.rs` — Remove
+   `postprocess_singletons_handles` function
+   - `dfir_lang/src/graph/meta_graph.rs` — Remove
+   `helper_resolve_singletons_handles` method and `arguments_handles`
+   generation
+   
+   ---------
+ - <csr-id-27a9aecedee2eac6a8d8ed4a3f53a47675795298/> add `singleton()` pseudo-operator
+   Introduces `GraphNode::Handoff { kind: HandoffKind::Option, .. }` — a
+   singleton handoff that materializes exactly one item between subgraphs
+   using `Option<T>` storage (vs `Vec<T>` for regular handoffs).
+   
+   ## Summary
+   
+   The `singleton()` pseudo-operator in DFIR surface syntax is recognized
+   during graph building and lowered to a `Handoff` node with
+   `HandoffKind::Option`. The partitioning infrastructure treats it
+   identically to `HandoffKind::Vec` (prevents subgraph merging,
+   participates in topo sort ordering). The inline codegen generates:
+   - Outer scope: `let mut slot: Option<_> = None;`
+   - Send side: `push::for_each(|item| { if slot.replace(item).is_some() {
+   panic!(...) } })`
+   - Recv side: `pull::iter(slot.take().into_iter())`
+   
+   ## Design
+   
+   Both `handoff()` and `singleton()` are pseudo-operators — parsed as
+   operators but lowered to `GraphNode::Handoff` during graph construction.
+   They differ only in `HandoffKind`:
+   - `HandoffKind::Vec` — `Vec<T>` buffer for streams (zero or more items)
+   - `HandoffKind::Option` — `Option<T>` slot for singletons/optionals
+   (zero or one item, panics on duplicate)
+   
+   This establishes the pattern for explicit inter-subgraph materialization
+   points in the DFIR graph, preparing for future singleton-by-reference
+   support (issue #2713).
+   
+   ---------
+ - <csr-id-9496de98d5bc4d4ba961e12f251c244148672fcd/> add `handoff()` pseudo-operator
+   Adds a `handoff()` pseudo-operator to DFIR surface syntax that forces a
+   subgraph boundary (handoff node) at the specified location in the
+   pipeline.
+   
+   During `insert_node_op_insts_all`, operators named "handoff" are
+   recognized and their graph nodes are replaced with `GraphNode::Handoff`.
+   The existing partitioning and codegen infrastructure already handles
+   handoff nodes correctly, so no further changes are needed.
+   
+   This establishes the pattern for future handoff pseudo-operators like
+   `singleton()` that lower to specialized graph node types rather than
+   generating operator code. Singleton handoffs will then be the foundation
+   for obtaining singletons by reference, for #2713. (And vec handoffs will
+   be the foundation for streams-by-reference, later!)
+
+### Bug Fixes
+
+ - <csr-id-099e36e44503320f7115c2ff0d1cc8ad2657969c/> resolve infinite hang when cross_singleton uses top-level bounded singleton
+ - <csr-id-938cf91f4adff7b96f3f3536f4427f38f07f4ea6/> gate proc_macro_diagnostics behind codegen feature, remove several stabilized features. [ci-full]
+
+### Refactor
+
+ - <csr-id-a32231e03f51f365a7ab8e6e685fe23c8620c325/> remove old singleton mechanism entirely
+   Removed `has_singleton_output` field from `OperatorConstraints` and
+   `singleton_output_ident` from `WriteContextArgs`. Removed the
+   `node_as_singleton_ident` helper and the old stateful-operator branch
+   from `helper_resolve_singletons`.
+   
+   The `#varname` reference validation now unconditionally rejects
+   references
+   to non-handoff operators with: "Cannot reference operator `{name}`. Use
+   `singleton()`, `optional()`, or `handoff()` to create a referenceable
+   value."
+   
+   All `#varname` references must now target handoff nodes
+   (`singleton()`, `optional()`, or `handoff()`). The old mechanism of
+   directly
+   referencing operator internals is fully removed.
+ - <csr-id-392e52a9c1f1a58ba9c9d1abfdf489cc306931bb/> remove old singleton mechanism from all operators except reduce[_no_replay]
+   Changed 13 operators in dfir_lang to set `has_singleton_output: false`
+   and
+   use locally-generated idents instead of the framework-provided
+   `singleton_output_ident`. This means these operators can no longer be
+   directly referenced via `#varname` — users must pipe through
+   `singleton()`
+   handoff instead.
+   
+   Operators changed:
+   - state, state_by
+   - fold, fold_keyed, fold_no_replay
+   - scan, scan_async_blocking
+   - persist
+   - repeat_n, prefix, batch, all_once, all_iterations
+   
+   Left unchanged (for future `optional()` handoff):
+   - reduce, reduce_no_replay
+ - <csr-id-2c195832ef6940c1adc8beef18dcb1527515a229/> use slotmap SecondaryMap for metrics
+ - <csr-id-22ec9a1891536f4c84721cbe2d44af1e0dfc6cae/> remove `..` from OperatorWriteOutput destructures in delegating operators
+   Replaced `..` catch-all patterns with explicit field bindings in 4
+   delegating
+   operators (join_fused_rhs, difference, _lattice_join_fused_join,
+   source_interval)
+   to ensure new fields added to OperatorWriteOutput are never silently
+   dropped.
+   
+   The remaining `..Default::default()` usages in non-delegating operators
+   are
+   intentional — they only set the fields they need and default the rest to
+   empty
+   TokenStreams.
+ - <csr-id-4a4b747e7782a2700d4c4bdc7e52d835eaff201c/> DFIR singleton references, convert singleton state to plain local variables
+   Uses `*&var` pattern to prevent mutation
+   
+   ---------
+ - <csr-id-d0f4968e0db60a89f26f6dbb8e351ba58469d0ff/> remove `schedule_subgraph`'s `SubgraphId` arg, no-op calls, and remove `current_subgraph`
+ - <csr-id-e57d42befe42ad97b9cee0cbd072274a72184f41/> convert missed join_multiset_half to use local variables
+   instead of the state API
+   
+   Replaced the state API pattern (`add_state(RefCell::new(...))`,
+   `state_ref_unchecked`,
+   `set_state_lifespan_hook`) with plain local `let mut` variables and
+   `write_tick_end`
+   clearing, matching the conversion done to all other operators in commit
+   5efd2a83.
+ - <csr-id-5efd2a8315a0b403b1a82dcdce349ef0ec255d46/> operators capture local state instead of using the state API [ci-bench]
+
+### Refactor (BREAKING)
+
+ - <csr-id-eca38c8a5e9c23ff652ce6af1079a8b34988c01a/> Add two mandatory output ports (`[items]`, `[state]`) to `state`/`state_by` operators
+   This is part of a small detour to remove the old DFIR singleton system
+   while keeping these operators around. Alternative would be to just
+   delete them.
+   
+   The `state` and `state_by` lattice operators now have two fixed output
+   ports:
+   - `[items]`: emits the input items that actually changed the lattice
+   (deltas), same as the old single output
+   - `[state]`: emits a clone of the accumulated lattice value after all
+   items are processed
+   
+   This separates the two semantically different outputs that were
+   previously conflated:
+   the delta stream (for downstream dataflow) and the accumulated state
+   (for singleton
+   references). The `[state]` port can now be piped into `singleton()` for
+   the new
+   reference system, decoupling the lattice state operator from the old
+   `has_singleton_output` mechanism.
+   
+   Key implementation details:
+   - `state_by` uses a custom inline `StatePush` struct implementing the
+   `Push` trait
+     to handle both outputs in a single push combinator
+   - Items are filtered to `[items]` on each `start_send`; state is emitted
+   to `[state]`
+     during `poll_finalize`
+   - `ports_out` is set to `Fixed(parse_quote!(items, state))` enforcing
+   both ports
+   - `has_singleton_output: true` is kept so the old `#var` reference
+   system still works
+   - Push sink `let` bindings in `meta_graph.rs` changed to `let mut`
+   (needed for pin projection)
+   
+   All existing tests updated to use the new port syntax. Unused `[state]`
+   ports are
+   directed to `null()`.
+ - <csr-id-53a40eca7f98dd6a3b21a1c8405cc91920faa49c/> remove `is_first_run_this_tick()` — always true in inline DAG mode
+   With the inline DAG codegen, each subgraph runs exactly once per tick.
+   The `is_first_run_this_tick()` method always returned `true` and was
+   dead
+   code. This removes it and simplifies all operator codegen that depended
+   on it.
+ - <csr-id-bfec02db5b1176505770eb30db6d0ce537696f8b/> rename Push::poll_flush to Push::poll_finalize in dfir_pipes
+ - <csr-id-a953061308d670c673143319fed8b66de1230744/> Remove the now-unused state API (add_state, state_ref_unchecked, set_state_lifespan_hook)
+   Now that all operators use local variables instead of the state API,
+   remove
+   the entire state API infrastructure:
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 25 commits contributed to the release.
+ - 40 days passed between releases.
+ - 24 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 23 unique issues were worked on: [#2801](https://github.com/hydro-project/hydro/issues/2801), [#2810](https://github.com/hydro-project/hydro/issues/2810), [#2811](https://github.com/hydro-project/hydro/issues/2811), [#2829](https://github.com/hydro-project/hydro/issues/2829), [#2834](https://github.com/hydro-project/hydro/issues/2834), [#2835](https://github.com/hydro-project/hydro/issues/2835), [#2836](https://github.com/hydro-project/hydro/issues/2836), [#2842](https://github.com/hydro-project/hydro/issues/2842), [#2853](https://github.com/hydro-project/hydro/issues/2853), [#2859](https://github.com/hydro-project/hydro/issues/2859), [#2861](https://github.com/hydro-project/hydro/issues/2861), [#2862](https://github.com/hydro-project/hydro/issues/2862), [#2878](https://github.com/hydro-project/hydro/issues/2878), [#2883](https://github.com/hydro-project/hydro/issues/2883), [#2884](https://github.com/hydro-project/hydro/issues/2884), [#2892](https://github.com/hydro-project/hydro/issues/2892), [#2894](https://github.com/hydro-project/hydro/issues/2894), [#2901](https://github.com/hydro-project/hydro/issues/2901), [#2911](https://github.com/hydro-project/hydro/issues/2911), [#2912](https://github.com/hydro-project/hydro/issues/2912), [#2913](https://github.com/hydro-project/hydro/issues/2913), [#2923](https://github.com/hydro-project/hydro/issues/2923), [#2928](https://github.com/hydro-project/hydro/issues/2928)
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **[#2801](https://github.com/hydro-project/hydro/issues/2801)**
+    - Operators capture local state instead of using the state API [ci-bench] ([`5efd2a8`](https://github.com/hydro-project/hydro/commit/5efd2a8315a0b403b1a82dcdce349ef0ec255d46))
+ * **[#2810](https://github.com/hydro-project/hydro/issues/2810)**
+    - Use slotmap SecondaryMap for metrics ([`2c19583`](https://github.com/hydro-project/hydro/commit/2c195832ef6940c1adc8beef18dcb1527515a229))
+ * **[#2811](https://github.com/hydro-project/hydro/issues/2811)**
+    - Remove `schedule_subgraph`'s `SubgraphId` arg, no-op calls, and remove `current_subgraph` ([`d0f4968`](https://github.com/hydro-project/hydro/commit/d0f4968e0db60a89f26f6dbb8e351ba58469d0ff))
+ * **[#2829](https://github.com/hydro-project/hydro/issues/2829)**
+    - DFIR singleton references, convert singleton state to plain local variables ([`4a4b747`](https://github.com/hydro-project/hydro/commit/4a4b747e7782a2700d4c4bdc7e52d835eaff201c))
+ * **[#2834](https://github.com/hydro-project/hydro/issues/2834)**
+    - Convert missed join_multiset_half to use local variables ([`e57d42b`](https://github.com/hydro-project/hydro/commit/e57d42befe42ad97b9cee0cbd072274a72184f41))
+ * **[#2835](https://github.com/hydro-project/hydro/issues/2835)**
+    - Remove the now-unused state API (add_state, state_ref_unchecked, set_state_lifespan_hook) ([`a953061`](https://github.com/hydro-project/hydro/commit/a953061308d670c673143319fed8b66de1230744))
+ * **[#2836](https://github.com/hydro-project/hydro/issues/2836)**
+    - Remove `..` from OperatorWriteOutput destructures in delegating operators ([`22ec9a1`](https://github.com/hydro-project/hydro/commit/22ec9a1891536f4c84721cbe2d44af1e0dfc6cae))
+ * **[#2842](https://github.com/hydro-project/hydro/issues/2842)**
+    - Remove `is_first_run_this_tick()` — always true in inline DAG mode ([`53a40ec`](https://github.com/hydro-project/hydro/commit/53a40eca7f98dd6a3b21a1c8405cc91920faa49c))
+ * **[#2853](https://github.com/hydro-project/hydro/issues/2853)**
+    - Rename Push::poll_flush to Push::poll_finalize in dfir_pipes ([`bfec02d`](https://github.com/hydro-project/hydro/commit/bfec02db5b1176505770eb30db6d0ce537696f8b))
+ * **[#2859](https://github.com/hydro-project/hydro/issues/2859)**
+    - Add `handoff()` pseudo-operator ([`9496de9`](https://github.com/hydro-project/hydro/commit/9496de98d5bc4d4ba961e12f251c244148672fcd))
+ * **[#2861](https://github.com/hydro-project/hydro/issues/2861)**
+    - Add `singleton()` pseudo-operator ([`27a9aec`](https://github.com/hydro-project/hydro/commit/27a9aecedee2eac6a8d8ed4a3f53a47675795298))
+ * **[#2862](https://github.com/hydro-project/hydro/issues/2862)**
+    - Support `#var` references to `singleton()` handoffs ([`918c428`](https://github.com/hydro-project/hydro/commit/918c42881c6b7474c6dfed3dee2bb76f8a66630e))
+ * **[#2878](https://github.com/hydro-project/hydro/issues/2878)**
+    - Gate proc_macro_diagnostics behind codegen feature, remove several stabilized features. [ci-full] ([`938cf91`](https://github.com/hydro-project/hydro/commit/938cf91f4adff7b96f3f3536f4427f38f07f4ea6))
+ * **[#2883](https://github.com/hydro-project/hydro/issues/2883)**
+    - Add two mandatory output ports (`[items]`, `[state]`) to `state`/`state_by` operators ([`eca38c8`](https://github.com/hydro-project/hydro/commit/eca38c8a5e9c23ff652ce6af1079a8b34988c01a))
+ * **[#2884](https://github.com/hydro-project/hydro/issues/2884)**
+    - Add `#mut` and `#{N}` syntax for mutable/ordered singleton references ([`142612b`](https://github.com/hydro-project/hydro/commit/142612b247f76389ef986c1fcb27e204b2e2e722))
+ * **[#2892](https://github.com/hydro-project/hydro/issues/2892)**
+    - Resolve infinite hang when cross_singleton uses top-level bounded singleton ([`099e36e`](https://github.com/hydro-project/hydro/commit/099e36e44503320f7115c2ff0d1cc8ad2657969c))
+ * **[#2894](https://github.com/hydro-project/hydro/issues/2894)**
+    - Use `bumpalo` for intra-tick handoffs [ci-bench] ([`8ea3bd0`](https://github.com/hydro-project/hydro/commit/8ea3bd064c2d6654e8c7413abb434d882737e214))
+ * **[#2901](https://github.com/hydro-project/hydro/issues/2901)**
+    - Add vec handoff reference support via `#var` and `#mut var` syntax ([`8fba413`](https://github.com/hydro-project/hydro/commit/8fba413ea9181c6d927f5a0c8d74f68afd27079b))
+ * **[#2911](https://github.com/hydro-project/hydro/issues/2911)**
+    - Remove old singleton mechanism from all operators except reduce[_no_replay] ([`392e52a`](https://github.com/hydro-project/hydro/commit/392e52a9c1f1a58ba9c9d1abfdf489cc306931bb))
+ * **[#2912](https://github.com/hydro-project/hydro/issues/2912)**
+    - Add `optional()` handoff, migrate `reduce()` tests, all `has_singleton_output` are `false` ([`f4605f5`](https://github.com/hydro-project/hydro/commit/f4605f58b45220266b0a5c5a9a5bc283404b5f26))
+ * **[#2913](https://github.com/hydro-project/hydro/issues/2913)**
+    - Remove old singleton mechanism entirely ([`a32231e`](https://github.com/hydro-project/hydro/commit/a32231e03f51f365a7ab8e6e685fe23c8620c325))
+ * **[#2923](https://github.com/hydro-project/hydro/issues/2923)**
+    - Support graph_ids `#[no_std]` via `std`, `alloc`, `serde` features ([`041fd5f`](https://github.com/hydro-project/hydro/commit/041fd5f33474ddd8d5c100b7514f685f156eb8d4))
+ * **[#2928](https://github.com/hydro-project/hydro/issues/2928)**
+    - Slightly more detailed error when cycle is detected ([`aab1516`](https://github.com/hydro-project/hydro/commit/aab1516fa017bf9bc35d7f344c0e5b55f1d15ad9))
+ * **Uncategorized**
+    - Revert accidental `v1.0.0-alpha.0` releases of `dfir_lang` & `variadics`, update `cargo-smart-release` fork version ([`e70eab6`](https://github.com/hydro-project/hydro/commit/e70eab6a0c793ef095e2cd747220d5419f7bf1a4))
+    - Release hydro_build_utils v0.1.1-alpha.0, dfir_lang v1.0.0-alpha.0, dfir_macro v0.17.0-alpha.0, variadics v1.0.0-alpha.0, variadics_macro v0.8.0-alpha.0, lattices v0.8.0-alpha.0, dfir_pipes v0.1.0-alpha.0, sinktools v0.2.0-alpha.0, hydro_deploy_integration v0.17.0-alpha.0, dfir_rs v0.17.0-alpha.0, hydro_deploy v0.17.0-alpha.0, hydro_lang v0.17.0-alpha.0, hydro_std v0.17.0-alpha.0, safety bump 10 crates ([`12e7666`](https://github.com/hydro-project/hydro/commit/12e76666f7104f81b48de5ddf397b8e72c8a6711))
+</details>
+
 ## 0.16.0 (2026-05-01)
 
 ### New Features
@@ -24,18 +393,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    
    1. feat(dfir_rs): expose `current_tick()` on `InlineDfir` via shared
    `Rc<Cell<TickInstant>>`
-      - Resolves #2741
+   - Resolves #2741
    - Shares tick counter between InlineContext (inside closure) and
    InlineDfir (outer handle)
-      - Updated codegen in dfir_lang and dfir_macro
+   - Updated codegen in dfir_lang and dfir_macro
    
    2. refactor(dfir_rs): convert 55+ non-blocked tests to
    dfir_syntax_inline!
-      - surface_scan.rs (8/8), surface_state_scheduling.rs (8/8),
-        surface_difference.rs (8/10), surface_codegen.rs (17/20),
-        surface_fold.rs (6/7), surface_fold_keyed.rs (4/5),
-        surface_reduce_keyed.rs (3/4), surface_unique.rs (5/6),
-        surface_zip_unzip.rs (3/5), surface_lattice_fold.rs (1/3)
+   - surface_scan.rs (8/8), surface_state_scheduling.rs (8/8),
+   surface_difference.rs (8/10), surface_codegen.rs (17/20),
+   surface_fold.rs (6/7), surface_fold_keyed.rs (4/5),
+   surface_reduce_keyed.rs (3/4), surface_unique.rs (5/6),
+   surface_zip_unzip.rs (3/5), surface_lattice_fold.rs (1/3)
    - Tests with loop {} blocks or intra-tick cycles remain on dfir_syntax!
    
    3. fix(dfir_lang): include singleton reference edges in inline
@@ -44,7 +413,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    surface_singleton.rs
    - Singleton refs (`#name`) now create ordering constraints in the topo
    sort
-      - Converts surface_singleton.rs (10/10 tests) to dfir_syntax_inline!
+   - Converts surface_singleton.rs (10/10 tests) to dfir_syntax_inline!
    
    ---------
  - <csr-id-caf6993925fb7b6d4aad720966c28602432aec17/> support defer_tick() in dfir_syntax_inline! codegen
@@ -108,7 +477,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    subgraphs
    (including self-loops) using topological sort. `defer_tick_lazy()` edges
    break
-      cycles across ticks and are excluded from detection.
+   cycles across ticks and are excluded from detection.
    
    2. **`defer_tick()` (non-lazy)**: Rejects the `defer_tick` operator
    since it's not
@@ -117,7 +486,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    
    3. **`loop { }` blocks**: Rejects any loop blocks since they're not
    supported in
-      the inline codegen path.
+   the inline codegen path.
    
    New files:
    - dfir_rs/tests/compile-fail{,-stable}/surface_inline_cycle.rs + .stderr
@@ -150,7 +519,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    ### Runtime support
    - **launch.rs** — Added `Runnable` trait with impls for both `Dfir` and
    `InlineFlow`, making `run_stdin_commands` generic
-     - (likely will be removed in a future PR)
+   - (likely will be removed in a future PR)
    - **InlineDfir** — A new wrapper around the tick closure provides an API
    which matches the existing `Dfir<'_>` API. Of note: `run_tick()` returns
    `bool` (whether subgraphs were run in a meaningful way, [see
@@ -179,42 +548,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    ### Core changes
    - Add `InlineContext`: lightweight alternative to `Dfir` & `Context`
    with just the state
-     API — no tokio channels, scheduler queues, or handoff infrastructure
+   API — no tokio channels, scheduler queues, or handoff infrastructure
    - Add `DfirGraph::as_code_inline()`: generates an `AsyncFnMut` closure
    where
-     each call runs one tick, with subgraph blocks inlined in stratum order
-     (sorted by `(stratum, !is_source)` tuple)
+   each call runs one tick, with subgraph blocks inlined in stratum order
+   (sorted by `(stratum, !is_source)` tuple)
    - Add `build_dfir_code_inline()` and `dfir_syntax_inline!` /
-     `dfir_syntax_inline_noemit!` proc macros
+   `dfir_syntax_inline_noemit!` proc macros
    - State persists across ticks in the closure's captured environment;
-     `__end_tick()` handles tick-scoped state reset between invocations
+   `__end_tick()` handles tick-scoped state reset between invocations
    - Operators using `.await` (e.g. `fold`) work naturally inside the async
-     closure without synchronous wrappers
+   closure without synchronous wrappers
    - Cross-referencing doc comments between `as_code` and `as_code_inline`
    
    ### Tests & benchmarks
    - 14 passing tests covering: linear pipelines, diamonds, intertwined
-     diamonds, joins, multi-stratum cascades, W-mesh, `source_stream`,
-     `resolve_futures_blocking`, multi-tick with `fold::<'static>`/`'tick`,
-     and `defer_tick` cycles
+   diamonds, joins, multi-stratum cascades, W-mesh, `source_stream`,
+   `resolve_futures_blocking`, multi-tick with `fold::<'static>`/`'tick`,
+   and `defer_tick` cycles
    - 4 benchmark suites with inline variants (`words_diamond`, `fan_in`,
    `fan_out`, `micro_ops`) using `iter_batched` for fair comparison against
-     scheduler-based benchmarks
+   scheduler-based benchmarks
  - <csr-id-354ede54dc007131fe7adbb355017019cd39b13a/> add flatten_stream, flat_map_stream to Stream
    STACK PREV: #2688
    
    - Added FlatMapStream variant to HydroNode enum in compile/ir/mod.rs
    with
-     the same shape as FlatMap (f, input, metadata).
+   the same shape as FlatMap (f, input, metadata).
    - Handled FlatMapStream in all match arms: traversal, deep_clone,
    lowering
-     (emits flat_map_stream(#f)), expression refs, metadata/metadata_mut,
-     input(), and print_root().
+   (emits flat_map_stream(#f)), expression refs, metadata/metadata_mut,
+   input(), and print_root().
    - Updated viz/render.rs to handle FlatMapStream in the transform group.
    - Added flat_map_stream() and flatten_stream() methods to Stream in
-     hydro_lang/src/live_collections/stream/mod.rs. flat_map_stream takes a
+   hydro_lang/src/live_collections/stream/mod.rs. flat_map_stream takes a
    closure mapping items to futures::Stream; flatten_stream flattens items
-     that are already Streams.
+   that are already Streams.
    
    ---------
  - <csr-id-f9f212d66f5d06a1de0e137e8dce47aa9d7db35f/> Add flat_map_stream and flatten_stream operators to dfir_lang with tests
@@ -222,9 +591,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    combinators:
    
    - dfir_lang/src/graph/ops/flat_map_stream.rs: maps each item to a Stream
-     via a closure and flattens the results, propagating Pending.
+   via a closure and flattens the results, propagating Pending.
    - dfir_lang/src/graph/ops/flatten_stream.rs: flattens items that are
-     Streams, emitting their elements one by one, propagating Pending.
+   Streams, emitting their elements one by one, propagating Pending.
    
    Both registered in declare_ops! macro in mod.rs.
    
@@ -294,9 +663,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    
    ## Changes
    - Bumped `slotmap` from `1.0.0` → `1.1.0` in:
-     - `dfir_rs/Cargo.toml`
-     - `dfir_lang/Cargo.toml`
-     - `hydro_lang/Cargo.toml`
+   - `dfir_rs/Cargo.toml`
+   - `dfir_lang/Cargo.toml`
+   - `hydro_lang/Cargo.toml`
    
    The resolved version in `Cargo.lock` is already `1.1.1`, so no lock file
    churn is expected.
@@ -451,12 +820,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    `Pull` trait. Key to this more powerful iterator trait is the step enum:
    ```rust
    pub enum Step<Item, Meta, CanPend: Toggle, CanEnd: Toggle> {
-       /// An item is ready with associated metadata.
-       Ready(Item, Meta),
-       /// The pull is not ready yet (only possible when `CanPend = Yes`).
-       Pending(CanPend),
-       /// The pull has ended (only possible when `CanEnd = Yes`).
-       Ended(CanEnd),
+   /// An item is ready with associated metadata.
+   Ready(Item, Meta),
+   /// The pull is not ready yet (only possible when `CanPend = Yes`).
+   Pending(CanPend),
+   /// The pull has ended (only possible when `CanEnd = Yes`).
+   Ended(CanEnd),
    }
    ```
    This abstraction allows `Pull` to represent both synchronous `Iterator`s
@@ -515,7 +884,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 46 commits contributed to the release.
+ - 47 commits contributed to the release.
  - 156 days passed between releases.
  - 46 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 46 unique issues were worked on: [#2338](https://github.com/hydro-project/hydro/issues/2338), [#2373](https://github.com/hydro-project/hydro/issues/2373), [#2406](https://github.com/hydro-project/hydro/issues/2406), [#2414](https://github.com/hydro-project/hydro/issues/2414), [#2418](https://github.com/hydro-project/hydro/issues/2418), [#2432](https://github.com/hydro-project/hydro/issues/2432), [#2511](https://github.com/hydro-project/hydro/issues/2511), [#2516](https://github.com/hydro-project/hydro/issues/2516), [#2525](https://github.com/hydro-project/hydro/issues/2525), [#2537](https://github.com/hydro-project/hydro/issues/2537), [#2541](https://github.com/hydro-project/hydro/issues/2541), [#2561](https://github.com/hydro-project/hydro/issues/2561), [#2562](https://github.com/hydro-project/hydro/issues/2562), [#2585](https://github.com/hydro-project/hydro/issues/2585), [#2618](https://github.com/hydro-project/hydro/issues/2618), [#2630](https://github.com/hydro-project/hydro/issues/2630), [#2640](https://github.com/hydro-project/hydro/issues/2640), [#2644](https://github.com/hydro-project/hydro/issues/2644), [#2671](https://github.com/hydro-project/hydro/issues/2671), [#2676](https://github.com/hydro-project/hydro/issues/2676), [#2678](https://github.com/hydro-project/hydro/issues/2678), [#2688](https://github.com/hydro-project/hydro/issues/2688), [#2693](https://github.com/hydro-project/hydro/issues/2693), [#2710](https://github.com/hydro-project/hydro/issues/2710), [#2716](https://github.com/hydro-project/hydro/issues/2716), [#2732](https://github.com/hydro-project/hydro/issues/2732), [#2737](https://github.com/hydro-project/hydro/issues/2737), [#2738](https://github.com/hydro-project/hydro/issues/2738), [#2739](https://github.com/hydro-project/hydro/issues/2739), [#2740](https://github.com/hydro-project/hydro/issues/2740), [#2744](https://github.com/hydro-project/hydro/issues/2744), [#2751](https://github.com/hydro-project/hydro/issues/2751), [#2762](https://github.com/hydro-project/hydro/issues/2762), [#2763](https://github.com/hydro-project/hydro/issues/2763), [#2769](https://github.com/hydro-project/hydro/issues/2769), [#2776](https://github.com/hydro-project/hydro/issues/2776), [#2777](https://github.com/hydro-project/hydro/issues/2777), [#2778](https://github.com/hydro-project/hydro/issues/2778), [#2779](https://github.com/hydro-project/hydro/issues/2779), [#2782](https://github.com/hydro-project/hydro/issues/2782), [#2795](https://github.com/hydro-project/hydro/issues/2795), [#2797](https://github.com/hydro-project/hydro/issues/2797), [#2798](https://github.com/hydro-project/hydro/issues/2798), [#2800](https://github.com/hydro-project/hydro/issues/2800), [#2804](https://github.com/hydro-project/hydro/issues/2804), [#2826](https://github.com/hydro-project/hydro/issues/2826)
@@ -618,6 +987,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Defer `_counter` task spawning via `Context::request_task` buffer ([`a9a8e58`](https://github.com/hydro-project/hydro/commit/a9a8e584f7bc6c1cf778bdf692f3fe4a6c3ae52c))
  * **[#2826](https://github.com/hydro-project/hydro/issues/2826)**
     - Skip meta graph JSON embedding to avoid proc-macro2 Span overflow ([`9a94b26`](https://github.com/hydro-project/hydro/commit/9a94b266ad7d4c123bd148da1920e2dca455a7eb))
+ * **Uncategorized**
+    - Release hydro_build_utils v0.1.0, dfir_lang v0.16.0, dfir_macro v0.16.0, variadics v0.1.0, dfir_pipes v0.0.1, example_test v0.0.1, sinktools v0.1.0, hydro_deploy_integration v0.16.0, lattices_macro v0.6.0, variadics_macro v0.7.0, lattices v0.7.0, multiplatform_test v0.7.0, dfir_rs v0.16.0, copy_span v0.1.1, hydro_deploy v0.16.0, hydro_lang v0.16.0, hydro_std v0.16.0, safety bump 13 crates ([`c20757a`](https://github.com/hydro-project/hydro/commit/c20757ae0e9e10463b2a499de4b7d37ab02269d0))
 </details>
 
 ## 0.15.0 (2025-11-25)
@@ -630,10 +1001,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-8535940a34dba130156eb3605ae56483586bb62a/>
 <csr-id-29027701471205a7c43e26ef2f8cee98663c578e/>
 
-### Chore
-
- - <csr-id-97426b8a7e3b3af8a58b4c44c768c3f48cd0ed71/> update pinned nightly to 2025-08-20, fix lints
-
 ### New Features
 
  - <csr-id-f7ecb53e1941f67e59bde32e94e9f320f4bf5410/> add `resolve_futures_blocking` for resolving async calls by blocking the subgraph
@@ -644,21 +1011,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-09c07701f03862f3a755420c202cacd5218cd114/> remove python udf support
  - <csr-id-c40876ec4bd3b31254d683e479b9a235f3d11f67/> refactor github actions workflows, make stable the default toolchain
  - <csr-id-5ec8b3b9b10b30f3c1b7bd8949874f0b4b7da7e9/> hardcoded crate name issues
-
-### Other
-
- - <csr-id-806a6239a649e24fe10c3c90dd30bd18debd41d2/> ensure `hydro_build_utils` is published in the correct order
-
-### Refactor
-
- - <csr-id-f4a26b3268a3fa4a6e907d33a3e5ac7529188f20/> Make `join_fused` use new `Accumulator` trait
-   To make the codegen less magical.
-   
-   ---------
- - <csr-id-1c135152168c95199f887a8e6d619b12efbcf067/> replace `internal_constants` with configurable parameters
-   Instead of hardcoding certain prefixes for logging elements, we now
-   allow them to be configured via DFIR parameters (for `_counter`) or
-   build-time environment variables (for CPU information).
 
 ### Bug Fixes (BREAKING)
 
@@ -677,49 +1029,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Refactor (BREAKING)
 
- - <csr-id-9d943ac294a8735452f8535ad13767c60ce46ec7/> Make DFIR use `sinktools` for pushing to outputs [ci-bench]
-   This allows DFIR to handle `dest_sink` directly instead of having to
-   offload to a separate task, which causes latency and unwanted batching
-   (on single threaded runtimes)
-   
-   `pusherator` crate is no longer depended upon and is on a path to removal as it has been
-   replaced with `Sink`s
-   
-   Fixes some spanning bugs in codegen that using `Sink`s revealed
- - <csr-id-8535940a34dba130156eb3605ae56483586bb62a/> remove `demux` operator, replace usage with `demux_enum`
-   This is in preparation of making DFIR support async `Sink`s. The
-   overpowered demux API is incompatible with the more constrained
-   mechanics of `Sink`s.
-   
-   ## Pull Request Overview
-   
-   This PR refactors the `dfir_rs` library by removing the `demux` operator
-   and replacing its usage with the `demux_enum` operator, which provides
-   better type safety and ergonomics.
-   
    - Removes the `demux` operator implementation and related code
    - Updates examples to use `demux_enum` with enums for message handling
    - Removes all compile-fail tests specific to the `demux` operator
- - <csr-id-29027701471205a7c43e26ef2f8cee98663c578e/> superficially make subgraphs/operators asynchronous
-   Subgraphs now are async (create a future when running) which must be
-   awaited. However this PR does not actually change any
-   subgraphs/operators, so all subgraphs/operators return `Poll::Ready(())`
-   immediately
-
-## Pull Request Overview
-   
-   This PR refactors the `dfir_rs` library by removing the `demux` operator
-   and replacing its usage with the `demux_enum` operator, which provides
-   better type safety and ergonomics.
-   
-   - Removes the `demux` operator implementation and related code
-   - Updates examples to use `demux_enum` with enums for message handling
-   - Removes all compile-fail tests specific to the `demux` operator
- - <csr-id-29027701471205a7c43e26ef2f8cee98663c578e/> superficially make subgraphs/operators asynchronous
-   Subgraphs now are async (create a future when running) which must be
-   awaited. However this PR does not actually change any
-   subgraphs/operators, so all subgraphs/operators return `Poll::Ready(())`
-   immediately
 
 ### Commit Statistics
 
@@ -765,13 +1077,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Ensure `hydro_build_utils` is published in the correct order ([`806a623`](https://github.com/hydro-project/hydro/commit/806a6239a649e24fe10c3c90dd30bd18debd41d2))
 </details>
 
+<csr-unknown>
+Pull Request OverviewThis PR refactors the dfir_rs library by removing the demux operatorand replacing its usage with the demux_enum operator, which providesbetter type safety and ergonomics.<csr-unknown/>
+
 ## 0.14.0 (2025-07-30)
 
 <csr-id-98baec71a6f1d01d55a3c983fdbb7824c45305cd/>
-
-### Chore
-
- - <csr-id-98baec71a6f1d01d55a3c983fdbb7824c45305cd/> update pinned nightly to 2025-04-27, update span API usage
 
 ### New Features
 
@@ -859,23 +1170,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    type handling. Key changes include:
    - Better error messages when `dtrace` or `samply` are not instaled.
 
-### Other
-
- - <csr-id-3aec2f739acd0a2305f99fcbde4c14bc1cd53e7a/> adjust env vars, make DFIR printed span paths relative & re-enable most trybuild tests
-   * Add `PYO3_USE_ABI3_FORWARD_COMPATIBILITY`, move
-   `RUST_LOG`/`RUST_BACKTRACE` env vars to `.cargo/config.toml` (removed
-   from `.vscode/settings.json`). Will now apply in general, so no need to
-   specify everywhere.
-   * Makes display of compiler spans' `source_file()` in `dfir_lang`
-   relative to `DFIR_BASE_DIR` (new) or `CARGO_MANIFEST_DIR`, if possible.
-   * Include `rust-src` `rustup` component to make trybuild error output
-   more consistent:
-   https://github.com/dtolnay/trybuild?tab=readme-ov-file#troubleshooting
-   * Almost all `dfir_rs` trybuild test are re-enabled (except a couple
-   obsolete ones are deleted, and two have inconsistent printing)
-   * Updates docs build to remove old operators
- - <csr-id-7f3ec9dcce0ef9d52af03083970c8d26b9993fc0/> fix `docsrs` broken stable test, actually run `dfir_lang` op doc tests
-
 ### New Features (BREAKING)
 
  - <csr-id-fbaab5b12c0c661ee08d8ded6862a38834ba62ae/> loop lifetimes for `anti_join_multiset`, tests, remove `MonotonicMap`, fix #1830, fix #1823
@@ -884,10 +1178,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    
    Updates tests for `difference`, `difference_multiset`, `anti_join`, and
    `anti_join_multiset`
-
-### Refactor (BREAKING)
-
- - <csr-id-2fdd5da1cf902a0c2f99cf8770bb48f9e046e38f/> loop machinery, add `'loop` lifetimes, fix #1745
 
 ### Commit Statistics
 
@@ -928,10 +1218,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-c944371ba1c290f38c02f60979b381a53c39e680/>
 <csr-id-056ac62611319b7bd10a751d7e231423a1b8dc4e/>
 
-### Chore
-
- - <csr-id-f14174e92875b3264ef811effd954ed76cb3c948/> update pinned nightly to 2025-03-10, clippy cleanups
-
 ### Documentation
 
  - <csr-id-b235a42a3071e55da7b09bdc8bc710b18e0fe053/> demote python deploy docs, fix docsrs configs, fix #1392, fix #1629
@@ -945,19 +1231,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    IntoProcessSpec<'_, HydroDeploy> for Arc<H>` show up.
    
    Also set `--all-features` for the docsrs build
-
-### Other
-
- - <csr-id-c944371ba1c290f38c02f60979b381a53c39e680/> update actions, stop using actions-rs
-   `actions-rs` actions are all unmaintained, trying to fix
-   
-   > The `set-output` command is deprecated and will be disabled soon.
-   Please upgrade to using Environment Files. For more information see:
-   https://github.blog/changelog/2022-10-11-github-actions-deprecating-save-state-and-set-output-commands/
-
-### Style
-
- - <csr-id-056ac62611319b7bd10a751d7e231423a1b8dc4e/> cleanup old clippy lints, remove deprecated `relalg` crate
 
 ### Commit Statistics
 
@@ -1003,56 +1276,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/>
 <csr-id-8f4426089dcbbe5d1098f89e367c7be49a03e401/>
 
-### Chore
-
- - <csr-id-49a387d4a21f0763df8ec94de73fb953c9cd333a/> upgrade to Rust 2024 edition
-   - Updates `Cargo.toml` to use new shared workspace keys
-   - Updates lint settings (in workspace `Cargo.toml`)
-   - `rustfmt` has changed slightly, resulting in a big diff - there are no
-   actual code changes
-   - Adds a script to `rustfmt` the template src files
- - <csr-id-2fd6aa7417dfa29f389c04c5b9674b80bfed6cf2/> update pinned nightly to 2025-02-10, cleanups for clippy
-
-### Refactor (BREAKING)
-
- - <csr-id-e0d9b26709011a2d5d56cc3f86a3ee640983e75a/> require semicolons after loop braces, fix #1726
-   Is better for syntax highlighting.
-
-### Chore (BREAKING)
-
- - <csr-id-3966d9063dae52e65b077321e0bd1150f2b0c3f1/> use DFIR name instead of Hydroflow in some places, fix #1644
-   Fix partially #1712
-   
-   * Renames `WriteContextArgs.hydroflow` to `WriteContextArgs.df_ident`
-   for DFIR operator codegen
-   * Removes some dead code/files
-
-### Style
-
- - <csr-id-fd85262930c678601a80c080fb79778675124964/> clippy cleanups for latest stable rust
-
-### Refactor
-
- - <csr-id-e5c2e23359055f41492344edf19efbe3f2afd7ce/> unchecked casts for handoffs & state, pedantic version
- - <csr-id-5cd0a9625822620dcc99b99356edfecbf0549497/> enable lints, cleanups for Rust 2024 #1732
-
-### Chore
-
- - <csr-id-ec3795a678d261a38085405b6e9bfea943dafefb/> upgrade to Rust 2024 edition
-   - Updates `Cargo.toml` to use new shared workspace keys
-   - Updates lint settings (in workspace `Cargo.toml`)
-   - `rustfmt` has changed slightly, resulting in a big diff - there are no
-   actual code changes
-   - Adds a script to `rustfmt` the template src files
- - <csr-id-8f4426089dcbbe5d1098f89e367c7be49a03e401/> update pinned nightly to 2025-02-10, cleanups for clippy
-
 ### Documentation
 
- - <csr-id-19784f5bef45a823549bb9084d0f51a2b7ce0981/> fix extraneous `\<` escaping introduced in #1558, fix #1614
-   Previous code also inserted `\<` into code blocks. This fixes the
-   original issue of unescaped `<`s by ensuring all op docs have them in
-   `code blocks`, removes the escaping.
- - <csr-id-f8313b018f6a1101935e4c06abbe5af3aafb400c/> fix broken links, fix #1613
  - <csr-id-8e612917f97edbb3739381ceb7f20daa1e4403b1/> fix extraneous `\<` escaping introduced in #1558, fix #1614
    Previous code also inserted `\<` into code blocks. This fixes the
    original issue of unescaped `<`s by ensuring all op docs have them in
@@ -1061,33 +1286,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### New Features
 
- - <csr-id-ce134fa0bae4085a9f81f9e556a553618e3652ab/> add APIs for getting DFIR without deploying
-   Also modifies DFIR to elide Stageleft `type_hint`s when pretty printing
-   an operator (e.g. for Mermaid). Also, because we stratify the graph
-   before we can print it, adds basic support for printing stratified
-   graphs as a surface string.
- - <csr-id-3a3382aade8b9e9500ae8fec70496ba7125e63ad/> add more perf tags to operators that do non-iterator work
-   Also unifies all `dest_sink` related work under a common identifier now
-   that we pass it to the operator codegen.
- - <csr-id-7009a042837e4d8bbde82b680ee6779d9dec062b/> `next_iteration()` operator, `all_iterations()` un-windowing op, k-means example, fix #1612, fix #1731
- - <csr-id-1ba45050f02a9f40860d7a52f144d35aebec031e/> add basic `_counter()` op for cardinality metrics, fix #1729
-   This is the simplest possible implementation, there's a lot of room for
-   improvement with a metrics system built into the runtime, but keeping it
-   simple for now.
- - <csr-id-69706bab1b8a86a18dae2d984d0a1a22f1efa4a5/> Print dest_sink sink_feed_flush with tag
-   So we can see CPU usage from sending messages in perf
- - <csr-id-a72f7d56a720d56f6e5fd08e9dc6f50a2f302c57/> loop iteration counter, fix #1622
- - <csr-id-ee280c972848170783d105ba047b26dfa7249f24/> `loop {` scheduler
-   Fix https://github.com/hydro-project/hydro/issues/1580
- - <csr-id-f3c459036976d87b20356a761bdea9c010ae680b/> Add ability to customize operator tag for stack tracing/flamegraphs
-   Actually inserting Hydro-level operator IDs/names is TODO
-   
-   #1479
- - <csr-id-a9762c54fa0733e4ac9d3d2dbdd517f637ed5f24/> Allow state_by to use a factory function.
-   Currently, state_by uses Default::default to instantiate the backing
-   storage. Accepting a factory function will allow the storage to be
-   tweaked per instance of state. Example usage: pre-allocating memory for
-   the data structures.
  - <csr-id-2ad0be3a843431afdff21ad0119d3661b77666b8/> add APIs for getting DFIR without deploying
    Also modifies DFIR to elide Stageleft `type_hint`s when pretty printing
    an operator (e.g. for Mermaid). Also, because we stratify the graph
@@ -1118,35 +1316,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Bug Fixes
 
- - <csr-id-a7d4d473b49d67818290a46a822b4e30e83478ff/> update stateful operators to be 'stateless' in loops, fix #1618
-   eventually, when the old 'tick/'static machinery is removed, we can unify under one set of lifetimes
- - <csr-id-10d8db58f9f2757c93f228f0a7fb45f7719068d0/> include operator tag for pre-iterator work
  - <csr-id-247a21d9617d44f13755c696224a6942afb9922a/> update stateful operators to be 'stateless' in loops, fix #1618
    eventually, when the old 'tick/'static machinery is removed, we can unify under one set of lifetimes
  - <csr-id-794384d153e3d15a29cf29ecbe82031edcf9054f/> include operator tag for pre-iterator work
-
-### Refactor
-
- - <csr-id-ddbc5990647d567c941bdfb16606842fc93a08be/> unchecked casts for handoffs & state, pedantic version
- - <csr-id-c293cca6855695107e9cef5c5df99fb04a571934/> enable lints, cleanups for Rust 2024 #1732
-
-### Style
-
- - <csr-id-c1983308743d912e5bf2583b7cccbb47d8a8b5d1/> clippy cleanups for latest stable rust
-
-### Chore (BREAKING)
-
- - <csr-id-44fb2806cf2d165d86695910f4755e0944c11832/> use DFIR name instead of Hydroflow in some places, fix #1644
-   Fix partially #1712
-   
-   * Renames `WriteContextArgs.hydroflow` to `WriteContextArgs.df_ident`
-   for DFIR operator codegen
-   * Removes some dead code/files
-
-### Refactor (BREAKING)
-
- - <csr-id-3c5bb05487a25345ea2f70b5a1ffbe74a216c684/> require semicolons after loop braces, fix #1726
-   Is better for syntax highlighting.
 
 ### Commit Statistics
 
@@ -1218,51 +1390,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-a6f60c92ae7168eb86eb311ca7b7afb10025c7de/>
 <csr-id-5e58e346612a094c7e637919c84ab1e78b59be27/>
 
-### New Features
-
- - <csr-id-b8acd843bdbcfb445bf942e697447f6bf58a10da/> initial flo implementation
-   Basic first pass implementation, without changing the current scheduler,
-   no breaking behavior. Adds the flo syntax (`loop { ... }`), basic graph
-   structure checks, nested loop blocks, and two basic windowing operators
-   (`batch()` and `all_once()`).
-   
-   Next steps:
-   - Needs scheduler changes:
-
-### Other
-
- - <csr-id-7dea92b19e6b86566cc27babb457415896b6b608/> fix stable tests
-   Sets `TRYBUILD=overwrite` on stable, as the output messages will often
-   not match `pinned-nightly`
-   
-   Adds env `HYDROFLOW_EXPECT_WARNINGS=ignore` to allow warning tests to
-   pass
-
-### Chore
-
- - <csr-id-84ee06755a0ed7cabf32b334f1696bb600797c92/> update links for renamed repo (excluding `CHANGELOG.md`s), fix #1571
- - <csr-id-a6f60c92ae7168eb86eb311ca7b7afb10025c7de/> bump versions manually for renamed crates, per `RELEASING.md`
- - <csr-id-5e58e346612a094c7e637919c84ab1e78b59be27/> Rename Hydroflow -> DFIR
-   Work In Progress:
-   - [x] hydroflow_macro
-   - [x] hydroflow_datalog_core
-   - [x] hydroflow_datalog
-   - [x] hydroflow_lang
-   - [x] hydroflow
-
 ### Documentation
 
- - <csr-id-28cd220c68e3660d9ebade113949a2346720cd04/> add `repository` field to `Cargo.toml`s, fix #1452
-   #1452 
-   
-   Will trigger new releases of the following:
-   `unchanged = 'hydroflow_deploy_integration', 'variadics',
-   'variadics_macro', 'pusherator'`
-   
-   (All other crates already have changes, so would be released anyway)
- - <csr-id-e1a08e5d165fbc80da2ae695e507078a97a9031f/> update `CHANGELOG.md`s for big rename
-   Generated before rename per `RELEASING.md` instructions.
- - <csr-id-6ab625273d822812e83a333e928c3dea1c3c9ccb/> cleanups for the rename, fixing links
  - <csr-id-204bd117ca3a8845b4986539efb91a0c612dfa05/> add `repository` field to `Cargo.toml`s, fix #1452
    #1452 
    
@@ -1274,42 +1403,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - <csr-id-27c40e2ca5a822f6ebd31c7f01213aa6d407418a/> update `CHANGELOG.md`s for big rename
    Generated before rename per `RELEASING.md` instructions.
  - <csr-id-987f7ad8668d9740ceea577a595035228898d530/> cleanups for the rename, fixing links
-
-### Chore
-
- - <csr-id-5196f247e0124a31567af940541044ce1906cdc1/> update links for renamed repo (excluding `CHANGELOG.md`s), fix #1571
- - <csr-id-03b3a349013a71b324276bca5329c33d400a73ff/> bump versions manually for renamed crates, per `RELEASING.md`
- - <csr-id-3291c07b37c9f9031837a2a32953e8f8854ec298/> Rename Hydroflow -> DFIR
-   Work In Progress:
-   - [x] hydroflow_macro
-   - [x] hydroflow_datalog_core
-   - [x] hydroflow_datalog
-   - [x] hydroflow_lang
-   - [x] hydroflow
-
-### New Features (BREAKING)
-
- - <csr-id-f2a4bee8cd6945937bed5bc22fd85efd8d0aef0a/> remove `import!`, fix #1110
-   in prep for rust stable #1587
-   
-   No good way to resolve the source file paths on stable
-   
-   No way to get good diagnostics on external files in general, at all
-
-### Bug Fixes (BREAKING)
-
- - <csr-id-eb1ad3a54705efb06ee3f0647deaa9a52731ae6e/> rename `union` to `chain` and restrict LHS to be bounded
-   Returning a `Stream` from `union` on unbounded streams was unsound,
-   since the order of outputs is not deterministic.
-
-### Refactor (BREAKING)
-
- - <csr-id-251b1039c71d45d3f86123dba1926026ded80824/> use `cfg(nightly)` instead of feature, remove `-Z` flag, use `Diagnostic::try_emit`
-   Previous PR (#1587) website build did not work because `panic = "abort"`
-   is set on wasm, leading to aborts for `proc_macro2::Span::unwrap()`
-   calls.
-   
-   All tests except trybuild seem to pass on stable, WIP #1587 next
 
 ### `hydroflow_lang` Commit Statistics
 
