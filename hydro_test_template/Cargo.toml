@@ -11,8 +11,8 @@ path = "../template/hydro/src/lib.rs"
 workspace = true
 
 [dependencies]
-hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.0" }
-hydro_std = { path = "../hydro_std", version = "^0.17.0-alpha.0" }
+hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.1" }
+hydro_std = { path = "../hydro_std", version = "^0.17.0-alpha.1" }
 stageleft.workspace = true
 
 [build-dependencies]
@@ -21,7 +21,7 @@ stageleft_tool.workspace = true
 [dev-dependencies]
 ctor = "0.2"
 hydro_deploy = { path = "../hydro_deploy/core", version = "^0.17.0-alpha.0" }
-hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.0", features = [
+hydro_lang = { path = "../hydro_lang", version = "^0.17.0-alpha.1", features = [
     "deploy",
     "sim",
     "viz",

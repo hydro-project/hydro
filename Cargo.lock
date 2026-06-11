@@ -1741,7 +1741,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_lang"
-version = "1.0.0-alpha.0"
+version = "0.17.0-alpha.1"
 dependencies = [
  "auto_impl",
  "clap",
@@ -1761,7 +1761,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_macro"
-version = "0.17.0-alpha.0"
+version = "0.17.0-alpha.1"
 dependencies = [
  "dfir_lang",
  "hydro_build_utils",
@@ -1774,7 +1774,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_pipes"
-version = "0.1.0-alpha.0"
+version = "0.1.0-alpha.1"
 dependencies = [
  "futures-core",
  "futures-sink",
@@ -1791,7 +1791,7 @@ dependencies = [
 
 [[package]]
 name = "dfir_rs"
-version = "0.17.0-alpha.0"
+version = "0.17.0-alpha.1"
 dependencies = [
  "bincode",
  "bumpalo",
@@ -2665,7 +2665,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_lang"
-version = "0.17.0-alpha.0"
+version = "0.17.0-alpha.1"
 dependencies = [
  "anyhow",
  "auto_impl",
@@ -2727,7 +2727,7 @@ dependencies = [
 
 [[package]]
 name = "hydro_std"
-version = "0.17.0-alpha.0"
+version = "0.17.0-alpha.1"
 dependencies = [
  "ctor 0.2.9",
  "hdrhistogram",
@@ -3279,7 +3279,7 @@ dependencies = [
 
 [[package]]
 name = "lattices"
-version = "0.8.0-alpha.0"
+version = "0.8.0-alpha.1"
 dependencies = [
  "cc-traits",
  "fst",
@@ -5299,7 +5299,7 @@ checksum = "bbbb5d9659141646ae647b42fe094daf6c6192d1620870b449d9557f748b2daa"
 
 [[package]]
 name = "sinktools"
-version = "0.2.0-alpha.0"
+version = "0.2.0-alpha.1"
 dependencies = [
  "bytes",
  "futures-task",
@@ -6257,7 +6257,7 @@ checksum = "ba73ea9cf16a25df0c8caa16c51acb937d5712a8429db78a3ee29d5dcacd3a65"
 
 [[package]]
 name = "variadics"
-version = "1.0.0-alpha.0"
+version = "0.2.0-alpha.1"
 dependencies = [
  "hashbrown 0.14.5",
  "hydro_build_utils",
@@ -6266,7 +6266,7 @@ dependencies = [
 
 [[package]]
 name = "variadics_macro"
-version = "0.8.0-alpha.0"
+version = "0.8.0-alpha.1"
 dependencies = [
  "prettyplease",
  "proc-macro-crate 3.4.0",
