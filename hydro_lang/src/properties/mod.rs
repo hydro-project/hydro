@@ -355,6 +355,64 @@ impl<In, Out, F: Fn(In) -> Out, R: Retries> ValidMutIdempotenceFor<F, In, Out, R
 {
 }
 
+/// Marker trait for commutativity of closures that borrow their input (`FnMut(&In) -> Out`).
+#[sealed::sealed]
+#[diagnostic::on_unimplemented(
+    message = "Because the input stream has ordering `{O}`, the closure must demonstrate commutativity with a `commutative = ...` annotation.",
+    label = "required for this call",
+    note = "To intentionally process the stream by observing a non-deterministic (shuffled) order of elements, use `.assume_ordering`. This introduces non-determinism so avoid unless necessary."
+)]
+pub trait ValidMutBorrowCommutativityFor<F: FnMut(&In) -> Out, In: ?Sized, Out, O: Ordering, const WAS_MUT: bool> {}
+#[sealed::sealed]
+impl<In: ?Sized, Out, F: FnMut(&In) -> Out> ValidMutBorrowCommutativityFor<F, In, Out, TotalOrder, true>
+    for NotProved
+{
+}
+#[sealed::sealed]
+impl<In: ?Sized, Out, F: Fn(&In) -> Out, O: Ordering> ValidMutBorrowCommutativityFor<F, In, Out, O, false>
+    for NotProved
+{
+}
+#[sealed::sealed]
+impl<In: ?Sized, Out, F: FnMut(&In) -> Out, O: Ordering> ValidMutBorrowCommutativityFor<F, In, Out, O, true>
+    for Proved
+{
+}
+#[sealed::sealed]
+impl<In: ?Sized, Out, F: Fn(&In) -> Out, O: Ordering> ValidMutBorrowCommutativityFor<F, In, Out, O, false>
+    for Proved
+{
+}
+
+/// Marker trait for idempotence of closures that borrow their input (`FnMut(&In) -> Out`).
+#[diagnostic::on_unimplemented(
+    message = "Because the input stream has retries `{R}`, the closure must demonstrate idempotence with an `idempotent = ...` annotation.",
+    label = "required for this call",
+    note = "To intentionally process the stream by observing non-deterministic (randomly duplicated) retries, use `.assume_retries`. This introduces non-determinism so avoid unless necessary."
+)]
+#[sealed::sealed]
+pub trait ValidMutBorrowIdempotenceFor<F: FnMut(&In) -> Out, In: ?Sized, Out, R: Retries, const WAS_MUT: bool> {}
+#[sealed::sealed]
+impl<In: ?Sized, Out, F: FnMut(&In) -> Out> ValidMutBorrowIdempotenceFor<F, In, Out, ExactlyOnce, true>
+    for NotProved
+{
+}
+#[sealed::sealed]
+impl<In: ?Sized, Out, F: Fn(&In) -> Out, R: Retries> ValidMutBorrowIdempotenceFor<F, In, Out, R, false>
+    for NotProved
+{
+}
+#[sealed::sealed]
+impl<In: ?Sized, Out, F: FnMut(&In) -> Out, R: Retries> ValidMutBorrowIdempotenceFor<F, In, Out, R, true>
+    for Proved
+{
+}
+#[sealed::sealed]
+impl<In: ?Sized, Out, F: Fn(&In) -> Out, R: Retries> ValidMutBorrowIdempotenceFor<F, In, Out, R, false>
+    for Proved
+{
+}
+
 /// Marker trait identifying the boundedness of a singleton given a monotonicity property of
 /// an aggregation on a stream.
 #[sealed::sealed]
