@@ -1,3 +1,5 @@
+#![allow(unexpected_cfgs)]
+
 use hydro_lang::live_collections::stream::NoOrder;
 use hydro_lang::prelude::*;
 

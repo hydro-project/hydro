@@ -260,6 +260,7 @@ pub fn compile_graph_trybuild(
             syn::parse_quote! {
                 #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
                 use #trybuild_crate_name_ident::__root as #orig_crate_name;
+                use #trybuild_crate_name_ident::__root::*;
                 use #trybuild_crate_name_ident::__staged::__deps::*;
                 use #root::prelude::*;
                 use #root::runtime_support::dfir_rs as __root_dfir_rs;
@@ -287,6 +288,7 @@ pub fn compile_graph_trybuild(
             syn::parse_quote! {
                 #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
                 use #trybuild_crate_name_ident::__root as #orig_crate_name;
+                use #trybuild_crate_name_ident::__root::*;
                 use #trybuild_crate_name_ident::__staged::__deps::*;
                 use #root::prelude::*;
                 use #root::runtime_support::dfir_rs as __root_dfir_rs;
@@ -323,6 +325,7 @@ pub fn compile_graph_trybuild(
             syn::parse_quote! {
                 #![allow(unused_imports, unused_crate_dependencies, missing_docs, non_snake_case)]
                 use #trybuild_crate_name_ident::__root as #orig_crate_name;
+                use #trybuild_crate_name_ident::__root::*;
                 use #trybuild_crate_name_ident::__staged::__deps::*;
                 use #root::prelude::*;
                 use #root::runtime_support::dfir_rs as __root_dfir_rs;

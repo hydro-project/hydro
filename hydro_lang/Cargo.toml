@@ -130,12 +130,7 @@ sinktools = { path = "../sinktools", version = "^0.2.0-alpha.1" }
 slotmap = { version = "1.1.0", features = ["serde"] }
 stageleft_tool = { workspace = true, optional = true }
 stageleft.workspace = true
-syn = { version = "2.0.46", features = [
-    "parsing",
-    "extra-traits",
-    "visit-mut",
-    "visit",
-] }
+syn = { version = "2.0.46", features = [ "parsing", "extra-traits" ] }
 tokio = "1.29.0"
 tokio-metrics = "0.4.6"
 tokio-stream = { version = "0.1.3", default-features = false, features = [

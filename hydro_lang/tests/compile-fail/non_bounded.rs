@@ -1,3 +1,5 @@
+#![allow(unexpected_cfgs)]
+
 use hydro_lang::prelude::*;
 
 struct P1 {}

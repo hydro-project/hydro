@@ -1,7 +1,7 @@
 error[E0277]: The input collection must be bounded (`Bounded`), but has bound `hydro_lang::prelude::Unbounded`. Strengthen the boundedness upstream or consider a different API.
- --> tests/compile-fail/stable/non_bounded.rs:7:45
+ --> tests/compile-fail/stable/non_bounded.rs:9:45
   |
-7 |     let _ = unbounded.clone().filter_not_in(unbounded);
+9 |     let _ = unbounded.clone().filter_not_in(unbounded);
   |                               ------------- ^^^^^^^^^ required here
   |                               |
   |                               required by a bound introduced by this call
