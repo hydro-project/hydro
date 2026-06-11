@@ -931,12 +931,16 @@ impl DfirGraph {
             }
             // Receivers from the handoff. (Should really only be one).
             for (_edge, succ_id) in self.node_successors(hoff_id) {
-                let succ_sg = self.node_subgraph(succ_id).unwrap();
+                let succ_sg = self
+                    .node_subgraph(succ_id)
+                    .expect("bug: successor not in subgraph, may be a doubled/adjacent handoff");
                 subgraph_handoffs[succ_sg].0.push(hoff_id);
             }
             // Senders into the handoff. (Should really only be one).
             for (_edge, pred_id) in self.node_predecessors(hoff_id) {
-                let pred_sg = self.node_subgraph(pred_id).unwrap();
+                let pred_sg = self
+                    .node_subgraph(pred_id)
+                    .expect("bug: predecessor not in subgraph, may be a doubled/adjacent handoff");
                 subgraph_handoffs[pred_sg].1.push(hoff_id);
             }
         }

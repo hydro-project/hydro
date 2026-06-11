@@ -1,4 +1,4 @@
-error: Not a DAG: [GraphNodeId(3v1), GraphNodeId(2v1)]
+error: Cyclical dataflow within a tick is not supported. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks. Cycle: ["map(|x: i32| x + 1)", "union()"]
  --> tests/compile-fail/stable/surface_inline_cycle.rs:4:31
   |
 4 |         my_union = union() -> map(|x: i32| x + 1) -> my_union;

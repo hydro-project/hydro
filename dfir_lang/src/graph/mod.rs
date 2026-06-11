@@ -482,6 +482,23 @@ pub fn build_dfir_code(
 
     eliminate_extra_unions_tees(&mut flat_graph);
 
+    // Detect adjacent handoffs (e.g. `handoff() -> handoff()` or `singleton() -> singleton()`),
+    // which can arise after unary tee/union elimination.
+    for (edge_id, (src, dst)) in flat_graph.edges() {
+        let _ = edge_id;
+        if matches!(flat_graph.node(src), GraphNode::Handoff { .. })
+            && matches!(flat_graph.node(dst), GraphNode::Handoff { .. })
+        {
+            let span = flat_graph.node(dst).span();
+            diagnostics.push(Diagnostic::spanned(
+                span,
+                Level::Error,
+                "Adjacent handoff/singleton operators are not allowed. \
+                 Remove one or insert an operator between them.",
+            ));
+        }
+    }
+
     // Reject `loop { }` blocks (not yet supported in inline codegen).
     // TODO(cleanup): find a better home for this check — ideally inside `partition_graph` once
     // it supports returning multiple diagnostics.

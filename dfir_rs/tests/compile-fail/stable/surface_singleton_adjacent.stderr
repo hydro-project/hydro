@@ -1,10 +1,5 @@
-error: proc macro panicked
- --> tests/compile-fail/stable/surface_singleton_adjacent.rs:4:18
+error: Adjacent handoff/singleton operators are not allowed. Remove one or insert an operator between them.
+ --> tests/compile-fail/stable/surface_singleton_adjacent.rs:5:46
   |
-4 |       let mut df = dfir_syntax! {
-  |  __________________^
-5 | |         source_iter(0..10) -> singleton() -> singleton() -> for_each(std::mem::drop);
-6 | |     };
-  | |_____^
-  |
-  = help: message: called `Option::unwrap()` on a `None` value
+5 |         source_iter(0..10) -> singleton() -> singleton() -> for_each(std::mem::drop);
+  |                                              ^^^^^^^^^

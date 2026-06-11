@@ -147,7 +147,19 @@ fn find_subgraph_unionfind(
             .first()
             .map(|&node_id| partitioned_graph.node(node_id).span())
             .unwrap_or_else(proc_macro2::Span::call_site);
-        Diagnostic::spanned(span, Level::Error, format!("Not a DAG: {:?}", cycle))
+        let node_cycle = cycle
+            .iter()
+            .map(|&node_id| partitioned_graph.node(node_id).to_pretty_string())
+            .collect::<Vec<_>>();
+        Diagnostic::spanned(
+            span,
+            Level::Error,
+            format!(
+                "Cyclical dataflow within a tick is not supported. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks. \
+                Cycle: {:?}",
+                node_cycle,
+            ),
+        )
     })?;
 
     // Will contain all edges which need handoffs added. Starts out with all edges and
