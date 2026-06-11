@@ -9,8 +9,8 @@ error: proc macro panicked
 7 | |     };
   | |_____^
   |
-  = help: message: assertion `left != right` failed: encounted conflicted or cyclical singleton references
-          [(GraphNodeId(5v1), ResolvedSingletonRef { node_id: Some(GraphNodeId(2v1)), is_mut: false, access_group: Some(0) }, #0 bytes(252..263))]
-          [(GraphNodeId(5v1), ResolvedSingletonRef { node_id: Some(GraphNodeId(2v1)), is_mut: false, access_group: Some(1) }, #0 bytes(266..277))]
+  = help: message: assertion `left != right` failed: encounted conflicted or cyclical handoff references
+          [(GraphNodeId(5v1), ResolvedHandoffRef { node_id: Some(GraphNodeId(2v1)), is_mut: false, access_group: Some(0) }, #0 bytes(252..263))]
+          [(GraphNodeId(5v1), ResolvedHandoffRef { node_id: Some(GraphNodeId(2v1)), is_mut: false, access_group: Some(1) }, #0 bytes(266..277))]
             left: GraphNodeId(5v1)
            right: GraphNodeId(5v1)

@@ -11,7 +11,7 @@ use syn::spanned::Spanned;
 use syn::{Error, Ident, ItemUse};
 
 use crate::diagnostic::{Diagnostic, Diagnostics, Level};
-use crate::graph::meta_graph::ResolvedSingletonRef;
+use crate::graph::meta_graph::ResolvedHandoffRef;
 use crate::graph::ops::next_iteration::NEXT_ITERATION;
 use crate::graph::ops::{FloType, Persistence, PortListSpec, RangeTrait};
 use crate::graph::{
@@ -437,7 +437,7 @@ impl FlatGraphBuilder {
                             ));
                             None
                         };
-                        ResolvedSingletonRef {
+                        ResolvedHandoffRef {
                             node_id: resolved_node_id,
                             is_mut: singleton_ref.token_mut.is_some(),
                             access_group: singleton_ref.access_group.as_ref().and_then(
@@ -458,7 +458,7 @@ impl FlatGraphBuilder {
                     .collect();
 
                 self.flat_graph
-                    .set_node_singleton_references(node_id, singletons_referenced);
+                    .set_node_handoff_references(node_id, singletons_referenced);
             }
         }
     }
@@ -827,8 +827,7 @@ impl FlatGraphBuilder {
 
                     // Check that singleton references actually reference valid targets.
                     {
-                        let singletons_resolved =
-                            self.flat_graph.node_singleton_references(node_id);
+                        let singletons_resolved = self.flat_graph.node_handoff_references(node_id);
                         for (resolved_ref, singleton_ref_token) in singletons_resolved
                             .iter()
                             .zip_eq(&*operator.singletons_referenced)
@@ -901,7 +900,7 @@ impl FlatGraphBuilder {
         // 1. If any singleton reference has an explicit group number, they all must have one.
         // 2. Every `#mut` must be in its own group.
         {
-            let refs_by_target = self.flat_graph.node_singleton_reference_groups();
+            let refs_by_target = self.flat_graph.node_handoff_reference_groups();
             // For each singleton, check the groups.
             for (_singleton, groups) in refs_by_target {
                 // Rule 1. If any singleton reference has an explicit group number, they all must have one.

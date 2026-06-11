@@ -48,19 +48,19 @@ fn find_edge_barriers(
     (tick_edges, barrier_pairs)
 }
 
-/// Find access group ordering constraints: for the same singleton target, operators in
+/// Find handoff reference access group ordering constraints: for the same handoff target, operators in
 /// lower access groups must run before operators in higher access groups.
 fn find_access_group_ordering(partitioned_graph: &DfirGraph) -> Vec<(GraphNodeId, GraphNodeId)> {
     let mut pairs = Vec::new();
-    let refs_by_target = partitioned_graph.node_singleton_reference_groups();
-    for (_singleton, groups) in refs_by_target {
+    let refs_by_target = partitioned_graph.node_handoff_reference_groups();
+    for (_handoff, groups) in refs_by_target {
         for (group_a, group_b) in groups.values().tuple_windows() {
             for &(node_a, _, _) in group_a {
                 for &(node_b, _, _) in group_b {
                     // TODO(mingwei): handle with diagnostics.
                     assert_ne!(
                         node_a, node_b,
-                        "encounted conflicted or cyclical singleton references\n{:?}\n{:?}",
+                        "encounted conflicted or cyclical handoff references\n{:?}\n{:?}",
                         group_a, group_b,
                     );
                     pairs.push((node_a, node_b));
@@ -99,10 +99,10 @@ fn find_subgraph_unionfind(
         }
     }
 
-    // Singleton references: producer must run before consumer.
+    // Handoff references: producer must run before consumer.
     for node_id in partitioned_graph.node_ids() {
-        for singleton_ref in partitioned_graph.node_singleton_references(node_id).iter() {
-            if let Some(src) = singleton_ref.node_id {
+        for handoff_ref in partitioned_graph.node_handoff_references(node_id).iter() {
+            if let Some(src) = handoff_ref.node_id {
                 all_preds.entry(node_id).unwrap().or_default().push(src);
                 // Extra ordering: if the ref target is a handoff, its pipe consumers
                 // depend on the borrower (borrower runs before consumer).
@@ -131,7 +131,7 @@ fn find_subgraph_unionfind(
         .chain(access_group_pairs.iter().copied())
         .chain(partitioned_graph.node_ids().flat_map(|dst| {
             partitioned_graph
-                .node_singleton_references(dst)
+                .node_handoff_references(dst)
                 .iter()
                 .filter_map(|r| r.node_id)
                 .map(move |src| (src, dst))
