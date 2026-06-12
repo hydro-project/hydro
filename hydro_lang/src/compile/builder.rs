@@ -1,5 +1,6 @@
 use std::any::type_name;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::rc::Rc;
 
@@ -12,6 +13,7 @@ use super::deploy::{DeployFlow, DeployResult};
 #[cfg(feature = "build")]
 use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
 use super::ir::HydroRoot;
+use super::ir::HydroNode;
 use crate::location::{Cluster, External, LocationKey, LocationType, Process};
 
 /// A compile-time directive to spawn a future on a location's `LocalSet`
@@ -98,6 +100,11 @@ pub(crate) struct FlowStateInner {
     /// Compile-time sidecar directives. Processed during compilation,
     /// not part of the dataflow IR.
     pub sidecars: Vec<Sidecar>,
+
+    /// Per-singleton access group counter, keyed by pointer to the singleton's
+    /// `RefCell<HydroNode>`. Assigned at staging time (code order) so that access
+    /// groups are deterministic regardless of IR traversal order.
+    pub singleton_access_counters: HashMap<*const RefCell<HydroNode>, u32>,
 }
 
 impl FlowStateInner {
@@ -195,6 +202,7 @@ impl<'a> FlowBuilder<'a> {
                 next_clock_id: ClockId::default(),
                 next_sidecar_id: SidecarId::default(),
                 sidecars: Vec::new(),
+                singleton_access_counters: HashMap::new(),
             })),
             locations: SlotMap::with_key(),
             location_names: SecondaryMap::new(),
@@ -340,6 +348,7 @@ impl<'a> FlowBuilder<'a> {
                 next_clock_id: ClockId::default(),
                 next_sidecar_id: SidecarId::default(),
                 sidecars: Vec::new(),
+                singleton_access_counters: HashMap::new(),
             })),
             locations: built.locations.clone(),
             location_names: built.location_names.clone(),

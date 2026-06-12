@@ -28,10 +28,11 @@ pub enum HandoffRefKind {
 }
 
 // Thread-local storage for handoff references captured during `q!()` expansion.
-// Stores the HydroNode `(node, is_mut)` for each reference captured in the current closure.
+// Stores the HydroNode `(node, is_mut, access_group)` for each reference captured in the current closure,
+// along with the FlowState for computing access groups.
 // The index determines the ident name via `handoff_ref_ident`.
 thread_local! {
-    static CAPTURED_REFS: RefCell<Option<Vec<(HydroNode, bool)>>> = const { RefCell::new(None) };
+    static CAPTURED_REFS: RefCell<Option<(Vec<(HydroNode, bool, u32)>, crate::compile::builder::FlowState)>> = const { RefCell::new(None) };
 }
 
 /// Returns the canonical ident for a captured ref at the given index within a closure.
@@ -46,17 +47,18 @@ pub(crate) fn handoff_ref_ident(index: usize) -> syn::Ident {
 /// that may capture handoff references. Returns a `ClosureExpr` bundling the expression with any
 /// captured references.
 pub fn with_ref_capture(
+    flow_state: &crate::compile::builder::FlowState,
     f: impl FnOnce() -> crate::compile::ir::DebugExpr,
 ) -> crate::compile::ir::ClosureExpr {
     CAPTURED_REFS.with(|cell| {
-        let prev = cell.borrow_mut().replace(Vec::new());
+        let prev = cell.borrow_mut().replace((Vec::new(), flow_state.clone()));
         assert!(
             prev.is_none(),
             "nested handoff reference capture scopes are not supported"
         );
     });
     let expr = (f)();
-    let captured_refs = CAPTURED_REFS.with(|cell| cell.borrow_mut().take().unwrap());
+    let (captured_refs, _) = CAPTURED_REFS.with(|cell| cell.borrow_mut().take().unwrap());
     crate::compile::ir::ClosureExpr::new(expr, captured_refs)
 }
 
@@ -69,7 +71,7 @@ fn register_handoff_ref(
 ) -> syn::Ident {
     CAPTURED_REFS.with(|cell| {
         let mut guard = cell.borrow_mut();
-        let refs = guard.as_mut().expect(
+        let (refs, flow_state) = guard.as_mut().expect(
             "HandoffRef used inside q!() but no reference capture scope is active. \
              This is a bug — reference capture should be set up by the operator that uses q!().",
         );
@@ -95,6 +97,21 @@ fn register_handoff_ref(
             unreachable!()
         };
 
+        // Compute access group at staging time (code order).
+        let ptr = ir_node as *const RefCell<HydroNode>;
+        let group = {
+            let mut state = flow_state.borrow_mut();
+            let counter = state.singleton_access_counters.entry(ptr).or_insert(0);
+            if is_mut {
+                *counter += 1;
+                let g = *counter;
+                *counter += 1;
+                g
+            } else {
+                *counter
+            }
+        };
+
         refs.push((
             HydroNode::Reference {
                 inner: SharedNode(Rc::clone(&inner.0)),
@@ -102,6 +119,7 @@ fn register_handoff_ref(
                 metadata,
             },
             is_mut,
+            group,
         ));
 
         ident
