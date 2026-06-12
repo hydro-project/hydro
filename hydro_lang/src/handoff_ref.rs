@@ -29,8 +29,7 @@ pub enum HandoffRefKind {
 }
 
 // Thread-local storage for handoff references captured during `q!()` expansion.
-// Stores the HydroNode `(node, is_mut, access_group)` for each reference captured in the current closure,
-// along with the FlowState for computing access groups.
+// Stores the HydroNode `(node, is_mut, access_group)` for each reference captured in the current closure.
 // The index determines the ident name via `handoff_ref_ident`.
 thread_local! {
     static CAPTURED_REFS: RefCell<Option<Vec<(HydroNode, bool, u32)>>> = const { RefCell::new(None) };
@@ -99,7 +98,9 @@ fn register_handoff_ref(
         };
 
         // Compute access group at staging time (code order).
-        let ptr = ir_node as *const RefCell<HydroNode>;
+        // Key on the heap-stable inner Rc pointer so the counter is consistent
+        // even if the outer RefCell moves (e.g. after cloning a Singleton).
+        let ptr = inner.0.as_ref() as *const RefCell<HydroNode>;
         let group = {
             let counter = singleton_access_counters.entry(ptr).or_insert(0);
             if is_mut {
