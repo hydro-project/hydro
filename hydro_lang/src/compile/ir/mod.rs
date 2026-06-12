@@ -177,10 +177,7 @@ impl ClosureExpr {
     /// Pop singleton ref idents from the stack and rewrite the closure's token stream,
     /// replacing local singleton ref idents with `#{N} dfir_ident` or `#{N} mut dfir_ident` references.
     #[cfg(feature = "build")]
-    pub fn emit_tokens(
-        &self,
-        ident_stack: &mut Vec<syn::Ident>,
-    ) -> TokenStream {
+    pub fn emit_tokens(&self, ident_stack: &mut Vec<syn::Ident>) -> TokenStream {
         if self.singleton_refs.is_empty() {
             self.expr.0.to_token_stream()
         } else {
@@ -1456,8 +1453,7 @@ impl HydroRoot {
                             ident_stack.push(idents[0].clone());
                         }
 
-                        let f_tokens =
-                            f.emit_tokens(&mut ident_stack);
+                        let f_tokens = f.emit_tokens(&mut ident_stack);
 
                         graph_builders
                             .get_dfir_mut(&input.metadata().location_id)

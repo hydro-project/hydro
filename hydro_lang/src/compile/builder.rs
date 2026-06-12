@@ -12,8 +12,7 @@ use super::compiled::CompiledFlow;
 use super::deploy::{DeployFlow, DeployResult};
 #[cfg(feature = "build")]
 use super::deploy_provider::{ClusterSpec, Deploy, ExternalSpec, IntoProcessSpec};
-use super::ir::HydroRoot;
-use super::ir::HydroNode;
+use super::ir::{HydroNode, HydroRoot};
 use crate::location::{Cluster, External, LocationKey, LocationType, Process};
 
 /// A compile-time directive to spawn a future on a location's `LocalSet`

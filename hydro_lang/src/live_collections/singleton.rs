@@ -1977,8 +1977,8 @@ mod tests {
     /// `for_each` roots, should get distinct access groups and build successfully.
     #[cfg(feature = "sim")]
     #[test]
+    #[expect(unused_mut, reason = "sliced! macro generates mut bindings for state")]
     fn sim_mut_access_group_across_roots() {
-        use super::Singleton;
         use crate::live_collections::sliced::sliced;
 
         let mut flow = FlowBuilder::new();
@@ -2018,8 +2018,8 @@ mod tests {
     /// order, the mutations must still execute in the order they were staged.
     #[cfg(feature = "sim")]
     #[test]
+    #[expect(unused_mut, reason = "sliced! macro generates mut bindings for state")]
     fn sim_mut_access_groups_follow_code_order() {
-        use super::Singleton;
         use crate::live_collections::sliced::sliced;
 
         let mut flow = FlowBuilder::new();
