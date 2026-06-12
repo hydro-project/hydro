@@ -127,6 +127,7 @@ pub async fn test_singleton_reference() {
         my_val -> for_each(|_| {});
         source_iter(1..=3_i32) -> map(|x| x + #my_val) -> for_each(|v: i32| out.push(v));
     };
+    assert_graphvis_snapshots!(flow);
     flow.run_tick().await;
     drop(flow);
     assert_eq!(vec![43, 44, 45], output);
@@ -141,6 +142,50 @@ pub async fn test_singleton_reference_only() {
         my_val = source_iter([42_i32]) -> singleton();
         source_iter(1..=3_i32) -> map(|x| x + #my_val) -> for_each(|v: i32| out.push(v));
     };
+    assert_graphvis_snapshots!(flow);
+    flow.run_tick().await;
+    drop(flow);
+    assert_eq!(vec![43, 44, 45], output);
+}
+
+/// Test: singleton reference rendered with `no_handoffs: true`.
+#[dfir_rs::test]
+pub async fn test_singleton_reference_no_handoffs() {
+    let mut output = Vec::<i32>::new();
+    let out = &mut output;
+    let mut flow = dfir_rs::dfir_syntax! {
+        my_val = source_iter([42_i32]) -> singleton();
+        my_val -> for_each(|_| {});
+        source_iter(1..=3_i32) -> map(|x| x + #my_val) -> for_each(|v: i32| out.push(v));
+    };
+    assert_graphvis_snapshots!(
+        flow,
+        &dfir_lang::graph::WriteConfig {
+            no_handoffs: true,
+            ..Default::default()
+        }
+    );
+    flow.run_tick().await;
+    drop(flow);
+    assert_eq!(vec![43, 44, 45], output);
+}
+
+/// Test: singleton reference (ref-only, 0 successors) rendered with `no_handoffs: true`.
+#[dfir_rs::test]
+pub async fn test_singleton_reference_only_no_handoffs() {
+    let mut output = Vec::<i32>::new();
+    let out = &mut output;
+    let mut flow = dfir_rs::dfir_syntax! {
+        my_val = source_iter([42_i32]) -> singleton();
+        source_iter(1..=3_i32) -> map(|x| x + #my_val) -> for_each(|v: i32| out.push(v));
+    };
+    assert_graphvis_snapshots!(
+        flow,
+        &dfir_lang::graph::WriteConfig {
+            no_handoffs: true,
+            ..Default::default()
+        }
+    );
     flow.run_tick().await;
     drop(flow);
     assert_eq!(vec![43, 44, 45], output);
