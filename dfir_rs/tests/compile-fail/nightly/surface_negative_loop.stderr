@@ -1,5 +1,5 @@
-error: Cycle detected in graph, which must be a DAG (directed acyclic graph). Use `defer_tick()` or `defer_tick_lazy()` to break the cycle. Cycle: [GraphNodeId(1v1)]
+error: Cyclical dataflow within a tick is not supported. Use `defer_tick()` or `defer_tick_lazy()` to break the cycle across ticks. Cycle: ["difference()"]
  --> tests/compile-fail/nightly/surface_negative_loop.rs:5:16
   |
 5 |         diff = difference();
-  |                ^^^^^^^^^^
+  |                ^^^^^^^^^^^^

@@ -43,10 +43,10 @@ subgraph sg_3v1 ["sg_3v1"]
     6v1
 end
 subgraph sg_4v1 ["sg_4v1"]
-    1v1
-    2v1
-    4v1
     7v1
+    4v1
+    2v1
+    1v1
     subgraph sg_4v1_var_my_join ["var <tt>my_join</tt>"]
         9v1
         10v1
