@@ -1,10 +1,12 @@
 error[E0594]: cannot assign to `*count_mut__free`, as it is a captured variable in a `Fn` closure
-  --> tests/compile-fail/nightly/mut_singleton_map_no_order.rs:16:13
+  --> tests/compile-fail/nightly/mut_singleton_map_no_order.rs:18:13
    |
- 6 | fn test<'a>(p1: &Process<'a, P1>) {
+ 8 | fn test<'a>(p1: &Process<'a, P1>) {
    |    ----                          - change this to return `FnMut` instead of `Fn`
 ...
-15 |         .map(q!(|x| {
+17 |         .map(q!(|x| {
    |                 --- in this closure
-16 |             *count_mut += x;
+18 |             *count_mut += x;
    |             ^^^^^^^^^^^^^^^ cannot assign
+   |
+   = note: this error originates in the macro `__stageleft_quote_tests_compile_fail_mut_singleton_map_no_order_rs_17_16` which comes from the expansion of the macro `q` (in Nightly builds, run with -Z macro-backtrace for more info)

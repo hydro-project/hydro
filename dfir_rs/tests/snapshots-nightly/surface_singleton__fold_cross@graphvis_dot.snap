@@ -49,19 +49,13 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_2v1"
-        n6v1
-        subgraph sg_2v1_var_filtered_stream2 {
+        n11v1
+        n12v1
+        subgraph sg_2v1_var_max_of_stream2 {
             cluster=true
-            label="var filtered_stream2"
-            n7v1
-            n8v1
-            n9v1
-            n10v1
-        }
-        subgraph sg_2v1_var_stream1 {
-            cluster=true
-            label="var stream1"
-            n1v1
+            label="var max_of_stream2"
+            n4v1
+            n5v1
         }
     }
     subgraph sg_3v1 {
@@ -69,13 +63,19 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_3v1"
-        n11v1
-        n12v1
-        subgraph sg_3v1_var_max_of_stream2 {
+        n6v1
+        subgraph sg_3v1_var_filtered_stream2 {
             cluster=true
-            label="var max_of_stream2"
-            n4v1
-            n5v1
+            label="var filtered_stream2"
+            n7v1
+            n8v1
+            n9v1
+            n10v1
+        }
+        subgraph sg_3v1_var_stream1 {
+            cluster=true
+            label="var stream1"
+            n1v1
         }
     }
 }

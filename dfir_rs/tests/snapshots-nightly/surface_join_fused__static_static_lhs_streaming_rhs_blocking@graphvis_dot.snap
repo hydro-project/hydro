@@ -70,9 +70,9 @@ digraph {
         fillcolor="#dddddd"
         style=filled
         label = "sg_5v1"
-        n3v1
-        n5v1
         n8v1
+        n5v1
+        n3v1
         subgraph sg_5v1_var_my_join {
             cluster=true
             label="var my_join"
