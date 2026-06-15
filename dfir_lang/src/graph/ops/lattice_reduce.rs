@@ -51,8 +51,6 @@ pub const LATTICE_REDUCE: OperatorConstraints = OperatorConstraints {
                    ..
                },
                diagnostics| {
-        assert!(is_pull);
-
         let arguments = &parse_quote_spanned! {op_span=>
             |acc, item| { #root::lattices::Merge::<_>::merge(acc, item); }
         };
@@ -68,24 +66,27 @@ pub const LATTICE_REDUCE: OperatorConstraints = OperatorConstraints {
             write_tick_end,
         } = (super::reduce::REDUCE.write_fn)(&wc, diagnostics)?;
 
-        assert_eq!(1, inputs.len());
-        let input = &inputs[0];
-
-        let write_iterator = quote_spanned! {op_span=>
-            let #input = {
-                #[inline(always)]
-                fn check_inputs<Lat, Prev>(
-                    input: Prev,
-                ) -> impl #root::dfir_pipes::pull::Pull<Item = Lat, Meta = Prev::Meta, CanPend = Prev::CanPend, CanEnd = Prev::CanEnd>
-                where
-                    Lat: #root::lattices::Merge<Lat>,
-                    Prev: #root::dfir_pipes::pull::Pull<Item = Lat>,
-                {
-                    input
-                }
-                check_inputs(#input)
-            };
-            #write_iterator
+        let write_iterator = if is_pull {
+            assert_eq!(1, inputs.len());
+            let input = &inputs[0];
+            quote_spanned! {op_span=>
+                let #input = {
+                    #[inline(always)]
+                    fn check_inputs<Lat, Prev>(
+                        input: Prev,
+                    ) -> impl #root::dfir_pipes::pull::Pull<Item = Lat, Meta = Prev::Meta, CanPend = Prev::CanPend, CanEnd = Prev::CanEnd>
+                    where
+                        Lat: #root::lattices::Merge<Lat>,
+                        Prev: #root::dfir_pipes::pull::Pull<Item = Lat>,
+                    {
+                        input
+                    }
+                    check_inputs(#input)
+                };
+                #write_iterator
+            }
+        } else {
+            write_iterator
         };
         Ok(OperatorWriteOutput {
             write_prologue,
