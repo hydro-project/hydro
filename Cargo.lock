@@ -2766,6 +2766,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 
 [[package]]
+name = "hydro_aws"
+version = "0.1.0"
+dependencies = [
+ "aws-config",
+ "aws-sdk-sqs",
+ "clap",
+ "ctor 0.2.9",
+ "futures-util",
+ "hydro_build_utils",
+ "hydro_deploy",
+ "hydro_lang",
+ "stageleft",
+ "stageleft_tool",
+ "tokio",
+]
+
+[[package]]
 name = "hydro_build_utils"
 version = "0.1.1-alpha.0"
 dependencies = [
@@ -2905,8 +2922,6 @@ dependencies = [
 name = "hydro_test"
 version = "0.0.0"
 dependencies = [
- "aws-config",
- "aws-sdk-sqs",
  "bytes",
  "clap",
  "colored 3.1.1",
@@ -2915,7 +2930,6 @@ dependencies = [
  "dfir_rs",
  "example_test",
  "futures",
- "futures-util",
  "hydro_build_utils",
  "hydro_deploy",
  "hydro_lang",
