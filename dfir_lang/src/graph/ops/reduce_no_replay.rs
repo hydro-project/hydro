@@ -1,7 +1,7 @@
 use quote::quote_spanned;
 
 use super::{
-    DelayType, OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
+    OperatorCategory, OperatorConstraints, OperatorWriteOutput, Persistence, RANGE_0,
     RANGE_1, WriteContextArgs,
 };
 
@@ -29,18 +29,19 @@ pub const REDUCE_NO_REPLAY: OperatorConstraints = OperatorConstraints {
     ports_out: None,
     input_delaytype_fn: |_| Some(DelayType::Stratum),
     write_fn: |wc @ &WriteContextArgs {
-                   root,
-                   context,
-                   op_span,
-                   work_fn,
-                   work_fn_async,
-                   ident,
-                   inputs,
-                   is_pull,
-                   arguments,
-                   ..
-               },
-               diagnostics| {
+                     root,
+                     context,
+                     op_span,
+                     work_fn,
+                     work_fn_async,
+                     ident,
+                     inputs,
+                     outputs,
+                     is_pull,
+                     arguments,
+                     ..
+                 },
+                 diagnostics| {
         let [persistence] = wc.persistence_args_disallow_mutable(diagnostics);
 
         let singleton_output_ident = wc.make_ident("singleton_output");
@@ -108,14 +109,39 @@ pub const REDUCE_NO_REPLAY: OperatorConstraints = OperatorConstraints {
                     )
                 };
             }
-        } else {
-            // Is only push when used as a singleton, so no need to push to `outputs[0]`.
+        } else if outputs.is_empty() {
+            // Terminal push: reduce_no_replay is a singleton reference target with no downstream.
             quote_spanned! {op_span=>
                 let #ident = #root::dfir_pipes::push::for_each(|#item_ident| {
                     #assign_accum_ident
 
                     #foreach_body
                 });
+            }
+        } else {
+            let output = &outputs[0];
+            let was_updated_ident = wc.make_ident("was_updated");
+            quote_spanned! {op_span=>
+                let #was_updated_ident = ::std::cell::Cell::new(false);
+                let #ident = #root::dfir_pipes::push::reduce_ref(
+                    &mut #singleton_output_ident,
+                    |#accumulator_ident: &mut _, #item_ident| {
+                        #was_updated_ident.set(true);
+                        #[allow(clippy::redundant_closure_call)]
+                        (#func)(#accumulator_ident, #item_ident);
+                    },
+                    #root::dfir_pipes::push::filter(
+                        {
+                            let __was_updated = &#was_updated_ident;
+                            let __context: &_ = #context;
+                            move |_| __was_updated.get() || __context.current_tick().0 == 0
+                        },
+                        #root::dfir_pipes::push::map(
+                            |__val: &mut _| ::std::clone::Clone::clone(&*__val),
+                            #output,
+                        ),
+                    ),
+                );
             }
         };
 
