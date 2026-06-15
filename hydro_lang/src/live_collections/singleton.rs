@@ -337,11 +337,11 @@ where
     /// # });
     /// # }
     /// ```
-    pub fn by_ref(&self) -> crate::singleton_ref::SingletonRef<'a, '_, T, L>
+    pub fn by_ref(&self) -> crate::handoff_ref::SingletonRef<'a, '_, T, L>
     where
         B: IsBounded,
     {
-        crate::singleton_ref::SingletonRef::new(&self.ir_node)
+        crate::handoff_ref::SingletonRef::new(&self.ir_node)
     }
 
     /// Returns a mutable reference handle to this singleton that can be captured inside `q!()`
@@ -386,11 +386,11 @@ where
     /// # });
     /// # }
     /// ```
-    pub fn by_mut(&self) -> crate::singleton_ref::SingletonMut<'a, '_, T, L>
+    pub fn by_mut(&self) -> crate::handoff_ref::SingletonMut<'a, '_, T, L>
     where
         B: IsBounded,
     {
-        crate::singleton_ref::SingletonMut::new(&self.ir_node)
+        crate::handoff_ref::SingletonMut::new(&self.ir_node)
     }
 
     /// Weakens the consistency of this live collection to not guarantee any consistency across

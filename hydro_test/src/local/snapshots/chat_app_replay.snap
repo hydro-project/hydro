@@ -18,14 +18,14 @@ linkStyle default stroke:#aaa
 8v1[\"(8v1) <code>identity::&lt;()&gt;()</code>"/]:::pullClass
 9v1[\"(9v1) <code>source_stream(DUMMY_SOURCE)</code>"/]:::pullClass
 10v1[\"<div style=text-align:center>(10v1)</div> <code>map(|res| {<br>    let b = res.unwrap();<br>    hydro_lang::runtime_support::bincode::deserialize::&lt;u32&gt;(&amp;b).unwrap()<br>})</code>"/]:::pullClass
-11v1[\"<div style=text-align:center>(11v1)</div> <code>map({<br>    use hydro_lang::__staged::__deps::*;<br>    use hydro_lang::__staged::live_collections::stream::*;<br>    hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_1117_20!(<br>        [] [| v | ((), v)]<br>    )<br>})</code>"/]:::pullClass
+11v1[\"<div style=text-align:center>(11v1)</div> <code>map({<br>    use hydro_lang::__staged::__deps::*;<br>    use hydro_lang::__staged::live_collections::stream::*;<br>    hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_1131_20!(<br>        [] [| v | ((), v)]<br>    )<br>})</code>"/]:::pullClass
 12v1[\"(12v1) <code>source_stream(DUMMY_SOURCE)</code>"/]:::pullClass
 13v1[\"<div style=text-align:center>(13v1)</div> <code>map(|res| {<br>    let b = res.unwrap();<br>    hydro_lang::runtime_support::bincode::deserialize::&lt;std::string::String&gt;(&amp;b)<br>        .unwrap()<br>})</code>"/]:::pullClass
 14v1[\"<div style=text-align:center>(14v1)</div> <code>map({<br>    use crate::__staged::__deps::*;<br>    use crate::__staged::local::chat_app::*;<br>    &num;[allow(unused_imports)]<br>    use crate::*;<br>    __stageleft_quote_src_local_chat_app_rs_12_35!([] [| s | s.to_uppercase()])<br>})</code>"/]:::pullClass
-15v1[\"<div style=text-align:center>(15v1)</div> <code>map({<br>    use hydro_lang::__staged::__deps::*;<br>    use hydro_lang::__staged::live_collections::stream::*;<br>    hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_1118_31!(<br>        [] [| v | ((), v)]<br>    )<br>})</code>"/]:::pullClass
+15v1[\"<div style=text-align:center>(15v1)</div> <code>map({<br>    use hydro_lang::__staged::__deps::*;<br>    use hydro_lang::__staged::live_collections::stream::*;<br>    hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_1132_31!(<br>        [] [| v | ((), v)]<br>    )<br>})</code>"/]:::pullClass
 16v1[\"(16v1) <code>join_multiset::&lt;'static, 'static&gt;()</code>"/]:::pullClass
 17v1[\"(17v1) <code>multiset_delta()</code>"/]:::pullClass
-18v1[\"<div style=text-align:center>(18v1)</div> <code>map({<br>    use hydro_lang::__staged::__deps::*;<br>    use hydro_lang::__staged::live_collections::stream::*;<br>    hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_1119_20!(<br>        [] [| ((), (v1, v2)) | (v1, v2)]<br>    )<br>})</code>"/]:::pullClass
+18v1[\"<div style=text-align:center>(18v1)</div> <code>map({<br>    use hydro_lang::__staged::__deps::*;<br>    use hydro_lang::__staged::live_collections::stream::*;<br>    hydro_lang::__stageleft_quote_src_live_collections_stream_mod_rs_1133_20!(<br>        [] [| ((), (v1, v2)) | (v1, v2)]<br>    )<br>})</code>"/]:::pullClass
 19v1[\"<div style=text-align:center>(19v1)</div> <code>map(|data| {<br>    hydro_lang::runtime_support::bincode::serialize(&amp;data).unwrap().into()<br>})</code>"/]:::pullClass
 20v1[/"(20v1) <code>dest_sink(DUMMY_SINK)</code>"\]:::pushClass
 1v1-->2v1
